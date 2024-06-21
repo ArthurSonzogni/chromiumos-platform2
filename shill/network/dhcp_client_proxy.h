@@ -10,8 +10,9 @@
 #include <string_view>
 
 #include <base/functional/callback_forward.h>
+#include <chromeos/net-base/network_config.h>
 
-#include "shill/store/key_value_store.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -35,10 +36,11 @@ class DHCPClientProxy {
   // be injected when creating the DHCPClientProxy instance.
   class EventHandler {
    public:
-    // Called when the DHCP client sends the events. |configuration| contains
-    // the extra information of the event.
+    // Called when the DHCP client sends the events. |network_config| and
+    // |dhcp_data| contain the extra information of the event.
     virtual void OnDHCPEvent(EventReason reason,
-                             const KeyValueStore& configuration) = 0;
+                             const net_base::NetworkConfig& network_config,
+                             const DHCPv4Config::Data& dhcp_data) = 0;
 
     // Called when the DHCP client process is exited before the proxy is
     // destroyed.

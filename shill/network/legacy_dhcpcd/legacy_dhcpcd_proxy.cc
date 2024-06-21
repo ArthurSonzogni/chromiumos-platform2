@@ -95,6 +95,22 @@ bool IsEphemeralLease(const DHCPClientProxy::Options& options,
   return options.lease_name.empty() || options.lease_name == interface;
 }
 
+bool NeedConfiguration(DHCPClientProxy::EventReason reason) {
+  switch (reason) {
+    case DHCPClientProxy::EventReason::kBound:
+    case DHCPClientProxy::EventReason::kRebind:
+    case DHCPClientProxy::EventReason::kReboot:
+    case DHCPClientProxy::EventReason::kRenew:
+    case DHCPClientProxy::EventReason::kGatewayArp:
+      return true;
+
+    case DHCPClientProxy::EventReason::kFail:
+    case DHCPClientProxy::EventReason::kNak:
+    case DHCPClientProxy::EventReason::kIPv6OnlyPreferred:
+      return false;
+  }
+}
+
 }  // namespace
 
 LegacyDHCPCDProxy::LegacyDHCPCDProxy(std::string_view interface,
@@ -138,7 +154,18 @@ bool LegacyDHCPCDProxy::Release() {
 
 void LegacyDHCPCDProxy::OnDHCPEvent(EventReason reason,
                                     const KeyValueStore& configuration) {
-  handler_->OnDHCPEvent(reason, configuration);
+  net_base::NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+
+  if (NeedConfiguration(reason) &&
+      !DHCPv4Config::ParseConfiguration(configuration, &network_config,
+                                        &dhcp_data)) {
+    LOG(WARNING) << __func__
+                 << ": Error parsing network configuration from DHCP client. "
+                 << "The following configuration might be partial: "
+                 << network_config;
+  }
+  handler_->OnDHCPEvent(reason, network_config, dhcp_data);
 }
 
 base::WeakPtr<LegacyDHCPCDProxy> LegacyDHCPCDProxy::GetWeakPtr() {

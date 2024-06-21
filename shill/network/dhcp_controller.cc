@@ -106,7 +106,8 @@ bool DHCPController::ReleaseIP(ReleaseReason reason) {
 }
 
 void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
-                                 const KeyValueStore& configuration) {
+                                 const net_base::NetworkConfig& network_config,
+                                 const DHCPv4Config::Data& dhcp_data) {
   switch (reason) {
     case DHCPClientProxy::EventReason::kFail:
       LOG(ERROR) << "Received failure event from DHCP client.";
@@ -129,27 +130,19 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
     case DHCPClientProxy::EventReason::kRebind:
     case DHCPClientProxy::EventReason::kReboot:
     case DHCPClientProxy::EventReason::kRenew:
-      UpdateConfiguration(configuration, /*is_gateway_arp=*/false);
+      UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/false);
       return;
 
     case DHCPClientProxy::EventReason::kGatewayArp:
-      UpdateConfiguration(configuration, /*is_gateway_arp=*/true);
+      UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/true);
       return;
   }
 }
 
-void DHCPController::UpdateConfiguration(const KeyValueStore& configuration,
-                                         bool is_gateway_arp) {
-  net_base::NetworkConfig network_config;
-  DHCPv4Config::Data dhcp_data;
-  if (!DHCPv4Config::ParseConfiguration(configuration, &network_config,
-                                        &dhcp_data)) {
-    LOG(WARNING) << device_name_
-                 << ": Error parsing network configuration from DHCP client. "
-                 << "The following configuration might be partial: "
-                 << network_config;
-  }
-
+void DHCPController::UpdateConfiguration(
+    const net_base::NetworkConfig& network_config,
+    const DHCPv4Config::Data& dhcp_data,
+    bool is_gateway_arp) {
   // This needs to be set before calling OnIPConfigUpdated() below since
   // those functions may indirectly call other methods like ReleaseIP that
   // depend on or change this value.

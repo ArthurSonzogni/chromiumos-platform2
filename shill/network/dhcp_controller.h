@@ -99,7 +99,8 @@ class DHCPController : public DHCPClientProxy::EventHandler {
 
   // Implement DHCPClientProxy::EventHandler.
   void OnDHCPEvent(DHCPClientProxy::EventReason reason,
-                   const KeyValueStore& configuration) override;
+                   const net_base::NetworkConfig& network_config,
+                   const DHCPv4Config::Data& dhcp_data) override;
   void OnProcessExited(int pid, int exit_status) override;
 
  private:
@@ -112,7 +113,8 @@ class DHCPController : public DHCPClientProxy::EventHandler {
   // Stops the DHCP client.
   void Stop();
 
-  void UpdateConfiguration(const KeyValueStore& configuration,
+  void UpdateConfiguration(const net_base::NetworkConfig& network_config,
+                           const DHCPv4Config::Data& dhcp_data,
                            bool is_gateway_arp);
 
   // On we get a new network config via DHCP. |new_lease_acquired| indicates

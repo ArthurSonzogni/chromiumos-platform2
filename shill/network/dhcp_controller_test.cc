@@ -9,6 +9,8 @@
 #include <base/functional/bind.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_metrics.h"
@@ -31,19 +33,13 @@ using testing::DoAll;
 using testing::Return;
 using testing::SetArgPointee;
 
-KeyValueStore GenerateConfiguration(
-    std::optional<base::TimeDelta> lease_duration = std::nullopt) {
-  KeyValueStore configuration;
-  configuration.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress,
-                              0x01020304);
-  configuration.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 16);
-  configuration.Set<uint32_t>(DHCPv4Config::kConfigurationKeyBroadcastAddress,
-                              0x10203040);
-  if (lease_duration.has_value()) {
-    configuration.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime,
-                                lease_duration->InSeconds());
-  }
-  return configuration;
+net_base::NetworkConfig GenerateNetworkConfig() {
+  net_base::NetworkConfig network_config;
+  network_config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.100/24");
+  network_config.ipv4_broadcast =
+      *net_base::IPv4Address::CreateFromString("192.168.1.1");
+  return network_config;
 }
 
 class DHCPControllerTest : public ::testing::Test {
@@ -109,20 +105,16 @@ class DHCPControllerTest : public ::testing::Test {
 
   // Simulates the DHCPController receiving the DHCP lease.
   void ReceiveLeaseEvent() {
-    const KeyValueStore configuration = GenerateConfiguration(kLeaseDuration);
+    const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+    const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
 
-    // The caller will receive the UpdateCallback with the NetworkConfig and
-    // DHCPv4Config::Data parsed by DHCPv4Config::ParseConfiguration().
-    net_base::NetworkConfig network_config;
-    DHCPv4Config::Data dhcp_data;
-    DHCPv4Config::ParseConfiguration(configuration, &network_config,
-                                     &dhcp_data);
+    ON_CALL(*mock_dhcp_client_proxy_, IsReady).WillByDefault(Return(true));
+
     EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
                                       /*new_lease_acquired=*/true));
 
-    ON_CALL(*mock_dhcp_client_proxy_, IsReady).WillByDefault(Return(true));
     dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
-                                  configuration);
+                                  network_config, dhcp_data);
   }
 
   // The callback of the controller.
@@ -228,7 +220,7 @@ TEST_F(DHCPControllerTest, OnProcessExited) {
 TEST_F(DHCPControllerTest, FailEvent) {
   EXPECT_CALL(*this, DropCallback(false));
 
-  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kFail, {});
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kFail, {}, {});
   task_environment_.RunUntilIdle();
 }
 
@@ -236,33 +228,25 @@ TEST_F(DHCPControllerTest, IPv6OnlyPreferredEvent) {
   EXPECT_CALL(*this, DropCallback(true));
 
   dhcp_controller_->OnDHCPEvent(
-      DHCPClientProxy::EventReason::kIPv6OnlyPreferred, {});
+      DHCPClientProxy::EventReason::kIPv6OnlyPreferred, {}, {});
   task_environment_.RunUntilIdle();
 }
 
 TEST_F(DHCPControllerTest, BoundEvent) {
-  const KeyValueStore configuration = GenerateConfiguration();
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
 
-  // The caller will receive the UpdateCallback with the NetworkConfig and
-  // DHCPv4Config::Data parsed by DHCPv4Config::ParseConfiguration().
-  net_base::NetworkConfig network_config;
-  DHCPv4Config::Data dhcp_data;
-  DHCPv4Config::ParseConfiguration(configuration, &network_config, &dhcp_data);
   EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
                                     /*new_lease_acquired=*/true));
 
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
-                                configuration);
+                                network_config, dhcp_data);
   task_environment_.RunUntilIdle();
 }
 
 TEST_F(DHCPControllerTest, GatewayArpEvent) {
-  // The caller will receive the UpdateCallback with the NetworkConfig and
-  // DHCPv4Config::Data parsed by DHCPv4Config::ParseConfiguration().
-  const KeyValueStore configuration = GenerateConfiguration();
-  net_base::NetworkConfig network_config;
-  DHCPv4Config::Data dhcp_data;
-  DHCPv4Config::ParseConfiguration(configuration, &network_config, &dhcp_data);
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
   EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
                                     /*new_lease_acquired=*/false));
 
@@ -271,18 +255,14 @@ TEST_F(DHCPControllerTest, GatewayArpEvent) {
   EXPECT_CALL(*this, DropCallback).Times(0);
 
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kGatewayArp,
-                                configuration);
+                                network_config, dhcp_data);
 
   task_environment_.FastForwardBy(DHCPController::kAcquisitionTimeout);
 }
 
 TEST_F(DHCPControllerTest, GatewayArpAndNakEvent) {
-  // The caller will receive the UpdateCallback with the NetworkConfig and
-  // DHCPv4Config::Data parsed by DHCPv4Config::ParseConfiguration().
-  const KeyValueStore configuration = GenerateConfiguration();
-  net_base::NetworkConfig network_config;
-  DHCPv4Config::Data dhcp_data;
-  DHCPv4Config::ParseConfiguration(configuration, &network_config, &dhcp_data);
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
   EXPECT_CALL(*this, UpdateCallback(network_config, dhcp_data,
                                     /*new_lease_acquired=*/false));
 
@@ -291,8 +271,8 @@ TEST_F(DHCPControllerTest, GatewayArpAndNakEvent) {
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false)).Times(1);
 
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kGatewayArp,
-                                configuration);
-  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kNak, {});
+                                network_config, dhcp_data);
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kNak, {}, {});
 
   task_environment_.FastForwardBy(DHCPController::kAcquisitionTimeout);
 }
@@ -314,10 +294,13 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry) {
   // TimeToLeaseExpiry() should return null when no DHCP lease is received.
   EXPECT_FALSE(dhcp_controller_->TimeToLeaseExpiry().has_value());
 
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
+                                network_config, dhcp_data);
+
   // After DHCP lease is received, TimeToLeaseExpiry() should return the
   // remaining time before the lease is expired.
-  dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
-                                GenerateConfiguration(kLeaseDuration));
   for (uint32_t i = 0; i <= kLeaseDuration.InSeconds(); i++) {
     SetCurrentTimeToSecond(kTimeNowInSeconds + i);
     EXPECT_EQ(dhcp_controller_->TimeToLeaseExpiry(),
@@ -330,8 +313,11 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry) {
 }
 
 TEST_F(DHCPControllerTest, LeaseExpiry) {
+  const net_base::NetworkConfig network_config = GenerateNetworkConfig();
+  const DHCPv4Config::Data dhcp_data{.lease_duration = kLeaseDuration};
+
   dhcp_controller_->OnDHCPEvent(DHCPClientProxy::EventReason::kBound,
-                                GenerateConfiguration(kLeaseDuration));
+                                network_config, dhcp_data);
 
   // The expiry callback should be triggered right after the lease is expired.
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kMetricExpiredLeaseLengthSeconds,

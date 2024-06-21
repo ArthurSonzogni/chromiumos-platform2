@@ -26,6 +26,21 @@ namespace {
 using testing::_;
 using testing::Return;
 
+KeyValueStore GenerateConfiguration(
+    std::optional<base::TimeDelta> lease_duration = std::nullopt) {
+  KeyValueStore configuration;
+  configuration.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress,
+                              0x01020304);
+  configuration.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 16);
+  configuration.Set<uint32_t>(DHCPv4Config::kConfigurationKeyBroadcastAddress,
+                              0x10203040);
+  if (lease_duration.has_value()) {
+    configuration.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime,
+                                lease_duration->InSeconds());
+  }
+  return configuration;
+}
+
 // The fake LegacyDHCPCDListener that exposes the callbacks.
 class FakeLegacyDHCPCDListener : public LegacyDHCPCDListener {
  public:
@@ -61,7 +76,9 @@ class MockClient : public DHCPClientProxy::EventHandler {
  public:
   MOCK_METHOD(void,
               OnDHCPEvent,
-              (DHCPClientProxy::EventReason, const KeyValueStore&),
+              (DHCPClientProxy::EventReason,
+               const net_base::NetworkConfig&,
+               const DHCPv4Config::Data&),
               (override));
   MOCK_METHOD(void, OnProcessExited, (int, int), (override));
 };
@@ -215,8 +232,9 @@ TEST_F(LegacyDHCPCDProxyFactoryTest, CreateAndDestroyController) {
   controller.reset();
 
   // The handler should not receive any event after the controller is destroyed.
-  EXPECT_CALL(client_,
-              OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, _))
+  EXPECT_CALL(
+      client_,
+      OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, _, _))
       .Times(0);
   fake_listener_->status_changed_cb_.Run(
       kDBusServiceName, kPid, LegacyDHCPCDListener::Status::kIPv6OnlyPreferred);
@@ -281,20 +299,36 @@ TEST_F(LegacyDHCPCDProxyFactoryTest, ProcessExited) {
   EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
 }
 
-TEST_F(LegacyDHCPCDProxyFactoryTest, EventHandler) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, StatusChangedSignal) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
 
   std::unique_ptr<DHCPClientProxy> controller =
       CreateProxySync(kPid, kDBusServiceName);
 
-  EXPECT_CALL(client_,
-              OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, _));
+  EXPECT_CALL(
+      client_,
+      OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, _, _));
   fake_listener_->status_changed_cb_.Run(
       kDBusServiceName, kPid, LegacyDHCPCDListener::Status::kIPv6OnlyPreferred);
+}
 
-  const KeyValueStore configuration = {};
-  EXPECT_CALL(client_, OnDHCPEvent(DHCPClientProxy::EventReason::kRebind, _));
+TEST_F(LegacyDHCPCDProxyFactoryTest, EventSignal) {
+  constexpr int kPid = 4;
+  constexpr std::string_view kDBusServiceName = ":1.25";
+
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName);
+
+  // The event handler will receive the event with the NetworkConfig
+  // and DHCPv4Config::Data parsed by DHCPv4Config::ParseConfiguration().
+  const KeyValueStore configuration = GenerateConfiguration();
+  net_base::NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+  DHCPv4Config::ParseConfiguration(configuration, &network_config, &dhcp_data);
+
+  EXPECT_CALL(client_, OnDHCPEvent(DHCPClientProxy::EventReason::kRebind,
+                                   network_config, dhcp_data));
   fake_listener_->event_signal_cb_.Run(kDBusServiceName, kPid,
                                        DHCPClientProxy::EventReason::kRebind,
                                        configuration);

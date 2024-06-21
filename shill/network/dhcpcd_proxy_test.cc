@@ -33,7 +33,9 @@ class MockClient : public DHCPClientProxy::EventHandler {
  public:
   MOCK_METHOD(void,
               OnDHCPEvent,
-              (DHCPClientProxy::EventReason, const KeyValueStore&),
+              (DHCPClientProxy::EventReason,
+               const net_base::NetworkConfig&,
+               const DHCPv4Config::Data&),
               (override));
   MOCK_METHOD(void, OnProcessExited, (int, int), (override));
 };
