@@ -378,15 +378,6 @@ class UserDataAuthAdaptor
           user_data_auth::ResetApplicationContainerReply>> response,
       const user_data_auth::ResetApplicationContainerRequest& in_request);
 
-  void RestoreDeviceKey(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::RestoreDeviceKeyReply>> response,
-      const user_data_auth::RestoreDeviceKeyRequest& in_request) override;
-  void DoRestoreDeviceKey(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::RestoreDeviceKeyReply>> response,
-      const user_data_auth::RestoreDeviceKeyRequest& in_request);
-
   void MigrateLegacyFingerprints(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::MigrateLegacyFingerprintsReply>> response,

@@ -37,7 +37,7 @@ class FingerprintAuthFactorDriver final
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverWithConfigurableIntents<
           AuthIntentSequence<AuthIntent::kVerifyOnly>,
-          AuthIntentSequence<AuthIntent::kDecrypt, AuthIntent::kRestoreKey>>,
+          AuthIntentSequence<AuthIntent::kDecrypt>>,
       public AfDriverNoCredentialVerifier,
       public AfDriverNoKnowledgeFactor {
  public:

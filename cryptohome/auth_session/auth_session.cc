@@ -145,8 +145,6 @@ constexpr std::string_view IntentToDebugString(AuthIntent intent) {
       return "verify-only";
     case AuthIntent::kWebAuthn:
       return "webauthn";
-    case AuthIntent::kRestoreKey:
-      return "restore-key";
   }
 }
 
@@ -461,7 +459,6 @@ base::flat_set<AuthIntent> AuthSession::authorized_intents() const {
   check_auth_for(auth_for_decrypt_);
   check_auth_for(auth_for_verify_only_);
   check_auth_for(auth_for_web_authn_);
-  check_auth_for(auth_for_restore_key_);
   return intents;
 }
 
@@ -514,9 +511,8 @@ void AuthSession::SetAuthorizedForIntents(
   set_auth_for(auth_for_decrypt_);
   set_auth_for(auth_for_verify_only_);
   set_auth_for(auth_for_web_authn_);
-  set_auth_for(auth_for_restore_key_);
 
-  if (auth_for_decrypt_ || auth_for_restore_key_) {
+  if (auth_for_decrypt_) {
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
   }
@@ -3044,10 +3040,6 @@ AuthSession::AuthForWebAuthn* AuthSession::GetAuthForWebAuthn() {
   return auth_for_web_authn_ ? &*auth_for_web_authn_ : nullptr;
 }
 
-AuthSession::AuthForRestoreKey* AuthSession::GetAuthForRestoreKey() {
-  return auth_for_restore_key_ ? &*auth_for_restore_key_ : nullptr;
-}
-
 AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
     const std::optional<brillo::SecureBlob> user_input,
     AuthBlockType auth_block_type) {
@@ -4124,13 +4116,6 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
       uss_manager_->GetDecrypted(*decrypt_token_).file_system_keyset();
 
   CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
-
-  // If the authentication intent is to restore key on lock screen.
-  if (auth_intent_ == AuthIntent::kRestoreKey) {
-    SetAuthorizedForIntents({AuthIntent::kRestoreKey});
-    std::move(on_done).Run(std::move(prepare_status));
-    return;
-  }
 
   if (auth_intent_ == AuthIntent::kWebAuthn) {
     // Even if we failed to prepare WebAuthn secret, file system keyset

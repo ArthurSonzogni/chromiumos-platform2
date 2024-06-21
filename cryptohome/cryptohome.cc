@@ -249,7 +249,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "prepare_and_add_auth_factor",
                                     "prepare_and_authenticate_auth_factor",
                                     "prepare_recovery_auth_factor",
-                                    "restore_device_key",
                                     "get_recovery_ids",
                                     "get_recoverable_key_stores",
                                     "is_pw_pk_establishment_blocked",
@@ -305,7 +304,6 @@ enum ActionEnum {
   ACTION_PREPARE_AND_ADD_AUTH_FACTOR,
   ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR,
   ACTION_PREPARE_RECOVERY_AUTH_FACTOR,
-  ACTION_RESTORE_DEVICE_KEY,
   ACTION_GET_RECOVERY_IDS,
   ACTION_GET_RECOVERABLE_KEY_STORES,
   ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED,
@@ -2595,34 +2593,6 @@ int main(int argc, char** argv) {
       printer.PrintHumanOutput("Failed to prepare recovery factor.\n");
       return static_cast<int>(reply.error());
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_RESTORE_DEVICE_KEY],
-                     action.c_str())) {
-    user_data_auth::RestoreDeviceKeyRequest req;
-    user_data_auth::RestoreDeviceKeyReply reply;
-
-    std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
-      return 1;
-    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
-    req.set_auth_session_id(auth_session_id);
-
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.RestoreDeviceKey(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "RestoreDeviceKey call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Failed to restore device key.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    printer.PrintHumanOutput("Restored device key.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_RECOVERY_IDS],
                      action.c_str())) {
     user_data_auth::GetAuthFactorExtendedInfoRequest req;

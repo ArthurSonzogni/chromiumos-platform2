@@ -594,10 +594,6 @@ class UserDataAuth {
       user_data_auth::CreateVaultKeysetRequest request,
       OnDoneCallback<user_data_auth::CreateVaultKeysetReply> on_done);
 
-  void RestoreDeviceKey(
-      user_data_auth::RestoreDeviceKeyRequest request,
-      OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done);
-
   void MigrateLegacyFingerprints(
       user_data_auth::MigrateLegacyFingerprintsRequest request,
       OnDoneCallback<user_data_auth::MigrateLegacyFingerprintsReply> on_done);
@@ -843,10 +839,6 @@ class UserDataAuth {
   void PrepareAuthFactorWithSession(
       user_data_auth::PrepareAuthFactorRequest request,
       OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done,
-      InUseAuthSession auth_session);
-  void RestoreDeviceKeyWithSession(
-      user_data_auth::RestoreDeviceKeyRequest request,
-      OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done,
       InUseAuthSession auth_session);
   void MigrateLegacyFingerprintsWithSession(
       user_data_auth::MigrateLegacyFingerprintsRequest request,
