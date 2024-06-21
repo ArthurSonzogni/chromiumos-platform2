@@ -351,7 +351,7 @@ SafeFD::Error SafeFD::Read(char* data, size_t size) {
     return SafeFD::Error::kNotInitialized;
   }
 
-  if (!base::ReadFromFD(fd_.get(), data, size)) {
+  if (!base::ReadFromFD(fd_.get(), base::make_span(data, size))) {
     PLOG(ERROR) << "Failed to read file";
     return SafeFD::Error::kIOError;
   }

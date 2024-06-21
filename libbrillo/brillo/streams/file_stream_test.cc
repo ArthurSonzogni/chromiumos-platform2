@@ -1004,13 +1004,13 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteNonBlocking) {
   EXPECT_EQ(0, written);
 
   std::vector<char> out_buffer(total_size);
-  EXPECT_TRUE(base::ReadFromFD(fds[0], out_buffer.data(), out_buffer.size()));
+  EXPECT_TRUE(base::ReadFromFD(fds[0], out_buffer));
 
   EXPECT_TRUE(stream->WriteNonBlocking(buffer.data(), buffer.size(), &written,
                                        nullptr));
   EXPECT_GT(written, 0);
   out_buffer.resize(written);
-  EXPECT_TRUE(base::ReadFromFD(fds[0], out_buffer.data(), out_buffer.size()));
+  EXPECT_TRUE(base::ReadFromFD(fds[0], out_buffer));
   EXPECT_TRUE(std::equal(out_buffer.begin(), out_buffer.end(), buffer.begin()));
 
   close(fds[0]);
@@ -1077,7 +1077,8 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteAsync) {
   auto success_callback = [](bool* succeeded, const std::string& data,
                              int read_fd, size_t /* size */) {
     char buffer[100];
-    EXPECT_TRUE(base::ReadFromFD(read_fd, buffer, data.size()));
+    EXPECT_TRUE(
+        base::ReadFromFD(read_fd, base::make_span(buffer, data.size())));
     EXPECT_EQ(data, (std::string{buffer, buffer + data.size()}));
     *succeeded = true;
   };

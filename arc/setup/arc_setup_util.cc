@@ -1046,8 +1046,8 @@ bool GetArcImageType(const base::FilePath& image_path,
     return false;
   }
   uint32_t data;
-  if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(&data),
-                        sizeof(data))) {
+  if (!base::ReadFromFD(fd.get(),
+                        base::as_writable_chars(base::span_from_ref(data)))) {
     PLOG(ERROR) << "Failed to read " << path << " at " << kSquashfsMagicOffset;
     return false;
   }
@@ -1061,8 +1061,8 @@ bool GetArcImageType(const base::FilePath& image_path,
     PLOG(ERROR) << "lseek failed for " << path << ", returned " << cur_pos;
     return false;
   }
-  if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(&data),
-                        sizeof(data))) {
+  if (!base::ReadFromFD(fd.get(),
+                        base::as_writable_chars(base::span_from_ref(data)))) {
     PLOG(ERROR) << "Failed to read " << path << " at " << kErofsMagicOffset;
     return false;
   }

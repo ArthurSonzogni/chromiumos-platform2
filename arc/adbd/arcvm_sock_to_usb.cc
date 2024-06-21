@@ -56,7 +56,7 @@ void ArcVmSockToUsb::Run() {
   std::vector<char> buf(kUsbWriteBufSize);
   while (true) {
     char* data = buf.data();
-    EXIT_IF(!base::ReadFromFD(sock_fd_, data, kAmessageSize),
+    EXIT_IF(!base::ReadFromFD(sock_fd_, base::make_span(data, kAmessageSize)),
             "failed to read adb message from socket");
 
     EXIT_IF(!base::WriteFileDescriptor(usb_fd_,
@@ -71,7 +71,7 @@ void ArcVmSockToUsb::Run() {
     // before relaying the data to USB endpoint.
     // We achieve this by using the depth control of buffer. Data won't be
     // sent until we have the expected amount.
-    int payload_len = 0;
+    size_t payload_len = 0;
     for (int i = 0; i < 4; i++) {
       payload_len +=
           static_cast<unsigned char>(data[kAmessageDataLenOffset + i]) << 8 * i;
@@ -81,7 +81,7 @@ void ArcVmSockToUsb::Run() {
       _exit(EXIT_FAILURE);
     }
     if (payload_len > 0) {
-      EXIT_IF(!base::ReadFromFD(sock_fd_, data, payload_len),
+      EXIT_IF(!base::ReadFromFD(sock_fd_, base::make_span(data, payload_len)),
               "failed to read adb payload from socket");
       EXIT_IF(!base::WriteFileDescriptor(usb_fd_,
                                          std::string_view(data, payload_len)),

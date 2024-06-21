@@ -101,7 +101,7 @@ void DecodeEventThread::OnEventPipeReadable() {
 
   vda_event_t event;
   if (!base::ReadFromFD(session_->event_pipe_fd,
-                        reinterpret_cast<char*>(&event), sizeof(vda_event_t))) {
+                        base::as_writable_chars(base::span_from_ref(event)))) {
     LOG(ERROR) << "Failed to read from event pipe.";
     return;
   }

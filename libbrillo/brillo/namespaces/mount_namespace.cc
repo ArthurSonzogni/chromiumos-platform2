@@ -57,7 +57,7 @@ bool MountNamespace::Create() {
       exit(1);
     }
     base::WriteFileDescriptor(fd_unshared[1], std::string_view(&byte, 1));
-    base::ReadFromFD(fd_mounted[0], &byte, 1);
+    base::ReadFromFD(fd_mounted[0], base::span_from_ref(byte));
     exit(0);
   } else {
     // Parent.
@@ -65,7 +65,7 @@ bool MountNamespace::Create() {
     close(fd_unshared[1]);
     std::string proc_ns_path = base::StringPrintf("/proc/%d/ns/mnt", pid);
     bool mount_success = true;
-    base::ReadFromFD(fd_unshared[0], &byte, 1);
+    base::ReadFromFD(fd_unshared[0], base::span_from_ref(byte));
     if (platform_->Mount(proc_ns_path, ns_path_.value(), "", MS_BIND) == 0) {
       // If the bind mount succeeds, attempt to remount it noexec.
       // TODO(betuls): Add MS_RDONLY option after the deprecation of kernel

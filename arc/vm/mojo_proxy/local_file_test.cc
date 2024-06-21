@@ -442,7 +442,7 @@ TEST_F(PipeStreamTest, Write) {
 
   std::string read_data;
   read_data.resize(sizeof(kData));
-  ASSERT_TRUE(base::ReadFromFD(read_fd_.get(), &read_data[0], sizeof(kData)));
+  ASSERT_TRUE(base::ReadFromFD(read_fd_.get(), read_data));
   EXPECT_EQ(std::string(kData, sizeof(kData)), read_data);
 }
 

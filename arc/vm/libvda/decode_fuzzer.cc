@@ -72,8 +72,8 @@ class ReadEventThread {
     // completely full.
     // TODO(alexlau): Should these events be parsed and responded to?
     vda_event_t event;
-    if (!base::ReadFromFD(fd_, reinterpret_cast<char*>(&event),
-                          sizeof(vda_event_t))) {
+    if (!base::ReadFromFD(
+            fd_, base::as_writable_chars(base::span_from_ref(event)))) {
       LOG(ERROR) << "Failed to read from event pipe.";
       return;
     }

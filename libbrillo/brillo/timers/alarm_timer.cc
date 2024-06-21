@@ -150,7 +150,7 @@ void SimpleAlarmTimer::OnAlarmFdReadableWithoutBlocking() {
 
   // Read from |alarm_fd_| to ack the event.
   char val[sizeof(uint64_t)];
-  if (!base::ReadFromFD(alarm_fd_.get(), val, sizeof(uint64_t)))
+  if (!base::ReadFromFD(alarm_fd_.get(), val))
     PLOG(DFATAL) << "Unable to read from timer file descriptor.";
 
   OnTimerFired();

@@ -68,8 +68,8 @@ void AsynchronousSignalHandler::UnregisterHandler(int signal) {
 
 void AsynchronousSignalHandler::OnReadable() {
   struct signalfd_siginfo info;
-  while (base::ReadFromFD(descriptor_.get(), reinterpret_cast<char*>(&info),
-                          sizeof(info))) {
+  while (base::ReadFromFD(descriptor_.get(),
+                          base::as_writable_chars(base::span_from_ref(info)))) {
     int signal = info.ssi_signo;
     Callbacks::iterator callback_it = registered_callbacks_.find(signal);
     if (callback_it == registered_callbacks_.end()) {

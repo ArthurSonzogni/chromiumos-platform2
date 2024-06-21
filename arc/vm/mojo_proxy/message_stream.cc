@@ -79,7 +79,7 @@ bool MessageStream::Read(arc_proxy::MojoMessage* message,
 
   // Read and parse the message.
   buf_.resize(size);
-  if (!base::ReadFromFD(fd_.get(), buf_.data(), buf_.size())) {
+  if (!base::ReadFromFD(fd_.get(), buf_)) {
     PLOG(ERROR) << "Failed to read a proto";
     return false;
   }

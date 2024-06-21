@@ -50,7 +50,7 @@ bool LoopCheck(int fd, const std::vector<char>& src) {
   if (!base::WriteFileDescriptor(fd, std::string_view(src.data(), sz)))
     return false;
   std::vector<char> output(sz);
-  if (!base::ReadFromFD(fd, output.data(), sz))
+  if (!base::ReadFromFD(fd, output))
     return false;
   return src == output;
 }

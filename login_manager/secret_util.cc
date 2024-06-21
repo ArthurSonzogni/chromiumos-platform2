@@ -35,8 +35,9 @@ const size_t kPipeSecretSizeLimit = 1024 * 64 - sizeof(size_t);
 // Reads |data_size| from the pipe. Returns 'false' if it couldn't read
 // |data_size| or if |data_size| was incorrect.
 bool GetSecretDataSizeFromPipe(int in_secret_fd, size_t* data_size_out) {
-  if (!base::ReadFromFD(in_secret_fd, reinterpret_cast<char*>(data_size_out),
-                        sizeof(size_t))) {
+  if (!base::ReadFromFD(
+          in_secret_fd,
+          base::as_writable_chars(base::span_from_ref(*data_size_out)))) {
     PLOG(ERROR) << "Could not read secret size from file.";
     return false;
   }
