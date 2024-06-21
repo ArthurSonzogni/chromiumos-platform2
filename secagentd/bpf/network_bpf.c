@@ -58,6 +58,16 @@ struct {
   __type(value, int64_t);
 } cros_network_external_interfaces SEC(".maps");
 
+#define CROS_SOCK_INVALID (2)
+#define CROS_IF_NOT_EXTERNAL (3)
+#define CROS_FAILED_HEAP_ALLOC (4)
+#define CROS_NO_SOCK_TO_PROCESS (5)
+#define CROS_NO_SK_STORAGE_ALLOCATED (6)
+#define CROS_UNSUPPORTED_IP_VERSION (7)
+#define CROS_NO_NEW_FLOW_ON_RX (8)
+#define CROS_BAD_PARAMETER (9)
+#define CROS_OTHER_ERROR (10)
+
 #ifdef CROS_FULL_SK_STORAGE_SUPPORT
 struct {
   __uint(type, BPF_MAP_TYPE_SK_STORAGE);
@@ -66,13 +76,25 @@ struct {
   __type(value, struct cros_sk_info);
 } sk_storage SEC(".maps");
 
-static inline __attribute__((always_inline)) uint64_t cros_get_socket_id(
-    struct sock* sk) {
-  return bpf_get_socket_cookie(sk);
+static inline __attribute__((always_inline)) int cros_get_socket_id(
+    struct sock* sk, uint64_t* id) {
+  if (!sk) {
+    bpf_printk("cros_sk_socket_id failed, sk is NULL");
+    return -CROS_BAD_PARAMETER;
+  }
+  if (!id) {
+    return -CROS_BAD_PARAMETER;
+  }
+  *id = bpf_get_socket_cookie(sk);
+  return 0;
 }
 
 static inline __attribute__((always_inline)) struct cros_sk_info*
 cros_sk_storage_get_mutable(struct sock* sk) {
+  if (!sk) {
+    bpf_printk("cros_sk_storage_get_mutable failed, sk is NULL");
+    return (struct cros_sk_info*)NULL;
+  }
   struct cros_sk_info* sk_info =
       (struct cros_sk_info*)bpf_sk_storage_get(&sk_storage, sk, 0, 0);
   return sk_info;
@@ -85,12 +107,20 @@ cros_sk_storage_get(struct sock* sk) {
 
 static inline __attribute__((always_inline)) struct cros_sk_info*
 cros_sk_storage_get_or_create(struct sock* sk) {
+  if (!sk) {
+    bpf_printk("cros_sk_storage_get_or_create failed, sk is NULL");
+    return (struct cros_sk_info*)NULL;
+  }
   return (struct cros_sk_info*)bpf_sk_storage_get(&sk_storage, sk, 0,
                                                   BPF_SK_STORAGE_GET_F_CREATE);
 }
 
 static inline __attribute__((always_inline)) int cros_sk_storage_set(
     const struct cros_sk_info* sk_info, const struct sock* sk) {
+  if (!sk) {
+    bpf_printk("cros_sk_storage_set failed, sk is NULL");
+    return -CROS_BAD_PARAMETER;
+  }
   // storage mutation does not require an update call for sk_storage.
   return 0;
 }
@@ -115,9 +145,18 @@ struct {
   __type(value, struct cros_sk_info);
 } sk_addr_storage SEC(".maps");
 
-static inline __attribute__((always_inline)) uint64_t cros_get_socket_id(
-    struct sock* sk) {
-  return (uint64_t)sk;
+static inline __attribute__((always_inline)) int cros_get_socket_id(
+    struct sock* sk, uint64_t* id) {
+  if (!sk) {
+    bpf_printk("cros_get_socket_id failed, sk is NULL");
+    return CROS_BAD_PARAMETER;
+  }
+  if (!id) {
+    bpf_printk("cros_get_socket_id failed, id is NULL");
+    return CROS_BAD_PARAMETER;
+  }
+  *id = (uint64_t)sk;
+  return 0;
 }
 
 static inline __attribute__((always_inline)) struct cros_sk_info*
@@ -162,15 +201,6 @@ struct {
   __uint(map_flags, BPF_F_NO_PREALLOC);
   __uint(pinning, LIBBPF_PIN_BY_NAME);  // map will be shared across bpf objs.
 } shared_process_info SEC(".maps");
-
-#define CROS_SOCK_INVALID (2)
-#define CROS_IF_NOT_EXTERNAL (3)
-#define CROS_FAILED_HEAP_ALLOC (4)
-#define CROS_NO_SOCK_TO_PROCESS (5)
-#define CROS_NO_SK_STORAGE_ALLOCATED (6)
-#define CROS_UNSUPPORTED_IP_VERSION (7)
-#define CROS_NO_NEW_FLOW_ON_RX (8)
-#define CROS_OTHER_ERROR (9)
 
 /* A recording of sockets that have at least one
  * flow map entry associated with it.
@@ -367,7 +397,7 @@ static inline __attribute__((always_inline)) int cros_fill_ipv6_5_tuple(
     default:
       // IPv6 header does not have a next header value reserved for raw sockets.
       // Use the socket type to determine if this is a raw socket.
-      if (BPF_CORE_READ(sk, sk_type) == SOCK_RAW) {
+      if (sk && BPF_CORE_READ(sk, sk_type) == SOCK_RAW) {
         five_tuple->protocol = CROS_PROTOCOL_RAW;
       } else {
         five_tuple->protocol = CROS_PROTOCOL_UNKNOWN;
@@ -492,17 +522,22 @@ static inline __attribute__((always_inline)) bool fill_process_start(
 // nothing.
 static inline __attribute__((always_inline)) const struct cros_sk_info*
 create_process_map_entry(struct socket* sock, const char* ctx) {
-  struct cros_sk_info* sk_info = cros_sk_storage_get_mutable(sock->sk);
+  struct sock* sk = sock->sk;
+  if (!sk) {
+    bpf_printk("create_process_map_entry failed: sock->sk is NULL");
+    return NULL;
+  }
+  struct cros_sk_info* sk_info = cros_sk_storage_get_mutable(sk);
   if (sk_info != NULL) {
     return sk_info;
   }
-  sk_info = cros_sk_storage_get_or_create(sock->sk);
+  sk_info = cros_sk_storage_get_or_create(sk);
   if (!sk_info) {
     return sk_info;
   }
-  sk_info->family = sock->sk->__sk_common.skc_family;
+  sk_info->family = sk->__sk_common.skc_family;
   sk_info->protocol =
-      determine_protocol(sk_info->family, sock->type, sock->sk->sk_protocol);
+      determine_protocol(sk_info->family, sock->type, sk->sk_protocol);
 
   if (sk_info->protocol != CROS_PROTOCOL_TCP &&
       sk_info->protocol != CROS_PROTOCOL_UDP) {
@@ -511,16 +546,23 @@ create_process_map_entry(struct socket* sock, const char* ctx) {
     // 5-tuples cannot be generated from ICMP/RAW flows due to the lack of port
     // numbers so add a sock_id to differentiate these flows between different
     // sockets(processes).
-    sk_info->sock_id = cros_get_socket_id(sock->sk);
+    if (cros_get_socket_id(sk, &(sk_info->sock_id)) != 0) {
+      bpf_printk("create_process_map_entry failed, cros_get_socket_id failed");
+      return NULL;
+    }
   }
   sk_info->has_full_process_info = fill_process_start(&sk_info->process_start);
-  cros_sk_storage_set(sk_info, sock->sk);
+  cros_sk_storage_set(sk_info, sk);
   return sk_info;
 }
 
 static inline __attribute__((always_inline)) int cros_maybe_new_socket(
     struct socket* sock) {
-  uint64_t sock_key = cros_get_socket_id(sock->sk);
+  uint64_t sock_key = 0;
+  if (cros_get_socket_id(sock->sk, &sock_key) != 0) {
+    bpf_printk("cros_maybe_new_socket failed, cros_get_socket_id failed");
+    return -1;
+  }
   if (bpf_map_update_elem(&active_socket_map, &sock_key, &sock_key,
                           BPF_NOEXIST) != 0) {
     return -1;
@@ -594,7 +636,7 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
     struct sock* sk = skb->sk;
     sk_info = NULL;
     if (sk) {
-      sk_info = cros_sk_storage_get_mutable(skb->sk);
+      sk_info = cros_sk_storage_get_mutable(sk);
     }
     if (!sk_info) {
       return -CROS_NO_SK_STORAGE_ALLOCATED;
@@ -769,7 +811,13 @@ int BPF_PROG(cros_handle___inet_stream_connect_exit,
 
 CROS_IF_FUNCTION_HOOK("fentry/inet_release", "tp_btf/cros_inet_release_enter")
 int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
-  uint64_t key = cros_get_socket_id(sock->sk);
+  uint64_t key = 0;
+  if (cros_get_socket_id(sock->sk, &key) != 0) {
+    bpf_printk(
+        "inet_release failed to release a socket because cros_get_socket_id "
+        "failed");
+    return 0;
+  }
   if (bpf_map_delete_elem(&active_socket_map, &key) == -1) {
     bpf_printk("inet_release: active socket deletion failed for %d.", key);
   }
