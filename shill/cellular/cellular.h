@@ -733,9 +733,9 @@ class Cellular : public Device,
   // Creates or updates services for secondary SIMs.
   void UpdateSecondaryServices();
 
-  // Count invalid APN configurations in the try list
-  void CountInvalidApnInTryList(std::deque<Stringmap>& try_list,
-                                ApnList::ApnType apn_type) const;
+  // Remove invalid APN configurations from the try list
+  void RemoveInvalidApnFromTryList(std::deque<Stringmap>& try_list,
+                                   ApnList::ApnType apn_type) const;
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //

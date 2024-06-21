@@ -2662,6 +2662,253 @@ TEST_F(CellularTest, BuildApnTryListWithoutFallback) {
   EXPECT_EQ(default_apn_try_list[0], apnP);
 }
 
+TEST_F(CellularTest, BuildApnTryList_DefaultApnInvalid) {
+  // The default and attach try list always have an additional empty APN
+  // fallback added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  Stringmap attach_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kAttach);
+
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  // Default APN
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn1);
+  // Default+initial APN
+  apn2[kApnProperty] = "apn2";
+  apn2[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn2);
+  // Simulate APN entry stored in invalid list after a failed connection
+  device_->SetApnList(apn_list);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn2);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
+  ASSERT_EQ(attach_apn_try_list.size(), 3);
+  EXPECT_EQ(attach_apn_try_list[0], apn2);
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  EXPECT_EQ(attach_apn_try_list[2], apn2);
+  // Only the data APNs in Default list should be flagged invalid and removed
+  ASSERT_EQ(default_apn_try_list.size(), 2);
+  EXPECT_EQ(default_apn_try_list[0], apn1);
+  EXPECT_EQ(default_apn_try_list[1], default_empty_apn);
+}
+
+TEST_F(CellularTest, BuildApnTryList_AllApnInvalid) {
+  // The default list has an additional empty APN added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn3;
+  // Default and Dun APNs
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn1);
+  apn2[kApnProperty] = "apn2";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn2);
+  apn3[kApnProperty] = "apn3";
+  apn3[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn3[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn3);
+
+  // Simulate invalid APN list with all entries
+  device_->SetApnList(apn_list);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn2);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn3);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn3);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault,
+                                   default_empty_apn);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(default_apn_try_list.size(), 0);
+  ASSERT_EQ(dun_apn_try_list.size(), 0);
+}
+
+TEST_F(CellularTest, BuildApnTryList_ApnInvalidCooldown) {
+  // The default list has an additional empty APN added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+
+  Stringmaps apn_list;
+  Stringmap apn1, apn2;
+  // Default and Dun APNs
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn1);
+  apn2[kApnProperty] = "apn2";
+  apn2[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn2);
+
+  // Simulate invalid APN list with apn1 and apn2
+  device_->SetApnList(apn_list);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn2);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn2);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(dun_apn_try_list.size(), 0);
+  ASSERT_EQ(default_apn_try_list.size(), 1);
+  EXPECT_EQ(default_apn_try_list[0], default_empty_apn);
+
+  // Fast forward the task environment by the Cooldown delay
+  dispatcher_.task_environment().FastForwardBy(Cellular::kInvalidApnCooldown +
+                                               base::Seconds(10));
+  default_apn_try_list = device_->BuildDefaultApnTryList();
+  dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(dun_apn_try_list.size(), 2);
+  EXPECT_EQ(dun_apn_try_list[0], apn1);
+  EXPECT_EQ(dun_apn_try_list[1], apn2);
+  ASSERT_EQ(default_apn_try_list.size(), 3);
+  EXPECT_EQ(default_apn_try_list[0], apn1);
+  EXPECT_EQ(default_apn_try_list[1], apn2);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
+}
+
+TEST_F(CellularTest, BuildApnTryList_SingleApnInvalid) {
+  // The default list has an additional empty APN added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+
+  Stringmaps apn_list;
+  Stringmap apn_modb, apn_modem;
+  // Valid Dun APN
+  apn_modb[kApnProperty] = "apn_modb";
+  apn_modb[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn_modb[kApnSourceProperty] = kApnSourceMoDb;
+  apn_list.push_back(apn_modb);
+  // Faulty Dun and Default APN
+  apn_modem[kApnProperty] = "apn_modem";
+  apn_modem[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn_modem[kApnSourceProperty] = kApnSourceModem;
+  apn_list.push_back(apn_modem);
+
+  // Add the modem APN to list of invalid APNs
+  device_->SetApnList(apn_list);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn_modem);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn_modem);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(dun_apn_try_list.size(), 1);
+  EXPECT_EQ(dun_apn_try_list[0], apn_modb);
+  ASSERT_EQ(default_apn_try_list.size(), 1);
+  EXPECT_EQ(default_apn_try_list[0], default_empty_apn);
+}
+
+TEST_F(CellularTest, BuildApnTryList_UsernameInvalid) {
+  // The default list has an additional empty APN added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn3;
+  // Default and Dun APNs
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn1[kApnUsernameProperty] = "user1";
+  apn1[kApnPasswordProperty] = "pass1";
+  apn_list.push_back(apn1);
+  apn2[kApnProperty] = "apn1";
+  apn2[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn2[kApnUsernameProperty] = "user1";
+  apn2[kApnPasswordProperty] = "pass2";
+  apn_list.push_back(apn2);
+  apn3[kApnProperty] = "apn3";
+  apn3[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn3[kApnSourceProperty] = kApnSourceMoDb;
+  apn3[kApnUsernameProperty] = "user2";
+  apn3[kApnPasswordProperty] = "pass1";
+  apn_list.push_back(apn3);
+
+  // Simulate invalid APN list with apn1
+  device_->SetApnList(apn_list);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn1);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(default_apn_try_list.size(), 3);
+  EXPECT_EQ(default_apn_try_list[0], apn2);
+  EXPECT_EQ(default_apn_try_list[1], apn3);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
+  ASSERT_EQ(dun_apn_try_list.size(), 2);
+  EXPECT_EQ(dun_apn_try_list[0], apn2);
+  EXPECT_EQ(dun_apn_try_list[1], apn3);
+}
+
+TEST_F(CellularTest, BuildApnTryList_IpTypeInvalid) {
+  // The default list has an additional empty APN added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn3;
+  // Default and Dun APNs
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn1[kApnIpTypeProperty] = kApnIpTypeV4;
+  apn_list.push_back(apn1);
+  apn2[kApnProperty] = "apn1";
+  apn2[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn2[kApnIpTypeProperty] = kApnIpTypeV6;
+  apn_list.push_back(apn2);
+  apn3[kApnProperty] = "apn3";
+  apn3[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
+  apn3[kApnSourceProperty] = kApnSourceMoDb;
+  apn3[kApnIpTypeProperty] = kApnIpTypeV4V6;
+  apn_list.push_back(apn3);
+
+  // Simulate invalid APN list with apn1 and default entries
+  device_->SetApnList(apn_list);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn1);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> dun_apn_try_list = device_->BuildTetheringApnTryList();
+  ASSERT_EQ(default_apn_try_list.size(), 3);
+  EXPECT_EQ(default_apn_try_list[0], apn2);
+  EXPECT_EQ(default_apn_try_list[1], apn3);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
+  ASSERT_EQ(dun_apn_try_list.size(), 2);
+  EXPECT_EQ(dun_apn_try_list[0], apn2);
+  EXPECT_EQ(dun_apn_try_list[1], apn3);
+}
+
 TEST_F(CellularTest, BuildTetheringApnTryList) {
   ASSERT_EQ(device_->BuildTetheringApnTryList().size(), 0);
   Stringmaps apn_list;
@@ -3381,6 +3628,64 @@ TEST_F(CellularTest,
             Cellular::TetheringOperationType::kConnectDunAsDefaultPdn);
 }
 
+TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault_AllApnInvalid) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn_empty;
+  apn_empty = Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Add all APNs to a list of invalid values.
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn2);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn_empty);
+
+  // Will request stop of the current default network.
+  EXPECT_CALL(*default_pdn_, Stop());
+
+  // Should not request connection or disconnection
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _)).Times(0);
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _)).Times(0);
+  SetCapability3gppModemSimpleProxy();
+
+  // Portal detection is supported.
+  ON_CALL(*service, GetNetworkValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+
+  // Operation should finish with an error.
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->ConnectTetheringAsDefaultPdn(future.GetCallback());
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+
+  Mock::VerifyAndClearExpectations(service);
+}
+
 TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
   MockCellularService* service = SetMockService();
   device_->SetPrimaryMultiplexedInterface(kTestMultiplexedInterfaceName);
@@ -3644,6 +3949,68 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_DunMultiplexed) {
             Cellular::TetheringOperationType::kConnectDunMultiplexed);
 }
 
+TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed_AllApnInvalid) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestMultiplexedInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDefault);
+  auto network = std::make_unique<MockNetwork>(kTestMultiplexedInterfaceIndex,
+                                               kTestMultiplexedInterfaceName,
+                                               Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Setup bearer with the connected DEFAULT APN.
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn_empty;
+  apn_empty = Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Add all APNs to a list of invalid values.
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn2);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn_empty);
+
+  // Must not request a new connection because the APN try list should be empty.
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _)).Times(0);
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _)).Times(0);
+  EXPECT_CALL(*default_pdn_, Stop());
+
+  // Operation should finish with an error.
+  base::test::TestFuture<Network*, const Error&> future;
+  device_->ConnectMultiplexedTetheringPdn(future.GetCallback());
+
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_EQ(future.Get<Network*>(), nullptr);
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+
+  Mock::VerifyAndClearExpectations(service);
+}
+
 TEST_F(CellularTest, ReleaseTetheringNetwork_NoOp) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kLinked);
@@ -3891,6 +4258,80 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefaultFailedConnect) {
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get<Error>().IsFailure());
 
+  Mock::VerifyAndClearExpectations(service);
+}
+
+TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault_AllApnInvalid) {
+  MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
+  device_->SetServiceState(Service::kStateConnected);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+  device_->set_selected_service_for_testing(service);
+  ASSERT_NE(device_->service(), nullptr);
+
+  // Currently connected PDN is of type DUN.
+  device_->set_default_pdn_apn_type_for_testing(ApnList::ApnType::kDun);
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+
+  // Separate DEFAULT and DUN APNs.
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn_empty;
+  apn_empty = Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  apn1[kApnProperty] = "apn-default";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
+  apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
+  apn2[kApnProperty] = "apn-dun";
+  apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
+  apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
+  apn_list.push_back(apn1);
+  apn_list.push_back(apn2);
+  device_->SetApnList(apn_list);
+
+  // Add all APNs to a list of invalid values.
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn1);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDun, apn2);
+  device_->SetInvalidApnForTesting(ApnList::ApnType::kDefault, apn_empty);
+
+  // Will request stop of the current DUN as DEFAULT network.
+  EXPECT_CALL(*default_pdn_, Stop());
+
+  // Will request disconnection of all bearers via capability.
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+
+  // Primary multiplexed interface name will be cleared up.
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
+
+  // Should not request reconnection.
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _)).Times(0);
+  SetCapability3gppModemSimpleProxy();
+
+  // Run ReleaseTetheringNetwork() until the failure.
+  // Portal detection is supported.
+  ON_CALL(*service, GetNetworkValidationMode)
+      .WillByDefault(Return(NetworkMonitor::ValidationMode::kFullValidation));
+
+  // Service state should transition to Associating.
+  EXPECT_CALL(*service, state()).Times(0);
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  EXPECT_CALL(*service, SetFailureSilent(_));
+
+  // Operation should finish with an error.
+  base::test::TestFuture<const Error&> future;
+  device_->ReleaseTetheringNetwork(default_pdn_, future.GetCallback());
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Get<Error>().IsFailure());
+
+  Mock::VerifyAndClearExpectations(adaptor);
   Mock::VerifyAndClearExpectations(service);
 }
 

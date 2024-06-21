@@ -1633,8 +1633,8 @@ void Cellular::UpdateInvalidApnTracker(ApnList::ApnType apn_type,
   }
 }
 
-void Cellular::CountInvalidApnInTryList(std::deque<Stringmap>& try_list,
-                                        ApnList::ApnType apn_type) const {
+void Cellular::RemoveInvalidApnFromTryList(std::deque<Stringmap>& try_list,
+                                           ApnList::ApnType apn_type) const {
   if (try_list.empty()) {
     return;
   }
@@ -1654,13 +1654,16 @@ void Cellular::CountInvalidApnInTryList(std::deque<Stringmap>& try_list,
       continue;
     }
 
-    for (auto apn : try_list) {
-      if (CompareApns(apn_info.apn, apn)) {
-        invalid_apn_count++;
-      }
+    if (auto c = std::erase_if(try_list, [&](const Stringmap& apn) {
+          return CompareApns(apn_info.apn, apn);
+        })) {
+      LOG(INFO) << LoggingTag() << ": " << __func__ << ": Removed invalid "
+                << (apn_type == ApnList::ApnType::kDefault ? "Default" : "Dun")
+                << " APN: " << GetPrintableApnStringmap(apn_info.apn);
+      invalid_apn_count += c;
     }
   }
-  if (try_list.size() == invalid_apn_count) {
+  if (try_list.empty()) {
     LOG(ERROR) << kInvalidApnAnomalyDetectorPrefix << "All APNs ("
                << invalid_apn_count << ") were removed from the try list "
                << (apn_type == ApnList::ApnType::kDefault ? "Default" : "Dun");
@@ -1826,11 +1829,12 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  // Build default APN list, guaranteed to never be empty.
+  // Build default APN list. It can only be empty if all APNs have been
+  // tried and are listed as invalid on invalid_data_apn_list_.
   std::deque<Stringmap> apn_try_list = BuildDefaultApnTryList();
   if (apn_try_list.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidApn,
-                          "Connect Failed: No APNs provided.");
+                          "Connect Failed: No valid APNs provided.");
     NotifyCellularConnectionResult(*error, service->iccid(),
                                    service->is_in_user_connect(), apn_type);
     return;
@@ -2140,7 +2144,13 @@ void Cellular::ConnectMultiplexedTetheringPdn(
   // Will disconnect DUN as multiplexed PDN.
   tethering_operation_->apn_type = ApnList::ApnType::kDun;
   tethering_operation_->apn_try_list = BuildTetheringApnTryList();
-  CHECK(!tethering_operation_->apn_try_list.empty());
+  if (tethering_operation_->apn_try_list.empty()) {
+    LOG(ERROR) << LoggingTag() << ": Error in connect multiplexed DUN network"
+               << ": No valid APNs provided.";
+    CompleteTetheringOperation(Error(
+        Error::kInvalidApn, "Tethering operation failed: no valid APNs."));
+    return;
+  }
 
   capability_->Connect(
       tethering_operation_->apn_type, tethering_operation_->apn_try_list,
@@ -2266,7 +2276,14 @@ void Cellular::ConnectTetheringAsDefaultPdn(
   // Will disconnect DEFAULT and connect DUN as default.
   tethering_operation_->apn_type = ApnList::ApnType::kDun;
   tethering_operation_->apn_try_list = BuildTetheringApnTryList();
-  CHECK(!tethering_operation_->apn_try_list.empty());
+  if (tethering_operation_->apn_try_list.empty()) {
+    LOG(ERROR) << LoggingTag() << ": Error in connect DUN as DEFAULT network"
+               << ": No valid APNs provided.";
+    CompleteTetheringOperation(Error(
+        Error::kInvalidApn, "Tethering operation failed: no valid APNs."));
+    return;
+  }
+
   RunTetheringOperationDunAsDefault();
 }
 
@@ -2284,7 +2301,12 @@ void Cellular::DisconnectTetheringAsDefaultPdn(ResultCallback callback) {
   // Will disconnect DUN as default and connect back DEFAULT.
   tethering_operation_->apn_type = ApnList::ApnType::kDefault;
   tethering_operation_->apn_try_list = BuildDefaultApnTryList();
-  CHECK(!tethering_operation_->apn_try_list.empty());
+  if (tethering_operation_->apn_try_list.empty()) {
+    // If the default APN list is empty, we will disconnect DUN APN and
+    // connection attempt will fail with Error::kInvalidApn.
+    LOG(ERROR) << LoggingTag() << ": Error in disconnect DUN as DEFAULT network"
+               << ": No valid APNs provided.";
+  }
   RunTetheringOperationDunAsDefault();
 }
 
@@ -2333,6 +2355,13 @@ void Cellular::OnCapabilityDisconnectBeforeReconnectReply(const Error& error) {
   default_pdn_.reset();
 
   SetServiceState(Service::kStateAssociating);
+
+  // Exit early if there are no valid APNs to try
+  if (tethering_operation_->apn_try_list.empty()) {
+    CompleteTetheringOperation(Error(
+        Error::kInvalidApn, "Tethering operation failed: no valid APNs."));
+    return;
+  }
 
   // We trigger a capability connect using a specific APN try list (which may
   // e.g. be the DUN-specific try list). The generic OnConnectReply() is used so
@@ -3775,13 +3804,13 @@ std::deque<Stringmap> Cellular::BuildAttachApnTryList() const {
 
 std::deque<Stringmap> Cellular::BuildDefaultApnTryList() const {
   auto try_list = BuildApnTryList(ApnList::ApnType::kDefault);
-  CountInvalidApnInTryList(try_list, ApnList::ApnType::kDefault);
+  RemoveInvalidApnFromTryList(try_list, ApnList::ApnType::kDefault);
   return try_list;
 }
 
 std::deque<Stringmap> Cellular::BuildTetheringApnTryList() const {
   auto try_list = BuildApnTryList(ApnList::ApnType::kDun);
-  CountInvalidApnInTryList(try_list, ApnList::ApnType::kDun);
+  RemoveInvalidApnFromTryList(try_list, ApnList::ApnType::kDun);
   return try_list;
 }
 
