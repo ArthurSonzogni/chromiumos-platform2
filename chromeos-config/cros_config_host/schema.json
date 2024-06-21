@@ -3664,6 +3664,40 @@
                         },
                         "type": "object"
                       },
+                      "thread-urgent-bursty-client": {
+                        "description": "Thread config for schedqos of each QoS state.",
+                        "properties": {
+                          "cpuset-cgroup": {
+                            "description": "The cpuset cgroup to use.",
+                            "enum": [
+                              "all",
+                              "efficient"
+                            ],
+                            "type": "string"
+                          },
+                          "latency-sensitive": {
+                            "description": "Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive.",
+                            "type": "boolean"
+                          },
+                          "nice": {
+                            "description": "The nice value for scheduler.",
+                            "maximum": 19,
+                            "minimum": -20,
+                            "type": "integer"
+                          },
+                          "rt-priority": {
+                            "description": "The priority on RT mode. Negative value means RT is disabled.",
+                            "type": "integer"
+                          },
+                          "uclamp-min": {
+                            "description": "Percentage of uclamp.min.",
+                            "maximum": 100,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      },
                       "thread-urgent-bursty-server": {
                         "description": "Thread config for schedqos of each QoS state.",
                         "properties": {

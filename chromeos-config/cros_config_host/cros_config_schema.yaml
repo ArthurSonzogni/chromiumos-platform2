@@ -473,6 +473,7 @@ typeDefs:
       thread-utility: *schedqos_thread_config
       thread-background: *schedqos_thread_config
       thread-urgent-bursty-server: *schedqos_thread_config
+      thread-urgent-bursty-client: *schedqos_thread_config
 type: object
 properties:
   chromeos:
