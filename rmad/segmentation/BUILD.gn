@@ -18,7 +18,7 @@ source_set("libsegmentation") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
-    "proto:feature_enabled_devices-protos",
+    "//rmad/proto:rmad-protos",
     "//rmad/system:libsystem",
     "//rmad/utils:libutils",
   ]
