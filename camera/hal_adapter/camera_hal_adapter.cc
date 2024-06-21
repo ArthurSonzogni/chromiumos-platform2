@@ -435,6 +435,10 @@ mojom::EffectsConfigPtr CameraHalAdapter::GetCameraEffect() {
   return stream_manipulator_runtime_options_.GetEffectsConfig();
 }
 
+mojom::CameraAutoFramingState CameraHalAdapter::GetAutoFramingState() {
+  return stream_manipulator_runtime_options_.GetAutoFramingState();
+}
+
 void CameraHalAdapter::SetKioskVisionConfig(
     const base::FilePath& dlc_path,
     mojo::PendingRemote<mojom::KioskVisionObserver> observer) {

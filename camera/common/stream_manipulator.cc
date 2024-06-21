@@ -27,6 +27,12 @@ void StreamManipulator::RuntimeOptions::SetAutoFramingState(
   auto_framing_state_ = state;
 }
 
+mojom::CameraAutoFramingState
+StreamManipulator::RuntimeOptions::GetAutoFramingState() {
+  base::AutoLock lock(lock_);
+  return auto_framing_state_;
+}
+
 void StreamManipulator::RuntimeOptions::SetSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
   {

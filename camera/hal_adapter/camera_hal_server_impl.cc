@@ -166,6 +166,9 @@ void CameraHalServerImpl::IPCBridge::SetAutoFramingState(
     state = mojom::CameraAutoFramingState::ON_SINGLE;
   }
   camera_hal_adapter_->SetAutoFramingState(state);
+  for (auto& observer : observers_) {
+    observer->AutoFramingStateChange(state);
+  }
 }
 
 void CameraHalServerImpl::IPCBridge::SetCameraEffect(
@@ -278,6 +281,8 @@ void CameraHalServerImpl::IPCBridge::AddCrosCameraServiceObserver(
       camera_hal_adapter_->GetCameraSWPrivacySwitchState());
   observers_.Get(id)->CameraEffectChange(
       camera_hal_adapter_->GetCameraEffect());
+  observers_.Get(id)->AutoFramingStateChange(
+      camera_hal_adapter_->GetAutoFramingState());
 }
 
 void CameraHalServerImpl::IPCBridge::StartKioskVisionDetection(

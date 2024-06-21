@@ -120,6 +120,7 @@ class CameraHalAdapter {
   mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
 
   mojom::EffectsConfigPtr GetCameraEffect();
+  mojom::CameraAutoFramingState GetAutoFramingState();
 
   void SetKioskVisionConfig(
       const base::FilePath& dlc_path,
