@@ -321,10 +321,8 @@ class BRILLO_EXPORT Client {
 
   // This callback is invoked whenever a device property change signal is
   // received; if the property is one we pay attention to the corresponding
-  // handler will be invoked. If the device is new, it will be added to the
-  // internal list that are tracked.
-  void OnDevicePropertyChange(bool device_added,
-                              const std::string& device_path,
+  // handler will be invoked.
+  void OnDevicePropertyChange(const std::string& device_path,
                               const std::string& property_name,
                               const brillo::Any& property_value);
 
@@ -365,6 +363,13 @@ class BRILLO_EXPORT Client {
   // Invoked whenever a device's selected service changes.
   Device* HandleSelectedServiceChanged(const std::string& device_path,
                                        const brillo::Any& property_value);
+
+  // Invoked whenever a device's interface name changes. Invokes the DeviceAdded
+  // callback if the interface name is added, and DeviceRemovedCallback if the
+  // interface name is removed.
+  void HandleDeviceInterfaceChanged(const std::string& device_path,
+                                    const brillo::Any& property_value,
+                                    Device* device);
 
   // This callback is invoked whenever a new manager proxy is created. It will
   // trigger the discovery of the default service.

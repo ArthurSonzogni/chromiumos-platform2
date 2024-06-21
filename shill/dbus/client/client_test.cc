@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -64,7 +65,7 @@ class FakeClient : public Client {
   void NotifyDevicePropertyChange(const std::string& path,
                                   const std::string& name,
                                   const brillo::Any& value) {
-    OnDevicePropertyChange(false, path, name, value);
+    OnDevicePropertyChange(path, name, value);
   }
 
   void NotifyServicePropertyChange(const std::string& device_path,
@@ -510,27 +511,98 @@ TEST_F(ClientTest, DeviceRemovedHandlerCalled) {
   EXPECT_TRUE(devices_.empty());
 }
 
-TEST_F(ClientTest, ParseNetworkConfig) {
+TEST_F(ClientTest, DeviceWithoutInterfaceName) {
+  // Add the device.
   const dbus::ObjectPath device_path("/device/eth0");
-  client_->PreMakeDevice(device_path);
+  auto* mock_device = client_->PreMakeDevice(device_path);
+  dbus::ObjectProxy::OnConnectedCallback callback;
+  EXPECT_CALL(*mock_device, DoRegisterPropertyChangedSignalHandler)
+      .WillOnce(MovePointee<1>(&callback));
+
   client_->NotifyManagerPropertyChange(
       kDevicesProperty, std::vector<dbus::ObjectPath>({device_path}));
 
+  // No interface name at the beginning.
   brillo::VariantDictionary props;
-  props[kNetworkConfigIPv4AddressProperty] = std::string("1.2.3.4/24");
-  props[kNetworkConfigIPv4GatewayProperty] = std::string("1.2.3.5");
-  props[kNetworkConfigIPv6AddressesProperty] =
+  props[kTypeProperty] = std::string(kTypeEthernet);
+  props[kInterfaceProperty] = std::string("");
+  EXPECT_CALL(*mock_device, GetProperties)
+      .WillOnce(DoAll(testing::SetArgPointee<0>(props), Return(true)));
+
+  // Manually trigger the registration callback since that doesn't happen in the
+  // mocks.
+  std::move(callback).Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
+
+  // The callback won't be triggered since there is no interface name.
+  ASSERT_EQ(devices_.size(), 0);
+
+  // Add the interface name. DeviceAdded callback should be triggered.
+  client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
+                                      std::string("eth0"));
+  ASSERT_EQ(devices_.size(), 1);
+  EXPECT_TRUE(base::Contains(devices_, "eth0"));
+
+  // Remove the interface name. DeviceRemoved callback should be triggered.
+  client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
+                                      std::string(""));
+  ASSERT_EQ(devices_.size(), 0);
+
+  // Add the interface name again. DeviceAdded callback should be triggered.
+  client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
+                                      std::string("eth1"));
+  ASSERT_EQ(devices_.size(), 1);
+  EXPECT_TRUE(base::Contains(devices_, "eth1"));
+
+  // Remove the interface name. DeviceRemoved callback should be triggered.
+  client_->NotifyDevicePropertyChange(device_path.value(), kInterfaceProperty,
+                                      std::string(""));
+  ASSERT_EQ(devices_.size(), 0);
+
+  // Remove the device by updating the device list. No callback should be
+  // triggered (this is checked in `ClientTest::DeviceRemovedHandler()`).
+  client_->NotifyManagerPropertyChange(kDevicesProperty,
+                                       std::vector<dbus::ObjectPath>({}));
+}
+
+TEST_F(ClientTest, ParseNetworkConfig) {
+  const dbus::ObjectPath device_path("/device/eth0");
+  auto* mock_device = client_->PreMakeDevice(device_path);
+  dbus::ObjectProxy::OnConnectedCallback callback;
+  EXPECT_CALL(*mock_device, DoRegisterPropertyChangedSignalHandler)
+      .WillOnce(MovePointee<1>(&callback));
+
+  client_->NotifyManagerPropertyChange(
+      kDevicesProperty, std::vector<dbus::ObjectPath>({device_path}));
+
+  brillo::VariantDictionary device_props;
+  device_props[kTypeProperty] = std::string(kTypeEthernet);
+  device_props[kInterfaceProperty] = std::string("eth0");
+  EXPECT_CALL(*mock_device, GetProperties)
+      .WillOnce(DoAll(testing::SetArgPointee<0>(device_props), Return(true)));
+
+  // Manually trigger the registration callback since that doesn't happen in the
+  // mocks.
+  std::move(callback).Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
+
+  brillo::VariantDictionary network_config_props;
+  network_config_props[kNetworkConfigIPv4AddressProperty] =
+      std::string("1.2.3.4/24");
+  network_config_props[kNetworkConfigIPv4GatewayProperty] =
+      std::string("1.2.3.5");
+  network_config_props[kNetworkConfigIPv6AddressesProperty] =
       std::vector<std::string>{"fd00::1/64", "fd00::2/64"};
-  props[kNetworkConfigIPv6GatewayProperty] = std::string("fd00::3");
-  props[kNetworkConfigNameServersProperty] = std::vector<std::string>{
-      "8.8.8.8", "fd00::4",
-      "0.0.0.0",  // Empty address should be ignored.
-  };
-  props[kNetworkConfigSearchDomainsProperty] =
+  network_config_props[kNetworkConfigIPv6GatewayProperty] =
+      std::string("fd00::3");
+  network_config_props[kNetworkConfigNameServersProperty] =
+      std::vector<std::string>{
+          "8.8.8.8", "fd00::4",
+          "0.0.0.0",  // Empty address should be ignored.
+      };
+  network_config_props[kNetworkConfigSearchDomainsProperty] =
       std::vector<std::string>{"domain1", "domain2"};
 
-  client_->NotifyServicePropertyChange(device_path.value(),
-                                       shill::kNetworkConfigProperty, props);
+  client_->NotifyServicePropertyChange(
+      device_path.value(), shill::kNetworkConfigProperty, network_config_props);
 
   const auto devices = client_->GetDevices();
   ASSERT_EQ(devices.size(), 1);

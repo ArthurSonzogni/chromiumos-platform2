@@ -271,8 +271,7 @@ void Client::SetupDeviceProxy(const dbus::ObjectPath& device_path) {
                    std::make_unique<DeviceWrapper>(bus_, std::move(proxy)));
   ptr->RegisterPropertyChangedSignalHandler(
       base::BindRepeating(&Client::OnDevicePropertyChange,
-                          weak_factory_.GetWeakPtr(), false /*device_added*/,
-                          device_path.value()),
+                          weak_factory_.GetWeakPtr(), device_path.value()),
       base::BindOnce(&Client::OnDevicePropertyChangeRegistration,
                      weak_factory_.GetWeakPtr(), device_path.value()));
 }
@@ -463,8 +462,12 @@ void Client::HandleDevicesChanged(const brillo::Any& property_value) {
   for (auto it = devices_.begin(); it != devices_.end();) {
     if (latest.find(it->first) == latest.end()) {
       VLOG(2) << "Device [" << it->first << "] removed";
-      for (auto& handler : device_removed_handlers_) {
-        handler.Run(it->second->device());
+      if (!it->second->device()->ifname.empty()) {
+        // If the ifname is empty, it should not be exposed so we don't need to
+        // invoke the removed callback.
+        for (auto& handler : device_removed_handlers_) {
+          handler.Run(it->second->device());
+        }
       }
       it->second->release_object_proxy();
       it = devices_.erase(it);
@@ -584,13 +587,6 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
     LOG(ERROR) << "Device [" << device_path << "] type is unknown";
   }
 
-  device->ifname = brillo::GetVariantValueOrDefault<std::string>(
-      properties, kInterfaceProperty);
-  if (device->ifname.empty()) {
-    LOG(ERROR) << "Device [" << device_path << "] has no interface";
-    return;
-  }
-
   if (device->type == Client::Device::Type::kCellular) {
     device->cellular_country_code = GetCellularProviderCountryCode(properties);
     device->cellular_primary_ifname =
@@ -598,54 +594,47 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
             properties, kPrimaryMultiplexedInterfaceProperty);
   }
 
-  // Set |device_added| to true here so it invokes the corresponding handler, if
-  // applicable - this will occur only once (per device).
   const auto service_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
       properties, kSelectedServiceProperty);
-  OnDevicePropertyChange(true /*device_added*/, device_path,
-                         kSelectedServiceProperty, service_path);
+  HandleSelectedServiceChanged(device_path, service_path);
+
+  // OnDevicePropertyChange will triggers the callbacks. Calling this at the
+  // last allows us to provide a Device struct populated with all the properties
+  // available at the time.
+  OnDevicePropertyChange(device_path, kInterfaceProperty,
+                         properties[kInterfaceProperty]);
 }
 
-void Client::OnDevicePropertyChange(bool device_added,
-                                    const std::string& device_path,
+void Client::OnDevicePropertyChange(const std::string& device_path,
                                     const std::string& property_name,
                                     const brillo::Any& property_value) {
-  Device* device = nullptr;
-  if (property_name == kSelectedServiceProperty) {
+  auto it = devices_.find(device_path);
+  if (it == devices_.end()) {
+    LOG(ERROR) << "Device [" << device_path << "] not found";
+    return;
+  }
+
+  Device* device = it->second->device();
+  if (property_name == kInterfaceProperty) {
+    HandleDeviceInterfaceChanged(device_path, property_value, device);
+  } else if (property_name == kSelectedServiceProperty) {
     device = HandleSelectedServiceChanged(device_path, property_value);
     if (!device) {
       return;
     }
   } else if (property_name == kHomeProviderProperty) {
-    auto it = devices_.find(device_path);
-    if (it == devices_.end()) {
-      LOG(ERROR) << "Device [" << device_path << "] not found";
-      return;
-    }
-    device = it->second->device();
     device->cellular_country_code = property_value.TryGet<
         std::map<std::string, std::string>>()[shill::kOperatorCountryKey];
   } else if (property_name == kPrimaryMultiplexedInterfaceProperty) {
-    auto it = devices_.find(device_path);
-    if (it == devices_.end()) {
-      LOG(ERROR) << "Device [" << device_path << "] not found";
-      return;
-    }
-    device = it->second->device();
     device->cellular_primary_ifname = property_value.TryGet<std::string>();
   } else {
     return;
   }
 
-  // |device_added| will only be true if this method is called from the
-  // registration callback, which in turn will only ever be called once per
-  // device when it is first discovered. Deferring this callback until now
-  // allows us to provide a Device struct populated with all the properties
-  // available at the time.
-  if (device_added) {
-    for (auto& handler : device_added_handlers_) {
-      handler.Run(device);
-    }
+  // For a device without interface name, it should not be exposed so no
+  // callback should be triggered.
+  if (device->ifname.empty()) {
+    return;
   }
 
   // If this is the default device then notify the handlers.
@@ -702,6 +691,33 @@ Client::Device* Client::HandleSelectedServiceChanged(
           properties, kNetworkConfigProperty));
 
   return device;
+}
+
+void Client::HandleDeviceInterfaceChanged(const std::string& device_path,
+                                          const brillo::Any& property_value,
+                                          Device* device) {
+  CHECK(device);
+  std::string new_ifname = property_value.TryGet<std::string>();
+  if (device->ifname.empty() && !new_ifname.empty()) {
+    device->ifname = new_ifname;
+    // Added callback should be called after we modify the |device|.
+    for (auto& handler : device_added_handlers_) {
+      handler.Run(device);
+    }
+  } else if (!device->ifname.empty() && new_ifname.empty()) {
+    // Removed callback should be called before we modify the |device|.
+    for (auto& handler : device_removed_handlers_) {
+      handler.Run(device);
+    }
+    device->ifname = new_ifname;
+  } else if (!device->ifname.empty() && !new_ifname.empty()) {
+    // This should not happen. The interface name should go to empty before
+    // change to another value.
+    LOG(ERROR) << "Device [" << device_path << "] ifname changed from "
+               << device->ifname << " to " << new_ifname;
+  }
+  // Both empty is expected when OnDevicePropertyChange is called at the end of
+  // OnDevicePropertyChangeRegistration when the device has no interface yet.
 }
 
 void Client::OnServicePropertyChangeRegistration(const std::string& device_path,
@@ -825,8 +841,11 @@ void Client::OnServicePropertyChange(const std::string& device_path,
 
 std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
   std::vector<std::unique_ptr<Client::Device>> devices;
-  // Provide the current list of devices.
+  // Provide the devices with an interface name.
   for (const auto& [_, dev] : devices_) {
+    if (dev->device()->ifname.empty()) {
+      continue;
+    }
     auto device = std::make_unique<Device>();
     device->type = dev->device()->type;
     device->ifname = dev->device()->ifname;
