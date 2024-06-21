@@ -55,6 +55,7 @@ enum class ThreadState {
   kUtility = 4,
   kBackground = 5,
   kUrgentBurstyServer = 6,
+  kUrgentBurstyClient = 7,
 };
 
 // Methods.

@@ -36,7 +36,7 @@ use storage::ThreadMap;
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub const NUM_PROCESS_STATES: usize = ProcessState::Background as usize + 1;
-pub const NUM_THREAD_STATES: usize = ThreadState::UrgentBurstyServer as usize + 1;
+pub const NUM_THREAD_STATES: usize = ThreadState::UrgentBurstyClient as usize + 1;
 
 /// Errors from schedqos crate.
 #[derive(Debug)]
@@ -121,6 +121,7 @@ pub enum ThreadState {
     Utility = 4,
     Background = 5,
     UrgentBurstyServer = 6,
+    UrgentBurstyClient = 7,
 }
 
 impl TryFrom<u8> for ThreadState {
@@ -135,6 +136,7 @@ impl TryFrom<u8> for ThreadState {
             4 => Ok(Self::Utility),
             5 => Ok(Self::Background),
             6 => Ok(Self::UrgentBurstyServer),
+            7 => Ok(Self::UrgentBurstyClient),
             _ => Err(()),
         }
     }
@@ -214,6 +216,14 @@ impl Config {
             ThreadStateConfig {
                 rt_priority: Some(12),
                 nice: -12,
+                uclamp_min: UCLAMP_BOOSTED_MIN,
+                cpuset_cgroup: CpusetCgroup::All,
+                latency_sensitive: true,
+            },
+            // ThreadState::UrgentBurstyClient
+            ThreadStateConfig {
+                rt_priority: Some(10),
+                nice: -10,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
                 latency_sensitive: true,
@@ -596,6 +606,7 @@ mod tests {
             ThreadState::Utility,
             ThreadState::Background,
             ThreadState::UrgentBurstyServer,
+            ThreadState::UrgentBurstyClient,
         ] {
             assert_eq!(state, ThreadState::try_from(state as u8).unwrap());
         }
@@ -1024,6 +1035,14 @@ mod tests {
                 cpuset_cgroup: CpusetCgroup::All,
                 latency_sensitive: true,
             },
+            // ThreadState::UrgentBurstyClient
+            ThreadStateConfig {
+                rt_priority: Some(10),
+                nice: -10,
+                uclamp_min: UCLAMP_BOOSTED_MIN,
+                cpuset_cgroup: CpusetCgroup::All,
+                latency_sensitive: true,
+            },
         ];
         let mut ctx = SchedQosContext::new_simple(Config {
             cgroup_context,
@@ -1059,6 +1078,7 @@ mod tests {
             ThreadState::Utility,
             ThreadState::Background,
             ThreadState::UrgentBurstyServer,
+            ThreadState::UrgentBurstyClient,
         ] {
             let (thread_id, _thread) = spawn_thread_for_test();
 
@@ -1091,6 +1111,7 @@ mod tests {
             ThreadState::Utility,
             ThreadState::Background,
             ThreadState::UrgentBurstyServer,
+            ThreadState::UrgentBurstyClient,
         ] {
             let (thread_id, _thread) = spawn_thread_for_test();
 

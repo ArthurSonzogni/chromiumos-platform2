@@ -370,6 +370,8 @@ pub struct SchedqosConfig {
     pub thread_background: Option<SchedqosThreadConfig>,
     /// The thread config for URGENT_BURSTY_SERVER state.
     pub thread_urgent_bursty_server: Option<SchedqosThreadConfig>,
+    /// The thread config for URGENT_BURSTY_CLIENT state.
+    pub thread_urgent_bursty_client: Option<SchedqosThreadConfig>,
 }
 
 impl SchedqosConfig {
@@ -390,6 +392,10 @@ impl SchedqosConfig {
             (
                 &self.thread_urgent_bursty_server,
                 schedqos::ThreadState::UrgentBurstyServer,
+            ),
+            (
+                &self.thread_urgent_bursty_client,
+                schedqos::ThreadState::UrgentBurstyClient,
             ),
         ];
 
@@ -427,6 +433,10 @@ impl SchedqosConfig {
             (
                 "thread-urgent-bursty-server",
                 &mut config.thread_urgent_bursty_server,
+            ),
+            (
+                "thread-urgent-bursty-client",
+                &mut config.thread_urgent_bursty_client,
             ),
         ];
         for (dir_name, config) in configs {
@@ -864,6 +874,9 @@ mod tests {
         let thread_urgent_bursty_server_path =
             default_config_path.join("thread-urgent-bursty-server");
         fake.mkdir(&thread_urgent_bursty_server_path);
+        let thread_urgent_bursty_client_path =
+            default_config_path.join("thread-urgent-bursty-client");
+        fake.mkdir(&thread_urgent_bursty_client_path);
 
         let partialconfig_path = Path::new(SCHEDQOS_CONFIG_DIR).join("partial");
         fake.write(&partialconfig_path.join("normal-cpu-share"), b"900");
@@ -929,6 +942,13 @@ mod tests {
                     cpuset_cgroup: None,
                     latency_sensitive: None,
                 }),
+                thread_urgent_bursty_client: Some(SchedqosThreadConfig {
+                    rt_priority: None,
+                    nice: None,
+                    uclamp_min: None,
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
             }
         );
 
@@ -951,6 +971,7 @@ mod tests {
                 thread_utility: None,
                 thread_background: None,
                 thread_urgent_bursty_server: None,
+                thread_urgent_bursty_client: None,
             }
         );
 
@@ -1010,6 +1031,13 @@ mod tests {
                 cpuset_cgroup: CpusetCgroup::Efficient,
                 latency_sensitive: false,
             },
+            schedqos::ThreadStateConfig {
+                rt_priority: None,
+                nice: 6,
+                uclamp_min: 10,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                latency_sensitive: false,
+            },
         ];
         SchedqosConfig {
             normal_cpu_share: None,
@@ -1058,6 +1086,13 @@ mod tests {
             }),
             thread_urgent_bursty_server: Some(SchedqosThreadConfig {
                 rt_priority: Some(Some(4)),
+                nice: None,
+                uclamp_min: None,
+                cpuset_cgroup: None,
+                latency_sensitive: None,
+            }),
+            thread_urgent_bursty_client: Some(SchedqosThreadConfig {
+                rt_priority: Some(Some(5)),
                 nice: None,
                 uclamp_min: None,
                 cpuset_cgroup: None,
@@ -1114,6 +1149,13 @@ mod tests {
                 schedqos::ThreadStateConfig {
                     rt_priority: Some(4),
                     nice: 5,
+                    uclamp_min: 10,
+                    cpuset_cgroup: CpusetCgroup::Efficient,
+                    latency_sensitive: false,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: Some(5),
+                    nice: 6,
                     uclamp_min: 10,
                     cpuset_cgroup: CpusetCgroup::Efficient,
                     latency_sensitive: false,
