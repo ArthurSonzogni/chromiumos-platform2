@@ -31,5 +31,4 @@ enum SerializedAuthIntent : int {
   kVerifyOnly = 2,
   kWebAuthn = 3,
   kRestoreKey = 4,
-  kForensics = 5
 }

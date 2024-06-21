@@ -26,10 +26,6 @@ enum class AuthIntent {
   // only allows key restore operation for filesystem key. It doesn't allow
   // AuthFactor operations e.g. adding/updating/removing factors.
   kRestoreKey,
-  // Intent to allow forensic access to homedir for an enterprise user. This
-  // will only allow login with recovery key and only updating the recovery key.
-  // The mount will only be read-only to preserve any data change.
-  kForensics,
 };
 
 // All intents as an array. Useful for things like iterating through every

@@ -447,13 +447,6 @@ class AuthSession final {
   friend class AuthForRestoreKey;
   AuthForRestoreKey* GetAuthForRestoreKey();
 
-  class AuthForForensics : public AuthForBase<AuthIntent::kForensics> {
-   public:
-    using AuthForBase::AuthForBase;
-  };
-  friend class AuthForForensics;
-  AuthForForensics* GetAuthForForensics();
-
   // OnMigrationUssCreated is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
   // AuthenticateViaVaultKeysetAndMigrateToUss() operation.
@@ -921,7 +914,6 @@ class AuthSession final {
   std::optional<AuthForVerifyOnly> auth_for_verify_only_;
   std::optional<AuthForWebAuthn> auth_for_web_authn_;
   std::optional<AuthForRestoreKey> auth_for_restore_key_;
-  std::optional<AuthForForensics> auth_for_forensics_;
 
   // The wall clock timer object to send AuthFactor status update periodically.
   std::unique_ptr<base::WallClockTimer> auth_factor_status_update_timer_;

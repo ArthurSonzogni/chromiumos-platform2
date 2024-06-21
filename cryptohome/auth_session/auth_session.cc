@@ -147,8 +147,6 @@ constexpr std::string_view IntentToDebugString(AuthIntent intent) {
       return "webauthn";
     case AuthIntent::kRestoreKey:
       return "restore-key";
-    case AuthIntent::kForensics:
-      return "forensics";
   }
 }
 
@@ -464,7 +462,6 @@ base::flat_set<AuthIntent> AuthSession::authorized_intents() const {
   check_auth_for(auth_for_verify_only_);
   check_auth_for(auth_for_web_authn_);
   check_auth_for(auth_for_restore_key_);
-  check_auth_for(auth_for_forensics_);
   return intents;
 }
 
@@ -518,9 +515,8 @@ void AuthSession::SetAuthorizedForIntents(
   set_auth_for(auth_for_verify_only_);
   set_auth_for(auth_for_web_authn_);
   set_auth_for(auth_for_restore_key_);
-  set_auth_for(auth_for_forensics_);
 
-  if (auth_for_decrypt_ || auth_for_restore_key_ || auth_for_forensics_) {
+  if (auth_for_decrypt_ || auth_for_restore_key_) {
     // Record time of authentication for metric keeping.
     authenticated_time_ = base::TimeTicks::Now();
   }
@@ -550,13 +546,6 @@ void AuthSession::SetAuthorizedForFullAuthIntents(
     }
   }
 
-  // Separate check for forensics if the intent is actually requested.
-  if (auth_intent_ == AuthIntent::kForensics &&
-      factor_driver.IsFullAuthSupported(AuthIntent::kForensics) &&
-      IsIntentEnabledBasedOnPolicy(factor_driver, AuthIntent::kForensics,
-                                   auth_factor_type_user_policy)) {
-    authorized_for.push_back(AuthIntent::kForensics);
-  }
   // Authorize the session for the subset of intents we found.
   SetAuthorizedForIntents(authorized_for);
 }

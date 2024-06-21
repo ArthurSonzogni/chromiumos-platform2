@@ -170,10 +170,6 @@ TEST_F(AuthFactorDriverManagerTest, IsFullAuthSupported) {
   auto webauthn_allowed = [this](AuthFactorType type) {
     return manager_.GetDriver(type).IsFullAuthSupported(AuthIntent::kWebAuthn);
   };
-
-  auto forensics_allowed = [this](AuthFactorType type) {
-    return manager_.GetDriver(type).IsFullAuthSupported(AuthIntent::kForensics);
-  };
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(false));
 
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kPassword), IsTrue());
@@ -203,14 +199,6 @@ TEST_F(AuthFactorDriverManagerTest, IsFullAuthSupported) {
   EXPECT_THAT(decrypt_allowed(AuthFactorType::kUnspecified), IsFalse());
   EXPECT_THAT(vonly_allowed(AuthFactorType::kUnspecified), IsFalse());
   EXPECT_THAT(webauthn_allowed(AuthFactorType::kUnspecified), IsFalse());
-
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kPassword), IsFalse());
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kPin), IsFalse());
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kCryptohomeRecovery), IsTrue());
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kKiosk), IsFalse());
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kSmartCard), IsFalse());
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kLegacyFingerprint), IsFalse());
-  EXPECT_THAT(forensics_allowed(AuthFactorType::kFingerprint), IsFalse());
   static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }

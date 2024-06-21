@@ -81,10 +81,8 @@ enum AuthIntent {
   // Intent to authenticate user and authorize user for KeyRestore on lock
   // screen. This intent drives a full authentication.
   AUTH_INTENT_RESTORE_KEY = 4;
-  // Intent to allow forensic access to homedir for an enterprise user. This
-  // will only allow login with recovery key and only updating the recovery key.
-  // The mount will only be read-only to preserve against any data change.
-  AUTH_INTENT_FORENSICS = 5;
+
+  reserved 5;
 }
 
 // Password AuthFactor requires a secret to be passed for derivation and

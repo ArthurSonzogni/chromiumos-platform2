@@ -26,7 +26,7 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<CryptohomeRecoveryMetadata>,
-      public AfDriverFullAuthForensics,
+      public AfDriverFullAuthDecrypt,
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
                                              AuthIntentSequence<>>,

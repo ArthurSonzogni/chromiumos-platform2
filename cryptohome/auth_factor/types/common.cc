@@ -45,14 +45,9 @@ void AfDriverNoPrepare::PrepareForAuthenticate(
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
-bool AfDriverFullAuthForensics::IsFullAuthSupported(
-    AuthIntent auth_intent) const {
-  return true;
-}
-
 bool AfDriverFullAuthDecrypt::IsFullAuthSupported(
     AuthIntent auth_intent) const {
-  return auth_intent != AuthIntent::kForensics;
+  return true;
 }
 
 bool AfDriverFullAuthUnsupported::IsFullAuthSupported(

@@ -827,17 +827,6 @@ TEST_F(AuthSessionManagerTest, IntentPassing) {
     EXPECT_EQ(verification_auth_session->auth_intent(),
               AuthIntent::kVerifyOnly);
   }
-  {
-    base::UnguessableToken forensic_session_token =
-        auth_session_manager_.CreateAuthSession(
-            kUsername2,
-            {.is_ephemeral_user = false, .intent = AuthIntent::kForensics});
-    InUseAuthSession forensic_auth_session =
-        TakeAuthSession(forensic_session_token);
-
-    // Assert.
-    EXPECT_EQ(forensic_auth_session->auth_intent(), AuthIntent::kForensics);
-  }
 }
 
 TEST_F(AuthSessionManagerTest, AddFindUnMount) {
