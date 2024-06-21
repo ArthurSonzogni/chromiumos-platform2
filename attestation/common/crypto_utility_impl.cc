@@ -1078,10 +1078,8 @@ bool CryptoUtilityImpl::GetKeyDigest(const std::string& public_key,
     LOG(ERROR) << __func__ << ": Failed to extract modulus.";
     return false;
   }
-  char digest_buf[base::kSHA1Length];
-  base::SHA1HashBytes(modulus.data(), modulus.size(),
-                      reinterpret_cast<unsigned char*>(digest_buf));
-  key_digest->assign(digest_buf, sizeof(digest_buf));
+  base::SHA1Digest digest = base::SHA1Hash(modulus);
+  key_digest->assign(digest.begin(), digest.end());
   return true;
 }
 

@@ -258,7 +258,7 @@ std::string NetworkPlugin::ComputeCommunityHashv1(
       }
     }
   }
-  auto digest = base::SHA1HashSpan(buff_to_hash);
+  auto digest = base::SHA1Hash(buff_to_hash);
   std::string community_hash{"1:"};
   base::Base64EncodeAppend(digest, &community_hash);
   return community_hash;
