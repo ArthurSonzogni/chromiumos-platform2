@@ -59,6 +59,8 @@ static std::string ObjectID(const Device* d) {
 }
 }  // namespace Logging
 
+const char Device::kStoragePowered[] = "Powered";
+
 Device::Device(Manager* manager,
                const std::string& link_name,
                std::optional<net_base::MacAddress> mac_address,
@@ -104,7 +106,6 @@ Device::Device(Manager* manager,
   // kFoundNetworksProperty: Registered in Cellular
   // kDBusObjectProperty: Register in Cellular
   // kPrimaryMultiplexedInterfaceProperty: Registered in Cellular
-  // kFlashingProperty: Registered in Cellular
 
   store_.RegisterConstString(kInterfaceProperty, &link_name_);
   HelpRegisterConstDerivedRpcIdentifier(
@@ -618,8 +619,6 @@ void Device::UpdateEnabledState() {
   manager_->UpdateEnabledTechnologies();
   adaptor_->EmitBoolChanged(kPoweredProperty, enabled_);
 }
-
-void Device::OnDeregistered() {}
 
 void Device::SetEnabled(bool enable) {
   LOG(INFO) << __func__ << "(" << enable << ")";

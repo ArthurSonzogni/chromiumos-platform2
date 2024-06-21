@@ -297,9 +297,8 @@ std::vector<std::string> DeviceInfo::GetUninitializedTechnologies() const {
       continue;
     }
     if (IsPrimaryConnectivityTechnology(technology) &&
-        !base::Contains(initialized_technologies, technology)) {
+        !base::Contains(initialized_technologies, technology))
       unique_technologies.insert(TechnologyName(technology));
-    }
   }
   return std::vector<std::string>(unique_technologies.begin(),
                                   unique_technologies.end());
@@ -312,11 +311,6 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
-  if (infos_[device->interface_index()].technology == Technology::kUnknown) {
-    LOG(INFO) << ": set tech at register "
-              << TechnologyName(device->technology());
-    infos_[device->interface_index()].technology = device->technology();
-  }
   if (metrics_->IsDeviceRegistered(device->interface_index(),
                                    device->technology())) {
     metrics_->NotifyDeviceInitialized(device->interface_index());

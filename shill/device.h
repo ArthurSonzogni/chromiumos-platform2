@@ -60,7 +60,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Initialize type-specific network interface properties.
   virtual void Initialize();
-  virtual void OnDeregistered();
 
   // Enable or disable the device. This is a convenience method for
   // cases where we want to SetEnabledNonPersistent, but don't care
@@ -146,9 +145,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   int interface_index() const { return interface_index_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
-  void set_enabled_persistent(bool enabled_persistent) {
-    enabled_persistent_ = enabled_persistent;
-  }
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyName() const;
   // Returns the raw hex string of |mac_address_| if it contains value.
@@ -168,8 +164,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
   const std::string& UniqueName() const;
-
-  static constexpr std::string_view kStoragePowered = "Powered";
 
   // Returns a WeakPtr of the Device.
   base::WeakPtr<Device> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
@@ -401,6 +395,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   friend class TestDevice;
   friend class VirtualDeviceTest;
   friend class WiFiObjectTest;
+
+  static const char kStoragePowered[];
 
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);

@@ -349,8 +349,6 @@ void Manager::Start() {
   }
   InitializePatchpanelClient();
 
-  modem_info_->CreateInternalCellularDevice();
-
   // Start task for checking connection status.
   device_status_check_task_.Reset(base::BindOnce(
       &Manager::DeviceStatusCheckTask, weak_factory_.GetWeakPtr()));
@@ -1196,7 +1194,6 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
       LOG(INFO) << "Deregistering device: " << to_forget->link_name();
       UpdateDevice(to_forget);
       to_forget->SetEnabledUnchecked(false, base::DoNothing());
-      to_forget->OnDeregistered();
       device_geolocation_info_.erase(to_forget);
       if (to_forget->technology() == Technology::kWiFi) {
         WiFi* wifi = static_cast<WiFi*>(to_forget.get());
