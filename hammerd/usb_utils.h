@@ -137,7 +137,8 @@ class UsbEndpoint : public UsbEndpointInterface {
   int fd_ = -1;
   std::string configuration_string_;
   int iface_num_ = -1;
-  int ep_num_ = -1;
+  int in_ep_num_ = -1;
+  int out_ep_num_ = -1;
   int chunk_len_ = -1;
 };
 

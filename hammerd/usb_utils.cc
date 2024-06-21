@@ -123,6 +123,7 @@ UsbConnectStatus UsbEndpoint::Connect(bool check_id) {
   // - Bits 0..6: Endpoint Number
   // - Bits 7:    Direction 0 = Out, 1 = In
   bool is_found = false;
+  int in_chunk_len, out_chunk_len;
   base::FileEnumerator iface_paths(usb_path, false,
                                    base::FileEnumerator::FileType::DIRECTORIES,
                                    base::StringPrintf("%s:*", path_.c_str()));
@@ -142,22 +143,37 @@ UsbConnectStatus UsbEndpoint::Connect(bool check_id) {
         LOG(ERROR) << "Interface should only have 2 Endpoints.";
         return UsbConnectStatus::kUnknownError;
       }
-      // Get endpoint number and chunk size. Two endpoints should have the same
-      // endpoint number, so just calculate it by the first one.
-      base::FilePath ep_path =
-          base::FileEnumerator(iface_path, false,
-                               base::FileEnumerator::FileType::DIRECTORIES,
-                               "ep_*")
-              .Next();
-      if (!ReadFileToInt(ep_path.Append("bEndpointAddress"), &ep_num_) ||
-          !ReadFileToInt(ep_path.Append("wMaxPacketSize"), &chunk_len_)) {
-        LOG(ERROR) << "Failed to read endpoint address and chunk size.";
+
+      base::FileEnumerator ep_paths(iface_path, false,
+                                    base::FileEnumerator::FileType::DIRECTORIES,
+                                    "ep_*");
+      for (base::FilePath ep_path = ep_paths.Next(); !ep_path.empty();
+           ep_path = ep_paths.Next()) {
+        int ep_num, chunk_len;
+
+        if (!ReadFileToInt(ep_path.Append("bEndpointAddress"), &ep_num) ||
+            !ReadFileToInt(ep_path.Append("wMaxPacketSize"), &chunk_len)) {
+          LOG(ERROR) << "Failed to read endpoint address and chunk size.";
+          return UsbConnectStatus::kUnknownError;
+        }
+        if ((ep_num & kUsbEndpointIn) == kUsbEndpointIn) {
+          in_ep_num_ = ep_num;
+          in_chunk_len = chunk_len;
+        } else {
+          out_ep_num_ = ep_num;
+          out_chunk_len = chunk_len;
+        }
+      }
+      if (in_chunk_len != out_chunk_len) {
+        LOG(ERROR) << "The IN and OUT MPS are different.";
         return UsbConnectStatus::kUnknownError;
       }
-      ep_num_ = ep_num_ & 0x7f;  // Bit mask of 0~6 bits.
-      DLOG(INFO) << "found interface " << iface_num_ << ", endpoint "
-                 << static_cast<int>(ep_num_) << ", chunk_len " << chunk_len_;
+      chunk_len_ = in_chunk_len;
       is_found = true;
+      DLOG(INFO) << "found interface " << iface_num_ << ", IN endpoint "
+                 << static_cast<int>(in_ep_num_) << ", OUT endpoint "
+                 << static_cast<int>(out_ep_num_) << ", chunk len "
+                 << chunk_len_;
       break;
     }
   }
@@ -197,7 +213,8 @@ void UsbEndpoint::Close() {
   configuration_string_ = "";
   iface_num_ = -1;
   fd_ = -1;
-  ep_num_ = -1;
+  in_ep_num_ = -1;
+  out_ep_num_ = -1;
   chunk_len_ = -1;
 }
 
@@ -250,15 +267,21 @@ int UsbEndpoint::BulkTransfer(void* buf,
                               int direction_mask,
                               int len,
                               unsigned int timeout_ms) {
+  int ep_num;
+
   if (timeout_ms == 0) {
     timeout_ms = kTimeoutMs;
   }
 
-  struct usbdevfs_bulktransfer bulk = {
-      .ep = static_cast<unsigned int>(ep_num_ | direction_mask),
-      .len = static_cast<unsigned int>(len),
-      .timeout = timeout_ms,
-      .data = buf};
+  if (direction_mask == kUsbEndpointOut) {
+    ep_num = out_ep_num_;
+  } else {
+    ep_num = in_ep_num_;
+  }
+  struct usbdevfs_bulktransfer bulk = {.ep = static_cast<unsigned int>(ep_num),
+                                       .len = static_cast<unsigned int>(len),
+                                       .timeout = timeout_ms,
+                                       .data = buf};
   return ioctl(fd_, USBDEVFS_BULK, &bulk);
 }
 
