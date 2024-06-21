@@ -41,6 +41,7 @@ const char kTimeoutWaitingForDlcInstall[] = "timeoutWaitingForDlcInstall";
 const char kHeartbeatHealthCheck1stFailure[] = "heartbeatHealthCheck1stFailure";
 const char kHeartbeatHealthCheck2ndFailure[] = "heartbeatHealthCheck2ndFailure";
 const char kHeartbeatHealthCheck3rdFailure[] = "heartbeatHealthCheck3rdFailure";
+const char kHeartbeatResetFailure[] = "heartbeatResetFailure";
 }  // namespace error
 
 // static

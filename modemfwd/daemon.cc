@@ -122,16 +122,27 @@ void DBusAdaptor::SetDebugMode(bool debug_mode) {
   LOG(INFO) << "Debug mode is now " << ToOnOffString(ELOG_IS_ON());
 }
 
-bool DBusAdaptor::ForceFlash(const std::string& device_id,
-                             const brillo::VariantDictionary& args) {
+void DBusAdaptor::ForceFlash(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> resp,
+    const std::string& device_id,
+    const brillo::VariantDictionary& args) {
   std::string carrier_uuid =
       brillo::GetVariantValueOrDefault<std::string>(args, "carrier_uuid");
   std::string variant =
       brillo::GetVariantValueOrDefault<std::string>(args, "variant");
   bool use_modems_fw_info =
       brillo::GetVariantValueOrDefault<bool>(args, "use_modems_fw_info");
+
+  auto callback = base::BindOnce(
+      [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> resp,
+         const brillo::ErrorPtr& error) {
+        // This can be modified to return the actual brillo error.
+        resp->Return(!error);
+      },
+      std::move(resp));
   return delegate_->ForceFlashForTesting(device_id, carrier_uuid, variant,
-                                         use_modems_fw_info);
+                                         use_modems_fw_info,
+                                         std::move(callback));
 }
 
 Daemon::Daemon(const std::string& journal_file,
@@ -474,10 +485,7 @@ void Daemon::DoFlash(const std::string& device_id,
   FlashTask* weak_task = flash_task.get();
 
   AddTask(std::move(flash_task));
-  if (!weak_task->Start(modems_[device_id].get(), FlashTask::Options{}, &err)) {
-    LOG(ERROR) << "Flashing errored out: "
-               << (err ? err->GetMessage() : "unknown");
-  }
+  weak_task->Start(modems_[device_id].get(), FlashTask::Options{});
 }
 
 void Daemon::RegisterDBusObjectsAsync(
@@ -487,23 +495,31 @@ void Daemon::RegisterDBusObjectsAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }
 
-bool Daemon::ForceFlash(const std::string& device_id) {
-  return ForceFlashForTesting(device_id, "", "", false);
+void Daemon::ForceFlash(const std::string& device_id) {
+  ForceFlashForTesting(device_id, "", "", false, base::DoNothing());
 }
 
-bool Daemon::ForceFlashForTesting(const std::string& device_id,
-                                  const std::string& carrier_uuid,
-                                  const std::string& variant,
-                                  bool use_modems_fw_info) {
+void Daemon::ForceFlashForTesting(
+    const std::string& device_id,
+    const std::string& carrier_uuid,
+    const std::string& variant,
+    bool use_modems_fw_info,
+    base::OnceCallback<void(const brillo::ErrorPtr&)> callback) {
   // Just drop the request if we're suspending. Users can manually retry the
   // force-flash after the device has resumed.
-  if (suspend_checker_->IsSuspendAnnounced())
-    return false;
+  if (suspend_checker_->IsSuspendAnnounced()) {
+    std::move(callback).Run(Error::Create(FROM_HERE, kErrorResultFailure,
+                                          "Device is suspending, retry later"));
+    return;
+  }
 
   auto stub_modem =
       CreateStubModem(device_id, helper_directory_.get(), use_modems_fw_info);
-  if (!stub_modem)
-    return false;
+  if (!stub_modem) {
+    std::move(callback).Run(Error::Create(FROM_HERE, kErrorResultFailure,
+                                          "Could not create stub modem"));
+    return;
+  }
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]"
              << (variant.empty() ? "" : ", variant [" + variant + "]")
@@ -526,13 +542,8 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
     opts.carrier_override_uuid = carrier_uuid;
   }
 
-  if (!flash_task_ptr->Start(stub_modem.get(), opts, &err)) {
-    LOG(ERROR) << "Force-flashing errored out: "
-               << (err ? err->GetMessage() : "unknown");
-    return false;
-  }
-
-  return true;
+  RegisterOnTaskFinishedCallback(flash_task_ptr, std::move(callback));
+  flash_task_ptr->Start(stub_modem.get(), opts);
 }
 
 bool Daemon::ResetModem(const std::string& device_id) {
@@ -617,7 +628,8 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
 
 void Daemon::TaskUpdated(Task* /* task */) {
   std::vector<brillo::VariantDictionary> all_tasks;
-  for (const auto& [name, task] : tasks_) {
+  for (const auto& [name, full_task] : tasks_) {
+    const std::unique_ptr<Task>& task = full_task.task;
     brillo::VariantDictionary task_props;
     task_props["name"] = name;
     task_props["type"] = task->type();
@@ -636,22 +648,46 @@ void Daemon::TaskUpdated(Task* /* task */) {
 void Daemon::AddTask(std::unique_ptr<Task> task) {
   Task* weak_task = task.get();
   const std::string& name = task->name();
-  tasks_[name] = std::move(task);
+  tasks_[name] = TaskWithMetadata{std::move(task)};
   TaskUpdated(weak_task);
 }
 
-void Daemon::FinishTask(Task* task) {
+void Daemon::RegisterOnTaskFinishedCallback(
+    Task* task, base::OnceCallback<void(const brillo::ErrorPtr&)> callback) {
+  auto it = tasks_.find(task->name());
+  if (it == tasks_.end()) {
+    ELOG(WARNING) << "Tried to register a callback for untracked task "
+                  << task->name();
+    return;
+  }
+
+  TaskWithMetadata& full_task = it->second;
+  full_task.finished_callbacks.push_back(std::move(callback));
+}
+
+void Daemon::FinishTask(Task* task, brillo::ErrorPtr error) {
   auto it = tasks_.find(task->name());
   if (it == tasks_.end()) {
     ELOG(WARNING) << "Task " << task->name() << " signaled it was finished "
                   << "but no such task was found in the task list";
     return;
   }
+
+  if (error) {
+    LOG(ERROR) << "Task " << task->name()
+               << " finished with an error: " << error->GetMessage();
+  }
+
+  TaskWithMetadata& full_task = it->second;
+  for (auto& cb : full_task.finished_callbacks) {
+    std::move(cb).Run(error);
+  }
+
   // Clean up the task by removing it from the task list and destroying
   // it async. (We do this to avoid potential issues if a task includes some
   // code after the Finish call.)
   base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
-      FROM_HERE, std::move(it->second));
+      FROM_HERE, std::move(full_task.task));
   tasks_.erase(it);
   TaskUpdated(nullptr);
 }

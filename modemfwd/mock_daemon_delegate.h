@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <brillo/errors/error.h>
 #include <gmock/gmock.h>
 
 #include "modemfwd/daemon_delegate.h"
@@ -19,12 +20,15 @@ class MockDelegate : public Delegate {
   ~MockDelegate() override = default;
 
   MOCK_METHOD(void, TaskUpdated, (Task*), (override));
-  MOCK_METHOD(void, FinishTask, (Task*), (override));
-  MOCK_METHOD(
-      bool,
-      ForceFlashForTesting,
-      (const std::string&, const std::string&, const std::string&, bool),
-      (override));
+  MOCK_METHOD(void, FinishTask, (Task*, brillo::ErrorPtr), (override));
+  MOCK_METHOD(void,
+              ForceFlashForTesting,
+              (const std::string&,
+               const std::string&,
+               const std::string&,
+               bool,
+               base::OnceCallback<void(const brillo::ErrorPtr&)>),
+              (override));
   MOCK_METHOD(bool, ResetModem, (const std::string&), (override));
   MOCK_METHOD(void,
               RegisterOnStartFlashingCallback,

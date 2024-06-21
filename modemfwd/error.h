@@ -37,6 +37,7 @@ extern const char kTimeoutWaitingForDlcInstall[];
 extern const char kHeartbeatHealthCheck1stFailure[];
 extern const char kHeartbeatHealthCheck2ndFailure[];
 extern const char kHeartbeatHealthCheck3rdFailure[];
+extern const char kHeartbeatResetFailure[];
 };  // namespace error
 
 class Error {

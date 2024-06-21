@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/logging.h>
@@ -82,19 +83,19 @@ FlashTask::FlashTask(Delegate* delegate,
       metrics_(metrics),
       modem_flasher_(modem_flasher) {}
 
-bool FlashTask::Start(Modem* modem,
-                      const FlashTask::Options& options,
-                      brillo::ErrorPtr* err) {
+void FlashTask::Start(Modem* modem, const FlashTask::Options& options) {
+  brillo::ErrorPtr err;
+
   SetProp("force-flash", options.should_always_flash);
   if (options.carrier_override_uuid.has_value()) {
     SetProp("carrier-override", *options.carrier_override_uuid);
   }
 
   if (!options.should_always_flash &&
-      !modem_flasher_->ShouldFlash(modem, err)) {
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-    Finish();
-    return false;
+      !modem_flasher_->ShouldFlash(modem, &err)) {
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    Finish(std::move(err));
+    return;
   }
 
   // Clear the attach APN if needed for a specific modem/carrier combination.
@@ -104,11 +105,11 @@ bool FlashTask::Start(Modem* modem,
   }
 
   std::unique_ptr<FlashConfig> flash_cfg = modem_flasher_->BuildFlashConfig(
-      modem, options.carrier_override_uuid, err);
+      modem, options.carrier_override_uuid, &err);
   if (!flash_cfg) {
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-    Finish();
-    return false;
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    Finish(std::move(err));
+    return;
   }
 
   // End early if we don't have any new firmware.
@@ -117,7 +118,7 @@ bool FlashTask::Start(Modem* modem,
     LOG(INFO) << "The modem already has the correct firmware installed";
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
     Finish();
-    return true;
+    return;
   }
 
   std::string device_id = modem->GetDeviceId();
@@ -137,14 +138,14 @@ bool FlashTask::Start(Modem* modem,
       GetFirmwareTypesForMetrics(flash_cfg->fw_configs);
 
   base::TimeDelta flash_duration;
-  if (!modem_flasher_->RunFlash(modem, *flash_cfg, &flash_duration, err)) {
+  if (!modem_flasher_->RunFlash(modem, *flash_cfg, &flash_duration, &err)) {
     if (entry_id.has_value()) {
       journal_->MarkEndOfFlashingFirmware(*entry_id);
     }
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
-        err->get(), types_for_metrics);
-    Finish();
-    return false;
+        err.get(), types_for_metrics);
+    Finish(std::move(err));
+    return;
   }
 
   // Report flashing time in successful cases
@@ -159,7 +160,7 @@ bool FlashTask::Start(Modem* modem,
     // on the bus and don't want to leave journal entries lying around.
     FlashFinished(entry_id, types_for_metrics);
   }
-  return true;
+  return;
 }
 
 void FlashTask::FlashFinished(std::optional<std::string> journal_entry_id,

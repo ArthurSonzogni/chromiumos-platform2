@@ -10,6 +10,7 @@
 
 #include <base/time/time.h>
 #include <brillo/any.h>
+#include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 
 #include "modemfwd/daemon_delegate.h"
@@ -31,7 +32,7 @@ class Task {
  protected:
   Delegate* delegate() { return delegate_; }
 
-  void Finish();
+  void Finish(brillo::ErrorPtr error = nullptr);
 
   void SetProp(const std::string& key, brillo::Any value);
   void DeleteProp(const std::string& key);

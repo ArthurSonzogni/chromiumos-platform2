@@ -134,18 +134,21 @@ void HeartbeatTask::DoHealthCheck() {
   LOG(ERROR) << "Modem [" << modem_->GetDeviceId()
              << "] is unresponsive. Trying to recover.";
 
-  if (delegate()->ResetModem(modem_->GetDeviceId())) {
-    // Modem reset successfully. The daemon will create another heartbeat
-    // task when it finishes coming back up.
-    LOG(INFO) << "Reboot succeeded";
-    metrics_->SendModemRecoveryState(
-        metrics::ModemRecoveryState::kRecoveryStateSuccess);
-  } else {
+  if (!delegate()->ResetModem(modem_->GetDeviceId())) {
     // Modem did not respond to a reset either.
     LOG(WARNING) << "Reset failed";
     metrics_->SendModemRecoveryState(
         metrics::ModemRecoveryState::kRecoveryStateFailure);
+    Finish(Error::Create(FROM_HERE, error::kHeartbeatResetFailure,
+                         "Modem failed to reset"));
+    return;
   }
+
+  // Modem reset successfully. The daemon will create another heartbeat
+  // task when it finishes coming back up.
+  LOG(INFO) << "Reboot succeeded";
+  metrics_->SendModemRecoveryState(
+      metrics::ModemRecoveryState::kRecoveryStateSuccess);
   Finish();
 }
 

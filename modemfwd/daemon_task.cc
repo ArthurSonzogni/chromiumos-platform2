@@ -28,11 +28,11 @@ Task::~Task() {
   }
 }
 
-void Task::Finish() {
+void Task::Finish(brillo::ErrorPtr error) {
   ELOG(INFO) << "Task " << name_ << " finished";
   finished_explicitly_ = true;
   CancelOutstandingWork();
-  delegate_->FinishTask(this);
+  delegate_->FinishTask(this, std::move(error));
 }
 
 void Task::SetProp(const std::string& key, brillo::Any value) {

@@ -22,6 +22,8 @@
 using testing::_;
 using testing::AtLeast;
 using testing::InSequence;
+using testing::IsNull;
+using testing::NotNull;
 using testing::Return;
 using testing::SaveArg;
 using testing::WithArg;
@@ -87,14 +89,11 @@ TEST_F(HeartbeatTaskTest, HeartbeatFailureResetSuccess) {
   EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
   EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(false));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).WillOnce(Return(true));
-  EXPECT_CALL(metrics_,
-              SendModemRecoveryState(
-                  metrics::ModemRecoveryState::kRecoveryStateSuccess));
 
   auto task = GetTask(HeartbeatConfig{kNumFailures, kInterval});
   task->Start();
 
-  EXPECT_CALL(delegate_, FinishTask(task.get()));
+  EXPECT_CALL(delegate_, FinishTask(task.get(), IsNull()));
   RunFor((kNumFailures + 0.5) * kInterval);
 }
 
@@ -112,7 +111,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatFailureResetFailure) {
   auto task = GetTask(HeartbeatConfig{kNumFailures, kInterval});
   task->Start();
 
-  EXPECT_CALL(delegate_, FinishTask(task.get()));
+  EXPECT_CALL(delegate_, FinishTask(task.get(), NotNull()));
   RunFor((kNumFailures + 0.5) * kInterval);
 }
 

@@ -27,7 +27,7 @@
       <arg name="success" type="b" direction="out">
         Whether force-flashing was successful.
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
     <signal name="UpdateFirmwareCompleted">
       <tp:docstring>

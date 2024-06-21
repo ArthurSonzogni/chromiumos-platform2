@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
+#include <brillo/errors/error.h>
 
 namespace modemfwd {
 
@@ -19,12 +20,14 @@ class Delegate {
   virtual ~Delegate() = default;
 
   virtual void TaskUpdated(Task* task) = 0;
-  virtual void FinishTask(Task* task) = 0;
+  virtual void FinishTask(Task* task, brillo::ErrorPtr error) = 0;
 
-  virtual bool ForceFlashForTesting(const std::string& device_id,
-                                    const std::string& carrier_uuid,
-                                    const std::string& variant,
-                                    bool use_modems_fw_info) = 0;
+  virtual void ForceFlashForTesting(
+      const std::string& device_id,
+      const std::string& carrier_uuid,
+      const std::string& variant,
+      bool use_modems_fw_info,
+      base::OnceCallback<void(const brillo::ErrorPtr&)> callback) = 0;
 
   virtual bool ResetModem(const std::string& device_id) = 0;
 

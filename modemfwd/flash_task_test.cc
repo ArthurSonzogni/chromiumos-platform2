@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "modemfwd/error.h"
 #include "modemfwd/mock_daemon_delegate.h"
 #include "modemfwd/mock_journal.h"
 #include "modemfwd/mock_metrics.h"
@@ -24,7 +25,11 @@
 #include "modemfwd/mock_notification_manager.h"
 
 using testing::_;
+using testing::IsNull;
+using testing::NotNull;
 using testing::Return;
+using testing::SetArgPointee;
+using testing::WithArg;
 
 namespace modemfwd {
 
@@ -114,10 +119,13 @@ TEST_F(FlashTaskTest, ModemIsBlocked) {
   auto modem = GetDefaultModem();
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
-      .WillOnce(Return(false));
+      .WillOnce(WithArg<1>([](brillo::ErrorPtr* error) {
+        *error = Error::Create(FROM_HERE, "foo", "foo");
+        return false;
+      }));
+  EXPECT_CALL(*delegate_, FinishTask(task.get(), NotNull()));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), FlashTask::Options{}, &err));
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, NothingToFlash) {
@@ -129,9 +137,9 @@ TEST_F(FlashTaskTest, NothingToFlash) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(kCarrier1, {})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
+  EXPECT_CALL(*delegate_, FinishTask(task.get(), IsNull()));
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, BuildConfigReturnedError) {
@@ -141,11 +149,14 @@ TEST_F(FlashTaskTest, BuildConfigReturnedError) {
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
-      .WillOnce(Return(std::unique_ptr<FlashConfig>()));
+      .WillOnce(WithArg<2>([](brillo::ErrorPtr* error) {
+        *error = Error::Create(FROM_HERE, "foo", "foo");
+        return nullptr;
+      }));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
+  EXPECT_CALL(*delegate_, FinishTask(task.get(), NotNull()));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), FlashTask::Options{}, &err));
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, FlashFailure) {
@@ -159,10 +170,13 @@ TEST_F(FlashTaskTest, FlashFailure) {
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
-      .WillOnce(Return(false));
+      .WillOnce(WithArg<3>([](brillo::ErrorPtr* error) {
+        *error = Error::Create(FROM_HERE, "foo", "foo");
+        return false;
+      }));
+  EXPECT_CALL(*delegate_, FinishTask(task.get(), NotNull()));
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), FlashTask::Options{}, &err));
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, FlashSuccess) {
@@ -179,9 +193,16 @@ TEST_F(FlashTaskTest, FlashSuccess) {
       .WillOnce(Return(true));
   EXPECT_CALL(*metrics_, SendFwFlashTime(_)).Times(1);
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
-  EXPECT_EQ(err.get(), nullptr);
+  // The cleanup callback marks the end of flashing the firmware. The delegate
+  // will typically run it once the modem comes back up.
+  base::OnceClosure cb;
+  EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _))
+      .WillOnce([&cb](const std::string& /*equipment_id*/,
+                      base::OnceClosure reg_cb) { cb = std::move(reg_cb); });
+  task->Start(modem.get(), FlashTask::Options{});
+
+  EXPECT_CALL(*delegate_, FinishTask(task.get(), IsNull()));
+  std::move(cb).Run();
 }
 
 TEST_F(FlashTaskTest, WritesToJournal) {
@@ -206,9 +227,7 @@ TEST_F(FlashTaskTest, WritesToJournal) {
       .WillOnce([&cb](const std::string& /*equipment_id*/,
                       base::OnceClosure reg_cb) { cb = std::move(reg_cb); });
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
-  EXPECT_EQ(err.get(), nullptr);
+  task->Start(modem.get(), FlashTask::Options{});
 
   // Ensure the journal entry is closed by the registered callback.
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
@@ -231,9 +250,7 @@ TEST_F(FlashTaskTest, WritesCarrierToJournal) {
 
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, kCarrier2))
       .WillOnce(Return(kJournalEntryId));
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
-  EXPECT_EQ(err.get(), nullptr);
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
@@ -255,8 +272,7 @@ TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
   // We should complete inline on failure. No callback should be registered.
   EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _)).Times(0);
 
-  brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), FlashTask::Options{}, &err));
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, InhibitDuringFlash) {
@@ -274,9 +290,7 @@ TEST_F(FlashTaskTest, InhibitDuringFlash) {
   EXPECT_CALL(*modem, SetInhibited(true)).Times(1);
   EXPECT_CALL(*modem, SetInhibited(false)).Times(1);
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
-  EXPECT_EQ(err.get(), nullptr);
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, IgnoreBlock) {
@@ -292,10 +306,7 @@ TEST_F(FlashTaskTest, IgnoreBlock) {
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(
-      modem.get(), FlashTask::Options{.should_always_flash = true}, &err));
-  EXPECT_EQ(err.get(), nullptr);
+  task->Start(modem.get(), FlashTask::Options{.should_always_flash = true});
 }
 
 TEST_F(FlashTaskTest, SyncCleanupForStubModem) {
@@ -320,9 +331,7 @@ TEST_F(FlashTaskTest, SyncCleanupForStubModem) {
   // We should expect this to run synchronously.
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
 
-  brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
-  EXPECT_EQ(err.get(), nullptr);
+  task->Start(modem.get(), FlashTask::Options{});
 }
 
 }  // namespace modemfwd

@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/errors/error.h>
 #include <brillo/process/process.h>
 #include <dbus/bus.h>
 
@@ -48,8 +49,10 @@ class DBusAdaptor : public org::chromium::ModemfwdInterface,
 
   // org::chromium::ModemfwdInterface overrides.
   void SetDebugMode(bool debug_mode) override;
-  bool ForceFlash(const std::string& device_id,
-                  const brillo::VariantDictionary& args) override;
+  void ForceFlash(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> resp,
+      const std::string& device_id,
+      const brillo::VariantDictionary& args) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
@@ -70,11 +73,13 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
 
   // Delegate overrides.
   void TaskUpdated(Task* task) override;
-  void FinishTask(Task* task) override;
-  bool ForceFlashForTesting(const std::string& device_id,
-                            const std::string& carrier_uuid,
-                            const std::string& variant,
-                            bool use_modems_fw_info) override;
+  void FinishTask(Task* task, brillo::ErrorPtr error) override;
+  void ForceFlashForTesting(
+      const std::string& device_id,
+      const std::string& carrier_uuid,
+      const std::string& variant,
+      bool use_modems_fw_info,
+      base::OnceCallback<void(const brillo::ErrorPtr&)> callback) override;
   bool ResetModem(const std::string& device_id) override;
   void RegisterOnStartFlashingCallback(const std::string& equipment_id,
                                        base::OnceClosure callback) override;
@@ -94,9 +99,15 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   // Force-flash the modem (with generic firmware).
-  bool ForceFlash(const std::string& device_id);
+  void ForceFlash(const std::string& device_id);
 
  private:
+  struct TaskWithMetadata {
+    std::unique_ptr<Task> task;
+    std::vector<base::OnceCallback<void(const brillo::ErrorPtr&)>>
+        finished_callbacks;
+  };
+
   // Once we have a path for the firmware directory we can parse
   // the manifest and set up the DLC manager.
   int SetupFirmwareDirectory();
@@ -139,6 +150,8 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   void ForceFlashIfNeverAppeared(const std::string& device_id);
 
   void AddTask(std::unique_ptr<Task> task);
+  void RegisterOnTaskFinishedCallback(
+      Task* task, base::OnceCallback<void(const brillo::ErrorPtr&)> callback);
 
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
@@ -155,7 +168,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   std::unique_ptr<Prefs> modems_seen_since_oobe_prefs_;
 
   // Tasks by name.
-  std::map<std::string, std::unique_ptr<Task>> tasks_;
+  std::map<std::string, TaskWithMetadata> tasks_;
 
   std::map<std::string, std::unique_ptr<Modem>> modems_;
 
