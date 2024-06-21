@@ -142,6 +142,8 @@ USB_IDS += [
     "33f8:01a2",
     # Rolling Wireless (RW135)
     "33f8:0115",
+    # NetPrisma (LCUK54)
+    "3731:0100",
 ]
 
 # Mass Storage
