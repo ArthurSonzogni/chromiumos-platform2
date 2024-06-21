@@ -596,7 +596,7 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
 
   const auto service_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
       properties, kSelectedServiceProperty);
-  HandleSelectedServiceChanged(device_path, service_path);
+  HandleSelectedServiceChanged(device_path, service_path, it->second.get());
 
   // OnDevicePropertyChange will triggers the callbacks. Calling this at the
   // last allows us to provide a Device struct populated with all the properties
@@ -618,10 +618,7 @@ void Client::OnDevicePropertyChange(const std::string& device_path,
   if (property_name == kInterfaceProperty) {
     HandleDeviceInterfaceChanged(device_path, property_value, device);
   } else if (property_name == kSelectedServiceProperty) {
-    device = HandleSelectedServiceChanged(device_path, property_value);
-    if (!device) {
-      return;
-    }
+    HandleSelectedServiceChanged(device_path, property_value, it->second.get());
   } else if (property_name == kHomeProviderProperty) {
     device->cellular_country_code = property_value.TryGet<
         std::map<std::string, std::string>>()[shill::kOperatorCountryKey];
@@ -650,25 +647,21 @@ void Client::OnDevicePropertyChange(const std::string& device_path,
   }
 }
 
-Client::Device* Client::HandleSelectedServiceChanged(
-    const std::string& device_path, const brillo::Any& property_value) {
-  auto it = devices_.find(device_path);
-  if (it == devices_.end()) {
-    LOG(ERROR) << "Device [" << device_path << "] not found";
-    return nullptr;
-  }
-  auto* device = it->second->device();
+void Client::HandleSelectedServiceChanged(const std::string& device_path,
+                                          const brillo::Any& property_value,
+                                          DeviceWrapper* device_wrapper) {
+  auto* device = device_wrapper->device();
 
   auto service_path = property_value.TryGet<dbus::ObjectPath>();
   if (!service_path.IsValid() || service_path.value() == "/") {
     device->state = Device::ConnectionState::kUnknown;
     VLOG(2) << "Device [" << device_path << "] has no service";
-    return device;
+    return;
   }
 
   SetupSelectedServiceProxy(service_path, dbus::ObjectPath(device_path));
   brillo::VariantDictionary properties;
-  if (auto* proxy = it->second->service_proxy()) {
+  if (auto* proxy = device_wrapper->service_proxy()) {
     if (!proxy->GetProperties(&properties, nullptr)) {
       LOG(ERROR) << "Unable to get properties for device service ["
                  << service_path.value() << "]";
@@ -690,7 +683,7 @@ Client::Device* Client::HandleSelectedServiceChanged(
       ParseNetworkConfigProperty(GetVariant<brillo::VariantDictionary>(
           properties, kNetworkConfigProperty));
 
-  return device;
+  return;
 }
 
 void Client::HandleDeviceInterfaceChanged(const std::string& device_path,

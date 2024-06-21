@@ -351,61 +351,6 @@ class BRILLO_EXPORT Client {
       default_service_proxy_;
 
  private:
-  // This callback is invoked whenever the default service changes, that is,
-  // when it switches from one service to another. If applicable, the callback
-  // set via RegisterDefaultServiceChangedHandler will be invoked.
-  void HandleDefaultServiceChanged(const brillo::Any& property_value);
-
-  // This callback is invoked whenever the (physical) device list provided by
-  // shill changes.
-  void HandleDevicesChanged(const brillo::Any& property_value);
-
-  // Invoked whenever a device's selected service changes.
-  Device* HandleSelectedServiceChanged(const std::string& device_path,
-                                       const brillo::Any& property_value);
-
-  // Invoked whenever a device's interface name changes. Invokes the DeviceAdded
-  // callback if the interface name is added, and DeviceRemovedCallback if the
-  // interface name is removed.
-  void HandleDeviceInterfaceChanged(const std::string& device_path,
-                                    const brillo::Any& property_value,
-                                    Device* device);
-
-  // This callback is invoked whenever a new manager proxy is created. It will
-  // trigger the discovery of the default service.
-  void OnManagerPropertyChangeRegistration(const std::string& interface,
-                                           const std::string& signal_name,
-                                           bool success);
-
-  // This callback is invoked whenever a new default service proxy is created.
-  // It will trigger the discovery of the device associated with the default
-  // service.
-  void OnDefaultServicePropertyChangeRegistration(
-      const std::string& interface,
-      const std::string& signal_name,
-      bool success);
-
-  // This callback is invoked whenever a new device proxy is created. It will
-  // trigger the discovery of the device properties we care about including its
-  // type, interface name and IP configuration.
-  void OnDevicePropertyChangeRegistration(const std::string& device_path,
-                                          const std::string& interface,
-                                          const std::string& signal_name,
-                                          bool success);
-
-  // This callback is invoked whenever a new selected service proxy is created.
-  // It will trigger the discovery of service properties we care about including
-  // the connected state.
-  void OnServicePropertyChangeRegistration(const std::string& device_path,
-                                           const std::string& interface,
-                                           const std::string& signal_name,
-                                           bool success);
-
-  void SetupDefaultServiceProxy(const dbus::ObjectPath& service_path);
-  void SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
-                                 const dbus::ObjectPath& device_path);
-  void SetupDeviceProxy(const dbus::ObjectPath& device_path);
-
   // Wraps a device with its DBus proxy on which property change signals are
   // received.
   class DeviceWrapper {
@@ -451,6 +396,62 @@ class BRILLO_EXPORT Client {
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> proxy_;
     std::unique_ptr<org::chromium::flimflam::ServiceProxyInterface> svc_proxy_;
   };
+
+  // This callback is invoked whenever the default service changes, that is,
+  // when it switches from one service to another. If applicable, the callback
+  // set via RegisterDefaultServiceChangedHandler will be invoked.
+  void HandleDefaultServiceChanged(const brillo::Any& property_value);
+
+  // This callback is invoked whenever the (physical) device list provided by
+  // shill changes.
+  void HandleDevicesChanged(const brillo::Any& property_value);
+
+  // Invoked whenever a device's selected service changes.
+  void HandleSelectedServiceChanged(const std::string& device_path,
+                                    const brillo::Any& property_value,
+                                    DeviceWrapper* device_wrapper);
+
+  // Invoked whenever a device's interface name changes. Invokes the DeviceAdded
+  // callback if the interface name is added, and DeviceRemovedCallback if the
+  // interface name is removed.
+  void HandleDeviceInterfaceChanged(const std::string& device_path,
+                                    const brillo::Any& property_value,
+                                    Device* device);
+
+  // This callback is invoked whenever a new manager proxy is created. It will
+  // trigger the discovery of the default service.
+  void OnManagerPropertyChangeRegistration(const std::string& interface,
+                                           const std::string& signal_name,
+                                           bool success);
+
+  // This callback is invoked whenever a new default service proxy is created.
+  // It will trigger the discovery of the device associated with the default
+  // service.
+  void OnDefaultServicePropertyChangeRegistration(
+      const std::string& interface,
+      const std::string& signal_name,
+      bool success);
+
+  // This callback is invoked whenever a new device proxy is created. It will
+  // trigger the discovery of the device properties we care about including its
+  // type, interface name and IP configuration.
+  void OnDevicePropertyChangeRegistration(const std::string& device_path,
+                                          const std::string& interface,
+                                          const std::string& signal_name,
+                                          bool success);
+
+  // This callback is invoked whenever a new selected service proxy is created.
+  // It will trigger the discovery of service properties we care about including
+  // the connected state.
+  void OnServicePropertyChangeRegistration(const std::string& device_path,
+                                           const std::string& interface,
+                                           const std::string& signal_name,
+                                           bool success);
+
+  void SetupDefaultServiceProxy(const dbus::ObjectPath& service_path);
+  void SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
+                                 const dbus::ObjectPath& device_path);
+  void SetupDeviceProxy(const dbus::ObjectPath& device_path);
 
   void AddDevice(const dbus::ObjectPath& path);
 
