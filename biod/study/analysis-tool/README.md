@@ -17,7 +17,7 @@ statistically determine its FAR and FRR confidence range.
 ## Run The Analysis
 
 ```bash
-# From the biod/study directory.
+# From the biod/study directory, outside of the chroot, run the following:
 ./python-venv-setup.sh
 . .venv/bin/activate
 ./analysis-tool/run.py --learn-groups-dir data/orig-data data/decisions analysis
@@ -78,7 +78,7 @@ python -m unittest discover -v -s . -p '*_test.py'
 ## Examples
 
 ```bash
-# From the biod/study directory.
+# From the biod/study directory, outside of the chroot, run the following:
 ./python-venv-setup.sh
 . .venv/bin/activate
 
