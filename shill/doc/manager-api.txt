@@ -618,6 +618,11 @@ Methods		dict GetProperties()
 
 			Some functionality is stubbed.
 
+		void NotifyDHCPEvent(dict configuration)
+
+			Notifies the DHCP events with the information. The keys of the
+			configuration are defined at shill::DHCPv4Config.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

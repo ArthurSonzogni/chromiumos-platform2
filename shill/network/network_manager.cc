@@ -64,6 +64,12 @@ void NetworkManager::SetCapportEnabled(bool enabled) {
   }
 }
 
+void NetworkManager::NotifyDHCPEvent(
+    const std::map<std::string, std::string>& configuration) {
+  // TODO(b/344500617): Delegates to DHCPCDProxyFactory after we replace migrate
+  // from LegacyDHCPCDProxyFactory to DHCPCDProxyFactory.
+}
+
 void NetworkManager::OnNetworkDestroyed(int network_id, int interface_index) {
   if (alive_networks_.erase(network_id) == 0) {
     LOG(WARNING) << __func__ << ": erase the stale Network " << network_id;

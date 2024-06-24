@@ -180,6 +180,10 @@
 			<arg type="a{sv}" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
+		<method name="NotifyDHCPEvent">
+			<arg type="a{ss}" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

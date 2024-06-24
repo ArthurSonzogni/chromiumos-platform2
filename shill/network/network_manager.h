@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <string_view>
 
 #include "shill/network/network.h"
@@ -44,6 +45,10 @@ class NetworkManager : Network::EventHandler {
   // Enables or disables the CAPPORT functionality to all the Network instances,
   // including the instances created later.
   void SetCapportEnabled(bool enabled);
+
+  // Notifies the DHCP events with the information. The keys of configuration
+  // are defined at shill::DHCPv4Config.
+  void NotifyDHCPEvent(const std::map<std::string, std::string>& configuration);
 
  private:
   // Implements Network::EventHandler.

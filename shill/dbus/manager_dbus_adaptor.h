@@ -5,6 +5,7 @@
 #ifndef SHILL_DBUS_MANAGER_DBUS_ADAPTOR_H_
 #define SHILL_DBUS_MANAGER_DBUS_ADAPTOR_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -148,6 +149,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   void SetLOHSEnabled(DBusMethodResponsePtr<std::string> response,
                       bool enabled) override;
   void SetCapportEnabled(bool enabled) override;
+  void NotifyDHCPEvent(
+      const std::map<std::string, std::string>& configuration) override;
   void CreateP2PGroup(DBusMethodResponsePtr<brillo::VariantDictionary> response,
                       const brillo::VariantDictionary& args) override;
   void ConnectToP2PGroup(

@@ -538,6 +538,12 @@ void ManagerDBusAdaptor::SetCapportEnabled(bool enabled) {
   manager_->network_manager()->SetCapportEnabled(enabled);
 }
 
+void ManagerDBusAdaptor::NotifyDHCPEvent(
+    const std::map<std::string, std::string>& configuration) {
+  SLOG(this, 2) << __func__;
+  manager_->network_manager()->NotifyDHCPEvent(configuration);
+}
+
 void ManagerDBusAdaptor::CreateP2PGroup(
     DBusMethodResponsePtr<brillo::VariantDictionary> response,
     const brillo::VariantDictionary& args) {
