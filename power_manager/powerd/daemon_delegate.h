@@ -39,7 +39,6 @@ class AmbientLightSensorWatcherMojo;
 class AudioClientInterface;
 class BacklightInterface;
 class ChargeControllerHelperInterface;
-class UserDataAuthClient;
 class DarkResumeInterface;
 class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
@@ -180,11 +179,6 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::AudioClientInterface> CreateAudioClient(
       system::DBusWrapperInterface* dbus_wrapper,
       const base::FilePath& run_dir) = 0;
-
-  virtual std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
-      system::DBusWrapperInterface* dbus_wrapper,
-      const system::UserDataAuthClient::DeviceKeyRestoredCallback&
-          device_key_restored_callback) = 0;
 
   virtual std::unique_ptr<system::LockfileCheckerInterface>
   CreateLockfileChecker(const base::FilePath& dir,

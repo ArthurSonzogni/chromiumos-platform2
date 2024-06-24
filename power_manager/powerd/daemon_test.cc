@@ -26,8 +26,6 @@
 #include <gtest/gtest.h>
 #include <libec/mock_ec_command_factory.h>
 #include <ml-client-test/ml/dbus-proxy-mocks.h>
-#include <cryptohome-client/cryptohome/dbus-constants.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/fake_prefs.h"
@@ -52,7 +50,6 @@
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/machine_quirks_stub.h"
 #include "power_manager/powerd/system/mock_power_supply.h"
-#include "power_manager/powerd/system/mock_user_data_auth_client.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
@@ -60,7 +57,6 @@
 #include "power_manager/powerd/system/suspend_freezer_stub.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/udev_stub.h"
-#include "power_manager/powerd/system/user_data_auth_client.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -125,7 +121,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_user_proximity_watcher_(new system::UserProximityWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
-        passed_user_data_auth_client_(new system::MockUserDataAuthClient()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
         passed_machine_quirks_(new system::MachineQuirksStub()),
         passed_metrics_sender_(new MetricsSenderStub()),
@@ -165,7 +160,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         user_proximity_watcher_(passed_user_proximity_watcher_.get()),
         dark_resume_(passed_dark_resume_.get()),
         audio_client_(passed_audio_client_.get()),
-        user_data_auth_client_(passed_user_data_auth_client_.get()),
         lockfile_checker_(passed_lockfile_checker_.get()),
         machine_quirks_(passed_machine_quirks_.get()),
         metrics_sender_(passed_metrics_sender_.get()),
@@ -418,21 +412,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }
-  std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
-      system::DBusWrapperInterface* dbus_wrapper,
-      const system::UserDataAuthClient::DeviceKeyRestoredCallback&
-          device_key_restored_callback) override {
-    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
-    // This is needed to mock what user_data_auth_client_->Init does.
-    dbus_wrapper_->RegisterForSignal(
-        dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
-                                      user_data_auth::kUserDataAuthServicePath),
-        user_data_auth::kUserDataAuthInterface,
-        user_data_auth::kEvictedKeyRestoredSignal,
-        base::BindRepeating(&DaemonTest::HandleKeyRestoredSignal,
-                            base::Unretained(this)));
-    return std::move(passed_user_data_auth_client_);
-  }
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(
       const base::FilePath& dir,
       const std::vector<base::FilePath>& files) override {
@@ -530,25 +509,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return response;
   }
 
-  // DBusWrapperStub::MethodCallback implementation used to handle resourced
-  // D-Bus call (resource_manager::kSetFullscreenVideoWithTimeout).
-  std::unique_ptr<dbus::Response> HandleEvictCryptohomeDeviceResponse(
-      dbus::ObjectProxy* proxy, dbus::MethodCall* method_call) {
-    std::unique_ptr<dbus::Response> response =
-        dbus::Response::FromMethodCall(method_call);
-    return response;
-  }
-
-  void HandleKeyRestoredSignal(dbus::Signal* signal) {
-    dbus::MessageReader reader(signal);
-    user_data_auth::EvictedKeyRestored key_restored;
-    if (!reader.PopArrayOfBytesAsProto(&key_restored)) {
-      LOG(ERROR) << "Unable to read "
-                 << user_data_auth::kEvictedKeyRestoredSignal << " args";
-      return;
-    }
-  }
-
  protected:
   // Send the appropriate events to put StateController into docked mode.
   void EnterDockedMode() {
@@ -572,7 +532,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     std::string suspend_arg = "--suspend_to_idle";
     async_commands_.clear();
     sync_commands_.clear();
-    daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID);
+    daemon_->DoSuspend(1, true, base::Milliseconds(0));
     return sync_commands_[0].find(suspend_arg) != std::string::npos;
   }
 
@@ -614,7 +574,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
       passed_user_proximity_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
-  std::unique_ptr<system::MockUserDataAuthClient> passed_user_data_auth_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
   std::unique_ptr<system::MachineQuirksStub> passed_machine_quirks_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
@@ -654,7 +613,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   system::UserProximityWatcherStub* user_proximity_watcher_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
-  system::MockUserDataAuthClient* user_data_auth_client_;
   system::LockfileCheckerStub* lockfile_checker_;
   system::MachineQuirksStub* machine_quirks_;
   MetricsSenderStub* metrics_sender_;
@@ -678,9 +636,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
 
   // Value to return from GetPid().
   pid_t pid_ = 2;
-
-  // Value for EvictDeviceKey(), relays the current suspend attempt.
-  const int kFakeSuspendID = 0;
 
   // Command lines executed via Launch() and Run(), respectively.
   std::vector<std::string> async_commands_;
@@ -853,21 +808,6 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
                                           kHandleWakeNotificationMethod);
   ASSERT_TRUE(
       dbus_wrapper_->CallExportedMethodSync(&wake_notification_call).get());
-}
-
-TEST_F(DaemonTest, KeyRestoredSignalCheck) {
-  Init();
-  dbus::Signal session_signal(user_data_auth::kUserDataAuthInterface,
-                              user_data_auth::kEvictedKeyRestoredSignal);
-  user_data_auth::EvictedKeyRestored evicted_key_restored;
-  dbus::MessageWriter(&session_signal)
-      .AppendProtoAsArrayOfBytes(evicted_key_restored);
-  dbus_wrapper_->EmitRegisteredSignal(
-      dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
-                                    user_data_auth::kUserDataAuthServicePath),
-      &session_signal);
-  // TODO(b/311110872): Add EXPECT_CALL(...) when SuspendFreezerStub is
-  // converted into a mocked class.
 }
 
 TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
@@ -1286,21 +1226,7 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
   daemon_->PrepareToSuspend();
   EXPECT_TRUE(power_supply_->suspended());
 
-// Set method_callback_ for daemon_, so that EvictCryptohomeDevice within
-// DoSuspend will return with a value for testing.
-#if USE_KEY_EVICTION
-  // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
-  // flag and controlled by chrome://settings ideally.
-
-  ASSERT_EQ(base::WriteFile(sync_on_suspend_path_, nullptr, 0), 0);
-
-  EXPECT_CALL(*user_data_auth_client_, EvictDeviceKey(_));
-  dbus_wrapper_->SetMethodCallback(
-      base::BindRepeating(&DaemonTest::HandleEvictCryptohomeDeviceResponse,
-                          base::Unretained(this)));
-#endif  // USE_KEY_EVICTION
-
-  daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID);
+  daemon_->DoSuspend(1, true, base::Milliseconds(0));
 
   input_watcher_->set_lid_state(LidState::OPEN);
   daemon_->UndoPrepareToSuspend(true, 0);

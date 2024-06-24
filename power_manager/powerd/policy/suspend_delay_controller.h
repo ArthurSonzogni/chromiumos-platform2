@@ -111,11 +111,6 @@ class SuspendDelayController {
   // request is aborted.
   void FinishSuspend(int suspend_id);
 
-  // Handles notification that the device key has been evicted.
-  void HandleDeviceKeyEvicted();
-  // Handles notification that the device key has been restored.
-  void HandleDeviceKeyRestored();
-
  private:
   // Information about a registered delay.
   struct DelayInfo {

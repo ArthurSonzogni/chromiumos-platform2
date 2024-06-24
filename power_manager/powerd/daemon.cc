@@ -32,8 +32,6 @@
 #include <chromeos/mojo/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <cryptohome-client/cryptohome/dbus-constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <libec/ec_command.h>
@@ -215,18 +213,6 @@ std::string PrivacyScreenStateToString(
       return base::StringPrintf("unknown (%d)", static_cast<int>(state));
   }
 }
-
-#if USE_KEY_EVICTION
-// Disable the kernel's sync_on_suspend if we are evicting the user's
-// encryption key to prevent deadlocking on suspend.
-bool DisableSyncOnSuspend(const base::FilePath& path) {
-  if (!util::WriteInt64File(path, 0)) {
-    LOG(ERROR) << "Couldn't write to file: " << path;
-    return false;
-  }
-  return true;
-}
-#endif  // USE_KEY_EVICTION
 
 }  // namespace
 
@@ -571,10 +557,6 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
-  user_data_auth_client_ = delegate_->CreateUserDataAuthClient(
-      dbus_wrapper_.get(), base::BindRepeating(&Daemon::OnDeviceKeyRestored,
-                                               base::Unretained(this)));
-
   bluetooth_controller_->Init(udev_.get(), platform_features_,
                               dbus_wrapper_.get(), tablet_mode);
   wifi_controller_->Init(this, prefs_.get(), udev_.get(), tablet_mode);
@@ -894,10 +876,7 @@ void Daemon::ResumeAudio() {
 }
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
-    uint64_t wakeup_count,
-    bool wakeup_count_valid,
-    base::TimeDelta duration,
-    int suspend_request_id) {
+    uint64_t wakeup_count, bool wakeup_count_valid, base::TimeDelta duration) {
   // If power management is overridden by a lockfile, spin for a bit to wait for
   // the process to finish: http://crosbug.com/p/38947
   base::TimeDelta elapsed;
@@ -963,20 +942,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     return policy::Suspender::Delegate::SuspendResult::CANCELED;
   }
 
-// Evict users' home encryption devices only after other processes have
-// announced suspend readiness and frozen the filesystem, specifically the
-// user's encrypted home directory.
-#if USE_KEY_EVICTION
-  // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
-  // flag and controlled by chrome://settings ideally.
-  if (DisableSyncOnSuspend(sync_on_suspend_path_) && user_data_auth_client_) {
-    if (user_data_auth_client_->EvictDeviceKey(suspend_request_id))
-      suspender_->HandleDeviceKeyEvicted();
-    else
-      LOG(ERROR) << "Key eviction failed";
-  }
-#endif  // USE_KEY_EVICTION
-
   wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
 
   const int exit_code =
@@ -990,11 +955,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     if (!brillo::DeleteFile(base::FilePath(suspended_state_path)))
       PLOG(ERROR) << "Failed to delete " << suspended_state_path.value();
   }
-#if USE_KEY_EVICTION
-  bool thaw_userspace_succ = suspend_freezer_->ThawEssentialProcesses();
-#else
   bool thaw_userspace_succ = suspend_freezer_->ThawProcesses();
-#endif
   bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
   if (!(thaw_userspace_succ && undo_prep_suspend_succ))
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
@@ -1882,13 +1843,6 @@ void Daemon::OnPrivacyScreenStateChange(
           << PrivacyScreenStateToString(state);
   privacy_screen_state_ = state;
   metrics_collector_->HandlePrivacyScreenStateChange(privacy_screen_state_);
-}
-
-void Daemon::OnDeviceKeyRestored() {
-  LOG(INFO) << "The device key has been restored";
-
-  suspend_freezer_->ThawProcesses();
-  suspender_->HandleDeviceKeyRestored();
 }
 
 void Daemon::RequestTpmStatus() {

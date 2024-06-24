@@ -42,7 +42,6 @@
 #include "power_manager/powerd/system/machine_quirks.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
-#include "power_manager/powerd/system/user_data_auth_client.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "privacy_screen/proto_bindings/privacy_screen.pb.h"
 
@@ -173,8 +172,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   void ResumeAudio() override;
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
-                          base::TimeDelta duration,
-                          int suspend_request_id) override;
+                          base::TimeDelta duration) override;
   void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override;
   void ApplyQuirksBeforeSuspend() override;
   void UnapplyQuirksAfterSuspend() override;
@@ -350,9 +348,6 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Set fullscreen video with a timeout.
   void SetFullscreenVideoWithTimeout(bool active, int timeout_seconds);
 
-  // Performs necessary actions after the restoration of the device key.
-  void OnDeviceKeyRestored();
-
   DaemonDelegate* delegate_;  // owned elsewhere
 
   std::unique_ptr<PrefsInterface> prefs_;
@@ -403,7 +398,6 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   std::unique_ptr<system::CrosEcHelperInterface> ec_helper_;
   std::unique_ptr<policy::InputDeviceController> input_device_controller_;
   std::unique_ptr<system::AudioClientInterface> audio_client_;  // May be null.
-  std::unique_ptr<system::UserDataAuthClient> user_data_auth_client_;
   std::unique_ptr<system::PeripheralBatteryWatcher>
       peripheral_battery_watcher_;  // May be null.
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;

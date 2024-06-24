@@ -102,7 +102,6 @@ pkg_config("target_defaults") {
     "USE_CELLULAR=${use.cellular}",
     "USE_IIOSERVICE=${use.iioservice}",
     "USE_IIOSERVICE_PROXIMITY=${use.iioservice_proximity}",
-    "USE_KEY_EVICTION=${use.key_eviction}",
   ]
 
   # NOSORT
@@ -216,7 +215,6 @@ static_library("libsystem") {
     "powerd/system/thermal/thermal_device_factory.cc",
     "powerd/system/udev.cc",
     "powerd/system/usb_backlight.cc",
-    "powerd/system/user_data_auth_client.cc",
     "powerd/system/user_proximity_watcher_mojo.cc",
     "powerd/system/user_proximity_watcher_udev.cc",
     "powerd/system/wake_on_dp_configurator.cc",

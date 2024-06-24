@@ -155,14 +155,6 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   }
 }
 
-void SuspendDelayController::HandleDeviceKeyEvicted() {
-  device_key_evicted_ = true;
-}
-
-void SuspendDelayController::HandleDeviceKeyRestored() {
-  device_key_evicted_ = false;
-}
-
 bool SuspendDelayController::AddSuspendInternalDelay(
     const SuspendInternalDelay* delay) {
   if (suspend_readiness_notified_) {

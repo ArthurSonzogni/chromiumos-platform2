@@ -171,16 +171,6 @@ void Suspender::HandleDBusNameOwnerChanged(const std::string& name,
   }
 }
 
-void Suspender::HandleDeviceKeyEvicted() {
-  suspend_delay_controller_->HandleDeviceKeyEvicted();
-  dark_suspend_delay_controller_->HandleDeviceKeyEvicted();
-}
-
-void Suspender::HandleDeviceKeyRestored() {
-  suspend_delay_controller_->HandleDeviceKeyRestored();
-  dark_suspend_delay_controller_->HandleDeviceKeyRestored();
-}
-
 void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
                                   int suspend_id) {
   if (controller == suspend_delay_controller_.get() &&
@@ -682,9 +672,8 @@ Suspender::State Suspender::Suspend() {
   }
 
   current_num_attempts_++;
-  Delegate::SuspendResult result =
-      delegate_->DoSuspend(wakeup_count_, wakeup_count_valid_,
-                           suspend_duration_, suspend_request_id_);
+  Delegate::SuspendResult result = delegate_->DoSuspend(
+      wakeup_count_, wakeup_count_valid_, suspend_duration_);
 
   wakeup_source_identifier_->HandleResume();
 

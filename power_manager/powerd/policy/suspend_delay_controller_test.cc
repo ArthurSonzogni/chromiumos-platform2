@@ -338,44 +338,6 @@ TEST_F(SuspendDelayControllerTest, MultipleDelays) {
   EXPECT_TRUE(controller_.ReadyForSuspend());
 }
 
-TEST_F(SuspendDelayControllerTest, IgnoreDelayWhenDeviceKeyEvicted) {
-  const std::string kClient = "client";
-  RegisterSuspendDelay(base::Seconds(8), kClient, false);
-  EXPECT_TRUE(controller_.ReadyForSuspend());
-
-  // Pretend the device key is evicted.
-  controller_.HandleDeviceKeyEvicted();
-
-  // After getting a suspend request, the controller shouldn't wait for
-  // the non-appplicable delay to confirm its readiness.
-  const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId, false);
-  EXPECT_TRUE(controller_.ReadyForSuspend());
-  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ReadyForSuspend());
-}
-
-TEST_F(SuspendDelayControllerTest, RequireDelayWhenDeviceKeyRestored) {
-  const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient, false);
-  EXPECT_TRUE(controller_.ReadyForSuspend());
-
-  // Pretend the device key is evicted and restored
-  controller_.HandleDeviceKeyEvicted();
-  controller_.HandleDeviceKeyRestored();
-
-  // After getting a suspend request, the controller shouldn't report readiness
-  // until the delay has confirmed its readiness.
-  const int kSuspendId = 5;
-  controller_.PrepareForSuspend(kSuspendId, false);
-  EXPECT_FALSE(controller_.ReadyForSuspend());
-
-  HandleSuspendReadiness(delay_id, kSuspendId, kClient);
-  EXPECT_TRUE(controller_.ReadyForSuspend());
-  EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
-  EXPECT_TRUE(controller_.ReadyForSuspend());
-}
-
 // Controller should wait for |kDarkResumeMinDelay| on dark resume when no
 // additional delays are registered.
 TEST_F(SuspendDelayControllerTest, DarkResumeNoExternalDelays) {

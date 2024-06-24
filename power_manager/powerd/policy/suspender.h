@@ -158,8 +158,7 @@ class Suspender : public SuspendDelayObserver,
     // Called by Suspend().
     virtual SuspendResult DoSuspend(uint64_t wakeup_count,
                                     bool wakeup_count_valid,
-                                    base::TimeDelta duration,
-                                    int suspend_request_id) = 0;
+                                    base::TimeDelta duration) = 0;
 
     // Undoes the preparations performed by PrepareToSuspend(). Called by
     // FinishRequest().
@@ -248,10 +247,6 @@ class Suspender : public SuspendDelayObserver,
   void HandleWakeNotification();
   void HandleShutdown();
   void HandleDisplayModeChange(DisplayMode mode);
-
-  // Handles key eviction events.
-  void HandleDeviceKeyEvicted();
-  void HandleDeviceKeyRestored();
 
   // Handles the D-Bus name |name| becoming owned by |new_owner| instead of
   // |old_owner|.

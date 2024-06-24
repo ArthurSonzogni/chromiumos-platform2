@@ -294,15 +294,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return client;
   }
 
-  std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
-      system::DBusWrapperInterface* dbus_wrapper,
-      const system::UserDataAuthClient::DeviceKeyRestoredCallback&
-          device_key_restored_callback) override {
-    auto client = std::make_unique<system::UserDataAuthClient>();
-    client->Init(dbus_wrapper, device_key_restored_callback);
-    return client;
-  }
-
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(
       const base::FilePath& dir,
       const std::vector<base::FilePath>& files) override {
