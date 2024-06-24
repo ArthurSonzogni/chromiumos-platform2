@@ -99,8 +99,8 @@ TEST_F(LifelineFDServiceTest, LifelineFDIsDestroyedFirst) {
   closure = base::ScopedClosureRunner();
   // The lifeline fd is unregistered in the LifelineFD service.
   EXPECT_THAT(lifeline_svc_.get_lifeline_fds_for_testing(), ElementsAre());
-  // The underlying int value of |fd_for_service| is not reserved anymore
-  EXPECT_TRUE(ContainsFD(AssignFDs(50), raw_fd_for_service));
+  // The underlying int value of |fd_for_service| is not a valid fd anymore.
+  ASSERT_FALSE(IsValidFD(raw_fd_for_service));
 
   // Remotely invalidating the local fd has no effect.
   fd_for_client.reset();
@@ -143,8 +143,8 @@ TEST_F(LifelineFDServiceTest, RemoteClientInvalidatesFDFirst) {
 
   // The lifeline fd is unregistered in the LifelineFD service.
   EXPECT_THAT(lifeline_svc_.get_lifeline_fds_for_testing(), ElementsAre());
-  // The underlying int value of |fd_for_service| is not reserved anymore
-  EXPECT_TRUE(ContainsFD(AssignFDs(50), raw_fd_for_service));
+  // The underlying int value of |fd_for_service| is not a valid fd anymore.
+  ASSERT_FALSE(IsValidFD(raw_fd_for_service));
 
   // The local owner is notified via |user_callback| and now destroys its
   // LifelineFD instance. This has no effect.
