@@ -78,11 +78,8 @@ enum AuthIntent {
   // Intent to specify the WebAuthn secret should be populated after authorizing
   // when applicable, i.e., when the AuthFactor type isn't kLegacyFingerprint.
   AUTH_INTENT_WEBAUTHN = 3;
-  // Intent to authenticate user and authorize user for KeyRestore on lock
-  // screen. This intent drives a full authentication.
-  AUTH_INTENT_RESTORE_KEY = 4;
 
-  reserved 5;
+  reserved 4, 5;
 }
 
 // Password AuthFactor requires a secret to be passed for derivation and
