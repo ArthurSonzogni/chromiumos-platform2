@@ -10,6 +10,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/metrics.h"
 #include "fbpreprocessor/platform_features_client.h"
 
@@ -31,7 +32,7 @@ class Manager {
 
   // Is the user allowed to add firmware dumps to feedback reports? This will
   // return false if any condition (Finch, policy, allowlist, etc.) is not met.
-  virtual bool FirmwareDumpsAllowed() const = 0;
+  virtual bool FirmwareDumpsAllowed(FirmwareDump::Type type) const = 0;
 
   virtual SessionStateManagerInterface* session_state_manager() const = 0;
 

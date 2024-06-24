@@ -11,6 +11,7 @@
 
 #include "fbpreprocessor/configuration.h"
 #include "fbpreprocessor/crash_reporter_dbus_adaptor.h"
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/input_manager.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/platform_features_client.h"
@@ -53,7 +54,7 @@ SessionStateManagerInterface* ManagerImpl::session_state_manager() const {
   return session_state_manager_.get();
 }
 
-bool ManagerImpl::FirmwareDumpsAllowed() const {
+bool ManagerImpl::FirmwareDumpsAllowed(FirmwareDump::Type type) const {
   if (session_state_manager_.get() == nullptr) {
     LOG(ERROR) << "SessionStateManager not instantiated.";
     return false;
@@ -62,7 +63,7 @@ bool ManagerImpl::FirmwareDumpsAllowed() const {
     LOG(ERROR) << "PlatformFeaturesClient not instantiated.";
     return false;
   }
-  return session_state_manager_->FirmwareDumpsAllowedByPolicy() &&
+  return session_state_manager_->FirmwareDumpsAllowedByPolicy(type) &&
          platform_features_->FirmwareDumpsAllowedByFinch();
 }
 

@@ -56,7 +56,7 @@ bool InputManager::OnNewFirmwareDump(const FirmwareDump& fw_dump) const {
         << "Firmware dump doesn't exist: " << fw_dump.DumpFile().value();
     return false;
   }
-  if (!manager_->FirmwareDumpsAllowed()) {
+  if (!manager_->FirmwareDumpsAllowed(fw_dump.type())) {
     // The feature is disabled, but firmware dumps were created anyway.
     // Delete those firmware dumps.
     LOG(INFO) << "Feature disabled, deleting firmware dump.";

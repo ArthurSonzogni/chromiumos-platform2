@@ -102,7 +102,7 @@ void OutputManager::OnFeatureChanged(bool allowed) {
 
 void OutputManager::AddFirmwareDump(const FirmwareDump& fw_dump) {
   VLOG(kLocalDebugVerbosity) << __func__;
-  if (!manager_->FirmwareDumpsAllowed()) {
+  if (!manager_->FirmwareDumpsAllowed(fw_dump.type())) {
     // The value of the Finch flag or the policy may have been changed during
     // the pseudonymization process, delete the files here.
     LOG(INFO) << "Feature disabled, deleting firmware dump.";
@@ -137,7 +137,7 @@ void OutputManager::GetAllAvailableDebugDumps(
         response) {
   VLOG(kLocalDebugVerbosity) << __func__;
   DebugDumps out_DebugDumps;
-  if (!manager_->FirmwareDumpsAllowed()) {
+  if (!manager_->FirmwareDumpsAllowed(FirmwareDump::Type::kWiFi)) {
     response->Return(out_DebugDumps);
     return;
   }
@@ -195,7 +195,7 @@ void OutputManager::OnExpiredFile() {
 }
 
 void OutputManager::EmitMetrics() {
-  if (manager_->FirmwareDumpsAllowed()) {
+  if (manager_->FirmwareDumpsAllowed(FirmwareDump::Type::kWiFi)) {
     files_lock_.Acquire();
     int num_wifi_dumps = static_cast<int>(files_.size());
     files_lock_.Release();

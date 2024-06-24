@@ -19,6 +19,7 @@
 #include <metrics/fake_metrics_library.h>
 
 #include "fbpreprocessor/fake_session_state_manager.h"
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/output_manager.h"
 
@@ -47,7 +48,9 @@ class FakeManager : public Manager {
 
   void Start(dbus::Bus* bus) override;
 
-  bool FirmwareDumpsAllowed() const override { return fw_dumps_allowed_; };
+  bool FirmwareDumpsAllowed(FirmwareDump::Type type) const override {
+    return fw_dumps_allowed_;
+  };
 
   SessionStateManagerInterface* session_state_manager() const override;
 

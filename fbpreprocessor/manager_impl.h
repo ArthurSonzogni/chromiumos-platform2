@@ -11,6 +11,7 @@
 #include <dbus/bus.h>
 
 #include "fbpreprocessor/configuration.h"
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/platform_features_client.h"
 
@@ -32,7 +33,7 @@ class ManagerImpl : public Manager {
 
   // Is the user allowed to add firmware dumps to feedback reports? This will
   // return false if any condition (Finch, policy, allowlist, etc.) is not met.
-  bool FirmwareDumpsAllowed() const override;
+  bool FirmwareDumpsAllowed(FirmwareDump::Type type) const override;
 
   SessionStateManagerInterface* session_state_manager() const override;
 

@@ -112,49 +112,6 @@ bool IsUserInAllowedDomain(std::string_view username) {
   }
   return false;
 }
-
-// Fetch the policy from login_manager and see if
-// |UserFeedbackWithLowLevelDebugDataAllowed| is set to allow firmware dumps.
-// If fetching and parsing is successful, fw_dumps_allowed is updated. Otherwise
-// it's left untouched.
-// Returns true if fetching and parsing the policy was successful.
-bool RetrieveAndParsePolicy(
-    org::chromium::SessionManagerInterfaceProxyInterface* proxy,
-    const login_manager::PolicyDescriptor& descriptor,
-    bool* fw_dumps_allowed) {
-  brillo::ErrorPtr error;
-  std::vector<uint8_t> out_blob;
-  std::string descriptor_string = descriptor.SerializeAsString();
-  if (!proxy->RetrievePolicyEx(std::vector<uint8_t>(descriptor_string.begin(),
-                                                    descriptor_string.end()),
-                               &out_blob, &error) ||
-      error.get()) {
-    LOG(ERROR) << "Failed to retrieve policy "
-               << (error ? error->GetMessage() : "unknown error") << ".";
-    return false;
-  }
-  enterprise_management::PolicyFetchResponse response;
-  if (!response.ParseFromArray(out_blob.data(), out_blob.size())) {
-    LOG(ERROR) << "Failed to parse policy response";
-    return false;
-  }
-
-  enterprise_management::PolicyData policy_data;
-  if (!policy_data.ParseFromArray(response.policy_data().data(),
-                                  response.policy_data().size())) {
-    LOG(ERROR) << "Failed to parse policy data.";
-    return false;
-  }
-
-  enterprise_management::CloudPolicySettings user_policy;
-  if (!user_policy.ParseFromString(policy_data.policy_value())) {
-    LOG(ERROR) << "Failed to parse user policy.";
-    return false;
-  }
-
-  *fw_dumps_allowed = IsFirmwareDumpPolicyAllowed(user_policy);
-  return true;
-}
 }  // namespace
 
 namespace fbpreprocessor {
@@ -334,6 +291,49 @@ bool SessionStateManager::PrimaryUserInAllowlist() const {
          base::Contains(kUserAllowlist, primary_user_);
 }
 
+// Fetch the policy from login_manager and see if
+// |UserFeedbackWithLowLevelDebugDataAllowed| is set to allow firmware dumps.
+// Returns true if fetching and parsing the policy was successful.
+bool SessionStateManager::RetrieveAndParsePolicy(
+    org::chromium::SessionManagerInterfaceProxyInterface* proxy,
+    const login_manager::PolicyDescriptor& descriptor) {
+  fw_dumps_allowed_by_policy_ = false;
+
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> out_blob;
+  std::string descriptor_string = descriptor.SerializeAsString();
+  if (!proxy->RetrievePolicyEx(std::vector<uint8_t>(descriptor_string.begin(),
+                                                    descriptor_string.end()),
+                               &out_blob, &error) ||
+      error.get()) {
+    LOG(ERROR) << "Failed to retrieve policy "
+               << (error ? error->GetMessage() : "unknown error") << ".";
+    return false;
+  }
+  enterprise_management::PolicyFetchResponse response;
+  if (!response.ParseFromArray(out_blob.data(), out_blob.size())) {
+    LOG(ERROR) << "Failed to parse policy response";
+    return false;
+  }
+
+  enterprise_management::PolicyData policy_data;
+  if (!policy_data.ParseFromArray(response.policy_data().data(),
+                                  response.policy_data().size())) {
+    LOG(ERROR) << "Failed to parse policy data.";
+    return false;
+  }
+
+  enterprise_management::CloudPolicySettings user_policy;
+  if (!user_policy.ParseFromString(policy_data.policy_value())) {
+    LOG(ERROR) << "Failed to parse user policy.";
+    return false;
+  }
+
+  fw_dumps_allowed_by_policy_ = IsFirmwareDumpPolicyAllowed(user_policy);
+
+  return true;
+}
+
 bool SessionStateManager::UpdatePolicy() {
   // When a user logs in for the first time there is a delay before the policy
   // is available. Wait a little bit before retrieving the policy.
@@ -345,15 +345,12 @@ bool SessionStateManager::UpdatePolicy() {
 }
 
 void SessionStateManager::OnPolicyUpdated() {
-  fw_dumps_allowed_by_policy_ = false;
-
   login_manager::PolicyDescriptor descriptor;
   descriptor.set_account_type(login_manager::ACCOUNT_TYPE_USER);
   descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
   descriptor.set_account_id(primary_user_);
 
-  if (!RetrieveAndParsePolicy(session_manager_proxy_.get(), descriptor,
-                              &fw_dumps_allowed_by_policy_)) {
+  if (!RetrieveAndParsePolicy(session_manager_proxy_.get(), descriptor)) {
     LOG(ERROR) << "Failed to get policy.";
     return;
   }
@@ -365,9 +362,17 @@ void SessionStateManager::OnPolicyUpdated() {
             << "allowed by policy.";
 }
 
-bool SessionStateManager::FirmwareDumpsAllowedByPolicy() const {
-  return (active_sessions_num_ == 1) && PrimaryUserInAllowlist() &&
-         fw_dumps_allowed_by_policy_;
+bool SessionStateManager::FirmwareDumpsAllowedByPolicy(
+    FirmwareDump::Type type) const {
+  if ((active_sessions_num_ != 1) || !PrimaryUserInAllowlist()) {
+    return false;
+  }
+
+  if (type == FirmwareDump::Type::kWiFi) {
+    return fw_dumps_allowed_by_policy_;
+  }
+
+  return false;
 }
 
 std::optional<std::pair<std::string, std::string>>

@@ -13,8 +13,10 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <debugd/dbus-proxies.h>
+#include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
 #include "fbpreprocessor/platform_features_client.h"
 
@@ -62,7 +64,7 @@ class SessionStateManager : public SessionStateManagerInterface,
 
   // Returns true if the user is allowed to include firmware dumps in feedback
   // reports, false otherwise.
-  bool FirmwareDumpsAllowedByPolicy() const;
+  bool FirmwareDumpsAllowedByPolicy(FirmwareDump::Type type) const;
 
   void set_base_dir_for_test(const base::FilePath& base_dir) {
     base_dir_ = base_dir;
@@ -112,6 +114,13 @@ class SessionStateManager : public SessionStateManagerInterface,
   // We keep track of the number of active sessions to ensure that only the
   // primary user is logged in.
   bool UpdateActiveSessions();
+
+  // Fetch the policy from login_manager and see if
+  // |UserFeedbackWithLowLevelDebugDataAllowed| is set to allow firmware dumps.
+  // Returns true if fetching and parsing the policy was successful.
+  bool RetrieveAndParsePolicy(
+      org::chromium::SessionManagerInterfaceProxyInterface* proxy,
+      const login_manager::PolicyDescriptor& descriptor);
 
   // Retrieve the value of the UserFeedbackWithLowLevelDebugDataAllowed policy.
   bool UpdatePolicy();
