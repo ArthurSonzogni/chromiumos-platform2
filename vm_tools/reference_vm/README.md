@@ -68,3 +68,26 @@ vmc start refvm --bios /home/chronos/user/MyFiles/Downloads/CROSVM_CODE.fd \
   --pflash /home/chronos/user/MyFiles/Downloads/refvm_VARS.fd \
   --tools-dlc termina-dlc --no-start-lxd
 ```
+
+## Uprev
+
+Uprev script will update the copy of reference_vm image to the latest one built
+in kokoro.
+
+Install dependencies
+
+```
+sudo apt install brotli
+```
+
+Run the uprev script and commit the result.
+
+```
+repo start src/platform/tast-tests
+cd src/platform2/vm_tools/reference_vm/
+./uprev.sh
+cd -
+cd src/platform/tast-tests
+git commit -a
+cros_sdk tast run $DUT bruschetta.Basic  # try running test locally.
+```
