@@ -57,6 +57,10 @@ constexpr char kPrefsDir[] = "/var/lib/modemfwd/";
 // indicate if a modem that belongs to that variant was ever seen.
 constexpr char kModemsSeenSinceOobeKey[] = "modems_seen_since_oobe";
 constexpr char kDisableAutoUpdateKey[] = "disable_auto_update";
+constexpr char const* kDontRecoveryModemList[] = {
+    "usb:33f8:01a2",
+    "usb:33f8:0115",
+};
 
 // Returns the modem firmware variant for the current model of the device by
 // reading the /modem/firmware-variant property of the current model via
@@ -593,6 +597,13 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     metrics_->SendCheckForWedgedModemResult(
         metrics::CheckForWedgedModemResult::kModemPresent);
     return;
+  }
+
+  for (auto modem_id : kDontRecoveryModemList) {
+    if (device_ids_seen_.count(modem_id)) {
+      LOG(INFO) << "Found modem " << modem_id << ", skip recovery";
+      return;
+    }
   }
 
   if (!helper->FlashModeCheck()) {
