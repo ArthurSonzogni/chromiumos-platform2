@@ -27,7 +27,6 @@ inline constexpr int kUserDataAuthServiceTimeoutInMs = 5 * 60 * 1000;
 // Methods of the |kUserDataAuthInterface| interface:
 inline constexpr char kIsMounted[] = "IsMounted";
 inline constexpr char kGetVaultProperties[] = "GetVaultProperties";
-inline constexpr char kEvictDeviceKey[] = "EvictDeviceKey";
 inline constexpr char kUnmount[] = "Unmount";
 inline constexpr char kRemove[] = "Remove";
 inline constexpr char kGetWebAuthnSecret[] = "GetWebAuthnSecret";
