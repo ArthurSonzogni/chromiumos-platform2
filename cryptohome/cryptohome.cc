@@ -204,7 +204,6 @@ constexpr char kOutputFormatSwitch[] = "output-format";
 constexpr char kActionSwitch[] = "action";
 constexpr const char* kActions[] = {"unmount",
                                     "is_mounted",
-                                    "evict_device_key",
                                     "update_key_ex",
                                     "remove",
                                     "obfuscate_user",
@@ -259,7 +258,6 @@ constexpr const char* kActions[] = {"unmount",
 enum ActionEnum {
   ACTION_UNMOUNT,
   ACTION_MOUNTED,
-  ACTION_EVICT_DEVICE_KEY,
   ACTION_UPDATE_KEY_EX,
   ACTION_REMOVE,
   ACTION_OBFUSCATE_USER,
@@ -1999,28 +1997,6 @@ int main(int argc, char** argv) {
     userdataauth_proxy.InvalidateAuthSessionAsync(
         req, base::DoNothing(), base::DoNothing(), timeout_ms);
     printer.PrintHumanOutput("Auth session invalidated.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_EVICT_DEVICE_KEY],
-                     action.c_str())) {
-    user_data_auth::EvictDeviceKeyRequest req;
-    user_data_auth::EvictDeviceKeyReply reply;
-
-    brillo::ErrorPtr error;
-    VLOG(1) << "Attempting to wipe dmtable";
-    if (!userdataauth_proxy.EvictDeviceKey(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "EvictDeviceKey call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Devcie table failed to evict.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    printer.PrintHumanOutput("Device table evicted.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_EXTEND_AUTH_SESSION],
                      action.c_str())) {
     user_data_auth::ExtendAuthSessionRequest req;

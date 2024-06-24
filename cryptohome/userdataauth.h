@@ -518,10 +518,6 @@ class UserDataAuth {
       user_data_auth::PrepareEphemeralVaultRequest request,
       OnDoneCallback<user_data_auth::PrepareEphemeralVaultReply> on_done);
 
-  void EvictDeviceKey(
-      user_data_auth::EvictDeviceKeyRequest request,
-      OnDoneCallback<user_data_auth::EvictDeviceKeyReply> on_done);
-
   void PreparePersistentVault(
       user_data_auth::PreparePersistentVaultRequest request,
       OnDoneCallback<user_data_auth::PreparePersistentVaultReply> on_done);
@@ -1153,7 +1149,6 @@ class UserDataAuth {
               StartMigrateToDircryptoWithAuthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest,
               StartMigrateToDircryptoWithUnAuthenticatedAuthSession);
-  FRIEND_TEST(UserDataAuthApiTest, EvictDeviceKeySuccess);
   FRIEND_TEST(UserDataAuthApiTest, EphemeralUserNotAuthorizedForRestoreDevice);
   friend class AuthSessionInterfaceTestBase;
   friend class AuthSessionInterfaceTest;

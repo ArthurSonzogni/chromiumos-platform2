@@ -1565,7 +1565,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthSessionNotAuthInModifyAuthFactorIntents = 2182,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotAuthInCreateVaultKeyset = 2183,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionNotAuthInRestoreDeviceKey = 2184,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInStartAuthSession = 2190,
@@ -1643,11 +1643,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCreateVaultKeysetRpcImplNoVkInAddKeyset = 2322,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplAddFailedInAddKeyset = 2323,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthKeyEvictionFailedInEvictDeviceKey = 2324,
   /* ./user_session/real_user_session.cc */
   kLocUserSessionEvictCryptohomeKeyInEvictDeviceKey = 2325,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoActiveMountInEvictDeviceKey = 2326,
   /* ./create_vault_keyset_rpc_impl.cc */
   kLocCreateVaultKeysetRpcImplFailedTPMFamily = 2327,
@@ -2183,13 +2183,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockRemoveCredential = 3542,
   /* ./user_session/real_user_session.cc */
   kLocUserSessionRestoreKeyFailed = 3543,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionNotFoundInRestoreDeviceKey = 3544,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthEphemeralAuthSessionAttemptRestoreDeviceKey = 3545,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthGetSessionFailedInRestoreDeviceKey = 3546,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthRestoreDeviceKeyFailed = 3547,
   /* ./auth_blocks/biometrics_auth_block_service.cc */
   kLocBiometricsServiceMigrateFpConcurrentSession = 3548,
