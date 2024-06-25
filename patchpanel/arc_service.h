@@ -266,27 +266,17 @@ class ArcService {
   // |shill_device| changed.
   void UpdateDeviceIPConfig(const ShillClient::Device& shill_device);
 
-  // Start/Stop forwarding multicast traffic to ARC when ARC power state
-  // changes.
-  // When power state changes into interactive, start forwarding IPv4 and IPv6
-  // multicast mDNS and SSDP traffic for all non-WiFi interfaces, and for WiFi
-  // interface only when Android WiFi multicast lock is held by any app in ARC.
-  // When power state changes into non-interactive, stop forwarding multicast
-  // traffic for all interfaces if enabled.
-  void NotifyAndroidInteractiveState(bool is_interactive);
-
-  // Start/Stop forwarding WiFi multicast traffic to and from ARC when Android
-  // WiFi multicast lock held status changes. Start forwarding IPv4 and IPv6
-  // multicast mDNS and SSDP traffic for WiFi interfaces only when
-  // device power state is interactive and Android WiFi multicast lock is held
-  // by any app in ARC, otherwise stop multicast forwarder for ARC WiFi
-  // interface.
+  // Start/Stop forwarding inbound WiFi multicast traffic for ARC when Android
+  // WiFi multicast lock held status changes (and only for ARC V+, any offload
+  // service also needs to be registered for |is_held| to be true).
+  // Start forwarding IPv4 and IPv6 multicast mDNS and SSDP traffic for WiFi
+  // interfaces only when |is_held| status is `true` for ARC WiFi interface.
   void NotifyAndroidWifiMulticastLockChange(bool is_held);
 
-  // Returns true if MulticastForwarder and BroadcastForwarder are currently
-  // running on the ARC WiFi interface. This requires both:
-  //  a) ARC is in an interactive state,
-  //  b) The Android WiFi multicast lock is held by at least one App.
+  // Returns true if WiFi inbound multicast forwarding is currently
+  // running on the ARC WiFi interface. This requires that:
+  // a) Android WiFi multicast lock is held by at least one App.
+  // b) (only for ARC V+) any offload service is registered.
   bool IsWiFiMulticastForwardingRunning();
 
  private:
@@ -354,12 +344,11 @@ class ArcService {
   uint32_t id_;
   // All shill Devices currently managed by shill, keyed by shill Device name.
   std::map<std::string, ShillClient::Device> shill_devices_;
-  // Whether multicast lock is held by any app in ARC, used to decide whether
-  // to start/stop forwarding multicast traffic to ARC on WiFi.
+  // Whether multicast lock is held by any app in ARC (and only for ARC V+, any
+  // offload service also needs to be registered for this value to be true),
+  // used to decide whether to start/stop forwarding multicast traffic to ARC
+  // on WiFi.
   bool is_android_wifi_multicast_lock_held_ = false;
-  // Whether device is interactive, used to decide whether to start/stop
-  // forwarding multicast traffic to ARC on all multicast enabled networks.
-  bool is_arc_interactive_ = true;
 
   base::WeakPtrFactory<ArcService> weak_factory_{this};
 };

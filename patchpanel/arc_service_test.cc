@@ -1102,7 +1102,6 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
 
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   svc->NotifyAndroidWifiMulticastLockChange(true);
-  svc->NotifyAndroidInteractiveState(true);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
 
   svc->Start(kTestPID);
@@ -1125,11 +1124,16 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(&forwarding_service_);
 
-  // Android Multicast lock is taken
+  // Android Multicast lock is taken, this should only affects multicast
+  // traffic.
   EXPECT_CALL(
       forwarding_service_,
       StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                MulticastForwarder::Direction::kInboundOnly));
+  EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
+  EXPECT_CALL(forwarding_service_, StopIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(forwarding_service_, StopBroadcastForwarding).Times(0);
   svc->NotifyAndroidWifiMulticastLockChange(true);
   EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(&forwarding_service_);
@@ -1141,37 +1145,6 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
                               MulticastForwarder::Direction::kInboundOnly));
   svc->NotifyAndroidWifiMulticastLockChange(false);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
-  Mock::VerifyAndClearExpectations(&forwarding_service_);
-
-  // Android is not interactive anymore.
-  EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StopIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StopBroadcastForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StopMulticastForwarding).Times(0);
-  svc->NotifyAndroidInteractiveState(false);
-  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
-  Mock::VerifyAndClearExpectations(&forwarding_service_);
-
-  // Android Multicast lock is taken, there is no effect
-  EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StopIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StopBroadcastForwarding).Times(0);
-  EXPECT_CALL(forwarding_service_, StopMulticastForwarding).Times(0);
-  svc->NotifyAndroidWifiMulticastLockChange(true);
-  EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
-  Mock::VerifyAndClearExpectations(&forwarding_service_);
-
-  // Android is interactive again.
-  EXPECT_CALL(
-      forwarding_service_,
-      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
-                               MulticastForwarder::Direction::kInboundOnly));
-  svc->NotifyAndroidInteractiveState(true);
-  EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(&forwarding_service_);
 }
 

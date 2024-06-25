@@ -1120,27 +1120,6 @@ void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   }
 }
 
-void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
-  auto before = arc_svc_.IsWiFiMulticastForwardingRunning();
-  arc_svc_.NotifyAndroidInteractiveState(is_interactive);
-  auto after = arc_svc_.IsWiFiMulticastForwardingRunning();
-  if (!before && after) {
-    multicast_metrics_.OnARCWiFiForwarderStarted();
-  } else if (before && !after) {
-    multicast_metrics_.OnARCWiFiForwarderStopped();
-  }
-
-  if (!is_interactive) {
-    std::vector<std::string_view> arc_bridge_ifnames;
-    for (const auto* arc_device : arc_svc_.GetDevices()) {
-      arc_bridge_ifnames.push_back(arc_device->bridge_ifname());
-    }
-    ipv6_svc_.StartARCPacketFilter(arc_bridge_ifnames);
-  } else {
-    ipv6_svc_.StopARCPacketFilter();
-  }
-}
-
 void Manager::NotifySocketConnectionEvent(
     const NotifySocketConnectionEventRequest& request) {
   if (!request.has_msg()) {

@@ -127,21 +127,14 @@ class Manager : public ForwardingService {
   bool TagSocket(const patchpanel::TagSocketRequest& request,
                  const base::ScopedFD& sock_fd);
 
-  // Start/Stop forwarding multicast traffic to ARC when ARC power state
-  // changes.
-  // When power state changes into interactive, start forwarding IPv4 and IPv6
-  // multicast mDNS and SSDP traffic for all non-WiFi interfaces, and for WiFi
-  // interface only when Android WiFi multicast lock is held by any app in ARC.
-  // When power state changes into non-interactive, stop forwarding multicast
-  // traffic for all interfaces if enabled.
-  void NotifyAndroidInteractiveState(bool is_interactive);
+  // Unimplemented, keep the call for future use.
+  void NotifyAndroidInteractiveState(bool is_interactive) {}
 
-  // Start/Stop forwarding WiFi multicast traffic to and from ARC when Android
-  // WiFi multicast lock held status changes. Start forwarding IPv4 and IPv6
-  // multicast mDNS and SSDP traffic for WiFi interfaces only when
-  // device power state is interactive and Android WiFi multicast lock is held
-  // by any app in ARC, otherwise stop multicast forwarder for ARC WiFi
-  // interface.
+  // Start/Stop forwarding inbound WiFi multicast traffic for ARC when Android
+  // WiFi multicast lock held status changes (and only for ARC V+, any offload
+  // service also needs to be registered for |is_held| to be true).
+  // Start forwarding IPv4 and IPv6 multicast mDNS and SSDP traffic for WiFi
+  // interfaces only when |is_held| status is `true` for ARC WiFi interface.
   void NotifyAndroidWifiMulticastLockChange(bool is_held);
 
   // Apply changes based on the socket connection event.

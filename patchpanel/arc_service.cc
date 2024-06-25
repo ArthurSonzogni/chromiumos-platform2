@@ -540,7 +540,6 @@ void ArcService::Stop(uint32_t id) {
   }
 
   id_ = kInvalidId;
-  is_arc_interactive_ = true;
   is_android_wifi_multicast_lock_held_ = false;
   RecordEvent(metrics_, ArcServiceUmaEvent::kStopSuccess);
 }
@@ -618,15 +617,13 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   forwarding_service_->StartIPv6NDPForwarding(
       shill_device, arc_device_it.first->second.bridge_ifname());
 
-  // Only start forwarding multicast inbound traffic if ARC is in an
-  // interactive state. In addition, on WiFi the Android WiFi multicast lock
-  // must also be held. Multicast forwarding is not supported for WiFi Direct
-  // client Networks started by Android App requests.
+  // Only start forwarding multicast inbound traffic if the device is not a
+  // WiFi device, or multicast lock is held. Multicast forwarding is not
+  // supported for WiFi Direct client Networks started by Android App requests.
   // Outbound multicast traffic is always allowed.
   bool forward_inbound =
-      is_arc_interactive_ &&
-      (shill_device.technology != net_base::Technology::kWiFi ||
-       is_android_wifi_multicast_lock_held_);
+      shill_device.technology != net_base::Technology::kWiFi ||
+      is_android_wifi_multicast_lock_held_;
   auto dir = forward_inbound ? MulticastForwarder::Direction::kTwoWays
                              : MulticastForwarder::Direction::kOutboundOnly;
   forwarding_service_->StartMulticastForwarding(
@@ -862,18 +859,9 @@ void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   }
   is_android_wifi_multicast_lock_held_ = is_held;
 
-  // If arc is not interactive, multicast lock held status does not
-  // affect multicast traffic.
-  if (!is_arc_interactive_) {
-    return;
-  }
-
-  // Only start/stop multicast forwarding when multicast allowed status changes
-  // to avoid start/stop multicast forwarding multiple times, also wifi
-  // multicast lock should only affect inbound multicast traffic on wireless
-  // device. Note that this change only affects inbound multicast forwarding.
-  // Outbound multicast traffic and broadcast forwarding state is unchanged
-  // during the process.
+  // WiFi multicast lock should only affect inbound multicast traffic on
+  // WiFi device. Multicast traffic on non-WiFi devices, outbound multicast
+  // traffic and broadcast forwarding state is unchanged during the process.
   for (const auto& [shill_device_ifname, arc_device] : devices_) {
     const auto shill_device_it = shill_devices_.find(shill_device_ifname);
     if (shill_device_it == shill_devices_.end()) {
@@ -898,52 +886,10 @@ void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
   }
 }
 
-void ArcService::NotifyAndroidInteractiveState(bool is_interactive) {
-  if (!IsStarted()) {
-    return;
-  }
-
-  if (is_arc_interactive_ == is_interactive) {
-    return;
-  }
-  is_arc_interactive_ = is_interactive;
-
-  // If ARC power state has changed to interactive, starts multicast forwarding
-  // for inbound traffic for all non-WiFi interfaces and for WiFi interfaces
-  // when WiFi multicast lock is held.
-  // If ARC power state has changed to non-interactive, disable inbound
-  // multicast forwarding for all interfaces.
-  // Note that this change only affects multicast forwarding and broadcast
-  // forwarding state is unchanged during the process.
-  for (const auto& [shill_device_ifname, arc_device] : devices_) {
-    const auto shill_device_it = shill_devices_.find(shill_device_ifname);
-    if (shill_device_it == shill_devices_.end()) {
-      LOG(ERROR) << __func__
-                 << ": no upstream shill Device found for ARC Device "
-                 << arc_device;
-      continue;
-    }
-    if (shill_device_it->second.technology == net_base::Technology::kWiFi &&
-        !is_android_wifi_multicast_lock_held_) {
-      continue;
-    }
-
-    if (is_arc_interactive_) {
-      forwarding_service_->StartMulticastForwarding(
-          shill_device_it->second, arc_device.bridge_ifname(),
-          MulticastForwarder::Direction::kInboundOnly);
-    } else {
-      forwarding_service_->StopMulticastForwarding(
-          shill_device_it->second, arc_device.bridge_ifname(),
-          MulticastForwarder::Direction::kInboundOnly);
-    }
-  }
-}
-
 bool ArcService::IsWiFiMulticastForwardingRunning() {
   // Check multicast forwarding conditions for WiFi. This implies ARC is
   // running.
-  if (!is_arc_interactive_ || !is_android_wifi_multicast_lock_held_) {
+  if (!is_android_wifi_multicast_lock_held_) {
     return false;
   }
   // Ensure there is also an active WiFi Device;
