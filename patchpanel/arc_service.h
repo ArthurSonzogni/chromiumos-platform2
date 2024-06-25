@@ -187,47 +187,11 @@ class ArcService {
   // bridged into an ARCVM guest.
   class GuestIfManager {
    public:
-    // Adds an interface to ARCVM guest. Returns the name of virtio interface
-    // inside the guest. The function does not wait for the interface to appear
-    // in the guest.
-    // The guest interface name is derived on the assumption that all network
-    // interfaces on the guest is either introduced by using this manager, or is
-    // the arc0 device at eth0.
-    // |tap_ifname|: interface name of the tap device on the host.
-    virtual std::optional<std::string> AddInterface(
-        std::string_view tap_ifname) = 0;
-
-    // Removes an interface from ARCVM guest. Returns true if succeeded.
-    // |tap_ifname|: interface name of the tap device on the host.
-    virtual bool RemoveInterface(std::string_view tap_ifname) = 0;
-
-    // Gets the guest interface on the ARCVM guest.
-    // |tap_ifname|: interface name of the tap device on the host.
-    virtual std::optional<std::string> GetGuestIfName(
-        std::string_view tap_ifname) const = 0;
-
-    // Get the list of tap devices that are always attached to the ARCVM guest,
-    // which is required when configuring the guest VM.
-    virtual std::vector<std::string> GetStaticTapDevices() const = 0;
-
-    virtual ~GuestIfManager() = default;
-  };
-
-  // Manages the lifetime and mapping of guest interface name of host interfaces
-  // bridged into an ARCVM guest without hotplug support.
-  class StaticGuestIfManager : public GuestIfManager {
-   public:
-    // For a VM without hotplug support, guest interfaces and tap devices are
-    // fixed at construction.
-    explicit StaticGuestIfManager(const std::vector<std::string>& tap_ifnames);
-    // Guest interfaces cannot be added for a VM without hotplug support.
-    std::optional<std::string> AddInterface(
-        std::string_view tap_ifname) override;
-    // Interface cannot be removed for VM without hotplug support.
-    bool RemoveInterface(std::string_view tap_ifname) override;
+    // For a VM, guest interfaces and tap devices are fixed at construction.
+    explicit GuestIfManager(const std::vector<std::string>& tap_ifnames);
     std::optional<std::string> GetGuestIfName(
-        std::string_view tap_ifname) const override;
-    std::vector<std::string> GetStaticTapDevices() const override;
+        std::string_view tap_ifname) const;
+    std::vector<std::string> GetStaticTapDevices() const;
 
    private:
     // Guest network interface name, keyed by host tap interface name.

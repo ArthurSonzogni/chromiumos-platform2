@@ -244,7 +244,7 @@ void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
   FillSubnetProto(arc_ipv4_subnet(), output->mutable_ipv4_subnet());
 }
 
-ArcService::StaticGuestIfManager::StaticGuestIfManager(
+ArcService::GuestIfManager::GuestIfManager(
     const std::vector<std::string>& host_ifnames) {
   int eth_idx = 0;
   // Inside ARCVM, interface names follow the pattern eth%d (starting from 0)
@@ -255,19 +255,7 @@ ArcService::StaticGuestIfManager::StaticGuestIfManager(
   }
 }
 
-std::optional<std::string> ArcService::StaticGuestIfManager::AddInterface(
-    std::string_view host_ifname) {
-  LOG(ERROR) << "Interface cannot be added to a static VM.";
-  return std::nullopt;
-}
-
-bool ArcService::StaticGuestIfManager::RemoveInterface(
-    std::string_view host_ifname) {
-  LOG(ERROR) << "Interface cannot be removed from a static VM.";
-  return false;
-}
-
-std::optional<std::string> ArcService::StaticGuestIfManager::GetGuestIfName(
+std::optional<std::string> ArcService::GuestIfManager::GetGuestIfName(
     std::string_view host_ifname) const {
   auto itr = guest_if_names_.find(host_ifname);
   if (itr == guest_if_names_.end()) {
@@ -277,7 +265,7 @@ std::optional<std::string> ArcService::StaticGuestIfManager::GetGuestIfName(
   }
 }
 
-std::vector<std::string> ArcService::StaticGuestIfManager::GetStaticTapDevices()
+std::vector<std::string> ArcService::GuestIfManager::GetStaticTapDevices()
     const {
   std::vector<std::string> guest_if_name_vec;
   for (const auto& map_itr : guest_if_names_) {
@@ -435,7 +423,7 @@ bool ArcService::StartInternal(
         tap_ifnames.push_back(std::move(tap));
       }
       if (!guest_if_manager_) {
-        guest_if_manager_ = std::make_unique<StaticGuestIfManager>(tap_ifnames);
+        guest_if_manager_ = std::make_unique<GuestIfManager>(tap_ifnames);
       }
       arc0_device_ifname = arc0_config_->tap_ifname();
     }
