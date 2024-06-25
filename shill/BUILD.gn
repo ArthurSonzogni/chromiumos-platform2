@@ -20,6 +20,7 @@ group("all") {
     ":openvpn-script",
     ":shill",
     ":shill-chromeos-dbus-adaptors",
+    "//shill/dhcpcd-hook",
   ]
   if (use.cellular) {
     deps += [ ":cellular_mobile_operator_info_tester" ]
