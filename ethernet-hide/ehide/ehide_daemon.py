@@ -531,6 +531,21 @@ def check_netns(netns_name: str) -> bool:
     return netns_name in run_output("ip", "netns").split()
 
 
+def close_ssh_sockets(netns_name: Optional[str] = None) -> None:
+    """Forcibly closes all the incoming SSH sockets.
+
+    Args:
+        netns_name: The network namespace name. The default is the root netns.
+    """
+    if netns_name is None:
+        cmd = []
+    else:
+        cmd = ["ip", "netns", "exec", netns_name]
+    # "ss -K" attempts to forcibly close sockets.
+    cmd += ["ss", "-K", "sport", "22"]
+    run(*cmd)
+
+
 class EhideDaemon(daemon.Daemon):
     """The Ethernet-hide daemon class.
 
@@ -677,6 +692,7 @@ class EhideDaemon(daemon.Daemon):
                 "Failed to create network namespace %s.", self.netns_name
             )
             return False
+        close_ssh_sockets()
         move_interface_to_netns(self.ether_ifname, self.netns_name)
         if not check_interface_in_netns(self.ether_ifname, self.netns_name):
             logging.error(
@@ -707,6 +723,7 @@ class EhideDaemon(daemon.Daemon):
         # Again, sleep for 0.1s to allow the SSH connection to the DUT to close
         # gracefully.
         time.sleep(0.1)
+        close_ssh_sockets(self.netns_name)
         move_interface_to_root_netns(self.ether_ifname, self.netns_name)
         if self.approach == Approach.FORWARDING:
             self._stop_socat()
