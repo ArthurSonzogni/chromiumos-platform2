@@ -99,6 +99,11 @@ config("compiler_defaults") {
               "-Wl,-z,noexecstack",
               "-Wl,-z,now",
               "-Wl,--as-needed",
+
+              # Pass -Bsymbolic-non-weak which pre-binds symbols in the same
+              # DSO to improve startup performance. We don't support
+              # interposing non-weak symbols. (go/cros-symbol-slimming)
+              "-Wl,-Bsymbolic-non-weak",
             ]
   if (link_stdcppfs) {
     libs += [ "stdc++fs" ]
