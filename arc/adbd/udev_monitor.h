@@ -40,6 +40,10 @@ class UdevMonitor {
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
 
+  // DbC variables
+  int num_typec_connections_ = 0;
+  std::string usb_pci_bus_id_;
+
   // Start monitoring for usb events.
   void StartWatching(int fd);
   // Enumerate existing devices.
@@ -48,6 +52,12 @@ class UdevMonitor {
   void OnUdevEvent();
   // Handle device add events.
   void OnDeviceAdd(const base::FilePath& path);
+  // Handle device remove events.
+  void OnDeviceRemove(const base::FilePath& path);
+  // Update the DbC control file state
+  void UpdateDbcState(const std::string& state);
+  // Update the USB port's role
+  void UpdatePortRole(int port_num, const std::string& role);
 };
 
 }  // namespace adbd

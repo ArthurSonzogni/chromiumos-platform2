@@ -17,18 +17,38 @@ constexpr char kUdev[] = "udev";
 constexpr char kTypeCSubsystem[] = "typec";
 // Regex to detect typec port partner events.
 constexpr char kPartnerRegex[] = R"(port(\d+)-partner)";
-// User space control to modify the USB Type-C role.
-// Refer Documentation/ABI/testing/sysfs-class-usb_role.
+
+// DbC enable / disable constants
+constexpr char kDbcXmlPath[] = "/etc/arc/adbd.json";
+constexpr char kEmptyDeviceId[] = "0000:00:00.0";
+constexpr char kPciBusIdRegex[] = R"(\"pciBusDeviceId\": \"([^\"]*)\")";
+constexpr char kDbcControlPath[] = "/sys/devices/pci0000:00/{PCI_BUS_ID}/dbc";
+constexpr char kPciBusIdPlaceholderRegex[] = R"(\{PCI_BUS_ID\})";
+constexpr char kDbcEnable[] = "enable";
+constexpr char kDbcDisable[] = "disable";
+
 constexpr char kUsbRoleSysPath[] =
     "/sys/class/usb_role/CON{PORT}-role-switch/role";
 // Regex to replace PORT in USB role setting.
 constexpr char kUsbRolePortRegex[] = R"(\{PORT\})";
-constexpr char kUsbRole[] = "host";
+constexpr char kUsbRoleHost[] = "host";
+constexpr char kUsbRoleDevice[] = "device";
 }  // namespace
 
 UdevMonitor::UdevMonitor() : udev_thread_("udev_monitor") {}
 
 bool UdevMonitor::Init() {
+  num_typec_connections_ = 0;
+
+  // Extract the typec usb pci bus id from adbd.json, eg. 0000:00:0d.0 for brya
+  std::string adbd_json = std::string();
+  base::FilePath adb_json_path = base::FilePath(kDbcXmlPath);
+  if (!base::ReadFileToString(adb_json_path, &adbd_json)) {
+    PLOG(ERROR) << "Failed to read " << kDbcXmlPath;
+  }
+  usb_pci_bus_id_ = std::string(kEmptyDeviceId);
+  RE2::PartialMatch(adbd_json, kPciBusIdRegex, &usb_pci_bus_id_);
+
   udev_ = brillo::Udev::Create();
 
   if (!udev_) {
@@ -73,7 +93,7 @@ bool UdevMonitor::Init() {
 
   if (!udev_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
-    LOG(ERROR) << "Failed to start udev thread.";
+    PLOG(ERROR) << "Failed to start udev thread.";
     return -1;
   }
 
@@ -97,7 +117,7 @@ bool UdevMonitor::Enumerate() {
 
   auto entry = enumerate->GetListEntry();
   if (!entry) {
-    LOG(WARNING) << "No existing typec devices.\n";
+    PLOG(WARNING) << "No existing typec devices.\n";
     return true;
   }
 
@@ -118,27 +138,113 @@ void UdevMonitor::StartWatching(int fd) {
   }
 }
 
-// Update usb role for each newly added typec port
+// Enable DbC and update usb role
 void UdevMonitor::OnDeviceAdd(const base::FilePath& path) {
+  // Every cable event causes multiple adds, only watch for portx-partner
+  // events.
   int port_num;
-  if (RE2::FullMatch(path.BaseName().value(), kPartnerRegex, &port_num)) {
-    auto path = std::string(kUsbRoleSysPath);
-    RE2::Replace(&path, kUsbRolePortRegex, std::to_string(port_num));
-    base::FilePath usb_role_path = base::FilePath(path);
-
-    if (!base::PathExists(usb_role_path)) {
-      PLOG(ERROR) << "Usb role switch control file does not exist";
-      return;
-    }
-
-    // update USB role to "host"
-    if (!base::WriteFile(usb_role_path, kUsbRole)) {
-      PLOG(ERROR) << "Failed to write usb role";
-      return;
-    }
-    VLOG(1) << "Successfully updated usb_role to " << kUsbRole << " for "
-            << usb_role_path;
+  if (!RE2::FullMatch(path.BaseName().value(), kPartnerRegex, &port_num)) {
+    // Not a portx-partner event - ignore
+    return;
   }
+
+  // Here we use a simple counting mechanism to enable dbc on the first and
+  // only the first portx-partner add event, and then disable it when the last
+  // portx-partner connection is removed. This should allow for multiple typec
+  // cables to be connected and only disable dbc when none are remaining. If
+  // this count gets into a bad state, there is a possibility that we do not
+  // correctly disable dbc (unnecessary polling will happen) until
+  // reboot or we will not enable dbc until a cable unplug / replug event.
+  num_typec_connections_++;
+  LOG(INFO) << "Typec connection detected at " << path.BaseName().value()
+            << ". Total typec connections: " << num_typec_connections_;
+
+  // Enable DbC if this is the first typec connection
+  if (num_typec_connections_ == 1) {
+    LOG(INFO) << "First typec cable connected, enabling DbC.";
+    UpdateDbcState(kDbcEnable);
+  }
+
+  // Update role
+  UpdatePortRole(port_num, kUsbRoleHost);
+}
+
+// Disable dbc if usb cable unplugged
+void UdevMonitor::OnDeviceRemove(const base::FilePath& path) {
+  // Only care about portx-partner remove events
+  int port_num;
+  if (!RE2::FullMatch(path.BaseName().value(), kPartnerRegex, &port_num)) {
+    return;
+  }
+
+  num_typec_connections_--;
+  LOG(INFO) << "Typec connection detected at " << path.BaseName().value()
+            << ". Total typec connections: " << num_typec_connections_;
+
+  if (num_typec_connections_ < 0) {
+    num_typec_connections_ = 0;
+  }
+
+  // Disable DbC if no more typec connections
+  // No need to reset the usb mode since no cable is connected
+  if (num_typec_connections_ <= 0) {
+    LOG(INFO) << "No more typec connections, disabling DbC.";
+    UpdateDbcState(kDbcDisable);
+  }
+}
+
+// Update the DbC control file state with the given state (enable or disable)
+void UdevMonitor::UpdateDbcState(const std::string& state) {
+  auto dbc_path_string = std::string(kDbcControlPath);
+  RE2::Replace(&dbc_path_string, kPciBusIdPlaceholderRegex, usb_pci_bus_id_);
+  base::FilePath dbc_control_path = base::FilePath(dbc_path_string);
+
+  if (state != kDbcEnable && state != kDbcDisable) {
+    PLOG(ERROR) << "Incorrect DbC state passed to UpdateDbcState. Should be "
+                << kDbcEnable << " or " << kDbcDisable << " but " << state
+                << " was given.";
+    return;
+  }
+
+  if (!base::PathExists(dbc_control_path)) {
+    PLOG(ERROR) << "DbC control file does not exist";
+  } else {
+    // Change DbC state
+    if (!base::WriteFile(dbc_control_path, state)) {
+      PLOG(ERROR) << "Failed to write '" << state << "' to dbc control file";
+      return;
+    }
+    VLOG(1) << "Successfully updated dbc to " << state << " for "
+            << dbc_control_path;
+  }
+}
+
+// Update the USB port's role ("host" or "device")
+void UdevMonitor::UpdatePortRole(int port_num, const std::string& role) {
+  if (role != kUsbRoleHost && role != kUsbRoleDevice) {
+    PLOG(ERROR) << "Incorrect USB role passed to UpdatePortRole. Should be "
+                << kUsbRoleHost << " or " << kUsbRoleDevice << " but " << role
+                << " was given.";
+    return;
+  }
+
+  auto usb_role_path_string = std::string(kUsbRoleSysPath);
+  RE2::Replace(&usb_role_path_string, kUsbRolePortRegex,
+               std::to_string(port_num));
+  base::FilePath usb_role_path = base::FilePath(usb_role_path_string);
+
+  if (!base::PathExists(usb_role_path)) {
+    PLOG(ERROR) << "Usb role switch control file does not exist";
+    return;
+  }
+
+  // update USB role
+  if (!base::WriteFile(usb_role_path, role)) {
+    PLOG(ERROR) << "Failed to write usb role";
+    return;
+  }
+  VLOG(1) << "Successfully updated usb_role to " << role << " for "
+          << usb_role_path_string;
 }
 
 // Callback for subscribed udev events.
@@ -169,6 +275,10 @@ void UdevMonitor::OnUdevEvent() {
 
   if (action == "add") {
     UdevMonitor::OnDeviceAdd(path);
+  }
+
+  if (action == "remove") {
+    UdevMonitor::OnDeviceRemove(path);
   }
 }
 
