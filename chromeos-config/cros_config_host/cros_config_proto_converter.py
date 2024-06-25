@@ -4477,6 +4477,30 @@ def dsm_encode(dsm_config):
     )
 
 
+def bsar_encode(bsar_config):
+    """Creates and returns the Intel Bluetooth SAR content for the given config.
+
+    args:
+        bsar_config: bluetooth SAR configuration
+
+    returns:
+      Intel Bluetooth SAR content encoded as bytearray
+    """
+    if bsar_config.revision != 1:
+        return bytearray(0)
+    return (
+        hex_8bit(bsar_config.revision)
+        + hex_8bit(bsar_config.increased_power_mode_limitation)
+        + hex_8bit(bsar_config.sar_lb_power_restriction)
+        + hex_8bit(bsar_config.br_modulation)
+        + hex_8bit(bsar_config.edr2_modulation)
+        + hex_8bit(bsar_config.edr3_modulation)
+        + hex_8bit(bsar_config.le_modulation)
+        + hex_8bit(bsar_config.le2_mhz_modulation)
+        + hex_8bit(bsar_config.le_lr_modulation)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4512,6 +4536,9 @@ def _create_intel_sar_file_content(intel_config):
     # | DSM offset| 2 bytes  | Offset of DSM from start of the     |
     # |           |          | header                              |
     # +------------------------------------------------------------+
+    # | BSar      | 2 bytes  | Offset of Bluetooth SAR table from  |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4524,7 +4551,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 5
+    sar_configs = 6
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4546,6 +4573,12 @@ def _create_intel_sar_file_content(intel_config):
 
     data = dsm_encode(intel_config.dsm)
     header, payload, offset = encode_data(data, header, payload, offset)
+
+    if intel_config.HasField("bsar"):
+        data = bsar_encode(intel_config.bsar)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        header += hex_16bit(0)  # reserve set bsar offset to 0
 
     return marker + header + payload
 
