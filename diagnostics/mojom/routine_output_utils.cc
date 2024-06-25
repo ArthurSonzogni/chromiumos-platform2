@@ -93,6 +93,8 @@ std::string EnumToString(
 
 std::string EnumToString(mojom::CameraSubtestResult subtest_result) {
   switch (subtest_result) {
+    case mojom::CameraSubtestResult::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
     case mojom::CameraSubtestResult::kNotRun:
       return "Not Run";
     case mojom::CameraSubtestResult::kPassed:
