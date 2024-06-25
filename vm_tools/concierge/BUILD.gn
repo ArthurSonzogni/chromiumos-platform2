@@ -114,10 +114,6 @@ static_library("libconcierge") {
     "vm_protos",
   ]
   defines = [
-    # TODO(b/293801301): Add PCI hotplug support for aarch64.
-    # PCI hotplug is only enabled on x86_64 architecture.
-    "USE_PCI_HOTPLUG_SLOTS=${use.amd64}",
-
     # TODO(b/295256641): Re-enable pvclock support for aarch64.
     # TODO(b/342168920): Re-enable pvclock support for x86_64.
     "USE_VIRTIO_PVCLOCK=0",
