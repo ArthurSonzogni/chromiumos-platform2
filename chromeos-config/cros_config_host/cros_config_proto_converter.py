@@ -4501,6 +4501,31 @@ def bsar_encode(bsar_config):
     )
 
 
+def wbem_encode(wbem_config):
+    """Creates and returns Wifi 320 MHz bandwidth enablement with given config.
+
+    args:
+        wbem_config: Wifi 320 MHz bandwidth enablement configuration
+
+    returns:
+       Wifi 320 MHz bandwidth enablement encoded as bytearray
+    """
+
+    def wbem_country_enablement_value(country_enablement):
+        enablement = 0
+        if country_enablement.japan:
+            enablement += 1
+        if country_enablement.south_korea:
+            enablement += 2
+        return enablement
+
+    if wbem_config.revision != 0:
+        return bytearray(0)
+    return hex_8bit(wbem_config.revision) + hex_32bit(
+        wbem_country_enablement_value(wbem_config.enablement_wbem_countries)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4539,6 +4564,9 @@ def _create_intel_sar_file_content(intel_config):
     # | BSar      | 2 bytes  | Offset of Bluetooth SAR table from  |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | WBEM      | 2 bytes  | Offset of WBEM table from start of  |
+    # | offset    |          | the header                          |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4551,7 +4579,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 6
+    sar_configs = 7
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4579,6 +4607,12 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         header += hex_16bit(0)  # reserve set bsar offset to 0
+
+    if intel_config.HasField("wbem"):
+        data = wbem_encode(intel_config.wbem)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        header += hex_16bit(0)  # reserve set wbem offset to 0
 
     return marker + header + payload
 
