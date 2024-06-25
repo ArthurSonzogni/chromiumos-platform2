@@ -382,8 +382,8 @@ const ConntrackMonitor::Event kEvent1 = ConntrackMonitor::Event{
     .src = *net_base::IPAddress::CreateFromString(
         "2401:fa00:480:ee08:f4e9:18ae:8cae:1721"),
     .dst = (*net_base::IPAddress::CreateFromString("2404:6800:4004:822::2003")),
-    .sport = 16551,
-    .dport = 47873,
+    .sport = 42816,
+    .dport = 443,
     .proto = IPPROTO_TCP,
     .type = ConntrackMonitor::EventType::kNew,
     .state = TCP_CONNTRACK_SYN_SENT};
@@ -391,8 +391,8 @@ const ConntrackMonitor::Event kEvent1 = ConntrackMonitor::Event{
 const ConntrackMonitor::Event kEvent2 = ConntrackMonitor::Event{
     .src = *net_base::IPAddress::CreateFromString("100.115.92.133"),
     .dst = (*net_base::IPAddress::CreateFromString("100.115.92.134")),
-    .sport = 64083,
-    .dport = 13568,
+    .sport = 21498,
+    .dport = 53,
     .proto = IPPROTO_UDP,
     .type = ConntrackMonitor::EventType::kNew,
 };

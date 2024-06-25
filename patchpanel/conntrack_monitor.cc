@@ -169,8 +169,8 @@ void ConntrackMonitor::OnSocketReadable() {
       continue;
     }
 
-    uint16_t sport = nfct_get_attr_u16(ct, ATTR_ORIG_PORT_SRC);
-    uint16_t dport = nfct_get_attr_u16(ct, ATTR_ORIG_PORT_DST);
+    uint16_t sport = ntohs(nfct_get_attr_u16(ct, ATTR_ORIG_PORT_SRC));
+    uint16_t dport = ntohs(nfct_get_attr_u16(ct, ATTR_ORIG_PORT_DST));
 
     auto type = GetEventType(nlh);
     if (!type) {
