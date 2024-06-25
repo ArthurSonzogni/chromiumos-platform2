@@ -23,4 +23,20 @@ void DHCPClientProxy::OnProcessExited(int pid, int exit_status) {
   handler_->OnProcessExited(pid, exit_status);
 }
 
+bool DHCPClientProxy::NeedConfiguration(DHCPClientProxy::EventReason reason) {
+  switch (reason) {
+    case DHCPClientProxy::EventReason::kBound:
+    case DHCPClientProxy::EventReason::kRebind:
+    case DHCPClientProxy::EventReason::kReboot:
+    case DHCPClientProxy::EventReason::kRenew:
+    case DHCPClientProxy::EventReason::kGatewayArp:
+      return true;
+
+    case DHCPClientProxy::EventReason::kFail:
+    case DHCPClientProxy::EventReason::kNak:
+    case DHCPClientProxy::EventReason::kIPv6OnlyPreferred:
+      return false;
+  }
+}
+
 }  // namespace shill

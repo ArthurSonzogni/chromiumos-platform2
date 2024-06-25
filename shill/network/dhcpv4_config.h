@@ -51,6 +51,9 @@ class DHCPv4Config {
       "VendorEncapsulatedOptions";
   static constexpr char kConfigurationKeyWebProxyAutoDiscoveryUrl[] =
       "WebProxyAutoDiscoveryUrl";
+  static constexpr char kConfigurationKeyPid[] = "Pid";
+  static constexpr char kConfigurationKeyInterface[] = "Interface";
+  static constexpr char kConfigurationKeyReason[] = "Reason";
 
   // Parses |configuration|. The fields that are needed for network
   // configuration are parsed into |network_config|, and the others into

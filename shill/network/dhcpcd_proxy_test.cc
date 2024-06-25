@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/network/dhcp_client_proxy.h"
+#include "shill/network/dhcpv4_config.h"
 
 namespace shill {
 namespace {
@@ -299,6 +300,134 @@ TEST_F(DHCPCDProxyFactoryTest, Release) {
           Field(&net_base::ProcessManager::MinijailOptions::capmask, 0), _))
       .WillOnce(Return(net_base::ProcessManager::kInvalidPID));
   EXPECT_FALSE(proxy->Release());
+}
+
+TEST_F(DHCPCDProxyFactoryTest, OnDHCPEvent) {
+  constexpr int kPid = 4;
+  constexpr std::string_view kInterface = "wlan0";
+
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyPid, "4"},
+      {DHCPv4Config::kConfigurationKeyInterface, "wlan0"},
+      {DHCPv4Config::kConfigurationKeyReason, "BOUND"},
+      {DHCPv4Config::kConfigurationKeyIPAddress, "4.3.2.1"},
+  };
+
+  std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid, kInterface);
+  EXPECT_CALL(client_, OnDHCPEvent(DHCPClientProxy::EventReason::kBound, _, _));
+
+  proxy_factory_->OnDHCPEvent(configuration);
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreIPAddress) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyIPAddress, "4.3.2.1"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  EXPECT_EQ(store.Get<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress),
+            0x01020304);
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreSubnetCIDR) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeySubnetCIDR, "16"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  EXPECT_EQ(store.Get<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR), 16);
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreBroadcastAddress) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyBroadcastAddress, "4.3.2.1"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  EXPECT_EQ(
+      store.Get<uint32_t>(DHCPv4Config::kConfigurationKeyBroadcastAddress),
+      0x01020304);
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreRoutersAndDNS) {
+  for (const auto key : {DHCPv4Config::kConfigurationKeyRouters,
+                         DHCPv4Config::kConfigurationKeyDNS}) {
+    const std::map<std::string, std::string> configuration = {
+        {key, "4.3.2.1 8.7.6.5"},
+    };
+    const KeyValueStore store =
+        DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+    const std::vector<uint32_t> expect{0x01020304, 0x05060708};
+    EXPECT_EQ(store.Get<std::vector<uint32_t>>(key), expect);
+  }
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreString) {
+  for (const auto key : {
+           DHCPv4Config::kConfigurationKeyDomainName,
+           DHCPv4Config::kConfigurationKeyCaptivePortalUri,
+           DHCPv4Config::kConfigurationKeyClasslessStaticRoutes,
+           DHCPv4Config::kConfigurationKeyWebProxyAutoDiscoveryUrl,
+       }) {
+    const std::map<std::string, std::string> configuration = {
+        {key, "TEST_STRING"},
+    };
+    const KeyValueStore store =
+        DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+    EXPECT_EQ(store.Get<std::string>(key), "TEST_STRING");
+  }
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreDomainSearch) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyDomainSearch, "domain1 domain2"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  const std::vector<std::string> expect{"domain1", "domain2"};
+  EXPECT_EQ(store.Get<std::vector<std::string>>(
+                DHCPv4Config::kConfigurationKeyDomainSearch),
+            expect);
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreMTU) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyMTU, "1450"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  EXPECT_EQ(store.Get<uint16_t>(DHCPv4Config::kConfigurationKeyMTU), 1450);
+}
+
+TEST(DHCPCDProxyTest,
+     ConvertConfigurationToKeyValueStoreendorEncapsulatedOptions) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyVendorEncapsulatedOptions, "13579ABC"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  const std::vector<uint8_t> expect{0x13, 0x57, 0x9A, 0xBC};
+  EXPECT_EQ(store.Get<std::vector<uint8_t>>(
+                DHCPv4Config::kConfigurationKeyVendorEncapsulatedOptions),
+            expect);
+}
+
+TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreendorLeaseTime) {
+  const std::map<std::string, std::string> configuration = {
+      {DHCPv4Config::kConfigurationKeyLeaseTime, "300"},
+  };
+  const KeyValueStore store =
+      DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
+
+  EXPECT_EQ(store.Get<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime), 300);
 }
 
 }  // namespace

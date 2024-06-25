@@ -32,6 +32,10 @@ class DHCPClientProxy {
     kIPv6OnlyPreferred,
   };
 
+  // Returns true if the EventHandler::OnDHCPEvent() with |reason| needs the
+  // extra information.
+  static bool NeedConfiguration(DHCPClientProxy::EventReason reason);
+
   // The handler of the events of the DHCPClientProxy class. The handler should
   // be injected when creating the DHCPClientProxy instance.
   class EventHandler {

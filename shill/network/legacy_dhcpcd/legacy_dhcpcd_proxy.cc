@@ -95,22 +95,6 @@ bool IsEphemeralLease(const DHCPClientProxy::Options& options,
   return options.lease_name.empty() || options.lease_name == interface;
 }
 
-bool NeedConfiguration(DHCPClientProxy::EventReason reason) {
-  switch (reason) {
-    case DHCPClientProxy::EventReason::kBound:
-    case DHCPClientProxy::EventReason::kRebind:
-    case DHCPClientProxy::EventReason::kReboot:
-    case DHCPClientProxy::EventReason::kRenew:
-    case DHCPClientProxy::EventReason::kGatewayArp:
-      return true;
-
-    case DHCPClientProxy::EventReason::kFail:
-    case DHCPClientProxy::EventReason::kNak:
-    case DHCPClientProxy::EventReason::kIPv6OnlyPreferred:
-      return false;
-  }
-}
-
 }  // namespace
 
 LegacyDHCPCDProxy::LegacyDHCPCDProxy(std::string_view interface,

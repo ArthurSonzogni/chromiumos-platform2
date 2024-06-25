@@ -10,16 +10,22 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/process/process_iterator.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/ipv4_address.h>
 
 #include "shill/network/dhcp_client_proxy.h"
+#include "shill/network/dhcpv4_config.h"
+#include "shill/store/key_value_store.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -112,6 +118,34 @@ pid_t RunDHCPCDInMinijail(net_base::ProcessManager* process_manager,
       base::DoNothing());
 }
 
+std::optional<DHCPClientProxy::EventReason> GetEventReason(
+    const std::map<std::string, std::string>& configuration) {
+  // Constants used as event type got from dhcpcd.
+  static constexpr auto kEventReasonTable =
+      base::MakeFixedFlatMap<std::string_view, DHCPClientProxy::EventReason>(
+          {{"BOUND", DHCPClientProxy::EventReason::kBound},
+           {"FAIL", DHCPClientProxy::EventReason::kFail},
+           {"GATEWAY-ARP", DHCPClientProxy::EventReason::kGatewayArp},
+           {"NAK", DHCPClientProxy::EventReason::kNak},
+           {"REBIND", DHCPClientProxy::EventReason::kRebind},
+           {"REBOOT", DHCPClientProxy::EventReason::kReboot},
+           {"RENEW", DHCPClientProxy::EventReason::kRenew}});
+
+  const auto conf_iter =
+      configuration.find(DHCPv4Config::kConfigurationKeyReason);
+  if (conf_iter == configuration.end()) {
+    LOG(WARNING) << __func__ << ": Reason is missing";
+    return std::nullopt;
+  }
+
+  const auto table_iter = kEventReasonTable.find(conf_iter->second);
+  if (table_iter == kEventReasonTable.end()) {
+    LOG(INFO) << __func__ << ": Ignore the reason: " << conf_iter->second;
+    return std::nullopt;
+  }
+  return table_iter->second;
+}
+
 }  // namespace
 
 DHCPCDProxy::DHCPCDProxy(net_base::ProcessManager* process_manager,
@@ -148,6 +182,93 @@ bool DHCPCDProxy::RunDHCPCDWithArgs(const std::vector<std::string>& args) {
   }
 
   return true;
+}
+
+void DHCPCDProxy::OnDHCPEvent(
+    const std::map<std::string, std::string>& configuration) {
+  const auto iter =
+      configuration.find(DHCPv4Config::kConfigurationKeyInterface);
+  if (iter == configuration.end() || iter->second != interface_) {
+    LOG(WARNING) << __func__ << ": iterface is mismatched";
+    return;
+  }
+
+  const std::optional<EventReason> reason = GetEventReason(configuration);
+  if (!reason.has_value()) {
+    return;
+  }
+
+  net_base::NetworkConfig network_config;
+  DHCPv4Config::Data dhcp_data;
+
+  if (NeedConfiguration(*reason) &&
+      !DHCPv4Config::ParseConfiguration(
+          ConvertConfigurationToKeyValueStore(configuration), &network_config,
+          &dhcp_data)) {
+    LOG(WARNING) << __func__
+                 << ": Error parsing network configuration from DHCP client. "
+                 << "The following configuration might be partial: "
+                 << network_config;
+  }
+  handler_->OnDHCPEvent(*reason, network_config, dhcp_data);
+}
+
+KeyValueStore DHCPCDProxy::ConvertConfigurationToKeyValueStore(
+    const std::map<std::string, std::string>& configuration) {
+  KeyValueStore store;
+  for (const auto& [key, value] : configuration) {
+    if (key == DHCPv4Config::kConfigurationKeyIPAddress ||
+        key == DHCPv4Config::kConfigurationKeyBroadcastAddress) {
+      const std::optional<net_base::IPv4Address> address =
+          net_base::IPv4Address::CreateFromString(value);
+      if (address.has_value()) {
+        store.Set<uint32_t>(key, address->ToInAddr().s_addr);
+      }
+    } else if (key == DHCPv4Config::kConfigurationKeyRouters ||
+               key == DHCPv4Config::kConfigurationKeyDNS) {
+      std::vector<uint32_t> addresses;
+      for (const auto& str : base::SplitString(
+               value, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+        const std::optional<net_base::IPv4Address> address =
+            net_base::IPv4Address::CreateFromString(str);
+        if (address.has_value()) {
+          addresses.push_back(address->ToInAddr().s_addr);
+        }
+        store.Set<std::vector<uint32_t>>(key, addresses);
+      }
+    } else if (key == DHCPv4Config::kConfigurationKeySubnetCIDR) {
+      int prefix_length;
+      if (base::StringToInt(value, &prefix_length)) {
+        store.Set<uint8_t>(key, prefix_length);
+      }
+    } else if (key == DHCPv4Config::kConfigurationKeyMTU) {
+      int mtu;
+      if (base::StringToInt(value, &mtu)) {
+        store.Set<uint16_t>(key, mtu);
+      }
+    } else if (key == DHCPv4Config::kConfigurationKeyLeaseTime) {
+      int lease_time;
+      if (base::StringToInt(value, &lease_time)) {
+        store.Set<uint32_t>(key, lease_time);
+      }
+    } else if (key == DHCPv4Config::kConfigurationKeyDomainName ||
+               key == DHCPv4Config::kConfigurationKeyCaptivePortalUri ||
+               key == DHCPv4Config::kConfigurationKeyClasslessStaticRoutes ||
+               key == DHCPv4Config::kConfigurationKeyWebProxyAutoDiscoveryUrl) {
+      store.Set<std::string>(key, value);
+    } else if (key == DHCPv4Config::kConfigurationKeyDomainSearch) {
+      store.Set<std::vector<std::string>>(
+          key, base::SplitString(value, " ", base::TRIM_WHITESPACE,
+                                 base::SPLIT_WANT_NONEMPTY));
+    } else if (key ==
+               DHCPv4Config::kConfigurationKeyVendorEncapsulatedOptions) {
+      std::vector<uint8_t> options;
+      if (base::HexStringToBytes(value, &options)) {
+        store.Set<std::vector<uint8_t>>(key, options);
+      }
+    }
+  }
+  return store;
 }
 
 base::WeakPtr<DHCPCDProxy> DHCPCDProxy::GetWeakPtr() {
@@ -268,6 +389,31 @@ DHCPCDProxy* DHCPCDProxyFactory::GetAliveProxy(int pid) const {
 
 void DHCPCDProxyFactory::OnProxyDestroyed(int pid) {
   alive_proxies_.erase(pid);
+}
+
+void DHCPCDProxyFactory::OnDHCPEvent(
+    const std::map<std::string, std::string>& configuration) {
+  const auto iter = configuration.find(DHCPv4Config::kConfigurationKeyPid);
+  if (iter == configuration.end()) {
+    LOG(WARNING) << __func__ << ": No pid found in the configuration";
+    return;
+  }
+
+  int pid;
+  if (!base::StringToInt(iter->second, &pid)) {
+    LOG(WARNING) << __func__
+                 << ": Failed to parse the pid from the configuration: "
+                 << iter->second;
+    return;
+  }
+
+  DHCPCDProxy* proxy = GetAliveProxy(pid);
+  if (!proxy) {
+    LOG(WARNING) << __func__ << ": Proxy with pid " << pid << " is not found";
+    return;
+  }
+
+  proxy->OnDHCPEvent(configuration);
 }
 
 }  // namespace shill

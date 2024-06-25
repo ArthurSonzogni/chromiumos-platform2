@@ -18,6 +18,7 @@
 #include <chromeos/net-base/process_manager.h>
 
 #include "shill/network/dhcp_client_proxy.h"
+#include "shill/store/key_value_store.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -35,6 +36,14 @@ class DHCPCDProxy : public DHCPClientProxy {
   bool IsReady() const override;
   bool Rebind() override;
   bool Release() override;
+
+  // Parses the configuration and delegates the DHCP event to the event handler.
+  void OnDHCPEvent(const std::map<std::string, std::string>& configuration);
+
+  // Converts the configuration to the KeyValueStore, which format is the same
+  // as LegacyDHCPCDProxy.
+  static KeyValueStore ConvertConfigurationToKeyValueStore(
+      const std::map<std::string, std::string>& configuration);
 
   // Gets the WeakPtr of this instance.
   base::WeakPtr<DHCPCDProxy> GetWeakPtr();
@@ -66,6 +75,9 @@ class DHCPCDProxyFactory : public DHCPClientProxyFactory {
       Technology technology,
       const DHCPClientProxy::Options& options,
       DHCPClientProxy::EventHandler* handler) override;
+
+  // delegates the DHCP event to the corresponding proxy.
+  void OnDHCPEvent(const std::map<std::string, std::string>& configuration);
 
   void set_root_for_testing(const base::FilePath& root) { root_ = root; }
 
