@@ -114,10 +114,8 @@ Manager::Manager(const base::FilePath& cmd_path,
       ipv6_svc_.get(), counters_svc_.get());
 
   constexpr ArcService::ArcType arc_type = []() constexpr {
-    if (USE_ARCVM_NIC_HOTPLUG) {
-      return ArcService::ArcType::kVMHotplug;
-    } else if (USE_ARCVM) {
-      return ArcService::ArcType::kVMStatic;
+    if (USE_ARCVM) {
+      return ArcService::ArcType::kVM;
     } else {
       return ArcService::ArcType::kContainer;
     }

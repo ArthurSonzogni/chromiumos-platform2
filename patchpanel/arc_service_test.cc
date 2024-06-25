@@ -53,8 +53,6 @@ namespace patchpanel {
 namespace {
 constexpr uint32_t kTestPID = 2;
 constexpr uint32_t kTestCID = 2;
-constexpr uint32_t kBusSlotA = 3;
-constexpr uint32_t kBusSlotB = 4;
 const IPv4CIDR kArc0HostCIDR =
     *IPv4CIDR::CreateFromCIDRString("100.115.92.1/30");
 const IPv4CIDR kArc0GuestCIDR =
@@ -158,7 +156,7 @@ class ArcServiceTest : public testing::Test,
 };
 
 TEST_F(ArcServiceTest, Arc0IPAddress) {
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   ASSERT_TRUE(svc->GetArc0IPv4Address().has_value());
   EXPECT_EQ(*net_base::IPv4Address::CreateFromString("100.115.92.2"),
             svc->GetArc0IPv4Address());
@@ -374,7 +372,7 @@ TEST_F(ArcServiceTest, StableArcVmMacAddrs) {
   EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   auto taps = svc->GetStaticTapDevices();
   EXPECT_EQ(taps.size(), 1);
@@ -1205,7 +1203,7 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
   EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1230,7 +1228,7 @@ TEST_F(ArcServiceTest, VmImpl_StartEthernetDevice) {
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1284,7 +1282,7 @@ TEST_F(ArcServiceTest, VmImpl_StartCellularMultiplexedDevice) {
 
   auto wwan_dev =
       MakeShillDevice("wwan0", net_base::Technology::kCellular, "mbimmux0.1");
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1342,7 +1340,7 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   auto eth0_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto eth1_dev = MakeShillDevice("eth1", net_base::Technology::kEthernet);
   auto wlan_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1446,7 +1444,7 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1489,7 +1487,7 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1607,7 +1605,7 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1677,7 +1675,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   auto eth0_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto eth1_dev = MakeShillDevice("eth1", net_base::Technology::kEthernet);
   auto wlan0_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   Mock::VerifyAndClearExpectations(datapath_.get());
 
@@ -1709,7 +1707,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_EQ((*it1)->bridge_ifname(), "arc_eth0");
   EXPECT_EQ(arcvm_guest_ifnames.at((*it1)->arc_device_ifname()),
             (*it1)->guest_device_ifname());
-  EXPECT_EQ((*it1)->type(), ArcService::ArcType::kVMStatic);
+  EXPECT_EQ((*it1)->type(), ArcService::ArcType::kVM);
 
   const auto it2 = std::find_if(devs.begin(), devs.end(),
                                 [](const ArcService::ArcDevice* dev) {
@@ -1719,7 +1717,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_EQ((*it2)->bridge_ifname(), "arc_wlan0");
   EXPECT_EQ(arcvm_guest_ifnames.at((*it2)->arc_device_ifname()),
             (*it2)->guest_device_ifname());
-  EXPECT_EQ((*it2)->type(), ArcService::ArcType::kVMStatic);
+  EXPECT_EQ((*it2)->type(), ArcService::ArcType::kVM);
 
   const auto it3 = std::find_if(devs.begin(), devs.end(),
                                 [](const ArcService::ArcDevice* dev) {
@@ -1729,7 +1727,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
   EXPECT_EQ((*it3)->bridge_ifname(), "arc_eth1");
   EXPECT_EQ(arcvm_guest_ifnames.at((*it3)->arc_device_ifname()),
             (*it3)->guest_device_ifname());
-  EXPECT_EQ((*it3)->type(), ArcService::ArcType::kVMStatic);
+  EXPECT_EQ((*it3)->type(), ArcService::ArcType::kVM);
 }
 
 TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
@@ -1751,7 +1749,7 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto wlan_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1815,51 +1813,6 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   Mock::VerifyAndClearExpectations(datapath_.get());
 }
 
-TEST_F(ArcServiceTest, HotplugGuestIfManager) {
-  // Expectations for mock VmConciergeClient.
-  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
-  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp0"), _))
-      .WillOnce(Invoke([](int64_t, const std::string&,
-                          VmConciergeClient::AttachTapCallback callback) {
-        std::move(callback).Run({kBusSlotA});
-        return true;
-      }));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp1"), _))
-      .WillOnce(Invoke([](int64_t, const std::string&,
-                          VmConciergeClient::AttachTapCallback callback) {
-        std::move(callback).Run({kBusSlotB});
-        return true;
-      }));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              DetachTapDevice(Eq(kTestCID), Eq(kBusSlotA), _))
-      .WillOnce(Invoke(
-          [](int64_t, uint32_t, VmConciergeClient::DetachTapCallback callback) {
-            std::move(callback).Run(true);
-            return true;
-          }));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp2"), _))
-      .WillOnce(Invoke([](int64_t, const std::string&,
-                          VmConciergeClient::AttachTapCallback callback) {
-        std::move(callback).Run({kBusSlotA});
-        return true;
-      }));
-  auto if_manager = ArcService::HotplugGuestIfManager(
-      std::move(mock_vm_concierge_client), "vmtap-static", kTestCID);
-  const auto static_ifs = if_manager.GetStaticTapDevices();
-  ASSERT_THAT(static_ifs, UnorderedElementsAre("vmtap-static"));
-  // Expect guest ifname to start from eth1 since eth0 is taken by arc0 device.
-  EXPECT_EQ(if_manager.AddInterface("vmtap-hp0"), "eth1");
-  EXPECT_EQ(if_manager.AddInterface("vmtap-hp1"), "eth2");
-  EXPECT_TRUE(if_manager.RemoveInterface("vmtap-hp0"));
-  EXPECT_EQ(if_manager.AddInterface("vmtap-hp2"), "eth1");
-  EXPECT_EQ(if_manager.GetGuestIfName("vmtap-hp1"), "eth2");
-}
-
 TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
   // Expectations for tap devices pre-creation.
   EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
@@ -1869,7 +1822,7 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
         return std::string(*tap_itr++);
       });
 
-  auto svc = NewService(ArcService::ArcType::kVMStatic);
+  auto svc = NewService(ArcService::ArcType::kVM);
   svc->Start(kTestCID);
 
   const std::map<std::string_view, std::string_view> arcvm_guest_ifnames = {
@@ -1885,156 +1838,6 @@ TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
     EXPECT_EQ(arcvm_ifname,
               *svc->guest_if_manager_->GetGuestIfName(std::string(tap)));
   }
-}
-
-// Vm with hotplug implementation.
-
-TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddRemoveDevice) {
-  // Expectations for mock VmConciergeClient.
-  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
-  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp0"), _))
-      .WillOnce(Invoke([](int64_t, const std::string&,
-                          VmConciergeClient::AttachTapCallback callback) {
-        std::move(callback).Run({kBusSlotA});
-        return true;
-      }));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              DetachTapDevice(Eq(kTestCID), Eq(kBusSlotA), _))
-      .WillOnce(Invoke(
-          [](int64_t, uint32_t, VmConciergeClient::DetachTapCallback callback) {
-            std::move(callback).Run(true);
-            return true;
-          }));
-  auto guest_if_manager = std::make_unique<ArcService::HotplugGuestIfManager>(
-      std::move(mock_vm_concierge_client), "vmtap0", kTestCID);
-  // Expectations for tap devices creation.
-  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
-                                    StrEq("crosvm"), DeviceMode::kTap))
-      .WillOnce(Return("vmtap0"))
-      .WillOnce(Return("vmtap-hp0"));
-  // Expectations for "arc0" setup.
-  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArc0HostCIDR))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
-
-  // Expectations for eth0 setup.
-  EXPECT_CALL(*datapath_,
-              AddBridge(StrEq("arc_eth0"), AnyOfArray(kArcPhysicalHostCIDRs)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vmtap-hp0")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_,
-              StartRoutingDevice(IsShillDevice("eth0"), StrEq("arc_eth0"),
-                                 TrafficSource::kArc,
-                                 /*static_ipv6=*/false));
-  EXPECT_CALL(*datapath_,
-              AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
-                                 AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(*forwarding_service_,
-              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
-                                     Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
-                               MulticastForwarder::Direction::kTwoWays));
-  EXPECT_CALL(*forwarding_service_,
-              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
-
-  auto svc = NewService(ArcService::ArcType::kVMHotplug);
-  auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  EXPECT_TRUE(
-      svc->StartWithMockGuestIfManager(kTestCID, std::move(guest_if_manager)));
-  svc->AddDevice(eth_dev);
-  const auto arc_devices = svc->GetDevices();
-  ASSERT_EQ(arc_devices.size(), 1);
-
-  EXPECT_EQ(arc_devices[0]->guest_device_ifname(), "eth1");
-  EXPECT_THAT(arc_devices[0]->shill_device_ifname(), "eth0");
-  EXPECT_THAT(arc_devices[0]->arc_device_ifname(), "vmtap-hp0");
-
-  svc->RemoveDevice(eth_dev);
-  EXPECT_TRUE(svc->GetDevices().empty());
-}
-
-TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddDeviceAddTapFail) {
-  // Expectations for mock VmConciergeClient.
-  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
-  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
-      .WillOnce(Return(true));
-  // Expectations for tap devices creation.
-  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
-                                    StrEq("crosvm"), DeviceMode::kTap))
-      .WillOnce(Return("vmtap0"))
-      .WillOnce(Return(""));
-  // Expectations for "arc0" setup.
-  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArc0HostCIDR))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
-
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
-
-  auto guest_if_manager = std::make_unique<ArcService::HotplugGuestIfManager>(
-      std::move(mock_vm_concierge_client), "vmtap0", kTestCID);
-
-  auto svc = NewService(ArcService::ArcType::kVMHotplug);
-  auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  EXPECT_TRUE(
-      svc->StartWithMockGuestIfManager(kTestCID, std::move(guest_if_manager)));
-  svc->AddDevice(eth_dev);
-  EXPECT_TRUE(svc->GetDevices().empty());
-}
-
-TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddDeviceHotPlugTapFail) {
-  // Expectations for mock VmConciergeClient.
-  auto mock_vm_concierge_client = std::make_unique<MockVmConciergeClient>();
-  EXPECT_CALL(*mock_vm_concierge_client, RegisterVm(Eq(kTestCID)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_vm_concierge_client,
-              AttachTapDevice(Eq(kTestCID), StrEq("vmtap-hp0"), _))
-      .WillOnce(Invoke([](int64_t, const std::string&,
-                          VmConciergeClient::AttachTapCallback callback) {
-        std::move(callback).Run(std::nullopt);
-        return false;
-      }));
-  auto guest_if_manager = std::make_unique<ArcService::HotplugGuestIfManager>(
-      std::move(mock_vm_concierge_client), "vmtap0", kTestCID);
-  // Expectations for tap devices creation.
-  EXPECT_CALL(*datapath_, AddTunTap(StrEq(""), _, Eq(std::nullopt),
-                                    StrEq("crosvm"), DeviceMode::kTap))
-      .WillOnce(Return("vmtap0"))
-      .WillOnce(Return("vmtap-hp0"));
-  // Expectations for "arc0" setup.
-  EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArc0HostCIDR))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
-
-  EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
-
-  auto svc = NewService(ArcService::ArcType::kVMHotplug);
-  auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  EXPECT_TRUE(
-      svc->StartWithMockGuestIfManager(kTestCID, std::move(guest_if_manager)));
-  svc->AddDevice(eth_dev);
-  EXPECT_TRUE(svc->GetDevices().empty());
 }
 
 TEST_F(ArcServiceTest, ArcVethHostName) {
@@ -2165,8 +1968,8 @@ TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(
-      ArcService::ArcType::kVMStatic, net_base::Technology::kWiFi, "wlan0",
-      "vmtap1", mac_addr, arc_config, "arc_wlan0", "eth3");
+      ArcService::ArcType::kVM, net_base::Technology::kWiFi, "wlan0", "vmtap1",
+      mac_addr, arc_config, "arc_wlan0", "eth3");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -2200,7 +2003,7 @@ TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(
-      ArcService::ArcType::kVMStatic, net_base::Technology::kCellular, "wwan0",
+      ArcService::ArcType::kVM, net_base::Technology::kCellular, "wwan0",
       "vmtap5", mac_addr, arc_config, "arc_wwan0", "eth5");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
@@ -2272,7 +2075,7 @@ TEST_F(ArcServiceTest, ConvertARC0ForARCVM) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kVMStatic, std::nullopt,
+  ArcService::ArcDevice arc_device(ArcService::ArcType::kVM, std::nullopt,
                                    std::nullopt, "vetharc0", mac_addr,
                                    arc_config, "arcbr0", "eth0");
   NetworkDevice proto_device;

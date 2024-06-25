@@ -46,13 +46,9 @@ class ArcService {
   enum class ArcType {
     // Container
     kContainer,
-    // VM with hotplug support
-    kVMHotplug,
-    // VM without hotplug support
-    kVMStatic,
+    // VM
+    kVM,
   };
-
-  static bool IsVM(ArcType type);
 
   // Helper class for storing some configuration data for an ArcDevice before
   // the ArcDevice is created.
@@ -238,48 +234,6 @@ class ArcService {
     std::map<std::string, std::string, std::less<>> guest_if_names_;
   };
 
-  // Manages the lifetime and mapping of guest interface name of host interfaces
-  // bridged into an ARCVM guest with hotplug support.
-  class HotplugGuestIfManager : public GuestIfManager {
-   public:
-    HotplugGuestIfManager(
-        std::unique_ptr<VmConciergeClient> vm_concierge_client,
-        std::string_view arc0_tap_ifname,
-        uint32_t cid);
-
-    std::optional<std::string> AddInterface(
-        std::string_view tap_ifname) override;
-    bool RemoveInterface(std::string_view tap_ifname) override;
-    std::optional<std::string> GetGuestIfName(
-        std::string_view tap_ifname) const override;
-    std::vector<std::string> GetStaticTapDevices() const override;
-
-   private:
-    // Callback for hotplug of interface. PCI Bus number should be within uint8;
-    // however, crosvm_control API and DBus interface uses uint32, and callbacks
-    // need matching data type.
-    void HotplugCallback(std::string_view tap_ifname,
-                         std::optional<uint32_t> bus_num);
-    // Callback for removal of interface.
-    void RemoveCallback(std::string_view tap_ifname, bool success);
-
-    // Interface name for the tap devices corresponding to "arc0" device.
-    std::string arc0_tap_ifname_;
-    // cid of the VM.
-    uint32_t cid_;
-    // PCI bus on guest VM occupied by the interface, keyed by host tap
-    // interface name.
-    std::map<std::string, uint8_t, std::less<>> guest_buses_;
-    // Guest network interface index, keyed by host tap interface name.
-    std::map<std::string, uint8_t, std::less<>> guest_if_idx_;
-    // bitset of guest network interface index. Valid PCI Bus index are 0-255
-    // inclusive.
-    std::bitset<UINT8_MAX + 1> guest_if_idx_bitset_;
-    // The client sends requests for hotplug and unplug of devices to crosvm
-    // via vm_concierge.
-    std::unique_ptr<VmConciergeClient> client_;
-  };
-
   using ArcDeviceChangeHandler = base::RepeatingCallback<void(
       const ShillClient::Device&, const ArcDevice&, ArcDeviceEvent)>;
 
@@ -315,8 +269,7 @@ class ArcService {
   std::optional<net_base::IPv4Address> GetArc0IPv4Address() const;
 
   // Returns the list of static tap device ifnames that patchpanel has created
-  // for ARCVM at VM start. This list is empty for the ARC container, and only
-  // contains arc0 device for ARCVM supporting hotplug.
+  // for ARCVM at VM start. This list is empty for the ARC container.
   std::vector<std::string> GetStaticTapDevices() const;
 
   // Returns a list of all patchpanel ARC Devices currently managed by this
