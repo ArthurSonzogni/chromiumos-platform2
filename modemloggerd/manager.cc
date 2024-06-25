@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include <brillo/proto_file_io.h>
 #include <cros_config/cros_config.h>
@@ -29,13 +30,23 @@ std::string GetModemName() {
         << "No modem firmware variant is specified. Cannot parse modem name.";
     return std::string();
   }
+  // Old modem variants did not include the modem name in them. Check for those
+  // variants using a local map.
+  // Old L850 variants are skipped since L850 is not supported.
+  auto variant_to_modem = std::unordered_map<std::string, std::string>({
+      {"vilboz", "nl668"},
+  });
+
+  const auto it = variant_to_modem.find(fw_variant);
+  if (it != variant_to_modem.end())
+    return it->second;
 
   // TODO(b/312535821): Use udev/MM instead of cros_config for modem detection
   for (auto modem : kDevicesSupportingLogging) {
     if (fw_variant.find(modem) != std::string::npos)
       return modem;
   }
-  LOG(INFO) << fw_variant << " does not support modem logging";
+  LOG(INFO) << "`" << fw_variant << "`  does not support modem logging";
   return std::string();
 }
 
