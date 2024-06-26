@@ -100,6 +100,7 @@ const base::FilePath kOverrideEffectsConfigFile(
     "/run/camera/effects/effects_config_override.json");
 const base::FilePath kEnableRetouchWithRelight(
     "/run/camera/enable_retouch_with_relight");
+const base::FilePath kEnableOnlyRetouch("/run/camera/enable_only_retouch");
 constexpr char kTfliteStableDelegateSettingsFile[] =
     "/etc/tflite/settings.json";
 
@@ -250,7 +251,10 @@ EffectsConfig ConvertMojoConfig(
   if (effects_config->light_intensity) {
     config.light_intensity = *effects_config->light_intensity;
   }
-  if (base::PathExists(kEnableRetouchWithRelight)) {
+  if (base::PathExists(kEnableOnlyRetouch)) {
+    config.face_retouch_enabled = config.relight_enabled;
+    config.relight_enabled = false;
+  } else if (base::PathExists(kEnableRetouchWithRelight)) {
     config.face_retouch_enabled = config.relight_enabled;
   }
   return config;
