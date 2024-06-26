@@ -20,20 +20,6 @@ AllowAllParametersOfDeclarationOnNextLine: true
 # NOLINT(reason) is used heavily by existing code.
 CommentPragmas: 'NOLINT:.*'
 
-# Group includes into four distinct groups and sort them case insensitively.
-IncludeBlocks: Regroup
-IncludeIsMainRegex: '([-_](test|unittest))?$'
-SortIncludes: CaseInsensitive
-IncludeCategories:
-  # C system includes
-  - Regex:           '^<(arpa/|linux/|sys/)?[0-9a-z_-]+[.]h>'
-    Priority:        1
-  # C++ system includes
-  - Regex:           '^<[0-9a-z_-]+>$'
-    Priority:        2
-  # Other system libraries
-  - Regex:           '^<.*'
-    Priority:        3
-  # Other includes
-  - Regex:           '.*'
-    Priority:        4
+# cpplint.py does smarter #include sorting than clang-format (the former ignores
+# case and changes '-' to '_').
+SortIncludes: false
