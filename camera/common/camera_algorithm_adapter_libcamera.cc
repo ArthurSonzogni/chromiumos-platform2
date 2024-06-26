@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <utility>
 
 #include <base/check.h>
@@ -42,7 +43,7 @@ void CameraAlgorithmAdapterLibcamera::Run(base::ScopedFD channel) {
                      base::Unretained(this), std::move(channel)));
 
   future->Wait(-1);
-  exit(EXIT_SUCCESS);
+  _exit(EXIT_SUCCESS);
 }
 
 void CameraAlgorithmAdapterLibcamera::InitializeOnIpcThread(
