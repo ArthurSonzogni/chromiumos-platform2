@@ -89,7 +89,6 @@ type cros_dbus_uuidgen_exec, exec_type, file_type, cros_file_type, cros_system_f
 type cros_dcad_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_debugd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dhcpcd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_discod_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_disks_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dlcservice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_dlc_metadata_util_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

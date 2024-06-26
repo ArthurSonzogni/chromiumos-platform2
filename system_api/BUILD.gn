@@ -123,7 +123,6 @@ install_dbus_client_headers("install_dbus_headers") {
     "cros-disks",
     "cryptohome",
     "debugd",
-    "discod",
     "dlcservice",
     "fbpreprocessor",
     "kerberos",

@@ -56,7 +56,6 @@ copies.
 | [dev-install](./dev-install/) | Tools & settings for managing the developer environment on the device |
 | [device_management](./device_management/) | Daemon for handling device management related attributes (e.g. fwmp, install_attributes etc) |
 | [diagnostics](./diagnostics/) | Device telemetry and diagnostics daemons |
-| [discod](./discod/) | Control Loop for behavioural storage devices features (e.g. UFS Write Booster) |
 | [disk_updater](./disk_updater/) | Utility for updating root disk firmware (e.g. SSDs and eMMC) |
 | [dlcservice](./dlcservice/) | Downloadable Content (DLC) Service daemon |
 | [dlp](./dlp/) | Date Leak Prevention (DLP) daemon |
