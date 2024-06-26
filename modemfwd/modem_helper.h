@@ -85,8 +85,7 @@ class ModemHelper {
   virtual std::optional<HeartbeatConfig> GetHeartbeatConfig() = 0;
 };
 
-std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info,
-                                               scoped_refptr<dbus::Bus> bus);
+std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info);
 
 }  // namespace modemfwd
 

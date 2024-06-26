@@ -31,9 +31,7 @@ class ModemHelperDirectory {
 };
 
 std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
-    const base::FilePath& directory,
-    const std::string& variant,
-    scoped_refptr<dbus::Bus> bus);
+    const base::FilePath& directory, const std::string& variant);
 
 }  // namespace modemfwd
 

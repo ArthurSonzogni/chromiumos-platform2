@@ -32,8 +32,7 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
  public:
   ModemHelperDirectoryImpl(const HelperManifest& manifest,
                            const base::FilePath& directory,
-                           const std::string variant,
-                           scoped_refptr<dbus::Bus> bus) {
+                           const std::string variant) {
     for (const HelperEntry& entry : manifest.helper()) {
       if (entry.filename().empty())
         continue;
@@ -53,7 +52,7 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
       helper_info.net_admin_required =
           entry.has_net_admin_required() && entry.net_admin_required();
 
-      auto helper = CreateModemHelper(helper_info, bus);
+      auto helper = CreateModemHelper(helper_info);
       for (const std::string& device_id : entry.device_id()) {
         ELOG(INFO) << "Adding helper " << helper_info.executable_path.value()
                    << " for [" << device_id << "]";
@@ -91,9 +90,7 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
 };
 
 std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
-    const base::FilePath& directory,
-    const std::string& variant,
-    scoped_refptr<dbus::Bus> bus) {
+    const base::FilePath& directory, const std::string& variant) {
   HelperManifest parsed_manifest;
   auto file_name = base::PathExists(directory.Append(kManifestName))
                        ? kManifestName
@@ -102,7 +99,7 @@ std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
     return nullptr;
 
   auto helper_dir = std::make_unique<ModemHelperDirectoryImpl>(
-      parsed_manifest, directory, variant, bus);
+      parsed_manifest, directory, variant);
   if (!helper_dir->FoundHelpers())
     return nullptr;
 

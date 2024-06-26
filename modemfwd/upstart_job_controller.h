@@ -16,8 +16,12 @@ namespace modemfwd {
 
 class UpstartJobController {
  public:
-  explicit UpstartJobController(std::string upstart_service_name,
-                                std::string job_name,
+  static const char kUpstartServiceName[];
+  static const char kUpstartPath[];
+  static const char kHermesJobPath[];
+  static const char kModemHelperJobPath[];
+
+  explicit UpstartJobController(std::string job_name,
                                 scoped_refptr<dbus::Bus> bus);
   ~UpstartJobController();
 

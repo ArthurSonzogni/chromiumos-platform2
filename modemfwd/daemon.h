@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -174,6 +175,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+  scoped_refptr<AsyncModemFlasher> async_modem_flasher_;
   std::unique_ptr<NotificationManager> notification_mgr_;
   std::unique_ptr<SuspendChecker> suspend_checker_;
 

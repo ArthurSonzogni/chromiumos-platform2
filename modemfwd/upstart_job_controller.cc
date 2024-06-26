@@ -7,14 +7,20 @@
 
 namespace modemfwd {
 
-UpstartJobController::UpstartJobController(std::string upstart_service_name,
-                                           std::string job_name,
+const char UpstartJobController::kUpstartServiceName[] = "com.ubuntu.Upstart";
+const char UpstartJobController::kUpstartPath[] = "/com/ubuntu/Upstart";
+const char UpstartJobController::kHermesJobPath[] =
+    "/com/ubuntu/Upstart/jobs/hermes";
+const char UpstartJobController::kModemHelperJobPath[] =
+    "/com/ubuntu/Upstart/jobs/modemfwd_2dhelpers";
+
+UpstartJobController::UpstartJobController(std::string job_name,
                                            scoped_refptr<dbus::Bus> bus)
     : job_name_(job_name),
       upstart_proxy_(std::make_unique<com::ubuntu::Upstart0_6Proxy>(
-          bus, upstart_service_name, dbus::ObjectPath("/com/ubuntu/Upstart"))),
+          bus, kUpstartServiceName, dbus::ObjectPath(kUpstartPath))),
       job_proxy_(std::make_unique<com::ubuntu::Upstart0_6::JobProxy>(
-          bus, upstart_service_name, job_name_)),
+          bus, kUpstartServiceName, job_name_)),
       job_stopped_(false) {}
 
 bool UpstartJobController::IsRunning() {

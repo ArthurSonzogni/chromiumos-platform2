@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -193,8 +194,7 @@ int Daemon::OnInit() {
   }
 
   variant_ = GetModemFirmwareVariant();
-  helper_directory_ =
-      CreateModemHelperDirectory(helper_dir_path_, variant_, bus_);
+  helper_directory_ = CreateModemHelperDirectory(helper_dir_path_, variant_);
   if (!helper_directory_) {
     auto err =
         Error::Create(FROM_HERE,
@@ -308,8 +308,10 @@ void Daemon::CompleteInitialization() {
     QuitWithExitCode(EX_UNAVAILABLE);
   }
 
-  modem_flasher_ = CreateModemFlasher(fw_manifest_directory_.get(),
-                                      modems_seen_since_oobe_prefs_.get());
+  auto modem_flasher = CreateModemFlasher(fw_manifest_directory_.get(),
+                                          modems_seen_since_oobe_prefs_.get());
+  async_modem_flasher_ =
+      base::MakeRefCounted<AsyncModemFlasher>(std::move(modem_flasher));
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
@@ -481,7 +483,7 @@ void Daemon::DoFlash(const std::string& device_id,
   brillo::ErrorPtr err;
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
-                                  metrics_.get(), modem_flasher_.get());
+                                  metrics_.get(), bus_, async_modem_flasher_);
   FlashTask* weak_task = flash_task.get();
 
   AddTask(std::move(flash_task));
@@ -532,7 +534,7 @@ void Daemon::ForceFlashForTesting(
   brillo::ErrorPtr err;
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
-                                  metrics_.get(), modem_flasher_.get());
+                                  metrics_.get(), bus_, async_modem_flasher_);
   FlashTask* flash_task_ptr = flash_task.get();
   AddTask(std::move(flash_task));
 
@@ -542,8 +544,18 @@ void Daemon::ForceFlashForTesting(
     opts.carrier_override_uuid = carrier_uuid;
   }
 
-  RegisterOnTaskFinishedCallback(flash_task_ptr, std::move(callback));
-  flash_task_ptr->Start(stub_modem.get(), opts);
+  Modem* weak_modem = stub_modem.get();
+  RegisterOnTaskFinishedCallback(
+      flash_task_ptr,
+      base::BindOnce(
+          [](base::OnceCallback<void(const brillo::ErrorPtr&)> callback,
+             std::unique_ptr<Modem> modem, const brillo::ErrorPtr& error) {
+            std::move(callback).Run(error);
+            // Don't clean up the modem until this task is fully finished.
+            modem.reset();
+          },
+          std::move(callback), std::move(stub_modem)));
+  flash_task_ptr->Start(weak_modem, opts);
 }
 
 bool Daemon::ResetModem(const std::string& device_id) {

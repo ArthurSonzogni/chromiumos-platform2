@@ -13,6 +13,9 @@
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <dbus/message.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -62,13 +65,54 @@ class FlashTaskTest : public ::testing::Test {
     journal_ = std::make_unique<MockJournal>();
     notification_mgr_ = std::make_unique<MockNotificationManager>();
     metrics_ = std::make_unique<MockMetrics>();
-    modem_flasher_ = std::make_unique<MockModemFlasher>();
+
+    bus_ = base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options());
+    upstart_object_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
+        bus_.get(), UpstartJobController::kUpstartServiceName,
+        dbus::ObjectPath(UpstartJobController::kUpstartPath));
+    ON_CALL(*upstart_object_proxy_, CallMethodAndBlock(_, _))
+        .WillByDefault([](dbus::MethodCall* method_call, int /*timeout_ms*/) {
+          auto resp = dbus::Response::CreateEmpty();
+          dbus::MessageWriter writer(resp.get());
+          if (method_call->GetMember() == "GetAllJobs") {
+            writer.AppendArrayOfObjectPaths(std::vector<dbus::ObjectPath>{
+                dbus::ObjectPath(UpstartJobController::kHermesJobPath),
+                dbus::ObjectPath(UpstartJobController::kModemHelperJobPath)});
+          }
+          return resp;
+        });
+    ON_CALL(*bus_, GetObjectProxy(
+                       UpstartJobController::kUpstartServiceName,
+                       dbus::ObjectPath(UpstartJobController::kUpstartPath)))
+        .WillByDefault(Return(upstart_object_proxy_.get()));
+    // We can use the same mock object for all jobs.
+    job_object_proxy_ = base::MakeRefCounted<dbus::MockObjectProxy>(
+        bus_.get(), UpstartJobController::kUpstartServiceName,
+        dbus::ObjectPath("/job"));
+    ON_CALL(*job_object_proxy_, CallMethodAndBlock(_, _))
+        .WillByDefault([](dbus::MethodCall* method_call, int /*timeout_ms*/) {
+          auto resp = dbus::Response::CreateEmpty();
+          dbus::MessageWriter writer(resp.get());
+          if (method_call->GetMember() == "Start" ||
+              method_call->GetMember() == "GetInstance") {
+            writer.AppendObjectPath(dbus::ObjectPath("/job"));
+          }
+          return resp;
+        });
+    ON_CALL(*bus_, GetObjectProxy(UpstartJobController::kUpstartServiceName, _))
+        .WillByDefault(Return(job_object_proxy_.get()));
+
+    auto modem_flasher = std::make_unique<MockModemFlasher>();
+    modem_flasher_ = modem_flasher.get();
+
+    async_modem_flasher_ =
+        base::MakeRefCounted<AsyncModemFlasher>(std::move(modem_flasher));
   }
 
   std::unique_ptr<FlashTask> CreateFlashTask() {
     return std::make_unique<FlashTask>(delegate_.get(), journal_.get(),
                                        notification_mgr_.get(), metrics_.get(),
-                                       modem_flasher_.get());
+                                       bus_, async_modem_flasher_);
   }
 
  protected:
@@ -107,11 +151,35 @@ class FlashTaskTest : public ::testing::Test {
                                          std::move(files));
   }
 
+  brillo::ErrorPtr RunTask(FlashTask* task,
+                           Modem* modem,
+                           const FlashTask::Options& options) {
+    base::RunLoop run_loop;
+    brillo::ErrorPtr error;
+    EXPECT_CALL(*delegate_, FinishTask(task, _))
+        .WillOnce(WithArg<1>(
+            [&error, quit = run_loop.QuitClosure()](brillo::ErrorPtr e) {
+              error = std::move(e);
+              std::move(quit).Run();
+            }));
+    task->Start(modem, options);
+    run_loop.Run();
+    return error;
+  }
+
+  base::test::TaskEnvironment task_environment_;
+
   std::unique_ptr<MockDelegate> delegate_;
   std::unique_ptr<MockJournal> journal_;
   std::unique_ptr<MockNotificationManager> notification_mgr_;
   std::unique_ptr<MockMetrics> metrics_;
-  std::unique_ptr<MockModemFlasher> modem_flasher_;
+
+  scoped_refptr<dbus::MockBus> bus_;
+  scoped_refptr<dbus::MockObjectProxy> upstart_object_proxy_;
+  scoped_refptr<dbus::MockObjectProxy> job_object_proxy_;
+
+  MockModemFlasher* modem_flasher_;
+  scoped_refptr<AsyncModemFlasher> async_modem_flasher_;
 };
 
 TEST_F(FlashTaskTest, ModemIsBlocked) {
@@ -123,9 +191,9 @@ TEST_F(FlashTaskTest, ModemIsBlocked) {
         *error = Error::Create(FROM_HERE, "foo", "foo");
         return false;
       }));
-  EXPECT_CALL(*delegate_, FinishTask(task.get(), NotNull()));
 
-  task->Start(modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  EXPECT_NE(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, NothingToFlash) {
@@ -137,9 +205,9 @@ TEST_F(FlashTaskTest, NothingToFlash) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(kCarrier1, {})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
-  EXPECT_CALL(*delegate_, FinishTask(task.get(), IsNull()));
 
-  task->Start(modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  EXPECT_EQ(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, BuildConfigReturnedError) {
@@ -154,9 +222,9 @@ TEST_F(FlashTaskTest, BuildConfigReturnedError) {
         return nullptr;
       }));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
-  EXPECT_CALL(*delegate_, FinishTask(task.get(), NotNull()));
 
-  task->Start(modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  EXPECT_NE(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, FlashFailure) {
@@ -174,9 +242,9 @@ TEST_F(FlashTaskTest, FlashFailure) {
         *error = Error::Create(FROM_HERE, "foo", "foo");
         return false;
       }));
-  EXPECT_CALL(*delegate_, FinishTask(task.get(), NotNull()));
 
-  task->Start(modem.get(), FlashTask::Options{});
+  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  EXPECT_NE(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, FlashSuccess) {
@@ -195,14 +263,14 @@ TEST_F(FlashTaskTest, FlashSuccess) {
 
   // The cleanup callback marks the end of flashing the firmware. The delegate
   // will typically run it once the modem comes back up.
-  base::OnceClosure cb;
   EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _))
-      .WillOnce([&cb](const std::string& /*equipment_id*/,
-                      base::OnceClosure reg_cb) { cb = std::move(reg_cb); });
-  task->Start(modem.get(), FlashTask::Options{});
+      .WillOnce(WithArg<1>([](base::OnceClosure reg_cb) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, std::move(reg_cb));
+      }));
 
-  EXPECT_CALL(*delegate_, FinishTask(task.get(), IsNull()));
-  std::move(cb).Run();
+  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  EXPECT_EQ(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, WritesToJournal) {
@@ -220,19 +288,18 @@ TEST_F(FlashTaskTest, WritesToJournal) {
 
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, _))
       .WillOnce(Return(kJournalEntryId));
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
+
   // The cleanup callback marks the end of flashing the firmware. The delegate
   // will typically run it once the modem comes back up.
-  base::OnceClosure cb;
   EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _))
-      .WillOnce([&cb](const std::string& /*equipment_id*/,
-                      base::OnceClosure reg_cb) { cb = std::move(reg_cb); });
+      .WillOnce(WithArg<1>([](base::OnceClosure reg_cb) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, std::move(reg_cb));
+      }));
 
-  task->Start(modem.get(), FlashTask::Options{});
-
-  // Ensure the journal entry is closed by the registered callback.
-  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
-  EXPECT_FALSE(cb.is_null());
-  std::move(cb).Run();
+  auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
+  EXPECT_EQ(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, WritesCarrierToJournal) {
@@ -250,7 +317,13 @@ TEST_F(FlashTaskTest, WritesCarrierToJournal) {
 
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, kCarrier2))
       .WillOnce(Return(kJournalEntryId));
-  task->Start(modem.get(), FlashTask::Options{});
+  EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _))
+      .WillOnce(WithArg<1>([](base::OnceClosure reg_cb) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, std::move(reg_cb));
+      }));
+
+  RunTask(task.get(), modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
@@ -272,7 +345,7 @@ TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
   // We should complete inline on failure. No callback should be registered.
   EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _)).Times(0);
 
-  task->Start(modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, InhibitDuringFlash) {
@@ -287,10 +360,16 @@ TEST_F(FlashTaskTest, InhibitDuringFlash) {
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _))
+      .WillOnce(WithArg<1>([](base::OnceClosure reg_cb) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, std::move(reg_cb));
+      }));
+
   EXPECT_CALL(*modem, SetInhibited(true)).Times(1);
   EXPECT_CALL(*modem, SetInhibited(false)).Times(1);
 
-  task->Start(modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem.get(), FlashTask::Options{});
 }
 
 TEST_F(FlashTaskTest, IgnoreBlock) {
@@ -305,8 +384,15 @@ TEST_F(FlashTaskTest, IgnoreBlock) {
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _))
+      .WillOnce(WithArg<1>([](base::OnceClosure reg_cb) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE, std::move(reg_cb));
+      }));
 
-  task->Start(modem.get(), FlashTask::Options{.should_always_flash = true});
+  auto error = RunTask(task.get(), modem.get(),
+                       FlashTask::Options{.should_always_flash = true});
+  EXPECT_EQ(error, nullptr);
 }
 
 TEST_F(FlashTaskTest, SyncCleanupForStubModem) {
@@ -331,7 +417,7 @@ TEST_F(FlashTaskTest, SyncCleanupForStubModem) {
   // We should expect this to run synchronously.
   EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
 
-  task->Start(modem.get(), FlashTask::Options{});
+  RunTask(task.get(), modem.get(), FlashTask::Options{});
 }
 
 }  // namespace modemfwd
