@@ -91,7 +91,8 @@ bool DlcBase::Initialize() {
 
   // Load and validate the `kDlcPrefVerified` prefs during initialization and
   // set the DLC state.
-  LoadPrefs();
+  if (!IsUserTied())
+    LoadPrefs();
 
   // If factory install isn't allowed, free up the space.
   if (!IsFactoryInstall()) {
@@ -357,6 +358,13 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
 }
 
 bool DlcBase::MakeReadyForUpdate() const {
+  // User-tied DLCs don't need to delete the `verified` pref, so exit early.
+  if (IsUserTied()) {
+    LOG(WARNING) << "User-tied DLC=" << sanitized_id_
+                 << " will not update with the OS.";
+    return false;
+  }
+
   // Deleting the inactive verified pref should always happen before anything
   // else here otherwise if we failed to delete, on a reboot after an update, we
   // might assume the image is verified, which is not.
@@ -381,12 +389,6 @@ bool DlcBase::MakeReadyForUpdate() const {
 
   if (manifest_->preallocated_size() == kMagicDevSize) {
     LOG(WARNING) << "Under development DLC=" << sanitized_id_
-                 << " will not update with the OS.";
-    return false;
-  }
-
-  if (IsUserTied()) {
-    LOG(WARNING) << "User-tied DLC=" << sanitized_id_
                  << " will not update with the OS.";
     return false;
   }
