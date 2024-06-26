@@ -169,10 +169,11 @@ fn check_uclamp_support() -> io::Result<bool> {
     match sched_setattr(self_thread_id, &mut attr) {
         Ok(()) => Ok(true),
         Err(e) => {
-            if e.raw_os_error() == Some(libc::EOPNOTSUPP) {
-                Ok(false)
-            } else {
-                Err(e)
+            match e.raw_os_error() {
+                // EOPNOTSUPP if kernel is 5.3+ but CONFIG_UCLAMP_TASK is disabled.
+                // EINVAL if kernel is older than 5.3 which does not support SCHED_FLAG_UTIL_CLAMP.
+                Some(libc::EOPNOTSUPP) | Some(libc::EINVAL) => Ok(false),
+                _ => Err(e),
             }
         }
     }
