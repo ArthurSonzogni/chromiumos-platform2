@@ -31,6 +31,9 @@ WRONG_ADDRR_RW_RBVER = get_section_offset(common.IMAGE, "RW_RBVER")
 RIGHT_ADDRR_RW_OFFSET = get_section_offset(common.IMAGE, "EC_RW")
 
 WRONG_ADDR_LIST = [
+    # RIGHT_ADDRR_RW_OFFSET triggers RW erase, which is required
+    # on some flash before writing.
+    RIGHT_ADDRR_RW_OFFSET,
     WRONG_ADDRR_RW_FWID,
     WRONG_ADDRR_SIG_RW,
     WRONG_ADDRR_RW_RBVER,
@@ -125,7 +128,7 @@ def transfer_rw(updater, image):
 
 
 def init_tp_transfer(updater):
-    updater.LoadTouchpadImage(b"\x00")
+    updater.LoadTouchpadImage(b"\x00" * 4)
     assert updater.SendFirstPdu() is True, "Error sending first PDU"
     updater.SendDone()
     unlock_rw(updater)
