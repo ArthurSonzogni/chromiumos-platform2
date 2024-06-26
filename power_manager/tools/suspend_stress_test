@@ -43,6 +43,8 @@ DEFINE_string  post_resume_command "" "Command to run after each resume"
 DEFINE_boolean ignore_s0ix_substates "${FLAGS_FALSE}" \
                "Ignore Intel s0ix substates and \
                 only check toplevel s0ix counter"
+DEFINE_boolean debug_s0ix "${FLAGS_FALSE}" \
+               "Gather more S0ix debug info"
 
 dmesg_last_cycle() {
   lines=0
@@ -273,6 +275,26 @@ if [ "${FLAGS_memory_check}" -eq "${FLAGS_TRUE}" ]; then
 else
   suspend_cmd="powerd_dbus_suspend --delay=0"
 fi
+
+# We may utilize the specified SoC tool to gathering more debug info. Now, with
+# only one tool available, implement it here directly to avoid overkill.
+# If /opt/socwatch/socwatch exists, set the corresponding suspend command to
+# simultaneously run SoCWatch and suspend stress test.
+if [ "${FLAGS_debug_s0ix}" -eq "${FLAGS_TRUE}" ]; then
+  if socwatch_runner --socwatch_setup; then
+    suspend_cmd="socwatch_runner -- ${suspend_cmd}"
+  else
+    echo "Need to install /opt/socwatch/ and /usr/bin/socwatch_runner."
+    echo "Partner :"
+    echo "  Refer ~/chromiumos/src/private-overlays/chromeos-partner-overlay/dev-util/socwatch/files/README."
+    echo "Googler :"
+    echo "  Run 'socwatch-install' on the target device"
+    exit 1
+  fi
+fi
+# Uncomment these two lines below to override ${suspend_cmd} during e.g., factory testing.
+# socwatch_runner --socwatch_setup
+# suspend_cmd="socwatch_runner -- ${suspend_cmd}"
 
 if [ -n "${FLAGS_record_dmesg_dir}" ]; then
   mkdir -p "${FLAGS_record_dmesg_dir}"
