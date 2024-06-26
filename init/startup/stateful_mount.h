@@ -25,7 +25,8 @@ namespace startup {
 // as well as other functionality related to the stateful partition.
 class StatefulMount {
  public:
-  std::vector<std::string> GenerateExt4Features();
+  std::vector<std::string> GenerateExt4Features(
+      const std::string state_dumpe2fs);
 
   StatefulMount(const Flags& flags,
                 const base::FilePath& root,
@@ -52,9 +53,13 @@ class StatefulMount {
   void DevMountPackages();
 
  private:
-  void AppendQuotaFeaturesAndOptions(std::vector<std::string>* sb_options,
+  void AppendQuotaFeaturesAndOptions(const std::string& fs_features,
+                                     const std::string& state_dumpe2fs,
+                                     std::vector<std::string>* sb_options,
                                      std::vector<std::string>* sb_features);
   void EnableExt4Features();
+  std::vector<std::string> GenerateExt4FeaturesWrapper();
+
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;

@@ -47,6 +47,7 @@ namespace {
 constexpr char kExt4Features[] = "sys/fs/ext4/features";
 constexpr char kReservedBlocksGID[] = "20119";
 constexpr char kQuotaOpt[] = "quota";
+constexpr char kQuotaProjectOpt[] = "project";
 constexpr char kDumpe2fsStatefulLog[] =
     "run/chromeos_startup/dumpe2fs_stateful.log";
 constexpr char kDirtyExpireCentisecs[] = "proc/sys/vm/dirty_expire_centisecs";
@@ -94,6 +95,33 @@ uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
     PLOG(WARNING) << "Failed to parse contents of " << centisecs_path.value();
   }
   return dirty_expire_centisecs;
+}
+
+bool IsFeatureEnabled(const std::string& fs_features,
+                      const std::string& feature) {
+  // Check if feature is already enabled.
+  return fs_features.find(feature) != std::string::npos;
+}
+
+bool IsReservedGidSet(const std::string& state_dumpe2fs) {
+  std::size_t rbg_pos = state_dumpe2fs.find("Reserved blocks gid");
+  if (rbg_pos != std::string::npos) {
+    std::size_t nwl_pos = state_dumpe2fs.find("\n", rbg_pos);
+    std::string rbg = state_dumpe2fs.substr(rbg_pos, nwl_pos);
+    if (rbg.find(kReservedBlocksGID) == std::string::npos) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+void AppendOption(const std::string& fs_features,
+                  std::vector<std::string>* sb_options,
+                  const std::string& option_name) {
+  if (!IsFeatureEnabled(fs_features, option_name)) {
+    sb_options->push_back(option_name);
+  }
 }
 
 // Get the partition number for the given key,
@@ -151,26 +179,36 @@ std::optional<base::Value> StatefulMount::GetImageVars(base::FilePath json_file,
 }
 
 void StatefulMount::AppendQuotaFeaturesAndOptions(
+    const std::string& fs_features,
+    const std::string& state_dumpe2fs,
     std::vector<std::string>* sb_options,
     std::vector<std::string>* sb_features) {
   // Enable/disable quota feature.
-  // Add Android's AID_RESERVED_DISK to resgid.
-  sb_features->push_back("-g");
-  sb_features->push_back(kReservedBlocksGID);
+  if (!IsReservedGidSet(state_dumpe2fs)) {
+    // Add Android's AID_RESERVED_DISK to resgid.
+    sb_features->push_back("-g");
+    sb_features->push_back(kReservedBlocksGID);
+  }
 
   // Quota is enabled in the kernel, make sure that quota is enabled in
   // the filesystem
-  sb_options->push_back(kQuotaOpt);
-  sb_features->push_back("-Qusrquota,grpquota");
+  if (!IsFeatureEnabled(fs_features, kQuotaOpt)) {
+    sb_options->push_back(kQuotaOpt);
+    sb_features->push_back("-Qusrquota,grpquota");
+  }
   if (flags_.prjquota) {
-    sb_features->push_back("-Qprjquota");
+    if (!IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
+      sb_features->push_back("-Qprjquota");
+    }
   } else {
-    sb_features->push_back("-Q^prjquota");
+    if (IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
+      sb_features->push_back("-Q^prjquota");
+    }
   }
 }
 
 void StatefulMount::EnableExt4Features() {
-  std::vector<std::string> sb_features = GenerateExt4Features();
+  std::vector<std::string> sb_features = GenerateExt4FeaturesWrapper();
 
   if (!sb_features.empty()) {
     brillo::ProcessImpl tune2fs;
@@ -191,21 +229,47 @@ void StatefulMount::EnableExt4Features() {
   }
 }
 
-std::vector<std::string> StatefulMount::GenerateExt4Features() {
+std::vector<std::string> StatefulMount::GenerateExt4FeaturesWrapper() {
+  std::unique_ptr<brillo::Process> dump = platform_->CreateProcessInstance();
+  dump->AddArg("/sbin/dumpe2fs");
+  dump->AddArg("-h");
+  dump->AddArg(state_dev_.value());
+
+  std::string state_dumpe2fs;
+  dump->RedirectUsingMemory(STDOUT_FILENO);
+  if (dump->Run() != 0) {
+    PLOG(ERROR) << "Failed dumpe2fs for stateful partition.";
+    state_dumpe2fs = "";
+  } else {
+    state_dumpe2fs = dump->GetOutputString(STDOUT_FILENO);
+  }
+  return GenerateExt4Features(state_dumpe2fs);
+}
+
+std::vector<std::string> StatefulMount::GenerateExt4Features(
+    const std::string state_dumpe2fs) {
   std::vector<std::string> sb_features;
   std::vector<std::string> sb_options;
+  std::string feat;
+  std::string fs_features;
+  std::size_t feature_pos = state_dumpe2fs.find("Filesystem features:");
+  if (feature_pos != std::string::npos) {
+    std::size_t nl_pos = state_dumpe2fs.find("\n", feature_pos);
+    fs_features = state_dumpe2fs.substr(feature_pos, nl_pos);
+  }
 
   base::FilePath encryption = root_.Append(kExt4Features).Append("encryption");
   if (flags_.direncryption && platform_->FileExists(encryption)) {
-    sb_options.push_back("encrypt");
+    AppendOption(fs_features, &sb_options, "encrypt");
   }
 
   base::FilePath verity_file = root_.Append(kExt4Features).Append("verity");
   if (flags_.fsverity && platform_->FileExists(verity_file)) {
-    sb_options.push_back("verity");
+    AppendOption(fs_features, &sb_options, "verity");
   }
 
-  AppendQuotaFeaturesAndOptions(&sb_options, &sb_features);
+  AppendQuotaFeaturesAndOptions(fs_features, state_dumpe2fs, &sb_options,
+                                &sb_features);
 
   if (!sb_features.empty() || !sb_options.empty()) {
     // Ensure to replay the journal first so it doesn't overwrite the flag.
