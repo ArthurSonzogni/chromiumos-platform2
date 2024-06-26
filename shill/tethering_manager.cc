@@ -474,8 +474,7 @@ void TetheringManager::RefreshCapabilities() {
   // checking if AP mode is supported.
   auto wifi_phys = manager_->wifi_provider()->GetPhys();
   if (!wifi_phys.empty()) {
-    if (wifi_phys.front()->SupportAPMode() &&
-        wifi_phys.front()->SupportAPSTAConcurrency()) {
+    if (wifi_phys.front()->SupportAPMode()) {
       downstream_technologies.push_back(TechnologyName(Technology::kWiFi));
       // Wi-Fi specific tethering capabilities.
       // TODO(b/273351443) Add WPA2WPA3 and WPA3 security capability to

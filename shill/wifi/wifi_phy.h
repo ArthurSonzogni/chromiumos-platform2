@@ -137,9 +137,6 @@ class WiFiPhy {
   uint32_t SupportsConcurrency(
       const std::multiset<nl80211_iftype>& iface_types) const;
 
-  // Return true if the phy supports AP/STA concurrency, false otherwise.
-  mockable bool SupportAPSTAConcurrency() const;
-
   // Returns true if the device supports Dual Band Simultaneous operation.
   // Currently we have no devices in our fleet which support DBS, so just
   // return false.

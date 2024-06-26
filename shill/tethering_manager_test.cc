@@ -559,7 +559,6 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   const std::vector<const WiFiPhy*> phys = {phy.get()};
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
   ON_CALL(*phy, SupportAPMode()).WillByDefault(Return(true));
-  ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
   EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(true));
   tethering_manager_->RefreshCapabilities();
@@ -615,7 +614,6 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutCellular) {
   const std::vector<const WiFiPhy*> phys = {phy.get()};
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
   ON_CALL(*phy, SupportAPMode()).WillByDefault(Return(true));
-  ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
   EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(false));
 
