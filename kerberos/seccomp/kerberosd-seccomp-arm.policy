@@ -98,3 +98,4 @@ statfs64: 1
 process_vm_readv: 1
 rename: 1
 eventfd2: 1
+unlinkat: 1
