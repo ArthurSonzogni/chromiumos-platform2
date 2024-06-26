@@ -76,7 +76,8 @@ def parse_args(argv):
     parser.add_argument(
         "out",
         type=Path,
-        default=os.curdir,
+        nargs="?",
+        default=Path("."),
         help="Output path (defaults to current dir).",
     )
     return parser.parse_args(argv)
@@ -107,20 +108,24 @@ def decompress_zstd(zstd_data):
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     opts = parse_args(argv)
+
+    if not opts.out.is_dir():
+        sys.exit(f"Error: {opts.out} is not a directory")
+
     perf_data, perfetto_data = get_perf_data(opts.system_logs_zip)
 
     if not perf_data and not perfetto_data:
         sys.exit("Error: perf-data/perfetto-data not found in the system logs")
 
     if perf_data:
-        out = os.path.join(opts.out, "feedback_perf.data")
+        out = opts.out / "feedback_perf.data"
         print("Writing perf data to", out)
         perf_data = decompress_lzma(perf_data)
         with open(out, "wb") as f:
             f.write(perf_data)
 
     if perfetto_data:
-        out = os.path.join(opts.out, "feedback.perfetto-trace")
+        out = opts.out / "feedback.perfetto-trace"
         print("Writing perfetto data to", out)
         perfetto_data = decompress_zstd(perfetto_data)
         with open(out, "wb") as f:
