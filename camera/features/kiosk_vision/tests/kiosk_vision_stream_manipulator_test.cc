@@ -61,4 +61,7 @@ TEST_F(KioskVisionStreamManipulatorTest, CreateKioskVisionSM) {
   CHECK_EQ(stream_manipulator_->GetDlcPathForTesting(), kDlcPath);
 }
 
+// TODO(b/340801984): add tests for the implemented
+// `KioskVisionStreamManipulator`.
+
 }  // namespace cros::tests

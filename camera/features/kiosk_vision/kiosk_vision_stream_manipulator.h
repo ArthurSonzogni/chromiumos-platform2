@@ -36,6 +36,7 @@ class KioskVisionStreamManipulator : public StreamManipulator {
  private:
   base::FilePath dlc_path_;
   raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer_;
+  StreamManipulator::Callbacks callbacks_;
 };
 
 }  // namespace cros
