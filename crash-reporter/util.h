@@ -221,14 +221,6 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
 // that should be ignored rather than collected as a crash.
 bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig);
 
-// A simple factory that returns a brillo::Process object. Useful for unit
-// testing code that runs a subprocess.
-class BrilloProcessFactory {
- public:
-  // The default implementation returns a new brillo::ProcessImpl object.
-  virtual std::unique_ptr<brillo::Process> CreateProcess();
-};
-
 }  // namespace util
 
 #endif  // CRASH_REPORTER_UTIL_H_
