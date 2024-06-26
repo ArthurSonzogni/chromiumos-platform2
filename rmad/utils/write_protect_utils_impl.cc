@@ -12,13 +12,15 @@
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/ec_utils_impl.h"
 #include "rmad/utils/futility_utils_impl.h"
+#include "rmad/utils/gsc_utils_impl.h"
 
 namespace rmad {
 
 WriteProtectUtilsImpl::WriteProtectUtilsImpl()
     : crossystem_utils_(std::make_unique<CrosSystemUtilsImpl>()),
       ec_utils_(std::make_unique<EcUtilsImpl>()),
-      futility_utils_(std::make_unique<FutilityUtilsImpl>()) {}
+      futility_utils_(std::make_unique<FutilityUtilsImpl>()),
+      gsc_utils_(std::make_unique<GscUtilsImpl>()) {}
 
 WriteProtectUtilsImpl::WriteProtectUtilsImpl(
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
