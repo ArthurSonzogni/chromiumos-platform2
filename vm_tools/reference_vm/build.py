@@ -298,6 +298,7 @@ def run_debootstrap(
             "eatmydata",
             "debootstrap",
             "--include=eatmydata",
+            "--no-merged-usr",
             *cache_args,
             suite,
             target,
