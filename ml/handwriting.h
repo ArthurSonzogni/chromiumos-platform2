@@ -42,9 +42,10 @@ class HandwritingLibrary {
   static constexpr char kHandwritingDefaultInstallDir[] =
       "/opt/google/chrome/ml_models/handwriting";
 
-  // Returns whether HandwritingLibrary is supported.
+  // Returns whether any form of HandwritingLibrary is supported.
   static constexpr bool IsHandwritingLibrarySupported() {
-    return (IsUseLibHandwritingEnabled() || IsUseLibHandwritingDlcEnabled()) &&
+    return (IsUseLibHandwritingEnabled() || IsUseLibHandwritingDlcEnabled() ||
+            IsUseLanguagePacksEnabled()) &&
            !IsAsan();
   }
 
