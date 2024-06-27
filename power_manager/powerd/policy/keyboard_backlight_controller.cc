@@ -908,11 +908,11 @@ void KeyboardBacklightController::SetKeyboardAmbientLightSensorEnabled(
   if (als_enabled_next) {
     // Set manual control off.
     user_brightness_percent_ = std::nullopt;
-    // Update to automated_percent_ slowly when enable keyboard
-    // auto brightness.
-    if (UpdateState(
-            Transition::SLOW,
-            BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP)) {
+    // Update to automated_percent_ slowly when enabling keyboard
+    // auto brightness, triggered by ambient light.
+    if (UpdateState(Transition::SLOW,
+                    BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED,
+                    SignalBehavior::kIfChanged)) {
       num_als_adjustments_++;
     }
   } else {

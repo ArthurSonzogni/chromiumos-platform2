@@ -756,6 +756,25 @@ void InternalBacklightController::HandleSetAmbientLightSensorEnabled(
   // changes don't go through this D-Bus handler function.
   SetUseAmbientLight(enabled,
                      AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
+
+  // Apply slow transition to auto brightness level if ambient light sensor is
+  // enabled.
+  if (use_ambient_light_) {
+    UpdateState(BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED,
+                Transition::SLOW);
+  }
+
+  // Battery saver work with ALS:
+  // 1. When Battery Saver is off and ALS is on, turning on Battery Saver would
+  // turn off ALS through another code path.
+  // 2. Then, when Battery Saver is on and ALS is off, enabling ALS sets
+  // pre_battery_saver_percent_ to null. If Battery Saver is disabled at this
+  // step, this ensures that the brightness is controlled by ALS again, and not
+  // restored to the brightness before Battery Saver was enabled.
+  // 3. When Battery Saver is on and ALS is on, turning off ALS sets
+  // pre_battery_saver_percent_ to null, which should already be null at this
+  // point.
+  pre_battery_saver_percent_ = std::nullopt;
 }
 
 void InternalBacklightController::EnsureUserBrightnessIsNonzero(
@@ -925,11 +944,6 @@ void InternalBacklightController::SetUseAmbientLight(
         use_ambient_light, cause);
   }
   use_ambient_light_ = use_ambient_light;
-
-  // Do not restore any previous brightness when Battery Saver is disabled
-  // because the light sensor was enabled by the user after Battery Saver was
-  // enabled.
-  pre_battery_saver_percent_ = std::nullopt;
 }
 
 }  // namespace power_manager::policy

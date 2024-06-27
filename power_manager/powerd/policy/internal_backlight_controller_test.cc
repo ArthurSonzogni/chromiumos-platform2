@@ -1420,6 +1420,7 @@ TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfTouched) {
 
 TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfAmbientEnabled) {
   Init(PowerSource::BATTERY);
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
 
   // Set the brightness to a known percent.
   const double kBrightPercent = 80.0;
@@ -1433,12 +1434,36 @@ TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfAmbientEnabled) {
   ASSERT_DOUBLE_EQ(round(kBatterySaverBrightnessPercent),
                    round(GetBrightnessPercent()));
 
-  // Enable the ambient light sensor, disable Battery Saver, and check that
-  // brightness is NOT restored.
-  double dim_percent = GetBrightnessPercent();
+  // Simulate a low-light environment by setting lux to 20.
+  light_sensor_.set_lux(20);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+
+  // Enable the ambient light sensor.
+  dbus_wrapper_->ClearSentSignals();
   test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+
+  // Verify ambient light signal is emitted.
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
+      /*expected_ambient_light_sensor_enabled=*/true,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
+
+  // Verify brightness change signal is emitted.
+  test::CheckBrightnessChangedSignal(
+      dbus_wrapper_.get(), /*index=*/1, kScreenBrightnessChangedSignal,
+      GetBrightnessPercent(),
+      BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED);
+
+  // Verify brightness is set to automated percent.
+  ASSERT_DOUBLE_EQ(round(50), round(GetBrightnessPercent()));
+
+  // Disable Battery Saver. brightness is still set to automated percent(50)
+  // instead of pre_battery_saver_percent_.
   SetBatterySaverState(false);
-  ASSERT_DOUBLE_EQ(round(dim_percent), round(GetBrightnessPercent()));
+  ASSERT_DOUBLE_EQ(round(50), round(GetBrightnessPercent()));
 }
 
 }  // namespace power_manager::policy
