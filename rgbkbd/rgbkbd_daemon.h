@@ -16,7 +16,6 @@
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 #include <libcrossystem/crossystem.h>
-#include <libec/ec_usb_device_monitor.h>
 
 #include "rgbkbd/dbus_adaptors/org.chromium.Rgbkbd.h"
 #include "rgbkbd/internal_rgb_keyboard.h"
