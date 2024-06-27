@@ -3268,7 +3268,7 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
             connect_pending_iccid_);
     bool is_user_triggered = false;
 
-    if (capability_ && (failure == Service::kFailureNotRegistered)) {
+    if (capability_ && service && (failure == Service::kFailureNotRegistered)) {
       if (capability_->SuspectInactiveSim(service->iccid())) {
         failure = Service::kFailureSuspectInactiveSim;
       } else if (capability_->SuspectSubscription(service->iccid())) {
