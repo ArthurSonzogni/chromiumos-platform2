@@ -50,12 +50,18 @@ void CallSetScreenBrightness(
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 
-void CallSetAmbientLightSensorEnabled(system::DBusWrapperStub* wrapper,
-                                      bool enabled) {
+void CallSetAmbientLightSensorEnabled(
+    system::DBusWrapperStub* wrapper,
+    bool enabled,
+    SetAmbientLightSensorEnabledRequest_Cause cause) {
   DCHECK(wrapper);
   dbus::MethodCall method_call(kPowerManagerInterface,
                                kSetAmbientLightSensorEnabledMethod);
-  dbus::MessageWriter(&method_call).AppendBool(enabled);
+  dbus::MessageWriter writer(&method_call);
+  SetAmbientLightSensorEnabledRequest proto;
+  proto.set_cause(cause);
+  proto.set_sensor_enabled(enabled);
+  writer.AppendProtoAsArrayOfBytes(proto);
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 

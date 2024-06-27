@@ -140,12 +140,13 @@ class BacklightController {
   using GetBrightnessCallback =
       base::RepeatingCallback<void(double* percent_out, bool* success_out)>;
   using ToggleKeyboardBacklightCallback = base::RepeatingClosure;
-  using SetAmbientLightSensorEnabledCallback =
-      base::RepeatingCallback<void(bool enabled)>;
+  using SetAmbientLightSensorEnabledCallback = base::RepeatingCallback<void(
+      bool enabled, SetAmbientLightSensorEnabledRequest_Cause)>;
   using GetAmbientLightSensorEnabledCallback =
       base::RepeatingCallback<void(bool* enabled_out)>;
   using SetKeyboardAmbientLightSensorEnabledCallback =
-      base::RepeatingCallback<void(bool enabled)>;
+      base::RepeatingCallback<void(bool enabled,
+                                   SetAmbientLightSensorEnabledRequest_Cause)>;
   using GetKeyboardAmbientLightSensorEnabledCallback =
       base::RepeatingCallback<void(bool* enabled_out)>;
 

@@ -122,16 +122,17 @@ void OnSetAmbientLightSensorEnabled(
     const BacklightController::SetAmbientLightSensorEnabledCallback& callback,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  bool ambient_light_sensor_enabled = true;
-
-  // Attempt to pop the boolean argument from the method call. If it's not
-  // present, set the argument to the default value.
-  if (!dbus::MessageReader(method_call)
-           .PopBool(&ambient_light_sensor_enabled)) {
-    ambient_light_sensor_enabled = true;
+  dbus::MessageReader reader(method_call);
+  SetAmbientLightSensorEnabledRequest request;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Invalid " << method_name << " args";
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(
+            method_call, DBUS_ERROR_INVALID_ARGS,
+            "Expected SetAmbientLightSensorEnabledRequest protobuf"));
+    return;
   }
-
-  callback.Run(ambient_light_sensor_enabled);
+  callback.Run(request.sensor_enabled(), request.cause());
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
@@ -155,15 +156,18 @@ void OnSetKeyboardAmbientLightSensorEnabled(
         callback,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  bool enabled = true;
-  if (!dbus::MessageReader(method_call).PopBool(&enabled)) {
-    enabled = true;
+  dbus::MessageReader reader(method_call);
+  SetAmbientLightSensorEnabledRequest request;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Invalid " << method_name << " args";
+    std::move(response_sender)
+        .Run(dbus::ErrorResponse::FromMethodCall(
+            method_call, DBUS_ERROR_INVALID_ARGS,
+            "Expected SetAmbientLightSensorEnabledRequest protobuf"));
+    return;
   }
-
-  callback.Run(enabled);
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  std::move(response_sender).Run(std::move(response));
+  callback.Run(request.sensor_enabled(), request.cause());
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
 }  // namespace

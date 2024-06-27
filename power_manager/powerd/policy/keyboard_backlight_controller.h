@@ -132,7 +132,8 @@ class KeyboardBacklightController : public BacklightController,
                                   Transition transition,
                                   SetBacklightBrightnessRequest_Cause cause);
   void HandleToggleKeyboardBacklightRequest();
-  void HandleSetKeyboardAmbientLightSensorEnabledRequest(bool enabled);
+  void HandleSetKeyboardAmbientLightSensorEnabledRequest(
+      bool enabled, SetAmbientLightSensorEnabledRequest_Cause cause);
   void HandleGetKeyboardAmbientLightSensorEnabledRequest(bool* enabled_out);
 
   // Updates the current brightness after assessing the current state (based on

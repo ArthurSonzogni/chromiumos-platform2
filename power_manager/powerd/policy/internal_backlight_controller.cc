@@ -749,13 +749,23 @@ void InternalBacklightController::HandleGetAmbientLightSensorEnabledRequest(
 }
 
 void InternalBacklightController::HandleSetAmbientLightSensorEnabled(
-    bool enabled) {
-  // D-Bus requests to change the Ambient Light Sensor status are always
-  // user-initiated, and always come from the Settings app. Changes to the
-  // Ambient Light Sensor status that are caused by user-requested brightness
-  // changes don't go through this D-Bus handler function.
-  SetUseAmbientLight(enabled,
-                     AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
+    bool enabled, SetAmbientLightSensorEnabledRequest_Cause cause) {
+  // D-Bus requests to change the Ambient Light Sensor status come from 2
+  // sources:
+  // 1. User-initiated and come from the Settings app.
+  // 2. System restore brightness settings from user preference during login.
+  // Ambient Light Sensor status changes that are caused by user-requested
+  // brightness changes don't go through this D-Bus handler function.
+  AmbientLightSensorChange_Cause als_cause;
+  switch (cause) {
+    case SetAmbientLightSensorEnabledRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
+      als_cause = AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE;
+      break;
+    default:
+      als_cause = AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP;
+      break;
+  }
+  SetUseAmbientLight(enabled, als_cause);
 
   // Apply slow transition to auto brightness level if ambient light sensor is
   // enabled.

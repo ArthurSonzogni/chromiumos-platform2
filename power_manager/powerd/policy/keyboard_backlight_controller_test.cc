@@ -139,10 +139,15 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
   }
 
-  void CallSetKeyboardAmbientLightSensorEnabled(bool enabled) {
+  void CallSetKeyboardAmbientLightSensorEnabled(
+      bool enabled, SetAmbientLightSensorEnabledRequest_Cause cause) {
     dbus::MethodCall method_call(kPowerManagerInterface,
                                  kSetKeyboardAmbientLightSensorEnabledMethod);
-    dbus::MessageWriter(&method_call).AppendBool(enabled);
+    dbus::MessageWriter writer(&method_call);
+    SetAmbientLightSensorEnabledRequest proto;
+    proto.set_cause(cause);
+    proto.set_sensor_enabled(enabled);
+    writer.AppendProtoAsArrayOfBytes(proto);
     ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
   }
 
@@ -993,7 +998,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightness) {
       BacklightBrightnessChange_Cause_USER_REQUEST);
 
   // Re-enable keyboard ALS and set brightness from settings.
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   dbus_wrapper_.ClearSentSignals();
   CallSetKeyboardBrightness(
       /*percent=*/45, SetBacklightBrightnessRequest_Transition_FAST,
@@ -1222,9 +1229,13 @@ TEST_F(KeyboardBacklightControllerTest,
 
 TEST_F(KeyboardBacklightControllerTest, GetKeyboardAmbientLightSensorEnabled) {
   Init();
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   CallGetKeyboardAmbientLightSensorEnabled(/*expected_enabled=*/true);
-  CallSetKeyboardAmbientLightSensorEnabled(false);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      false,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   CallGetKeyboardAmbientLightSensorEnabled(/*expected_enabled=*/false);
 }
 
@@ -1280,14 +1291,16 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {
 
   // Re-enable auto-brightness by calling SetKeyboardAmbientLightSensorEnabled.
   dbus_wrapper_.ClearSentSignals();
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_RESTORED_FROM_USER_PREFERENCE);
   // Enable the ambient light sensor should emit a signal.
   test::CheckAmbientLightSensorEnabledChangedSignal(
       &dbus_wrapper_, /*index=*/0,
       /*is_keyboard=*/true,
       /*expected_ambient_light_sensor_enabled=*/true,
       /*expected_cause=*/
-      AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
+      AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE);
 
   // Expect brightness to adjust to 60% according to previous ALS reading(85).
   EXPECT_EQ(60, backlight_.current_level());
@@ -1304,7 +1317,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {
 
   // Disable auto-brightness.
   dbus_wrapper_.ClearSentSignals();
-  CallSetKeyboardAmbientLightSensorEnabled(false);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      false,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   // Disable the ambient light sensor should emit a signal.
   test::CheckAmbientLightSensorEnabledChangedSignal(
       &dbus_wrapper_, /*index=*/0,
@@ -1342,7 +1357,9 @@ TEST_F(KeyboardBacklightControllerTest,
 
   // Enable the ambient light sensor, expect a signal as this changes the state.
   dbus_wrapper_.ClearSentSignals();
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   ASSERT_TRUE(dbus_wrapper_.GetSentSignal(
       0, kKeyboardAmbientLightSensorEnabledChangedSignal, nullptr, nullptr));
 
@@ -1372,13 +1389,17 @@ TEST_F(KeyboardBacklightControllerTest,
   ASSERT_TRUE(dbus_wrapper_.GetSentSignal(
       0, kKeyboardAmbientLightSensorEnabledChangedSignal, nullptr, nullptr));
 
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   dbus_wrapper_.ClearSentSignals();
   CallDecreaseKeyboardBrightness();
   ASSERT_TRUE(dbus_wrapper_.GetSentSignal(
       0, kKeyboardAmbientLightSensorEnabledChangedSignal, nullptr, nullptr));
 
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   dbus_wrapper_.ClearSentSignals();
   CallSetKeyboardBrightness(
       /*percent=*/50,
@@ -1389,7 +1410,9 @@ TEST_F(KeyboardBacklightControllerTest,
   ASSERT_TRUE(dbus_wrapper_.GetSentSignal(
       0, kKeyboardAmbientLightSensorEnabledChangedSignal, nullptr, nullptr));
 
-  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   dbus_wrapper_.ClearSentSignals();
   CallToggleKeyboardBacklight();
   ASSERT_TRUE(dbus_wrapper_.GetSentSignal(

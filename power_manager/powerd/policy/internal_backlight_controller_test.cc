@@ -1211,7 +1211,8 @@ TEST_F(InternalBacklightControllerTest, GetAmbientLightSensorEnabled) {
     // Disable the ambient light sensor.
     const bool expected_ambient_light_sensor_enabled = false;
     test::CallSetAmbientLightSensorEnabled(
-        dbus_wrapper_.get(), expected_ambient_light_sensor_enabled);
+        dbus_wrapper_.get(), expected_ambient_light_sensor_enabled,
+        SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
     EXPECT_FALSE(controller_->IsUsingAmbientLight());
 
     // Check that GetAmbientLightSensorEnabled returns that the ambient light
@@ -1232,7 +1233,8 @@ TEST_F(InternalBacklightControllerTest, GetAmbientLightSensorEnabled) {
     // Re-enable the ambient light sensor.
     const bool expected_ambient_light_sensor_enabled = true;
     test::CallSetAmbientLightSensorEnabled(
-        dbus_wrapper_.get(), expected_ambient_light_sensor_enabled);
+        dbus_wrapper_.get(), expected_ambient_light_sensor_enabled,
+        SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
     EXPECT_TRUE(controller_->IsUsingAmbientLight());
 
     // Check that GetAmbientLightSensorEnabled returns that the ambient light
@@ -1289,7 +1291,9 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
 
   // Re-enable the ambient light sensor.
   dbus_wrapper_->ClearSentSignals();
-  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  test::CallSetAmbientLightSensorEnabled(
+      dbus_wrapper_.get(), true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
 
   // Re-enabling the ambient light sensor should emit a signal for
   // AmbientLightSensorEnabledChanged, indicating that the ambient light sensor
@@ -1319,7 +1323,9 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
 
   // Disable the ambient light sensor.
   dbus_wrapper_->ClearSentSignals();
-  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), false);
+  test::CallSetAmbientLightSensorEnabled(
+      dbus_wrapper_.get(), false,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
 
   // Disabling the ambient light sensor should emit a signal for
   // AmbientLightSensorEnabledChanged, indicating that the ambient light sensor
@@ -1340,7 +1346,16 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Enable the ambient light sensor.
-  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  dbus_wrapper_->ClearSentSignals();
+  test::CallSetAmbientLightSensorEnabled(
+      dbus_wrapper_.get(), true,
+      SetAmbientLightSensorEnabledRequest_Cause_RESTORED_FROM_USER_PREFERENCE);
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
+      /*expected_ambient_light_sensor_enabled=*/true,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE);
   dbus_wrapper_->ClearSentSignals();
 
   // Change the brightness from Settings, which should disable the ambient light
@@ -1358,7 +1373,9 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
       AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP);
 
   // Re-enable the ambient light sensor.
-  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  test::CallSetAmbientLightSensorEnabled(
+      dbus_wrapper_.get(), true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   dbus_wrapper_->ClearSentSignals();
 
   // Change the brightness from the model, which should disable the ambient
@@ -1441,7 +1458,9 @@ TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfAmbientEnabled) {
 
   // Enable the ambient light sensor.
   dbus_wrapper_->ClearSentSignals();
-  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  test::CallSetAmbientLightSensorEnabled(
+      dbus_wrapper_.get(), true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
 
   // Verify ambient light signal is emitted.
   test::CheckAmbientLightSensorEnabledChangedSignal(

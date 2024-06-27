@@ -27,8 +27,10 @@ void CallSetScreenBrightness(
     double percent,
     SetBacklightBrightnessRequest_Transition transition,
     SetBacklightBrightnessRequest_Cause cause);
-void CallSetAmbientLightSensorEnabled(system::DBusWrapperStub* wrapper,
-                                      bool enabled);
+void CallSetAmbientLightSensorEnabled(
+    system::DBusWrapperStub* wrapper,
+    bool enabled,
+    SetAmbientLightSensorEnabledRequest_Cause cause);
 
 // Checks that the D-Bus signal at |index| has name |signal_name| and
 // describes a brightness change to (rounded) |brightness_percent| for |cause|.
