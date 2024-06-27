@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+from test_case import TestCase
+
 
 class TestCaseEnum(Enum):
     # The `value` should be a tuple with first value being the description.
@@ -43,3 +45,7 @@ class TestCaseEnum(Enum):
         assert len(self.value) >= 1
         assert type(self.value[0]) == str
         return self.value[1:]
+
+    def test_case(self) -> TestCase:
+        """Return the general TestCase for this TestCaseEnum."""
+        return TestCase(self.name, self.description())
