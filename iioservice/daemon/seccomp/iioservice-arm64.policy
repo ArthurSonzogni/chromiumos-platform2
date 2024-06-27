@@ -66,6 +66,8 @@ set_tid_address: 1
 signalfd4: 1
 # Allow AF_UNIX for syslog and mojo IPC.
 socket: arg0 == AF_UNIX
+# Allow AF_UNIX for mojo IPCz.
+socketpair: arg0 == AF_UNIX
 tgkill: 1
 uname: 1
 write: 1
