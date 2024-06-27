@@ -88,3 +88,4 @@ chown: 1
 fsync: 1
 futex: 1
 sync: 1
+unlinkat: 1
