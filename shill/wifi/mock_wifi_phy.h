@@ -7,9 +7,9 @@
 
 #include <set>
 
-#include <gmock/gmock.h>
-
 #include "shill/wifi/wifi_phy.h"
+
+#include <gmock/gmock.h>
 
 namespace shill {
 
@@ -24,6 +24,7 @@ class MockWiFiPhy : public WiFiPhy {
   MOCK_METHOD(void, PhyDumpComplete, (), (override));
   MOCK_METHOD(void, OnNewWiphy, (const Nl80211Message&), (override));
   MOCK_METHOD(bool, SupportAPMode, (), (const, override));
+  MOCK_METHOD(bool, SupportAPSTAConcurrency, (), (const, override));
   MOCK_METHOD(bool, SupportP2PMode, (), (const, override));
   MOCK_METHOD(bool, reg_self_managed, (), (const, override));
   MOCK_METHOD(std::optional<std::multiset<nl80211_iftype>>,

@@ -709,6 +709,10 @@ class WiFiPhyTest : public ::testing::Test {
     }
   }
 
+  void AssertApStaConcurrency(bool support) {
+    ASSERT_EQ(wifi_phy_.SupportAPSTAConcurrency(), support);
+  }
+
   struct ConcurrencyTestCase {
     std::vector<WiFiPhy::ConcurrentIface>
         present_ifaces;                  // Types already reserved.
@@ -920,6 +924,7 @@ TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
           .max_num = 3,
           .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelNoAPSTAConcurrencyCombinations);
+  AssertApStaConcurrency(false);
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
@@ -945,6 +950,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
       .max_num = 3,
       .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelConcurrencyCombinations);
+  AssertApStaConcurrency(false);
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
@@ -995,6 +1001,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
           .num_channels = 1},
   };
   AssertPhyConcurrencyIsEqualTo(MultiChannelConcurrencyCombinations);
+  AssertApStaConcurrency(false);
 }
 
 TEST_F(WiFiPhyTest, SelectFrequency_Empty) {
