@@ -30,7 +30,7 @@ UrandomRoutineV2::UrandomRoutineV2(Context* context,
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
 
   if (exec_duration_.InSeconds() < 1) {
-    LOG(ERROR)
+    DLOG(INFO)
         << "Routine run time must be larger than 1 second. Running minimum "
            "exec duration of 1 second instead.";
     exec_duration_ = base::Seconds(1);

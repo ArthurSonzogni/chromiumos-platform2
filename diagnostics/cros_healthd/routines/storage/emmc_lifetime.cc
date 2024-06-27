@@ -120,11 +120,11 @@ void EmmcLifetimeRoutine::Start() {
 
 // The routine can only be started.
 void EmmcLifetimeRoutine::Resume() {
-  LOG(INFO) << "eMMC lifetime routine does not support resume operation.";
+  DLOG(INFO) << "eMMC lifetime routine does not support resume operation.";
 }
 
 void EmmcLifetimeRoutine::Cancel() {
-  LOG(INFO) << "eMMC lifetime routine does not support cancel operation.";
+  DLOG(INFO) << "eMMC lifetime routine does not support cancel operation.";
 }
 
 void EmmcLifetimeRoutine::UpdateStatusWithProgressPercent(
@@ -178,12 +178,11 @@ void EmmcLifetimeRoutine::OnDebugdResultCallback(const std::string& result) {
   output_dict_.Set("resultDetails", std::move(result_dict));
 
   if (pre_eol_info != kMmcExtCsdFieldPreEolInfoNormal) {
-    LOG(ERROR) << "PRE_EOL_INFO != " << kMmcExtCsdFieldPreEolInfoNormal
-               << " (i.e., not normal), got: " << pre_eol_info
-               << ". DEVICE_LIFE_TIME_EST_TYP_A = "
-               << device_life_time_est_typ_a
-               << " and DEVICE_LIFE_TIME_EST_TYP_B = "
-               << device_life_time_est_typ_b;
+    LOG(INFO) << "PRE_EOL_INFO != " << kMmcExtCsdFieldPreEolInfoNormal
+              << " (i.e., not normal), got: " << pre_eol_info
+              << ". DEVICE_LIFE_TIME_EST_TYP_A = " << device_life_time_est_typ_a
+              << " and DEVICE_LIFE_TIME_EST_TYP_B = "
+              << device_life_time_est_typ_b;
     UpdateStatusWithProgressPercent(
         mojom::DiagnosticRoutineStatusEnum::kFailed,
         /*percent=*/100, kEmmcLifetimeRoutinePreEolInfoAbnormalError);

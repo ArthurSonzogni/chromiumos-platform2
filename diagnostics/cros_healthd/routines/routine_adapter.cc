@@ -72,7 +72,7 @@ std::string EnumToString(mojom::MemtesterTestItemEnum subtest_enum) {
       LOG(ERROR) << "Unmapped subtest enum: " << subtest_enum;
       return "";
     case mojom::MemtesterTestItemEnum::kUnknown:
-      LOG(ERROR) << "Unknown subtest enum: " << subtest_enum;
+      LOG(WARNING) << "Unknown subtest enum: " << subtest_enum;
       return "";
   }
 }

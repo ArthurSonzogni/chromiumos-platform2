@@ -58,13 +58,13 @@ void VolumeButtonRoutine::OnStart() {
     return;
   }
   if (!timeout_.is_positive()) {
-    LOG(ERROR) << "Timeout for volume button routine is not positive: "
-               << timeout_;
+    LOG(INFO) << "Timeout for volume button routine is not positive: "
+              << timeout_;
     RaiseException("Timeout must be positive.");
     return;
   }
   if (timeout_ > kMaxTimeout) {
-    LOG(ERROR) << "Timeout for volume button is invalid: " << timeout_;
+    LOG(INFO) << "Timeout for volume button is invalid: " << timeout_;
     RaiseException(base::StringPrintf(
         "Timeout cannot be longer than %d seconds.", kMaxTimeoutSeconds));
     return;

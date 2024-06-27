@@ -30,7 +30,7 @@ CpuCacheRoutine::CpuCacheRoutine(Context* context,
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
 
   if (exec_duration_.InSeconds() < 1) {
-    LOG(ERROR) << "Routine run time must be larger than 0. Running default "
+    DLOG(INFO) << "Routine run time must be larger than 0. Running default "
                   "exec duration instead.";
     exec_duration_ = kDefaultCpuRoutineRuntime;
   }

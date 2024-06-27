@@ -311,7 +311,7 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
-      LOG(ERROR) << "Got RoutineArgument::UnrecognizedArgument";
+      LOG(WARNING) << "Got RoutineArgument::UnrecognizedArgument";
       std::move(callback).Run(base::unexpected(
           mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
               "Routine argument is not recognized/supported",

@@ -289,7 +289,7 @@ void State::HandleInterfaceName(Context* context,
   }
 
   if (!interface_found) {
-    LOG(ERROR) << "Output of `iw dev`: " << output;
+    LOG(INFO) << "Output of `iw dev`: " << output;
     error_ = CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
                                     "No wireless adapter found on the system.");
     return;

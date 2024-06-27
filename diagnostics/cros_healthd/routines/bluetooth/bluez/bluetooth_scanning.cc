@@ -109,11 +109,11 @@ void BluetoothScanningRoutine::Start() {
 }
 
 void BluetoothScanningRoutine::Resume() {
-  LOG(ERROR) << "Bluetooth scanning routine cannot be resumed";
+  DLOG(INFO) << "Bluetooth scanning routine cannot be resumed";
 }
 
 void BluetoothScanningRoutine::Cancel() {
-  LOG(ERROR) << "Bluetooth scanning routine cannot be cancelled";
+  DLOG(INFO) << "Bluetooth scanning routine cannot be cancelled";
 }
 
 void BluetoothScanningRoutine::PopulateStatusUpdate(

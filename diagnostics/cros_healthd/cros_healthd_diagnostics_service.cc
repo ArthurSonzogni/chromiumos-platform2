@@ -72,7 +72,7 @@ mojom::DiskReadTypeEnum Convert(mojom::DiskReadRoutineTypeEnum type) {
 void ReportUnsupportedRoutine(
     mojom::DiagnosticRoutineEnum routine_enum,
     base::OnceCallback<void(mojom::RunRoutineResponsePtr)> callback) {
-  LOG(ERROR) << routine_enum << " is not supported on this device";
+  LOG(INFO) << routine_enum << " is not supported on this device";
   SendResultToUMA(routine_enum,
                   mojom::DiagnosticRoutineStatusEnum::kUnsupported);
   std::move(callback).Run(mojom::RunRoutineResponse::New(
@@ -130,7 +130,7 @@ void CrosHealthdDiagnosticsService::GetRoutineUpdate(
 
   auto itr = active_routines_.find(id);
   if (itr == active_routines_.end()) {
-    LOG(ERROR) << "Bad id in GetRoutineUpdateRequest: " << id;
+    LOG(WARNING) << "Bad id in GetRoutineUpdateRequest: " << id;
     SetErrorRoutineUpdate("Specified routine does not exist.", &update);
     std::move(callback).Run(mojom::RoutineUpdate::New(
         update.progress_percent, std::move(update.output),
@@ -162,7 +162,7 @@ void CrosHealthdDiagnosticsService::GetRoutineUpdate(
           std::move(update.routine_update_union)));
       return;
     case mojom::DiagnosticRoutineCommandEnum::kUnknown:
-      LOG(ERROR) << "Get unknown command";
+      LOG(INFO) << "Get unknown command";
       break;
   }
 

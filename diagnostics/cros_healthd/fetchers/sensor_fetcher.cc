@@ -58,7 +58,7 @@ std::vector<mojom::Sensor::Type> GetSupportedTypes(
         break;
       default:
         // Ignore other sensor types.
-        LOG(ERROR) << "Unsupport sensor device type: " << type;
+        LOG(INFO) << "Unsupport sensor device type: " << type;
         break;
     }
   }

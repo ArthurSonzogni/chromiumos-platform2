@@ -447,8 +447,6 @@ void SendDiagnosticResultToUMA(MetricsLibraryInterface* metrics,
   std::optional<metrics_enum::CrosHealthdDiagnosticResult> result_enum =
       ConvertDiagnosticStatusToUMAEnum(status);
   if (!result_enum.has_value()) {
-    LOG(ERROR) << "Unable to send non-terminal status " << status << " of "
-               << routine << " to UMA.";
     return;
   }
 

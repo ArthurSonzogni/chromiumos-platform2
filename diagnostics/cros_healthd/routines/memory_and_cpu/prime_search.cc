@@ -37,7 +37,7 @@ PrimeSearchRoutine::PrimeSearchRoutine(
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
   // Routine run time must be larger than 0.
   if (exec_duration_.InSeconds() < 1) {
-    LOG(ERROR)
+    DLOG(INFO)
         << "Routine run time must be larger than 1 second. Running minimum "
            "exec duration of 1 second instead.";
     exec_duration_ = base::Seconds(1);
@@ -48,7 +48,7 @@ PrimeSearchRoutine::PrimeSearchRoutine(
   max_num_ = max_num.value_or(kPrimeSearchDefaultMaxNum);
   // Routine max num must be larger than 1.
   if (max_num_ < 2) {
-    LOG(ERROR) << "Cros config value for prime search maximum number should be "
+    DLOG(INFO) << "Cros config value for prime search maximum number should be "
                   "larger than 1";
     max_num_ = 2;
   }

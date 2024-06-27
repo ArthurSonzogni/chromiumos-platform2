@@ -60,11 +60,11 @@ void BluetoothDiscoveryRoutine::Start() {
 }
 
 void BluetoothDiscoveryRoutine::Resume() {
-  LOG(ERROR) << "Bluetooth discovery routine cannot be resumed";
+  DLOG(INFO) << "Bluetooth discovery routine cannot be resumed";
 }
 
 void BluetoothDiscoveryRoutine::Cancel() {
-  LOG(ERROR) << "Bluetooth discovery routine cannot be cancelled";
+  DLOG(INFO) << "Bluetooth discovery routine cannot be cancelled";
 }
 
 void BluetoothDiscoveryRoutine::PopulateStatusUpdate(

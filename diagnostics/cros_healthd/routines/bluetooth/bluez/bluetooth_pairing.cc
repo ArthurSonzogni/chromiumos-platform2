@@ -66,11 +66,11 @@ void BluetoothPairingRoutine::Start() {
 }
 
 void BluetoothPairingRoutine::Resume() {
-  LOG(ERROR) << "Bluetooth pairing routine cannot be resumed";
+  DLOG(INFO) << "Bluetooth pairing routine cannot be resumed";
 }
 
 void BluetoothPairingRoutine::Cancel() {
-  LOG(ERROR) << "Bluetooth pairing routine cannot be cancelled";
+  DLOG(INFO) << "Bluetooth pairing routine cannot be cancelled";
 }
 
 void BluetoothPairingRoutine::PopulateStatusUpdate(

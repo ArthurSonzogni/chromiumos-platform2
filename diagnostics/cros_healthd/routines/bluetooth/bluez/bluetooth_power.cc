@@ -58,11 +58,11 @@ void BluetoothPowerRoutine::Start() {
 }
 
 void BluetoothPowerRoutine::Resume() {
-  LOG(ERROR) << "Bluetooth power routine cannot be resumed";
+  DLOG(INFO) << "Bluetooth power routine cannot be resumed";
 }
 
 void BluetoothPowerRoutine::Cancel() {
-  LOG(ERROR) << "Bluetooth power routine cannot be cancelled";
+  DLOG(INFO) << "Bluetooth power routine cannot be cancelled";
 }
 
 void BluetoothPowerRoutine::PopulateStatusUpdate(

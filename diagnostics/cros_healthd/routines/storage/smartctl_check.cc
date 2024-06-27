@@ -112,8 +112,8 @@ SmartctlCheckRoutine::~SmartctlCheckRoutine() = default;
 void SmartctlCheckRoutine::Start() {
   if (percentage_used_threshold_ > kPercentageUsedMax ||
       percentage_used_threshold_ < kPercentageUsedMin) {
-    LOG(ERROR) << "Invalid threshold value (valid: 0-255): "
-               << percentage_used_threshold_;
+    LOG(INFO) << "Invalid threshold value (valid: 0-255): "
+              << percentage_used_threshold_;
     UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
                                     /*percent=*/100,
                                     kSmartctlCheckRoutineThresholdError);
@@ -197,10 +197,10 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
       critical_warning == kCriticalWarningNone;
   if (!available_spare_check_passed || !percentage_used_check_passed ||
       !critical_warning_check_passed) {
-    LOG(ERROR) << "One or more checks failed. Result - available_spare check: "
-               << available_spare_check_passed
-               << ", percentage_used check: " << percentage_used_check_passed
-               << ", critical_warning check: " << critical_warning_check_passed;
+    LOG(INFO) << "One or more checks failed. Result - available_spare check: "
+              << available_spare_check_passed
+              << ", percentage_used check: " << percentage_used_check_passed
+              << ", critical_warning check: " << critical_warning_check_passed;
     UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kFailed,
                                     /*percent=*/100,
                                     kSmartctlCheckRoutineCheckFailed);
