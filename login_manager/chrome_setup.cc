@@ -442,6 +442,11 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   builder->AddArg("--ash-use-cros-mojo-service-manager");
   builder->AddArg("--cros-healthd-uses-service-manager");
 
+  // Enable MojoIpcz in ash if the ipcz USE flag is enabled.
+  if (builder->UseFlagIsSet("ipcz")) {
+    builder->AddFeatureEnableOverride("MojoIpcz");
+  }
+
   SetUpOsInstallFlags(builder);
   SetUpSchedulerFlags(builder, cros_config);
 }
