@@ -610,48 +610,6 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
-  EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
-      .WillOnce(Return(true));
-  EXPECT_CALL(library_,
-              SendToUMA(Eq(Metrics::kMetricSuspendActionTimeTaken.n.name),
-                        non_zero_time_delta.InMilliseconds(),
-                        Metrics::kMetricSuspendActionTimeTaken.min,
-                        Metrics::kMetricSuspendActionTimeTaken.max,
-                        Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifySuspendActionsCompleted(true);
-}
-
-TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
-  EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
-      .WillOnce(Return(true));
-  EXPECT_CALL(library_,
-              SendToUMA(Eq(Metrics::kMetricSuspendActionTimeTaken.n.name),
-                        non_zero_time_delta.InMilliseconds(),
-                        Metrics::kMetricSuspendActionTimeTaken.min,
-                        Metrics::kMetricSuspendActionTimeTaken.max,
-                        Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifySuspendActionsCompleted(false);
-}
-
-TEST_F(MetricsTest, NotifySuspendActionsStarted) {
-  metrics_.time_suspend_actions_timer->Stop();
-  metrics_.NotifySuspendActionsStarted();
-  EXPECT_TRUE(metrics_.time_suspend_actions_timer->HasStarted());
-}
-
 TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
   const std::string& issue = ConnectionDiagnostics::kIssueIPCollision;
   EXPECT_CALL(

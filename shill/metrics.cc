@@ -136,7 +136,6 @@ std::string GetApnTypeString(
 
 Metrics::Metrics()
     : library_(&metrics_library_),
-      time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_between_rekey_and_connection_failure_timer_(
           new chromeos_metrics::Timer) {
   char salt[kPseudoTagSaltLen];
@@ -356,22 +355,6 @@ std::string Metrics::GetFullMetricName(std::string_view metric_name,
   } else {
     return base::StrCat({kMetricPrefix, ".", metric_name, ".", technology});
   }
-}
-
-void Metrics::NotifySuspendActionsStarted() {
-  if (time_suspend_actions_timer->HasStarted())
-    return;
-  time_suspend_actions_timer->Start();
-}
-
-void Metrics::NotifySuspendActionsCompleted(bool success) {
-  if (!time_suspend_actions_timer->HasStarted())
-    return;
-
-  base::TimeDelta elapsed_time;
-  time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
-  time_suspend_actions_timer->Reset();
-  SendToUMA(kMetricSuspendActionTimeTaken, elapsed_time.InMilliseconds());
 }
 
 void Metrics::NotifyApChannelSwitch(uint16_t frequency,

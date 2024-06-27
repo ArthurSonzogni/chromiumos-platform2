@@ -1648,7 +1648,6 @@ bool Manager::EmitDefaultService() {
 }
 
 void Manager::OnSuspendImminent() {
-  metrics_->NotifySuspendActionsStarted();
   if (devices_.empty()) {
     // If there are no devices, then suspend actions succeeded synchronously.
     // Make a call to the Manager::OnSuspendActionsComplete directly, since
@@ -1702,7 +1701,6 @@ void Manager::OnDarkSuspendImminent() {
 
 void Manager::OnSuspendActionsComplete(const Error& error) {
   LOG(INFO) << "Finished suspend actions. Result: " << error;
-  metrics_->NotifySuspendActionsCompleted(error.IsSuccess());
   power_manager_->ReportSuspendReadiness(base::BindOnce([](bool success) {
     LOG(INFO) << (success ? "Successfully reported" : "Failed to report")
               << " suspend readiness to powerd";

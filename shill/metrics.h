@@ -1766,14 +1766,6 @@ class Metrics {
   static constexpr char kMetricWifiEAPSuffix[] = "EAP";
   static constexpr char kMetricWifiFTEAPSuffix[] = "FTEAP";
 
-  // Shill suspend action statistics, in milliseconds.
-  static constexpr HistogramMetric<FixedName> kMetricSuspendActionTimeTaken = {
-      .n = FixedName{"Network.Shill.SuspendActionTimeTaken"},
-      .min = 1,
-      .max = 20000,
-      .num_buckets = kTimerHistogramNumBuckets,
-  };
-
   // Cellular specific statistics.
   static constexpr HistogramMetric<FixedName>
       kMetricCellularSignalStrengthBeforeDrop = {
@@ -1938,13 +1930,6 @@ class Metrics {
       std::string_view metric_name,
       Technology technology_id,
       TechnologyLocation location = TechnologyLocation::kBeforeName);
-
-  // Notifies this object that suspend actions started executing.
-  void NotifySuspendActionsStarted();
-
-  // Notifies this object that suspend actions have been completed.
-  // |success| is true, if the suspend actions completed successfully.
-  void NotifySuspendActionsCompleted(bool success);
 
   // Notifies this object that an AP was discovered and of that AP's 802.11k
   // support.
@@ -2568,9 +2553,6 @@ class Metrics {
   FRIEND_TEST(MetricsTest, TimeFromRekeyToFailureExceedMaxDuration);
   FRIEND_TEST(MetricsTest, TimeFromRekeyToFailureValidDuration);
   FRIEND_TEST(MetricsTest, TimeToScanIgnore);
-  FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Success);
-  FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Failure);
-  FRIEND_TEST(MetricsTest, NotifySuspendActionsStarted);
   FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);
 
   struct DeviceMetrics {
@@ -2605,10 +2587,6 @@ class Metrics {
 
   DeviceMetrics* GetDeviceMetrics(int interface_index) const;
 
-  // For unit test purposes.
-  void set_time_suspend_actions_timer(chromeos_metrics::Timer* timer) {
-    time_suspend_actions_timer.reset(timer);  // Passes ownership
-  }
   void set_time_to_scan_timer(int interface_index,
                               chromeos_metrics::TimerReporter* timer) {
     DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
@@ -2640,7 +2618,6 @@ class Metrics {
   MetricsLibraryInterface* library_;
   // Randomly generated 32 bytes used as a salt to pseudonymize session tags.
   std::string pseudo_tag_salt_;
-  std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer>
       time_between_rekey_and_connection_failure_timer_;
   DeviceMetricsLookupMap devices_metrics_;
