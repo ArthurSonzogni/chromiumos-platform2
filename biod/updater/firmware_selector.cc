@@ -12,6 +12,8 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/types/expected.h>
+#include <brillo/files/file_util.h>
+#include <brillo/file_utils.h>
 
 namespace {
 
@@ -26,9 +28,24 @@ namespace updater {
 
 using FindFirmwareFileStatus = FirmwareSelector::FindFirmwareFileStatus;
 
+bool FirmwareSelector::IsBetaFirmwareAllowed() const {
+  return base::PathExists(base_path_.Append(kAllowBetaFirmwareFile));
+}
+
+void FirmwareSelector::AllowBetaFirmware(bool enable) {
+  base::FilePath beta_firmware_file = base_path_.Append(kAllowBetaFirmwareFile);
+
+  if (enable) {
+    // Create file that will indicate the beta firmware can be used.
+    brillo::TouchFile(beta_firmware_file);
+  } else {
+    brillo::DeleteFile(beta_firmware_file);
+  }
+}
+
 base::expected<base::FilePath, FirmwareSelector::FindFirmwareFileStatus>
 FirmwareSelector::FindFirmwareFile(const std::string& board_name) {
-  if (base::PathExists(base_path_.Append(kAllowBetaFirmwareFile))) {
+  if (IsBetaFirmwareAllowed()) {
     LOG(INFO) << "Trying to find beta firmware file for " << board_name << ".";
 
     auto status = FindFirmwareFileAtDir(

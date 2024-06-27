@@ -354,5 +354,51 @@ TEST_F(FirmwareSelectorTest, UniqueStatusMessages) {
       << "There are one or more non-unique status messages.";
 }
 
+TEST_F(FirmwareSelectorTest, BetaFirmwareDisabled) {
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  biod::updater::FirmwareSelector selector(temp_dir.GetPath(),
+                                           base::FilePath(""));
+  EXPECT_FALSE(selector.IsBetaFirmwareAllowed());
+}
+
+TEST_F(FirmwareSelectorTest, BetaFirmwareEnabled) {
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  biod::updater::FirmwareSelector selector(temp_dir.GetPath(),
+                                           base::FilePath(""));
+  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".allow_beta_firmware")));
+  EXPECT_TRUE(selector.IsBetaFirmwareAllowed());
+}
+
+TEST_F(FirmwareSelectorTest, AllowBetaFirmware) {
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  biod::updater::FirmwareSelector selector(temp_dir.GetPath(),
+                                           base::FilePath(""));
+  selector.AllowBetaFirmware(true);
+
+  EXPECT_TRUE(
+      base::PathExists(temp_dir.GetPath().Append(".allow_beta_firmware")));
+}
+
+TEST_F(FirmwareSelectorTest, DisableBetaFirmware) {
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  base::FilePath beta_fw_path =
+      temp_dir.GetPath().Append(".allow_beta_firmware");
+  EXPECT_TRUE(TouchFile(beta_fw_path));
+
+  biod::updater::FirmwareSelector selector(temp_dir.GetPath(),
+                                           base::FilePath(""));
+  selector.AllowBetaFirmware(false);
+
+  EXPECT_FALSE(base::PathExists(beta_fw_path));
+}
+
 }  // namespace updater
 }  // namespace biod

@@ -100,3 +100,5 @@ fstatfs64: 1
 fstatfs: 1
 sysinfo: 1
 eventfd2: 1
+# fchmod: Used by brillo::TouchFile().
+fchmod: 1

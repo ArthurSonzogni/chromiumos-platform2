@@ -18,6 +18,8 @@ class FirmwareSelector {
   FirmwareSelector(base::FilePath base_path, base::FilePath firmware_dir)
       : base_path_(base_path), firmware_dir_(firmware_dir) {}
   virtual ~FirmwareSelector() = default;
+  virtual bool IsBetaFirmwareAllowed() const;
+  virtual void AllowBetaFirmware(bool enable);
 
   enum class FindFirmwareFileStatus {
     kNoDirectory,
