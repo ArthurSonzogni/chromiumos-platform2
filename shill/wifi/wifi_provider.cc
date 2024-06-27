@@ -1321,9 +1321,9 @@ void WiFiProvider::EnableDevices(std::vector<WiFiRefPtr> devices,
       EnableDevice(device, persist, std::move(aggregator_callback));
       continue;
     }
-    // If we don't have a ready WiFiPhy for this device yet, just send the
-    // request without considering concurrency. It'll only be processed once we
-    // actually have the WiFiPhy and it is ready.
+    // If we have a ready WiFiPhy then check supported concurrency combinations.
+    // Otherwise, just send the request without considering concurrency. It'll
+    // only be processed once we actually have the WiFiPhy and it is ready.
     if (wifi_phys_.contains(device->phy_index()) &&
         !wifi_phys_[device->phy_index()]->ConcurrencyCombinations().empty()) {
       WiFiPhy* phy = wifi_phys_[device->phy_index()].get();
@@ -1331,11 +1331,17 @@ void WiFiProvider::EnableDevices(std::vector<WiFiRefPtr> devices,
       // together, rather than one at a time.
       auto ifaces_to_delete =
           phy->RequestNewIface(NL80211_IFTYPE_STATION, device->priority());
-      if (!ifaces_to_delete || ifaces_to_delete->size() > 0) {
+      if (!ifaces_to_delete) {
         LOG(INFO) << "Failed to enable device " << device->link_name()
                   << " due to concurrency conflict";
         std::move(aggregator_callback).Run(Error(Error::kOperationFailed));
         continue;
+      }
+      if (ifaces_to_delete->size() > 0) {
+        if (!BringDownDevicesByType(*ifaces_to_delete)) {
+          std::move(aggregator_callback).Run(Error(Error::kOperationFailed));
+          continue;
+        }
       }
     }
     // Create a PendingDeviceRequest for each device we want to enable.
@@ -1526,8 +1532,15 @@ bool WiFiProvider::RequestLocalDeviceCreation(
     return false;
   }
   auto ifaces_to_delete = phy->RequestNewIface(*type, priority);
-  if (!ifaces_to_delete || ifaces_to_delete->size() > 0) {
+  if (!ifaces_to_delete) {
     return false;
+  }
+  if (ifaces_to_delete->size() > 0) {
+    if (!BringDownDevicesByType(*ifaces_to_delete)) {
+      return false;
+    }
+    PushPendingDeviceRequest(*type, priority, std::move(create_device_cb));
+    return true;
   }
   manager_->dispatcher()->PostTask(FROM_HERE, std::move(create_device_cb));
   return true;

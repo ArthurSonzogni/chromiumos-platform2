@@ -2739,7 +2739,19 @@ TEST_F(WiFiProviderTest, CreateLocalDevice_ConcurrencyConflict) {
       .WillOnce(Return(std::multiset<nl80211_iftype>{NL80211_IFTYPE_STATION}));
   EXPECT_CALL(*phy0, ConcurrencyCombinations)
       .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
-  EXPECT_FALSE(provider_->RequestLocalDeviceCreation(
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  MockWiFi* wifi0 = new MockWiFi(&manager_, /*link_name=*/"wlan0", kMacAddress,
+                                 /*interface_index=*/0, /*phy_index=*/0,
+                                 new MockWakeOnWiFi());
+  wifi0->SetPriority(WiFiPhy::Priority(0));
+  phy0->AddWiFiDevice(wifi0);
+  ON_CALL(*wifi0, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateAssociated));
+  std::vector<DeviceRefPtr> wifi_devs = {wifi0};
+  EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillRepeatedly(Return(wifi_devs));
+  EXPECT_CALL(*wifi0, SetEnabled(false)).Times(1);
+  EXPECT_TRUE(provider_->RequestLocalDeviceCreation(
       LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), base::DoNothing()));
   EXPECT_CALL(*phy0, RequestNewIface).WillOnce(Return(std::nullopt));
   EXPECT_FALSE(provider_->RequestLocalDeviceCreation(
