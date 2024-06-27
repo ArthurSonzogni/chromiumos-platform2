@@ -279,17 +279,6 @@ bool WiFiPhy::CombSupportsConcurrency(
 
 uint32_t WiFiPhy::SupportsConcurrency(
     const std::multiset<nl80211_iftype>& desired_iftypes) const {
-  // Combinations of size 1 don't have to worry about DBS.
-  if (desired_iftypes.size() > 1) {
-    // If any of the desired iftypes require DBS, then return 0 if we don't
-    // support DBS.
-    for (auto iftype : desired_iftypes) {
-      if (IfaceTypeRequiresDBS(iftype) && !SupportsDBS()) {
-        return 0;
-      }
-    }
-  }
-
   for (auto comb : concurrency_combs_) {
     if (CombSupportsConcurrency(comb, desired_iftypes)) {
       return comb.num_channels;

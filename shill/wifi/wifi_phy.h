@@ -140,19 +140,6 @@ class WiFiPhy {
   // Return true if the phy supports AP/STA concurrency, false otherwise.
   mockable bool SupportAPSTAConcurrency() const;
 
-  // Returns true if the device supports Dual Band Simultaneous operation.
-  // Currently we have no devices in our fleet which support DBS, so just
-  // return false.
-  // TODO(b/330783194): Report the actual DBS support of the device and add unit
-  // tests which test the DBS == true case.
-  bool SupportsDBS() const { return false; }
-
-  // Returns true if |type| requires Dual Band Simultaneous support for
-  // concurrency operation.
-  static bool IfaceTypeRequiresDBS(nl80211_iftype type) {
-    return type == NL80211_IFTYPE_AP;
-  }
-
   // Returns the set of interfaces which must be destroyed before enabling an
   // interface with |priority| and |desired_type|. An empty return set
   // indicates the interface can be created without destroying any existing
