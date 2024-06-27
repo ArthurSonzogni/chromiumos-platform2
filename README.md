@@ -138,6 +138,7 @@ copies.
 | [net-base](./net-base/) | library of networking primitive data structure and common utilities |
 | [nnapi](./nnapi/) | Implementation of the Android [Neural Networks API](https://developer.android.com/ndk/guides/neuralnetworks) |
 | [ocr](./ocr/) | Optical Character Recognition (OCR) service for ChromeOS |
+| [odml](./odml/) | On-device ML service for ChromeOS |
 | [oobe_config](./oobe_config/) | Utilities for saving and restoring OOBE config state |
 | [os_install_service](./os_install_service/) | Service that can be triggered by the UI to install CrOS to disk from a USB device |
 | [p2p](./p2p/) | Service for sharing files between CrOS devices (e.g. updates) |
