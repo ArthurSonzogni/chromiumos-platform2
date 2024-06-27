@@ -1,0 +1,62 @@
+// Copyright 2024 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Note:
+//   1. This file is copied from,
+// https://cs.chromium.org/chromium/src/services/on_device_model/public/mojom/on_device_model_service.mojom
+//   2. On chromium, we must use the version under mojo folder so we do not need
+//      to and must not sync this file to chromium.
+module on_device_model.mojom;
+
+import "odml/mojom/file.mojom";
+import "odml/mojom/on_device_model.mojom";
+import "odml/mojom/read_only_file.mojom";
+import "odml/mojom/uuid.mojom";
+
+// Opened file resources needed to define the model.
+struct ModelAssets {
+  // TODO(b/313919363): This should also be a ReadOnlyFile.
+  mojo_base.mojom.File? weights;
+
+  mojo_base.mojom.ReadOnlyFile? ts_data;
+  mojo_base.mojom.ReadOnlyFile? ts_sp_model;
+
+  // The language detection model file, if output language detection is desired.
+  mojo_base.mojom.ReadOnlyFile? language_detection_model;
+};
+
+// Params to describe the model to load.
+struct LoadModelParams {
+  // Assets for the model.
+  ModelAssets assets;
+
+  // The maximum number of input+output tokens the model can handle. This is
+  // needed when initializing the model.
+  uint32 max_tokens;
+
+  // The number of scores output by the TS model, an implementation defined
+  // default if unspecified.
+  uint32? ts_dimension;
+
+  // List of adaptation ranks the model should support.
+  array<uint32> adaptation_ranks;
+
+  // If this is true, the multiple sessions support will be enabled.
+  // The previous session will not be canceled when starting new session if
+  // this feature is enabled.
+  bool support_multiple_sessions;
+};
+
+// A service which allows loading platform trusted models which are stored
+// on-device and which may process untrustworthy data.
+[Stable]
+interface OnDeviceModelPlatformService {
+  // Initializes a new model instance given platform model `uuid`, this can be
+  // used on some specific platforms(e.g. ChromeOS). The model can be either
+  // a base model or a base model with an adaptation layer. If the model can
+  // not be created the model pipe will be reset.
+  LoadPlatformModel@0(mojo_base.mojom.Uuid uuid,
+                    pending_receiver<OnDeviceModel> model) =>
+      (LoadModelResult result);
+};

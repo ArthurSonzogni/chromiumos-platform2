@@ -1,0 +1,94 @@
+{
+  "c++": {
+    "mojo_base.mojom.File": {
+      "copyable_pass_by_value": false,
+      "default_constructible": false,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": true,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": true,
+      "public_headers": [
+        "base/files/file.h"
+      ],
+      "traits_headers": [
+        "odml/mojom/file_mojom_traits.h"
+      ],
+      "typename": "base::File"
+    },
+    "mojo_base.mojom.ReadOnlyFile": {
+      "copyable_pass_by_value": false,
+      "default_constructible": false,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": true,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": true,
+      "public_headers": [
+        "base/files/file.h"
+      ],
+      "traits_headers": [
+        "odml/mojom/read_only_file_mojom_traits.h"
+      ],
+      "typename": "base::File"
+    },
+    "mojo_base.mojom.Uuid": {
+      "copyable_pass_by_value": false,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": false,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": true,
+      "public_headers": [
+        "base/uuid.h"
+      ],
+      "traits_headers": [
+        "odml/mojom/uuid_mojom_traits.h"
+      ],
+      "typename": "base::Uuid"
+    },
+    "on_device_model.mojom.AdaptationAssets": {
+      "copyable_pass_by_value": false,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": true,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": false,
+      "public_headers": [
+        "odml/on_device_model/public/cpp/model_assets.h"
+      ],
+      "traits_headers": [
+        "odml/mojom/adaptation_assets_mojom_traits.h"
+      ],
+      "typename": "on_device_model::AdaptationAssets"
+    },
+    "on_device_model.mojom.ModelAssets": {
+      "copyable_pass_by_value": false,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": true,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": false,
+      "public_headers": [
+        "odml/on_device_model/public/cpp/model_assets.h"
+      ],
+      "traits_headers": [
+        "odml/mojom/model_assets_mojom_traits.h"
+      ],
+      "typename": "on_device_model::ModelAssets"
+    }
+  }
+}

@@ -36,6 +36,7 @@ constexpr char kHeartdHeartbeatService[] = "HeartdHeartbeatService";
 constexpr char kIioSensor[] = "IioSensor";
 constexpr char kVideoCaptureDeviceInfoMonitor[] =
     "VideoCaptureDeviceInfoMonitor";
+constexpr char kCrosOdmlService[] = "CrosOdmlService";
 
 }  // namespace chromeos::mojo_services
 

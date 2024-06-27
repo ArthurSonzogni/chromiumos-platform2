@@ -1,0 +1,21 @@
+[
+  // Policy of odmld for mojo service manager.
+  {
+    "identity": "u:r:cros_odml_service:s0",
+    "own": [
+      "CrosOdmlService"
+    ]
+  },
+  {
+    "identity": "u:r:cros_browser:s0",
+    "request": [
+      "CrosOdmlService"
+    ]
+  },
+  {
+    "identity": "u:r:cros_ssh_session:s0",
+    "request": [
+      "CrosOdmlService"
+    ]
+  }
+]

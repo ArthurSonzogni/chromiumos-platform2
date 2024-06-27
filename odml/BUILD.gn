@@ -1,0 +1,98 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":install_service_manager_policy_config",
+    ":odml_console",
+    ":odmld",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "absl",
+    "libbrillo",
+    "libchrome",
+    "libmetrics",
+    "mojo_service_manager",
+    "protobuf-lite",
+    "system_api",
+  ]
+}
+
+generate_mojom_bindings("mojo_bindings") {
+  mojo_root = "${platform2_root}"
+  if (use.ml_benchmark_drivers) {
+    use_pic = true
+  }
+  sources = [
+    "mojom/file.mojom",
+    "mojom/on_device_model.mojom",
+    "mojom/on_device_model_service.mojom",
+    "mojom/read_only_file.mojom",
+    "mojom/uuid.mojom",
+  ]
+  mojo_extra_args = [
+    "--typemap",
+    rebase_path("mojom/type_mappings_internal.json"),
+  ]
+  enabled_features = [
+    "file_path_is_string",
+    "is_chromeos_ash",
+  ]
+}
+
+source_set("mojo_bindings_lib") {
+  sources = [
+    "mojom/adaptation_assets_mojom_traits.h",
+    "mojom/file_mojom_traits.cc",
+    "mojom/file_mojom_traits.h",
+    "mojom/model_assets_mojom_traits.h",
+    "mojom/read_only_file_mojom_traits.cc",
+    "mojom/read_only_file_mojom_traits.h",
+    "mojom/uuid_mojom_traits.cc",
+    "mojom/uuid_mojom_traits.h",
+  ]
+  public_deps = [ ":mojo_bindings" ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("odml") {
+  sources = [
+    "on_device_model/ml/chrome_ml.cc",
+    "on_device_model/ml/on_device_model_executor.cc",
+    "on_device_model/ml/utils.cc",
+    "on_device_model/on_device_model_internal.cc",
+    "on_device_model/on_device_model_service.cc",
+    "on_device_model/platform_model_loader_chromeos.cc",
+    "on_device_model/public/cpp/model_assets.cc",
+  ]
+  public_deps = [ ":mojo_bindings_lib" ]
+  configs += [ ":target_defaults" ]
+}
+
+executable("odml_console") {
+  install_path = "bin"
+  sources = [ "odml_console.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":odml" ]
+}
+
+executable("odmld") {
+  install_path = "bin"
+  sources = [ "odmld.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":odml" ]
+}
+
+# Install the policy for mojo service manager.
+install_config("install_service_manager_policy_config") {
+  sources = [ "odmld.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
+}

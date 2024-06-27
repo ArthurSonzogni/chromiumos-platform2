@@ -1,0 +1,25 @@
+// Copyright 2024 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Note:
+//   1. This file is copied from,
+// https://cs.chromium.org/chromium/src/mojo/public/mojom/base/read_only_file.mojom
+//   2. On chromium, we must use the version under mojo folder so we do not need
+//      to and must not sync this file to chromium.
+module mojo_base.mojom;
+
+// Corresponds to |base::File| in base/files/file.h but, on most
+// platforms, will not serialise handles which are writable. At
+// present this only supports physically backed files, but this may be
+// relaxed in future.
+//
+// SECURITY_NOTE: This type is an indication that a readonly handle can
+// be provided. A sandboxed process should ensure that the handle cannot
+// be made writable. This may not be possible on all platforms.
+//
+// See |file_mojom_traits.cc| for details.
+struct ReadOnlyFile {
+  handle<platform> fd;
+  bool async;
+};
