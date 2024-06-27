@@ -64,6 +64,7 @@ static_library("libbiod") {
     "auth_stack_manager_wrapper.cc",
     "biod_config.cc",
     "biod_crypto.cc",
+    "biod_feature.cc",
     "biod_metrics.cc",
     "biod_storage.cc",
     "biod_system.cc",
@@ -91,7 +92,10 @@ static_library("libbiod") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "hwsec" ]
-  pkg_deps = [ "vboot_host" ]
+  pkg_deps = [
+    "libfeatures",
+    "vboot_host",
+  ]
 }
 
 static_library("fake_libbiod") {
@@ -173,6 +177,7 @@ if (use.test) {
       "auth_stack_manager_wrapper_test.cc",
       "biod_config_test.cc",
       "biod_crypto_test.cc",
+      "biod_feature_test.cc",
       "biod_metrics_test.cc",
       "biod_storage_test.cc",
       "biod_system_test.cc",
@@ -207,7 +212,10 @@ if (use.test) {
       ":libbiod",
       "//common-mk/testrunner",
     ]
-    pkg_deps = [ "dbus-1" ]
+    pkg_deps = [
+      "dbus-1",
+      "libfake_platform_features",
+    ]
   }
 }
 
