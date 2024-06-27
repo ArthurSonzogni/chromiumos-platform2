@@ -134,8 +134,8 @@ class WiFiPhy {
   // Return the number of channels on which all ifaces in |iface_types| can be
   // operated concurrently. A return value of 0 indicates that the
   // concurrency isn't supported at all.
-  uint32_t SupportsConcurrency(
-      const std::multiset<nl80211_iftype>& iface_types) const;
+  mockable uint32_t
+  SupportsConcurrency(const std::multiset<nl80211_iftype>& iface_types) const;
 
   // Return true if the phy supports AP/STA concurrency, false otherwise.
   mockable bool SupportAPSTAConcurrency() const;

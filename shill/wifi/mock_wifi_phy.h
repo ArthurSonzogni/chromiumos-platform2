@@ -26,6 +26,10 @@ class MockWiFiPhy : public WiFiPhy {
   MOCK_METHOD(bool, SupportAPMode, (), (const, override));
   MOCK_METHOD(bool, SupportAPSTAConcurrency, (), (const, override));
   MOCK_METHOD(bool, SupportP2PMode, (), (const, override));
+  MOCK_METHOD(uint32_t,
+              SupportsConcurrency,
+              (const std::multiset<nl80211_iftype>& iface_types),
+              (const, override));
   MOCK_METHOD(bool, reg_self_managed, (), (const, override));
   MOCK_METHOD(std::optional<std::multiset<nl80211_iftype>>,
               RequestNewIface,

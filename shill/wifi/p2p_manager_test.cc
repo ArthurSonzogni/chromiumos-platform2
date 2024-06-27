@@ -305,37 +305,54 @@ TEST_F(P2PManagerTest, GetP2PCapabilities) {
       new NiceMock<MockWiFiPhy>(kPhyIndex));
   const std::vector<const WiFiPhy*> phys = {phy.get()};
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
-  ON_CALL(*phy, SupportP2PMode()).WillByDefault(Return(true));
+
+  // P2P not supported
+  ON_CALL(*phy, SupportP2PMode()).WillByDefault(Return(false));
   KeyValueStore caps = GetCapabilities(p2p_manager_);
   EXPECT_TRUE(caps.Contains<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
-  auto supported = caps.Get<Boolean>(kP2PCapabilitiesP2PSupportedProperty);
+  EXPECT_FALSE(caps.Get<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
+  EXPECT_FALSE(caps.Contains<String>(kP2PCapabilitiesGroupReadinessProperty));
+  EXPECT_FALSE(caps.Contains<String>(kP2PCapabilitiesClientReadinessProperty));
+  EXPECT_FALSE(
+      caps.Contains<Integers>(kP2PCapabilitiesSupportedChannelsProperty));
+  EXPECT_FALSE(
+      caps.Contains<Integers>(kP2PCapabilitiesPreferredChannelsProperty));
 
-  // TODO(b/295050788): it requires wifi phy to have
-  // ability to get hardware support for Wifi Direct.
-  EXPECT_TRUE(supported);
+  // P2P supported but only with SCC mode
+  ON_CALL(*phy, SupportP2PMode()).WillByDefault(Return(true));
+  ON_CALL(*phy, SupportsConcurrency(_)).WillByDefault(Return(1));
+  caps = GetCapabilities(p2p_manager_);
+  EXPECT_TRUE(caps.Contains<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
+  EXPECT_FALSE(caps.Get<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
+  EXPECT_FALSE(caps.Contains<String>(kP2PCapabilitiesGroupReadinessProperty));
+  EXPECT_FALSE(caps.Contains<String>(kP2PCapabilitiesClientReadinessProperty));
+  EXPECT_FALSE(
+      caps.Contains<Integers>(kP2PCapabilitiesSupportedChannelsProperty));
+  EXPECT_FALSE(
+      caps.Contains<Integers>(kP2PCapabilitiesPreferredChannelsProperty));
 
+  // P2P supported and MCC supported
+  ON_CALL(*phy, SupportP2PMode()).WillByDefault(Return(true));
+  ON_CALL(*phy, SupportsConcurrency(_)).WillByDefault(Return(2));
+  caps = GetCapabilities(p2p_manager_);
+  EXPECT_TRUE(caps.Contains<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
+  EXPECT_TRUE(caps.Get<Boolean>(kP2PCapabilitiesP2PSupportedProperty));
+  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
+  // and interface combination checking to be supported by wifi phy.
   EXPECT_TRUE(caps.Contains<String>(kP2PCapabilitiesGroupReadinessProperty));
+  EXPECT_EQ(caps.Get<String>(kP2PCapabilitiesGroupReadinessProperty),
+            kP2PCapabilitiesGroupReadinessNotReady);
   EXPECT_TRUE(caps.Contains<String>(kP2PCapabilitiesClientReadinessProperty));
+  EXPECT_EQ(caps.Get<String>(kP2PCapabilitiesClientReadinessProperty),
+            kP2PCapabilitiesClientReadinessNotReady);
   EXPECT_TRUE(
       caps.Contains<Integers>(kP2PCapabilitiesSupportedChannelsProperty));
   EXPECT_TRUE(
+      caps.Get<Integers>(kP2PCapabilitiesSupportedChannelsProperty).empty());
+  EXPECT_TRUE(
       caps.Contains<Integers>(kP2PCapabilitiesPreferredChannelsProperty));
-
-  auto groupReadiness =
-      caps.Get<String>(kP2PCapabilitiesGroupReadinessProperty);
-  auto clientReadiness =
-      caps.Get<String>(kP2PCapabilitiesClientReadinessProperty);
-  auto supportedChannels =
-      caps.Get<Integers>(kP2PCapabilitiesSupportedChannelsProperty);
-  auto preferredChannels =
-      caps.Get<Integers>(kP2PCapabilitiesPreferredChannelsProperty);
-
-  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
-  // and interface combination checking to be supported by wifi phy.
-  EXPECT_EQ(groupReadiness, kP2PCapabilitiesGroupReadinessNotReady);
-  EXPECT_EQ(clientReadiness, kP2PCapabilitiesClientReadinessNotReady);
-  EXPECT_TRUE(supportedChannels.empty());
-  EXPECT_TRUE(preferredChannels.empty());
+  EXPECT_TRUE(
+      caps.Get<Integers>(kP2PCapabilitiesPreferredChannelsProperty).empty());
 }
 
 TEST_F(P2PManagerTest, GetP2PGroupInfos) {

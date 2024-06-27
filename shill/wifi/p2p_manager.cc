@@ -4,6 +4,7 @@
 
 #include "shill/wifi/p2p_manager.h"
 
+#include <algorithm>
 #include <ios>
 #include <memory>
 #include <optional>
@@ -47,11 +48,23 @@ void P2PManager::InitPropertyStore(PropertyStore* store) {
 
 bool P2PManager::IsP2PSupported() {
   auto wifi_phys = manager_->wifi_provider()->GetPhys();
-  if (!wifi_phys.empty()) {
-    return wifi_phys.front()->SupportP2PMode();
+  if (wifi_phys.empty()) {
+    return false;
   }
-  LOG(ERROR) << "No WiFiPhy available";
-  return false;
+
+  auto phy = wifi_phys.front();
+  if (!phy->SupportP2PMode()) {
+    return false;
+  }
+
+  // Only indicate P2P support if STA/P2P MCC is supported as a STA connection
+  // could be attempted or the connected STA interface could attempt a channel
+  // switch during an active P2P session.
+  uint32_t num_supported_channels = std::min(
+      phy->SupportsConcurrency({NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_STATION}),
+      phy->SupportsConcurrency(
+          {NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_STATION}));
+  return (num_supported_channels > 1);
 }
 
 String P2PManager::GroupReadiness() {
