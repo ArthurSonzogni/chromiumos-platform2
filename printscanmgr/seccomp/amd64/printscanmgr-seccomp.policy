@@ -81,3 +81,5 @@ clock_gettime: 1
 sendmmsg: 1
 sysinfo: 1
 clock_nanosleep: 1
+setresgid: 1
+setresuid: 1

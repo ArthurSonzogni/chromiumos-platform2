@@ -4,6 +4,8 @@
 
 #include "printscanmgr/minijail/minijail_configuration.h"
 
+#include <linux/capability.h>
+
 #include <base/check_op.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -24,6 +26,8 @@ constexpr char kSeccompFilterPath[] =
 
 void EnterDaemonMinijail() {
   ScopedMinijail jail(minijail_new());
+  minijail_use_caps(jail.get(),
+                    CAP_TO_MASK(CAP_SETGID) | CAP_TO_MASK(CAP_SETUID));
   minijail_no_new_privs(jail.get());   // The no_new_privs bit.
   minijail_namespace_uts(jail.get());  // New UTS namespace.
   minijail_namespace_ipc(jail.get());  // New IPC namespace.

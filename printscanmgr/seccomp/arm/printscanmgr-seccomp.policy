@@ -83,3 +83,5 @@ sendmmsg: 1
 sysinfo: 1
 clock_nanosleep: 1
 recvfrom: 1
+setresgid: 1
+setresuid: 1
