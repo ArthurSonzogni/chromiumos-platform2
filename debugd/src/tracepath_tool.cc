@@ -14,8 +14,8 @@ namespace debugd {
 
 namespace {
 
-const char kTracepath[] = "/usr/sbin/tracepath";
-const char kTracepath6[] = "/usr/sbin/tracepath6";
+constexpr char kTracepath[] = "/usr/bin/tracepath";
+constexpr char kTracepath6[] = "/usr/bin/tracepath6";
 
 }  // namespace
 
