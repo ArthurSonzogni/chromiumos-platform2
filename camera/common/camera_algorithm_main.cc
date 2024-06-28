@@ -59,10 +59,11 @@ int main(int argc, char** argv) {
       (FLAGS_type == "vendor")
 #if USE_LIBCAMERA
           ? cros::constants::kCrosCameraAlgoLibcameraSocketPathString
+          : cros::constants::kCrosCameraAlgoGpuLibcameraSocketPathString);
 #else
           ? cros::constants::kCrosCameraAlgoSocketPathString
-#endif
           : cros::constants::kCrosCameraGPUAlgoSocketPathString);
+#endif
   // Create unix socket to receive the adapter token and connection handle
   int fd = -1;
   if (!cros::CreateServerUnixDomainSocket(socket_file_path, &fd)) {
@@ -116,7 +117,7 @@ int main(int argc, char** argv) {
     if (pid == 0) {
 #if USE_LIBCAMERA
       cros::CameraAlgorithmAdapterLibcamera adapter;
-      adapter.Run(std::move(connection_fd));
+      adapter.Run(std::move(connection_fd), FLAGS_type == "vendor");
 #else
       cros::CameraAlgorithmAdapter adapter;
       adapter.Run(std::string(recv_buf), std::move(platform_handles[0]));

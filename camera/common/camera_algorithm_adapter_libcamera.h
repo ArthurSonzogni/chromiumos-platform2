@@ -34,10 +34,10 @@ class CameraAlgorithmAdapterLibcamera {
 
   // Build up IPC and load the camera algorithm library. This method returns
   // when the IPC connection is lost.
-  void Run(base::ScopedFD channel);
+  void Run(base::ScopedFD channel, bool isCpu);
 
  private:
-  void InitializeOnIpcThread(base::ScopedFD channel);
+  void InitializeOnIpcThread(base::ScopedFD channel, bool isCpu);
 
   void DestroyOnIpcThread();
 

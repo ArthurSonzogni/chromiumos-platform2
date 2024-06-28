@@ -16,6 +16,8 @@ const char kCrosCameraGPUAlgoSocketPathString[] =
     "/run/camera/camera-gpu-algo.sock";
 const char kCrosCameraAlgoLibcameraSocketPathString[] =
     "/run/camera/camera-algo-libcamera.sock";
+const char kCrosCameraAlgoGpuLibcameraSocketPathString[] =
+    "/run/camera/camera-algo-gpu-libcamera.sock";
 const char kCrosCameraSocketPathString[] = "/run/camera/camera3.sock";
 const char kCrosCameraTestConfigPathString[] =
     "/var/cache/camera/test_config.json";

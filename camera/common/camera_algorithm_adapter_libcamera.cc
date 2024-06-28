@@ -31,7 +31,7 @@ CameraAlgorithmAdapterLibcamera::CameraAlgorithmAdapterLibcamera()
 
 CameraAlgorithmAdapterLibcamera::~CameraAlgorithmAdapterLibcamera() = default;
 
-void CameraAlgorithmAdapterLibcamera::Run(base::ScopedFD channel) {
+void CameraAlgorithmAdapterLibcamera::Run(base::ScopedFD channel, bool isCpu) {
   // VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
   ipc_lost_cb_ = cros::GetFutureCallback(future);
@@ -40,17 +40,18 @@ void CameraAlgorithmAdapterLibcamera::Run(base::ScopedFD channel) {
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraAlgorithmAdapterLibcamera::InitializeOnIpcThread,
-                     base::Unretained(this), std::move(channel)));
+                     base::Unretained(this), std::move(channel), isCpu));
 
   future->Wait(-1);
   _exit(EXIT_SUCCESS);
 }
 
 void CameraAlgorithmAdapterLibcamera::InitializeOnIpcThread(
-    base::ScopedFD channel) {
+    base::ScopedFD channel, bool isCpu) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
-  const char* algo_lib_name = "libcamera_ipa_proxy.so";
+  const char* algo_lib_name =
+      isCpu ? "libcamera_ipa_proxy.so" : "libcamera_ipa_gpu_proxy.so";
   algo_dll_handle_ = dlopen(algo_lib_name, RTLD_NOW | RTLD_GLOBAL);
   if (!algo_dll_handle_) {
     LOGF(ERROR) << "Failed to dlopen: " << dlerror();
