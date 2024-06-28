@@ -37,7 +37,7 @@ get_nvme_block_devs() {
 #  - NVMe character device (ex: /dev/nvme0)
 get_nvme_char_device_size() {
   local disk="$1"
-  local dev_size="$(nvme id-ctrl --output-format=json "${dev}" | jq ".tnvmcap")"
+  local dev_size="$(nvme id-ctrl --output-format=json "${disk}" | jq ".tnvmcap")"
   if [ ${dev_size} -eq 0 ]; then
     # This may not be exact size of the disk because there might be some
     # unused blocks.
