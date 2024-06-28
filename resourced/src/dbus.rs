@@ -865,8 +865,6 @@ pub async fn service_main() -> Result<()> {
         .await
         .context("create VmMemoryManagementClient")?;
 
-    conn.request_name(SERVICE_NAME, false, true, false).await?;
-
     let mut cr = Crossroads::new();
 
     // Enable asynchronous methods. Incoming method calls are spawned as separate tasks if
@@ -971,6 +969,9 @@ pub async fn service_main() -> Result<()> {
             }
         }),
     );
+
+    // Now that the callbacks are all initialized, we can advertise our service.
+    conn.request_name(SERVICE_NAME, false, true, false).await?;
 
     // Reports memory pressure notification count and memory stats every 10 minutes.
     let notification_count = Arc::new(AtomicI32::new(0));
