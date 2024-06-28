@@ -64,6 +64,8 @@ constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 // Path to the combined properties resolved by arcvm
 constexpr char kCombinedPropPath[] = "/run/arcvm/host_generated/combined.prop";
 constexpr char kBoardProp[] = "ro.product.board";
+constexpr char kSocManufacturerProp[] = "ro.soc.manufacturer";
+constexpr char kSocModelProp[] = "ro.soc.model";
 
 // A feature name for enabling jemalloc multi-arena settings
 // in low memory devices.
@@ -509,6 +511,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   base::FilePath kernel_path;
   if (request.use_gki()) {
     std::string board_name;
+    std::string soc_manufacturer;
+    std::string soc_model;
     kernel_path = base::FilePath(kGkiPath);
     vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
     // This is set to 0 by the GKI kernel so we set back to the default.
@@ -516,11 +520,21 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     // TODO(b/325538592): Remove this line once expanded properties can
     // be passed to ARCVM via serial device.
     if (GetPropertyFromFile(base::FilePath(kCombinedPropPath), kBoardProp,
-                            &board_name)) {
+                            &board_name) &&
+        GetPropertyFromFile(base::FilePath(kCombinedPropPath),
+                            kSocManufacturerProp, &soc_manufacturer) &&
+        GetPropertyFromFile(base::FilePath(kCombinedPropPath), kSocModelProp,
+                            &soc_model)) {
       vm_builder.AppendKernelParam(base::StringPrintf(
           "arccustom.%s=%s", kBoardProp, board_name.c_str()));
+      vm_builder.AppendKernelParam(base::StringPrintf(
+          "arccustom.%s=%s", kSocManufacturerProp, soc_manufacturer.c_str()));
+      vm_builder.AppendKernelParam(base::StringPrintf(
+          "arccustom.%s=%s", kSocModelProp, soc_model.c_str()));
     } else {
-      LOG(WARNING) << "Failed to get value of '" << kBoardProp << "'.";
+      LOG(WARNING) << "Failed to get value of '" << kBoardProp << "', '"
+                   << kSocManufacturerProp << "', or '" << kSocModelProp
+                   << "'.";
     }
     // TODO(b/331748554): The GKI doesn't have the pvclock driver.
     vm_builder.EnablePvClock(false /* disable */);
