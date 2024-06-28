@@ -33,8 +33,7 @@ $IncludeConfig /etc/rsyslog.d/*.conf
 
 # Keep network stuff in /var/log/net.log
 if (($programname == 'charon') or \
-    ($programname == 'dhcpcd') or \
-    ($programname == 'dhcpcd7') or \
+    ($programname startswith 'dhcpcd') or \
     ($programname == 'dnsmasq') or \
     ($programname == 'dnsproxyd') or \
     ($programname == 'hermes') or \
@@ -55,7 +54,7 @@ if (($programname == 'charon') or \
 # Log important (EMERG..ERR) network stuff in /var/log/messages too,
 # but discard anything less severe
 if (($programname == 'charon') or \
-    ($programname == 'dhcpcd') or \
+    ($programname startswith 'dhcpcd') or \
     ($programname == 'dnsmasq') or \
     ($programname == 'dnsproxyd') or \
     ($programname == 'hermes') or \
