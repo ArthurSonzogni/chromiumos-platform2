@@ -48,6 +48,7 @@ if (($programname == 'charon') or \
     ($programname == 'pppd') or \
     ($programname == 'pseudomodem') or \
     ($programname == 'shill') or \
+    ($programname == 'tayga') or \
     ($programname == 'wpa_supplicant') or \
     ($programname == 'xl2tpd')) then -/var/log/net.log
 
@@ -68,6 +69,7 @@ if (($programname == 'charon') or \
     ($programname == 'pppd') or \
     ($programname == 'pseudomodem') or \
     ($programname == 'shill') or \
+    ($programname == 'tayga') or \
     ($programname == 'wpa_supplicant') or \
     ($programname == 'xl2tpd')) and $syslogseverity >= '4' then stop
 
