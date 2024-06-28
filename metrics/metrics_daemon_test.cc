@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <utime.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -601,6 +602,12 @@ TEST_F(MetricsDaemonTest, RoundsDailyUseIfJustOverOneDay) {
       .WillOnce(Return(kSecondsPerDay - 1));
   ExpectSample("Platform.DailyUseTime", kSecondsPerDay - 1);
   daemon_.SendAndResetDailyUseSample();
+}
+
+TEST_F(MetricsDaemonTest, ProcessFileNr) {
+  string file_nr = "12345   0       387172";
+  ExpectSample("Platform.FileDescriptors.Count", 12345);
+  daemon_.ProcessFileNr(file_nr);
 }
 
 }  // namespace chromeos_metrics

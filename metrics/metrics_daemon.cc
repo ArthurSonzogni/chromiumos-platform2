@@ -5,10 +5,12 @@
 #include "metrics/metrics_daemon.h"
 
 #include <fcntl.h>
+#include <cstdint>
 #include <fstream>
 #include <inttypes.h>
 #include <math.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sysexits.h>
 #include <time.h>
 #include <utility>
@@ -99,6 +101,8 @@ const char kUncleanShutdownDetectedFile[] =
 const char kCroutonStartedFile[] =
     "/run/metrics/external/crouton/crouton-started";
 
+const char kFileNrPath[] = "/proc/sys/fs/file-nr";
+
 constexpr base::TimeDelta kVmlogInterval = base::Seconds(2);
 
 constexpr char kVmlogDir[] = "/var/log/vmlog";
@@ -135,6 +139,7 @@ constexpr char kUncleanShutdownsDailyName[] = "Platform.UncleanShutdownsDaily";
 constexpr char kUncleanShutdownsWeeklyName[] =
     "Platform.UncleanShutdownsWeekly";
 constexpr char kMmcStatsName[] = "Platform.Storage.Mmc.Internal.";
+constexpr char kFileDescriptorsCountName[] = "Platform.FileDescriptors.Count";
 
 }  // namespace
 
@@ -1463,6 +1468,42 @@ void MetricsDaemon::SendAndResetDailyVmstats() {
   vmstats_daily_success = vmstats_success;
 }
 
+void MetricsDaemon::ProcessFileNr(const string& file_nr_raw) {
+  vector<string> values =
+      base::SplitString(file_nr_raw, base::kWhitespaceASCII,
+                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (values.size() != 3) {
+    LOG(WARNING) << "unexpected number of values in " << kFileNrPath << ": "
+                 << file_nr_raw;
+    return;
+  }
+
+  uint64_t value;
+  if (!base::StringToUint64(values[0], &value)) {
+    LOG(WARNING) << "invalid integer " << values[0] << " in " << kFileNrPath;
+    return;
+  }
+
+  // The kernel's files_maxfiles_init() (in fs/file_table.c) calculates the
+  // default value of file-max roughly by the following formula:
+  //  file-max = (RAM size) / 1KB * 0.1
+  // So, we use 10000000 as the max value for this metric, which mostly equals
+  // to file-max of a 100GB RAM device.
+  const int max_fd_count = 10000000;
+  SendSample(kFileDescriptorsCountName, value, 0, max_fd_count, 20);
+}
+
+void MetricsDaemon::SendFdCount() {
+  const FilePath file_nr_path(kFileNrPath);
+  string file_nr_raw;
+  if (!base::ReadFileToString(file_nr_path, &file_nr_raw)) {
+    PLOG(WARNING) << "Failed to read " << file_nr_path.value();
+    return;
+  }
+
+  ProcessFileNr(file_nr_raw);
+}
+
 void MetricsDaemon::SendLinearSample(const string& name,
                                      int sample,
                                      int max,
@@ -1539,6 +1580,7 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
                                      kUncleanShutdownsDailyName);
     SendKernelCrashesCumulativeCountStats();
     SendAndResetDailyVmstats();
+    SendFdCount();
   }
 
   if (weekly_cycle_->Get() != week) {

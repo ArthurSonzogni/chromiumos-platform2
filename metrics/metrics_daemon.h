@@ -81,6 +81,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, GetHistogramPath);
   FRIEND_TEST(MetricsDaemonTest, IsNewEpoch);
   FRIEND_TEST(MetricsDaemonTest, MessageFilter);
+  FRIEND_TEST(MetricsDaemonTest, ProcessFileNr);
   FRIEND_TEST(MetricsDaemonTest, ProcessKernelCrash);
   FRIEND_TEST(MetricsDaemonTest, ProcessMeminfo);
   FRIEND_TEST(MetricsDaemonTest, ProcessMeminfo2);
@@ -260,6 +261,13 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Sends stats representing the difference in vmstat values after a day, and
   // then resets the starting values.
   void SendAndResetDailyVmstats();
+
+  // Parses content of /proc/sys/fs/file-nr and submit the first value,  the
+  // number of allocated file handles.
+  void ProcessFileNr(const std::string& file_nr_raw);
+
+  // Sends the total number of allocated file descriptors.
+  void SendFdCount();
 
   // Initializes vm and disk stats reporting.
   void StatsReporterInit();
