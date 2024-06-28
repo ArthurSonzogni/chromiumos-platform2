@@ -914,6 +914,11 @@ void Cellular::OnConnectionUpdated(int interface_index) {
 
 void Cellular::ConfigureAttachApn(bool user_triggered) {
   SLOG(1) << LoggingTag() << ": " << __func__;
+  if (!capability_) {
+    LOG(WARNING) << LoggingTag() << ": " << __func__
+                 << ": Modem not available, skip attach APN configuration.";
+    return;
+  }
   if (!enabled() && !enabled_pending()) {
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Modem not enabled, skip attach APN configuration.";
