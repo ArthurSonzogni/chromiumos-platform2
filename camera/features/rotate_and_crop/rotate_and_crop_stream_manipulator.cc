@@ -77,6 +77,17 @@ libyuv::RotationMode RotateAndCropModeToLibyuvRotation(uint8_t rc_mode) {
 }
 
 bool NeedRotateAndCropApi(mojom::CameraClientType client_type) {
+  // Exclude devices that don't pass CTS until we have proper solutions.
+  constexpr const char* kExclusiveBoards[] = {"atlas",    "brya",      "kukui",
+                                              "nautilus", "nocturne",  "rex",
+                                              "staryu",   "strongbad", "zork"};
+  const std::string board = base::SysInfo::GetLsbReleaseBoard();
+  for (auto* b : kExclusiveBoards) {
+    if (board.find(b) == 0) {
+      LOGF(WARNING) << "Disabled for board " << board;
+      return false;
+    }
+  }
   // The camera client is ARC and is T or higher.
   return client_type == mojom::CameraClientType::ANDROID &&
          DeviceConfig::GetArcApiLevel() >= 33;
