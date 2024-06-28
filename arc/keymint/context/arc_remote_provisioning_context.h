@@ -8,7 +8,10 @@
 #include <cppbor.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 
+#include <map>
+#include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -46,6 +49,9 @@ cppcose::ErrMsgOr<cppbor::Array> constructCoseSign1FromDK(
     const std::vector<uint8_t>& payload,
     const std::vector<uint8_t>& additionalAuthData);
 
+std::unique_ptr<cppbor::Map> CreateDeviceInfoMap(
+    std::string& properties_content);
+
 // Defines specific behavior for ARC Remote Provisioning Context in ChromeOS.
 class ArcRemoteProvisioningContext
     : public ::keymaster::PureSoftRemoteProvisioningContext {
@@ -68,6 +74,8 @@ class ArcRemoteProvisioningContext
   std::optional<std::pair<std::vector<uint8_t>, cppbor::Array>> GenerateBcc(
       bool test_mode) const;
 
+  std::unique_ptr<cppbor::Map> CreateDeviceInfo() const override;
+
   cppcose::ErrMsgOr<std::vector<uint8_t>> BuildProtectedDataPayload(
       bool test_mode,
       const std::vector<uint8_t>& mac_key,
@@ -76,9 +84,14 @@ class ArcRemoteProvisioningContext
  private:
   // Initialize the BCC if it has not yet happened.
   void ArcLazyInitProdBcc() const;
+  keymaster_security_level_t security_level_;
 
   mutable std::once_flag bcc_initialized_flag_;
   mutable cppbor::Array boot_cert_chain_;
+
+  base::FilePath property_dir_;
+  void set_property_dir_for_tests(base::FilePath& path);
+  friend class ArcRemoteProvisioningContextTestPeer;
 };
 }  // namespace arc::keymint::context
 

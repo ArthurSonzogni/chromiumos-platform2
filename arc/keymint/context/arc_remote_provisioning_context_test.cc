@@ -13,6 +13,9 @@
 
 #include <libarc-attestation/lib/test_utils.h>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+
 namespace arc::keymint::context {
 
 namespace {
@@ -44,6 +47,28 @@ MrJz6UCWQv8KVcVhXVKhXlnifgFcAUc3ci76vbNRaNAHcrEV9qW3rJzzi2tUDieF
 XrqWjNtuK1n8SXwvWa7wq8h6sC5X801xluCzi0UcxyhKKCkAOd9D
 -----END CERTIFICATE-----
 )";
+
+constexpr char kSampleProp[] = R"(####################################
+# from generate-common-build-props
+# These properties identify this partition image.
+####################################
+ro.product.product.brand=google
+ro.product.product.device=brya_cheets
+ro.product.product.manufacturer=Google
+ro.product.product.model=brya
+ro.product.product.name=brya
+ro.product.build.date=Fri Jun 28 16:27:22 UTC 2024
+ro.product.build.date.utc=1719592042
+#ro.product.build.id?=TP1A.220624.014
+#ro.product.build.tags?=dev-keys
+ro.product.build.type=userdebug
+ro.product.build.version.incremental=12029833
+ro.product.build.version.release=13
+ro.product.build.version.release_or_codename=13
+ro.product.build.version.sdk=33
+)";
+
+constexpr const char kProductBuildPropertyFileName[] = "product_build.prop";
 
 std::vector<uint8_t> convertHexToRawBytes(const char* hex_array) {
   std::string hex_string(kEcdsaDERSignatureHex);
@@ -101,6 +126,15 @@ class ArcRemoteProvisioningContextTest : public ::testing::Test {
 
   NiceMock<arc_attestation::MockArcAttestationManager>* manager_;
   ArcRemoteProvisioningContext* remote_provisioning_context_;
+};
+
+class ArcRemoteProvisioningContextTestPeer {
+ public:
+  void set_property_dir_for_tests(
+      ArcRemoteProvisioningContext* remote_provisioning_context_,
+      base::FilePath file_path) {
+    remote_provisioning_context_->set_property_dir_for_tests(file_path);
+  }
 };
 
 TEST_F(ArcRemoteProvisioningContextTest,
@@ -223,6 +257,101 @@ TEST_F(ArcRemoteProvisioningContextTest, BuildProtectedDataPayloadTestMode) {
 
   // Test.
   EXPECT_TRUE(result);
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoMapSuccess) {
+  // Prepare.
+  std::string property_string(kSampleProp);
+
+  // Execute.
+  auto result = CreateDeviceInfoMap(property_string);
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
+  EXPECT_EQ(result_map->size(), 5);
+
+  ASSERT_TRUE(result_map->get("brand"));
+  EXPECT_EQ(*result_map->get("brand"), cppbor::Tstr("google"));
+  ASSERT_TRUE(result_map->get("device"));
+  EXPECT_EQ(*result_map->get("device"), cppbor::Tstr("brya_cheets"));
+  ASSERT_TRUE(result_map->get("manufacturer"));
+  EXPECT_EQ(*result_map->get("manufacturer"), cppbor::Tstr("Google"));
+  ASSERT_TRUE(result_map->get("model"));
+  EXPECT_EQ(*result_map->get("model"), cppbor::Tstr("brya"));
+  ASSERT_TRUE(result_map->get("product"));
+  EXPECT_EQ(*result_map->get("product"), cppbor::Tstr("brya"));
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoMapFailure) {
+  // Prepare.
+  std::string property_string("I am a fake string");
+
+  // Execute.
+  auto result = CreateDeviceInfoMap(property_string);
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
+  EXPECT_EQ(result_map->size(), 0);
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
+  // Prepare.
+  std::string file_data(kSampleProp);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
+
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
+                                        temp_dir.GetPath());
+
+  // Execute.
+  auto result = remote_provisioning_context_->CreateDeviceInfo();
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
+  ASSERT_TRUE(result_map->get("brand"));
+  EXPECT_EQ(*result_map->get("brand"), cppbor::Tstr("google"));
+  ASSERT_TRUE(result_map->get("device"));
+  EXPECT_EQ(*result_map->get("device"), cppbor::Tstr("brya_cheets"));
+  ASSERT_TRUE(result_map->get("manufacturer"));
+  EXPECT_EQ(*result_map->get("manufacturer"), cppbor::Tstr("Google"));
+  ASSERT_TRUE(result_map->get("model"));
+  EXPECT_EQ(*result_map->get("model"), cppbor::Tstr("brya"));
+  ASSERT_TRUE(result_map->get("product"));
+  EXPECT_EQ(*result_map->get("product"), cppbor::Tstr("brya"));
+  ASSERT_TRUE(result_map->get("security_level"));
+  EXPECT_EQ(*result_map->get("security_level"), cppbor::Tstr("tee"));
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoFailure) {
+  // Prepare.
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
+                                        temp_dir.GetPath());
+
+  // Execute.
+  auto result = remote_provisioning_context_->CreateDeviceInfo();
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
+  EXPECT_EQ(result_map->size(), 0);
 }
 
 }  // namespace arc::keymint::context
