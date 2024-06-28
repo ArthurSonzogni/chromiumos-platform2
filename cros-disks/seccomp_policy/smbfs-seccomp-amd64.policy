@@ -117,6 +117,7 @@ tgkill: 1
 umask: 1
 uname: 1
 unlink: 1
+unlinkat: 1
 wait4: 1
 write: 1
 writev: 1
