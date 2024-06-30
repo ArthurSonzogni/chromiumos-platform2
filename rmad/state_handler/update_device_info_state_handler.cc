@@ -648,7 +648,7 @@ std::optional<SkuFilter> UpdateDeviceInfoStateHandler::GetSkuFilter() const {
 std::optional<std::unordered_map<uint32_t, std::string>>
 UpdateDeviceInfoStateHandler::GetSkuDescriptionOverrides() const {
   std::optional<SkuFilter> sku_filter = GetSkuFilter();
-  if (!sku_filter.has_value()) {
+  if (!sku_filter.has_value() || sku_filter.value().sku_list().empty()) {
     return std::nullopt;
   }
 

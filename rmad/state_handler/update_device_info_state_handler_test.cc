@@ -676,6 +676,24 @@ sku_list {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_EmptySkuFilter_Success) {
+  auto handler = CreateStateHandler({.sku_filter_textproto = ""});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // An empty filter has no effect.
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         kSkuList.begin(), kSkuList.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 kSkuDescriptionList.begin(), kSkuDescriptionList.end()));
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
        InitializeState_IncorrectSkuFilter_Success) {
   constexpr char textproto[] = "!@#$%";
 
