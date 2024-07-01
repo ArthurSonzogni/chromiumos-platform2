@@ -1180,9 +1180,12 @@ void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
   }
   // Forward the message to the WiFiPhy object.
   wifi_phys_[phy_index]->OnNewWiphy(nl80211_message);
-  // See if we've got any pending requests that can now be satisfied based on
-  // this new phy information.
-  ProcessDeviceRequests();
+  // If the phy's concurrency combinations are ready, see if we've got any
+  // pending requests that can now be satisfied based on this new phy
+  // information.
+  if (!wifi_phys_[phy_index]->ConcurrencyCombinations().empty()) {
+    ProcessDeviceRequests();
+  }
 }
 
 void WiFiProvider::HandleNetlinkBroadcast(
@@ -1316,10 +1319,11 @@ void WiFiProvider::EnableDevices(std::vector<WiFiRefPtr> devices,
       EnableDevice(device, persist, std::move(aggregator_callback));
       continue;
     }
-    // If we don't have a WiFiPhy for this device yet, just send the request
-    // without considering concurrency. It'll only be processed once we actually
-    // have the WiFiPhy.
-    if (wifi_phys_.contains(device->phy_index())) {
+    // If we don't have a ready WiFiPhy for this device yet, just send the
+    // request without considering concurrency. It'll only be processed once we
+    // actually have the WiFiPhy and it is ready.
+    if (wifi_phys_.contains(device->phy_index()) &&
+        !wifi_phys_[device->phy_index()]->ConcurrencyCombinations().empty()) {
       WiFiPhy* phy = wifi_phys_[device->phy_index()].get();
       // TODO(b/345553305): Consider concurrency with all requested devices
       // together, rather than one at a time.
@@ -1508,6 +1512,11 @@ bool WiFiProvider::RequestLocalDeviceCreation(
   // TODO(b/257340615) Select capable WiFiPhy according to band and security
   // requirement.
   WiFiPhy* phy = wifi_phys_.begin()->second.get();
+  // If the phy's concurrency support isn't ready, just return false
+  // immediately.
+  if (phy->ConcurrencyCombinations().empty()) {
+    return false;
+  }
   std::optional<nl80211_iftype> type =
       LocalDevice::IfaceTypeToNl80211Type(iface_type);
   if (!type) {

@@ -6,10 +6,11 @@
 #define SHILL_WIFI_MOCK_WIFI_PHY_H_
 
 #include <set>
-
-#include "shill/wifi/wifi_phy.h"
+#include <vector>
 
 #include <gmock/gmock.h>
+
+#include "shill/wifi/wifi_phy.h"
 
 namespace shill {
 
@@ -37,6 +38,10 @@ class MockWiFiPhy : public WiFiPhy {
               (const, override));
   MOCK_METHOD(std::vector<int>, GetFrequencies, (), (const, override));
   MOCK_METHOD(std::vector<int>, GetActiveFrequencies, (), (const, override));
+  MOCK_METHOD(ConcurrencyCombinationSet,
+              ConcurrencyCombinations,
+              (),
+              (const, override));
 };
 
 }  // namespace shill

@@ -2687,6 +2687,8 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
       base::BindOnce(&WiFiProvider::CreateHotspotDevice, provider_->AsWeakPtr(),
                      net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
                      WiFiPhy::Priority(0), base::DoNothing());
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillOnce(Return(ConcurrencyCombinationSet{{}}));
   EXPECT_TRUE(provider_->RequestLocalDeviceCreation(
       LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), std::move(create_cb)));
 
@@ -2731,10 +2733,12 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
 }
 
-TEST_F(WiFiProviderTest, CreateLocalDevice_ConcurrencyRejected) {
+TEST_F(WiFiProviderTest, CreateLocalDevice_ConcurrencyConflict) {
   MockWiFiPhy* phy0 = AddMockPhy(0);
   EXPECT_CALL(*phy0, RequestNewIface)
       .WillOnce(Return(std::multiset<nl80211_iftype>{NL80211_IFTYPE_STATION}));
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
   EXPECT_FALSE(provider_->RequestLocalDeviceCreation(
       LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), base::DoNothing()));
   EXPECT_CALL(*phy0, RequestNewIface).WillOnce(Return(std::nullopt));
@@ -2893,8 +2897,30 @@ TEST_F(WiFiProviderTest, EnableDevices) {
       .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
   phy0->AddWiFiDevice(wifi_device);
   EXPECT_CALL(*phy0, RequestNewIface)
+      .Times(2)
       .WillRepeatedly(Return(std::multiset<nl80211_iftype>{}));
   EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(1);
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
+  provider_->EnableDevices({wifi_device}, true, base::DoNothing());
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_EmptyConcurrency) {
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  MockWiFi* wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  ON_CALL(*wifi_device, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device);
+  // Only 1 call to RequestNewIface since the first one is skipped.
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .Times(1)
+      .WillRepeatedly(Return(std::multiset<nl80211_iftype>{}));
+  EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(1);
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{}));
   provider_->EnableDevices({wifi_device}, true, base::DoNothing());
 }
 
@@ -2911,6 +2937,8 @@ TEST_F(WiFiProviderTest, EnableDevices_BlockedByConcurrency) {
   EXPECT_CALL(*phy0, RequestNewIface).WillRepeatedly(Return(std::nullopt));
   EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(0);
   EXPECT_CALL(cb, Run(Property(&Error::type, Eq(Error::kOperationFailed))));
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
   provider_->EnableDevices({wifi_device}, true, cb.Get());
 }
 
@@ -2937,6 +2965,8 @@ TEST_F(WiFiProviderTest, EnableDevices_MultipleDevices) {
   // Only the first device is enabled on the initial call.
   EXPECT_CALL(*wifi_device0, SetEnabledChecked).Times(1);
   EXPECT_CALL(*wifi_device1, SetEnabledChecked).Times(0);
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
   provider_->EnableDevices({wifi_device0, wifi_device1}, true,
                            base::DoNothing());
   // Second device is enabled after a subsequent ProcessDeviceRequests call.
@@ -2970,6 +3000,8 @@ TEST_F(WiFiProviderTest, EnableDevices_FirstDeviceFails) {
   EXPECT_CALL(*wifi_device0, SetEnabledChecked).Times(0);
   EXPECT_CALL(*wifi_device1, SetEnabledChecked);
   EXPECT_CALL(cb, Run(Property(&Error::type, Eq(Error::kOperationFailed))));
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
   provider_->EnableDevices({wifi_device0, wifi_device1}, true, cb.Get());
 }
 
@@ -3000,6 +3032,8 @@ TEST_F(WiFiProviderTest, EnableDevices_SecondDeviceFails) {
   EXPECT_CALL(*wifi_device0, SetEnabledChecked);
   EXPECT_CALL(*wifi_device1, SetEnabledChecked).Times(0);
   EXPECT_CALL(cb, Run(Property(&Error::type, Eq(Error::kOperationFailed))));
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
   provider_->EnableDevices({wifi_device0, wifi_device1}, true, cb.Get());
 }
 
@@ -3020,6 +3054,8 @@ TEST_F(WiFiProviderTest, EnableDevices_AcceptThenFail) {
       .WillRepeatedly(Return(std::nullopt));
   EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(0);
   EXPECT_CALL(cb, Run).Times(0);
+  EXPECT_CALL(*phy0, ConcurrencyCombinations)
+      .WillRepeatedly(Return(ConcurrencyCombinationSet{{}}));
   provider_->EnableDevices({wifi_device}, true, cb.Get());
 }
 

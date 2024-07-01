@@ -125,7 +125,7 @@ class WiFiPhy {
   // automatic changes of regulatory domains).
   mockable bool reg_self_managed() const { return reg_self_managed_; }
 
-  ConcurrencyCombinationSet ConcurrencyCombinations() {
+  mockable ConcurrencyCombinationSet ConcurrencyCombinations() const {
     return concurrency_combs_;
   }
 
