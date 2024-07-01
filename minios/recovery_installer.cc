@@ -15,6 +15,9 @@
 
 namespace minios {
 
+constexpr char kUdevAdmCmd[] = "/usr/bin/udevadm";
+constexpr char kSettle[] = "settle";
+
 bool RecoveryInstaller::RepartitionDisk() {
   int return_code = 0;
   std::string stderr, stdout;
@@ -52,8 +55,10 @@ bool RecoveryInstaller::RepartitionDisk() {
   }
 
   LOG(INFO) << consolidated_output;
-
-  sync();
+  if (process_manager_->RunCommand({kUdevAdmCmd, kSettle}, {}) != 0) {
+    LOG(ERROR) << "Udevadm settle failed.";
+    return false;
+  }
 
   return partiton_success;
 }
