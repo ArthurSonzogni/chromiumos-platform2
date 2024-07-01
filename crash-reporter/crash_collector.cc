@@ -215,6 +215,10 @@ constexpr char kMetricsGroupName[] = "metrics";
 // CrosEventEnum for crash reports.
 constexpr char kReportCountEnum[] = "Crash.Collector.CollectionCount";
 
+// Path to the static file that contains the version number for DriveFS.
+// All crashes for "drivefs" exec will be annotated with this version number.
+constexpr char kDriveFsVersionPath[] = "/opt/google/drive-file-stream/version";
+
 using base::FileEnumerator;
 using base::FilePath;
 using base::StringPrintf;
@@ -539,6 +543,7 @@ CrashCollector::CrashCollector(
     const std::string& tag)
     : collector_(collector),
       lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
+      drivefs_version_path_(FilePath(kDriveFsVersionPath)),
       system_crash_path_(paths::kSystemCrashDirectory),
       crash_reporter_state_path_(paths::kCrashReporterStateDirectory),
       log_config_path_(kDefaultLogConfig),
@@ -1910,6 +1915,10 @@ CrashCollectionStatus CrashCollector::FinishCrash(
   std::string exec_name_line;
   if (!exec_name.empty()) {
     exec_name_line = base::StrCat({"exec_name=", exec_name, "\n"});
+
+    if (exec_name == "drivefs") {
+      AnnotateDriveFsVersion();
+    }
   }
 
   base::Time now = test_clock_ ? test_clock_->Now() : base::Time::Now();
@@ -2293,4 +2302,17 @@ void CrashCollector::EnqueueCollectionErrorLog(CrashCollectionStatus error_type,
 void CrashCollector::LogCrash(const std::string& message,
                               const std::string& reason) const {
   LOG(WARNING) << '[' << tag_ << "] " << message << " (" << reason << ')';
+}
+
+void CrashCollector::AnnotateDriveFsVersion() {
+  std::string drivefs_version;
+  if (!CarefullyReadFileToStringWithMaxSize(
+          drivefs_version_path_,
+          16,  // A sensible upper bound for a NN.N.N version number.
+          &drivefs_version)) {
+    PLOG(ERROR) << "Couldn't get DriveFS version number";
+    return;
+  }
+
+  AddCrashMetaUploadData("drivefs_version", drivefs_version);
 }

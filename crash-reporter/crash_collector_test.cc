@@ -2338,6 +2338,26 @@ TEST_F(CrashCollectorTest, MetaDataDoesntCreateSymlink) {
   EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
+// Test that if the exec is "drivefs" the version tag is annotated.
+TEST_F(CrashCollectorTest, AnnotateDriveFsVersion) {
+  const char kMetaFileBasename[] = "generated.meta";
+  FilePath meta_file = test_dir_.Append(kMetaFileBasename);
+
+  FilePath drivefs_version_path = test_dir_.Append("drivefs_version");
+  ASSERT_TRUE(test_util::CreateFile(drivefs_version_path, "123.45.67"));
+  collector_.set_drivefs_version_path_for_test(drivefs_version_path);
+
+  const char kPayloadName[] = "payload2-file";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
+  ASSERT_TRUE(test_util::CreateFile(payload_file, "whatever"));
+
+  brillo::ClearLog();
+  collector_.FinishCrash(meta_file, "drivefs", kPayloadName);
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
+  EXPECT_THAT(contents, HasSubstr("drivefs_version=123.45.67"));
+}
+
 TEST_F(CrashCollectorTest, CollectionLogsToUMA) {
   auto metrics_lib = std::make_unique<MetricsLibraryMock>();
   MetricsLibraryMock* mock_ref = metrics_lib.get();

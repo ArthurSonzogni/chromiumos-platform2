@@ -129,6 +129,11 @@ class CrashCollector {
     lsb_release_ = lsb_release;
   }
 
+  void set_drivefs_version_path_for_test(
+      const base::FilePath& drivefs_version_path) {
+    drivefs_version_path_ = drivefs_version_path;
+  }
+
   // For testing, set the directory always returned by
   // GetCreatedCrashDirectoryByEuid.
   void set_crash_directory_for_test(const base::FilePath& forced_directory) {
@@ -292,6 +297,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, ErrorCollectionMetaData);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntCreateSymlink);
   FRIEND_TEST(CrashCollectorTest, MetaDataDoesntOverwriteSymlink);
+  FRIEND_TEST(CrashCollectorTest, AnnotateDriveFsVersion);
   FRIEND_TEST(CrashCollectorTest, CollectionLogsToUMA);
   FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_ValidWeight);
   FRIEND_TEST(CrashCollectorTest, AddCrashMetaWeight_InvalidWeight);
@@ -606,6 +612,7 @@ class CrashCollector {
   const CrashReporterCollector collector_;
   base::FilePath forced_crash_directory_;
   base::FilePath lsb_release_;
+  base::FilePath drivefs_version_path_;
   base::FilePath system_crash_path_;
   base::FilePath crash_reporter_state_path_;
   base::FilePath log_config_path_;
@@ -744,6 +751,10 @@ class CrashCollector {
   // kLacros }. If so, return |product| unmodified. If not, return
   // Product::kUnknownValue. This value is reported to UMA.
   Product ValidateProductGroupForHistogram(Product product) const;
+
+  // If the executable to product a crash report was DriveFS, annotate the crash
+  // report with the version that caused the crash.
+  void AnnotateDriveFsVersion();
 
   // If not null, GetUptime() will return *override_uptime_for_testing_;
   std::unique_ptr<base::TimeDelta> override_uptime_for_testing_;
