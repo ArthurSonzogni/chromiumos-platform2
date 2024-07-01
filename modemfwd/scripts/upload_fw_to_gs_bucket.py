@@ -6,7 +6,7 @@
 """Create tarballs with modem FW, and upload them to OS Archive Mirrors."""
 
 import argparse
-from distutils.dir_util import copy_tree
+import distutils
 import enum
 import logging
 import os
@@ -26,6 +26,7 @@ class PackageType(enum.Enum):
     NL668_MAIN_FW = "nl668-main-fw"
     FM101_MAIN_FW = "fm101-main-fw"
     EM060_FW = "em060-fw"
+    LCUK54_FW = "lcuk54-fw"
 
     # FM350 firmware payloads
     FM350_MAIN_FW = "fm350-main-fw"  # 81600... directory
@@ -41,11 +42,13 @@ class PackageType(enum.Enum):
 MIRROR_PATH = "gs://chromeos-localmirror/distfiles/"
 FIBOCOM_TARBALL_PREFIX = "cellular-firmware-fibocom-"
 QUECTEL_TARBALL_PREFIX = "cellular-firmware-quectel-"
+NETPRISMA_TARBALL_PREFIX = "cellular-firmware-netprisma-"
 L850_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "l850-"
 NL668_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "nl668-"
 FM101_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "fm101-"
 FM350_TARBALL_PREFIX = FIBOCOM_TARBALL_PREFIX + "fm350-"
 EM060_TARBALL_PREFIX = QUECTEL_TARBALL_PREFIX + "em060-"
+LCUK54_TARBALL_PREFIX = NETPRISMA_TARBALL_PREFIX + "lcuk54-"
 
 FM350_MISC_PREFIXES = ["OEM_OTA_", "DEV_OTA_", "OP_OTA_"]
 
@@ -233,7 +236,9 @@ class L850OemDir(FwUploader):
     def prepare_files(self, dir_path, target_path):
         logging.info("Copying %s into %s", dir_path, target_path)
         os.mkdir(os.path.join(target_path, self.basename))
-        copy_tree(dir_path, os.path.join(target_path, self.basename))
+        distutils.dir_util.copy_tree(
+            dir_path, os.path.join(target_path, self.basename)
+        )
 
         return True
 
@@ -254,7 +259,9 @@ class NL668MainFw(FwUploader):
     def prepare_files(self, dir_path, target_path):
         logging.info("Copying %s into %s", dir_path, target_path)
         os.mkdir(os.path.join(target_path, self.basename))
-        copy_tree(dir_path, os.path.join(target_path, self.basename))
+        distutils.dir_util.copy_tree(
+            dir_path, os.path.join(target_path, self.basename)
+        )
         return True
 
 
@@ -274,7 +281,9 @@ class FM101MainFw(FwUploader):
     def prepare_files(self, dir_path, target_path):
         logging.info("Copying %s into %s", dir_path, target_path)
         os.mkdir(os.path.join(target_path, self.basename))
-        copy_tree(dir_path, os.path.join(target_path, self.basename))
+        distutils.dir_util.copy_tree(
+            dir_path, os.path.join(target_path, self.basename)
+        )
         return True
 
 
@@ -297,7 +306,9 @@ class FM350MainFw(FwUploader):
     def prepare_files(self, dir_path, target_path):
         logging.info("Copying %s into %s", dir_path, target_path)
         os.mkdir(os.path.join(target_path, self.basename))
-        copy_tree(dir_path, os.path.join(target_path, self.basename))
+        distutils.dir_util.copy_tree(
+            dir_path, os.path.join(target_path, self.basename)
+        )
         return True
 
 
@@ -333,8 +344,8 @@ class FM350MiscFw(FwUploader):
         return True
 
 
-class EM060Fw(FwUploader):
-    """Uploader class for EM060 payloads.
+class EM060DerivFw(FwUploader):
+    """Uploader class for EM060 and derivative payloads.
 
     This should be used for oem.bin, main.bin, and carrier.bin payloads.
 
@@ -344,11 +355,13 @@ class EM060Fw(FwUploader):
     as path argument.
     """
 
-    def __init__(self, path, upload):
+    def __init__(self, path, upload, module_type):
         super().__init__(path, upload, None)
 
         self.firmware_version = None
         self.payload_type = None
+        self.tarball_prefix = None
+        self.module_type = module_type
 
     def validate(self):
         fw_file_to_directory_name = {
@@ -356,12 +369,16 @@ class EM060Fw(FwUploader):
             "main.bin": "MAIN",
             "carrier.bin": "CARRIER",
         }
+        module_type_to_tarball_prefix = {
+            PackageType.EM060_FW: EM060_TARBALL_PREFIX,
+            PackageType.LCUK54_FW: LCUK54_TARBALL_PREFIX,
+        }
 
         if os.path.isdir(self.path):
-            logging.error("Path should point to an EM060 firmware file")
+            logging.error("Path should point to a firmware file")
             return False
         if self.basename not in fw_file_to_directory_name.keys():
-            logging.error("EM060 file should have name {main,carrier,oem}.bin")
+            logging.error("File should have name {main,carrier,oem}.bin")
             return False
 
         # Grab package version from parent directory name, i.e. "01.300"
@@ -377,8 +394,9 @@ class EM060Fw(FwUploader):
 
         # Example path - cellular-firmware-quectel-em060-MAIN-01.200/
         self.payload_type = fw_file_to_directory_name[self.basename]
+        self.tarball_prefix = module_type_to_tarball_prefix[self.module_type]
         self.tarball_dir_name = (
-            EM060_TARBALL_PREFIX
+            self.tarball_prefix
             + self.payload_type
             + "-"
             + self.firmware_version
@@ -488,8 +506,10 @@ def main(argv):
         PackageType.FM350_CARRIER_FW,
     ]:
         fw_uploader = FM350MiscFw(opts.path, opts.upload)
-    elif opts.type == PackageType.EM060_FW:
-        fw_uploader = EM060Fw(opts.path, opts.upload)
+
+    # EM060 and its derivatives
+    elif opts.type in [PackageType.EM060_FW, PackageType.LCUK54_FW]:
+        fw_uploader = EM060DerivFw(opts.path, opts.upload, opts.type)
 
     return fw_uploader.process_fw_and_upload(opts.keep_files)
 
