@@ -217,5 +217,36 @@
         "path": "/sys/module/kvm/parameters/kvm_pv_sched"
       }
     ]
+  },
+  {
+    "name": "CrOSLateBootEEVDFEligibility",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/sys/kernel/debug/sched/features",
+        "value": "NO_ENFORCE_ELIGIBILITY"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/kernel/debug/sched/features",
+        "value": "NO_RUN_TO_PARITY"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/kernel/debug/sched/features",
+        "value": "NO_PLACE_LAG"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/kernel/debug/sched/features",
+        "value": "NO_PLACE_DEADLINE_INITIAL"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/sys/kernel/debug/sched/features"
+      }
+    ]
   }
 ]
