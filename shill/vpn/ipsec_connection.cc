@@ -1198,22 +1198,24 @@ void IPsecConnection::ParseDNSServers() {
     return;
   }
 
-  // TODO(jiejiang): Support IPv6 name servers.
-  static constexpr LazyRE2 kNameServerLine = {
-      R"(^nameserver\s+(\d+\.\d+\.\d+\.\d+).*)"};
   const std::vector<std::string_view> lines = base::SplitStringPiece(
       contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   for (std::string_view line : lines) {
     std::string matched_part;
-    if (RE2::FullMatch(line, *kNameServerLine, &matched_part)) {
-      std::optional<net_base::IPAddress> dns =
-          net_base::IPAddress::CreateFromString(matched_part);
-      if (!dns.has_value()) {
-        LOG(WARNING) << "Ignoring invalid DNS server " << matched_part;
-        continue;
-      }
-      dns_servers_.push_back(*dns);
+    const std::vector<std::string_view> tokens = base::SplitStringPiece(
+        line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+        base::SPLIT_WANT_NONEMPTY);
+    if (tokens.size() < 2 || tokens[0] != "nameserver") {
+      continue;
     }
+
+    std::optional<net_base::IPAddress> dns =
+        net_base::IPAddress::CreateFromString(tokens[1]);
+    if (!dns.has_value()) {
+      LOG(WARNING) << "Ignoring invalid DNS server " << matched_part;
+      continue;
+    }
+    dns_servers_.push_back(*dns);
   }
 
   LOG(INFO) << "Received " << dns_servers_.size() << " DNS server entries";

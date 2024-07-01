@@ -888,18 +888,21 @@ TEST_F(IPsecConnectionTest, ParseDNSServers) {
   CHECK(
       base::WriteFile(kResolvConfPath,
                       base::JoinString({"nameserver 1.2.3.4   # by strongSwan",
-                                        "nameserver 1.2.3.5   # by strongSwan"},
+                                        "nameserver 1.2.3.5   # by strongSwan",
+                                        "nameserver fd00::1   # by strongSwan"},
                                        "\n")));
   EXPECT_CALL(*device_info(), CreateXFRMInterface(_, _, _, _, _))
       .WillRepeatedly(Return(true));
 
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
   const auto acutal_dns_servers = ipsec_connection_->dns_servers();
-  EXPECT_EQ(acutal_dns_servers.size(), 2);
+  EXPECT_EQ(acutal_dns_servers.size(), 3);
   EXPECT_EQ(acutal_dns_servers[0],
             *net_base::IPAddress::CreateFromString("1.2.3.4"));
   EXPECT_EQ(acutal_dns_servers[1],
             *net_base::IPAddress::CreateFromString("1.2.3.5"));
+  EXPECT_EQ(acutal_dns_servers[2],
+            *net_base::IPAddress::CreateFromString("fd00::1"));
 }
 
 TEST_F(IPsecConnectionTest, ParseDNSServersEmptyFile) {
