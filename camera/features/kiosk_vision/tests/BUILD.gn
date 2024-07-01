@@ -7,10 +7,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = []
   if (use.test) {
-    deps += [
-      ":cros_kiosk_vision_sm_tests",
-      ":kiosk_vision_wrapper_test",
-    ]
+    deps += [ ":kiosk_vision_wrapper_test" ]
   }
 }
 

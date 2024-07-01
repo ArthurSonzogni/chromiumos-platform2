@@ -557,10 +557,7 @@ if (use.test) {
 
   if (use.camera_feature_kiosk_vision) {
     executable("cros_kiosk_vision_sm_tests") {
-      sources = [
-        "//camera/features/kiosk_vision/kiosk_vision_stream_manipulator.cc",
-        "//camera/features/kiosk_vision/tests/kiosk_vision_stream_manipulator_test.cc",
-      ]
+      sources = [ "//camera/features/kiosk_vision/tests/kiosk_vision_stream_manipulator_test.cc" ]
       configs += [
         "//common-mk:test",
         "//camera/features/kiosk_vision:target_defaults",
@@ -570,6 +567,7 @@ if (use.test) {
         "//camera/common:base",
         "//camera/common:libcros_camera",
         "//camera/common:libcros_camera_mojom",
+        "//camera/features/kiosk_vision",
         "//common-mk/testrunner:testrunner",
       ]
     }

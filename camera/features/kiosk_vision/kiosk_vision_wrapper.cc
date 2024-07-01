@@ -4,6 +4,7 @@
 
 #include "features/kiosk_vision/kiosk_vision_wrapper.h"
 
+#include <utility>
 #include <libyuv.h>
 #include <linux/videodev2.h>
 
@@ -63,10 +64,19 @@ cros_kiosk_vision_OnErrorCallbackFn convertErrorMethodToCCallback(
 
 }  // namespace
 
+KioskVisionWrapper::KioskVisionWrapper(FrameCallback frame_cb,
+                                       TrackCallback track_cb,
+                                       ErrorCallback error_cb)
+    : frame_processed_callback_(std::move(frame_cb)),
+      track_complete_callback_(std::move(track_cb)),
+      pipeline_error_callback_(std::move(error_cb)) {}
+
 KioskVisionWrapper::~KioskVisionWrapper() {
-  auto delete_fn = KioskVisionLibrary::Get().delete_fn();
-  if (pipeline_handle_ && delete_fn) {
-    delete_fn(pipeline_handle_);
+  if (KioskVisionLibrary::IsLoaded()) {
+    auto delete_fn = KioskVisionLibrary::Get().delete_fn();
+    if (pipeline_handle_ && delete_fn) {
+      delete_fn(pipeline_handle_);
+    }
   }
 }
 
@@ -106,22 +116,23 @@ bool KioskVisionWrapper::InitializePipeline() {
 }
 
 bool KioskVisionWrapper::InitializeInputBuffer() {
-  cros::kiosk_vision::ImageSize size;
   cros::kiosk_vision::ImageFormat format;
   auto get_properties_fn = KioskVisionLibrary::Get().get_properties_fn();
-  get_properties_fn(pipeline_handle_, &size, &format);
-
-  detector_input_width_ = size.width;
-  detector_input_height_ = size.height;
-  LOGF(INFO) << "Kiosk Vision detector input: " << detector_input_width_ << "x"
-             << detector_input_height_;
-  if (detector_input_width_ <= 0 || detector_input_height_ <= 0) {
+  get_properties_fn(pipeline_handle_, &detector_input_size_, &format);
+  LOGF(INFO) << "Kiosk Vision detector input: " << detector_input_size_.width
+             << "x" << detector_input_size_.height;
+  if (detector_input_size_.width <= 0 || detector_input_size_.height <= 0) {
     LOGF(ERROR) << "Cannot prepare Kiosk Vision pipeline. Bad detector size";
     return false;
   }
 
-  detector_input_buffer_.resize(detector_input_width_ * detector_input_height_);
+  detector_input_buffer_.resize(detector_input_size_.width *
+                                detector_input_size_.height);
   return true;
+}
+
+cros::kiosk_vision::ImageSize KioskVisionWrapper::GetDetectorInputSize() const {
+  return detector_input_size_;
 }
 
 bool KioskVisionWrapper::ProcessFrame(int64_t timestamp,
@@ -134,16 +145,15 @@ bool KioskVisionWrapper::ProcessFrame(int64_t timestamp,
     return false;
   }
 
-  libyuv::ScalePlane(
-      mapping.plane(0).addr, mapping.plane(0).stride, mapping.width(),
-      mapping.height(), detector_input_buffer_.data(), detector_input_width_,
-      detector_input_width_, detector_input_height_, libyuv::kFilterNone);
+  libyuv::ScalePlane(mapping.plane(0).addr, mapping.plane(0).stride,
+                     mapping.width(), mapping.height(),
+                     detector_input_buffer_.data(), detector_input_size_.width,
+                     detector_input_size_.width, detector_input_size_.height,
+                     libyuv::kFilterNone);
 
   cros::kiosk_vision::InputFrame input_frame{
-      {detector_input_width_, detector_input_height_},
-      cros::kiosk_vision::ImageFormat::kGray8,
-      detector_input_buffer_.data(),
-      detector_input_width_};
+      detector_input_size_, cros::kiosk_vision::ImageFormat::kGray8,
+      detector_input_buffer_.data(), detector_input_size_.width};
 
   auto process_frame_fn = KioskVisionLibrary::Get().process_frame_fn();
   auto status = process_frame_fn(pipeline_handle_, timestamp, &input_frame);
@@ -160,7 +170,7 @@ void KioskVisionWrapper::OnFrameProcessed(
     cros::kiosk_vision::Timestamp timestamp,
     const cros::kiosk_vision::Appearance* audience_data,
     uint32_t audience_size) {
-  // TODO(sbykov): Pass current objects to stream manipulator.
+  frame_processed_callback_.Run(timestamp, audience_data, audience_size);
 }
 
 void KioskVisionWrapper::OnTrackCompleted(
@@ -169,12 +179,12 @@ void KioskVisionWrapper::OnTrackCompleted(
     uint32_t audience_size,
     cros::kiosk_vision::Timestamp start_time,
     cros::kiosk_vision::Timestamp end_time) {
-  // TODO(sbykov): Process completed track (if needed).
+  track_complete_callback_.Run(id, audience_data, audience_size, start_time,
+                               end_time);
 }
 
 void KioskVisionWrapper::OnError() {
-  // TODO(sbykov): Process error state of the algorithm.
-  // Reject new calls or add logic to reset the pipeline.
+  pipeline_error_callback_.Run();
 }
 
 }  // namespace cros

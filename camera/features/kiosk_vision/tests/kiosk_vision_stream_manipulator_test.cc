@@ -24,7 +24,9 @@ class FakeObserver : public cros::mojom::KioskVisionObserver {
   ~FakeObserver() override = default;
 
   // `cros::mojom::KioskVisionObserver`:
-  void OnDetection(cros::mojom::KioskVisionDetectionPtr detection) override {}
+  void OnFrameProcessed(
+      cros::mojom::KioskVisionDetectionPtr detection) override {}
+  void OnTrackCompleted(cros::mojom::KioskVisionTrackPtr track) override {}
   void OnError(cros::mojom::KioskVisionError error) override {}
 };
 

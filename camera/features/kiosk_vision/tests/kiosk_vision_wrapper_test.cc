@@ -22,7 +22,13 @@ base::FilePath g_dlc_path;
 class KioskVisionWrapperTest : public ::testing::Test {
  protected:
   bool InitializeWrapper() {
-    kiosk_vision_wrapper_ = std::make_unique<KioskVisionWrapper>();
+    kiosk_vision_wrapper_ = std::make_unique<KioskVisionWrapper>(
+        base::BindRepeating(&KioskVisionWrapperTest::OnFrameProcessed,
+                            base::Unretained(this)),
+        base::BindRepeating(&KioskVisionWrapperTest::OnTrackCompleted,
+                            base::Unretained(this)),
+        base::BindRepeating(&KioskVisionWrapperTest::OnError,
+                            base::Unretained(this)));
     if (!kiosk_vision_wrapper_->Initialize(g_dlc_path)) {
       LOG(ERROR) << "Failed to initialize KioskVisionWrapper";
       return false;
@@ -31,6 +37,18 @@ class KioskVisionWrapperTest : public ::testing::Test {
   }
 
   std::unique_ptr<KioskVisionWrapper> kiosk_vision_wrapper_;
+
+ private:
+  void OnFrameProcessed(cros::kiosk_vision::Timestamp timestamp,
+                        const cros::kiosk_vision::Appearance* audience_data,
+                        uint32_t audience_size) {}
+
+  void OnTrackCompleted(cros::kiosk_vision::TrackID id,
+                        const cros::kiosk_vision::Appearance* appearances_data,
+                        uint32_t appearances_size,
+                        cros::kiosk_vision::Timestamp start_time,
+                        cros::kiosk_vision::Timestamp end_time) {}
+  void OnError() {}
 };
 
 TEST_F(KioskVisionWrapperTest, FrameCallbackOneInferenceEmpty) {

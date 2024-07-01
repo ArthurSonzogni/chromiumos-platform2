@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <cros-camera/camera_buffer_manager.h>
 #include <cros-camera/libkioskvision/kiosk_audience_measurement_types.h>
 
@@ -17,13 +18,32 @@ namespace cros {
 // Encapsulates usage of a kiosk vision pipeline for audience measurement.
 class KioskVisionWrapper {
  public:
-  KioskVisionWrapper() = default;
+  using FrameCallback =
+      base::RepeatingCallback<void(cros::kiosk_vision::Timestamp,
+                                   const cros::kiosk_vision::Appearance*,
+                                   uint32_t)>;
+
+  using TrackCallback = base::RepeatingCallback<void(
+      cros::kiosk_vision::TrackID id,
+      const cros::kiosk_vision::Appearance* audience_data,
+      uint32_t audience_size,
+      cros::kiosk_vision::Timestamp start_time,
+      cros::kiosk_vision::Timestamp end_time)>;
+
+  using ErrorCallback = base::RepeatingCallback<void()>;
+
+  KioskVisionWrapper(FrameCallback frame_cb,
+                     TrackCallback track_cb,
+                     ErrorCallback error_cb);
   ~KioskVisionWrapper();
   KioskVisionWrapper(const KioskVisionWrapper&) = delete;
   KioskVisionWrapper& operator=(const KioskVisionWrapper&) = delete;
 
   // Loads dynamic library and initializes a vision pipeline.
   bool Initialize(const base::FilePath& dlc_root_path);
+
+  // Returns detector input size in pixels.
+  cros::kiosk_vision::ImageSize GetDetectorInputSize() const;
 
   // Inputs one frame into Kiosk Vision pipeline. Frame |buffer| should have
   // NV12 format, |timestamp| should increase from the previous call.
@@ -47,11 +67,19 @@ class KioskVisionWrapper {
   bool InitializePipeline();
   bool InitializeInputBuffer();
 
+  // client callback for processed frame
+  FrameCallback frame_processed_callback_;
+
+  // client callback for completed track
+  TrackCallback track_complete_callback_;
+
+  // client callback for pipeline error
+  ErrorCallback pipeline_error_callback_;
+
   // A handle for Kiosk Vision pipeline in the native library.
   void* pipeline_handle_ = nullptr;
 
-  int32_t detector_input_width_ = 0;
-  int32_t detector_input_height_ = 0;
+  cros::kiosk_vision::ImageSize detector_input_size_;
   std::vector<uint8_t> detector_input_buffer_;
 };
 
