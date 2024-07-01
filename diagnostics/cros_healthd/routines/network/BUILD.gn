@@ -3,7 +3,10 @@
 # found in the LICENSE file.
 
 pkg_config("network_pkg_config") {
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libchrome",
+    "libmojo",
+  ]
 }
 
 source_set("network") {

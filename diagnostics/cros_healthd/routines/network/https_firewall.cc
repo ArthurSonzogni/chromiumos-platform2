@@ -11,6 +11,8 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/logging.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
@@ -23,6 +25,10 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
+
+void PrintCallbackDropped() {
+  LOG(ERROR) << "RunHttpsFirewall callback dropped";
+}
 
 std::string GetProblemMessage(
     network_diagnostics_ipc::HttpsFirewallProblem problem) {
@@ -73,7 +79,9 @@ void RunHttpsFirewallRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunHttpsFirewall(
-      base::BindOnce(&ParseHttpsFirewallResult).Then(std::move(callback)));
+      mojo::WrapCallbackWithDropHandler(
+          base::BindOnce(&ParseHttpsFirewallResult).Then(std::move(callback)),
+          base::BindOnce(&PrintCallbackDropped)));
 }
 
 }  // namespace
