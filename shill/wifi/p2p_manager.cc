@@ -4,6 +4,8 @@
 
 #include "shill/wifi/p2p_manager.h"
 
+#include <linux/nl80211.h>
+
 #include <algorithm>
 #include <ios>
 #include <memory>
@@ -159,13 +161,16 @@ void P2PManager::ActionTimerExpired(bool is_start,
     LOG(ERROR) << __func__ << ": invalid interface type " << iface_type;
     return;
   }
+  bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
+  LOG(INFO) << __func__ << ": action " << (is_start ? "start" : "stop");
+  if (is_start) {
+    manager_->wifi_provider()->CancelDeviceRequestsOfType(
+        is_go ? NL80211_IFTYPE_P2P_GO : NL80211_IFTYPE_P2P_CLIENT);
+  }
   if (!result_callback_) {
     LOG(ERROR) << __func__ << ": no available callback";
     return;
   }
-  LOG(INFO) << __func__ << ": action " << (is_start ? "start" : "stop");
-
-  bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
   DeleteP2PDevice(pending_p2p_device_);
   pending_p2p_device_ = nullptr;
   supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;

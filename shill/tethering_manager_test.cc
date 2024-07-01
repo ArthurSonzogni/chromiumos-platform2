@@ -451,6 +451,7 @@ class TetheringManagerTest : public testing::Test {
   }
 
   void OnStartingTetheringTimeout(TetheringManager* tethering_manager) {
+    EXPECT_CALL(*wifi_provider_, CancelDeviceRequestsOfType(NL80211_IFTYPE_AP));
     tethering_manager->OnStartingTetheringTimeout();
   }
 

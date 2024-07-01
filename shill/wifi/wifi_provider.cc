@@ -5,7 +5,9 @@
 #include "shill/wifi/wifi_provider.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -1641,6 +1643,13 @@ void WiFiProvider::PushPendingDeviceRequest(
   request_queue_.insert(std::shared_ptr<WiFiProvider::PendingDeviceRequest>(
       new WiFiProvider::PendingDeviceRequest(type, priority,
                                              std::move(create_device_cb))));
+}
+
+void WiFiProvider::CancelDeviceRequestsOfType(nl80211_iftype type) {
+  auto request_type_matches = [type](auto const& request) {
+    return request->type == type;
+  };
+  std::erase_if(request_queue_, request_type_matches);
 }
 
 void WiFiProvider::ProcessDeviceRequests() {

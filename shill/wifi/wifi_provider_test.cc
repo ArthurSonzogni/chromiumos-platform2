@@ -3191,4 +3191,33 @@ TEST_F(WiFiProviderTest, BringDownDevicesByType) {
   BringDownDevicesByType({NL80211_IFTYPE_STATION});
 }
 
+TEST_F(WiFiProviderTest, CancelDeviceRequestsOfType) {
+  PushPendingDeviceRequest(NL80211_IFTYPE_AP, WiFiPhy::Priority(0),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_AP, WiFiPhy::Priority(0),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_AP, WiFiPhy::Priority(0),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(0),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(0),
+                           base::DoNothing());
+  ASSERT_EQ(provider_->request_queue_.size(), 5);
+
+  provider_->CancelDeviceRequestsOfType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(provider_->request_queue_.size(), 2);
+  for (auto request : provider_->request_queue_) {
+    ASSERT_NE(request->type, NL80211_IFTYPE_AP);
+  }
+  // Additional calls to delete AP request should no-op.
+  provider_->CancelDeviceRequestsOfType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(provider_->request_queue_.size(), 2);
+
+  provider_->CancelDeviceRequestsOfType(NL80211_IFTYPE_STATION);
+  ASSERT_EQ(provider_->request_queue_.size(), 0);
+
+  // Just check we don't crash on an empty request queue.
+  provider_->CancelDeviceRequestsOfType(NL80211_IFTYPE_STATION);
+}
+
 }  // namespace shill

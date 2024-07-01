@@ -4,6 +4,7 @@
 
 #include "shill/tethering_manager.h"
 
+#include <linux/nl80211.h>
 #include <math.h>
 #include <stdint.h>
 
@@ -666,6 +667,7 @@ void TetheringManager::OnStartingTetheringTimeout() {
   SetEnabledResult result = SetEnabledResult::kFailure;
   LOG(ERROR) << __func__ << ": tethering session start timed out";
 
+  manager_->wifi_provider()->CancelDeviceRequestsOfType(NL80211_IFTYPE_AP);
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     result = SetEnabledResult::kDownstreamWiFiFailure;
   } else if (!upstream_network_) {

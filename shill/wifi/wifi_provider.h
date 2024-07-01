@@ -321,6 +321,9 @@ class WiFiProvider : public ProviderInterface {
                               bool persist,
                               ResultCallback callback);
 
+  // Cancel all pending device requests of |type|.
+  mockable void CancelDeviceRequestsOfType(nl80211_iftype type);
+
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
@@ -329,6 +332,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceForTest);
   FRIEND_TEST(WiFiProviderTest, PendingDeviceRequestQueueSorted);
   FRIEND_TEST(WiFiProviderTest, EnableDevices);
+  FRIEND_TEST(WiFiProviderTest, CancelDeviceRequestsOfType);
 
   // Deregister a WiFi local device from WiFiProvider and it's associated
   // WiFiPhy object. This function is a no-op if the WiFi device is not

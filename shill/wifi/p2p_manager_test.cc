@@ -1111,7 +1111,8 @@ TEST_F(P2PManagerTest, StartTimeout_GOStarting) {
         std::move(create_device_cb).Run();
         return true;
       });
-
+  EXPECT_CALL(*wifi_provider_,
+              CancelDeviceRequestsOfType(NL80211_IFTYPE_P2P_GO));
   ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 

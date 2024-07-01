@@ -143,6 +143,7 @@ class MockWiFiProvider : public WiFiProvider {
               EnableDevices,
               (std::vector<WiFiRefPtr>, bool, ResultCallback),
               (override));
+  MOCK_METHOD(void, CancelDeviceRequestsOfType, (nl80211_iftype), (override));
 };
 
 }  // namespace shill
