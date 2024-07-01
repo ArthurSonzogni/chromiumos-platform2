@@ -278,8 +278,6 @@ bool OpenVPNDriver::SpawnOpenVPN() {
     return false;
   }
 
-  // TODO(quiche): This should be migrated to use ExternalTask.
-  // (crbug.com/246263).
   CHECK(!pid_);
 
   const std::vector<std::string> args = GetCommandLineArgs();
@@ -317,7 +315,6 @@ void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
   SLOG(2) << __func__ << "(" << pid_ << ", " << exit_status << ")";
   pid_ = 0;
   FailService(VPNEndReason::kFailureInternal, Service::kErrorDetailsNone);
-  // TODO(petkov): Figure if we need to restart the connection.
 }
 
 void OpenVPNDriver::GetLogin(std::string* /*user*/, std::string* /*password*/) {

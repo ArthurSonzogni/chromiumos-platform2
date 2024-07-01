@@ -51,8 +51,6 @@ class WireGuardDriver : public VPNDriver {
   // empty. Given that Save() will always be called after any property changes
   // by Manager::ConfigureService*(), this guarantees that there will always be
   // a valid key pair in the service.
-  // TODO(b/177877860): May need to change this logic when hardware-backed keys
-  // come, especially when the service is switching between these two key types.
   bool Save(StoreInterface* storage,
             const std::string& storage_id,
             bool save_credentials) override;

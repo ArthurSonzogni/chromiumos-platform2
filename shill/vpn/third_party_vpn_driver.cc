@@ -279,7 +279,6 @@ void ThirdPartyVpnDriver::SetParameters(
     const std::map<std::string, std::string>& parameters,
     std::string* error_message,
     std::string* warning_message) {
-  // TODO(kaliamoorthi): Add IPV6 support.
   if (!parameters_expected_ || active_client_ != this) {
     error_message->append("Unexpected call");
     return;
@@ -447,9 +446,8 @@ void ThirdPartyVpnDriver::OnInput(base::span<const uint8_t> data) {
     return;
   }
 
-  // TODO(kaliamoorthi): This is not efficient, transfer the descriptor over to
-  // chrome browser or use a pipe in between. Avoid using DBUS for packet
-  // transfer.
+  // Transferring packets over D-Bus is not efficient. Ideally we may want to
+  // transfer the descriptor over to chrome browser or use a pipe in between.
   std::vector<uint8_t> ip_packet(std::begin(data), std::end(data));
   adaptor_interface_->EmitPacketReceived(ip_packet);
 }

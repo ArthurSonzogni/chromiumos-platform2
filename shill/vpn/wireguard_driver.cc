@@ -209,8 +209,6 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
     // only support the "client mode". Local overlay addresses on the interface,
     // DNS servers, and MTU will be set via StaticIPConfig.
     {kWireGuardPrivateKey, Property::kEphemeral | Property::kWriteOnly},
-    // TODO(b/177877860): This field is for software-backed keys only. May need
-    // to change this logic when hardware-backed keys come.
     {kWireGuardPublicKey, Property::kReadOnly},
     // Property for the list that contains one IPv4 address and multiple IPv6
     // addresses which will be used as the client-side overlay addresses.
@@ -791,7 +789,6 @@ void WireGuardDriver::ReportConnectionMetrics() {
   metrics()->SendToUMA(Metrics::kMetricVpnWireGuardPeersNum, peers_.size());
 
   // Allowed IPs type.
-  // TODO(b/194243702): Collect metrics for IPv6 usages in Allowed IPs.
   auto allowed_ips_type = Metrics::kVpnWireGuardAllowedIPsTypeNoDefaultRoute;
   for (auto peer : peers_) {
     if (peer[kWireGuardPeerAllowedIPs].find("0.0.0.0/0") != std::string::npos) {
