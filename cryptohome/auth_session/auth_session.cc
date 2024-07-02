@@ -1534,6 +1534,8 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
     return;
   }
+  LOG(INFO) << "AuthSession: Starting remove with auth_factor: "
+      << auth_factor_label;
 
   on_done = WrapCallbackWithMetricsReporting(
       std::move(on_done), stored_auth_factor->auth_factor().type(),
@@ -1713,6 +1715,7 @@ void AuthSession::ResaveUssWithFactorRemoved(
             .Wrap(std::move(status)));
     return;
   }
+  LOG(INFO) << "AuthSession: Removed AuthFactor: " << auth_factor_label;
 
   // At any step after this point if we fail in updating the USS we still report
   // OkStatus as the final result. The AuthFactor itself is already gone and so
@@ -1754,6 +1757,8 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
     return;
   }
 
+  LOG(INFO) << "AuthSession: Starting update with auth_factor: "
+      << request.auth_factor_label();
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
       session_->GetAuthFactorMap().Find(request.auth_factor_label());
   if (!stored_auth_factor) {
@@ -1916,6 +1921,8 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
             .Wrap(std::move(callback_error)));
     return;
   }
+
+  LOG(INFO) << "AuthSession: Updated AuthFactor: " << auth_factor_label;
 
   // Create the auth factor by combining the metadata with the auth block
   // state.

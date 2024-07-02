@@ -1885,6 +1885,8 @@ void UserDataAuth::RemoveWithSession(
     OnDoneCallback<user_data_auth::RemoveReply> on_done,
     InUseAuthSession auth_session) {
   user_data_auth::RemoveReply reply;
+  LOG(INFO) << "UDA: Starting removal.";
+
 
   Username account_id = auth_session->username();
   if (account_id->empty()) {
@@ -1945,6 +1947,7 @@ void UserDataAuth::OnPreparedUserForRemoval(
   user_data_auth::RemoveCompleted signal;
   signal.set_sanitized_username(*obfuscated);
   signalling_intf_->SendRemoveCompleted(signal);
+  LOG(INFO) << "UDA: User removal completed.";
 
   // We should have removed the auth sessions of the user-to-be-removed. Try
   // to unload the encrypted USS from manager otherwise the same account can't
