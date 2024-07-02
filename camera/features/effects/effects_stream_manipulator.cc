@@ -526,7 +526,7 @@ bool EffectsStreamManipulatorImpl::Initialize(
   helper_ = std::make_unique<StreamManipulatorHelper>(
       StreamManipulatorHelper::Config{
           .process_mode = ProcessMode::kVideoAndStillProcess,
-          .result_metadata_tags_to_update = {ANDROID_SENSOR_TIMESTAMP},
+          .result_metadata_tags_to_inspect = {ANDROID_SENSOR_TIMESTAMP},
       },
       camera_module_name_, static_info, std::move(callbacks),
       base::BindRepeating(&EffectsStreamManipulatorImpl::OnProcessTask,
@@ -726,8 +726,8 @@ void EffectsStreamManipulatorImpl::OnProcessTask(ScopedProcessTask task) {
   }
 
   int64_t timestamp = [&]() {
-    const camera_metadata_entry_t entry =
-        task->result_metadata().find(ANDROID_SENSOR_TIMESTAMP);
+    const camera_metadata_ro_entry_t entry =
+        task->result_metadata_ro().find(ANDROID_SENSOR_TIMESTAMP);
     CHECK_GT(entry.count, 0);
     return entry.data.i64[0] / 1000;
   }();

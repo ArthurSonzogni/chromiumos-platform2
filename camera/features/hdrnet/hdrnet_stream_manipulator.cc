@@ -309,7 +309,7 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
   helper_ = std::make_unique<StreamManipulatorHelper>(
       StreamManipulatorHelper::Config{
           .process_mode = ProcessMode::kVideoAndStillProcess,
-          .result_metadata_tags_to_update =
+          .result_metadata_tags_to_inspect =
               HdrNetProcessorDeviceAdapter::GetResultMetadataTagsOfInterest(),
       },
       camera_module_name_, static_info, std::move(callbacks),
@@ -443,12 +443,12 @@ void HdrNetStreamManipulator::OnProcessTask(ScopedProcessTask task) {
   if (options_.hdrnet_enable) {
     // TODO(jcliang): Update the LUT textures once and share it with all
     // processors.
-    stream_context->processor->ProcessResultMetadata(task->frame_number(),
-                                                     task->result_metadata());
+    stream_context->processor->ProcessResultMetadata(
+        task->frame_number(), task->result_metadata_ro());
   }
   std::optional<base::Value::Dict> overridden_json_values =
       HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
-          json_values_, task->result_metadata(), override_data_);
+          json_values_, task->result_metadata_ro(), override_data_);
   if (overridden_json_values.has_value()) {
     SetOptions(*overridden_json_values);
   }

@@ -763,10 +763,23 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
     result.feature_metadata().hdr_ratio.reset();
   }
 
-  // Move result metadata to be updated into capture context.
+  // Copy or move result metadata of interest into capture context.
   bool result_metadata_ready = true;
+  for (uint32_t tag : config_.result_metadata_tags_to_inspect) {
+    if (capture_ctx->result_metadata_to_inspect.exists(tag)) {
+      if (result.HasMetadata(tag)) {
+        LOGF(WARNING) << "Duplicated metadata tag "
+                      << base::StringPrintf("0x%x", tag) << " in result "
+                      << result.frame_number() << "; removed";
+        CHECK(result.DeleteMetadata(tag));
+      }
+    } else if (!CopyMetadataTag(tag, result.metadata(),
+                                capture_ctx->result_metadata_to_inspect)) {
+      result_metadata_ready = false;
+    }
+  }
   for (uint32_t tag : config_.result_metadata_tags_to_update) {
-    if (capture_ctx->result_metadata.exists(tag)) {
+    if (capture_ctx->result_metadata_to_update.exists(tag)) {
       if (result.HasMetadata(tag)) {
         LOGF(WARNING) << "Duplicated metadata tag "
                       << base::StringPrintf("0x%x", tag) << " in result "
@@ -774,7 +787,7 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
         CHECK(result.DeleteMetadata(tag));
       }
     } else if (!MoveMetadataTag(tag, result.mutable_metadata(),
-                                capture_ctx->result_metadata)) {
+                                capture_ctx->result_metadata_to_update)) {
       result_metadata_ready = false;
     }
   }
@@ -786,10 +799,10 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
       // processing tasks.
       if (result.has_metadata()) {
         android::CameraMetadata m = result.ReleaseMetadata();
-        if (!capture_ctx->result_metadata.isEmpty()) {
-          CHECK_EQ(m.append(capture_ctx->result_metadata), 0);
+        if (!capture_ctx->result_metadata_to_update.isEmpty()) {
+          CHECK_EQ(m.append(capture_ctx->result_metadata_to_update), 0);
         }
-        capture_ctx->result_metadata.acquire(m);
+        capture_ctx->result_metadata_to_update.acquire(m);
       }
       result.SetPartialResult(0);
     }
@@ -949,7 +962,9 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
       on_process_task_.Run(ScopedProcessTask(
           new ProcessTask(
               result.frame_number(), &stream_ctx.process_input.value(),
-              &stream_ctx.process_output.value(), &capture_ctx->result_metadata,
+              &stream_ctx.process_output.value(),
+              &capture_ctx->result_metadata_to_inspect,
+              &capture_ctx->result_metadata_to_update,
               &capture_ctx->feature_metadata,
               capture_ctx->private_context.get(),
               base::BindOnce(&StreamManipulatorHelper::OnProcessTaskDone,
@@ -1257,8 +1272,8 @@ void StreamManipulatorHelper::ReturnCaptureResult(
       !config_.result_metadata_tags_to_update.empty() &&
       process_tasks_finished) {
     CHECK_EQ(result.partial_result(), 0);
-    if (!capture_ctx.result_metadata.isEmpty()) {
-      result.mutable_metadata().acquire(capture_ctx.result_metadata);
+    if (!capture_ctx.result_metadata_to_update.isEmpty()) {
+      result.mutable_metadata().acquire(capture_ctx.result_metadata_to_update);
     }
     result.SetPartialResult(partial_result_count_);
   }
@@ -1608,7 +1623,7 @@ bool StreamManipulatorHelper::CaptureContext::Done() const {
   if (!result_metadata_error) {
     if (last_result_metadata_received) {
       CHECK(last_result_metadata_sent);
-      CHECK(result_metadata.isEmpty());
+      CHECK(result_metadata_to_update.isEmpty());
     } else {
       return false;
     }

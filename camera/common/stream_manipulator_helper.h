@@ -113,6 +113,10 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
     bool skip_on_multiple_aspect_ratios = false;
 
     // Result metadata tags that will be copied and carried to process tasks
+    // for visibility.
+    std::vector<uint32_t> result_metadata_tags_to_inspect;
+
+    // Result metadata tags that will be copied and carried to process tasks
     // for visibility and modification.
     std::vector<uint32_t> result_metadata_tags_to_update;
 
@@ -273,7 +277,8 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
     bool result_metadata_error = false;
     std::optional<Camera3StreamBuffer> client_buffer_for_blob;
     std::optional<CameraBufferPool::Buffer> pool_buffer_for_blob;
-    android::CameraMetadata result_metadata;
+    android::CameraMetadata result_metadata_to_inspect;
+    android::CameraMetadata result_metadata_to_update;
     FeatureMetadata feature_metadata;
     std::unique_ptr<PrivateContext> private_context;
 
@@ -407,8 +412,13 @@ class ProcessTask {
   Size output_size() const {
     return Size(output_->stream()->width, output_->stream()->height);
   }
-  android::CameraMetadata& result_metadata() { return *result_metadata_; }
-  FeatureMetadata& feature_metadata() { return *feature_metadata_; }
+  const android::CameraMetadata& result_metadata_ro() const {
+    return *result_metadata_ro_;
+  }
+  android::CameraMetadata& result_metadata_rw() const {
+    return *result_metadata_rw_;
+  }
+  FeatureMetadata& feature_metadata() const { return *feature_metadata_; }
   uint64_t flow_id() const { return input_->flow_id(); }
 
  private:
@@ -419,14 +429,16 @@ class ProcessTask {
   ProcessTask(uint32_t frame_number,
               Camera3StreamBuffer* input,
               Camera3StreamBuffer* output,
-              android::CameraMetadata* result_metadata,
+              const android::CameraMetadata* result_metadata_ro,
+              android::CameraMetadata* result_metadata_rw,
               FeatureMetadata* feature_metadata,
               StreamManipulatorHelper::PrivateContext* private_context,
               OnProcessTaskDoneCallback on_process_task_done)
       : frame_number_(frame_number),
         input_(input),
         output_(output),
-        result_metadata_(result_metadata),
+        result_metadata_ro_(result_metadata_ro),
+        result_metadata_rw_(result_metadata_rw),
         feature_metadata_(feature_metadata),
         private_context_(private_context),
         on_process_task_done_(std::move(on_process_task_done)) {
@@ -434,7 +446,8 @@ class ProcessTask {
     CHECK_EQ(input_->status(), CAMERA3_BUFFER_STATUS_OK);
     CHECK_NE(output_, nullptr);
     CHECK_EQ(output_->status(), CAMERA3_BUFFER_STATUS_OK);
-    CHECK_NE(result_metadata_, nullptr);
+    CHECK_NE(result_metadata_ro_, nullptr);
+    CHECK_NE(result_metadata_rw_, nullptr);
     CHECK_NE(feature_metadata_, nullptr);
     CHECK(!on_process_task_done_.is_null());
   }
@@ -442,7 +455,8 @@ class ProcessTask {
   uint32_t frame_number_ = 0;
   Camera3StreamBuffer* input_ = nullptr;
   Camera3StreamBuffer* output_ = nullptr;
-  android::CameraMetadata* result_metadata_ = nullptr;
+  const android::CameraMetadata* result_metadata_ro_ = nullptr;
+  android::CameraMetadata* result_metadata_rw_ = nullptr;
   FeatureMetadata* feature_metadata_ = nullptr;
   StreamManipulatorHelper::PrivateContext* private_context_ = nullptr;
 

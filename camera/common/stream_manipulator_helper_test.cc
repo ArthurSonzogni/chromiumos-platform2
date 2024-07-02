@@ -1113,7 +1113,7 @@ const TestCase g_simple_test_case = {
         {
             {.process_mode = ProcessMode::kVideoAndStillProcess,
              .preserve_client_video_streams = false,
-             .result_metadata_tags_to_update = {ANDROID_SENSOR_TIMESTAMP}},
+             .result_metadata_tags_to_inspect = {ANDROID_SENSOR_TIMESTAMP}},
         },
     .available_formats =
         {
@@ -1145,7 +1145,7 @@ const TestCase g_complex_test_case = {
             {.process_mode = ProcessMode::kVideoAndStillProcess,
              .prefer_large_source = true,
              .preserve_client_video_streams = false,
-             .result_metadata_tags_to_update = {ANDROID_SENSOR_TIMESTAMP},
+             .result_metadata_tags_to_inspect = {ANDROID_SENSOR_TIMESTAMP},
              .enable_debug_logs = true},
         },
     .available_formats =
