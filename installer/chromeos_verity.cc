@@ -110,8 +110,8 @@ int chromeos_verity(verity::DmBhtInterface* bht,
     unsigned int i;
     size_t count = std::min((fs_blocks - cur_block) * blocksize, IO_BUF_SIZE);
 
-    if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(io_buffer.get()),
-                          count)) {
+    if (!base::ReadFromFD(fd.get(), base::as_writable_chars(base::make_span(
+                                        io_buffer.get(), count)))) {
       PLOG(ERROR) << "read returned error";
       return -1;
     }

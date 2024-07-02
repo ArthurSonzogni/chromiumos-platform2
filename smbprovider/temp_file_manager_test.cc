@@ -88,8 +88,8 @@ TEST_F(TempFileManagerTest, WriteFileSucceeds) {
 
   // Read back the data written and ensure that it is the same.
   std::vector<uint8_t> actual(expected.size());
-  EXPECT_TRUE(base::ReadFromFD(fd.get(), reinterpret_cast<char*>(actual.data()),
-                               actual.size()));
+  EXPECT_TRUE(base::ReadFromFD(
+      fd.get(), base::as_writable_chars(base::make_span(actual))));
   EXPECT_EQ(expected, actual);
 }
 

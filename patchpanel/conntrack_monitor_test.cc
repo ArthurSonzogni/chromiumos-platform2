@@ -465,16 +465,14 @@ TEST_F(ConntrackMonitorTest, Start) {
   EXPECT_CALL(*sock_ptr, RecvMessage)
       .WillOnce(testing::WithArg<0>([this](std::vector<uint8_t>* buf) {
         buf->resize(sizeof(kEventBuf1), 0);
-        EXPECT_TRUE(base::ReadFromFD(read_fd(),
-                                     reinterpret_cast<char*>(buf->data()),
-                                     sizeof(kEventBuf1)));
+        EXPECT_TRUE(base::ReadFromFD(
+            read_fd(), base::as_writable_chars(base::make_span(*buf))));
         return true;
       }))
       .WillOnce(testing::WithArg<0>([this](std::vector<uint8_t>* buf) {
         buf->resize(sizeof(kEventBuf2), 0);
-        EXPECT_TRUE(base::ReadFromFD(read_fd(),
-                                     reinterpret_cast<char*>(buf->data()),
-                                     sizeof(kEventBuf2)));
+        EXPECT_TRUE(base::ReadFromFD(
+            read_fd(), base::as_writable_chars(base::make_span(*buf))));
         return true;
       }));
   MockCallback event_cb;

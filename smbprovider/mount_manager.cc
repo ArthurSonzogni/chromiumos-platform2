@@ -107,9 +107,9 @@ std::unique_ptr<password_provider::Password> GetPassword(
   size_t password_length = 0;
 
   // Read sizeof(size_t) bytes from the file to get the password length.
-  if (!base::ReadFromFD(password_fd.get(),
-                        reinterpret_cast<char*>(&password_length),
-                        sizeof(password_length))) {
+  if (!base::ReadFromFD(
+          password_fd.get(),
+          base::as_writable_chars(base::span_from_ref(password_length)))) {
     LOG(ERROR) << "Cannot read password from file";
     return nullptr;
   }

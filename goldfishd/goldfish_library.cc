@@ -22,7 +22,7 @@ namespace goldfishd {
 bool ReadOneMessage(int fd, std::string* message) {
   char buf[kFrameHeaderLen + 1];
   buf[kFrameHeaderLen] = 0;
-  if (!base::ReadFromFD(fd, buf, kFrameHeaderLen)) {
+  if (!base::ReadFromFD(fd, base::make_span(buf, kFrameHeaderLen))) {
     PLOG(ERROR) << "Couldn't read message header";
     return false;
   }
@@ -36,7 +36,7 @@ bool ReadOneMessage(int fd, std::string* message) {
     return false;
   }
   char tmp[kMaxMessageLen];
-  if (!base::ReadFromFD(fd, tmp, len)) {
+  if (!base::ReadFromFD(fd, base::make_span(tmp, len))) {
     PLOG(ERROR) << "Couldn't read full message sized at " << len;
     return false;
   }

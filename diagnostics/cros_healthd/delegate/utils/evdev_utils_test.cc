@@ -46,7 +46,7 @@ const base::FilePath kDevInputPath = base::FilePath("/dev/input");
 // Reads one byte from fd. Return whether the operation is successful.
 bool ReadOneByte(int fd) {
   char buffer;
-  return base::ReadFromFD(fd, &buffer, sizeof(buffer));
+  return base::ReadFromFD(fd, base::span_from_ref(buffer));
 }
 
 // Write one byte to fd. Return whether the operation is successful.
