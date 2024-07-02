@@ -439,6 +439,25 @@ def cmd_analyze(opts: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify(opts: argparse.Namespace) -> int:
+    """Verify the consistency and completeness of the FAR and FRR decisions
+    for one test case.
+
+    This directory is expected to contain FAR_decisions.csv and
+    FRR_decisions.csv files.
+    """
+    decisions_dir: pathlib.Path = opts.decisions_dir
+
+    far_decisions_file = decisions_dir / "FAR_decisions.csv"
+    frr_decisions_file = decisions_dir / "FRR_decisions.csv"
+
+    exp = Experiment()
+    exp.add_far_decisions_from_csv(far_decisions_file)
+    exp.add_frr_decisions_from_csv(frr_decisions_file)
+    exp.check()
+    return 0
+
+
 def cmd_report(opts: argparse.Namespace) -> int:
     """Conduct a full analysis of all test cases and generate a final report."""
     user_groups_csv: Optional[pathlib.Path] = opts.user_groups_csv
@@ -1001,6 +1020,18 @@ def main(argv: list[str]) -> int:
     )
     parser_analyze.set_defaults(func=cmd_analyze)
     parser_analyze.add_argument(
+        "decisions_dir",
+        type=pathlib.Path,
+        help="Directory that holds the matcher decisions for one test case",
+    )
+
+    # Parser for "verify" subcommand.
+    parser_verify = subparsers.add_parser(
+        "verify",
+        help=cmd_verify.__doc__,
+    )
+    parser_verify.set_defaults(func=cmd_verify)
+    parser_verify.add_argument(
         "decisions_dir",
         type=pathlib.Path,
         help="Directory that holds the matcher decisions for one test case",
