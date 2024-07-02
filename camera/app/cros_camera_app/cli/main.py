@@ -12,6 +12,7 @@ import argparse
 import codecs
 import json
 import logging
+import logging.handlers
 import pathlib
 import shutil
 import sys
@@ -37,7 +38,12 @@ cli = util.CLIRunner(
     action="store_true",
     help="enable debug logging",
 )
-def cmd_main(debug: bool):
+@cli.option(
+    "--syslog",
+    action="store_true",
+    help="send log to syslog",
+)
+def cmd_main(debug: bool, syslog: bool):
     # ChromeOS shell might use C locale instead of UTF-8, which may trigger
     # encoding error when printing non-ASCII characters. Here we enforce stdout
     # and stderr to use UTF-8 encoding.
@@ -56,6 +62,14 @@ def cmd_main(debug: bool):
     log_level = logging.DEBUG if debug else logging.INFO
     log_format = "%(asctime)s - %(levelname)s - %(funcName)s: %(message)s"
     logging.basicConfig(level=log_level, format=log_format)
+
+    if syslog:
+        handler = logging.handlers.SysLogHandler(address="/dev/log")
+        formatter = logging.Formatter(
+            "cros_camera_app: %(funcName)s: %(message)s"
+        )
+        handler.setFormatter(formatter)
+        logging.getLogger().addHandler(handler)
 
 
 @cli.command(
