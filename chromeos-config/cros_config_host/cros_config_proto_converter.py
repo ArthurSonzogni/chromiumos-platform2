@@ -3971,11 +3971,11 @@ def _extract_fw_config_value(hw_design_config, topology):
 def hex_8bit(value):
     """Converts 8bit value into bytearray.
 
-    args:
-      8bit value
+    Args:
+        value: 8bit value
 
-    returns:
-      bytearray of size 1
+    Returns:
+        bytearray of size 1
     """
 
     if value > 0xFF or value < 0:
@@ -3986,11 +3986,11 @@ def hex_8bit(value):
 def hex_16bit(value):
     """Converts 16bit value into bytearray.
 
-    args:
-      16bit value
+    Args:
+        value: 16bit value
 
-    returns:
-      bytearray of size 2
+    Returns:
+        bytearray of size 2
     """
 
     if value > 0xFFFF or value < 0:
@@ -4001,11 +4001,11 @@ def hex_16bit(value):
 def hex_32bit(value):
     """Converts 32bit value into bytearray.
 
-    args:
-      32bit value
+    Args:
+        value: 32bit value
 
-    returns:
-      bytearray of size 4
+    Returns:
+        bytearray of size 4
     """
 
     if value > 0xFFFFFFFF or value < 0:
@@ -4016,10 +4016,10 @@ def hex_32bit(value):
 def wrds_ewrd_encode(sar_table_config):
     """Creates and returns encoded power tables.
 
-    args:
+    Args:
         sar_table_config: contains power table values configured in config.star
 
-    returns:
+    Returns:
         Encoded power tables as bytearray
     """
 
@@ -4249,11 +4249,11 @@ def wrds_ewrd_encode(sar_table_config):
 def wgds_encode(wgds_config):
     """Creates and returns encoded geo offset tables.
 
-    args:
+    Args:
         wgds_config: contains offset table values configured in config.star
 
-    returns:
-      Encoded geo offset tables as bytearray
+    Returns:
+        Encoded geo offset tables as bytearray
     """
 
     def wgds_offset_table(offsets, revision):
@@ -4307,10 +4307,10 @@ def wgds_encode(wgds_config):
 def antgain_encode(ant_gain_config):
     """Creates and returns encoded antenna gain tables.
 
-    args:
+    Args:
         ant_gain_config: contains antenna gain values configured in config.star
 
-    returns:
+    Returns:
         Encoded antenna gain tables as bytearray
     """
 
@@ -4366,11 +4366,11 @@ def antgain_encode(ant_gain_config):
 def wtas_encode(wtas_config):
     """Creates and returns encoded time average sar tables.
 
-    args:
-        wtas_encode: contains time average sar values configured in config.star
+    Args:
+        wtas_config: contains time average sar values configured in config.star
 
-    returns:
-      Encoded time average sar tables as bytearray
+    Returns:
+        Encoded time average sar tables as bytearray
     """
 
     if wtas_config.tas_list_size > 16:
@@ -4410,12 +4410,12 @@ def wtas_encode(wtas_config):
 def dsm_encode(dsm_config):
     """Creates and returns device specific method return values.
 
-    args:
+    Args:
         dsm_config: contains device specific method return values configured in
-      config.star
+        config.star
 
-    returns:
-      Encoded device specific method return values as bytearray
+    Returns:
+        Encoded device specific method return values as bytearray
     """
 
     def enable_supported_functions(dsm_config):
@@ -4477,38 +4477,38 @@ def dsm_encode(dsm_config):
     )
 
 
-def bsar_encode(bsar_config):
+def bt_sar_encode(bt_sar_config):
     """Creates and returns the Intel Bluetooth SAR content for the given config.
 
-    args:
-        bsar_config: bluetooth SAR configuration
+    Args:
+        bt_sar_config: bluetooth SAR configuration
 
-    returns:
-      Intel Bluetooth SAR content encoded as bytearray
+    Returns:
+        Intel Bluetooth SAR content encoded as bytearray
     """
-    if bsar_config.revision != 1:
+    if bt_sar_config.revision != 1:
         return bytearray(0)
     return (
-        hex_8bit(bsar_config.revision)
-        + hex_8bit(bsar_config.increased_power_mode_limitation)
-        + hex_8bit(bsar_config.sar_lb_power_restriction)
-        + hex_8bit(bsar_config.br_modulation)
-        + hex_8bit(bsar_config.edr2_modulation)
-        + hex_8bit(bsar_config.edr3_modulation)
-        + hex_8bit(bsar_config.le_modulation)
-        + hex_8bit(bsar_config.le2_mhz_modulation)
-        + hex_8bit(bsar_config.le_lr_modulation)
+        hex_8bit(bt_sar_config.revision)
+        + hex_8bit(bt_sar_config.increased_power_mode_limitation)
+        + hex_8bit(bt_sar_config.sar_lb_power_restriction)
+        + hex_8bit(bt_sar_config.br_modulation)
+        + hex_8bit(bt_sar_config.edr2_modulation)
+        + hex_8bit(bt_sar_config.edr3_modulation)
+        + hex_8bit(bt_sar_config.le_modulation)
+        + hex_8bit(bt_sar_config.le2_mhz_modulation)
+        + hex_8bit(bt_sar_config.le_lr_modulation)
     )
 
 
 def wbem_encode(wbem_config):
     """Creates and returns Wifi 320 MHz bandwidth enablement with given config.
 
-    args:
+    Args:
         wbem_config: Wifi 320 MHz bandwidth enablement configuration
 
-    returns:
-       Wifi 320 MHz bandwidth enablement encoded as bytearray
+    Returns:
+        Wifi 320 MHz bandwidth enablement encoded as bytearray
     """
 
     def wbem_country_enablement_value(country_enablement):
@@ -4532,12 +4532,12 @@ def _create_intel_sar_file_content(intel_config):
     creates and returns the sar file content that is used with intel drivers
     only.
 
-    args:
+    Args:
         intel_config: intelconfig config.
 
-    returns:
-      sar file content for the given config, see:
-      https://chromeos.google.com/partner/dlm/docs/connectivity/wifidyntxpower.html
+    Returns:
+        sar file content for the given config, see:
+        https://chromeos.google.com/partner/dlm/docs/connectivity/wifidyntxpower.html
     """
 
     # Encode the SAR data in following format
@@ -4558,10 +4558,13 @@ def _create_intel_sar_file_content(intel_config):
     # | Ant table | 2 bytes  | Offset of Antenna table from start  |
     # | offset    |          | of the header                       |
     # +------------------------------------------------------------+
+    # | WTAS      | 2 bytes  | Offset of WTAS table from start of  |
+    # | offset    |          | the header                          |
+    # +------------------------------------------------------------+
     # | DSM offset| 2 bytes  | Offset of DSM from start of the     |
     # |           |          | header                              |
     # +------------------------------------------------------------+
-    # | BSar      | 2 bytes  | Offset of Bluetooth SAR table from  |
+    # | BtSar     | 2 bytes  | Offset of Bluetooth SAR table from  |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
     # | WBEM      | 2 bytes  | Offset of WBEM table from start of  |
@@ -4587,32 +4590,54 @@ def _create_intel_sar_file_content(intel_config):
     payload = bytearray(0)
     offset = len(marker) + len(header) + (sar_configs * 2)
 
-    data = wrds_ewrd_encode(intel_config.sar_table)
-    header, payload, offset = encode_data(data, header, payload, offset)
-
-    data = wgds_encode(intel_config.wgds_table)
-    header, payload, offset = encode_data(data, header, payload, offset)
-
-    data = antgain_encode(intel_config.ant_table)
-    header, payload, offset = encode_data(data, header, payload, offset)
-
-    data = wtas_encode(intel_config.wtas_table)
-    header, payload, offset = encode_data(data, header, payload, offset)
-
-    data = dsm_encode(intel_config.dsm)
-    header, payload, offset = encode_data(data, header, payload, offset)
-
-    if intel_config.HasField("bsar"):
-        data = bsar_encode(intel_config.bsar)
+    if intel_config.HasField("sar_table"):
+        data = wrds_ewrd_encode(intel_config.sar_table)
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
-        header += hex_16bit(0)  # reserve set bsar offset to 0
+        # reserve and set sar_table offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("wgds_table"):
+        data = wgds_encode(intel_config.wgds_table)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set wgds_table offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("ant_table"):
+        data = antgain_encode(intel_config.ant_table)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set ant_table offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("wtas_table"):
+        data = wtas_encode(intel_config.wtas_table)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set wtas_table offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("dsm"):
+        data = dsm_encode(intel_config.dsm)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set dsm offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bt_sar"):
+        data = bt_sar_encode(intel_config.bt_sar)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bt_sar offset to 0
+        header += hex_16bit(0)
 
     if intel_config.HasField("wbem"):
         data = wbem_encode(intel_config.wbem)
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
-        header += hex_16bit(0)  # reserve set wbem offset to 0
+        # reserve and set wbem offset to 0
+        header += hex_16bit(0)
 
     return marker + header + payload
 
@@ -4623,11 +4648,11 @@ def _create_mtcl_file_content(country_list):
     creates and returns the mtcl file content that is used with MediaTek drivers
     only.
 
-    args:
+    Args:
         country_list: MtclTable country list.
 
-    returns:
-      mtcl file content for the given config
+    Returns:
+        mtcl file content for the given config
     """
 
     if country_list.version != 2:
