@@ -120,8 +120,7 @@ TEST_F(ProxyConnectJobTest, BadHttpRequestWrongMethod) {
   const std::string expected_http_response =
       "HTTP/1.1 400 Bad Request - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
-  ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(cros_client_socket_->Get(), buf));
   std::string actual_response(buf.data(), buf.size());
   EXPECT_EQ(expected_http_response, actual_response);
 }
@@ -152,8 +151,7 @@ TEST_F(ProxyConnectJobTest, SlowlorisTimeout) {
   const std::string expected_http_response =
       "HTTP/1.1 408 Request Timeout - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
-  ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(cros_client_socket_->Get(), buf));
   std::string actual_response(buf.data(), buf.size());
   EXPECT_EQ(expected_http_response, actual_response);
 }
@@ -176,8 +174,7 @@ TEST_F(ProxyConnectJobTest, WaitClientConnectTimeout) {
   const std::string expected_http_response =
       "HTTP/1.1 408 Request Timeout - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
-  ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(cros_client_socket_->Get(), buf));
   std::string actual_response(buf.data(), buf.size());
 
   EXPECT_EQ(expected_http_response, actual_response);
@@ -438,8 +435,7 @@ TEST_F(HttpServerProxyConnectJobTest, AuthenticationTimeout) {
   const std::string expected_http_response =
       "HTTP/1.1 407 Credentials required - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
-  ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(cros_client_socket_->Get(), buf));
   std::string actual_response(buf.data(), buf.size());
 
   // Check that the auth failure was forwarded to the client.
@@ -466,8 +462,7 @@ TEST_F(HttpServerProxyConnectJobTest, CancelIfBadCredentials) {
   const std::string expected_http_response =
       "HTTP/1.1 407 Credentials required - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_response.size());
-  ASSERT_TRUE(
-      base::ReadFromFD(cros_client_socket_->Get(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(cros_client_socket_->Get(), buf));
   std::string actual_response(buf.data(), buf.size());
 
   EXPECT_EQ(expected_http_response, actual_response);

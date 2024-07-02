@@ -249,7 +249,7 @@ void FakeAres::TriggerReadReady() {
 
 void FakeAres::VerifyReadFD(int fd) {
   char buf[kFDContent.size() + 1];
-  CHECK(base::ReadFromFD(fd, buf, kFDContent.size()))
+  CHECK(base::ReadFromFD(fd, base::make_span(buf, kFDContent.size())))
       << "Failed to read from fd";
   CHECK_EQ(std::string_view(buf, kFDContent.size()), kFDContent);
 }
@@ -262,7 +262,7 @@ constexpr int kPipeBufferSize = 4096;
 void FakeAres::TriggerWriteReady() {
   CHECK(write_fd_remote_.is_valid()) << "Write fd is not ready";
   static char buf[kPipeBufferSize];
-  CHECK(base::ReadFromFD(write_fd_remote_.get(), buf, kPipeBufferSize));
+  CHECK(base::ReadFromFD(write_fd_remote_.get(), buf));
 }
 
 void FakeAres::BlockWriteFD() {

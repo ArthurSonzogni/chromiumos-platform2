@@ -234,7 +234,7 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   const std::string expected_http_reply =
       "HTTP/1.1 500 Internal Server Error - Origin: local proxy\r\n\r\n";
   std::vector<char> buf(expected_http_reply.size());
-  ASSERT_TRUE(base::ReadFromFD(client_socket->Get(), buf.data(), buf.size()));
+  ASSERT_TRUE(base::ReadFromFD(client_socket->Get(), buf));
   buf.push_back('\0');
   const std::string actual_http_reply(buf.data());
   EXPECT_EQ(expected_http_reply, actual_http_reply);

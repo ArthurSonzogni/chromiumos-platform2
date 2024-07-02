@@ -148,7 +148,7 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
 
   message_size -= message_hdr_size;  // The message size includes itself.
   char buffer[SerializationUtils::kMessageMaxLength];
-  if (!base::ReadFromFD(fd, buffer, message_size)) {
+  if (!base::ReadFromFD(fd, base::make_span(buffer, message_size))) {
     LOG(ERROR) << "failed to read message body";
     return false;
   }

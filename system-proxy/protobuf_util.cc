@@ -15,14 +15,14 @@ bool ReadProtobuf(int in_fd, google::protobuf::MessageLite* message) {
   // The first part of the message will be the size of the actual message.
   // Because the message is a serialized protobuf, we need to read the whole
   // message before deserializing it.
-  if (!base::ReadFromFD(in_fd, reinterpret_cast<char*>(&proto_size),
-                        sizeof(proto_size)))
+  if (!base::ReadFromFD(
+          in_fd, base::as_writable_chars(base::span_from_ref(proto_size))))
     return false;
   std::vector<char> buf(proto_size);
   // Tries to read exactly buf.size() bytes from in_fd and returns true if
   // succeeded, false otherwise. If the read() get interrupted by EINTR it will
   // resume reading by itself with a limited number of attempts.
-  if (!base::ReadFromFD(in_fd, buf.data(), buf.size()))
+  if (!base::ReadFromFD(in_fd, buf))
     return false;
 
   return message->ParseFromArray(buf.data(), buf.size());

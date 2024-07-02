@@ -363,7 +363,7 @@ CrashCollectionStatus UserCollector::ValidateCoreFile(
   }
 
   char e_ident[EI_NIDENT];
-  bool read_ok = base::ReadFromFD(fd, e_ident, sizeof(e_ident));
+  bool read_ok = base::ReadFromFD(fd, e_ident);
   IGNORE_EINTR(close(fd));
   if (!read_ok) {
     LOG(ERROR) << "Could not read header of core file";
