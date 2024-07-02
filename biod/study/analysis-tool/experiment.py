@@ -553,8 +553,14 @@ class Experiment:
         Raises an exception if an inconsistency is found.
         """
 
+
         def check_decisions(tbl: pd.DataFrame, name: Literal["FAR", "FRR"]):
-            """Check basic decisions table properties, like columns."""
+            """Check basic decisions table properties, like columns.
+
+            1. Check that the minimum column name set exists.
+            2. Check that either both group columns are correctly absent or
+               that they are both are present.
+            """
             if not fpsutils.has_columns(tbl, Experiment.DECISION_TABLE_COLS):
                 raise TypeError(
                     f"{name} decision table is missing some required columns."
