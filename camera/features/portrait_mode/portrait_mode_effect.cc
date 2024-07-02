@@ -57,12 +57,6 @@ PortraitModeEffect::~PortraitModeEffect() {
   thread_.Stop();
 }
 
-void PortraitModeEffect::Initialize() {
-  thread_.task_runner()->PostTask(
-      FROM_HERE, base::BindOnce(&PortraitModeEffect::InitializeAsync,
-                                base::Unretained(this)));
-}
-
 int32_t PortraitModeEffect::ProcessRequest(
     buffer_handle_t input_buffer,
     uint32_t orientation,
@@ -248,14 +242,6 @@ int PortraitModeEffect::ConvertRGBToYUV(void* rgb_buf_addr,
   return 0;
 }
 
-void PortraitModeEffect::InitializeAsync() {
-  CHECK(thread_.task_runner()->BelongsToCurrentThread());
-  if (!portrait_processor_.Init()) {
-    LOGF(ERROR) << "Failed to initialize portrait processor";
-    return;
-  }
-}
-
 void PortraitModeEffect::ProcessRequestAsync(
     buffer_handle_t input_buffer,
     buffer_handle_t output_buffer,
@@ -264,6 +250,14 @@ void PortraitModeEffect::ProcessRequestAsync(
   CHECK(thread_.task_runner()->BelongsToCurrentThread());
   CHECK(input_buffer);
   CHECK(output_buffer);
+
+  if (!portrait_processor_init) {
+    if (!portrait_processor_.Init()) {
+      LOGF(ERROR) << "Failed to initialize portrait processor";
+      return;
+    }
+    portrait_processor_init = true;
+  }
 
   ScopedMapping input_mapping(input_buffer);
   ScopedMapping output_mapping(output_buffer);

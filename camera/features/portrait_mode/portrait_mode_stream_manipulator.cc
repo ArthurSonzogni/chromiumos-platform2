@@ -160,9 +160,7 @@ bool PortraitModeStreamManipulator::InitializeOnThread(
   partial_result_count_ = GetPartialResultCount(static_info);
   VLOGF(1) << "Partial result count: " << partial_result_count_;
 
-  // Initialize Portrait Mode effect.
   portrait_mode_ = std::make_unique<PortraitModeEffect>();
-  portrait_mode_->Initialize();
 
   return true;
 }

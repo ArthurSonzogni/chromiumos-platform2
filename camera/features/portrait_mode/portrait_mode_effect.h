@@ -7,16 +7,12 @@
 #ifndef CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_EFFECT_H_
 #define CAMERA_FEATURES_PORTRAIT_MODE_PORTRAIT_MODE_EFFECT_H_
 
-#include <string>
-#include <utility>
-#include <vector>
-
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
-#include <base/threading/thread.h>
 #include <base/process/process.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
+#include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 
 #include "camera/mojo/camera_features.mojom.h"
@@ -46,9 +42,6 @@ class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
   ~PortraitModeEffect();
   PortraitModeEffect(const PortraitModeEffect&) = delete;
   PortraitModeEffect& operator=(const PortraitModeEffect&) = delete;
-
-  // Initializes the portrait mode effect.
-  void Initialize();
 
   // Applies the portrait mode effect. Currently it is assumed that the effect
   // have the same output resolution and format as that of input.
@@ -82,13 +75,12 @@ class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
       int orientation,
       base::OnceCallback<void(int32_t)> task_completed_callback);
 
-  void InitializeAsync();
-
   CameraBufferManager* buffer_manager_;
 
   creative_camera::PortraitCrosWrapper portrait_processor_;
   uint32_t req_id_ = 0;
   base::Thread thread_;
+  bool portrait_processor_init = false;
 };
 
 }  // namespace cros
