@@ -14,6 +14,7 @@ import logging
 import os
 import pathlib
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -60,7 +61,10 @@ SSHD_PATH = "/usr/sbin/sshd"
 THIS_FILE = pathlib.Path(__file__).resolve()
 THIS_DIR = THIS_FILE.parent
 FORCE_COMMAND_PATH = THIS_DIR / "force_cmd.sh"
-DHCLIENT_SCRIPT_PATH = "/usr/local/sbin/dhclient-script"
+ORIGINAL_DHCLIENT_SCRIPT_PATH = "/usr/local/sbin/dhclient-script"
+# The path where we put the forked dhclient script. It is suggested to use
+# /usr/local/tmp/ to hold dynamic scripts.
+NEW_DHCLIENT_SCRIPT_PATH = "/usr/local/tmp/dhclient/dhclient-script"
 RECOVER_DUTS_SERVICE_NAME = "recover_duts"
 
 # The maximum time to wait for a process to exit gracefully.
@@ -546,6 +550,51 @@ def close_ssh_sockets(netns_name: Optional[str] = None) -> None:
     run(*cmd)
 
 
+def fork_dhclient_script(
+    original_dhclient_script_path: str,
+    new_dhclient_script_path: str,
+) -> None:
+    """Forks the dhclient script from the original path to the new path.
+
+    During the fork, this function also overrides make_resolv_conf() in the
+    script with a no-op function so that dhclient will not modify
+    /etc/resolv.conf.
+
+    Args:
+        original_dhclient_script_path: The path of the original dhclient script.
+        new_dhclient_script_path: The path of the new dhclient script.
+    """
+    with open(original_dhclient_script_path, "r", encoding="utf-8") as f:
+        original_script_lines = f.readlines()
+    try:
+        # Redefine make_resolv_conf() after dhclient hooks and before the
+        # operation execution to make sure that make_resolv_conf() is
+        # overridden.
+        pos = original_script_lines.index("# Execute the operation\n")
+        new_script_lines = (
+            original_script_lines[:pos]
+            + [
+                "# Override make_resolv_conf() with a no-op function.\n",
+                "make_resolv_conf() {\n",
+                "    :\n",
+                "}\n",
+                "\n",
+            ]
+            + original_script_lines[pos:]
+        )
+    except ValueError:
+        logging.warning(
+            "Failed to override make_resolv_conf() in %s.",
+            original_dhclient_script_path,
+        )
+        new_script_lines = original_script_lines
+    os.makedirs(os.path.dirname(new_dhclient_script_path), exist_ok=True)
+    with open(new_dhclient_script_path, "w", encoding="utf-8") as f:
+        f.writelines(new_script_lines)
+    # Give the new script the same permission as the old one.
+    shutil.copymode(original_dhclient_script_path, new_dhclient_script_path)
+
+
 class EhideDaemon(daemon.Daemon):
     """The Ethernet-hide daemon class.
 
@@ -898,6 +947,15 @@ class EhideDaemon(daemon.Daemon):
                     "}\n",
                 )
             )
+        logging.info(
+            "Forking dhclient-script from %s to %s...",
+            ORIGINAL_DHCLIENT_SCRIPT_PATH,
+            NEW_DHCLIENT_SCRIPT_PATH,
+        )
+        fork_dhclient_script(
+            ORIGINAL_DHCLIENT_SCRIPT_PATH,
+            NEW_DHCLIENT_SCRIPT_PATH,
+        )
         logging.info("Starting dhclient...")
         run(
             "ip",
@@ -911,7 +969,7 @@ class EhideDaemon(daemon.Daemon):
             "-pf",
             os.path.join(self.dhclient_dir, "dhclient.pid"),
             "-sf",
-            DHCLIENT_SCRIPT_PATH,
+            NEW_DHCLIENT_SCRIPT_PATH,
             "-cf",
             conf_path,
         )
