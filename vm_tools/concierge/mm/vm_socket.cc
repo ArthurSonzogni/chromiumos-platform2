@@ -164,9 +164,8 @@ bool VmSocket::ReadPacket(VmMemoryManagementPacket& packet) {
 
   VmMemoryManagementPacketWireFormat wire_packet;
 
-  if (!base::ReadFromFD(fd_.get(),
-                        reinterpret_cast<char*>(&wire_packet.data_size),
-                        sizeof(wire_packet.data_size))) {
+  if (!base::ReadFromFD(fd_.get(), base::as_writable_chars(base::span_from_ref(
+                                       wire_packet.data_size)))) {
     PLOG(ERROR) << "Failed to read packet size.";
     return false;
   }
@@ -175,8 +174,9 @@ bool VmSocket::ReadPacket(VmMemoryManagementPacket& packet) {
     return false;
   }
 
-  if (!base::ReadFromFD(fd_.get(), reinterpret_cast<char*>(wire_packet.data),
-                        wire_packet.data_size)) {
+  if (!base::ReadFromFD(fd_.get(), base::as_writable_chars(
+                                       base::span_from_ref(wire_packet.data))
+                                       .first(wire_packet.data_size))) {
     PLOG(ERROR) << "Failed to read packet data.";
     return false;
   }

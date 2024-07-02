@@ -79,8 +79,8 @@ bool SendMessage(int sockfd, const MessageLite& message, bool ignore_epipe) {
 bool RecvMessage(int sockfd, MessageLite* message) {
   MessagePacket msg;
 
-  if (!base::ReadFromFD(sockfd, reinterpret_cast<char*>(&msg.size),
-                        sizeof(msg.size))) {
+  if (!base::ReadFromFD(
+          sockfd, base::as_writable_chars(base::span_from_ref(msg.size)))) {
     LOG(ERROR) << "Failed to read message from socket";
     return false;
   }
@@ -92,8 +92,9 @@ bool RecvMessage(int sockfd, MessageLite* message) {
     return false;
   }
 
-  if (!base::ReadFromFD(sockfd, reinterpret_cast<char*>(msg.payload),
-                        msg.size)) {
+  if (!base::ReadFromFD(
+          sockfd,
+          base::make_span(reinterpret_cast<char*>(msg.payload), msg.size))) {
     LOG(ERROR) << "Failed to read message from socket";
     return false;
   }

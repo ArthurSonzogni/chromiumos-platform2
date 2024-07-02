@@ -51,7 +51,6 @@ bool ReadStatusFromPipe(int read_fd) {
   // The helper process (capture_packets.cc) will write "1" to the pipe on
   // successful start.
   char buff[1];
-  int len = 1;
 
   FD_ZERO(&set);
   FD_SET(read_fd, &set);
@@ -69,7 +68,7 @@ bool ReadStatusFromPipe(int read_fd) {
     return false;
   } else {
     // The character we read must be "1".
-    return base::ReadFromFD(read_fd, buff, len) && buff[0] == '1';
+    return base::ReadFromFD(read_fd, buff) && buff[0] == '1';
   }
 }
 

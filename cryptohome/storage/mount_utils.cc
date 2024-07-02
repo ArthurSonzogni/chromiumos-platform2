@@ -47,14 +47,14 @@ bool UserSessionMountNamespaceExists() {
 
 bool ReadProtobuf(int in_fd, google::protobuf::MessageLite* message) {
   size_t proto_size = 0;
-  if (!base::ReadFromFD(in_fd, reinterpret_cast<char*>(&proto_size),
-                        sizeof(proto_size))) {
+  if (!base::ReadFromFD(
+          in_fd, base::as_writable_chars(base::span_from_ref(proto_size)))) {
     PLOG(ERROR) << "Failed to read protobuf size";
     return false;
   }
 
   std::vector<char> buf(proto_size);
-  if (!base::ReadFromFD(in_fd, buf.data(), buf.size())) {
+  if (!base::ReadFromFD(in_fd, buf)) {
     PLOG(ERROR) << "Failed to read protobuf";
     return false;
   }

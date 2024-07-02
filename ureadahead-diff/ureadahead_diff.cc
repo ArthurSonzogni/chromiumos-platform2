@@ -17,7 +17,8 @@ namespace ureadahead_diff {
 namespace {
 
 bool ReadBuffer(int fd, void* data, size_t size) {
-  return base::ReadFromFD(fd, reinterpret_cast<char*>(data), size);
+  return base::ReadFromFD(fd,
+                          base::make_span(reinterpret_cast<char*>(data), size));
 }
 
 bool WriteBuffer(int fd, const void* data, size_t size) {
