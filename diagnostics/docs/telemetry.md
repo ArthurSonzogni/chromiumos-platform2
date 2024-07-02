@@ -979,7 +979,7 @@ event --help`.
 | ---- | ----------- |
 | kUnknown | Unknown. |
 | kBootDevice | Boot device. |
-| kSwapDevice | Swap device. |
+| DEPRECATED_kSwapDevice | Deprecated, should not be used. |
 
 ####  Device (SMART)
 

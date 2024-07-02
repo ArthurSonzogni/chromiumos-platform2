@@ -328,8 +328,10 @@ union BlockDeviceFirmware {
 [Stable, Extensible]
 enum StorageDevicePurpose {
   [Default] kUnknown = 0,
+  // The storage device is the root device which ChromeOS boots from.
   kBootDevice = 1,
-  kSwapDevice = 2,
+  // DEPRECATED. See b/287120238.
+  DEPRECATED_kSwapDevice = 2,
 };
 
 // NVMe-specific device info.
