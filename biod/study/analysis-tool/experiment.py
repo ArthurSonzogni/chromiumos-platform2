@@ -568,6 +568,24 @@ class Experiment:
                     f"{name} decision table is missing one group column."
                 )
 
+        def filter_by_attempt_type(
+            tbl: pd.DataFrame, attempt_type: Literal["FAR", "FRR"]
+        ) -> pd.DataFrame:
+            """Return match attempts from the table that are for FA or FR."""
+
+            fr_attempts_bools = (
+                tbl[Experiment.TableCol.Enroll_User.value]
+                == tbl[Experiment.TableCol.Verify_User.value]
+            ) & (
+                tbl[Experiment.TableCol.Enroll_Finger.value]
+                == tbl[Experiment.TableCol.Verify_Finger.value]
+            )
+
+            if attempt_type == "FRR":
+                return tbl[fr_attempts_bools]
+            elif attempt_type == "FAR":
+                return tbl[~fr_attempts_bools]
+
         if self.has_far_decisions():
             assert self._tbl_far_decisions is not None
             far = self._tbl_far_decisions
@@ -578,16 +596,7 @@ class Experiment:
             # finger's own template, where Enroll User+Finger equals
             # Verify User+Finger.
 
-            bad_fa_attempts = far.loc[
-                (
-                    far[Experiment.TableCol.Enroll_User.value]
-                    == far[Experiment.TableCol.Verify_User.value]
-                )
-                & (
-                    far[Experiment.TableCol.Enroll_Finger.value]
-                    == far[Experiment.TableCol.Verify_Finger.value]
-                )
-            ]
+            bad_fa_attempts = filter_by_attempt_type(far, "FRR")
             if len(bad_fa_attempts) > 0:
                 print(
                     f"Found {len(bad_fa_attempts)} FRR match attempts in FAR "
@@ -608,16 +617,7 @@ class Experiment:
             # FRR table should not contain any imposter matches, where the
             # Verify User+Finger doesn't equal Enroll USer+Finger.
 
-            bad_fr_attempts = frr.loc[
-                (
-                    frr[Experiment.TableCol.Enroll_User.value]
-                    != frr[Experiment.TableCol.Verify_User.value]
-                )
-                | (
-                    frr[Experiment.TableCol.Enroll_Finger.value]
-                    != frr[Experiment.TableCol.Verify_Finger.value]
-                )
-            ]
+            bad_fr_attempts = filter_by_attempt_type(frr, "FAR")
             if len(bad_fr_attempts) > 0:
                 print(
                     f"Found {len(bad_fr_attempts)} FAR match attempts in FRR "
