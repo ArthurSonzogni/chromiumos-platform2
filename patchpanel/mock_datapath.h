@@ -67,7 +67,8 @@ class MockDatapath : public Datapath {
                net_base::MacAddress remote_mac_addr,
                const net_base::IPv4CIDR& remote_ipv4_cidr,
                const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
-               bool remote_multicast_flag),
+               bool remote_multicast_flag,
+               bool up),
               (override));
   MOCK_METHOD(void, RemoveInterface, (std::string_view ifname), (override));
   MOCK_METHOD(void,

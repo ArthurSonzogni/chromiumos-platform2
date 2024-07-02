@@ -128,7 +128,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   datapath.StartRoutingNamespace(nsinfo);
   datapath.StopRoutingNamespace(nsinfo);
   datapath.ConnectVethPair(pid, netns_name, ifname, ifname2, mac, cidr,
-                           ipv6_cidr, provider.ConsumeBool());
+                           ipv6_cidr, provider.ConsumeBool(),
+                           provider.ConsumeBool());
   datapath.RemoveInterface(ifname);
   datapath.AddTunTap(ifname, mac, cidr, "", DeviceMode::kTun);
   datapath.RemoveTunTap(ifname, DeviceMode::kTun);

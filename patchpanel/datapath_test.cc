@@ -343,6 +343,24 @@ TEST_F(DatapathTest, ConnectVethPair_StaticIPv6) {
       *IPv6CIDR::CreateFromCIDRString("fd11::1234/64"), true));
 }
 
+TEST_F(DatapathTest, ConnectVethPair_InterfaceDown) {
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link add veth_foo type veth peer name peer_foo netns netns_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev peer_foo down addr 01:02:03:04:05:06 multicast on");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set veth_foo up");
+
+  EXPECT_TRUE(datapath_.ConnectVethPair(
+      kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
+      *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"),
+      /*remote_ipv6_cidr=*/std::nullopt, true, /*up=*/false));
+}
+
 TEST_F(DatapathTest, AddVirtualInterfacePair) {
   runner_.ExpectCallIp(
       IpFamily::kIPv4,

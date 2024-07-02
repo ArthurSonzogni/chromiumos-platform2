@@ -759,12 +759,15 @@ void ArcService::StartArcDeviceDatapath(
     }
     // ARC requires multicast capability at all times. This is tested as part of
     // CTS and CDD.
+    // The interface inside ARC is initialized to be down. ARC is responsible to
+    // set the interface to be up to avoid race with netd (b/144545910).
     if (!datapath_->ConnectVethPair(
             pid, kArcNetnsName, arc_device.arc_device_ifname(),
             arc_device.guest_device_ifname(),
             arc_device.arc_device_mac_address(), arc_device.arc_ipv4_address(),
             /*remote_ipv6_cidr=*/std::nullopt,
-            /*remote_multicast_flag=*/true)) {
+            /*remote_multicast_flag=*/true,
+            /*up=*/false)) {
       LOG(ERROR) << __func__ << "(" << arc_device
                  << "): Cannot create virtual ethernet pair";
       return;

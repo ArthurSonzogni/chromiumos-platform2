@@ -531,7 +531,8 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
                                net_base::MacAddress remote_mac_addr,
                                const IPv4CIDR& remote_ipv4_cidr,
                                const std::optional<IPv6CIDR>& remote_ipv6_cidr,
-                               bool remote_multicast_flag) {
+                               bool remote_multicast_flag,
+                               bool up) {
   // Set up the virtual pair across the current namespace and |netns_name|.
   if (!AddVirtualInterfacePair(netns_name, veth_ifname, peer_ifname)) {
     LOG(ERROR) << "Failed to create veth pair " << veth_ifname << ","
@@ -549,8 +550,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
     }
 
     if (!ConfigureInterface(peer_ifname, remote_mac_addr, remote_ipv4_cidr,
-                            remote_ipv6_cidr, /*up=*/true,
-                            remote_multicast_flag)) {
+                            remote_ipv6_cidr, up, remote_multicast_flag)) {
       LOG(ERROR) << "Failed to configure interface " << peer_ifname;
       RemoveInterface(peer_ifname);
       return false;

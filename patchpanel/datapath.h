@@ -192,8 +192,9 @@ class Datapath {
   // IPv4 address (not a CIDR representation).
 
   // Creates a virtual interface pair split across the current namespace and the
-  // namespace corresponding to |pid|, and set up the remote interface
-  // |peer_ifname| according // to the given parameters.
+  // namespace corresponding to |pid|, and create the remote interface
+  // |peer_ifname| according to the given parameters. |peer_ifname| is
+  // initialized to be up when |up| is true.
   virtual bool ConnectVethPair(
       pid_t pid,
       std::string_view netns_name,
@@ -202,7 +203,8 @@ class Datapath {
       net_base::MacAddress remote_mac_addr,
       const net_base::IPv4CIDR& remote_ipv4_cidr,
       const std::optional<net_base::IPv6CIDR>& remote_ipv6_cidr,
-      bool remote_multicast_flag);
+      bool remote_multicast_flag,
+      bool up = true);
 
   // Disable and re-enable IPv6.
   virtual void RestartIPv6();
