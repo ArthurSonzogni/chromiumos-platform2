@@ -79,7 +79,14 @@ config("compiler_defaults") {
     "-ggdb3",
     "-fstack-protector-strong",
     "-Wformat=2",
+
+    # When a class is exported through __attribute__((visibility("default"))),
+    # we still want to eliminate symbols from inline class member functions to
+    # reduce symbol resolution overhead. Therefore, pass
+    # -fvisibility-inlines-hidden in addition to -fvisibility=internal.
+    # (go/cros-symbol-slimming)
     "-fvisibility=internal",
+    "-fvisibility-inlines-hidden",
     "-Wa,--noexecstack",
     "-Wimplicit-fallthrough",
   ]
