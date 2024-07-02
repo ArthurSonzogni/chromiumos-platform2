@@ -3,19 +3,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Adds the backslash character before each backslash and single quote character.
+escape_str() {
+  echo "$1" | sed 's/\\/\\\\/g' | sed "s/'/\\\'/g"
+}
+
 # Adds the key-value pair into a dictionary-format string if the value is not
 # empty. The dictionary-format is:
-#   "key1","value1","key2","value2","key3","value3"
+#   'key1': 'value1', 'key2': 'value2', 'key3': 'value3'
 # Usage:
 #   add_key_value <dict> <key> <value>
 add_key_value() {
-  local quote='"'
+  local quote="'"
   local dict="$1"
-  local key="$2"
-  local value="$3"
+  local key
+  key="$(escape_str "$2")"
+  local value
+  value="$(escape_str "$3")"
 
   if [ -n "${value}" ]; then
-    echo "${dict}${dict:+,}${quote}${key}${quote},${quote}${value}${quote}"
+    echo "${dict}${dict:+, }${quote}${key}${quote}: ${quote}${value}${quote}"
   else
     echo "${dict}"
   fi
@@ -32,7 +39,7 @@ build_dict() {
     shift
     local value="$1"
     shift
-    dict=$(add_key_value "${dict}" "${key}" "${value}")
+    dict="$(add_key_value "${dict}" "${key}" "${value}")"
   done
   echo "${dict}"
 }
@@ -60,11 +67,12 @@ build_dhcpcd_configuration() {
 }
 
 main() {
-  local -r configuration="$(build_dhcpcd_configuration)"
-  /usr/bin/dbus-send --system --fixed \
-                     --dest=org.chromium.flimflam / \
-                     org.chromium.flimflam.Manager.NotifyDHCPEvent \
-                     "dict:string:string:${configuration}"
+  /usr/bin/gdbus call \
+      --system \
+      --dest org.chromium.flimflam \
+      --object-path / \
+      --method org.chromium.flimflam.Manager.NotifyDHCPEvent \
+      "{ $(build_dhcpcd_configuration) }"
 }
 
 if [ "${UNITTEST_FLAG:=}" != "1" ]; then
