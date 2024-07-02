@@ -314,17 +314,17 @@ class Test_Experiment_check(unittest.TestCase):
 
     FAR_DATAFRAME = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001, 10001],
-            Experiment.TableCol.Enroll_Finger.value: [1, 1],
-            Experiment.TableCol.Verify_User.value: [10002, 10002],
-            Experiment.TableCol.Verify_Finger.value: [3, 3],
-            Experiment.TableCol.Verify_Sample.value: [12, 13],
+            Experiment.TableCol.Enroll_User.value: [10001] * 10,
+            Experiment.TableCol.Enroll_Finger.value: [1] * 10,
+            Experiment.TableCol.Verify_User.value: [10002] * 10,
+            Experiment.TableCol.Verify_Finger.value: [1] * 10,
+            Experiment.TableCol.Verify_Sample.value: np.arange(0, 10),
             Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Reject.value,
-                Experiment.Decision.Reject.value,
-            ],
-            Experiment.TableCol.Enroll_Group.value: ["A", "A"],
-            Experiment.TableCol.Verify_Group.value: ["B", "B"],
+                Experiment.Decision.Reject.value
+            ]
+            * 10,
+            Experiment.TableCol.Enroll_Group.value: ["A"] * 10,
+            Experiment.TableCol.Verify_Group.value: ["B"] * 10,
         }
     )
 
@@ -392,6 +392,24 @@ class Test_Experiment_check(unittest.TestCase):
                 [self.FRR_DATAFRAME, self.FAR_DATAFRAME],
                 ignore_index=True,
             )
+        )
+        with self.assertRaises(ValueError):
+            exp.check()
+
+    def test_table_contains_duplicates(self):
+        exp = Experiment(
+            far_decisions=pd.concat(
+                [
+                    self.FAR_DATAFRAME,
+                    # Append duplicates of the first 4 rows, with the first row
+                    # appearing as a duplicate twice. This allows for manual
+                    # verification that only unique duplicates are shown as
+                    # examples to the user.
+                    self.FAR_DATAFRAME.iloc[0:1],
+                    self.FAR_DATAFRAME.iloc[0:4],
+                ],
+                ignore_index=True,
+            ),
         )
         with self.assertRaises(ValueError):
             exp.check()

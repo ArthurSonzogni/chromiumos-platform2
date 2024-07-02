@@ -568,6 +568,24 @@ class Experiment:
                     f"{name} decision table is missing one group column."
                 )
 
+        def check_duplicates(tbl: pd.DataFrame, name: Literal["FAR", "FRR"]):
+            """Check that there are no duplicate rows."""
+
+            dup_rows_bool: pd.Series[bool] = tbl.duplicated()
+            dup_rows_count = sum(dup_rows_bool)
+            if dup_rows_count > 0:
+                print(
+                    f"Found {dup_rows_count} duplicate rows in "
+                    f"the {name} decisions table."
+                )
+                print("Example:")
+                # Pass array to iloc to ensure it prints out as table row,
+                # instead of vertical single item series.
+                print(tbl[dup_rows_bool].iloc[0 : min(5, dup_rows_count)])
+                raise ValueError(
+                    f"{name} decision table contains duplicate rows."
+                )
+
         def filter_by_attempt_type(
             tbl: pd.DataFrame, attempt_type: Literal["FAR", "FRR"]
         ) -> pd.DataFrame:
@@ -608,6 +626,8 @@ class Experiment:
                 print(bad_fa_attempts.iloc[[0]])
                 raise ValueError("FAR table contains genuine match attempts.")
 
+            check_duplicates(far, "FAR")
+
         if self.has_frr_decisions():
             assert self._tbl_frr_decisions is not None
             frr = self._tbl_frr_decisions
@@ -626,6 +646,8 @@ class Experiment:
                 print("Example:")
                 print(bad_fr_attempts.iloc[[0]])
                 raise ValueError("FRR table contains imposter match attempts.")
+
+            check_duplicates(frr, "FRR")
 
 
 def _add_groups_to_table(
