@@ -571,6 +571,11 @@ explanation of each field.
 
 ## storage_info
 
+## storage_quota_usage
+
+Lists the quota disk usage information for all users, groups and projects for
+the /home directory.
+
 ## substate_live_status_registers
 
 The [Modern Standby (S0ix)] is one state of [ACPI]. Also called

@@ -382,6 +382,10 @@ const std::array kCommandLogs {
   Log{kFile, "slabinfo", "/proc/slabinfo", kRoot, kRoot},
   Log{kFile, "stateful_trim_data", "/var/lib/trim/stateful_trim_data"},
   Log{kFile, "stateful_trim_state", "/var/lib/trim/stateful_trim_state"},
+  Log{kCommand, "storage_quota_usage",
+    "dbus-send --system --print-reply --fixed --dest=org.chromium.Spaced"
+    " /org/chromium/Spaced org.chromium.Spaced.GetQuotaOverallUsagePrettyPrint"
+    " string:'/home'", kRoot, kRoot},
   Log{kFile, "substate_live_status_registers", "/sys/kernel/debug/pmc_core/"
     "substate_live_status_registers",
      SandboxedProcess::kDefaultUser, kDebugfsGroup},
