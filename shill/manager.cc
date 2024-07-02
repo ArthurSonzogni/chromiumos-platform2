@@ -272,6 +272,12 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kDisconnectWiFiOnEthernetProperty,
                             &Manager::GetDisconnectingWiFiOnEthernet,
                             &Manager::SetDisconnectingWiFiOnEthernet);
+  HelpRegisterDerivedStrings(kDOHExcludedDomainsProperty,
+                             &Manager::GetDOHExcludedDomains,
+                             &Manager::SetDOHExcludedDomains);
+  HelpRegisterDerivedStrings(kDOHIncludedDomainsProperty,
+                             &Manager::GetDOHIncludedDomains,
+                             &Manager::SetDOHIncludedDomains);
 
   tethering_manager_->InitPropertyStore(&store_);
 
@@ -1745,6 +1751,15 @@ void Manager::HelpRegisterDerivedString(
       StringAccessor(new CustomAccessor<Manager, std::string>(this, get, set)));
 }
 
+void Manager::HelpRegisterDerivedStrings(std::string_view name,
+                                         Strings (Manager::*get)(Error*),
+                                         bool (Manager::*set)(const Strings&,
+                                                              Error*)) {
+  store_.RegisterDerivedStrings(
+      name,
+      StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set)));
+}
+
 void Manager::HelpRegisterConstDerivedStrings(std::string_view name,
                                               Strings (Manager::*get)(Error*)) {
   store_.RegisterDerivedStrings(
@@ -3060,6 +3075,48 @@ bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
   props_.dns_proxy_doh_providers = providers;
   adaptor_->EmitKeyValueStoreChanged(kDNSProxyDOHProvidersProperty,
                                      props_.dns_proxy_doh_providers);
+  return true;
+}
+
+std::vector<std::string> Manager::GetDOHExcludedDomains(Error* /* error */) {
+  return props_.doh_excluded_domains;
+}
+
+bool Manager::SetDOHExcludedDomains(const std::vector<std::string>& domains,
+                                    Error* error) {
+  if (error) {
+    error->Reset();
+  }
+
+  if (props_.doh_excluded_domains == domains) {
+    return false;
+  }
+
+  // TODO(jasongustaman): Validate the domains.
+  props_.doh_excluded_domains = domains;
+  adaptor_->EmitStringsChanged(kDOHExcludedDomainsProperty,
+                               props_.doh_excluded_domains);
+  return true;
+}
+
+std::vector<std::string> Manager::GetDOHIncludedDomains(Error* /* error */) {
+  return props_.doh_included_domains;
+}
+
+bool Manager::SetDOHIncludedDomains(const std::vector<std::string>& domains,
+                                    Error* error) {
+  if (error) {
+    error->Reset();
+  }
+
+  if (props_.doh_included_domains == domains) {
+    return false;
+  }
+
+  // TODO(jasongustaman): Validate the domains.
+  props_.doh_included_domains = domains;
+  adaptor_->EmitStringsChanged(kDOHIncludedDomainsProperty,
+                               props_.doh_included_domains);
   return true;
 }
 

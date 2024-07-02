@@ -112,6 +112,10 @@ struct ManagerProperties {
   // servers. This member stores the value set via the DBus
   // |DNSProxyDOHProviders| property.
   KeyValueStore dns_proxy_doh_providers;
+  // List of domains to be excluded or included from being resolved using
+  // DNS-over-HTTPS.
+  std::vector<std::string> doh_excluded_domains;
+  std::vector<std::string> doh_included_domains;
   // Hostname to be used in DHCP request.
   std::string dhcp_hostname;
   // Whether apply DSCP values on egress DHCP packets as a DHCP client.
@@ -482,6 +486,13 @@ class Manager {
   // service.
   bool SetDNSProxyDOHProviders(const KeyValueStore& providers, Error* error);
 
+  // Assigns the DNS-over-HTTPS excluded and included domains for use by the
+  // dns-proxy service.
+  bool SetDOHExcludedDomains(const std::vector<std::string>& domains,
+                             Error* error);
+  bool SetDOHIncludedDomains(const std::vector<std::string>& domains,
+                             Error* error);
+
   // Creates a set of Passpoint credentials from |properties| in the profile
   // referenced by |profile_id|.
   bool AddPasspointCredentials(const std::string& profile_rpcid,
@@ -658,6 +669,8 @@ class Manager {
   void UseDNSProxy(const std::vector<std::string>& proxy_addrs);
 
   KeyValueStore GetDNSProxyDOHProviders(Error* error);
+  std::vector<std::string> GetDOHExcludedDomains(Error* error);
+  std::vector<std::string> GetDOHIncludedDomains(Error* error);
 
   // Unload a service while iterating through |services_|.  Returns true if
   // service was erased (which means the caller loop should not increment
@@ -679,6 +692,9 @@ class Manager {
                                  std::string (Manager::*get)(Error* error),
                                  bool (Manager::*set)(const std::string&,
                                                       Error*));
+  void HelpRegisterDerivedStrings(std::string_view name,
+                                  Strings (Manager::*get)(Error*),
+                                  bool (Manager::*set)(const Strings&, Error*));
   void HelpRegisterConstDerivedStrings(std::string_view name,
                                        Strings (Manager::*get)(Error*));
   void HelpRegisterDerivedKeyValueStore(
