@@ -284,14 +284,29 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
     block_device_info = FetchDefaultImmutableBlockDeviceInfo(dev_sys_path);
   }
 
-  // All current chromebooks have one non-removable storage with the purpose of
-  // boot device.
-  auto purpose = mojom::StorageDevicePurpose::kBootDevice;
+  // All current chromebooks have one non-removable storage, and it serves as
+  // the boot device. However, this is not true for Flex devices, which may have
+  // multiple disks and only one of them is used as boot.
+  mojom::StorageDevicePurpose purpose;
+  auto root_dev = platform->GetRootDeviceName();
+  if (dev_sys_path.BaseName().value() == root_dev) {
+    purpose = mojom::StorageDevicePurpose::kBootDevice;
+  } else {
+    purpose = mojom::StorageDevicePurpose::kNonBootDevice;
+  }
+
+  bool is_rotational = false;
+  int rotational;
+  if (ReadInteger(dev_sys_path.Append(kRotationalFile), base::StringToInt,
+                  &rotational)) {
+    is_rotational = rotational == 1;
+  }
 
   if (block_device_info) {
     block_device_info->path = dev_node_path.value();
     block_device_info->type = subsystem;
     block_device_info->purpose = purpose;
+    block_device_info->is_rotational = is_rotational;
 
     if (auto size_result = platform->GetDeviceSizeBytes(dev_node_path);
         size_result.has_value()) {

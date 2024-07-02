@@ -35,7 +35,10 @@ source_set("storage_data_source") {
 if (use.test) {
   source_set("storage_data_source_test") {
     configs += [ ":storage_data_source_common_pkg_deps" ]
-    deps = [ ":storage_data_source" ]
+    deps = [
+      ":storage_data_source",
+      "//diagnostics/base:test_support",
+    ]
     sources = [
       "device_info_test.cc",
       "device_lister_test.cc",

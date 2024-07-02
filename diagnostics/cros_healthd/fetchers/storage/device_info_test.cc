@@ -11,6 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/cros_healthd/fetchers/storage/device_info_constants.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -18,6 +20,7 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+using ::testing::Return;
 using ::testing::ReturnPointee;
 using ::testing::StrictMock;
 
@@ -29,16 +32,16 @@ constexpr char kFakeSubsystemSata[] = "block:scsi:pci";
 constexpr uint64_t kFakeSize = 16 * 1024;
 constexpr uint64_t kFakeBlockSize = 512;
 
-class StorageDeviceInfoTest : public ::testing::Test {
+class StorageDeviceInfoTest : public BaseFileTest {
  protected:
   std::unique_ptr<StrictMock<MockPlatform>> CreateMockPlatform() {
     auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
     EXPECT_CALL(*mock_platform,
                 GetDeviceSizeBytes(base::FilePath(kFakeDevnode)))
-        .WillOnce(ReturnPointee(&kFakeSize));
+        .WillRepeatedly(ReturnPointee(&kFakeSize));
     EXPECT_CALL(*mock_platform,
                 GetDeviceBlockSizeBytes(base::FilePath(kFakeDevnode)))
-        .WillOnce(ReturnPointee(&kFakeBlockSize));
+        .WillRepeatedly(ReturnPointee(&kFakeBlockSize));
     return mock_platform;
   }
 };
@@ -47,6 +50,10 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTest) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/mmcblk0";
   auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemMmc,
       mock_platform.get());
@@ -88,6 +95,10 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithOldMmc) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/mmcblk2";
   auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemMmc,
       mock_platform.get());
@@ -129,6 +140,10 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithNoData) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/mmcblk1";
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemMmc,
       mock_platform.get());
@@ -139,6 +154,10 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTest) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/nvme0n1";
   auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemNvme,
       mock_platform.get());
@@ -183,6 +202,10 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithLegacyRevision) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/missing_revision";
   auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemNvme,
       mock_platform.get());
@@ -227,6 +250,10 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithNoData) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/nvme0n2";
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemNvme,
       mock_platform.get());
@@ -237,6 +264,10 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTest) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/sda";
   auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemUfs,
       mock_platform.get());
@@ -275,6 +306,10 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTestWithNoData) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/sdb";
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemUfs,
       mock_platform.get());
@@ -285,6 +320,10 @@ TEST_F(StorageDeviceInfoTest, FetchSataTest) {
   constexpr char kPath[] =
       "cros_healthd/fetchers/storage/testdata/sys/block/sdc";
   auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return(base::FilePath(kPath).BaseName().value()));
+
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemSata,
       mock_platform.get());
@@ -315,6 +354,98 @@ TEST_F(StorageDeviceInfoTest, FetchSataTest) {
   EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0);
   EXPECT_EQ(info->serial, 0);
+}
+
+// Expects to return non-boot device purpose if the device is not the root
+// device.
+TEST_F(StorageDeviceInfoTest, FetchNonBootTest) {
+  constexpr char kPath[] =
+      "cros_healthd/fetchers/storage/testdata/sys/block/sdc";
+  auto mock_platform = CreateMockPlatform();
+
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillOnce(Return("NotRootDevice"));
+
+  auto dev_info = StorageDeviceInfo::Create(
+      base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemSata,
+      mock_platform.get());
+  EXPECT_NE(dev_info, nullptr);
+
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
+
+  auto info = std::move(info_result.value());
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kNonBootDevice);
+}
+
+// Tests that rotational values are read correctly.
+//
+// (b/351706854): We use one test case for all three possible states of
+// rotational file to ensure the tests are run in sequence. Since each test
+// reads and write from the same files under `testdata` directory, there can be
+// race condition if test cases are separate sets the `rotational` file content
+// in parallel.
+TEST_F(StorageDeviceInfoTest, FetchRotationalProperty) {
+  constexpr char kPath[] =
+      "cros_healthd/fetchers/storage/testdata/sys/block/sdc";
+  auto mock_platform = CreateMockPlatform();
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillRepeatedly(Return(base::FilePath(kPath).BaseName().value()));
+
+  // Testcase 1: Test that `is_rotational` is true if a rotational file exists
+  // and its value is 1.
+  {
+    UnsetPath({kPath, kRotationalFile});
+    WriteFileAndCreateParentDirs(base::FilePath(kPath).Append(kRotationalFile),
+                                 "1");
+    auto dev_info = StorageDeviceInfo::Create(
+        base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemSata,
+        mock_platform.get());
+    EXPECT_NE(dev_info, nullptr);
+
+    auto info_result = dev_info->FetchDeviceInfo();
+    EXPECT_TRUE(info_result.has_value());
+
+    auto info = std::move(info_result.value());
+    EXPECT_TRUE(info->is_rotational.has_value());
+    EXPECT_TRUE(info->is_rotational.value());
+  }
+
+  // Testcase 2: Test that `is_rotational` is false if a rotational file
+  // exists and its value is 0.
+  {
+    UnsetPath({kPath, kRotationalFile});
+    WriteFileAndCreateParentDirs(base::FilePath(kPath).Append(kRotationalFile),
+                                 "0");
+    auto dev_info = StorageDeviceInfo::Create(
+        base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemSata,
+        mock_platform.get());
+    EXPECT_NE(dev_info, nullptr);
+
+    auto info_result = dev_info->FetchDeviceInfo();
+    EXPECT_TRUE(info_result.has_value());
+
+    auto info = std::move(info_result.value());
+    EXPECT_TRUE(info->is_rotational.has_value());
+    EXPECT_FALSE(info->is_rotational.value());
+  }
+
+  // Testcase 3: Test that `is_rotational` is false if a rotational file
+  // does not exist.
+  {
+    UnsetPath({kPath, kRotationalFile});
+    auto dev_info = StorageDeviceInfo::Create(
+        base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemSata,
+        mock_platform.get());
+    EXPECT_NE(dev_info, nullptr);
+
+    auto info_result = dev_info->FetchDeviceInfo();
+    EXPECT_TRUE(info_result.has_value());
+
+    auto info = std::move(info_result.value());
+    EXPECT_TRUE(info->is_rotational.has_value());
+    EXPECT_FALSE(info->is_rotational.value());
+  }
 }
 
 }  // namespace

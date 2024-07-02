@@ -896,10 +896,11 @@ event --help`.
 | size | uint64 | Device size in bytes. |
 | firmware_version | [BlockDeviceFirmware](#BlockDeviceFirmware) | Firmware version. |
 | type | string | Storage type, could be MMC / NVMe / ATA, based on udev subsystem. |
-| purpose | [StorageDevicePurpose](#StorageDevicePurpose) | Purpose of the device e.g. "boot", "swap". |
+| purpose | [StorageDevicePurpose](#StorageDevicePurpose) | Purpose of the device, either boot or non-boot. |
 | path | string | The path of this storage on the system. It is useful if caller needs to<br />correlate with other information. |
 | manufacturer_id | uint8 | Manufacturer ID, 8 bits. |
 | serial | uint32 | PSN: Product serial number, 32 bits |
+| is_rotational | bool | Whether the disk is a spinning disk. |
 
 ##### BlockDeviceInfo
 (Union/one-of type) The device-specific info.
@@ -978,8 +979,9 @@ event --help`.
 | Enum | Description |
 | ---- | ----------- |
 | kUnknown | Unknown. |
-| kBootDevice | Boot device. |
+| kBootDevice | The device is where ChromeOS Boots from. |
 | DEPRECATED_kSwapDevice | Deprecated, should not be used. |
+| kNonBootDevice | The device is not where ChromeOS Boots from. |
 
 ####  Device (SMART)
 

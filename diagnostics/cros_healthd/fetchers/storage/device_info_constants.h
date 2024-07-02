@@ -56,6 +56,9 @@ inline constexpr char kUfsManfidFile[] = "device_descriptor/manufacturer_id";
 inline constexpr char kUfsModelFile[] = "device/model";
 inline constexpr char kUfsFirmwareVersionFile[] = "device/rev";
 
+// File path to check whether the disk is rotational.
+inline constexpr char kRotationalFile[] = "queue/rotational";
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STORAGE_DEVICE_INFO_CONSTANTS_H_

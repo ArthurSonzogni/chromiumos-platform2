@@ -324,7 +324,7 @@ union BlockDeviceFirmware {
 
 // Purpose of the storage device.
 //
-// NextMinVersion: 1, NextIndex: 3
+// NextMinVersion: 2, NextIndex: 4
 [Stable, Extensible]
 enum StorageDevicePurpose {
   [Default] kUnknown = 0,
@@ -332,6 +332,8 @@ enum StorageDevicePurpose {
   kBootDevice = 1,
   // DEPRECATED. See b/287120238.
   DEPRECATED_kSwapDevice = 2,
+  // The storage device is not the root device which ChromeOS boots from.
+  [MinVersion=1] kNonBootDevice = 3,
 };
 
 // NVMe-specific device info.
@@ -392,7 +394,7 @@ union BlockDeviceInfo {
 
 // Information related to a specific non-removable block device.
 //
-// NextMinVersion: 3, NextIndex: 19
+// NextMinVersion: 4, NextIndex: 20
 [Stable]
 struct NonRemovableBlockDeviceInfo {
   // IO statistics
@@ -450,6 +452,9 @@ struct NonRemovableBlockDeviceInfo {
   // String representatil of the device FW version
   [MinVersion=2]
   string? firmware_string@18;
+  // Whether the block device is a spinning disk.
+  [MinVersion=3]
+  bool? is_rotational@19;
 };
 
 // CPU probe result. Can either be populated with the CpuInfo or an error

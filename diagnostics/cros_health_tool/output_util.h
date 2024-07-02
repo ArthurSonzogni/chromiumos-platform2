@@ -69,6 +69,8 @@ std::string EnumToString(
     ash::cros_healthd::mojom::ThermalSensorInfo::ThermalSensorSource source);
 std::string EnumToString(
     ash::cros_healthd::mojom::NetworkBandwidthRoutineRunningInfo_Type type);
+std::string EnumToString(
+    ash::cros_healthd::mojom::StorageDevicePurpose purpose);
 
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
@@ -127,6 +129,9 @@ void SetJsonDictValue(std::string_view key,
     for (const auto& s : value)
       string_vector.Append(s);
     output->Set(key, std::move(string_vector));
+  } else if constexpr (std::is_same_v<T, std::optional<bool>>) {
+    if (value.has_value())
+      SetJsonDictValue(key, value.value(), output);
   } else {
     output->Set(key, value);
   }

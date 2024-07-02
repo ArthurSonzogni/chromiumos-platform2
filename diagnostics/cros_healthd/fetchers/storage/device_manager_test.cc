@@ -49,6 +49,11 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
 
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
 
+  // Sets the root device as Nvme. The EXPECT_CALL must be set, but we do not
+  // check its results in this test.
+  EXPECT_CALL(*mock_platform, GetRootDeviceName())
+      .WillRepeatedly(Return(kNvmeDev.BaseName().value()));
+
   // TODO(dlunev) querying size shall be cached as well and allow WillOnce.
   EXPECT_CALL(*mock_platform, GetDeviceSizeBytes(kNvmeDev))
       .WillRepeatedly(ReturnPointee(&kNvmeSize));

@@ -586,4 +586,17 @@ void OutputSupportStatus(const mojom::SupportStatusPtr status) {
   OutputJson(output);
 }
 
+std::string EnumToString(mojom::StorageDevicePurpose purpose) {
+  switch (purpose) {
+    case mojom::StorageDevicePurpose::kUnknown:
+      return "Unknown";
+    case mojom::StorageDevicePurpose::kBootDevice:
+      return "Boot device";
+    case mojom::StorageDevicePurpose::DEPRECATED_kSwapDevice:
+      return "DEPRECATED Swap device";
+    case mojom::StorageDevicePurpose::kNonBootDevice:
+      return "Non-boot device";
+  }
+}
+
 }  // namespace diagnostics
