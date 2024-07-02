@@ -26,7 +26,6 @@ class StorageDeviceInfo {
       const base::FilePath& dev_sys_path,
       const base::FilePath& dev_node_path,
       const std::string& subsystem,
-      ash::cros_healthd::mojom::StorageDevicePurpose purpose,
       const Platform* platform);
 
   // FetchDeviceInfo fills the mutable fields of Mojo's data structure

@@ -259,7 +259,6 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path,
     const base::FilePath& dev_node_path,
     const std::string& subsystem,
-    mojom::StorageDevicePurpose purpose,
     const Platform* platform) {
   mojom::NonRemovableBlockDeviceInfoPtr block_device_info;
 
@@ -284,6 +283,10 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
     // TODO(b/259401854): Revisit the necessity of default storage type.
     block_device_info = FetchDefaultImmutableBlockDeviceInfo(dev_sys_path);
   }
+
+  // All current chromebooks have one non-removable storage with the purpose of
+  // boot device.
+  auto purpose = mojom::StorageDevicePurpose::kBootDevice;
 
   if (block_device_info) {
     block_device_info->path = dev_node_path.value();
@@ -337,10 +340,9 @@ std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
     const base::FilePath& dev_sys_path,
     const base::FilePath& dev_node_path,
     const std::string& subsystem,
-    mojom::StorageDevicePurpose purpose,
     const Platform* platform) {
   auto immutable_block_device_info = FetchImmutableBlockDeviceInfo(
-      dev_sys_path, dev_node_path, subsystem, purpose, platform);
+      dev_sys_path, dev_node_path, subsystem, platform);
   if (!immutable_block_device_info)
     return nullptr;
   return base::WrapUnique(

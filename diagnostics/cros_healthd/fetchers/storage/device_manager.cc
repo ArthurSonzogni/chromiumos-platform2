@@ -102,7 +102,7 @@ mojom::ProbeErrorPtr StorageDeviceManager::RefreshDevices(
 
     auto dev_info = StorageDeviceInfo::Create(
         sys_path, base::FilePath(dev->GetDeviceNode()), subsystem,
-        mojom::StorageDevicePurpose::kBootDevice, platform_.get());
+        platform_.get());
 
     if (!dev_info) {
       return CreateAndLogProbeError(

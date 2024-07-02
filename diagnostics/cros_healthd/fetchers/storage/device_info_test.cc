@@ -28,8 +28,6 @@ constexpr char kFakeSubsystemUfs[] = "block:scsi:scsi:scsi:pci";
 constexpr char kFakeSubsystemSata[] = "block:scsi:pci";
 constexpr uint64_t kFakeSize = 16 * 1024;
 constexpr uint64_t kFakeBlockSize = 512;
-constexpr mojom::StorageDevicePurpose kFakePurpose =
-    mojom::StorageDevicePurpose::kSwapDevice;
 
 class StorageDeviceInfoTest : public ::testing::Test {
  protected:
@@ -51,7 +49,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTest) {
   auto mock_platform = CreateMockPlatform();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemMmc,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_NE(dev_info, nullptr);
 
   auto info_result = dev_info->FetchDeviceInfo();
@@ -81,7 +79,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTest) {
   EXPECT_EQ(info->device_info->get_emmc_device_info()->prv, 0x8);
   EXPECT_EQ(info->device_info->get_emmc_device_info()->fwrev,
             0x1223344556677889);
-  EXPECT_EQ(info->purpose, kFakePurpose);
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0xA5);
   EXPECT_EQ(info->serial, 0x1EAFBED5);
 }
@@ -92,7 +90,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithOldMmc) {
   auto mock_platform = CreateMockPlatform();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemMmc,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_NE(dev_info, nullptr);
 
   auto info_result = dev_info->FetchDeviceInfo();
@@ -122,7 +120,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithOldMmc) {
   EXPECT_EQ(info->device_info->get_emmc_device_info()->prv, 0x4);
   EXPECT_EQ(info->device_info->get_emmc_device_info()->fwrev,
             0x1223344556677889);
-  EXPECT_EQ(info->purpose, kFakePurpose);
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0xA5);
   EXPECT_EQ(info->serial, 0x1EAFBED5);
 }
@@ -133,7 +131,7 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithNoData) {
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemMmc,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_EQ(dev_info, nullptr);
 }
 
@@ -143,7 +141,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTest) {
   auto mock_platform = CreateMockPlatform();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemNvme,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_NE(dev_info, nullptr);
 
   auto info_result = dev_info->FetchDeviceInfo();
@@ -176,7 +174,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTest) {
   EXPECT_EQ(info->device_info->get_nvme_device_info()->pcie_rev, 0x13);
   EXPECT_EQ(info->device_info->get_nvme_device_info()->firmware_rev,
             0x5645525F54534554);
-  EXPECT_EQ(kFakePurpose, info->purpose);
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0);
   EXPECT_EQ(info->serial, 0);
 }
@@ -187,7 +185,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithLegacyRevision) {
   auto mock_platform = CreateMockPlatform();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemNvme,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_NE(dev_info, nullptr);
 
   auto info_result = dev_info->FetchDeviceInfo();
@@ -220,7 +218,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithLegacyRevision) {
   EXPECT_EQ(info->device_info->get_nvme_device_info()->pcie_rev, 0x17);
   EXPECT_EQ(info->device_info->get_nvme_device_info()->firmware_rev,
             0x5645525F54534554);
-  EXPECT_EQ(info->purpose, kFakePurpose);
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0);
   EXPECT_EQ(info->serial, 0);
 }
@@ -231,7 +229,7 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithNoData) {
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemNvme,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_EQ(dev_info, nullptr);
 }
 
@@ -241,7 +239,7 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTest) {
   auto mock_platform = CreateMockPlatform();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemUfs,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_NE(dev_info, nullptr);
 
   auto info_result = dev_info->FetchDeviceInfo();
@@ -268,7 +266,7 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTest) {
   EXPECT_TRUE(info->device_info->is_ufs_device_info());
   EXPECT_EQ(info->device_info->get_ufs_device_info()->jedec_manfid, 0x1337);
   EXPECT_EQ(info->device_info->get_ufs_device_info()->fwrev, 0x32323032);
-  EXPECT_EQ(info->purpose, kFakePurpose);
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0);
   EXPECT_EQ(info->serial, 0);
 }
@@ -279,7 +277,7 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTestWithNoData) {
   auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemUfs,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_EQ(dev_info, nullptr);
 }
 
@@ -289,7 +287,7 @@ TEST_F(StorageDeviceInfoTest, FetchSataTest) {
   auto mock_platform = CreateMockPlatform();
   auto dev_info = StorageDeviceInfo::Create(
       base::FilePath(kPath), base::FilePath(kFakeDevnode), kFakeSubsystemSata,
-      kFakePurpose, mock_platform.get());
+      mock_platform.get());
   EXPECT_NE(dev_info, nullptr);
 
   auto info_result = dev_info->FetchDeviceInfo();
@@ -314,7 +312,7 @@ TEST_F(StorageDeviceInfoTest, FetchSataTest) {
   EXPECT_EQ(info->firmware_string, "");
   EXPECT_EQ(info->firmware_version->get_other(), 0);
   EXPECT_TRUE(info->device_info.is_null());
-  EXPECT_EQ(kFakePurpose, info->purpose);
+  EXPECT_EQ(info->purpose, mojom::StorageDevicePurpose::kBootDevice);
   EXPECT_EQ(info->manufacturer_id, 0);
   EXPECT_EQ(info->serial, 0);
 }
