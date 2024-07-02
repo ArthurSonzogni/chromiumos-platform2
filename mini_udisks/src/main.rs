@@ -32,12 +32,20 @@ const ESP_PARTITION_NUM: u32 = 12;
 ///
 /// Defined in:
 /// https://uefi.org/specs/UEFI/2.10/05_GUID_Partition_Table_Format.html
-pub const ESP_TYPE_GUID: &'static str = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
+const ESP_TYPE_GUID: &'static str = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
 
 /// Unique ID for the ESP.
 ///
 /// This must be a valid GUID, but the value is otherwise arbitrary.
-pub const ESP_GUID: &'static str = "99cc6f39-2fd1-4d85-b15a-543e7b023a1f";
+const ESP_GUID: &'static str = "99cc6f39-2fd1-4d85-b15a-543e7b023a1f";
+
+/// Filesystem type for the ESP.
+///
+/// As of <https://github.com/fwupd/fwupd/pull/7299>, fwupd filters out
+/// everything but vfat filesystems. This does not accurately reflect
+/// the actual filesystem type we're writing to, but that's fine because
+/// the value is only used for filtering.
+const ESP_FS_TYPE: &'static str = "vfat";
 
 // Create a minimal UDisks2 D-Bus API. This only exposes one block
 // device, the a fake ESP partition. Only parts of the UDisks2 API that
@@ -72,6 +80,7 @@ fn create_dbus_api() -> Result<Crossroads> {
     let block_interface = cr.register(MINI_UDISKS_INTERFACE_BLOCK, |b| {
         b.property("Device")
             .get(|_, _| Ok(format!("/dev/{FAKE_DISK_NAME}{ESP_PARTITION_NUM}")));
+        b.property("IdType").get(|_, _| Ok(ESP_FS_TYPE.to_string()));
     });
 
     // Partition interface.

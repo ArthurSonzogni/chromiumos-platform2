@@ -51,6 +51,7 @@ node /org/freedesktop/UDisks2/block_devices/fakedisk12 {
   interface org.freedesktop.UDisks2.Block {
     properties:
       readonly s Device = '/dev/fakedisk12';
+      readonly s IdType = 'vfat';
   };
   interface org.freedesktop.UDisks2.Filesystem {
     properties:
