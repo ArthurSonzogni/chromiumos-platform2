@@ -613,7 +613,7 @@ class Experiment:
                     frr[Experiment.TableCol.Enroll_User.value]
                     != frr[Experiment.TableCol.Verify_User.value]
                 )
-                & (
+                | (
                     frr[Experiment.TableCol.Enroll_Finger.value]
                     != frr[Experiment.TableCol.Verify_Finger.value]
                 )
