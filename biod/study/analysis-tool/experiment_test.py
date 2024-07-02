@@ -377,7 +377,10 @@ class Test_Experiment_check(unittest.TestCase):
     def test_far_table_contains_frr(self):
         """Test that FRR attempts are detected in FAR table."""
         exp = Experiment(
-            far_decisions=pd.concat([self.FAR_DATAFRAME, self.FRR_DATAFRAME])
+            far_decisions=pd.concat(
+                [self.FAR_DATAFRAME, self.FRR_DATAFRAME],
+                ignore_index=True,
+            )
         )
         with self.assertRaises(ValueError):
             exp.check()
@@ -385,7 +388,10 @@ class Test_Experiment_check(unittest.TestCase):
     def test_frr_table_contains_far(self):
         """Test that FAR attempts are detected in FRR table."""
         exp = Experiment(
-            frr_decisions=pd.concat([self.FRR_DATAFRAME, self.FAR_DATAFRAME])
+            frr_decisions=pd.concat(
+                [self.FRR_DATAFRAME, self.FAR_DATAFRAME],
+                ignore_index=True,
+            )
         )
         with self.assertRaises(ValueError):
             exp.check()
