@@ -59,6 +59,10 @@ void EnterHealthdMinijail(const ServiceConfig& service_config) {
   minijail_enter_pivot_root(jail.get(),
                             "/mnt/empty");  // Set /mnt/empty as rootfs.
 
+  // Remount mounts as MS_SLAVE to prevent healthd from holding on to mounts
+  // that might be unmounted in the root mount namespace.
+  minijail_remount_mode(jail.get(), MS_SLAVE);
+
   // Bind-mount /, /dev and /proc. /dev is necessary to send ioctls to the
   // system's block devices.
   minijail_bind(jail.get(), "/", "/", 0);
