@@ -88,6 +88,7 @@ class Daemon(abc.ABC):
             )
             sys.exit(1)
 
+        self.pre_set_up()
         # Start the daemon.
         self._change_state_to(State.SET_UP)
         self._daemonize()
@@ -118,6 +119,7 @@ class Daemon(abc.ABC):
             )
             sys.exit(1)
 
+        self.pre_tear_down()
         self._change_state_to(State.TEAR_DOWN)
         try:
             os.kill(self.read_pid(), signal.SIGTERM)
@@ -151,6 +153,12 @@ class Daemon(abc.ABC):
         """
         while True:
             pass
+
+    def pre_set_up(self) -> None:
+        """Called before setting up the daemon."""
+
+    def pre_tear_down(self) -> None:
+        """Called before tearing down the daemon."""
 
     def get_state(self) -> State:
         """Gets the daemon state.
@@ -191,6 +199,11 @@ class Daemon(abc.ABC):
 
     def _daemonize(self) -> None:
         """Daemonizes itself with double fork."""
+        # Flush stdout and stderr before forking to avoid the unflushed buffer
+        # being inherited by child processes.
+        sys.stdout.flush()
+        sys.stderr.flush()
+
         try:
             pid = os.fork()
             if pid > 0:
@@ -216,8 +229,6 @@ class Daemon(abc.ABC):
             sys.exit(1)
 
         # Redirect standard file descriptors.
-        sys.stdout.flush()
-        sys.stderr.flush()
         with open(self.stdin, "rb") as si:
             os.dup2(si.fileno(), sys.stdin.fileno())
         with open(self.stdout, "ab", 0) as so:

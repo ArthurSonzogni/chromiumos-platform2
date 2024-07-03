@@ -801,6 +801,24 @@ class EhideDaemon(daemon.Daemon):
         while True:
             pass
 
+    def pre_set_up(self) -> None:
+        """Notifies our users of the disconnecting SSH before ehide starts."""
+        print(
+            (
+                "Ehide is about to start. "
+                "Current SSH connections will be disconnected."
+            )
+        )
+
+    def pre_tear_down(self) -> None:
+        """Notifies our users of the disconnecting SSH before ehide stops."""
+        print(
+            (
+                "Ehide is about to stop. "
+                "Current SSH connections will be disconnected."
+            )
+        )
+
     def monitor(self) -> bool:
         """Monitors the ehide environment.
 
