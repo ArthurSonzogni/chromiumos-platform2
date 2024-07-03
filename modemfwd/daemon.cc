@@ -57,6 +57,8 @@ constexpr char kPrefsDir[] = "/var/lib/modemfwd/";
 // indicate if a modem that belongs to that variant was ever seen.
 constexpr char kModemsSeenSinceOobeKey[] = "modems_seen_since_oobe";
 constexpr char kDisableAutoUpdateKey[] = "disable_auto_update";
+// TODO(b/346366528): remove this hack once we have proper SKUs set up
+// for the new modem
 constexpr char const* kDontRecoveryModemList[] = {
     "usb:33f8:01a2",
     "usb:33f8:0115",
@@ -599,6 +601,8 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     return;
   }
 
+  // TODO(b/346366528): remove this hack once we have proper SKUs set up
+  // for the new modem
   for (auto modem_id : kDontRecoveryModemList) {
     if (device_ids_seen_.count(modem_id)) {
       LOG(INFO) << "Found modem " << modem_id << ", skip recovery";
