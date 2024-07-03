@@ -11,6 +11,7 @@ import logging
 import mimetypes
 import os
 from pathlib import Path
+import shlex
 import subprocess
 from typing import Dict, Iterator, Optional
 import urllib.parse
@@ -22,6 +23,7 @@ def static_dir() -> Path:
 
 
 _STATIC_EXTS = [".html", ".js", ".css"]
+UPSTART_SERVICE_NAME = "cca-web"
 
 
 @functools.lru_cache(1)
@@ -140,3 +142,33 @@ def serve_forever(host: str, port: int):
             httpd.serve_forever()
         except KeyboardInterrupt:
             logging.debug("Got KeyboardInterrupt")
+
+
+def install_upstart_config(host: str, port: int):
+    cmd = [
+        "cros_camera_app",
+        "--syslog",
+        "web",
+        "--host",
+        shlex.quote(host),
+        "--port",
+        str(port),
+    ]
+    config = f"""
+start on started system-services
+stop on stopping system-services
+exec {" ".join(cmd)}
+"""
+    Path(f"/etc/init/{UPSTART_SERVICE_NAME}.conf").write_text(
+        config, encoding="utf-8"
+    )
+
+
+def start_upstart_service():
+    # Stop the current running instance first if there is any. It's expected to
+    # have error if there is no running instance, we are using call() instead
+    # of check_call() here.
+    subprocess.call(["stop", UPSTART_SERVICE_NAME], stderr=subprocess.DEVNULL)
+
+    subprocess.check_call(["start", UPSTART_SERVICE_NAME])
+    logging.info("Service started, log will be sent to syslog")

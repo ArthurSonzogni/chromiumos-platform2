@@ -397,8 +397,17 @@ def cmd_fake_hal_info():
     type=int,
     default=8000,
 )
-def cmd_web(host: str, port: int):
-    server.serve_forever(host, port)
+@cli.option(
+    "--upstart",
+    action="store_true",
+    help="install and start as a upstart service",
+)
+def cmd_web(host: str, port: int, upstart: bool):
+    if upstart:
+        server.install_upstart_config(host, port)
+        server.start_upstart_service()
+    else:
+        server.serve_forever(host, port)
 
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
