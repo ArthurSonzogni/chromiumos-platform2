@@ -40,7 +40,8 @@ int LpToolsImpl::RunCommand(const std::string& command,
 
   // TODO(b/340126451): Remove once the root cause of printscanmgr not being
   // able to run lpadmin when the printer is behind a VPN has been fixed. Also
-  // remove the other sandboxing additions from crrev.com/c/5664042.
+  // remove the other sandboxing additions from crrev.com/c/5664042 and
+  // crrev.com/c/5676420.
   if (command == kLpadminCommand) {
     process.SetUid(269);  // lpadmin user
     process.SetGid(7);    // lp group

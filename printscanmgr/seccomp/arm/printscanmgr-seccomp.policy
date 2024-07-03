@@ -85,3 +85,5 @@ clock_nanosleep: 1
 recvfrom: 1
 setresgid: 1
 setresuid: 1
+setresgid32: 1
+setresuid32: 1
