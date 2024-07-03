@@ -488,6 +488,7 @@ TEST_F(ClientTest, SerializeNetworkConfigEmpty) {
   EXPECT_FALSE(output.has_ipv4_gateway());
   EXPECT_EQ(output.ipv6_addresses_size(), 0);
   EXPECT_FALSE(output.has_ipv6_gateway());
+  EXPECT_EQ(output.ipv6_delegated_prefixes_size(), 0);
   EXPECT_FALSE(output.ipv6_blackhole_route());
   EXPECT_EQ(output.excluded_route_prefixes_size(), 0);
   EXPECT_EQ(output.included_route_prefixes_size(), 0);
@@ -509,6 +510,10 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
   input.ipv6_addresses.push_back(
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:200::2000/56"));
   input.ipv6_gateway = *net_base::IPv6Address::CreateFromString("2001:200::2");
+  input.ipv6_delegated_prefixes.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:300:1::/96"));
+  input.ipv6_delegated_prefixes.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:300:2::/120"));
 
   input.ipv6_blackhole_route = true;
   input.excluded_route_prefixes.push_back(
@@ -540,6 +545,7 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
   EXPECT_EQ(output.ipv4_broadcast(),
             std::string({10, 0, 1, static_cast<char>(255)}));
   EXPECT_EQ(output.ipv4_gateway(), std::string({10, 0, 1, 2}));
+
   EXPECT_EQ(output.ipv6_addresses_size(), 2);
   EXPECT_EQ(
       output.ipv6_addresses(0).addr(),
@@ -551,6 +557,16 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
   EXPECT_EQ(output.ipv6_addresses(1).prefix_len(), 56);
   EXPECT_EQ(output.ipv6_gateway(), std::string({0x20, 0x01, 0x2, 0, 0, 0, 0, 0,
                                                 0, 0, 0, 0, 0, 0, 0, 0x2}));
+
+  EXPECT_EQ(output.ipv6_delegated_prefixes_size(), 2);
+  EXPECT_EQ(
+      output.ipv6_delegated_prefixes(0).addr(),
+      std::string({0x20, 0x01, 0x3, 0, 0, 0x1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
+  EXPECT_EQ(output.ipv6_delegated_prefixes(0).prefix_len(), 96);
+  EXPECT_EQ(
+      output.ipv6_delegated_prefixes(1).addr(),
+      std::string({0x20, 0x01, 0x3, 0, 0, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}));
+  EXPECT_EQ(output.ipv6_delegated_prefixes(1).prefix_len(), 120);
 
   EXPECT_TRUE(output.ipv6_blackhole_route());
   EXPECT_EQ(output.excluded_route_prefixes_size(), 2);

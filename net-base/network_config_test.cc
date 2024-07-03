@@ -30,6 +30,8 @@ TEST(NetworkConfigTest, MergeAddress) {
   NetworkConfig ipv6_config;
   ipv6_config.ipv6_addresses = {*IPv6CIDR::CreateFromCIDRString("fd00::/64")};
   ipv6_config.ipv6_gateway = IPv6Address::CreateFromString("fd00::1");
+  ipv6_config.ipv6_delegated_prefixes = {
+      *IPv6CIDR::CreateFromCIDRString("fd00:1::/96")};
 
   NetworkConfig merged_config =
       NetworkConfig::Merge(&ipv4_config, &ipv6_config);
@@ -41,6 +43,8 @@ TEST(NetworkConfigTest, MergeAddress) {
   EXPECT_EQ(merged_config.rfc3442_routes, ipv4_config.rfc3442_routes);
   EXPECT_EQ(merged_config.ipv6_addresses, ipv6_config.ipv6_addresses);
   EXPECT_EQ(merged_config.ipv6_gateway, ipv6_config.ipv6_gateway);
+  EXPECT_EQ(merged_config.ipv6_delegated_prefixes,
+            ipv6_config.ipv6_delegated_prefixes);
 }
 
 TEST(NetworkConfigTest, MergeIncludedExcludedRoutes) {

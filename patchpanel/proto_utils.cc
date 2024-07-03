@@ -140,6 +140,13 @@ net_base::NetworkConfig DeserializeNetworkConfig(
     out.ipv6_gateway =
         net_base::IPv6Address::CreateFromBytes(in.ipv6_gateway());
   }
+  for (const auto& ipv6_pd : in.ipv6_delegated_prefixes()) {
+    auto ipv6_pd_out = net_base::IPv6CIDR::CreateFromBytesAndPrefix(
+        ipv6_pd.addr(), ipv6_pd.prefix_len());
+    if (ipv6_pd_out) {
+      out.ipv6_delegated_prefixes.push_back(*ipv6_pd_out);
+    }
+  }
 
   out.ipv6_blackhole_route = in.ipv6_blackhole_route();
 

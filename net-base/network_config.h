@@ -49,6 +49,10 @@ struct BRILLO_EXPORT NetworkConfig {
   // on-link to the netdevice.
   std::vector<IPv6CIDR> ipv6_addresses;
   std::optional<IPv6Address> ipv6_gateway;
+  // Prefixes assigned through DHCPv6-PD. Note these prefixes will not be
+  // directly used for host configuration, unless an address in the prefix is
+  // also explicitly included in |ipv6_addresses|.
+  std::vector<IPv6CIDR> ipv6_delegated_prefixes;
 
   // Routing configurations. If a destination is included, it will be routed
   // through the gateway of corresponding IP family (or on-link if gateway is

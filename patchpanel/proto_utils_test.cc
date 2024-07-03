@@ -202,6 +202,12 @@ TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
   ipv6_address->set_prefix_len(56);
   input.set_ipv6_gateway(
       {0x20, 0x01, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2});
+  auto* ipv6_pd = input.add_ipv6_delegated_prefixes();
+  ipv6_pd->set_addr({0x20, 0x01, 0x3, 0, 0, 0x1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  ipv6_pd->set_prefix_len(96);
+  ipv6_pd = input.add_ipv6_delegated_prefixes();
+  ipv6_pd->set_addr({0x20, 0x01, 0x3, 0, 0, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+  ipv6_pd->set_prefix_len(120);
   input.set_ipv6_blackhole_route(true);
   auto* prefix = input.add_excluded_route_prefixes();
   prefix->set_addr({0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
@@ -241,6 +247,10 @@ TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:200::2000/56"));
   expected_output.ipv6_gateway =
       *net_base::IPv6Address::CreateFromString("2001:200::2");
+  expected_output.ipv6_delegated_prefixes.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:300:1::/96"));
+  expected_output.ipv6_delegated_prefixes.push_back(
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:300:2::/120"));
   expected_output.ipv6_blackhole_route = true;
   expected_output.excluded_route_prefixes.push_back(
       *net_base::IPCIDR::CreateFromCIDRString("2002::/128"));

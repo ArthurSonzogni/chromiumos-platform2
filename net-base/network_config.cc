@@ -45,6 +45,7 @@ NetworkConfig NetworkConfig::Merge(const NetworkConfig* ipv4_config,
                               ipv6_config->ipv6_addresses.begin(),
                               ipv6_config->ipv6_addresses.end());
     ret.ipv6_gateway = ipv6_config->ipv6_gateway;
+    ret.ipv6_delegated_prefixes = ipv6_config->ipv6_delegated_prefixes;
   }
 
   // Merge included routes and excluded routes from |ipv4_config| and
@@ -130,6 +131,16 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   stream << "]";
   if (config.ipv6_gateway) {
     stream << ", IPv6 gateway: " << *config.ipv6_gateway;
+  }
+  if (!config.ipv6_delegated_prefixes.empty()) {
+    stream << ", IPv6 delegated prefixes: [";
+    std::vector<std::string> ipv6_pd_str;
+    std::transform(config.ipv6_delegated_prefixes.begin(),
+                   config.ipv6_delegated_prefixes.end(),
+                   std::back_inserter(ipv6_pd_str),
+                   [](IPv6CIDR cidr) { return cidr.ToString(); });
+    stream << base::JoinString(ipv6_pd_str, ",");
+    stream << "]";
   }
   if (config.ipv6_blackhole_route) {
     stream << ", blackhole IPv6";

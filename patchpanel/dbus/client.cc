@@ -1829,6 +1829,11 @@ void SerializeNetworkConfig(const net_base::NetworkConfig& in,
   if (in.ipv6_gateway) {
     out->set_ipv6_gateway(in.ipv6_gateway->ToByteString());
   }
+  for (const auto& ipv6_pd : in.ipv6_delegated_prefixes) {
+    auto* out_pd = out->add_ipv6_delegated_prefixes();
+    out_pd->set_addr(ipv6_pd.address().ToByteString());
+    out_pd->set_prefix_len(ipv6_pd.prefix_length());
+  }
 
   out->set_ipv6_blackhole_route(in.ipv6_blackhole_route);
 
