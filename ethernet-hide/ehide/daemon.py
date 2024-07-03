@@ -82,7 +82,7 @@ class Daemon(abc.ABC):
         state = self.get_state()
         if state != State.OFF:
             logging.error(
-                "expected state %s but got state %s",
+                "Expected state %s but got state %s.",
                 State.OFF.value,
                 state.value,
             )
@@ -111,7 +111,7 @@ class Daemon(abc.ABC):
         state = self.get_state()
         if state not in (State.SET_UP, State.ON):
             logging.error(
-                "expected state %s or %s but got state %s",
+                "Expected state %s or %s but got state %s.",
                 State.SET_UP.value,
                 State.ON.value,
                 state.value,
@@ -162,16 +162,17 @@ class Daemon(abc.ABC):
         try:
             with open(self.state_file, "r", encoding="utf-8") as f:
                 state_str = f.read().strip()
+            state = State.from_str(state_str)
+            if not state:
+                state = State.OFF
+                logging.warning(
+                    "Read invalid state %s, treat it as %s.",
+                    state_str,
+                    state.value,
+                )
         except IOError:
-            return State.OFF
-        state = State.from_str(state_str)
-        if not state:
             state = State.OFF
-            logging.warning(
-                "Read invalid state %s, treat it as %s",
-                state_str,
-                state.value,
-            )
+        logging.info("Current state: %s.", state.value)
         return state
 
     def read_pid(self) -> Optional[int]:
@@ -196,7 +197,7 @@ class Daemon(abc.ABC):
                 # Exit first parent.
                 sys.exit(0)
         except OSError as e:
-            logging.error("Fork #1 failed: %s", e)
+            logging.error("Fork #1 failed: %s.", e)
             sys.exit(1)
 
         # Decouple from parent environment.
@@ -211,7 +212,7 @@ class Daemon(abc.ABC):
                 # Exit from second parent.
                 sys.exit(0)
         except OSError as e:
-            logging.error("Fork #2 failed: %s", e)
+            logging.error("Fork #2 failed: %s.", e)
             sys.exit(1)
 
         # Redirect standard file descriptors.
@@ -267,3 +268,4 @@ class Daemon(abc.ABC):
         """
         with open(self.state_file, "w", encoding="utf-8") as f:
             f.write(f"{state.value}\n")
+        logging.info("State changed to %s.", state.value)

@@ -199,13 +199,13 @@ def get_mac_address_in_netns(
     try:
         ip_dict = json.loads(ip_output)
     except json.JSONDecodeError as e:
-        logging.warning("Error in parsing %s: %s", ip_output, e)
+        logging.warning("Error in parsing %s: %s.", ip_output, e)
         return ""
     try:
         mac = ip_dict[0]["address"]
     except (IndexError, KeyError) as e:
         logging.warning(
-            "Error in getting the MAC address from %s: %s", ip_output, e
+            "Error in getting the MAC address from %s: %s.", ip_output, e
         )
         return ""
     return mac
@@ -422,12 +422,12 @@ def check_interface_up(ifname: str, netns_name: Optional[str] = None) -> bool:
     try:
         ip_dict = json.loads(ip_output)
     except json.JSONDecodeError as e:
-        logging.warning("Error in parsing %s: %s", ip_output, e)
+        logging.warning("Error in parsing %s: %s.", ip_output, e)
         return False
     try:
         flags = ip_dict[0]["flags"]
     except (IndexError, KeyError) as e:
-        logging.warning("Error in parsing flags from %s: %s", ip_output, e)
+        logging.warning("Error in parsing flags from %s: %s.", ip_output, e)
         return False
     return "UP" in flags
 
@@ -745,14 +745,14 @@ class EhideDaemon(daemon.Daemon):
         move_interface_to_netns(self.ether_ifname, self.netns_name)
         if not check_interface_in_netns(self.ether_ifname, self.netns_name):
             logging.error(
-                "Failed to move %s to %s", self.ether_ifname, self.netns_name
+                "Failed to move %s to %s.", self.ether_ifname, self.netns_name
             )
             return False
         for ifname in [self.ether_ifname, "lo"]:
             bring_up_interface(ifname, self.netns_name)
             if not check_interface_up(ifname, self.netns_name):
                 logging.error(
-                    "Failed to bring up %s in %s", ifname, self.netns_name
+                    "Failed to bring up %s in %s.", ifname, self.netns_name
                 )
                 return False
         if self.has_ipv4_initially or self.static_ipv4_cidr:
@@ -762,9 +762,13 @@ class EhideDaemon(daemon.Daemon):
             if not self._set_up_ipv6(self.ether_ifname):
                 return False
         if self.approach == Approach.FORWARDING:
-            return self._start_socat()
+            if not self._start_socat():
+                return False
         elif self.approach == Approach.SHELL:
-            return self._start_sshd()
+            if not self._start_sshd():
+                return False
+        logging.info("Ehide set up successfully.")
+        return True
 
     def tear_down(self) -> None:
         """Tears down the ehide environment."""
@@ -781,6 +785,7 @@ class EhideDaemon(daemon.Daemon):
         run("ip", "netns", "delete", self.netns_name)
         if self.recover_duts_running_initially:
             start_service(RECOVER_DUTS_SERVICE_NAME)
+        logging.info("Ehide torn down successfully.")
 
     def loop(self) -> NoReturn:
         """Runs the infinite loop and monitors the ehide environment.
@@ -995,7 +1000,7 @@ class EhideDaemon(daemon.Daemon):
                 ]
             )
         except OSError as e:
-            logging.error("Failed to start socat: %s", e)
+            logging.error("Failed to start socat: %s.", e)
             return False
         # Polling for a maximum of SOCAT_STARTUP_TIMEOUT to wait for socat to
         # start listening on port:22 in the ehide netns.
