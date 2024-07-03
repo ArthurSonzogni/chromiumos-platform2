@@ -4,19 +4,23 @@
 
 #include "odml/on_device_model/ml/chrome_ml.h"
 
+#include <utility>
+
 #include <base/base_paths.h>
 #include <base/check.h>
 #include <base/compiler_specific.h>
 #include <base/debug/crash_logging.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/memory/raw_ref.h>
 #include <base/memory/ref_counted.h>
-#include <base/metrics/histogram_functions.h>
 #include <base/native_library.h>
 #include <base/no_destructor.h>
 #include <base/path_service.h>
 #include <base/process/process.h>
+#include <base/synchronization/lock.h>
 #include <build/build_config.h>
+#include <metrics/metrics_library.h>
 
 #include <string_view>
 
@@ -39,6 +43,12 @@ enum class GpuErrorReason {
   kMaxValue = kDxgiErrorDeviceRemoved,
 };
 
+// The fatal error & histogram recording functions may run on different threads,
+// so we will need to lock the metrics object access.
+base::NoDestructor<base::Lock> g_metrics_lock;
+int g_chrome_ml_count;
+MetricsLibraryInterface* g_metrics;
+
 void FatalGpuErrorFn(const char* msg) {
   SCOPED_CRASH_KEY_STRING1024("ChromeML(GPU)", "error_msg", msg);
   std::string msg_str(msg);
@@ -48,7 +58,12 @@ void FatalGpuErrorFn(const char* msg) {
   } else if (msg_str.find("DXGI_ERROR_DEVICE_REMOVED") != std::string::npos) {
     error_reason = GpuErrorReason::kDxgiErrorDeviceRemoved;
   }
-  base::UmaHistogramEnumeration("OnDeviceModel.GpuErrorReason", error_reason);
+  {
+    base::AutoLock lock(*g_metrics_lock);
+    if (g_metrics) {
+      g_metrics->SendEnumToUMA("OnDeviceModel.GpuErrorReason", error_reason);
+    }
+  }
   if (error_reason == GpuErrorReason::kOther) {
     // Collect crash reports on unknown errors.
     CHECK(false) << "ChromeML(GPU) Error: " << msg;
@@ -66,35 +81,55 @@ void FatalErrorFn(const char* msg) {
 void RecordExactLinearHistogram(const char* name,
                                 int sample,
                                 int exclusive_max) {
-  base::UmaHistogramExactLinear(name, sample, exclusive_max);
+  base::AutoLock lock(*g_metrics_lock);
+  if (g_metrics) {
+    g_metrics->SendLinearToUMA(name, sample, exclusive_max);
+  }
 }
 
 void RecordCustomCountsHistogram(
     const char* name, int sample, int min, int exclusive_max, size_t buckets) {
-  base::UmaHistogramCustomCounts(name, sample, min, exclusive_max, buckets);
+  base::AutoLock lock(*g_metrics_lock);
+  if (g_metrics) {
+    g_metrics->SendToUMA(name, sample, min, exclusive_max, buckets);
+  }
 }
 
 }  // namespace
 
-ChromeML::ChromeML(base::PassKey<ChromeML>,
+ChromeML::ChromeML(raw_ref<MetricsLibraryInterface> metrics,
+                   base::PassKey<ChromeML>,
                    base::ScopedNativeLibrary library,
                    const ChromeMLAPI* api)
     : library_(std::move(library)), api_(api) {
   CHECK(api_);
+  base::AutoLock lock(*g_metrics_lock);
+  CHECK(!g_metrics || g_metrics == &metrics.get());
+  g_chrome_ml_count++;
+  g_metrics = &metrics.get();
 }
 
-ChromeML::~ChromeML() = default;
+ChromeML::~ChromeML() {
+  base::AutoLock lock(*g_metrics_lock);
+  CHECK(g_metrics);
+  g_chrome_ml_count--;
+  if (g_chrome_ml_count == 0) {
+    g_metrics = nullptr;
+  }
+}
 
 // static
-ChromeML* ChromeML::Get(const std::optional<std::string>& library_name) {
+ChromeML* ChromeML::Get(raw_ref<MetricsLibraryInterface> metrics,
+                        const std::optional<std::string>& library_name) {
   static base::NoDestructor<std::unique_ptr<ChromeML>> chrome_ml{
-      Create(library_name)};
+      Create(metrics, library_name)};
   return chrome_ml->get();
 }
 
 // static
 DISABLE_CFI_DLSYM
 std::unique_ptr<ChromeML> ChromeML::Create(
+    raw_ref<MetricsLibraryInterface> metrics,
     const std::optional<std::string>& library_name) {
   base::NativeLibraryLoadError error;
   base::NativeLibrary library = base::LoadNativeLibrary(
@@ -147,7 +182,7 @@ std::unique_ptr<ChromeML> ChromeML::Create(
   if (api->SetFatalErrorNonGpuFn) {
     api->SetFatalErrorNonGpuFn(&FatalErrorFn);
   }
-  return std::make_unique<ChromeML>(base::PassKey<ChromeML>(),
+  return std::make_unique<ChromeML>(metrics, base::PassKey<ChromeML>(),
                                     std::move(scoped_library), api);
 }
 

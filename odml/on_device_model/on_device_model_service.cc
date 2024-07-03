@@ -4,11 +4,12 @@
 
 #include "odml/on_device_model/on_device_model_service.h"
 
-#include <base/metrics/histogram_functions.h>
+#include <base/memory/raw_ref.h>
 #include <base/timer/elapsed_timer.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
 #include <dlcservice-client/dlcservice/dbus-proxies.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include <memory>
@@ -23,6 +24,14 @@
 
 namespace on_device_model {
 namespace {
+
+// For medium timings up to 3 minutes (50 buckets).
+void ReportHistogramMediumTimes(raw_ref<MetricsLibraryInterface> metrics,
+                                std::string_view name,
+                                base::TimeDelta sample) {
+  metrics->SendTimeToUMA(name, sample, base::Milliseconds(1), base::Minutes(3),
+                         50);
+}
 
 class ModelWrapper;
 
@@ -94,11 +103,13 @@ class SessionWrapper final : public mojom::Session {
 class ModelWrapper final : public mojom::OnDeviceModel {
  public:
   explicit ModelWrapper(
+      raw_ref<MetricsLibraryInterface> metrics,
       bool support_multiple_sessions,
       std::unique_ptr<on_device_model::OnDeviceModel> model,
       mojo::PendingReceiver<mojom::OnDeviceModel> receiver,
       base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete)
-      : support_multiple_sessions_(support_multiple_sessions),
+      : metrics_(metrics),
+        support_multiple_sessions_(support_multiple_sessions),
         model_(std::move(model)),
         on_delete_(std::move(on_delete)) {
     receivers_.Add(this, std::move(receiver), std::nullopt);
@@ -199,8 +210,8 @@ class ModelWrapper final : public mojom::OnDeviceModel {
       std::move(callback).Run(result.error());
       return;
     }
-    base::UmaHistogramMediumTimes("OnDeviceModel.LoadAdaptationModelDuration",
-                                  timer.Elapsed());
+    ReportHistogramMediumTimes(
+        metrics_, "OnDeviceModel.LoadAdaptationModelDuration", timer.Elapsed());
     receivers_.Add(this, std::move(model), *result);
     std::move(callback).Run(mojom::LoadModelResult::kSuccess);
   }
@@ -236,6 +247,7 @@ class ModelWrapper final : public mojom::OnDeviceModel {
     RunTaskIfPossible();
   }
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   bool support_multiple_sessions_;
   std::set<std::unique_ptr<SessionWrapper>, base::UniquePtrComparator>
       sessions_;
@@ -331,14 +343,11 @@ void SessionWrapper::ReplayPreviousContext() {
 
 }  // namespace
 
-OnDeviceModelService::OnDeviceModelService() {
-  platform_model_loader_ = std::make_unique<ChromeosPlatformModelLoader>(*this);
-}
-
 OnDeviceModelService::OnDeviceModelService(
-    mojo::PendingReceiver<mojom::OnDeviceModelPlatformService> receiver)
-    : OnDeviceModelService() {
-  AddReceiver(std::move(receiver));
+    raw_ref<MetricsLibraryInterface> metrics)
+    : metrics_(metrics) {
+  platform_model_loader_ =
+      std::make_unique<ChromeosPlatformModelLoader>(metrics_, raw_ref(*this));
 }
 
 OnDeviceModelService::~OnDeviceModelService() = default;
@@ -349,16 +358,15 @@ void OnDeviceModelService::LoadModel(
     LoadPlatformModelCallback callback) {
   base::ElapsedTimer timer;
   bool support_multiple_sessions = params->support_multiple_sessions;
-  auto model_impl = CreateModel(std::move(params));
+  auto model_impl = CreateModel(metrics_, std::move(params));
   if (!model_impl.has_value()) {
     std::move(callback).Run(model_impl.error());
     return;
   }
-
-  base::UmaHistogramMediumTimes("OnDeviceModel.LoadModelDuration",
-                                timer.Elapsed());
+  ReportHistogramMediumTimes(metrics_, "OnDeviceModel.LoadModelDuration",
+                             timer.Elapsed());
   models_.insert(std::make_unique<ModelWrapper>(
-      support_multiple_sessions, std::move(model_impl.value()),
+      metrics_, support_multiple_sessions, std::move(model_impl.value()),
       std::move(model),
       base::BindOnce(&OnDeviceModelService::DeleteModel,
                      base::Unretained(this))));

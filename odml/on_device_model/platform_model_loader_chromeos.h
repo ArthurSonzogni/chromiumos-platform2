@@ -15,6 +15,7 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
 #include <dlcservice-client/dlcservice/dbus-proxies.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -32,7 +33,8 @@ class OnDeviceModelService;
 
 class ChromeosPlatformModelLoader final : public PlatformModelLoader {
  public:
-  explicit ChromeosPlatformModelLoader(OnDeviceModelService& service);
+  ChromeosPlatformModelLoader(raw_ref<MetricsLibraryInterface> metrics,
+                              raw_ref<OnDeviceModelService> service);
   ~ChromeosPlatformModelLoader() override;
 
   ChromeosPlatformModelLoader(const ChromeosPlatformModelLoader&) = delete;
@@ -125,6 +127,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
                        scoped_refptr<PlatformModel> model,
                        mojom::LoadModelResult result);
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   raw_ref<OnDeviceModelService> service_;
   mojo::ReceiverSetBase<
       mojo::Receiver<mojom::OnDeviceModel, PlatformModelRefTraits>,

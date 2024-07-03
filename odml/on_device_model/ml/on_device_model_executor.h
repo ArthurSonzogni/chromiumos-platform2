@@ -13,6 +13,7 @@
 #include <base/native_library.h>
 #include <base/types/expected.h>
 #include <base/types/pass_key.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include <functional>
@@ -33,13 +34,15 @@ class LanguageDetector;
 // |Create()|. This is the main interface for interacting with the model.
 class OnDeviceModelExecutor : public on_device_model::OnDeviceModel {
  public:
-  explicit OnDeviceModelExecutor(base::PassKey<OnDeviceModelExecutor>,
-                                 const ChromeML& chrome_ml);
+  OnDeviceModelExecutor(raw_ref<MetricsLibraryInterface> metrics,
+                        base::PassKey<OnDeviceModelExecutor>,
+                        const ChromeML& chrome_ml);
   ~OnDeviceModelExecutor() override;
 
   static base::expected<std::unique_ptr<OnDeviceModelExecutor>,
                         on_device_model::mojom::LoadModelResult>
-  CreateWithResult(const ChromeML& chrome_ml,
+  CreateWithResult(raw_ref<MetricsLibraryInterface> metrics,
+                   const ChromeML& chrome_ml,
                    on_device_model::mojom::LoadModelParamsPtr params);
 
   // on_device_model::OnDeviceModel:
@@ -59,8 +62,8 @@ class OnDeviceModelExecutor : public on_device_model::OnDeviceModel {
 
   static void Schedule(uintptr_t context, std::function<void()>* fn);
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   const raw_ref<const ChromeML> chrome_ml_;
-
   base::MemoryMappedFile ts_data_;
   base::MemoryMappedFile ts_sp_model_;
   scoped_refptr<LanguageDetector> language_detector_;

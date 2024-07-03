@@ -5,10 +5,11 @@
 #include "odml/on_device_model/ml/utils.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/compiler_specific.h>
-#include <base/metrics/field_trial_params.h>
-#include <base/metrics/histogram_functions.h>
+#include <base/memory/raw_ref.h>
+#include <metrics/metrics_library.h>
 #include <base/strings/strcat.h>
 #include <base/system/sys_info.h>
 
@@ -40,18 +41,31 @@ enum class VeryLowPerformanceReason {
   kMaxValue = kSlowInput,
 };
 
-void LogVeryLowReason(VeryLowPerformanceReason reason) {
-  base::UmaHistogramEnumeration("OnDeviceModel.BenchmarkVeryLowReason", reason);
+void ReportHistogramCounts10000(raw_ref<MetricsLibraryInterface> metrics,
+                                std::string_view name,
+                                int sample) {
+  metrics->SendToUMA(std::string(name), sample, 1, 10000, 50);
+}
+
+void ReportHistogramMemoryLargeMB(raw_ref<MetricsLibraryInterface> metrics,
+                                  const std::string& name,
+                                  int sample) {
+  metrics->SendToUMA(name, sample, 1, 64000, 100);
+}
+
+void LogVeryLowReason(raw_ref<MetricsLibraryInterface> metrics,
+                      VeryLowPerformanceReason reason) {
+  metrics->SendEnumToUMA("OnDeviceModel.BenchmarkVeryLowReason", reason);
 }
 
 }  // namespace
 
 DISABLE_CFI_DLSYM
 on_device_model::mojom::PerformanceClass GetEstimatedPerformanceClass(
-    const ChromeML& chrome_ml) {
+    raw_ref<MetricsLibraryInterface> metrics, const ChromeML& chrome_ml) {
   ChromeMLPerformanceInfo info;
   bool success = chrome_ml.api().GetEstimatedPerformance(&info);
-  base::UmaHistogramBoolean("OnDeviceModel.BenchmarkSuccess", success);
+  metrics->SendBoolToUMA("OnDeviceModel.BenchmarkSuccess", success);
   if (!success) {
     return on_device_model::mojom::PerformanceClass::kError;
   }
@@ -60,26 +74,31 @@ on_device_model::mojom::PerformanceClass GetEstimatedPerformanceClass(
   const bool is_integrated_gpu = info.is_integrated_gpu;
 
   int system_ram = base::SysInfo::AmountOfPhysicalMemoryMB();
-  base::UmaHistogramMemoryLargeMB(
+  ReportHistogramMemoryLargeMB(
+      metrics,
       base::StrCat({"OnDeviceModel.SystemRAM.",
                     is_integrated_gpu ? "Integrated" : "Discrete"}),
       system_ram);
   uint64_t device_heap_mb = info.device_heap_size / kBytesPerMb;
-  base::UmaHistogramMemoryLargeMB(
+  ReportHistogramMemoryLargeMB(
+      metrics,
       base::StrCat({"OnDeviceModel.DeviceHeapSize.",
                     is_integrated_gpu ? "Integrated" : "Discrete"}),
       device_heap_mb);
   if (info.max_buffer_size) {
-    base::UmaHistogramMemoryLargeMB(
+    ReportHistogramMemoryLargeMB(
+        metrics,
         base::StrCat({"OnDeviceModel.MaxBufferSize.",
                       is_integrated_gpu ? "Integrated" : "Discrete"}),
         info.max_buffer_size);
   }
 
-  base::UmaHistogramCounts10000(
-      "OnDeviceModel.BenchmarkEstimatedTokensPerSecond.Input", input_speed);
-  base::UmaHistogramCounts1000(
-      "OnDeviceModel.BenchmarkEstimatedTokensPerSecond.Output", output_speed);
+  ReportHistogramCounts10000(
+      metrics, "OnDeviceModel.BenchmarkEstimatedTokensPerSecond.Input",
+      input_speed);
+  ReportHistogramCounts10000(
+      metrics, "OnDeviceModel.BenchmarkEstimatedTokensPerSecond.Output",
+      output_speed);
 
   // Integrated GPUs can use at least 1/2 of system RAM as VRAM. Mac doesn't
   // allow directly querying VRAM, and instead returns the "recommended" maximum
@@ -91,13 +110,13 @@ on_device_model::mojom::PerformanceClass GetEstimatedPerformanceClass(
   }
   // Devices with low RAM are considered very low perf.
   if (device_heap_mb < static_cast<uint64_t>(kLowRAMThreshold)) {
-    LogVeryLowReason(VeryLowPerformanceReason::kLowRAM);
+    LogVeryLowReason(metrics, VeryLowPerformanceReason::kLowRAM);
     return on_device_model::mojom::PerformanceClass::kVeryLow;
   }
 
   // Devices that output less than 6 tk/s are considered very low perf.
   if (output_speed < kLowOutputThreshold) {
-    LogVeryLowReason(VeryLowPerformanceReason::kSlowOutput);
+    LogVeryLowReason(metrics, VeryLowPerformanceReason::kSlowOutput);
     return on_device_model::mojom::PerformanceClass::kVeryLow;
   }
   // VeryLow:  [0, 50)
@@ -106,7 +125,7 @@ on_device_model::mojom::PerformanceClass GetEstimatedPerformanceClass(
   // High:     [250, 750)
   // VeryHigh: [750, inf)
   if (input_speed < kLowThreshold) {
-    LogVeryLowReason(VeryLowPerformanceReason::kSlowInput);
+    LogVeryLowReason(metrics, VeryLowPerformanceReason::kSlowInput);
     return on_device_model::mojom::PerformanceClass::kVeryLow;
   } else if (input_speed < kMediumThreshold) {
     return on_device_model::mojom::PerformanceClass::kLow;

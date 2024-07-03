@@ -6,8 +6,10 @@
 #define ODML_ON_DEVICE_MODEL_ML_CHROME_ML_H_
 
 #include <base/memory/raw_ptr.h>
+#include <base/memory/raw_ref.h>
 #include <base/scoped_native_library.h>
 #include <base/types/pass_key.h>
+#include <metrics/metrics_library.h>
 
 #include <memory>
 #include <optional>
@@ -23,7 +25,8 @@ namespace ml {
 class ChromeML {
  public:
   // Use Get() to acquire a global instance.
-  ChromeML(base::PassKey<ChromeML>,
+  ChromeML(raw_ref<MetricsLibraryInterface> metrics,
+           base::PassKey<ChromeML>,
            base::ScopedNativeLibrary library,
            const ChromeMLAPI* api);
   ~ChromeML();
@@ -31,6 +34,7 @@ class ChromeML {
   // Gets a lazily initialized global instance of ChromeML. May return null
   // if the underlying library could not be loaded.
   static ChromeML* Get(
+      raw_ref<MetricsLibraryInterface> metrics,
       const std::optional<std::string>& library_name = std::nullopt);
 
   // Exposes the raw ChromeMLAPI functions defined by the library.
@@ -45,6 +49,7 @@ class ChromeML {
 
  private:
   static std::unique_ptr<ChromeML> Create(
+      raw_ref<MetricsLibraryInterface> metrics,
       const std::optional<std::string>& library_name);
 
   const base::ScopedNativeLibrary library_;

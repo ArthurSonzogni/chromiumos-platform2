@@ -10,12 +10,12 @@
 #include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/metrics/field_trial_params.h>
-#include <base/metrics/histogram_functions.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/task/thread_pool.h>
 #include <base/timer/elapsed_timer.h>
+#include <metrics/metrics_library.h>
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <set>
@@ -50,6 +50,12 @@ constexpr ConstData<bool> kEnableHostMappedPointer{true};
 constexpr ConstData<bool> kUseLowPower{false};
 
 constexpr ConstData<bool> kAllowFp16{true};
+
+void ReportHistogramCounts10000(raw_ref<MetricsLibraryInterface> metrics,
+                                std::string_view name,
+                                int sample) {
+  metrics->SendToUMA(std::string(name), sample, 1, 10000, 50);
+}
 
 // Helper to bind object methods as weak task-posting callback functions.
 template <typename R, typename C, typename... Args>
@@ -102,10 +108,12 @@ uint32_t GetTopK(std::optional<uint32_t> top_k) {
 class Responder final {
  public:
   explicit Responder(
+      raw_ref<MetricsLibraryInterface> metrics,
       mojo::PendingRemote<on_device_model::mojom::StreamingResponder> responder,
       scoped_refptr<LanguageDetector> language_detector,
       base::OnceClosure on_complete)
-      : responder_(std::move(responder)),
+      : metrics_(metrics),
+        responder_(std::move(responder)),
         language_detector_(std::move(language_detector)),
         on_complete_(std::move(on_complete)) {
     responder_.set_disconnect_handler(
@@ -157,13 +165,13 @@ class Responder final {
       chunk->safety_info = CreateSafetyInfo(output_so_far_, class_scores);
       responder_->OnResponse(std::move(chunk));
     } else {
-      base::UmaHistogramCounts10000("OnDeviceModel.TokenCount.Output",
-                                    num_tokens_);
+      ReportHistogramCounts10000(metrics_, "OnDeviceModel.TokenCount.Output",
+                                 num_tokens_);
       if (num_tokens_ > 1) {
         // Time starts at the first token to avoid counting input processing
         // time, so calculate using num_tokens_ - 1.
-        base::UmaHistogramCounts1000(
-            "OnDeviceModel.TokensPerSecond.Output",
+        ReportHistogramCounts10000(
+            metrics_, "OnDeviceModel.TokensPerSecond.Output",
             CalculateTokensPerSecond(
                 num_tokens_ - 1, base::TimeTicks::Now() - first_token_time_));
       }
@@ -200,6 +208,7 @@ class Responder final {
     }
   }
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   base::TimeTicks first_token_time_;
   int num_tokens_ = 0;
   std::string output_so_far_;
@@ -215,10 +224,12 @@ class Responder final {
 class ContextHolder final {
  public:
   explicit ContextHolder(
+      raw_ref<MetricsLibraryInterface> metrics,
       mojo::PendingRemote<on_device_model::mojom::ContextClient> client,
       base::OnceCallback<void(ContextHolder*)> on_disconnect,
       base::OnceClosure on_complete)
-      : client_(std::move(client)),
+      : metrics_(metrics),
+        client_(std::move(client)),
         on_disconnect_(std::move(on_disconnect)),
         on_complete_(std::move(on_complete)) {
     if (client_) {
@@ -248,10 +259,10 @@ class ContextHolder final {
  private:
   void OnComplete(int tokens_processed) {
     if (tokens_processed > 0) {
-      base::UmaHistogramCounts10000("OnDeviceModel.TokenCount.Context",
-                                    tokens_processed);
-      base::UmaHistogramCounts10000(
-          "OnDeviceModel.TokensPerSecond.Context",
+      ReportHistogramCounts10000(metrics_, "OnDeviceModel.TokenCount.Context",
+                                 tokens_processed);
+      ReportHistogramCounts10000(
+          metrics_, "OnDeviceModel.TokensPerSecond.Context",
           CalculateTokensPerSecond(tokens_processed, timer_.Elapsed()));
     }
     if (client_) {
@@ -270,6 +281,7 @@ class ContextHolder final {
     // this may be deleted.
   }
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   base::ElapsedTimer timer_;
   mojo::Remote<on_device_model::mojom::ContextClient> client_;
   base::OnceCallback<void(ContextHolder*)> on_disconnect_;
@@ -280,12 +292,14 @@ class ContextHolder final {
 
 class SessionImpl : public on_device_model::OnDeviceModel::Session {
  public:
-  SessionImpl(const ChromeML& chrome_ml,
+  SessionImpl(raw_ref<MetricsLibraryInterface> metrics,
+              const ChromeML& chrome_ml,
               ChromeMLModel model,
               uint32_t max_tokens,
               scoped_refptr<LanguageDetector> language_detector,
               std::optional<uint32_t> adaptation_id)
-      : chrome_ml_(chrome_ml),
+      : metrics_(metrics),
+        chrome_ml_(chrome_ml),
         model_(model),
         max_tokens_(max_tokens),
         language_detector_(std::move(language_detector)),
@@ -301,7 +315,7 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
       mojo::PendingRemote<on_device_model::mojom::ContextClient> client,
       base::OnceClosure on_complete) override {
     auto context_holder = std::make_unique<ContextHolder>(
-        std::move(client),
+        metrics_, std::move(client),
         base::BindOnce(&SessionImpl::RemoveContext, base::Unretained(this)),
         std::move(on_complete));
     ChromeMLContextSavedFn context_saved_fn =
@@ -331,8 +345,9 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
       on_device_model::mojom::InputOptionsPtr input,
       mojo::PendingRemote<on_device_model::mojom::StreamingResponder> response,
       base::OnceClosure on_complete) override {
-    responder_ = std::make_unique<Responder>(
-        std::move(response), language_detector_, std::move(on_complete));
+    responder_ =
+        std::make_unique<Responder>(metrics_, std::move(response),
+                                    language_detector_, std::move(on_complete));
     ChromeMLExecutionOutputFn output_fn = responder_->CreateOutputFn();
     int32_t ts_interval = -1;
     if (input->safety_interval.has_value()) {
@@ -399,6 +414,7 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
     return context_mode;
   }
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   bool clear_context_ = true;
   const raw_ref<const ChromeML> chrome_ml_;
   ChromeMLModel model_;
@@ -412,8 +428,11 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
 }  // namespace
 
 OnDeviceModelExecutor::OnDeviceModelExecutor(
-    base::PassKey<OnDeviceModelExecutor>, const ChromeML& chrome_ml)
-    : chrome_ml_(chrome_ml),
+    raw_ref<MetricsLibraryInterface> metrics,
+    base::PassKey<OnDeviceModelExecutor>,
+    const ChromeML& chrome_ml)
+    : metrics_(metrics),
+      chrome_ml_(chrome_ml),
       task_runner_(base::SequencedTaskRunner::GetCurrentDefault()) {}
 
 DISABLE_CFI_DLSYM
@@ -426,10 +445,11 @@ OnDeviceModelExecutor::~OnDeviceModelExecutor() {
 // static
 base::expected<std::unique_ptr<OnDeviceModelExecutor>, LoadModelResult>
 OnDeviceModelExecutor::CreateWithResult(
+    raw_ref<MetricsLibraryInterface> metrics,
     const ChromeML& chrome_ml,
     on_device_model::mojom::LoadModelParamsPtr params) {
   auto executor = std::make_unique<OnDeviceModelExecutor>(
-      base::PassKey<OnDeviceModelExecutor>(), chrome_ml);
+      metrics, base::PassKey<OnDeviceModelExecutor>(), chrome_ml);
   auto load_model_result = executor->Init(std::move(params));
   if (load_model_result == LoadModelResult::kSuccess) {
     return base::ok<std::unique_ptr<OnDeviceModelExecutor>>(
@@ -440,7 +460,7 @@ OnDeviceModelExecutor::CreateWithResult(
 
 std::unique_ptr<on_device_model::OnDeviceModel::Session>
 OnDeviceModelExecutor::CreateSession(std::optional<uint32_t> adaptation_id) {
-  return std::make_unique<SessionImpl>(*chrome_ml_, model_,
+  return std::make_unique<SessionImpl>(metrics_, *chrome_ml_, model_,
                                        max_tokens_ - kReserveTokensForSafety,
                                        language_detector_, adaptation_id);
 }
@@ -554,7 +574,7 @@ LoadModelResult OnDeviceModelExecutor::Init(
     descriptor.ts_size = ts_data_.length();
     descriptor.ts_spm_data = ts_sp_model_.data();
     descriptor.ts_spm_size = ts_sp_model_.length();
-  };
+  }
   model_ = chrome_ml_->api().CreateModel(&descriptor,
                                          reinterpret_cast<uintptr_t>(this),
                                          OnDeviceModelExecutor::Schedule);

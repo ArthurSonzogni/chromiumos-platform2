@@ -6,11 +6,13 @@
 #define ODML_ON_DEVICE_MODEL_ON_DEVICE_MODEL_SERVICE_H_
 
 #include <base/containers/unique_ptr_adapters.h>
+#include <base/memory/raw_ref.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
 #include <base/types/expected.h>
 #include <base/uuid.h>
 #include <build/build_config.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -27,11 +29,10 @@ namespace on_device_model {
 
 class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
  public:
-  static mojom::PerformanceClass GetEstimatedPerformanceClass();
+  static mojom::PerformanceClass GetEstimatedPerformanceClass(
+      raw_ref<MetricsLibraryInterface> metrics);
 
-  OnDeviceModelService();
-  explicit OnDeviceModelService(
-      mojo::PendingReceiver<mojom::OnDeviceModelPlatformService> receiver);
+  explicit OnDeviceModelService(raw_ref<MetricsLibraryInterface> metrics);
   ~OnDeviceModelService() override;
 
   OnDeviceModelService(const OnDeviceModelService&) = delete;
@@ -56,10 +57,12 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
 
  private:
   static base::expected<std::unique_ptr<OnDeviceModel>, mojom::LoadModelResult>
-  CreateModel(mojom::LoadModelParamsPtr params);
+  CreateModel(raw_ref<MetricsLibraryInterface> metrics,
+              mojom::LoadModelParamsPtr params);
 
   void DeleteModel(base::WeakPtr<mojom::OnDeviceModel> model);
 
+  const raw_ref<MetricsLibraryInterface> metrics_;
   mojo::ReceiverSet<mojom::OnDeviceModelPlatformService> receiver_set_;
   std::set<std::unique_ptr<mojom::OnDeviceModel>, base::UniquePtrComparator>
       models_;

@@ -3,11 +3,13 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
+#include <base/memory/raw_ref.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/mojo/service_constants.h>
+#include <metrics/metrics_library.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -31,8 +33,9 @@ class ServiceProviderImpl
   explicit ServiceProviderImpl(
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager) {
-    service_manager->Register(/*service_name=*/chromeos::mojo_services::kCrosOdmlService,
-                              receiver_.BindNewPipeAndPassRemote());
+    service_manager->Register(
+        /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
+        receiver_.BindNewPipeAndPassRemote());
   }
 
  private:
@@ -46,11 +49,12 @@ class ServiceProviderImpl
             std::move(receiver)));
   }
 
+  MetricsLibrary metrics_;
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
       receiver_{this};
   // The implementation of on_device_model::mojom::OnDeviceModelPlatformService.
-  on_device_model::OnDeviceModelService service_impl_;
+  on_device_model::OnDeviceModelService service_impl_{raw_ref(metrics_)};
 };
 
 class Daemon : public brillo::Daemon {
