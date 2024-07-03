@@ -1167,7 +1167,9 @@ StreamManipulatorHelper::FindSourceStream(
   auto it = std::max_element(
       available_formats_.begin(), available_formats_.end(),
       [&](auto& f1, auto& f2) { return index_format(f1) < index_format(f2); });
-  CHECK(it != available_formats_.end());
+  if (it == available_formats_.end()) {
+    return std::nullopt;
+  }
   const StreamFormat& src_format = *it;
   const std::optional<float> max_scaling_factor =
       get_max_scaling_factor(src_format);

@@ -149,7 +149,7 @@ class RelativeFov {
   Rect<float> GetCropWindowInto(const RelativeFov& other) const;
 
  private:
-  static constexpr float kEpsilon = 1e-2f;
+  static constexpr float kEpsilon = 3e-2f;
 
   float x_ = 0.0f;
   float y_ = 0.0f;
