@@ -166,6 +166,18 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
+  "ufs_storage": {
+    "binds": [
+      "/sys/class/block/",
+      "/sys/devices/platform/"
+    ],
+    "other_args": [
+      "-k",
+      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
+      "-k",
+      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
+    ]
+  },
   "usb_camera": {
     "binds": [
       "/sys/class/video4linux/",
