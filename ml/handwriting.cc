@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/native_library.h>
+#include <base/notreached.h>
 #include <base/strings/string_util.h>
 
 #include "ml/util.h"
@@ -33,42 +34,51 @@ constexpr char kHandwritingLibraryRelativePath[] = "libhandwriting.so";
 constexpr char kLanguageCodeEn[] = "en";
 constexpr char kLanguageCodeGesture[] = "gesture_in_context";
 
+const base::FilePath kDlcRoot("/run/imageloader");
+
 // Returns HandwritingRecognizerModelPaths based on the given `model_path`.
-// Language is required to handle exceptions, like "en" (no DLC) and "gesture".
+// If `model_path` IS a DLC path:
+//   The paths are set based on the standard layout in the LanguagePack DLC, and
+//   `language` is ignored.
+// If `model_path` is NOT a DLC path:
+//   The paths are set based on whether `language` is "en" or "gesture".
 HandwritingRecognizerModelPaths GetModelPaths(
     const std::string& language, const base::FilePath& model_path) {
   HandwritingRecognizerModelPaths paths;
-  // English and Gesture are not served by Language Packs; they are installed
-  // in rootfs.
-  if (language == kLanguageCodeEn) {
-    paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
-    paths.set_seg_model_path(
-        model_path.Append("latin_indy_seg.tflite").value());
-    paths.set_conf_model_path(
-        model_path.Append("latin_indy_conf.tflite").value());
-    paths.set_fst_lm_path(model_path.Append("latin_indy.compact.fst").value());
-    paths.set_recospec_path(model_path.Append("latin_indy.pb").value());
-    return paths;
-  } else if (language == kLanguageCodeGesture) {
-    paths.set_reco_model_path(
-        model_path.Append("gic.reco_model.tflite").value());
-    paths.set_recospec_path(model_path.Append("gic.recospec.pb").value());
-    return paths;
-  }
 
-  // If we get here, it means that Language Packs are enabled.
-  // First load the language model and FST.
-  paths.set_fst_lm_path(model_path.Append("compact.fst.local").value());
-  paths.set_recospec_path(model_path.Append("qrnn.recospec.local").value());
-  // Load the model for the script (latin, cyrillic, etc).
-  paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
-  // The following are optionals: segmentation and confidence models.
-  const auto seg_file_path = model_path.Append("latin_indy_seg.tflite");
-  if (base::PathExists(seg_file_path))
-    paths.set_seg_model_path(seg_file_path.value());
-  const auto conf_file_path = model_path.Append("latin_indy_conf.tflite");
-  if (base::PathExists(conf_file_path))
-    paths.set_conf_model_path(conf_file_path.value());
+  if (!kDlcRoot.IsParent(model_path)) {
+    // rootfs model_path. Only "en" and "gesture" are supported.
+    if (language == kLanguageCodeEn) {
+      paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
+      paths.set_seg_model_path(
+          model_path.Append("latin_indy_seg.tflite").value());
+      paths.set_conf_model_path(
+          model_path.Append("latin_indy_conf.tflite").value());
+      paths.set_fst_lm_path(
+          model_path.Append("latin_indy.compact.fst").value());
+      paths.set_recospec_path(model_path.Append("latin_indy.pb").value());
+    } else if (language == kLanguageCodeGesture) {
+      paths.set_reco_model_path(
+          model_path.Append("gic.reco_model.tflite").value());
+      paths.set_recospec_path(model_path.Append("gic.recospec.pb").value());
+    } else {
+      NOTREACHED_NORETURN();
+    }
+  } else {
+    // Language Packs `model_path`.
+    // First load the language model and FST.
+    paths.set_fst_lm_path(model_path.Append("compact.fst.local").value());
+    paths.set_recospec_path(model_path.Append("qrnn.recospec.local").value());
+    // Load the model for the script (latin, cyrillic, etc).
+    paths.set_reco_model_path(model_path.Append("latin_indy.tflite").value());
+    // The following are optionals: segmentation and confidence models.
+    const auto seg_file_path = model_path.Append("latin_indy_seg.tflite");
+    if (base::PathExists(seg_file_path))
+      paths.set_seg_model_path(seg_file_path.value());
+    const auto conf_file_path = model_path.Append("latin_indy_conf.tflite");
+    if (base::PathExists(conf_file_path))
+      paths.set_conf_model_path(conf_file_path.value());
+  }
 
   return paths;
 }
