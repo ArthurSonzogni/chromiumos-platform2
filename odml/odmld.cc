@@ -27,12 +27,14 @@
 #include "odml/on_device_model/on_device_model_service.h"
 
 namespace {
+
 class ServiceProviderImpl
     : public chromeos::mojo_service_manager::mojom::ServiceProvider {
  public:
   explicit ServiceProviderImpl(
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
-          service_manager) {
+          service_manager)
+      : receiver_(this), service_impl_(raw_ref(metrics_)) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
@@ -52,9 +54,9 @@ class ServiceProviderImpl
   MetricsLibrary metrics_;
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
-      receiver_{this};
+      receiver_;
   // The implementation of on_device_model::mojom::OnDeviceModelPlatformService.
-  on_device_model::OnDeviceModelService service_impl_{raw_ref(metrics_)};
+  on_device_model::OnDeviceModelService service_impl_;
 };
 
 class Daemon : public brillo::Daemon {

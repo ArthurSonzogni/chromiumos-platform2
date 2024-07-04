@@ -7,20 +7,24 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/json/json_reader.h>
 #include <base/memory/raw_ref.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
-// NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
-#include <dlcservice-client/dlcservice/dbus-proxies.h>
+#include <base/types/expected.h>
 #include <metrics/metrics_library.h>
+#include <ml_core/dlc/dlc_client.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "odml/on_device_model/on_device_model_service.h"
@@ -61,9 +65,6 @@
 // }
 
 namespace {
-// Default D-Bus connection Timeout
-constexpr int kDefaultDBusTimeoutMs = 300000;
-constexpr base::TimeDelta kDefaultTimeout = base::Minutes(5);
 constexpr char kMlDlcPrefix[] = "ml-dlc-";
 constexpr char kModelDescriptor[] = "model.json";
 constexpr char kBaseModelKey[] = "base_model";
@@ -130,13 +131,7 @@ ChromeosPlatformModelLoader::PlatformModelRecord::~PlatformModelRecord() =
 ChromeosPlatformModelLoader::ChromeosPlatformModelLoader(
     raw_ref<MetricsLibraryInterface> metrics,
     raw_ref<OnDeviceModelService> service)
-    : metrics_(metrics),
-      service_(service),
-      bus_(connection_.ConnectWithTimeout(kDefaultTimeout)) {
-  CHECK(bus_);
-  dlc_proxy_ = std::make_unique<org::chromium::DlcServiceInterfaceProxy>(bus_);
-  CHECK(dlc_proxy_);
-}
+    : metrics_(metrics), service_(service) {}
 
 ChromeosPlatformModelLoader::~ChromeosPlatformModelLoader() = default;
 
@@ -211,69 +206,47 @@ void ChromeosPlatformModelLoader::LoadModelWithUuid(
 
   std::string uuid_str = uuid.AsLowercaseString();
   std::string dlc_id = kMlDlcPrefix + uuid_str;
-  dlcservice::InstallRequest request;
-  request.set_id(dlc_id);
-
-  base::OnceCallback<void(const InstallResult&)> complete_cb =
+  using InstallCallback =
+      base::OnceCallback<void(base::expected<base::FilePath, std::string>)>;
+  using DlcClientPtr = std::unique_ptr<cros::DlcClient>;
+  std::shared_ptr<DlcClientPtr> shared_dlc_client =
+      std::make_shared<DlcClientPtr>(nullptr);
+  // Bind the lifetime of the dlc_client to the end of install callback.
+  InstallCallback install_cb =
       base::BindOnce(&ChromeosPlatformModelLoader::OnInstallDlcComplete,
-                     weak_ptr_factory_.GetWeakPtr(), uuid);
-
-  auto split = base::SplitOnceCallback(std::move(complete_cb));
-
-  base::OnceCallback<void(brillo::Error*)> error_cb =
-      base::IgnoreArgs<brillo::Error*>(base::BindOnce(
-          std::move(split.first), InstallResult{
-                                      .error = "DLC Install D-Bus error",
-                                      .dlc_id = dlc_id,
-                                  }));
-
-  base::OnceCallback<void()> success_cb = base::BindOnce(
-      &ChromeosPlatformModelLoader::GetDlcState, weak_ptr_factory_.GetWeakPtr(),
-      dlc_id, std::move(split.second));
-
-  dlc_proxy_->InstallAsync(request, std::move(success_cb), std::move(error_cb),
-                           kDefaultDBusTimeoutMs);
+                     weak_ptr_factory_.GetWeakPtr(), uuid)
+          .Then(base::BindOnce([](std::shared_ptr<DlcClientPtr> dlc_client) {},
+                               shared_dlc_client));
+  auto split = base::SplitOnceCallback(std::move(install_cb));
+  auto dlc_client = cros::DlcClient::Create(
+      dlc_id,
+      base::BindOnce(
+          [](InstallCallback callback, const base::FilePath& path) {
+            std::move(callback).Run(path);
+          },
+          std::move(split.first)),
+      base::BindOnce(
+          [](InstallCallback callback, const std::string& path) {
+            std::move(callback).Run(base::unexpected(path));
+          },
+          std::move(split.second)));
+  dlc_client->InstallDlc();
+  (*shared_dlc_client) = std::move(dlc_client);
   return;
 }
 
-void ChromeosPlatformModelLoader::GetDlcState(
-    const std::string& dlc_id,
-    base::OnceCallback<void(const InstallResult&)> callback) {
-  auto split = base::SplitOnceCallback(std::move(callback));
-
-  base::OnceCallback<void(brillo::Error*)> error_cb =
-      base::IgnoreArgs<brillo::Error*>(base::BindOnce(
-          std::move(split.first), InstallResult{
-                                      .error = "DLC GetDlcState D-Bus error",
-                                      .dlc_id = dlc_id,
-                                  }));
-
-  base::OnceCallback<void(const dlcservice::DlcState& state)> success_cb =
-      base::BindOnce(
-          [](const std::string& dlc_id, const dlcservice::DlcState& state) {
-            return InstallResult{
-                .dlc_id = dlc_id,
-                .root_path = state.root_path(),
-            };
-          },
-          dlc_id)
-          .Then(std::move(split.second));
-
-  dlc_proxy_->GetDlcStateAsync(dlc_id, std::move(success_cb),
-                               std::move(error_cb), kDefaultDBusTimeoutMs);
-}
-
 void ChromeosPlatformModelLoader::OnInstallDlcComplete(
-    const base::Uuid& uuid, const InstallResult& result) {
-  if (result.error != "") {
-    LOG(ERROR) << "Failed to install ML DLC with error " << result.error;
+    const base::Uuid& uuid,
+    base::expected<base::FilePath, std::string> result) {
+  if (!result.has_value()) {
+    LOG(ERROR) << "Failed to install ML DLC: " << result.error();
     metrics_->SendEnumToUMA(kLoadStatusHistogramName,
                             LoadStatus::kInstallDlcFail);
     ReplyError(uuid, mojom::LoadModelResult::kFailedToLoadLibrary);
     return;
   }
 
-  base::FilePath dlc_root(result.root_path);
+  const base::FilePath& dlc_root = result.value();
   base::FilePath model_desc = dlc_root.Append(kModelDescriptor);
   std::string model_json;
 

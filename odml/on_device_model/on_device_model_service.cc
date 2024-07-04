@@ -6,9 +6,6 @@
 
 #include <base/memory/raw_ref.h>
 #include <base/timer/elapsed_timer.h>
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
-// NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
-#include <dlcservice-client/dlcservice/dbus-proxies.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 

@@ -5,22 +5,18 @@
 #ifndef ODML_ON_DEVICE_MODEL_PLATFORM_MODEL_LOADER_CHROMEOS_H_
 #define ODML_ON_DEVICE_MODEL_PLATFORM_MODEL_LOADER_CHROMEOS_H_
 
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/raw_ref.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
 #include <base/uuid.h>
-#include <brillo/dbus/dbus_connection.h>
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
-// NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
-#include <dlcservice-client/dlcservice/dbus-proxies.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -46,17 +42,6 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
                          LoadModelCallback callback) override;
 
  private:
-  // This object is returned as the result of DLC install success or failure.
-  struct InstallResult {
-    // The error associated with the install. |dlcservice::kErrorNone| indicates
-    // a success. Any other error code, indicates a failure.
-    std::string error;
-    // The unique DLC ID which was requested to be installed.
-    std::string dlc_id;
-    // The path where the DLC is available for users to use.
-    std::string root_path;
-  };
-
   class PlatformModel final : public base::RefCounted<PlatformModel> {
    public:
     PlatformModel();
@@ -107,11 +92,8 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
 
   void ReplyError(const base::Uuid& uuid, mojom::LoadModelResult result);
 
-  void GetDlcState(const std::string& dlc_id,
-                   base::OnceCallback<void(const InstallResult&)> callback);
-
   void OnInstallDlcComplete(const base::Uuid& uuid,
-                            const InstallResult& result);
+                            base::expected<base::FilePath, std::string> result);
 
   void LoadAdaptationPlatformModel(const base::Uuid& base_uuid,
                                    const std::string& base_version,
@@ -134,10 +116,6 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
       void>
       receivers_;
   std::map<base::Uuid, PlatformModelRecord> platform_models_;
-
-  brillo::DBusConnection connection_;
-  scoped_refptr<dbus::Bus> bus_;
-  std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> dlc_proxy_;
 
   base::WeakPtrFactory<ChromeosPlatformModelLoader> weak_ptr_factory_{this};
 };

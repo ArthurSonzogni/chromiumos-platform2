@@ -19,6 +19,7 @@ pkg_config("target_defaults") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libdlcservice-client",
     "libmetrics",
     "mojo_service_manager",
     "protobuf-lite",
@@ -73,7 +74,10 @@ source_set("odml") {
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
   ]
-  public_deps = [ ":mojo_bindings_lib" ]
+  public_deps = [
+    ":mojo_bindings_lib",
+    "//ml_core/dlc:dlc_client",
+  ]
   configs += [ ":target_defaults" ]
 }
 
