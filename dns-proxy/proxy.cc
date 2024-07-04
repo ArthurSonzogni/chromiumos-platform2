@@ -565,6 +565,12 @@ shill::Client::ManagerPropertyAccessor* Proxy::shill_props() {
     shill_props_->Watch(shill::kDNSProxyDOHProvidersProperty,
                         base::BindRepeating(&Proxy::OnDoHProvidersChanged,
                                             weak_factory_.GetWeakPtr()));
+    shill_props_->Watch(shill::kDOHExcludedDomainsProperty,
+                        base::BindRepeating(&Proxy::OnDoHExcludedDomainsChanged,
+                                            weak_factory_.GetWeakPtr()));
+    shill_props_->Watch(shill::kDOHIncludedDomainsProperty,
+                        base::BindRepeating(&Proxy::OnDoHIncludedDomainsChanged,
+                                            weak_factory_.GetWeakPtr()));
   }
 
   return shill_props_.get();
@@ -634,6 +640,7 @@ void Proxy::MaybeCreateResolver() {
   resolver_ =
       NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
   doh_config_.set_resolver(resolver_.get());
+  resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 
   // Listen on IPv4 and IPv6. Listening on AF_INET explicitly is not needed
   // because net.ipv6.bindv6only sysctl is defaulted to 0 and is not
@@ -720,6 +727,16 @@ void Proxy::UpdateNameServers() {
 
 void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
   doh_config_.set_providers(value.Get<brillo::VariantDictionary>());
+}
+
+void Proxy::OnDoHExcludedDomainsChanged(const brillo::Any& value) {
+  doh_excluded_domains_ = value.Get<std::vector<std::string>>();
+  resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
+}
+
+void Proxy::OnDoHIncludedDomainsChanged(const brillo::Any& value) {
+  doh_included_domains_ = value.Get<std::vector<std::string>>();
+  resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 }
 
 void Proxy::SetShillDNSProxyAddresses(

@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -98,6 +99,9 @@ class Resolver {
     // Number of currently running queries.
     int num_active_queries;
 
+    // Whether DoH should be bypassed for this query.
+    bool bypass_doh;
+
     // Identifier for the socket. |fd| is not a suitable identifier here as it
     // can be used for multiple SocketFds.
     const int id;
@@ -106,6 +110,9 @@ class Resolver {
     Metrics::QueryTimer timer;
     base::WeakPtrFactory<SocketFd> weak_factory{this};
   };
+
+  // Whether a domain is included or excluded from using DoH.
+  enum class DomainDoHConfig { kIncluded, kExcluded };
 
   // |ProbeState| is used to store the probe state of a DoH provider or name
   // server. For example, when a probe succeeds for a specific name server,
@@ -158,6 +165,12 @@ class Resolver {
   virtual void SetNameServers(const std::vector<std::string>& name_servers);
   virtual void SetDoHProviders(const std::vector<std::string>& doh_providers,
                                bool always_on_doh = false);
+
+  // Set DNS-over-HTTPS included and excluded domains. This is used to
+  // disable DoH (and falls back to plain-text DNS) for certain domains.
+  void SetDomainDoHConfigs(
+      const std::vector<std::string>& doh_included_domains,
+      const std::vector<std::string>& doh_excluded_domains);
 
   // Handle DNS results queried through ares.
   // |sock_fd| is the socket data needed to reply to the client. Empty
@@ -227,6 +240,9 @@ class Resolver {
   // from the map. Added for unit testing.
   std::unique_ptr<SocketFd> PopPendingSocketFd(int fd);
 
+  // Get the domain name being queried from a DNS query.
+  std::optional<std::string> GetDNSQuestionName(const char* msg, ssize_t len);
+
   // Create a SERVFAIL response from a DNS query |msg| of length |len|.
   patchpanel::DnsResponse ConstructServFailResponse(const char* msg, int len);
 
@@ -239,6 +255,13 @@ class Resolver {
 
   friend std::ostream& operator<<(std::ostream& stream,
                                   const Resolver& resolver);
+
+  // Returns whether or not DoH should be bypassed based on the configuration of
+  // DoH included and excluded domain lists.
+  bool BypassDoH(const std::string& domain);
+
+  // Returns the configuration of DoH included or excluded for a domain.
+  std::optional<DomainDoHConfig> GetDomainDoHConfig(const std::string& domain);
 
  protected:
   // Wrapper around libc recvfrom, allowing override in fuzzer tests.
@@ -269,6 +292,11 @@ class Resolver {
   // Set either name servers or DoH providers |targets| based on the boolean
   // type |doh|.
   void SetServers(const std::vector<std::string>& targets, bool doh);
+
+  // CommitQuery updates |sock_fd| state based on its DNS query data, appends
+  // the |sock_fd| to |sock_fds_|, and initiates a DNS request through
+  // `Resolve(...)`.
+  void CommitQuery(std::unique_ptr<SocketFd> sock_fd);
 
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   bool ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh);
@@ -324,6 +352,20 @@ class Resolver {
   // probe state.
   std::map<std::string, std::unique_ptr<ProbeState>> name_servers_;
   std::map<std::string, std::unique_ptr<ProbeState>> doh_providers_;
+
+  // Map of fully qualified domain name (FQDN) of domains to be included or
+  // excluded from using DoH.
+  std::map<std::string, DomainDoHConfig> domain_doh_configs_;
+
+  // List of domain suffixes to be included or excluded from using DoH.
+  // The list is sorted by the number of dots of the domain suffixes.
+  std::vector<std::pair<std::string, DomainDoHConfig>>
+      domain_suffix_doh_configs_;
+
+  // Whether or not the DoH included and excluded domains configurations are
+  // set.
+  bool doh_included_domains_set_ = false;
+  bool doh_excluded_domains_set_ = false;
 
   // Provided for testing only. Boolean to disable probe.
   bool disable_probe_ = false;

@@ -864,4 +864,57 @@ TEST_F(ResolverTest, IsNXDOMAIN_BadResponse) {
       reinterpret_cast<const unsigned char*>(kDnsResponse),
       sizeof(kDnsResponse)));
 }
+
+TEST_F(ResolverTest, BypassDoH_LiteralMatch) {
+  std::vector<std::string> doh_excluded_domains = {"google.com"};
+  resolver_->SetDomainDoHConfigs(/*doh_included_domains=*/{},
+                                 doh_excluded_domains);
+  EXPECT_TRUE(resolver_->BypassDoH("google.com"));
+  EXPECT_FALSE(resolver_->BypassDoH("a.google.com"));
+}
+
+TEST_F(ResolverTest, BypassDoH_SuffixMatch) {
+  std::vector<std::string> doh_excluded_domains = {"*.google.com"};
+  resolver_->SetDomainDoHConfigs(/*doh_included_domains=*/{},
+                                 doh_excluded_domains);
+  EXPECT_FALSE(resolver_->BypassDoH("google.com"));
+  EXPECT_TRUE(resolver_->BypassDoH("a.google.com"));
+}
+
+TEST_F(ResolverTest, BypassDoH_PreferMoreSpecificMatch) {
+  std::vector<std::string> doh_excluded_domains = {"*.exclude",
+                                                   "exclude.include"};
+  std::vector<std::string> doh_included_domains = {"*.include",
+                                                   "include.exclude"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains, doh_excluded_domains);
+  EXPECT_TRUE(resolver_->BypassDoH("test.exclude"));
+  EXPECT_FALSE(resolver_->BypassDoH("test.include"));
+  EXPECT_TRUE(resolver_->BypassDoH("exclude.include"));
+  EXPECT_FALSE(resolver_->BypassDoH("include.exclude"));
+}
+
+TEST_F(ResolverTest, BypassDoH_IncludeOverExclude) {
+  std::vector<std::string> doh_excluded_domains = {"*.google.com",
+                                                   "google.com"};
+  std::vector<std::string> doh_included_domains = {"*.google.com",
+                                                   "google.com"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains, doh_excluded_domains);
+  EXPECT_FALSE(resolver_->BypassDoH("google.com"));
+  EXPECT_FALSE(resolver_->BypassDoH("a.google.com"));
+}
+
+TEST_F(ResolverTest, BypassDoH_DefaultsToInclude) {
+  std::vector<std::string> doh_excluded_domains = {"unused"};
+  resolver_->SetDomainDoHConfigs(/*doh_included_domains=*/{},
+                                 doh_excluded_domains);
+  EXPECT_FALSE(resolver_->BypassDoH("google.com"));
+}
+
+TEST_F(ResolverTest, BypassDoH_ExcludeNotIncludedDomains) {
+  std::vector<std::string> doh_included_domains = {"google.com"};
+  resolver_->SetDomainDoHConfigs(doh_included_domains,
+                                 /*doh_excluded_domains=*/{});
+  EXPECT_TRUE(resolver_->BypassDoH("test.com"));
+  EXPECT_FALSE(resolver_->BypassDoH("google.com"));
+}
 }  // namespace dns_proxy

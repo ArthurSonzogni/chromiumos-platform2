@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <string_view>
 #include <utility>
 
 #include <base/containers/contains.h>
@@ -18,6 +19,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <chromeos/net-base/ip_address.h>
@@ -154,6 +156,7 @@ Resolver::SocketFd::SocketFd(int type, int fd, size_t buf_size)
       len(0),
       num_retries(0),
       num_active_queries(0),
+      bypass_doh(false),
       id(NextId()) {
   buf.resize(buf_size > kMaxDNSBufSize ? kMaxDNSBufSize : buf_size);
   msg = buf.data();
@@ -681,6 +684,66 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
   }
 }
 
+void Resolver::SetDomainDoHConfigs(
+    const std::vector<std::string>& doh_included_domains,
+    const std::vector<std::string>& doh_excluded_domains) {
+  domain_doh_configs_.clear();
+  domain_suffix_doh_configs_.clear();
+  doh_included_domains_set_ = !doh_included_domains.empty();
+  doh_excluded_domains_set_ = !doh_excluded_domains.empty();
+
+  // Only try to match domains when any of the list is not empty.
+  if (!doh_included_domains_set_ && !doh_excluded_domains_set_) {
+    return;
+  }
+
+  // Temporarily store the include and exclude domains in a single list.
+  std::vector<std::pair<std::string_view, DomainDoHConfig>> domain_doh_configs;
+  for (const auto& domain : doh_excluded_domains) {
+    domain_doh_configs.push_back(std::pair<std::string_view, DomainDoHConfig>(
+        domain, DomainDoHConfig::kExcluded));
+  }
+  for (const auto& domain : doh_included_domains) {
+    domain_doh_configs.push_back(std::pair<std::string_view, DomainDoHConfig>(
+        domain, DomainDoHConfig::kIncluded));
+  }
+
+  // Separate DoH bypass domains full match and suffix match.
+  for (auto& [domain, config] : domain_doh_configs) {
+    if (domain.empty()) {
+      LOG(WARNING) << "Invalid domain: empty";
+      continue;
+    }
+    if (domain[0] != '*') {
+      // Prefer included domains over excluded domains. Included domains must
+      // override excluded domains.
+      domain_doh_configs_[std::string(domain)] = config;
+      continue;
+    }
+    domain.remove_prefix(1);
+    domain_suffix_doh_configs_.push_back(
+        std::make_pair(std::string(domain), config));
+  }
+
+  // No need to sort if any of the list is empty. Priority matching is only
+  // necessary when there are conflicting configurations.
+  if (!doh_included_domains_set_ || !doh_excluded_domains_set_) {
+    return;
+  }
+
+  // Sort DoH bypass domain suffixes such that longer match is prioritized.
+  sort(domain_suffix_doh_configs_.begin(), domain_suffix_doh_configs_.end(),
+       [](const auto& a, const auto& b) {
+         int ndots_a = count(a.first.begin(), a.first.end(), '.');
+         int ndots_b = count(b.first.begin(), b.first.end(), '.');
+         if (ndots_a != ndots_b) {
+           return ndots_a > ndots_b;
+         }
+         return a.second == DomainDoHConfig::kIncluded &&
+                b.second == DomainDoHConfig::kExcluded;
+       });
+}
+
 std::unique_ptr<Resolver::SocketFd> Resolver::PopPendingSocketFd(int fd) {
   auto it = pending_sock_fds_.find(fd);
   if (it != pending_sock_fds_.end()) {
@@ -742,9 +805,7 @@ void Resolver::OnDNSQuery(int fd, int type) {
 void Resolver::HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd) {
   // Handle DNS query over UDP.
   if (sock_fd->type == SOCK_DGRAM) {
-    const auto& sock_fd_it =
-        sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
-    Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
+    CommitQuery(std::move(sock_fd));
     return;
   }
 
@@ -778,13 +839,25 @@ void Resolver::HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd) {
     }
 
     // Start the DNS query for a complete DNS query data.
-    const auto& sock_fd_it =
-        sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
-    Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
+    CommitQuery(std::move(sock_fd));
 
     // Process additional query data.
     sock_fd = std::move(tmp_sock_fd);
   }
+}
+
+void Resolver::CommitQuery(std::unique_ptr<SocketFd> sock_fd) {
+  if (doh_included_domains_set_ || doh_excluded_domains_set_) {
+    std::optional<std::string> domain =
+        GetDNSQuestionName(sock_fd->get_message(), sock_fd->get_length());
+    if (domain) {
+      sock_fd->bypass_doh = BypassDoH(*domain);
+    }
+  }
+
+  const auto& sock_fd_it =
+      sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
+  Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
 }
 
 bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
@@ -943,14 +1016,14 @@ void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
     return;
   }
 
-  if (doh_enabled_ && !fallback) {
+  if (doh_enabled_ && !fallback && !sock_fd->bypass_doh) {
     sock_fd->timer.StartResolve(true);
     if (ResolveDNS(sock_fd, /*doh=*/true))
       return;
 
     sock_fd->timer.StopResolve(false);
   }
-  if (!always_on_doh_) {
+  if (!always_on_doh_ || sock_fd->bypass_doh) {
     sock_fd->timer.StartResolve();
     if (ResolveDNS(sock_fd, /*doh=*/false))
       return;
@@ -967,6 +1040,40 @@ void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
 
   // Query is completed, remove SocketFd.
   sock_fds_.erase(sock_fd->id);
+}
+
+bool Resolver::BypassDoH(const std::string& domain) {
+  auto domain_doh_config = GetDomainDoHConfig(domain);
+  // If the domain in the query does not match any entry, check the DoH included
+  // domains list. If set, default to bypass DoH. Otherwise, always prefer to
+  // use DoH.
+  if (!domain_doh_config) {
+    return doh_included_domains_set_;
+  }
+  return domain_doh_config == DomainDoHConfig::kExcluded;
+}
+
+std::optional<Resolver::DomainDoHConfig> Resolver::GetDomainDoHConfig(
+    const std::string& domain) {
+  // Compare |domain| with the map of FQDNs.
+  auto it = domain_doh_configs_.find(domain);
+  if (it != domain_doh_configs_.end()) {
+    return it->second;
+  }
+  // Compare |domain| with the list of domain suffixes.
+  for (const auto& [suffix, config] : domain_suffix_doh_configs_) {
+    if (domain.ends_with(suffix)) {
+      return config;
+    }
+  }
+  // Domain does not match any configuration.
+  return std::nullopt;
+}
+
+std::optional<std::string> Resolver::GetDNSQuestionName(const char* msg,
+                                                        ssize_t len) {
+  // TODO(jasongustaman): Implement the method.
+  return std::nullopt;
 }
 
 patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
