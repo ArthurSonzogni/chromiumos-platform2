@@ -8,6 +8,10 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_dbus_config",
+    ":install_init",
+    ":install_minijail_conf",
+    ":install_policy",
     ":install_service_manager_policy_config",
     ":odml_console",
     ":odmld",
@@ -102,4 +106,26 @@ executable("odmld") {
 install_config("install_service_manager_policy_config") {
   sources = [ "odmld.jsonc" ]
   install_path = "/etc/mojo/service_manager/policy"
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/odmld.conf" ]
+  install_path = "minijail_conf"
+}
+
+install_config("install_init") {
+  sources = [ "init/odmld.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_policy") {
+  _arch = getenv("ARCH")
+  sources = [ "minijail/odmld-seccomp-${_arch}.policy" ]
+  install_path = "seccomp_policy"
+  outputs = [ "odmld-seccomp.policy" ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.Odml.conf" ]
+  install_path = "dbus_system_d"
 }
