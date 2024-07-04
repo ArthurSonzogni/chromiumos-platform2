@@ -375,10 +375,12 @@ void WiFiService::UpdateKeyManagement() {
   } else if (security_class() == kSecurityClassNone ||
              security_class() == kSecurityClassWep) {
     SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
-  } else if (security_class() == kSecurityClass8021x &&
-             GetEAPKeyManagement().empty()) {
-    SetEAPKeyManagement(std::string(WPASupplicant::kKeyManagementWPAEAP) + " " +
-                        std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
+  } else if (security_class() == kSecurityClass8021x) {
+    if (GetEAPKeyManagement().empty()) {
+      SetEAPKeyManagement(
+          std::string(WPASupplicant::kKeyManagementWPAEAP) + " " +
+          std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
+    }
   } else {
     LOG(ERROR) << "Unsupported security class " << security_class_;
   }
