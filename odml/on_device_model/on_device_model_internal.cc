@@ -14,14 +14,16 @@
 #include "odml/on_device_model/ml/utils.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/on_device_model/public/cpp/on_device_model.h"
+#include "odml/utils/odml_shim_loader.h"
 
 namespace on_device_model {
 
 // static
 base::expected<std::unique_ptr<OnDeviceModel>, mojom::LoadModelResult>
 OnDeviceModelService::CreateModel(raw_ref<MetricsLibraryInterface> metrics,
+                                  raw_ref<odml::OdmlShimLoader> shim_loader,
                                   mojom::LoadModelParamsPtr params) {
-  auto* chrome_ml = ml::ChromeML::Get(metrics);
+  auto* chrome_ml = ml::ChromeML::Get(metrics, shim_loader);
   if (!chrome_ml) {
     return base::unexpected(mojom::LoadModelResult::kFailedToLoadLibrary);
   }
@@ -32,8 +34,9 @@ OnDeviceModelService::CreateModel(raw_ref<MetricsLibraryInterface> metrics,
 
 // static
 mojom::PerformanceClass OnDeviceModelService::GetEstimatedPerformanceClass(
-    raw_ref<MetricsLibraryInterface> metrics) {
-  auto* chrome_ml = ml::ChromeML::Get(metrics);
+    raw_ref<MetricsLibraryInterface> metrics,
+    raw_ref<odml::OdmlShimLoader> shim_loader) {
+  auto* chrome_ml = ml::ChromeML::Get(metrics, shim_loader);
   if (!chrome_ml) {
     return mojom::PerformanceClass::kFailedToLoadLibrary;
   }

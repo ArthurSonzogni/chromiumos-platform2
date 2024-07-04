@@ -4,7 +4,7 @@
 
 #include "odml/on_device_model/ml/chrome_ml.h"
 
-#include <utility>
+#include <string>
 
 #include <base/base_paths.h>
 #include <base/check.h>
@@ -14,15 +14,12 @@
 #include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/memory/ref_counted.h>
-#include <base/native_library.h>
 #include <base/no_destructor.h>
 #include <base/path_service.h>
 #include <base/process/process.h>
 #include <base/synchronization/lock.h>
 #include <build/build_config.h>
 #include <metrics/metrics_library.h>
-
-#include <string_view>
 
 namespace ml {
 
@@ -31,8 +28,6 @@ namespace {
 // Signature of the GetDawnNativeProcs() function which the shared library
 // exports.
 using DawnNativeProcsGetter = const DawnProcTable* (*)();
-
-constexpr std::string_view kChromeMLLibraryName = "odml_shim";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -99,9 +94,8 @@ void RecordCustomCountsHistogram(
 
 ChromeML::ChromeML(raw_ref<MetricsLibraryInterface> metrics,
                    base::PassKey<ChromeML>,
-                   base::ScopedNativeLibrary library,
                    const ChromeMLAPI* api)
-    : library_(std::move(library)), api_(api) {
+    : api_(api) {
   CHECK(api_);
   base::AutoLock lock(*g_metrics_lock);
   CHECK(!g_metrics || g_metrics == &metrics.get());
@@ -120,9 +114,9 @@ ChromeML::~ChromeML() {
 
 // static
 ChromeML* ChromeML::Get(raw_ref<MetricsLibraryInterface> metrics,
-                        const std::optional<std::string>& library_name) {
+                        raw_ref<odml::OdmlShimLoader> shim_loader) {
   static base::NoDestructor<std::unique_ptr<ChromeML>> chrome_ml{
-      Create(metrics, library_name)};
+      Create(metrics, shim_loader)};
   return chrome_ml->get();
 }
 
@@ -130,20 +124,8 @@ ChromeML* ChromeML::Get(raw_ref<MetricsLibraryInterface> metrics,
 DISABLE_CFI_DLSYM
 std::unique_ptr<ChromeML> ChromeML::Create(
     raw_ref<MetricsLibraryInterface> metrics,
-    const std::optional<std::string>& library_name) {
-  base::NativeLibraryLoadError error;
-  base::NativeLibrary library = base::LoadNativeLibrary(
-      base::FilePath(base::GetNativeLibraryName(
-          library_name.value_or(std::string(kChromeMLLibraryName)))),
-      &error);
-  if (!library) {
-    LOG(ERROR) << "Error loading native library: " << error.ToString();
-    return {};
-  }
-
-  base::ScopedNativeLibrary scoped_library(library);
-  auto get_api = reinterpret_cast<ChromeMLAPIGetter>(
-      scoped_library.GetFunctionPointer("GetChromeMLAPI"));
+    raw_ref<odml::OdmlShimLoader> shim_loader) {
+  auto get_api = shim_loader->Get<ChromeMLAPIGetter>("GetChromeMLAPI");
   if (!get_api) {
     LOG(ERROR) << "Unable to resolve GetChromeMLAPI() symbol.";
     return {};
@@ -154,9 +136,7 @@ std::unique_ptr<ChromeML> ChromeML::Create(
     return {};
   }
 
-  auto get_dawn = reinterpret_cast<DawnNativeProcsGetter>(
-      scoped_library.GetFunctionPointer("GetDawnNativeProcs"));
-
+  auto get_dawn = shim_loader->Get<DawnNativeProcsGetter>("GetDawnNativeProcs");
   if (!get_dawn) {
     LOG(ERROR) << "Unable to resolve GetChromeMLAPI() symbol.";
     return {};
@@ -182,8 +162,7 @@ std::unique_ptr<ChromeML> ChromeML::Create(
   if (api->SetFatalErrorNonGpuFn) {
     api->SetFatalErrorNonGpuFn(&FatalErrorFn);
   }
-  return std::make_unique<ChromeML>(metrics, base::PassKey<ChromeML>(),
-                                    std::move(scoped_library), api);
+  return std::make_unique<ChromeML>(metrics, base::PassKey<ChromeML>(), api);
 }
 
 DISABLE_CFI_DLSYM

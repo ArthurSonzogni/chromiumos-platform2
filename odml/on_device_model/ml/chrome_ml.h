@@ -7,15 +7,13 @@
 
 #include <base/memory/raw_ptr.h>
 #include <base/memory/raw_ref.h>
-#include <base/scoped_native_library.h>
 #include <base/types/pass_key.h>
 #include <metrics/metrics_library.h>
 
 #include <memory>
-#include <optional>
-#include <string>
 
 #include "odml/on_device_model/ml/chrome_ml_api.h"
+#include "odml/utils/odml_shim_loader.h"
 
 namespace ml {
 
@@ -27,15 +25,13 @@ class ChromeML {
   // Use Get() to acquire a global instance.
   ChromeML(raw_ref<MetricsLibraryInterface> metrics,
            base::PassKey<ChromeML>,
-           base::ScopedNativeLibrary library,
            const ChromeMLAPI* api);
   ~ChromeML();
 
   // Gets a lazily initialized global instance of ChromeML. May return null
   // if the underlying library could not be loaded.
-  static ChromeML* Get(
-      raw_ref<MetricsLibraryInterface> metrics,
-      const std::optional<std::string>& library_name = std::nullopt);
+  static ChromeML* Get(raw_ref<MetricsLibraryInterface> metrics,
+                       raw_ref<odml::OdmlShimLoader> shim_loader);
 
   // Exposes the raw ChromeMLAPI functions defined by the library.
   const ChromeMLAPI& api() const { return *api_; }
@@ -50,9 +46,8 @@ class ChromeML {
  private:
   static std::unique_ptr<ChromeML> Create(
       raw_ref<MetricsLibraryInterface> metrics,
-      const std::optional<std::string>& library_name);
+      raw_ref<odml::OdmlShimLoader> shim_loader);
 
-  const base::ScopedNativeLibrary library_;
   const raw_ptr<const ChromeMLAPI> api_;
   bool allow_gpu_for_testing_ = false;
 };

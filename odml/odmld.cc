@@ -25,6 +25,7 @@
 #include <memory>
 
 #include "odml/on_device_model/on_device_model_service.h"
+#include "odml/utils/odml_shim_loader_impl.h"
 
 namespace {
 
@@ -34,7 +35,9 @@ class ServiceProviderImpl
   explicit ServiceProviderImpl(
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this), service_impl_(raw_ref(metrics_)) {
+      : shim_loader_(),
+        receiver_(this),
+        service_impl_(raw_ref(metrics_), raw_ref(shim_loader_)) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
@@ -52,6 +55,8 @@ class ServiceProviderImpl
   }
 
   MetricsLibrary metrics_;
+  // The odml_shim loader.
+  odml::OdmlShimLoaderImpl shim_loader_;
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
       receiver_;

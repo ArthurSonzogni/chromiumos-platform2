@@ -4,6 +4,7 @@
 
 #include "odml/on_device_model/on_device_model_service.h"
 
+#include <base/functional/callback.h>
 #include <base/memory/raw_ref.h>
 #include <base/timer/elapsed_timer.h>
 #include <metrics/metrics_library.h>
@@ -341,8 +342,9 @@ void SessionWrapper::ReplayPreviousContext() {
 }  // namespace
 
 OnDeviceModelService::OnDeviceModelService(
-    raw_ref<MetricsLibraryInterface> metrics)
-    : metrics_(metrics) {
+    raw_ref<MetricsLibraryInterface> metrics,
+    raw_ref<odml::OdmlShimLoader> shim_loader)
+    : metrics_(metrics), shim_loader_(shim_loader) {
   platform_model_loader_ =
       std::make_unique<ChromeosPlatformModelLoader>(metrics_, raw_ref(*this));
 }
@@ -355,7 +357,7 @@ void OnDeviceModelService::LoadModel(
     LoadPlatformModelCallback callback) {
   base::ElapsedTimer timer;
   bool support_multiple_sessions = params->support_multiple_sessions;
-  auto model_impl = CreateModel(metrics_, std::move(params));
+  auto model_impl = CreateModel(metrics_, shim_loader_, std::move(params));
   if (!model_impl.has_value()) {
     std::move(callback).Run(model_impl.error());
     return;
@@ -377,6 +379,27 @@ void OnDeviceModelService::LoadPlatformModel(
   if (!platform_model_loader_) {
     LOG(ERROR) << "No valid platform model loader.";
     std::move(callback).Run(mojom::LoadModelResult::kFailedToLoadLibrary);
+    return;
+  }
+
+  if (!shim_loader_->IsShimReady()) {
+    auto split = base::SplitOnceCallback(std::move(callback));
+    base::OnceClosure retry_cb =
+        base::BindOnce(&OnDeviceModelService::LoadPlatformModel,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid),
+                       std::move(model), std::move(split.first));
+    shim_loader_->EnsureShimReady(base::BindOnce(
+        [](LoadPlatformModelCallback callback, base::OnceClosure retry_cb,
+           bool result) {
+          if (!result) {
+            LOG(ERROR) << "Failed to ensure the shim is ready.";
+            std::move(callback).Run(
+                mojom::LoadModelResult::kFailedToLoadLibrary);
+            return;
+          }
+          std::move(retry_cb).Run();
+        },
+        std::move(split.second), std::move(retry_cb)));
     return;
   }
 

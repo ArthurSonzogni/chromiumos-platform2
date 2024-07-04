@@ -73,6 +73,7 @@ source_set("odml") {
     "on_device_model/on_device_model_service.cc",
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
+    "utils/odml_shim_loader_impl.cc",
   ]
   public_deps = [
     ":mojo_bindings_lib",
