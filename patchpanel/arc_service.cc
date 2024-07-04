@@ -164,6 +164,28 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
     success = false;
   }
 
+  // Modules needed to enable interface forwarding between arc0 and tun0 for ARC
+  // VPNs on R-containers.
+  if (!datapath.ModprobeAll({
+          "iptable_nat",
+          "xt_connlimit",
+          "xt_conntrack",
+          "xt_helper",
+          "xt_state",
+          "xt_CONNSECMARK",
+          "xt_CT",
+          "xt_REDIRECT",
+          "nf_conntrack",
+          "nf_conntrack_pptp",
+          "nf_conntrack_netlink",
+          "nfnetlink_cthelper",
+          "nfnetlink_cttimeout",
+      })) {
+    LOG(ERROR) << "One or more required kernel modules failed to load."
+               << " Some Android VPN functionality may be broken.";
+    success = false;
+  }
+
   // This is only needed for CTS (b/27932574).
   if (!SetSysfsOwnerToAndroidRoot(pid, "xt_idletimer")) {
     success = false;
