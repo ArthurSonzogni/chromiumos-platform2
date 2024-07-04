@@ -78,6 +78,7 @@ void RunCaptivePortalRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunCaptivePortal(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseCaptivePortalResult).Then(std::move(callback)));
 }
 

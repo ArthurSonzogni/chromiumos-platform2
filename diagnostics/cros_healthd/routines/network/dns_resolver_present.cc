@@ -77,6 +77,7 @@ void RunDnsResolverPresentRoutine(
     return;
   }
   network_diagnostics_routines->RunDnsResolverPresent(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseDnsResolverPresentResult).Then(std::move(callback)));
 }
 

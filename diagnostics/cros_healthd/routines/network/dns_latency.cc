@@ -73,6 +73,7 @@ void RunDnsLatencyRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunDnsLatency(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseDnsLatencyResult).Then(std::move(callback)));
 }
 

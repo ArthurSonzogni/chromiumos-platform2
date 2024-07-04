@@ -43,75 +43,92 @@ void FakeNetworkDiagnosticsRoutines::GetAllResults(
 }
 
 void FakeNetworkDiagnosticsRoutines::RunLanConnectivity(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunLanConnectivityCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunSignalStrength(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunSignalStrengthCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunGatewayCanBePinged(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunGatewayCanBePingedCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunHasSecureWiFiConnection(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunHasSecureWiFiConnectionCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunDnsResolverPresent(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunDnsResolverPresentCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunDnsLatency(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunDnsLatencyCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunDnsResolution(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunDnsResolutionCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunCaptivePortal(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunCaptivePortalCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunHttpFirewall(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunHttpFirewallCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunHttpsFirewall(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunHttpsFirewallCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunHttpsLatency(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunHttpsLatencyCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunVideoConferencing(
     const std::optional<std::string>& stun_server_hostname,
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunVideoConferencingCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
-void FakeNetworkDiagnosticsRoutines::RunArcHttp(RunArcHttpCallback callback) {
+void FakeNetworkDiagnosticsRoutines::RunArcHttp(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
+    RunArcHttpCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
-void FakeNetworkDiagnosticsRoutines::RunArcPing(RunArcPingCallback callback) {
+void FakeNetworkDiagnosticsRoutines::RunArcPing(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
+    RunArcPingCallback callback) {
   std::move(callback).Run(result_->Clone());
 }
 
 void FakeNetworkDiagnosticsRoutines::RunArcDnsResolution(
+    std::optional<network_diagnostics_ipc::RoutineCallSource> source,
     RunArcDnsResolutionCallback callback) {
   std::move(callback).Run(result_->Clone());
 }

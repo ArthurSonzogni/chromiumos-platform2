@@ -79,6 +79,7 @@ void RunHttpFirewallRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunHttpFirewall(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       mojo::WrapCallbackWithDropHandler(
           base::BindOnce(&ParseHttpFirewallResult).Then(std::move(callback)),
           base::BindOnce(&PrintCallbackDropped)));

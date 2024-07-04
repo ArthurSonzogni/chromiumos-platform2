@@ -82,6 +82,7 @@ void RunGatewayCanBePingedRoutine(
     return;
   }
   network_diagnostics_routines->RunGatewayCanBePinged(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseGatewayCanBePingedResult).Then(std::move(callback)));
 }
 

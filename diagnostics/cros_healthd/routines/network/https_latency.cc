@@ -74,6 +74,7 @@ void RunHttpsLatencyRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunHttpsLatency(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseHttpsLatencyResult).Then(std::move(callback)));
 }
 

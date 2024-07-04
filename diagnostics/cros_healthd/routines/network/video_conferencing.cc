@@ -92,6 +92,7 @@ void RunVideoConferencingRoutine(
   }
   network_diagnostics_routines->RunVideoConferencing(
       stun_server_hostname,
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseVideoConferencingResult).Then(std::move(callback)));
 }
 

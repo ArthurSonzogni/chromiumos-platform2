@@ -68,6 +68,7 @@ void RunSignalStrengthRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunSignalStrength(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseSignalStrengthResult).Then(std::move(callback)));
 }
 

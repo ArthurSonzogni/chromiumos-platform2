@@ -78,6 +78,7 @@ void RunArcDnsResolutionRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunArcDnsResolution(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseArcDnsResolutionResult).Then(std::move(callback)));
 }
 

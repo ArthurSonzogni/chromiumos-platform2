@@ -80,6 +80,7 @@ void RunHasSecureWiFiConnectionRoutine(
     return;
   }
   network_diagnostics_routines->RunHasSecureWiFiConnection(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseHasSecureWiFiConnectionResult)
           .Then(std::move(callback)));
 }

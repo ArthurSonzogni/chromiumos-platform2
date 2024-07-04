@@ -86,6 +86,7 @@ void RunArcPingRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunArcPing(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseArcPingResult).Then(std::move(callback)));
 }
 

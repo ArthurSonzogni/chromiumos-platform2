@@ -67,6 +67,7 @@ void RunLanConnectivityRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunLanConnectivity(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseLanConnectivityResult).Then(std::move(callback)));
 }
 

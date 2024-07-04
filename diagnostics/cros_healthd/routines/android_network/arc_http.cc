@@ -76,6 +76,7 @@ void RunArcHttpRoutine(MojoService* const mojo_service,
     return;
   }
   network_diagnostics_routines->RunArcHttp(
+      network_diagnostics_ipc::RoutineCallSource::kCrosHealthd,
       base::BindOnce(&ParseArcHttpResult).Then(std::move(callback)));
 }
 
