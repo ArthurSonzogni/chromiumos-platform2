@@ -68,8 +68,16 @@ static bool HandleMessage(int severity,
     str = message.c_str() + message_start;
   }
 
-  if (s_log_to_syslog)
-    syslog(severity, "%s", str);
+  if (s_log_to_syslog) {
+    constexpr int kMaxLogSize = 8000;
+    // Truncate the message to prevent the loss of large log messages.
+    // See b/351047463 for details.
+    if (strlen(str) > kMaxLogSize) {
+      syslog(severity, "%.*s [truncated]", kMaxLogSize, str);
+    } else {
+      syslog(severity, "%s", str);
+    }
+  }
   if (s_accumulate)
     s_accumulated.append(str);
   return !s_log_to_stderr && severity != kSyslogCritical;
