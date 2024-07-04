@@ -102,6 +102,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 def main():
     opts = get_parser().parse_args()
+    action: str = opts.action
 
     # Set up logging.
     logging_handlers = [
@@ -121,14 +122,13 @@ def main():
     logging.Formatter.converter = time.gmtime
 
     ehide_daemon = ehide.ehide_daemon.EhideDaemon(
+        action=action,
         approach=ehide.ehide_daemon.Approach.from_str(opts.approach),
         ether_ifname=opts.ether_ifname,
         static_ipv4_cidr=opts.static_ipv4_addr,
         dhclient_dir=opts.dhclient_dir,
         netns_name=opts.netns_name,
     )
-
-    action: str = opts.action
 
     if action == "start":
         ehide_daemon.start()

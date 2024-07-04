@@ -628,6 +628,7 @@ class EhideDaemon(daemon.Daemon):
 
     def __init__(
         self,
+        action: str,
         approach: Approach,
         ether_ifname: Optional[str],
         static_ipv4_cidr: Optional[str],
@@ -646,6 +647,7 @@ class EhideDaemon(daemon.Daemon):
         and start it again when exiting.
 
         Args:
+            action: The ehide action.
             approach: The approach to hiding Ethernet interface. Can be
                 FORWARDING or SHELL.
             ether_ifname: Manually specified ethernet interface name. If it is
@@ -672,7 +674,7 @@ class EhideDaemon(daemon.Daemon):
         self.dhclient_dir = dhclient_dir
         self.netns_name = netns_name
 
-        if self.get_state() == daemon.State.OFF:
+        if action == "start":
             if ether_ifname is None:
                 ether_ifname = dbus_utils.get_connected_ethernet_interface()
                 if ether_ifname is None:
