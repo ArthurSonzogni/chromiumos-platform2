@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import { AsyncJobQueue } from "./async_job_queue.js";
+
 /**
  * @param {MediaStream} stream
  */
@@ -305,6 +307,31 @@ class CameraApp {
   };
 }
 
+/**
+ * @param {CameraApp} app
+ */
+function registerHotkeys(app) {
+  /**
+   * @param {string} key
+   */
+  const handleHotkey = async (key) => {
+    if (key === "p") {
+      if (app.isPlaying()) {
+        app.stop();
+      } else {
+        await app.start();
+      }
+    }
+  };
+
+  // Only process the next hotkey event if the previous one is finished to avoid
+  // race conditions.
+  const queue = new AsyncJobQueue("drop");
+  document.addEventListener("keydown", (event) => {
+    queue.push(() => handleHotkey(event.key));
+  });
+}
+
 async function init() {
   const turboStat = new TurboStat();
   turboStat.start();
@@ -312,6 +339,8 @@ async function init() {
   const app = new CameraApp();
   await app.init();
   await app.start();
+
+  registerHotkeys(app);
 }
 
 init();
