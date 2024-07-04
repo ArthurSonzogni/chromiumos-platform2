@@ -111,7 +111,6 @@ def CheckSubdirs():
     # Legacy projects that don't have a README.md file.
     # Someone should write some docs :D.
     LEGACYLIST = (
-        "attestation",  # TODO(b/262375413)
         "avtest_label_detect",
         "cros-disks",  # TODO(b/262376624)
         "image-burner",
