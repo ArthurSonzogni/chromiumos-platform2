@@ -40,6 +40,12 @@ class DlcClientImpl : public cros::DlcClient {
 
   ~DlcClientImpl() override {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    if (bus_) {
+      // Post the shutdown task to the task runner to prevent connection error
+      // for the remaining D-Bus tasks in the queue.
+      task_runner_->PostTask(
+          FROM_HERE, base::BindOnce(&dbus::Bus::ShutdownAndBlock, bus_));
+    }
   }
 
   bool Initialize(
