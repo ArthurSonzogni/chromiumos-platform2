@@ -26,6 +26,7 @@
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/on_device_model/ml/chrome_ml.h"
+#include "odml/on_device_model/ml/session_accessor.h"
 #include "odml/on_device_model/ml/stub_language_detector.h"
 
 using on_device_model::mojom::LoadModelResult;
@@ -111,11 +112,13 @@ class Responder final {
       raw_ref<MetricsLibraryInterface> metrics,
       mojo::PendingRemote<on_device_model::mojom::StreamingResponder> responder,
       scoped_refptr<LanguageDetector> language_detector,
-      base::OnceClosure on_complete)
+      base::OnceClosure on_complete,
+      SessionAccessor::Ptr session)
       : metrics_(metrics),
         responder_(std::move(responder)),
         language_detector_(std::move(language_detector)),
-        on_complete_(std::move(on_complete)) {
+        on_complete_(std::move(on_complete)),
+        session_(std::move(session)) {
     responder_.set_disconnect_handler(
         base::BindOnce(&Responder::Cancel, base::Unretained(this)));
   }
@@ -206,6 +209,7 @@ class Responder final {
     if (!on_complete_.is_null()) {
       std::move(on_complete_).Run();
     }
+    session_ = nullptr;
   }
 
   const raw_ref<MetricsLibraryInterface> metrics_;
@@ -216,6 +220,7 @@ class Responder final {
   const scoped_refptr<LanguageDetector> language_detector_;
   ChromeMLCancelFn cancel_;
   base::OnceClosure on_complete_;
+  SessionAccessor::Ptr session_;
   base::WeakPtrFactory<Responder> weak_ptr_factory_{this};
 };
 
@@ -295,15 +300,21 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
   SessionImpl(raw_ref<MetricsLibraryInterface> metrics,
               const ChromeML& chrome_ml,
               ChromeMLModel model,
+              SessionAccessor::Ptr session,
               uint32_t max_tokens,
               scoped_refptr<LanguageDetector> language_detector,
               std::optional<uint32_t> adaptation_id)
       : metrics_(metrics),
         chrome_ml_(chrome_ml),
         model_(model),
+        session_(std::move(session)),
         max_tokens_(max_tokens),
         language_detector_(std::move(language_detector)),
-        adaptation_id_(adaptation_id) {}
+        adaptation_id_(adaptation_id) {
+    if (session_) {
+      empty_session_ = session_->Clone();
+    }
+  }
   ~SessionImpl() override = default;
 
   SessionImpl(const SessionImpl&) = delete;
@@ -318,23 +329,31 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
         metrics_, std::move(client),
         base::BindOnce(&SessionImpl::RemoveContext, base::Unretained(this)),
         std::move(on_complete));
+    input->max_tokens =
+        std::min(input->max_tokens.value_or(max_tokens_), max_tokens_);
+    input->top_k = GetTopK(input->top_k);
+    input->temperature = GetTemperature(input->temperature);
     ChromeMLContextSavedFn context_saved_fn =
         context_holder->CreateContextSavedFn();
-    ChromeMLExecuteOptions options{
-        .prompt = input->text.c_str(),
-        .context_mode = GetContextMode(*input) | ContextMode::kSave,
-        .max_tokens =
-            std::min(input->max_tokens.value_or(max_tokens_), max_tokens_),
-        .token_offset = input->token_offset.value_or(0),
-        .context_saved_fn = &context_saved_fn,
-        .top_k = GetTopK(input->top_k),
-        .temperature = GetTemperature(input->temperature),
-    };
-    if (adaptation_id_) {
-      options.adaptation_id = &adaptation_id_.value();
+    if (session_) {
+      *context_holder->GetCancelFn() =
+          session_->Execute(std::move(input), nullptr, context_saved_fn);
+    } else {
+      ChromeMLExecuteOptions options{
+          .prompt = input->text.c_str(),
+          .context_mode = GetContextMode(*input) | ContextMode::kSave,
+          .max_tokens = *input->max_tokens,
+          .token_offset = input->token_offset.value_or(0),
+          .context_saved_fn = &context_saved_fn,
+          .top_k = input->top_k.value_or(1),
+          .temperature = input->temperature.value_or(0),
+      };
+      if (adaptation_id_) {
+        options.adaptation_id = &adaptation_id_.value();
+      }
+      chrome_ml_->api().ExecuteModel(model_, &options,
+                                     context_holder->GetCancelFn());
     }
-    chrome_ml_->api().ExecuteModel(model_, &options,
-                                   context_holder->GetCancelFn());
     context_holders_.insert(std::move(context_holder));
     // Once we have added context, it should not be cleared.
     clear_context_ = false;
@@ -345,38 +364,68 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
       on_device_model::mojom::InputOptionsPtr input,
       mojo::PendingRemote<on_device_model::mojom::StreamingResponder> response,
       base::OnceClosure on_complete) override {
-    responder_ =
-        std::make_unique<Responder>(metrics_, std::move(response),
-                                    language_detector_, std::move(on_complete));
+    auto cloned = SessionAccessor::Empty();
+    SessionAccessor* cloned_raw = nullptr;
+    if (session_) {
+      if (input->ignore_context) {
+        cloned = empty_session_->Clone();
+      } else {
+        cloned = session_->Clone();
+      }
+      cloned_raw = cloned.get();
+    }
+    responder_ = std::make_unique<Responder>(
+        metrics_, std::move(response), language_detector_,
+        std::move(on_complete), std::move(cloned));
     ChromeMLExecutionOutputFn output_fn = responder_->CreateOutputFn();
-    int32_t ts_interval = -1;
-    if (input->safety_interval.has_value()) {
-      ts_interval =
-          base::saturated_cast<int32_t>(input->safety_interval.value());
+    input->max_tokens =
+        std::min(input->max_tokens.value_or(max_tokens_), max_tokens_);
+    input->top_k = GetTopK(input->top_k);
+    input->temperature = GetTemperature(input->temperature);
+    if (cloned_raw) {
+      *responder_->GetCancelFn() =
+          cloned_raw->Execute(std::move(input), output_fn, nullptr);
+    } else {
+      int32_t ts_interval = -1;
+      if (input->safety_interval.has_value()) {
+        ts_interval =
+            base::saturated_cast<int32_t>(input->safety_interval.value());
+      }
+      ChromeMLExecuteOptions options{
+          .prompt = input->text.c_str(),
+          .context_mode = GetContextMode(*input),
+          .max_tokens = *input->max_tokens,
+          .token_offset = input->token_offset.value_or(0),
+          .max_output_tokens = input->max_output_tokens.value_or(0),
+          .score_ts_interval = ts_interval,
+          .execution_output_fn = &output_fn,
+          .top_k = input->top_k.value_or(1),
+          .temperature = input->temperature.value_or(0),
+      };
+      if (adaptation_id_) {
+        options.adaptation_id = &adaptation_id_.value();
+      }
+      chrome_ml_->api().ExecuteModel(model_, &options,
+                                     responder_->GetCancelFn());
     }
-    ChromeMLExecuteOptions options{
-        .prompt = input->text.c_str(),
-        .context_mode = GetContextMode(*input),
-        .max_tokens =
-            std::min(input->max_tokens.value_or(max_tokens_), max_tokens_),
-        .token_offset = input->token_offset.value_or(0),
-        .max_output_tokens = input->max_output_tokens.value_or(0),
-        .score_ts_interval = ts_interval,
-        .execution_output_fn = &output_fn,
-        .top_k = GetTopK(input->top_k),
-        .temperature = GetTemperature(input->temperature),
-    };
-    if (adaptation_id_) {
-      options.adaptation_id = &adaptation_id_.value();
-    }
-    chrome_ml_->api().ExecuteModel(model_, &options, responder_->GetCancelFn());
   }
 
-  void ClearContext() override { clear_context_ = true; }
+  bool ClearContext() override {
+    if (session_) {
+      return false;
+    }
+    clear_context_ = true;
+    return true;
+  }
 
   DISABLE_CFI_DLSYM
   void SizeInTokens(const std::string& text,
                     base::OnceCallback<void(uint32_t)> callback) override {
+    if (session_) {
+      session_->SizeInTokens(text, ConvertCallbackToFn(std::move(callback)));
+      return;
+    }
+
     if (!chrome_ml_->api().SizeInTokens) {
       std::move(callback).Run(0);
       return;
@@ -389,6 +438,11 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
   DISABLE_CFI_DLSYM
   void Score(const std::string& text,
              base::OnceCallback<void(float)> callback) override {
+    if (session_) {
+      session_->Score(text, ConvertCallbackToFn(std::move(callback)));
+      return;
+    }
+
     if (!chrome_ml_->api().Score) {
       std::move(callback).Run(0);
       return;
@@ -418,12 +472,19 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
   bool clear_context_ = true;
   const raw_ref<const ChromeML> chrome_ml_;
   ChromeMLModel model_;
+  SessionAccessor::Ptr session_;
+  SessionAccessor::Ptr empty_session_ = SessionAccessor::Empty();
   const uint32_t max_tokens_;
   const scoped_refptr<LanguageDetector> language_detector_;
   std::unique_ptr<Responder> responder_;
   std::set<std::unique_ptr<ContextHolder>> context_holders_;
   std::optional<uint32_t> adaptation_id_;
 };
+
+DISABLE_CFI_DLSYM
+void DestroyModel(ChromeMLModel model) {
+  ChromeML::Get()->api().DestroyModel(model);
+}
 
 }  // namespace
 
@@ -433,12 +494,15 @@ OnDeviceModelExecutor::OnDeviceModelExecutor(
     const ChromeML& chrome_ml)
     : metrics_(metrics),
       chrome_ml_(chrome_ml),
-      task_runner_(base::SequencedTaskRunner::GetCurrentDefault()) {}
+      task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
+      model_task_runner_(
+          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})) {}
 
 DISABLE_CFI_DLSYM
 OnDeviceModelExecutor::~OnDeviceModelExecutor() {
   if (model_ != 0) {
-    chrome_ml_->api().DestroyModel(model_);
+    model_task_runner_->PostTask(FROM_HERE,
+                                 base::BindOnce(&DestroyModel, model_));
   }
 }
 
@@ -460,9 +524,15 @@ OnDeviceModelExecutor::CreateWithResult(
 
 std::unique_ptr<on_device_model::OnDeviceModel::Session>
 OnDeviceModelExecutor::CreateSession(std::optional<uint32_t> adaptation_id) {
-  return std::make_unique<SessionImpl>(metrics_, *chrome_ml_, model_,
-                                       max_tokens_ - kReserveTokensForSafety,
-                                       language_detector_, adaptation_id);
+  auto session = SessionAccessor::Empty();
+  if (chrome_ml_->api().CreateSession) {
+    auto it = base_sessions_.find(adaptation_id);
+    CHECK(it != base_sessions_.end());
+    session = it->second->Clone();
+  }
+  return std::make_unique<SessionImpl>(
+      metrics_, *chrome_ml_, model_, std::move(session),
+      max_tokens_ - kReserveTokensForSafety, language_detector_, adaptation_id);
 }
 
 on_device_model::mojom::LanguageDetectionResultPtr
@@ -505,19 +575,26 @@ on_device_model::mojom::SafetyInfoPtr OnDeviceModelExecutor::ClassifyTextSafety(
 DISABLE_CFI_DLSYM
 base::expected<uint32_t, LoadModelResult> OnDeviceModelExecutor::LoadAdaptation(
     on_device_model::mojom::LoadAdaptationParamsPtr params) {
+  on_device_model::AdaptationAssets assets = std::move(params->assets);
+  if (chrome_ml_->api().CreateSession) {
+    static uint32_t next_id = 0;
+    base_sessions_.insert(
+        {next_id, SessionAccessor::Create(model_task_runner_, model_,
+                                          std::move(assets.weights))});
+    return base::ok(next_id++);
+  }
+
   if (!chrome_ml_->api().CreateAdaptation) {
     return base::unexpected(LoadModelResult::kFailedToLoadLibrary);
   }
 
-  on_device_model::AdaptationAssets assets = std::move(params->assets);
-
-  uint32_t id;
   ChromeMLModelData data = {
       .weights_file = assets.weights.TakePlatformFile(),
   };
   ChromeMLAdaptationDescriptor descriptor = {
       .model_data = &data,
   };
+  uint32_t id;
   if (!chrome_ml_->api().CreateAdaptation(model_, &descriptor, id)) {
     return base::unexpected(LoadModelResult::kFailedToLoadLibrary);
   }
@@ -575,9 +652,19 @@ LoadModelResult OnDeviceModelExecutor::Init(
     descriptor.ts_spm_data = ts_sp_model_.data();
     descriptor.ts_spm_size = ts_sp_model_.length();
   }
-  model_ = chrome_ml_->api().CreateModel(&descriptor,
-                                         reinterpret_cast<uintptr_t>(this),
-                                         OnDeviceModelExecutor::Schedule);
+  if (chrome_ml_->api().SessionCreateModel) {
+    model_ = chrome_ml_->api().SessionCreateModel(
+        &descriptor, reinterpret_cast<uintptr_t>(this),
+        OnDeviceModelExecutor::Schedule);
+    if (model_) {
+      base_sessions_.insert(
+          {std::nullopt, SessionAccessor::Create(model_task_runner_, model_)});
+    }
+  } else {
+    model_ = chrome_ml_->api().CreateModel(&descriptor,
+                                           reinterpret_cast<uintptr_t>(this),
+                                           OnDeviceModelExecutor::Schedule);
+  }
   return (model_ != 0) ? LoadModelResult::kSuccess
                        : LoadModelResult::kFailedToLoadLibrary;
 }

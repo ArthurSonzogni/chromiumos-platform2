@@ -4,6 +4,7 @@
 
 #include "odml/on_device_model/ml/chrome_ml.h"
 
+#include <atomic>
 #include <string>
 
 #include <base/base_paths.h>
@@ -24,6 +25,9 @@
 namespace ml {
 
 namespace {
+
+// The global ChromeML pointer.
+std::atomic<ChromeML*> g_chrome_ml;
 
 // Signature of the GetDawnNativeProcs() function which the shared library
 // exports.
@@ -117,7 +121,18 @@ ChromeML* ChromeML::Get(raw_ref<MetricsLibraryInterface> metrics,
                         raw_ref<odml::OdmlShimLoader> shim_loader) {
   static base::NoDestructor<std::unique_ptr<ChromeML>> chrome_ml{
       Create(metrics, shim_loader)};
+
+  // Init the global chrome_ml pointer.
+  [[maybe_unused]] static bool init = []() {
+    g_chrome_ml.store(chrome_ml->get());
+    return true;
+  }();
+
   return chrome_ml->get();
+}
+
+ChromeML* ChromeML::Get() {
+  return g_chrome_ml;
 }
 
 // static

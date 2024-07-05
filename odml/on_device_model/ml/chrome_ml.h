@@ -33,6 +33,10 @@ class ChromeML {
   static ChromeML* Get(raw_ref<MetricsLibraryInterface> metrics,
                        raw_ref<odml::OdmlShimLoader> shim_loader);
 
+  // Gets the  initialized global instance of ChromeML.
+  // May return null if the underlying library is not initialized.
+  static ChromeML* Get();
+
   // Exposes the raw ChromeMLAPI functions defined by the library.
   const ChromeMLAPI& api() const { return *api_; }
 
