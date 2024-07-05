@@ -11,7 +11,6 @@
 // NOTE: This mojom exists in two places and must be kept in sync:
 //       Chromium: chromeos/services/network_health/public/mojom/
 //       ChromeOS: src/platform2/diagnostics/mojom/external/
-
 module chromeos.network_health.mojom;
 
 import "diagnostics/mojom/external/network_health_types.mojom";
@@ -23,7 +22,7 @@ import "diagnostics/mojom/external/network_health_types.mojom";
 // A network guid uniquely identifies a network. For more information, see the
 // definition of "NetworkStateProperties" at
 // //chromeos/services/network_config/public/mojom/cros_network_config.mojom.
-// Next Method ID: 2
+// Next Method ID: 3
 [Stable]
 interface NetworkEventsObserver {
   // Fired when a network’s connection state changes.
@@ -33,12 +32,16 @@ interface NetworkEventsObserver {
   // percent. See the definition of |signal_strength| under the "Network"
   // struct.
   OnSignalStrengthChanged@1(string guid, UInt32Value signal_strength);
+
+  // Fired when the list of networks changes.
+  [MinVersion=4]
+  OnNetworkListChanged@2(array<Network> networks);
 };
 
 // Interface for retrieving aggregated information about the current network
 // state and health. This services is implemented in the Ash-Chrome browser
 // process.
-// Next Method ID: 3
+// Next Method ID: 4
 [Stable]
 interface NetworkHealthService {
   // Adds an observer to be notified on network events. The caller can remove
@@ -54,4 +57,10 @@ interface NetworkHealthService {
   // This is currently the same information provided by GetNetworkList. More
   // information will be added over time.
   GetHealthSnapshot@2() => (NetworkHealthState state);
+
+  // Returns the list of network guids we want traffic counters for. This
+  // includes currently active networks as well as networks that were active
+  // within the last hour.
+  [MinVersion=2]
+  GetRecentlyActiveNetworks@3() => (array<string> guids);
 };

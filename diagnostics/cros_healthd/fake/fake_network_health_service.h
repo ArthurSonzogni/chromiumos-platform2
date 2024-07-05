@@ -39,6 +39,8 @@ class FakeNetworkHealthService
                        observer) override;
   void GetNetworkList(GetNetworkListCallback callback) override;
   void GetHealthSnapshot(GetHealthSnapshotCallback callback) override;
+  void GetRecentlyActiveNetworks(
+      GetRecentlyActiveNetworksCallback callback) override;
 
   chromeos::network_health::mojom::NetworkHealthStatePtr network_health_state_;
 

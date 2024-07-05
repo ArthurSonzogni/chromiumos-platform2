@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -21,6 +22,7 @@ const char kHumanReadableOnConnectionStateChangedEvent[] =
     "Connection state changed";
 const char kHumanReadableOnSignalStrengthChangedEvent[] =
     "Signal strength changed";
+const char kHumanReadableOnNetworkListChangedEvent[] = "Network list changed";
 
 NetworkSubscriber::NetworkSubscriber(
     mojo::PendingReceiver<
@@ -48,6 +50,12 @@ void NetworkSubscriber::OnSignalStrengthChanged(
             << kHumanReadableOnSignalStrengthChangedEvent
             << ", Network guid: " << guid << ", "
             << "Signal strength: " << signal_strength->value << "\n";
+}
+
+void NetworkSubscriber::OnNetworkListChanged(
+    std::vector<chromeos::network_health::mojom::NetworkPtr> networks) {
+  std::cout << "Network event received: "
+            << kHumanReadableOnNetworkListChangedEvent;
 }
 
 }  // namespace diagnostics

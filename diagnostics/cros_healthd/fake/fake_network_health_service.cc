@@ -39,4 +39,9 @@ void FakeNetworkHealthService::GetHealthSnapshot(
   std::move(callback).Run(network_health_state_.Clone());
 }
 
+void FakeNetworkHealthService::GetRecentlyActiveNetworks(
+    GetRecentlyActiveNetworksCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

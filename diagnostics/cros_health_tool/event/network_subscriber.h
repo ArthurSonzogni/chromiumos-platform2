@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTH_TOOL_EVENT_NETWORK_SUBSCRIBER_H_
 
 #include <string>
+#include <vector>
 
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -38,6 +39,9 @@ class NetworkSubscriber final
   void OnSignalStrengthChanged(
       const std::string& guid,
       chromeos::network_health::mojom::UInt32ValuePtr signal_strength) override;
+  void OnNetworkListChanged(
+      std::vector<chromeos::network_health::mojom::NetworkPtr> networks)
+      override;
 
  private:
   // Allows the remote cros_healthd to call NetworkSubscriber's
