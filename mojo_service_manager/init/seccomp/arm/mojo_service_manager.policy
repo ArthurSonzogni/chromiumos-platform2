@@ -30,6 +30,7 @@ exit_group: 1
 fallocate: 1
 fcntl64: 1
 fcntl: 1
+fstat: 1
 fstatat64: 1
 fstatfs64: 1
 fstatfs: 1
