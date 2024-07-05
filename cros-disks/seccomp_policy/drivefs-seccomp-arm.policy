@@ -40,6 +40,7 @@ fcntl64: 1
 fdatasync: 1
 fremovexattr: 1
 fsetxattr: 1
+fstat: 1
 fstat64: 1
 fstatat64: 1
 fstatfs: 1
