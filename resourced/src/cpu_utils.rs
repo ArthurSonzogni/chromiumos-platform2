@@ -5,8 +5,6 @@
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::read_to_string;
-use std::io::BufRead;
-use std::io::BufReader;
 use std::path::Path;
 use std::slice::Iter;
 use std::str::FromStr;
@@ -15,7 +13,6 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
-use log::info;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -25,7 +22,6 @@ pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 pub const CPU_ONLINE_PATH: &str = "sys/devices/system/cpu/online";
 const ROOT_CPUSET_CPUS_PATH: &str = "sys/fs/cgroup/cpuset/cpus";
 const ISOLATED_CPUSET_PATH: &str = "sys/devices/system/cpu/isolated";
-const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HotplugCpuAction {
@@ -129,19 +125,16 @@ impl Cpuset {
     }
 
     pub fn little_cores(root: &Path) -> Result<Self> {
-        if is_big_little_supported(root)? {
-            for property in [
-                "cpu_capacity",
-                "cpufreq/cpuinfo_max_freq",
-                "acpi_cppc/highest_perf",
-            ] {
-                if let Some(cpuset) = get_cpus_with_min_property(root, property)? {
-                    return Ok(cpuset.difference(
-                        &Self::isolated_cores(root).context("failed to compute little cores")?,
-                    ));
-                }
+        for property in [
+            "cpu_capacity",
+            "cpufreq/cpuinfo_max_freq",
+            "acpi_cppc/highest_perf",
+        ] {
+            if let Some(cpuset) = get_cpus_with_min_property(root, property)? {
+                return Ok(cpuset.difference(
+                    &Self::isolated_cores(root).context("failed to compute little cores")?,
+                ));
             }
-            info!("not able to determine the little cores while big/little is supported.");
         }
 
         Self::all_cores(root)
@@ -199,6 +192,8 @@ impl Display for Cpuset {
 }
 
 /// Returns [Cpuset] containing cpus with the minimal value of the property.
+/// If there is more than 2 property values, this returns the cpus with
+/// two smallest values of the property.
 ///
 /// Returns [None] if:
 ///
@@ -246,35 +241,28 @@ fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<Option<Cpus
             Ok((cpu_number, read_from_file(&property_path)?))
         })
         .collect::<Result<Vec<(usize, u64)>, anyhow::Error>>()?;
-    let min_property = *cpu_properties
-        .iter()
-        .map(|(_, prop)| prop)
-        .min()
-        .context("cpu properties vector is empty")?;
+    let mut properties: Vec<u64> = cpu_properties.iter().map(|(_, prop)| *prop).collect();
+    properties.sort();
+    properties.dedup();
 
-    let num_all_cpus = cpu_properties.len();
+    if properties.len() <= 1 {
+        return Ok(None);
+    }
+    // If the map has more than 2 attribute values, we consider the cpus with
+    // two smallest capacities / freqs as small cores.
+    let small_core_limit = if properties.len() > 2 {
+        properties[1]
+    } else {
+        properties[0]
+    };
 
     let cpuset = cpu_properties
         .into_iter()
-        .filter(|(_, prop)| *prop == min_property)
+        .filter(|(_, prop)| *prop <= small_core_limit)
         .map(|(cpu, _)| cpu)
         .collect::<Cpuset>();
 
-    if cpuset.len() == num_all_cpus {
-        return Ok(None);
-    }
-
     Ok(Some(cpuset))
-}
-
-fn is_big_little_supported(root: &Path) -> Result<bool> {
-    let reader = BufReader::new(std::fs::File::open(root.join(UI_USE_FLAGS_PATH))?);
-    for line in reader.lines() {
-        if line? == "big_little" {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 pub fn write_to_cpu_policy_patterns(pattern: &str, new_value: &str) -> Result<()> {
@@ -438,12 +426,10 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
             update_cpu_online_status(root, &all_cores, true)?;
         }
         HotplugCpuAction::OfflineSmallCore { min_active_threads } => {
-            if is_big_little_supported(root)? {
-                let little_cores = Cpuset::little_cores(root)?;
-                let all_cores = Cpuset::all_cores(root)?;
-                if all_cores.len() - little_cores.len() >= min_active_threads as usize {
-                    update_cpu_online_status(root, &little_cores, false)?;
-                }
+            let little_cores = Cpuset::little_cores(root)?;
+            let all_cores = Cpuset::all_cores(root)?;
+            if all_cores.len() - little_cores.len() >= min_active_threads as usize {
+                update_cpu_online_status(root, &little_cores, false)?;
             }
         }
         HotplugCpuAction::OfflineSMT { min_active_threads } => {
@@ -566,23 +552,12 @@ mod tests {
         }
     }
 
-    fn update_big_little_support(root_path: &Path, supported: bool) {
-        let flag_path = root_path.join(UI_USE_FLAGS_PATH);
-        create_dir_all(flag_path.parent().unwrap()).unwrap();
-        if supported {
-            std::fs::write(flag_path, "big_little").unwrap();
-        } else {
-            std::fs::write(flag_path, "").unwrap();
-        }
-    }
-
     #[test]
     fn test_cpuset_little_cores() {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
 
         std::fs::write(root_cpus_path, "0-3").unwrap();
-        update_big_little_support(&root_path, true);
 
         // Even if property files are not found, fallbacks to little cores.
         assert_eq!(
@@ -618,10 +593,16 @@ mod tests {
             Cpuset(vec![0, 2])
         );
 
-        update_big_little_support(&root_path, false);
+        // Pick the two smallest attribute values.
+        create_cpus_property(&root_path, "cpu_capacity", &[1, 2, 10, 2]);
         assert_eq!(
             Cpuset::little_cores(&root_path).unwrap(),
-            Cpuset(vec![0, 1, 2, 3])
+            Cpuset(vec![0, 1, 3])
+        );
+        create_cpus_property(&root_path, "cpu_capacity", &[4, 2, 10, 1]);
+        assert_eq!(
+            Cpuset::little_cores(&root_path).unwrap(),
+            Cpuset(vec![1, 3])
         );
     }
 
