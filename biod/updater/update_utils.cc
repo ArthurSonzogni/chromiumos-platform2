@@ -14,7 +14,6 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/vcsid.h>
-#include <cros_config/cros_config_interface.h>
 
 #include "biod/biod_config.h"
 
@@ -47,22 +46,14 @@ bool UpdateDisallowed(const BiodSystem& system) {
   return false;
 }
 
-FindFirmwareFileStatus FindFirmwareFile(
-    const base::FilePath& directory,
-    brillo::CrosConfigInterface* cros_config,
-    base::FilePath* file) {
-  std::optional<std::string> board_name = biod::FingerprintBoard(cros_config);
-  if (!board_name.has_value() || board_name->empty()) {
-    LOG(ERROR) << "Fingerprint board name is unavailable";
-    return FindFirmwareFileStatus::kBoardUnavailable;
-  }
-  LOG(INFO) << "Identified fingerprint board name as '" << *board_name << "'.";
-
+FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
+                                        const std::string& board_name,
+                                        base::FilePath* file) {
   if (!base::DirectoryExists(directory)) {
     return FindFirmwareFileStatus::kNoDirectory;
   }
 
-  std::string glob(*board_name + std::string(kFirmwareGlobSuffix));
+  std::string glob(board_name + std::string(kFirmwareGlobSuffix));
   base::FileEnumerator fw_bin_list(directory, false,
                                    base::FileEnumerator::FileType::FILES, glob);
 
@@ -98,8 +89,6 @@ std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status) {
       return "Firmware file not found.";
     case FindFirmwareFileStatus::kMultipleFiles:
       return "More than one firmware file was found.";
-    case FindFirmwareFileStatus::kBoardUnavailable:
-      return "Fingerprint board name is not available.";
   }
 
   NOTREACHED();

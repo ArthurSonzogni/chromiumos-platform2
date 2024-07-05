@@ -124,17 +124,19 @@ int main(int argc, char* argv[]) {
     return EXIT_SUCCESS;
   }
 
+  std::optional<std::string> board_name = biod::FingerprintBoard(&cros_config);
+  if (!board_name.has_value() || board_name->empty()) {
+    LOG(ERROR) << "Fingerprint board name unavailable.";
+    return EXIT_FAILURE;
+  }
+  LOG(INFO) << "Identified fingerprint board name as '" << *board_name << "'.";
+
   biod::FirmwareSelector selector((base::FilePath(kBioFwUpdaterDir)));
 
   // Find a firmware file that matches the firmware file pattern
   base::FilePath file;
   auto status = biod::updater::FindFirmwareFile(selector.GetFirmwarePath(),
-                                                &cros_config, &file);
-
-  if (status == FindFirmwareFileStatus::kBoardUnavailable) {
-    LOG(ERROR) << "Fingerprint board name unavailable.";
-    return EXIT_FAILURE;
-  }
+                                                *board_name, &file);
 
   if (status == FindFirmwareFileStatus::kNoDirectory ||
       status == FindFirmwareFileStatus::kFileNotFound) {

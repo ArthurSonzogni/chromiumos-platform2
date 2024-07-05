@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <cros_config/cros_config_interface.h>
 
 #include "biod/biod_system.h"
 
@@ -25,15 +24,13 @@ enum class FindFirmwareFileStatus {
   kNoDirectory,
   kFileNotFound,
   kMultipleFiles,
-  kBoardUnavailable,
 };
 
 // Searches for the externally packaged firmware binary using a glob.
 // The returned firmware has not been validated.
-FindFirmwareFileStatus FindFirmwareFile(
-    const base::FilePath& directory,
-    brillo::CrosConfigInterface* cros_config,
-    base::FilePath* file);
+FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
+                                        const std::string& board_name,
+                                        base::FilePath* file);
 std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status);
 
 }  // namespace updater
