@@ -62,6 +62,8 @@ inline constexpr char kCreateVaultkeyset[] = "CreateVaultKeyset";
 inline constexpr char kGetArcDiskFeatures[] = "GetArcDiskFeatures";
 inline constexpr char kMigrateLegacyFingerprints[] =
     "MigrateLegacyFingerprints";
+inline constexpr char kSetUserDataStorageWriteEnabled[] =
+    "SetUserDataStorageWriteEnabled";
 
 // Methods of the |kCryptohomePkcs11Interface| interface:
 inline constexpr char kPkcs11IsTpmTokenReady[] = "Pkcs11IsTpmTokenReady";
