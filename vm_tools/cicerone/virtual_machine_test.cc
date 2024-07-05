@@ -8,6 +8,7 @@
 #include <base/uuid.h>
 #include <gtest/gtest.h>
 
+#include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include "vm_tools/cicerone/virtual_machine.h"
 
@@ -34,7 +35,7 @@ constexpr char kVmToken[] = "token";
 // Test fixture for actually testing the VirtualMachine functionality.
 class VirtualMachineTest : public ::testing::Test {
  public:
-  VirtualMachineTest() : termina_vm_(1, 2, ""), plugin_vm_(0, 3, kVmToken) {
+  VirtualMachineTest() : termina_vm_(1, 2, "", apps::TERMINA), plugin_vm_(0, 3, kVmToken, apps::PLUGIN_VM) {
     // Disable wait time on the cicerone connection waiting for garcon which
     // doesn't run in tests.
     Container::DisableChannelWaitForTesting();

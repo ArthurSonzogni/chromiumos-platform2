@@ -3869,7 +3869,6 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   request.set_cid(cid);
   request.set_vm_token(std::move(vm_token));
   request.set_pid(pid);
-  // TODO(b/320329723): Add special handling to cicerone if needed
   request.set_vm_type(vm_type);
 
   bus_->GetDBusTaskRunner()->PostTask(

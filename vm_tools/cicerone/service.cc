@@ -1787,7 +1787,8 @@ EmptyMessage Service::NotifyVmStarted(const NotifyVmStartedRequest& request) {
 
   vms_[std::make_pair(request.owner_id(), std::move(request.vm_name()))] =
       std::make_unique<VirtualMachine>(request.cid(), request.pid(),
-                                       std::move(request.vm_token()));
+                                       std::move(request.vm_token()),
+                                       request.vm_type());
   // Only take this as the primary owner ID if this is not a plugin VM.
   if (request.cid() != 0 && (primary_owner_id_.empty() || vms_.empty())) {
     primary_owner_id_ = request.owner_id();

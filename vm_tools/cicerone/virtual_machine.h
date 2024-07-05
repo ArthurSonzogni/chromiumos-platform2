@@ -169,7 +169,10 @@ class VirtualMachine {
   };
 
   // |cid| is nonzero for termina VMs, |vm_token| is non-empty for plugin VMs.
-  VirtualMachine(uint32_t cid, pid_t pid, std::string vm_token);
+  VirtualMachine(uint32_t cid,
+                 pid_t pid,
+                 std::string vm_token,
+                 VmType);
   VirtualMachine(const VirtualMachine&) = delete;
   VirtualMachine& operator=(const VirtualMachine&) = delete;
 

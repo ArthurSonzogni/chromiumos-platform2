@@ -19,6 +19,7 @@
 #include <base/uuid.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
+#include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
@@ -46,12 +47,20 @@ VirtualMachine::VmType DetermineTypeFromCidAndToken(uint32_t cid,
 
 }  // namespace
 
-VirtualMachine::VirtualMachine(uint32_t cid, pid_t pid, std::string vm_token)
+VirtualMachine::VirtualMachine(uint32_t cid,
+                               pid_t pid,
+                               std::string vm_token,
+                               VmType input_vm_type)
     : vsock_cid_(cid),
       pid_(pid),
       vm_token_(std::move(vm_token)),
-      vm_type_(DetermineTypeFromCidAndToken(cid, vm_token_)),
       weak_ptr_factory_(this) {
+  // We currently only guarantee explicit vm_type passing for Baguette VMs
+  if (input_vm_type == apps::BAGUETTE) {
+    vm_type_ = apps::BAGUETTE;
+  } else {
+    vm_type_ = DetermineTypeFromCidAndToken(cid, vm_token_);
+  }
   // CID-less VMs must also be containerless.
   DCHECK(vsock_cid_ != 0 || IsContainerless());
   if (IsContainerless()) {
