@@ -245,17 +245,31 @@ class DlcClientImpl : public cros::DlcClient {
   }
 
   void InvokeSuccessCb(const base::FilePath& dlc_root_path) {
-    if (dlc_root_path_cb_) {
-      std::move(dlc_root_path_cb_).Run(dlc_root_path);
-      error_cb_.Reset();
+    if (!dlc_root_path_cb_) {
+      return;
     }
+
+    error_cb_.Reset();
+    base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb =
+        std::move(dlc_root_path_cb_);
+
+    // Don't use any member function or variable after this line, because the
+    // DlcClient may be destroyed inside the callback.
+    std::move(dlc_root_path_cb).Run(dlc_root_path);
   }
 
   void InvokeErrorCb(const std::string& error_msg) {
-    if (error_cb_) {
-      std::move(error_cb_).Run(error_msg);
-      dlc_root_path_cb_.Reset();
+    if (!error_cb_) {
+      return;
     }
+
+    dlc_root_path_cb_.Reset();
+    base::OnceCallback<void(const std::string&)> error_cb =
+        std::move(error_cb_);
+
+    // Don't use any member function or variable after this line, because the
+    // DlcClient may be destroyed inside the callback.
+    std::move(error_cb).Run(error_msg);
   }
 
   const std::string dlc_id_;
