@@ -4,10 +4,11 @@
 
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 generate_dbus_adaptors("dbus-adaptors") {
-  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+  dbus_service_config = "../dbus_bindings/concierge-dbus-service-config.json"
   dbus_adaptors_out_dir = "include/vm_tools/concierge/dbus_adaptors"
   sources = [ "../dbus_bindings/org.chromium.VmConcierge.xml" ]
 }
@@ -18,10 +19,28 @@ proto_library("protos") {
   sources = [ "${proto_in_dir}/vmm_swap_policy.proto" ]
 }
 
-generate_dbus_proxies("cicerone-proxies") {
-  sources = [ "../dbus_bindings/org.chromium.VmCicerone.xml" ]
-  dbus_service_config = "../dbus_bindings/cicerone-dbus-service-config.json"
-  proxy_output_file = "include/vm_tools/cicerone/dbus-proxies.h"
+generate_dbus_proxies("concierge-proxies") {
+  dbus_service_config = "../dbus_bindings/concierge-dbus-service-config.json"
+  proxy_output_file = "include/vm_tools/concierge/dbus-proxies.h"
+  mock_output_file = "include/vm_tools/concierge/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "vm_tools/concierge/dbus-proxies.h"
+  sources = [ "../dbus_bindings/org.chromium.VmConcierge.xml" ]
+}
+
+generate_pkg_config("libconcierge-client.pc") {
+  name = "libconcierge-client"
+  version = getenv("PV")
+  description = "Concierge client interface library"
+  cflags = [ "-I/usr/include/vm_tools/concierge-client" ]
+  install = true
+}
+
+generate_pkg_config("libconcierge-client-test.pc") {
+  name = "libconcierge-client-test"
+  version = getenv("PV")
+  description = "Concierge client interface mock library"
+  cflags = [ "-I/usr/include/vm_tools/concierge-client-test" ]
+  install = true
 }
 
 static_library("libconcierge") {
@@ -124,9 +143,12 @@ static_library("libconcierge") {
     "-Wthread-safety",
   ]
   deps = [
-    ":cicerone-proxies",
+    ":concierge-proxies",
     ":dbus-adaptors",
+    ":libconcierge-client-test.pc",
+    ":libconcierge-client.pc",
     ":protos",
+    "//vm_tools/cicerone:cicerone-proxies",
   ]
 }
 

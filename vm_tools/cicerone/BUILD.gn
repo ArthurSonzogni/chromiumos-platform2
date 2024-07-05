@@ -3,11 +3,37 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
 
 generate_dbus_adaptors("dbus-adaptors") {
   dbus_service_config = "../dbus_bindings/cicerone-dbus-service-config.json"
   dbus_adaptors_out_dir = "include/vm_tools/cicerone/dbus_adaptors"
   sources = [ "../dbus_bindings/org.chromium.VmCicerone.xml" ]
+}
+
+generate_dbus_proxies("cicerone-proxies") {
+  dbus_service_config = "../dbus_bindings/cicerone-dbus-service-config.json"
+  proxy_output_file = "include/vm_tools/cicerone/dbus-proxies.h"
+  mock_output_file = "include/vm_tools/cicerone/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "vm_tools/cicerone/dbus-proxies.h"
+  sources = [ "../dbus_bindings/org.chromium.VmCicerone.xml" ]
+}
+
+generate_pkg_config("libcicerone-client.pc") {
+  name = "libcicerone-client"
+  version = getenv("PV")
+  description = "Cicerone client interface library"
+  cflags = [ "-I/usr/include/vm_tools/cicerone-client" ]
+  install = true
+}
+
+generate_pkg_config("libcicerone-client-test.pc") {
+  name = "libcicerone-client-test"
+  version = getenv("PV")
+  description = "Cicerone client interface mock library"
+  cflags = [ "-I/usr/include/vm_tools/cicerone-client-test" ]
+  install = true
 }
 
 static_library("libcicerone") {
@@ -34,7 +60,12 @@ static_library("libcicerone") {
     "system_api",
     "vm_protos",
   ]
-  deps = [ ":dbus-adaptors" ]
+  deps = [
+    ":cicerone-proxies",
+    ":dbus-adaptors",
+    ":libcicerone-client-test.pc",
+    ":libcicerone-client.pc",
+  ]
 }
 
 executable("vm_cicerone") {
