@@ -11,6 +11,7 @@ exit_group: 1
 # TODO(b/333978583): Document why ioctl is required.
 ioctl: arg1 == TCGETS
 newfstatat: 1
+fstat: 1
 unlinkat: 1
 lseek: 1
 restart_syscall: 1

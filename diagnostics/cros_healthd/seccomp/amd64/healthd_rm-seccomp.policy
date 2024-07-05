@@ -7,6 +7,7 @@ close: 1
 exit_group: 1
 ioctl: arg1 == TCGETS
 newfstatat: 1
+fstat: 1
 unlinkat: 1
 lseek: 1
 restart_syscall: 1

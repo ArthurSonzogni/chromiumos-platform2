@@ -10,6 +10,7 @@ brk: 1
 close: 1
 munmap: 1
 faccessat: 1
+fstat: 1
 fstatfs: 1
 read: 1
 set_tid_address: 1

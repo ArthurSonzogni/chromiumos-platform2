@@ -24,6 +24,7 @@ exit: 1
 write: 1
 gettid: 1
 sched_setaffinity: 1
+fstat: 1
 fstatfs: 1
 rt_sigaction: 1
 pread64: 1

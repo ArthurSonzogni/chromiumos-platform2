@@ -27,6 +27,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 newfstatat: 1
 close: 1
+fstat: 1
 fstatfs: 1
 read: 1
 gettid: 1

@@ -13,6 +13,7 @@ close: 1
 #   0x800448d3 == HCIGETDEVINFO
 ioctl: arg1 == 0x800448d2 || arg1 == 0x800448d3
 access: 1
+fstat: 1
 fstatfs: 1
 read: 1
 arch_prctl: 1

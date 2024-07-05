@@ -11,6 +11,7 @@ recvmsg: 1
 read: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 epoll_ctl: 1
+fstat: 1
 fstatfs: 1
 pread64: 1
 brk: 1

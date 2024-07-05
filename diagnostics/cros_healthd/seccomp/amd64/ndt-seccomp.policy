@@ -39,6 +39,7 @@ gettid: 1
 sysinfo: 1
 pipe2: 1
 lseek: 1
+fstat: 1
 fstatfs: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 bind: 1

@@ -36,6 +36,7 @@ flock: 1
 fstat64: 1
 fstatat64: 1
 fstatfs64: 1
+fstat: 1
 fstatfs: 1
 fsync: 1
 ftruncate64: 1

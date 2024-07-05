@@ -16,6 +16,7 @@ epoll_ctl: 1
 epoll_wait: 1
 eventfd2: 1
 fcntl: 1
+fstat: 1
 getdents64: 1
 getegid: 1
 geteuid: 1
