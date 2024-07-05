@@ -57,6 +57,12 @@ mojo::PendingRemote<mojom::Executor> SendInvitationAndConnectToExecutor(
   mojo::OutgoingInvitation invitation;
   // Always use 0 as the default pipe name.
   mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
+#if defined(USE_IPCZ)
+  // IPCz requires an application to explicitly opt in to broker sharing
+  // and inheritance when establishing a direct connection between two
+  // non-broker nodes.
+  invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+#endif
   mojo::OutgoingInvitation::Send(std::move(invitation),
                                  base::kNullProcessHandle, std::move(endpoint));
   return mojo::PendingRemote<mojom::Executor>(std::move(pipe),

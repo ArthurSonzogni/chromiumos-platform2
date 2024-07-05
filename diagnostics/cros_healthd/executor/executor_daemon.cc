@@ -32,8 +32,16 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint,
   // This accepts invitation from cros_healthd. Must be the incoming invitation
   // because cros_healthd is the process which connects to the mojo broker. This
   // must be run after the mojo ipc thread is initialized.
+#if defined(USE_IPCZ)
+  // IPCz requires an application to explicitly opt in to broker sharing
+  // and inheritance when establishing a direct connection between two
+  // non-broker nodes.
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      std::move(endpoint), MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(std::move(endpoint));
+#endif
   // Always use 0 as the default pipe name.
   mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
 
