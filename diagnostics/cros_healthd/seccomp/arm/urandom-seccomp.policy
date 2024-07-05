@@ -4,6 +4,7 @@
 
 # Socket is a required syscall for delegate process.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 
 clock_getres: 1
 clock_gettime: 1
@@ -31,6 +32,7 @@ read: 1
 recvmsg: 1
 rt_sigprocmask: 1
 send: 1
+sendmsg: 1
 signalfd4: 1
 uname: 1
 write: 1

@@ -7,6 +7,7 @@ gettid: 1
 clock_gettime: 1
 read: 1
 close: 1
+sendmsg: 1
 sendto: 1
 epoll_ctl: 1
 epoll_pwait: 1
@@ -29,6 +30,7 @@ getpid: 1
 exit_group: 1
 # socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 epoll_create1: 1
 memfd_create: 1

@@ -41,8 +41,10 @@ memfd_create: 1
 eventfd2: 1
 epoll_wait: 1
 send: 1
+sendmsg: 1
 close: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 futex: 1

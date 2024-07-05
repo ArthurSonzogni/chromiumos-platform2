@@ -71,3 +71,4 @@ memfd_create: 1
 eventfd2: 1
 # Required syscall for delegate process.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX

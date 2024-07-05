@@ -39,10 +39,12 @@ getpid: 1
 memfd_create: 1
 eventfd2: 1
 epoll_pwait: 1
+sendmsg: 1
 sendto: 1
 close: 1
 # socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 process_vm_readv: 1

@@ -13,5 +13,7 @@ getrandom: arg2 in ~GRND_RANDOM
 connect: 1
 # socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
+sendmsg: 1
 exit_group: 1
 process_vm_readv: 1

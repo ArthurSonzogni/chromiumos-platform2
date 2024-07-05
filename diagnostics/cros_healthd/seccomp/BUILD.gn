@@ -98,7 +98,9 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
 
                         # Required for syslog.
                         "connect",
+                        "sendmsg: 1",
                         "socket: arg0 == AF_UNIX",
+                        "socketpair: arg0 == AF_UNIX",
                       ]
   if (_arch == "arm") {
     required_syscalls += [

@@ -7,6 +7,7 @@ read: 1
 epoll_wait: 1
 close: 1
 send: 1
+sendmsg: 1
 epoll_ctl: 1
 statx: 1
 openat: 1
@@ -26,6 +27,7 @@ fcntl64: 1
 getpid: 1
 exit_group: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 epoll_create1: 1
 memfd_create: 1

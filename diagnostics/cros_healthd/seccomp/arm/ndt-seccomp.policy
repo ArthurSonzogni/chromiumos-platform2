@@ -13,12 +13,14 @@ connect: 1
 # Required for network bandiwdht test.
 socket: arg0 == AF_UNIX || arg0 == AF_NETLINK || arg0 == AF_INET6 || \
         arg0 == AF_INET
+socketpair: arg0 == AF_UNIX
 
 recvfrom: 1
 ppoll: 1
 read: 1
 write: 1
 close: 1
+sendmsg: 1
 sendto: 1
 openat: 1
 rt_sigaction: 1

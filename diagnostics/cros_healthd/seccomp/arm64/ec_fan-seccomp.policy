@@ -22,7 +22,9 @@ read: 1
 uname: 1
 # socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
+sendmsg: 1
 sendto: 1
 gettid: 1
 getuid: 1

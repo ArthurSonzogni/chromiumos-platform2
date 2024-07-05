@@ -108,6 +108,7 @@ pipe2: 1
 getpid: 1
 rt_sigprocmask: 1
 epoll_ctl: 1
+sendmsg: 1
 sendto: 1
 fcntl: 1
 epoll_create1: 1
@@ -123,6 +124,7 @@ getrandom: arg2 in ~GRND_RANDOM
 brk: 1
 getdents64: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 exit_group: 1
 clock_getres: 1

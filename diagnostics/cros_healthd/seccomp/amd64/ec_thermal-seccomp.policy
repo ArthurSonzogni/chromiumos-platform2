@@ -8,6 +8,7 @@ rseq: 1
 
 # Socket is a dangerous syscall.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 
 # Required syscalls by seccomp_checker
 clock_getres: 1
@@ -29,6 +30,7 @@ write: 1
 connect: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 uname: 1
+sendmsg: 1
 sendto: 1
 gettid: 1
 getuid: 1

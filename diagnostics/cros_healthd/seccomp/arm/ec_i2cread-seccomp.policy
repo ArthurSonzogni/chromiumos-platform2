@@ -41,7 +41,9 @@ getpid: 1
 memfd_create: 1
 eventfd2: 1
 epoll_pwait: 1
+sendmsg: 1
 sendto: 1
 # Required syscall for delegate process.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 futex: 1
