@@ -12,7 +12,10 @@ source_set("camera") {
     "libcros_camera",
     "mojo_service_manager",
   ]
-  pkg_deps = [ "system_api" ]
+  pkg_deps = [
+    "libmojo",
+    "system_api",
+  ]
   public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/cros_healthd/system",

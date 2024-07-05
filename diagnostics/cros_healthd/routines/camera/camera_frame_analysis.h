@@ -29,6 +29,7 @@ class CameraFrameAnalysisRoutine final : public NoninteractiveRoutineControl {
   void OnErrorResult(::cros::camera_diag::mojom::ErrorCode error_code);
   void OnSuccessResult(
       const ::cros::camera_diag::mojom::DiagnosticsResultPtr& result);
+  void OnCallbackDropped();
 
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;

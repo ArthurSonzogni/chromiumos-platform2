@@ -10,6 +10,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <camera/mojo/camera_diagnostics.mojom.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "camera/mojo/camera_diagnostics.mojom-shared.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -83,8 +84,12 @@ void CameraFrameAnalysisRoutine::OnStart() {
                  camera_mojom::FrameAnalysisConfig::kMaxDurationMs);
 
   camera_diagnostics_service->RunFrameAnalysis(
-      std::move(config), base::BindOnce(&CameraFrameAnalysisRoutine::OnResult,
-                                        weak_ptr_factory_.GetWeakPtr()));
+      std::move(config),
+      mojo::WrapCallbackWithDropHandler(
+          base::BindOnce(&CameraFrameAnalysisRoutine::OnResult,
+                         weak_ptr_factory_.GetWeakPtr()),
+          base::BindOnce(&CameraFrameAnalysisRoutine::OnCallbackDropped,
+                         weak_ptr_factory_.GetWeakPtr())));
 }
 
 void CameraFrameAnalysisRoutine::OnResult(
@@ -151,6 +156,11 @@ void CameraFrameAnalysisRoutine::OnSuccessResult(
                      mojom::CameraFrameAnalysisRoutineDetail::Issue::kNone);
   SetFinishedState(has_passed, mojom::RoutineDetail::NewCameraFrameAnalysis(
                                    std::move(routine_detail)));
+}
+
+void CameraFrameAnalysisRoutine::OnCallbackDropped() {
+  LOG(ERROR) << "Camera frame analysis callback dropped";
+  RaiseException("Internal error.");
 }
 
 }  // namespace diagnostics
