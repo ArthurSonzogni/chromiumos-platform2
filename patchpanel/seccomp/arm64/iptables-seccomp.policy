@@ -18,6 +18,7 @@ read: 1
 capget: 1
 capset: 1
 setsockopt: 1
+fstat: 1
 fstatfs: 1
 gettid: 1
 setgroups: 1

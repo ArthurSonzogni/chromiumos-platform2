@@ -13,6 +13,7 @@ prctl: arg0 == PR_CAPBSET_DROP || arg0 == PR_SET_SECCOMP || \
 newfstatat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
+fstat: 1
 fstatfs: 1
 gettid: 1
 read: 1
