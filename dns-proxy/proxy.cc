@@ -994,6 +994,8 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
         return;
       }
       ns_peer_ipv6_address_ = peer_ipv6_addr;
+      LOG(INFO) << *this << " Peer IPv6 addr updated to "
+                << peer_ipv6_addr.ToString();
       if (opts_.type == Type::kDefault && device_) {
         StartDnsRedirection(/*ifname=*/"", AF_INET6,
                             ToStringVec(doh_config_.ipv6_nameservers()));
@@ -1011,6 +1013,7 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
     }
     case net_base::RTNLMessage::kModeDelete:
       ns_peer_ipv6_address_ = std::nullopt;
+      LOG(INFO) << *this << " Peer IPv6 addr removed";
       if (opts_.type == Type::kDefault) {
         StopDnsRedirection(/*ifname=*/"", AF_INET6);
       }
