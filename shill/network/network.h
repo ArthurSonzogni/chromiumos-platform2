@@ -228,7 +228,8 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   mockable bool IsConnected() const { return state_ == State::kConnected; }
 
-  // Return true if network validation result is present and state is
+  // Return true if either 1) network is connected and network validation is
+  // disabled, or 2) network validation result is present and state is
   // PortalDetector::ValidationState::kInternetConnectivity, otherwise return
   // false.
   mockable bool HasInternetConnectivity() const;

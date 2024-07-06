@@ -1020,6 +1020,15 @@ bool Network::IsConnectedViaTether() const {
 }
 
 bool Network::HasInternetConnectivity() const {
+  if (!IsConnected()) {
+    return false;
+  }
+  if (network_monitor_->GetValidationMode() ==
+      NetworkMonitor::ValidationMode::kDisabled) {
+    // If network validation is disabled, assume we have the Internet
+    // connectivity.
+    return true;
+  }
   return network_validation_result_.has_value() &&
          network_validation_result_->validation_state ==
              PortalDetector::ValidationState::kInternetConnectivity;
