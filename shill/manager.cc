@@ -259,8 +259,6 @@ Manager::Manager(ControlInterface* control_interface,
                                          &Manager::EnumerateAvailableServices);
   HelpRegisterConstDerivedRpcIdentifiers(kServiceCompleteListProperty,
                                          &Manager::EnumerateCompleteServices);
-  HelpRegisterConstDerivedRpcIdentifiers(kServiceWatchListProperty,
-                                         &Manager::EnumerateWatchedServices);
   HelpRegisterConstDerivedStrings(kUninitializedTechnologiesProperty,
                                   &Manager::UninitializedTechnologies);
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
@@ -1848,8 +1846,6 @@ void Manager::SortServicesTask() {
                                           EnumerateCompleteServices(nullptr));
   adaptor_->EmitRpcIdentifierArrayChanged(kServicesProperty,
                                           EnumerateAvailableServices(nullptr));
-  adaptor_->EmitRpcIdentifierArrayChanged(kServiceWatchListProperty,
-                                          EnumerateWatchedServices(nullptr));
   adaptor_->EmitStringsChanged(kConnectedTechnologiesProperty,
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
@@ -2366,18 +2362,6 @@ RpcIdentifiers Manager::EnumerateCompleteServices(Error* /*error*/) {
   RpcIdentifiers service_rpc_ids;
   for (const auto& service : services_) {
     service_rpc_ids.push_back(service->GetRpcIdentifier());
-  }
-  return service_rpc_ids;
-}
-
-RpcIdentifiers Manager::EnumerateWatchedServices(Error* /*error*/) {
-  RpcIdentifiers service_rpc_ids;
-  watched_service_states_.clear();
-  for (const auto& service : services_) {
-    if (service->IsVisible() && service->IsActive(nullptr)) {
-      service_rpc_ids.push_back(service->GetRpcIdentifier());
-      watched_service_states_[service->serial_number()] = service->state();
-    }
   }
   return service_rpc_ids;
 }

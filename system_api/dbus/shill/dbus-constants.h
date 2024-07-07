@@ -125,7 +125,6 @@ constexpr char kPortalHttpUrlProperty[] = "PortalHttpUrl";
 constexpr char kPortalHttpsUrlProperty[] = "PortalHttpsUrl";
 constexpr char kProfilesProperty[] = "Profiles";
 constexpr char kServiceCompleteListProperty[] = "ServiceCompleteList";
-constexpr char kServiceWatchListProperty[] = "ServiceWatchList";
 constexpr char kServicesProperty[] = "Services";  // Also used for Profile.
 constexpr char kSupportedVPNTypesProperty[] = "SupportedVPNTypes";
 constexpr char kTetheringCapabilitiesProperty[] = "TetheringCapabilities";

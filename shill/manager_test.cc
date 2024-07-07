@@ -451,10 +451,6 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->EnumerateAvailableServices(nullptr);
   }
 
-  std::vector<RpcIdentifier> EnumerateWatchedServices() {
-    return manager()->EnumerateWatchedServices(nullptr);
-  }
-
   MockServiceRefPtr MakeAutoConnectableService() {
     MockServiceRefPtr service = new NiceMock<MockService>(manager());
     service->SetAutoConnect(true);
@@ -3349,9 +3345,6 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierArrayChanged(kServicesProperty, _))
       .Times(1);
-  EXPECT_CALL(*manager_adaptor_,
-              EmitRpcIdentifierArrayChanged(kServiceWatchListProperty, _))
-      .Times(1);
   CompleteServiceSort();
 
   Mock::VerifyAndClearExpectations(manager_adaptor_);
@@ -3360,9 +3353,6 @@ TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
       .Times(1);
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierArrayChanged(kServicesProperty, _))
-      .Times(1);
-  EXPECT_CALL(*manager_adaptor_,
-              EmitRpcIdentifierArrayChanged(kServiceWatchListProperty, _))
       .Times(1);
   manager()->UpdateService(mock_service.get());
   CompleteServiceSort();
@@ -3378,12 +3368,10 @@ TEST_F(ManagerTest, EnumerateServices) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*mock_service, IsVisible()).WillRepeatedly(Return(false));
   EXPECT_TRUE(EnumerateAvailableServices().empty());
-  EXPECT_TRUE(EnumerateWatchedServices().empty());
 
   EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_TRUE(EnumerateAvailableServices().empty());
-  EXPECT_TRUE(EnumerateWatchedServices().empty());
 
   EXPECT_CALL(*mock_service, IsVisible()).WillRepeatedly(Return(true));
   static const Service::ConnectState kUnwatchedStates[] = {
@@ -3391,7 +3379,6 @@ TEST_F(ManagerTest, EnumerateServices) {
   for (auto unwatched_state : kUnwatchedStates) {
     EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(unwatched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());
-    EXPECT_TRUE(EnumerateWatchedServices().empty());
   }
 
   static const Service::ConnectState kWatchedStates[] = {
@@ -3401,7 +3388,6 @@ TEST_F(ManagerTest, EnumerateServices) {
   for (auto watched_state : kWatchedStates) {
     EXPECT_CALL(*mock_service, state()).WillRepeatedly(Return(watched_state));
     EXPECT_FALSE(EnumerateAvailableServices().empty());
-    EXPECT_FALSE(EnumerateWatchedServices().empty());
   }
 
   manager()->DeregisterService(mock_service);

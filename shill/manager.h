@@ -625,7 +625,6 @@ class Manager {
   std::vector<std::string> EnabledTechnologies(Error* error);
   std::vector<std::string> UninitializedTechnologies(Error* error);
   RpcIdentifiers EnumerateProfiles(Error* error);
-  RpcIdentifiers EnumerateWatchedServices(Error* error);
   RpcIdentifier GetActiveProfileRpcIdentifier(Error* error);
   std::string GetCheckPortalList(Error* error);
   std::string GetPortalFallbackHttpUrls(Error* error);

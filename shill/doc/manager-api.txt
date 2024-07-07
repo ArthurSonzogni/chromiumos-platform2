@@ -1054,20 +1054,6 @@ Properties	object ActiveProfile [readonly]
 			"Services" property above.  Change events for this property are not
 			emitted.
 
-		array{object} ServiceWatchList [readonly]
-
-			List of Service object paths that are in a 'non-idle' state. This
-			indicates the set of Services which are currently listed as
-			associating, configuring, or some other state other than idle,
-			failure, disconnecting, or unknown.  This allows a caller to use
-			this property indication to track which Services should be monitored
-			for state changes.
-
-			The Services are listed in the same Service sorting order as the
-			"Services" property above, and a change event for this property is
-			emitted every time the Service list is reordered, even if this list
-			has not changed.
-
 		string SupportedVPNTypes [readonly]
 
 			The list of supported vpn types. This is a comma-separated string;
