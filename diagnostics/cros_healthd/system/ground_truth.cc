@@ -320,6 +320,11 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineLedLitUp() const {
   return MakeUnsupported("Not supported on a non-CrosEC device");
 }
 
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineKeyboardBacklight() const {
+  return MakeSupportStatus(cros_config()->CheckExpectedCrosConfig(
+      cros_config_property::kKeyboardBacklight, cros_config_value::kTrue));
+}
+
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineCameraAvailability() const {
   uint32_t camera_count;
   std::string error;

@@ -24,6 +24,7 @@
 #include "diagnostics/cros_healthd/routines/camera/camera_frame_analysis.h"
 #include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
+#include "diagnostics/cros_healthd/routines/led/keyboard_backlight.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress.h"
@@ -95,6 +96,11 @@ CreateRoutineResult CreateRoutineHelperSync(
 CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::LedLitUpRoutineArgumentPtr arg) {
   return LedLitUpRoutine::Create(context, std::move(arg));
+}
+
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::KeyboardBacklightRoutineArgumentPtr arg) {
+  return KeyboardBacklightRoutine::Create(context, std::move(arg));
 }
 
 CreateRoutineResult CreateRoutineHelperSync(
@@ -307,6 +313,12 @@ void RoutineService::CheckAndCreateRoutine(
     case mojom::RoutineArgument::Tag::kBatteryDischarge: {
       CreateRoutineHelper(context_,
                           std::move(routine_arg->get_battery_discharge()),
+                          std::move(callback));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kKeyboardBacklight: {
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_keyboard_backlight()),
                           std::move(callback));
       return;
     }

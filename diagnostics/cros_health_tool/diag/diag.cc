@@ -394,6 +394,14 @@ int CameraFrameAnalysisMain(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(CameraFrameAnalysis);
 }
 
+int KeyboardBacklightMain(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS("Keyboard backlight routine");
+
+  auto argument = mojom::KeyboardBacklightRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(KeyboardBacklight);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -881,6 +889,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"network_bandwidth", NetworkBandwidthMain},
     {"sensitive_sensor_v2", SensitiveSensorV2Main},
     {"camera_frame_analysis", CameraFrameAnalysisMain},
+    {"keyboard_backlight", KeyboardBacklightMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

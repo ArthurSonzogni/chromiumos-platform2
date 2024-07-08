@@ -93,9 +93,10 @@ enum class CrosHealthdRoutineCategory {
   kSensitiveSensor = 19,
   kCameraFrameAnalysis = 20,
   kBatteryDischarge = 21,
+  kKeyboardBacklight = 22,
   // A special enumerator that must share the highest enumerator value. This
   // value is required when calling `SendEnumToUMA`.
-  kMaxValue = kBatteryDischarge,
+  kMaxValue = kKeyboardBacklight,
 };
 
 }  // namespace metrics_enum

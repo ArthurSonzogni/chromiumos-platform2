@@ -779,6 +779,9 @@ INSTANTIATE_TEST_SUITE_P(
         {.uma_value =
              metrics_enum::CrosHealthdRoutineCategory::kBatteryDischarge,
          .category = mojom::RoutineArgument::Tag::kBatteryDischarge},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kKeyboardBacklight,
+         .category = mojom::RoutineArgument::Tag::kKeyboardBacklight},
     }));
 
 }  // namespace

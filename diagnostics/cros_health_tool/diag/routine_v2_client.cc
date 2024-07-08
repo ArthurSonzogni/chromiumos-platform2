@@ -180,6 +180,11 @@ void RoutineV2Client::OnWaitingState(
                 inquiry->get_unplug_ac_adapter_inquiry());
             return;
           }
+          case mojom::RoutineInquiry::Tag::kCheckKeyboardBacklightState: {
+            HandleCheckKeyboardBacklightStateInquiry(
+                inquiry->get_check_keyboard_backlight_state());
+            return;
+          }
         }
       }
     }
@@ -282,6 +287,36 @@ void RoutineV2Client::HandleUnplugAcAdapterInquiry(
   std::getline(std::cin, input);
   routine_control_->ReplyInquiry(mojom::RoutineInquiryReply::NewUnplugAcAdapter(
       mojom::UnplugAcAdapterReply::New()));
+}
+
+void RoutineV2Client::HandleCheckKeyboardBacklightStateInquiry(
+    const mojom::CheckKeyboardBacklightStateInquiryPtr& inquiry) {
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
+
+  std::optional<bool> answer;
+  do {
+    std::cout << "All keyboard backlight LEDs are lit up? "
+                 "Input y/n then press ENTER to continue."
+              << std::endl;
+    std::string input;
+    std::getline(std::cin, input);
+
+    if (!input.empty() && input[0] == 'y') {
+      answer = true;
+    } else if (!input.empty() && input[0] == 'n') {
+      answer = false;
+    }
+  } while (!answer.has_value());
+
+  CHECK(answer.has_value());
+  routine_control_->ReplyInquiry(
+      mojom::RoutineInquiryReply::NewCheckKeyboardBacklightState(
+          mojom::CheckKeyboardBacklightStateReply::New(
+              answer.value()
+                  ? mojom::CheckKeyboardBacklightStateReply::State::kOk
+                  : mojom::CheckKeyboardBacklightStateReply::State::
+                        kAnyNotLitUp)));
 }
 
 }  // namespace diagnostics

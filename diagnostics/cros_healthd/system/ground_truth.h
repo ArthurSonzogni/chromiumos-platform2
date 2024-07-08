@@ -68,6 +68,9 @@ class GroundTruth final {
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineLedLitUp() const;
 
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineKeyboardBacklight()
+      const;
+
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineCameraAvailability()
       const;
 

@@ -73,7 +73,7 @@ interface CrosHealthdRoutinesService {
 
 // Argument types for the possible routines the routine control API can create.
 //
-// NextMinVersion: 4, NextIndex: 22
+// NextMinVersion: 5, NextIndex: 23
 [Stable, Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -125,6 +125,9 @@ union RoutineArgument {
   // Arguments to create a battery discharge routine.
   [MinVersion=3]
   BatteryDischargeRoutineArgument battery_discharge@21;
+  // Arguments to create a keyboard backlight routine.
+  [MinVersion=4]
+  KeyboardBacklightRoutineArgument keyboard_backlight@22;
 };
 
 // This routine checks whether there is any memory problem by reading/writing
@@ -261,6 +264,13 @@ struct LedLitUpRoutineArgument {
   // The color to be lit up.
   LedColor color@1;
 };
+
+// This routine checks whether the keyboard backlight can be lit up at any
+// brightness level.
+//
+// NextMinVersion: 1, NextIndex: 0
+[Stable]
+struct KeyboardBacklightRoutineArgument {};
 
 // This routine checks whether there is any CPU problem by repeatedly
 // calculating floating point values.
@@ -553,7 +563,7 @@ union RoutineInteraction {
 // reply type in `RoutineInquiryReply`. Clients should call the `ReplyInquiry`
 // method of `RoutineControl` with the corresponding reply type.
 //
-// NextMinVersion: 2, NextIndex: 3
+// NextMinVersion: 3, NextIndex: 4
 [Stable, Extensible]
 union RoutineInquiry {
   // Default field is required by extensible unions for backward compatibility.
@@ -565,11 +575,14 @@ union RoutineInquiry {
   // Details of the inquiry to unplug AC adapter.
   [MinVersion=1]
   UnplugAcAdapterInquiry unplug_ac_adapter_inquiry@2;
+  // Details of the inquiry to check the keyboard backlight LED state.
+  [MinVersion=2]
+  CheckKeyboardBacklightStateInquiry check_keyboard_backlight_state@3;
 };
 
 // Details to reply to a routine inquiry.
 //
-// NextMinVersion: 2, NextIndex: 3
+// NextMinVersion: 3, NextIndex: 4
 [Stable, Extensible]
 union RoutineInquiryReply {
   // Default field is required by extensible unions for backward compatibility.
@@ -581,6 +594,10 @@ union RoutineInquiryReply {
   // Details to resume a routine requesting to unplug the AC adapter.
   [MinVersion=1]
   UnplugAcAdapterReply unplug_ac_adapter@2;
+  // Details to resume a routine requesting to check the keyboard backlight LED
+  // state.
+  [MinVersion=2]
+  CheckKeyboardBacklightStateReply check_keyboard_backlight_state@3;
 };
 
 // Details regarding the inquiry to check the LED lit up state. Clients should
@@ -622,6 +639,35 @@ struct UnplugAcAdapterInquiry {};
 // NextMinVersion: 1, NextIndex: 0
 [Stable]
 struct UnplugAcAdapterReply {};
+
+// Details regarding the inquiry to check the keyboard backlight lit up state.
+// Clients should inspect the keyboard backlight and report its state using
+// `CheckKeyboardBacklightStateReply`.
+//
+// NextMinVersion: 1, NextIndex: 0
+[Stable]
+struct CheckKeyboardBacklightStateInquiry {};
+
+// Details to reply to a routine requesting to check if all the LEDs on the
+// keyboard backlight lit up.
+//
+// NextMinVersion: 1, NextIndex: 1
+[Stable]
+struct CheckKeyboardBacklightStateReply {
+  // State of the keyboard backlight LED.
+  //
+  // NextMinVersion: 1, NextIndex: 3
+  [Stable, Extensible]
+  enum State {
+    // The default value is for backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // All keyboard backlight LEDs are lit up.
+    kOk = 1,
+    // Any of the keyboard backlight LED is not lit up.
+    kAnyNotLitUp = 2,
+  };
+  State state@0;
+};
 
 // Information about a finished routine.
 //

@@ -3,11 +3,15 @@
 # found in the LICENSE file.
 
 source_set("led") {
-  sources = [ "led_lit_up.cc" ]
+  sources = [
+    "keyboard_backlight.cc",
+    "led_lit_up.cc",
+  ]
   public_pkg_deps = [
     "libchrome",
     "libmojo",
   ]
+  pkg_deps = [ "libpower_manager-client" ]
   public_deps = [
     "//diagnostics/cros_healthd/routines:utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
@@ -17,10 +21,15 @@ source_set("led") {
 
 if (use.test) {
   source_set("led_test") {
-    sources = [ "led_lit_up_test.cc" ]
+    sources = [
+      "keyboard_backlight_test.cc",
+      "led_lit_up_test.cc",
+    ]
     pkg_deps = [
       "libchrome-test",
       "libmojo",
+      "libpower_manager-client",
+      "libpower_manager-client-test",
     ]
     deps = [
       ":led",

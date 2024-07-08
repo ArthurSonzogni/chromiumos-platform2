@@ -30,6 +30,8 @@ bool ReplyMatchesInquiry(const mojom::RoutineStatePtr& state,
       return inquiry->is_check_led_lit_up_state();
     case mojom::RoutineInquiryReply::Tag::kUnplugAcAdapter:
       return inquiry->is_unplug_ac_adapter_inquiry();
+    case mojom::RoutineInquiryReply::Tag::kCheckKeyboardBacklightState:
+      return inquiry->is_check_keyboard_backlight_state();
     case mojom::RoutineInquiryReply::Tag::kUnrecognizedReply:
       return false;
   }

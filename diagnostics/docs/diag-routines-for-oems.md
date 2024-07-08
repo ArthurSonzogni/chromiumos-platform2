@@ -1431,6 +1431,40 @@ Errors:
 - `Not lit up in the specified color.`
 - `Failed to set the LED color`
 
+### Keyboard backlight
+
+Examines the functionality of the keyboard backlight. This routine lights up the
+keyboard backlight at different levels and requests the caller to verify the
+change.
+
+To examines the keyboard backlight:
+
+From crosh:
+```bash
+crosh> diag keyboard_backlight
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag keyboard_backlight
+```
+
+Sample output:
+```bash
+Initialized
+Waiting: kWaitingInteraction; Waiting for user to confirm the correctness of brightness.
+
+All keyboard backlight LEDs are lit up? Input y/n then press ENTER to continue.
+y
+Running Progress: 100
+Status: Passed
+```
+
+Errors:
+- `Failed to set brightness.`
+- `Failed to restore brightness.`
+- `Could not serialize SetBacklightBrightnessRequest.`
+
 ## Bluetooth Routines
 
 ### Bluetooth Power
