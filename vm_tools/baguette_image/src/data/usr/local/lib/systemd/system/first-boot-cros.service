@@ -1,0 +1,13 @@
+[Unit]
+Description=First boot script
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/first-boot-cros
+ExecStartPost=/usr/bin/systemctl disable first-boot-cros.service
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=local-fs.target

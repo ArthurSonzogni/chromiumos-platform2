@@ -1,0 +1,5 @@
+!*.d
+target/
+*.img
+*.img.zst
+*.tar.gz
