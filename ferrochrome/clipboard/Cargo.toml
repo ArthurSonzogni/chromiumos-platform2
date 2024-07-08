@@ -5,3 +5,5 @@ authors = ["The Chromium OS Authors"]
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0"
+vsock = "0.3"
