@@ -683,11 +683,26 @@ void IPsecConnection::WriteSwanctlConfig() {
       remote->AddKeyValue("id", config_->remote_id.value());
     }
 
-    // Writes server CA to a file and references this file in the config.
-    server_ca_.set_root_directory(temp_dir_.GetPath());
-    server_ca_path_ =
-        server_ca_.CreatePEMFromStrings(config_->ca_cert_pem_strings.value());
-    remote->AddKeyValue("cacerts", server_ca_path_.value());
+    // Writes server CA into files and references the files in the config. Note
+    // that although CertificateFile class supports writing multiple PEMs into
+    // one file, but strongSwan will only read the first cert from such file.
+    // Thus we need to write each PEM into a separate file. See
+    // https://docs.strongswan.org/docs/5.9/support/faq.html#_x_509_certificate_chain_files
+    // Also see b/351762667 for a use case.
+    server_cas_.clear();
+    std::vector<std::string> paths;
+    for (const auto& pem_string : config_->ca_cert_pem_strings.value()) {
+      auto cert_file = std::make_unique<CertificateFile>();
+      cert_file->set_root_directory(temp_dir_.GetPath());
+      base::FilePath path = cert_file->CreatePEMFromStrings({pem_string});
+      if (path.empty()) {
+        LOG(WARNING) << "Invalid PEM string";
+        continue;
+      }
+      paths.push_back(path.value());
+      server_cas_.push_back(std::move(cert_file));
+    }
+    remote->AddKeyValue("cacerts", base::JoinString(paths, ","));
   }
 
   // Fields for Xauth/EAP-MSCHAPv2. This will be used as the second round in

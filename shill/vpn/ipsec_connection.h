@@ -253,8 +253,7 @@ class IPsecConnection : public VPNConnection {
 
   // Runtime variables.
   base::ScopedTempDir temp_dir_;
-  CertificateFile server_ca_;
-  base::FilePath server_ca_path_;
+  std::vector<std::unique_ptr<CertificateFile>> server_cas_;
   base::FilePath strongswan_conf_path_;
   base::FilePath swanctl_conf_path_;
   pid_t charon_pid_ = -1;
