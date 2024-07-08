@@ -8,7 +8,16 @@ use std::io::Write;
 use std::path::Path;
 use std::process;
 
-use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
+use dbus::blocking::Connection;
+use protobuf::{CodedInputStream, Message};
+use system_api::arc::{
+    arc_shell_execution_request::ArcShellCommand, ArcShellExecutionRequest, ArcShellExecutionResult,
+};
+
+use crate::{
+    dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher},
+    util::{get_user_id_hash, DEFAULT_DBUS_TIMEOUT},
+};
 
 const HELP: &str = r#"Usage: arc
   [ ping [ NETWORK ] [ <ip address> | <hostname> ] |
@@ -31,6 +40,9 @@ stats sockets:  show TCP connect and DNS statistics by Android Apps.
 stats traffic:  show traffic packet statistics by Android Apps.
 stats idle   :  show system idle stats of Android.
 tracing      :  enable or disable tracing ARCVM from the host.
+top:            show resource information snapshot on Android.
+cpuinfo:        show CPU usage on Android.
+meminfo:        show memory usage on Android.
 
 "#;
 
@@ -122,6 +134,12 @@ fn execute_arc_command(
 
         ["tracing"] => adb_command_runner(&["shell", "getprop", TRACING_PROP_NAME]),
         ["tracing", enable] => run_arc_tracing_tool(adb_command_runner, enable),
+        // Prints ARCVM resource information like `top -b -n 1` commands on Linux distributions.
+        ["top"] => arc_shell_execution_request(ArcShellCommand::TOP),
+        // Prints CPU usage on ARCVM.
+        ["cpuinfo"] => arc_shell_execution_request(ArcShellCommand::CPUINFO),
+        // Prints memory usage on ARCVM.
+        ["meminfo"] => arc_shell_execution_request(ArcShellCommand::MEMINFO),
 
         [other, ..] => invalid_argument(other),
     }
@@ -161,6 +179,61 @@ fn run_arc_tracing_tool(
 
 fn invalid_argument(msg: &str) -> Result<(), dispatcher::Error> {
     Err(dispatcher::Error::CommandInvalidArguments(msg.to_string()))
+}
+
+// It sends a request to ArcCroshServiceProvider on chrome via D-Bus.
+// Then the request is transferred to ArcCroshService on ARC, and the service executes
+// the requested command.
+fn arc_shell_execution_request(command: ArcShellCommand) -> Result<(), dispatcher::Error> {
+    let connection = Connection::new_system().map_err(|err| {
+        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
+    let proxy = connection.with_proxy(
+        "org.chromium.ArcCrosh",
+        "/org/chromium/ArcCrosh",
+        DEFAULT_DBUS_TIMEOUT,
+    );
+
+    let user_id_hash = get_user_id_hash().map_err(|err| {
+        eprintln!("ERROR: Failed to get user_id_hash: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
+
+    let mut request = ArcShellExecutionRequest::new();
+    request.command = Some(command.into());
+    request.user_id = Some(user_id_hash);
+
+    let request_bytes = request.write_to_bytes().map_err(|err| {
+        eprintln!("ERROR: Failed parse protobuf: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
+
+    let _reply: (Vec<u8>,) = proxy
+        .method_call("org.chromium.ArcCrosh", "ArcCroshRequest", (request_bytes,))
+        .map_err(|err| {
+            eprintln!("ERROR: D-Bus method call failed: {}", err);
+            dispatcher::Error::CommandReturnedError
+        })?;
+
+    let resp_bytes = &mut CodedInputStream::from_bytes(&(_reply.0));
+
+    let mut response = ArcShellExecutionResult::new();
+    let _ = response.merge_from(resp_bytes).map_err(|err| {
+        eprintln!("ERROR: D-Bus response parse failed: {}", err);
+        dispatcher::Error::CommandReturnedError
+    });
+
+    // `response` has only one filed, `stdout` or `error`.
+    // If it has `error`, it means the request failed.
+    if response.has_error() {
+        eprintln!("ERROR: Command execution failed: {}", response.error());
+        return Err(dispatcher::Error::CommandReturnedError);
+    }
+
+    print!("{}", response.stdout());
+
+    Ok(())
 }
 
 #[cfg(test)]
