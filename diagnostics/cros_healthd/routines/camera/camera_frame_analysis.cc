@@ -135,6 +135,10 @@ void CameraFrameAnalysisRoutine::OnErrorResult(
 void CameraFrameAnalysisRoutine::OnSuccessResult(
     const camera_mojom::DiagnosticsResultPtr& result) {
   auto routine_detail = mojom::CameraFrameAnalysisRoutineDetail::New();
+  routine_detail->privacy_shutter_open_test =
+      mojom::CameraSubtestResult::kNotRun;
+  routine_detail->lens_not_dirty_test = mojom::CameraSubtestResult::kNotRun;
+
   routine_detail->issue = ConvertIssue(result->suggested_issue);
   for (const auto& analyzer_result : result->analyzer_results) {
     switch (analyzer_result->type) {

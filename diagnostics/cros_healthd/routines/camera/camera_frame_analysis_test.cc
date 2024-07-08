@@ -171,5 +171,26 @@ TEST_F(CameraFrameAnalysisRoutineTest, RoutineExceptionWithInternalError) {
       mojom::Exception::Reason::kUnexpected);
 }
 
+TEST_F(CameraFrameAnalysisRoutineTest,
+       SubtestResultNotUnmappedEnumFieldWhenNoAnalyzerResults) {
+  auto frame_diagnostics_result = camera_mojom::DiagnosticsResult::New();
+  frame_diagnostics_result->analyzer_results.clear();
+  SetFrameAnalysisResult(camera_mojom::FrameAnalysisResult::NewRes(
+      std::move(frame_diagnostics_result)));
+
+  const auto& result = StartRoutineAndGetFinalState(routine_);
+  EXPECT_EQ(result->percentage, 100);
+  ASSERT_TRUE(result->state_union->is_finished());
+
+  ASSERT_TRUE(
+      result->state_union->get_finished()->detail->is_camera_frame_analysis());
+  const auto& detail =
+      result->state_union->get_finished()->detail->get_camera_frame_analysis();
+  EXPECT_NE(detail->privacy_shutter_open_test,
+            mojom::CameraSubtestResult::kUnmappedEnumField);
+  EXPECT_NE(detail->lens_not_dirty_test,
+            mojom::CameraSubtestResult::kUnmappedEnumField);
+}
+
 }  // namespace
 }  // namespace diagnostics
