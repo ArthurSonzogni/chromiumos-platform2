@@ -10,6 +10,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/memory/scoped_refptr.h>
+#include <base/task/single_thread_task_runner.h>
 #include <cros-camera/libkioskvision/kiosk_audience_measurement_types.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -32,7 +34,19 @@ class KioskVisionStreamManipulator : public StreamManipulator {
     bool enable_debug_visualization = false;
   };
 
-  explicit KioskVisionStreamManipulator(RuntimeOptions* runtime_options);
+  enum class Status {
+    kNotInitialized = 0,
+    kInitialized = 1,
+    kUnknownError = 2,
+    kDlcError = 3,
+    kModelError = 4,
+    kMaxValue = kModelError,
+  };
+
+  KioskVisionStreamManipulator(
+      RuntimeOptions* runtime_options,
+      const scoped_refptr<base::SingleThreadTaskRunner>&
+          ipc_thread_task_runner);
   ~KioskVisionStreamManipulator() override;
 
   // StreamManipulator:
@@ -48,6 +62,8 @@ class KioskVisionStreamManipulator : public StreamManipulator {
   void Notify(camera3_notify_msg_t msg) override;
 
   const base::FilePath& GetDlcPathForTesting() const;
+
+  Status GetStatusForTesting() const;
 
  private:
   Camera3StreamBuffer* SelectInputBuffer(Camera3CaptureDescriptor& result);
@@ -68,15 +84,26 @@ class KioskVisionStreamManipulator : public StreamManipulator {
                         cros::kiosk_vision::Timestamp end_time);
   void OnError();
 
+  // Updates `status_` and calls `ReportError` depending on `status`.
+  void UpdateStatus(Status status);
+
+  // Reports `error_status` to `observer_`. Should only be called from
+  // `UpdateStatus`.
+  void ReportError(Status error_status);
+
   Options options_;
   ReloadableConfigFile config_;
+  // Should only be updated via `UpdateStatus`.
+  Status status_ = Status::kNotInitialized;
   StreamManipulator::Callbacks callbacks_;
 
   base::FilePath dlc_path_;
 
   // Sends vision results to the client (e.g. logic in ash-chrome).
-  // Should be used in the IPC thread.
+  // Should be used in the IPC thread via `ipc_thread_task_runner_`.
   raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer_;
+  // IPC thread runner which can be overridden in tests.
+  scoped_refptr<base::SingleThreadTaskRunner> ipc_thread_task_runner_;
 
   // Protects members that can be accessed on different threads.
   base::Lock lock_;

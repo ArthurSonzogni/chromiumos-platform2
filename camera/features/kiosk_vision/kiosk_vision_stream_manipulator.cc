@@ -10,7 +10,9 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 #include <ml_core/dlc/dlc_ids.h>
 
@@ -18,7 +20,6 @@
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "features/kiosk_vision/kiosk_vision_wrapper.h"
-#include "mojo/core/embedder/embedder.h"
 
 namespace {
 
@@ -123,17 +124,48 @@ std::vector<cros::mojom::KioskVisionAppearancePtr> AppearancesToMojom(
   return result;
 }
 
+cros::KioskVisionStreamManipulator::Status ConvertStatus(
+    cros::KioskVisionWrapper::InitializeStatus wrapper_status) {
+  switch (wrapper_status) {
+    case cros::KioskVisionWrapper::InitializeStatus::kOk:
+      return cros::KioskVisionStreamManipulator::Status::kInitialized;
+    case cros::KioskVisionWrapper::InitializeStatus::kDlcError:
+      return cros::KioskVisionStreamManipulator::Status::kDlcError;
+    case cros::KioskVisionWrapper::InitializeStatus::kPipelineError:
+    case cros::KioskVisionWrapper::InitializeStatus::kInputBufferError:
+      return cros::KioskVisionStreamManipulator::Status::kModelError;
+  }
+}
+
+cros::mojom::KioskVisionError ConvertErrorStatusToMojom(
+    cros::KioskVisionStreamManipulator::Status error_status) {
+  switch (error_status) {
+    case cros::KioskVisionStreamManipulator::Status::kNotInitialized:
+    case cros::KioskVisionStreamManipulator::Status::kInitialized:
+      NOTREACHED_NORETURN()
+          << "Cannot convert non-error status to mojom error.";
+    case cros::KioskVisionStreamManipulator::Status::kUnknownError:
+      return cros::mojom::KioskVisionError::UNKNOWN;
+    case cros::KioskVisionStreamManipulator::Status::kDlcError:
+      return cros::mojom::KioskVisionError::DLC_ERROR;
+    case cros::KioskVisionStreamManipulator::Status::kModelError:
+      return cros::mojom::KioskVisionError::MODEL_ERROR;
+  }
+}
+
 }  // namespace
 
 namespace cros {
 
 KioskVisionStreamManipulator::KioskVisionStreamManipulator(
-    RuntimeOptions* runtime_options)
+    RuntimeOptions* runtime_options,
+    const scoped_refptr<base::SingleThreadTaskRunner>& ipc_thread_task_runner)
     : config_(ReloadableConfigFile::Options{
           .override_config_file_path =
               base::FilePath(kOverrideKioskVisionConfigFile)}),
       dlc_path_(runtime_options->GetDlcRootPath(dlc_client::kKioskVisionDlcId)),
       observer_(runtime_options->GetKioskVisionObserver()),
+      ipc_thread_task_runner_(ipc_thread_task_runner),
       kiosk_vision_wrapper_(std::make_unique<KioskVisionWrapper>(
           base::BindRepeating(&KioskVisionStreamManipulator::OnFrameProcessed,
                               base::Unretained(this)),
@@ -165,20 +197,22 @@ bool KioskVisionStreamManipulator::Initialize(
   if (!active_array_dimension_.is_valid()) {
     LOGF(ERROR) << "Invalid active array dimension: "
                 << active_array_dimension_.ToString();
+    UpdateStatus(Status::kUnknownError);
     return false;
   }
 
   VLOGF(1) << "KioskVisionStreamManipulator init. DLC path: " << dlc_path_;
-  if (!kiosk_vision_wrapper_->Initialize(dlc_path_)) {
-    LOGF(ERROR) << "Failed to initialize KioskVisionWrapper";
-    return false;
-  }
+  KioskVisionWrapper::InitializeStatus initialize_status =
+      kiosk_vision_wrapper_->Initialize(dlc_path_);
+
+  UpdateStatus(ConvertStatus(initialize_status));
 
   // Detector size is ok to cast if init above succeeds.
   auto input_size = kiosk_vision_wrapper_->GetDetectorInputSize();
   detector_input_size_ = {static_cast<uint32_t>(input_size.width),
                           static_cast<uint32_t>(input_size.height)};
-  return true;
+
+  return (status_ == Status::kInitialized);
 }
 
 bool KioskVisionStreamManipulator::ConfigureStreams(
@@ -212,6 +246,10 @@ bool KioskVisionStreamManipulator::Flush() {
 bool KioskVisionStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_KIOSK_VISION("frame_number", result.frame_number());
+
+  if (status_ != Status::kInitialized) {
+    return false;
+  }
 
   base::ScopedClosureRunner result_callback_task =
       StreamManipulator::MakeScopedCaptureResultCallbackRunner(
@@ -256,6 +294,11 @@ void KioskVisionStreamManipulator::Notify(camera3_notify_msg_t msg) {
 const base::FilePath& KioskVisionStreamManipulator::GetDlcPathForTesting()
     const {
   return dlc_path_;
+}
+
+KioskVisionStreamManipulator::Status
+KioskVisionStreamManipulator::GetStatusForTesting() const {
+  return status_;
 }
 
 Camera3StreamBuffer* KioskVisionStreamManipulator::SelectInputBuffer(
@@ -408,7 +451,7 @@ void KioskVisionStreamManipulator::OnFrameProcessed(
   mojom::KioskVisionDetectionPtr result = mojom::KioskVisionDetection::New(
       timestamp, AppearancesToMojom(audience_data, audience_size));
 
-  mojo::core::GetIOTaskRunner()->PostTask(
+  ipc_thread_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
           [](raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer,
@@ -434,7 +477,7 @@ void KioskVisionStreamManipulator::OnTrackCompleted(
       /*end_timestamp_in_us=*/end_time,
       /*appearances=*/AppearancesToMojom(appearances_data, appearances_size));
 
-  mojo::core::GetIOTaskRunner()->PostTask(
+  ipc_thread_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
           [](raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer,
@@ -449,18 +492,40 @@ void KioskVisionStreamManipulator::OnTrackCompleted(
 }
 
 void KioskVisionStreamManipulator::OnError() {
+  UpdateStatus(Status::kModelError);
+}
+
+void KioskVisionStreamManipulator::UpdateStatus(Status status) {
+  status_ = status;
+
+  switch (status) {
+    case Status::kInitialized:
+    case Status::kNotInitialized:
+      break;
+    case Status::kUnknownError:
+    case Status::kDlcError:
+    case Status::kModelError:
+      ReportError(status);
+  }
+}
+
+void KioskVisionStreamManipulator::ReportError(Status error_status) {
+  LOGF(ERROR) << "Report error to the observer: "
+              << static_cast<int>(error_status);
+
   // TODO(b/339399663): Error handling. Recreate the pipeline.
-  mojo::core::GetIOTaskRunner()->PostTask(
+  ipc_thread_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          [](raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer) {
+          [](raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer,
+             Status error_status) {
             if (observer->is_bound()) {
-              (*observer)->OnError(mojom::KioskVisionError::MODEL_ERROR);
+              (*observer)->OnError(ConvertErrorStatusToMojom(error_status));
             } else {
               LOGF(ERROR) << "OnError ipc error. Unbound remote";
             }
           },
-          observer_));
+          observer_, error_status));
 }
 
 }  // namespace cros

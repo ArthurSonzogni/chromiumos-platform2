@@ -29,11 +29,12 @@ class KioskVisionWrapperTest : public ::testing::Test {
                             base::Unretained(this)),
         base::BindRepeating(&KioskVisionWrapperTest::OnError,
                             base::Unretained(this)));
-    if (!kiosk_vision_wrapper_->Initialize(g_dlc_path)) {
-      LOG(ERROR) << "Failed to initialize KioskVisionWrapper";
-      return false;
+    if (kiosk_vision_wrapper_->Initialize(g_dlc_path) ==
+        KioskVisionWrapper::InitializeStatus::kOk) {
+      return true;
     }
-    return true;
+    LOG(ERROR) << "Failed to initialize KioskVisionWrapper";
+    return false;
   }
 
   std::unique_ptr<KioskVisionWrapper> kiosk_vision_wrapper_;

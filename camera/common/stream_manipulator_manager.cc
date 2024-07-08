@@ -141,7 +141,9 @@ void MaybeEnableKioskVisionStreamManipulator(
   }
 
   out_stream_manipulators->emplace_back(
-      std::make_unique<KioskVisionStreamManipulator>(runtime_options));
+      std::make_unique<KioskVisionStreamManipulator>(
+          runtime_options,
+          CameraMojoChannelManager::GetInstance()->GetIpcTaskRunner()));
   LOGF(INFO) << "KioskVisionStreamManipulator enabled";
 }
 #endif

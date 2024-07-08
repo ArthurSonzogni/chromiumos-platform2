@@ -80,9 +80,18 @@ KioskVisionWrapper::~KioskVisionWrapper() {
   }
 }
 
-bool KioskVisionWrapper::Initialize(const base::FilePath& dlc_root_path) {
-  return InitializeLibrary(dlc_root_path) && InitializePipeline() &&
-         InitializeInputBuffer();
+KioskVisionWrapper::InitializeStatus KioskVisionWrapper::Initialize(
+    const base::FilePath& dlc_root_path) {
+  if (!InitializeLibrary(dlc_root_path)) {
+    return InitializeStatus::kDlcError;
+  }
+  if (!InitializePipeline()) {
+    return InitializeStatus::kPipelineError;
+  }
+  if (!InitializeInputBuffer()) {
+    return InitializeStatus::kInputBufferError;
+  }
+  return InitializeStatus::kOk;
 }
 
 bool KioskVisionWrapper::InitializeLibrary(

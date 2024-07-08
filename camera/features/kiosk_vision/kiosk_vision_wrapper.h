@@ -18,6 +18,14 @@ namespace cros {
 // Encapsulates usage of a kiosk vision pipeline for audience measurement.
 class KioskVisionWrapper {
  public:
+  enum class InitializeStatus {
+    kOk = 0,
+    kDlcError = 1,
+    kPipelineError = 2,
+    kInputBufferError = 3,
+    kMaxValue = kInputBufferError,
+  };
+
   using FrameCallback =
       base::RepeatingCallback<void(cros::kiosk_vision::Timestamp,
                                    const cros::kiosk_vision::Appearance*,
@@ -40,7 +48,7 @@ class KioskVisionWrapper {
   KioskVisionWrapper& operator=(const KioskVisionWrapper&) = delete;
 
   // Loads dynamic library and initializes a vision pipeline.
-  bool Initialize(const base::FilePath& dlc_root_path);
+  InitializeStatus Initialize(const base::FilePath& dlc_root_path);
 
   // Returns detector input size in pixels.
   cros::kiosk_vision::ImageSize GetDetectorInputSize() const;
