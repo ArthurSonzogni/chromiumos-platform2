@@ -117,9 +117,24 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     resolver.SetNameServers(s);
     resolver.SetDoHProviders(s, provider.ConsumeBool());
 
+    std::vector<std::string> doh_excluded_domains;
+    std::vector<std::string> doh_included_domains;
+    doh_excluded_domains.reserve(n);
+    doh_included_domains.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      doh_excluded_domains.emplace_back(provider.ConsumeRandomLengthString(
+          std::numeric_limits<uint16_t>::max()));
+      doh_included_domains.emplace_back(provider.ConsumeRandomLengthString(
+          std::numeric_limits<uint16_t>::max()));
+    }
+
+    resolver.SetDomainDoHConfigs(doh_excluded_domains, doh_included_domains);
+
     auto msg = provider.ConsumeRandomLengthString(
         std::numeric_limits<uint16_t>::max());
     resolver.ConstructServFailResponse(msg.c_str(), msg.size());
+    resolver.GetDNSQuestionName(msg.c_str(), msg.size());
+    resolver.BypassDoH(msg);
 
     int type = SOCK_STREAM;
     if (provider.ConsumeBool()) {
