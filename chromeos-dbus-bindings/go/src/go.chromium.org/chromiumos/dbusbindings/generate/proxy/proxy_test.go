@@ -34,7 +34,7 @@ func TestGenerateProxies(t *testing.T) {
 						Direction: "in",
 						Annotation: introspect.Annotation{
 							Name:  "org.chromium.DBus.Argument.ProtobufClass",
-							Value: "PassMeProtosRequest",
+							Value: "pass/me/protos.h;PassMeProtosRequest",
 						},
 					},
 				},
@@ -56,7 +56,7 @@ func TestGenerateProxies(t *testing.T) {
 						Type: "ay",
 						Annotation: introspect.Annotation{
 							Name:  "org.chromium.DBus.Argument.ProtobufClass",
-							Value: "YetAnotherProto",
+							Value: "yet/another/proto.h;YetAnotherProto",
 						},
 					}, {
 						Name: "BSSDetail2",
@@ -135,6 +135,9 @@ func TestGenerateProxies(t *testing.T) {
 #include <dbus/object_manager.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
+
+#include <pass/me/protos.h>
+#include <yet/another/proto.h>
 
 namespace foo {
 namespace bar {

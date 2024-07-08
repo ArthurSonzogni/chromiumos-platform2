@@ -106,3 +106,31 @@ func extractInterfacesWithProperties(iss []introspect.Introspection) []introspec
 	}
 	return ret
 }
+
+// extractProtoIncludes returns an array of paths to be included for protobuf types.
+func extractProtoIncludes(iss []introspect.Introspection) []string {
+	var ret []string
+	m := make(map[string]bool)
+	m[""] = true // Skip empty header strings
+	for _, is := range iss {
+		for _, itf := range is.Interfaces {
+			for _, mtd := range itf.Methods {
+				for _, arg := range mtd.Args {
+					if pa := arg.Annotation.ToProtobufClass(); pa != nil && !m[pa.Header] {
+						ret = append(ret, pa.Header)
+						m[pa.Header] = true
+					}
+				}
+			}
+			for _, sgl := range itf.Signals {
+				for _, arg := range sgl.Args {
+					if pa := arg.Annotation.ToProtobufClass(); pa != nil && !m[pa.Header] {
+						ret = append(ret, pa.Header)
+						m[pa.Header] = true
+					}
+				}
+			}
+		}
+	}
+	return ret
+}

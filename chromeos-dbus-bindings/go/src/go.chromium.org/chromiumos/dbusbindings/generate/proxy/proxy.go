@@ -30,6 +30,7 @@ type proxyMethodParams struct {
 var funcMap = template.FuncMap{
 	"add":                             func(a, b int) int { return a + b },
 	"extractInterfacesWithProperties": extractInterfacesWithProperties,
+	"extractProtoIncludes":            extractProtoIncludes,
 	"extractNameSpaces":               genutil.ExtractNameSpaces,
 	"formatComment":                   genutil.FormatComment,
 	"makeFullItfName":                 genutil.MakeFullItfName,
@@ -96,6 +97,14 @@ const (
 #include <dbus/object_manager.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
+
+{{- $protoIncludes := (extractProtoIncludes .Introspects)}}
+{{- if $protoIncludes }}
+{{/* empty line */}}
+{{- range $include := $protoIncludes}}
+#include <{{$include}}>
+{{- end}}
+{{- end}}
 
 {{- template "objectManagerForwardDecl" .}}
 

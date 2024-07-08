@@ -96,12 +96,17 @@ type `a{s(io)}` will be mapped to
 For protocol buffers, add an annotation `ay` (array of bytes) with
 `org.chromium.DBus.Argument.ProtobufClass`, like:
 
-```
+```xml
   <arg name="response" type="ay">
     <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-       value="vm_tools::concierge::DiskImageStatusResponse" />
+       value="vm_concierge/conciege_service.pb.h;vm_tools::concierge::DiskImageStatusResponse" />
   </arg>
 ```
+
+The value here specifies a header containing the protocol buffer definition and
+the name of the protocol buffer type, separated by a semicolon. Generated code
+that references the given class name will also add #include declarations for the
+specified header.
 
 ## Method generation
 

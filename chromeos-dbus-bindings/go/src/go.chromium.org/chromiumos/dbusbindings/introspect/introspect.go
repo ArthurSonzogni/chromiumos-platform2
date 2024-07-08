@@ -9,6 +9,7 @@ package introspect
 import (
 	"encoding/xml"
 	"fmt"
+	"strings"
 
 	"go.chromium.org/chromiumos/dbusbindings/dbustype"
 )
@@ -285,10 +286,31 @@ func (p *Property) VariableName() string {
 	return p.Name
 }
 
+// ProtobufClassAnnotation represents a parsed annotation for a ProtobufClass.
+type ProtobufClassAnnotation struct {
+	// This may be empty if the annotation does not specify a header.
+	Header string
+	// This is the raw type string as specified in the annotation.
+	Type string
+}
+
+// ToProtobufClass will attempt to parse an annotation as a protobuf class.
+// Returns nil if this annotation is not a protobuf class one.
+func (a *Annotation) ToProtobufClass() *ProtobufClassAnnotation {
+	if a == nil || a.Name != "org.chromium.DBus.Argument.ProtobufClass" {
+		return nil
+	}
+	parts := strings.SplitN(a.Value, ";", 2)
+	if len(parts) == 2 {
+		return &ProtobufClassAnnotation{Header: parts[0], Type: parts[1]}
+	}
+	return &ProtobufClassAnnotation{Header: "", Type: parts[0]}
+}
+
 func baseTypeInternal(s string, a *Annotation) (string, error) {
 	// chromeos-dbus-binding supports native protobuf types.
-	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
-		return a.Value, nil
+	if pa := a.ToProtobufClass(); pa != nil {
+		return pa.Type, nil
 	}
 
 	typ, err := dbustype.Parse(s)
@@ -300,8 +322,8 @@ func baseTypeInternal(s string, a *Annotation) (string, error) {
 
 func inArgTypeInternal(s string, a *Annotation) (string, error) {
 	// chromeos-dbus-binding supports native protobuf types.
-	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
-		return fmt.Sprintf("const %s&", a.Value), nil
+	if pa := a.ToProtobufClass(); pa != nil {
+		return fmt.Sprintf("const %s&", pa.Type), nil
 	}
 
 	typ, err := dbustype.Parse(s)
@@ -313,8 +335,8 @@ func inArgTypeInternal(s string, a *Annotation) (string, error) {
 
 func outArgTypeInternal(s string, a *Annotation) (string, error) {
 	// chromeos-dbus-binding supports native protobuf types.
-	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
-		return fmt.Sprintf("%s*", a.Value), nil
+	if pa := a.ToProtobufClass(); pa != nil {
+		return fmt.Sprintf("%s*", pa.Type), nil
 	}
 
 	typ, err := dbustype.Parse(s)

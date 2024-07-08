@@ -182,6 +182,18 @@ func TestMethodArgMethods(t *testing.T) {
 		}, {
 			receiver: introspect.MethodArg{
 				Name: "arg2",
+				Type: "ay",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.ProtobufClass",
+					Value: "my/protobuf/header.h;MyProtobufClass",
+				},
+			},
+			BaseType:   "MyProtobufClass",
+			InArgType:  "const MyProtobufClass&",
+			OutArgType: "MyProtobufClass*",
+		}, {
+			receiver: introspect.MethodArg{
+				Name: "arg3",
 				Type: "h",
 			},
 			BaseType:   "base::ScopedFD",
@@ -224,7 +236,7 @@ func TestSignalArgMethods(t *testing.T) {
 	}{
 		{
 			receiver: introspect.SignalArg{
-				Name: "arg3",
+				Name: "arg4",
 				Type: "ay",
 				Annotation: introspect.Annotation{
 					Name:  "org.chromium.DBus.Argument.ProtobufClass",
@@ -236,7 +248,19 @@ func TestSignalArgMethods(t *testing.T) {
 			OutArgType: "MyProtobufClass*",
 		}, {
 			receiver: introspect.SignalArg{
-				Name: "arg4",
+				Name: "arg5",
+				Type: "ay",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.ProtobufClass",
+					Value: "my/protobuf/header.h;MyProtobufClass",
+				},
+			},
+			BaseType:   "MyProtobufClass",
+			InArgType:  "const MyProtobufClass&",
+			OutArgType: "MyProtobufClass*",
+		}, {
+			receiver: introspect.SignalArg{
+				Name: "arg6",
 				Type: "h",
 			},
 			BaseType:   "base::ScopedFD",
@@ -329,6 +353,54 @@ func TestPropertyMethods(t *testing.T) {
 		got = tc.receiver.VariableName()
 		if got != tc.OutVariableName {
 			t.Fatalf("getting the variable name of %q failed; want %s, got %s", tc.receiver.Name, tc.OutVariableName, got)
+		}
+	}
+}
+
+func TestAnnotationMethods(t *testing.T) {
+	cases := []struct {
+		receiver introspect.Annotation
+		AsProto  *introspect.ProtobufClassAnnotation
+	}{
+		{
+			receiver: introspect.Annotation{
+				Name:  "org.chromium.DBus.Method.Kind",
+				Value: "async",
+			},
+			AsProto: nil,
+		}, {
+			receiver: introspect.Annotation{
+				Name:  "org.chromium.DBus.Argument.ProtobufClass",
+				Value: "MyProtobufClass",
+			},
+			AsProto: &introspect.ProtobufClassAnnotation{Header: "", Type: "MyProtobufClass"},
+		}, {
+			receiver: introspect.Annotation{
+				Name:  "org.chromium.DBus.Argument.ProtobufClass",
+				Value: "my/proto/header.h;MyProtobufClass",
+			},
+			AsProto: &introspect.ProtobufClassAnnotation{Header: "my/proto/header.h", Type: "MyProtobufClass"},
+		},
+	}
+
+	for _, tc := range cases {
+		got := tc.receiver.ToProtobufClass()
+		// Check the error cases match up.
+		if got == nil && tc.AsProto != nil {
+			t.Fatalf("Failed to parse annotation with name %q, value %q", tc.receiver.Name, tc.receiver.Value)
+		}
+		if got != nil && tc.AsProto == nil {
+			t.Fatalf("Unexpected success parsing annotation with name %q, value %q", tc.receiver.Name, tc.receiver.Value)
+		}
+		if got == nil {
+			continue
+		}
+		// If we get here we have a parse, check the parsed values.
+		if got.Header != tc.AsProto.Header {
+			t.Fatalf("Failed to parse %q header; want %q, got %q", tc.receiver.Value, tc.AsProto.Header, got.Header)
+		}
+		if got.Type != tc.AsProto.Type {
+			t.Fatalf("Failed to parse %q type; want %q, got %q", tc.receiver.Value, tc.AsProto.Type, got.Type)
 		}
 	}
 }
