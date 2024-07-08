@@ -212,3 +212,33 @@ message UpgradeArcContainerRequest {
 
   // Next ID to use: 19
 }
+
+// It requests to execute a command on ARC shell.
+// Available requests are managed by ArcCroshService in ARC.
+// ArcCroshServiceProvider in Chrome proxies and translates the message for
+// ArcCroshService.
+message ArcShellExecutionRequest {
+  // The requested command is executed on ARC shell.
+  // The request with unsupported command will be rejected and an error will be
+  // returned. It depends on the ARC side implementation whether flags and
+  // additional arguments are accepted.
+  repeated string command = 1;
+
+  // Next ID to use: 2
+}
+
+// It contains the execution result of ArcShellExecutionRequest.
+// ArcCroshService in ARC creates the original mojo message,
+// then ArcCroshServiceProvider in Chrome translates it into
+// ArcShellExecutionResult and proxies to crosh.
+message ArcShellExecutionResult {
+  oneof payload {
+    // Acquired output if the execution successes.
+    string stdout = 1;
+
+    // Error message if the execution fails.
+    string error = 2;
+  }
+
+  // Next ID to use: 3
+}
