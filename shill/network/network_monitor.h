@@ -36,7 +36,6 @@ class ValidationLog;
 // The NetworkMonitor class monitors the general Internet connectivity and the
 // existence of the captive portal by triggering the PortalDetector and
 // CapportClient. Also, the class sends the network validation metrics.
-// TODO(b/305129516): Integrate the CapportClient into this class.
 class NetworkMonitor {
  public:
   // The extra delay that we wait for the CAPPORT becoming captive state again.
@@ -44,7 +43,6 @@ class NetworkMonitor {
       base::Seconds(5);
 
   // Indicates the type of network validation to conduct on a connected Network.
-  // TODO(b/318370676): Add "HTTP probe only" mode.
   enum class ValidationMode {
     // Network validation with web probes is disabled. Captive portal detection
     // with CAPPORT or Passpoint R3 can still occur.
