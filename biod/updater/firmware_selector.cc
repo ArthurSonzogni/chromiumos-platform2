@@ -94,7 +94,7 @@ FirmwareSelector::FindFirmwareFileAtDir(const base::FilePath& directory,
   return base::ok(std::move(fw_bin));
 }
 
-std::string FirmwareSelector::FindFirmwareFileStatusToString(
+std::string FirmwareSelectorInterface::FindFirmwareFileStatusToString(
     FindFirmwareFileStatus status) {
   switch (status) {
     case FindFirmwareFileStatus::kNoDirectory:

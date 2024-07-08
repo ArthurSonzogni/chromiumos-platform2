@@ -13,13 +13,11 @@
 namespace biod {
 namespace updater {
 
-class FirmwareSelector {
+class FirmwareSelectorInterface {
  public:
-  FirmwareSelector(base::FilePath base_path, base::FilePath firmware_dir)
-      : base_path_(base_path), firmware_dir_(firmware_dir) {}
-  virtual ~FirmwareSelector() = default;
-  virtual bool IsBetaFirmwareAllowed() const;
-  virtual void AllowBetaFirmware(bool enable);
+  virtual ~FirmwareSelectorInterface() = default;
+  virtual bool IsBetaFirmwareAllowed() const = 0;
+  virtual void AllowBetaFirmware(bool enable) = 0;
 
   enum class FindFirmwareFileStatus {
     kNoDirectory,
@@ -28,9 +26,20 @@ class FirmwareSelector {
   };
 
   virtual base::expected<base::FilePath, FindFirmwareFileStatus>
-  FindFirmwareFile(const std::string& board_name);
+  FindFirmwareFile(const std::string& board_name) = 0;
   static std::string FindFirmwareFileStatusToString(
       FindFirmwareFileStatus status);
+};
+
+class FirmwareSelector : public FirmwareSelectorInterface {
+ public:
+  FirmwareSelector(base::FilePath base_path, base::FilePath firmware_dir)
+      : base_path_(base_path), firmware_dir_(firmware_dir) {}
+  ~FirmwareSelector() override = default;
+  bool IsBetaFirmwareAllowed() const override;
+  void AllowBetaFirmware(bool enable) override;
+  base::expected<base::FilePath, FindFirmwareFileStatus> FindFirmwareFile(
+      const std::string& board_name) override;
 
  private:
   // Searches for the externally packaged firmware binary using a glob.
