@@ -17,7 +17,7 @@ namespace {
 
 constexpr char kFirmwareGlobSuffix[] = "_*.bin";
 constexpr char kBetaFirmwareSubdir[] = "beta";
-constexpr char kUseBetaFirmwareFile[] = ".use_beta_firmware";
+constexpr char kAllowBetaFirmwareFile[] = ".allow_beta_firmware";
 
 }  // namespace
 
@@ -28,7 +28,7 @@ using FindFirmwareFileStatus = FirmwareSelector::FindFirmwareFileStatus;
 
 base::expected<base::FilePath, FirmwareSelector::FindFirmwareFileStatus>
 FirmwareSelector::FindFirmwareFile(const std::string& board_name) {
-  if (base::PathExists(base_path_.Append(kUseBetaFirmwareFile))) {
+  if (base::PathExists(base_path_.Append(kAllowBetaFirmwareFile))) {
     LOG(INFO) << "Trying to find beta firmware file for " << board_name << ".";
 
     auto status = FindFirmwareFileAtDir(

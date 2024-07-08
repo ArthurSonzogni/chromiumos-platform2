@@ -105,7 +105,7 @@ TEST_F(FirmwareSelectorTest, BetaFirmwareAvailableButNotAllowed) {
 TEST_F(FirmwareSelectorTest, GoodBetaFirmware) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".use_beta_firmware")));
+  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".allow_beta_firmware")));
   EXPECT_TRUE(CreateDirectory(temp_dir.GetPath().Append("beta")));
 
   biod::updater::FirmwareSelector selector(temp_dir.GetPath(),
@@ -129,7 +129,7 @@ TEST_F(FirmwareSelectorTest, GoodBetaFirmware) {
 TEST_F(FirmwareSelectorTest, NoBetaFirmwareFallbackToProduction) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".use_beta_firmware")));
+  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".allow_beta_firmware")));
   EXPECT_TRUE(CreateDirectory(temp_dir.GetPath().Append("beta")));
 
   biod::updater::FirmwareSelector selector(temp_dir.GetPath(),
