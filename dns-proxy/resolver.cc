@@ -1072,8 +1072,57 @@ std::optional<Resolver::DomainDoHConfig> Resolver::GetDomainDoHConfig(
 
 std::optional<std::string> Resolver::GetDNSQuestionName(const char* msg,
                                                         ssize_t len) {
-  // TODO(jasongustaman): Implement the method.
-  return std::nullopt;
+  // Index of a DNS query question name field. This is taken from RFC1035 (DNS).
+  // The first 12 bytes contains the header of the query.
+  static constexpr int kQNameIdx = 12;
+  if (len <= kQNameIdx) {
+    return std::nullopt;
+  }
+
+  std::string qname;
+  qname.reserve(patchpanel::dns_protocol::kMaxNameLength);
+
+  // From RFC1035 (DNS), section 4.1.2. question section format:
+  // A domain name is represented as a sequence of labels, where each label
+  // consists of a length octet followed by that number of octets. The domain
+  // name terminates with the zero length octet for the null label of the root.
+  // As an example, "google.com" is represented as "\x06google\x03com\x00".
+  int i = kQNameIdx;
+  uint8_t label_length = msg[i++];
+  while (label_length) {
+    // Misformatted query, the length octet must be followed by label with the
+    // same number of octets. Query is cut short.
+    if (i + 1 + label_length > len) {
+      LOG(WARNING) << "Failed to get DNS question name: invalid query";
+      return std::nullopt;
+    }
+
+    // Size of the domain is larger than the maximum length of a domain name.
+    if (qname.size() + 1 + label_length > qname.capacity()) {
+      LOG(WARNING) << "Failed to get DNS question name: name too long";
+      return std::nullopt;
+    }
+
+    // Validate and append characters in the domain.
+    int next_label_idx = i + label_length;
+    while (i < next_label_idx) {
+      char c = msg[i++];
+      if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '-') {
+        LOG(WARNING) << "Failed to get DNS question name: invalid character";
+        return std::nullopt;
+      }
+      qname.append(1, c);
+    }
+
+    // Append dots ('.') if there is a following label.
+    label_length = msg[i++];
+    if (label_length) {
+      qname.append(1, '.');
+    }
+  }
+
+  qname.shrink_to_fit();
+  return qname;
 }
 
 patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,

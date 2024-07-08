@@ -917,4 +917,69 @@ TEST_F(ResolverTest, BypassDoH_ExcludeNotIncludedDomains) {
   EXPECT_TRUE(resolver_->BypassDoH("test.com"));
   EXPECT_FALSE(resolver_->BypassDoH("google.com"));
 }
+
+TEST_F(ResolverTest, GetDNSQuestionName_ValidQuery) {
+  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                            '\x06', 'g',    'o',    'o',    'g',    'l',
+                            'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                            '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_EQ("google.com",
+            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+}
+
+TEST_F(ResolverTest, GetDNSQuestionName_InvalidQuery) {
+  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                            '\x06', 'g',    'o',    'o',    'g',    'l',
+                            'e',    '\x03', 'c',    'o',    'm',    '\x09',
+                            '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_EQ(std::nullopt,
+            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+}
+
+TEST_F(ResolverTest, GetDNSQuestionName_InvalidCharacter) {
+  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                            '\x06', 'g',    'o',    'o',    'g',    'l',
+                            'e',    '\x03', 'c',    'o',    '*',    '\x00',
+                            '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_EQ(std::nullopt,
+            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+}
+
+TEST_F(ResolverTest, GetDNSQuestionName_QueryTooShort) {
+  const char kDnsQuery[] = {'a'};
+  EXPECT_EQ(std::nullopt,
+            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+}
+
+TEST_F(ResolverTest, GetDNSQuestionName_QueryTooLong) {
+  const char kDnsQuery[] = {
+      'J',    'G',    '\x01', ' ',    '\x00', '\x01', '\x00', '\x00', '\x00',
+      '\x00', '\x00', '\x01', '\x30', 'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    '\x30', 'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    '\x30', 'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    '\x30', 'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    '\x30', 'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    '\x30', 'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      '\x00', '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_EQ(std::nullopt,
+            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+}
 }  // namespace dns_proxy
