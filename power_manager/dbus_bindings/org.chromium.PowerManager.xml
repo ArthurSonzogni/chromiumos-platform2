@@ -96,13 +96,11 @@
         Get the current brightness of the keyboard backlight as
         a percentage.
 
-        If |success| is true, the returned value |percent| will be
-        a value between 0.0 and 100.0 inclusive, representing the
-        brightness. The value 0.0 represents "off", while 100.0
-        represents "full brightness".
+        The returned value |percent| will be a value between 0.0 and 100.0
+        inclusive, representing the brightness. The value 0.0 represents "off",
+        while 100.0 represents "full brightness".
       </tp:docstring>
       <arg name="percent" direction="out" type="d" />
-      <arg name="success" direction="out" type="b" />
     </method>
 
     <method name="SetKeyboardAmbientLightSensorEnabled">
