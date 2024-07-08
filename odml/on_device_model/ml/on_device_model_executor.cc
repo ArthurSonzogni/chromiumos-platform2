@@ -525,7 +525,7 @@ OnDeviceModelExecutor::CreateWithResult(
 std::unique_ptr<on_device_model::OnDeviceModel::Session>
 OnDeviceModelExecutor::CreateSession(std::optional<uint32_t> adaptation_id) {
   auto session = SessionAccessor::Empty();
-  if (chrome_ml_->api().CreateSession) {
+  if (!chrome_ml_->api().CreateModel) {
     auto it = base_sessions_.find(adaptation_id);
     CHECK(it != base_sessions_.end());
     session = it->second->Clone();
@@ -576,7 +576,7 @@ DISABLE_CFI_DLSYM
 base::expected<uint32_t, LoadModelResult> OnDeviceModelExecutor::LoadAdaptation(
     on_device_model::mojom::LoadAdaptationParamsPtr params) {
   on_device_model::AdaptationAssets assets = std::move(params->assets);
-  if (chrome_ml_->api().CreateSession) {
+  if (!chrome_ml_->api().CreateModel) {
     static uint32_t next_id = 0;
     base_sessions_.insert(
         {next_id, SessionAccessor::Create(model_task_runner_, model_,
@@ -652,7 +652,7 @@ LoadModelResult OnDeviceModelExecutor::Init(
     descriptor.ts_spm_data = ts_sp_model_.data();
     descriptor.ts_spm_size = ts_sp_model_.length();
   }
-  if (chrome_ml_->api().SessionCreateModel) {
+  if (!chrome_ml_->api().CreateModel) {
     model_ = chrome_ml_->api().SessionCreateModel(
         &descriptor, reinterpret_cast<uintptr_t>(this),
         OnDeviceModelExecutor::Schedule);
