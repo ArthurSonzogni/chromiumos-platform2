@@ -193,7 +193,6 @@ if (use.test) {
       "session_test.cc",
       "updater/cros_fp_updater_test.cc",
       "updater/firmware_selector_test.cc",
-      "updater/update_utils_test.cc",
       "utils_test.cc",
     ]
     configs += [

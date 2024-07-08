@@ -31,11 +31,13 @@
 using UpdateStatus = biod::updater::UpdateStatus;
 using UpdateReason = biod::updater::UpdateReason;
 using FwUpdaterStatus = biod::BiodMetrics::FwUpdaterStatus;
-using FindFirmwareFileStatus = biod::updater::FindFirmwareFileStatus;
+using FindFirmwareFileStatus =
+    biod::updater::FirmwareSelector::FindFirmwareFileStatus;
 
 namespace {
 
 constexpr char kBioFwUpdaterDir[] = "/var/lib/bio_fw_updater";
+constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 constexpr char kHelpText[] =
     "bio_fw_updater ensures the fingerprint mcu has the latest firmware\n";
 
@@ -131,29 +133,32 @@ int main(int argc, char* argv[]) {
   }
   LOG(INFO) << "Identified fingerprint board name as '" << *board_name << "'.";
 
-  biod::FirmwareSelector selector((base::FilePath(kBioFwUpdaterDir)));
+  biod::updater::FirmwareSelector selector((base::FilePath(kBioFwUpdaterDir)),
+                                           (base::FilePath(kFirmwareDir)));
 
   // Find a firmware file that matches the firmware file pattern
-  base::FilePath file;
-  auto status = biod::updater::FindFirmwareFile(selector.GetFirmwarePath(),
-                                                *board_name, &file);
+  auto find_result = selector.FindFirmwareFile(*board_name);
 
-  if (status == FindFirmwareFileStatus::kNoDirectory ||
-      status == FindFirmwareFileStatus::kFileNotFound) {
-    LOG(INFO) << "No firmware "
-              << ((status == FindFirmwareFileStatus::kNoDirectory) ? "directory"
-                                                                   : "file")
-              << " on rootfs, exiting.";
+  if (!find_result.has_value()) {
+    auto status = find_result.error();
+    if (status == FindFirmwareFileStatus::kNoDirectory ||
+        status == FindFirmwareFileStatus::kFileNotFound) {
+      LOG(INFO) << "No firmware "
+                << ((status == FindFirmwareFileStatus::kNoDirectory)
+                        ? "directory"
+                        : "file")
+                << " on rootfs, exiting.";
 
-    return EXIT_SUCCESS;
+      return EXIT_SUCCESS;
+    }
+    if (status == FindFirmwareFileStatus::kMultipleFiles) {
+      LOG(ERROR) << "Found more than one firmware file, aborting.";
+      metrics.Finished(FwUpdaterStatus::kFailureFirmwareFileMultiple);
+      return EXIT_FAILURE;
+    }
   }
-  if (status == FindFirmwareFileStatus::kMultipleFiles) {
-    LOG(ERROR) << "Found more than one firmware file, aborting.";
-    metrics.Finished(FwUpdaterStatus::kFailureFirmwareFileMultiple);
-    return EXIT_FAILURE;
-  }
 
-  biod::CrosFpFirmware fw(file);
+  biod::CrosFpFirmware fw(find_result.value());
   if (!fw.IsValid()) {
     LOG(ERROR) << "Failed to load firmware file '" << fw.GetPath().value()
                << "': " << fw.GetStatusString();

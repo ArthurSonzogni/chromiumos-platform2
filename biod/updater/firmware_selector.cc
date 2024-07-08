@@ -4,28 +4,93 @@
 
 #include "biod/updater/firmware_selector.h"
 
+#include <string>
+#include <utility>
+
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
+#include <base/types/expected.h>
 
 namespace {
 
-constexpr char kUseBetaFirmwareFile[] = ".use_beta_firmware";
-constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
+constexpr char kFirmwareGlobSuffix[] = "_*.bin";
 constexpr char kBetaFirmwareSubdir[] = "beta";
+constexpr char kUseBetaFirmwareFile[] = ".use_beta_firmware";
 
 }  // namespace
 
 namespace biod {
+namespace updater {
 
-base::FilePath FirmwareSelector::GetFirmwarePath() const {
-  base::FilePath firmware_path(kFirmwareDir);
+using FindFirmwareFileStatus = FirmwareSelector::FindFirmwareFileStatus;
 
+base::expected<base::FilePath, FirmwareSelector::FindFirmwareFileStatus>
+FirmwareSelector::FindFirmwareFile(const std::string& board_name) {
   if (base::PathExists(base_path_.Append(kUseBetaFirmwareFile))) {
-    LOG(INFO) << "Beta firmware was requested.";
-    firmware_path = firmware_path.Append(kBetaFirmwareSubdir);
+    LOG(INFO) << "Trying to find beta firmware file for " << board_name << ".";
+
+    auto status = FindFirmwareFileAtDir(
+        firmware_dir_.Append(kBetaFirmwareSubdir), board_name);
+    if (status.has_value()) {
+      return status;
+    }
+
+    LOG(INFO) << "Failed to find beta firmware: "
+              << FindFirmwareFileStatusToString(status.error()) << " "
+              << "Fallback to production firmware.";
   }
 
-  return firmware_path;
+  return FindFirmwareFileAtDir(firmware_dir_, board_name);
 }
 
+base::expected<base::FilePath, FirmwareSelector::FindFirmwareFileStatus>
+FirmwareSelector::FindFirmwareFileAtDir(const base::FilePath& directory,
+                                        const std::string& board_name) {
+  if (!base::DirectoryExists(directory)) {
+    return base::unexpected(FindFirmwareFileStatus::kNoDirectory);
+  }
+
+  std::string glob(board_name + std::string(kFirmwareGlobSuffix));
+  base::FileEnumerator fw_bin_list(directory, false,
+                                   base::FileEnumerator::FileType::FILES, glob);
+
+  // Find provided firmware file
+  base::FilePath fw_bin = fw_bin_list.Next();
+  if (fw_bin.empty()) {
+    return base::unexpected(FindFirmwareFileStatus::kFileNotFound);
+  }
+  LOG(INFO) << "Found firmware file '" << fw_bin.value() << "'.";
+
+  // Ensure that there are no other firmware files
+  bool extra_fw_files = false;
+  for (base::FilePath fw_extra = fw_bin_list.Next(); !fw_extra.empty();
+       fw_extra = fw_bin_list.Next()) {
+    extra_fw_files = true;
+    LOG(ERROR) << "Found firmware file '" << fw_extra.value() << "'.";
+  }
+  if (extra_fw_files) {
+    return base::unexpected(FindFirmwareFileStatus::kMultipleFiles);
+  }
+
+  return base::ok(std::move(fw_bin));
+}
+
+std::string FirmwareSelector::FindFirmwareFileStatusToString(
+    FindFirmwareFileStatus status) {
+  switch (status) {
+    case FindFirmwareFileStatus::kNoDirectory:
+      return "Firmware directory does not exist.";
+    case FindFirmwareFileStatus::kFileNotFound:
+      return "Firmware file not found.";
+    case FindFirmwareFileStatus::kMultipleFiles:
+      return "More than one firmware file was found.";
+  }
+
+  NOTREACHED();
+  return "Unknown find firmware file status encountered.";
+}
+
+}  // namespace updater
 }  // namespace biod

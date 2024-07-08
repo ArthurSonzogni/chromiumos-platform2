@@ -19,20 +19,6 @@ std::string UpdaterVersion();
 // Checks for external firmware disable mechanism.
 bool UpdateDisallowed(const BiodSystem& system);
 
-enum class FindFirmwareFileStatus {
-  kFoundFile,
-  kNoDirectory,
-  kFileNotFound,
-  kMultipleFiles,
-};
-
-// Searches for the externally packaged firmware binary using a glob.
-// The returned firmware has not been validated.
-FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
-                                        const std::string& board_name,
-                                        base::FilePath* file);
-std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status);
-
 }  // namespace updater
 }  // namespace biod
 
