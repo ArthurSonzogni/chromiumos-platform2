@@ -128,7 +128,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<FutilityUtils> futility_utils_;
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
 
-  RmadConfig rmad_config_;
+  RmadCrosConfig rmad_cros_config_;
 
   base::RepeatingTimer status_timer_;
   base::OneShotTimer reboot_timer_;

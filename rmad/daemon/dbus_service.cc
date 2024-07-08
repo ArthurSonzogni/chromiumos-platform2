@@ -240,8 +240,8 @@ bool DBusService::IsRMAAllowed() const {
     return false;
   }
   // Only allow Shimless RMA if it's enabled in cros_config.
-  if (RmadConfig config;
-      !cros_config_utils_->GetRmadConfig(&config) || !config.enabled) {
+  if (RmadCrosConfig config;
+      !cros_config_utils_->GetRmadCrosConfig(&config) || !config.enabled) {
     return false;
   }
   return true;

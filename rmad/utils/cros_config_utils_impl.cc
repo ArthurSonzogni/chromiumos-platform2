@@ -72,7 +72,7 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl(
     : configs_root_path_(configs_root_path),
       cros_config_(std::move(cros_config)) {}
 
-bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
+bool CrosConfigUtilsImpl::GetRmadCrosConfig(RmadCrosConfig* config) const {
   DCHECK(config);
 
   const base::FilePath rmad_path =

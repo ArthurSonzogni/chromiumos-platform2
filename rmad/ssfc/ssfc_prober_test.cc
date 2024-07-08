@@ -49,7 +49,7 @@ class SsfcProberImplTest : public testing::Test {
   SsfcProberImplTest() = default;
 
   std::unique_ptr<SsfcProberImpl> CreateSsfcProber(
-      const RmadConfig& rmad_config = {},
+      const RmadCrosConfig& rmad_cros_config = {},
       bool probe_success = true,
       const std::vector<std::pair<RmadComponent, std::string>>&
           probed_components = {{kComponentApI2c, kApI2cName1},
@@ -75,8 +75,8 @@ class SsfcProberImplTest : public testing::Test {
     // Mock |CrosConfigUtils|.
     auto mock_cros_config_utils =
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    ON_CALL(*mock_cros_config_utils, GetRmadConfig(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(rmad_config), Return(true)));
+    ON_CALL(*mock_cros_config_utils, GetRmadCrosConfig(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(rmad_cros_config), Return(true)));
 
     return std::make_unique<SsfcProberImpl>(
         std::move(mock_runtime_probe_client), std::move(mock_cbi_utils),
@@ -85,8 +85,8 @@ class SsfcProberImplTest : public testing::Test {
 };
 
 TEST_F(SsfcProberImplTest, IsSsfcRequired_True) {
-  RmadConfig rmad_config = {.ssfc = {.component_type_configs = {{}}}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config);
+  RmadCrosConfig rmad_cros_config = {.ssfc = {.component_type_configs = {{}}}};
+  auto ssfc_prober = CreateSsfcProber(rmad_cros_config);
 
   EXPECT_TRUE(ssfc_prober->IsSsfcRequired());
 }
@@ -105,7 +105,7 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_NotRequired) {
 }
 
 TEST_F(SsfcProberImplTest, ProbeSsfc_ProbeFailed) {
-  RmadConfig rmad_config = {
+  RmadCrosConfig rmad_cros_config = {
       .ssfc = {.mask = kSsfcMask,
                .component_type_configs = {
                    {
@@ -119,14 +119,14 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_ProbeFailed) {
                                                 {kEcI2cName2, kEcI2cValue2}},
                    },
                }}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config, false);
+  auto ssfc_prober = CreateSsfcProber(rmad_cros_config, false);
 
   uint32_t ssfc;
   EXPECT_FALSE(ssfc_prober->ProbeSsfc(&ssfc));
 }
 
 TEST_F(SsfcProberImplTest, ProbeSsfc_Success_NoMask) {
-  RmadConfig rmad_config = {
+  RmadCrosConfig rmad_cros_config = {
       .ssfc = {.component_type_configs = {
                    {
                        .default_value = kApI2cDefaultValue,
@@ -139,7 +139,7 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_NoMask) {
                                                 {kEcI2cName2, kEcI2cValue2}},
                    },
                }}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config);
+  auto ssfc_prober = CreateSsfcProber(rmad_cros_config);
 
   uint32_t ssfc;
   EXPECT_TRUE(ssfc_prober->ProbeSsfc(&ssfc));
@@ -147,7 +147,7 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_NoMask) {
 }
 
 TEST_F(SsfcProberImplTest, ProbeSsfc_Success_Mask) {
-  RmadConfig rmad_config = {
+  RmadCrosConfig rmad_cros_config = {
       .ssfc = {.mask = kSsfcMask,
                .component_type_configs = {
                    {
@@ -161,7 +161,7 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_Mask) {
                                                 {kEcI2cName2, kEcI2cValue2}},
                    },
                }}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config);
+  auto ssfc_prober = CreateSsfcProber(rmad_cros_config);
 
   uint32_t ssfc;
   EXPECT_TRUE(ssfc_prober->ProbeSsfc(&ssfc));
@@ -170,14 +170,15 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_Mask) {
 }
 
 TEST_F(SsfcProberImplTest, ProbeSsfc_Success_ComponentNotInConfig) {
-  RmadConfig rmad_config = {
+  RmadCrosConfig rmad_cros_config = {
       .ssfc = {.component_type_configs = {{
                    .default_value = kApI2cDefaultValue,
                    .probeable_components = {{kApI2cName1, kApI2cValue1}},
                }}}};
   std::vector<std::pair<RmadComponent, std::string>> probed_components = {
       {kComponentApI2c, kApI2cName1}, {kComponentApI2c, kApI2cName2}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config, true, probed_components);
+  auto ssfc_prober =
+      CreateSsfcProber(rmad_cros_config, true, probed_components);
 
   uint32_t ssfc;
   EXPECT_TRUE(ssfc_prober->ProbeSsfc(&ssfc));
@@ -185,14 +186,15 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_ComponentNotInConfig) {
 }
 
 TEST_F(SsfcProberImplTest, ProbeSsfc_Success_DuplicateComponents) {
-  RmadConfig rmad_config = {
+  RmadCrosConfig rmad_cros_config = {
       .ssfc = {.component_type_configs = {{
                    .default_value = kApI2cDefaultValue,
                    .probeable_components = {{kApI2cName1, kApI2cValue1}},
                }}}};
   std::vector<std::pair<RmadComponent, std::string>> probed_components = {
       {kComponentApI2c, kApI2cName1}, {kComponentApI2c, kApI2cName1}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config, true, probed_components);
+  auto ssfc_prober =
+      CreateSsfcProber(rmad_cros_config, true, probed_components);
 
   uint32_t ssfc;
   EXPECT_TRUE(ssfc_prober->ProbeSsfc(&ssfc));
@@ -200,7 +202,7 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_DuplicateComponents) {
 }
 
 TEST_F(SsfcProberImplTest, ProbeSsfc_Fail_MultipleComponents) {
-  RmadConfig rmad_config = {
+  RmadCrosConfig rmad_cros_config = {
       .ssfc = {.component_type_configs = {{
                    .default_value = kApI2cDefaultValue,
                    .probeable_components = {{kApI2cName1, kApI2cValue1},
@@ -208,7 +210,8 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Fail_MultipleComponents) {
                }}}};
   std::vector<std::pair<RmadComponent, std::string>> probed_components = {
       {kComponentApI2c, kApI2cName1}, {kComponentApI2c, kApI2cName2}};
-  auto ssfc_prober = CreateSsfcProber(rmad_config, true, probed_components);
+  auto ssfc_prober =
+      CreateSsfcProber(rmad_cros_config, true, probed_components);
 
   uint32_t ssfc;
   EXPECT_FALSE(ssfc_prober->ProbeSsfc(&ssfc));

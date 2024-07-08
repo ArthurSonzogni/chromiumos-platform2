@@ -95,9 +95,9 @@ class DBusServiceTestBase : public testing::Test {
     ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
         .WillByDefault(DoAll(SetArgPointee<0>(options.ro_verification_status),
                              Return(true)));
-    ON_CALL(*mock_cros_config_utils, GetRmadConfig(_))
+    ON_CALL(*mock_cros_config_utils, GetRmadCrosConfig(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(RmadConfig(
+            DoAll(SetArgPointee<0>(RmadCrosConfig(
                       {.enabled = options.is_rmad_enabled_in_cros_config})),
                   Return(true)));
     if (options.is_cros_debug.has_value()) {

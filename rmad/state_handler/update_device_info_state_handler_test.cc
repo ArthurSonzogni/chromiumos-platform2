@@ -203,9 +203,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
 
     // Mock |CrosConfigUtils|.
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    ON_CALL(*cros_config_utils, GetRmadConfig(_))
+    ON_CALL(*cros_config_utils, GetRmadCrosConfig(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(RmadConfig{
+            DoAll(SetArgPointee<0>(RmadCrosConfig{
                       .has_cbi = args.has_cbi,
                       .use_legacy_custom_label = args.use_legacy_custom_label}),
                   Return(true)));

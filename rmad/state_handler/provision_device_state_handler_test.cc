@@ -236,9 +236,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       ON_CALL(*mock_cros_config_utils, GetModelName(_))
           .WillByDefault(Return(false));
     }
-    ON_CALL(*mock_cros_config_utils, GetRmadConfig(_))
+    ON_CALL(*mock_cros_config_utils, GetRmadCrosConfig(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = args.has_cbi}),
+            DoAll(SetArgPointee<0>(RmadCrosConfig{.has_cbi = args.has_cbi}),
                   Return(true)));
     ON_CALL(*mock_cros_config_utils, GetFirmwareConfig(_))
         .WillByDefault(DoAll(SetArgPointee<0>(kCrosFwConfig),

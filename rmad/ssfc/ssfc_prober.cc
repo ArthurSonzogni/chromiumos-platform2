@@ -35,11 +35,11 @@ SsfcProberImpl::SsfcProberImpl(
 }
 
 void SsfcProberImpl::Initialize() {
-  RmadConfig rmad_config;
-  if (cros_config_utils_->GetRmadConfig(&rmad_config) &&
-      !rmad_config.ssfc.component_type_configs.empty()) {
+  RmadCrosConfig rmad_cros_config;
+  if (cros_config_utils_->GetRmadCrosConfig(&rmad_cros_config) &&
+      !rmad_cros_config.ssfc.component_type_configs.empty()) {
     ssfc_required_ = true;
-    ssfc_config_ = rmad_config.ssfc;
+    ssfc_config_ = rmad_cros_config.ssfc;
   } else {
     ssfc_required_ = false;
   }

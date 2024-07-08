@@ -71,7 +71,7 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   std::optional<std::unordered_map<uint32_t, std::string>>
   GetSkuDescriptionOverrides() const;
 
-  RmadConfig rmad_config_;
+  RmadCrosConfig rmad_cros_config_;
 
   base::FilePath working_dir_path_;
   base::FilePath config_dir_path_;

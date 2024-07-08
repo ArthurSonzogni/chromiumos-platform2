@@ -151,7 +151,7 @@ RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
     state_.set_allocated_provision_device(new ProvisionDeviceState);
   }
 
-  if (!cros_config_utils_->GetRmadConfig(&rmad_config_)) {
+  if (!cros_config_utils_->GetRmadCrosConfig(&rmad_cros_config_)) {
     LOG(ERROR) << "Failed to get RMA config from cros_config";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
@@ -449,7 +449,7 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                kProgressWriteSsfc);
 
   // Set firmware config to CBI according to cros_config.
-  if (rmad_config_.has_cbi) {
+  if (rmad_cros_config_.has_cbi) {
     if (ProvisionStatus::Error error = UpdateFirmwareConfig();
         error != ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,

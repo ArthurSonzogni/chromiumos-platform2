@@ -25,7 +25,7 @@ struct SsfcConfig {
   std::vector<SsfcComponentTypeConfig> component_type_configs;
 };
 
-struct RmadConfig {
+struct RmadCrosConfig {
   bool enabled;
   bool has_cbi;
   SsfcConfig ssfc;
@@ -46,7 +46,7 @@ class CrosConfigUtils {
   virtual ~CrosConfigUtils() = default;
 
   // Get cros_config attributes of the device.
-  virtual bool GetRmadConfig(RmadConfig* config) const = 0;
+  virtual bool GetRmadCrosConfig(RmadCrosConfig* config) const = 0;
   virtual bool GetModelName(std::string* model_name) const = 0;
   virtual bool GetBrandCode(std::string* brand_code) const = 0;
   virtual bool GetSkuId(uint32_t* sku_id) const = 0;

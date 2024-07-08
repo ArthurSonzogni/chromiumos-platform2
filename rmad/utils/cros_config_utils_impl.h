@@ -27,7 +27,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   ~CrosConfigUtilsImpl() override = default;
 
   // Get cros_config attributes of the device.
-  bool GetRmadConfig(RmadConfig* config) const override;
+  bool GetRmadCrosConfig(RmadCrosConfig* config) const override;
   bool GetModelName(std::string* model_name) const override;
   bool GetBrandCode(std::string* brand_code) const override;
   bool GetSkuId(uint32_t* sku) const override;

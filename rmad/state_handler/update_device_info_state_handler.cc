@@ -142,7 +142,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   }
 
   // Get rmad config first.
-  if (!cros_config_utils_->GetRmadConfig(&rmad_config_)) {
+  if (!cros_config_utils_->GetRmadCrosConfig(&rmad_cros_config_)) {
     LOG(ERROR) << "Failed to get RMA config from cros_config";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
@@ -180,7 +180,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   if (!cros_config_utils_->GetSkuId(&sku_id)) {
     // If the device uses CBI, SKU might not be set on the board.
     LOG(WARNING) << "Failed to get original sku from cros_config.";
-    if (!rmad_config_.has_cbi) {
+    if (!rmad_cros_config_.has_cbi) {
       // Set |sku_id| as -1 to represent we failed to get the SKU. This value
       // must be overridden afterward and never left as -1 when communicate with
       // Chrome.
@@ -191,7 +191,8 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   // custom-label, which already handles it.
   is_custom_label_exist =
       cros_config_utils_->GetCustomLabelTag(&custom_label_tag);
-  if (rmad_config_.has_cbi && !cbi_utils_->GetDramPartNum(&dram_part_number)) {
+  if (rmad_cros_config_.has_cbi &&
+      !cbi_utils_->GetDramPartNum(&dram_part_number)) {
     LOG(WARNING) << "Failed to get original dram part number from cbi.";
   }
 
@@ -230,7 +231,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   GenerateCustomLabelTagListFromDesignConfigList(design_config_list,
                                                  &custom_label_tag_list);
 
-  if (!rmad_config_.has_cbi) {
+  if (!rmad_cros_config_.has_cbi) {
     if (sku_id == -1) {
       if (!sku_id_list.empty()) {
         LOG(ERROR) << "The model has a list of SKUs but the strapping pins are "
@@ -551,7 +552,7 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (rmad_config_.has_cbi &&
+  if (rmad_cros_config_.has_cbi &&
       device_info.sku_index() != device_info.original_sku_index() &&
       !cbi_utils_->SetSkuId(static_cast<uint32_t>(
           device_info.sku_list(device_info.sku_index())))) {
@@ -574,13 +575,13 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
         device_info.whitelabel_list(device_info.whitelabel_index());
   }
   if (custom_label_tag_updated &&
-      !vpd_utils_->SetCustomLabelTag(custom_label_tag,
-                                     rmad_config_.use_legacy_custom_label)) {
+      !vpd_utils_->SetCustomLabelTag(
+          custom_label_tag, rmad_cros_config_.use_legacy_custom_label)) {
     LOG(ERROR) << "Failed to save custom_label_tag to vpd cache.";
     return false;
   }
 
-  if (rmad_config_.has_cbi &&
+  if (rmad_cros_config_.has_cbi &&
       device_info.dram_part_number() !=
           device_info.original_dram_part_number() &&
       !cbi_utils_->SetDramPartNum(device_info.dram_part_number())) {

@@ -103,7 +103,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     uint32_t sku_id = kSkuId1;
     std::optional<std::string> custom_label_tag = std::nullopt;
     bool enable_rmad = true;
-    bool set_optional_rmad_configs = true;
+    bool set_optional_rmad_cros_configs = true;
   };
 
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
@@ -179,7 +179,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   kTrueStr);
       fake_cros_config->SetString(rmad_path.value(),
                                   kCrosRmadUseLegacyCustomLabelKey, kTrueStr);
-      if (args.set_optional_rmad_configs) {
+      if (args.set_optional_rmad_cros_configs) {
         fake_cros_config->SetString(ssfc_path.value(), kCrosSsfcMaskKey,
                                     base::NumberToString(kSsfcMask));
         fake_cros_config->SetString(component_type_config_0_path.value(),
@@ -214,11 +214,11 @@ class CrosConfigUtilsImplTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
 };
 
-TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
+TEST_F(CrosConfigUtilsImplTest, GetRmadCrosConfig_Enabled) {
   auto cros_config_utils = CreateCrosConfigUtils({});
 
-  RmadConfig config;
-  EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
+  RmadCrosConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadCrosConfig(&config));
   EXPECT_TRUE(config.enabled);
   EXPECT_TRUE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, kSsfcMask);
@@ -236,12 +236,12 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   EXPECT_EQ(probeable_components.at(kSsfcIdentifier2), kSsfcValue2);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled_NoOptionalConfigss) {
+TEST_F(CrosConfigUtilsImplTest, GetRmadCrosConfig_Enabled_NoOptionalConfigss) {
   auto cros_config_utils =
-      CreateCrosConfigUtils({.set_optional_rmad_configs = false});
+      CreateCrosConfigUtils({.set_optional_rmad_cros_configs = false});
 
-  RmadConfig config;
-  EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
+  RmadCrosConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadCrosConfig(&config));
   EXPECT_TRUE(config.enabled);
   EXPECT_TRUE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, 0);
@@ -259,11 +259,11 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled_NoOptionalConfigss) {
   EXPECT_EQ(probeable_components.at(kSsfcIdentifier2), kSsfcValue2);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
+TEST_F(CrosConfigUtilsImplTest, GetRmadCrosConfig_Disabled) {
   auto cros_config_utils = CreateCrosConfigUtils({.enable_rmad = false});
 
-  RmadConfig config;
-  EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
+  RmadCrosConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadCrosConfig(&config));
   EXPECT_FALSE(config.enabled);
   EXPECT_FALSE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, 0);
