@@ -166,6 +166,9 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
   // Called in StreamManipulator::Flush.
   void Flush();
 
+  // Resets the helper to the initial state.
+  void Reset();
+
   // Gets the private context passed to HandleRequest().
   template <typename T>
   T* GetPrivateContextAs(uint32_t frame_number) {
@@ -306,7 +309,6 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
   void HandleBufferError(uint32_t frame_number, camera3_stream_t* stream);
   void CropScaleImages(Camera3StreamBuffer& src_buffer,
                        base::span<Camera3StreamBuffer> dst_buffers);
-  void Reset();
   void OnProcessTaskDone(ProcessTask& task);
   void OnStillCaptureResult(Camera3CaptureDescriptor result);
 

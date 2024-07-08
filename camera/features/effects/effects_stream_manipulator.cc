@@ -604,6 +604,7 @@ void EffectsStreamManipulatorImpl::ResetState() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   effects_pipeline_tracker_.Reset();
   tasks_.clear();
+  helper_->Reset();
   video_rgba_buffer_pool_.reset();
   still_rgba_buffer_pool_.reset();
   video_process_last_start_time_.reset();
