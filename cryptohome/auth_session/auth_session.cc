@@ -1344,7 +1344,7 @@ void AuthSession::AuthenticateAuthFactor(
               << "Unexpected mismatch in type from label and auth_input.";
           std::move(on_done).Run(MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
-              ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+              ErrorActionSet({PossibleAction::kAuth}),
               user_data_auth::CryptohomeErrorCode::
                   CRYPTOHOME_ERROR_INVALID_ARGUMENT));
           return;
