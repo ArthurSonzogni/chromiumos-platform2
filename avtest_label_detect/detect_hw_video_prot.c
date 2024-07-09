@@ -192,7 +192,7 @@ static bool is_vaapi_prot_vp9_cencv3_ctr_device(int fd) {
  * HW decode.
  */
 static bool is_mtk_protected_content() {
-  return (access("/dev/dma_heap/restricted_mtk_cm", F_OK) == 0);
+  return (access("/dev/dma_heap/restricted_mtk_cma", F_OK) == 0);
 }
 #endif  // defined(USE_V4L2_CODEC)
 
