@@ -48,6 +48,13 @@ struct LoadModelParams {
   bool support_multiple_sessions;
 };
 
+// An observer to report the current platform model loading progress.
+[Stable]
+interface PlatformModelProgressObserver {
+  // The progress value is between 0.0 and 1.0.
+  Progress@0(double progress);
+};
+
 // A service which allows loading platform trusted models which are stored
 // on-device and which may process untrustworthy data.
 [Stable]
@@ -56,7 +63,9 @@ interface OnDeviceModelPlatformService {
   // used on some specific platforms(e.g. ChromeOS). The model can be either
   // a base model or a base model with an adaptation layer. If the model can
   // not be created the model pipe will be reset.
-  LoadPlatformModel@0(mojo_base.mojom.Uuid uuid,
-                    pending_receiver<OnDeviceModel> model) =>
-      (LoadModelResult result);
+  LoadPlatformModel@0(
+      mojo_base.mojom.Uuid uuid,
+      pending_receiver<OnDeviceModel> model,
+      [MinVersion=1] pending_remote<PlatformModelProgressObserver>?
+          progress_observer) => (LoadModelResult result);
 };

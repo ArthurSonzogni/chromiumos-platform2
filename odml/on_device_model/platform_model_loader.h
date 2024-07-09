@@ -5,9 +5,11 @@
 #ifndef ODML_ON_DEVICE_MODEL_PLATFORM_MODEL_LOADER_H_
 #define ODML_ON_DEVICE_MODEL_PLATFORM_MODEL_LOADER_H_
 
-#include "base/functional/callback.h"
-#include "base/uuid.h"
+#include <base/functional/callback.h>
+#include <base/uuid.h>
+
 #include "odml/mojom/on_device_model.mojom.h"
+#include "odml/mojom/on_device_model_service.mojom.h"
 
 namespace on_device_model {
 
@@ -24,6 +26,8 @@ class PlatformModelLoader {
   virtual void LoadModelWithUuid(
       const base::Uuid& uuid,
       mojo::PendingReceiver<mojom::OnDeviceModel> model,
+      mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+          progress_observer,
       LoadModelCallback callback) = 0;
 };
 

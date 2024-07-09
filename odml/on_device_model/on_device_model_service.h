@@ -50,9 +50,12 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
   }
 
   // mojom::OnDeviceModelPlatformService:
-  void LoadPlatformModel(const base::Uuid& uuid,
-                         mojo::PendingReceiver<mojom::OnDeviceModel> model,
-                         LoadPlatformModelCallback callback) override;
+  void LoadPlatformModel(
+      const base::Uuid& uuid,
+      mojo::PendingReceiver<mojom::OnDeviceModel> model,
+      mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+          progress_observer,
+      LoadPlatformModelCallback callback) override;
 
   void LoadModel(mojom::LoadModelParamsPtr params,
                  mojo::PendingReceiver<mojom::OnDeviceModel> model,

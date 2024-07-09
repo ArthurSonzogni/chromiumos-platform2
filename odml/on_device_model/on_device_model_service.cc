@@ -376,6 +376,7 @@ void OnDeviceModelService::LoadModel(
 void OnDeviceModelService::LoadPlatformModel(
     const base::Uuid& uuid,
     mojo::PendingReceiver<mojom::OnDeviceModel> model,
+    mojo::PendingRemote<mojom::PlatformModelProgressObserver> progress_observer,
     LoadPlatformModelCallback callback) {
   if (!platform_model_loader_) {
     LOG(ERROR) << "No valid platform model loader.";
@@ -385,10 +386,10 @@ void OnDeviceModelService::LoadPlatformModel(
 
   if (!shim_loader_->IsShimReady()) {
     auto split = base::SplitOnceCallback(std::move(callback));
-    base::OnceClosure retry_cb =
-        base::BindOnce(&OnDeviceModelService::LoadPlatformModel,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(uuid),
-                       std::move(model), std::move(split.first));
+    base::OnceClosure retry_cb = base::BindOnce(
+        &OnDeviceModelService::LoadPlatformModel,
+        weak_ptr_factory_.GetWeakPtr(), std::move(uuid), std::move(model),
+        std::move(progress_observer), std::move(split.first));
     shim_loader_->EnsureShimReady(base::BindOnce(
         [](LoadPlatformModelCallback callback, base::OnceClosure retry_cb,
            bool result) {
@@ -405,6 +406,7 @@ void OnDeviceModelService::LoadPlatformModel(
   }
 
   platform_model_loader_->LoadModelWithUuid(uuid, std::move(model),
+                                            std::move(progress_observer),
                                             std::move(callback));
 }
 

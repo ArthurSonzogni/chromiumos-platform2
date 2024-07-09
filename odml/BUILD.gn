@@ -84,7 +84,7 @@ source_set("odml") {
 }
 
 executable("odml_console") {
-  install_path = "bin"
+  install_path = "/usr/local/bin"
   sources = [ "odml_console.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":odml" ]

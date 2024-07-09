@@ -5,6 +5,7 @@
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
@@ -13,6 +14,7 @@
 #include <chromeos/mojo/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -61,18 +63,25 @@ class ResponseHolder : public on_device_model::mojom::StreamingResponder {
   // std::vector<std::string> responses_;
 };
 
-class MyContextClient : public on_device_model::mojom::ContextClient {
+class ProgressObserver
+    : public on_device_model::mojom::PlatformModelProgressObserver {
  public:
-  MyContextClient(base::RunLoop& run_loop) : run_loop_(run_loop) {}
+  explicit ProgressObserver(
+      base::RepeatingCallback<void(double progress)> callback)
+      : callback_(std::move(callback)) {}
+  ~ProgressObserver() override = default;
 
-  // on_device_model::mojom::ContextClient:
-  void OnComplete(uint32_t tokens_processed) override {
-    LOG(INFO) << "tokens_processed: " << tokens_processed;
-    run_loop_.Quit();
+  mojo::PendingRemote<on_device_model::mojom::PlatformModelProgressObserver>
+  BindRemote() {
+    return receiver_.BindNewPipeAndPassRemote();
   }
 
+  void Progress(double progress) override { callback_.Run(progress); }
+
  private:
-  base::RunLoop& run_loop_;
+  mojo::Receiver<on_device_model::mojom::PlatformModelProgressObserver>
+      receiver_{this};
+  base::RepeatingCallback<void(double progress)> callback_;
 };
 
 }  // namespace
@@ -126,8 +135,12 @@ int main(int argc, char** argv) {
 
   {
     base::RunLoop run_loop;
+    ProgressObserver progress_observer(base::BindRepeating(
+        [](double progress) { LOG(INFO) << "Progress: " << progress; }));
+
     service->LoadPlatformModel(
         base::Uuid::ParseLowercase(uuid), model.BindNewPipeAndPassReceiver(),
+        progress_observer.BindRemote(),
         base::BindOnce(
             [](base::RunLoop* run_loop,
                on_device_model::mojom::LoadModelResult result) {

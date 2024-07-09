@@ -17,6 +17,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,9 +38,12 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
   ChromeosPlatformModelLoader& operator=(const ChromeosPlatformModelLoader&) =
       delete;
 
-  void LoadModelWithUuid(const base::Uuid& uuid,
-                         mojo::PendingReceiver<mojom::OnDeviceModel> pending,
-                         LoadModelCallback callback) override;
+  void LoadModelWithUuid(
+      const base::Uuid& uuid,
+      mojo::PendingReceiver<mojom::OnDeviceModel> pending,
+      mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+          progress_observer,
+      LoadModelCallback callback) override;
 
  private:
   class PlatformModel final : public base::RefCounted<PlatformModel> {
@@ -72,11 +76,13 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
 
   struct PendingLoad {
     PendingLoad(mojo::PendingReceiver<mojom::OnDeviceModel> p,
+                mojo::PendingRemote<mojom::PlatformModelProgressObserver> o,
                 LoadModelCallback c);
     PendingLoad(PendingLoad&&);
     ~PendingLoad();
 
     mojo::PendingReceiver<mojom::OnDeviceModel> pending;
+    mojo::Remote<mojom::PlatformModelProgressObserver> progress_observer;
     LoadModelCallback callback;
   };
 
@@ -86,6 +92,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
 
     base::WeakPtr<PlatformModel> platform_model;
     std::vector<PendingLoad> pending_loads;
+    std::unique_ptr<mojom::PlatformModelProgressObserver> base_model_observer;
   };
 
   bool ReplyModelAlreadyLoaded(const base::Uuid& uuid);
@@ -94,6 +101,10 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
 
   void OnInstallDlcComplete(const base::Uuid& uuid,
                             base::expected<base::FilePath, std::string> result);
+
+  void OnDlcProgress(const base::Uuid& uuid, double progress);
+
+  void UpdateProgress(const base::Uuid& uuid, double progress);
 
   void LoadAdaptationPlatformModel(const base::Uuid& base_uuid,
                                    const std::string& base_version,
