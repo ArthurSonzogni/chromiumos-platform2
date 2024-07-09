@@ -1087,6 +1087,9 @@ def main(argv: list[str]) -> int:
     if args.subcommand == "analyze":
         if not args.decisions_dir.is_dir():
             parser.error("decisions_dir must be a directory")
+    if args.subcommand == "verify":
+        if not args.decisions_dir.is_dir():
+            parser.error("decisions_dir must be a directory")
     elif args.subcommand == "report":
         if args.user_groups_csv and not args.user_groups_csv.is_file():
             parser.error("user-groups-csv must be a CSV file")
