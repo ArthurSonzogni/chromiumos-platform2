@@ -205,6 +205,7 @@ EffectsConfig ConvertMojoConfig(
       .relight_enabled = effects_config->relight_enabled,
       .blur_enabled = effects_config->blur_enabled,
       .replace_enabled = effects_config->replace_enabled,
+      .face_retouch_enabled = effects_config->retouch_enabled,
       .blur_level = static_cast<cros::BlurLevel>(effects_config->blur_level),
       .segmentation_delegate = GetDelegateFromInferenceBackend(
           effects_config->segmentation_inference_backend),
