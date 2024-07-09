@@ -85,12 +85,18 @@ class DlcClientImpl : public cros::DlcClient {
 
   void InstallDlc() override {
     task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(&DlcClientImpl::Install, weak_factory_.GetWeakPtr(), 1));
+        FROM_HERE, base::BindOnce(&DlcClientImpl::Install,
+                                  weak_factory_.GetWeakPtr(), 1, false));
+  }
+
+  void InstallVerifiedDlcOnly() override {
+    task_runner_->PostTask(FROM_HERE,
+                           base::BindOnce(&DlcClientImpl::Install,
+                                          weak_factory_.GetWeakPtr(), 1, true));
   }
 
  private:
-  void Install(int attempt) {
+  void Install(int attempt, bool verified_only) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     LOG(INFO) << "InstallDlc called for " << dlc_id_
               << ", attempt: " << attempt;
@@ -137,7 +143,7 @@ class DlcClientImpl : public cros::DlcClient {
         task_runner_->PostDelayedTask(
             FROM_HERE,
             base::BindOnce(&DlcClientImpl::Install, weak_factory_.GetWeakPtr(),
-                           attempt),
+                           attempt, verified_only),
             retry_delay);
         return;
       } else {
@@ -150,7 +156,7 @@ class DlcClientImpl : public cros::DlcClient {
                         "): ", error->GetMessage()}));
     };
 
-    if (dlc_id_ == cros::dlc_client::kMlCoreDlcId) {
+    if (dlc_id_ == cros::dlc_client::kMlCoreDlcId || verified_only) {
       dlcservice::DlcState dlc_state;
       if (!dlcservice_client_->GetDlcState(dlc_id_, &dlc_state, &error)) {
         LOG(ERROR) << "Error calling dlcservice_client_->GetDlcState for "
@@ -160,7 +166,13 @@ class DlcClientImpl : public cros::DlcClient {
       }
 
       if (!dlc_state.is_verified()) {
-        uninstalling = true;
+        if (verified_only) {
+          InvokeErrorCb(base::StrCat(
+              {"The DLC ", dlc_id_, " is not in a verified state."}));
+          return;
+        }
+
+        uninstalling_ = true;
         // Uninstall an older version of the DLC if available. This ensures to
         // remove the existing logical volume for the DLC to accommodate changes
         // in DLC_PREALLOC_BLOCKS.
@@ -193,9 +205,9 @@ class DlcClientImpl : public cros::DlcClient {
       return;
     }
 
-    if (uninstalling &&
+    if (uninstalling_ &&
         dlc_state.state() == dlcservice::DlcState::NOT_INSTALLED) {
-      uninstalling = false;
+      uninstalling_ = false;
       return;
     }
 
@@ -284,7 +296,7 @@ class DlcClientImpl : public cros::DlcClient {
   }
 
   const std::string dlc_id_;
-  bool uninstalling = false;
+  bool uninstalling_ = false;
   cros::DlcMetrics metrics_;
   std::string metrics_base_name_;
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
@@ -314,6 +326,12 @@ class DlcClientForTest : public cros::DlcClient {
   void SetMetricsBaseName(const std::string& /*unused*/) override {}
 
   void InstallDlc() override {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&DlcClientForTest::InvokeSuccessCb,
+                                  base::Unretained(this)));
+  }
+
+  void InstallVerifiedDlcOnly() override {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&DlcClientForTest::InvokeSuccessCb,
                                   base::Unretained(this)));

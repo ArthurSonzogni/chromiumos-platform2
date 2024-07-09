@@ -37,6 +37,15 @@ class DlcClient {
   // Thread-safe; can be called from any sequence.
   virtual void InstallDlc() = 0;
 
+  // Asks DLC Service to start installing the verified(cached or downloaded)
+  // DLC. The verified DLC means the DLC is available on disk and can be mounted
+  // immediately. Retries a limited number of times if DLC Service is busy.
+  // Invokes registered callbacks on completion (success or failure).
+  // Subsequent calls after completion will restart installation without
+  // triggering callbacks.
+  // Thread-safe; can be called from any sequence.
+  virtual void InstallVerifiedDlcOnly() = 0;
+
   // Causes UMA histograms for this object to be emitted, with the specified
   // base name. Emitted histograms are named as follows:
   // {metrics_base_name}.{specific histogram name}
