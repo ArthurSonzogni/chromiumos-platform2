@@ -16,6 +16,8 @@ namespace on_device_model {
 class PlatformModelLoader {
  public:
   using LoadModelCallback = base::OnceCallback<void(mojom::LoadModelResult)>;
+  using GetModelStateCallback =
+      base::OnceCallback<void(mojom::PlatformModelState)>;
 
   PlatformModelLoader() = default;
   virtual ~PlatformModelLoader() = default;
@@ -29,6 +31,9 @@ class PlatformModelLoader {
       mojo::PendingRemote<mojom::PlatformModelProgressObserver>
           progress_observer,
       LoadModelCallback callback) = 0;
+
+  virtual void GetModelState(const base::Uuid& uuid,
+                             GetModelStateCallback callback) = 0;
 };
 
 }  // namespace on_device_model

@@ -55,6 +55,20 @@ interface PlatformModelProgressObserver {
   Progress@0(double progress);
 };
 
+[Stable, Extensible]
+enum PlatformModelState {
+  [Default] kUnknownState,
+  kInstalledOnDisk,
+  kInvalidUuid,
+  kInvalidDlcClient,
+  kInvalidDlcPackage,
+  kInvalidDlcVerifiedState,
+  kInvalidDlcInstall,
+  kInvalidModelFormat,
+  kInvalidModelDescriptor,
+  kInvalidBaseModelDescriptor,
+};
+
 // A service which allows loading platform trusted models which are stored
 // on-device and which may process untrustworthy data.
 [Stable]
@@ -68,4 +82,9 @@ interface OnDeviceModelPlatformService {
       pending_receiver<OnDeviceModel> model,
       [MinVersion=1] pending_remote<PlatformModelProgressObserver>?
           progress_observer) => (LoadModelResult result);
+
+  // Gets the platform model state given platform model `uuid`.
+  [MinVersion=1]
+  GetPlatformModelState@1(mojo_base.mojom.Uuid uuid)
+      => (PlatformModelState result);
 };

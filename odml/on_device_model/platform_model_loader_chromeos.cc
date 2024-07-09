@@ -28,6 +28,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "odml/on_device_model/on_device_model_service.h"
+#include "odml/utils/dlc_client_helper.h"
 
 // The structure of the base model package:
 //
@@ -245,35 +246,83 @@ void ChromeosPlatformModelLoader::LoadModelWithUuid(
 
   std::string uuid_str = uuid.AsLowercaseString();
   std::string dlc_id = kMlDlcPrefix + uuid_str;
-  using InstallCallback =
-      base::OnceCallback<void(base::expected<base::FilePath, std::string>)>;
-  using DlcClientPtr = std::unique_ptr<cros::DlcClient>;
-  std::shared_ptr<DlcClientPtr> shared_dlc_client =
-      std::make_shared<DlcClientPtr>(nullptr);
-  // Bind the lifetime of the dlc_client to the end of install callback.
-  InstallCallback install_cb =
-      base::BindOnce(&ChromeosPlatformModelLoader::OnInstallDlcComplete,
-                     weak_ptr_factory_.GetWeakPtr(), uuid)
-          .Then(base::BindOnce([](std::shared_ptr<DlcClientPtr> dlc_client) {},
-                               shared_dlc_client));
-  auto split = base::SplitOnceCallback(std::move(install_cb));
-  auto dlc_client = cros::DlcClient::Create(
+
+  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
       dlc_id,
-      base::BindOnce(
-          [](InstallCallback callback, const base::FilePath& path) {
-            std::move(callback).Run(path);
-          },
-          std::move(split.first)),
-      base::BindOnce(
-          [](InstallCallback callback, const std::string& path) {
-            std::move(callback).Run(base::unexpected(path));
-          },
-          std::move(split.second)),
+      base::BindOnce(&ChromeosPlatformModelLoader::OnInstallDlcComplete,
+                     weak_ptr_factory_.GetWeakPtr(), uuid),
       base::BindRepeating(&ChromeosPlatformModelLoader::OnDlcProgress,
                           weak_ptr_factory_.GetWeakPtr(), uuid));
-  dlc_client->InstallDlc();
-  (*shared_dlc_client) = std::move(dlc_client);
+  (*dlc_client)->InstallDlc();
   return;
+}
+
+void ChromeosPlatformModelLoader::GetModelState(
+    const base::Uuid& uuid, GetModelStateCallback callback) {
+  if (!uuid.is_valid()) {
+    std::move(callback).Run(mojom::PlatformModelState::kInvalidUuid);
+    return;
+  }
+
+  auto it = platform_models_.find(uuid);
+  if (it != platform_models_.end() && it->second.platform_model) {
+    std::move(callback).Run(mojom::PlatformModelState::kInstalledOnDisk);
+    return;
+  }
+
+  std::string uuid_str = uuid.AsLowercaseString();
+  std::string dlc_id = kMlDlcPrefix + uuid_str;
+
+  std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
+      dlc_id, base::BindOnce(
+                  &ChromeosPlatformModelLoader::GetModelStateFromDlcState,
+                  weak_ptr_factory_.GetWeakPtr(), uuid, std::move(callback)));
+  (*dlc_client)->InstallVerifiedDlcOnly();
+}
+
+void ChromeosPlatformModelLoader::GetModelStateFromDlcState(
+    const base::Uuid& uuid,
+    GetModelStateCallback callback,
+    base::expected<base::FilePath, std::string> result) {
+  if (!result.has_value()) {
+    std::move(callback).Run(mojom::PlatformModelState::kInvalidDlcPackage);
+    return;
+  }
+
+  const base::FilePath& dlc_root = result.value();
+  base::FilePath model_desc = dlc_root.Append(kModelDescriptor);
+  std::string model_json;
+
+  if (!base::ReadFileToString(model_desc, &model_json)) {
+    std::move(callback).Run(mojom::PlatformModelState::kInvalidModelFormat);
+    return;
+  }
+
+  std::optional<base::Value::Dict> model_dict =
+      base::JSONReader::ReadDict(model_json);
+  if (!model_dict) {
+    std::move(callback).Run(mojom::PlatformModelState::kInvalidModelDescriptor);
+    return;
+  }
+
+  const base::Value::Dict* base_model = model_dict->FindDict(kBaseModelKey);
+
+  if (base_model) {
+    // This is an adaptation layer model. We need to load the base model first.
+    const std::string* base_uuid = base_model->FindString(kUuidKey);
+    if (!base_uuid) {
+      std::move(callback).Run(
+          mojom::PlatformModelState::kInvalidBaseModelDescriptor);
+      return;
+    }
+
+    base::Uuid base_model_uuid = base::Uuid::ParseLowercase(*base_uuid);
+
+    GetModelState(base_model_uuid, std::move(callback));
+    return;
+  }
+
+  std::move(callback).Run(mojom::PlatformModelState::kInstalledOnDisk);
 }
 
 void ChromeosPlatformModelLoader::OnInstallDlcComplete(

@@ -57,6 +57,9 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
           progress_observer,
       LoadPlatformModelCallback callback) override;
 
+  void GetPlatformModelState(const base::Uuid& uuid,
+                             GetPlatformModelStateCallback callback) override;
+
   void LoadModel(mojom::LoadModelParamsPtr params,
                  mojo::PendingReceiver<mojom::OnDeviceModel> model,
                  LoadPlatformModelCallback callback);

@@ -410,6 +410,17 @@ void OnDeviceModelService::LoadPlatformModel(
                                             std::move(callback));
 }
 
+void OnDeviceModelService::GetPlatformModelState(
+    const base::Uuid& uuid, GetPlatformModelStateCallback callback) {
+  if (!platform_model_loader_) {
+    LOG(ERROR) << "No valid platform model loader.";
+    std::move(callback).Run(mojom::PlatformModelState::kUnknownState);
+    return;
+  }
+
+  platform_model_loader_->GetModelState(uuid, std::move(callback));
+}
+
 void OnDeviceModelService::DeleteModel(
     base::WeakPtr<mojom::OnDeviceModel> model) {
   if (!model) {

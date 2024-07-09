@@ -17,6 +17,8 @@
 #include <base/scoped_native_library.h>
 #include <ml_core/dlc/dlc_client.h>
 
+#include "odml/utils/dlc_client_helper.h"
+
 namespace {
 constexpr char kOdmlShimDlc[] = "odml-shim";
 constexpr char kOdmlShimLibraryName[] = "libodml_shim.so";
@@ -32,32 +34,11 @@ bool OdmlShimLoaderImpl::IsShimReady() {
 
 void OdmlShimLoaderImpl::EnsureShimReady(
     base::OnceCallback<void(bool)> callback) {
-  using InstallCallback =
-      base::OnceCallback<void(base::expected<base::FilePath, std::string>)>;
-  using DlcClientPtr = std::unique_ptr<cros::DlcClient>;
-  std::shared_ptr<DlcClientPtr> shared_dlc_client =
-      std::make_shared<DlcClientPtr>(nullptr);
-  // Bind the lifetime of the dlc_client to the end of install callback.
-  InstallCallback install_cb =
-      base::BindOnce(&OdmlShimLoaderImpl::OnInstallDlcComplete,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback))
-          .Then(base::BindOnce([](std::shared_ptr<DlcClientPtr> dlc_client) {},
-                               shared_dlc_client));
-  auto split = base::SplitOnceCallback(std::move(install_cb));
-  auto dlc_client = cros::DlcClient::Create(
+  std::shared_ptr<DlcClientPtr> dlc_client = CreateDlcClient(
       kOdmlShimDlc,
-      base::BindOnce(
-          [](InstallCallback callback, const base::FilePath& path) {
-            std::move(callback).Run(path);
-          },
-          std::move(split.first)),
-      base::BindOnce(
-          [](InstallCallback callback, const std::string& path) {
-            std::move(callback).Run(base::unexpected(path));
-          },
-          std::move(split.second)));
-  dlc_client->InstallDlc();
-  (*shared_dlc_client) = std::move(dlc_client);
+      base::BindOnce(&OdmlShimLoaderImpl::OnInstallDlcComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+  (*dlc_client)->InstallDlc();
 }
 
 void OdmlShimLoaderImpl::OnInstallDlcComplete(
