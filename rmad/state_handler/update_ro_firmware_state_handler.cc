@@ -17,7 +17,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <re2/re2.h>
 
 #include "rmad/constants.h"
@@ -54,7 +54,9 @@ namespace rmad {
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
-    : BaseStateHandler(json_store, daemon_callback), is_mocked_(false) {
+    : BaseStateHandler(json_store, daemon_callback),
+      is_mocked_(false),
+      mock_update_success_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
@@ -66,12 +68,14 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
 UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
+    bool update_success,
     std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
+      mock_update_success_(update_success),
       udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
@@ -92,6 +96,8 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
   if (!state_.has_update_ro_firmware()) {
     auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
     update_ro_firmware->set_optional(CanSkipUpdate());
+    update_ro_firmware->set_skip_update_ro_firmware_from_rootfs(
+        SkipUpdateFromRootfs());
     state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
 
     sequenced_task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
@@ -105,6 +111,9 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
     status_ = RMAD_UPDATE_RO_FIRMWARE_COMPLETE;
     RecordFirmwareUpdateStatusToLogs(json_store_,
                                      FirmwareUpdateStatus::kFirmwareComplete);
+  } else if (!state_.update_ro_firmware()
+                  .skip_update_ro_firmware_from_rootfs()) {
+    status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
   } else {
     status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
   }
@@ -114,7 +123,15 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
 
 void UpdateRoFirmwareStateHandler::RunState() {
   StartSignalTimer();
-  StartPollingTimer();
+  if (status_ != RMAD_UPDATE_RO_FIRMWARE_COMPLETE &&
+      !state_.update_ro_firmware().skip_update_ro_firmware_from_rootfs()) {
+    LOG(INFO) << "Copying rootfs firmware.";
+    daemon_callback_->GetExecuteCopyRootfsFirmwareUpdaterCallback().Run(
+        base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
+                       base::Unretained(this)));
+  } else {
+    StartPollingTimer();
+  }
 }
 
 void UpdateRoFirmwareStateHandler::CleanUpState() {
@@ -161,7 +178,7 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
   const UpdateRoFirmwareState& update_ro_firmware = state.update_ro_firmware();
   if (update_ro_firmware.choice() ==
       UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_UNKNOWN) {
-    LOG(ERROR) << "RmadState missing |update| argument.";
+    LOG(ERROR) << "RmadState missing |choice| argument.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
   }
   if (!state_.update_ro_firmware().optional() &&
@@ -189,7 +206,7 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
                               RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
-bool UpdateRoFirmwareStateHandler::CanSkipUpdate() {
+bool UpdateRoFirmwareStateHandler::CanSkipUpdate() const {
   if (bool firmware_updated;
       json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
       firmware_updated) {
@@ -199,6 +216,10 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() {
       json_store_->GetValue(kRoFirmwareVerified, &ro_verified) && ro_verified) {
     return true;
   }
+  return false;
+}
+
+bool UpdateRoFirmwareStateHandler::SkipUpdateFromRootfs() const {
   return false;
 }
 
@@ -244,6 +265,7 @@ void UpdateRoFirmwareStateHandler::WaitUsb() {
         // Only try to mount the first root partition found. Stop the polling
         // to prevent mounting twice.
         StopPollingTimer();
+        LOG(INFO) << "Copying Usb firmware.";
         daemon_callback_->GetExecuteMountAndCopyFirmwareUpdaterCallback().Run(
             static_cast<uint8_t>(device_id),
             base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopyCompleted,
@@ -280,13 +302,18 @@ void UpdateRoFirmwareStateHandler::OnCopyCompleted(bool copy_success) {
 }
 
 void UpdateRoFirmwareStateHandler::OnCopySuccess() {
-  // This is run in |updater_task_runner_|.
-  const base::FilePath updater_path(kFirmwareUpdaterPath);
-  // Check again that the copied firmware updater exists.
-  CHECK(base::PathExists(updater_path));
-  bool update_success = RunFirmwareUpdater();
-  // Remove the copied firmware updater.
-  CHECK(base::DeleteFile(updater_path));
+  bool update_success;
+  if (is_mocked_) {
+    update_success = mock_update_success_;
+  } else {
+    // This is run in |updater_task_runner_|.
+    const base::FilePath updater_path(kFirmwareUpdaterPath);
+    // Check again that the copied firmware updater exists.
+    CHECK(base::PathExists(updater_path));
+    update_success = RunFirmwareUpdater();
+    // Remove the copied firmware updater.
+    CHECK(brillo::DeleteFile(updater_path));
+  }
 
   sequenced_task_runner_->PostTask(
       FROM_HERE,

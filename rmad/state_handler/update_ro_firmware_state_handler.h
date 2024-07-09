@@ -5,8 +5,6 @@
 #ifndef RMAD_STATE_HANDLER_UPDATE_RO_FIRMWARE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_UPDATE_RO_FIRMWARE_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,6 +16,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
@@ -44,6 +43,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   explicit UpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
+      bool update_success,
       std::unique_ptr<UdevUtils> udev_utils,
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
@@ -66,7 +66,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   void StartPollingTimer();
   void StopPollingTimer();
 
-  bool CanSkipUpdate();
+  bool CanSkipUpdate() const;
+  bool SkipUpdateFromRootfs() const;
 
   void SendFirmwareUpdateSignal();
   std::vector<std::unique_ptr<UdevDevice>> GetRemovableBlockDevices() const;
@@ -82,6 +83,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
 
   // True if the class is not initialized with default constructor.
   bool is_mocked_;
+  bool mock_update_success_;
 
   // All accesses to |status_|, |usb_detected_| and timers should be on the same
   // sequence.
