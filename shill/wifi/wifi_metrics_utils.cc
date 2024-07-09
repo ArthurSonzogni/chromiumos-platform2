@@ -65,6 +65,7 @@ constexpr Metrics::WiFiAdapterInfo AVLWiFiAdapters[] = {
     {0x8086, 0x54f0, 0x0094},  // IntelAX211,
     {0x8086, 0x7e40, 0x0090},  // IntelAX211,
     {0x8086, 0x7e40, 0x0094},  // IntelAX211,
+    {0x8086, 0x272b, 0x00f4},  // IntelBE200,
     {0x14e4, 0x43ec,
      Metrics::kWiFiStructuredMetricsErrorValue},  // BroadcomBCM4356PCIE,
     {0x10ec, 0xc822,
