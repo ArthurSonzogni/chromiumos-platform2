@@ -5,11 +5,11 @@
 #include "ml_core/dlc/dlc_client.h"
 
 #include <memory>
-#include <string_view>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/location.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
@@ -50,9 +50,11 @@ class DlcClientImpl : public cros::DlcClient {
 
   bool Initialize(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
-      base::OnceCallback<void(const std::string&)> error_cb) {
+      base::OnceCallback<void(const std::string&)> error_cb,
+      base::RepeatingCallback<void(double)> progress_cb) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     dlc_root_path_cb_ = std::move(dlc_root_path_cb);
+    progress_cb_ = std::move(progress_cb);
     error_cb_ = std::move(error_cb);
     LOG(INFO) << "Setting up DlcClient";
 
@@ -211,6 +213,9 @@ class DlcClientImpl : public cros::DlcClient {
       case dlcservice::DlcState::INSTALLING:
         LOG(INFO) << static_cast<int>(dlc_state.progress() * 100)
                   << "% installing DLC: " << dlc_id_;
+        if (progress_cb_) {
+          progress_cb_.Run(dlc_state.progress());
+        }
         break;
       case dlcservice::DlcState::NOT_INSTALLED: {
         metrics_.RecordFinalInstallDlcServiceError(
@@ -249,7 +254,12 @@ class DlcClientImpl : public cros::DlcClient {
       return;
     }
 
+    if (progress_cb_) {
+      progress_cb_.Run(1.0);
+    }
+
     error_cb_.Reset();
+    progress_cb_.Reset();
     base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb =
         std::move(dlc_root_path_cb_);
 
@@ -264,6 +274,7 @@ class DlcClientImpl : public cros::DlcClient {
     }
 
     dlc_root_path_cb_.Reset();
+    progress_cb_.Reset();
     base::OnceCallback<void(const std::string&)> error_cb =
         std::move(error_cb_);
 
@@ -281,6 +292,7 @@ class DlcClientImpl : public cros::DlcClient {
   scoped_refptr<dbus::Bus> bus_;
   base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb_;
   base::OnceCallback<void(const std::string&)> error_cb_;
+  base::RepeatingCallback<void(double)> progress_cb_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<DlcClientImpl> weak_factory_{this};
@@ -291,9 +303,11 @@ class DlcClientForTest : public cros::DlcClient {
   DlcClientForTest(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
       base::OnceCallback<void(const std::string&)> error_cb,
+      base::RepeatingCallback<void(double)> progress_cb,
       const base::FilePath& path)
       : dlc_root_path_cb_(std::move(dlc_root_path_cb)),
         error_cb_(std::move(error_cb)),
+        progress_cb_(std::move(progress_cb)),
         path_(path) {}
 
   // Metrics not emitted in DlcClientForTest.
@@ -306,12 +320,15 @@ class DlcClientForTest : public cros::DlcClient {
   }
 
   void InvokeSuccessCb() {
+    if (progress_cb_)
+      progress_cb_.Run(1.0);
     if (dlc_root_path_cb_)
       std::move(dlc_root_path_cb_).Run(path_);
   }
 
   base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb_;
   base::OnceCallback<void(const std::string&)> error_cb_;
+  base::RepeatingCallback<void(double)> progress_cb_;
   const base::FilePath path_;
 };
 
@@ -326,16 +343,19 @@ namespace cros {
 std::unique_ptr<DlcClient> DlcClient::Create(
     const std::string& dlc_id,
     base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
-    base::OnceCallback<void(const std::string&)> error_cb) {
+    base::OnceCallback<void(const std::string&)> error_cb,
+    base::RepeatingCallback<void(double)> progress_cb) {
   if (!path_for_test.empty()) {
     LOG(INFO) << "Using predefined path " << path_for_test << " for DLC "
               << dlc_id;
     auto client = std::make_unique<DlcClientForTest>(
-        std::move(dlc_root_path_cb), std::move(error_cb), path_for_test);
+        std::move(dlc_root_path_cb), std::move(error_cb),
+        std::move(progress_cb), path_for_test);
     return client;
   } else {
     auto client = std::make_unique<DlcClientImpl>(dlc_id);
-    if (client->Initialize(std::move(dlc_root_path_cb), std::move(error_cb))) {
+    if (client->Initialize(std::move(dlc_root_path_cb), std::move(error_cb),
+                           std::move(progress_cb))) {
       return client;
     }
     return nullptr;

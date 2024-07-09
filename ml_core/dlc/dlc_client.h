@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 
 namespace cros {
 
@@ -18,10 +19,12 @@ class DlcClient {
   // Factory function for creating DlcClients.
   // Check the returned pointer for `nullptr` to determine success.
   // The callbacks will not be invoked if DlcClient fails to initialize.
+  // The progress value of progress callback is between 0.0 and 1.0.
   static std::unique_ptr<DlcClient> Create(
       const std::string& dlc_id,
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
-      base::OnceCallback<void(const std::string&)> error_cb);
+      base::OnceCallback<void(const std::string&)> error_cb,
+      base::RepeatingCallback<void(double)> progress_cb = base::NullCallback());
 
   // Not thread-safe; must be destroyed in the same sequence as it was created.
   virtual ~DlcClient() = default;
