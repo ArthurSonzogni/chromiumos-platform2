@@ -1785,7 +1785,8 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     }
 
     // Make sure the record is valid.
-    if (!record_.has_destination()) {
+    if (!record_.has_destination() ||
+        record_.destination() == Destination::UNDEFINED_DESTINATION) {
       Response(Status(error::FAILED_PRECONDITION,
                       "Malformed record: missing destination"));
       return;

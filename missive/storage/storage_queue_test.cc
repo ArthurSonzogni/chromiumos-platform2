@@ -54,6 +54,7 @@
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::AnyOf;
 using ::testing::AtMost;
 using ::testing::Between;
@@ -62,6 +63,7 @@ using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::Invoke;
 using ::testing::Ne;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::Sequence;
 using ::testing::StrEq;
@@ -2738,6 +2740,35 @@ TEST_P(StorageQueueTest, WriteWithUnencryptedCopy) {
 
   // Flush manually.
   FlushOrDie();
+}
+
+TEST_P(StorageQueueTest, WriteWithNoDestination) {
+  static constexpr char kTestData[] = "test_data";
+
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
+
+  Record record;
+  record.set_data(kTestData);
+  if (!dm_token_.empty()) {
+    record.set_dm_token(dm_token_);
+  }
+
+  // Attempt Write with no destination.
+  Status write_result = WriteRecord(std::move(record));
+  ASSERT_THAT(write_result,
+              AllOf(Property(&Status::code, Eq(error::FAILED_PRECONDITION)),
+                    Property(&Status::message,
+                             StrEq("Malformed record: missing destination"))))
+      << write_result;
+
+  // Attempt Write with undefined destination.
+  record.set_destination(UNDEFINED_DESTINATION);
+  write_result = WriteRecord(std::move(record));
+  ASSERT_THAT(write_result,
+              AllOf(Property(&Status::code, Eq(error::FAILED_PRECONDITION)),
+                    Property(&Status::message,
+                             StrEq("Malformed record: missing destination"))))
+      << write_result;
 }
 
 INSTANTIATE_TEST_SUITE_P(
