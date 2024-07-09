@@ -664,10 +664,15 @@ void CellularService::OnDisconnect(Error* error, const char* reason) {
 }
 
 void CellularService::AutoConnect() {
+  if (!force_auto_connect() && !auto_connect()) {
+    return;
+  }
+
   const char* reason = nullptr;
   if (!IsAutoConnectable(&reason)) {
     if (reason == kAutoConnTechnologyNotAutoConnectable ||
         reason == kAutoConnConnected) {
+      SetForceAutoConnect(false);
       SLOG(this, 3) << "Suppressed autoconnect to " << log_name()
                     << " Reason: " << reason;
     } else if (reason == kAutoConnBusy ||
@@ -939,6 +944,7 @@ bool CellularService::CustomApnUpdated(bool configure_attach_apn,
     }
   }
   if (configure_attach_apn) {
+    SetForceAutoConnect(is_connected);
     // If we were using an attach APN, and we are no longer using it, we should
     // re-configure the attach APN to clear the attach APN in the modem.
     cellular_->ConfigureAttachApn(/*user_triggered=*/true);

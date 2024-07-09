@@ -382,6 +382,10 @@ Service::~Service() {
 }
 
 void Service::AutoConnect() {
+  if (!auto_connect()) {
+    return;
+  }
+
   const char* reason = nullptr;
   if (!IsAutoConnectable(&reason)) {
     if (reason == kAutoConnTechnologyNotAutoConnectable ||

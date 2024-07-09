@@ -1103,6 +1103,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   const char* reason;
   service_->SetConnectable(true);
+  service_->SetAutoConnect(true);
   service_->technology_ = Technology::kEthernet;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
@@ -1186,6 +1187,7 @@ TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
 TEST_F(ServiceTest, SkipAutoConnectAfterRecentBadPassphraseFailure) {
   const char* reason;
   service_->SetConnectable(true);
+  service_->SetAutoConnect(true);
   SetTechnology(Technology::kWiFi);
   EXPECT_TRUE(IsAutoConnectable(&reason));
 

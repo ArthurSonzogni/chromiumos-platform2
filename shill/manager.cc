@@ -2157,7 +2157,7 @@ void Manager::AutoConnect() {
     candidates.push_back(service->AsWeakPtr());
   }
   for (const auto& service : candidates) {
-    if (service && service->auto_connect()) {
+    if (service) {
       service->AutoConnect();
     }
   }

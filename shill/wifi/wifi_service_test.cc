@@ -1526,6 +1526,7 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
 TEST_F(WiFiServiceTest, AutoConnect) {
   const char* reason;
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  service->SetAutoConnect(true);
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
   EXPECT_CALL(*wifi(), ConnectTo(_, _)).Times(0);
   service->AutoConnect();
@@ -1548,6 +1549,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
 
 TEST_F(WiFiServiceTest, IsInAutoConnect) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  service->SetAutoConnect(true);
   WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
       "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);
@@ -3194,6 +3196,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoAutoConnection) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  service->SetAutoConnect(true);
   WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
       "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);

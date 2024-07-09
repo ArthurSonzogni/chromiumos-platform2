@@ -146,6 +146,10 @@ class CellularService : public Service {
     custom_apn_list_ = custom_apn_list;
   }
 
+  // Functions to control forced auto reconnection after APN change
+  void SetForceAutoConnect(bool forced) { force_auto_connect_ = forced; }
+  bool force_auto_connect() const { return force_auto_connect_; }
+
  protected:
   // Protected Service overrides
   void OnConnect(Error* error) override;
@@ -281,6 +285,9 @@ class CellularService : public Service {
   std::string ppp_password_;
   bool allow_roaming_ = false;
   bool provider_requires_roaming_ = false;
+
+  // Used to force auto connection once after configuration change
+  bool force_auto_connect_ = false;
 
   // The storage identifier defaults to cellular_{iccid}.
   std::string storage_identifier_;

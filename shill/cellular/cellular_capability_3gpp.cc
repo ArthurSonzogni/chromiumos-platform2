@@ -750,6 +750,7 @@ void CellularCapability3gpp::UpdatePendingActivationState() {
         // Trigger auto connect here.
         SLOG(this, 2) << "Modem has been reset at least once, try to "
                       << "autoconnect to force MDN to update.";
+        service->SetForceAutoConnect(true);
         service->AutoConnect();
       }
       break;
