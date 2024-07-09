@@ -17,6 +17,7 @@ const HELP: &str = r#"Usage: arc
     proxy <url> |
     list [ networks ] |
     stats [ sockets | traffic | idle ]
+    tracing [on | off]
   ]
   where NETWORK := [ wifi | eth | ethernet | cell | cellular | vpn ]
   If NETWORK is not specified, the default network is used.
@@ -29,6 +30,7 @@ list networks:  show properties of all networks connected in Android.
 stats sockets:  show TCP connect and DNS statistics by Android Apps.
 stats traffic:  show traffic packet statistics by Android Apps.
 stats idle   :  show system idle stats of Android.
+tracing      :  enable or disable tracing ARCVM from the host.
 
 "#;
 
@@ -37,6 +39,9 @@ type CommandRunner = dyn Fn(&[&str]) -> Result<(), dispatcher::Error>;
 // We use adb shell for executing networking tools through dumpsys wifi.
 // It is not possible to use android-sh because it has a different selinux context.
 const ADB: &str = "/usr/bin/adb";
+
+// The property to control Perfetto tracing from the host.
+const TRACING_PROP_NAME: &str = "vendor.arc.perfetto.trace_from_host";
 
 fn run_adb_command(args: &[&str]) -> Result<(), dispatcher::Error> {
     process::Command::new(ADB).args(args).spawn().map_or(
@@ -114,6 +119,10 @@ fn execute_arc_command(
         ["stats", "traffic"] => adb_command_runner(&["shell", "dumpsys", "wifi", "traffic"]),
         // Prints the Android idle settings and states. This output does not contain any PII.
         ["stats", "idle"] => adb_command_runner(&["shell", "dumpsys", "deviceidle"]),
+
+        ["tracing"] => adb_command_runner(&["shell", "getprop", TRACING_PROP_NAME]),
+        ["tracing", enable] => run_arc_tracing_tool(adb_command_runner, enable),
+
         [other, ..] => invalid_argument(other),
     }
 }
@@ -132,6 +141,20 @@ fn run_arc_networking_tool(
         Some(n) => return invalid_argument(n),
     };
     adb_args.push(arg);
+
+    adb_command_runner(&adb_args)
+}
+
+fn run_arc_tracing_tool(
+    adb_command_runner: &CommandRunner,
+    enable: &str,
+) -> Result<(), dispatcher::Error> {
+    let mut adb_args = vec!["shell", "setprop", TRACING_PROP_NAME];
+    match enable {
+        "on" => adb_args.push("1"),
+        "off" => adb_args.push("0"),
+        n => return invalid_argument(n),
+    };
 
     adb_command_runner(&adb_args)
 }
@@ -172,6 +195,7 @@ mod tests {
             "dns",
             "proxy",
             "ping invalid 1.1.1.1",
+            "tracing on on",
         ];
 
         for &command in &invalid_commands {
@@ -192,6 +216,9 @@ mod tests {
             "dns play.google.com",
             "dns vpn portal.corp.com",
             "proxy http://google.com",
+            "tracing",
+            "tracing on",
+            "tracing off",
         ];
 
         for &command in &valid_commands {
