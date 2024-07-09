@@ -193,7 +193,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailurePinWeaverManager) {
   auto [status, key_blobs, auth_state] = result.Take();
 
   ASSERT_THAT(status, NotOk());
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             status->local_legacy_error());
 }
 
@@ -210,7 +210,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
   auto [status, key_blobs, auth_state] = result.Take();
 
   ASSERT_THAT(status, NotOk());
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             status->local_legacy_error());
 }
 
@@ -228,7 +228,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
   auto [status, key_blobs, auth_state] = result.Take();
 
   ASSERT_THAT(status, NotOk());
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             status->local_legacy_error());
 }
 
@@ -245,7 +245,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
   auto [status, key_blobs, auth_state] = result.Take();
 
   ASSERT_THAT(status, NotOk());
-  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             status->local_legacy_error());
 }
 
@@ -271,7 +271,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
 
-  ASSERT_THAT(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  ASSERT_THAT(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
               status->local_legacy_error());
 }
 
@@ -296,7 +296,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
 
-  ASSERT_THAT(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  ASSERT_THAT(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
               status->local_legacy_error());
 }
 
@@ -318,7 +318,7 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
 
-  ASSERT_THAT(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  ASSERT_THAT(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
               status->local_legacy_error());
 }
 
@@ -555,7 +555,7 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
 
-  ASSERT_THAT(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+  ASSERT_THAT(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
               status->local_legacy_error());
 }
 
@@ -597,7 +597,8 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
 
-  ASSERT_THAT(CRYPTOHOME_ERROR_TPM_DEFEND_LOCK, status->local_legacy_error());
+  ASSERT_THAT(user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK,
+              status->local_legacy_error());
 }
 
 TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
@@ -652,9 +653,9 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
     auth_block_->Derive(auth_input, auth_state, result.GetCallback());
     ASSERT_TRUE(result.IsReady());
     auto [status, key_blobs, suggested_action] = result.Take();
-    EXPECT_NE(CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
+    EXPECT_NE(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
               status->local_legacy_error());
-    EXPECT_NE(CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
+    EXPECT_NE(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,
               status->local_legacy_error());
   }
 }

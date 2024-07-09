@@ -419,7 +419,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   ASSERT_THAT(status, NotOk());
   EXPECT_EQ(status.status()->local_legacy_error(),
-            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
 
   Mock::VerifyAndClearExpectations(mock_vault_keyset_factory_);
 
@@ -813,7 +813,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
       std::move(new_key_blobs), std::move(auth_state), false /*clobber*/);
   ASSERT_THAT(status, NotOk());
   ASSERT_EQ(status.status()->local_legacy_error(),
-            CRYPTOHOME_ERROR_KEY_LABEL_EXISTS);
+            user_data_auth::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS);
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -894,7 +894,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
       std::move(auth_state_), false /*clobber*/);
   ASSERT_THAT(status, NotOk());
   ASSERT_EQ(status.status()->local_legacy_error(),
-            CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
+            user_data_auth::CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
 
   // VERIFY
   // Nothing should change if we were not able to add keyset due to a lack
@@ -938,7 +938,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
       std::move(auth_state_), false /*clobber*/);
   ASSERT_THAT(status, NotOk());
   ASSERT_EQ(status.status()->local_legacy_error(),
-            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
 
   // VERIFY
   // If we failed to save the added keyset due to disk failure, the old
