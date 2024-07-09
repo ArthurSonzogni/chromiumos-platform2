@@ -4,8 +4,9 @@
 
 use anyhow::{anyhow, Context, Result};
 use std::ffi::CStr;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::process::Command;
+use std::str::from_utf8;
 use vsock::{get_local_cid, VsockAddr, VsockListener, VsockStream};
 
 const SERVER_VSOCK_PORT: u32 = 3580;
@@ -13,6 +14,8 @@ const SERVER_VSOCK_PORT: u32 = 3580;
 const HEADER_SIZE: usize = 8;
 const PAYLOAD_BUFFER_SIZE: usize = 4096;
 
+const READ_CLIPBOARD_FROM_VM: u8 = 0;
+const WRITE_CLIPBOARD_TYPE_EMPTY: u8 = 1;
 const WRITE_CLIPBOARD_TYPE_TEXT_PLAIN: u8 = 2;
 
 fn server_init() -> Result<VsockListener> {
@@ -21,6 +24,44 @@ fn server_init() -> Result<VsockListener> {
     let listener = VsockListener::bind(&server_addr).context("Cannot listen the server")?;
     println!("Clipboard server listening on {:?}", server_addr);
     Ok(listener)
+}
+
+fn send_empty_data(stream: &mut VsockStream) -> Result<()> {
+    let mut header = [0; HEADER_SIZE];
+    header[0] = WRITE_CLIPBOARD_TYPE_EMPTY;
+    stream.write(&header).context("Failed to write header")?;
+    stream.flush().context("Failed to flush stream")
+}
+
+fn send_text_plain(stream: &mut VsockStream, data: &[u8]) -> Result<()> {
+    let mut header = [0; HEADER_SIZE];
+    header[0] = WRITE_CLIPBOARD_TYPE_TEXT_PLAIN;
+    let data_size: u32 = data.len().try_into()?;
+    header[4..8].copy_from_slice(&data_size.to_le_bytes());
+    stream.write(&header).context("Failed to write header")?;
+    stream.write(data).context("Failed to write payload data")?;
+    stream.flush().context("Failed to flush stream")
+}
+
+fn handle_read_clipboard(stream: &mut VsockStream) -> Result<()> {
+    // TODO(b/351225383): Bring wl-paste binary into ChromeOS.
+    let output = Command::new("wl-paste")
+        .arg("--no-newline")
+        .output()
+        .context("Failed to execute command")?;
+    if output.status.success() {
+        println!(
+            "Read from clipboard: {}",
+            from_utf8(&output.stdout).context("Failed to convert stdout into string")?
+        );
+        send_text_plain(stream, &output.stdout)
+    } else {
+        println!(
+            "Failed to read clipboard: {}",
+            from_utf8(&output.stderr).context("Failed to convert stderr into string")?
+        );
+        send_empty_data(stream)
+    }
 }
 
 fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
@@ -52,6 +93,7 @@ fn handle_request(stream: &mut VsockStream) -> Result<()> {
     let request_type = header[0];
     let payload_size = u32::from_le_bytes(header[4..8].try_into()?).try_into()?;
     match request_type {
+        READ_CLIPBOARD_FROM_VM => handle_read_clipboard(stream),
         WRITE_CLIPBOARD_TYPE_TEXT_PLAIN => handle_text_plain(stream, payload_size),
         _ => Err(anyhow!("Unknown request type: {request_type:?}")),
     }
