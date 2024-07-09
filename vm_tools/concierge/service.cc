@@ -3938,9 +3938,9 @@ void Service::OnControlSocketReady(const VmId& vm_id) {
   std::unique_ptr<VmBaseImpl>& vm = vms_[vm_id];
   VmBaseImpl::Info info = vm->GetInfo();
 
-  if (vm_memory_management_service_) {
-    vm_memory_management_service_->NotifyVmStarted(info.type, info.cid,
-                                                   vm->GetVmSocketPath());
+  if (vm_memory_management_service_ && vm->GetGuestMemorySize()) {
+    vm_memory_management_service_->NotifyVmStarted(
+        info.type, info.cid, vm->GetVmSocketPath(), *vm->GetGuestMemorySize());
   }
 
   if (BalloonTimerShouldRun() && !balloon_resizing_timer_.IsRunning()) {

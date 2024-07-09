@@ -257,6 +257,30 @@ TEST_F(BalloonBlockerTest, TestDeflateBelowZero) {
       -MiB(128));
 }
 
+TEST_F(BalloonBlockerTest, TestOverinflate) {
+  // First inflate should succeed.
+  ASSERT_EQ(balloon_blocker_->TryResize({ResizePriority::kCachedTab, MiB(512)}),
+            MiB(512));
+
+  // Only inflate up to the guest memory size.
+  ASSERT_EQ(balloon_blocker_->TryResize({ResizePriority::kCachedTab, MiB(700)}),
+            MiB(512));
+
+  // The balloon is already inflated, so we can't resize any more.
+  ASSERT_EQ(balloon_blocker_->TryResize({ResizePriority::kCachedTab, MiB(100)}),
+            0);
+
+  // Deflate should be granted.
+  ASSERT_EQ(
+      balloon_blocker_->TryResize({ResizePriority::kPerceptibleApp, -MiB(100)}),
+      -MiB(100));
+
+  // Another inflate should only inflate up to the guest memory size.
+  ASSERT_EQ(
+      balloon_blocker_->TryResize({ResizePriority::kFocusedTab, MiB(512)}),
+      MiB(100));
+}
+
 TEST_F(BalloonBlockerTest, TestStallMetrics) {
   const int deflate_mib = 16;
   EXPECT_CALL(*metrics_,

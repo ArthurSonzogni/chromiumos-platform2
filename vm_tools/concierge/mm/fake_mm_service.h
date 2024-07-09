@@ -22,7 +22,8 @@ class FakeMmService : public MmService {
 
   void NotifyVmStarted(apps::VmType vm_type,
                        int vm_cid,
-                       const std::string& socket) override;
+                       const std::string& socket,
+                       int64_t guest_memory_size) override;
 
   void NotifyVmBootComplete(int vm_cid) override;
 

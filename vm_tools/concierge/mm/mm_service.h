@@ -40,7 +40,8 @@ class MmService {
   // Called to notify the service that a new VM has started.
   virtual void NotifyVmStarted(apps::VmType vm_type,
                                int vm_cid,
-                               const std::string& socket);
+                               const std::string& socket,
+                               int64_t guest_memory_size);
 
   // Called to notify the service that a VM has completed it's boot sequence.
   virtual void NotifyVmBootComplete(int vm_cid);
@@ -83,7 +84,8 @@ class MmService {
   // Notify negotiation thread components that a new VM has started.
   void NegotiationThreadNotifyVmStarted(apps::VmType type,
                                         int vm_cid,
-                                        const std::string& socket);
+                                        const std::string& socket,
+                                        int64_t guest_memory_size);
 
   // Runs ReclaimUntil on the negotiation thread.
   void NegotiationThreadReclaimUntilBlocked(int vm_cid,

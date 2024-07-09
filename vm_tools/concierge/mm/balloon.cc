@@ -44,9 +44,11 @@ bool SetBalloonSize(std::string control_socket, int64_t size) {
 Balloon::Balloon(
     int vm_cid,
     const std::string& control_socket,
+    int64_t guest_memory_size,
     scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner)
     : vm_cid_(vm_cid),
       control_socket_(control_socket),
+      guest_memory_size_(guest_memory_size),
       balloon_operations_task_runner_(balloon_operations_task_runner) {}
 
 void Balloon::SetStallCallback(

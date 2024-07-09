@@ -77,7 +77,8 @@ BalloonBroker::BalloonBroker(
 
 void BalloonBroker::RegisterVm(apps::VmType vm_type,
                                int vm_cid,
-                               const std::string& socket_path) {
+                               const std::string& socket_path,
+                               int64_t guest_memory_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (contexts_.find(vm_cid) != contexts_.end()) {
@@ -87,7 +88,8 @@ void BalloonBroker::RegisterVm(apps::VmType vm_type,
   kills_server_->RegisterVm(vm_cid);
 
   contexts_[vm_cid] = {.balloon = balloon_blocker_factory_(
-                           vm_cid, socket_path, balloon_operations_task_runner_,
+                           vm_cid, socket_path, guest_memory_size,
+                           balloon_operations_task_runner_,
                            std::make_unique<BalloonMetrics>(vm_type, metrics_)),
                        .clients = {}};
 }
@@ -282,11 +284,12 @@ ResizePriority BalloonBroker::LowestUnblockedPriority() const {
 std::unique_ptr<BalloonBlocker> BalloonBroker::CreateBalloonBlocker(
     int vm_cid,
     const std::string& socket_path,
+    int64_t guest_memory_size,
     scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
     std::unique_ptr<BalloonMetrics> metrics) {
   return std::make_unique<BalloonBlocker>(
       vm_cid,
-      std::make_unique<Balloon>(vm_cid, socket_path,
+      std::make_unique<Balloon>(vm_cid, socket_path, guest_memory_size,
                                 balloon_operations_task_runner),
       std::move(metrics));
 }

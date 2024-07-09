@@ -39,13 +39,14 @@ int64_t ResizeRequest::GetDeltaBytes() const {
   return delta_bytes_;
 }
 
-void ResizeRequest::LimitMagnitude(int64_t limit_bytes) {
-  int64_t magnitude = std::abs(GetDeltaBytes());
-
-  magnitude = std::min(magnitude, std::abs(limit_bytes));
-
-  delta_bytes_ =
-      GetDirection() == ResizeDirection::kInflate ? magnitude : -magnitude;
+void ResizeRequest::LimitMagnitude(int64_t cur_size, int64_t max_size) {
+  // See note in Balloon::DoResizeInternal discussing operation_base_size.
+  // TODO(b:305877198) re-evaluate this when other VMs are added.
+  if (delta_bytes_ > 0) {
+    delta_bytes_ = std::min(max_size, cur_size + delta_bytes_) - cur_size;
+  } else {
+    delta_bytes_ = std::max(-cur_size, delta_bytes_);
+  }
 }
 
 BalloonBlocker::BalloonBlocker(int vm_cid,
@@ -79,11 +80,9 @@ int64_t BalloonBlocker::TryResize(ResizeRequest request) {
     return 0;
   }
 
-  // Can't deflate below 0, so limit the magnitude of deflations to the current
-  // target balloon size.
-  if (request.GetDirection() == ResizeDirection::kDeflate) {
-    request.LimitMagnitude(balloon_->GetTargetSize());
-  }
+  // Can't adjust below 0 or above guest memory size, so limit requset.
+  request.LimitMagnitude(balloon_->GetTargetSize(),
+                         balloon_->GetGuestMemorySize());
 
   // No need to attempt a no-op resize. Return early.
   if (request.GetDeltaBytes() == 0) {

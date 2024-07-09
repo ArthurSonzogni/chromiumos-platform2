@@ -25,7 +25,7 @@ class BalloonTest : public ::testing::Test {
     FakeCrosvmControl::Get()->set_balloon_size_wait_for_result_ = false;
 
     balloon_ = std::make_unique<Balloon>(
-        6, kTestSocket, base::SequencedTaskRunner::GetCurrentDefault());
+        6, kTestSocket, GiB(4), base::SequencedTaskRunner::GetCurrentDefault());
 
     balloon_->SetStallCallback(base::BindRepeating(&BalloonTest::OnBalloonStall,
                                                    base::Unretained(this)));

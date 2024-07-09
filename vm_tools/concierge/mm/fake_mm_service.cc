@@ -15,7 +15,10 @@ bool FakeMmService::Start() {
   return true;
 }
 
-void FakeMmService::NotifyVmStarted(apps::VmType, int, const std::string&) {}
+void FakeMmService::NotifyVmStarted(apps::VmType,
+                                    int,
+                                    const std::string&,
+                                    int64_t) {}
 
 void FakeMmService::NotifyVmBootComplete(int) {}
 

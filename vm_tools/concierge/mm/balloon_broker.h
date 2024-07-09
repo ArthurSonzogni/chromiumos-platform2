@@ -44,6 +44,7 @@ class BalloonBroker {
   using BalloonBlockerFactory = std::function<std::unique_ptr<BalloonBlocker>(
       int,
       const std::string&,
+      int64_t,
       scoped_refptr<base::SequencedTaskRunner>,
       std::unique_ptr<BalloonMetrics>)>;
 
@@ -60,7 +61,8 @@ class BalloonBroker {
   // Registers a VM and the corresponding control socket with the broker.
   void RegisterVm(apps::VmType vm_type,
                   int vm_cid,
-                  const std::string& socket_path);
+                  const std::string& socket_path,
+                  int64_t guest_memory_size);
 
   // Removes a VM and its corresponding balloon from the broker.
   void RemoveVm(int vm_cid);
@@ -135,6 +137,7 @@ class BalloonBroker {
   static std::unique_ptr<BalloonBlocker> CreateBalloonBlocker(
       int vm_cid,
       const std::string& socket_path,
+      int64_t guest_memory_size,
       scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner,
       std::unique_ptr<BalloonMetrics> metrics);
 

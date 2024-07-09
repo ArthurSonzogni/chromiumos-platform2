@@ -42,9 +42,10 @@ class ResizeRequest {
   // Returns the size delta in bytes for this request.
   int64_t GetDeltaBytes() const;
 
-  // Limits the magnitude of this request to be at most |limit_bytes|. Keeps the
-  // direction the same.
-  void LimitMagnitude(int64_t limit_bytes);
+  // Given the current balloon size and maximum balloon size, ensures
+  // that the request doesn't underflow/overflow the balloon size. Keeps
+  // the direction the same.
+  void LimitMagnitude(int64_t cur_size, int64_t max_size);
 
  private:
   // The priority of this resize.

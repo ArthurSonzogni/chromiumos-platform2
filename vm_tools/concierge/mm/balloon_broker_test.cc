@@ -34,6 +34,7 @@ bool operator==(const ResizeRequest& lhs, const ResizeRequest& rhs) {
 std::unique_ptr<BalloonBlocker> CreateFakeBalloonBlocker(
     int vm_cid,
     const std::string&,
+    int64_t,
     scoped_refptr<base::SequencedTaskRunner>,
     std::unique_ptr<BalloonMetrics> metrics) {
   return std::make_unique<FakeBalloonBlocker>(vm_cid, std::move(metrics));
@@ -115,15 +116,15 @@ class BalloonBrokerTest : public ::testing::Test {
 };
 
 TEST_F(BalloonBrokerTest, TestRegisterVm) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
   ASSERT_EQ(FakeBalloonBlocker::fake_balloon_blockers_.size(), 1);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
   ASSERT_EQ(FakeBalloonBlocker::fake_balloon_blockers_.size(), 2);
 }
 
 TEST_F(BalloonBrokerTest, TestNoConnections) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   Client host_client{.cid = VMADDR_CID_LOCAL,
                      .connection_id = 1,
@@ -143,7 +144,7 @@ TEST_F(BalloonBrokerTest, TestNoConnectionsClearBlockersUpToInclusive) {
 }
 
 TEST_F(BalloonBrokerTest, TestBlockersAreCleared) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket, GiB(4));
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -162,8 +163,8 @@ TEST_F(BalloonBrokerTest, TestBlockersAreCleared) {
 }
 
 TEST_F(BalloonBrokerTest, TestOneConnectionHostKillRequest) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -184,8 +185,8 @@ TEST_F(BalloonBrokerTest, TestOneConnectionHostKillRequest) {
 }
 
 TEST_F(BalloonBrokerTest, TestMultipleConnectionsHostKillRequest) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -212,8 +213,8 @@ TEST_F(BalloonBrokerTest, TestMultipleConnectionsHostKillRequest) {
 }
 
 TEST_F(BalloonBrokerTest, TestGuestDisconnectHostKillRequest) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -242,7 +243,7 @@ TEST_F(BalloonBrokerTest, TestGuestKillRequest) {
   client_connection_handler_.Run(
       {VMADDR_CID_LOCAL, 0, ConnectionType::CONNECTION_TYPE_KILLS});
 
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
   Client client{5, 1, ConnectionType::CONNECTION_TYPE_KILLS};
   client_connection_handler_.Run(client);
 
@@ -257,8 +258,8 @@ TEST_F(BalloonBrokerTest, TestGuestKillRequest) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimWithNoConnectedVms) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   BalloonBroker::ReclaimOperation reclaim_operation{{VMADDR_CID_LOCAL, 512}};
 
@@ -268,8 +269,8 @@ TEST_F(BalloonBrokerTest, TestReclaimWithNoConnectedVms) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromHost) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   client_connection_handler_.Run({5, 0, ConnectionType::CONNECTION_TYPE_KILLS});
   client_connection_handler_.Run({6, 1, ConnectionType::CONNECTION_TYPE_KILLS});
@@ -288,8 +289,8 @@ TEST_F(BalloonBrokerTest, TestReclaimFromHost) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromGuest) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   client_connection_handler_.Run({5, 0, ConnectionType::CONNECTION_TYPE_KILLS});
   client_connection_handler_.Run({6, 1, ConnectionType::CONNECTION_TYPE_KILLS});
@@ -305,8 +306,8 @@ TEST_F(BalloonBrokerTest, TestReclaimFromGuest) {
 }
 
 TEST_F(BalloonBrokerTest, TestReclaimFromHostAndGuest) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   client_connection_handler_.Run({5, 0, ConnectionType::CONNECTION_TYPE_KILLS});
   client_connection_handler_.Run({6, 1, ConnectionType::CONNECTION_TYPE_KILLS});
@@ -327,7 +328,8 @@ TEST_F(BalloonBrokerTest, TestReclaimFromHostAndGuest) {
 
 TEST_F(BalloonBrokerTest, TestClientDisconnected) {
   int vm_cid = 5;
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket,
+                              GiB(4));
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -371,8 +373,8 @@ TEST_F(BalloonBrokerTest, TestClientDisconnected) {
 }
 
 TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket);
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 5, kTestSocket, GiB(4));
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, 6, kTestSocket2, GiB(4));
 
   // By default if nothing is blocked, the lowest block priority is LOWEST.
   ASSERT_EQ(balloon_broker_->LowestUnblockedPriority(), LowestResizePriority());
@@ -410,7 +412,8 @@ TEST_F(BalloonBrokerTest, TestLowestUnblockedPriority) {
 
 TEST_F(BalloonBrokerTest, TestHandleNoKillCandidates) {
   int vm_cid = 5;
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket,
+                              GiB(4));
 
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
@@ -441,7 +444,8 @@ TEST_F(BalloonBrokerTest, TestHandleNoKillCandidates) {
 
 TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
   int vm_cid = 5;
-  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket);
+  balloon_broker_->RegisterVm(apps::VmType::UNKNOWN, vm_cid, kTestSocket,
+                              GiB(4));
   Client host_client{VMADDR_CID_LOCAL, 0,
                      ConnectionType::CONNECTION_TYPE_KILLS};
   Client vm_client{vm_cid, 2, ConnectionType::CONNECTION_TYPE_KILLS};

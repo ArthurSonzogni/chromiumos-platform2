@@ -12,7 +12,7 @@
 namespace vm_tools::concierge::mm {
 
 FakeBalloon::FakeBalloon()
-    : Balloon(0, {}, base::SequencedTaskRunner::GetCurrentDefault()) {}
+    : Balloon(0, {}, GiB(1), base::SequencedTaskRunner::GetCurrentDefault()) {}
 
 void FakeBalloon::DoResize(
     int64_t delta_bytes,

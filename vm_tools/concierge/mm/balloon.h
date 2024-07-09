@@ -40,6 +40,7 @@ class Balloon {
   Balloon(
       int vm_cid,
       const std::string& control_socket,
+      int64_t guest_memory_size,
       scoped_refptr<base::SequencedTaskRunner> balloon_operations_task_runner);
 
   virtual ~Balloon() = default;
@@ -58,6 +59,9 @@ class Balloon {
   // may or may not actually be at this size, but should be
   // allocating/deallocating to reach this size.
   virtual int64_t GetTargetSize();
+
+  // Size of this balloon's VM's guest memory, in bytes.
+  int64_t GetGuestMemorySize() const { return guest_memory_size_; }
 
  protected:
   base::RepeatingCallback<void(StallStatistics, ResizeResult)>&
@@ -111,6 +115,9 @@ class Balloon {
 
   // The crosvm control socket for this VM.
   const std::string control_socket_;
+
+  // Size of VM memory in bytes.
+  const int64_t guest_memory_size_;
 
   // The task runner on which to run balloon operations.
   const scoped_refptr<base::SequencedTaskRunner>

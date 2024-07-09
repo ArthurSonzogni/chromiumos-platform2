@@ -97,7 +97,8 @@ bool MmService::Start() {
 
 void MmService::NotifyVmStarted(apps::VmType vm_type,
                                 int vm_cid,
-                                const std::string& socket) {
+                                const std::string& socket,
+                                int64_t guest_memory_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!ManagedVms().contains(vm_type)) {
@@ -107,9 +108,9 @@ void MmService::NotifyVmStarted(apps::VmType vm_type,
   reclaim_broker_->RegisterVm(vm_cid);
 
   negotiation_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&MmService::NegotiationThreadNotifyVmStarted,
-                     weak_ptr_factory_.GetWeakPtr(), vm_type, vm_cid, socket));
+      FROM_HERE, base::BindOnce(&MmService::NegotiationThreadNotifyVmStarted,
+                                weak_ptr_factory_.GetWeakPtr(), vm_type, vm_cid,
+                                socket, guest_memory_size));
 }
 
 void MmService::NotifyVmBootComplete(int vm_cid) {
@@ -225,9 +226,10 @@ void MmService::NegotiationThreadStop() {
 
 void MmService::NegotiationThreadNotifyVmStarted(apps::VmType vm_type,
                                                  int vm_cid,
-                                                 const std::string& socket) {
+                                                 const std::string& socket,
+                                                 int64_t guest_memory_size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(negotiation_thread_sequence_checker_);
-  balloon_broker_->RegisterVm(vm_type, vm_cid, socket);
+  balloon_broker_->RegisterVm(vm_type, vm_cid, socket, guest_memory_size);
 }
 
 void MmService::NegotiationThreadReclaimUntilBlocked(
