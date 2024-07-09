@@ -54,6 +54,9 @@ static const VAProfile va_profiles_vp8[] = {VAProfileVP8Version0_3,
 static const VAProfile va_profiles_vp9[] = {VAProfileVP9Profile0,
                                             VAProfileNone};
 
+static const VAProfile va_profiles_vp9_2[] = {VAProfileVP9Profile2,
+                                              VAProfileNone};
+
 static const VAProfile va_profiles_av1[] = {VAProfileAV1Profile0,
                                             VAProfileNone};
 
@@ -119,6 +122,13 @@ static bool query_support_for_dec_vp9(int fd,
                                       int32_t min_width,
                                       int32_t min_height) {
   return query_support_for(fd, va_profiles_vp9, VAEntrypointVLD, false,
+                           min_width, min_height);
+}
+
+static bool query_support_for_dec_vp9_2(int fd,
+                                        int32_t min_width,
+                                        int32_t min_height) {
+  return query_support_for(fd, va_profiles_vp9_2, VAEntrypointVLD, true,
                            min_width, min_height);
 }
 
@@ -338,10 +348,17 @@ bool detect_4k_device_vp9(void) {
   return false;
 }
 
-/* Determines "4k_video_vp9_2". Return true if the V4L2 device supports 4k
- * resolution VP9 10bpp decoding.
+/* Determines "4k_video_vp9_2". Return true, if either the VAAPI device
+ * supports 4K resolution VP9 10BPP decoding (Profile 2), has decoding entry
+ * point, and input YUV420 formats. Or the V4L2 video device supports 4K
+ * resolution VP9 10BPP decoding.
  */
 bool detect_4k_device_vp9_2(void) {
+#if defined(USE_VAAPI)
+  return does_any_device_support_resolution(
+      kDRMDevicePattern, query_support_for_dec_vp9_2, width_4k, height_4k);
+#endif  // defined(USE_VAAPI)
+
 #if defined(USE_V4L2_CODEC)
   if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9_2))
     return true;
@@ -372,7 +389,7 @@ bool detect_4k_device_av1(void) {
  * supports 4k resolution AV1 10BPP decoding, has decoding entry point, and
  * input YUV420 formats. Or the V4L2 video device supports 4K resolution AV1
  * 10bpp decoding.
-   */
+ */
 bool detect_4k_device_av1_10bpp(void) {
 #if defined(USE_VAAPI)
   return does_any_device_support_resolution(
