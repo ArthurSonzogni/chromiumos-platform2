@@ -312,6 +312,12 @@ Manager::~Manager() {
     }
   }
   devices_.clear();
+
+  // b/351691333: Device shutdown may call patchpanel API to clean up the
+  // network. Make sure patchpanel client is reset at the last to avoid
+  // potential issues. Ideally Device teardown should be more orderly and done
+  // explicitly by the Providers or in Stop.
+  patchpanel_client_.reset();
 }
 
 void Manager::RegisterAsync(
@@ -403,7 +409,6 @@ void Manager::Stop() {
 #endif  // DISABLE_FLOSS
   power_manager_->Stop();
   power_manager_.reset();
-  patchpanel_client_.reset();
   debugd_proxy_.reset();
 }
 

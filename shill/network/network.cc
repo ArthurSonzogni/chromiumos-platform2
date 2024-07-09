@@ -119,8 +119,8 @@ Network::Network(int interface_index,
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       patchpanel_client_(patchpanel_client),
+      rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       resolver_(resolver) {}
 
 Network::~Network() {
