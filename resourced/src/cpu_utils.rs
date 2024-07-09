@@ -238,9 +238,18 @@ fn get_cpus_with_min_property(root: &Path, property: &str) -> Result<Option<Cpus
                 .context("Failed to strip prefix")?
                 .parse()?;
             let property_path = Path::new(&cpu_dir).join(property);
-            Ok((cpu_number, read_from_file(&property_path)?))
+            if property_path.exists() {
+                Ok(Some((cpu_number, read_from_file(&property_path)?)))
+            } else {
+                Ok(None)
+            }
         })
-        .collect::<Result<Vec<(usize, u64)>, anyhow::Error>>()?;
+        .filter_map(|result: Result<Option<(usize, u64)>>| match result {
+            Ok(Some(v)) => Some(Ok(v)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
+        })
+        .collect::<Result<Vec<(usize, u64)>>>()?;
     let mut properties: Vec<u64> = cpu_properties.iter().map(|(_, prop)| *prop).collect();
     properties.sort();
     properties.dedup();
@@ -604,6 +613,19 @@ mod tests {
             Cpuset::little_cores(&root_path).unwrap(),
             Cpuset(vec![1, 3])
         );
+    }
+
+    #[test]
+    fn test_cpuset_little_cores_less_properties() {
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
+
+        std::fs::write(root_cpus_path, "0-3").unwrap();
+
+        create_cpus_property(&root_path, "cpufreq/cpuinfo_max_freq", &[20, 10]);
+
+        // Skips cores without the property file.
+        assert_eq!(Cpuset::little_cores(&root_path).unwrap(), Cpuset(vec![1]));
     }
 
     #[test]
