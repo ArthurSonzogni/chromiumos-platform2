@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "hammerd/update_fw.h"
 #include "hammerd/usb_utils.h"
 
 #include <fcntl.h>
@@ -19,6 +20,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/platform_thread.h>
 
 namespace hammerd {
 namespace {
@@ -198,6 +200,48 @@ UsbConnectStatus UsbEndpoint::Connect(bool check_id) {
     Close();
     return UsbConnectStatus::kUnknownError;
   }
+
+  // The USB configuration string of Zephyr codebase is null. Therefore,
+  // the extra command 0x0B "GET_FIRMWARE_VERSION" is used to get firmware
+  // version.
+  if (configuration_string_ == "") {
+    // 1 byte error code + 3 bytes "RO:" or "RW:" + 32 bytes version string
+    char response[36] = {};
+    int received;
+    struct get_firmware_version_request {
+      uint32_t block_size;
+      uint32_t block_digest;
+      uint32_t block_base;
+      uint16_t command;
+    } request;
+
+    request.block_size = htobe32(sizeof(struct get_firmware_version_request));
+    request.block_base = htobe32(0xB007AB1F);
+    request.block_digest = 0;
+    request.command =
+        htobe16(static_cast<uint16_t>(UpdateExtraCommand::kGetVersionString));
+
+    for (int retry = 0; retry < 5; retry++) {
+      received =
+          Transfer(&request, sizeof(request), response, sizeof(response));
+      if (received == -1 || received != sizeof(response)) {
+        if (retry == 4) {
+          LOG(ERROR) << "Failed to get firmware version";
+          return UsbConnectStatus::kUnknownError;
+        }
+
+        if (!UsbSysfsExists()) {
+          Close();
+          return UsbConnectStatus::kUnknownError;
+        }
+
+        base::PlatformThread::Sleep(base::Milliseconds(100));
+        continue;
+      }
+      configuration_string_ = response + 1;
+    }
+  }
+
   LOG(INFO) << "USB endpoint is initialized successfully.";
   return UsbConnectStatus::kSuccess;
 }
