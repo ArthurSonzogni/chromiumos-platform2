@@ -34,8 +34,12 @@ class InteractiveRoutineControl : public BaseRoutineControl {
       ash::cros_healthd::mojom::RoutineInquiryPtr inquiry);
 
  private:
-  // The derived classes override this to perform the actions to resume the
-  // routine that requests an inquiry in the waiting state.
+  // The derived classes override this to perform actions when a reply to the
+  // inquiry in the waiting state is received.
+  //
+  // The derived classes can assume the reply type matches the inquiry type.
+  // This base class `InteractiveRoutineControl` checks the type and raises a
+  // routine exception when the reply and inquiry do not match.
   virtual void OnReplyInquiry(
       ash::cros_healthd::mojom::RoutineInquiryReplyPtr reply) = 0;
 

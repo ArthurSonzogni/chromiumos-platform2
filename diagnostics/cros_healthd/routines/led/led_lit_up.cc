@@ -73,14 +73,8 @@ void LedLitUpRoutine::OnStart() {
 }
 
 void LedLitUpRoutine::OnReplyInquiry(mojom::RoutineInquiryReplyPtr reply) {
-  if (step_ != TestStep::kWaitingForLedState) {
-    RaiseException("Unexpected diagnostic flow.");
-    return;
-  }
-  if (!reply->is_check_led_lit_up_state()) {
-    RaiseException("Reply type is not check-led-lit-up-state.");
-    return;
-  }
+  CHECK_EQ(step_, TestStep::kWaitingForLedState);
+  CHECK(reply->is_check_led_lit_up_state());
   const auto& led_reply = reply->get_check_led_lit_up_state();
   CHECK(!led_reply.is_null());
   switch (led_reply->state) {
