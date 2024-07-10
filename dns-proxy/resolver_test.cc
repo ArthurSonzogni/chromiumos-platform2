@@ -66,9 +66,8 @@ class MockDoHCurlClient : public DoHCurlClient {
   MockDoHCurlClient() : DoHCurlClient(kTimeout) {}
   ~MockDoHCurlClient() = default;
 
-  MOCK_METHOD5(Resolve,
-               bool(const char* msg,
-                    int len,
+  MOCK_METHOD4(Resolve,
+               bool(const base::span<const char>& query,
                     const QueryCallback& callback,
                     const std::vector<std::string>&,
                     const std::string&));
@@ -79,9 +78,8 @@ class MockAresClient : public AresClient {
   MockAresClient() : AresClient(kTimeout) {}
   ~MockAresClient() = default;
 
-  MOCK_METHOD5(Resolve,
-               bool(const unsigned char* msg,
-                    size_t len,
+  MOCK_METHOD4(Resolve,
+               bool(const base::span<const unsigned char>& query,
                     const QueryCallback& callback,
                     const std::string& name_server,
                     int type));
@@ -102,7 +100,7 @@ class ResolverTest : public testing::Test {
       auto probe_state =
           std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
       resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
-                                       {}, ARES_SUCCESS, nullptr, 0);
+                                       {}, ARES_SUCCESS, {});
     }
   }
 
@@ -120,7 +118,7 @@ class ResolverTest : public testing::Test {
       auto probe_state =
           std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
       resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(),
-                                      {}, res, nullptr, 0);
+                                      {}, res, {});
     }
   }
 
@@ -128,7 +126,7 @@ class ResolverTest : public testing::Test {
     auto probe_state =
         std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
     resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
-                                     ARES_SUCCESS, nullptr, 0);
+                                     ARES_SUCCESS, {});
   }
 
   void ValidateDoHProvider(const std::string& doh_provider) {
@@ -137,7 +135,7 @@ class ResolverTest : public testing::Test {
     auto probe_state =
         std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
     resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
-                                    res, nullptr, 0);
+                                    res, {});
   }
 
   void InvalidateNameServer(const std::string& name_server) {
@@ -147,7 +145,7 @@ class ResolverTest : public testing::Test {
         name_server, /*doh=*/false, /*validated=*/true);
     resolver_->HandleAresResult(sock_fd->weak_factory.GetWeakPtr(),
                                 probe_state->weak_factory.GetWeakPtr(),
-                                ARES_ETIMEOUT, nullptr, 0);
+                                ARES_ETIMEOUT, {});
   }
 
   void InvalidateDoHProvider(const std::string& doh_provider) {
@@ -160,7 +158,7 @@ class ResolverTest : public testing::Test {
         probe_state->weak_factory.GetWeakPtr(),
         DoHCurlClient::CurlResult(CURLE_OUT_OF_MEMORY, /*http_code=*/0,
                                   /*retry_delay_ms=*/0),
-        nullptr, 0);
+        {});
   }
 
  protected:
@@ -226,7 +224,7 @@ TEST_F(ResolverTest, ListenUDP) {
 
 TEST_F(ResolverTest, SetNameServers) {
   for (const auto& name_server : kTestNameServers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, _))
         .WillOnce(Return(true));
   }
   SetNameServers(kTestNameServers, /*validate=*/true);
@@ -238,7 +236,7 @@ TEST_F(ResolverTest, SetNameServers) {
 TEST_F(ResolverTest, SetDoHProviders) {
   for (const auto& doh_provider : kTestDoHProviders) {
     EXPECT_CALL(*curl_client_,
-                Resolve(_, _, _, UnorderedElementsAreArray(kTestNameServers),
+                Resolve(_, _, UnorderedElementsAreArray(kTestNameServers),
                         doh_provider))
         .WillOnce(Return(true));
   }
@@ -253,10 +251,10 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersNotValidated) {
   SetNameServers(kTestNameServers);
   SetDoHProviders(kTestDoHProviders);
 
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
@@ -271,8 +269,8 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersPartiallyValidated) {
   ValidateDoHProvider(validated_doh_provider);
 
   // Expect resolving to be only be done using the validated provider.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, validated_doh_provider))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, validated_doh_provider))
       .WillOnce(Return(true));
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
@@ -285,8 +283,8 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersValidated) {
   SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   // Expect resolving to be be done using all validated providers.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _))
       .Times(kTestDoHProviders.size())
       .WillRepeatedly(Return(true));
 
@@ -299,10 +297,10 @@ TEST_F(ResolverTest, Resolve_DNSServers) {
   SetNameServers(kTestNameServers, /*validate=*/true);
 
   // Expect resolving to be be done using all validated name servers.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
@@ -315,10 +313,10 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackNotValidated) {
 
   // Expect resolving to be be done using all name servers when nothing is
   // validated.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
@@ -333,9 +331,9 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackPartiallyValidated) {
   ValidateNameServer(validated_name_server);
 
   // Expect resolving to be only be done using the validated name server.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, validated_name_server, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, validated_name_server, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
@@ -347,10 +345,10 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackValidated) {
   SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   // Expect fallback resolving to be done using validated name servers.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr(), true);
@@ -361,24 +359,23 @@ TEST_F(ResolverTest, CurlResult_CURLFail) {
   SetNameServers(kTestNameServers, /*validate=*/true);
   SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect query to be done with Do53.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   // All curl results failed with curl error.
   DoHCurlClient::CurlResult res(CURLE_COULDNT_CONNECT, 0 /* http_code */,
                                 0 /* timeout */);
   for (int i = 0; i < kTestDoHProviders.size(); i++) {
     resolver_->HandleCurlResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                res, nullptr, 0);
+                                res, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -387,23 +384,22 @@ TEST_F(ResolverTest, CurlResult_HTTPError) {
   SetNameServers(kTestNameServers, /*validate=*/true);
   SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect query to be done with Do53.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _))
       .Times(kTestNameServers.size())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   // All curl results failed with a HTTP error.
   DoHCurlClient::CurlResult res(CURLE_OK, 403 /* http_code */, 0 /*timeout*/);
   for (int i = 0; i < kTestDoHProviders.size(); i++) {
     resolver_->HandleCurlResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                res, nullptr, 0);
+                                res, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -412,20 +408,19 @@ TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
   SetNameServers(kTestNameServers, /*validate=*/true);
   SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */, 0 /*timeout*/);
   for (int i = 0; i < kTestDoHProviders.size(); i++) {
     resolver_->HandleCurlResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                res, nullptr, 0);
+                                res, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -434,21 +429,20 @@ TEST_F(ResolverTest, CurlResult_CurlErrorNoRetry) {
   SetNameServers(kTestNameServers, /*validate=*/true);
   SetDoHProviders(kTestDoHProviders, /*validate=*/true, /*always_on_doh=*/true);
 
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   DoHCurlClient::CurlResult res(CURLE_OUT_OF_MEMORY, 0 /* http_code */,
                                 0 /* timeout */);
   for (int i = 0; i < kTestDoHProviders.size(); i++) {
     resolver_->HandleCurlResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                res, nullptr, 0);
+                                res, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -457,20 +451,19 @@ TEST_F(ResolverTest, CurlResult_HTTPErrorNoRetry) {
   SetNameServers(kTestNameServers, /*validate=*/true);
   SetDoHProviders(kTestDoHProviders, /*validate=*/true, /*always_on_doh=*/true);
 
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   DoHCurlClient::CurlResult res(CURLE_OK, 403 /* http_code */, 0 /* timeout*/);
   for (int i = 0; i < kTestDoHProviders.size(); i++) {
     resolver_->HandleCurlResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                res, nullptr, 0);
+                                res, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -479,22 +472,21 @@ TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
   SetNameServers(kTestNameServers, /*validate=*/true);
   SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   sock_fd->num_retries = INT_MAX;
   DoHCurlClient::CurlResult res(CURLE_OK, 429 /* http_code */, 0 /*timeout*/);
   for (int i = 0; i < kTestDoHProviders.size(); i++) {
     resolver_->HandleCurlResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                res, nullptr, 0);
+                                res, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -502,20 +494,19 @@ TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
 TEST_F(ResolverTest, HandleAresResult_Success) {
   SetNameServers(kTestNameServers, /*validate=*/true);
 
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
   EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _)).Times(0);
 
   sock_fd->num_retries = INT_MAX;
   for (int i = 0; i < kTestNameServers.size(); i++) {
     resolver_->HandleAresResult(sock_fd->weak_factory.GetWeakPtr(), nullptr,
-                                ARES_SUCCESS, nullptr, 0);
+                                ARES_SUCCESS, {});
   }
   task_environment_.RunUntilIdle();
 }
@@ -531,8 +522,8 @@ TEST_F(ResolverTest, ConstructServFailResponse_ValidQuery) {
       '\x00', '\x00', '\x00', '\x00', '\x00', '\x06', 'g',
       'o',    'o',    'g',    'l',    'e',    '\x03', 'c',
       'o',    'm',    '\x00', '\x00', '\x01', '\x00', '\x01'};
-  patchpanel::DnsResponse response =
-      resolver_->ConstructServFailResponse(kDnsQuery, sizeof(kDnsQuery));
+  patchpanel::DnsResponse response = resolver_->ConstructServFailResponse(
+      base::span<const char>(kDnsQuery, sizeof(kDnsQuery)));
   std::vector<char> response_data(
       response.io_buffer()->data(),
       response.io_buffer()->data() + response.io_buffer_size());
@@ -540,16 +531,12 @@ TEST_F(ResolverTest, ConstructServFailResponse_ValidQuery) {
 }
 
 TEST_F(ResolverTest, ConstructServFailResponse_BadLength) {
-  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
-                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
-                            '\x06', 'g',    'o',    'o',    'g',    'l',
-                            'e',    '\x03', 'c',    'o',    'm',    '\x00',
-                            '\x00', '\x01', '\x00', '\x01'};
+  const char kDnsQuery[] = {};
   const char kServFailResponse[] = {'\x00', '\x00', '\x80', '\x02',
                                     '\x00', '\x00', '\x00', '\x00',
                                     '\x00', '\x00', '\x00', '\x00'};
-  patchpanel::DnsResponse response =
-      resolver_->ConstructServFailResponse(kDnsQuery, -1);
+  patchpanel::DnsResponse response = resolver_->ConstructServFailResponse(
+      base::span<const char>(kDnsQuery, sizeof(kDnsQuery)));
   std::vector<char> response_data(
       response.io_buffer()->data(),
       response.io_buffer()->data() + response.io_buffer_size());
@@ -562,8 +549,8 @@ TEST_F(ResolverTest, ConstructServFailResponse_BadQuery) {
   const char kServFailResponse[] = {'\x00', '\x00', '\x80', '\x02',
                                     '\x00', '\x00', '\x00', '\x00',
                                     '\x00', '\x00', '\x00', '\x00'};
-  patchpanel::DnsResponse response =
-      resolver_->ConstructServFailResponse(kDnsQuery, sizeof(kDnsQuery));
+  patchpanel::DnsResponse response = resolver_->ConstructServFailResponse(
+      base::span<const char>(kDnsQuery, sizeof(kDnsQuery)));
   std::vector<char> response_data(
       response.io_buffer()->data(),
       response.io_buffer()->data() + response.io_buffer_size());
@@ -574,11 +561,11 @@ TEST_F(ResolverTest, Probe_Started) {
   resolver_->SetProbingEnabled(true);
 
   for (const auto& name_server : kTestNameServers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, _))
         .WillOnce(Return(true));
   }
   for (const auto& doh_provider : kTestDoHProviders) {
-    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider))
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, doh_provider))
         .WillOnce(Return(true));
   }
 
@@ -591,12 +578,12 @@ TEST_F(ResolverTest, Probe_SetNameServers) {
 
   auto name_servers = kTestNameServers;
   for (const auto& name_server : name_servers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, _))
         .WillOnce(Return(true));
   }
 
   const auto& new_name_server = "9.9.9.9";
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, new_name_server, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, new_name_server, _)).Times(0);
 
   SetNameServers(name_servers);
 
@@ -604,9 +591,9 @@ TEST_F(ResolverTest, Probe_SetNameServers) {
 
   // Check that only the newly added name servers are probed.
   for (const auto& name_server : name_servers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _)).Times(0);
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, _)).Times(0);
   }
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, new_name_server, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, new_name_server, _))
       .WillOnce(Return(true));
 
   SetNameServers(name_servers);
@@ -617,12 +604,12 @@ TEST_F(ResolverTest, Probe_SetDoHProviders) {
 
   auto doh_providers = kTestDoHProviders;
   for (const auto& doh_provider : doh_providers) {
-    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider))
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, doh_provider))
         .WillOnce(Return(true));
   }
 
   const auto& new_doh_provider = "https://dns3.google/dns-query";
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, new_doh_provider)).Times(0);
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, new_doh_provider)).Times(0);
 
   SetNameServers(kTestNameServers);
   SetDoHProviders(doh_providers);
@@ -631,9 +618,9 @@ TEST_F(ResolverTest, Probe_SetDoHProviders) {
 
   // Check that only the newly added DoH providers and name servers are probed.
   for (const auto& doh_provider : doh_providers) {
-    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider)).Times(0);
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, doh_provider)).Times(0);
   }
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, new_doh_provider))
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, new_doh_provider))
       .WillOnce(Return(true));
 
   SetDoHProviders(doh_providers);
@@ -649,10 +636,10 @@ TEST_F(ResolverTest, Probe_InvalidateNameServer) {
   InvalidateNameServer(invalidated_name_server);
 
   // Query should be done using all name servers except the invalidated one.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, invalidated_name_server, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, invalidated_name_server, _))
       .Times(0);
   for (const auto& name_server : name_servers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, _))
         .WillOnce(Return(true));
   }
 
@@ -672,10 +659,10 @@ TEST_F(ResolverTest, Probe_InvalidateDoHProvider) {
   InvalidateDoHProvider(invalidated_doh_provider);
 
   // Query should be done using all DoH providers except the invalidated one.
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, invalidated_doh_provider))
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, invalidated_doh_provider))
       .Times(0);
   for (const auto& doh_provider : doh_providers) {
-    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider))
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, doh_provider))
         .WillOnce(Return(true));
   }
 
@@ -691,10 +678,10 @@ TEST_F(ResolverTest, Probe_Do53ProbeRestarted) {
   name_servers.pop_back();
 
   // Expect probe to be restarted only for the invalidated name server.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, invalidated_name_server, _))
+  EXPECT_CALL(*ares_client_, Resolve(_, _, invalidated_name_server, _))
       .WillOnce(Return(true));
   for (const auto& name_server : name_servers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, _)).Times(0);
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, _)).Times(0);
   }
   resolver_->SetProbingEnabled(true);
 
@@ -710,10 +697,10 @@ TEST_F(ResolverTest, Probe_DoHProbeRestarted) {
   doh_providers.pop_back();
 
   // Expect probe to be restarted only for the invalidated DoH provider.
-  EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, invalidated_doh_provider))
+  EXPECT_CALL(*curl_client_, Resolve(_, _, _, invalidated_doh_provider))
       .WillOnce(Return(true));
   for (const auto& doh_provider : doh_providers) {
-    EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, doh_provider)).Times(0);
+    EXPECT_CALL(*curl_client_, Resolve(_, _, _, doh_provider)).Times(0);
   }
   resolver_->SetProbingEnabled(true);
 
@@ -724,7 +711,7 @@ TEST_F(ResolverTest, Probe_DoHProbeRestarted) {
 TEST_F(ResolverTest, Resolve_HandleUDPQuery) {
   SetNameServers(kTestNameServers);
   for (const auto& name_server : kTestNameServers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_DGRAM))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, SOCK_DGRAM))
         .WillOnce(Return(true));
   }
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, /*fd=*/0);
@@ -738,7 +725,7 @@ TEST_F(ResolverTest, Resolve_HandleTCPQuery) {
   sock_fd->len = sizeof(kDNSTCPFragment);
 
   for (const auto& name_server : kTestNameServers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_STREAM))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, SOCK_STREAM))
         .WillOnce(Return(true));
   }
   resolver_->HandleDNSQuery(std::move(sock_fd));
@@ -756,7 +743,7 @@ TEST_F(ResolverTest, Resolve_HandleChunkedTCPQuery) {
   memcpy(sock_fd->msg, kDNSTCPFragment, partial_len);
   sock_fd->len = partial_len;
 
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
   resolver_->HandleDNSQuery(std::move(sock_fd));
 
   // Send remaining TCP data.
@@ -766,7 +753,7 @@ TEST_F(ResolverTest, Resolve_HandleChunkedTCPQuery) {
   sock_fd->len += sizeof(kDNSTCPFragment) - partial_len;
 
   for (const auto& name_server : kTestNameServers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_STREAM))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, SOCK_STREAM))
         .WillOnce(Return(true));
   }
   resolver_->HandleDNSQuery(std::move(sock_fd));
@@ -784,7 +771,7 @@ TEST_F(ResolverTest, Resolve_HandleMultipleTCPQueries) {
   sock_fd->len = 2 * sizeof(kDNSTCPFragment);
 
   for (const auto& name_server : kTestNameServers) {
-    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_STREAM))
+    EXPECT_CALL(*ares_client_, Resolve(_, _, name_server, SOCK_STREAM))
         .Times(2)
         .WillRepeatedly(Return(true));
   }
@@ -795,7 +782,7 @@ TEST_F(ResolverTest, Resolve_ChunkedTCPQueryNotResolved) {
   SetNameServers(kTestNameServers);
 
   // Expect no resolving.
-  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _)).Times(0);
 
   // Receive 1-byte at a time.
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
@@ -842,9 +829,9 @@ TEST_F(ResolverTest, IsNXDOMAIN_NXDOMAIN) {
                                '\x06', 'g',    'o',    'o',    'g',    'l',
                                'e',    '\x03', 'c',    'o',    'm',    '\x00',
                                '\x00', '\x01', '\x00', '\x01'};
-  EXPECT_TRUE(resolver_->IsNXDOMAIN(
+  EXPECT_TRUE(resolver_->IsNXDOMAIN(base::span<const unsigned char>(
       reinterpret_cast<const unsigned char*>(kDnsResponse),
-      sizeof(kDnsResponse)));
+      sizeof(kDnsResponse))));
 }
 
 TEST_F(ResolverTest, IsNXDOMAIN_NotNXDOMAIN) {
@@ -853,16 +840,16 @@ TEST_F(ResolverTest, IsNXDOMAIN_NotNXDOMAIN) {
                                '\x06', 'g',    'o',    'o',    'g',    'l',
                                'e',    '\x03', 'c',    'o',    'm',    '\x00',
                                '\x00', '\x01', '\x00', '\x01'};
-  EXPECT_FALSE(resolver_->IsNXDOMAIN(
+  EXPECT_FALSE(resolver_->IsNXDOMAIN(base::span<const unsigned char>(
       reinterpret_cast<const unsigned char*>(kDnsResponse),
-      sizeof(kDnsResponse)));
+      sizeof(kDnsResponse))));
 }
 
 TEST_F(ResolverTest, IsNXDOMAIN_BadResponse) {
   const char kDnsResponse[] = {'\x00', '\x01', '\x02', '\x03', '\x04', '\x05'};
-  EXPECT_FALSE(resolver_->IsNXDOMAIN(
+  EXPECT_FALSE(resolver_->IsNXDOMAIN(base::span<const unsigned char>(
       reinterpret_cast<const unsigned char*>(kDnsResponse),
-      sizeof(kDnsResponse)));
+      sizeof(kDnsResponse))));
 }
 
 TEST_F(ResolverTest, BypassDoH_LiteralMatch) {
@@ -919,43 +906,47 @@ TEST_F(ResolverTest, BypassDoH_ExcludeNotIncludedDomains) {
 }
 
 TEST_F(ResolverTest, GetDNSQuestionName_ValidQuery) {
-  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
-                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
-                            '\x06', 'g',    'o',    'o',    'g',    'l',
-                            'e',    '\x03', 'c',    'o',    'm',    '\x00',
-                            '\x00', '\x01', '\x00', '\x01'};
+  const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                               '\x00', '\x01', '\x00', '\x01'};
   EXPECT_EQ("google.com",
-            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+            resolver_->GetDNSQuestionName(
+                base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
 }
 
 TEST_F(ResolverTest, GetDNSQuestionName_InvalidQuery) {
-  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
-                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
-                            '\x06', 'g',    'o',    'o',    'g',    'l',
-                            'e',    '\x03', 'c',    'o',    'm',    '\x09',
-                            '\x00', '\x01', '\x00', '\x01'};
+  const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    'm',    '\x09',
+                               '\x00', '\x01', '\x00', '\x01'};
   EXPECT_EQ(std::nullopt,
-            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+            resolver_->GetDNSQuestionName(
+                base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
 }
 
 TEST_F(ResolverTest, GetDNSQuestionName_InvalidCharacter) {
-  const char kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
-                            '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
-                            '\x06', 'g',    'o',    'o',    'g',    'l',
-                            'e',    '\x03', 'c',    'o',    '*',    '\x00',
-                            '\x00', '\x01', '\x00', '\x01'};
+  const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    '*',    '\x00',
+                               '\x00', '\x01', '\x00', '\x01'};
   EXPECT_EQ(std::nullopt,
-            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+            resolver_->GetDNSQuestionName(
+                base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
 }
 
 TEST_F(ResolverTest, GetDNSQuestionName_QueryTooShort) {
-  const char kDnsQuery[] = {'a'};
+  const uint8_t kDnsQuery[] = {'a'};
   EXPECT_EQ(std::nullopt,
-            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+            resolver_->GetDNSQuestionName(
+                base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
 }
 
 TEST_F(ResolverTest, GetDNSQuestionName_QueryTooLong) {
-  const char kDnsQuery[] = {
+  const uint8_t kDnsQuery[] = {
       'J',    'G',    '\x01', ' ',    '\x00', '\x01', '\x00', '\x00', '\x00',
       '\x00', '\x00', '\x01', '\x30', 'a',    'a',    'a',    'a',    'a',
       'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
@@ -980,6 +971,7 @@ TEST_F(ResolverTest, GetDNSQuestionName_QueryTooLong) {
       'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
       '\x00', '\x00', '\x01', '\x00', '\x01'};
   EXPECT_EQ(std::nullopt,
-            resolver_->GetDNSQuestionName(kDnsQuery, sizeof(kDnsQuery)));
+            resolver_->GetDNSQuestionName(
+                base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
 }
 }  // namespace dns_proxy

@@ -27,8 +27,7 @@ class FakeAresClient : public AresClient {
       : AresClient(base::Seconds(1)), provider_(provider) {}
   ~FakeAresClient() = default;
 
-  bool Resolve(const unsigned char* msg,
-               size_t len,
+  bool Resolve(const base::span<const unsigned char>& query,
                const AresClient::QueryCallback& callback,
                const std::string& name_server,
                int type) override {
@@ -44,8 +43,7 @@ class FakeCurlClient : public DoHCurlClientInterface {
   explicit FakeCurlClient(FuzzedDataProvider* provider) : provider_(provider) {}
   ~FakeCurlClient() = default;
 
-  bool Resolve(const char*,
-               int,
+  bool Resolve(const base::span<const char>&,
                const DoHCurlClient::QueryCallback&,
                const std::vector<std::string>&,
                const std::string&) override {
@@ -132,8 +130,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     auto msg = provider.ConsumeRandomLengthString(
         std::numeric_limits<uint16_t>::max());
-    resolver.ConstructServFailResponse(msg.c_str(), msg.size());
-    resolver.GetDNSQuestionName(msg.c_str(), msg.size());
+    resolver.ConstructServFailResponse(
+        base::span<const char>(msg.c_str(), msg.size()));
+    resolver.GetDNSQuestionName(base::span<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(msg.c_str()), msg.size()));
     resolver.BypassDoH(msg);
 
     int type = SOCK_STREAM;

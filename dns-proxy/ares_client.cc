@@ -129,7 +129,8 @@ void AresClient::HandleResult(State* state,
   }
 
   // Run the callback.
-  state->callback.Run(status, msg.get(), len);
+  state->callback.Run(
+      status, base::span<unsigned char>(msg.get(), static_cast<size_t>(len)));
   msg.reset();
 
   // Cleanup the states.
@@ -230,8 +231,7 @@ ares_channel AresClient::InitChannel(const std::string& name_server, int type) {
   return channel;
 }
 
-bool AresClient::Resolve(const unsigned char* msg,
-                         size_t len,
+bool AresClient::Resolve(const base::span<const unsigned char>& query,
                          const QueryCallback& callback,
                          const std::string& name_server,
                          int type) {
@@ -240,7 +240,8 @@ bool AresClient::Resolve(const unsigned char* msg,
     return false;
 
   State* state = new State(this, channel, callback);
-  ares_send(channel, msg, len, &AresClient::AresCallback, state);
+  ares_send(channel, query.data(), query.size(), &AresClient::AresCallback,
+            state);
 
   // Start timeout handler.
   channels_inflight_.emplace(channel);

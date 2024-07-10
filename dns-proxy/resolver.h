@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
@@ -68,7 +69,7 @@ class Resolver {
     // Getter for |msg| and |len| that excludes the additional 2-bytes TCP
     // header data containing the DNS query length.
     const char* get_message() const;
-    const ssize_t get_length() const;
+    const size_t get_length() const;
 
     // |type| is either SOCK_STREAM or SOCK_DGRAM.
     const int type;
@@ -79,7 +80,7 @@ class Resolver {
     // of the query. In order to make the data 4-bytes aligned, a pointer |msg|
     // for buffer |buf| is used. |len| denotes the length of |msg|.
     char* msg;
-    ssize_t len;
+    size_t len;
 
     // Holds the source address of the client and it's address length.
     // At initialization, |socklen| value will be the size of |src|. Upon
@@ -181,14 +182,13 @@ class Resolver {
   // This function passed the first successful result or the last result back
   // to the client.
   //
-  // |status| is the ares response status. |msg| is the wire-format response
-  // of the DNS query given through `Resolve(...)` with the len |len|.
-  // |msg| and its lifecycle is owned by ares.
+  // |status| is the ares response status. |resp| is the wire-format response
+  // of the DNS query given through `Resolve(...)`.
+  // |resp| and its lifecycle is owned by ares.
   void HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                         base::WeakPtr<ProbeState> probe_state,
                         int status,
-                        unsigned char* msg,
-                        size_t len);
+                        const base::span<unsigned char>& resp);
 
   // Handle DoH results queried through curl.
   // |sock_fd| is the socket data needed to reply to the client. Empty
@@ -199,14 +199,13 @@ class Resolver {
   // This function passed the first successful result or the last result back
   // to the client.
   //
-  // |http_code| is the HTTP status code of the response. |msg| is the
-  // wire-format response of the DNS query given through `Resolve(...)` with
-  // the len |len|. |msg| and its lifecycle is owned by DoHCurlClient.
+  // |http_code| is the HTTP status code of the response. |resp| is the
+  // wire-format response of the DNS query given through `Resolve(...)`.
+  // |resp| and its lifecycle is owned by DoHCurlClient.
   void HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                         base::WeakPtr<ProbeState> probe_state,
                         const DoHCurlClient::CurlResult& res,
-                        unsigned char* msg,
-                        size_t len);
+                        const base::span<unsigned char>& resp);
 
   // Resolve a domain using CURL or Ares using data from |sock_fd|.
   // If |fallback| is true, force to use standard plain-text DNS.
@@ -216,17 +215,15 @@ class Resolver {
   // provided inside |probe_state|. |probe_state| also defines the current
   // probing state, including if it is already successful. If the probe is
   // successful, the provider or name server will be validated.
-  // For Do53, |data| is added for metrics, including IP family.
+  // For Do53, |probe_data| is added for metrics, including IP family.
   void HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
                             const ProbeData& probe_data,
                             const DoHCurlClient::CurlResult& res,
-                            unsigned char* msg,
-                            size_t len);
+                            const base::span<unsigned char>& resp);
   void HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
                              const ProbeData& probe_data,
                              int status,
-                             unsigned char* msg,
-                             size_t len);
+                             const base::span<unsigned char>& resp);
 
   // Handle DNS query from clients. |type| values will be either SOCK_DGRAM
   // or SOCK STREAM, for UDP and TCP respectively.
@@ -241,14 +238,16 @@ class Resolver {
   std::unique_ptr<SocketFd> PopPendingSocketFd(int fd);
 
   // Get the domain name being queried from a DNS query.
-  std::optional<std::string> GetDNSQuestionName(const char* msg, ssize_t len);
+  std::optional<std::string> GetDNSQuestionName(
+      const base::span<const uint8_t>& query);
 
-  // Create a SERVFAIL response from a DNS query |msg| of length |len|.
-  patchpanel::DnsResponse ConstructServFailResponse(const char* msg, int len);
+  // Create a SERVFAIL response from a DNS query.
+  patchpanel::DnsResponse ConstructServFailResponse(
+      const base::span<const char>& query);
 
   // Returns whether or not a DNS response has NXDOMAIN rcode. Return false if
   // the DNS response is invalid.
-  bool IsNXDOMAIN(const unsigned char* msg, size_t len);
+  bool IsNXDOMAIN(const base::span<const unsigned char>& resp);
 
   // Provided for testing only. Enable or disable probing.
   void SetProbingEnabled(bool enable_probe);
@@ -286,8 +285,7 @@ class Resolver {
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
-                unsigned char* msg,
-                size_t len);
+                const base::span<unsigned char>& resp);
 
   // Set either name servers or DoH providers |targets| based on the boolean
   // type |doh|.

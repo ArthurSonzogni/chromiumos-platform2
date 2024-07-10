@@ -34,9 +34,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   while (provider.remaining_bytes() > 0) {
     auto msg = provider.ConsumeBytes<unsigned char>(
         std::numeric_limits<unsigned int>::max());
-    ares_client.Resolve(msg.data(), msg.size(),
-                        base::BindRepeating([](int, uint8_t*, size_t) {}),
-                        "8.8.8.8");
+    ares_client.Resolve(
+        base::span<const unsigned char>(msg.data(), msg.size()),
+        base::BindRepeating([](int, const base::span<unsigned char>&) {}),
+        "8.8.8.8");
     base::RunLoop().RunUntilIdle();
   }
 

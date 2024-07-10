@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/time/time.h>
 
@@ -28,25 +29,22 @@ class AresClient {
  public:
   // Callback to be invoked back to the client upon request completion.
   // |status| stores the ares result of the ares query.
-  // |msg| and |len| respectively stores the response and length of the
-  // response of the ares query.
-  using QueryCallback =
-      base::RepeatingCallback<void(int status, unsigned char* msg, size_t len)>;
+  // |resp| stores the response of the ares query.
+  using QueryCallback = base::RepeatingCallback<void(
+      int status, const base::span<unsigned char>& resp)>;
 
   explicit AresClient(base::TimeDelta timeout);
   virtual ~AresClient();
 
-  // Resolve DNS address using wire-format data |data| of size |len| with
-  // |name_servers|.
-  // |msg| is owned by the caller of this function. The caller is
+  // Resolve DNS address using wire-format data |query| with |name_servers|.
+  // |query| is owned by the caller of this function. The caller is
   // responsible for their lifecycle.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
   // |name_servers| must contain one or more valid IPv4 or IPv6 addresses string
   // such as "8.8.8.8" or "2001:4860:4860::8888".
   // The callback will return the wire-format response.
   // See: |QueryCallback|
-  virtual bool Resolve(const unsigned char* msg,
-                       size_t len,
+  virtual bool Resolve(const base::span<const unsigned char>& query,
                        const QueryCallback& callback,
                        const std::string& name_servers,
                        int type = SOCK_DGRAM);

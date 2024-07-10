@@ -196,7 +196,7 @@ const char* Resolver::SocketFd::get_message() const {
   return msg;
 }
 
-const ssize_t Resolver::SocketFd::get_length() const {
+const size_t Resolver::SocketFd::get_length() const {
   if (type == SOCK_STREAM) {
     return len - kDNSTCPHeaderLength;
   }
@@ -316,24 +316,23 @@ void Resolver::OnTCPConnection() {
                                             weak_factory_.GetWeakPtr())));
 }
 
-bool Resolver::IsNXDOMAIN(const unsigned char* msg, size_t len) {
+bool Resolver::IsNXDOMAIN(const base::span<const unsigned char>& resp) {
   scoped_refptr<patchpanel::WrappedIOBuffer> buf =
       base::MakeRefCounted<patchpanel::WrappedIOBuffer>(
-          reinterpret_cast<const char*>(msg));
-  auto resp = patchpanel::DnsResponse(buf, len);
+          reinterpret_cast<const char*>(resp.data()));
+  auto dns_resp = patchpanel::DnsResponse(buf, resp.size());
 
-  if (!resp.InitParseWithoutQuery(len) || !resp.IsValid()) {
+  if (!dns_resp.InitParseWithoutQuery(resp.size()) || !dns_resp.IsValid()) {
     LOG(ERROR) << *this << " Failed to parse DNS response";
     return false;
   }
-  return resp.rcode() == patchpanel::dns_protocol::kRcodeNXDOMAIN;
+  return dns_resp.rcode() == patchpanel::dns_protocol::kRcodeNXDOMAIN;
 }
 
 void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                                 base::WeakPtr<ProbeState> probe_state,
                                 int status,
-                                unsigned char* msg,
-                                size_t len) {
+                                const base::span<unsigned char>& resp) {
   // Query is already handled.
   if (!sock_fd) {
     return;
@@ -365,7 +364,7 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   // Don't process failing result (including NXDOMAINs) that is not the last
   // result.
   if (sock_fd->num_active_queries > 0 &&
-      (status != ARES_SUCCESS || IsNXDOMAIN(msg, len))) {
+      (status != ARES_SUCCESS || IsNXDOMAIN(resp))) {
     return;
   }
 
@@ -375,7 +374,7 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                                 AresStatusMetric(status));
 
   if (status == ARES_SUCCESS) {
-    ReplyDNS(sock_fd, msg, len);
+    ReplyDNS(sock_fd, resp);
     sock_fds_.erase(sock_fd->id);
     return;
   }
@@ -398,8 +397,7 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
 void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
                                 base::WeakPtr<ProbeState> probe_state,
                                 const DoHCurlClient::CurlResult& res,
-                                unsigned char* msg,
-                                size_t len) {
+                                const base::span<unsigned char>& resp) {
   // Query is already handled.
   if (!sock_fd) {
     return;
@@ -422,7 +420,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
   // result. Check for NXDOMAIN only if the response is valid.
   bool is_nxdomain = false;
   if (res.http_code == kHTTPOk) {
-    is_nxdomain = IsNXDOMAIN(msg, len);
+    is_nxdomain = IsNXDOMAIN(resp);
   }
   if ((res.http_code != kHTTPOk || is_nxdomain) &&
       sock_fd->num_active_queries > 0) {
@@ -460,7 +458,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
 
   switch (res.http_code) {
     case kHTTPOk: {
-      ReplyDNS(sock_fd, msg, len);
+      ReplyDNS(sock_fd, resp);
       sock_fds_.erase(sock_fd->id);
       return;
     }
@@ -504,8 +502,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
 void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
                                     const ProbeData& probe_data,
                                     const DoHCurlClient::CurlResult& res,
-                                    unsigned char* msg,
-                                    size_t len) {
+                                    const base::span<unsigned char>& resp) {
   if (!probe_state) {
     return;
   }
@@ -546,8 +543,7 @@ void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
 void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
                                      const ProbeData& probe_data,
                                      int status,
-                                     unsigned char* msg,
-                                     size_t len) {
+                                     const base::span<unsigned char>& resp) {
   if (metrics_) {
     metrics_->RecordProbeResult(probe_data.family, probe_data.num_retries,
                                 AresStatusMetric(status));
@@ -582,12 +578,11 @@ void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
 }
 
 void Resolver::ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
-                        unsigned char* msg,
-                        size_t len) {
+                        const base::span<unsigned char>& resp) {
   sock_fd->timer.StartReply();
   // For TCP, DNS messages have an additional 2-bytes header representing
   // the length of the query. Add the additional header for the reply.
-  uint16_t dns_len = htons(len);
+  uint16_t dns_len = htons(resp.size());
   struct iovec iov_out[2];
   iov_out[0].iov_base = &dns_len;
   iov_out[0].iov_len = 2;
@@ -596,8 +591,8 @@ void Resolver::ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
   if (sock_fd->type == SOCK_DGRAM) {
     iov_out[0].iov_len = 0;
   }
-  iov_out[1].iov_base = static_cast<void*>(msg);
-  iov_out[1].iov_len = len;
+  iov_out[1].iov_base = static_cast<void*>(resp.data());
+  iov_out[1].iov_len = resp.size();
   struct msghdr hdr = {
       .msg_name = nullptr,
       .msg_namelen = 0,
@@ -848,10 +843,14 @@ void Resolver::HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd) {
 
 void Resolver::CommitQuery(std::unique_ptr<SocketFd> sock_fd) {
   if (doh_included_domains_set_ || doh_excluded_domains_set_) {
-    std::optional<std::string> domain =
-        GetDNSQuestionName(sock_fd->get_message(), sock_fd->get_length());
+    base::span<const uint8_t> query(
+        reinterpret_cast<const uint8_t*>(sock_fd->get_message()),
+        sock_fd->get_length());
+    std::optional<std::string> domain = GetDNSQuestionName(query);
     if (domain) {
       sock_fd->bypass_doh = BypassDoH(*domain);
+    } else {
+      LOG(WARNING) << "Failed to get DNS question name";
     }
   }
 
@@ -898,7 +897,8 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
   for (const auto& target : targets) {
     if (doh) {
       if (!curl_client_->Resolve(
-              sock_fd->get_message(), sock_fd->get_length(),
+              base::span<const char>(sock_fd->get_message(),
+                                     sock_fd->get_length()),
               base::BindRepeating(
                   &Resolver::HandleCurlResult, weak_factory_.GetWeakPtr(),
                   sock_fd, doh_providers_[target]->weak_factory.GetWeakPtr()),
@@ -907,8 +907,10 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
       }
     } else {
       if (!ares_client_->Resolve(
-              reinterpret_cast<const unsigned char*>(sock_fd->get_message()),
-              sock_fd->get_length(),
+              base::span<const unsigned char>(
+                  reinterpret_cast<const unsigned char*>(
+                      sock_fd->get_message()),
+                  sock_fd->get_length()),
               base::BindRepeating(
                   &Resolver::HandleAresResult, weak_factory_.GetWeakPtr(),
                   sock_fd, name_servers_[target]->weak_factory.GetWeakPtr()),
@@ -993,15 +995,17 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
   const ProbeData probe_data = {target_family, probe_state->num_retries,
                                 base::Time::Now()};
   if (probe_state->doh) {
-    curl_client_->Resolve(kDNSQueryGstatic, sizeof(kDNSQueryGstatic),
-                          base::BindRepeating(&Resolver::HandleDoHProbeResult,
-                                              weak_factory_.GetWeakPtr(),
-                                              probe_state, probe_data),
-                          GetActiveNameServers(), probe_state->target);
+    curl_client_->Resolve(
+        base::span<const char>(kDNSQueryGstatic, sizeof(kDNSQueryGstatic)),
+        base::BindRepeating(&Resolver::HandleDoHProbeResult,
+                            weak_factory_.GetWeakPtr(), probe_state,
+                            probe_data),
+        GetActiveNameServers(), probe_state->target);
   } else {
     ares_client_->Resolve(
-        reinterpret_cast<const unsigned char*>(kDNSQueryGstatic),
-        sizeof(kDNSQueryGstatic),
+        base::span<const unsigned char>(
+            reinterpret_cast<const unsigned char*>(kDNSQueryGstatic),
+            sizeof(kDNSQueryGstatic)),
         base::BindRepeating(&Resolver::HandleDo53ProbeResult,
                             weak_factory_.GetWeakPtr(), probe_state,
                             probe_data),
@@ -1032,11 +1036,11 @@ void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
   }
 
   // Construct and send a response indicating that there is a failure.
-  patchpanel::DnsResponse response =
-      ConstructServFailResponse(sock_fd->get_message(), sock_fd->get_length());
-  ReplyDNS(sock_fd,
-           reinterpret_cast<unsigned char*>(response.io_buffer()->data()),
-           response.io_buffer_size());
+  patchpanel::DnsResponse response = ConstructServFailResponse(
+      base::span<const char>(sock_fd->get_message(), sock_fd->get_length()));
+  ReplyDNS(sock_fd, base::span<unsigned char>(reinterpret_cast<unsigned char*>(
+                                                  response.io_buffer()->data()),
+                                              response.io_buffer_size()));
 
   // Query is completed, remove SocketFd.
   sock_fds_.erase(sock_fd->id);
@@ -1070,14 +1074,16 @@ std::optional<Resolver::DomainDoHConfig> Resolver::GetDomainDoHConfig(
   return std::nullopt;
 }
 
-std::optional<std::string> Resolver::GetDNSQuestionName(const char* msg,
-                                                        ssize_t len) {
+std::optional<std::string> Resolver::GetDNSQuestionName(
+    const base::span<const uint8_t>& query) {
   // Index of a DNS query question name field. This is taken from RFC1035 (DNS).
   // The first 12 bytes contains the header of the query.
-  static constexpr int kQNameIdx = 12;
-  if (len <= kQNameIdx) {
+  static constexpr size_t kQNameIdx = 12;
+  if (query.size() <= kQNameIdx) {
     return std::nullopt;
   }
+  auto reader = base::SpanReader(query);
+  reader.Skip(kQNameIdx);
 
   std::string qname;
   qname.reserve(patchpanel::dns_protocol::kMaxNameLength);
@@ -1087,37 +1093,37 @@ std::optional<std::string> Resolver::GetDNSQuestionName(const char* msg,
   // consists of a length octet followed by that number of octets. The domain
   // name terminates with the zero length octet for the null label of the root.
   // As an example, "google.com" is represented as "\x06google\x03com\x00".
-  int i = kQNameIdx;
-  uint8_t label_length = msg[i++];
+  uint8_t label_length;
+  if (!reader.ReadU8BigEndian(label_length)) {
+    return std::nullopt;
+  }
   while (label_length) {
+    base::span<const uint8_t> label;
     // Misformatted query, the length octet must be followed by label with the
     // same number of octets. Query is cut short.
-    if (i + 1 + label_length > len) {
-      LOG(WARNING) << "Failed to get DNS question name: invalid query";
-      return std::nullopt;
-    }
-
-    // Size of the domain is larger than the maximum length of a domain name.
-    if (qname.size() + 1 + label_length > qname.capacity()) {
-      LOG(WARNING) << "Failed to get DNS question name: name too long";
+    if (!reader.ReadInto(label_length, label)) {
       return std::nullopt;
     }
 
     // Validate and append characters in the domain.
-    int next_label_idx = i + label_length;
-    while (i < next_label_idx) {
-      char c = msg[i++];
+    for (const char c : label) {
       if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '-') {
-        LOG(WARNING) << "Failed to get DNS question name: invalid character";
         return std::nullopt;
       }
       qname.append(1, c);
     }
 
     // Append dots ('.') if there is a following label.
-    label_length = msg[i++];
+    if (!reader.ReadU8BigEndian(label_length)) {
+      return std::nullopt;
+    }
     if (label_length) {
       qname.append(1, '.');
+    }
+
+    // Validate the domain length.
+    if (qname.size() > patchpanel::dns_protocol::kMaxNameLength) {
+      return std::nullopt;
     }
   }
 
@@ -1125,29 +1131,29 @@ std::optional<std::string> Resolver::GetDNSQuestionName(const char* msg,
   return qname;
 }
 
-patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
-                                                            int len) {
+patchpanel::DnsResponse Resolver::ConstructServFailResponse(
+    const base::span<const char>& query) {
   // Construct a DNS query from the message buffer.
-  std::optional<patchpanel::DnsQuery> query;
-  if (len > 0 && len <= dns_proxy::kMaxDNSBufSize) {
-    scoped_refptr<patchpanel::IOBufferWithSize> query_buf =
-        base::MakeRefCounted<patchpanel::IOBufferWithSize>(len);
-    memcpy(query_buf->data(), msg, len);
-    query = patchpanel::DnsQuery(query_buf);
+  std::optional<patchpanel::DnsQuery> dns_query;
+  if (query.size() > 0 && query.size() <= dns_proxy::kMaxDNSBufSize) {
+    scoped_refptr<patchpanel::IOBufferWithSize> buf =
+        base::MakeRefCounted<patchpanel::IOBufferWithSize>(query.size());
+    memcpy(buf->data(), query.data(), query.size());
+    dns_query = patchpanel::DnsQuery(buf);
   }
 
   // Set the query id as 0 if the query is invalid.
   uint16_t query_id = 0;
-  if (query.has_value() && query->Parse(len)) {
-    query_id = query->id();
+  if (dns_query.has_value() && dns_query->Parse(query.size())) {
+    query_id = dns_query->id();
   } else {
-    query.reset();
+    dns_query.reset();
   }
 
   // Returns RCODE SERVFAIL response corresponding to the query.
   patchpanel::DnsResponse response(query_id, false /* is_authoritative */,
                                    {} /* answers */, {} /* authority_records */,
-                                   {} /* additional_records */, query,
+                                   {} /* additional_records */, dns_query,
                                    patchpanel::dns_protocol::kRcodeSERVFAIL);
   return response;
 }

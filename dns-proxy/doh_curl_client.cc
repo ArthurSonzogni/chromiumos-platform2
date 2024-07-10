@@ -40,7 +40,7 @@ DoHCurlClient::State::~State() {
 void DoHCurlClient::State::RunCallback(CURLMsg* curl_msg, int64_t http_code) {
   // TODO(jasongustaman): Use HTTP 429, Retry-After header value.
   CurlResult res(curl_msg->data.result, http_code, 0 /* retry_delay_ms */);
-  callback.Run(res, response.data(), response.size());
+  callback.Run(res, response);
 }
 
 void DoHCurlClient::State::SetResponse(char* msg, size_t len) {
@@ -239,8 +239,7 @@ size_t DoHCurlClient::HeaderCallback(char* data,
 
 std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
     const std::string& doh_provider,
-    const char* msg,
-    int len,
+    const base::span<const char>& query,
     const QueryCallback& callback,
     const std::vector<std::string>& name_servers) {
   CURL* curl;
@@ -270,8 +269,8 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, state.get()->header_list);
 
   // Stores the data to be sent through HTTP POST and its length.
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, msg);
-  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, len);
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDS, query.data());
+  curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, query.size());
 
   // Set the user agent for the query.
   curl_easy_setopt(curl, CURLOPT_USERAGENT, kLinuxUserAgent);
@@ -295,13 +294,12 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
   return state;
 }
 
-bool DoHCurlClient::Resolve(const char* msg,
-                            int len,
+bool DoHCurlClient::Resolve(const base::span<const char>& query,
                             const QueryCallback& callback,
                             const std::vector<std::string>& name_servers,
                             const std::string& doh_provider) {
   std::unique_ptr<State> state =
-      InitCurl(doh_provider, msg, len, callback, name_servers);
+      InitCurl(doh_provider, query, callback, name_servers);
   if (!state) {
     return false;
   }

@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/time/time.h>
@@ -37,20 +38,18 @@ class DoHCurlClientInterface {
   // Callback to be invoked back to the client upon request completion.
   // |res| stores the CURL result code, HTTP code, retry delay of the CURL
   // query.
-  // |msg| and |len| respectively stores the response and length of the
-  // response of the CURL query.
+  // |resp| stores the response of the CURL query.
   using QueryCallback = base::RepeatingCallback<void(
-      const CurlResult& res, unsigned char* msg, size_t len)>;
+      const CurlResult& res, const base::span<unsigned char>& resp)>;
 
   virtual ~DoHCurlClientInterface() = default;
 
-  // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
-  // |len| using |name_servers| and |doh_providers|.
+  // Resolve DNS address through DNS-over-HTTPS using DNS query |query| using
+  // |name_servers| and |doh_providers|.
   // |callback| will be called upon query completion.
-  // |msg| is owned by the caller of this function. The caller is responsible
+  // |query| is owned by the caller of this function. The caller is responsible
   // for their lifecycle.
-  virtual bool Resolve(const char* msg,
-                       int len,
+  virtual bool Resolve(const base::span<const char>& query,
                        const QueryCallback& callback,
                        const std::vector<std::string>& name_servers,
                        const std::string& doh_provider) = 0;
@@ -68,17 +67,16 @@ class DoHCurlClient : public DoHCurlClientInterface {
   DoHCurlClient& operator=(const DoHCurlClient&) = delete;
   virtual ~DoHCurlClient();
 
-  // Resolve DNS address through DNS-over-HTTPS using DNS query |msg| of size
-  // |len| using |name_servers| and |doh_providers|.
+  // Resolve DNS address through DNS-over-HTTPS using DNS query |query| using
+  // |name_servers| and |doh_providers|.
   // |callback| will be called upon query completion.
-  // |msg| is owned by the caller of this function. The caller is responsible
+  // |query| is owned by the caller of this function. The caller is responsible
   // for their lifecycle.
   // |name_servers| must contain one or more valid IPv4 or IPv6 addresses string
   // such as "8.8.8.8" or "2001:4860:4860::8888".
   // |doh_providers| must contain one or more valid DoH providers string (HTTPS
   // endpoint) such as "https://dns.google/dns-query".
-  bool Resolve(const char* msg,
-               int len,
+  bool Resolve(const base::span<const char>& query,
                const DoHCurlClientInterface::QueryCallback& callback,
                const std::vector<std::string>& name_servers,
                const std::string& doh_provider) override;
@@ -118,14 +116,13 @@ class DoHCurlClient : public DoHCurlClientInterface {
     curl_slist* header_list;
   };
 
-  // Initialize CURL handle to resolve wire-format data |data| of length |len|.
+  // Initialize CURL handle to resolve wire-format data |query|.
   // This is done by querying DoH provider |doh_provider|.
   // A state containing the CURL handle will be allocated and used to store
   // CURL data such as header list and response.
   // Lifecycle of the state is handled by the caller of this function.
   std::unique_ptr<State> InitCurl(const std::string& doh_provider,
-                                  const char* msg,
-                                  int len,
+                                  const base::span<const char>& query,
                                   const QueryCallback& callback,
                                   const std::vector<std::string>& name_servers);
 
