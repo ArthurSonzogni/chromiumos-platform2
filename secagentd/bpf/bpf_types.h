@@ -8,6 +8,7 @@
 #ifdef __cplusplus
 #include <stdint.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #define _Static_assert static_assert
 namespace secagentd::bpf {
 #else  // else ifdef __cplusplus
@@ -50,6 +51,12 @@ namespace secagentd::bpf {
 #define CROS_MAX_SOCKET (1024)
 #define CROS_AVG_CONN_PER_SOCKET (2)
 #define CROS_MAX_FLOW_MAP_ENTRIES (CROS_MAX_SOCKET * CROS_AVG_CONN_PER_SOCKET)
+
+// FLAG LOOKUP CONSTANTS
+#define O_TMPFILE_FLAG_KEY 0
+#define O_DIRECTORY_FLAG_KEY 1
+#define O_RDONLY_FLAG_KEY 2
+#define O_ACCMODE_FLAG_KEY 3
 
 #ifdef __cplusplus
 constexpr uint32_t kMaxFlowMapEntries{CROS_MAX_FLOW_MAP_ENTRIES};
@@ -173,6 +180,11 @@ enum cros_network_protocol {
 // We only care about AF_INET and AF_INET6 (ipv4 and ipv6).
 enum cros_network_family { CROS_FAMILY_AF_INET = 2, CROS_FAMILY_AF_INET6 = 10 };
 
+enum file_monitoring_mode {
+  READ_WRITE_ONLY = 0,          // Monitored for read-write only
+  READ_AND_READ_WRITE_BOTH = 1  // Monitored for both read and read-write
+};
+
 #ifdef __cplusplus
 // make sure that the values used for our definition of families matches
 // the definition in the system header.
@@ -263,7 +275,54 @@ struct cros_network_event {
   } data;
 } __attribute__((aligned(8)));
 
-enum cros_event_type { kProcessEvent, kNetworkEvent };
+// File Events Structs
+struct cros_file_image {
+  // TODO(princya): Add code to construct path and update this field in bpf
+  // program char pathsegments [MAX_PATH_DEPTH][CROS_MAX_PATH_SIZE];  // The
+  // pathname as seen from the mount namespace, each array element representing
+  // path segment
+  uint64_t mnt_ns;  // The mount namespace of the inode
+  dev_t device_id;  // The device ID both major and minor.
+  ino_t inode;      // The inode of the file.
+  mode_t mode;      // Mode.
+  uint32_t flags;   // Open Flags
+  uid_t uid;        // File owner user
+  gid_t gid;        // File owner group
+} __attribute__((aligned(8)));
+
+enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };
+
+// Indicates the type of file event is contained within the
+// event structure.
+enum cros_file_event_type {
+  kFileCloseEvent,
+  kFileAttributeModifyEvent,
+};
+
+struct cros_file_close_event {
+  struct cros_process_start process_info;
+  struct cros_file_image image_info;
+  struct cros_namespace_info spawn_namespace;
+  bool has_full_process_info;
+} __attribute__((aligned(8)));
+
+enum filemod_type {
+  FMOD_READ_ONLY_OPEN,   // File opens for reads
+  FMOD_READ_WRITE_OPEN,  // File opens for writes
+  FMOD_LINK,  // Hard Link Created TODO(princya): Might not be needed, if we
+              // update the map when new hard link is created
+  FMOD_ATTR,  // File Attribute change
+};
+
+// Contains information needed to report process security
+// event telemetry regarding processes.
+struct cros_file_event {
+  enum cros_file_event_type type;
+  enum filemod_type mod_type;
+  union {
+    struct cros_file_close_event file_close;
+  } data;
+} __attribute__((aligned(8)));
 
 // The security event structure that contains security event information
 // provided by a BPF application.
@@ -271,6 +330,7 @@ struct cros_event {
   union {
     struct cros_process_event process_event;
     struct cros_network_event network_event;
+    struct cros_file_event file_event;
   } data;
   enum cros_event_type type;
 } __attribute__((aligned(8)));

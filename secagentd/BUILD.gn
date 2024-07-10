@@ -56,6 +56,19 @@ generate_ebpf_skeletons("bpf_network") {
   deps = [ ":vmlinux_h" ]
 }
 
+generate_ebpf_skeletons("bpf_file") {
+  sources = [ "bpf/file_bpf.c" ]
+  bpf_skeleton_out_dir = "include/secagentd/bpf_skeletons"
+  if (use.secagentd_min_core_btf) {
+    #Need to match the path in ebuild src_install().
+    btf_inout_dir = "btf"
+  } else {
+    btf_inout_dir = ""
+  }
+  defines = global_use_defines
+  deps = [ ":vmlinux_h" ]
+}
+
 pkg_config("target_defaults") {
   # NOSORT
   pkg_deps = [
@@ -101,6 +114,7 @@ static_library("libsecagent") {
   libs = [ "policy" ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":bpf_file",
     ":bpf_network",
     ":bpf_process",
     "proto:security_xdr_events_proto",
