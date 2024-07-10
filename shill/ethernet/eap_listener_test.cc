@@ -79,7 +79,7 @@ class EapListenerTest : public testing::Test {
   net_base::MockSocket* GetSocket() {
     return reinterpret_cast<net_base::MockSocket*>(listener_.socket_.get());
   }
-  void StartListener();
+  void StartListener(bool expect_drop);
   void ReceiveRequest() { listener_.ReceiveRequest(); }
 
   // required by base::FileDescriptorWatcher.
@@ -113,14 +113,21 @@ MATCHER_P(IsEapLinkAddress, interface_index, "") {
          socket_address->sll_ifindex == interface_index;
 }
 
-void EapListenerTest::StartListener() {
+void EapListenerTest::StartListener(bool expect_drop) {
   EXPECT_CALL(*socket_factory_,
               Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
-      .WillOnce([]() {
+      .WillOnce([expect_drop]() {
         auto socket = std::make_unique<net_base::MockSocket>();
         EXPECT_CALL(*socket, Bind(IsEapLinkAddress(kInterfaceIndex),
                                   sizeof(sockaddr_ll)))
             .WillOnce(Return(true));
+        EXPECT_CALL(*socket, SetSockOpt(SOL_PACKET, PACKET_ADD_MEMBERSHIP, _))
+            .WillOnce(Return(true));
+
+        if (expect_drop)
+          EXPECT_CALL(*socket,
+                      SetSockOpt(SOL_PACKET, PACKET_DROP_MEMBERSHIP, _))
+              .WillOnce(Return(true));
 
         return socket;
       });
@@ -161,24 +168,46 @@ TEST_F(EapListenerTest, SocketBindFail) {
   EXPECT_EQ(CreateSocket(), nullptr);
 }
 
+TEST_F(EapListenerTest, SocketMultiCastAddFail) {
+  ScopedMockLog log;
+  EXPECT_CALL(
+      log, Log(logging::LOGGING_ERROR, _,
+               HasSubstr("Could not add the EAP multicast address membership")))
+      .Times(1);
+
+  EXPECT_CALL(*socket_factory_,
+              Create(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE)))
+      .WillOnce([]() {
+        auto socket = std::make_unique<net_base::MockSocket>();
+        EXPECT_CALL(*socket, Bind).WillOnce(Return(true));
+        EXPECT_CALL(*socket, SetSockOpt).WillOnce(Return(false));
+        return socket;
+      });
+
+  // CreateSocket does not fail if the multicast membership fails.
+  EXPECT_NE(CreateSocket(), nullptr);
+}
+
 TEST_F(EapListenerTest, StartSuccess) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
 }
 
 TEST_F(EapListenerTest, StartMultipleTimes) {
-  StartListener();
-  StartListener();
+  // Eap membership is not removed when the listener
+  // is started multiple times.
+  StartListener(/*expect_drop=*/false);
+  StartListener(/*expect_drop=*/true);
 }
 
 TEST_F(EapListenerTest, Stop) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
 
   listener_.Stop();
   EXPECT_EQ(nullptr, GetSocket());
 }
 
 TEST_F(EapListenerTest, ReceiveFail) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
 
   EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
       .WillOnce(Return(std::nullopt));
@@ -193,7 +222,7 @@ TEST_F(EapListenerTest, ReceiveFail) {
 }
 
 TEST_F(EapListenerTest, ReceiveEmpty) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
 
   EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))
       .WillOnce(Return(std::nullopt));
@@ -202,7 +231,7 @@ TEST_F(EapListenerTest, ReceiveEmpty) {
 }
 
 TEST_F(EapListenerTest, ReceiveShort) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
 
   recvfrom_reply_data_ = {kEapPacketPayload,
                           kEapPacketPayload + GetMaxEapPacketLength() - 1};
@@ -217,7 +246,7 @@ TEST_F(EapListenerTest, ReceiveShort) {
 }
 
 TEST_F(EapListenerTest, ReceiveInvalid) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
   // We're partially initializing this field, just making sure at least one
   // part of it is incorrect.
   uint8_t bad_payload[sizeof(kEapPacketPayload)] = {
@@ -234,7 +263,7 @@ TEST_F(EapListenerTest, ReceiveInvalid) {
 }
 
 TEST_F(EapListenerTest, ReceiveSuccess) {
-  StartListener();
+  StartListener(/*expect_drop=*/true);
   recvfrom_reply_data_ = {std::begin(kEapPacketPayload),
                           std::end(kEapPacketPayload)};
   EXPECT_CALL(*GetSocket(), RecvFrom(_, 0, _, _))

@@ -47,6 +47,17 @@ class EapListener {
   // Creates the socket file descriptor. Returns nullptr on failure.
   std::unique_ptr<net_base::Socket> CreateSocket();
 
+  // Action for modifying the multicast membership.
+  enum class MultiCastMembershipAction {
+    Add,
+    Remove,
+  };
+
+  // Add or remove the EAP multicast membership address to the
+  // socket. Returns false on failure.
+  bool EapMulticastMembership(const net_base::Socket& socket,
+                              MultiCastMembershipAction action);
+
   // Retrieves an EAP packet from |socket_|.
   void ReceiveRequest();
 

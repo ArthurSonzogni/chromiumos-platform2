@@ -4,6 +4,7 @@
 
 #include "shill/ethernet/eap_listener.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -16,6 +17,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/logging.h"
@@ -47,7 +49,42 @@ bool EapListener::Start() {
   return true;
 }
 
+bool EapListener::EapMulticastMembership(const net_base::Socket& socket,
+                                         MultiCastMembershipAction action) {
+  // The next non-TPMR switch multicast address for EAPOL is 01-80-C2-00-00-03
+  static constexpr net_base::MacAddress multi_addr =
+      net_base::MacAddress(0x01, 0x80, 0xc2, 0x00, 0x00, 0x03);
+
+  packet_mreq mr;
+  memset(&mr, 0, sizeof(mr));
+  mr.mr_ifindex = interface_index_;
+  mr.mr_type = PACKET_MR_MULTICAST;
+  mr.mr_alen = multi_addr.kAddressLength;
+  memcpy(&mr.mr_address, multi_addr.data(),
+         std::min(multi_addr.kAddressLength, sizeof(mr.mr_address)));
+
+  if (!socket.SetSockOpt(SOL_PACKET,
+                         action == MultiCastMembershipAction::Add
+                             ? PACKET_ADD_MEMBERSHIP
+                             : PACKET_DROP_MEMBERSHIP,
+                         net_base::byte_utils::AsBytes(mr))) {
+    PLOG(ERROR) << LoggingTag() << ": Could not "
+                << (action == MultiCastMembershipAction::Add ? "add" : "remove")
+                << " the EAP multicast address membership";
+    return false;
+  }
+  SLOG(2) << LoggingTag() << ": success "
+          << (action == MultiCastMembershipAction::Add ? "adding" : "removing")
+          << " the EAP multicast address membership";
+  return true;
+}
+
 void EapListener::Stop() {
+  if (socket_) {
+    // It is OK to remove the membership as wpa_supplicant will add the
+    // multicast membership itself before sending the EAP response.
+    EapMulticastMembership(*socket_, MultiCastMembershipAction::Remove);
+  }
   socket_.reset();
 }
 
@@ -75,6 +112,11 @@ std::unique_ptr<net_base::Socket> EapListener::CreateSocket() {
     PLOG(ERROR) << LoggingTag() << ": Could not bind socket to interface";
     return nullptr;
   }
+  // Add the multicast membership for this listener to ensure the
+  // initial EAP Request Identity frame from the authenticator is
+  // received by shill.
+  // See b/331503151 for details.
+  EapMulticastMembership(*socket, MultiCastMembershipAction::Add);
 
   return socket;
 }
