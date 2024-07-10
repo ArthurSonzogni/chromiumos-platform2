@@ -86,37 +86,31 @@ std::vector<unsigned int> ConvertTfLiteDimensions(
 
 model_loader::mojom::DataType ConvertTfLiteTypeToMojo(TfLiteType tflite_type) {
   switch (tflite_type) {
-    case kTfLiteFloat32:
-      return model_loader::mojom::DataType::kFloat32;
-    case kTfLiteInt32:
-      return model_loader::mojom::DataType::kInt32;
-    case kTfLiteUInt8:
-      return model_loader::mojom::DataType::kUint8;
     case kTfLiteInt64:
       return model_loader::mojom::DataType::kInt64;
-    case kTfLiteBool:
-      return model_loader::mojom::DataType::kBool;
-    case kTfLiteInt16:
-      return model_loader::mojom::DataType::kInt16;
-    case kTfLiteInt8:
-      return model_loader::mojom::DataType::kInt8;
-    case kTfLiteFloat16:
-      return model_loader::mojom::DataType::kFloat16;
-    case kTfLiteFloat64:
-      return model_loader::mojom::DataType::kFloat64;
     case kTfLiteUInt64:
       return model_loader::mojom::DataType::kUint64;
-    case kTfLiteUInt16:
-      return model_loader::mojom::DataType::kUint16;
+    case kTfLiteFloat64:
+      return model_loader::mojom::DataType::kFloat64;
+    case kTfLiteInt32:
+      return model_loader::mojom::DataType::kInt32;
     case kTfLiteUInt32:
       return model_loader::mojom::DataType::kUint32;
-    case kTfLiteNoType:
-    case kTfLiteString:
-    case kTfLiteComplex64:
-    case kTfLiteComplex128:
-    case kTfLiteInt4:
-    case kTfLiteResource:
-    case kTfLiteVariant:
+    case kTfLiteFloat32:
+      return model_loader::mojom::DataType::kFloat32;
+    case kTfLiteInt16:
+      return model_loader::mojom::DataType::kInt16;
+    case kTfLiteUInt16:
+      return model_loader::mojom::DataType::kUint16;
+    case kTfLiteFloat16:
+      return model_loader::mojom::DataType::kFloat16;
+    case kTfLiteInt8:
+      return model_loader::mojom::DataType::kInt8;
+    case kTfLiteUInt8:
+      return model_loader::mojom::DataType::kUint8;
+    case kTfLiteBool:
+      return model_loader::mojom::DataType::kBool;
+    default:
       return model_loader::mojom::DataType::kUnknown;
   }
 }
