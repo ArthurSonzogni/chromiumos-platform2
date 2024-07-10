@@ -1395,19 +1395,17 @@ bool Platform::FormatExt4(const base::FilePath& file,
   if (blocks != 0)
     format_process.AddArg(std::to_string(blocks));
 
-  // No need to emit output.
-  format_process.AddArg("-q");
-
   // Close unused file descriptors in child process.
   format_process.SetCloseUnusedFileDescriptors(true);
 
   // Avoid polluting the parent process' stdout.
-  format_process.RedirectOutput(base::FilePath("/dev/null"));
+  format_process.RedirectOutputToMemory(/*combine=*/true);
 
   int rc = format_process.Run();
   if (rc != 0) {
     LOG(ERROR) << "Can't format '" << file.value()
                << "' as ext4, exit status: " << rc;
+    LOG(ERROR) << format_process.GetOutputString(STDOUT_FILENO);
     return false;
   }
 
