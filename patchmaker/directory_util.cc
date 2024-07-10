@@ -18,17 +18,14 @@ bool CopyEmptyTreeToDirectory(const base::FilePath& src_path,
   base::FilePath dest_path_absl, dir_path;
   base::File::Error error;
 
-  if (!IsDirectoryEmpty(dest_path)) {
-    LOG(ERROR) << "Requested destination directory " << dest_path
-               << " not empty, aborting";
-    return false;
-  }
-
   base::FileEnumerator f_e(base::FilePath(src_path), /*recursive=*/true,
                            base::FileEnumerator::DIRECTORIES);
 
   for (dir_path = f_e.Next(); !dir_path.empty(); dir_path = f_e.Next()) {
     dest_path_absl = AppendRelativePathOn(src_path, dir_path, dest_path);
+    if (base::DirectoryExists(dest_path_absl)) {
+      continue;
+    }
 
     if (!CreateDirectoryAndGetError(dest_path_absl, &error)) {
       return false;
