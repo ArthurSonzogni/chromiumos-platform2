@@ -20,13 +20,13 @@ class ResourceCollector {
   virtual ~ResourceCollector();
 
  protected:
-  SEQUENCE_CHECKER(sequence_checker_);
-
   // Stop the timer. A derived classes should call this method before
   // |ResourceCollector::~ResourceCollector| is called so as to prevent the
   // timer from executing code that accesses destructed members of the derived
   // class.
   void StopTimer();
+
+  SEQUENCE_CHECKER(sequence_checker_);
 
  private:
   friend class ResourceCollectorTest;

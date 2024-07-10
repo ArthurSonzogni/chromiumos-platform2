@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include <base/files/file_path.h>
+#include "base/memory/weak_ptr.h"
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
 
@@ -31,6 +32,9 @@ class ResourceCollectorStorage : public ResourceCollector {
   // Update upload progress timestamp. Reset every time the device makes
   // progress uploading events.
   void RecordUploadProgress();
+
+  // Retrieve weak pointer.
+  base::WeakPtr<ResourceCollectorStorage> GetWeakPtr();
 
  private:
   friend class ::reporting::MissiveArgsTest;
@@ -62,6 +66,9 @@ class ResourceCollectorStorage : public ResourceCollector {
 
   // Send directory size data to UMA.
   bool SendDirectorySizeToUma(std::string_view uma_name, int directory_size);
+
+  // Weak pointer factory for delayed callbacks.
+  base::WeakPtrFactory<ResourceCollectorStorage> weak_ptr_factory_{this};
 
   // The directory in which record files are saved.
   const base::FilePath storage_directory_;

@@ -25,6 +25,7 @@ ResourceCollectorStorage::~ResourceCollectorStorage() {
   StopTimer();
 }
 
+// static
 int ResourceCollectorStorage::ConvertBytesToMibs(int bytes) {
   // Round the result to the nearest MiB.
   // As a special circumstance, if the rounded size in MiB is zero, then we give
@@ -60,6 +61,12 @@ bool ResourceCollectorStorage::SendDirectorySizeToUma(std::string_view uma_name,
 }
 
 void ResourceCollectorStorage::RecordUploadProgress() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   upload_progress_timestamp_ = base::Time::Now();
 }
+
+base::WeakPtr<ResourceCollectorStorage> ResourceCollectorStorage::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
+
 }  // namespace reporting::analytics

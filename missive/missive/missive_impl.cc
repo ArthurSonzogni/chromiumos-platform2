@@ -236,11 +236,10 @@ void MissiveImpl::OnCollectionParameters(
       std::make_unique<analytics::ResourceCollectorStorage>(
           collection_parameters.storage_collector_interval,
           reporting_storage_dir_);
-  storage_upload_success_cb_ = base::BindRepeating(
-      &analytics::ResourceCollectorStorage::RecordUploadProgress,
-      // ResourceCollectorStorage expected to outlive StorageModule that will
-      // own this callback.
-      base::Unretained(storage_collector.get()));
+  storage_upload_success_cb_ =
+      base::BindPostTaskToCurrentDefault(base::BindRepeating(
+          &analytics::ResourceCollectorStorage::RecordUploadProgress,
+          storage_collector->GetWeakPtr()));
   analytics_registry_.Add("Storage", std::move(storage_collector));
   analytics_registry_.Add("CPU",
                           std::make_unique<analytics::ResourceCollectorCpu>(
