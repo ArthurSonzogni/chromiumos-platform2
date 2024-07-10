@@ -270,7 +270,7 @@ send_suspend_resume_time() {
   # Calculates the time intervals in milliseconds.
   [ -n "${start_suspend_time}" ] && [ -n "${start_resume_time}" ] &&
     local kernel_suspend_time
-    kernel_suspend_time=$(echo "${start_suspend_time}" "${start_resume_time}" |
+    kernel_suspend_time=$(echo "${start_suspend_time}" "${end_suspend_time}" |
     /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
   [ -n "${start_resume_time}" ] && [ -n "${end_resume_time}" ] &&
     local kernel_resume_time
