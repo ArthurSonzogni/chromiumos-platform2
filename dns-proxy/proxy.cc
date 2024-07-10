@@ -545,13 +545,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     }
   }
 
-  // For the system proxy, we have to tell shill about it. We should start
-  // receiving DNS traffic on success. But if this fails, we don't have much
-  // choice but to just crash out and try again.
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_,
-                              /*die_on_failure=*/true);
-    SendIPAddressesToController(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     StartDnsRedirection(/*ifname=*/"", AF_INET);
@@ -722,6 +716,12 @@ void Proxy::UpdateNameServers() {
   doh_config_.set_nameservers(ipv4_nameservers, ipv6_nameservers);
   metrics_.RecordNameservers(doh_config_.ipv4_nameservers().size(),
                              doh_config_.ipv6_nameservers().size());
+
+  if (opts_.type == Type::kSystem) {
+    SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
+    SendIPAddressesToController(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
+  }
+
   LOG(INFO) << *this << " applied device DNS configuration";
 }
 
