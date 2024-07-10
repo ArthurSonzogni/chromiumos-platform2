@@ -667,7 +667,7 @@ const std::array kVarLogFileLogs {
   Log{kFile, "vmlog.1.PREVIOUS", "/var/log/vmlog/vmlog.1.PREVIOUS"},
   Log{kFile, "vmlog.LATEST", "/var/log/vmlog/vmlog.LATEST"},
   Log{kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
-  Log{kCommand, "vpd_2.0", "/usr/libexec/debugd/helpers/filter_vpd"},
+  Log{kCommand, "vpd_2.0", "/usr/sbin/dump_filtered_vpd"},
 };
 // clang-format on
 
