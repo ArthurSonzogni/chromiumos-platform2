@@ -22,14 +22,15 @@ namespace on_device_model {
 base::expected<std::unique_ptr<OnDeviceModel>, mojom::LoadModelResult>
 OnDeviceModelService::CreateModel(raw_ref<MetricsLibraryInterface> metrics,
                                   raw_ref<odml::OdmlShimLoader> shim_loader,
-                                  mojom::LoadModelParamsPtr params) {
+                                  mojom::LoadModelParamsPtr params,
+                                  base::OnceClosure on_complete) {
   auto* chrome_ml = ml::ChromeML::Get(metrics, shim_loader);
   if (!chrome_ml) {
     return base::unexpected(mojom::LoadModelResult::kFailedToLoadLibrary);
   }
 
-  return ml::OnDeviceModelExecutor::CreateWithResult(metrics, *chrome_ml,
-                                                     std::move(params));
+  return ml::OnDeviceModelExecutor::CreateWithResult(
+      metrics, *chrome_ml, std::move(params), std::move(on_complete));
 }
 
 // static

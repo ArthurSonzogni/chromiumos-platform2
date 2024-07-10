@@ -70,7 +70,8 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
   static base::expected<std::unique_ptr<OnDeviceModel>, mojom::LoadModelResult>
   CreateModel(raw_ref<MetricsLibraryInterface> metrics,
               raw_ref<odml::OdmlShimLoader> shim_loader,
-              mojom::LoadModelParamsPtr params);
+              mojom::LoadModelParamsPtr params,
+              base::OnceClosure on_complete);
 
   void DeleteModel(base::WeakPtr<mojom::OnDeviceModel> model);
 

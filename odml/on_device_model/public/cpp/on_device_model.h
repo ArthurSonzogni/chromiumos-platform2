@@ -47,7 +47,7 @@ class OnDeviceModel {
   virtual mojom::LanguageDetectionResultPtr DetectLanguage(
       const std::string& text) = 0;
   virtual base::expected<uint32_t, mojom::LoadModelResult> LoadAdaptation(
-      mojom::LoadAdaptationParamsPtr params) = 0;
+      mojom::LoadAdaptationParamsPtr params, base::OnceClosure on_complete) = 0;
 };
 
 }  // namespace on_device_model

@@ -6,6 +6,8 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/raw_ref.h>
+#include <base/memory/weak_ptr.h>
+#include <base/task/bind_post_task.h>
 #include <base/timer/elapsed_timer.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -216,14 +218,26 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   void LoadAdaptationInternal(mojom::LoadAdaptationParamsPtr params,
                               mojo::PendingReceiver<mojom::OnDeviceModel> model,
                               LoadAdaptationCallback callback) {
-    base::ElapsedTimer timer;
-    auto result = model_->LoadAdaptation(std::move(params));
+    auto start = base::TimeTicks::Now();
+    auto result = model_->LoadAdaptation(
+        std::move(params),
+        base::BindPostTask(
+            base::SequencedTaskRunner::GetCurrentDefault(),
+            base::BindOnce(
+                [](base::WeakPtr<ModelWrapper> self, base::TimeTicks start) {
+                  if (!self) {
+                    return;
+                  }
+                  ReportHistogramMediumTimes(
+                      self->metrics_,
+                      "OnDeviceModel.LoadAdaptationModelDuration",
+                      base::TimeTicks::Now() - start);
+                },
+                weak_ptr_factory_.GetWeakPtr(), start)));
     if (!result.has_value()) {
       std::move(callback).Run(result.error());
       return;
     }
-    ReportHistogramMediumTimes(
-        metrics_, "OnDeviceModel.LoadAdaptationModelDuration", timer.Elapsed());
     receivers_.Add(this, std::move(model), *result);
     std::move(callback).Run(mojom::LoadModelResult::kSuccess);
   }
@@ -391,15 +405,28 @@ void OnDeviceModelService::LoadModel(
     mojom::LoadModelParamsPtr params,
     mojo::PendingReceiver<mojom::OnDeviceModel> model,
     LoadPlatformModelCallback callback) {
-  base::ElapsedTimer timer;
+  auto start = base::TimeTicks::Now();
   bool support_multiple_sessions = params->support_multiple_sessions;
-  auto model_impl = CreateModel(metrics_, shim_loader_, std::move(params));
+  auto model_impl = CreateModel(
+      metrics_, shim_loader_, std::move(params),
+      base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
+                         base::BindOnce(
+                             [](base::WeakPtr<OnDeviceModelService> self,
+                                base::TimeTicks start) {
+                               if (!self) {
+                                 return;
+                               }
+                               ReportHistogramMediumTimes(
+                                   self->metrics_,
+                                   "OnDeviceModel.LoadModelDuration",
+                                   base::TimeTicks::Now() - start);
+                             },
+                             weak_ptr_factory_.GetWeakPtr(), start)));
   if (!model_impl.has_value()) {
     std::move(callback).Run(model_impl.error());
     return;
   }
-  ReportHistogramMediumTimes(metrics_, "OnDeviceModel.LoadModelDuration",
-                             timer.Elapsed());
+
   models_.insert(std::make_unique<ModelWrapper>(
       metrics_, support_multiple_sessions, std::move(model_impl.value()),
       std::move(model),
