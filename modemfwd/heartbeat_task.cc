@@ -10,6 +10,7 @@
 #include <base/containers/contains.h>
 #include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
+#include <dbus/modemfwd/dbus-constants.h>
 
 #include "modemfwd/daemon_delegate.h"
 #include "modemfwd/logging.h"
@@ -20,7 +21,7 @@ HeartbeatTask::HeartbeatTask(Delegate* delegate,
                              Modem* modem,
                              Metrics* metrics,
                              HeartbeatConfig config)
-    : Task(delegate, "heartbeat_" + modem->GetDeviceId(), "heartbeat"),
+    : Task(delegate, "heartbeat-" + modem->GetDeviceId(), kTaskTypeHeartbeat),
       modem_(modem),
       metrics_(metrics),
       config_(config) {}

@@ -658,9 +658,9 @@ void Daemon::TaskUpdated(Task* /* task */) {
   for (const auto& [name, full_task] : tasks_) {
     const std::unique_ptr<Task>& task = full_task.task;
     brillo::VariantDictionary task_props;
-    task_props["name"] = name;
-    task_props["type"] = task->type();
-    task_props["started_at"] =
+    task_props[kTaskName] = name;
+    task_props[kTaskType] = task->type();
+    task_props[kTaskStartedAt] =
         task->started_at().InMillisecondsSinceUnixEpoch();
     for (const auto& [key, value] : task->props()) {
       // Use emplace instead of operator[] so we don't overwrite any of the keys

@@ -66,7 +66,9 @@ FlashTask::FlashTask(Delegate* delegate,
                      Metrics* metrics,
                      scoped_refptr<dbus::Bus> bus,
                      scoped_refptr<AsyncModemFlasher> modem_flasher)
-    : Task(delegate, "flash-" + std::to_string(++num_flash_tasks_), "flash"),
+    : Task(delegate,
+           "flash-" + std::to_string(++num_flash_tasks_),
+           kTaskTypeFlash),
       journal_(journal),
       notification_mgr_(notification_mgr),
       metrics_(metrics),
@@ -74,9 +76,9 @@ FlashTask::FlashTask(Delegate* delegate,
       modem_flasher_(modem_flasher) {}
 
 void FlashTask::Start(Modem* modem, const FlashTask::Options& options) {
-  SetProp("force-flash", options.should_always_flash);
+  SetProp(kFlashTaskForceFlash, options.should_always_flash);
   if (options.carrier_override_uuid.has_value()) {
-    SetProp("carrier-override", *options.carrier_override_uuid);
+    SetProp(kFlashTaskCarrierOverride, *options.carrier_override_uuid);
   }
 
   if (options.should_always_flash) {
