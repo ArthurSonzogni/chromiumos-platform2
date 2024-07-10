@@ -168,6 +168,9 @@ class Responder final {
       chunk->safety_info = CreateSafetyInfo(output_so_far_, class_scores);
       responder_->OnResponse(std::move(chunk));
     } else {
+      // Empty text means the output is finished. Delete the session immediately
+      // to free up any resources.
+      session_ = nullptr;
       ReportHistogramCounts10000(metrics_, "OnDeviceModel.TokenCount.Output",
                                  num_tokens_);
       if (num_tokens_ > 1) {
@@ -203,13 +206,13 @@ class Responder final {
   }
 
   void Cancel() {
+    session_ = nullptr;
     if (cancel_) {
       cancel_();
     }
     if (!on_complete_.is_null()) {
       std::move(on_complete_).Run();
     }
-    session_ = nullptr;
   }
 
   const raw_ref<MetricsLibraryInterface> metrics_;
