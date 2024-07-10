@@ -145,6 +145,11 @@ class ModemFlasherImpl : public ModemFlasher {
     for (const auto& assoc_entry : files.assoc_firmware)
       flash_infos.emplace_back(assoc_entry.first, &assoc_entry.second);
 
+    if (!res->temp_extraction_dir_.CreateUniqueTempDir()) {
+      LOG(ERROR) << "Failed to create temporary directory for firmware";
+      return nullptr;
+    }
+
     for (const auto& flash_info : flash_infos) {
       const FirmwareFileInfo& file_info = *flash_info.second;
       base::FilePath fw_path = GetFirmwarePath(file_info);
@@ -166,6 +171,7 @@ class ModemFlasherImpl : public ModemFlasher {
 
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                      res->temp_extraction_dir_.GetPath(),
                                       file_info)) {
         Error::AddTo(err, FROM_HERE, kErrorResultFailedToPrepareFirmwareFile,
                      base::StringPrintf("Failed to prepare firmware file: %s",
@@ -220,6 +226,7 @@ class ModemFlasherImpl : public ModemFlasher {
 
     auto firmware_file = std::make_unique<FirmwareFile>();
     if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                    res->temp_extraction_dir_.GetPath(),
                                     file_info)) {
       Error::AddTo(err, FROM_HERE, kErrorResultFailedToPrepareFirmwareFile,
                    base::StringPrintf("Failed to prepare firmware file: %s",

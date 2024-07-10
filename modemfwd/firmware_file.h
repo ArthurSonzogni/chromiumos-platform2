@@ -27,6 +27,7 @@ class FirmwareFile {
   // a temporary directory, which will be cleaned up upon destruction of this
   // object.
   bool PrepareFrom(const base::FilePath& firmware_dir,
+                   const base::FilePath& temp_extraction_dir,
                    const FirmwareFileInfo& file_info);
 
   // Returns the firmware file path to be referenced in the log and journal
@@ -39,7 +40,6 @@ class FirmwareFile {
   }
 
  private:
-  base::ScopedTempDir temp_dir_;
   base::FilePath path_for_logging_;
   base::FilePath path_on_filesystem_;
 };

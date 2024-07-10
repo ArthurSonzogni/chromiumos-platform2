@@ -80,6 +80,12 @@ bool RestartOperation(const JournalEntry& entry,
   std::vector<std::string> paths_for_logging;
   // Keep a reference to all temporary uncompressed files.
   std::vector<std::unique_ptr<FirmwareFile>> all_files;
+
+  base::ScopedTempDir temp_extraction_dir;
+  if (!temp_extraction_dir.CreateUniqueTempDir()) {
+    LOG(ERROR) << "Failed to create temporary directory for firmware";
+    return false;
+  }
   for (const auto& entry_type : entry.type()) {
     std::string fw_type = JournalTypeToFirmwareType(entry_type);
     FirmwareFileInfo* info = nullptr;
@@ -103,7 +109,8 @@ bool RestartOperation(const JournalEntry& entry,
 
     auto firmware_file = std::make_unique<FirmwareFile>();
     if (info == nullptr ||
-        !firmware_file->PrepareFrom(firmware_dir->GetFirmwarePath(), *info)) {
+        !firmware_file->PrepareFrom(firmware_dir->GetFirmwarePath(),
+                                    temp_extraction_dir.GetPath(), *info)) {
       LOG(ERROR) << "Unfinished \"" << fw_type
                  << "\" firmware flash for device with ID \""
                  << entry.device_id() << "\" but no firmware was found";
@@ -121,6 +128,7 @@ bool RestartOperation(const JournalEntry& entry,
       for (const auto& assoc_entry : res.assoc_firmware) {
         auto assoc_file = std::make_unique<FirmwareFile>();
         if (!assoc_file->PrepareFrom(firmware_dir->GetFirmwarePath(),
+                                     temp_extraction_dir.GetPath(),
                                      assoc_entry.second)) {
           LOG(ERROR) << "Unfinished \"" << fw_type
                      << "\" firmware flash for device with ID \""

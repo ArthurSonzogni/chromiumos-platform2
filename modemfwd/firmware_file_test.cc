@@ -24,12 +24,14 @@ class FirmwareFileTest : public testing::Test {
  public:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    ASSERT_TRUE(temp_extraction_dir.CreateUniqueTempDir());
     temp_fw_dir_ = temp_dir_.GetPath();
     ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_fw_dir_, &temp_file_));
   }
 
  protected:
   base::ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_extraction_dir;
   base::FilePath temp_fw_dir_;
   base::FilePath temp_file_;
   FirmwareFile firmware_file_;
@@ -38,7 +40,8 @@ class FirmwareFileTest : public testing::Test {
 TEST_F(FirmwareFileTest, PrepareFromUncompressedFile) {
   FirmwareFileInfo file_info(temp_file_.BaseName().value(), kFirmwareVersion,
                              FirmwareFileInfo::Compression::NONE);
-  EXPECT_TRUE(firmware_file_.PrepareFrom(temp_fw_dir_, file_info));
+  EXPECT_TRUE(firmware_file_.PrepareFrom(
+      temp_fw_dir_, temp_extraction_dir.GetPath(), file_info));
   EXPECT_EQ(temp_fw_dir_.Append(file_info.firmware_path),
             firmware_file_.path_for_logging());
   EXPECT_EQ(temp_fw_dir_.Append(file_info.firmware_path),
@@ -57,7 +60,8 @@ TEST_F(FirmwareFileTest, PrepareFromCompressedFileDecompressFailed) {
   FirmwareFileInfo file_info(compressed_file_path.BaseName().value(),
                              kFirmwareVersion,
                              FirmwareFileInfo::Compression::XZ);
-  EXPECT_FALSE(firmware_file_.PrepareFrom(temp_fw_dir_, file_info));
+  EXPECT_FALSE(firmware_file_.PrepareFrom(
+      temp_fw_dir_, temp_extraction_dir.GetPath(), file_info));
   EXPECT_EQ(base::FilePath(), firmware_file_.path_for_logging());
   EXPECT_EQ(base::FilePath(), firmware_file_.path_on_filesystem());
 }
@@ -82,7 +86,8 @@ TEST_F(FirmwareFileTest, PrepareFromCompressedFileDecompressSucceeded) {
   FirmwareFileInfo file_info(compressed_file_path.BaseName().value(),
                              kFirmwareVersion,
                              FirmwareFileInfo::Compression::XZ);
-  EXPECT_TRUE(firmware_file_.PrepareFrom(temp_fw_dir_, file_info));
+  EXPECT_TRUE(firmware_file_.PrepareFrom(
+      temp_fw_dir_, temp_extraction_dir.GetPath(), file_info));
   EXPECT_EQ(temp_fw_dir_.Append(file_info.firmware_path),
             firmware_file_.path_for_logging());
   EXPECT_NE(temp_fw_dir_.Append(file_info.firmware_path),

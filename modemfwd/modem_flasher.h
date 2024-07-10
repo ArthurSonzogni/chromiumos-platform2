@@ -27,6 +27,7 @@ struct FlashConfig {
   std::string carrier_id;
   std::vector<FirmwareConfig> fw_configs;
   std::map<std::string, std::unique_ptr<FirmwareFile>> files;
+  base::ScopedTempDir temp_extraction_dir_;
 };
 
 // ModemFlasher contains all of the logic to make decisions about whether

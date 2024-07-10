@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
@@ -141,14 +142,19 @@ class FlashTaskTest : public ::testing::Test {
   std::unique_ptr<FlashConfig> GetConfig(const std::string& carrier_id,
                                          std::vector<FirmwareConfig> fw_cfgs) {
     std::map<std::string, std::unique_ptr<FirmwareFile>> files;
+
+    base::ScopedTempDir temp_extraction_dir;
+    EXPECT_TRUE(temp_extraction_dir.CreateUniqueTempDir());
     for (const auto& fw_cfg : fw_cfgs) {
       auto file = std::make_unique<FirmwareFile>();
       file->PrepareFrom(base::FilePath(kFirmwareDir),
+                        temp_extraction_dir.GetPath(),
                         FirmwareFileInfo(fw_cfg.path.value(), fw_cfg.version));
       files[fw_cfg.fw_type] = std::move(file);
     }
     return std::make_unique<FlashConfig>(carrier_id, std::move(fw_cfgs),
-                                         std::move(files));
+                                         std::move(files),
+                                         std::move(temp_extraction_dir));
   }
 
   brillo::ErrorPtr RunTask(FlashTask* task,
