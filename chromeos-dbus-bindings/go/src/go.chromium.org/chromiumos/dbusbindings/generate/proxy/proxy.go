@@ -30,7 +30,7 @@ type proxyMethodParams struct {
 var funcMap = template.FuncMap{
 	"add":                             func(a, b int) int { return a + b },
 	"extractInterfacesWithProperties": extractInterfacesWithProperties,
-	"extractProtoIncludes":            extractProtoIncludes,
+	"extractProtoIncludes":            genutil.ExtractProtoIncludes,
 	"extractNameSpaces":               genutil.ExtractNameSpaces,
 	"formatComment":                   genutil.FormatComment,
 	"makeFullItfName":                 genutil.MakeFullItfName,

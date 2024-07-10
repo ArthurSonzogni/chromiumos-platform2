@@ -34,7 +34,7 @@ func TestGenerateMockProxies(t *testing.T) {
 						Direction: "in",
 						Annotation: introspect.Annotation{
 							Name:  "org.chromium.DBus.Argument.ProtobufClass",
-							Value: "PassMeProtosRequest",
+							Value: "zass/me/protos.h;PassMeProtosRequest",
 						},
 					},
 				},
@@ -56,7 +56,7 @@ func TestGenerateMockProxies(t *testing.T) {
 						Type: "ay",
 						Annotation: introspect.Annotation{
 							Name:  "org.chromium.DBus.Argument.ProtobufClass",
-							Value: "YetAnotherProto",
+							Value: "yet/another/proto.h;YetAnotherProto",
 						},
 					}, {
 						Name: "BSSDetail2",
@@ -124,6 +124,9 @@ func TestGenerateMockProxies(t *testing.T) {
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <gmock/gmock.h>
+
+#include <yet/another/proto.h>
+#include <zass/me/protos.h>
 
 namespace fi {
 namespace w1 {

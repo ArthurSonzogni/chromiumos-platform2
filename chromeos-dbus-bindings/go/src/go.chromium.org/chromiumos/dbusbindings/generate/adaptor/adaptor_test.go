@@ -34,6 +34,9 @@ const (
 #include <brillo/dbus/utils.h>
 #include <brillo/variant_dictionary.h>
 
+#include <yet/another/proto.h>
+#include <zass/me/protos.h>
+
 namespace fi {
 namespace w1 {
 namespace wpa_supplicant1 {
@@ -195,7 +198,7 @@ func TestGenerateAdaptors(t *testing.T) {
 						Direction: "in",
 						Annotation: introspect.Annotation{
 							Name:  "org.chromium.DBus.Argument.ProtobufClass",
-							Value: "PassMeProtosRequest",
+							Value: "zass/me/protos.h;PassMeProtosRequest",
 						},
 					},
 				},
@@ -217,7 +220,7 @@ func TestGenerateAdaptors(t *testing.T) {
 						Type: "ay",
 						Annotation: introspect.Annotation{
 							Name:  "org.chromium.DBus.Argument.ProtobufClass",
-							Value: "YetAnotherProto",
+							Value: "yet/another/proto.h;YetAnotherProto",
 						},
 					}, {
 						Name: "BSSDetail2",

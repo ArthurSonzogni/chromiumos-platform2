@@ -30,6 +30,7 @@ type adaptorMethodsArgs struct {
 }
 
 var funcMap = template.FuncMap{
+	"extractProtoIncludes":    genutil.ExtractProtoIncludes,
 	"makeInterfaceName":       genutil.MakeInterfaceName,
 	"makeAdaptorName":         genutil.MakeAdaptorName,
 	"makeFullItfName":         genutil.MakeFullItfName,
@@ -82,6 +83,15 @@ const (
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/variant_dictionary.h>
+
+{{- $protoIncludes := (extractProtoIncludes .Introspects)}}
+{{- if $protoIncludes }}
+{{/* empty line */}}
+{{- range $include := $protoIncludes}}
+#include <{{$include}}>
+{{- end}}
+{{- end}}
+
 {{- range $introspect := .Introspects}}{{range .Interfaces}}
 {{- $itfName := makeInterfaceName .Name}}
 {{- $className := makeAdaptorName .Name}}

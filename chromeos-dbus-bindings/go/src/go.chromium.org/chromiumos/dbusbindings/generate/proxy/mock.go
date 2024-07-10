@@ -32,6 +32,15 @@ const (
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <gmock/gmock.h>
+
+{{- $protoIncludes := (extractProtoIncludes .Introspects)}}
+{{- if $protoIncludes }}
+{{/* empty line */}}
+{{- range $include := $protoIncludes}}
+#include <{{$include}}>
+{{- end}}
+{{- end}}
+
 {{- if $.ProxyFilePath}}
 
 #include "{{$.ProxyFilePath}}"

@@ -8,6 +8,7 @@ package genutil
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -169,4 +170,33 @@ func MakeVariableName(s string) string {
 		return fmt.Sprintf("%c_%c", s[0], s[1])
 	}
 	return strings.ToLower(insertRE.ReplaceAllStringFunc(camelCase, f))
+}
+
+// ExtractProtoIncludes returns an array of paths to be included for protobuf types.
+func ExtractProtoIncludes(iss []introspect.Introspection) []string {
+	var ret []string
+	m := make(map[string]bool)
+	m[""] = true // Skip empty header strings
+	for _, is := range iss {
+		for _, itf := range is.Interfaces {
+			for _, mtd := range itf.Methods {
+				for _, arg := range mtd.Args {
+					if pa := arg.Annotation.ToProtobufClass(); pa != nil && !m[pa.Header] {
+						ret = append(ret, pa.Header)
+						m[pa.Header] = true
+					}
+				}
+			}
+			for _, sgl := range itf.Signals {
+				for _, arg := range sgl.Args {
+					if pa := arg.Annotation.ToProtobufClass(); pa != nil && !m[pa.Header] {
+						ret = append(ret, pa.Header)
+						m[pa.Header] = true
+					}
+				}
+			}
+		}
+	}
+	sort.Strings(ret)
+	return ret
 }
