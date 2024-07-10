@@ -78,6 +78,10 @@ constexpr Metrics::WiFiAdapterInfo AVLWiFiAdapters[] = {
      Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921PCIE,
     {0x037a, 0x7901,
      Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7921SDIO,
+    {0x14c3, 0x7922,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7922PCIE,
+    {0x14c3, 0x0616,
+     Metrics::kWiFiStructuredMetricsErrorValue},  // MediaTekMT7922PCIE,
     {Metrics::kWiFiIntegratedAdapterVendorId, 3990,
      Metrics::kWiFiStructuredMetricsErrorValue},  // Qualcomm WCN3990 integrated
                                                   // chipset,
