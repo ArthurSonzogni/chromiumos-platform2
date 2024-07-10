@@ -16,6 +16,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/log_watcher.h>
 #include <chromeos/net-base/process_manager.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
@@ -127,8 +128,6 @@ class DHCPServerController {
   // Callback when the process is exited unexpectedly.
   void OnProcessExitedUnexpectedly(int exit_status);
 
-  // Callback when the log from dnsmasq is available.
-  void OnDnsmasqLogReady();
   // Handles the log from dnsmasq.
   void HandleDnsmasqLog(std::string_view log);
 
@@ -153,10 +152,8 @@ class DHCPServerController {
   // unexpectedly, null state iff the process is not running.
   ExitCallback exit_callback_;
 
-  // The file descriptor of the dnsmasq process's stderr.
-  base::ScopedFD log_fd_;
   // Monitors the file descriptor of the dnsmasq process's stderr.
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> log_watcher_;
+  std::unique_ptr<net_base::LogWatcher> log_watcher_;
   // The client's host name, keyed by the MAC address.
   std::map<std::string, std::string> mac_addr_to_hostname_;
   // The set of all the client's host name, i.e. the set of

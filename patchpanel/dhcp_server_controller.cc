@@ -4,7 +4,6 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 
-#include <fcntl.h>
 #include <linux/capability.h>
 
 #include <utility>
@@ -12,12 +11,14 @@
 
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
-#include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/log_watcher.h>
 
 #include "patchpanel/metrics.h"
 #include "patchpanel/system.h"
@@ -178,19 +179,11 @@ bool DHCPServerController::Start(const Config& config,
     LOG(ERROR) << "Failed to start the DHCP server: " << ifname_;
     return false;
   }
-  log_fd_.reset(stderr_fd);
+  base::ScopedFD log_fd(stderr_fd);
 
-  // Set stderr_fd non-blocking.
-  const int opt = fcntl(stderr_fd, F_GETFL) | O_NONBLOCK;
-  if (fcntl(stderr_fd, F_SETFL, opt) < 0) {
-    LOG(ERROR) << "Failed to set the stderr fd to non-blocking";
-    return false;
-  }
-
-  log_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      stderr_fd,
-      base::BindRepeating(&DHCPServerController::OnDnsmasqLogReady,
-                          // The callback will not outlive the object.
+  log_watcher_ = net_base::LogWatcher::Create(
+      std::move(log_fd),
+      base::BindRepeating(&DHCPServerController::HandleDnsmasqLog,
                           base::Unretained(this)));
 
   pid_ = pid;
@@ -220,7 +213,6 @@ void DHCPServerController::Stop() {
   exit_callback_.Reset();
 
   log_watcher_.reset();
-  log_fd_.reset();
   mac_addr_to_hostname_.clear();
 }
 
@@ -243,30 +235,6 @@ void DHCPServerController::OnProcessExitedUnexpectedly(int exit_status) {
   pid_ = std::nullopt;
   config_ = std::nullopt;
   std::move(exit_callback_).Run(exit_status);
-}
-
-void DHCPServerController::OnDnsmasqLogReady() {
-  static std::string stash_token;
-  static char buf[256];
-
-  while (true) {
-    const ssize_t len = read(log_fd_.get(), buf, sizeof(buf));
-    if (len <= 0) {
-      break;
-    }
-
-    // Split to string.
-    base::CStringTokenizer tokenizer(buf, buf + len, "\n");
-    tokenizer.set_options(base::StringTokenizer::RETURN_DELIMS);
-    while (tokenizer.GetNext()) {
-      if (tokenizer.token_is_delim()) {
-        HandleDnsmasqLog(stash_token);
-        stash_token = "";
-      } else {
-        stash_token += tokenizer.token();
-      }
-    }
-  }
 }
 
 void DHCPServerController::HandleDnsmasqLog(std::string_view log) {
