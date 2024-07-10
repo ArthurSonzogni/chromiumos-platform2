@@ -64,6 +64,7 @@ constexpr double kProgressUpdateHwidBrandCode = 0.6;
 constexpr double kProgressUpdateStableDeviceSecret = 0.7;
 constexpr double kProgressFlushOutVpdCache = 0.8;
 constexpr double kProgressResetGbbFlags = 0.9;
+constexpr double kProgressResetFps = 0.95;
 constexpr double kProgressProvisionTi50 = kProgressComplete;
 constexpr double kProgressSetBoardId = kProgressComplete;
 
@@ -77,6 +78,8 @@ const std::vector<std::string> kResetGbbFlagsArgv = {
 constexpr char kApWpsrCmd[] = "/usr/sbin/ap_wpsr";
 constexpr char kApWpsrValueMaskRegexp[] = R"(SR Value\/Mask = (.+))";
 
+constexpr char kDefaultBioWashPath[] = "/usr/bin/bio_wash";
+
 }  // namespace
 
 namespace rmad {
@@ -86,6 +89,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
+      bio_wash_path_(kDefaultBioWashPath),
       should_calibrate_(false),
       sensor_integrity_(false) {
   ssfc_prober_ = std::make_unique<SsfcProberImpl>();
@@ -111,6 +115,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
+    const base::FilePath& bio_wash_path,
     std::unique_ptr<SsfcProber> ssfc_prober,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
@@ -126,6 +131,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
+      bio_wash_path_(bio_wash_path),
       ssfc_prober_(std::move(ssfc_prober)),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
@@ -520,6 +526,25 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressResetGbbFlags);
+
+  // Reset fingerprint sensor.
+  if (base::PathExists(base::FilePath(bio_wash_path_))) {
+    // The bio_wash binary uses cros_config to check if the model has a
+    // fingerprint sensor. If not, it doesn't do anything. Hence we can run it
+    // directly without checking the presence of fingerprint sensor.
+    if (std::string output;
+        !cmd_utils_->GetOutputAndError({bio_wash_path_.value()}, &output)) {
+      LOG(ERROR) << "Failed to reset FPS";
+      LOG(ERROR) << output;
+      // TODO(chenghan): Create a new error code for FPS failure.
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+      return;
+    }
+  }
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressResetFps);
 
   // Set GSC board ID if it is not set yet.
   auto board_id_type = gsc_utils_->GetBoardIdType();

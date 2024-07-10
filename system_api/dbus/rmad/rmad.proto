@@ -271,7 +271,6 @@ message FinalizeStatus {
     RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP = 3;
     RMAD_FINALIZE_ERROR_CR50 = 4;
     RMAD_FINALIZE_ERROR_GBB = 5;
-    RMAD_FINALIZE_ERROR_CANNOT_RESET_FPS = 6;
   }
   Status status = 1;
   double progress = 2;

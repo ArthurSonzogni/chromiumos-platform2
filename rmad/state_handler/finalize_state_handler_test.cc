@@ -19,13 +19,11 @@
 #include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/json_store.h"
-#include "rmad/utils/mock_cmd_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
 using testing::DoAll;
-using testing::ElementsAre;
 using testing::Eq;
 using testing::InSequence;
 using testing::Invoke;
@@ -56,10 +54,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
                 (const));
   };
 
-  base::FilePath GetBioWashPath() const {
-    return GetTempDirPath().Append("bio_wash");
-  }
-
   struct StateHandlerArgs {
     // First WP check to know if factory mode is enabled.
     // Second WP check after disabling factory mode. WP is expected to be
@@ -69,8 +63,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     bool disable_factory_mode_success = true;
     std::string board_id_type = kValidBoardIdType;
     std::string board_id_flags = kValidBoardIdFlags;
-    bool has_bio_wash = true;
-    bool reset_fps_success = true;
   };
 
   scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
@@ -83,10 +75,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
         .WillByDefault(Return(args.board_id_type));
     ON_CALL(*mock_gsc_utils, GetBoardIdFlags())
         .WillByDefault(Return(args.board_id_flags));
-
-    if (args.has_bio_wash) {
-      brillo::TouchFile(GetBioWashPath());
-    }
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
@@ -102,11 +90,6 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
         .WillRepeatedly(Return(args.enable_swwp_success));
 
-    auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
-    ON_CALL(*mock_cmd_utils,
-            GetOutputAndError(ElementsAre(GetBioWashPath().value()), _))
-        .WillByDefault(Return(args.reset_fps_success));
-
     // Register signal callback.
     daemon_callback_->SetFinalizeSignalCallback(
         base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
@@ -114,9 +97,8 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 
     // Initialization should always succeed.
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
-        json_store_, daemon_callback_, GetTempDirPath(), GetBioWashPath(),
-        std::move(mock_cmd_utils), std::move(mock_gsc_utils),
-        std::move(mock_write_protect_utils));
+        json_store_, daemon_callback_, GetTempDirPath(),
+        std::move(mock_gsc_utils), std::move(mock_write_protect_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;
@@ -217,7 +199,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
   auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
                FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
 }
 
@@ -237,25 +219,8 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
   auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
-               FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
-}
-
-TEST_F(FinalizeStateHandlerTest, InitializeState_NoBioWash_Bypass) {
-  StateHandlerArgs args = {.has_bio_wash = false};
-  auto handler = CreateInitializedStateHandler(args);
-
-  handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
-}
-
-TEST_F(FinalizeStateHandlerTest, InitializeState_ResetFpsFailedBlocking) {
-  StateHandlerArgs args = {.reset_fps_success = false};
-  auto handler = CreateInitializedStateHandler(args);
-
-  handler->RunState();
   ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
-               FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_RESET_FPS);
+               FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {
