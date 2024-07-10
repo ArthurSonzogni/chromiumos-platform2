@@ -152,6 +152,11 @@ interface Session {
   // Gets the probability score of the first token in `text` on top of the
   // current context.
   Score@3(string text) => (float probability);
+
+  // Clones the current session. The cloned session will have the same context
+  // as the current session.
+  [MinVersion=1]
+  Clone@4(pending_receiver<Session> session);
 };
 
 // A loaded model which can be queried. This interface must be controlled by the
@@ -179,8 +184,8 @@ interface OnDeviceModel {
   // Loads an adaptation with the specified params. This will always load the
   // adaptation on top of the base model.
   LoadAdaptation@3(
-      LoadAdaptationParams params,
-      pending_receiver<OnDeviceModel> model) => (LoadModelResult result);
+      LoadAdaptationParams params, pending_receiver<OnDeviceModel> model)
+      => (LoadModelResult result);
 };
 
 // Classifies the device based on how fast it is estimated to be able to run a
