@@ -61,7 +61,8 @@ constexpr char kQualcommFamilyName[] = "Snapdragon";
 constexpr char kMediatekFamilyName[] = "MediaTek";
 
 // Regex used to parse /proc/stat.
-constexpr char kRelativeStatFileRegex[] = R"(cpu(\d+)\s+(\d+) \d+ (\d+) (\d+))";
+constexpr char kRelativeStatFileRegex[] =
+    R"(cpu(\d+)\s+(\d+) (\d+) (\d+) (\d+))";
 
 // Directory containing all CPU temperature subdirectories.
 const char kHwmonDir[] = "sys/class/hwmon/";
@@ -198,18 +199,23 @@ std::optional<std::map<int, ParsedStatContents>> ParseStatContents(
   int logical_cpu_id;
   std::string logical_cpu_id_str;
   std::string user_time_str;
+  std::string nice_time_str;
   std::string system_time_str;
   std::string idle_time_str;
   while (std::getline(stat_sstream, line) &&
          RE2::PartialMatch(line, kRelativeStatFileRegex, &logical_cpu_id_str,
-                           &user_time_str, &system_time_str, &idle_time_str)) {
+                           &user_time_str, &nice_time_str, &system_time_str,
+                           &idle_time_str)) {
+    uint64_t user_time, nice_time;
     ParsedStatContents contents;
-    if (!base::StringToUint64(user_time_str, &contents.user_time_user_hz) ||
+    if (!base::StringToUint64(user_time_str, &user_time) ||
+        !base::StringToUint64(nice_time_str, &nice_time) ||
         !base::StringToUint64(system_time_str, &contents.system_time_user_hz) ||
         !base::StringToUint64(idle_time_str, &contents.idle_time_user_hz) ||
         !base::StringToInt(logical_cpu_id_str, &logical_cpu_id)) {
       return std::nullopt;
     }
+    contents.user_time_user_hz = user_time + nice_time;
     DCHECK_EQ(parsed_contents.count(logical_cpu_id), 0);
     parsed_contents[logical_cpu_id] = std::move(contents);
   }

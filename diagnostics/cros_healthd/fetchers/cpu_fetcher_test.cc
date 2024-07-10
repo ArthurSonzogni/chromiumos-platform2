@@ -106,13 +106,13 @@ constexpr char kFakeStatContents[] =
     "cpu0  69234 98 0 2349\n"
     "cpu1  989 0 4536824 123\n"
     "cpu12 0 64823 293802 871239\n";
-constexpr uint64_t kFirstFakeUserTime = 69234;
+constexpr uint64_t kFirstFakeUserTime = 69234 + 98;
 constexpr uint64_t kFirstFakeSystemTime = 0;
 constexpr uint32_t kFirstFakeIdleTime = 2349;
-constexpr uint64_t kSecondFakeUserTime = 989;
+constexpr uint64_t kSecondFakeUserTime = 989 + 0;
 constexpr uint64_t kSecondFakeSystemTime = 4536824;
 constexpr uint32_t kSecondFakeIdleTime = 123;
-constexpr uint64_t kThirdFakeUserTime = 0;
+constexpr uint64_t kThirdFakeUserTime = 0 + 64823;
 constexpr uint64_t kThirdFakeSystemTime = 293802;
 constexpr uint32_t kThirdFakeIdleTime = 871239;
 
