@@ -94,57 +94,76 @@ std::vector<int> IndicesMatchingAll(const base::FilePath& path,
   return matching_indices;
 }
 
+bool EntryIsMutable(const base::FilePath& entry,
+                    const std::vector<base::FilePath>& immutable_paths) {
+  for (const auto& immutable_path : immutable_paths) {
+    if (entry == immutable_path || immutable_path.IsParent(entry)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+int SelectBaseIdx(const base::FilePath& entry,
+                  const std::vector<base::FilePath>& full_files,
+                  const std::vector<base::FilePath>& immutable_paths,
+                  const base::FilePath& temp_patch_file) {
+  std::set<int> visited_indices;
+
+  if (!EntryIsMutable(entry, immutable_paths)) {
+    LOG(INFO) << "Not touching immutable file " << entry;
+    return -1;
+  }
+
+  // Get baseline size for this file using compression
+  std::optional<size_t> compressed_size = util::GetCompressedSize(entry);
+  CHECK(compressed_size.has_value());
+
+  // Iterate a prioritized list of candidate base files
+  for (const auto& list : {IndicesMatchingNameAndDepth(entry, full_files),
+                           IndicesMatchingExtension(entry, full_files),
+                           IndicesMatchingAll(entry, full_files)}) {
+    for (auto base_candidate_idx : list) {
+      // Continue to the next file if we'd already visited this index
+      if (!visited_indices.insert(base_candidate_idx).second)
+        continue;
+
+      // Set selected_base_candidate_idx and break if better than zstd
+      if (!util::DoBsDiff(full_files[base_candidate_idx], entry,
+                          temp_patch_file)) {
+        // Something went wrong, continue to the next file
+        continue;
+      }
+
+      int64_t patched_size;
+      CHECK(base::GetFileSize(temp_patch_file, &patched_size));
+      if (patched_size < compressed_size) {
+        return base_candidate_idx;
+      }
+    }
+  }
+
+  return -1;
+}
+
 // Receive a cluster of similarly-sized files, and iteratively choose which
 // files are shipped full-size, and which are patched.
 std::vector<PatchManifestEntry> EncodeFileClusterFromSrcToDest(
     const std::vector<base::FilePath>& cluster,
     const base::FilePath& src_path,
-    const base::FilePath& dest_path) {
+    const base::FilePath& dest_path,
+    const std::vector<base::FilePath>& immutable_paths) {
   std::vector<base::FilePath> full_files;
   std::vector<PatchManifestEntry> manifest_entries_for_cluster;
-
-  std::optional<size_t> compressed_size;
-  int64_t patched_size;
 
   base::FilePath temp_patch_file;
   base::CreateTemporaryFile(&temp_patch_file);
 
   for (const auto& entry : cluster) {
     PatchManifestEntry manifest_entry;
-    std::set<int> visited_indices;
 
-    // Get baseline size for this file using compression
-    compressed_size = util::GetCompressedSize(entry);
-    CHECK(compressed_size.has_value());
-
-    int selected_base_candidate_idx = -1;
-    // Iterate a prioritized list of candidate base files
-    for (const auto& list : {IndicesMatchingNameAndDepth(entry, full_files),
-                             IndicesMatchingExtension(entry, full_files),
-                             IndicesMatchingAll(entry, full_files)}) {
-      for (auto base_candidate_idx : list) {
-        // Continue to the next file if we'd already visited this index
-        if (!visited_indices.insert(base_candidate_idx).second)
-          continue;
-
-        // Set selected_base_candidate_idx and break if better than zstd
-        if (!util::DoBsDiff(full_files[base_candidate_idx], entry,
-                            temp_patch_file)) {
-          // Something went wrong, continue to the next file
-          continue;
-        } else {
-          base::GetFileSize(temp_patch_file, &patched_size);
-          if (patched_size < compressed_size) {
-            selected_base_candidate_idx = base_candidate_idx;
-            break;
-          }
-        }
-      }
-      // Continue breaking out of the loop if we found a good base
-      if (selected_base_candidate_idx >= 0) {
-        break;
-      }
-    }
+    int selected_base_candidate_idx =
+        SelectBaseIdx(entry, full_files, immutable_paths, temp_patch_file);
 
     base::FilePath dest_path_absl, src_path_rel, base_path_rel, patch_path_rel;
 
@@ -228,8 +247,10 @@ bool ManagedDirectory::CreateNew(
   return true;
 }
 
-bool ManagedDirectory::Encode(const base::FilePath& src_path,
-                              const base::FilePath& dest_path) {
+bool ManagedDirectory::Encode(
+    const base::FilePath& src_path,
+    const base::FilePath& dest_path,
+    const std::vector<base::FilePath>& immutable_paths) {
   // Create destination directory
   if (!util::CopyEmptyTreeToDirectory(src_path, dest_path))
     return false;
@@ -266,8 +287,8 @@ bool ManagedDirectory::Encode(const base::FilePath& src_path,
     // Each cluster is processed individually for performance reasons, as files
     // with very different sizes shouldn't be patched together anyways.
     for (const auto& cluster : file_clusters) {
-      std::vector<PatchManifestEntry> entries =
-          EncodeFileClusterFromSrcToDest(cluster, src_path, dest_path);
+      std::vector<PatchManifestEntry> entries = EncodeFileClusterFromSrcToDest(
+          cluster, src_path, dest_path, immutable_paths);
       for (const auto& m_e : entries) {
         *manifest_.add_entry() = m_e;
       }

@@ -6,6 +6,7 @@
 #define PATCHMAKER_FILE_UTIL_H_
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
@@ -21,6 +22,9 @@ std::string GetMD5SumForFile(const base::FilePath& path);
 base::FilePath AppendRelativePathOn(const base::FilePath& parent_path,
                                     const base::FilePath& child_path,
                                     const base::FilePath& base_path);
+
+void ParseDelimitedFilePaths(const std::string& delimited_str,
+                             std::vector<base::FilePath>* target_vector);
 
 }  // namespace util
 

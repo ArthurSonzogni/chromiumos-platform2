@@ -47,4 +47,14 @@ base::FilePath AppendRelativePathOn(const base::FilePath& parent_path,
   return new_path;
 }
 
+void ParseDelimitedFilePaths(const std::string& delimited_str,
+                             std::vector<base::FilePath>* target_vector) {
+  std::stringstream ss(delimited_str);
+  std::string immutable_path;
+  const char delim = ':';
+  while (std::getline(ss, immutable_path, delim)) {
+    target_vector->push_back(base::FilePath(immutable_path));
+  }
+}
+
 }  // namespace util

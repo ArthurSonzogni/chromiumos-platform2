@@ -15,13 +15,15 @@
 #include <brillo/proto_file_io.h>
 
 #include "patchmaker/directory_util.h"
+#include "patchmaker/file_util.h"
 #include "patchmaker/managed_directory.h"
 
 namespace {
 
 bool EncodeDirectory(const base::FilePath& src_path,
                      const base::FilePath& dest_path,
-                     const std::string& input_manifest_str) {
+                     const std::string& input_manifest_str,
+                     const std::string& immutable_path_str) {
   ManagedDirectory managed_dir;
 
   if (!managed_dir.CreateNew(dest_path,
@@ -32,7 +34,16 @@ bool EncodeDirectory(const base::FilePath& src_path,
     return false;
   }
 
-  if (!managed_dir.Encode(src_path, dest_path)) {
+  std::vector<base::FilePath> immutable_paths;
+  util::ParseDelimitedFilePaths(immutable_path_str, &immutable_paths);
+  for (const auto& path : immutable_paths) {
+    if (!base::PathExists(path)) {
+      LOG(ERROR) << "Path requesting immutability doesn't exist: " << path;
+      return false;
+    }
+  }
+
+  if (!managed_dir.Encode(src_path, dest_path, immutable_paths)) {
     LOG(ERROR) << "Failed to encode source path " << src_path;
     return false;
   }
@@ -72,7 +83,7 @@ bool EndToEndTest(const base::FilePath& src_path) {
 
   // Step 2 - Call EncodeDirectory from src_path to tmp_encode
   LOG(INFO) << "Encoding into " << tmp_encode.GetPath();
-  if (!EncodeDirectory(src_path, tmp_encode.GetPath(), "")) {
+  if (!EncodeDirectory(src_path, tmp_encode.GetPath(), "", "")) {
     LOG(ERROR) << "Encode step failed";
     return false;
   }
@@ -107,7 +118,10 @@ int main(int argc, char* argv[]) {
   DEFINE_string(src_path, "", "Source path for operation");
   DEFINE_string(dest_path, "", "Destination path for encode operation");
 
-  DEFINE_string(input_manifest, "", "Input manifest for operation");
+  DEFINE_string(input_manifest, "", "Optional: Input manifest for operation");
+  DEFINE_string(immutable_paths, "",
+                "Optional: Colon (':') separated list of immutable files or "
+                "directories that must be left intact.");
 
   brillo::FlagHelper::Init(argc, argv, "Patch utility for binary storage.");
 
@@ -134,7 +148,7 @@ int main(int argc, char* argv[]) {
   if (FLAGS_encode) {
     return EncodeDirectory(base::FilePath(FLAGS_src_path),
                            base::FilePath(FLAGS_dest_path),
-                           FLAGS_input_manifest)
+                           FLAGS_input_manifest, FLAGS_immutable_paths)
                ? EXIT_SUCCESS
                : EXIT_FAILURE;
   }

@@ -5,6 +5,8 @@
 #ifndef PATCHMAKER_MANAGED_DIRECTORY_H_
 #define PATCHMAKER_MANAGED_DIRECTORY_H_
 
+#include <vector>
+
 #include <base/files/file_path.h>
 
 #include "patchmaker/proto_bindings/patch_manifest.pb.h"
@@ -22,7 +24,9 @@ class ManagedDirectory {
   bool CreateNew(const base::FilePath& managed_dir_root,
                  std::optional<base::FilePath> input_manifest_path);
 
-  bool Encode(const base::FilePath& src_path, const base::FilePath& dest_path);
+  bool Encode(const base::FilePath& src_path,
+              const base::FilePath& dest_path,
+              const std::vector<base::FilePath>& immutable_paths);
 
   // We are on the decode path. The input managed_dir_path may not be the root
   // of the managed directory, as the caller may be preparing to decode an
