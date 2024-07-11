@@ -83,6 +83,9 @@ class ModemHelper {
   virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
 
   virtual std::optional<HeartbeatConfig> GetHeartbeatConfig() = 0;
+
+  virtual std::vector<base::FilePath> GetRecoveryFileList(
+      const base::FilePath& metadata_directory) = 0;
 };
 
 std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info);

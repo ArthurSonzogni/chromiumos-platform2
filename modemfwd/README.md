@@ -25,6 +25,10 @@ flags are declared in the [system API] repo.
 * `--fw_version`: can be optionally passed along with `--flash_fw` to signify
   the firmware version(s) of the passed file(s), it using the same key/value
   syntax.
+* `--get_recovery_file_list`: allows modemfwd to check what files are needed
+  by the modemfwd-helper to recover the modem. The reply may include a list of
+  files or directories that will be needed to perform recovery, so that modemfwd
+  can prepare them before calling for flashing.
 
 `--get_fw_info` should return a list of key/value pairs, one per line. The key
 is the type of the firmware/version and the value is the actual version number
@@ -60,6 +64,11 @@ Valid pairs are:
 * `interval`: the interval between heartbeat checks, in seconds
 * `modem_idle_interval`: at modem idle state, the interval between heartbeat
   checks, in seconds
+
+`--get_recovery_file_list` should take as input a path to the directory of
+  recovery metadata for this variant via the `--recovery_metadata_dir` flag,
+  and return a list of paths to the supporting files needed to perform
+  recovery.
 
 All commands should return 0 on success and something non-zero on failure.
 `modemfwd` will look for these binaries in the directory passed as the

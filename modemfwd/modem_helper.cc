@@ -296,6 +296,28 @@ class ModemHelperImpl : public ModemHelper {
     };
   }
 
+  std::vector<base::FilePath> GetRecoveryFileList(
+      const base::FilePath& metadata_directory) override {
+    std::string output;
+    std::vector<base::FilePath> recovery_files;
+
+    if (!RunHelperProcess(
+            helper_info_,
+            {kGetRecoveryFileList,
+             base::StringPrintf("%s=%s", kRecoveryMetadataDir,
+                                metadata_directory.value().c_str())},
+            &output)) {
+      return std::vector<base::FilePath>();
+    }
+
+    for (const auto& file : base::SplitString(
+             output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
+      recovery_files.emplace_back(file);
+    }
+
+    return recovery_files;
+  }
+
  private:
   HelperInfo helper_info_;
 };
