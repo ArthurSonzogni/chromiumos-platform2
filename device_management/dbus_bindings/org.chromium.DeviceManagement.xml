@@ -23,11 +23,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesGetRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesGetRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesGetReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesGetReply" />
         </arg>
     </method>
 
@@ -36,11 +36,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesSetRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesSetRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesSetReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesSetReply" />
         </arg>
     </method>
 
@@ -49,11 +49,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesFinalizeRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesFinalizeRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesFinalizeReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesFinalizeReply" />
         </arg>
     </method>
 
@@ -62,11 +62,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesGetStatusRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesGetStatusRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::InstallAttributesGetStatusReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::InstallAttributesGetStatusReply" />
         </arg>
     </method>
 
@@ -75,11 +75,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::EnterpriseOwnedGetStatusRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::EnterpriseOwnedGetStatusRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::EnterpriseOwnedGetStatusReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::EnterpriseOwnedGetStatusReply" />
         </arg>
     </method>
 
@@ -88,11 +88,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::GetFirmwareManagementParametersRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::GetFirmwareManagementParametersRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::GetFirmwareManagementParametersReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::GetFirmwareManagementParametersReply" />
         </arg>
     </method>
 
@@ -101,11 +101,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::RemoveFirmwareManagementParametersRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::RemoveFirmwareManagementParametersRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::RemoveFirmwareManagementParametersReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::RemoveFirmwareManagementParametersReply" />
         </arg>
     </method>
 
@@ -114,11 +114,11 @@
                     value="async"/>
         <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::SetFirmwareManagementParametersRequest" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::SetFirmwareManagementParametersRequest" />
         </arg>
         <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="device_management::SetFirmwareManagementParametersReply" />
+                    value="device_management/proto_bindings/device_management_interface.pb.h;device_management::SetFirmwareManagementParametersReply" />
         </arg>
     </method>
     </interface>
