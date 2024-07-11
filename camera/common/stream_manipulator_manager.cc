@@ -267,9 +267,6 @@ StreamManipulatorManager::StreamManipulatorManager(
   LOGF(INFO) << "Service built without effects support";
 #endif
 
-  MaybeEnableFramingStreamManipulator(feature_profile, runtime_options,
-                                      gpu_resources, &stream_manipulators_);
-
 #if USE_CAMERA_DIAGNOSTICS
   if (create_options.diagnostics_client != nullptr) {
     stream_manipulators_.emplace_back(
@@ -286,6 +283,11 @@ StreamManipulatorManager::StreamManipulatorManager(
   MaybeEnableHdrNetStreamManipulator(feature_profile, runtime_options,
                                      create_options, gpu_resources,
                                      &stream_manipulators_);
+
+  // Move the FramingSM to the bottom to avoid the rest of SMs processing large
+  // YUV buffers added by FramingSM.
+  MaybeEnableFramingStreamManipulator(feature_profile, runtime_options,
+                                      gpu_resources, &stream_manipulators_);
 
 #if USE_CAMERA_FEATURE_KIOSK_VISION
   MaybeEnableKioskVisionStreamManipulator(runtime_options,
