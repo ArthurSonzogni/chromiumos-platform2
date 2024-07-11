@@ -159,13 +159,11 @@ impl Config {
             // ProcessState::Normal
             ProcessStateConfig {
                 cpu_cgroup: CpuCgroup::Normal,
-                allow_rt: true,
                 allow_all_cores: true,
             },
             // Process:State::Background
             ProcessStateConfig {
                 cpu_cgroup: CpuCgroup::Background,
-                allow_rt: false,
                 allow_all_cores: false,
             },
         ]
@@ -237,8 +235,6 @@ impl Config {
 pub struct ProcessStateConfig {
     /// The cpu cgroup
     pub cpu_cgroup: CpuCgroup,
-    /// If RT is not allowed, threads with [ThreadStateConfig::rt_priority] use SCHED_OTHER.
-    pub allow_rt: bool,
     /// If all core is not allowed, move all threads to the efficient cpuset cgroup.
     pub allow_all_cores: bool,
 }
@@ -431,24 +427,6 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
                 }
             }
             let thread_config = &self.config.thread_configs[thread.state as usize];
-            if thread_config.rt_priority.is_some() {
-                match self.sched_attr_context.set_thread_sched_attr(
-                    *thread_id,
-                    thread_config,
-                    process_config.allow_rt,
-                ) {
-                    Ok(_) => {}
-                    Err(e) if e.raw_os_error() == Some(libc::ESRCH) => {
-                        // Ignore the error. There is rare cases that the thread die after the
-                        // timestamp check above.
-                        return false;
-                    }
-                    Err(e) => {
-                        result = Err(Error::SchedAttr(e));
-                    }
-                }
-            }
-
             if thread_config.cpuset_cgroup != CpusetCgroup::Efficient {
                 let cpuset_cgroup = if process_config.allow_all_cores {
                     thread_config.cpuset_cgroup
@@ -530,7 +508,7 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
         let thread_config = &self.config.thread_configs[thread_state as usize];
 
         self.sched_attr_context
-            .set_thread_sched_attr(thread_id, thread_config, process_config.allow_rt)
+            .set_thread_sched_attr(thread_id, thread_config)
             .map_err(|e| {
                 if e.raw_os_error() == Some(libc::ESRCH) {
                     Error::ThreadNotFound
@@ -623,13 +601,11 @@ mod tests {
                 // ProcessState::Normal
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Normal,
-                    allow_rt: true,
                     allow_all_cores: true,
                 },
                 // Process:State::Background
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Background,
-                    allow_rt: false,
                     allow_all_cores: false,
                 },
             ],
@@ -657,26 +633,19 @@ mod tests {
     fn test_set_process_state_change_threads() {
         let (cgroup_context, mut cgroup_files) = create_fake_cgroup_context_pair();
         let sched_ctx = SchedAttrContext::new().unwrap();
-        let thread_state_rt_all = ThreadState::try_from(0).unwrap();
         let thread_state_all = ThreadState::try_from(1).unwrap();
         let thread_state_efficient = ThreadState::try_from(2).unwrap();
-        let thread_config_rt_all = ThreadStateConfig {
-            rt_priority: Some(8),
-            cpuset_cgroup: CpusetCgroup::All,
-            ..ThreadStateConfig::default()
-        };
         let thread_config_all = ThreadStateConfig {
-            rt_priority: None,
+            nice: 10,
             cpuset_cgroup: CpusetCgroup::All,
             ..ThreadStateConfig::default()
         };
         let thread_config_efficient = ThreadStateConfig {
-            rt_priority: None,
+            nice: 11,
             cpuset_cgroup: CpusetCgroup::Efficient,
             ..ThreadStateConfig::default()
         };
         let mut thread_configs = Config::default_thread_config();
-        thread_configs[thread_state_rt_all as usize] = thread_config_rt_all.clone();
         thread_configs[thread_state_all as usize] = thread_config_all.clone();
         thread_configs[thread_state_efficient as usize] = thread_config_efficient.clone();
         let mut ctx = SchedQosContext::new_simple(Config {
@@ -685,13 +654,11 @@ mod tests {
                 // ProcessState::Normal
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Normal,
-                    allow_rt: true,
                     allow_all_cores: true,
                 },
                 // Process:State::Background
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Background,
-                    allow_rt: false,
                     allow_all_cores: false,
                 },
             ],
@@ -705,21 +672,14 @@ mod tests {
         let (thread_id1, _thread1) = spawn_thread_for_test();
         let (thread_id2, _thread2) = spawn_thread_for_test();
         let (thread_id3, _thread3) = spawn_thread_for_test();
-        let (thread_id4, _thread4) = spawn_thread_for_test();
-        let (thread_id5, _thread5) = spawn_thread_for_test();
-        let (thread_id6, _thread6) = spawn_thread_for_test();
         let (thread_id_unmanaged, _thread_unmanaged) = spawn_thread_for_test();
         let sched_attr_unmanaged = SchedAttrChecker::new(thread_id_unmanaged);
 
-        ctx.set_thread_state(process_id, thread_id1, thread_state_rt_all)
+        ctx.set_thread_state(process_id, thread_id1, thread_state_all)
             .unwrap();
-        ctx.set_thread_state(process_id, thread_id2, thread_state_rt_all)
+        ctx.set_thread_state(process_id, thread_id2, thread_state_all)
             .unwrap();
-        ctx.set_thread_state(process_id, thread_id3, thread_state_all)
-            .unwrap();
-        ctx.set_thread_state(process_id, thread_id4, thread_state_all)
-            .unwrap();
-        ctx.set_thread_state(process_id, thread_id5, thread_state_efficient)
+        ctx.set_thread_state(process_id, thread_id3, thread_state_efficient)
             .unwrap();
         drain_file(&mut cgroup_files.cpu_normal);
         drain_file(&mut cgroup_files.cpu_background);
@@ -736,15 +696,12 @@ mod tests {
         assert_eq!(read_number(&mut cgroup_files.cpuset_all), None);
         assert_eq!(
             read_numbers(&mut cgroup_files.cpuset_efficient).collect::<HashSet<_>>(),
-            HashSet::from([thread_id1.0, thread_id2.0, thread_id3.0, thread_id4.0])
+            HashSet::from([thread_id1.0, thread_id2.0])
         );
 
-        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_rt_all, false);
-        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_rt_all, false);
-        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_all, false);
-        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_all, false);
-        assert_sched_attr(&sched_ctx, thread_id5, &thread_config_efficient, false);
-        assert_sched_attr(&sched_ctx, thread_id6, &thread_config_efficient, false);
+        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_all);
+        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_all);
+        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_efficient);
         assert!(!sched_attr_unmanaged.is_changed());
 
         ctx.set_process_state(process_id, ProcessState::Normal)
@@ -756,16 +713,13 @@ mod tests {
         assert_eq!(read_number(&mut cgroup_files.cpu_background), None);
         assert_eq!(
             read_numbers(&mut cgroup_files.cpuset_all).collect::<HashSet<_>>(),
-            HashSet::from([thread_id1.0, thread_id2.0, thread_id3.0, thread_id4.0])
+            HashSet::from([thread_id1.0, thread_id2.0])
         );
         assert_eq!(read_number(&mut cgroup_files.cpuset_efficient), None);
 
-        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_rt_all, true);
-        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_rt_all, true);
-        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_all, true);
-        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_all, true);
-        assert_sched_attr(&sched_ctx, thread_id5, &thread_config_efficient, true);
-        assert_sched_attr(&sched_ctx, thread_id6, &thread_config_efficient, true);
+        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_all);
+        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_all);
+        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_efficient);
         assert!(!sched_attr_unmanaged.is_changed());
     }
 
@@ -1050,13 +1004,11 @@ mod tests {
                 // ProcessState::Normal
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Normal,
-                    allow_rt: true,
                     allow_all_cores: true,
                 },
                 // Process:State::Background
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Background,
-                    allow_rt: false,
                     allow_all_cores: false,
                 },
             ],
@@ -1095,7 +1047,7 @@ mod tests {
                     )
                 }
             }
-            assert_sched_attr(&sched_ctx, thread_id, thread_config, true);
+            assert_sched_attr(&sched_ctx, thread_id, thread_config);
         }
 
         ctx.set_process_state(process_id, ProcessState::Background)
@@ -1121,7 +1073,7 @@ mod tests {
                 Some(thread_id.0)
             );
             let thread_config = &thread_configs[state as usize];
-            assert_sched_attr(&sched_ctx, thread_id, thread_config, false);
+            assert_sched_attr(&sched_ctx, thread_id, thread_config);
         }
     }
 
