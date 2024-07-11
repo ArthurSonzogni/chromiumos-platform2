@@ -5,7 +5,7 @@
 import("//common-mk/pkg_config.gni")
 
 # Library that provides fetchers used by cros_healthd.
-pkg_config("libcros_healthd_fetchers_pkg_deps") {
+pkg_config("fetchers_pkg_deps") {
   pkg_deps = [
     "dbus-1",
     "iioservice_ipc",
@@ -22,8 +22,8 @@ pkg_config("libcros_healthd_fetchers_pkg_deps") {
   ]
 }
 
-source_set("libcros_healthd_fetchers") {
-  configs += [ ":libcros_healthd_fetchers_pkg_deps" ]
+source_set("fetchers") {
+  configs += [ ":fetchers_pkg_deps" ]
   public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
   deps = [
     "//diagnostics/base",
@@ -61,7 +61,7 @@ source_set("libcros_healthd_fetchers") {
 }
 
 if (use.test) {
-  pkg_config("libcros_healthd_fetchers_test_pkg_deps") {
+  pkg_config("fetchers_test_pkg_deps") {
     pkg_deps = [
       "egl",
       "fwupd",
@@ -81,7 +81,7 @@ if (use.test) {
     ]
   }
 
-  source_set("libcros_healthd_fetchers_test") {
+  source_set("fetchers_test") {
     sources = [
       "audio_fetcher_test.cc",
       "audio_hardware_fetcher_test.cc",
@@ -104,9 +104,9 @@ if (use.test) {
       "timezone_fetcher_test.cc",
       "tpm_fetcher_test.cc",
     ]
-    configs += [ ":libcros_healthd_fetchers_test_pkg_deps" ]
+    configs += [ ":fetchers_test_pkg_deps" ]
     deps = [
-      ":libcros_healthd_fetchers",
+      ":fetchers",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/fetchers/storage:storage_data_source_test",
@@ -130,7 +130,7 @@ if (use.fuzzer) {
       "//common-mk/common_fuzzer:common_fuzzer",
     ]
     deps = [
-      ":libcros_healthd_fetchers",
+      ":fetchers",
       "//diagnostics/base",
       "//diagnostics/cros_healthd/system:test_support",
     ]

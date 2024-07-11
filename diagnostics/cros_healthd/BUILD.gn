@@ -38,8 +38,8 @@ source_set("libcros_healthd") {
     "system_api",
   ]
   public_deps = [
-    "//diagnostics/cros_healthd/events:libcros_healthd_events",
-    "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers",
+    "//diagnostics/cros_healthd/events",
+    "//diagnostics/cros_healthd/fetchers",
     "//diagnostics/cros_healthd/routines",
     "//diagnostics/cros_healthd/system",
     "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
@@ -73,9 +73,9 @@ if (use.test) {
       "//diagnostics/cros_healthd/delegate/fetchers:test",
       "//diagnostics/cros_healthd/delegate/routines:test",
       "//diagnostics/cros_healthd/delegate/utils:test",
-      "//diagnostics/cros_healthd/events:libcros_healthd_events_test",
+      "//diagnostics/cros_healthd/events:events_test",
       "//diagnostics/cros_healthd/executor/utils:test",
-      "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers_test",
+      "//diagnostics/cros_healthd/fetchers:fetchers_test",
       "//diagnostics/cros_healthd/routines",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/routines:routine_test",
