@@ -33,7 +33,7 @@
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 
-constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
+constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBA_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
                                   GRALLOC_USAGE_SW_WRITE_OFTEN |
                                   GRALLOC_USAGE_HW_TEXTURE;

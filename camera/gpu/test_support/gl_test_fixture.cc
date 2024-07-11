@@ -28,7 +28,8 @@ void FillTestPattern(buffer_handle_t buffer) {
       }
     }
     CHECK_EQ(buf_mgr->Unlock(buffer), 0);
-  } else if (hal_format == HAL_PIXEL_FORMAT_RGBX_8888) {
+  } else if (hal_format == HAL_PIXEL_FORMAT_RGBX_8888 ||
+             hal_format == HAL_PIXEL_FORMAT_RGBA_8888) {
     void* addr = nullptr;
     CHECK_EQ(buf_mgr->Lock(buffer, 0, 0, 0, width, height, &addr), 0);
     uint32_t* as_uint32 = reinterpret_cast<uint32_t*>(addr);

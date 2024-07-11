@@ -64,7 +64,7 @@ Options g_args;
 
 constexpr uint32_t kNV12Format = HAL_PIXEL_FORMAT_YCbCr_420_888;
 constexpr uint32_t kYUYVFormat = HAL_PIXEL_FORMAT_YCbCr_422_I;
-constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
+constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBA_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
                                   GRALLOC_USAGE_SW_WRITE_OFTEN |
                                   GRALLOC_USAGE_HW_TEXTURE;

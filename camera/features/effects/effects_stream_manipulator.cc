@@ -89,7 +89,7 @@ constexpr char kSegmentationModelTypeKey[] = "segmentation_model_type";
 constexpr char kDefaultSegmentationModelTypeKey[] =
     "default_segmentation_model_type";
 
-constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
+constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBA_8888;
 constexpr uint32_t kRGBABufferUsage =
     GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_SW_READ_NEVER;
 
