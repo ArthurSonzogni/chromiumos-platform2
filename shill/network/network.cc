@@ -241,6 +241,13 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
 
 void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
   LOG(INFO) << *this << ": Setting " << family << " connection";
+
+  if (state_ == State::kIdle) {
+    LOG(ERROR) << *this << ": Unexpected " << __func__
+               << " call when state is idle";
+    return;
+  }
+
   NetworkConfigArea to_apply = NetworkConfigArea::kRoutingPolicy |
                                NetworkConfigArea::kDNS |
                                NetworkConfigArea::kMTU;
