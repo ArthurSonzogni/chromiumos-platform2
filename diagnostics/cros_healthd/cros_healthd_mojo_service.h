@@ -21,8 +21,13 @@
 namespace diagnostics {
 class Context;
 
-// Implements the "CrosHealthdService" Mojo interface exposed by the
-// cros_healthd daemon (see the API definition at mojo/cros_healthd.mojom)
+// Implements the Mojo interfaces exposed by the cros_healthd daemon:
+// - CrosHealthdProbeService
+// - CrosHealthdEventService
+// - CrosHealthdRoutinesService
+//
+// The Mojo interface `CrosHealthdDiagnosticsService` is implemented by the
+// class `CrosHealthdDiagnosticsService`.
 class CrosHealthdMojoService final
     : public ash::cros_healthd::mojom::CrosHealthdEventService,
       public ash::cros_healthd::mojom::CrosHealthdProbeService,
@@ -32,7 +37,6 @@ class CrosHealthdMojoService final
 
   // |fetch_aggregator| - responsible for fulfilling probe requests.
   // |event_aggregator| - responsible for fulfilling event requests.
-  // |bluetooth_events| - BluetoothEvents implementation.
   CrosHealthdMojoService(Context* context,
                          FetchAggregator* fetch_aggregator,
                          EventAggregator* event_aggregator);
