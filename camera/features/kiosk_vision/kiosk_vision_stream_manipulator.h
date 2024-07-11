@@ -68,10 +68,6 @@ class KioskVisionStreamManipulator : public StreamManipulator {
   // Should be used in the IPC thread.
   raw_ref<mojo::Remote<mojom::KioskVisionObserver>> observer_;
 
-  std::unique_ptr<KioskVisionWrapper> kiosk_vision_wrapper_;
-  Size active_array_dimension_;
-  Size detector_input_size_;
-
   // Protects members that can be accessed on different threads.
   base::Lock lock_;
 
@@ -81,6 +77,15 @@ class KioskVisionStreamManipulator : public StreamManipulator {
 
   // Timestamp of the previous processed frame.
   int64_t processed_frame_timestamp_us_ GUARDED_BY(lock_) = 0;
+
+  // Used to normalize (resize) detector results to debugging view.
+  Size active_array_dimension_;
+  Size detector_input_size_;
+
+  // Kiosk Vision pipeline instance.
+  // Declared last to ensure the correct destruction order, as it can trigger
+  // callbacks during destruction.
+  std::unique_ptr<KioskVisionWrapper> kiosk_vision_wrapper_;
 };
 
 }  // namespace cros
