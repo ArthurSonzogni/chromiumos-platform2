@@ -54,6 +54,7 @@
 #include "shill/default_profile.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/eap_credentials.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_eap_provider.h"
@@ -157,6 +158,23 @@ void SortServicesImpl(bool compare_connectivity_state,
                                       tech_order)
                   .first;
             });
+}
+
+// Whether |domain| from DoH excluded or included domains is valid. Domain is
+// expected to be in the form of a fully qualified domain name (FQDN) or as
+// domain suffixes noted using a special wildcard prefix '*'.
+bool ValidDomainDoHConfig(const std::string& domain) {
+  std::string_view d = domain;
+  // Match all ('*') domain suffix.
+  if (d == "*") {
+    return true;
+  }
+  // Domain suffix with wildcard prefix '*';
+  if (d.starts_with("*.")) {
+    d.remove_prefix(2);
+  }
+  // Validate FQDN.
+  return EapCredentials::ValidDomainSuffixMatch(std::string(d));
 }
 
 }  // namespace
@@ -3097,7 +3115,14 @@ bool Manager::SetDOHExcludedDomains(const std::vector<std::string>& domains,
     return false;
   }
 
-  // TODO(jasongustaman): Validate the domains.
+  for (const auto& domain : domains) {
+    if (!ValidDomainDoHConfig(domain)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Invalid DOH excluded domain");
+      return false;
+    }
+  }
+
   props_.doh_excluded_domains = domains;
   adaptor_->EmitStringsChanged(kDOHExcludedDomainsProperty,
                                props_.doh_excluded_domains);
@@ -3118,7 +3143,14 @@ bool Manager::SetDOHIncludedDomains(const std::vector<std::string>& domains,
     return false;
   }
 
-  // TODO(jasongustaman): Validate the domains.
+  for (const auto& domain : domains) {
+    if (!ValidDomainDoHConfig(domain)) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Invalid DOH included domain");
+      return false;
+    }
+  }
+
   props_.doh_included_domains = domains;
   adaptor_->EmitStringsChanged(kDOHIncludedDomainsProperty,
                                props_.doh_included_domains);

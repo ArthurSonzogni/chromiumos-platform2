@@ -4693,6 +4693,96 @@ TEST_F(ManagerTest, SetDNSProxyDOHProviders) {
   EXPECT_FALSE(err.IsFailure());
 }
 
+TEST_F(ManagerTest, SetDOHIncludedDomains) {
+  Error err;
+  std::vector<std::string> domains;
+  // Bad domains
+  domains.push_back("+.com");
+  EXPECT_FALSE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("**.com");
+  EXPECT_FALSE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("*.");
+  EXPECT_FALSE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("");
+  EXPECT_FALSE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  // Good Domains
+  domains.push_back("good.com");
+  EXPECT_TRUE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("*.com");
+  EXPECT_TRUE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("*");
+  EXPECT_TRUE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("good-domain1.com");
+  EXPECT_TRUE(manager()->SetDOHIncludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+}
+
+TEST_F(ManagerTest, SetDOHExcludedDomains) {
+  Error err;
+  std::vector<std::string> domains;
+  // Bad domains
+  domains.push_back("+.com");
+  EXPECT_FALSE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("**.com");
+  EXPECT_FALSE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("*.");
+  EXPECT_FALSE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("");
+  EXPECT_FALSE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_TRUE(err.IsFailure());
+  domains.clear();
+
+  // Good Domains
+  domains.push_back("good.com");
+  EXPECT_TRUE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("*.com");
+  EXPECT_TRUE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("*");
+  EXPECT_TRUE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+  domains.clear();
+
+  domains.push_back("good-domain1.com");
+  EXPECT_TRUE(manager()->SetDOHExcludedDomains(domains, &err));
+  EXPECT_FALSE(err.IsFailure());
+}
+
 TEST_F(ManagerTest, AddPasspointCredentials) {
   Error err;
   KeyValueStore properties;
