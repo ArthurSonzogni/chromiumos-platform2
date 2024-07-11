@@ -286,8 +286,6 @@ KernelParser::KernelParser(bool testonly_send_all)
     : testonly_send_all_(testonly_send_all) {}
 
 MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
-  // TODO(b/329588041): Add a failsafe for when logs are split so this parser
-  // doesn't OOM the system while it's waiting for a terminating line.
   if (last_line_ == LineType::None) {
     if (line.find(cut_here) != std::string::npos)
       last_line_ = LineType::Start;

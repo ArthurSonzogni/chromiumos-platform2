@@ -19,7 +19,6 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <base/files/file_descriptor_watcher_posix.h>
-#include <soul/gravedigger.h>
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(testonly_send_all, false,
@@ -38,9 +37,6 @@ int main(int argc, char* argv[]) {
 
   base::RunLoop run_loop;
 
-  if (!gravedigger::try_init("anomaly_detector")) {
-    LOG(WARNING) << "Couldn't initialize gravedigger";
-  }
   auto service = std::make_unique<anomaly::Service>(run_loop.QuitClosure(),
                                                     FLAGS_testonly_send_all);
   CHECK(service->Init());

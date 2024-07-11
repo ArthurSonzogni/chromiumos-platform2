@@ -9,67 +9,42 @@
 #include <utility>
 #include <vector>
 
-#include <base/check.h>
-#include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/test_util.h"
 
-namespace {
-std::string ParamStringName(const testing::TestParamInfo<bool>& info) {
-  return info.param ? "gravedigger" : "base_file";
-}
-}  // namespace
+#include <base/check.h>
 
 namespace anomaly {
 
-class AnomalyDetectorFileReaderTest : public ::testing::TestWithParam<bool> {
- protected:
-  using FileReaderRun = std::vector<std::string>;
+using FileReaderRun = std::vector<std::string>;
 
-  std::unique_ptr<TextFileReader> InitializeFileReaderForTest(
-      const std::string& input_file_name) {
-    base::FilePath input_file_path =
-        test_util::GetTestDataPath(input_file_name, /*use_testdata=*/true);
+std::unique_ptr<TextFileReader> InitializeFileReaderForTest(
+    const std::string& input_file_name) {
+  base::FilePath input_file_path =
+      test_util::GetTestDataPath(input_file_name, /*use_testdata=*/true);
 
-    return std::make_unique<TextFileReader>(input_file_path,
-                                            SetupFakeFeatureLibrary());
+  return std::make_unique<TextFileReader>(input_file_path);
+}
+
+void ReaderTest(const std::unique_ptr<TextFileReader>& r,
+                const FileReaderRun& want) {
+  FileReaderRun got{};
+  std::string line;
+  while (r->GetLine(&line)) {
+    got.push_back(line);
   }
+  ASSERT_EQ(want.size(), got.size());
 
-  feature::PlatformFeaturesInterface* SetupFakeFeatureLibrary() {
-    feature_library_ = std::make_unique<feature::FakePlatformFeatures>(nullptr);
-    feature_library_->SetEnabled("CrOSLateBootGravedigger", GetParam());
-    return feature_library_.get();
+  for (int i = 0; i < want.size(); i++) {
+    EXPECT_EQ(want[i], got[i]);
   }
-
-  void ReaderTest(const std::unique_ptr<TextFileReader>& r,
-                  const FileReaderRun& want) {
-    FileReaderRun got{};
-    std::string line;
-    while (r->GetLine(&line)) {
-      got.push_back(line);
-    }
-    ASSERT_EQ(want.size(), got.size());
-
-    for (int i = 0; i < want.size(); i++) {
-      EXPECT_EQ(want[i], got[i]);
-    }
-  }
-
-  static bool HaveOpenLogFile(const TextFileReader* r) {
-    if (!r) {
-      return false;
-    }
-    return r->HaveOpenLogFile();
-  }
-
-  std::unique_ptr<feature::FakePlatformFeatures> feature_library_;
-};
+}
 
 // Tests that an invalid file does not cause the entire program to fail.
-TEST_P(AnomalyDetectorFileReaderTest, InvalidFileTest) {
+TEST(AnomalyDetectorFileReaderTest, InvalidFileTest) {
   auto r = InitializeFileReaderForTest("FILE_DOES_NOT_EXIST");
-  EXPECT_FALSE(HaveOpenLogFile(r.get()));
+  EXPECT_FALSE(r->file_.IsValid());
 
   // Make sure all public methods are safe with invalid file.
   std::string line;
@@ -79,21 +54,21 @@ TEST_P(AnomalyDetectorFileReaderTest, InvalidFileTest) {
   SUCCEED();
 }
 
-TEST_P(AnomalyDetectorFileReaderTest, OpenFileTest) {
+TEST(AnomalyDetectorFileReaderTest, OpenFileTest) {
   auto r = InitializeFileReaderForTest("TEST_MESSAGE_LOG");
-  EXPECT_TRUE(HaveOpenLogFile(r.get()));
+  EXPECT_TRUE(r->file_.IsValid());
 }
 
 // Tests if SeekToEnd() successfully moves the TextFileReader past
 // the last line of the log to avoid re-reading of old logs.
-TEST_P(AnomalyDetectorFileReaderTest, SeekToEndTest) {
+TEST(AnomalyDetectorFileReaderTest, SeekToEndTest) {
   auto r = InitializeFileReaderForTest("TEST_MESSAGE_LOG");
   r->SeekToEnd();
   FileReaderRun want{};
   ReaderTest(r, want);
 }
 
-TEST_P(AnomalyDetectorFileReaderTest, FileTextReaderTest) {
+TEST(AnomalyDetectorFileReaderTest, FileTextReaderTest) {
   auto r = InitializeFileReaderForTest("TEST_MESSAGE_LOG");
   std::string l1 =
       "2020-05-10T22:45:04.419261Z ERR tpm_managerd[790]: TPM error "
@@ -120,8 +95,7 @@ TEST_P(AnomalyDetectorFileReaderTest, FileTextReaderTest) {
 
 // This test fixture is responsible for the creation and deletion of temporary
 // files.
-class AnomalyDetectorFileReaderConcurrentTest
-    : public AnomalyDetectorFileReaderTest {
+class AnomalyDetectorFileReaderConcurrentTest : public ::testing::Test {
  protected:
   void SetUp() override {
     CHECK(base::CreateTemporaryFile(&path_));
@@ -152,21 +126,15 @@ class AnomalyDetectorFileReaderConcurrentTest
     CHECK(file_.IsValid());
   }
 
-  std::unique_ptr<TextFileReader> MakeTextFileReader(
-      std::string_view extension = "") {
-    return std::make_unique<TextFileReader>(path_.AddExtension(extension),
-                                            SetupFakeFeatureLibrary());
-  }
-
   base::FilePath path_;
   base::File file_;
 };
 
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadAppendedTextTest) {
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadAppendedTextTest) {
   std::vector<std::string> file_content{"line 1", "line 2", "end"};
 
-  auto r = MakeTextFileReader();
-  EXPECT_TRUE(HaveOpenLogFile(r.get()));
+  auto r = std::make_unique<TextFileReader>(path_);
+  EXPECT_TRUE(r->file_.IsValid());
 
   FileReaderRun want{};
   // Test that the file is empty.
@@ -182,12 +150,12 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadAppendedTextTest) {
 
 // Test that text appended to file after calling SeekToEnd is read properly.
 // This is important since LogReader calls SeekToEnd upon initialisation.
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadAfterSeekToEndTest) {
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadAfterSeekToEndTest) {
   std::vector<std::string> file_content{"line 1", "line 2", "end"};
 
   AppendToFile(file_content);
 
-  auto r = MakeTextFileReader();
+  auto r = std::make_unique<TextFileReader>(path_);
   r->SeekToEnd();
 
   AppendToFile(file_content);
@@ -198,8 +166,8 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadAfterSeekToEndTest) {
 }
 
 // This simulates concurrent read and write on the file.
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadDuringWriteTest) {
-  auto r = MakeTextFileReader();
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadDuringWriteTest) {
+  auto r = std::make_unique<TextFileReader>(path_);
 
   file_.WriteAtCurrentPos("li", 2);
   // r will not return any line since there is no '\n' at the end.
@@ -211,8 +179,8 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadDuringWriteTest) {
 
 // Tests if LoadToBuffer works as intended when given a file containing lines
 // that are longer than the buffer size of TextFileReader.
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadLineLongerThanBufferTest) {
-  auto r = MakeTextFileReader();
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, ReadLineLongerThanBufferTest) {
+  auto r = std::make_unique<TextFileReader>(path_);
 
   const int size_larger_than_buffer = TextFileReader::kBufferSize_ + 1;
 
@@ -229,13 +197,13 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, ReadLineLongerThanBufferTest) {
 
 // Test if TextFileReader can open a file that did not exist when it was
 // initialised.
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryTest) {
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryTest) {
   // File <path_>.old does not exist yet.
-  auto r = MakeTextFileReader("old");
+  auto r = std::make_unique<TextFileReader>(path_.AddExtension("old"));
 
   std::string line;
   EXPECT_FALSE(r->GetLine(&line));
-  EXPECT_FALSE(HaveOpenLogFile(r.get()));
+  EXPECT_FALSE(r->file_.IsValid());
 
   // Write to file <path_>.
   std::vector<std::string> file_content{"line 1", "line 2", "end"};
@@ -252,9 +220,9 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryTest) {
 
 // Test if TextFileReader stops retrying to open the file pointed by file_path_
 // after kMaxOpenRetries_ times.
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryExceededTest) {
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryExceededTest) {
   // File <path_>.old does not exist yet.
-  auto r = MakeTextFileReader("old");
+  auto r = std::make_unique<TextFileReader>(path_.AddExtension("old"));
 
   // GetLine internally calls Open.
   std::string line;
@@ -278,20 +246,20 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, OpenFileRetryExceededTest) {
 // The original file opened by TextFileReader is replaced by a new file.
 // TextFileReader should finish reading the original file and then read the new
 // file to the end.
-TEST_P(AnomalyDetectorFileReaderConcurrentTest, HandleFileMoveTest) {
+TEST_F(AnomalyDetectorFileReaderConcurrentTest, HandleFileMoveTest) {
   std::vector<std::string> file_content_1{"line1", "line2", "end"};
   std::vector<std::string> file_content_2{"new line 1", "new line 2",
                                           "new end"};
 
-  auto r = MakeTextFileReader();
-  EXPECT_TRUE(HaveOpenLogFile(r.get()));
+  auto r = std::make_unique<TextFileReader>(path_);
+  EXPECT_TRUE(r->file_.IsValid());
 
   // Adding lines to file_.
   AppendToFile(file_content_1);
 
   RotateFiles();
-  // The original file is now moved to ${path_}.old but the internal files are
-  // still pointing to it.
+  // The original file is now moved to ${path_}.old but file_ is still pointing
+  // to it.
 
   // Adding lines to newly created file ${path_}.
   AppendToFile(file_content_2);
@@ -305,14 +273,5 @@ TEST_P(AnomalyDetectorFileReaderConcurrentTest, HandleFileMoveTest) {
   // ${path_} and read the lines from the new file.
   ReaderTest(r, want);
 }
-
-INSTANTIATE_TEST_SUITE_P(P,
-                         AnomalyDetectorFileReaderTest,
-                         testing::Bool(),
-                         ParamStringName);
-INSTANTIATE_TEST_SUITE_P(P,
-                         AnomalyDetectorFileReaderConcurrentTest,
-                         testing::Bool(),
-                         ParamStringName);
 
 }  // namespace anomaly
