@@ -654,8 +654,17 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   if (enable_battery_)
     args.emplace_back("--battery", "type=goldfish");
 
-  if (enable_pvclock_)
+  if (enable_pvclock_) {
     args.emplace_back("--pvclock", "");
+#if defined(__x86_64__)
+    // Virtual suspend time injection (VSTI) is the legacy solution to fix
+    // guest watchdog issues on x86_64; it conflicts with pvclock so disable
+    // it.
+    // VSTI was never implemented on AArch64 and hence AArch64 does not need
+    // this.
+    args.emplace_back("--params", "no-vsti-guest");
+#endif
+  }
 
   for (const auto& shared_dir : shared_dirs_)
     args.emplace_back("--shared-dir", shared_dir.to_string());
