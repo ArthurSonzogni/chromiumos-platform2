@@ -43,19 +43,19 @@ class KioskVisionWrapper {
   KioskVisionWrapper(FrameCallback frame_cb,
                      TrackCallback track_cb,
                      ErrorCallback error_cb);
-  ~KioskVisionWrapper();
+  virtual ~KioskVisionWrapper();
   KioskVisionWrapper(const KioskVisionWrapper&) = delete;
   KioskVisionWrapper& operator=(const KioskVisionWrapper&) = delete;
 
   // Loads dynamic library and initializes a vision pipeline.
-  InitializeStatus Initialize(const base::FilePath& dlc_root_path);
+  virtual InitializeStatus Initialize(const base::FilePath& dlc_root_path);
 
   // Returns detector input size in pixels.
   cros::kiosk_vision::ImageSize GetDetectorInputSize() const;
 
   // Inputs one frame into Kiosk Vision pipeline. Frame |buffer| should have
   // NV12 format, |timestamp| should increase from the previous call.
-  bool ProcessFrame(int64_t timestamp, buffer_handle_t buffer);
+  virtual bool ProcessFrame(int64_t timestamp, buffer_handle_t buffer);
 
   // Callbacks for Kiosk Vision pipeline.
   void OnFrameProcessed(cros::kiosk_vision::Timestamp timestamp,

@@ -160,19 +160,30 @@ namespace cros {
 KioskVisionStreamManipulator::KioskVisionStreamManipulator(
     RuntimeOptions* runtime_options,
     const scoped_refptr<base::SingleThreadTaskRunner>& ipc_thread_task_runner)
+    : KioskVisionStreamManipulator(
+          runtime_options,
+          ipc_thread_task_runner,
+          std::make_unique<KioskVisionWrapper>(
+              base::BindRepeating(
+                  &KioskVisionStreamManipulator::OnFrameProcessed,
+                  base::Unretained(this)),
+              base::BindRepeating(
+                  &KioskVisionStreamManipulator::OnTrackCompleted,
+                  base::Unretained(this)),
+              base::BindRepeating(&KioskVisionStreamManipulator::OnError,
+                                  base::Unretained(this)))) {}
+
+KioskVisionStreamManipulator::KioskVisionStreamManipulator(
+    RuntimeOptions* runtime_options,
+    const scoped_refptr<base::SingleThreadTaskRunner>& ipc_thread_task_runner,
+    std::unique_ptr<KioskVisionWrapper> kiosk_vision_wrapper)
     : config_(ReloadableConfigFile::Options{
           .override_config_file_path =
               base::FilePath(kOverrideKioskVisionConfigFile)}),
       dlc_path_(runtime_options->GetDlcRootPath(dlc_client::kKioskVisionDlcId)),
       observer_(runtime_options->GetKioskVisionObserver()),
       ipc_thread_task_runner_(ipc_thread_task_runner),
-      kiosk_vision_wrapper_(std::make_unique<KioskVisionWrapper>(
-          base::BindRepeating(&KioskVisionStreamManipulator::OnFrameProcessed,
-                              base::Unretained(this)),
-          base::BindRepeating(&KioskVisionStreamManipulator::OnTrackCompleted,
-                              base::Unretained(this)),
-          base::BindRepeating(&KioskVisionStreamManipulator::OnError,
-                              base::Unretained(this)))) {
+      kiosk_vision_wrapper_(std::move(kiosk_vision_wrapper)) {
   config_.SetCallback(base::BindRepeating(
       &KioskVisionStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 

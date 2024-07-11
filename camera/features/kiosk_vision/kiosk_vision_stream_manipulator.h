@@ -21,6 +21,12 @@
 namespace cros {
 class KioskVisionWrapper;
 
+namespace tests {
+
+class KioskVisionStreamManipulatorTest;
+
+}
+
 class KioskVisionStreamManipulator : public StreamManipulator {
  public:
   struct Options {
@@ -47,6 +53,13 @@ class KioskVisionStreamManipulator : public StreamManipulator {
       RuntimeOptions* runtime_options,
       const scoped_refptr<base::SingleThreadTaskRunner>&
           ipc_thread_task_runner);
+
+  // Used in tests.
+  KioskVisionStreamManipulator(
+      RuntimeOptions* runtime_options,
+      const scoped_refptr<base::SingleThreadTaskRunner>& ipc_thread_task_runner,
+      std::unique_ptr<KioskVisionWrapper> kiosk_vision_wrapper);
+
   ~KioskVisionStreamManipulator() override;
 
   // StreamManipulator:
@@ -66,6 +79,10 @@ class KioskVisionStreamManipulator : public StreamManipulator {
   Status GetStatusForTesting() const;
 
  private:
+  // `KioskVisionStreamManipulatorTest` needs to access the following private
+  // methods: `OnFrameProcessed`, `OnTrackCompleted`, `OnError()`.
+  friend class tests::KioskVisionStreamManipulatorTest;
+
   Camera3StreamBuffer* SelectInputBuffer(Camera3CaptureDescriptor& result);
   void SetDebugMetadata(Camera3CaptureDescriptor* result);
   int32_t DebugScaleWidth(int32_t original_width);

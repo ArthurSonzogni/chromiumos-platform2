@@ -4,12 +4,17 @@
 
 #include "camera/features/kiosk_vision/kiosk_vision_stream_manipulator.h"
 
+#include <memory>
+
+#include <base/functional/callback_helpers.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <camera/mojo/cros_camera_service.mojom.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+
+#include "features/kiosk_vision/kiosk_vision_wrapper.h"
 
 namespace cros::tests {
 
@@ -29,6 +34,27 @@ class FakeObserver : public cros::mojom::KioskVisionObserver {
       cros::mojom::KioskVisionDetectionPtr detection) override {}
   void OnTrackCompleted(cros::mojom::KioskVisionTrackPtr track) override {}
   void OnError(cros::mojom::KioskVisionError error) override {}
+};
+
+class FakeKioskVisionWrapper : public KioskVisionWrapper {
+ public:
+  FakeKioskVisionWrapper(FrameCallback frame_cb,
+                         TrackCallback track_cb,
+                         ErrorCallback error_cb)
+      : KioskVisionWrapper(
+            std::move(frame_cb), std::move(track_cb), std::move(error_cb)) {}
+
+  FakeKioskVisionWrapper(const FakeKioskVisionWrapper&) = delete;
+  FakeKioskVisionWrapper& operator=(const FakeKioskVisionWrapper&) = delete;
+  ~FakeKioskVisionWrapper() override = default;
+
+  InitializeStatus Initialize(const base::FilePath& dlc_root_path) override {
+    return InitializeStatus::kOk;
+  }
+
+  bool ProcessFrame(int64_t timestamp, buffer_handle_t buffer) override {
+    return true;
+  }
 };
 
 android::CameraMetadata GenerateStaticMetadataFor720p() {
@@ -60,14 +86,13 @@ android::CameraMetadata GenerateStaticMetadataFor720p() {
 
 }  // namespace
 
-class KioskVisionStreamManipulatorTest : public ::testing::Test {
+class KioskVisionStreamManipulatorBaseTest : public ::testing::Test {
  public:
-  KioskVisionStreamManipulatorTest() : receiver_(&observer_) {}
+  KioskVisionStreamManipulatorBaseTest() : receiver_(&observer_) {}
 
   void SetUp() override {
     ::testing::Test::SetUp();
     mojo::core::Init();
-    static_info_ = GenerateStaticMetadataFor720p();
     runtime_options_.SetKioskVisionConfig(kDlcPath,
                                           receiver_.BindNewPipeAndPassRemote());
 
@@ -75,27 +100,14 @@ class KioskVisionStreamManipulatorTest : public ::testing::Test {
         &runtime_options_, base::SingleThreadTaskRunner::GetCurrentDefault());
   }
 
-  bool InitializeStreamManipulator() {
-    base::RepeatingCallback<void(Camera3CaptureDescriptor)> result_cb =
-        base::BindRepeating(
-            [](base::WaitableEvent& frame_processed,
-               Camera3CaptureDescriptor descriptor) {
-              // resume only after the requested frame is processed
-              if (descriptor.num_output_buffers() >= 1) {
-                frame_processed.Signal();
-              }
-            },
-            std::ref(frame_processed_));
+  bool InitializeStreamManipulator(StreamManipulator::CaptureResultCallback
+                                       result_callback = base::DoNothing()) {
+    static_info_ = GenerateStaticMetadataFor720p();
 
-    bool init_result = stream_manipulator_->Initialize(
+    return stream_manipulator_->Initialize(
         static_info_.getAndLock(),
-        StreamManipulator::Callbacks{.result_callback = result_cb,
+        StreamManipulator::Callbacks{.result_callback = result_callback,
                                      .notify_callback = base::DoNothing()});
-
-    stream_manipulator_->ConfigureStreams(nullptr);
-    stream_manipulator_->OnConfiguredStreams(nullptr);
-
-    return init_result;
   }
 
  protected:
@@ -106,23 +118,78 @@ class KioskVisionStreamManipulatorTest : public ::testing::Test {
   mojo::Receiver<cros::mojom::KioskVisionObserver> receiver_;
   StreamManipulator::RuntimeOptions runtime_options_;
   android::CameraMetadata static_info_;
-  base::WaitableEvent frame_processed_;
 };
 
-TEST_F(KioskVisionStreamManipulatorTest, Create) {
+TEST_F(KioskVisionStreamManipulatorBaseTest, Create) {
   CHECK_EQ(stream_manipulator_->GetStatusForTesting(),
            KioskVisionStreamManipulator::Status::kNotInitialized);
   CHECK_EQ(stream_manipulator_->GetDlcPathForTesting(), kDlcPath);
 }
 
-TEST_F(KioskVisionStreamManipulatorTest, InitializeNoDlc) {
-  InitializeStreamManipulator();
+TEST_F(KioskVisionStreamManipulatorBaseTest, InitializeNoDlc) {
+  EXPECT_FALSE(InitializeStreamManipulator());
 
   CHECK_EQ(stream_manipulator_->GetStatusForTesting(),
            KioskVisionStreamManipulator::Status::kDlcError);
 }
 
-// TODO(b/340801984): add tests for the implemented
+// This test class uses `FakeKioskVisionWrapper` to avoid setting up the DLC
+// which is unavailable in unit tests.
+class KioskVisionStreamManipulatorTest
+    : public KioskVisionStreamManipulatorBaseTest {
+ public:
+  KioskVisionStreamManipulatorTest() = default;
+
+  void SetUp() override {
+    ::testing::Test::SetUp();
+    mojo::core::Init();
+    runtime_options_.SetKioskVisionConfig(kDlcPath,
+                                          receiver_.BindNewPipeAndPassRemote());
+
+    std::unique_ptr<FakeKioskVisionWrapper> wrapper =
+        std::make_unique<FakeKioskVisionWrapper>(
+            base::BindRepeating(
+                &KioskVisionStreamManipulatorTest::OnFrameProcessed,
+                base::Unretained(this)),
+            base::BindRepeating(
+                &KioskVisionStreamManipulatorTest::OnTrackCompleted,
+                base::Unretained(this)),
+            base::BindRepeating(&KioskVisionStreamManipulatorTest::OnError,
+                                base::Unretained(this)));
+
+    stream_manipulator_ = std::make_unique<KioskVisionStreamManipulator>(
+        &runtime_options_, base::SingleThreadTaskRunner::GetCurrentDefault(),
+        std::move(wrapper));
+  }
+
+ protected:
+  void OnFrameProcessed(cros::kiosk_vision::Timestamp timestamp,
+                        const cros::kiosk_vision::Appearance* audience_data,
+                        uint32_t audience_size) {
+    stream_manipulator_->OnFrameProcessed(timestamp, audience_data,
+                                          audience_size);
+  }
+
+  void OnTrackCompleted(cros::kiosk_vision::TrackID id,
+                        const cros::kiosk_vision::Appearance* appearances_data,
+                        uint32_t appearances_size,
+                        cros::kiosk_vision::Timestamp start_time,
+                        cros::kiosk_vision::Timestamp end_time) {
+    stream_manipulator_->OnTrackCompleted(
+        id, appearances_data, appearances_size, start_time, end_time);
+  }
+
+  void OnError() { stream_manipulator_->OnError(); }
+};
+
+TEST_F(KioskVisionStreamManipulatorTest, Initialize) {
+  EXPECT_TRUE(InitializeStreamManipulator());
+
+  CHECK_EQ(stream_manipulator_->GetStatusForTesting(),
+           KioskVisionStreamManipulator::Status::kInitialized);
+}
+
+// TODO(b/350887890): add tests for the implemented
 // `KioskVisionStreamManipulator`.
 
 }  // namespace cros::tests
