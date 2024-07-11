@@ -458,6 +458,9 @@ message StartArcVmRequest {
 
   // Configuration of the virtual swap device to be set up by crosvm.
   VirtualSwapConfig virtual_swap_config = 50;
+
+  // Whether to enable virtio-pvclock in the guest.
+  bool enable_pvclock = 51;
 }
 
 enum VmStatus {
