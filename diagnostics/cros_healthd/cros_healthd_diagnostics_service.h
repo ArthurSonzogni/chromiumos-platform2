@@ -12,19 +12,22 @@
 #include <set>
 #include <string>
 
-#include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/errors/error.h>
 #include <mojo_service_manager/lib/simple_mojo_service_provider.h>
 
-#include "diagnostics/cros_healthd/routines/cros_healthd_routine_factory.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
+namespace brillo {
+class Error;
+}  // namespace brillo
+
 namespace diagnostics {
 class Context;
+class CrosHealthdRoutineFactory;
+class DiagnosticRoutine;
 
 // Production implementation of the CrosHealthdDiagnosticsService interface.
 class CrosHealthdDiagnosticsService final

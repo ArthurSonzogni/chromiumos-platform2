@@ -12,6 +12,8 @@
 #include <base/logging.h>
 #include <chromeos/mojo/service_constants.h>
 
+#include "diagnostics/cros_healthd/event_aggregator.h"
+#include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"

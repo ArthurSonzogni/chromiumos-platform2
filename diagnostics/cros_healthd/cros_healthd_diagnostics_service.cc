@@ -20,6 +20,7 @@
 #include <chromeos/mojo/service_constants.h>
 #include <metrics/metrics_library.h>
 
+#include "diagnostics/cros_healthd/routines/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/routines/routine_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"

@@ -12,14 +12,14 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo_service_manager/lib/simple_mojo_service_provider.h>
 
-#include "diagnostics/cros_healthd/event_aggregator.h"
-#include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 class Context;
+class EventAggregator;
+class FetchAggregator;
 
 // Implements the Mojo interfaces exposed by the cros_healthd daemon:
 // - CrosHealthdProbeService
