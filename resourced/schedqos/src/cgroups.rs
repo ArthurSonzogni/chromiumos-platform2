@@ -132,9 +132,17 @@ impl CgroupContext {
         &mut self,
         thread_id: ThreadId,
         cpuset_cgroup: CpusetCgroup,
+        allow_foreground_cpuset: bool,
     ) -> io::Result<()> {
         let cgroup_file = match cpuset_cgroup {
             CpusetCgroup::All => &mut self.cpuset_all,
+            CpusetCgroup::Foreground => {
+                if allow_foreground_cpuset {
+                    &mut self.cpuset_all
+                } else {
+                    &mut self.cpuset_efficient
+                }
+            }
             CpusetCgroup::Efficient => &mut self.cpuset_efficient,
         };
 
@@ -163,7 +171,12 @@ impl CpuCgroup {
 /// Cpuset cgroups
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CpusetCgroup {
+    /// Runs on all cores
     All,
+    /// Runs on all cores when foreground. Use efficient cores only when
+    /// background.
+    Foreground,
+    /// Runs on efficient cores only
     Efficient,
 }
 
@@ -172,6 +185,7 @@ impl CpusetCgroup {
     pub fn name(&self) -> &'static str {
         match self {
             Self::All => "cpuset.all",
+            Self::Foreground => "cpuset.foreground",
             Self::Efficient => "cpuset.efficient",
         }
     }
@@ -204,17 +218,26 @@ mod tests {
     fn test_set_cpuset_cgroup() {
         let (mut ctx, mut files) = create_fake_cgroup_context_pair();
 
-        ctx.set_cpuset_cgroup(ThreadId(123), CpusetCgroup::All)
+        ctx.set_cpuset_cgroup(ThreadId(1), CpusetCgroup::All, true)
             .unwrap();
-        assert_eq!(read_number(&mut files.cpuset_all), Some(123));
+        assert_eq!(read_number(&mut files.cpuset_all), Some(1));
+        ctx.set_cpuset_cgroup(ThreadId(2), CpusetCgroup::All, false)
+            .unwrap();
+        assert_eq!(read_number(&mut files.cpuset_all), Some(2));
 
-        ctx.set_cpuset_cgroup(ThreadId(456), CpusetCgroup::All)
+        ctx.set_cpuset_cgroup(ThreadId(3), CpusetCgroup::Foreground, true)
             .unwrap();
-        assert_eq!(read_number(&mut files.cpuset_all), Some(456));
+        assert_eq!(read_number(&mut files.cpuset_all), Some(3));
+        ctx.set_cpuset_cgroup(ThreadId(4), CpusetCgroup::Foreground, false)
+            .unwrap();
+        assert_eq!(read_number(&mut files.cpuset_efficient), Some(4));
 
-        ctx.set_cpuset_cgroup(ThreadId(789), CpusetCgroup::Efficient)
+        ctx.set_cpuset_cgroup(ThreadId(5), CpusetCgroup::Efficient, true)
             .unwrap();
-        assert_eq!(read_number(&mut files.cpuset_all), None);
-        assert_eq!(read_number(&mut files.cpuset_efficient), Some(789));
+        assert_eq!(read_number(&mut files.cpuset_efficient), Some(5));
+
+        ctx.set_cpuset_cgroup(ThreadId(6), CpusetCgroup::Efficient, true)
+            .unwrap();
+        assert_eq!(read_number(&mut files.cpuset_efficient), Some(6));
     }
 }
