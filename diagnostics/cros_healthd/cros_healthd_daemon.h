@@ -38,10 +38,10 @@ class CrosHealthdDaemon final : public brillo::Daemon {
   // Provides access to helper objects. Used by various telemetry fetchers,
   // event implementations and diagnostic routines.
   Context context_;
-  // |fetch_aggregator_| is responsible for fulfulling all ProbeTelemetryInfo
+  // |fetch_aggregator_| is responsible for fulfilling all ProbeTelemetryInfo
   // requests.
   FetchAggregator fetch_aggregator_{&context_};
-  // |event_aggregator_| is responsible for fulfulling all event requests from
+  // |event_aggregator_| is responsible for fulfilling all event requests from
   // CrosHealthdEventService.
   EventAggregator event_aggregator_{&context_};
   // |diagnostics_service_| delegates routine creation to |routine_factory_|.
