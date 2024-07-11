@@ -74,6 +74,8 @@ uint32_t ParseQuirks(const std::string& value) {
           {"report_least_fps_ranges", kQuirkReportLeastFpsRanges},
           {"v1device", kQuirkV1Device},
           {"android_external", kQuirkAndroidExternal},
+          {"prefer_large_preview_resolution",
+           kQuirkPreferLargePreviewResolution},
           {"android_legacy", kQuirkAndroidLegacy},
       });
   std::vector<std::string> names = base::SplitString(
