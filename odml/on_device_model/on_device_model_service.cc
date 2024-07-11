@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "odml/on_device_model/on_device_model_factory.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
 #include "odml/on_device_model/public/cpp/on_device_model.h"
@@ -392,9 +393,10 @@ void SessionWrapper::ReplayPreviousContext() {
 }  // namespace
 
 OnDeviceModelService::OnDeviceModelService(
+    raw_ref<OndeviceModelFactory> factory,
     raw_ref<MetricsLibraryInterface> metrics,
     raw_ref<odml::OdmlShimLoader> shim_loader)
-    : metrics_(metrics), shim_loader_(shim_loader) {
+    : factory_(factory), metrics_(metrics), shim_loader_(shim_loader) {
   platform_model_loader_ =
       std::make_unique<ChromeosPlatformModelLoader>(metrics_, raw_ref(*this));
 }
@@ -407,7 +409,7 @@ void OnDeviceModelService::LoadModel(
     LoadPlatformModelCallback callback) {
   auto start = base::TimeTicks::Now();
   bool support_multiple_sessions = params->support_multiple_sessions;
-  auto model_impl = CreateModel(
+  auto model_impl = factory_->CreateModel(
       metrics_, shim_loader_, std::move(params),
       base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
                          base::BindOnce(

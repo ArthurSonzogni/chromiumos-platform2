@@ -74,7 +74,7 @@ source_set("odml") {
     "on_device_model/ml/on_device_model_executor.cc",
     "on_device_model/ml/session_accessor.cc",
     "on_device_model/ml/utils.cc",
-    "on_device_model/on_device_model_internal.cc",
+    "on_device_model/on_device_model_factory_impl.cc",
     "on_device_model/on_device_model_service.cc",
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
