@@ -38,11 +38,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::IsMountedRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::IsMountedRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::IsMountedReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::IsMountedReply" />
       </arg>
     </method>
 
@@ -51,11 +51,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetVaultPropertiesRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetVaultPropertiesRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetVaultPropertiesReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetVaultPropertiesReply" />
       </arg>
     </method>
 
@@ -64,11 +64,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UnmountRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UnmountRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UnmountReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UnmountReply" />
       </arg>
     </method>
 
@@ -77,11 +77,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RemoveRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RemoveRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RemoveReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RemoveReply" />
       </arg>
     </method>
 
@@ -90,11 +90,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetWebAuthnSecretRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetWebAuthnSecretRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetWebAuthnSecretReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetWebAuthnSecretReply" />
       </arg>
     </method>
 
@@ -103,11 +103,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetWebAuthnSecretHashRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetWebAuthnSecretHashRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetWebAuthnSecretHashReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetWebAuthnSecretHashReply" />
       </arg>
     </method>
 
@@ -116,11 +116,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetRecoverableKeyStoresRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetRecoverableKeyStoresRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetRecoverableKeyStoresReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetRecoverableKeyStoresReply" />
       </arg>
     </method>
 
@@ -129,11 +129,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::StartMigrateToDircryptoRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::StartMigrateToDircryptoRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::StartMigrateToDircryptoReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::StartMigrateToDircryptoReply" />
       </arg>
     </method>
 
@@ -142,7 +142,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::DircryptoMigrationProgress" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::DircryptoMigrationProgress" />
       </arg>
     </signal>
 
@@ -151,11 +151,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::NeedsDircryptoMigrationRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::NeedsDircryptoMigrationRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::NeedsDircryptoMigrationReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::NeedsDircryptoMigrationReply" />
       </arg>
     </method>
 
@@ -164,11 +164,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetSupportedKeyPoliciesRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetSupportedKeyPoliciesRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetSupportedKeyPoliciesReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetSupportedKeyPoliciesReply" />
       </arg>
     </method>
 
@@ -177,11 +177,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetAccountDiskUsageRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetAccountDiskUsageRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetAccountDiskUsageReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetAccountDiskUsageReply" />
       </arg>
     </method>
 
@@ -196,11 +196,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::StartAuthSessionRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::StartAuthSessionRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::StartAuthSessionReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::StartAuthSessionReply" />
       </arg>
     </method>
 
@@ -209,11 +209,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::InvalidateAuthSessionRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::InvalidateAuthSessionRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::InvalidateAuthSessionReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::InvalidateAuthSessionReply" />
       </arg>
     </method>
 
@@ -222,11 +222,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ExtendAuthSessionRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ExtendAuthSessionRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ExtendAuthSessionReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ExtendAuthSessionReply" />
       </arg>
     </method>
 
@@ -240,11 +240,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetAuthSessionStatusRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetAuthSessionStatusRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetAuthSessionStatusReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetAuthSessionStatusReply" />
       </arg>
     </method>
 
@@ -254,11 +254,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::CreatePersistentUserRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::CreatePersistentUserRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::CreatePersistentUserReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::CreatePersistentUserReply"/>
       </arg>
 
     </method>
@@ -267,11 +267,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthenticateAuthFactorRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthenticateAuthFactorRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthenticateAuthFactorReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthenticateAuthFactorReply" />
       </arg>
     </method>
 
@@ -281,11 +281,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareGuestVaultRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareGuestVaultRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareGuestVaultReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareGuestVaultReply"/>
       </arg>
     </method>
 
@@ -295,11 +295,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareEphemeralVaultRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareEphemeralVaultRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareEphemeralVaultReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareEphemeralVaultReply"/>
       </arg>
     </method>
 
@@ -309,11 +309,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PreparePersistentVaultRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PreparePersistentVaultRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PreparePersistentVaultReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PreparePersistentVaultReply"/>
       </arg>
     </method>
 
@@ -323,11 +323,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareVaultForMigrationRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareVaultForMigrationRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareVaultForMigrationReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareVaultForMigrationReply"/>
       </arg>
     </method>
 
@@ -337,11 +337,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AddAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AddAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AddAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AddAuthFactorReply"/>
       </arg>
     </method>
 
@@ -351,11 +351,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UpdateAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UpdateAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UpdateAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UpdateAuthFactorReply"/>
       </arg>
     </method>
 
@@ -365,11 +365,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UpdateAuthFactorMetadataRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UpdateAuthFactorMetadataRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UpdateAuthFactorMetadataReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UpdateAuthFactorMetadataReply"/>
       </arg>
     </method>
 
@@ -379,11 +379,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RelabelAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RelabelAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RelabelAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RelabelAuthFactorReply"/>
       </arg>
     </method>
 
@@ -393,11 +393,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ReplaceAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ReplaceAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ReplaceAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ReplaceAuthFactorReply"/>
       </arg>
     </method>
 
@@ -407,11 +407,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RemoveAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RemoveAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RemoveAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RemoveAuthFactorReply"/>
       </arg>
     </method>
 
@@ -421,11 +421,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ListAuthFactorsRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ListAuthFactorsRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ListAuthFactorsReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ListAuthFactorsReply"/>
       </arg>
     </method>
 
@@ -436,11 +436,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetAuthFactorExtendedInfoRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetAuthFactorExtendedInfoRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetAuthFactorExtendedInfoReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetAuthFactorExtendedInfoReply"/>
       </arg>
     </method>
 
@@ -450,11 +450,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareAuthFactorReply"/>
       </arg>
     </method>
 
@@ -464,11 +464,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::TerminateAuthFactorRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::TerminateAuthFactorRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::TerminateAuthFactorReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::TerminateAuthFactorReply"/>
       </arg>
     </method>
 
@@ -478,11 +478,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::LockFactorUntilRebootRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::LockFactorUntilRebootRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::LockFactorUntilRebootReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::LockFactorUntilRebootReply"/>
       </arg>
     </method>
 
@@ -491,11 +491,11 @@ do.
                   value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ResetApplicationContainerRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ResetApplicationContainerRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::ResetApplicationContainerReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::ResetApplicationContainerReply" />
       </arg>
     </method>
 
@@ -506,11 +506,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::CreateVaultKeysetRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::CreateVaultKeysetRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::CreateVaultKeysetReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::CreateVaultKeysetReply"/>
       </arg>
     </method>
 
@@ -520,11 +520,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetArcDiskFeaturesRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetArcDiskFeaturesRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetArcDiskFeaturesReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetArcDiskFeaturesReply" />
       </arg>
     </method>
 
@@ -534,11 +534,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::MigrateLegacyFingerprintsRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::MigrateLegacyFingerprintsRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::MigrateLegacyFingerprintsReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::MigrateLegacyFingerprintsReply"/>
       </arg>
     </method>
 
@@ -548,11 +548,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::SetUserDataStorageWriteEnabledRequest"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::SetUserDataStorageWriteEnabledRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::SetUserDataStorageWriteEnabledReply"/>
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::SetUserDataStorageWriteEnabledReply"/>
       </arg>
     </method>
 
@@ -562,7 +562,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthFactorStatusUpdate" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthFactorStatusUpdate" />
       </arg>
     </signal>
 
@@ -573,7 +573,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::LowDiskSpace" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::LowDiskSpace" />
       </arg>
     </signal>
 
@@ -584,7 +584,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthScanResult" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthScanResult" />
       </arg>
     </signal>
 
@@ -595,7 +595,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::PrepareAuthFactorProgress" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::PrepareAuthFactorProgress" />
       </arg>
     </signal>
 
@@ -605,7 +605,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthenticateStarted" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthenticateStarted" />
       </arg>
     </signal>
 
@@ -615,7 +615,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthenticateAuthFactorCompleted" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthenticateAuthFactorCompleted" />
       </arg>
     </signal>
 
@@ -625,7 +625,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::MountStarted" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::MountStarted" />
       </arg>
     </signal>
 
@@ -635,7 +635,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::MountCompleted" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::MountCompleted" />
       </arg>
     </signal>
 
@@ -645,7 +645,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthFactorAdded" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthFactorAdded" />
       </arg>
     </signal>
 
@@ -655,7 +655,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthFactorRemoved" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthFactorRemoved" />
       </arg>
     </signal>
 
@@ -665,7 +665,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthFactorUpdated" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthFactorUpdated" />
       </arg>
     </signal>
 
@@ -676,7 +676,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::AuthSessionExpiring" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthSessionExpiring" />
       </arg>
     </signal>
 
@@ -686,7 +686,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::EvictedKeyRestored" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::EvictedKeyRestored" />
       </arg>
     </signal>
 
@@ -696,7 +696,7 @@ do.
                   value="async"/>
       <arg name="status" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::RemoveCompleted" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::RemoveCompleted" />
       </arg>
     </signal>
   </interface>
@@ -707,11 +707,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11IsTpmTokenReadyRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11IsTpmTokenReadyRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11IsTpmTokenReadyReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11IsTpmTokenReadyReply" />
       </arg>
     </method>
 
@@ -720,11 +720,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11GetTpmTokenInfoRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11GetTpmTokenInfoRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11GetTpmTokenInfoReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11GetTpmTokenInfoReply" />
       </arg>
     </method>
 
@@ -733,11 +733,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11TerminateRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11TerminateRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11TerminateReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11TerminateReply" />
       </arg>
     </method>
     <method name="Pkcs11RestoreTpmTokens">
@@ -745,11 +745,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11RestoreTpmTokensRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11RestoreTpmTokensRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::Pkcs11RestoreTpmTokensReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::Pkcs11RestoreTpmTokensReply" />
       </arg>
     </method>
   </interface>
@@ -760,11 +760,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetSystemSaltRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetSystemSaltRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetSystemSaltReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetSystemSaltReply" />
       </arg>
     </method>
 
@@ -773,11 +773,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UpdateCurrentUserActivityTimestampRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UpdateCurrentUserActivityTimestampRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::UpdateCurrentUserActivityTimestampReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::UpdateCurrentUserActivityTimestampReply" />
       </arg>
     </method>
 
@@ -786,11 +786,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetSanitizedUsernameRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetSanitizedUsernameRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetSanitizedUsernameReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetSanitizedUsernameReply" />
       </arg>
     </method>
 
@@ -799,11 +799,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetLoginStatusRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetLoginStatusRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetLoginStatusReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetLoginStatusReply" />
       </arg>
     </method>
 
@@ -813,11 +813,11 @@ do.
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::LockToSingleUserMountUntilRebootRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::LockToSingleUserMountUntilRebootRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::LockToSingleUserMountUntilRebootReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::LockToSingleUserMountUntilRebootReply" />
       </arg>
     </method>
 
@@ -826,11 +826,11 @@ do.
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetRsuDeviceIdRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetRsuDeviceIdRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetRsuDeviceIdReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetRsuDeviceIdReply" />
       </arg>
     </method>
 
@@ -839,11 +839,11 @@ do.
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetPinWeaverInfoRequest" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetPinWeaverInfoRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetPinWeaverInfoReply" />
+                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::GetPinWeaverInfoReply" />
       </arg>
     </method>
   </interface>
