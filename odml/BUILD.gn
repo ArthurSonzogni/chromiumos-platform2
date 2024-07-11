@@ -16,6 +16,9 @@ group("all") {
     ":odml_console",
     ":odmld",
   ]
+  if (use.test) {
+    deps += [ ":testrunner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -128,4 +131,28 @@ install_config("install_policy") {
 install_config("install_dbus_config") {
   sources = [ "dbus/org.chromium.Odml.conf" ]
   install_path = "dbus_system_d"
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("testrunner") {
+    sources = [
+      "on_device_model/on_device_model_factory_fake.cc",
+      "on_device_model/on_device_model_service_test.cc",
+      "on_device_model/public/cpp/test_support/test_response_holder.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    run_test = true
+    deps = [
+      ":odml",
+      "//common-mk/testrunner",
+    ]
+  }
 }

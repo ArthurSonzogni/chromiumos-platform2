@@ -1,0 +1,9 @@
+{
+  "name": "My second base model",
+  "version": "2.0.0.0",
+  "max_tokens": 1024,
+  "adaptation_ranks": [
+    32, 64
+  ],
+  "weight_path": "weights.bin"
+}
