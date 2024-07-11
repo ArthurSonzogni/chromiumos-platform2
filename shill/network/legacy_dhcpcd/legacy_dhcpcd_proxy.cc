@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/process/process_iterator.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/net-base/process_manager.h>
 
@@ -47,9 +48,20 @@ void LogDBusError(const brillo::ErrorPtr& error,
   }
 }
 
-std::vector<std::string> GetDhcpcdFlags(
-    Technology technology, const DHCPClientProxy::Options& options) {
-  std::vector<std::string> flags = {
+// Returns true if the lease file is ephemeral, which means the lease file
+// should be deleted during cleanup.
+bool IsEphemeralLease(const DHCPClientProxy::Options& options,
+                      std::string_view interface) {
+  return options.lease_name.empty() || options.lease_name == interface;
+}
+
+// Returns a list of dhcpcd args. Redacts the hostname and the lease name for
+// logging if |redact_args| is set to true.
+std::vector<std::string> GetDhcpcdArgs(Technology technology,
+                                       const DHCPClientProxy::Options& options,
+                                       std::string_view interface,
+                                       bool redact_args) {
+  std::vector<std::string> args = {
       "-B",                               // Run in foreground.
       "-f",        kDHCPCDConfigPath,     // Specify config file path.
       "-i",        "chromeos",            // Static value for Vendor class info.
@@ -61,38 +73,40 @@ std::vector<std::string> GetDhcpcdFlags(
 
   // Request hostname from server.
   if (!options.hostname.empty()) {
-    flags.insert(flags.end(), {"-h", options.hostname});
+    args.insert(args.end(),
+                {"-h", redact_args ? "<redacted_hostname>" : options.hostname});
   }
 
   if (options.use_arp_gateway) {
-    flags.insert(flags.end(), {
-                                  "-R",         // ARP for default gateway.
-                                  "--unicast",  // Enable unicast ARP on renew.
-                              });
+    args.insert(args.end(), {
+                                "-R",         // ARP for default gateway.
+                                "--unicast",  // Enable unicast ARP on renew.
+                            });
   }
 
   if (options.use_rfc_8925) {
     // Request option 108 to prefer IPv6-only. If server also supports this, no
     // dhcp lease will be assigned and dhcpcd will notify shill with an
     // IPv6OnlyPreferred StatusChanged event.
-    flags.insert(flags.end(), {"-o", "ipv6_only_preferred"});
+    args.insert(args.end(), {"-o", "ipv6_only_preferred"});
   }
 
   // TODO(jiejiang): This will also include the WiFi Direct GC mode now. We may
   // want to check if we should enable it in the future.
   if (options.apply_dscp && technology == Technology::kWiFi) {
     // This flag is added by https://crrev.com/c/4861699.
-    flags.push_back("--apply_dscp");
+    args.push_back("--apply_dscp");
   }
 
-  return flags;
-}
+  if (IsEphemeralLease(options, interface)) {
+    args.push_back(std::string(interface));
+  } else {
+    args.push_back(base::StrCat(
+        {interface, "=",
+         redact_args ? "<redacted_lease_name>" : options.lease_name}));
+  }
 
-// Returns true if the lease file is ephermeral, which means the lease file
-// should be deleted during cleanup.
-bool IsEphemeralLease(const DHCPClientProxy::Options& options,
-                      std::string_view interface) {
-  return options.lease_name.empty() || options.lease_name == interface;
+  return args;
 }
 
 }  // namespace
@@ -188,12 +202,8 @@ std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
     Technology technology,
     const DHCPClientProxy::Options& options,
     DHCPClientProxy::EventHandler* handler) {
-  std::vector<std::string> args = GetDhcpcdFlags(technology, options);
-  if (IsEphemeralLease(options, interface)) {
-    args.push_back(std::string(interface));
-  } else {
-    args.push_back(base::StrCat({interface, "=", options.lease_name}));
-  }
+  const std::vector<std::string> args =
+      GetDhcpcdArgs(technology, options, interface, /*redact_args=*/false);
 
   net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = kDHCPCDUser;
@@ -216,6 +226,12 @@ std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
       // outside this instance.
       &LegacyDHCPCDProxyFactory::CleanUpDhcpcd, base::Unretained(this),
       std::string(interface), options, pid));
+
+  // Log dhcpcd args but redact the args to exclude PII.
+  LOG(INFO) << "Created dhcpcd with pid " << pid << " and args: "
+            << base::JoinString(GetDhcpcdArgs(technology, options, interface,
+                                              /*redact_args=*/true),
+                                " ");
 
   // Inject the exit callback with pid information.
   if (!process_manager_->UpdateExitCallback(
