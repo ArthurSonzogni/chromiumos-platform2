@@ -31,6 +31,7 @@
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/power_opt.h"
+#include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
 #include "shill/network/network_manager.h"
@@ -441,6 +442,7 @@ class Cellular : public Device,
   std::string ModemTypeEnumToString(ModemType type);
   std::string ModemMREnumToString(ModemMR mr);
   ModemType modem_type() { return modem_type_; }
+  void SetFlashingProperty(bool flashing);
 
   bool ShouldForceInitEpsBearerSettings();
   // DBus property getters
@@ -561,6 +563,8 @@ class Cellular : public Device,
   // Delay before connecting to pending connect requests. This helps prevent
   // connect failures while the Modem is still starting up.
   static constexpr base::TimeDelta kPendingConnectDelay = base::Seconds(2);
+
+  using InProgressTasks = std::vector<KeyValueStore>;
 
  private:
   friend class CellularTest;
@@ -855,6 +859,12 @@ class Cellular : public Device,
   bool IsTetheringOperationDunMultiplexedConnectOngoing();
   bool IsTetheringOperationDunMultiplexedDisconnectOngoing();
 
+  // Helpers to process in-progress tasks from modemfwd.
+  void GetModemfwdProperties();
+  void OnModemfwdPropertiesChanged(const std::string& interface,
+                                   const KeyValueStore& changed_properties);
+  void ProcessModemfwdInProgressTasks(const InProgressTasks& tasks);
+
   // Nested network info associated to a single PDN connection in the cellular
   // device.
   class NetworkInfo {
@@ -975,6 +985,7 @@ class Cellular : public Device,
   std::string mm_plugin_;
   uint32_t max_multiplexed_bearers_ = 1;
   bool scanning_ = false;
+  bool flashing_ = false;
   bool polling_location_ = false;
   base::CancelableOnceClosure poll_location_task_;
 
@@ -1088,6 +1099,7 @@ class Cellular : public Device,
   // If the modem FW version supports the hotspot feature.
   bool firmware_supports_tethering_ = true;
   std::unique_ptr<net_base::RTNLListener> link_listener_;
+  std::unique_ptr<DBusPropertiesProxy> modemfwd_dbus_properties_proxy_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };

@@ -31,6 +31,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <chromeos/dbus/modemfwd/dbus-constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/ipv6_address.h>
 #include <chromeos/net-base/mac_address.h>
@@ -353,6 +354,23 @@ Cellular::Cellular(Manager* manager,
       this, metrics(), manager->patchpanel_client(),
       base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
                           weak_ptr_factory_.GetWeakPtr()));
+
+  modemfwd_dbus_properties_proxy_ =
+      control_interface()->CreateDBusPropertiesProxy(
+          RpcIdentifier(modemfwd::kModemfwdServicePath),
+          modemfwd::kModemfwdServiceName);
+
+  if (modemfwd_dbus_properties_proxy_) {
+    modemfwd_dbus_properties_proxy_->SetPropertiesChangedCallback(
+        base::BindRepeating(&Cellular::OnModemfwdPropertiesChanged,
+                            base::Unretained(this)));
+  }
+
+  // Modemfwd might have issued some property updates before the cellular
+  // object was created to receive the updates, so we explicitly refresh the
+  // properties here.
+  GetModemfwdProperties();
+
   SLOG(1) << LoggingTag() << ": Cellular()";
 }
 
@@ -360,6 +378,64 @@ Cellular::~Cellular() {
   LOG(INFO) << LoggingTag() << ": ~Cellular()";
   if (capability_)
     DestroyCapability();
+}
+
+void Cellular::GetModemfwdProperties() {
+  SLOG(1) << LoggingTag() << " : " << __func__;
+
+  if (!modemfwd_dbus_properties_proxy_) {
+    LOG(ERROR) << "GetModemfwdProperties called with no proxy";
+    return;
+  }
+
+  auto properties =
+      modemfwd_dbus_properties_proxy_->GetAll(modemfwd::kModemfwdInterface);
+  OnModemfwdPropertiesChanged(modemfwd::kModemfwdInterface, properties);
+}
+
+// Process in-progress tasks from modemfwd and update the flashing property.
+void Cellular::ProcessModemfwdInProgressTasks(const InProgressTasks& tasks) {
+  bool flashing = false;
+  std::string task_type;
+
+  for (const auto& task : tasks) {
+    if (!task.Contains<std::string>(modemfwd::kTaskType)) {
+      LOG(WARNING) << LoggingTag()
+                   << ": Missing task type for in-progress task";
+      continue;
+    }
+
+    task_type = task.Get<std::string>(modemfwd::kTaskType);
+
+    if (task_type == modemfwd::kTaskTypeFlash &&
+        task.Contains<std::string>(modemfwd::kFlashTaskDeviceId)) {
+      std::string device_id =
+          task.Get<std::string>(modemfwd::kFlashTaskDeviceId);
+      if (device_id == GetDeviceId(nullptr)) {
+        flashing = true;
+        break;
+      }
+    }
+  }
+  SetFlashingProperty(flashing);
+}
+
+void Cellular::OnModemfwdPropertiesChanged(
+    const std::string& interface, const KeyValueStore& changed_properties) {
+  SLOG(1) << LoggingTag() << __func__;
+
+  if (!changed_properties.ContainsVariant(modemfwd::kInProgressTasksProperty)) {
+    return;
+  }
+  const std::vector<brillo::VariantDictionary>& results =
+      changed_properties.GetVariant(modemfwd::kInProgressTasksProperty)
+          .Get<std::vector<brillo::VariantDictionary>>();
+  InProgressTasks tasks;
+  for (const auto& result : results) {
+    KeyValueStore task = KeyValueStore::ConvertFromVariantDictionary(result);
+    tasks.push_back(task);
+  }
+  ProcessModemfwdInProgressTasks(tasks);
 }
 
 Network* Cellular::GetPrimaryNetwork() const {
@@ -3497,6 +3573,7 @@ void Cellular::RegisterProperties() {
   store->RegisterConstString(kModelIdProperty, &model_id_);
   store->RegisterConstString(kEquipmentIdProperty, &equipment_id_);
   store->RegisterConstBool(kScanningProperty, &scanning_);
+  store->RegisterConstBool(kFlashingProperty, &flashing_);
 
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
   store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
@@ -4212,6 +4289,14 @@ void Cellular::SetScanningProperty(bool scanning) {
 
   if (!scanning_)
     ConnectToPending();
+}
+
+void Cellular::SetFlashingProperty(bool flashing) {
+  SLOG(1) << LoggingTag() << ": " << __func__ << ": " << flashing;
+  if (flashing_ == flashing)
+    return;
+  flashing_ = flashing;
+  adaptor()->EmitBoolChanged(kFlashingProperty, flashing_);
 }
 
 void Cellular::SetSelectedNetwork(const std::string& selected_network) {

@@ -77,6 +77,7 @@ FlashTask::FlashTask(Delegate* delegate,
 
 void FlashTask::Start(Modem* modem, const FlashTask::Options& options) {
   SetProp(kFlashTaskForceFlash, options.should_always_flash);
+  SetProp(kFlashTaskDeviceId, modem->GetDeviceId());
   if (options.carrier_override_uuid.has_value()) {
     SetProp(kFlashTaskCarrierOverride, *options.carrier_override_uuid);
   }
