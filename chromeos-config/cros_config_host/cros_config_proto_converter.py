@@ -4445,8 +4445,12 @@ def dsm_encode(dsm_config):
         mask <<= 3
         if dsm_config.HasField("energy_detection_threshold"):
             supported_functions |= mask
+        # Function 11
+        mask <<= 1
+        if dsm_config.HasField("rfi_mitigation"):
+            supported_functions |= mask
         # Function 12
-        mask <<= 2
+        mask <<= 1
         if dsm_config.HasField("enablement_11be_countries"):
             supported_functions |= mask
         return supported_functions
@@ -4480,6 +4484,14 @@ def dsm_encode(dsm_config):
                     data |= 1 << bit
         return dsm_value(data)
 
+    def dsm_energy_rfi_mitigation(dsm_config):
+        enablement = 0
+        if dsm_config.HasField("rfi_mitigation"):
+            for attr, bit in (("dlvr", 0), ("ddr", 1)):
+                if getattr(dsm_config.rfi_mitigation, attr):
+                    enablement |= 1 << bit
+        return dsm_value(enablement)
+
     supported_functions = enable_supported_functions(dsm_config)
     if supported_functions == 0:
         return bytearray(0)
@@ -4494,6 +4506,7 @@ def dsm_encode(dsm_config):
         + dsm_value(dsm_config.unii_4)
         + dsm_enablement_11be_value(dsm_config)
         + dsm_energy_detection_threshold_value(dsm_config)
+        + dsm_energy_rfi_mitigation(dsm_config)
     )
 
 
