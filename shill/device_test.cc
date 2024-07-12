@@ -82,6 +82,8 @@ class TestDevice : public Device {
              Technology technology)
       : Device(manager, link_name, mac_address, interface_index, technology),
         start_stop_error_(Error::kSuccess) {
+    CreateImplicitNetwork(interface_index, link_name,
+                          /*fixed_ip_params=*/false);
     ON_CALL(*this, ShouldBringNetworkInterfaceDownAfterDisabled())
         .WillByDefault(Invoke(
             this,

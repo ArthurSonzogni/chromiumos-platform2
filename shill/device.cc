@@ -65,9 +65,7 @@ Device::Device(Manager* manager,
                const std::string& link_name,
                std::optional<net_base::MacAddress> mac_address,
                int interface_index,
-               Technology technology,
-               bool fixed_ip_params,
-               bool use_implicit_network)
+               Technology technology)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
@@ -116,10 +114,6 @@ Device::Device(Manager* manager,
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty, &Device::GetTechnologyString);
 
-  if (use_implicit_network) {
-    CreateImplicitNetwork(fixed_ip_params);
-  }
-
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
   // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
@@ -134,9 +128,11 @@ Device::~Device() {
   }
 }
 
-void Device::CreateImplicitNetwork(bool fixed_ip_params) {
+void Device::CreateImplicitNetwork(int interface_index,
+                                   std::string_view interface_name,
+                                   bool fixed_ip_params) {
   implicit_network_ = manager_->network_manager()->CreateNetwork(
-      interface_index_, link_name_, technology_, fixed_ip_params,
+      interface_index, interface_name, technology_, fixed_ip_params,
       manager_->patchpanel_client());
   implicit_network_->RegisterEventHandler(this);
 }

@@ -26,6 +26,7 @@ MockDevice::MockDevice(Manager* manager,
              mac_address,
              interface_index,
              Technology::kUnknown) {
+  CreateImplicitNetwork(interface_index, link_name, /*fixed_ip_params=*/false);
   DefaultValue<Technology>::Set(Technology::kUnknown);
 }
 

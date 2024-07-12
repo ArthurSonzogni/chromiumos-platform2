@@ -211,6 +211,8 @@ WiFi::WiFi(Manager* manager,
       priority_(kDefaultPriority),
       weak_ptr_factory_while_started_(this),
       weak_ptr_factory_(this) {
+  CreateImplicitNetwork(interface_index, link, /*fixed_ip_params=*/false);
+
   scoped_supplicant_listener_.reset(
       new SupplicantManager::ScopedSupplicantListener(
           manager->supplicant_manager(),

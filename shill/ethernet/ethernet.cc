@@ -132,6 +132,7 @@ Ethernet::Ethernet(Manager* manager,
       is_eap_detected_(false),
       eap_listener_(std::make_unique<EapListener>(interface_index, link_name)),
       weak_ptr_factory_(this) {
+  CreateImplicitNetwork(interface_index, link_name, /*fixed_ip_params=*/false);
   PropertyStore* store = this->mutable_store();
   store->RegisterConstBool(kEapAuthenticationCompletedProperty,
                            &is_eap_authenticated_);

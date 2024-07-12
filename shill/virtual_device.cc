@@ -23,12 +23,9 @@ VirtualDevice::VirtualDevice(Manager* manager,
                              int interface_index,
                              Technology technology,
                              bool fixed_ip_params)
-    : Device(manager,
-             link_name,
-             std::nullopt,
-             interface_index,
-             technology,
-             fixed_ip_params) {}
+    : Device(manager, link_name, std::nullopt, interface_index, technology) {
+  CreateImplicitNetwork(interface_index, link_name, fixed_ip_params);
+}
 
 VirtualDevice::~VirtualDevice() = default;
 

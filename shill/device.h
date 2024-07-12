@@ -52,9 +52,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
          const std::string& link_name,
          std::optional<net_base::MacAddress> mac_address,
          int interface_index,
-         Technology technology,
-         bool fixed_ip_params = false,
-         bool use_implicit_network = true);
+         Technology technology);
   Device(const Device&) = delete;
   Device& operator=(const Device&) = delete;
 
@@ -307,9 +305,12 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Update the device state to the pending state.
   void UpdateEnabledState();
 
-  // Create the implicit Network object. It's called at constructor when the
-  // parameter |use_implicit_network| is true.
-  void CreateImplicitNetwork(bool fixed_ip_params);
+  // Create the implicit Network object. Device subclasses that use a single
+  // network interface and a single Network should call CreateImplicitNetwork in
+  // their constructor.
+  void CreateImplicitNetwork(int interface_index,
+                             std::string_view interface_name,
+                             bool fixed_ip_params);
 
   // Drops the currently selected service along with its IP configuration and
   // implicit Network connection, if any. Must be reimplemented by classes (e.g.
