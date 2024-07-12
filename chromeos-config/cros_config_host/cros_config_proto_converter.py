@@ -4441,8 +4441,12 @@ def dsm_encode(dsm_config):
         mask <<= 1
         if dsm_config.unii_4 >= 0:
             supported_functions |= mask
+        # Function 10
+        mask <<= 3
+        if dsm_config.HasField("energy_detection_threshold"):
+            supported_functions |= mask
         # Function 12
-        mask <<= 5
+        mask <<= 2
         if dsm_config.HasField("enablement_11be_countries"):
             supported_functions |= mask
         return supported_functions
@@ -4461,6 +4465,21 @@ def dsm_encode(dsm_config):
                 enablement += 2
         return dsm_value(enablement)
 
+    def dsm_energy_detection_threshold_value(dsm_config):
+        data = 0
+        if dsm_config.HasField("energy_detection_threshold"):
+            if dsm_config.energy_detection_threshold.revision:
+                data += dsm_config.energy_detection_threshold.revision & 0xf;
+            for attr, bit in (("etsi_hb", 6), ("fcc_uhb", 9),
+                              ("hb_5g2_3", 13), ("hb_5g4", 14),
+                              ("hb_5g6", 15), ("hb_5g8_9", 16),
+                              ("uhb_6g1", 17), ("uhb_6g3", 18),
+                              ("uhb_6g5", 19), ("uhb_6g6", 20),
+                              ("uhb_6g8", 21), ("uhb_7g0", 22)):
+                if getattr(dsm_config.energy_detection_threshold, attr):
+                    data |= 1 << bit
+        return dsm_value(data)
+
     supported_functions = enable_supported_functions(dsm_config)
     if supported_functions == 0:
         return bytearray(0)
@@ -4474,6 +4493,7 @@ def dsm_encode(dsm_config):
         + dsm_value(dsm_config.enablement_11ax)
         + dsm_value(dsm_config.unii_4)
         + dsm_enablement_11be_value(dsm_config)
+        + dsm_energy_detection_threshold_value(dsm_config)
     )
 
 
