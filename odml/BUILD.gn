@@ -7,17 +7,19 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [
-    ":install_dbus_config",
-    ":install_init",
-    ":install_minijail_conf",
-    ":install_policy",
-    ":install_service_manager_policy_config",
-    ":odml_console",
-    ":odmld",
-  ]
-  if (use.test) {
-    deps += [ ":testrunner" ]
+  if (use.feature_management) {
+    deps = [
+      ":install_dbus_config",
+      ":install_init",
+      ":install_minijail_conf",
+      ":install_policy",
+      ":install_service_manager_policy_config",
+      ":odml_console",
+      ":odmld",
+    ]
+    if (use.test) {
+      deps += [ ":testrunner" ]
+    }
   }
 }
 
