@@ -18,7 +18,7 @@
           OOBE config data serialized into a protobuf.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="oobe_config::OobeRestoreData"/>
+                    value="oobe_config/proto_bindings/oobe_config.pb.h;oobe_config::OobeRestoreData"/>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>

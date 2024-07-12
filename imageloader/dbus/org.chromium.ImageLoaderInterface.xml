@@ -127,7 +127,7 @@
         arguments that determine now a DLC gets verified and mounted.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="imageloader::LoadDlcRequest"/>
+                  value="imageloader/proto_bindings/imageloader.pb.h;imageloader::LoadDlcRequest"/>
     </arg>
     <arg name="mount_point" type="s" direction="out">
       <tp:docstring>

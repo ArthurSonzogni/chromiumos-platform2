@@ -20,14 +20,14 @@
     <method name="EnableHpsSense">
       <arg name="serialized_proto" direction="in" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="hps::FeatureConfig" />
+                    value="hps/proto_bindings/hps_service.pb.h;hps::FeatureConfig" />
       </arg>
     </method>
     <method name="DisableHpsSense"></method>
     <method name="GetResultHpsSense">
       <arg name="result" type="ay" direction="out">
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="hps::HpsResultProto" />
+                    value="hps/proto_bindings/hps_service.pb.h;hps::HpsResultProto" />
       <tp:docstring>
         Result returned for the requested feature.
       </tp:docstring>
@@ -36,20 +36,20 @@
     <signal name="HpsSenseChanged">
       <arg name="result" direction="out" type="ay" />
             <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="hps::HpsResultProto" />
+                    value="hps/proto_bindings/hps_service.pb.h;hps::HpsResultProto" />
     </signal>
 
     <method name="EnableHpsNotify">
       <arg name="serialized_proto" direction="in" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="hps::FeatureConfig" />
+                    value="hps/proto_bindings/hps_service.pb.h;hps::FeatureConfig" />
       </arg>
     </method>
     <method name="DisableHpsNotify"></method>
     <method name="GetResultHpsNotify">
       <arg name="result" type="ay" direction="out">
             <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="hps::HpsResultProto" />
+                    value="hps/proto_bindings/hps_service.pb.h;hps::HpsResultProto" />
       <tp:docstring>
         Result returned for the requested feature.
       </tp:docstring>
@@ -58,7 +58,7 @@
     <signal name="HpsNotifyChanged">
       <arg name="result" direction="out" type="ay" />
             <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="hps::HpsResultProto" />
+                    value="hps/proto_bindings/hps_service.pb.h;hps::HpsResultProto" />
     </signal>
   </interface>
 </node>

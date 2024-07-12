@@ -14,11 +14,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::EnqueueRecordRequest" />
+                    value="missive/proto/interface.pb.h;::reporting::EnqueueRecordRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::EnqueueRecordResponse" />
+                    value="missive/proto/interface.pb.h;::reporting::EnqueueRecordResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
@@ -28,11 +28,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::FlushPriorityRequest" />
+                    value="missive/proto/interface.pb.h;::reporting::FlushPriorityRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::FlushPriorityResponse" />
+                    value="missive/proto/interface.pb.h;::reporting::FlushPriorityResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
@@ -43,11 +43,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::ConfirmRecordUploadRequest" />
+                    value="missive/proto/interface.pb.h;::reporting::ConfirmRecordUploadRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::ConfirmRecordUploadResponse" />
+                    value="missive/proto/interface.pb.h;::reporting::ConfirmRecordUploadResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
@@ -58,11 +58,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::UpdateConfigInMissiveRequest" />
+                    value="missive/proto/interface.pb.h;::reporting::UpdateConfigInMissiveRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::UpdateConfigInMissiveResponse" />
+                    value="missive/proto/interface.pb.h;::reporting::UpdateConfigInMissiveResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
@@ -72,11 +72,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::UpdateEncryptionKeyRequest" />
+                    value="missive/proto/interface.pb.h;::reporting::UpdateEncryptionKeyRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::reporting::UpdateEncryptionKeyResponse" />
+                    value="missive/proto/interface.pb.h;::reporting::UpdateEncryptionKeyResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>

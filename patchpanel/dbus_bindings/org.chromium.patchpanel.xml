@@ -25,11 +25,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcShutdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcShutdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcShutdownResponse" />
       </arg>
     </method>
 
@@ -37,11 +37,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcStartupRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcStartupResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcStartupResponse" />
       </arg>
     </method>
 
@@ -49,11 +49,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcVmShutdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcVmShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcVmShutdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcVmShutdownResponse" />
       </arg>
     </method>
 
@@ -61,11 +61,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcVmStartupRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcVmStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ArcVmStartupResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ArcVmStartupResponse" />
       </arg>
     </method>
 
@@ -73,12 +73,12 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ConnectNamespaceRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ConnectNamespaceRequest" />
       </arg>
       <arg name="client_fd" type="h" direction="in" />
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ConnectNamespaceResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ConnectNamespaceResponse" />
       </arg>
     </method>
 
@@ -86,12 +86,12 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::LocalOnlyNetworkRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::LocalOnlyNetworkRequest" />
       </arg>
       <arg name="client_fd" type="h" direction="in" />
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::LocalOnlyNetworkResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::LocalOnlyNetworkResponse" />
       </arg>
     </method>
 
@@ -99,12 +99,12 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TetheredNetworkRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TetheredNetworkRequest" />
       </arg>
       <arg name="client_fd" type="h" direction="in" />
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TetheredNetworkResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TetheredNetworkResponse" />
       </arg>
     </method>
 
@@ -112,11 +112,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ConfigureNetworkRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ConfigureNetworkRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ConfigureNetworkResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ConfigureNetworkResponse" />
       </arg>
     </method>
 
@@ -125,11 +125,11 @@
       <annotation name="org.chromium.DBus.Method.Const" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::GetDevicesRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::GetDevicesRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::GetDevicesResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::GetDevicesResponse" />
       </arg>
     </method>
 
@@ -138,11 +138,11 @@
       <annotation name="org.chromium.DBus.Method.Const" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::GetDownstreamNetworkInfoRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::GetDownstreamNetworkInfoRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::GetDownstreamNetworkInfoResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::GetDownstreamNetworkInfoResponse" />
       </arg>
     </method>
 
@@ -151,11 +151,11 @@
       <annotation name="org.chromium.DBus.Method.Const" value="true" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TrafficCountersRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TrafficCountersRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TrafficCountersResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TrafficCountersResponse" />
       </arg>
     </method>
 
@@ -163,11 +163,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ModifyPortRuleRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ModifyPortRuleRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ModifyPortRuleResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ModifyPortRuleResponse" />
       </arg>
     </method>
 
@@ -175,11 +175,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ParallelsVmShutdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ParallelsVmShutdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmShutdownResponse" />
       </arg>
     </method>
 
@@ -187,11 +187,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ParallelsVmStartupRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::ParallelsVmStartupResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::ParallelsVmStartupResponse" />
       </arg>
     </method>
 
@@ -199,11 +199,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BruschettaVmShutdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BruschettaVmShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BruschettaVmShutdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BruschettaVmShutdownResponse" />
       </arg>
     </method>
 
@@ -211,11 +211,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BruschettaVmStartupRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BruschettaVmStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BruschettaVmStartupResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BruschettaVmStartupResponse" />
       </arg>
     </method>
 
@@ -223,11 +223,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BorealisVmShutdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BorealisVmShutdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmShutdownResponse" />
       </arg>
     </method>
 
@@ -235,11 +235,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BorealisVmStartupRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::BorealisVmStartupResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::BorealisVmStartupResponse" />
       </arg>
     </method>
 
@@ -247,12 +247,12 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetDnsRedirectionRuleRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::SetDnsRedirectionRuleRequest" />
       </arg>
       <arg name="client_fd" type="h" direction="in" />
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetDnsRedirectionRuleResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::SetDnsRedirectionRuleResponse" />
       </arg>
     </method>
 
@@ -260,11 +260,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetVpnLockdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::SetVpnLockdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetVpnLockdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::SetVpnLockdownResponse" />
       </arg>
     </method>
 
@@ -272,12 +272,12 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TagSocketRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TagSocketRequest" />
       </arg>
       <arg name="socket_fd" type="h" direction="in" />
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TagSocketResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TagSocketResponse" />
       </arg>
     </method>
 
@@ -285,11 +285,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TerminaVmShutdownRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TerminaVmShutdownRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TerminaVmShutdownResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TerminaVmShutdownResponse" />
       </arg>
     </method>
 
@@ -297,11 +297,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TerminaVmStartupRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TerminaVmStartupRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TerminaVmStartupResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TerminaVmStartupResponse" />
       </arg>
     </method>
 
@@ -309,11 +309,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyAndroidWifiMulticastLockChangeRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifyAndroidWifiMulticastLockChangeRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyAndroidWifiMulticastLockChangeResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifyAndroidWifiMulticastLockChangeResponse" />
       </arg>
     </method>
 
@@ -321,11 +321,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyAndroidInteractiveStateRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifyAndroidInteractiveStateRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyAndroidInteractiveStateResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifyAndroidInteractiveStateResponse" />
       </arg>
     </method>
 
@@ -333,11 +333,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifySocketConnectionEventRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifySocketConnectionEventRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifySocketConnectionEventResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifySocketConnectionEventResponse" />
       </arg>
     </method>
 
@@ -345,11 +345,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyARCVPNSocketConnectionEventRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifyARCVPNSocketConnectionEventRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NotifyARCVPNSocketConnectionEventResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NotifyARCVPNSocketConnectionEventResponse" />
       </arg>
     </method>
 
@@ -357,11 +357,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetFeatureFlagRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::SetFeatureFlagRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::SetFeatureFlagResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::SetFeatureFlagResponse" />
       </arg>
     </method>
 
@@ -369,21 +369,21 @@
     <signal name="NetworkDeviceChanged">
       <arg name="payload" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NetworkDeviceChangedSignal" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NetworkDeviceChangedSignal" />
       </arg>
     </signal>
 
     <signal name="NetworkConfigurationChanged">
       <arg name="payload" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NetworkConfigurationChangedSignal" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NetworkConfigurationChangedSignal" />
       </arg>
     </signal>
 
     <signal name="NeighborReachabilityEvent">
       <arg name="payload" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::NeighborReachabilityEventSignal" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::NeighborReachabilityEventSignal" />
       </arg>
     </signal>
   </interface>

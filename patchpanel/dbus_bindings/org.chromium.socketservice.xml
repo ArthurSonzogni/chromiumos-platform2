@@ -25,12 +25,12 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TagSocketRequest" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TagSocketRequest" />
       </arg>
       <arg name="socket_fd" type="h" direction="in" />
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="patchpanel::TagSocketResponse" />
+                    value="patchpanel/proto_bindings/patchpanel_service.pb.h;patchpanel::TagSocketResponse" />
       </arg>
     </method>
   </interface>

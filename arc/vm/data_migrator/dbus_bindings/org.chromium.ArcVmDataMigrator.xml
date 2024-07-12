@@ -11,7 +11,7 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="arc::data_migrator::HasDataToMigrateRequest"/>
+                    value="arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h;arc::data_migrator::HasDataToMigrateRequest"/>
       </arg>
       <arg name="response" type="b" direction="out"/>
     </method>
@@ -23,11 +23,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="arc::data_migrator::GetAndroidDataInfoRequest"/>
+                    value="arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h;arc::data_migrator::GetAndroidDataInfoRequest"/>
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="arc::data_migrator::GetAndroidDataInfoResponse"/>
+                    value="arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h;arc::data_migrator::GetAndroidDataInfoResponse"/>
       </arg>
     </method>
     <method name="StartMigration">
@@ -38,7 +38,7 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="arc::data_migrator::StartMigrationRequest"/>
+                    value="arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h;arc::data_migrator::StartMigrationRequest"/>
       </arg>
     </method>
     <signal name="DataMigrationProgress">
@@ -48,7 +48,7 @@
       </tp:docstring>
       <arg name="progress" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="arc::data_migrator::DataMigrationProgress"/>
+                    value="arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h;arc::data_migrator::DataMigrationProgress"/>
       </arg>
     </signal>
   </interface>

@@ -18,7 +18,7 @@
   <method name="VerifyComponents">
     <arg type="ay" name="verify_components_reply" direction="out">
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="hardware_verifier::VerifyComponentsReply" />
+                  value="hardware_verifier/hardware_verifier.pb.h;hardware_verifier::VerifyComponentsReply" />
     </arg>
     <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>

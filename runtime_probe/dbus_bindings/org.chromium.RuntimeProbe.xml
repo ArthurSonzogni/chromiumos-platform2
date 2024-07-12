@@ -16,14 +16,14 @@
         A serialized protobuf |ProbeRequest|.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="runtime_probe::ProbeRequest" />
+                  value="runtime_probe/proto_bindings/runtime_probe.pb.h;runtime_probe::ProbeRequest" />
     </arg>
     <arg type="ay" name="reply" direction="out">
       <tp:docstring>
         A serialized protobuf |ProbeResult|.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="runtime_probe::ProbeResult" />
+                  value="runtime_probe/proto_bindings/runtime_probe.pb.h;runtime_probe::ProbeResult" />
     </arg>
     <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>
@@ -36,14 +36,14 @@
         A serialized protobuf |GetKnownComponentsRequest|.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="runtime_probe::GetKnownComponentsRequest" />
+                  value="runtime_probe/proto_bindings/runtime_probe.pb.h;runtime_probe::GetKnownComponentsRequest" />
     </arg>
     <arg type="ay" name="reply" direction="out">
       <tp:docstring>
         A serialized protobuf |GetKnownComponentsResult|.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="runtime_probe::GetKnownComponentsResult" />
+                  value="runtime_probe/proto_bindings/runtime_probe.pb.h;runtime_probe::GetKnownComponentsResult" />
     </arg>
     <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>
@@ -56,14 +56,14 @@
         A serialized protobuf |ProbeSsfcComponentsRequest|.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="runtime_probe::ProbeSsfcComponentsRequest" />
+                  value="runtime_probe/proto_bindings/runtime_probe.pb.h;runtime_probe::ProbeSsfcComponentsRequest" />
     </arg>
     <arg type="ay" name="reply" direction="out">
       <tp:docstring>
         A serialized protobuf |ProbeSsfcComponentsResponse|.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="runtime_probe::ProbeSsfcComponentsResponse" />
+                  value="runtime_probe/proto_bindings/runtime_probe.pb.h;runtime_probe::ProbeSsfcComponentsResponse" />
     </arg>
     <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>

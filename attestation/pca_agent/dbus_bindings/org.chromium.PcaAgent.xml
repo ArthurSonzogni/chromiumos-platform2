@@ -19,11 +19,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::pca_agent::EnrollRequest" />
+                    value="attestation/proto_bindings/pca_agent.pb.h;attestation::pca_agent::EnrollRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::pca_agent::EnrollReply" />
+                    value="attestation/proto_bindings/pca_agent.pb.h;attestation::pca_agent::EnrollReply" />
       </arg>
     </method>
     <method name="GetCertificate">
@@ -31,11 +31,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::pca_agent::GetCertificateRequest" />
+                    value="attestation/proto_bindings/pca_agent.pb.h;attestation::pca_agent::GetCertificateRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::pca_agent::GetCertificateReply" />
+                    value="attestation/proto_bindings/pca_agent.pb.h;attestation::pca_agent::GetCertificateReply" />
       </arg>
     </method>
   </interface>
@@ -49,13 +49,13 @@
                   value="async"/>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::pca_agent::RksCertificateAndSignature" />
+                    value="attestation/proto_bindings/pca_agent.pb.h;attestation::pca_agent::RksCertificateAndSignature" />
       </arg>
     </method>
     <signal name="CertificateFetched">
       <arg name="signal" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="attestation::pca_agent::RksCertificateAndSignature" />
+                    value="attestation/proto_bindings/pca_agent.pb.h;attestation::pca_agent::RksCertificateAndSignature" />
       </arg>
     </signal>
   </interface>

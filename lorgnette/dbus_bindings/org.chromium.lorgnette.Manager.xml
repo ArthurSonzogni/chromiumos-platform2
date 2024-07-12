@@ -11,7 +11,7 @@
           of SaneDevice structs as provided by SANE.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::ListScannersResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::ListScannersResponse" />
       </arg>
     </method>
     <method name="GetScannerCapabilities">
@@ -28,7 +28,7 @@
           Serialized ScannerCapabilities proto.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::ScannerCapabilities" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::ScannerCapabilities" />
       </arg>
     </method>
     <method name="OpenScanner">
@@ -42,14 +42,14 @@
           Serialized OpenScannerRequest proto specifying the scanner to open.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::OpenScannerRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::OpenScannerRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Serialized OpenScannerResponse proto.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::OpenScannerResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::OpenScannerResponse" />
       </arg>
     </method>
     <method name="CloseScanner">
@@ -62,14 +62,14 @@
           Serialized CloseScannerRequest proto specifying the scanner to close.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::CloseScannerRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::CloseScannerRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Serialized CloseScannerResponse proto.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::CloseScannerResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::CloseScannerResponse" />
       </arg>
     </method>
     <method name="SetOptions">
@@ -80,7 +80,7 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::SetOptionsRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::SetOptionsRequest" />
         <tp:docstring>
           Serialized SetOptionsRequest proto specifying the scanner handle and
           options to set.
@@ -88,7 +88,7 @@
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::SetOptionsResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::SetOptionsResponse" />
         <tp:docstring>
           Serialized SetOptionsResponse proto.
         </tp:docstring>
@@ -102,14 +102,14 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::GetCurrentConfigRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::GetCurrentConfigRequest" />
         <tp:docstring>
           Serialized GetCurrentConfigRequest proto specifying the scanner handle.
         </tp:docstring>
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::GetCurrentConfigResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::GetCurrentConfigResponse" />
         <tp:docstring>
           Serialized GetCurrentConfigResponse proto.
         </tp:docstring>
@@ -124,7 +124,7 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StartPreparedScanRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StartPreparedScanRequest" />
         <tp:docstring>
           Serialized StartPreparedScanRequest proto specifying the scanner
           handle and desired image format.
@@ -132,7 +132,7 @@
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StartPreparedScanResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StartPreparedScanResponse" />
         <tp:docstring>
           Serialized StartPreparedScanResponse proto.
         </tp:docstring>
@@ -151,11 +151,11 @@
           the settings for the scan.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StartScanRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StartScanRequest" />
       </arg>
       <arg name="start_scan_response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StartScanResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StartScanResponse" />
       </arg>
     </method>
     <method name="ReadScanData">
@@ -165,14 +165,14 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::ReadScanDataRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::ReadScanDataRequest" />
         <tp:docstring>
           Serialized ReadScanDataRequest proto specifying the scan job to read.
         </tp:docstring>
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::ReadScanDataResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::ReadScanDataResponse" />
         <tp:docstring>
           Serialized ReadScanDataResponse proto.
         </tp:docstring>
@@ -192,7 +192,7 @@
           Serialized GetNextImageRequest proto specifying the scan job uuid.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::GetNextImageRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::GetNextImageRequest" />
       </arg>
       <arg name="out_fd" type="h" direction="in">
         <tp:docstring>
@@ -201,7 +201,7 @@
       </arg>
       <arg name="get_next_image_response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::GetNextImageResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::GetNextImageResponse" />
       </arg>
     </method>
     <method name="CancelScan">
@@ -214,11 +214,11 @@
           Serialized CancelScanRequest proto specifying the scan job to cancel.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::CancelScanRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::CancelScanRequest" />
       </arg>
       <arg name="cancel_scan_response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::CancelScanResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::CancelScanResponse" />
       </arg>
     </method>
     <method name="SetDebugConfig">
@@ -230,11 +230,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::SetDebugConfigRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::SetDebugConfigRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::SetDebugConfigResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::SetDebugConfigResponse" />
       </arg>
     </method>
     <method name="StartScannerDiscovery">
@@ -245,11 +245,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StartScannerDiscoveryRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StartScannerDiscoveryRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StartScannerDiscoveryResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StartScannerDiscoveryResponse" />
       </arg>
     </method>
     <method name="StopScannerDiscovery">
@@ -261,11 +261,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StopScannerDiscoveryRequest" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StopScannerDiscoveryRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::StopScannerDiscoveryResponse" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::StopScannerDiscoveryResponse" />
       </arg>
     </method>
     <signal name="ScannerListChanged">
@@ -277,7 +277,7 @@
           requested by other sessions.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::ScannerListChangedSignal" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::ScannerListChangedSignal" />
       </arg>
     </signal>
     <signal name="ScanStatusChanged">
@@ -287,7 +287,7 @@
           state, and potentially a failure reason or progress percentage.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::lorgnette::ScanStatusChangedSignal" />
+                    value="lorgnette/proto_bindings/lorgnette_service.pb.h;::lorgnette::ScanStatusChangedSignal" />
       </arg>
     </signal>
   </interface>

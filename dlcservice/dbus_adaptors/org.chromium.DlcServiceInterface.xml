@@ -18,7 +18,7 @@
         arguments that can toggle how DLC are installed.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::InstallRequest"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::InstallRequest"/>
     </arg>
     <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>
@@ -63,7 +63,7 @@
         arguments that can specify which DLCs to unload.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::UnloadRequest"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::UnloadRequest"/>
     </arg>
   </method>
   <method name="GetInstalled">
@@ -87,7 +87,7 @@
         arguments that can specify selected DLCs to list.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::ListRequest"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::ListRequest"/>
     </arg>
     <arg name="list_request" type="ay" direction="out">
       <tp:docstring>
@@ -96,7 +96,7 @@
         a list of `DlcState`.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::DlcStateList"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::DlcStateList"/>
     </arg>
   </method>
   <method name="GetExistingDlcs">
@@ -110,7 +110,7 @@
         DLCs that have content on disk.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::DlcsWithContent"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::DlcsWithContent"/>
     </arg>
   </method>
   <method name="GetDlcsToUpdate">
@@ -140,7 +140,7 @@
         the state of a DLC.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::DlcState"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::DlcState"/>
     </arg>
   </method>
   <method name="InstallCompleted">
@@ -171,7 +171,7 @@
         state of the DLC.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="dlcservice::DlcState"/>
+                  value="dlcservice/proto_bindings/dlcservice.pb.h;dlcservice::DlcState"/>
     </arg>
   </signal>
 </interface>

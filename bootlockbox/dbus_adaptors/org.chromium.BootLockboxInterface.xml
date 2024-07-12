@@ -16,11 +16,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="bootlockbox::StoreBootLockboxRequest" />
+                    value="bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h;bootlockbox::StoreBootLockboxRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="bootlockbox::StoreBootLockboxReply" />
+                    value="bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h;bootlockbox::StoreBootLockboxReply" />
       </arg>
     </method>
     <!-- May be called asynchronously. Both arguments are protobufs:
@@ -31,11 +31,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="bootlockbox::ReadBootLockboxRequest" />
+                    value="bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h;bootlockbox::ReadBootLockboxRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="bootlockbox::ReadBootLockboxReply" />
+                    value="bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h;bootlockbox::ReadBootLockboxReply" />
       </arg>
     </method>
    <!-- May be called asynchronously.  Both arguments are protobufs:
@@ -46,11 +46,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="bootlockbox::FinalizeNVRamBootLockboxRequest" />
+                    value="bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h;bootlockbox::FinalizeNVRamBootLockboxRequest" />
       </arg>
       <arg type="ay" name="reply" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="bootlockbox::FinalizeBootLockboxReply" />
+                    value="bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h;bootlockbox::FinalizeBootLockboxReply" />
       </arg>
     </method>
   </interface>

@@ -26,11 +26,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::regmon::RecordPolicyViolationRequest" />
+                    value="regmon/proto_bindings/regmon_service.pb.h;::regmon::RecordPolicyViolationRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::regmon::RecordPolicyViolationResponse" />
+                    value="regmon/proto_bindings/regmon_service.pb.h;::regmon::RecordPolicyViolationResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>

@@ -22,7 +22,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::PhysicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::PhysicalVolume"/>
     </arg>
   </method>
   <method name="GetVolumeGroup">
@@ -35,7 +35,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::PhysicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::PhysicalVolume"/>
     </arg>
     <arg name="volume_group" type="ay" direction="out">
       <tp:docstring>
@@ -43,7 +43,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::VolumeGroup"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::VolumeGroup"/>
     </arg>
   </method>
   <method name="GetThinpool">
@@ -56,7 +56,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::VolumeGroup"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::VolumeGroup"/>
     </arg>
     <arg name="thinpool_name" type="s" direction="in">
       <tp:docstring>
@@ -69,7 +69,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::Thinpool"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::Thinpool"/>
     </arg>
   </method>
   <method name="ListLogicalVolumes">
@@ -82,7 +82,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::VolumeGroup"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::VolumeGroup"/>
     </arg>
     <arg name="logical_volume_list" type="ay" direction="out">
       <tp:docstring>
@@ -90,7 +90,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolumeList"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolumeList"/>
     </arg>
   </method>
   <method name="GetLogicalVolume">
@@ -103,7 +103,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::VolumeGroup"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::VolumeGroup"/>
     </arg>
     <arg name="logical_volume_name" type="s" direction="in">
       <tp:docstring>
@@ -116,7 +116,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolume"/>
     </arg>
   </method>
   <method name="CreateLogicalVolume">
@@ -129,7 +129,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::Thinpool"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::Thinpool"/>
     </arg>
     <arg name="logical_volume_configuration" type="ay" direction="in">
       <tp:docstring>
@@ -137,7 +137,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolumeConfiguration"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolumeConfiguration"/>
     </arg>
     <arg name="logical_volume" type="ay" direction="out">
       <tp:docstring>
@@ -145,7 +145,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolume"/>
     </arg>
   </method>
   <method name="CreateLogicalVolumes">
@@ -158,7 +158,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::CreateLogicalVolumesRequest"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::CreateLogicalVolumesRequest"/>
     </arg>
     <arg name="response" type="ay" direction="out">
       <tp:docstring>
@@ -166,7 +166,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::CreateLogicalVolumesResponse"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::CreateLogicalVolumesResponse"/>
     </arg>
   </method>
   <method name="RemoveLogicalVolume">
@@ -179,7 +179,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolume"/>
     </arg>
   </method>
   <method name="RemoveLogicalVolumes">
@@ -192,7 +192,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::RemoveLogicalVolumesRequest"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::RemoveLogicalVolumesRequest"/>
     </arg>
     <arg name="response" type="ay" direction="out">
       <tp:docstring>
@@ -200,7 +200,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::RemoveLogicalVolumesResponse"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::RemoveLogicalVolumesResponse"/>
     </arg>
   </method>
   <method name="ToggleLogicalVolumeActivation">
@@ -213,7 +213,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolume"/>
     </arg>
     <arg name="activate" type="b" direction="in">
       <tp:docstring>
@@ -231,7 +231,7 @@
         platform2/system_api/dbus/lvmd/lvmd.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="lvmd::LogicalVolume"/>
+                  value="lvmd/proto_bindings/lvmd.pb.h;lvmd::LogicalVolume"/>
     </arg>
     <arg name="size" type="x" direction="in">
       <tp:docstring>

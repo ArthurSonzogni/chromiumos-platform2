@@ -13,14 +13,14 @@
           Protobuf detailing the printer to be added to CUPS.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsAddAutoConfiguredPrinterRequest" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsAddAutoConfiguredPrinterRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Protobuf containing a CupsResult.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsAddAutoConfiguredPrinterResponse" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsAddAutoConfiguredPrinterResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -35,14 +35,14 @@
           PPD.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsAddManuallyConfiguredPrinterRequest" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsAddManuallyConfiguredPrinterRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Protobuf containing a CupsResult.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsAddManuallyConfiguredPrinterResponse" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsAddManuallyConfiguredPrinterResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -55,14 +55,14 @@
           Protobuf detailing the printer to be removed from CUPS.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsRemovePrinterRequest" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsRemovePrinterRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Result of the removal attempt.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsRemovePrinterResponse" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsRemovePrinterResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -75,14 +75,14 @@
           Protobuf detailing the printer whose PPD will be returned.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsRetrievePpdRequest" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsRetrievePpdRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
           Protobuf with the requested PPD, or an empty vector if unsuccessful.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::CupsRetrievePpdResponse" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::CupsRetrievePpdResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -96,7 +96,7 @@
           Protobuf detailing the categories to collect debug logs for.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::PrintscanDebugSetCategoriesRequest" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::PrintscanDebugSetCategoriesRequest" />
       </arg>
       <arg name="response" type="ay" direction="out">
         <tp:docstring>
@@ -104,7 +104,7 @@
           collection.
         </tp:docstring>
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="::printscanmgr::PrintscanDebugSetCategoriesResponse" />
+                    value="printscanmgr/proto_bindings/printscanmgr_service.pb.h;::printscanmgr::PrintscanDebugSetCategoriesResponse" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>

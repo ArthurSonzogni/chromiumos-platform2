@@ -37,7 +37,7 @@
         platform2/system_api/dbus/spaced/spaced.proto).
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="spaced::StatefulDiskSpaceUpdate"/>
+                  value="spaced/proto_bindings/spaced.pb.h;spaced::StatefulDiskSpaceUpdate"/>
       </arg>
     </signal>
 
@@ -82,11 +82,11 @@
       </tp:docstring>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="spaced::GetQuotaCurrentSpacesForIdsRequest"/>
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::GetQuotaCurrentSpacesForIdsRequest"/>
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="spaced::GetQuotaCurrentSpacesForIdsReply"/>
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::GetQuotaCurrentSpacesForIdsReply"/>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -97,7 +97,7 @@
       <arg name="path" type="s" direction="in"/>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="spaced::GetQuotaCurrentSpacesForIdsReply"/>
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::GetQuotaCurrentSpacesForIdsReply"/>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -117,7 +117,7 @@
       <arg name="project_id" type="u" direction="in"/>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="spaced::SetProjectIdReply" />
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::SetProjectIdReply" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -129,7 +129,7 @@
       <arg name="enable" type="b" direction="in"/>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="spaced::SetProjectInheritanceFlagReply" />
+                    value="spaced/proto_bindings/spaced.pb.h;spaced::SetProjectInheritanceFlagReply" />
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>

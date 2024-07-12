@@ -19,11 +19,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vtpm::SendCommandRequest" />
+                    value="vtpm/vtpm_interface.pb.h;vtpm::SendCommandRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vtpm::SendCommandResponse" />
+                    value="vtpm/vtpm_interface.pb.h;vtpm::SendCommandResponse" />
       </arg>
     </method>
   </interface>

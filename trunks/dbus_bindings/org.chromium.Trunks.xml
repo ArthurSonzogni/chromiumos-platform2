@@ -19,11 +19,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="trunks::SendCommandRequest" />
+                    value="trunks/trunks_interface.pb.h;trunks::SendCommandRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="trunks::SendCommandResponse" />
+                    value="trunks/trunks_interface.pb.h;trunks::SendCommandResponse" />
       </arg>
     </method>
     <method name="StartEvent">
@@ -31,11 +31,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="trunks::StartEventRequest" />
+                    value="trunks/trunks_interface.pb.h;trunks::StartEventRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="trunks::StartEventResponse" />
+                    value="trunks/trunks_interface.pb.h;trunks::StartEventResponse" />
       </arg>
     </method>
     <method name="StopEvent">
@@ -43,11 +43,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="trunks::StopEventRequest" />
+                    value="trunks/trunks_interface.pb.h;trunks::StopEventRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="trunks::StopEventResponse" />
+                    value="trunks/trunks_interface.pb.h;trunks::StopEventResponse" />
       </arg>
     </method>
   </interface>

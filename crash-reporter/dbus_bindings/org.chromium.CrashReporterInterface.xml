@@ -12,7 +12,7 @@
     <signal name="DebugDumpCreated">
       <arg name="DebugDumps" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-          value="fbpreprocessor::DebugDumps" />
+          value="fbpreprocessor/proto_bindings/fbpreprocessor.pb.h;fbpreprocessor::DebugDumps" />
       </arg>
     </signal>
   </interface>

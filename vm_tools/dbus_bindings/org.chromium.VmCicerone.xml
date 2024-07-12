@@ -19,11 +19,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::AddFileWatchRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::AddFileWatchRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::AddFileWatchResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::AddFileWatchResponse"/>
       </arg>
     </method>
     <method name="ApplyAnsiblePlaybook">
@@ -33,11 +33,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ApplyAnsiblePlaybookRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ApplyAnsiblePlaybookRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ApplyAnsiblePlaybookResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ApplyAnsiblePlaybookResponse"/>
       </arg>
     </method>
     <method name="AttachUsbToContainer">
@@ -47,11 +47,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::AttachUsbToContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::AttachUsbToContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::AttachUsbToContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::AttachUsbToContainerResponse"/>
       </arg>
     </method>
     <method name="CancelExportLxdContainer">
@@ -61,11 +61,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CancelExportLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelExportLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CancelExportLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelExportLxdContainerResponse"/>
       </arg>
     </method>
     <method name="CancelImportLxdContainer">
@@ -75,11 +75,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CancelImportLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelImportLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CancelImportLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelImportLxdContainerResponse"/>
       </arg>
     </method>
     <method name="CancelUpgradeContainer">
@@ -89,11 +89,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CancelUpgradeContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelUpgradeContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CancelUpgradeContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CancelUpgradeContainerResponse"/>
       </arg>
     </method>
     <method name="ConfigureForArcSideload">
@@ -104,11 +104,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ConfigureForArcSideloadRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ConfigureForArcSideloadRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ConfigureForArcSideloadResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ConfigureForArcSideloadResponse"/>
       </arg>
     </method>
     <method name="ConnectChunnel">
@@ -118,11 +118,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ConnectChunnelRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ConnectChunnelRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ConnectChunnelResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ConnectChunnelResponse"/>
       </arg>
     </method>
     <method name="CreateLxdContainer">
@@ -132,11 +132,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CreateLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CreateLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::CreateLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::CreateLxdContainerResponse"/>
       </arg>
     </method>
     <method name="DeleteLxdContainer">
@@ -146,11 +146,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::DeleteLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::DeleteLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::DeleteLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::DeleteLxdContainerResponse"/>
       </arg>
     </method>
     <method name="DetachUsbFromContainer">
@@ -160,11 +160,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::DetachUsbFromContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::DetachUsbFromContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::DetachUsbFromContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::DetachUsbFromContainerResponse"/>
       </arg>
     </method>
     <method name="ExportLxdContainer">
@@ -174,11 +174,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ExportLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ExportLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ExportLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ExportLxdContainerResponse"/>
       </arg>
     </method>
     <method name="FileSelected">
@@ -188,11 +188,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::FileSelectedSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::FileSelectedSignal"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::EmptyMessage"/>
+                    value="vm_protos/proto_bindings/common.pb.h;vm_tools::EmptyMessage"/>
       </arg>
     </method>
     <method name="GetContainerAppIcon">
@@ -202,11 +202,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ContainerAppIconRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerAppIconRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ContainerAppIconResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerAppIconResponse"/>
       </arg>
     </method>
     <method name="GetContainerToken">
@@ -216,11 +216,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ContainerTokenRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerTokenRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ContainerTokenResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerTokenResponse"/>
       </arg>
     </method>
     <method name="GetDebugInformation">
@@ -230,11 +230,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetDebugInformationRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetDebugInformationRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetDebugInformationResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetDebugInformationResponse"/>
       </arg>
     </method>
     <method name="GetGarconSessionInfo">
@@ -244,11 +244,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetGarconSessionInfoRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetGarconSessionInfoRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetGarconSessionInfoResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetGarconSessionInfoResponse"/>
       </arg>
     </method>
     <method name="GetLinuxPackageInfo">
@@ -258,11 +258,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LinuxPackageInfoRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LinuxPackageInfoRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LinuxPackageInfoResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LinuxPackageInfoResponse"/>
       </arg>
     </method>
     <method name="GetLxdContainerUsername">
@@ -272,11 +272,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetLxdContainerUsernameRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetLxdContainerUsernameRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetLxdContainerUsernameResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetLxdContainerUsernameResponse"/>
       </arg>
     </method>
     <method name="GetVshSession">
@@ -286,11 +286,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetVshSessionRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetVshSessionRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::GetVshSessionResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::GetVshSessionResponse"/>
       </arg>
     </method>
     <method name="InstallLinuxPackage">
@@ -300,11 +300,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::InstallLinuxPackageRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::InstallLinuxPackageResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageResponse"/>
       </arg>
     </method>
     <method name="ImportLxdContainer">
@@ -314,11 +314,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ImportLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ImportLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ImportLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ImportLxdContainerResponse"/>
       </arg>
     </method>
     <method name="LaunchContainerApplication">
@@ -328,11 +328,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LaunchContainerApplicationRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LaunchContainerApplicationRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LaunchContainerApplicationResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LaunchContainerApplicationResponse"/>
       </arg>
     </method>
     <method name="LaunchVshd">
@@ -342,11 +342,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LaunchVshdRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LaunchVshdRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LaunchVshdResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LaunchVshdResponse"/>
       </arg>
     </method>
     <method name="ListRunningContainers">
@@ -356,11 +356,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ListRunningContainersRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ListRunningContainersRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ListRunningContainersResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ListRunningContainersResponse"/>
       </arg>
     </method>
     <method name="NotifyVmStarted">
@@ -370,11 +370,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::NotifyVmStartedRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::NotifyVmStartedRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::EmptyMessage"/>
+                    value="vm_protos/proto_bindings/common.pb.h;vm_tools::EmptyMessage"/>
       </arg>
     </method>
     <method name="NotifyVmStopped">
@@ -384,11 +384,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::NotifyVmStoppedRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::NotifyVmStoppedRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::EmptyMessage"/>
+                    value="vm_protos/proto_bindings/common.pb.h;vm_tools::EmptyMessage"/>
       </arg>
     </method>
     <method name="NotifyVmStopping">
@@ -398,11 +398,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::NotifyVmStoppingRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::NotifyVmStoppingRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::EmptyMessage"/>
+                    value="vm_protos/proto_bindings/common.pb.h;vm_tools::EmptyMessage"/>
       </arg>
     </method>
     <method name="RemoveFileWatch">
@@ -412,11 +412,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::RemoveFileWatchRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RemoveFileWatchRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::RemoveFileWatchResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RemoveFileWatchResponse"/>
       </arg>
     </method>
     <method name="RegisterVshSession">
@@ -427,11 +427,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::RegisterVshSessionRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RegisterVshSessionRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::RegisterVshSessionResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::RegisterVshSessionResponse"/>
       </arg>
     </method>
     <method name="SetTimezone">
@@ -441,11 +441,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::SetTimezoneRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::SetTimezoneRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::SetTimezoneResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::SetTimezoneResponse"/>
       </arg>
     </method>
     <method name="SetUpLxdContainerUser">
@@ -455,11 +455,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::SetUpLxdContainerUserRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::SetUpLxdContainerUserRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::SetUpLxdContainerUserResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::SetUpLxdContainerUserResponse"/>
       </arg>
     </method>
     <method name="StartLxd">
@@ -469,11 +469,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StartLxdRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StartLxdRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StartLxdResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StartLxdResponse"/>
       </arg>
     </method>
     <method name="StartLxdContainer">
@@ -483,11 +483,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StartLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StartLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StartLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StartLxdContainerResponse"/>
       </arg>
     </method>
     <method name="StopLxdContainer">
@@ -497,11 +497,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StopLxdContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StopLxdContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StopLxdContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StopLxdContainerResponse"/>
       </arg>
     </method>
     <method name="UninstallPackageOwningFile">
@@ -512,11 +512,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UninstallPackageOwningFileRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UninstallPackageOwningFileRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UninstallPackageOwningFileResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UninstallPackageOwningFileResponse"/>
       </arg>
     </method>
     <method name="UpdateContainerDevices">
@@ -526,11 +526,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UpdateContainerDevicesRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpdateContainerDevicesRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UpdateContainerDevicesResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpdateContainerDevicesResponse"/>
       </arg>
     </method>
     <method name="UpgradeContainer">
@@ -540,11 +540,11 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
       <arg type="ay" name="request" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UpgradeContainerRequest"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerRequest"/>
       </arg>
       <arg type="ay" name="response" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UpgradeContainerResponse"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerResponse"/>
       </arg>
     </method>
 
@@ -555,7 +555,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal"/>
       </arg>
     </signal>
     <signal name="ContainerShutdown">
@@ -564,7 +564,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ContainerShutdownSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerShutdownSignal"/>
       </arg>
     </signal>
     <signal name="ContainerStarted">
@@ -573,7 +573,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ContainerStartedSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ContainerStartedSignal"/>
       </arg>
     </signal>
     <signal name="LxdContainerCreated">
@@ -583,7 +583,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LxdContainerCreatedSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerCreatedSignal"/>
       </arg>
     </signal>
     <signal name="ExportLxdContainerProgress">
@@ -593,7 +593,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ExportLxdContainerProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ExportLxdContainerProgressSignal"/>
       </arg>
     </signal>
     <signal name="FileWatchTriggered">
@@ -603,7 +603,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::FileWatchTriggeredSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::FileWatchTriggeredSignal"/>
       </arg>
     </signal>
     <signal name="ImportLxdContainerProgress">
@@ -613,7 +613,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::ImportLxdContainerProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::ImportLxdContainerProgressSignal"/>
       </arg>
     </signal>
     <signal name="InhibitScreensaver">
@@ -622,7 +622,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::InhibitScreensaverSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InhibitScreensaverSignal"/>
       </arg>
     </signal>
     <signal name="InstallLinuxPackageProgress">
@@ -631,7 +631,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::InstallLinuxPackageProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::InstallLinuxPackageProgressSignal"/>
       </arg>
     </signal>
     <signal name="LowDiskSpaceTriggered">
@@ -640,7 +640,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LowDiskSpaceTriggeredSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LowDiskSpaceTriggeredSignal"/>
       </arg>
     </signal>
     <signal name="LxdContainerDeleted">
@@ -649,7 +649,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LxdContainerDeletedSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerDeletedSignal"/>
       </arg>
     </signal>
     <signal name="LxdContainerDownloading">
@@ -658,7 +658,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LxdContainerDownloadingSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerDownloadingSignal"/>
       </arg>
     </signal>
     <signal name="LxdContainerStarting">
@@ -669,7 +669,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LxdContainerStartingSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerStartingSignal"/>
       </arg>
     </signal>
     <signal name="LxdContainerStopping">
@@ -679,7 +679,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::LxdContainerStoppingSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::LxdContainerStoppingSignal"/>
       </arg>
     </signal>
     <signal name="PendingAppListUpdates">
@@ -689,7 +689,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::PendingAppListUpdatesSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::PendingAppListUpdatesSignal"/>
       </arg>
     </signal>
     <signal name="StartLxdProgress">
@@ -698,7 +698,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::StartLxdProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::StartLxdProgressSignal"/>
       </arg>
     </signal>
     <signal name="TremplinStarted">
@@ -709,7 +709,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::TremplinStartedSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::TremplinStartedSignal"/>
       </arg>
     </signal>
     <signal name="UninhibitScreensaver">
@@ -718,7 +718,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UninhibitScreensaverSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UninhibitScreensaverSignal"/>
       </arg>
     </signal>
     <signal name="UninstallPackageProgress">
@@ -728,7 +728,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UninstallPackageProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UninstallPackageProgressSignal"/>
       </arg>
     </signal>
     <signal name="UpgradeContainerProgress">
@@ -738,7 +738,7 @@
       </tp:docstring>
       <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="vm_tools::cicerone::UpgradeContainerProgressSignal"/>
+                    value="vm_cicerone/cicerone_service.pb.h;vm_tools::cicerone::UpgradeContainerProgressSignal"/>
       </arg>
     </signal>
   </interface>

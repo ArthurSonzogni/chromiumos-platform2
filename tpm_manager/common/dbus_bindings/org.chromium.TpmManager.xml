@@ -20,11 +20,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::DefineSpaceRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::DefineSpaceRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::DefineSpaceReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::DefineSpaceReply" />
       </arg>
     </method>
 
@@ -33,11 +33,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::DestroySpaceRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::DestroySpaceRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::DestroySpaceReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::DestroySpaceReply" />
       </arg>
     </method>
 
@@ -46,11 +46,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::WriteSpaceRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::WriteSpaceRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::WriteSpaceReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::WriteSpaceReply" />
       </arg>
     </method>
 
@@ -59,11 +59,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ReadSpaceRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ReadSpaceRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ReadSpaceReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ReadSpaceReply" />
       </arg>
     </method>
 
@@ -72,11 +72,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::LockSpaceRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::LockSpaceRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::LockSpaceReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::LockSpaceReply" />
       </arg>
     </method>
 
@@ -85,11 +85,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ListSpacesRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ListSpacesRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ListSpacesReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ListSpacesReply" />
       </arg>
     </method>
 
@@ -98,11 +98,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetSpaceInfoRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetSpaceInfoRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetSpaceInfoReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetSpaceInfoReply" />
       </arg>
     </method>
   </interface>
@@ -113,11 +113,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetTpmStatusRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetTpmStatusRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetTpmStatusReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetTpmStatusReply" />
       </arg>
     </method>
 
@@ -126,11 +126,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetTpmNonsensitiveStatusRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetTpmNonsensitiveStatusRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetTpmNonsensitiveStatusReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetTpmNonsensitiveStatusReply" />
       </arg>
     </method>
 
@@ -139,11 +139,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetVersionInfoRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetVersionInfoRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetVersionInfoReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetVersionInfoReply" />
       </arg>
     </method>
 
@@ -152,11 +152,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetSupportedFeaturesRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetSupportedFeaturesRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetSupportedFeaturesReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetSupportedFeaturesReply" />
       </arg>
     </method>
 
@@ -165,11 +165,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetDictionaryAttackInfoRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetDictionaryAttackInfoRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetDictionaryAttackInfoReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetDictionaryAttackInfoReply" />
       </arg>
     </method>
 
@@ -178,11 +178,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetRoVerificationStatusRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetRoVerificationStatusRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::GetRoVerificationStatusReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::GetRoVerificationStatusReply" />
       </arg>
     </method>
 
@@ -191,11 +191,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ResetDictionaryAttackLockRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ResetDictionaryAttackLockRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ResetDictionaryAttackLockReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ResetDictionaryAttackLockReply" />
       </arg>
     </method>
 
@@ -204,11 +204,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::TakeOwnershipRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::TakeOwnershipRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::TakeOwnershipReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::TakeOwnershipReply" />
       </arg>
     </method>
 
@@ -217,11 +217,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::RemoveOwnerDependencyRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::RemoveOwnerDependencyRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::RemoveOwnerDependencyReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::RemoveOwnerDependencyReply" />
       </arg>
     </method>
 
@@ -230,11 +230,11 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ClearStoredOwnerPasswordRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ClearStoredOwnerPasswordRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ClearStoredOwnerPasswordReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ClearStoredOwnerPasswordReply" />
       </arg>
     </method>
 
@@ -243,18 +243,18 @@
                   value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ClearTpmRequest" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ClearTpmRequest" />
       </arg>
       <arg name="reply" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::ClearTpmReply" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::ClearTpmReply" />
       </arg>
     </method>
 
     <signal name="SignalOwnershipTaken">
       <arg name="owned" type="ay" direction="out">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="tpm_manager::OwnershipTakenSignal" />
+                    value="tpm_manager/proto_bindings/tpm_manager.pb.h;tpm_manager::OwnershipTakenSignal" />
       </arg>
     </signal>
   </interface>

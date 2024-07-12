@@ -18,7 +18,7 @@
         the state of MiniOs.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="minios::State"/>
+                  value="minios/proto_bindings/minios.pb.h;minios::State"/>
     </arg>
   </method>
   <method name="Connect">
@@ -114,7 +114,7 @@
         the state of MiniOs.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                  value="minios::State"/>
+                  value="minios/proto_bindings/minios.pb.h;minios::State"/>
     </arg>
   </signal>
 </interface>
