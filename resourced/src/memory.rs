@@ -68,6 +68,15 @@ const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_VISIBLE_SECONDS_THRESHOLD_PARAM: &s
 const DISCARD_STALE_AT_MODERATE_PRESSURE_MAX_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
     "MaxLastVisibleDurationSeconds";
 
+// Proportion of the reclaim target to attempt to reclaim from VMMS.
+// Represented as a percentage. For example a value of 50 means that
+// 50% of the reclaim target will attempt to be reclaimed from VMMS.
+const DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_PARAM: &str =
+    "VmmmsReclaimProportion";
+
+// By default attempt to reclaim 100% of the reclaim target from VMMS.
+const DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_DEFAULT: u64 = 100;
+
 // The minimum allowed interval between stale tab discard attempts.
 const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_DISCARD_INTERVAL: &str = "MinDiscardIntervalSeconds";
 const MIN_DISCARD_INTERVAL_DEFAULT: Duration = Duration::from_secs(10);
@@ -518,11 +527,33 @@ async fn try_vmms_reclaim_memory_moderate(
     // attempt to reclaim from vmms at stale cached tab priority.
     // Note that this reclaim is attempted regardless of if there
     // is actually any stale cached tab memory from Chrome.
-    // There may still be stale memory to clean up in other contexts (i.e. ARCVM).
-    if reclaim_target > 0 {
+    // There may still be stale memory to clean up in other
+    // contexts (i.e. ARCVM).
+
+    // In some cases it might be better to only reclaim a
+    // portion of the target from VMMS to better balance
+    // memory pressure.
+    let vmms_reclaim_proportion = match feature::get_feature_param_as::<u64>(
+        DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME,
+        DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_PARAM,
+    ) {
+        // Quick sanity check on the feature param value.
+        Ok(Some(v)) => {
+            if v <= 100 {
+                v
+            } else {
+                DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_DEFAULT
+            }
+        }
+        _ => DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_DEFAULT,
+    };
+
+    let adjusted_reclaim_target = (reclaim_target * vmms_reclaim_proportion) / 100;
+
+    if adjusted_reclaim_target > 0 {
         vmms_client
             .try_reclaim_memory(
-                reclaim_target,
+                adjusted_reclaim_target,
                 ResizePriority::RESIZE_PRIORITY_STALE_CACHED_TAB,
             )
             .await
