@@ -1136,19 +1136,17 @@ void Manager::ConfigureNetwork(int ifindex,
 
   // TODO(b/293997937): Move dynamic iptables rule setup here.
 
-  // Shill is waiting for the result of this D-Bus call to finish the network
-  // setup. Use PostTask() here so that these two tasks can be done in parallel.
-  base::OnceClosure cb;
+  // Updating network config in patchpanel is not very cheap since it may invoke
+  // a lot of iptables executions. We need to do this here because in some
+  // cases, after this function returns, shill will turn the network into the
+  // connected state, and the network validation may start after that, which
+  // will require some iptables configuration to work. Also see
+  // http://b/348602073#comment12.
   if (area == NetworkApplier::Area::kClear) {
-    cb = base::BindOnce(&ShillClient::ClearNetworkConfigCache,
-                        shill_client_->AsWeakPtr(), ifindex);
+    shill_client_->ClearNetworkConfigCache(ifindex);
   } else {
-    cb = base::BindOnce(&ShillClient::UpdateNetworkConfigCache,
-                        shill_client_->AsWeakPtr(), ifindex, network_config);
+    shill_client_->UpdateNetworkConfigCache(ifindex, network_config);
   }
-
-  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
-                                                              std::move(cb));
 }
 
 void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
