@@ -5,7 +5,6 @@
 // API exposed by cros_healthd's root-level executor. This is used by the
 // sandboxed cros_healthd daemon when it needs to perform a high-privilege
 // operation.
-
 module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/external/time.mojom";
@@ -78,11 +77,14 @@ enum NetworkBandwidthTestType {
 interface ProcessControl {
   // Get a file descriptor to the stdout output of the process.
   GetStdout() => (handle stdout);
+
   // Get a file descriptor to the stderr output of the process.
   GetStderr() => (handle stderr);
+
   // Get the return code of the process. This method will return after the
   // process has finished.
   GetReturnCode() => (int32 return_code);
+
   // Kill the process.
   Kill();
 };
@@ -90,31 +92,37 @@ interface ProcessControl {
 // Implemented by clients who desire audio jack notifications.
 interface AudioJackObserver {
   OnAdd(AudioJackEventInfo.DeviceType device_type);
+
   OnRemove(AudioJackEventInfo.DeviceType device_type);
 };
 
 // Implemented by clients who desire touchpad notifications.
 interface TouchpadObserver {
   OnButton(TouchpadButtonEvent button_event);
+
   OnTouch(TouchpadTouchEvent touch_event);
+
   OnConnected(TouchpadConnectedEvent connected_event);
 };
 
 // Implemented by clients who desire touchscreen notifications.
 interface TouchscreenObserver {
   OnTouch(TouchscreenTouchEvent touch_event);
+
   OnConnected(TouchscreenConnectedEvent connected_event);
 };
 
 // Implemented by clients who desire stylus garage notifications.
 interface StylusGarageObserver {
   OnInsert();
+
   OnRemove();
 };
 
 // Implemented by clients who desire stylus notifications.
 interface StylusObserver {
   OnTouch(StylusTouchEvent touch_event);
+
   OnConnected(StylusConnectedEvent connected_event);
 };
 
@@ -185,7 +193,9 @@ interface PowerButtonObserver {
     // The button is hold down.
     kRepeat,
   };
+
   OnEvent(ButtonState button_state);
+
   // Called when the power button event node is connected.
   OnConnectedToEventNode();
 };
@@ -198,6 +208,7 @@ interface VolumeButtonObserver {
     // The volume down button.
     kVolumeDown,
   };
+
   enum ButtonState {
     // The button is up.
     kUp,
@@ -206,6 +217,7 @@ interface VolumeButtonObserver {
     // The button is hold down.
     kRepeat,
   };
+
   OnEvent(Button button, ButtonState button_state);
 };
 
@@ -225,13 +237,17 @@ interface Executor {
     kUEFIPlatformSize,
     kWirelessPowerScheme,
   };
+
   // Reads file. Returns the content or null if failed.
   ReadFile(File file_enum) => (string? content);
+
   // Reads part of a file for |size| bytes starting from location |begin|.
   // Returns the content or null if failed. If reaches EOF before reading |size|
   // bytes, or does not provide |size|, then returns the part between |begin|
   // and EOF.
-  ReadFilePart(File file_enum, uint64 begin, uint64? size) => (string? content);
+  ReadFilePart(File file_enum, uint64 begin, uint64? size)
+      => (string? content);
+
   // Gets file info. Returns the file info or null if failed.
   GetFileInfo(File file_enum) => (FileInfo? info);
 
@@ -245,12 +261,14 @@ interface Executor {
 
   // Runs the `iw` command and returns the result.
   enum IwCommand {
-    kDev, // interface_name is not used for this subcommand.
+    kDev,  // interface_name is not used for this subcommand.
     kLink,
     kInfo,
     kScanDump,
   };
-  RunIw(IwCommand cmd, string interface_name) => (ExecutedProcessResult result);
+
+  RunIw(IwCommand cmd, string interface_name)
+      => (ExecutedProcessResult result);
 
   // Runs memtester and returns the result. The executor uses ProcessControl to
   // take control of the process lifetime, making sure the process is terminated
@@ -261,7 +279,8 @@ interface Executor {
   //                    greater than zero.
   // * |receiver| - The receiver which will be ound to a Process Control class
   //                that will manage the memtester binary's lifetime.
-  RunMemtester(uint32 test_mem_kib, pending_receiver<ProcessControl> receiver);
+  RunMemtester(
+      uint32 test_mem_kib, pending_receiver<ProcessControl> receiver);
 
   // Reads the I/O file of each process in the array and returns a map of the
   // raw, trimmed contents with no parsing.
@@ -344,20 +363,21 @@ interface Executor {
                   pending_receiver<ProcessControl> process_control);
 
   // Runs stressapptest and returns the result. The executor uses ProcessControl
-  // to take control of the process lifetime, making sure the process is terminated
-  // at the correct time.
+  // to take control of the process lifetime, making sure the process is
+  // terminated at the correct time.
   //
   // The request:
-  // * |test_mem_mib| - The amount of memory used for stressapptest test, should be
-  //                    greater than zero.
+  // * |test_mem_mib| - The amount of memory used for stressapptest test, should
+  //                    be greater than zero.
   // * |test_seconds| - The number of seconds to run the stressapptest, should
   //                    be greater than zero.
   // * |test_type| - What type of test the stressapptest should run.
   // * |receiver| - The receiver which will be bound to a ProcessControl class
   //                that will manage the stressapptest binary's lifetime.
-  RunStressAppTest(uint32 test_mem_mib, uint32 test_seconds,
-            StressAppTestType test_type,
-            pending_receiver<ProcessControl> receiver);
+  RunStressAppTest(uint32 test_mem_mib,
+                   uint32 test_seconds,
+                   StressAppTestType test_type,
+                   pending_receiver<ProcessControl> receiver);
 
   // Fetch boot performance info.
   FetchBootPerformance() => (BootPerformanceResult result);
@@ -398,8 +418,7 @@ interface Executor {
   // * |argument| - Argument for fio prepare job and read job.
   // * |receiver| - The receiver which will be ound to a Process Control class
   //                that will manage the memtester binary's lifetime.
-  RunFio(FioJobArgument argument,
-         pending_receiver<ProcessControl> receiver);
+  RunFio(FioJobArgument argument, pending_receiver<ProcessControl> receiver);
 
   // Remove the test file created by fio and return the result.
   //
@@ -416,7 +435,8 @@ interface Executor {
   // The response:
   // * |connectors| - Maps the connector_id to its corresponding display info.
   // * |err| - Error message if existed.
-  GetConnectedExternalDisplayConnectors(array<uint32>? last_known_connectors)
+  GetConnectedExternalDisplayConnectors(
+      array<uint32>? last_known_connectors)
       => (map<uint32, ExternalDisplayInfo> connectors, string? err);
 
   // Returns privacy screen info.
@@ -527,7 +547,8 @@ interface Executor {
   // * |thermal_sensors| - An array containing the information for each thermal
   //                       sensor.
   // * |err| - Error message if existed.
-  GetEcThermalSensors() => (array<ThermalSensorInfo> thermal_sensors, string? err);
+  GetEcThermalSensors()
+      => (array<ThermalSensorInfo> thermal_sensors, string? err);
 
   // Get internal touchpad devices.
   //
@@ -544,7 +565,8 @@ interface Executor {
   // The response:
   // * |manufacture_date| - 32-bit datetime formats. Return null if error
   //                        occurs.
-  GetSmartBatteryManufactureDate(uint8 i2c_port) => (uint32? manufacture_date);
+  GetSmartBatteryManufactureDate(uint8 i2c_port)
+      => (uint32? manufacture_date);
 
   // Get the internal temperature of smart battery by reading I2C bus from EC.
   //
@@ -567,8 +589,7 @@ interface Executor {
   // * |passed| - Whether the routine has passed.
   RunUrandom(
       ash.cros_healthd.external.mojo_base.mojom.TimeDelta exec_duration,
-      pending_receiver<ProcessControl> process_control)
-      => (bool passed);
+      pending_receiver<ProcessControl> process_control) => (bool passed);
 
   // Run a network bandwidth test.
   //

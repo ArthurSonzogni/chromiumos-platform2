@@ -100,7 +100,8 @@ interface Delegate {
   // The response:
   // * |connectors| - Maps the connector_id to its corresponding display info.
   // * |err| - Error message if existed.
-  GetConnectedExternalDisplayConnectors(array<uint32>? last_known_connectors)
+  GetConnectedExternalDisplayConnectors(
+      array<uint32>? last_known_connectors)
       => (map<uint32, ExternalDisplayInfo> connectors, string? err);
 
   // Returns privacy screen info.
@@ -181,7 +182,8 @@ interface Delegate {
   // * |thermal_sensors| - An array containing the information for each thermal
   //                       sensor.
   // * |err| - Error message if existed.
-  GetEcThermalSensors() => (array<ThermalSensorInfo> thermal_sensors, string? err);
+  GetEcThermalSensors()
+      => (array<ThermalSensorInfo> thermal_sensors, string? err);
 
   // Get internal touchpad devices.
   //
@@ -199,7 +201,8 @@ interface Delegate {
   // The response:
   // * |manufacture_date| - 32-bit datetime formats. Return null if error
   //                        occurs.
-  GetSmartBatteryManufactureDate(uint8 i2c_port) => (uint32? manufacture_date);
+  GetSmartBatteryManufactureDate(uint8 i2c_port)
+      => (uint32? manufacture_date);
 
   // Get the internal temperature of smart battery by reading I2C bus from EC.
   //
