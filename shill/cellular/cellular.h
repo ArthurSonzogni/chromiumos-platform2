@@ -147,6 +147,7 @@ class Cellular : public Device,
   bool GetMultiplexSupport();
 
   // Inherited from Device.
+  std::string link_name() const override { return link_name_; }
   Network* GetPrimaryNetwork() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
@@ -832,9 +833,6 @@ class Cellular : public Device,
   bool IsTetheringOperationDunMultiplexedConnectOngoing();
   bool IsTetheringOperationDunMultiplexedDisconnectOngoing();
 
-  State state_ = State::kDisabled;
-  ModemState modem_state_ = kModemStateUnknown;
-
   // Nested network info associated to a single PDN connection in the cellular
   // device.
   class NetworkInfo {
@@ -873,6 +871,16 @@ class Cellular : public Device,
     Network::StartOptions start_opts_;
     std::optional<net_base::NetworkConfig> network_config_;
   };
+
+  // Interface name of the network interface managed by this Cellular Device.
+  // Since the Cellular Device does not create an implicit Network, it must
+  // remember its initial link name explicitly.
+  // TODO(b/352665085): Do not use the interface name for the Device's name
+  // parameter.
+  const std::string link_name_;
+
+  State state_ = State::kDisabled;
+  ModemState modem_state_ = kModemStateUnknown;
 
   // Connection associated to the PDN with APN type "default". In Cellular
   // devices this will always be treated as primary network (e.g. when

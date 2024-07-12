@@ -299,6 +299,7 @@ Cellular::Cellular(Manager* manager,
              mac_address,
              interface_index,
              Technology::kCellular),
+      link_name_(link_name),
       mobile_operator_info_(
           new MobileOperatorInfo(manager->dispatcher(), "cellular")),
       dbus_service_(service),

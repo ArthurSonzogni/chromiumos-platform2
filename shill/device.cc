@@ -62,7 +62,7 @@ static std::string ObjectID(const Device* d) {
 const char Device::kStoragePowered[] = "Powered";
 
 Device::Device(Manager* manager,
-               const std::string& link_name,
+               std::string_view name,
                std::optional<net_base::MacAddress> mac_address,
                int interface_index,
                Technology technology)
@@ -70,9 +70,8 @@ Device::Device(Manager* manager,
       enabled_persistent_(true),
       enabled_pending_(enabled_),
       mac_address_(mac_address),
-      name_(link_name),
+      name_(name),
       interface_index_(interface_index),
-      link_name_(link_name),
       manager_(manager),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
@@ -106,7 +105,7 @@ Device::Device(Manager* manager,
   // kDBusObjectProperty: Register in Cellular
   // kPrimaryMultiplexedInterfaceProperty: Registered in Cellular
 
-  store_.RegisterConstString(kInterfaceProperty, &link_name_);
+  HelpRegisterConstDerivedString(kInterfaceProperty, &Device::GetInterface);
   HelpRegisterConstDerivedRpcIdentifier(
       kSelectedServiceProperty, &Device::GetSelectedServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kIPConfigsProperty,
@@ -244,6 +243,10 @@ std::string Device::GetMacAddressString(Error* /*error*/) {
   return GetMacAddressHexString();
 }
 
+std::string Device::GetInterface(Error* /*error*/) {
+  return link_name();
+}
+
 const std::string& Device::UniqueName() const {
   return name_;
 }
@@ -263,6 +266,13 @@ bool Device::IsEventOnPrimaryNetwork(int interface_index) {
   // devices using a multiplexed virtual network interface).
   return (GetPrimaryNetwork() &&
           GetPrimaryNetwork()->interface_index() == interface_index);
+}
+
+std::string Device::link_name() const {
+  if (!implicit_network_) {
+    return "";
+  }
+  return implicit_network_->interface_name();
 }
 
 bool Device::Load(const StoreInterface* storage) {

@@ -49,7 +49,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
  public:
   // A constructor for the Device object
   Device(Manager* manager,
-         const std::string& link_name,
+         std::string_view name,
          std::optional<net_base::MacAddress> mac_address,
          int interface_index,
          Technology technology);
@@ -139,7 +139,12 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   std::optional<net_base::MacAddress> mac_address() const {
     return mac_address_;
   }
-  const std::string& link_name() const { return link_name_; }
+  // Returns the interface name of the primary Network if it exits, otherwise
+  // return the empty string. Device subclasses can override this method to
+  // obtain
+  // TODO(b/352665085): remove this getter and migrate client code to use the
+  // Device's Network(s) directly.
+  virtual std::string link_name() const;
   int interface_index() const { return interface_index_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
@@ -432,6 +437,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   std::string GetTechnologyString(Error* error);
   // Necessary getter signature for kAddressProperty. Cannot be const.
   std::string GetMacAddressString(Error* error);
+  // Necessary getter signature for kInterfaceProperty. Cannot be const.
+  std::string GetInterface(Error* error);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -468,7 +475,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // must be unique across all existing Device instances.
   const std::string name_;
   const int interface_index_;
-  const std::string link_name_;
   Manager* manager_;
   std::unique_ptr<Network> implicit_network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
