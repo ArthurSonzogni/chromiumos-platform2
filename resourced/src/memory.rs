@@ -80,6 +80,10 @@ const PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_DEFAULT: f32 = 40.0;
 
 const PSI_ADJUST_AVAILABLE_USE_FULL_PARAM: &str = "PsiUseFull";
 
+const PSI_ADJUST_AVAILABLE_COOLDOWN_MILLIS_PARAM: &str = "CooldownMillis";
+
+const PSI_ADJUST_AVAILABLE_COOLDOWN_DEFAULT: Duration = Duration::from_secs(10);
+
 pub fn register_features() {
     feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, false, None);
 
@@ -152,9 +156,29 @@ fn get_reserved_memory_kb() -> Result<u64> {
         - read_from_file(&"/proc/sys/vm/extra_free_kbytes").unwrap_or(0))
 }
 
+static LAST_CRITICAL_PRESSURE_AT: Mutex<Option<Instant>> = Mutex::new(None);
+
 /// Adjusts the memory component according to PSI memory some. When PSI memory some is higher,
 /// returns lower memory component in KiB.
 fn psi_adjust_memory_kb(memory_component_kb: u64) -> u64 {
+    if let Some(last_critical_at) = *LAST_CRITICAL_PRESSURE_AT.do_lock() {
+        let cooldown_duration = match feature::get_feature_param_as::<u64>(
+            PSI_ADJUST_AVAILABLE_FEATURE_NAME,
+            PSI_ADJUST_AVAILABLE_COOLDOWN_MILLIS_PARAM,
+        ) {
+            Ok(Some(millis)) => Duration::from_millis(millis),
+            _ => PSI_ADJUST_AVAILABLE_COOLDOWN_DEFAULT,
+        };
+        // Skip considering adjusting swap memory component based on PSI just after sending critical
+        // pressure signal to avoid discarding too many tabs because:
+        // * There can be a delay between the critical signal is sent and the tabs are actually
+        //   discarded.
+        // * 10 second average of PSI can contain high value which is before discarding.
+        if Instant::now().duration_since(last_critical_at) <= cooldown_duration {
+            return memory_component_kb;
+        }
+    }
+
     let psi = match procfs::MemoryPressure::new() {
         Ok(psi) => psi,
         Err(e) => {
@@ -754,6 +778,10 @@ pub async fn get_memory_pressure_status(
     } else {
         (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb)
     };
+
+    if final_chrome_level == PressureLevelChrome::Critical {
+        *LAST_CRITICAL_PRESSURE_AT.do_lock() = Some(Instant::now());
+    }
 
     Ok(PressureStatus {
         chrome_level: final_chrome_level,
