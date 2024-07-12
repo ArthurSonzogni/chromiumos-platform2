@@ -22,7 +22,30 @@
 
 namespace {
 
-constexpr int64_t kFrameTimeoutUs = 166000;  // 166ms cap corresponds to 6 FPS.
+// Path for a json file to override pipeline options.
+constexpr char kOverrideKioskVisionConfigFile[] =
+    "/run/camera/kiosk_vision_config.json";
+
+// Json key to switch debug visualization on/off.
+constexpr char kKeyDebug[] = "debug";
+
+// Json key to set a processing frame rate limit.
+constexpr char kKeyFrameTimeout[] = "frame_timeout_ms";
+
+// Minimum acceptable timeout between frame processing.
+// Appr. corresponds to a max frame rate of 30 FPS.
+constexpr int64_t kMinFrameTimeoutMs = 33;
+
+// Maximum acceptable timeout between frame processing.
+// Corresponds to a min frame rate of 1 FPS.
+constexpr int64_t kMaxFrameTimeoutMs = 1000;
+
+// Checks that the stream manipulator options are valid.
+void CheckOptions(const cros::KioskVisionStreamManipulator::Options& options) {
+  // Frame timeout (and thus framerate) is within reasonable range.
+  CHECK_GE(options.frame_timeout_ms, kMinFrameTimeoutMs);
+  CHECK_LE(options.frame_timeout_ms, kMaxFrameTimeoutMs);
+}
 
 int64_t GetCurrentTimestampUs() {
   return base::Time::Now().ToDeltaSinceWindowsEpoch().InMicroseconds();
@@ -106,7 +129,10 @@ namespace cros {
 
 KioskVisionStreamManipulator::KioskVisionStreamManipulator(
     RuntimeOptions* runtime_options)
-    : dlc_path_(runtime_options->GetDlcRootPath(dlc_client::kKioskVisionDlcId)),
+    : config_(ReloadableConfigFile::Options{
+          .override_config_file_path =
+              base::FilePath(kOverrideKioskVisionConfigFile)}),
+      dlc_path_(runtime_options->GetDlcRootPath(dlc_client::kKioskVisionDlcId)),
       observer_(runtime_options->GetKioskVisionObserver()),
       kiosk_vision_wrapper_(std::make_unique<KioskVisionWrapper>(
           base::BindRepeating(&KioskVisionStreamManipulator::OnFrameProcessed,
@@ -115,7 +141,10 @@ KioskVisionStreamManipulator::KioskVisionStreamManipulator(
                               base::Unretained(this)),
           base::BindRepeating(&KioskVisionStreamManipulator::OnError,
                               base::Unretained(this)))) {
-  // TODO(sbykov): Implement ReloadableConfigFile for options_
+  config_.SetCallback(base::BindRepeating(
+      &KioskVisionStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
+
+  CheckOptions(options_);
   LOGF(INFO) << "KioskVisionStreamManipulator is created";
 }
 
@@ -201,6 +230,7 @@ bool KioskVisionStreamManipulator::ProcessCaptureResult(
   // TODO(b/339399663): Don't process new frames if Mojo remote is unbound.
   {
     base::AutoLock lock(lock_);
+    const int64_t kFrameTimeoutUs = options_.frame_timeout_ms * 1000;
     if (current_timestamp_us - processed_frame_timestamp_us_ <
         kFrameTimeoutUs) {
       return true;
@@ -345,6 +375,22 @@ int32_t KioskVisionStreamManipulator::DebugScaleHeight(
   return static_cast<int32_t>((1.0f * original_height) *
                               active_array_dimension_.height /
                               detector_input_size_.height);
+}
+
+void KioskVisionStreamManipulator::OnOptionsUpdated(
+    const base::Value::Dict& json_values) {
+  LoadIfExist(json_values, kKeyDebug, &options_.enable_debug_visualization);
+
+  int frame_timeout_ms = 0;
+  if (LoadIfExist(json_values, kKeyFrameTimeout, &frame_timeout_ms)) {
+    options_.frame_timeout_ms = base::checked_cast<int64_t>(frame_timeout_ms);
+  }
+
+  VLOGF(1) << "Kiosk Vision config updated: [frame_timeout_ms: "
+           << options_.frame_timeout_ms << "; enable_debug_visualization: "
+           << options_.enable_debug_visualization << "]";
+
+  CheckOptions(options_);
 }
 
 void KioskVisionStreamManipulator::OnFrameProcessed(

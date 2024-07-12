@@ -13,6 +13,7 @@
 #include <cros-camera/libkioskvision/kiosk_audience_measurement_types.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "common/reloadable_config_file.h"
 #include "common/stream_manipulator.h"
 
 namespace cros {
@@ -21,7 +22,13 @@ class KioskVisionWrapper;
 class KioskVisionStreamManipulator : public StreamManipulator {
  public:
   struct Options {
-    // Adds current face/body detections to result metadata.
+    // Timeout since the previous frame before inputting the next frame into the
+    // tracking pipeline. Measured in milliseconds.
+    // Used to limit the processing frame rate (FPS):
+    // E.g. FPS = 1000 / 'frame_timeout_ms', 166ms timeout corresponds to 6 FPS.
+    int64_t frame_timeout_ms = 166;
+
+    // Adds current face/body detections to the capture result metadata.
     bool enable_debug_visualization = false;
   };
 
@@ -48,6 +55,8 @@ class KioskVisionStreamManipulator : public StreamManipulator {
   int32_t DebugScaleWidth(int32_t original_width);
   int32_t DebugScaleHeight(int32_t original_height);
 
+  void OnOptionsUpdated(const base::Value::Dict& json_values);
+
   void OnFrameProcessed(cros::kiosk_vision::Timestamp timestamp,
                         const cros::kiosk_vision::Appearance* audience_data,
                         uint32_t audience_size);
@@ -60,6 +69,7 @@ class KioskVisionStreamManipulator : public StreamManipulator {
   void OnError();
 
   Options options_;
+  ReloadableConfigFile config_;
   StreamManipulator::Callbacks callbacks_;
 
   base::FilePath dlc_path_;
