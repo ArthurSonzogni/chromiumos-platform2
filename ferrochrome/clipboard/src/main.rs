@@ -46,6 +46,7 @@ fn send_text_plain(stream: &mut VsockStream, data: &[u8]) -> Result<()> {
 fn handle_read_clipboard(stream: &mut VsockStream) -> Result<()> {
     // TODO(b/351225383): Bring wl-paste binary into ChromeOS.
     let output = Command::new("wl-paste")
+        .env("XDG_RUNTIME_DIR", "/run/chrome")
         .arg("--no-newline")
         .output()
         .context("Failed to execute command")?;
@@ -76,6 +77,7 @@ fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
 
     // TODO(b/351225383): Bring wl-copy binary into ChromeOS.
     let status = Command::new("wl-copy")
+        .env("XDG_RUNTIME_DIR", "/run/chrome")
         .arg(text_data)
         .status()
         .context("Failed to execute command")?;
