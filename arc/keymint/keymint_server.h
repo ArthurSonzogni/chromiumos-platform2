@@ -6,6 +6,7 @@
 #define ARC_KEYMINT_KEYMINT_SERVER_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/location.h>
@@ -120,6 +121,8 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   void GenerateCertificateRequest(
       arc::mojom::keymint::CertificateRequestPtr request,
       GenerateCertificateRequestCallback callback) override;
+
+  bool SetSerialNumber(const std::string& serial_number);
 
  private:
   class Backend {

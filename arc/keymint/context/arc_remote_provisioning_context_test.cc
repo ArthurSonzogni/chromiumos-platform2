@@ -609,4 +609,25 @@ TEST_F(ArcRemoteProvisioningContextTest, VerifyAndCopyDeviceIdsEmpty) {
   EXPECT_EQ(error, KM_ERROR_CANNOT_ATTEST_IDS);
   EXPECT_EQ(output_params.size(), 0);
 }
+
+TEST_F(ArcRemoteProvisioningContextTest, SetSerialNumber_Success) {
+  // Prepare.
+  std::string serial_number("4987fwehjn1271j231293fqdesb02vs912e");
+
+  // Execute.
+  keymaster_error_t error =
+      remote_provisioning_context_->SetSerialNumber(serial_number);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_OK);
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, SetSerialNumber_Failure) {
+  // Execute.
+  keymaster_error_t error = remote_provisioning_context_->SetSerialNumber("");
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_UNKNOWN_ERROR);
+}
+
 }  // namespace arc::keymint::context

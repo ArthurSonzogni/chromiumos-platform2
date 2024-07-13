@@ -89,6 +89,7 @@ class ArcRemoteProvisioningContext
       const std::vector<uint8_t>& mac_key,
       const std::vector<uint8_t>& additional_auth_data) const override;
 
+  keymaster_error_t SetSerialNumber(const std::string& serial_number);
   void SetSystemVersion(uint32_t os_version, uint32_t os_patchlevel);
   void SetVendorPatchlevel(uint32_t vendor_patchlevel);
   void SetBootPatchlevel(uint32_t boot_patchlevel);
@@ -123,6 +124,7 @@ class ArcRemoteProvisioningContext
   std::optional<std::vector<uint8_t>> vbmeta_digest_;
   std::optional<std::vector<uint8_t>> certificate_challenge_;
   std::optional<base::flat_map<std::string, std::string>> device_id_map_;
+  std::optional<std::string> serial_number_;
 
   mutable std::once_flag bcc_initialized_flag_;
   mutable cppbor::Array boot_cert_chain_;

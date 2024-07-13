@@ -5,6 +5,7 @@
 #ifndef ARC_KEYMINT_CERT_STORE_INSTANCE_H_
 #define ARC_KEYMINT_CERT_STORE_INSTANCE_H_
 
+#include <string>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
@@ -28,6 +29,9 @@ class CertStoreInstance : public mojom::CertStoreInstance {
 
   void UpdatePlaceholderKeys(std::vector<mojom::ChromeOsKeyPtr> keys,
                              UpdatePlaceholderKeysCallback callback) override;
+  // Sets the ARCVM serial number in the KeyMint server.
+  // This would be same as |ro.boot.serialno| on the device.
+  void SetSerialNumber(const std::string& serial_number) override;
 
  private:
   base::WeakPtr<KeyMintServer> keymint_server_;

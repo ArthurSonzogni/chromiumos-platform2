@@ -748,6 +748,27 @@ brillo::Blob ArcKeyMintContext::TestSerializeAuthorizationSetToBlob(
   return SerializeAuthorizationSetToBlob(authorization_set);
 }
 
+keymaster_error_t ArcKeyMintContext::SetSerialNumber(
+    const std::string& serial_number) {
+  if (serial_number.empty()) {
+    LOG(ERROR) << "Cannot set empty serial number in KeyMint.";
+    return KM_ERROR_UNKNOWN_ERROR;
+  }
+
+  if (pure_soft_remote_provisioning_context_ == nullptr) {
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  // We also need to set the serial number in Arc Remote Provisioning Context.
+  // Hence, dynamic casting a base class pointer to derived class.
+  ArcRemoteProvisioningContext* arc_remote_provisioning_context =
+      dynamic_cast<ArcRemoteProvisioningContext*>(
+          pure_soft_remote_provisioning_context_.get());
+  if (arc_remote_provisioning_context == nullptr) {
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  return arc_remote_provisioning_context->SetSerialNumber(serial_number);
+}
+
 keymaster_error_t ArcKeyMintContext::SetSystemVersion(uint32_t os_version,
                                                       uint32_t os_patchlevel) {
   os_version_ = os_version;

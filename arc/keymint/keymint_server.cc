@@ -817,4 +817,16 @@ void KeyMintServer::GenerateCertificateRequest(
                     std::move(km_request), std::move(task_lambda));
 }
 
+bool KeyMintServer::SetSerialNumber(const std::string& serial_number) {
+  if (serial_number.empty()) {
+    LOG(INFO) << "Cannot set empty serial number in KeyMint.";
+    return false;
+  }
+
+  auto error = backend_.context()->SetSerialNumber(serial_number);
+  if (error != KM_ERROR_OK) {
+    return false;
+  }
+  return true;
+}
 }  // namespace arc::keymint

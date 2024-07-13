@@ -945,6 +945,25 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NullCrosSystem) {
   EXPECT_EQ(kUnverifiedBootState, vb_state);
 }
 
+TEST_F(ArcKeyMintContextTest, SetSerialNumber_Success) {
+  // Prepare.
+  std::string serial_number("4987fwehjn1271j231293fqdesb02vs912e");
+
+  // Execute.
+  keymaster_error_t error = context_->SetSerialNumber(serial_number);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_OK);
+}
+
+TEST_F(ArcKeyMintContextTest, SetSerialNumber_Failure) {
+  // Execute.
+  keymaster_error_t error = context_->SetSerialNumber("");
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_UNKNOWN_ERROR);
+}
+
 TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Success) {
   // Prepare.
   std::string file_data(kSampleVbMetaDigest);

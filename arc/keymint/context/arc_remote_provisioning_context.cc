@@ -557,6 +557,17 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
   return device_info_map;
 }
 
+keymaster_error_t ArcRemoteProvisioningContext::SetSerialNumber(
+    const std::string& serial_number) {
+  if (serial_number.empty()) {
+    LOG(ERROR) << "Cannot set empty serial number in KeyMint.";
+    return KM_ERROR_UNKNOWN_ERROR;
+  }
+
+  serial_number_ = serial_number;
+  return KM_ERROR_OK;
+}
+
 void ArcRemoteProvisioningContext::SetVendorPatchlevel(
     uint32_t vendor_patchlevel) {
   vendor_patchlevel_ = vendor_patchlevel;

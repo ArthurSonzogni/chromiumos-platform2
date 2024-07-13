@@ -113,6 +113,9 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
 
   ::keymaster::KeymasterEnforcement* enforcement_policy() override;
 
+  // Sets the ARCVM's serial number in KeyMint.
+  keymaster_error_t SetSerialNumber(const std::string& serial_number);
+
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|
   // and auth sets. Otherwise it is a CrOS owned key, deserialized into |key|.

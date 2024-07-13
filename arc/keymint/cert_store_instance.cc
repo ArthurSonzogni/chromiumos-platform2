@@ -30,4 +30,17 @@ void CertStoreInstance::UpdatePlaceholderKeys(
   }
 }
 
+void CertStoreInstance::SetSerialNumber(const std::string& serial_number) {
+  if (keymint_server_ == nullptr) {
+    LOG(ERROR)
+        << "Failed to set the ARCVM serial number. KeyMint Server is null.";
+    return;
+  }
+  bool result = keymint_server_->SetSerialNumber(serial_number);
+  if (!result) {
+    LOG(ERROR) << "Failed to set the ARCVM serial number.";
+    return;
+  }
+}
+
 }  // namespace arc::keymint
