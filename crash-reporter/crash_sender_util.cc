@@ -486,8 +486,8 @@ bool Sender::IsSafeDeviceCoredump(const CrashInfo& info) {
   std::string value;
   if (!info.metadata.GetString("exec_name", &value))
     return false;
-  return value == "devcoredump_adreno" || value == "devcoredump_qcom-venus" ||
-         value == "devcoredump_amdgpu";
+  return value == "devcoredump_adreno" || value == "devcoredump_msm_dpu" ||
+         value == "devcoredump_qcom-venus" || value == "devcoredump_amdgpu";
 }
 
 SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,

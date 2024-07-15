@@ -82,8 +82,8 @@ constexpr char kDeviceGmailUser[] = "alice@gmail.com";
 constexpr char kAffiliationID[] = "affiliation_id";
 
 // Driver names for a coredump that should be collected:
-constexpr const char* kCollectedDriverNames[] = {"adreno", "qcom-venus",
-                                                 "amdgpu"};
+constexpr const char* kCollectedDriverNames[] = {"adreno", "msm_dpu",
+                                                 "qcom-venus", "amdgpu"};
 
 const char kCrashReporterInterface[] = "org.chromium.CrashReporterInterface";
 const char kDebugDumpCreatedSignalName[] = "DebugDumpCreated";
