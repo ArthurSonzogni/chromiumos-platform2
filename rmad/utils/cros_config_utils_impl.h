@@ -35,6 +35,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   bool GetFirmwareConfig(uint32_t* firmware_config) const override;
   std::optional<std::string> GetSpiFlashTransform(
       const std::string& flash_name) const override;
+  std::optional<std::string> GetFingerprintSensorLocation() const override;
 
   // Get cros_config attributes of all supported designs from the database.
   bool GetDesignConfigList(

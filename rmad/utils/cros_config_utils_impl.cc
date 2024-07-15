@@ -153,6 +153,20 @@ std::optional<std::string> CrosConfigUtilsImpl::GetSpiFlashTransform(
   return mapped_flash_name;
 }
 
+std::optional<std::string> CrosConfigUtilsImpl::GetFingerprintSensorLocation()
+    const {
+  std::string result;
+  const base::FilePath path =
+      base::FilePath(kCrosRootPath).Append(kCrosFingerprintPath);
+
+  if (!cros_config_->GetString(path.value(), kCrosFingerprintSensorLocationKey,
+                               &result)) {
+    return std::nullopt;
+  }
+
+  return result;
+}
+
 bool CrosConfigUtilsImpl::GetDesignConfigList(
     std::vector<DesignConfig>* design_config_list) const {
   DCHECK(design_config_list);

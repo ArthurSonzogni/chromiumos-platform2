@@ -29,6 +29,10 @@ class MockCrosConfigUtils : public CrosConfigUtils {
               GetSpiFlashTransform,
               (const std::string&),
               (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              GetFingerprintSensorLocation,
+              (),
+              (const, override));
   MOCK_METHOD(bool,
               GetDesignConfigList,
               (std::vector<DesignConfig>*),

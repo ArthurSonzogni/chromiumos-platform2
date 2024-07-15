@@ -41,6 +41,8 @@ constexpr uint32_t kSkuId4 = 0x2001;
 
 constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 
+constexpr char kFingerprintSensorLocation[] = "power-button-top-left";
+
 constexpr uint32_t kFirmwareConfig = 55688;
 
 constexpr char kSpiFlashTranformFrom[] = "TestFlashNameFrom";
@@ -104,6 +106,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
     std::optional<std::string> custom_label_tag = std::nullopt;
     bool enable_rmad = true;
     bool set_optional_rmad_cros_configs = true;
+    std::optional<std::string> fingerprint_sensor_location = std::nullopt;
   };
 
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
@@ -111,6 +114,8 @@ class CrosConfigUtilsImplTest : public testing::Test {
     // Define all path constants here.
     const base::FilePath root_path = base::FilePath(kCrosRootPath);
     const base::FilePath identity_path = root_path.Append(kCrosIdentityPath);
+    const base::FilePath fingerprint_path =
+        root_path.Append(kCrosFingerprintPath);
     const base::FilePath firmware_path = root_path.Append(kCrosFirmwarePath);
     const base::FilePath spi_flash_transform_path =
         root_path.Append(kCrosSpiFlashTransformPath);
@@ -136,6 +141,11 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                 kSpiFlashTranformFrom, kSpiFlashTranformTo);
     fake_cros_config->SetString(identity_path.value(), kCrosIdentitySkuKey,
                                 base::NumberToString(args.sku_id));
+    if (args.fingerprint_sensor_location.has_value()) {
+      fake_cros_config->SetString(fingerprint_path.value(),
+                                  kCrosFingerprintSensorLocationKey,
+                                  args.fingerprint_sensor_location.value());
+    }
     fake_cros_config->SetString(firmware_path.value(),
                                 kCrosFirmwareFirmwareConfigKey,
                                 base::NumberToString(kFirmwareConfig));
@@ -309,6 +319,24 @@ TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_IsCustomLabel_Success) {
   std::string custom_label_tag;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTag(&custom_label_tag));
   EXPECT_EQ(custom_label_tag, kCustomLabelTag);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetFingerprintSensorLocation_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils(
+      {.fingerprint_sensor_location = kFingerprintSensorLocation});
+
+  auto fingerprint_sensor_location =
+      cros_config_utils->GetFingerprintSensorLocation();
+  EXPECT_TRUE(fingerprint_sensor_location.has_value());
+  EXPECT_EQ(kFingerprintSensorLocation, fingerprint_sensor_location.value());
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetFingerprintSensorLocation_Unset) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
+
+  auto fingerprint_sensor_location =
+      cros_config_utils->GetFingerprintSensorLocation();
+  EXPECT_FALSE(fingerprint_sensor_location.has_value());
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetFirmwareConfig_Success) {
