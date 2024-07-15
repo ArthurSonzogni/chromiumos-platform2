@@ -626,6 +626,18 @@ TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
   metrics_.NotifyConnectionDiagnosticsIssue(invalid_issue);
 }
 
+TEST_F(MetricsTest, NotifyBand6GHzSupport) {
+  bool band6ghz_supported = false;
+  EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricBand6GHzSupport,
+                                      band6ghz_supported));
+  metrics_.NotifyBand6GHzSupport(band6ghz_supported);
+
+  band6ghz_supported = true;
+  EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricBand6GHzSupport,
+                                      band6ghz_supported));
+  metrics_.NotifyBand6GHzSupport(band6ghz_supported);
+}
+
 TEST_F(MetricsTest, NotifyAp80211kSupport) {
   bool neighbor_list_supported = false;
   EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricAp80211kSupport,

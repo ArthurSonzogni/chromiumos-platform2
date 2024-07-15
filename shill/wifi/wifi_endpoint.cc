@@ -121,6 +121,10 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   }
   if (properties.Contains<uint16_t>(WPASupplicant::kBSSPropertyFrequency)) {
     frequency_ = properties.Get<uint16_t>(WPASupplicant::kBSSPropertyFrequency);
+    if (frequency_ >= IEEE_80211::kWiFiMin6GHzFreq &&
+        frequency_ <= IEEE_80211::kWiFiMax6GHzFreq) {
+      supported_features_.band6ghz_support = true;
+    }
   }
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -183,6 +187,10 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     uint16_t new_frequency =
         properties.Get<uint16_t>(WPASupplicant::kBSSPropertyFrequency);
     if (new_frequency != frequency_) {
+      if (new_frequency >= IEEE_80211::kWiFiMin6GHzFreq &&
+          new_frequency <= IEEE_80211::kWiFiMax6GHzFreq) {
+        supported_features_.band6ghz_support = true;
+      }
       if (metrics_) {
         metrics_->NotifyApChannelSwitch(frequency_, new_frequency);
       }
@@ -390,6 +398,10 @@ const WiFiEndpoint::HS20Information& WiFiEndpoint::hs20_information() const {
 
 bool WiFiEndpoint::mbo_support() const {
   return supported_features_.mbo_support;
+}
+
+bool WiFiEndpoint::band6ghz_support() const {
+  return supported_features_.band6ghz_support;
 }
 
 const WiFiEndpoint::QosSupport& WiFiEndpoint::qos_support() const {
@@ -768,6 +780,14 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         ParseAdvertisementProtocolList(it + 2, it + ie_len,
                                        &supported_features_.anqp_support);
         break;
+      case IEEE_80211::kElemIdRNR:
+        // Format of an Reduced Neighbor Report Element.
+        //       1          1                 variable
+        // +---------------------+--------------------------------+
+        // | Element ID | Length | Neighbor AP Information Fields
+        // +---------------------+--------------------------------+
+        ParseRNR(it + 2, it + ie_len);
+        break;
       default:
         SLOG(5) << __func__ << ": parsing of " << *it
                 << " type IE not supported.";
@@ -1058,7 +1078,7 @@ void WiFiEndpoint::ParseAdvertisementProtocolList(
     return;
   }
 
-  // Format of an Advertisement Protocol tuple (Figure 9-486).
+  // Format of an Advertisement Protocol tuple.
   //    1                     variable
   // +---------------------+---------------------------+
   // | Query Response Info | Advertisement Protocol ID |
@@ -1074,7 +1094,7 @@ void WiFiEndpoint::ParseAdvertisementProtocolList(
         ie++;
         break;
       case IEEE_80211::kAdvProtVendorSpecific: {
-        // Format of a Vendor Specific element (Figure 9-290).
+        // Format of a Vendor Specific element.
         //    1            1
         // +------------+--------+-----+-----------------+
         // | Element ID | Length | OUI | Vendor specific |
@@ -1106,6 +1126,106 @@ void WiFiEndpoint::ParseAdvertisementProtocolList(
         ie++;
     }
   }
+}
+
+void WiFiEndpoint::ParseRNR(std::vector<uint8_t>::const_iterator ie,
+                            std::vector<uint8_t>::const_iterator end) {
+  if (std::distance(ie, end) < 5) {
+    LOG(WARNING) << __func__
+                 << ": no room in IE for Neighbor AP Information Field.";
+    return;
+  }
+
+  // Format of a Neighbor AP Information Field.
+  //              2                     1                 1
+  // +-------------------------+-----------------+----------------+
+  // | TBTT Information Header | Operating Class | Channel Number
+  // +-------------------------+-----------------+----------------+
+  //         variable
+  // +----------------------+
+  // | TBTT Information Set
+  // +----------------------+
+  while (std::distance(ie, end) >= 5) {
+    // Format of TBTT Information Header in bits.
+    //              2                           1                 1
+    // +-----------------------------+-----------------------+----------+
+    // | TBTT Information Field Type | Filtered Neighbor AP | Reserved
+    // +-----------------------------+-----------------------+----------+
+    //             4                         8
+    // +------------------------+-------------------------+
+    // | TBTT Information Count | TBTT Information Length
+    // +------------------------+-------------------------+
+    uint8_t tbtt_count = (*ie & 0x0f) + 1;
+    uint8_t tbtt_info_len = *(ie + 1);
+    ie += 2;
+    // Operating Class.
+    if ((*ie) >= IEEE_80211::kWiFiMin6GHzOpClass &&
+        (*ie) <= IEEE_80211::kWiFiMax6GHzOpClass) {
+      // Found a neighboring AP on 6GHz but need to confirm it is also
+      // co-located.
+      for (int i = 0; i < tbtt_count; ++i) {
+        // Format of TBTT Information field.
+        //              1                   0 or 6               0 or 4
+        // +-------------------------+------------------+----------------------+
+        // | Neighbor AP TBTT Offset | BSSID (optional) | Short SSID (optional)
+        // +-------------------------+------------------+----------------------+
+        //       0 or 1         0 or 1
+        // +----------------+-----------+
+        // | BSS Parameters | 20MHz PSD
+        // +----------------+-----------+
+        auto bss_param_ie = ie + 2;
+        // Neighbor AP TBTT Offset is always present. Whether optional IEs are
+        // present depends on the TBTT Information Length.
+        switch (tbtt_info_len) {
+          // Neighbor AP TBTT Offset + BSS Parameters
+          case 2:
+            bss_param_ie += (tbtt_info_len * i) + 1;
+            break;
+          // Neighbor AP TBTT Offset + Short SSID + BSS Parameters
+          case 6:
+            bss_param_ie += (tbtt_info_len * i) + 5;
+            break;
+          // Neighbor AP TBTT Offset + BSSID + BSS Parameters
+          case 8:
+          // Neighbor AP TBTT Offset + BSSID + BSS Parameters + 20MHz PSD
+          case 9:
+            bss_param_ie += (tbtt_info_len * i) + 7;
+            break;
+          // Neighbor AP TBTT Offset + BSSID + Short SSID + BSS Parameters +
+          // 20MHz PSD
+          case 12 ... 255:
+            bss_param_ie += (tbtt_info_len * i) + 11;
+            break;
+          default:
+            continue;
+        }
+        // Format of BSS Parameters Information field in bits.
+        //         1               1              1                 1
+        // +-----------------+-----------+----------------+--------------------+
+        // | OCT Recommended | Same SSID | Multiple BSSID | Transmitted BSSID
+        // +-----------------+-----------+----------------+--------------------+
+        //                       1                              1
+        // +---------------------------------------------+------------+
+        // | Member of ESS With 2.4GHz/5GHz Colocated AP | UPR active
+        // +---------------------------------------------+------------+
+        //         1             1
+        // +---------------+-----------+
+        // | Co-located AP | Reserved
+        // +---------------+-----------+
+        if (std::distance(bss_param_ie, end) < 1) {
+          LOG(WARNING) << __func__
+                       << ": no room in IE for BSS Parameters field.";
+          return;
+        }
+        if (*bss_param_ie & 0x40) {
+          supported_features_.band6ghz_support = true;
+          return;
+        }
+      }
+    }
+    ie += (tbtt_info_len * tbtt_count) + 2;
+  }
+  return;
 }
 
 bool WiFiEndpoint::ParseANQPFields(const KeyValueStore& properties) {

@@ -1839,6 +1839,10 @@ class Metrics {
   // MBO support metric.
   static constexpr char kMetricMBOSupport[] = "Network.Shill.WiFi.MBOSupport";
 
+  // 6GHz Band Support metric.
+  static constexpr char kMetricBand6GHzSupport[] =
+      "Network.Shill.WiFi.Band6GHzSupport";
+
   // Seconds between latest WiFi rekey attempt and service failure, in seconds.
   static constexpr HistogramMetric<FixedName>
       kMetricTimeFromRekeyToFailureSeconds = {
@@ -2153,6 +2157,10 @@ class Metrics {
   // Notifies this object of the MBO support of the access point that has been
   // connected to.
   void NotifyMBOSupport(bool mbo_support);
+
+  // Notifies this object of the 6GHz band support of the access point that has
+  // been connected to.
+  void NotifyBand6GHzSupport(bool band6ghz_support);
 
   // Notifies this object that of the stream classification support of an access
   // point that has been connected to.

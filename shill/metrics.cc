@@ -1041,6 +1041,11 @@ void Metrics::NotifyMBOSupport(bool mbo_support) {
   SendBoolToUMA(kMetricMBOSupport, mbo_support);
 }
 
+void Metrics::NotifyBand6GHzSupport(bool band6ghz_support) {
+  SLOG(2) << __func__ << ": " << band6ghz_support;
+  SendBoolToUMA(kMetricBand6GHzSupport, band6ghz_support);
+}
+
 void Metrics::NotifyStreamClassificationSupport(bool scs_supported,
                                                 bool mscs_supported) {
   int sc_support = kWiFiApSCUnsupported;

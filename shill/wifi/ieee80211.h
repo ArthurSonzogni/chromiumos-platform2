@@ -38,6 +38,7 @@ const uint8_t kElemIdVHTOperation = 0xc0;
 const uint8_t kElemIdMeshId = 0x72;
 const uint8_t kElemIdAdvertisementProtocols = 0x6c;
 const uint8_t kElemIdExt = 0xff;
+const uint8_t kElemIdRNR = 0xc9;
 
 // Element Id Extensions from P802.11ax/D4.0 Section 9.4.2.1.
 const uint8_t kElemIdExtHECap = 0x23;
@@ -152,6 +153,12 @@ const uint8_t kAdvProtMisCESCD = 2;
 const uint8_t kAdvProtEAS = 3;
 const uint8_t kAdvProtRLQP = 4;
 const uint8_t kAdvProtVendorSpecific = 221;
+
+// Operating classes and frequencies for determining 6GHz Band support.
+const uint8_t kWiFiMin6GHzOpClass = 131;
+const uint8_t kWiFiMax6GHzOpClass = 137;
+const uint16_t kWiFiMin6GHzFreq = 5935;
+const uint16_t kWiFiMax6GHzFreq = 7115;
 
 // This structure is incomplete.  Fields will be added as necessary.
 //

@@ -183,6 +183,17 @@ class WiFiEndpointTest : public PropertyStoreTest {
     endpoint->vendor_information_ = vendor_information;
   }
 
+  WiFiEndpointRefPtr MakeOpenEndpointWithFreq(
+      ControlInterface* control_interface,
+      const WiFiRefPtr& wifi,
+      const std::string& ssid,
+      net_base::MacAddress bssid,
+      uint16_t frequency) {
+    return WiFiEndpoint::MakeOpenEndpoint(
+        control_interface, wifi, ssid, bssid,
+        WPASupplicant::kNetworkModeInfrastructure, frequency, 0);
+  }
+
   WiFiEndpointRefPtr MakeEndpoint(
       ControlInterface* control_interface,
       const WiFiRefPtr& wifi,
@@ -637,6 +648,44 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
     EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
     EXPECT_TRUE(ep->supported_features_.anqp_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    uint8_t opClass = 131;
+    uint8_t channel = 193;
+    // Neighboring 6GHz AP is colocated.
+    const std::vector<uint8_t> k6GHzColocatedAP{0,       2,   opClass,
+                                                channel, 255, 0x40};
+    AddIEWithData(IEEE_80211::kElemIdRNR, k6GHzColocatedAP, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_TRUE(ep->supported_features_.band6ghz_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    uint8_t opClass = 131;
+    uint8_t channel = 193;
+    // Neighboring 6GHz AP is not co-located.
+    const std::vector<uint8_t> k6GHzNeighborAP{0,       2,   opClass,
+                                               channel, 255, 0x00};
+    AddIEWithData(IEEE_80211::kElemIdRNR, k6GHzNeighborAP, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_FALSE(ep->supported_features_.band6ghz_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    uint8_t opClass = 81;
+    uint8_t channel = 11;
+    const std::vector<uint8_t> k2GHzColocatedAP{0,       2,   opClass,
+                                                channel, 255, 0x40};
+    AddIEWithData(IEEE_80211::kElemIdRNR, k2GHzColocatedAP, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    ep->supported_features_ = WiFiEndpoint::SupportedFeatures();
+    EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
+    EXPECT_FALSE(ep->supported_features_.band6ghz_support);
   }
 }
 
@@ -1116,6 +1165,31 @@ TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
   endpoint->PropertiesChanged(changed_properties);
   EXPECT_EQ(frequency, endpoint->frequency());
+}
+
+TEST_F(WiFiEndpointTest, InitialFrequency6GHz) {
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpointWithFreq(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 5935);
+  EXPECT_TRUE(endpoint->supported_features_.band6ghz_support);
+}
+
+TEST_F(WiFiEndpointTest, PropertiesChangedFrequency6GHz) {
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
+  KeyValueStore changed_properties;
+  uint16_t frequency = 5935;
+
+  EXPECT_FALSE(endpoint->supported_features_.band6ghz_support);
+  EXPECT_NE(frequency, endpoint->frequency());
+  changed_properties.Set<uint16_t>(WPASupplicant::kBSSPropertyFrequency,
+                                   frequency);
+
+  EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
+  endpoint->PropertiesChanged(changed_properties);
+  EXPECT_EQ(frequency, endpoint->frequency());
+  EXPECT_TRUE(endpoint->supported_features_.band6ghz_support);
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedHS20Support) {

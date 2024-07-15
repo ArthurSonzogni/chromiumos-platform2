@@ -79,6 +79,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     QosSupport qos_support;
     bool anqp_support = false;
     ANQPCapabilities anqp_capabilities;
+    bool band6ghz_support = false;
   };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
@@ -136,6 +137,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const Ap80211krvSupport& krv_support() const;
   const HS20Information& hs20_information() const;
   bool mbo_support() const;
+  bool band6ghz_support() const;
   const QosSupport& qos_support() const;
   bool anqp_support() const;
   const ANQPCapabilities& anqp_capabilities() const;
@@ -175,6 +177,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, PhysicalMode);
   // for supported_features_
   FRIEND_TEST(WiFiEndpointTest, Ap80211krvSupported);
+  FRIEND_TEST(WiFiEndpointTest, PropertiesChangedFrequency6GHz);
+  FRIEND_TEST(WiFiEndpointTest, InitialFrequency6GHz);
 
   enum KeyManagement {
     kKeyManagement802_1x,
@@ -258,6 +262,9 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   void ParseAdvertisementProtocolList(std::vector<uint8_t>::const_iterator ie,
                                       std::vector<uint8_t>::const_iterator end,
                                       bool* anqp_support);
+  // Parse Reduced Neighbor Report element.
+  void ParseRNR(std::vector<uint8_t>::const_iterator ie,
+                std::vector<uint8_t>::const_iterator end);
   // Parse ANQP fields, return when ANQP fields where effectively parsed.
   bool ParseANQPFields(const KeyValueStore& properties);
   // Parse ANQP Capability List field.

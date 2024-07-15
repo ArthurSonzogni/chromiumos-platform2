@@ -1632,6 +1632,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   metrics()->NotifyHS20Support(endpoint->hs20_information().supported,
                                endpoint->hs20_information().version);
   metrics()->NotifyMBOSupport(endpoint->mbo_support());
+  metrics()->NotifyBand6GHzSupport(endpoint->band6ghz_support());
   metrics()->NotifyStreamClassificationSupport(
       endpoint->qos_support().scs_supported,
       endpoint->qos_support().mscs_supported);
