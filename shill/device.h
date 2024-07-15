@@ -464,6 +464,9 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   PropertyStore store_;
 
+  // Name representing this Device. This may be different than link_name() but
+  // must be unique across all existing Device instances.
+  const std::string name_;
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;

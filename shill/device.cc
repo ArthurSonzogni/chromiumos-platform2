@@ -12,6 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <ios>
 #include <iostream>
 #include <optional>
 #include <set>
@@ -30,7 +31,6 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mac_address.h>
@@ -70,6 +70,7 @@ Device::Device(Manager* manager,
       enabled_persistent_(true),
       enabled_pending_(enabled_),
       mac_address_(mac_address),
+      name_(link_name),
       interface_index_(interface_index),
       link_name_(link_name),
       manager_(manager),
@@ -110,7 +111,7 @@ Device::Device(Manager* manager,
       kSelectedServiceProperty, &Device::GetSelectedServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kIPConfigsProperty,
                                          &Device::AvailableIPConfigs);
-  store_.RegisterConstString(kNameProperty, &link_name_);
+  store_.RegisterConstString(kNameProperty, &name_);
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty, &Device::GetTechnologyString);
 
@@ -118,11 +119,11 @@ Device::Device(Manager* manager,
   // kScanIntervalProperty: Registered in WiFi, Cellular
   // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
 
-  SLOG(this, 1) << "Device(): " << link_name_ << " index: " << interface_index_;
+  SLOG(this, 1) << "Device(): " << LoggingTag();
 }
 
 Device::~Device() {
-  LOG(INFO) << "~Device(): " << link_name_ << " index: " << interface_index_;
+  LOG(INFO) << "~Device(): " << LoggingTag();
   if (implicit_network_) {
     implicit_network_->UnregisterEventHandler(this);
   }
@@ -142,13 +143,13 @@ void Device::Initialize() {
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
-  SLOG(this, 2) << base::StringPrintf("Device %s flags 0x%x changed 0x%x",
-                                      link_name_.c_str(), flags, change);
+  SLOG(this, 2) << "Device " << LoggingTag() << " flags 0x" << std::hex << flags
+                << " changed 0x" << std::hex << change;
 }
 
 void Device::Scan(Error* error, const std::string& reason, bool is_dbus_call) {
-  SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
-                << reason << (is_dbus_call ? " D-Bus call" : "");
+  SLOG(this, 2) << __func__ << ": " << LoggingTag() << " from " << reason
+                << (is_dbus_call ? " D-Bus call" : "");
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
                         GetTechnologyName() + " device doesn't implement Scan");
 }
@@ -244,7 +245,7 @@ std::string Device::GetMacAddressString(Error* /*error*/) {
 }
 
 const std::string& Device::UniqueName() const {
-  return link_name_;
+  return name_;
 }
 
 Network* Device::GetPrimaryNetwork() const {
@@ -312,7 +313,7 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
   Error::PopulateAndLog(FROM_HERE, &error, Error::kNotImplemented,
                         "SetUsbEthernetMacAddressSource from source " + source +
                             " is not implemented for " + GetTechnologyName() +
-                            " device on " + link_name_ + ".");
+                            " Device " + LoggingTag());
   std::move(callback).Run(error);
 }
 
@@ -476,9 +477,8 @@ void Device::GetTrafficCountersPatchpanelCallback(
 
 void Device::SelectService(const ServiceRefPtr& service,
                            bool reset_old_service_state) {
-  SLOG(this, 2) << __func__ << ": service "
-                << (service ? service->log_name() : "*reset*") << " on "
-                << link_name_;
+  SLOG(this, 2) << __func__ << ": " << LoggingTag() << " service "
+                << (service ? service->log_name() : "*reset*");
 
   if (selected_service_.get() == service.get()) {
     // Network may have been previously invalidated, if so, reset.
@@ -590,8 +590,9 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 // callback
 void Device::OnEnabledStateChanged(ResultCallback callback,
                                    const Error& error) {
-  LOG(INFO) << __func__ << " (target: " << enabled_pending_ << ","
-            << " success: " << error.IsSuccess() << ") on " << link_name_;
+  LOG(INFO) << __func__ << ": " << LoggingTag()
+            << " (target: " << enabled_pending_ << ","
+            << " success: " << error.IsSuccess() << ")";
 
   if (error.IsSuccess()) {
     UpdateEnabledState();
@@ -606,8 +607,8 @@ void Device::OnEnabledStateChanged(ResultCallback callback,
 }
 
 void Device::UpdateEnabledState() {
-  SLOG(this, 1) << __func__ << " (current: " << enabled_
-                << ", target: " << enabled_pending_ << ") on " << link_name_;
+  SLOG(this, 1) << __func__ << ": " << LoggingTag() << " (current: " << enabled_
+                << ", target: " << enabled_pending_ << ")";
   enabled_ = enabled_pending_;
   if (!enabled_ && ShouldBringNetworkInterfaceDownAfterDisabled()) {
     BringNetworkInterfaceDown();
@@ -636,7 +637,7 @@ void Device::SetEnabledPersistent(bool enable, ResultCallback callback) {
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
                                ResultCallback callback) {
-  LOG(INFO) << __func__ << ": Device " << link_name_ << " "
+  LOG(INFO) << __func__ << ": " << LoggingTag()
             << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
     std::move(callback).Run(
@@ -740,7 +741,7 @@ Metrics* Device::metrics() const {
 }
 
 std::string Device::LoggingTag() const {
-  return link_name_ + " " +
+  return UniqueName() + " " +
          (selected_service_ ? selected_service_->log_name() : "no_service");
 }
 
