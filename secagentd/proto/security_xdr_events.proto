@@ -350,18 +350,26 @@ message FileProvenance {
   optional string source_url = 2;  // The URL that the file was downloaded from.
 }
 
-// File Read Event.
-message FileReadEvent {
+// File read.
+message FileRead {
   optional SensitiveFileType sensitive_file_type = 1;
   optional FileProvenance file_provenance = 2;
   optional FileImage image = 3;
 }
 
-// File Modify Event , either a write, modify attribute or both.
-message FileModifyEvent {
+// File read event.
+message FileReadEvent {
+  optional Process parent_process = 1;
+  optional Process process = 2;
+  optional FileRead file_read = 3;
+}
+
+// File modify, either a write, modify attribute or both.
+message FileModify {
   enum ModifyType {
     MODIFY_ATTRIBUTE = 1;
-    WRITE_AND_MODIFY_ATTRIBUTE = 2;
+    WRITE = 2;
+    WRITE_AND_MODIFY_ATTRIBUTE = 3;
   }
   optional SensitiveFileType sensitive_file_type = 1;
   optional FileProvenance file_provenance = 2;
@@ -371,6 +379,13 @@ message FileModifyEvent {
   optional FileImage attributes_before = 3;
   optional FileImage image_after = 4;
   optional ModifyType modify_type = 5;
+}
+
+// File modify event.
+message FileModifyEvent {
+  optional Process parent_process = 1;
+  optional Process process = 2;
+  optional FileModify file_modify = 3;
 }
 
 // Singular File event.
