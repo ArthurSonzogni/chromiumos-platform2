@@ -13,6 +13,7 @@
 #include <libhwsec/factory/factory_impl.h>
 
 #include "biod/auth_stack_manager_wrapper.h"
+#include "biod/biod_feature.h"
 #include "biod/biod_metrics.h"
 #include "biod/biometrics_manager_wrapper.h"
 #include "biod/session_state_manager.h"
@@ -27,6 +28,7 @@ class BiometricsDaemon {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
+  std::unique_ptr<BiodFeature> biod_feature_;
   // Raw pointer to BiodMetrics is passed to CrosFpDevice (owned by
   // CrosFpBiometricsManager), CrosFpBiometricsManager (one of the
   // biometrics managers) and SessionStateManager. This line must be placed

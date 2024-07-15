@@ -4,14 +4,17 @@
 
 #include "biod/biometrics_daemon.h"
 
+#include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <cros_config/cros_config.h>
 #include <libhwsec/factory/factory_impl.h>
 
 #include "biod/auth_stack_manager_wrapper.h"
+#include "biod/biod_config.h"
 #include "biod/biometrics_manager_wrapper.h"
 #include "biod/cros_fp_auth_stack_manager.h"
 #include "biod/cros_fp_biometrics_manager.h"
@@ -30,6 +33,8 @@ namespace {
 
 constexpr char kBiodDaemonStorePath[] = "/run/daemon-store/biod";
 constexpr char kBiodLibPath[] = "/var/lib/biod";
+constexpr char kBioFwUpdaterLibPath[] = "/var/lib/bio_fw_updater";
+constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 constexpr char kForceFpLoginFile[] = "/var/lib/biod/force_fp_login";
 
 }  // namespace
@@ -46,6 +51,17 @@ BiometricsDaemon::BiometricsDaemon() {
   auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();
   object_manager_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+
+  brillo::CrosConfig cros_config;
+  std::optional<std::string> board_name = biod::FingerprintBoard(&cros_config);
+  CHECK(board_name.has_value() && !board_name->empty())
+      << "Fingerprint board name unavailable.";
+
+  auto selector = std::make_unique<updater::FirmwareSelector>(
+      base::FilePath(kBioFwUpdaterLibPath), base::FilePath(kFirmwareDir));
+  CHECK(feature::PlatformFeatures::Initialize(bus_));
+  biod_feature_ = std::make_unique<BiodFeature>(
+      bus_, feature::PlatformFeatures::Get(), std::move(selector));
 
   biod_metrics_ = std::make_unique<BiodMetrics>();
   auto cros_fp_device = CrosFpDevice::Create(
