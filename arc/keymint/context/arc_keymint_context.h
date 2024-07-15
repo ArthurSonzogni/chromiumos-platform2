@@ -63,6 +63,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   // Expose SerializeAuthorizationSetToBlob for tests.
   brillo::Blob TestSerializeAuthorizationSetToBlob(
       const ::keymaster::AuthorizationSet& authorization_set);
+  keymaster_error_t SetSystemVersion(uint32_t os_version,
+                                     uint32_t os_patchlevel) override;
 
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|

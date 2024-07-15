@@ -22,6 +22,8 @@ namespace {
 using testing::NiceMock;
 
 constexpr uint32_t kP256SignatureLength = 64;
+constexpr uint32_t kOsVersion = 13000;
+constexpr uint32_t kOsPatchLevel = 202407;
 
 constexpr char kEcdsaDERSignatureHex[] =
     "304402202183f1eec06a7eca46e676562d3e4f440741ad517a5387c45c54a69a9da846ef02"
@@ -307,6 +309,7 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ASSERT_TRUE(base::WriteFile(
       temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
+  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
 
   auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
   test_peer->set_property_dir_for_tests(remote_provisioning_context_,
@@ -332,6 +335,12 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
   EXPECT_EQ(*result_map->get("product"), cppbor::Tstr("brya"));
   ASSERT_TRUE(result_map->get("security_level"));
   EXPECT_EQ(*result_map->get("security_level"), cppbor::Tstr("tee"));
+  ASSERT_TRUE(result_map->get("os_version"));
+  EXPECT_EQ(*result_map->get("os_version"),
+            cppbor::Tstr(std::to_string(kOsVersion)));
+  ASSERT_TRUE(result_map->get("system_patch_level"));
+  EXPECT_EQ(*result_map->get("system_patch_level"),
+            cppbor::Uint(kOsPatchLevel));
 }
 
 TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoFailure) {

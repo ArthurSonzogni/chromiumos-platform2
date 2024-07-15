@@ -655,4 +655,24 @@ brillo::Blob ArcKeyMintContext::TestSerializeAuthorizationSetToBlob(
   return SerializeAuthorizationSetToBlob(authorization_set);
 }
 
+keymaster_error_t ArcKeyMintContext::SetSystemVersion(uint32_t os_version,
+                                                      uint32_t os_patchlevel) {
+  os_version_ = os_version;
+  os_patchlevel_ = os_patchlevel;
+  if (pure_soft_remote_provisioning_context_ != nullptr) {
+    pure_soft_remote_provisioning_context_->SetSystemVersion(os_version,
+                                                             os_patchlevel);
+    // We also need to set the fields in Arc Remote Provisioning Context.
+    // Hence, dynamic casting a base class pointer to derived class.
+    ArcRemoteProvisioningContext* arc_remote_provisioning_context =
+        dynamic_cast<ArcRemoteProvisioningContext*>(
+            pure_soft_remote_provisioning_context_.get());
+    if (arc_remote_provisioning_context != nullptr) {
+      arc_remote_provisioning_context->SetSystemVersion(os_version,
+                                                        os_patchlevel);
+    }
+  }
+  return KM_ERROR_OK;
+}
+
 }  // namespace arc::keymint::context

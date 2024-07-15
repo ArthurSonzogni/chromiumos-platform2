@@ -412,6 +412,12 @@ void ArcRemoteProvisioningContext::set_property_dir_for_tests(
   property_dir_ = base::FilePath(path);
 }
 
+void ArcRemoteProvisioningContext::SetSystemVersion(uint32_t os_version,
+                                                    uint32_t os_patchlevel) {
+  os_version_ = os_version;
+  os_patchlevel_ = os_patchlevel;
+}
+
 std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
     const {
   const base::FilePath prop_file_path =
@@ -425,6 +431,16 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
   }
 
   auto device_info_map = CreateDeviceInfoMap(properties_content);
+
+  if (os_version_.has_value()) {
+    device_info_map->add(cppbor::Tstr("os_version"),
+                         cppbor::Tstr(std::to_string(os_version_.value())));
+  }
+
+  if (os_patchlevel_.has_value()) {
+    device_info_map->add(cppbor::Tstr("system_patch_level"),
+                         cppbor::Uint(os_patchlevel_.value()));
+  }
 
   const char* security_level = "tee";
   if (security_level_ == KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT) {

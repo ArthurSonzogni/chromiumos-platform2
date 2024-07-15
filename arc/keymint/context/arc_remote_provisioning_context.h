@@ -81,10 +81,14 @@ class ArcRemoteProvisioningContext
       const std::vector<uint8_t>& mac_key,
       const std::vector<uint8_t>& additional_auth_data) const override;
 
+  void SetSystemVersion(uint32_t os_version, uint32_t os_patchlevel);
+
  private:
   // Initialize the BCC if it has not yet happened.
   void ArcLazyInitProdBcc() const;
   keymaster_security_level_t security_level_;
+  std::optional<uint32_t> os_version_;
+  std::optional<uint32_t> os_patchlevel_;
 
   mutable std::once_flag bcc_initialized_flag_;
   mutable cppbor::Array boot_cert_chain_;
