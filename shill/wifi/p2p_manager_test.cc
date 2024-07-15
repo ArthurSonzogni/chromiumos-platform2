@@ -1116,6 +1116,8 @@ TEST_F(P2PManagerTest, StartTimeout_GOStarting) {
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultTimeout);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
 }
 
 TEST_F(P2PManagerTest, StartTimeout_GOConfiguring) {
@@ -1150,6 +1152,8 @@ TEST_F(P2PManagerTest, StartTimeout_GOConfiguring) {
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultTimeout);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
 }
 
 TEST_F(P2PManagerTest, StartTimeout_GOActive) {
@@ -1222,6 +1226,8 @@ TEST_F(P2PManagerTest, StartTimeout_ClientAssociating) {
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultTimeout);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
 }
 
 TEST_F(P2PManagerTest, StartTimeout_ClientConfiguring) {
@@ -1259,6 +1265,8 @@ TEST_F(P2PManagerTest, StartTimeout_ClientConfiguring) {
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultTimeout);
+  EXPECT_EQ(p2p_manager_->supplicant_primary_p2pdevice_pending_event_delegate_,
+            nullptr);
 }
 
 TEST_F(P2PManagerTest, StartTimeout_ClientConnected) {

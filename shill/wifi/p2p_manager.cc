@@ -30,6 +30,7 @@ P2PManager::P2PManager(Manager* manager)
     : manager_(manager),
       allowed_(false),
       next_unique_id_(0),
+      pending_p2p_device_(nullptr),
       supplicant_primary_p2pdevice_pending_event_delegate_(nullptr) {
   supplicant_primary_p2pdevice_proxy_.reset();
 }
@@ -149,6 +150,9 @@ void P2PManager::ActionTimerExpired(bool is_start,
   }
 
   bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
+  DeleteP2PDevice(pending_p2p_device_);
+  pending_p2p_device_ = nullptr;
+  supplicant_primary_p2pdevice_pending_event_delegate_ = nullptr;
   if (is_start) {
     PostResult(
         is_go ? kCreateP2PGroupResultTimeout : kConnectToP2PGroupResultTimeout,
@@ -165,6 +169,7 @@ void P2PManager::CancelActionTimer() {
     action_timer_callback_.Cancel();
     LOG(INFO) << __func__ << ": action timer cancelled";
   }
+  pending_p2p_device_ = nullptr;
 }
 
 void P2PManager::SetActionTimer(bool is_start,
@@ -738,6 +743,7 @@ void P2PManager::OnDeviceCreated(LocalDevice::IfaceType iface_type,
 
   std::unique_ptr<P2PService> service =
       std::make_unique<P2PService>(device, ssid, passphrase, freq);
+  pending_p2p_device_ = device;
   if (is_go) {
     p2p_group_owners_[device->shill_id()] = device;
     if (!device->CreateGroup(std::move(service))) {

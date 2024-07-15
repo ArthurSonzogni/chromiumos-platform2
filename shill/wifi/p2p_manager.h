@@ -118,6 +118,10 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure);
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreDuplicates);
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice);
+  FRIEND_TEST(P2PManagerTest, StartTimeout_GOStarting);
+  FRIEND_TEST(P2PManagerTest, StartTimeout_GOConfiguring);
+  FRIEND_TEST(P2PManagerTest, StartTimeout_ClientAssociating);
+  FRIEND_TEST(P2PManagerTest, StartTimeout_ClientConfiguring);
 
   // Stop p2p device and return error if group cannot be fully configured within
   // |kP2PStartTimeout| time.
@@ -248,6 +252,9 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   // methods which are used directly by P2PDevice.
   std::unique_ptr<SupplicantP2PDeviceProxyInterface>
       supplicant_primary_p2pdevice_proxy_;
+
+  // The P2P device waiting for the service to be enabled.
+  P2PDeviceRefPtr pending_p2p_device_;
 
   // The wpa_supplicant event delegate object of pending P2PDevice.
   SupplicantP2PDeviceEventDelegateInterface*
