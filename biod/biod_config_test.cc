@@ -36,6 +36,13 @@ TEST(FingerprintBoardTest, FingerprintBoardUnset) {
   EXPECT_FALSE(FingerprintBoard(&cros_config));
 }
 
+TEST(FingerprintBoardTest, FingerprintBoardEmpty) {
+  brillo::FakeCrosConfig cros_config;
+  cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPBoard, "");
+  std::optional<std::string> board_name = FingerprintBoard(&cros_config);
+  EXPECT_TRUE(board_name->empty());
+}
+
 TEST(FingerprintBoardTest, FingerprintBoardSet) {
   brillo::FakeCrosConfig cros_config;
   cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
