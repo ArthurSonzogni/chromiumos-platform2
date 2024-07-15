@@ -1,4 +1,4 @@
 # Clipboard of Ferrochrome
 
-Clipboard sharing server runs in Ferrochrome for sharing clipboard between
-Android host and Ferrochrome guest VM.
+`clipboard_sharing_server` runs as a daemon in Ferrochrome for sharing clipboard
+between Android host and Ferrochrome guest VM.

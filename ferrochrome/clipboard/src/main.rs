@@ -44,7 +44,6 @@ fn send_text_plain(stream: &mut VsockStream, data: &[u8]) -> Result<()> {
 }
 
 fn handle_read_clipboard(stream: &mut VsockStream) -> Result<()> {
-    // TODO(b/351225383): Bring wl-paste binary into ChromeOS.
     let output = Command::new("wl-paste")
         .env("XDG_RUNTIME_DIR", "/run/chrome")
         .arg("--no-newline")
@@ -75,7 +74,6 @@ fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
         .to_str()
         .context("Failed to convert payload data into CStr")?;
 
-    // TODO(b/351225383): Bring wl-copy binary into ChromeOS.
     let status = Command::new("wl-copy")
         .env("XDG_RUNTIME_DIR", "/run/chrome")
         .arg(text_data)
@@ -103,9 +101,9 @@ fn handle_request(stream: &mut VsockStream) -> Result<()> {
 
 fn main() {
     let listener = server_init().expect("Failed to initialize clipboard sharing server");
+    println!("Clipboard sharing server started");
     for stream in listener.incoming() {
         let mut stream = stream.expect("Invalid request from the client");
         handle_request(&mut stream).expect("Failed to handle the request from the client");
     }
-    println!("Hello, ferrochrome clipboard!");
 }
