@@ -9,9 +9,9 @@
 
 namespace {
 
-constexpr char kUseTestFirmwareFile[] = ".use_test_firmware";
+constexpr char kUseBetaFirmwareFile[] = ".use_beta_firmware";
 constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
-constexpr char kTestFirmwareSubdir[] = "test";
+constexpr char kBetaFirmwareSubdir[] = "beta";
 
 }  // namespace
 
@@ -20,9 +20,9 @@ namespace biod {
 base::FilePath FirmwareSelector::GetFirmwarePath() const {
   base::FilePath firmware_path(kFirmwareDir);
 
-  if (base::PathExists(base_path_.Append(kUseTestFirmwareFile))) {
-    LOG(INFO) << "Test firmware was requested.";
-    firmware_path = firmware_path.Append(kTestFirmwareSubdir);
+  if (base::PathExists(base_path_.Append(kUseBetaFirmwareFile))) {
+    LOG(INFO) << "Beta firmware was requested.";
+    firmware_path = firmware_path.Append(kBetaFirmwareSubdir);
   }
 
   return firmware_path;

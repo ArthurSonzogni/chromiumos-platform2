@@ -39,14 +39,14 @@ TEST_F(FirmwareSelectorTest, GetProductionFirmwarePath) {
   EXPECT_EQ(selector.GetFirmwarePath(), expected_path);
 }
 
-TEST_F(FirmwareSelectorTest, GetTestFirmwarePath) {
+TEST_F(FirmwareSelectorTest, GetBetaFirmwarePath) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
   biod::FirmwareSelector selector(temp_dir.GetPath());
-  base::FilePath expected_path("/opt/google/biod/fw/test");
+  base::FilePath expected_path("/opt/google/biod/fw/beta");
 
-  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".use_test_firmware")));
+  EXPECT_TRUE(TouchFile(temp_dir.GetPath().Append(".use_beta_firmware")));
   EXPECT_EQ(selector.GetFirmwarePath(), expected_path);
 }
 
