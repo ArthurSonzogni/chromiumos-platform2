@@ -25,6 +25,7 @@
 
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/executor/mount.h"
+#include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/ec_utils_impl.h"
@@ -69,6 +70,9 @@ const std::vector<std::string> kStatefulFileSystems = {"vfat", "ext4", "ext3",
 constexpr char kPowerwashRequestFilePath[] =
     "/mnt/stateful_partition/factory_install_reset";
 constexpr char kRmaPowerwashArgs[] = "fast safe keepimg rma factory";
+
+// Reset FpMCU entropy.
+constexpr char kDefaultBioWashPath[] = "/usr/bin/bio_wash";
 
 std::string FormatTime(const base::Time& time) {
   base::Time::Exploded e;
@@ -133,6 +137,7 @@ Executor::Executor(
   receiver_.set_disconnect_handler(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
   ec_utils_ = std::make_unique<EcUtilsImpl>();
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   futility_utils_ = std::make_unique<FutilityUtilsImpl>();
 }
@@ -302,6 +307,16 @@ void Executor::RequestRmaPowerwash(RequestRmaPowerwashCallback callback) {
 void Executor::RequestBatteryCutoff(RequestBatteryCutoffCallback callback) {
   if (!crossystem_utils_->SetInt(CrosSystemUtils::kBatteryCutoffRequestProperty,
                                  1)) {
+    std::move(callback).Run(false);
+    return;
+  }
+  std::move(callback).Run(true);
+}
+void Executor::ResetFpmcuEntropy(ResetFpmcuEntropyCallback callback) {
+  if (std::string output;
+      !cmd_utils_->GetOutputAndError({kDefaultBioWashPath}, &output)) {
+    LOG(ERROR) << "Failed to reset FpMCU entropy with: " << kDefaultBioWashPath;
+    LOG(ERROR) << output;
     std::move(callback).Run(false);
     return;
   }

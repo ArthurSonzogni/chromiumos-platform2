@@ -4,7 +4,6 @@
 
 // API exposed by rmad's root-level executor. This is used by the sandboxed
 // rmad daemon when it needs to perform a high-privilege operation.
-
 module chromeos.rmad.mojom;
 
 // Information of a diagnostics app.
@@ -38,8 +37,11 @@ interface Executor {
   // Response:
   // * |file_name| - the file name of the saved log if successfully writes the
   //                 log, or null if failed to save the log.
-  MountAndWriteLog(uint8 device_id, string text_log, string json_log,
-      string system_log, string diagnostics_log) => (string? file_name);
+  MountAndWriteLog(uint8 device_id,
+                   string text_log,
+                   string json_log,
+                   string system_log,
+                   string diagnostics_log) => (string? file_name);
 
   // Mount a ChromeOS rootfs partition and copy the firmware updater to a
   // fixed path /usr/lib/rmad/chromeos-firmwareupdate.
@@ -87,6 +89,14 @@ interface Executor {
   // Response:
   // * |success| - true if successfully requested a battery cutoff
   RequestBatteryCutoff() => (bool success);
+
+  // Reset FPMCU entropy.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |success| - true if successfully reset FPMCU entropy.
+  ResetFpmcuEntropy() => (bool success);
 
   // Check flash chip name.
   //

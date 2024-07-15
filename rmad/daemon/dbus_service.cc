@@ -329,6 +329,9 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   daemon_callback->SetExecuteRequestBatteryCutoffCallback(
       base::BindRepeating(&DBusService::ExecuteRequestBatteryCutoff,
                           weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExecuteResetFpmcuEntropyCallback(
+      base::BindRepeating(&DBusService::ExecuteResetFpmcuEntropy,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteGetFlashInfoCallback(
       base::BindRepeating(&DBusService::ExecuteGetFlashInfo,
                           weak_ptr_factory_.GetMutableWeakPtr()));
@@ -459,6 +462,11 @@ void DBusService::ExecuteRequestRmaPowerwash(
 void DBusService::ExecuteRequestBatteryCutoff(
     base::OnceCallback<void(bool)> callback) {
   executor_->RequestBatteryCutoff(std::move(callback));
+}
+
+void DBusService::ExecuteResetFpmcuEntropy(
+    base::OnceCallback<void(bool)> callback) {
+  executor_->ResetFpmcuEntropy(std::move(callback));
 }
 
 void DBusService::ExecuteGetFlashInfo(

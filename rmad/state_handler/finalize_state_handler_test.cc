@@ -19,11 +19,13 @@
 #include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
 using testing::DoAll;
+using testing::ElementsAre;
 using testing::Eq;
 using testing::InSequence;
 using testing::Invoke;
@@ -38,6 +40,7 @@ constexpr char kValidBoardIdType[] = "12345678";
 constexpr char kInvalidBoardIdType[] = "ffffffff";
 constexpr char kValidBoardIdFlags[] = "00007f80";
 constexpr char kInvalidBoardIdFlags[] = "00007f7f";
+constexpr char kFingerprintSensorLocation[] = "power-button-top-left";
 
 }  // namespace
 
@@ -63,10 +66,18 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     bool disable_factory_mode_success = true;
     std::string board_id_type = kValidBoardIdType;
     std::string board_id_flags = kValidBoardIdFlags;
+    std::optional<std::string> fingerprint_sensor_location = std::nullopt;
+    bool reset_fps_success = true;
   };
 
   scoped_refptr<FinalizeStateHandler> CreateInitializedStateHandler(
       const StateHandlerArgs& args) {
+    // Mock |CrosConfigUtils|.
+    auto mock_cros_config_utils =
+        std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    ON_CALL(*mock_cros_config_utils, GetFingerprintSensorLocation)
+        .WillByDefault(Return(args.fingerprint_sensor_location));
+
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     ON_CALL(*mock_gsc_utils, DisableFactoryMode())
@@ -94,11 +105,15 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     daemon_callback_->SetFinalizeSignalCallback(
         base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
                             base::Unretained(&signal_sender_)));
+    daemon_callback_->SetExecuteResetFpmcuEntropyCallback(
+        base::BindRepeating(&FinalizeStateHandlerTest::ResetFpmcuEntropy,
+                            base::Unretained(this), args.reset_fps_success));
 
     // Initialization should always succeed.
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_gsc_utils), std::move(mock_write_protect_utils));
+        std::move(mock_cros_config_utils), std::move(mock_gsc_utils),
+        std::move(mock_write_protect_utils));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
     return handler;
@@ -140,6 +155,11 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
         }));
     task_environment_.FastForwardBy(
         FinalizeStateHandler::kReportStatusInterval);
+  }
+
+  void ResetFpmcuEntropy(bool reset_fps_success,
+                         base::OnceCallback<void(bool)> callback) {
+    std::move(callback).Run(reset_fps_success);
   }
 
  protected:
@@ -199,7 +219,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardId) {
   auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
                FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
 }
 
@@ -219,8 +239,36 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags) {
   auto handler = CreateInitializedStateHandler(args);
 
   handler->RunState();
-  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.95,
                FinalizeStatus::RMAD_FINALIZE_ERROR_CR50);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_HasFps_Success) {
+  StateHandlerArgs args = {.fingerprint_sensor_location =
+                               kFingerprintSensorLocation};
+  auto handler = CreateInitializedStateHandler(args);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_FpsNone_Success) {
+  StateHandlerArgs args = {.fingerprint_sensor_location = "none"};
+  auto handler = CreateInitializedStateHandler(args);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE, 1);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_ResetFpsFailedBlocking) {
+  StateHandlerArgs args = {
+      .fingerprint_sensor_location = kFingerprintSensorLocation,
+      .reset_fps_success = false};
+  auto handler = CreateInitializedStateHandler(args);
+
+  handler->RunState();
+  ExpectSignal(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING, 0.9,
+               FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_InvalidBoardIdFlags_Bypass) {

@@ -76,6 +76,7 @@ class DBusService : public brillo::DBusServiceDaemon {
   void ExecuteRebootEc(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestRmaPowerwash(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestBatteryCutoff(base::OnceCallback<void(bool)> callback);
+  void ExecuteResetFpmcuEntropy(base::OnceCallback<void(bool)> callback);
   void ExecuteGetFlashInfo(
       base::OnceCallback<void(const std::optional<FlashInfo>&)> callback);
 

@@ -55,6 +55,8 @@ using ExecuteRequestRmaPowerwashCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteRequestBatteryCutoffCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
+using ExecuteResetFpmcuEntropyCallback =
+    base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteGetFlashInfoCallback = base::RepeatingCallback<void(
     base::OnceCallback<void(const std::optional<FlashInfo>&)>)>;
 
@@ -104,6 +106,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
                    execute_request_rma_powerwash_callback_);
   DECLARE_CALLBACK(ExecuteRequestBatteryCutoffCallback,
                    execute_request_battery_cutoff_callback_);
+  DECLARE_CALLBACK(ExecuteResetFpmcuEntropyCallback,
+                   execute_reset_fpmcu_entropy_callback_);
   DECLARE_CALLBACK(ExecuteGetFlashInfoCallback,
                    execute_get_flash_name_callback_);
 };

@@ -4,18 +4,19 @@
 
 #include "rmad/state_handler/finalize_state_handler.h"
 
-#include <algorithm>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/task/task_traits.h>
-#include <base/task/thread_pool.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "rmad/constants.h"
+#include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -35,6 +36,7 @@ FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath) {
+  cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
@@ -43,22 +45,22 @@ FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
+    std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<GscUtils> gsc_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
+      cros_config_utils_(std::move(cros_config_utils)),
       gsc_utils_(std::move(gsc_utils)),
       write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
+  sequenced_task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
+
   if (!state_.has_finalize()) {
     state_.set_allocated_finalize(new FinalizeState);
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN);
     status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
-  }
-  if (!task_runner_) {
-    task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }
 
   return RMAD_ERROR_OK;
@@ -133,9 +135,10 @@ void FinalizeStateHandler::StartFinalize() {
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
   status_.set_progress(0);
   status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
-  task_runner_->PostTask(FROM_HERE,
-                         base::BindOnce(&FinalizeStateHandler::FinalizeTask,
-                                        base::Unretained(this)));
+
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&FinalizeStateHandler::FinalizeTask,
+                                base::Unretained(this)));
 }
 
 void FinalizeStateHandler::FinalizeTask() {
@@ -175,6 +178,30 @@ void FinalizeStateHandler::FinalizeTask() {
 
   status_.set_progress(0.9);
 
+  // Reset fingerprint sensor.
+  if (IsFingerprintSupported()) {
+    daemon_callback_->GetExecuteResetFpmcuEntropyCallback().Run(
+        base::BindOnce(&FinalizeStateHandler::ResetFpmcuEntropyCallback,
+                       base::Unretained(this)));
+  } else {
+    OnResetFpmcuEntropySucceed();
+  }
+}
+
+void FinalizeStateHandler::ResetFpmcuEntropyCallback(bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to reset FPS";
+    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+    status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_INTERNAL);
+    return;
+  }
+
+  OnResetFpmcuEntropySucceed();
+}
+
+void FinalizeStateHandler::OnResetFpmcuEntropySucceed() {
+  status_.set_progress(0.95);
+
   // Make sure GSC board ID type and board ID flags are set.
   if (auto board_id_type = gsc_utils_->GetBoardIdType();
       !board_id_type.has_value() ||
@@ -209,6 +236,11 @@ void FinalizeStateHandler::FinalizeTask() {
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
   status_.set_progress(1);
   status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
+}
+
+bool FinalizeStateHandler::IsFingerprintSupported() const {
+  auto location = cros_config_utils_->GetFingerprintSensorLocation();
+  return location.has_value() && location.value() != "none";
 }
 
 }  // namespace rmad

@@ -100,10 +100,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     status_history_.push_back(status);
   }
 
-  base::FilePath GetBioWashPath() const {
-    return GetTempDirPath().Append("bio_wash");
-  }
-
   struct StateHandlerArgs {
     bool get_model_name_success = true;
     bool get_ssfc_success = true;
@@ -113,8 +109,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     bool flush_vpd = true;
     bool hwwp_enabled = false;
     bool reset_gbb_success = true;
-    bool has_bio_wash = true;
-    bool reset_fps_success = true;
     bool read_board_id_success = true;
     bool has_cbi = true;
     bool get_cros_fw_config_success = true;
@@ -146,11 +140,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(signal_sender_, SendProvisionProgressSignal(_))
         .WillByDefault(WithArg<0>(
             Invoke(this, &ProvisionDeviceStateHandlerTest::QueueStatus)));
-
-    // Create bio_wash.
-    if (args.has_bio_wash) {
-      brillo::TouchFile(GetBioWashPath());
-    }
 
     // Mock |SsfcProber|.
     auto mock_ssfc_prober = std::make_unique<NiceMock<MockSsfcProber>>();
@@ -188,10 +177,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
                                               "--set", "--flash", "--flags=0"}),
                   _))
         .WillByDefault(Return(args.reset_gbb_success));
-    ON_CALL(*mock_cmd_utils,
-            GetOutputAndError(
-                Eq(std::vector<std::string>{GetBioWashPath().value()}), _))
-        .WillByDefault(Return(args.reset_fps_success));
 
     if (args.flash_info.has_value()) {
       const std::string start =
@@ -325,7 +310,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         .WillByDefault(DoAll(SetArgPointee<0>(args.gsc_version), Return(true)));
 
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
-        json_store_, daemon_callback_, GetTempDirPath(), GetBioWashPath(),
+        json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_ssfc_prober), std::move(mock_power_manager_client),
         std::move(mock_cbi_utils), std::move(mock_cmd_utils),
         std::move(mock_gsc_utils), std::move(mock_cros_config_utils),
@@ -1055,38 +1040,6 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_ResetGbbBypassed) {
   StateHandlerArgs args = {.reset_gbb_success = false};
   // Bypass resetting GBB flags.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
-
-  auto handler = CreateInitializedStateHandler(args);
-  handler->RunState();
-  task_environment_.RunUntilIdle();
-
-  // Provision complete signal is sent.
-  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_ResetFpsFailedBlocking) {
-  // Set up normal environment.
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(kWipeDevice, true);
-  // Failed to reset FPS.
-  StateHandlerArgs args = {.reset_fps_success = false};
-
-  auto handler = CreateInitializedStateHandler(args);
-  handler->RunState();
-  task_environment_.RunUntilIdle();
-
-  // Provision failed signal is sent.
-  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_NoBioWash) {
-  // Set up normal environment.
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(kWipeDevice, true);
-  // No bio_wash binary.
-  StateHandlerArgs args = {.has_bio_wash = false, .reset_fps_success = false};
 
   auto handler = CreateInitializedStateHandler(args);
   handler->RunState();

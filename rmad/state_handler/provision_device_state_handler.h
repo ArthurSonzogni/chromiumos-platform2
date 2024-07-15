@@ -47,7 +47,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject |working_dir_path_|, |bio_wash_path_|, mock |ssfc_prober_|,
+  // Used to inject |working_dir_path_|, mock |ssfc_prober_|,
   // |power_manager_client_|, |cbi_utils_|, |cmd_utils_|, |gsc_utils_|,
   // |cros_config_utils_|, |write_protect_utils_|, |iio_sensor_probe_utils_|,
   // |vpd_utils_|, |hwid_utils_|, |crossystem_utils_|, and |futility_utils_|,
@@ -57,7 +57,6 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
-      const base::FilePath& bio_wash_path,
       std::unique_ptr<SsfcProber> ssfc_prober,
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
@@ -113,7 +112,6 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   ProvisionStatus::Error UpdateHwidBrandCode();
 
   base::FilePath working_dir_path_;
-  base::FilePath bio_wash_path_;
   ProvisionStatus status_;
 
   std::unique_ptr<SsfcProber> ssfc_prober_;

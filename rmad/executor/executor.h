@@ -12,6 +12,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "rmad/executor/mojom/executor.mojom.h"
+#include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/ec_utils.h"
 #include "rmad/utils/futility_utils.h"
@@ -42,6 +43,7 @@ class Executor final : public chromeos::rmad::mojom::Executor {
   void RebootEc(RebootEcCallback callback) override;
   void RequestRmaPowerwash(RequestRmaPowerwashCallback callback) override;
   void RequestBatteryCutoff(RequestBatteryCutoffCallback callback) override;
+  void ResetFpmcuEntropy(ResetFpmcuEntropyCallback callback) override;
   void GetFlashInfo(GetFlashInfoCallback callback) override;
 
  private:
@@ -51,6 +53,7 @@ class Executor final : public chromeos::rmad::mojom::Executor {
 
   std::unique_ptr<EcUtils> ec_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<FutilityUtils> futility_utils_;
 };
 
