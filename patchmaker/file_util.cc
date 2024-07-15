@@ -15,7 +15,7 @@
 namespace util {
 
 bool IsFile(const base::FilePath& path) {
-  struct stat path_stat;
+  struct stat path_stat = {0};
   stat(path.value().data(), &path_stat);
   return S_ISREG(path_stat.st_mode);
 }
