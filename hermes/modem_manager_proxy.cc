@@ -241,13 +241,14 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
 
   if (inhibit && !IsModemSafeToInhibit()) {
     LOG(INFO) << "Waiting for modem to become safe to inhibit";
+    auto [cb1, cb2] = base::SplitOnceCallback(std::move(cb));
     pending_inhibit_cb_ =
         base::BindOnce(&ModemManagerProxy::InhibitDevice,
-                       weak_factory_.GetWeakPtr(), inhibit, std::move(cb));
+                       weak_factory_.GetWeakPtr(), inhibit, std::move(cb1));
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&ModemManagerProxy::InhibitTimeout,
-                       weak_factory_.GetWeakPtr(), std::move(cb)),
+                       weak_factory_.GetWeakPtr(), std::move(cb2)),
         kInhibitTimeout);
     return;
   }
