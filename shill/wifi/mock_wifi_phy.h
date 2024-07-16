@@ -34,7 +34,8 @@ class MockWiFiPhy : public WiFiPhy {
   MOCK_METHOD(std::optional<std::multiset<nl80211_iftype>>,
               RequestNewIface,
               (nl80211_iftype desired_type, Priority priority),
-              (const override));
+              (const, override));
+  MOCK_METHOD(std::vector<int>, GetFrequencies, (), (const, override));
 };
 
 }  // namespace shill

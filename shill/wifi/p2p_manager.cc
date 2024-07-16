@@ -53,6 +53,7 @@ bool P2PManager::IsP2PSupported() {
     return false;
   }
 
+  // TODO(b/353995150): Add multiple WiFi phy support.
   auto phy = wifi_phys.front();
   if (!phy->SupportP2PMode()) {
     return false;
@@ -81,10 +82,12 @@ String P2PManager::ClientReadiness() {
 }
 
 Integers P2PManager::SupportedChannels() {
-  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
-  // and interface combination checking to be supported by wifi phy.
-  Integers channels;
-  return channels;
+  auto wifi_phys = manager_->wifi_provider()->GetPhys();
+  if (wifi_phys.empty()) {
+    return Integers();
+  }
+  // TODO(b/353995150): Add multiple WiFi phy support.
+  return wifi_phys.front()->GetFrequencies();
 }
 
 Integers P2PManager::PreferredChannels() {

@@ -460,6 +460,23 @@ std::optional<int> WiFiPhy::SelectFrequency(WiFiBand band) const {
   return selected;
 }
 
+std::vector<int> WiFiPhy::GetFrequencies() const {
+  std::vector<int> freqs;
+  for (auto band : frequencies_) {
+    for (auto& freq : band.second) {
+      if (freq.flags & (1 << NL80211_FREQUENCY_ATTR_DISABLED |
+                        1 << NL80211_FREQUENCY_ATTR_NO_IR |
+                        1 << NL80211_FREQUENCY_ATTR_RADAR) ||
+          IsWiFiLimitedFreq(freq.value)) {
+        SLOG(3) << "Skipping freq: " << freq.value;
+        continue;
+      }
+      freqs.push_back(freq.value);
+    }
+  }
+  return freqs;
+}
+
 // Operators to facilitate interface combination logging.
 std::ostream& operator<<(std::ostream& out, const nl80211_iftype& it) {
   switch (it) {

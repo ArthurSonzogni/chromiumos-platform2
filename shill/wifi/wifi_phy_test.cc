@@ -1103,6 +1103,39 @@ TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
                              [](auto& f) { return f.value; }));
 }
 
+TEST_F(WiFiPhyTest, GetFrequencies) {
+  WiFiPhy::Frequencies frequencies = {
+      {0,
+       {
+           {.value = 2412},  // Channel 1
+           {.value = 2417},  // Channel 2
+           {.value = 2467},  // Channel 12
+       }},
+      {1,
+       {
+           {.value = 5180},  // Channel 36
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR,
+            .value = 5260},  // Channel 52
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR,
+            .value = 5300},  // Channel 60
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_DISABLED,
+            .value = 5340},  // Channel 68
+           {.value = 5865},  // Channel 173
+       }}};
+
+  SetFrequencies(frequencies);
+  auto freqs = wifi_phy_.GetFrequencies();
+  EXPECT_FALSE(freqs.empty());
+  EXPECT_TRUE(base::Contains(freqs, 2412));   // Channel 1
+  EXPECT_TRUE(base::Contains(freqs, 2417));   // Channel 2
+  EXPECT_FALSE(base::Contains(freqs, 2467));  // Channel 12, skip
+  EXPECT_TRUE(base::Contains(freqs, 5180));   // Channel 36
+  EXPECT_FALSE(base::Contains(freqs, 5260));  // Channel 52, RADAR
+  EXPECT_FALSE(base::Contains(freqs, 5300));  // Channel 60, NO_IR
+  EXPECT_FALSE(base::Contains(freqs, 5340));  // Channel 68, DISABLED
+  EXPECT_FALSE(base::Contains(freqs, 5865));  // Channel 173, U-NII-4
+}
+
 TEST_F(WiFiPhyTest, ValidPriority) {
   for (int i = 0;
        i < static_cast<int32_t>(WiFiInterfacePriority::NUM_PRIORITIES); i++) {
