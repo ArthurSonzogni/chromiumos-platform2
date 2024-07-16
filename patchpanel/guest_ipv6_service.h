@@ -33,7 +33,7 @@ class GuestIPv6Service {
     kMethodNDProxyInjectingRA
   };
 
-  GuestIPv6Service(SubprocessController* nd_proxy,
+  GuestIPv6Service(SubprocessControllerInterface* nd_proxy,
                    Datapath* datapath,
                    System* system);
   GuestIPv6Service(const GuestIPv6Service&) = delete;
@@ -144,7 +144,7 @@ class GuestIPv6Service {
       const std::string& ifname) const;
 
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
-  SubprocessController* nd_proxy_;
+  SubprocessControllerInterface* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.
   Datapath* datapath_;
   // Owned by PatchpanelDaemon.

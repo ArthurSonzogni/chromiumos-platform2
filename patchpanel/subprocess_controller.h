@@ -28,7 +28,24 @@ class System;
 // Tracks a helper subprocess.  Handles forking, cleaning up on termination,
 // and IPC.
 // This object is used by the main Manager process.
-class SubprocessController {
+class SubprocessControllerInterface {
+ public:
+  virtual ~SubprocessControllerInterface() = default;
+
+  // Serializes a protobuf and sends it to the helper process.
+  virtual void SendControlMessage(const ControlMessage& proto) const = 0;
+
+  // Starts listening on messages from subprocess and dispatching them to
+  // handlers. This function can only be called after that the message loop of
+  // main process is initialized.
+  virtual void Listen() = 0;
+
+  virtual void RegisterFeedbackMessageHandler(
+      base::RepeatingCallback<void(const FeedbackMessage&)> handler) = 0;
+};
+
+// The implementation of SubprocessControllerInterface.
+class SubprocessController : public SubprocessControllerInterface {
  public:
   // The caller should guarantee the |system| and |process_manager| outlive
   // the SubprocessController instance.
@@ -39,18 +56,13 @@ class SubprocessController {
   SubprocessController(const SubprocessController&) = delete;
   SubprocessController& operator=(const SubprocessController&) = delete;
 
-  virtual ~SubprocessController();
+  ~SubprocessController() override;
 
-  // Serializes a protobuf and sends it to the helper process.
-  void SendControlMessage(const ControlMessage& proto) const;
-
-  // Starts listening on messages from subprocess and dispatching them to
-  // handlers. This function can only be called after that the message loop of
-  // main process is initialized.
-  void Listen();
-
+  // Implement SubprocessControllerInterface.
+  void SendControlMessage(const ControlMessage& proto) const override;
+  void Listen() override;
   void RegisterFeedbackMessageHandler(
-      base::RepeatingCallback<void(const FeedbackMessage&)> handler);
+      base::RepeatingCallback<void(const FeedbackMessage&)> handler) override;
 
  private:
   // Re-execs patchpanel with a new argument: |argv_| + "|fd_arg_|=N", where N

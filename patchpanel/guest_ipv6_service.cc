@@ -85,7 +85,7 @@ net_base::IPv6CIDR GuestIPv6Service::IPAddressTo64BitPrefix(
       ->GetPrefixCIDR();
 }
 
-GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
+GuestIPv6Service::GuestIPv6Service(SubprocessControllerInterface* nd_proxy,
                                    Datapath* datapath,
                                    System* system)
     : nd_proxy_(nd_proxy), datapath_(datapath), system_(system) {}
