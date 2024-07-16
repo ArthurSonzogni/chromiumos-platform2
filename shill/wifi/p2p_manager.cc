@@ -130,10 +130,17 @@ KeyValueStores P2PManager::GetClientInfos(Error* /* error */) {
 void P2PManager::Start() {}
 
 void P2PManager::Stop() {
-  // TODO(b/308081318) Cleanup active sessions.
   if (!p2p_group_owners_.empty() || !p2p_clients_.empty()) {
     LOG(WARNING) << "P2PManager has been stopped while some of P2P devices "
                     "are still active";
+    for (auto& it : p2p_group_owners_) {
+      DeleteP2PDevice(it.second);
+    }
+    p2p_group_owners_.clear();
+    for (auto& it : p2p_clients_) {
+      DeleteP2PDevice(it.second);
+    }
+    p2p_clients_.clear();
   }
 }
 
