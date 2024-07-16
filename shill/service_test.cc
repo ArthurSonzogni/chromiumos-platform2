@@ -3521,4 +3521,105 @@ TEST_F(ServiceNetworkConfigTest, EmitChangeOnDetachNetwork) {
   service_->AttachNetwork(nullptr);
 }
 
+// Verifies that the NetworkConfig change will toggle the EnableRFC8925 flag on
+// Service properly.
+TEST_F(ServiceNetworkConfigTest, ChangeEnableRFC8925Flag) {
+  service_->AttachNetwork(network_->AsWeakPtr());
+  const auto kIPv6LinkLocalAddr = *IPAddress::CreateFromString("fe80::1");
+  const auto kIPv6NonLinkLocalAddr = *IPAddress::CreateFromString("fd01::1");
+  const auto kIPv4Addr = *IPAddress::CreateFromString("8.8.8.8");
+
+  // Default should be false.
+  ASSERT_FALSE(service_->enable_rfc_8925());
+
+  struct TestCase {
+    std::vector<IPAddress> dns_list;
+    std::optional<bool> expected_flag_value;  // nullopt means do not change.
+  } test_cases[] = {
+      {{}, std::nullopt},
+      {{kIPv4Addr}, std::nullopt},
+      {{kIPv6LinkLocalAddr}, false},
+      {{kIPv6NonLinkLocalAddr}, true},
+      {{kIPv4Addr, kIPv6LinkLocalAddr}, false},
+      {{kIPv4Addr, kIPv6NonLinkLocalAddr}, true},
+      {{kIPv6LinkLocalAddr, kIPv6NonLinkLocalAddr}, true},
+  };
+
+  const auto describe_test_case = [](const TestCase& tc) -> std::string {
+    std::vector<std::string> dns_strs;
+    for (const auto ip : tc.dns_list) {
+      dns_strs.push_back(ip.ToString());
+    }
+    return base::StringPrintf("dns={%s}",
+                              base::JoinString(dns_strs, ", ").c_str());
+  };
+
+  const auto trigger_dns_update =
+      [this](const std::vector<net_base::IPAddress>& dns_list) {
+        NetworkConfig config;
+        config.dns_servers = dns_list;
+        SetNetworkConfigOnNetwork(config);
+        service_->network_event_handler()->OnIPConfigsPropertyUpdated(
+            /*interface_index=*/1);
+      };
+
+  for (const auto& tc : test_cases) {
+    // Set the initial flag value to false.
+    const bool init_value = false;
+    trigger_dns_update({kIPv6LinkLocalAddr});
+    ASSERT_EQ(service_->enable_rfc_8925(), init_value);
+
+    trigger_dns_update(tc.dns_list);
+    ASSERT_EQ(service_->enable_rfc_8925(),
+              tc.expected_flag_value.value_or(init_value))
+        << describe_test_case(tc);
+  }
+
+  for (const auto& tc : test_cases) {
+    // Set the initial flag value to false.
+    const bool init_value = true;
+    trigger_dns_update({kIPv6NonLinkLocalAddr});
+    ASSERT_EQ(service_->enable_rfc_8925(), init_value);
+
+    trigger_dns_update(tc.dns_list);
+    ASSERT_EQ(service_->enable_rfc_8925(),
+              tc.expected_flag_value.value_or(init_value))
+        << describe_test_case(tc);
+  }
+}
+
+// Verifies that the EnableRFC8925 flag value can be persisted into and loaded
+// from the storage.
+TEST_F(ServiceNetworkConfigTest, SaveLoadEnableRFC8925Flag) {
+  FakeStore storage;
+  service_->AttachNetwork(network_->AsWeakPtr());
+  const auto kIPv6LinkLocalAddr = *IPAddress::CreateFromString("fe80::1");
+  const auto kIPv6NonLinkLocalAddr = *IPAddress::CreateFromString("fd01::1");
+
+  const auto update_enable_rfc_8925_flag = [&, this](bool enable) {
+    NetworkConfig config;
+    if (enable) {
+      config.dns_servers = {kIPv6NonLinkLocalAddr};
+    } else {
+      config.dns_servers = {kIPv6LinkLocalAddr};
+    }
+    SetNetworkConfigOnNetwork(config);
+    service_->network_event_handler()->OnIPConfigsPropertyUpdated(
+        /*interface_index=*/1);
+  };
+
+  // Save and load the value directly.
+  update_enable_rfc_8925_flag(true);
+  ASSERT_TRUE(service_->enable_rfc_8925());
+  ASSERT_TRUE(service_->Save(&storage));
+  ASSERT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->enable_rfc_8925());
+
+  // Change the value and load again.
+  update_enable_rfc_8925_flag(false);
+  ASSERT_FALSE(service_->enable_rfc_8925());
+  ASSERT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->enable_rfc_8925());
+}
+
 }  // namespace shill

@@ -2695,6 +2695,10 @@ void WiFi::StateChanged(const std::string& new_state) {
     } else {
       DHCPController::Options dhcp_opts = manager()->CreateDefaultDHCPOption();
       dhcp_opts.lease_name = GetServiceLeaseName(*affected_service);
+      // TODO(b/345372970): remove once dnsproxy can reach IPv6 link local DNS
+      // servers.
+      dhcp_opts.use_rfc_8925 =
+          dhcp_opts.use_rfc_8925 && affected_service->enable_rfc_8925();
       const Network::StartOptions opts = {
           .dhcp = dhcp_opts,
           .accept_ra = true,

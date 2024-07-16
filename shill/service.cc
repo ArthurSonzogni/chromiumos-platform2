@@ -166,6 +166,7 @@ const char Service::kStorageLastManualConnectAttempt[] =
     "LastManualConnectAttempt";
 const char Service::kStorageLastConnected[] = "LastConnected";
 const char Service::kStorageLastOnline[] = "LastOnline";
+const char Service::kStorageEnableRFC8925[] = "EnableRFC8925";
 
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
@@ -839,6 +840,8 @@ bool Service::Load(const StoreInterface* storage) {
   // now that the credentials have been loaded.
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
 
+  storage->GetBool(id, kStorageEnableRFC8925, &enable_rfc_8925_);
+
   for (auto source : patchpanel::Client::kAllTrafficSources) {
     patchpanel::Client::TrafficVector counters = {};
     storage->GetUint64(id,
@@ -968,6 +971,7 @@ bool Service::Save(StoreInterface* storage) {
   storage->SetInt(id, kStorageONCSource, static_cast<int>(source_));
   storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
   storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
+  storage->SetBool(id, kEnableRFC8925Property, enable_rfc_8925_);
 
   if (metered_override_.has_value()) {
     storage->SetBool(id, kStorageMeteredOverride, metered_override_.value());
@@ -2832,10 +2836,53 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
 void Service::NetworkEventHandler::OnIPConfigsPropertyUpdated(
     int interface_index) {
   service_->EmitNetworkConfigPropertyChange();
+  service_->UpdateEnableRFC8925();
 }
 
 void Service::EmitNetworkConfigPropertyChange() {
   adaptor_->EmitKeyValueStoreChanged(kNetworkConfigProperty,
                                      GetNetworkConfigDict(nullptr));
 }
+
+void Service::UpdateEnableRFC8925() {
+  if (!attached_network_) {
+    return;
+  }
+
+  const auto& network_config = attached_network_->GetNetworkConfig();
+
+  const net_base::IPv6CIDR kIPv6LockLocalCIDR =
+      net_base::IPv6CIDR::CreateFromStringAndPrefix("fe80::", 10).value();
+  bool has_ipv6_link_local = false;
+  bool has_ipv6_non_link_local = false;
+  for (const auto& addr : network_config.dns_servers) {
+    // Ignore IPv4 DNS servers. It won't provide any information to make this
+    // decision.
+    const auto ipv6_addr = addr.ToIPv6Address();
+    if (!ipv6_addr) {
+      continue;
+    }
+    if (kIPv6LockLocalCIDR.InSameSubnetWith(ipv6_addr.value())) {
+      has_ipv6_link_local = true;
+    } else {
+      has_ipv6_non_link_local = true;
+    }
+  }
+
+  // The basic assumption here is that when the network is losing DNS servers
+  // from RNDSS, they should be removed together, otherwise there is a corner
+  // case that non-link-local address is removed at first and a link-local one
+  // is left. DNS servers in StaticConfig maybe removed one-by-one, but it's not
+  // expected that user will edit the list in each connection session, so this
+  // shouldn't be a problem.
+  if (has_ipv6_non_link_local) {
+    enable_rfc_8925_ = true;
+  } else if (has_ipv6_link_local) {
+    enable_rfc_8925_ = false;
+  }
+  // For other cases, there is either a) no DNS server or b) only IPv4 DNS
+  // server. In either case, we don't have enough information to change the flag
+  // value.
+}
+
 }  // namespace shill

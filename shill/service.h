@@ -101,6 +101,8 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageLastManualConnectAttempt[];
   static const char kStorageLastConnected[];
   static const char kStorageLastOnline[];
+  // See the comment for `enable_rfc_8925()` below.
+  static const char kStorageEnableRFC8925[];
 
   static const uint8_t kStrengthMax;
   static const uint8_t kStrengthMin;
@@ -774,6 +776,15 @@ class Service : public base::RefCounted<Service> {
 
   CheckPortalState check_portal() const { return check_portal_; }
 
+  // Whether CrOS is capable of connecting to this service with RFC8925 enabled.
+  // The flag value is based on the IPv6 configuration in the previous
+  // connection. Currently, dnsproxy is not able to contact link-local DNS
+  // servers (b/345372970), and thus this flag is a temporary solution for
+  // avoiding enable RFC8925 on such networks, before we fix this issue in
+  // dnsproxy. This property is available on Service of all technologies, but
+  // should only be used in WiFi.
+  bool enable_rfc_8925() const { return enable_rfc_8925_; }
+
   // Gets a weak ptr to this object.
   base::WeakPtr<Service> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
 
@@ -919,6 +930,10 @@ class Service : public base::RefCounted<Service> {
   void AddServiceStateTransitionTimer(const std::string& histogram_name,
                                       ConnectState start_state,
                                       ConnectState stop_state);
+
+  // Update the value of |enable_rfc_8925_| based on the current dns servers of
+  // the attached network. Also see comments for `enable_rfc_8925()`.
+  void UpdateEnableRFC8925();
 
   // Service's user friendly name, mapped to the Service Object kNameProperty.
   // Use |log_name_| for logging to avoid logging PII.
@@ -1161,6 +1176,8 @@ class Service : public base::RefCounted<Service> {
   base::Time failed_time_;
   // Whether or not this service has ever reached kStateConnected.
   bool has_ever_connected_;
+
+  bool enable_rfc_8925_ = false;
 
   EventHistory disconnects_;  // Connection drops.
   EventHistory misconnects_;  // Failures to connect.
