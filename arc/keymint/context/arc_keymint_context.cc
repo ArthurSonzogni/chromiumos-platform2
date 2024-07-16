@@ -675,4 +675,24 @@ keymaster_error_t ArcKeyMintContext::SetSystemVersion(uint32_t os_version,
   return KM_ERROR_OK;
 }
 
+keymaster_error_t ArcKeyMintContext::SetChallengeForCertificateRequest(
+    std::vector<uint8_t>& challenge) {
+  if (challenge.empty()) {
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+  if (pure_soft_remote_provisioning_context_ == nullptr) {
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  // We also need to set the fields in Arc Remote Provisioning Context.
+  // Hence, dynamic casting a base class pointer to derived class.
+  ArcRemoteProvisioningContext* arc_remote_provisioning_context =
+      dynamic_cast<ArcRemoteProvisioningContext*>(
+          pure_soft_remote_provisioning_context_.get());
+  if (arc_remote_provisioning_context == nullptr) {
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  arc_remote_provisioning_context->SetChallengeForCertificateRequest(challenge);
+  return KM_ERROR_OK;
+}
+
 }  // namespace arc::keymint::context

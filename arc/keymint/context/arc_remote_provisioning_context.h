@@ -82,6 +82,11 @@ class ArcRemoteProvisioningContext
       const std::vector<uint8_t>& additional_auth_data) const override;
 
   void SetSystemVersion(uint32_t os_version, uint32_t os_patchlevel);
+  /* To avoid replay attacks, Android provides an input challenge for generating
+   certificate request. This method sets the same challenge here, and it will
+   be used in getting a ChromeOS quoted blob from libarc-attestation.
+  */
+  void SetChallengeForCertificateRequest(std::vector<uint8_t>& challenge);
 
  private:
   // Initialize the BCC if it has not yet happened.
@@ -89,6 +94,7 @@ class ArcRemoteProvisioningContext
   keymaster_security_level_t security_level_;
   std::optional<uint32_t> os_version_;
   std::optional<uint32_t> os_patchlevel_;
+  std::optional<std::vector<uint8_t>> certificate_challenge_;
 
   mutable std::once_flag bcc_initialized_flag_;
   mutable cppbor::Array boot_cert_chain_;

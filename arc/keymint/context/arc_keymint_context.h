@@ -65,6 +65,13 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
       const ::keymaster::AuthorizationSet& authorization_set);
   keymaster_error_t SetSystemVersion(uint32_t os_version,
                                      uint32_t os_patchlevel) override;
+  /* To avoid replay attacks, Android provides an input challenge for generating
+   certificate request. This method sets the same challenge in
+   ARC Remote Provisioning Context, where it will also be used in getting a
+   ChromeOS quoted blob from libarc-attestation.
+  */
+  keymaster_error_t SetChallengeForCertificateRequest(
+      std::vector<uint8_t>& challenge);
 
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|

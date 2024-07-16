@@ -720,6 +720,18 @@ void KeyMintServer::GenerateCertificateRequest(
     return;
   }
 
+  // Set Certificate challenge in Arc KeyMint Context. This will be used in
+  // getting ChromeOS blob from libarc-attestation.
+  std::vector<uint8_t> cert_challenge = ConvertFromKeymasterMessage(
+      request->challenge->data.data(), request->challenge->data.size());
+  auto error =
+      backend_.context()->SetChallengeForCertificateRequest(cert_challenge);
+  if (error != KM_ERROR_OK) {
+    LOG(ERROR) << "Failed to set certificate challenge in Generate Certificate "
+                  "Request";
+    return;
+  }
+
   auto task_lambda = base::BindOnce(
       [](GenerateCertificateRequestCallback callback,
          std::unique_ptr<::keymaster::GenerateCsrResponse> km_response) {

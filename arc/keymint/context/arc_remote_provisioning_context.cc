@@ -25,6 +25,8 @@ namespace arc::keymint::context {
 constexpr uint32_t kP256AffinePointSize = 32;
 constexpr uint32_t kP256SignatureLength = 64;
 constexpr uint32_t kP256EcdsaPrivateKeyLength = 32;
+// Key is decided in agreement with Android Remote Provisioning Team.
+constexpr char kChromeOSQuotedBlobKey[] = "ChromeOS PCA ARC v1";
 // CDDL Schema version.
 /*
 Device Info Map version is linked from here -
@@ -362,6 +364,7 @@ ArcRemoteProvisioningContext::BuildProtectedDataPayload(
     const std::vector<uint8_t>& additional_auth_data) const {
   cppbor::Array boot_cert_chain;
   cppcose::ErrMsgOr<cppbor::Array> signed_mac("");
+  std::optional<cppbor::Map> cros_blob_map;
   if (test_mode) {
     // In Test mode, signature is constructed by signing with the
     // seed generated Ecdsa key.
@@ -379,12 +382,35 @@ ArcRemoteProvisioningContext::BuildProtectedDataPayload(
     // In Production mode, libarc-attestation does the signing.
     ArcLazyInitProdBcc();
     auto clone = boot_cert_chain_.clone();
-    if (!clone->asArray()) {
+    if (clone == nullptr || clone->type() != cppbor::ARRAY) {
       auto error_message = "The Boot Cert Chain is not an array";
       LOG(ERROR) << error_message;
       return error_message;
     }
     boot_cert_chain = std::move(*clone->asArray());
+
+    if (!certificate_challenge_.has_value()) {
+      auto error_message =
+          "Challenge required for getting ChromeOS blob is not set";
+      return error_message;
+    }
+    std::vector<uint8_t> cros_quoted_blob;
+    const std::vector<uint8_t> certificate_challenge(
+        certificate_challenge_.value().begin(),
+        certificate_challenge_.value().end());
+    arc_attestation::AndroidStatus blob_status =
+        arc_attestation::QuoteCrOSBlob(certificate_challenge, cros_quoted_blob);
+    if (!blob_status.is_ok() || cros_quoted_blob.empty()) {
+      auto error_message =
+          " Failed to get ChromeOS quoted blob from libarc-attestation";
+      return error_message;
+    }
+    // Create a Cppbor Map with pre-defined key and value as Chrome OS blob
+    // returned from libarc-attestation.
+    cros_blob_map =
+        cppbor::Map().add(cppbor::Tstr(kChromeOSQuotedBlobKey),
+                          cppbor::Bstr(brillo::BlobToString(cros_quoted_blob)));
+
     signed_mac = constructCoseSign1FromDK(/*Protected Params*/ {}, mac_key,
                                           additional_auth_data);
   }
@@ -396,10 +422,15 @@ ArcRemoteProvisioningContext::BuildProtectedDataPayload(
     return error_message;
   }
 
-  return cppbor::Array()
-      .add(signed_mac.moveValue())
-      .add(std::move(boot_cert_chain))
-      .encode();
+  cppbor::Array result = cppbor::Array()
+                             .add(signed_mac.moveValue())
+                             .add(std::move(boot_cert_chain));
+
+  if (cros_blob_map.has_value()) {
+    result.add(cros_blob_map.value().canonicalize().encode());
+  }
+
+  return result.encode();
 }
 
 void ArcRemoteProvisioningContext::ArcLazyInitProdBcc() const {
@@ -423,6 +454,12 @@ void ArcRemoteProvisioningContext::SetSystemVersion(uint32_t os_version,
                                                     uint32_t os_patchlevel) {
   os_version_ = os_version;
   os_patchlevel_ = os_patchlevel;
+}
+
+void ArcRemoteProvisioningContext::SetChallengeForCertificateRequest(
+    std::vector<uint8_t>& challenge) {
+  certificate_challenge_ = std::make_optional<std::vector<uint8_t>>(
+      challenge.begin(), challenge.end());
 }
 
 std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()

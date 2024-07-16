@@ -233,6 +233,13 @@ TEST_F(ArcRemoteProvisioningContextTest,
   ExpectProvisionSuccess();
   std::vector<uint8_t> byte_signature =
       convertHexToRawBytes(kEcdsaDERSignatureHex);
+  brillo::Blob challenge = brillo::BlobFromString("I am a fake challenge");
+  brillo::Blob random_blob = brillo::BlobFromString("I am a random blob");
+  EXPECT_CALL(*manager_, QuoteCrOSBlob(challenge, testing::_))
+      .Times(1)
+      .WillRepeatedly(testing::DoAll(
+          testing::SetArgReferee<1>(random_blob),
+          testing::Return(arc_attestation::AndroidStatus::ok())));
   // We need signing twice here.
   // First time for Generate Bcc.
   // Second time for BuildProtectedDataPayload.
@@ -241,6 +248,7 @@ TEST_F(ArcRemoteProvisioningContextTest,
       .WillRepeatedly(testing::DoAll(
           testing::SetArgReferee<1>(byte_signature),
           testing::Return(arc_attestation::AndroidStatus::ok())));
+  remote_provisioning_context_->SetChallengeForCertificateRequest(challenge);
 
   // Execute.
   auto result = remote_provisioning_context_->BuildProtectedDataPayload(
