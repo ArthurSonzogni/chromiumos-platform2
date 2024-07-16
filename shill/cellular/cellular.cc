@@ -5,7 +5,6 @@
 #include "shill/cellular/cellular.h"
 
 #include <fcntl.h>
-#include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
 #include <algorithm>
@@ -38,6 +37,7 @@
 #include <chromeos/net-base/process_manager.h>
 #include <chromeos/net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
+#include <netinet/in.h>
 #include <re2/re2.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -294,12 +294,9 @@ Cellular::Cellular(Manager* manager,
                    int interface_index,
                    const std::string& service,
                    const RpcIdentifier& path)
-    : Device(manager,
-             link_name,
-             mac_address,
-             interface_index,
-             Technology::kCellular),
+    : Device(manager, link_name, mac_address, Technology::kCellular),
       link_name_(link_name),
+      interface_index_(interface_index),
       mobile_operator_info_(
           new MobileOperatorInfo(manager->dispatcher(), "cellular")),
       dbus_service_(service),

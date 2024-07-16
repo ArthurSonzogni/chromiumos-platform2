@@ -4,7 +4,6 @@
 
 #include "shill/device.h"
 
-#include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 #include <stdio.h>
 #include <string.h>
@@ -35,6 +34,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/rtnl_handler.h>
+#include <netinet/in.h>
 
 #include "shill/control_interface.h"
 #include "shill/error.h"
@@ -64,14 +64,12 @@ const char Device::kStoragePowered[] = "Powered";
 Device::Device(Manager* manager,
                std::string_view name,
                std::optional<net_base::MacAddress> mac_address,
-               int interface_index,
                Technology technology)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
       mac_address_(mac_address),
       name_(name),
-      interface_index_(interface_index),
       manager_(manager),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
@@ -273,6 +271,13 @@ std::string Device::link_name() const {
     return "";
   }
   return implicit_network_->interface_name();
+}
+
+int Device::interface_index() const {
+  if (!implicit_network_) {
+    return -1;
+  }
+  return implicit_network_->interface_index();
 }
 
 bool Device::Load(const StoreInterface* storage) {

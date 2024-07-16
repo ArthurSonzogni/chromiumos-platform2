@@ -4,7 +4,6 @@
 
 #include "shill/virtual_device.h"
 
-#include <netinet/ether.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 
 #include <memory>
@@ -12,6 +11,7 @@
 #include <utility>
 
 #include <chromeos/net-base/network_config.h>
+#include <netinet/ether.h>
 
 #include "shill/manager.h"
 #include "shill/network/network_monitor.h"
@@ -23,7 +23,7 @@ VirtualDevice::VirtualDevice(Manager* manager,
                              int interface_index,
                              Technology technology,
                              bool fixed_ip_params)
-    : Device(manager, link_name, std::nullopt, interface_index, technology) {
+    : Device(manager, link_name, std::nullopt, technology) {
   CreateImplicitNetwork(interface_index, link_name, fixed_ip_params);
 }
 

@@ -80,7 +80,7 @@ class TestDevice : public Device {
              net_base::MacAddress mac_address,
              int interface_index,
              Technology technology)
-      : Device(manager, link_name, mac_address, interface_index, technology),
+      : Device(manager, link_name, mac_address, technology),
         start_stop_error_(Error::kSuccess) {
     CreateImplicitNetwork(interface_index, link_name,
                           /*fixed_ip_params=*/false);

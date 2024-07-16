@@ -148,6 +148,7 @@ class Cellular : public Device,
 
   // Inherited from Device.
   std::string link_name() const override { return link_name_; }
+  int interface_index() const override { return interface_index_; }
   Network* GetPrimaryNetwork() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
@@ -878,6 +879,11 @@ class Cellular : public Device,
   // TODO(b/352665085): Do not use the interface name for the Device's name
   // parameter.
   const std::string link_name_;
+  // Interface index of the network interface managed by this Cellular Device.
+  // Since the Cellular Device does not create an implicit Network, it must
+  // remember its initial interface index explicitly.
+  // TODO(b/352665085): Do not use the interface index for Cellular Devices.
+  const int interface_index_;
 
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;

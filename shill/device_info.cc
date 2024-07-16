@@ -14,8 +14,6 @@
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
 #include <linux/version.h>
-#include <net/if_arp.h>
-#include <netinet/ether.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -50,6 +48,8 @@
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/netlink_manager.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <net/if_arp.h>
+#include <netinet/ether.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -210,9 +210,12 @@ class DeviceStub : public Device {
              std::optional<net_base::MacAddress> mac_address,
              int interface_index,
              Technology technology)
-      : Device(manager, link_name, mac_address, interface_index, technology) {}
+      : Device(manager, link_name, mac_address, technology),
+        interface_index_(interface_index) {}
   DeviceStub(const DeviceStub&) = delete;
   DeviceStub& operator=(const DeviceStub&) = delete;
+
+  int interface_index() const override { return interface_index_; }
 
   void Start(EnabledStateChangedCallback callback) override {
     std::move(callback).Run(Error(Error::kNotSupported));
@@ -221,6 +224,9 @@ class DeviceStub : public Device {
     std::move(callback).Run(Error(Error::kNotSupported));
   }
   void Initialize() override {}
+
+ private:
+  const int interface_index_;
 };
 
 }  // namespace

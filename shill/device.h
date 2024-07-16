@@ -51,7 +51,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   Device(Manager* manager,
          std::string_view name,
          std::optional<net_base::MacAddress> mac_address,
-         int interface_index,
          Technology technology);
   Device(const Device&) = delete;
   Device& operator=(const Device&) = delete;
@@ -145,7 +144,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // TODO(b/352665085): remove this getter and migrate client code to use the
   // Device's Network(s) directly.
   virtual std::string link_name() const;
-  int interface_index() const { return interface_index_; }
+  // Returns the interface index of the primary Network if it exits, otherwise
+  // return -1. Device subclasses can override this method.
+  // TODO(b/352665085): remove this getter and migrate client code to use the
+  // Device's Network(s) directly.
+  virtual int interface_index() const;
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   mockable Technology technology() const { return technology_; }
@@ -474,7 +477,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Name representing this Device. This may be different than link_name() but
   // must be unique across all existing Device instances.
   const std::string name_;
-  const int interface_index_;
   Manager* manager_;
   std::unique_ptr<Network> implicit_network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;

@@ -7,7 +7,6 @@
 #include <limits.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 #include <linux/nl80211.h>
-#include <netinet/ether.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -39,6 +38,7 @@
 #include <chromeos/net-base/netlink_manager.h>
 #include <chromeos/net-base/netlink_message.h>
 #include <chromeos/net-base/rtnl_handler.h>
+#include <netinet/ether.h>
 
 #if !defined(DISABLE_FLOSS)
 #include "shill/bluetooth/bluetooth_manager_interface.h"
@@ -169,7 +169,7 @@ WiFi::WiFi(Manager* manager,
            int interface_index,
            uint32_t phy_index,
            std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
-    : Device(manager, link, mac_address, interface_index, Technology::kWiFi),
+    : Device(manager, link, mac_address, Technology::kWiFi),
       provider_(manager->wifi_provider()),
       time_(Time::GetInstance()),
       supplicant_connect_attempts_(0),
