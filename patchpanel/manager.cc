@@ -98,11 +98,8 @@ Manager::Manager(const base::FilePath& cmd_path,
 
   datapath_->Start();
 
-  // b/350509419: Ensure GuestIPv6Service is initialized and started before
-  // DownstreamNetworkService is created.
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
                                                  datapath_.get(), system);
-  ipv6_svc_->Start();
 
   multicast_counters_svc_->Start();
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);

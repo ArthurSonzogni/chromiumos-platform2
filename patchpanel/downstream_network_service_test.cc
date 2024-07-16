@@ -31,6 +31,7 @@
 #include "patchpanel/mock_lifeline_fd_service.h"
 #include "patchpanel/mock_routing_service.h"
 #include "patchpanel/mock_rtnl_client.h"
+#include "patchpanel/noop_subprocess_controller.h"
 
 using testing::_;
 using testing::Mock;
@@ -64,6 +65,7 @@ class DownstreamNetworkServiceTest : public testing::Test {
  protected:
   DownstreamNetworkServiceTest()
       : shill_client_(shill_client_helper_.FakeClient()),
+        ipv6_svc_(&nd_proxy_),
         counters_svc_(&datapath_, &conntrack_monitor_),
         downstream_network_svc_(&metrics_,
                                 &system_,
@@ -85,6 +87,7 @@ class DownstreamNetworkServiceTest : public testing::Test {
   MockLifelineFDService lifeline_fd_svc_;
   FakeShillClientHelper shill_client_helper_;
   std::unique_ptr<FakeShillClient> shill_client_;
+  NoopSubprocessController nd_proxy_;
   MockGuestIPv6Service ipv6_svc_;
   MockConntrackMonitor conntrack_monitor_;
   MockCountersService counters_svc_;

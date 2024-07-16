@@ -15,6 +15,7 @@
 
 #include "patchpanel/fake_system.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/noop_subprocess_controller.h"
 #include "patchpanel/shill_client.h"
 
 using testing::_;
@@ -26,8 +27,10 @@ namespace {
 
 class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
  public:
-  GuestIPv6ServiceUnderTest(Datapath* datapath, System* system)
-      : GuestIPv6Service(nullptr, datapath, system) {}
+  GuestIPv6ServiceUnderTest(SubprocessControllerInterface* nd_proxy,
+                            Datapath* datapath,
+                            System* system)
+      : GuestIPv6Service(nd_proxy, datapath, system) {}
 
   MOCK_METHOD(void,
               SendNDProxyControl,
@@ -78,12 +81,13 @@ ShillClient::Device MakeFakeShillDevice(const std::string& ifname,
 
 class GuestIPv6ServiceTest : public ::testing::Test {
  protected:
-  GuestIPv6ServiceTest() : target_(&datapath_, &system_) {
+  GuestIPv6ServiceTest() : target_(&nd_proxy_, &datapath_, &system_) {
     ON_CALL(datapath_, MaskInterfaceFlags).WillByDefault(Return(true));
   }
 
   FakeSystem system_;
   MockDatapath datapath_;
+  NoopSubprocessController nd_proxy_;
   GuestIPv6ServiceUnderTest target_;
 };
 

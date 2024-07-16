@@ -88,15 +88,13 @@ net_base::IPv6CIDR GuestIPv6Service::IPAddressTo64BitPrefix(
 GuestIPv6Service::GuestIPv6Service(SubprocessControllerInterface* nd_proxy,
                                    Datapath* datapath,
                                    System* system)
-    : nd_proxy_(nd_proxy), datapath_(datapath), system_(system) {}
-
-GuestIPv6Service::~GuestIPv6Service() = default;
-
-void GuestIPv6Service::Start() {
+    : nd_proxy_(nd_proxy), datapath_(datapath), system_(system) {
   nd_proxy_->RegisterFeedbackMessageHandler(base::BindRepeating(
       &GuestIPv6Service::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
   nd_proxy_->Listen();
 }
+
+GuestIPv6Service::~GuestIPv6Service() = default;
 
 void GuestIPv6Service::StartForwarding(
     const ShillClient::Device& upstream_shill_device,

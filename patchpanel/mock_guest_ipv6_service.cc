@@ -8,9 +8,9 @@
 
 namespace patchpanel {
 
-MockGuestIPv6Service::MockGuestIPv6Service()
-    : GuestIPv6Service(
-          /*nd_proxy=*/nullptr, /*datapath=*/nullptr, /*system=*/nullptr) {}
+MockGuestIPv6Service::MockGuestIPv6Service(
+    SubprocessControllerInterface* nd_proxy)
+    : GuestIPv6Service(nd_proxy, /*datapath=*/nullptr, /*system=*/nullptr) {}
 MockGuestIPv6Service::~MockGuestIPv6Service() = default;
 
 }  // namespace patchpanel

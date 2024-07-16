@@ -17,10 +17,10 @@ namespace patchpanel {
 
 class MockGuestIPv6Service : public GuestIPv6Service {
  public:
-  MockGuestIPv6Service();
+  explicit MockGuestIPv6Service(SubprocessControllerInterface* nd_proxy);
   explicit MockGuestIPv6Service(const MockGuestIPv6Service&) = delete;
   MockGuestIPv6Service& operator=(const MockGuestIPv6Service&) = delete;
-  virtual ~MockGuestIPv6Service();
+  ~MockGuestIPv6Service() override;
 
   MOCK_METHOD(void, StopUplink, (const ShillClient::Device&), (override));
   MOCK_METHOD(void,

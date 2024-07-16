@@ -40,8 +40,6 @@ class GuestIPv6Service {
   GuestIPv6Service& operator=(const GuestIPv6Service&) = delete;
   virtual ~GuestIPv6Service();
 
-  void Start();
-
   // Starts forwarding from the upstream shill Device |upstream_shill_device| to
   // the downstream interface |ifname_downlink|. |mtu| is the MTU of the
   // upstream. |hop_limit| is the CurHopLimit for the downstream. If |mtu| and
