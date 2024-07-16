@@ -110,27 +110,26 @@ class VmBuilder {
   VmBuilder& SetVmCpuArgs(const struct VmCpuArgs& vm_cpu_args);
   VmBuilder& SetVsockCid(uint32_t vsock_cid);
   VmBuilder& AppendDisk(Disk disk);
-  VmBuilder& SetMemory(const std::string& memory_in_mb);
-  VmBuilder& SetBalloonBias(const std::string& balloon_bias_mib);
+  VmBuilder& SetMemory(std::string_view memory_in_mb);
+  VmBuilder& SetBalloonBias(std::string_view balloon_bias_mib);
   VmBuilder& EnableWorkingSetReporting(bool enable);
 
-  VmBuilder& SetSyslogTag(const std::string& syslog_tag);
-  VmBuilder& SetSocketPath(const std::string& socket_path);
+  VmBuilder& SetSyslogTag(std::string_view syslog_tag);
+  VmBuilder& SetSocketPath(std::string_view socket_path);
   VmBuilder& AppendTapFd(base::ScopedFD tap_fd);
-  VmBuilder& AppendKernelParam(const std::string& param);
-  VmBuilder& AppendOemString(const std::string& string);
-  VmBuilder& AppendAudioDevice(const std::string& params);
-  VmBuilder& AppendSerialDevice(const std::string& device);
+  VmBuilder& AppendKernelParam(std::string_view param);
+  VmBuilder& AppendOemString(std::string_view string);
+  VmBuilder& AppendAudioDevice(std::string_view params);
+  VmBuilder& AppendSerialDevice(std::string_view device);
   VmBuilder& AppendPmemDevice(PmemDevice device);
   VmBuilder& AppendSharedDir(SharedDataParam shared_data_param);
-  VmBuilder& AppendCustomParam(const std::string& key,
-                               const std::string& value);
+  VmBuilder& AppendCustomParam(std::string_view key, std::string_view value);
 
   // Instructs this VM to use a wayland socket, if the empty string is provided
   // the default path to the socket will be used, otherwise |socket| will be the
   // path.
-  VmBuilder& SetWaylandSocket(const std::string& socket = "");
-  VmBuilder& AddExtraWaylandSocket(const std::string& socket);
+  VmBuilder& SetWaylandSocket(std::string_view socket = "");
+  VmBuilder& AddExtraWaylandSocket(std::string_view socket);
 
   VmBuilder& EnableGpu(bool enable);
   VmBuilder& EnableDGpuPassthrough(bool enable);
@@ -140,11 +139,12 @@ class VmBuilder {
   // Offload Vulkan use to isolated virglrenderer render server
   VmBuilder& EnableRenderServer(bool enable);
   VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
-  VmBuilder& SetGpuCacheSize(std::string gpu_cache_size_str);
+  VmBuilder& SetGpuCacheSize(std::string_view gpu_cache_size_str);
   VmBuilder& SetRenderServerCachePath(base::FilePath render_server_cache_path);
   VmBuilder& SetPrecompiledCachePath(base::FilePath precompiled_cache_path);
   VmBuilder& SetFozDbListPath(base::FilePath foz_db_list_path);
-  VmBuilder& SetRenderServerCacheSize(std::string render_server_cache_size_str);
+  VmBuilder& SetRenderServerCacheSize(
+      std::string_view render_server_cache_size_str);
   // By default, VMM infers which context types should be advertised.
   // Enabling any specific context type via these API functions instructs VMM to
   // skip its inference and only advertise those enabled explicitly. Calling
@@ -271,7 +271,7 @@ class VmBuilder {
 // Convert a string to the corresponding AsyncExecutor. This returns nullopt if
 // the given string is unknown.
 std::optional<VmBuilder::AsyncExecutor> StringToAsyncExecutor(
-    const std::string& async_executor);
+    std::string_view async_executor);
 
 }  // namespace vm_tools::concierge
 

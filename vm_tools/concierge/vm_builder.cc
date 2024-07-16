@@ -77,7 +77,7 @@ std::string AsyncExecutorToString(VmBuilder::AsyncExecutor async_executor) {
 // Convert a string to the corresponding AsyncExecutor. This returns nullopt if
 // the given string is unknown.
 std::optional<VmBuilder::AsyncExecutor> StringToAsyncExecutor(
-    const std::string& async_executor) {
+    std::string_view async_executor) {
   if (async_executor == kUringAsyncExecutorString) {
     return std::optional{VmBuilder::AsyncExecutor::kUring};
   } else if (async_executor == kEpollAsyncExecutorString) {
@@ -147,12 +147,12 @@ VmBuilder& VmBuilder::AppendPmemDevice(VmBuilder::PmemDevice pmem_device) {
   return *this;
 }
 
-VmBuilder& VmBuilder::SetMemory(const std::string& memory_in_mb) {
+VmBuilder& VmBuilder::SetMemory(std::string_view memory_in_mb) {
   memory_in_mib_ = memory_in_mb;
   return *this;
 }
 
-VmBuilder& VmBuilder::SetBalloonBias(const std::string& balloon_bias_mib) {
+VmBuilder& VmBuilder::SetBalloonBias(std::string_view balloon_bias_mib) {
   balloon_bias_mib_ = balloon_bias_mib;
   return *this;
 }
@@ -162,12 +162,12 @@ VmBuilder& VmBuilder::EnableWorkingSetReporting(bool enable) {
   return *this;
 }
 
-VmBuilder& VmBuilder::SetSyslogTag(const std::string& syslog_tag) {
+VmBuilder& VmBuilder::SetSyslogTag(std::string_view syslog_tag) {
   syslog_tag_ = syslog_tag;
   return *this;
 }
 
-VmBuilder& VmBuilder::SetSocketPath(const std::string& socket_path) {
+VmBuilder& VmBuilder::SetSocketPath(std::string_view socket_path) {
   vm_socket_path_ = socket_path;
   return *this;
 }
@@ -177,46 +177,46 @@ VmBuilder& VmBuilder::AppendTapFd(base::ScopedFD fd) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendKernelParam(const std::string& param) {
-  kernel_params_.push_back(param);
+VmBuilder& VmBuilder::AppendKernelParam(std::string_view param) {
+  kernel_params_.emplace_back(param);
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendOemString(const std::string& string) {
-  oem_strings_.push_back(string);
+VmBuilder& VmBuilder::AppendOemString(std::string_view string) {
+  oem_strings_.emplace_back(string);
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendAudioDevice(const std::string& params) {
-  audio_devices_.push_back(AudioDevice{.params = params});
+VmBuilder& VmBuilder::AppendAudioDevice(std::string_view params) {
+  audio_devices_.push_back(AudioDevice{.params{params}});
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendSerialDevice(const std::string& device) {
-  serial_devices_.push_back(device);
+VmBuilder& VmBuilder::AppendSerialDevice(std::string_view device) {
+  serial_devices_.emplace_back(device);
   return *this;
 }
 
-VmBuilder& VmBuilder::SetWaylandSocket(const std::string& socket) {
+VmBuilder& VmBuilder::SetWaylandSocket(std::string_view socket) {
   // The "true" socket, which is the visual one, must be set first.
   DCHECK(wayland_sockets_.empty());
   if (socket.empty()) {
     // We want the empty string to mean "use the default socket", since that is
     // the behaviour we want if the user does not set the wayland socket in the
     // VirtualMachineSpec proto.
-    wayland_sockets_.push_back(kWaylandSocket);
+    wayland_sockets_.emplace_back(kWaylandSocket);
   } else {
-    wayland_sockets_.push_back(socket);
+    wayland_sockets_.emplace_back(socket);
   }
   return *this;
 }
 
-VmBuilder& VmBuilder::AddExtraWaylandSocket(const std::string& socket) {
+VmBuilder& VmBuilder::AddExtraWaylandSocket(std::string_view socket) {
   // Additional sockets must only be added after the "true" socket, since the
   // first socket provided to the VM will always be interpreted as the visual
   // one.
   DCHECK(!wayland_sockets_.empty());
-  wayland_sockets_.push_back(socket);
+  wayland_sockets_.emplace_back(socket);
   return *this;
 }
 
@@ -225,8 +225,8 @@ VmBuilder& VmBuilder::AppendSharedDir(SharedDataParam shared_dir) {
   return *this;
 }
 
-VmBuilder& VmBuilder::AppendCustomParam(const std::string& key,
-                                        const std::string& value) {
+VmBuilder& VmBuilder::AppendCustomParam(std::string_view key,
+                                        std::string_view value) {
   custom_params_.emplace_back(key, value);
   return *this;
 }
@@ -266,8 +266,8 @@ VmBuilder& VmBuilder::SetGpuCachePath(base::FilePath gpu_cache_path) {
   return *this;
 }
 
-VmBuilder& VmBuilder::SetGpuCacheSize(std::string gpu_cache_size_str) {
-  gpu_cache_size_str_ = std::move(gpu_cache_size_str);
+VmBuilder& VmBuilder::SetGpuCacheSize(std::string_view gpu_cache_size_str) {
+  gpu_cache_size_str_ = gpu_cache_size_str;
   return *this;
 }
 
@@ -289,8 +289,8 @@ VmBuilder& VmBuilder::SetFozDbListPath(base::FilePath foz_db_list_path) {
 }
 
 VmBuilder& VmBuilder::SetRenderServerCacheSize(
-    std::string render_server_cache_size_str) {
-  render_server_cache_size_str_ = std::move(render_server_cache_size_str);
+    std::string_view render_server_cache_size_str) {
+  render_server_cache_size_str_ = render_server_cache_size_str;
   return *this;
 }
 
@@ -533,7 +533,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   if (kernel_params_.size() > 0)
     args.emplace_back("--params", base::JoinString(kernel_params_, " "));
 
-  for (const std::string& s : oem_strings_)
+  for (const auto& s : oem_strings_)
     args.emplace_back("--oem-strings", s);
 
   if (rootfs_.has_value()) {
