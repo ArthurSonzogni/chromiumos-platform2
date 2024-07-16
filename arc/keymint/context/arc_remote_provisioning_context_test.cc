@@ -24,6 +24,8 @@ using testing::NiceMock;
 constexpr uint32_t kP256SignatureLength = 64;
 constexpr uint32_t kOsVersion = 13000;
 constexpr uint32_t kOsPatchLevel = 202407;
+constexpr uint32_t kDeviceInfoMapVersion = 2;
+constexpr uint32_t kSecureBootEnforced = 0;
 
 constexpr char kEcdsaDERSignatureHex[] =
     "304402202183f1eec06a7eca46e676562d3e4f440741ad517a5387c45c54a69a9da846ef02"
@@ -341,6 +343,10 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
   ASSERT_TRUE(result_map->get("system_patch_level"));
   EXPECT_EQ(*result_map->get("system_patch_level"),
             cppbor::Uint(kOsPatchLevel));
+  ASSERT_TRUE(result_map->get("version"));
+  EXPECT_EQ(*result_map->get("version"), cppbor::Uint(kDeviceInfoMapVersion));
+  ASSERT_TRUE(result_map->get("fused"));
+  EXPECT_EQ(*result_map->get("fused"), cppbor::Uint(kSecureBootEnforced));
 }
 
 TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoFailure) {

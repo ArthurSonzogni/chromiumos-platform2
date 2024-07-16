@@ -25,6 +25,13 @@ namespace arc::keymint::context {
 constexpr uint32_t kP256AffinePointSize = 32;
 constexpr uint32_t kP256SignatureLength = 64;
 constexpr uint32_t kP256EcdsaPrivateKeyLength = 32;
+// CDDL Schema version.
+/*
+Device Info Map version is linked from here -
+https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
+*/
+constexpr uint32_t kDeviceInfoMapVersion = 2;
+constexpr uint32_t kSecureBootEnforced = 0;
 const std::vector<uint8_t> kBccPayloadKeyUsage{0x20};
 constexpr const char kProductBuildPropertyRootDir[] =
     "/usr/share/arcvm/properties/";
@@ -441,6 +448,11 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
     device_info_map->add(cppbor::Tstr("system_patch_level"),
                          cppbor::Uint(os_patchlevel_.value()));
   }
+  device_info_map->add(cppbor::Tstr("version"),
+                       cppbor::Uint(kDeviceInfoMapVersion));
+  // TODO(b/353762969): Finalize the value of fused.
+  device_info_map->add(cppbor::Tstr("fused"),
+                       cppbor::Uint(kSecureBootEnforced));
 
   const char* security_level = "tee";
   if (security_level_ == KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT) {
