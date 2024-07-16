@@ -22,8 +22,4 @@ source_set("executor") {
     "//diagnostics/cros_healthd/utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
-
-  if (use.ipcz) {
-    defines = [ "USE_IPCZ=${use.ipcz}" ]
-  }
 }

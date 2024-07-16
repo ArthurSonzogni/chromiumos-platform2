@@ -64,10 +64,6 @@ source_set("system") {
     "system_utilities_impl.cc",
     "usb_device_info.cc",
   ]
-
-  if (use.ipcz) {
-    defines = [ "USE_IPCZ=${use.ipcz}" ]
-  }
 }
 
 if (use.test || use.fuzzer) {

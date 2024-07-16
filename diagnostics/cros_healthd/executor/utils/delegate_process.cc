@@ -36,7 +36,7 @@ DelegateProcess::DelegateProcess(std::string_view seccomp_filename,
                                  const SandboxedProcess::Options& options)
     : SandboxedProcess({kDelegateBinary}, seccomp_filename, options) {
   mojo::ScopedMessagePipeHandle pipe = invitation_.AttachMessagePipe(0);
-#if defined(USE_IPCZ)
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
   // IPCz requires an application to explicitly opt in to broker sharing
   // and inheritance when establishing a direct connection between two
   // non-broker nodes.

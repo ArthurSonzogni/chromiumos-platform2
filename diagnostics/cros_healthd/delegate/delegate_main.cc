@@ -29,7 +29,7 @@ class DelegateDaemon : public brillo::Daemon {
                                 GetCurrentDefault() /* io_thread_task_runner */,
                             mojo::core::ScopedIPCSupport::ShutdownPolicy::
                                 CLEAN /* blocking shutdown */) {
-#if defined(USE_IPCZ)
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
     // IPCz requires an application to explicitly opt in to broker sharing
     // and inheritance when establishing a direct connection between two
     // non-broker nodes.

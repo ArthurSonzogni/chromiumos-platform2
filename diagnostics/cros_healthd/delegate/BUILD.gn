@@ -46,10 +46,6 @@ executable("delegate") {
   ]
   install_path = "/usr/libexec/diagnostics"
   deps = [ ":libexecutor_delegate" ]
-
-  if (use.ipcz) {
-    defines = [ "USE_IPCZ=${use.ipcz}" ]
-  }
 }
 
 if (use.test) {
