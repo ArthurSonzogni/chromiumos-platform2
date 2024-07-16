@@ -42,7 +42,7 @@ impl SchedAttrContext {
         sched_getattr(thread_id, &mut attr)?;
 
         if thread_config.rt_priority.is_some() && allow_rt {
-            attr.sched_policy = libc::SCHED_FIFO as u32;
+            attr.sched_policy = libc::SCHED_RR as u32;
             attr.sched_priority = thread_config.rt_priority.unwrap();
         } else {
             attr.sched_policy = libc::SCHED_OTHER as u32;
@@ -190,7 +190,7 @@ pub fn assert_sched_attr(
     sched_getattr(thread_id, &mut attr).unwrap();
 
     if thread_config.rt_priority.is_some() && allow_rt {
-        assert_eq!(attr.sched_policy, libc::SCHED_FIFO as u32);
+        assert_eq!(attr.sched_policy, libc::SCHED_RR as u32);
         assert_eq!(attr.sched_priority, thread_config.rt_priority.unwrap());
     } else {
         assert_eq!(attr.sched_policy, libc::SCHED_OTHER as u32);
@@ -312,7 +312,7 @@ mod tests {
 
             let mut attr = sched_attr::default();
             sched_getattr(ThreadId(0), &mut attr).unwrap();
-            assert_eq!(attr.sched_policy, libc::SCHED_FIFO as u32);
+            assert_eq!(attr.sched_policy, libc::SCHED_RR as u32);
             assert_eq!(attr.sched_priority, rt_priority);
             assert_eq!(attr.sched_nice, 0);
             if ctx.uclamp_support {
