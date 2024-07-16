@@ -24,6 +24,7 @@
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_process_runner.h"
+#include "patchpanel/noop_system.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -149,13 +150,15 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
 class QoSServiceTest : public testing::Test {
  protected:
   QoSServiceTest()
-      : dns_factory_(new FakeDNSClientFactory()),
+      : datapath_(&process_runner_, &system_),
+        dns_factory_(new FakeDNSClientFactory()),
         qos_svc_(&datapath_,
                  base::WrapUnique(dns_factory_),
                  &process_runner_,
                  &conntrack_monitor_) {}
 
   MockProcessRunner process_runner_;
+  NoopSystem system_;
   MockDatapath datapath_;
   FakeDNSClientFactory* dns_factory_;  // Owned by |qos_svc_|.
   MockConntrackMonitor conntrack_monitor_;
@@ -448,5 +451,6 @@ TEST_F(QoSServiceTest, HandleSocketConnectionEvent) {
   qos_svc_.ProcessSocketConnectionEvent(*open_msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 }
+
 }  // namespace
 }  // namespace patchpanel

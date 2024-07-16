@@ -138,6 +138,9 @@ enum class DeviceMode {
 // ARC networking data path configuration utility.
 // IPV4 addresses are always specified in singular dotted-form (a.b.c.d)
 // (not in CIDR representation
+// Create the initial iptables setup needed for forwarding traffic from VMs and
+// containers and for fwmark based routing when the instance is constructed, and
+// destroy the setup when the instance is destructed.
 class Datapath {
  public:
   explicit Datapath(System* system);
@@ -148,13 +151,7 @@ class Datapath {
   Datapath(const Datapath&) = delete;
   Datapath& operator=(const Datapath&) = delete;
 
-  virtual ~Datapath() = default;
-
-  // Start and stop the Datapath, creating or destroying the initial iptables
-  // setup needed for forwarding traffic from VMs and containers and for
-  // fwmark based routing.
-  virtual void Start();
-  virtual void Stop();
+  virtual ~Datapath();
 
   // Attaches the name |netns_name| to a network namespace identified by
   // |netns_pid|. If |netns_pid| is -1, a new namespace with name |netns_name|
@@ -473,6 +470,9 @@ class Datapath {
   virtual bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& request);
 
  private:
+  void Start();
+  void Stop();
+
   // Creates a virtual interface pair.
   bool AddVirtualInterfacePair(std::string_view netns_name,
                                std::string_view veth_ifname,

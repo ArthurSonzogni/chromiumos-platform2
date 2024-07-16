@@ -77,7 +77,6 @@ Manager::Manager(const base::FilePath& cmd_path,
   auto conntrack_monitor = ConntrackMonitor::GetInstance();
   conntrack_monitor->Start(kConntrackEvents);
 
-  datapath_ = std::make_unique<Datapath>(system);
   adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
       system, process_manager, cmd_path, "--adb_proxy_fd");
   mcast_proxy_ = std::make_unique<patchpanel::SubprocessController>(
@@ -86,6 +85,7 @@ Manager::Manager(const base::FilePath& cmd_path,
       system, process_manager, cmd_path, "--nd_proxy_fd");
   socket_service_ = std::make_unique<patchpanel::SubprocessController>(
       system, process_manager, cmd_path, "--socket_service_fd");
+  datapath_ = std::make_unique<Datapath>(system);
 
   routing_svc_ =
       std::make_unique<RoutingService>(system, lifeline_fd_svc_.get());
@@ -95,8 +95,6 @@ Manager::Manager(const base::FilePath& cmd_path,
       std::make_unique<MulticastCountersService>(datapath_.get());
   multicast_metrics_ = std::make_unique<MulticastMetrics>(
       multicast_counters_svc_.get(), metrics);
-
-  datapath_->Start();
 
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
                                                  datapath_.get(), system);
@@ -196,7 +194,7 @@ Manager::~Manager() {
   }
 
   multicast_counters_svc_->Stop();
-  datapath_->Stop();
+  datapath_.reset();
 }
 
 void Manager::RunDelayedInitialization() {

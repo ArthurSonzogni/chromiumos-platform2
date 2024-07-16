@@ -6,7 +6,9 @@
 
 namespace patchpanel {
 
-MockDatapath::MockDatapath() : Datapath(nullptr, nullptr, nullptr) {}
+MockDatapath::MockDatapath(MinijailedProcessRunner* process_runner,
+                           System* system)
+    : Datapath(process_runner, nullptr, system) {}
 
 MockDatapath::~MockDatapath() = default;
 

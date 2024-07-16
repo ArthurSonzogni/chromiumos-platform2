@@ -22,14 +22,12 @@ namespace patchpanel {
 // ARC networking data path configuration utility.
 class MockDatapath : public Datapath {
  public:
-  MockDatapath();
+  MockDatapath(MinijailedProcessRunner* process_runner, System* system);
   MockDatapath(const MockDatapath&) = delete;
   MockDatapath& operator=(const MockDatapath&) = delete;
 
   ~MockDatapath() override;
 
-  MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(bool,
               NetnsAttachName,
               (std::string_view netns_name, pid_t netns_pid),

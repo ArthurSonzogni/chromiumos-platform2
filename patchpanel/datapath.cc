@@ -260,6 +260,11 @@ Datapath::Datapath(MinijailedProcessRunner* process_runner,
                    System* system)
     : process_runner_(process_runner), system_(system) {
   firewall_.reset(firewall);
+  Start();
+}
+
+Datapath::~Datapath() {
+  Stop();
 }
 
 void Datapath::Start() {

@@ -16,10 +16,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_connmark_updater.h"
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/noop_system.h"
 
 namespace patchpanel {
 
@@ -270,7 +272,9 @@ bool CompareCounters(std::map<CounterKey, Counter> expected,
 
 class CountersServiceTest : public testing::Test {
  protected:
-  CountersServiceTest() : counters_svc_(&datapath_, &conntrack_monitor_) {}
+  CountersServiceTest()
+      : datapath_(&process_runner_, &system_),
+        counters_svc_(&datapath_, &conntrack_monitor_) {}
 
   // Makes `iptables` and `ip6tables` returning |ipv4_output| and
   // |ipv6_output|, respectively. Expects an empty map from GetCounters().
@@ -288,6 +292,8 @@ class CountersServiceTest : public testing::Test {
     EXPECT_TRUE(CompareCounters(expected, actual));
   }
 
+  FakeProcessRunner process_runner_;
+  NoopSystem system_;
   MockDatapath datapath_;
   MockConntrackMonitor conntrack_monitor_;
   CountersService counters_svc_;

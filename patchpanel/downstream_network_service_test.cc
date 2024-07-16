@@ -21,6 +21,7 @@
 #include <metrics/metrics_library_mock.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/fake_shill_client.h"
 #include "patchpanel/fake_system.h"
 #include "patchpanel/mock_conntrack_monitor.h"
@@ -64,7 +65,8 @@ base::ScopedFD MakeTestSocket() {
 class DownstreamNetworkServiceTest : public testing::Test {
  protected:
   DownstreamNetworkServiceTest()
-      : shill_client_(shill_client_helper_.FakeClient()),
+      : datapath_(&process_runner_, &system_),
+        shill_client_(shill_client_helper_.FakeClient()),
         ipv6_svc_(&nd_proxy_),
         counters_svc_(&datapath_, &conntrack_monitor_),
         downstream_network_svc_(&metrics_,
@@ -79,6 +81,7 @@ class DownstreamNetworkServiceTest : public testing::Test {
                                 &counters_svc_) {}
 
   MetricsLibraryMock metrics_;
+  FakeProcessRunner process_runner_;
   FakeSystem system_;
   MockDatapath datapath_;
   MockRoutingService routing_svc_;

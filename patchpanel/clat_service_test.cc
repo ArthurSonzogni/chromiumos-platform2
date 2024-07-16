@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/datapath.h"
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/fake_system.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
@@ -119,11 +120,14 @@ ShillClient::Device MakeFakeDualStackShillDevice(
 
 class ClatServiceTest : public ::testing::Test {
  protected:
-  ClatServiceTest() : target_(&datapath_, &process_manager_, &system_) {}
+  ClatServiceTest()
+      : datapath_(&process_runner_, &system_),
+        target_(&datapath_, &process_manager_, &system_) {}
 
+  FakeProcessRunner process_runner_;
+  FakeSystem system_;
   MockDatapath datapath_;
   net_base::MockProcessManager process_manager_;
-  FakeSystem system_;
   ClatServiceUnderTest target_;
 };
 

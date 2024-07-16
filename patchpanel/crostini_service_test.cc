@@ -20,8 +20,10 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/dbus_client_notifier.h"
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_forwarding_service.h"
+#include "patchpanel/noop_system.h"
 #include "patchpanel/routing_service.h"
 
 using testing::_;
@@ -47,7 +49,7 @@ class CrostiniServiceTest : public testing::Test,
                             public patchpanel::DbusClientNotifier {
  protected:
   void SetUp() override {
-    datapath_ = std::make_unique<MockDatapath>();
+    datapath_ = std::make_unique<MockDatapath>(&process_runner_, &system_);
     addr_mgr_ = std::make_unique<AddressManager>();
     forwarding_service_ = std::make_unique<MockForwardingService>();
     network_device_signals_.clear();
@@ -72,6 +74,8 @@ class CrostiniServiceTest : public testing::Test,
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type) override {}
 
+  FakeProcessRunner process_runner_;
+  NoopSystem system_;
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MockForwardingService> forwarding_service_;

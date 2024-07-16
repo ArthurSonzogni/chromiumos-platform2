@@ -13,8 +13,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/noop_system.h"
 
 namespace patchpanel {
 
@@ -369,11 +371,13 @@ ShillClient::Device MakeShillDevice(net_base::Technology technology,
 class MulticastCountersServiceTest : public testing::Test {
  protected:
   void SetUp() override {
-    datapath_ = std::make_unique<MockDatapath>();
+    datapath_ = std::make_unique<MockDatapath>(&process_runner_, &system_);
     multicast_counters_svc_ =
         std::make_unique<MulticastCountersService>(datapath_.get());
   }
 
+  FakeProcessRunner process_runner_;
+  NoopSystem system_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
 };

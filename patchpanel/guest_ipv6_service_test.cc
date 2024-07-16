@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/fake_system.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/noop_subprocess_controller.h"
@@ -81,10 +82,13 @@ ShillClient::Device MakeFakeShillDevice(const std::string& ifname,
 
 class GuestIPv6ServiceTest : public ::testing::Test {
  protected:
-  GuestIPv6ServiceTest() : target_(&nd_proxy_, &datapath_, &system_) {
+  GuestIPv6ServiceTest()
+      : datapath_(&process_runner_, &system_),
+        target_(&nd_proxy_, &datapath_, &system_) {
     ON_CALL(datapath_, MaskInterfaceFlags).WillByDefault(Return(true));
   }
 
+  FakeProcessRunner process_runner_;
   FakeSystem system_;
   MockDatapath datapath_;
   NoopSubprocessController nd_proxy_;

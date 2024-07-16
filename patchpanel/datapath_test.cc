@@ -129,62 +129,75 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 
 class DatapathTest : public testing::Test {
  protected:
-  DatapathTest()
-      : firewall_(new MockFirewall()),
-        datapath_(&runner_, firewall_, &system_) {}
+  DatapathTest() : firewall_(new MockFirewall()) {
+    ExpectForConstructor();
+    datapath_ = std::make_unique<Datapath>(&runner_, firewall_, &system_);
 
-  ~DatapathTest() override = default;
+    VerifyAndClearExpectations();  // Verify the expectations of the ctor.
+  }
+
+  ~DatapathTest() override {
+    VerifyAndClearExpectations();  // Verify the expectations of test cases.
+
+    ExpectForDestructor();
+    datapath_.reset();
+    VerifyAndClearExpectations();  // Verify the expectations of the dtor.
+  }
+
+  // Sets the expectataion for Datapath's constructor.
+  void ExpectForConstructor() {
+    EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "1", ""));
+    EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "1", ""));
+    EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6ProxyNDP, "1", ""));
+
+    static struct {
+      IpFamily family;
+      std::string args;
+      int call_count = 1;
+    } iptables_commands[] = {
+        {IpFamily::kDual,
+         "mangle -A qos_detect -m mark ! --mark 0x00000000/0x000000e0 -j "
+         "RETURN "
+         "-w"},
+        {IpFamily::kDual,
+         "mangle -A qos_detect -m bpf --object-pinned "
+         "/sys/fs/bpf/patchpanel/match_dtls_srtp -j MARK --set-xmark "
+         "0x00000040/0x000000e0 -w"},
+        {IpFamily::kDual,
+         "mangle -A qos_detect -j CONNMARK --save-mark --nfmask 0x000000e0 "
+         "--ctmask 0x000000e0 -w"},
+    };
+    for (const auto& c : iptables_commands) {
+      runner_.ExpectCallIptables(c.family, c.args, c.call_count);
+    }
+  }
+
+  // Sets the expectataion for Datapath's destructor.
+  void ExpectForDestructor() {
+    EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "0", ""));
+    EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "0", ""));
+  }
+
+  // Verifies and clears the expectations for all the mock instances.
+  void VerifyAndClearExpectations() {
+    testing::Mock::VerifyAndClearExpectations(&system_);
+    testing::Mock::VerifyAndClearExpectations(&runner_);
+    testing::Mock::VerifyAndClearExpectations(firewall_);
+  }
 
   FakeSystem system_;
   MockProcessRunnerForIptablesTest runner_;
   MockFirewall* firewall_;
 
-  Datapath datapath_;
+  std::unique_ptr<Datapath> datapath_;
 };
-
-TEST_F(DatapathTest, Start) {
-  // Asserts for sysctl modifications
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "1", ""));
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "1", ""));
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6ProxyNDP, "1", ""));
-
-  static struct {
-    IpFamily family;
-    std::string args;
-    int call_count = 1;
-  } iptables_commands[] = {
-      {IpFamily::kDual,
-       "mangle -A qos_detect -m mark ! --mark 0x00000000/0x000000e0 -j RETURN "
-       "-w"},
-      {IpFamily::kDual,
-       "mangle -A qos_detect -m bpf --object-pinned "
-       "/sys/fs/bpf/patchpanel/match_dtls_srtp -j MARK --set-xmark "
-       "0x00000040/0x000000e0 -w"},
-      {IpFamily::kDual,
-       "mangle -A qos_detect -j CONNMARK --save-mark --nfmask 0x000000e0 "
-       "--ctmask 0x000000e0 -w"},
-  };
-  for (const auto& c : iptables_commands) {
-    runner_.ExpectCallIptables(c.family, c.args, c.call_count);
-  }
-
-  datapath_.Start();
-}
-
-TEST_F(DatapathTest, Stop) {
-  // Asserts for sysctl modifications
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "0", ""));
-  EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "0", ""));
-
-  datapath_.Stop();
-}
 
 TEST_F(DatapathTest, AddTUN) {
   constexpr net_base::MacAddress mac(1, 2, 3, 4, 5, 6);
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  const std::string ifname = datapath_.AddTunTap(
+  const std::string ifname = datapath_->AddTunTap(
       "foo0", mac, subnet.CIDRAtOffset(1), "", DeviceMode::kTun);
 
   EXPECT_EQ(ifname, "foo0");
@@ -198,7 +211,7 @@ TEST_F(DatapathTest, AddTunWithoutMACAddress) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  auto ifname = datapath_.AddTunTap(
+  auto ifname = datapath_->AddTunTap(
       "foo0", std::nullopt, subnet.CIDRAtOffset(1), "", DeviceMode::kTun);
 
   EXPECT_EQ(ifname, "foo0");
@@ -211,7 +224,7 @@ TEST_F(DatapathTest, AddTunWithoutMACAddress) {
 TEST_F(DatapathTest, RemoveTUN) {
   runner_.ExpectCallIp(IpFamily::kIPv4, "tuntap del foo0 mode tun");
 
-  datapath_.RemoveTunTap("foo0", DeviceMode::kTun);
+  datapath_->RemoveTunTap("foo0", DeviceMode::kTun);
 }
 
 TEST_F(DatapathTest, AddTAP) {
@@ -219,7 +232,7 @@ TEST_F(DatapathTest, AddTAP) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  const std::string ifname = datapath_.AddTunTap(
+  const std::string ifname = datapath_->AddTunTap(
       "foo0", mac, subnet.CIDRAtOffset(1), "", DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
@@ -234,7 +247,7 @@ TEST_F(DatapathTest, AddTAPWithOwner) {
   Subnet subnet(
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 4}, 30),
       base::DoNothing());
-  const std::string ifname = datapath_.AddTunTap(
+  const std::string ifname = datapath_->AddTunTap(
       "foo0", mac, subnet.CIDRAtOffset(1), "root", DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
@@ -245,8 +258,8 @@ TEST_F(DatapathTest, AddTAPWithOwner) {
 }
 
 TEST_F(DatapathTest, AddTAPNoAddrs) {
-  auto ifname = datapath_.AddTunTap("foo0", std::nullopt, std::nullopt, "",
-                                    DeviceMode::kTap);
+  auto ifname = datapath_->AddTunTap("foo0", std::nullopt, std::nullopt, "",
+                                     DeviceMode::kTap);
 
   EXPECT_EQ(ifname, "foo0");
   std::vector<ioctl_req_t> expected = {TUNSETIFF, TUNSETPERSIST, SIOCGIFFLAGS,
@@ -257,20 +270,20 @@ TEST_F(DatapathTest, AddTAPNoAddrs) {
 TEST_F(DatapathTest, RemoveTAP) {
   runner_.ExpectCallIp(IpFamily::kIPv4, "tuntap del foo0 mode tap");
 
-  datapath_.RemoveTunTap("foo0", DeviceMode::kTap);
+  datapath_->RemoveTunTap("foo0", DeviceMode::kTap);
 }
 
 TEST_F(DatapathTest, NetnsAttachName) {
   Verify_ip_netns_delete(runner_, "netns_foo");
   Verify_ip_netns_attach(runner_, "netns_foo", 1234);
 
-  EXPECT_TRUE(datapath_.NetnsAttachName("netns_foo", 1234));
+  EXPECT_TRUE(datapath_->NetnsAttachName("netns_foo", 1234));
 }
 
 TEST_F(DatapathTest, NetnsDeleteName) {
   EXPECT_CALL(runner_, ip_netns_delete(StrEq("netns_foo"), true));
 
-  EXPECT_TRUE(datapath_.NetnsDeleteName("netns_foo"));
+  EXPECT_TRUE(datapath_->NetnsDeleteName("netns_foo"));
 }
 
 TEST_F(DatapathTest, AddBridge) {
@@ -278,7 +291,7 @@ TEST_F(DatapathTest, AddBridge) {
                        "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set br up");
 
-  datapath_.AddBridge("br", *IPv4CIDR::CreateFromCIDRString("1.1.1.1/30"));
+  datapath_->AddBridge("br", *IPv4CIDR::CreateFromCIDRString("1.1.1.1/30"));
 
   EXPECT_EQ(1, system_.ioctl_reqs.size());
   EXPECT_EQ(SIOCBRADDBR, system_.ioctl_reqs[0]);
@@ -288,7 +301,7 @@ TEST_F(DatapathTest, AddBridge) {
 TEST_F(DatapathTest, RemoveBridge) {
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set br down");
 
-  datapath_.RemoveBridge("br");
+  datapath_->RemoveBridge("br");
 
   EXPECT_EQ(1, system_.ioctl_reqs.size());
   EXPECT_EQ(SIOCBRDELBR, system_.ioctl_reqs[0]);
@@ -298,7 +311,7 @@ TEST_F(DatapathTest, RemoveBridge) {
 TEST_F(DatapathTest, AddToBridge) {
   EXPECT_CALL(system_, IfNametoindex("vethwlan0")).WillRepeatedly(Return(5));
 
-  datapath_.AddToBridge("arcbr0", "vethwlan0");
+  datapath_->AddToBridge("arcbr0", "vethwlan0");
 
   EXPECT_EQ(1, system_.ioctl_reqs.size());
   EXPECT_EQ(SIOCBRADDIF, system_.ioctl_reqs[0]);
@@ -318,7 +331,7 @@ TEST_F(DatapathTest, ConnectVethPair) {
       "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set veth_foo up");
 
-  EXPECT_TRUE(datapath_.ConnectVethPair(
+  EXPECT_TRUE(datapath_->ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
       *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"),
       /*remote_ipv6_cidr=*/std::nullopt, true));
@@ -337,7 +350,7 @@ TEST_F(DatapathTest, ConnectVethPair_StaticIPv6) {
       "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set veth_foo up");
 
-  EXPECT_TRUE(datapath_.ConnectVethPair(
+  EXPECT_TRUE(datapath_->ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
       *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"),
       *IPv6CIDR::CreateFromCIDRString("fd11::1234/64"), true));
@@ -355,7 +368,7 @@ TEST_F(DatapathTest, ConnectVethPair_InterfaceDown) {
       "link set dev peer_foo down addr 01:02:03:04:05:06 multicast on");
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set veth_foo up");
 
-  EXPECT_TRUE(datapath_.ConnectVethPair(
+  EXPECT_TRUE(datapath_->ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
       *IPv4CIDR::CreateFromCIDRString("100.115.92.169/30"),
       /*remote_ipv6_cidr=*/std::nullopt, true, /*up=*/false));
@@ -367,15 +380,15 @@ TEST_F(DatapathTest, AddVirtualInterfacePair) {
       "link add veth_foo type veth peer name peer_foo netns netns_foo");
 
   EXPECT_TRUE(
-      datapath_.AddVirtualInterfacePair("netns_foo", "veth_foo", "peer_foo"));
+      datapath_->AddVirtualInterfacePair("netns_foo", "veth_foo", "peer_foo"));
 }
 
 TEST_F(DatapathTest, ToggleInterface) {
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set foo up");
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set bar down");
 
-  EXPECT_TRUE(datapath_.ToggleInterface("foo", true));
-  EXPECT_TRUE(datapath_.ToggleInterface("bar", false));
+  EXPECT_TRUE(datapath_->ToggleInterface("foo", true));
+  EXPECT_TRUE(datapath_->ToggleInterface("bar", false));
 }
 
 TEST_F(DatapathTest, ConfigureInterface) {
@@ -385,7 +398,7 @@ TEST_F(DatapathTest, ConfigureInterface) {
       IpFamily::kIPv4,
       "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
   constexpr net_base::MacAddress mac_addr(2, 2, 2, 2, 2, 3);
-  EXPECT_TRUE(datapath_.ConfigureInterface(
+  EXPECT_TRUE(datapath_->ConfigureInterface(
       "test0", mac_addr, *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"),
       /*ipv6_cidr=*/std::nullopt, true, true));
   Mock::VerifyAndClearExpectations(&runner_);
@@ -393,7 +406,7 @@ TEST_F(DatapathTest, ConfigureInterface) {
   runner_.ExpectCallIp(IpFamily::kIPv4,
                        "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
   runner_.ExpectCallIp(IpFamily::kIPv4, "link set dev test1 up multicast off");
-  EXPECT_TRUE(datapath_.ConfigureInterface(
+  EXPECT_TRUE(datapath_->ConfigureInterface(
       "test1", std::nullopt, *IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"),
       /*ipv6_cidr=*/std::nullopt, true, false));
 }
@@ -401,7 +414,7 @@ TEST_F(DatapathTest, ConfigureInterface) {
 TEST_F(DatapathTest, RemoveInterface) {
   runner_.ExpectCallIp(IpFamily::kIPv4, "link delete foo");
 
-  datapath_.RemoveInterface("foo");
+  datapath_->RemoveInterface("foo");
 }
 
 TEST_F(DatapathTest, StartRoutingNamespace) {
@@ -470,7 +483,7 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
   nsinfo.peer_mac_addr = peer_mac;
   nsinfo.host_mac_addr = host_mac;
 
-  datapath_.StartRoutingNamespace(nsinfo);
+  datapath_->StartRoutingNamespace(nsinfo);
 }
 
 TEST_F(DatapathTest, StopRoutingNamespace) {
@@ -500,7 +513,7 @@ TEST_F(DatapathTest, StopRoutingNamespace) {
       *net_base::IPv4CIDR::CreateFromAddressAndPrefix({100, 115, 92, 128}, 30),
       base::DoNothing());
 
-  datapath_.StopRoutingNamespace(nsinfo);
+  datapath_->StopRoutingNamespace(nsinfo);
 }
 
 TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
@@ -576,7 +589,7 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
   nsinfo.peer_mac_addr = peer_mac;
   nsinfo.host_mac_addr = host_mac;
 
-  datapath_.StartRoutingNamespace(nsinfo);
+  datapath_->StartRoutingNamespace(nsinfo);
 }
 
 TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
@@ -609,7 +622,7 @@ TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
       .host_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::1/64"),
       .peer_cidr = *IPv6CIDR::CreateFromCIDRString("fd11::2/64")};
 
-  datapath_.StopRoutingNamespace(nsinfo);
+  datapath_->StopRoutingNamespace(nsinfo);
 }
 
 TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
@@ -661,7 +674,7 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
 
-  datapath_.StartDownstreamNetwork(info);
+  datapath_->StartDownstreamNetwork(info);
 }
 
 TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
@@ -695,7 +708,7 @@ TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
 
-  datapath_.StartDownstreamNetwork(info);
+  datapath_->StartDownstreamNetwork(info);
 }
 
 TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
@@ -719,7 +732,7 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
 
-  datapath_.StopDownstreamNetwork(info);
+  datapath_->StopDownstreamNetwork(info);
 }
 
 TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
@@ -741,7 +754,7 @@ TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("172.17.49.1/24");
   info.enable_ipv4_dhcp = true;
 
-  datapath_.StopDownstreamNetwork(info);
+  datapath_->StopDownstreamNetwork(info);
 }
 
 TEST_F(DatapathTest, StartRoutingNewNamespace) {
@@ -765,7 +778,7 @@ TEST_F(DatapathTest, StartRoutingNewNamespace) {
       base::DoNothing());
   nsinfo.peer_mac_addr = mac;
 
-  datapath_.StartRoutingNamespace(nsinfo);
+  datapath_->StartRoutingNamespace(nsinfo);
 }
 
 TEST_F(DatapathTest, StartRoutingDevice) {
@@ -802,7 +815,7 @@ TEST_F(DatapathTest, StartRoutingDevice) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.StartRoutingDevice(eth_device, "arc_eth0", TrafficSource::kArc);
+  datapath_->StartRoutingDevice(eth_device, "arc_eth0", TrafficSource::kArc);
 }
 
 TEST_F(DatapathTest, StartRoutingDeviceAsUser) {
@@ -830,9 +843,9 @@ TEST_F(DatapathTest, StartRoutingDeviceAsUser) {
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 
-  datapath_.StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM,
-                                     IPv4Address(1, 2, 3, 4),
-                                     /*int_ipv4_addr=*/std::nullopt);
+  datapath_->StartRoutingDeviceAsUser("vmtap0", TrafficSource::kCrostiniVM,
+                                      IPv4Address(1, 2, 3, 4),
+                                      /*int_ipv4_addr=*/std::nullopt);
 }
 
 TEST_F(DatapathTest, StopRoutingDevice) {
@@ -848,7 +861,7 @@ TEST_F(DatapathTest, StopRoutingDevice) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "mangle -X PREROUTING_arc_eth0 -w");
 
-  datapath_.StopRoutingDevice("arc_eth0", TrafficSource::kArc);
+  datapath_->StopRoutingDevice("arc_eth0", TrafficSource::kArc);
 }
 
 TEST_F(DatapathTest, StopRoutingDeviceAsUser) {
@@ -862,7 +875,7 @@ TEST_F(DatapathTest, StopRoutingDeviceAsUser) {
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -F PREROUTING_vmtap0 -w");
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -X PREROUTING_vmtap0 -w");
 
-  datapath_.StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM);
+  datapath_->StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM);
 }
 
 TEST_F(DatapathTest, StartStopConnectionPinning) {
@@ -885,7 +898,7 @@ TEST_F(DatapathTest, StartStopConnectionPinning) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "mangle -A PREROUTING -i eth0 -j CONNMARK "
                              "--restore-mark --mask 0x00003f00 -w");
-  datapath_.StartConnectionPinning(eth_device);
+  datapath_->StartConnectionPinning(eth_device);
 
   // Teardown
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -F POSTROUTING_eth0 -w");
@@ -895,7 +908,7 @@ TEST_F(DatapathTest, StartStopConnectionPinning) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "mangle -D PREROUTING -i eth0 -j CONNMARK "
                              "--restore-mark --mask 0x00003f00 -w");
-  datapath_.StopConnectionPinning(eth_device);
+  datapath_->StopConnectionPinning(eth_device);
 }
 
 TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
@@ -935,7 +948,7 @@ TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "filter -A vpn_accept -m mark "
                              "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
-  datapath_.StartVpnRouting(vpn_device);
+  datapath_->StartVpnRouting(vpn_device);
 
   runner_.ExpectCallIptables(IpFamily::kDual, "filter -F vpn_accept -w");
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -F apply_vpn_mark -w");
@@ -956,7 +969,7 @@ TEST_F(DatapathTest, StartStopVpnRouting_ArcVpn) {
       "nat -D OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
       "redirect_dns -w");
   // Teardown
-  datapath_.StopVpnRouting(vpn_device);
+  datapath_->StopVpnRouting(vpn_device);
 }
 
 TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
@@ -1022,7 +1035,7 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "filter -A vpn_accept -m mark "
                              "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
-  datapath_.StartVpnRouting(vpn_device);
+  datapath_->StartVpnRouting(vpn_device);
 
   // Teardown
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -F POSTROUTING_tun0 -w");
@@ -1050,7 +1063,7 @@ TEST_F(DatapathTest, StartStopVpnRouting_HostVpn) {
       "mangle -D PREROUTING -i arcbr0 -j PREROUTING_arcbr0 -w");
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -F PREROUTING_arcbr0 -w");
   runner_.ExpectCallIptables(IpFamily::kDual, "mangle -X PREROUTING_arcbr0 -w");
-  datapath_.StopVpnRouting(vpn_device);
+  datapath_->StopVpnRouting(vpn_device);
 }
 
 TEST_F(DatapathTest, AddInboundIPv4DNATArc) {
@@ -1069,8 +1082,8 @@ TEST_F(DatapathTest, AddInboundIPv4DNATArc) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.AddInboundIPv4DNAT(AutoDNATTarget::kArc, eth_device,
-                               IPv4Address(1, 2, 3, 4));
+  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, eth_device,
+                                IPv4Address(1, 2, 3, 4));
 }
 
 TEST_F(DatapathTest, RemoveInboundIPv4DNATArc) {
@@ -1089,8 +1102,8 @@ TEST_F(DatapathTest, RemoveInboundIPv4DNATArc) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, eth_device,
-                                  IPv4Address(1, 2, 3, 4));
+  datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc, eth_device,
+                                   IPv4Address(1, 2, 3, 4));
 }
 
 TEST_F(DatapathTest, AddInboundIPv4DNATCrostini) {
@@ -1110,8 +1123,8 @@ TEST_F(DatapathTest, AddInboundIPv4DNATCrostini) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.AddInboundIPv4DNAT(AutoDNATTarget::kCrostini, eth_device,
-                               IPv4Address(1, 2, 3, 4));
+  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kCrostini, eth_device,
+                                IPv4Address(1, 2, 3, 4));
 }
 
 TEST_F(DatapathTest, RemoveInboundIPv4DNATCrostini) {
@@ -1131,8 +1144,8 @@ TEST_F(DatapathTest, RemoveInboundIPv4DNATCrostini) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.RemoveInboundIPv4DNAT(AutoDNATTarget::kCrostini, eth_device,
-                                  IPv4Address(1, 2, 3, 4));
+  datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kCrostini, eth_device,
+                                   IPv4Address(1, 2, 3, 4));
 }
 
 TEST_F(DatapathTest, AddInboundIPv4DNATParallelsVm) {
@@ -1152,8 +1165,8 @@ TEST_F(DatapathTest, AddInboundIPv4DNATParallelsVm) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.AddInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
-                               IPv4Address(1, 2, 3, 4));
+  datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
+                                IPv4Address(1, 2, 3, 4));
 }
 
 TEST_F(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
@@ -1173,12 +1186,12 @@ TEST_F(DatapathTest, RemoveInboundIPv4DNATParallelsVm) {
   ShillClient::Device eth_device;
   eth_device.ifname = "eth0";
 
-  datapath_.RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
-                                  IPv4Address(1, 2, 3, 4));
+  datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels, eth_device,
+                                   IPv4Address(1, 2, 3, 4));
 }
 
 TEST_F(DatapathTest, MaskInterfaceFlags) {
-  bool result = datapath_.MaskInterfaceFlags("foo0", IFF_DEBUG);
+  bool result = datapath_->MaskInterfaceFlags("foo0", IFF_DEBUG);
 
   EXPECT_TRUE(result);
   std::vector<ioctl_req_t> expected = {SIOCGIFFLAGS, SIOCSIFFLAGS};
@@ -1189,15 +1202,15 @@ TEST_F(DatapathTest, AddIPv6HostRoute) {
   runner_.ExpectCallIp(IpFamily::kIPv6,
                        "route replace 2001:da8:e00::1234/128 dev eth0");
 
-  datapath_.AddIPv6HostRoute("eth0", *net_base::IPv6CIDR::CreateFromCIDRString(
-                                         "2001:da8:e00::1234/128"));
+  datapath_->AddIPv6HostRoute("eth0", *net_base::IPv6CIDR::CreateFromCIDRString(
+                                          "2001:da8:e00::1234/128"));
 }
 
 TEST_F(DatapathTest, AddIPv4RouteToTable) {
   runner_.ExpectCallIp(IpFamily::kIPv4,
                        "route add 192.0.2.2/24 dev eth0 table 123");
 
-  datapath_.AddIPv4RouteToTable(
+  datapath_->AddIPv4RouteToTable(
       "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
 }
 
@@ -1205,15 +1218,16 @@ TEST_F(DatapathTest, DeleteIPv4RouteFromTable) {
   runner_.ExpectCallIp(IpFamily::kIPv4,
                        "route del 192.0.2.2/24 dev eth0 table 123");
 
-  datapath_.DeleteIPv4RouteFromTable(
+  datapath_->DeleteIPv4RouteFromTable(
       "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
 }
 
 TEST_F(DatapathTest, AddIPv4Route) {
-  datapath_.AddIPv4Route(IPv4Address(192, 168, 1, 1),
-                         *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
-  datapath_.DeleteIPv4Route(IPv4Address(192, 168, 1, 1),
-                            *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
+  datapath_->AddIPv4Route(IPv4Address(192, 168, 1, 1),
+                          *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
+  datapath_->DeleteIPv4Route(
+      IPv4Address(192, 168, 1, 1),
+      *IPv4CIDR::CreateFromCIDRString("100.115.93.0/24"));
 
   std::vector<ioctl_req_t> expected_reqs = {SIOCADDRT, SIOCDELRT};
   EXPECT_EQ(expected_reqs, system_.ioctl_reqs);
@@ -1288,30 +1302,28 @@ TEST_F(DatapathTest, RedirectDnsRules) {
       "nat -D redirect_dns -p udp --dport 53 -o wlan0 -j DNAT "
       "--to-destination 8.8.8.8 -w");
 
-  datapath_.RemoveRedirectDnsRule(wlan_device);
-  datapath_.RemoveRedirectDnsRule(ShillClient::Device());
-  datapath_.AddRedirectDnsRule(eth_device, "192.168.1.1");
-  datapath_.AddRedirectDnsRule(wlan_device, "1.1.1.1");
-  datapath_.AddRedirectDnsRule(wlan_device, "8.8.8.8");
-  datapath_.RemoveRedirectDnsRule(eth_device);
-  datapath_.RemoveRedirectDnsRule(wlan_device);
+  datapath_->RemoveRedirectDnsRule(wlan_device);
+  datapath_->RemoveRedirectDnsRule(ShillClient::Device());
+  datapath_->AddRedirectDnsRule(eth_device, "192.168.1.1");
+  datapath_->AddRedirectDnsRule(wlan_device, "1.1.1.1");
+  datapath_->AddRedirectDnsRule(wlan_device, "8.8.8.8");
+  datapath_->RemoveRedirectDnsRule(eth_device);
+  datapath_->RemoveRedirectDnsRule(wlan_device);
 }
 
 // This test needs a mock process runner so it doesn't use Datapath object in
 // the fixture class.
 TEST_F(DatapathTest, DumpIptables) {
-  MockProcessRunner runner;
   std::string output = "<iptables output>";
-  runner.ExpectCallIptables(IpFamily::kDual, "mangle -L -x -v -n -w",
-                            /*call_times=*/1, output, /*empty_chain*/ true);
+  runner_.ExpectCallIptables(IpFamily::kDual, "mangle -L -x -v -n -w",
+                             /*call_times=*/1, output, /*empty_chain*/ true);
 
-  Datapath datapath(&runner, /*firewall=*/nullptr, /*system=*/nullptr);
   EXPECT_EQ("<iptables output>",
-            datapath.DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle));
+            datapath_->DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle));
   EXPECT_EQ("<iptables output>",
-            datapath.DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle));
+            datapath_->DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle));
   EXPECT_EQ("",
-            datapath.DumpIptables(IpFamily::kDual, Iptables::Table::kMangle));
+            datapath_->DumpIptables(IpFamily::kDual, Iptables::Table::kMangle));
 }
 
 TEST_F(DatapathTest, SetVpnLockdown) {
@@ -1321,16 +1333,16 @@ TEST_F(DatapathTest, SetVpnLockdown) {
       "-j REJECT -w");
   runner_.ExpectCallIptables(IpFamily::kDual, "filter -F vpn_lockdown -w");
 
-  datapath_.SetVpnLockdown(true);
-  datapath_.SetVpnLockdown(false);
+  datapath_->SetVpnLockdown(true);
+  datapath_->SetVpnLockdown(false);
 }
 
 TEST_F(DatapathTest, SetConntrackHelpers) {
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kConntrackHelper, "1", ""));
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kConntrackHelper, "0", ""));
 
-  datapath_.SetConntrackHelpers(true);
-  datapath_.SetConntrackHelpers(false);
+  datapath_->SetConntrackHelpers(true);
+  datapath_->SetConntrackHelpers(false);
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_Default) {
@@ -1362,8 +1374,8 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
       .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
   };
 
-  datapath_.StartDnsRedirection(rule4);
-  datapath_.StartDnsRedirection(rule6);
+  datapath_->StartDnsRedirection(rule4);
+  datapath_->StartDnsRedirection(rule6);
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_User) {
@@ -1421,8 +1433,8 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
            *net_base::IPAddress::CreateFromString("2001:4860:4860::8844")},
   };
 
-  datapath_.StartDnsRedirection(rule4);
-  datapath_.StartDnsRedirection(rule6);
+  datapath_->StartDnsRedirection(rule4);
+  datapath_->StartDnsRedirection(rule6);
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
@@ -1459,8 +1471,8 @@ TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
       .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
   };
 
-  datapath_.StartDnsRedirection(rule4);
-  datapath_.StartDnsRedirection(rule6);
+  datapath_->StartDnsRedirection(rule4);
+  datapath_->StartDnsRedirection(rule6);
 }
 
 TEST_F(DatapathTest, StopDnsRedirection_Default) {
@@ -1492,8 +1504,8 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
       .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
   };
 
-  datapath_.StopDnsRedirection(rule4);
-  datapath_.StopDnsRedirection(rule6);
+  datapath_->StopDnsRedirection(rule4);
+  datapath_->StopDnsRedirection(rule6);
 }
 
 TEST_F(DatapathTest, StopDnsRedirection_User) {
@@ -1552,8 +1564,8 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
            *net_base::IPAddress::CreateFromString("2001:4860:4860::8844")},
   };
 
-  datapath_.StopDnsRedirection(rule4);
-  datapath_.StopDnsRedirection(rule6);
+  datapath_->StopDnsRedirection(rule4);
+  datapath_->StopDnsRedirection(rule6);
 }
 
 TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
@@ -1590,8 +1602,8 @@ TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
       .proxy_address = *net_base::IPAddress::CreateFromString("::1"),
   };
 
-  datapath_.StopDnsRedirection(rule4);
-  datapath_.StopDnsRedirection(rule6);
+  datapath_->StopDnsRedirection(rule4);
+  datapath_->StopDnsRedirection(rule6);
 }
 
 TEST_F(DatapathTest, PrefixEnforcement) {
@@ -1604,7 +1616,7 @@ TEST_F(DatapathTest, PrefixEnforcement) {
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
-  datapath_.StartSourceIPv6PrefixEnforcement(cell_device);
+  datapath_->StartSourceIPv6PrefixEnforcement(cell_device);
 
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(
@@ -1612,14 +1624,14 @@ TEST_F(DatapathTest, PrefixEnforcement) {
       "filter -A egress_wwan0 -s 2001:db8:1:1::/64 -j RETURN -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
-  datapath_.UpdateSourceEnforcementIPv6Prefix(
+  datapath_->UpdateSourceEnforcementIPv6Prefix(
       cell_device,
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:1::/64"));
 
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
-  datapath_.UpdateSourceEnforcementIPv6Prefix(cell_device, std::nullopt);
+  datapath_->UpdateSourceEnforcementIPv6Prefix(cell_device, std::nullopt);
 
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(
@@ -1627,7 +1639,7 @@ TEST_F(DatapathTest, PrefixEnforcement) {
       "filter -A egress_wwan0 -s 2001:db8:1:2::/64 -j RETURN -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
-  datapath_.UpdateSourceEnforcementIPv6Prefix(
+  datapath_->UpdateSourceEnforcementIPv6Prefix(
       cell_device,
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::/64"));
 
@@ -1635,7 +1647,7 @@ TEST_F(DatapathTest, PrefixEnforcement) {
                              "filter -D OUTPUT -o wwan0 -j egress_wwan0 -w");
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -X egress_wwan0 -w");
-  datapath_.StopSourceIPv6PrefixEnforcement(cell_device);
+  datapath_->StopSourceIPv6PrefixEnforcement(cell_device);
 }
 
 TEST_F(DatapathTest, SetRouteLocalnet) {
@@ -1644,8 +1656,8 @@ TEST_F(DatapathTest, SetRouteLocalnet) {
   EXPECT_CALL(system_,
               SysNetSet(System::SysNet::kIPv4RouteLocalnet, "0", "wlan0"));
 
-  datapath_.SetRouteLocalnet("eth0", true);
-  datapath_.SetRouteLocalnet("wlan0", false);
+  datapath_->SetRouteLocalnet("eth0", true);
+  datapath_->SetRouteLocalnet("wlan0", false);
 }
 
 TEST_F(DatapathTest, ModprobeAll) {
@@ -1653,7 +1665,7 @@ TEST_F(DatapathTest, ModprobeAll) {
                                                 "esp6", "nf_nat_ftp"),
                                     _));
 
-  datapath_.ModprobeAll({"ip6table_filter", "ah6", "esp6", "nf_nat_ftp"});
+  datapath_->ModprobeAll({"ip6table_filter", "ah6", "esp6", "nf_nat_ftp"});
 }
 
 TEST_F(DatapathTest, ModifyPortRule) {
@@ -1669,7 +1681,7 @@ TEST_F(DatapathTest, ModifyPortRule) {
   request.set_proto(patchpanel::ModifyPortRuleRequest::TCP);
   request.set_type(patchpanel::ModifyPortRuleRequest::ACCESS);
   EXPECT_CALL(*firewall_, AddAcceptRules(_, _, _)).Times(0);
-  EXPECT_FALSE(datapath_.ModifyPortRule(request));
+  EXPECT_FALSE(datapath_->ModifyPortRule(request));
   Mock::VerifyAndClearExpectations(firewall_);
 
   // Invalid request #2
@@ -1677,7 +1689,7 @@ TEST_F(DatapathTest, ModifyPortRule) {
   request.set_proto(patchpanel::ModifyPortRuleRequest::INVALID_PROTOCOL);
   request.set_type(patchpanel::ModifyPortRuleRequest::ACCESS);
   EXPECT_CALL(*firewall_, AddAcceptRules(_, _, _)).Times(0);
-  EXPECT_FALSE(datapath_.ModifyPortRule(request));
+  EXPECT_FALSE(datapath_->ModifyPortRule(request));
   Mock::VerifyAndClearExpectations(firewall_);
 
   // Invalid request #3
@@ -1685,7 +1697,7 @@ TEST_F(DatapathTest, ModifyPortRule) {
   request.set_proto(patchpanel::ModifyPortRuleRequest::TCP);
   request.set_type(patchpanel::ModifyPortRuleRequest::INVALID_RULE_TYPE);
   EXPECT_CALL(*firewall_, AddAcceptRules(_, _, _)).Times(0);
-  EXPECT_FALSE(datapath_.ModifyPortRule(request));
+  EXPECT_FALSE(datapath_->ModifyPortRule(request));
   Mock::VerifyAndClearExpectations(firewall_);
 }
 
@@ -1693,28 +1705,28 @@ TEST_F(DatapathTest, EnableQoSDetection) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "mangle -A qos_detect_static -j qos_detect -w");
 
-  datapath_.EnableQoSDetection();
+  datapath_->EnableQoSDetection();
 }
 
 TEST_F(DatapathTest, DisableQoSDetection) {
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "mangle -D qos_detect_static -j qos_detect -w");
 
-  datapath_.DisableQoSDetection();
+  datapath_->DisableQoSDetection();
 }
 
 TEST_F(DatapathTest, EnableQoSApplyingDSCP) {
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A POSTROUTING -o wlan0 -j qos_apply_dscp -w");
 
-  datapath_.EnableQoSApplyingDSCP("wlan0");
+  datapath_->EnableQoSApplyingDSCP("wlan0");
 }
 
 TEST_F(DatapathTest, DisableQoSApplyingDSCP) {
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -D POSTROUTING -o wlan0 -j qos_apply_dscp -w");
 
-  datapath_.DisableQoSApplyingDSCP("wlan0");
+  datapath_->DisableQoSApplyingDSCP("wlan0");
 }
 
 TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv4) {
@@ -1732,7 +1744,7 @@ TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv4) {
     runner_.ExpectCallIptables(IpFamily::kIPv4, expected_rule);
   }
 
-  datapath_.UpdateDoHProvidersForQoS(IpFamily::kIPv4, ipv4_input);
+  datapath_->UpdateDoHProvidersForQoS(IpFamily::kIPv4, ipv4_input);
 }
 
 TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv6) {
@@ -1751,13 +1763,13 @@ TEST_F(DatapathTest, UpdateDoHProvidersForQoSIPv6) {
     runner_.ExpectCallIptables(IpFamily::kIPv6, expected_rule);
   }
 
-  datapath_.UpdateDoHProvidersForQoS(IpFamily::kIPv6, ipv6_input);
+  datapath_->UpdateDoHProvidersForQoS(IpFamily::kIPv6, ipv6_input);
 }
 
 TEST_F(DatapathTest, UpdateDoHProvidersForQoSEmpty) {
   // Empty list should still trigger the flush, but no other rules.
   runner_.ExpectCallIptables(IpFamily::kIPv4, "mangle -F qos_detect_doh -w");
-  datapath_.UpdateDoHProvidersForQoS(IpFamily::kIPv4, {});
+  datapath_->UpdateDoHProvidersForQoS(IpFamily::kIPv4, {});
 }
 
 TEST_F(DatapathTest, ModifyClatAcceptRules) {
@@ -1765,7 +1777,7 @@ TEST_F(DatapathTest, ModifyClatAcceptRules) {
                              "filter -A FORWARD -i tun_nat64 -j ACCEPT -w");
   runner_.ExpectCallIptables(IpFamily::kIPv6,
                              "filter -A FORWARD -o tun_nat64 -j ACCEPT -w");
-  datapath_.ModifyClatAcceptRules(Iptables::Command::kA, "tun_nat64");
+  datapath_->ModifyClatAcceptRules(Iptables::Command::kA, "tun_nat64");
 }
 
 TEST_F(DatapathTest, AddBorealisQosRule) {
@@ -1773,7 +1785,7 @@ TEST_F(DatapathTest, AddBorealisQosRule) {
       IpFamily::kDual,
       "mangle -A qos_detect_borealis "
       "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
-  datapath_.AddBorealisQoSRule("vmtap6");
+  datapath_->AddBorealisQoSRule("vmtap6");
 }
 
 TEST_F(DatapathTest, RemoveBorealisQosRule) {
@@ -1781,7 +1793,7 @@ TEST_F(DatapathTest, RemoveBorealisQosRule) {
       IpFamily::kDual,
       "mangle -D qos_detect_borealis "
       "-i vmtap6 -j MARK --set-xmark 0x00000020/0x000000e0 -w");
-  datapath_.RemoveBorealisQoSRule("vmtap6");
+  datapath_->RemoveBorealisQoSRule("vmtap6");
 }
 
 }  // namespace patchpanel

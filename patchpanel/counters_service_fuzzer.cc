@@ -10,7 +10,9 @@
 #include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/counters_service.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/iptables.h"
+#include "patchpanel/noop_system.h"
 
 namespace patchpanel {
 namespace {
@@ -25,12 +27,15 @@ class Environment {
 
 class FakeDatapath : public Datapath {
  public:
-  explicit FakeDatapath(const char* data, size_t size)
-      : Datapath(nullptr, nullptr, nullptr), data_(data, size) {}
+  explicit FakeDatapath(MinijailedProcessRunner* process_runner,
+                        System* system,
+                        const char* data,
+                        size_t size)
+      : Datapath(process_runner, nullptr, system), data_(data, size) {}
 
   FakeDatapath(const FakeDatapath&) = delete;
   FakeDatapath& operator=(const FakeDatapath&) = delete;
-  ~FakeDatapath() = default;
+  ~FakeDatapath() override = default;
 
   std::string DumpIptables(IpFamily family, Iptables::Table table) override {
     return data_;
@@ -43,7 +48,7 @@ class FakeDatapath : public Datapath {
 class FakeConntrackMonitor : public ConntrackMonitor {
  public:
   FakeConntrackMonitor() = default;
-  ~FakeConntrackMonitor() = default;
+  ~FakeConntrackMonitor() override = default;
 
   void Start(base::span<const EventType> events) override {}
 
@@ -57,7 +62,10 @@ class FakeConntrackMonitor : public ConntrackMonitor {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
-  FakeDatapath datapath(reinterpret_cast<const char*>(data), size);
+  FakeProcessRunner process_runner;
+  NoopSystem system;
+  FakeDatapath datapath(&process_runner, &system,
+                        reinterpret_cast<const char*>(data), size);
   FakeConntrackMonitor monitor;
   CountersService counters_svc(&datapath, &monitor);
   counters_svc.GetCounters({});

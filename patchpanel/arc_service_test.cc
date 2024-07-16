@@ -27,8 +27,10 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/dbus_client_notifier.h"
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_forwarding_service.h"
+#include "patchpanel/noop_system.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -111,6 +113,8 @@ MATCHER_P2(IsShillMultiplexedDevice,
 class ArcServiceTest : public testing::Test,
                        public patchpanel::DbusClientNotifier {
  protected:
+  ArcServiceTest() : datapath_(&process_runner_, &system_) {}
+
   std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
     return std::make_unique<ArcService>(arc_type, &datapath_, &addr_mgr_,
                                         &forwarding_service_, &metrics_, this);
@@ -133,6 +137,8 @@ class ArcServiceTest : public testing::Test,
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type) override {}
 
+  FakeProcessRunner process_runner_;
+  NoopSystem system_;
   AddressManager addr_mgr_;
   MockDatapath datapath_;
   MockForwardingService forwarding_service_;
