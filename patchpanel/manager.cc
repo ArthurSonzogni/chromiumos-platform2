@@ -87,11 +87,6 @@ Manager::Manager(const base::FilePath& cmd_path,
   socket_service_ = std::make_unique<patchpanel::SubprocessController>(
       system, process_manager, cmd_path, "--socket_service_fd");
 
-  adb_proxy_->Start();
-  mcast_proxy_->Start();
-  nd_proxy_->Start();
-  socket_service_->Start();
-
   routing_svc_ =
       std::make_unique<RoutingService>(system, lifeline_fd_svc_.get());
   counters_svc_ =

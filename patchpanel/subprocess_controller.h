@@ -41,11 +41,6 @@ class SubprocessController {
 
   virtual ~SubprocessController();
 
-  // Re-execs patchpanel with a new argument: |argv_| + "|fd_arg_|=N", where N
-  // is the side of |control_fd|. This tells the subprocess to start up a
-  // different mainloop.
-  void Start();
-
   // Serializes a protobuf and sends it to the helper process.
   void SendControlMessage(const ControlMessage& proto) const;
 
@@ -58,6 +53,11 @@ class SubprocessController {
       base::RepeatingCallback<void(const FeedbackMessage&)> handler);
 
  private:
+  // Re-execs patchpanel with a new argument: |argv_| + "|fd_arg_|=N", where N
+  // is the side of |control_fd|. This tells the subprocess to start up a
+  // different mainloop.
+  void Start();
+
   // The callback that is called when the subprocess is exited unexpectedly.
   // Attempts to restart the subprocess with exponential backoff delay.
   void OnProcessExitedUnexpectedly(int exit_status);

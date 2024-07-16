@@ -37,7 +37,9 @@ SubprocessController::SubprocessController(
     : system_(system),
       process_manager_(process_manager),
       cmd_path_(cmd_path),
-      fd_arg_(fd_arg) {}
+      fd_arg_(fd_arg) {
+  Start();
+}
 
 SubprocessController::~SubprocessController() {
   if (pid_) {

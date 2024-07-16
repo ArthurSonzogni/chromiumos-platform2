@@ -71,7 +71,6 @@ TEST_F(SubprocessControllerTest, Start) {
 
   SubprocessController subprocess_controller(&system_, &process_manager_,
                                              kCmdPath, "--adb_proxy_fd");
-  subprocess_controller.Start();
 
   // Stop the process when subprocess_controller is destroyed.
   EXPECT_CALL(process_manager_, StopProcess(pid));
@@ -85,19 +84,6 @@ TEST_F(SubprocessControllerTest, StartFailed) {
 
   SubprocessController subprocess_controller(&system_, &process_manager_,
                                              kCmdPath, "--adb_proxy_fd");
-  subprocess_controller.Start();
-}
-
-TEST_F(SubprocessControllerTest, StartTwice) {
-  // StartProcess() should be called only once if the first Start() successes.
-  constexpr pid_t pid = 9;
-  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
-      .WillOnce(Return(pid));
-
-  SubprocessController subprocess_controller(&system_, &process_manager_,
-                                             kCmdPath, "--adb_proxy_fd");
-  subprocess_controller.Start();
-  subprocess_controller.Start();
 }
 
 TEST_F(SubprocessControllerTest, Restart) {
@@ -113,7 +99,6 @@ TEST_F(SubprocessControllerTest, Restart) {
 
   SubprocessController subprocess_controller(&system_, &process_manager_,
                                              kCmdPath, "--adb_proxy_fd");
-  subprocess_controller.Start();
 
   // The start logic should be called again when the process is exited
   // unexpectedly.
