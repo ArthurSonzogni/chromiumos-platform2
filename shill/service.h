@@ -101,6 +101,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageLastManualConnectAttempt[];
   static const char kStorageLastConnected[];
   static const char kStorageLastOnline[];
+  static const char kStorageStartTime[];
   // See the comment for `enable_rfc_8925()` below.
   static const char kStorageEnableRFC8925[];
 
@@ -759,6 +760,7 @@ class Service : public base::RefCounted<Service> {
 
   uint64_t GetLastConnectedProperty(Error* error) const;
   uint64_t GetLastOnlineProperty(Error* error) const;
+  uint64_t GetStartTimeProperty(Error* error) const;
 
   int32 GetNetworkID(Error* error) const;
 
@@ -1068,6 +1070,7 @@ class Service : public base::RefCounted<Service> {
   void SetLastManualConnectAttemptProperty(const base::Time& value);
   void SetLastConnectedProperty(const base::Time& value);
   void SetLastOnlineProperty(const base::Time& value);
+  void SetStartTimeProperty(const base::Time& value);
 
   bool GetMeteredProperty(Error* error);
   bool SetMeteredProperty(const bool& metered, Error* error);
@@ -1234,11 +1237,12 @@ class Service : public base::RefCounted<Service> {
 
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   std::unique_ptr<ServiceMetrics> service_metrics_;
-  // Timestamps of last manual connect attempt, last successful connection and
-  // last time online.
+  // Timestamps of last manual connect attempt, last successful connection,
+  // last time online, and start time.
   base::Time last_manual_connect_attempt_;
   base::Time last_connected_;
   base::Time last_online_;
+  base::Time start_time_;
 };
 
 }  // namespace shill

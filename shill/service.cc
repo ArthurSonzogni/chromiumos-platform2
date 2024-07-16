@@ -166,6 +166,7 @@ const char Service::kStorageLastManualConnectAttempt[] =
     "LastManualConnectAttempt";
 const char Service::kStorageLastConnected[] = "LastConnected";
 const char Service::kStorageLastOnline[] = "LastOnline";
+const char Service::kStorageStartTime[] = "StartTime";
 const char Service::kStorageEnableRFC8925[] = "EnableRFC8925";
 
 const uint8_t Service::kStrengthMax = 100;
@@ -341,6 +342,8 @@ Service::Service(Manager* manager, Technology technology)
                                  &Service::GetLastConnectedProperty);
   HelpRegisterConstDerivedUint64(kLastOnlineProperty,
                                  &Service::GetLastOnlineProperty);
+  HelpRegisterConstDerivedUint64(kStartTimeProperty,
+                                 &Service::GetStartTimeProperty);
   HelpRegisterConstDerivedInt32(kNetworkIDProperty, &Service::GetNetworkID);
 
   store_.RegisterConstUint32(kUplinkSpeedPropertyKbps, &uplink_speed_kbps_);
@@ -362,6 +365,8 @@ Service::Service(Manager* manager, Technology technology)
 
   IgnoreParameterForConfigure(kTypeProperty);
   IgnoreParameterForConfigure(kProfileProperty);
+
+  SetStartTimeProperty(base::Time::Now());
 
   SLOG(this, 1) << technology << " Service " << serial_number_
                 << " constructed.";
@@ -662,16 +667,20 @@ void Service::SetState(ConnectState state) {
   manager_->NotifyServiceStateChanged(this);
   UpdateStateTransitionMetrics(state);
 
-  if (last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
-    // The device has never been online. If the time since last manual connect
-    // attempt exceeds threshold, disable modem.
+  if (technology_ == Technology::kCellular) {
     if (!last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero()) {
-      manager_->power_opt()->UpdateDurationSinceLastOnline(
-          last_manual_connect_attempt_, is_in_user_connect());
+      manager_->power_opt()->UpdateManualConnectTime(
+          last_manual_connect_attempt_);
     }
-  } else {
-    manager_->power_opt()->UpdateDurationSinceLastOnline(last_online_,
-                                                         is_in_user_connect());
+    // Update after current connection attempt has concluded
+    if (state == kStateOnline || state == kStateFailure ||
+        state == kStateNoConnectivity) {
+      if (last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
+        manager_->power_opt()->UpdateDurationSinceLastOnline(start_time_);
+      } else {
+        manager_->power_opt()->UpdateDurationSinceLastOnline(last_online_);
+      }
+    }
   }
 
   if (IsConnectedState(previous_state_) != IsConnectedState(state_)) {
@@ -880,6 +889,10 @@ bool Service::Load(const StoreInterface* storage) {
     last_online_ =
         base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
   }
+  if (storage->GetUint64(id, kStorageStartTime, &temp_ms)) {
+    start_time_ =
+        base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(temp_ms));
+  }
   return true;
 }
 
@@ -1021,6 +1034,9 @@ bool Service::Save(StoreInterface* storage) {
   if (!last_online_.ToDeltaSinceWindowsEpoch().is_zero())
     storage->SetUint64(id, kStorageLastOnline,
                        GetLastOnlineProperty(/*error=*/nullptr));
+  if (!start_time_.ToDeltaSinceWindowsEpoch().is_zero())
+    storage->SetUint64(id, kStorageStartTime,
+                       GetStartTimeProperty(/*error=*/nullptr));
 
   return true;
 }
@@ -2532,6 +2548,18 @@ void Service::SetLastOnlineProperty(const base::Time& value) {
 
 uint64_t Service::GetLastOnlineProperty(Error* /*error*/) const {
   return last_online_.ToDeltaSinceWindowsEpoch().InMilliseconds();
+}
+
+void Service::SetStartTimeProperty(const base::Time& value) {
+  if (start_time_ == value)
+    return;
+  start_time_ = value;
+  adaptor_->EmitUint64Changed(kStartTimeProperty,
+                              GetStartTimeProperty(nullptr));
+}
+
+uint64_t Service::GetStartTimeProperty(Error* /*error*/) const {
+  return start_time_.ToDeltaSinceWindowsEpoch().InMilliseconds();
 }
 
 int32_t Service::GetNetworkID(Error* /*error*/) const {

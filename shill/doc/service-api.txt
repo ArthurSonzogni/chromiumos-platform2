@@ -976,6 +976,14 @@ Properties	boolean AutoConnect [readwrite]
 			The timestamp's value equals the number of milliseconds since the
 			Windows epoch (1601-01-01 00:00:00 UTC).
 
+		uint64 StartTime [readonly]
+
+			A UTC timestamp, in milliseconds, representing the time when the
+			service is first started.
+			The timestamp's value equals the number of milliseconds since the
+			Windows epoch (1601-01-01 00:00:00 UTC).
+
+
 		boolean LinkMonitorDisable [readwrite]
 
 			Specifies whether to disable or enable link monitoring

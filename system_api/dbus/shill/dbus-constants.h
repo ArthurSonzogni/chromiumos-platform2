@@ -193,6 +193,7 @@ constexpr char kDownlinkSpeedPropertyKbps[] = "DownlinkSpeedKbps";
 constexpr char kLastManualConnectAttemptProperty[] = "LastManualConnectAttempt";
 constexpr char kLastConnectedProperty[] = "LastConnected";
 constexpr char kLastOnlineProperty[] = "LastOnline";
+constexpr char kStartTimeProperty[] = "StartTime";
 constexpr char kNetworkIDProperty[] = "NetworkID";
 constexpr char kNetworkConfigProperty[] = "NetworkConfig";
 

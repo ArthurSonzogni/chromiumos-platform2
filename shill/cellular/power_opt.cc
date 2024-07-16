@@ -4,9 +4,15 @@
 
 #include "shill/cellular/power_opt.h"
 
+#include <base/logging.h>
 #include <base/time/time.h>
+
 #include "shill/logging.h"
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kCellular;
+}  // namespace Logging
 
 PowerOpt::PowerOpt(Manager* manager) : manager_(manager) {
   current_opt_info_ = nullptr;
@@ -19,9 +25,8 @@ void PowerOpt::NotifyConnectionFailInvalidApn(const std::string& iccid) {
   if (!info.last_connect_fail_invalid_apn_time.is_null()) {
     info.no_service_invalid_apn_duration +=
         base::Time::Now() - info.last_connect_fail_invalid_apn_time;
-    LOG(INFO) << __func__ << ": "
-              << "no_service_invalid_apn_duration (minutes): "
-              << info.no_service_invalid_apn_duration.InMinutes();
+    SLOG(2) << __func__ << ": " << "no_service_invalid_apn_duration (hours): "
+            << info.no_service_invalid_apn_duration.InHours();
   }
   info.last_connect_fail_invalid_apn_time = base::Time::Now();
 
@@ -38,31 +43,43 @@ void PowerOpt::NotifyRegistrationSuccess(const std::string& iccid) {
     return;
   opt_info_[iccid].no_service_invalid_apn_duration = base::Seconds(0);
   opt_info_[iccid].last_connect_fail_invalid_apn_time = base::Time();
-  LOG(INFO) << __func__ << ": Reset invalid Apn related power opt info.";
 }
 
-void PowerOpt::UpdateDurationSinceLastOnline(const base::Time& last_online_time,
-                                             bool is_user_request) {
+void PowerOpt::UpdateManualConnectTime(const base::Time& connect_time) {
+  if (!connect_time.is_null())
+    user_connect_request_time_ = connect_time;
+}
+
+void PowerOpt::UpdateDurationSinceLastOnline(
+    const base::Time& last_online_time) {
   if (!current_opt_info_)
     return;
-  base::TimeDelta device_since_last_online;
 
-  current_opt_info_->last_online_time = last_online_time;
-  if (device_last_online_time_.is_null() ||
-      last_online_time > device_last_online_time_) {
-    device_last_online_time_ = last_online_time;
+  if (!last_online_time.is_null()) {
+    current_opt_info_->last_online_time = last_online_time;
+    if (device_last_online_time_.is_null() ||
+        last_online_time > device_last_online_time_) {
+      device_last_online_time_ = last_online_time;
+    }
   }
 
-  device_since_last_online = base::Time::Now() - device_last_online_time_;
-  if (is_user_request && device_since_last_online > kLastOnlineLongThreshold) {
-    // |last_online|------------|now|----<grace period>---|trigger point|
-    device_since_last_online =
-        kLastOnlineLongThreshold - kUserRequestGracePeriod;
+  // Time since user manually request cellular connection is less than
+  // |kLastUserRequestThreshold|, keep modem power on.
+  if (!user_connect_request_time_.is_null()) {
+    base::TimeDelta since_last_user_connect_request =
+        base::Time::Now() - user_connect_request_time_;
+    if (since_last_user_connect_request < kLastUserRequestThreshold)
+      return;
   }
-  LOG(INFO) << "Time since device was last online through cellular (minutes): "
-            << device_since_last_online.InMinutes();
-  if (device_since_last_online > kLastOnlineLongThreshold) {
-    PerformPowerOptimization(PowerEvent::kLongNotOnline);
+
+  if (!device_last_online_time_.is_null()) {
+    base::TimeDelta device_since_last_online =
+        base::Time::Now() - device_last_online_time_;
+    SLOG(2) << "Time since device was last online through cellular (days): "
+            << device_since_last_online.InDays();
+    if (device_since_last_online > kLastOnlineLongThreshold) {
+      PerformPowerOptimization(PowerEvent::kLongNotOnline);
+    }
   }
 }
 

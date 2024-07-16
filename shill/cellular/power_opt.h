@@ -35,8 +35,8 @@ class PowerOpt {
   explicit PowerOpt(Manager* manager);
   void NotifyConnectionFailInvalidApn(const std::string& iccid);
   void NotifyRegistrationSuccess(const std::string& iccid);
-  void UpdateDurationSinceLastOnline(const base::Time& last_online,
-                                     bool is_user_request);
+  void UpdateDurationSinceLastOnline(const base::Time& last_online);
+  void UpdateManualConnectTime(const base::Time& connect_time);
   bool UpdatePowerState(const std::string& iccid, PowerState state);
   bool AddOptInfoForNewService(const std::string& iccid);
   base::Time GetLastOnlineTime(const std::string& iccid);
@@ -56,16 +56,15 @@ class PowerOpt {
     kLongNotOnline,
   };
 
-  // time threshold since power on to set modem low power due to invalid Apn
-  // failures
+  // Set modem to low power when both invalid APN and last online (short)
+  // thresholds are crossed.
   static constexpr base::TimeDelta kNoServiceInvalidApnTimeThreshold =
       base::Hours(24);
   static constexpr base::TimeDelta kLastOnlineShortThreshold = base::Days(5);
+  // Set modem to low power when both user request and last online (long)
+  // thresholds are crossed.
+  static constexpr base::TimeDelta kLastUserRequestThreshold = base::Days(1);
   static constexpr base::TimeDelta kLastOnlineLongThreshold = base::Days(30);
-  // if |time_since_last_online| is over threshold, but user has init a connect
-  // request, reset |time_since_last_online| to |kUserRequestGracePeriod|
-  // less than the threshold to allow user retry.
-  static constexpr base::TimeDelta kUserRequestGracePeriod = base::Hours(1);
 
   struct PowerOptimizationInfo {
     base::Time last_online_time;
@@ -78,6 +77,7 @@ class PowerOpt {
   std::unordered_map<std::string, PowerOptimizationInfo> opt_info_;
   PowerOptimizationInfo* current_opt_info_;
   base::Time device_last_online_time_;
+  base::Time user_connect_request_time_;
 
   PowerOpt::PowerState PerformPowerOptimization(PowerEvent event);
   bool RequestPowerStateChange(PowerOpt::PowerState);
