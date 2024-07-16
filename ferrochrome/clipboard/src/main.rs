@@ -12,7 +12,6 @@ use vsock::{get_local_cid, VsockAddr, VsockListener, VsockStream};
 const SERVER_VSOCK_PORT: u32 = 3580;
 
 const HEADER_SIZE: usize = 8;
-const PAYLOAD_BUFFER_SIZE: usize = 4096;
 
 const READ_CLIPBOARD_FROM_VM: u8 = 0;
 const WRITE_CLIPBOARD_TYPE_EMPTY: u8 = 1;
@@ -65,10 +64,9 @@ fn handle_read_clipboard(stream: &mut VsockStream) -> Result<()> {
 }
 
 fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
-    let mut buffer = [0; PAYLOAD_BUFFER_SIZE];
+    let mut buffer = vec![0; size];
     stream.read(&mut buffer).context("Failed to read payload")?;
-    // TODO(b/349702505): Handle when payload size is larger than PAYLOAD_BUFFER_SIZE.
-    let text_data = CStr::from_bytes_until_nul(&buffer[..size])
+    let text_data = CStr::from_bytes_with_nul(&buffer)
         .context("Failed to convert payload data into CStr")?;
     let text_data = text_data
         .to_str()
