@@ -39,4 +39,9 @@ SUBSYSTEM=="leds", DEVPATH=="*:kbd_backlight", \
 SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", \
   GROUP="cros_ec-access" MODE="0660"
 
+# Platforms using UCSI will register ports with the power_supply class ~2-3
+# seconds after boot. Change ownership of charge_control_limit_max when added.
+SUBSYSTEM=="power_supply", KERNEL=="ucsi*" TEST=="charge_control_limit_max", \
+  RUN+="/bin/chown power:power \"$sys$devpath/charge_control_limit_max\""
+
 LABEL="powerd_permissions_end"
