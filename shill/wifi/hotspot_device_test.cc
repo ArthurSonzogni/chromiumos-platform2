@@ -260,6 +260,7 @@ TEST_F(HotspotDeviceTest, ConfigureDeconfigureService) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(Eq(kNetworkPath)))
       .WillOnce(Return(true));
   EXPECT_TRUE(device_->ConfigureService(std::move(service0)));
+  EXPECT_EQ(device_->frequency(), std::nullopt);
 
   // Configure a second service should be a no-op and return false.
   auto service1 = std::make_unique<HotspotService>(
@@ -269,16 +270,19 @@ TEST_F(HotspotDeviceTest, ConfigureDeconfigureService) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(Eq(kNetworkPath)))
       .Times(0);
   EXPECT_FALSE(device_->ConfigureService(std::move(service1)));
+  EXPECT_EQ(device_->frequency(), std::nullopt);
 
   // Deconfigure service.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(Eq(kNetworkPath)))
       .WillOnce(Return(true));
   EXPECT_TRUE(device_->DeconfigureService());
+  EXPECT_EQ(device_->frequency(), std::nullopt);
 
   // Deconfigure service for the second time should be a no-op.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(Eq(kNetworkPath)))
       .Times(0);
   EXPECT_TRUE(device_->DeconfigureService());
+  EXPECT_EQ(device_->frequency(), std::nullopt);
 }
 
 TEST_F(HotspotDeviceTest, ServiceEvent) {
@@ -306,6 +310,7 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
   EXPECT_EQ(device_->supplicant_state_,
             WPASupplicant::kInterfaceStateCompleted);
   DispatchPendingEvents();
+  EXPECT_EQ(device_->frequency().value(), kHotspotFrequency);
   Mock::VerifyAndClearExpectations(&cb);
 
   // Expect supplicant_state_ change and kLinkDown DeviceEvent sent on
@@ -316,6 +321,7 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
   device_->PropertiesChangedTask(props);
   EXPECT_EQ(device_->supplicant_state_,
             WPASupplicant::kInterfaceStateDisconnected);
+  EXPECT_EQ(device_->frequency(), std::nullopt);
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
@@ -326,6 +332,7 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
   EXPECT_CALL(cb, Run(_, _)).Times(0);
   device_->PropertiesChangedTask(props);
   EXPECT_EQ(device_->supplicant_state_, WPASupplicant::kInterfaceStateInactive);
+  EXPECT_EQ(device_->frequency(), std::nullopt);
   DispatchPendingEvents();
 }
 

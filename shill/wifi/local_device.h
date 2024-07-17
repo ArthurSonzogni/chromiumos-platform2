@@ -86,6 +86,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
   WiFiPhy::Priority priority() const { return priority_; }
+  virtual std::optional<Integer> frequency() const = 0;
 
   // Return the nl80211 reqpresentation of |type|, or std::nullopt if type is
   // not a supported device type.

@@ -107,8 +107,8 @@ P2PDevice::P2PDevice(Manager* manager,
   supplicant_group_path_ = RpcIdentifier("");
   supplicant_persistent_group_path_ = RpcIdentifier("");
   group_ssid_ = "";
+  group_frequency_ = std::nullopt;
   group_bssid_ = std::nullopt;
-  group_frequency_ = 0;
   group_passphrase_ = "";
   interface_address_ = std::nullopt;
   go_ipv4_address_ = std::nullopt;
@@ -182,7 +182,8 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
     group_info.Set<String>(
         kP2PGroupInfoBSSIDProperty,
         group_bssid_.has_value() ? group_bssid_->ToString() : "");
-    group_info.Set<Integer>(kP2PGroupInfoFrequencyProperty, group_frequency_);
+    group_info.Set<Integer>(kP2PGroupInfoFrequencyProperty,
+                            frequency().value_or(0));
     group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
     group_info.Set<String>(kP2PGroupInfoInterfaceProperty, *link_name());
     group_info.Set<String>(kP2PClientInfoMACAddressProperty,
@@ -220,7 +221,8 @@ KeyValueStore P2PDevice::GetClientInfo() const {
         group_bssid_.has_value() ? group_bssid_->ToString() : "";
     client_info.Set<String>(kP2PClientInfoSSIDProperty, group_ssid_);
     client_info.Set<String>(kP2PClientInfoGroupBSSIDProperty, group_bssid_str);
-    client_info.Set<Integer>(kP2PClientInfoFrequencyProperty, group_frequency_);
+    client_info.Set<Integer>(kP2PClientInfoFrequencyProperty,
+                             frequency().value_or(0));
     client_info.Set<String>(kP2PClientInfoPassphraseProperty,
                             group_passphrase_);
     client_info.Set<String>(kP2PClientInfoInterfaceProperty, *link_name());
@@ -700,9 +702,10 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
               << ": BSSID configured: " << group_bssid_->ToString();
   }
 
-  group_frequency_ = GetGroupFrequency();
-  if (group_frequency_) {
-    LOG(INFO) << log_name() << ": Freqency configured: " << group_frequency_;
+  auto group_freq = GetGroupFrequency();
+  if (group_freq) {
+    LOG(INFO) << log_name() << ": Freqency configured: " << group_freq;
+    group_frequency_ = group_freq;
   } else {
     LOG(ERROR) << log_name() << ": Failed to get group frequency";
     return false;
@@ -759,7 +762,7 @@ void P2PDevice::TeardownGroup() {
   // torn down.
   group_ssid_ = "";
   group_bssid_ = std::nullopt;
-  group_frequency_ = 0;
+  group_frequency_ = std::nullopt;
   group_passphrase_ = "";
   group_peers_.clear();
 

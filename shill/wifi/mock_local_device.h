@@ -29,6 +29,8 @@ class MockLocalDevice : public LocalDevice {
 
   LocalService* GetService() const override { return nullptr; }
 
+  std::optional<Integer> frequency() const override { return std::nullopt; };
+
   MOCK_METHOD(bool, IsServiceUp, (), (const, override));
 };
 

@@ -33,6 +33,7 @@ class HotspotService : public LocalService {
 
   // Generate a wpa_supplicant recognizable dictionary.
   KeyValueStore GetSupplicantConfigurationParameters() const override;
+  int frequency() { return frequency_; }
 
  private:
   friend class HotspotServiceTest;

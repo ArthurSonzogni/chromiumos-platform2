@@ -477,6 +477,24 @@ std::vector<int> WiFiPhy::GetFrequencies() const {
   return freqs;
 }
 
+std::vector<int> WiFiPhy::GetActiveFrequencies() const {
+  std::set<int> freqs;
+  for (auto wifi_dev : wifi_devices_) {
+    auto endpoint = wifi_dev->GetCurrentEndpoint();
+    if (endpoint != nullptr) {
+      freqs.insert(endpoint->frequency());
+    }
+  }
+
+  for (auto local_dev : wifi_local_devices_) {
+    if (local_dev->frequency().has_value()) {
+      freqs.insert(local_dev->frequency().value());
+    }
+  }
+
+  return std::vector<int>(freqs.begin(), freqs.end());
+}
+
 // Operators to facilitate interface combination logging.
 std::ostream& operator<<(std::ostream& out, const nl80211_iftype& it) {
   switch (it) {

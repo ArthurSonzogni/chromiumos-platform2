@@ -15,6 +15,7 @@
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/nl80211_message.h"
+#include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_rf.h"
 
 namespace shill {
@@ -169,6 +170,8 @@ class WiFiPhy {
   std::optional<int> SelectFrequency(WiFiBand band) const;
   // Utility function to get the frequencies supported.
   mockable std::vector<int> GetFrequencies() const;
+  // Utility function to get the active frequencies used by interfaces.
+  mockable std::vector<int> GetActiveFrequencies() const;
 
  private:
   friend class WiFiPhyTest;

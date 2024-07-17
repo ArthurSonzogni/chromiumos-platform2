@@ -56,6 +56,10 @@ class HotspotDevice : public LocalDevice,
   // Return the configured service on this device.
   LocalService* GetService() const override { return service_.get(); }
 
+  // Return the operating frequency of the hotspot. Return std::nullopt if
+  // hotspot is not active.
+  std::optional<Integer> frequency() const override;
+
   // Configure and select HotspotService |service|.
   mockable bool ConfigureService(std::unique_ptr<HotspotService> service);
 

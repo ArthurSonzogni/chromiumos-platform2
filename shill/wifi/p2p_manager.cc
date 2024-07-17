@@ -91,10 +91,12 @@ Integers P2PManager::SupportedChannels() {
 }
 
 Integers P2PManager::PreferredChannels() {
-  // TODO(b/295050788, b/299295629): it requires P2P/STA concurrency level
-  // and interface combination checking to be supported by wifi phy.
-  Integers channels;
-  return channels;
+  auto wifi_phys = manager_->wifi_provider()->GetPhys();
+  if (wifi_phys.empty()) {
+    return Integers();
+  }
+  // TODO(b/353995150): Add multiple WiFi phy support.
+  return wifi_phys.front()->GetActiveFrequencies();
 }
 
 KeyValueStore P2PManager::GetCapabilities(Error* /* error */) {

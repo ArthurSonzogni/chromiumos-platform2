@@ -128,6 +128,14 @@ bool HotspotDevice::Stop() {
   return ret;
 }
 
+std::optional<Integer> HotspotDevice::frequency() const {
+  if (service_ && service_->IsUp()) {
+    return service_->frequency();
+  } else {
+    return std::nullopt;
+  }
+}
+
 bool HotspotDevice::ConfigureService(std::unique_ptr<HotspotService> service) {
   CHECK(service);
 
@@ -167,7 +175,6 @@ bool HotspotDevice::DeconfigureService() {
     service_->SetState(LocalService::LocalServiceState::kStateIdle);
     service_ = nullptr;
   }
-
   return ret;
 }
 

@@ -95,6 +95,10 @@ class P2PDevice : public LocalDevice,
   // Return the configured service on this device.
   LocalService* GetService() const override { return service_.get(); }
 
+  // Return the operating frequency of the group. Return std::nullopt if
+  // P2P group is not active.
+  std::optional<Integer> frequency() const override { return group_frequency_; }
+
   // Creates a P2P group with the current device as the group owner
   // using the setting from |service|. Functionality is stubbed.
   mockable bool CreateGroup(std::unique_ptr<P2PService> service);
@@ -340,7 +344,7 @@ class P2PDevice : public LocalDevice,
   // The wpa_supplicant group properties.
   String group_ssid_;
   std::optional<net_base::MacAddress> group_bssid_;
-  Integer group_frequency_;
+  std::optional<Integer> group_frequency_;
   String group_passphrase_;
 
   // The wpa_supplicant persistent group path used for p2p client connection.

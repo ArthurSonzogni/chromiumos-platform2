@@ -46,6 +46,8 @@ class TestLocalDevice : public LocalDevice {
   bool Stop() override { return true; }
 
   LocalService* GetService() const override { return nullptr; }
+
+  std::optional<Integer> frequency() const override { return std::nullopt; };
 };
 
 class LocalDeviceTest : public testing::Test {
