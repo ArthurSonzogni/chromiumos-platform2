@@ -84,6 +84,7 @@ sched_setscheduler: 1
 sched_yield: 1
 sigaltstack: 1
 socket: arg0 == PF_UNIX
+socketpair: arg0 == PF_UNIX
 uname: 1
 unlinkat: 1
 wait4: 1

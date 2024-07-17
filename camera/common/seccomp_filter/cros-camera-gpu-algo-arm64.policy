@@ -91,6 +91,7 @@ set_tid_address: 1
 shutdown: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 statx: 1
 sysinfo: 1
 tgkill: 1
