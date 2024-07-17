@@ -76,7 +76,13 @@ std::optional<MulticastCountersService::CounterKey> GetCounterKey(
 }  // namespace
 
 MulticastCountersService::MulticastCountersService(Datapath* datapath)
-    : datapath_(datapath) {}
+    : datapath_(datapath) {
+  Start();
+}
+
+MulticastCountersService::~MulticastCountersService() {
+  Stop();
+}
 
 void MulticastCountersService::Start() {
   auto batch_mode =

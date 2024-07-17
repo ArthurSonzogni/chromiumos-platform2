@@ -99,7 +99,6 @@ Manager::Manager(const base::FilePath& cmd_path,
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
                                                  datapath_.get(), system);
 
-  multicast_counters_svc_->Start();
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
 
   qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
@@ -193,7 +192,7 @@ Manager::~Manager() {
     OnDnsRedirectionRulesAutoclose(lifeline_fd);
   }
 
-  multicast_counters_svc_->Stop();
+  multicast_counters_svc_.reset();
   datapath_.reset();
 }
 

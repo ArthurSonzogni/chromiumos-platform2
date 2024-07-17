@@ -19,11 +19,9 @@ namespace patchpanel {
 
 class MockMulticastCountersService : public MulticastCountersService {
  public:
-  MockMulticastCountersService();
-  ~MockMulticastCountersService();
+  explicit MockMulticastCountersService(Datapath* datapath);
+  ~MockMulticastCountersService() override;
 
-  MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(void,
               OnPhysicalDeviceAdded,
               (const ShillClient::Device& device),

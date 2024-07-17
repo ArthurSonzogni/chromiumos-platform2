@@ -46,6 +46,10 @@ constexpr std::string_view kSsdpMcastAddr6String = "ff05::c";
 // When queried, two commands (iptables and ip6tables) will be executed to get
 // mangle tables output and to get the counters, and the packet number will be
 // total number both IP families.
+//
+// This class adds initial iptables chains and counter rules for both IPv6 and
+// IPv4 for mDNS and SSDP when initializing the instance, and deletes iptables
+// chains and counter rules when destroying the instance.
 class MulticastCountersService {
  public:
   enum class MulticastProtocolType {
@@ -63,13 +67,8 @@ class MulticastCountersService {
   using CounterKey = std::pair<MulticastProtocolType, MulticastTechnologyType>;
 
   explicit MulticastCountersService(Datapath* datapath);
-  virtual ~MulticastCountersService() = default;
+  virtual ~MulticastCountersService();
 
-  // Adds initial iptables chains and counter rules for both IPv6 and IPv4 for
-  // mDNS and SSDP.
-  virtual void Start();
-  // Deletes iptables chains and counter rules added in Start().
-  virtual void Stop();
   // Adds jump rules for a new physical device if this is the first time this
   // device is seen.
   virtual void OnPhysicalDeviceAdded(const ShillClient::Device& device);
@@ -83,6 +82,9 @@ class MulticastCountersService {
   GetCounters();
 
  private:
+  void Start();
+  void Stop();
+
   // Installs jump rules for an interface to count ingress multicast traffic
   // of |ifname|.
   void SetupJumpRules(Iptables::Command command,

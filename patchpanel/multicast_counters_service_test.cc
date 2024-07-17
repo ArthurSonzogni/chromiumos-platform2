@@ -370,139 +370,151 @@ ShillClient::Device MakeShillDevice(net_base::Technology technology,
 
 class MulticastCountersServiceTest : public testing::Test {
  protected:
-  void SetUp() override {
-    datapath_ = std::make_unique<MockDatapath>(&process_runner_, &system_);
+  MulticastCountersServiceTest() : datapath_(&process_runner_, &system_) {
+    ExpectForConstructor();
     multicast_counters_svc_ =
-        std::make_unique<MulticastCountersService>(datapath_.get());
+        std::make_unique<MulticastCountersService>(&datapath_);
+
+    VerifyAndClearExpectations();  // Verify the expectations of the ctor.
+  }
+
+  ~MulticastCountersServiceTest() {
+    VerifyAndClearExpectations();  // Verify the expectations of test cases.
+
+    ExpectForDestructor();
+    multicast_counters_svc_.reset();
+    VerifyAndClearExpectations();  // Verify the expectations of the dtor.
+  }
+
+  // Sets the expectataion for MulticastCountersService's constructor.
+  void ExpectForConstructor() {
+    static const struct {
+      IpFamily ip_family;
+      std::string chain;
+    } expected_chain_creations[] = {
+        {IpFamily::kDual, "rx_mdns"},
+        {IpFamily::kDual, "rx_ssdp"},
+        {IpFamily::kDual, "rx_ethernet_mdns"},
+        {IpFamily::kDual, "rx_ethernet_ssdp"},
+        {IpFamily::kDual, "rx_wifi_mdns"},
+        {IpFamily::kDual, "rx_wifi_ssdp"},
+    };
+    static const struct {
+      IpFamily ip_family;
+      Iptables::Command command;
+      std::string chain;
+      std::vector<std::string_view> argv;
+    } expected_rule_creations[] = {
+        {IpFamily::kIPv4,
+         Iptables::Command::kA,
+         "INPUT",
+         {"-d", kMdnsMcastAddrString, "-p", "udp", "--dport", "5353", "-j",
+          "rx_mdns", "-w"}},
+        {IpFamily::kIPv4,
+         Iptables::Command::kA,
+         "INPUT",
+         {"-d", kSsdpMcastAddrString, "-p", "udp", "--dport", "1900", "-j",
+          "rx_ssdp", "-w"}},
+        {IpFamily::kIPv6,
+         Iptables::Command::kA,
+         "INPUT",
+         {"-d", kMdnsMcastAddr6String, "-p", "udp", "--dport", "5353", "-j",
+          "rx_mdns", "-w"}},
+        {IpFamily::kIPv6,
+         Iptables::Command::kA,
+         "INPUT",
+         {"-d", kSsdpMcastAddr6String, "-p", "udp", "--dport", "1900", "-j",
+          "rx_ssdp", "-w"}},
+        {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_mdns", {"-w"}},
+        {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_ssdp", {"-w"}},
+        {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_mdns", {"-w"}},
+        {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_ssdp", {"-w"}},
+    };
+
+    for (const auto& rule : expected_chain_creations) {
+      EXPECT_CALL(datapath_, AddChain(rule.ip_family, Iptables::Table::kMangle,
+                                      rule.chain));
+    }
+    for (const auto& rule : expected_rule_creations) {
+      EXPECT_CALL(
+          datapath_,
+          ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
+                         StrEq(rule.chain), ElementsAreArray(rule.argv), _));
+    }
+  }
+
+  // Sets the expectataion for MulticastCountersService's destructor.
+  void ExpectForDestructor() {
+    static const struct {
+      IpFamily ip_family;
+      Iptables::Command command;
+      std::vector<std::string_view> argv;
+    } expected_rule_deletions[] = {
+        {IpFamily::kIPv4,
+         Iptables::Command::kD,
+         {"-d", kMdnsMcastAddrString, "-p", "udp", "--dport", "5353", "-j",
+          "rx_mdns", "-w"}},
+        {IpFamily::kIPv4,
+         Iptables::Command::kD,
+         {"-d", kSsdpMcastAddrString, "-p", "udp", "--dport", "1900", "-j",
+          "rx_ssdp", "-w"}},
+        {IpFamily::kIPv6,
+         Iptables::Command::kD,
+         {"-d", kMdnsMcastAddr6String, "-p", "udp", "--dport", "5353", "-j",
+          "rx_mdns", "-w"}},
+        {IpFamily::kIPv6,
+         Iptables::Command::kD,
+         {"-d", kSsdpMcastAddr6String, "-p", "udp", "--dport", "1900", "-j",
+          "rx_ssdp", "-w"}},
+    };
+    static const struct {
+      IpFamily ip_family;
+      std::string chain;
+    } expected_chain_flushes[] = {
+        {IpFamily::kDual, "rx_mdns"},
+        {IpFamily::kDual, "rx_ssdp"},
+        {IpFamily::kDual, "rx_ethernet_mdns"},
+        {IpFamily::kDual, "rx_ethernet_ssdp"},
+        {IpFamily::kDual, "rx_wifi_mdns"},
+        {IpFamily::kDual, "rx_wifi_ssdp"},
+    };
+    static const struct {
+      IpFamily ip_family;
+      std::string chain;
+    } expected_chain_deletions[] = {
+        {IpFamily::kDual, "rx_ethernet_mdns"},
+        {IpFamily::kDual, "rx_ethernet_ssdp"},
+        {IpFamily::kDual, "rx_wifi_mdns"},
+        {IpFamily::kDual, "rx_wifi_ssdp"},
+        {IpFamily::kDual, "rx_mdns"},
+        {IpFamily::kDual, "rx_ssdp"},
+    };
+
+    for (const auto& rule : expected_rule_deletions) {
+      EXPECT_CALL(
+          datapath_,
+          ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
+                         StrEq("INPUT"), ElementsAreArray(rule.argv), _));
+    }
+    for (const auto& rule : expected_chain_flushes) {
+      EXPECT_CALL(datapath_, FlushChain(rule.ip_family,
+                                        Iptables::Table::kMangle, rule.chain));
+    }
+    for (const auto& rule : expected_chain_deletions) {
+      EXPECT_CALL(datapath_, RemoveChain(rule.ip_family,
+                                         Iptables::Table::kMangle, rule.chain));
+    }
+  }
+
+  void VerifyAndClearExpectations() {
+    testing::Mock::VerifyAndClearExpectations(&datapath_);
   }
 
   FakeProcessRunner process_runner_;
   NoopSystem system_;
-  std::unique_ptr<MockDatapath> datapath_;
+  MockDatapath datapath_;
   std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
 };
-
-TEST_F(MulticastCountersServiceTest, StartMulticastCountersService) {
-  static const struct {
-    IpFamily ip_family;
-    std::string chain;
-  } expected_chain_creations[] = {
-      {IpFamily::kDual, "rx_mdns"},
-      {IpFamily::kDual, "rx_ssdp"},
-      {IpFamily::kDual, "rx_ethernet_mdns"},
-      {IpFamily::kDual, "rx_ethernet_ssdp"},
-      {IpFamily::kDual, "rx_wifi_mdns"},
-      {IpFamily::kDual, "rx_wifi_ssdp"},
-  };
-  static const struct {
-    IpFamily ip_family;
-    Iptables::Command command;
-    std::string chain;
-    std::vector<std::string_view> argv;
-  } expected_rule_creations[] = {
-      {IpFamily::kIPv4,
-       Iptables::Command::kA,
-       "INPUT",
-       {"-d", kMdnsMcastAddrString, "-p", "udp", "--dport", "5353", "-j",
-        "rx_mdns", "-w"}},
-      {IpFamily::kIPv4,
-       Iptables::Command::kA,
-       "INPUT",
-       {"-d", kSsdpMcastAddrString, "-p", "udp", "--dport", "1900", "-j",
-        "rx_ssdp", "-w"}},
-      {IpFamily::kIPv6,
-       Iptables::Command::kA,
-       "INPUT",
-       {"-d", kMdnsMcastAddr6String, "-p", "udp", "--dport", "5353", "-j",
-        "rx_mdns", "-w"}},
-      {IpFamily::kIPv6,
-       Iptables::Command::kA,
-       "INPUT",
-       {"-d", kSsdpMcastAddr6String, "-p", "udp", "--dport", "1900", "-j",
-        "rx_ssdp", "-w"}},
-      {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_mdns", {"-w"}},
-      {IpFamily::kDual, Iptables::Command::kI, "rx_ethernet_ssdp", {"-w"}},
-      {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_mdns", {"-w"}},
-      {IpFamily::kDual, Iptables::Command::kI, "rx_wifi_ssdp", {"-w"}},
-  };
-
-  for (const auto& rule : expected_chain_creations) {
-    EXPECT_CALL(*datapath_,
-                AddChain(rule.ip_family, Iptables::Table::kMangle, rule.chain));
-  }
-  for (const auto& rule : expected_rule_creations) {
-    EXPECT_CALL(
-        *datapath_,
-        ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
-                       StrEq(rule.chain), ElementsAreArray(rule.argv), _));
-  }
-
-  multicast_counters_svc_->Start();
-}
-
-TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
-  static const struct {
-    IpFamily ip_family;
-    Iptables::Command command;
-    std::vector<std::string_view> argv;
-  } expected_rule_deletions[] = {
-      {IpFamily::kIPv4,
-       Iptables::Command::kD,
-       {"-d", kMdnsMcastAddrString, "-p", "udp", "--dport", "5353", "-j",
-        "rx_mdns", "-w"}},
-      {IpFamily::kIPv4,
-       Iptables::Command::kD,
-       {"-d", kSsdpMcastAddrString, "-p", "udp", "--dport", "1900", "-j",
-        "rx_ssdp", "-w"}},
-      {IpFamily::kIPv6,
-       Iptables::Command::kD,
-       {"-d", kMdnsMcastAddr6String, "-p", "udp", "--dport", "5353", "-j",
-        "rx_mdns", "-w"}},
-      {IpFamily::kIPv6,
-       Iptables::Command::kD,
-       {"-d", kSsdpMcastAddr6String, "-p", "udp", "--dport", "1900", "-j",
-        "rx_ssdp", "-w"}},
-  };
-  static const struct {
-    IpFamily ip_family;
-    std::string chain;
-  } expected_chain_flushes[] = {
-      {IpFamily::kDual, "rx_mdns"},
-      {IpFamily::kDual, "rx_ssdp"},
-      {IpFamily::kDual, "rx_ethernet_mdns"},
-      {IpFamily::kDual, "rx_ethernet_ssdp"},
-      {IpFamily::kDual, "rx_wifi_mdns"},
-      {IpFamily::kDual, "rx_wifi_ssdp"},
-  };
-  static const struct {
-    IpFamily ip_family;
-    std::string chain;
-  } expected_chain_deletions[] = {
-      {IpFamily::kDual, "rx_ethernet_mdns"},
-      {IpFamily::kDual, "rx_ethernet_ssdp"},
-      {IpFamily::kDual, "rx_wifi_mdns"},
-      {IpFamily::kDual, "rx_wifi_ssdp"},
-      {IpFamily::kDual, "rx_mdns"},
-      {IpFamily::kDual, "rx_ssdp"},
-  };
-
-  for (const auto& rule : expected_rule_deletions) {
-    EXPECT_CALL(
-        *datapath_,
-        ModifyIptables(rule.ip_family, Iptables::Table::kMangle, rule.command,
-                       StrEq("INPUT"), ElementsAreArray(rule.argv), _));
-  }
-  for (const auto& rule : expected_chain_flushes) {
-    EXPECT_CALL(*datapath_, FlushChain(rule.ip_family, Iptables::Table::kMangle,
-                                       rule.chain));
-  }
-  for (const auto& rule : expected_chain_deletions) {
-    EXPECT_CALL(*datapath_, RemoveChain(rule.ip_family,
-                                        Iptables::Table::kMangle, rule.chain));
-  }
-
-  multicast_counters_svc_->Stop();
-}
 
 TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
   // The following commands are expected when an ethernet device comes up.
@@ -510,14 +522,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
       MakeShillDevice(net_base::Technology::kEthernet, "eth0", 1);
   std::vector<std::string> mdns_args = {"-i", "eth0", "-j", "rx_ethernet_mdns",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_mdns"),
                              ElementsAreArray(mdns_args), _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "eth0", "-j", "rx_ethernet_ssdp",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_ssdp"),
                              ElementsAreArray(ssdp_args), _))
@@ -531,14 +543,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
       MakeShillDevice(net_base::Technology::kWiFi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_mdns"),
                              ElementsAreArray(mdns_args), _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "wlan0", "-j", "rx_wifi_ssdp",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kA, StrEq("rx_ssdp"),
                              ElementsAreArray(ssdp_args), _))
@@ -551,7 +563,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceAdded) {
   ShillClient::Device cell_device =
       MakeShillDevice(net_base::Technology::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
       .Times(0);
   multicast_counters_svc_->OnPhysicalDeviceAdded(cell_device);
@@ -564,14 +576,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceRemoved) {
   std::vector<std::string> mdns_args = {"-i", "eth0", "-j", "rx_ethernet_mdns",
                                         "-w"};
 
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_mdns"),
                              ElementsAreArray(mdns_args), _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "eth0", "-j", "rx_ethernet_ssdp",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_ssdp"),
                              ElementsAreArray(ssdp_args), _))
@@ -585,14 +597,14 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceRemoved) {
       MakeShillDevice(net_base::Technology::kWiFi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_mdns"),
                              ElementsAreArray(mdns_args), _))
       .Times(1);
   std::vector<std::string> ssdp_args = {"-i", "wlan0", "-j", "rx_wifi_ssdp",
                                         "-w"};
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle,
                              Iptables::Command::kD, StrEq("rx_ssdp"),
                              ElementsAreArray(ssdp_args), _))
@@ -605,17 +617,17 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceRemoved) {
   ShillClient::Device cell_device =
       MakeShillDevice(net_base::Technology::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
       .Times(0);
   multicast_counters_svc_->OnPhysicalDeviceRemoved(cell_device);
 }
 
 TEST_F(MulticastCountersServiceTest, GetCounters) {
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
   auto actual = multicast_counters_svc_->GetCounters();
@@ -639,10 +651,10 @@ TEST_F(MulticastCountersServiceTest, GetCounters) {
 }
 
 TEST_F(MulticastCountersServiceTest, GetCountersEmptyIptablesOutput) {
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(""));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .Times(0);
   auto actual = multicast_counters_svc_->GetCounters();
@@ -662,10 +674,10 @@ TEST_F(MulticastCountersServiceTest, GetCountersNoRelatedChain) {
       99159 15483417 CONNMARK   all      eth0   *       ::/0                 ::/0                 CONNMARK restore mask 0x3f00
           0        0 CONNMARK   all      wlan0  *       ::/0                 ::/0                 CONNMARK restore mask 0x3f00
   )";
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutputUnrelated));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutputUnrelated));
   auto actual = multicast_counters_svc_->GetCounters();
@@ -681,10 +693,10 @@ TEST_F(MulticastCountersServiceTest, GetCountersOnlyChainAndHeader) {
     Chain PREROUTING (policy ACCEPT 98844 packets, 15455949 bytes)
         pkts      bytes target     prot opt in     out     source               destination         
   )";
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutputUnrelated));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutputUnrelated));
   auto actual = multicast_counters_svc_->GetCounters();

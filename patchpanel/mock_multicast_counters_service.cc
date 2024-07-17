@@ -6,8 +6,8 @@
 
 namespace patchpanel {
 
-MockMulticastCountersService::MockMulticastCountersService()
-    : MulticastCountersService(nullptr) {}
+MockMulticastCountersService::MockMulticastCountersService(Datapath* datapath)
+    : MulticastCountersService(datapath) {}
 
 MockMulticastCountersService::~MockMulticastCountersService() = default;
 

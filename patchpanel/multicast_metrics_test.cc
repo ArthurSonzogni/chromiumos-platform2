@@ -15,8 +15,11 @@
 #include <gtest/gtest.h>
 
 #include "metrics/metrics_library_mock.h"
+#include "patchpanel/fake_system.h"
 #include "patchpanel/metrics.h"
+#include "patchpanel/mock_datapath.h"
 #include "patchpanel/mock_multicast_counters_service.h"
+#include "patchpanel/mock_process_runner.h"
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -31,6 +34,8 @@ class MulticastMetricsTest : public testing::Test {
  protected:
   MulticastMetricsTest()
       : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME),
+        datapath_(&process_runner_, &system_),
+        counters_service_(&datapath_),
         multicast_metrics_(&counters_service_, &mock_metrics_lib_) {
     ON_CALL(counters_service_, GetCounters())
         .WillByDefault(
@@ -38,6 +43,9 @@ class MulticastMetricsTest : public testing::Test {
   }
 
   base::test::SingleThreadTaskEnvironment task_environment_;
+  MockProcessRunner process_runner_;
+  FakeSystem system_;
+  MockDatapath datapath_;
   MockMulticastCountersService counters_service_;
   MetricsLibraryMock mock_metrics_lib_;
   MulticastMetrics multicast_metrics_;
