@@ -31,10 +31,6 @@ CROS_CAMERA_EXPORT bool ServerAcceptConnection(int server_listen_fd,
 CROS_CAMERA_EXPORT base::ScopedFD CreateClientUnixDomainSocket(
     const base::FilePath& socket_path);
 
-CROS_CAMERA_EXPORT MojoResult CreateMojoChannelToParentByUnixDomainSocket(
-    const base::FilePath& socket_path,
-    mojo::ScopedMessagePipeHandle* child_pipe);
-
 CROS_CAMERA_EXPORT MojoResult CreateMojoChannelToChildByUnixDomainSocket(
     const base::FilePath& socket_path,
     mojo::ScopedMessagePipeHandle* parent_pipe,

@@ -184,47 +184,6 @@ base::ScopedFD CreateClientUnixDomainSocket(const base::FilePath& socket_path) {
   return fd;
 }
 
-MojoResult CreateMojoChannelToParentByUnixDomainSocket(
-    const base::FilePath& socket_path,
-    mojo::ScopedMessagePipeHandle* child_pipe) {
-  base::ScopedFD client_socket_fd = CreateClientUnixDomainSocket(socket_path);
-  if (!client_socket_fd.is_valid()) {
-    LOGF(WARNING) << "Failed to connect to " << socket_path.value();
-    return MOJO_RESULT_INTERNAL;
-  }
-
-  // Set socket to blocking
-  int flags = HANDLE_EINTR(fcntl(client_socket_fd.get(), F_GETFL));
-  if (flags == -1) {
-    PLOGF(ERROR) << "fcntl(F_GETFL) failed:";
-    return MOJO_RESULT_INTERNAL;
-  }
-  if (HANDLE_EINTR(
-          fcntl(client_socket_fd.get(), F_SETFL, flags & ~O_NONBLOCK)) == -1) {
-    PLOGF(ERROR) << "fcntl(F_SETFL) failed:";
-    return MOJO_RESULT_INTERNAL;
-  }
-
-  const int kTokenSize = 32;
-  char token[kTokenSize] = {};
-  std::vector<base::ScopedFD> platformHandles;
-  ssize_t result =
-      mojo::SocketRecvmsg(client_socket_fd.get(), token, sizeof(token),
-                          &platformHandles, true /* block */);
-  if (result != kTokenSize) {
-    LOGF(ERROR) << "Unexpected read size: " << result;
-    return MOJO_RESULT_INTERNAL;
-  }
-  mojo::IncomingInvitation invitation =
-      mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
-          mojo::PlatformHandle(std::move(platformHandles.back()))));
-  platformHandles.pop_back();
-
-  *child_pipe = invitation.ExtractMessagePipe(std::string(token, kTokenSize));
-
-  return MOJO_RESULT_OK;
-}
-
 MojoResult CreateMojoChannelToChildByUnixDomainSocket(
     const base::FilePath& socket_path,
     mojo::ScopedMessagePipeHandle* parent_pipe,
