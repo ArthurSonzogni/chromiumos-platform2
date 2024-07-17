@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
@@ -44,6 +45,13 @@ constexpr int kIPv6RestartDelayMs = 300;
 // monitor can only listen to types of events included in this list.
 constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
     ConntrackMonitor::EventType::kNew};
+
+#ifdef USE_ARCVM
+constexpr ArcService::ArcType kArcType = ArcService::ArcType::kVM;
+#else
+constexpr ArcService::ArcType kArcType = ArcService::ArcType::kContainer;
+#endif
+
 }  // namespace
 
 MulticastForwardingControlMessage::Direction
@@ -58,6 +66,23 @@ GetMulticastControlMessageDirection(MulticastForwarder::Direction dir) {
   }
 }
 
+std::unique_ptr<Manager> Manager::Create(
+    const base::FilePath& cmd_path,
+    System* system,
+    net_base::ProcessManager* process_manager,
+    MetricsLibraryInterface* metrics,
+    DbusClientNotifier* dbus_client_notifier,
+    std::unique_ptr<ShillClient> shill_client,
+    std::unique_ptr<RTNLClient> rtnl_client) {
+  // Initialize the ConntrackMonitor singleton variable before creating services,
+  // because some of the services depend on it.
+  ConntrackMonitor::GetInstance()->Start(kConntrackEvents);
+
+  return base::WrapUnique(new Manager(
+      cmd_path, system, process_manager, metrics, dbus_client_notifier,
+      std::move(shill_client), std::move(rtnl_client)));
+}
+
 Manager::Manager(const base::FilePath& cmd_path,
                  System* system,
                  net_base::ProcessManager* process_manager,
@@ -69,63 +94,56 @@ Manager::Manager(const base::FilePath& cmd_path,
       metrics_(metrics),
       dbus_client_notifier_(dbus_client_notifier),
       shill_client_(std::move(shill_client)),
-      rtnl_client_(std::move(rtnl_client)) {
+      rtnl_client_(std::move(rtnl_client)),
+      lifeline_fd_svc_(std::make_unique<LifelineFDService>()),
+      adb_proxy_(std::make_unique<patchpanel::SubprocessController>(
+          system, process_manager, cmd_path, "--adb_proxy_fd")),
+      mcast_proxy_(std::make_unique<patchpanel::SubprocessController>(
+          system, process_manager, cmd_path, "--mcast_proxy_fd")),
+      nd_proxy_(std::make_unique<patchpanel::SubprocessController>(
+          system, process_manager, cmd_path, "--nd_proxy_fd")),
+      socket_service_(std::make_unique<patchpanel::SubprocessController>(
+          system, process_manager, cmd_path, "--socket_service_fd")),
+      datapath_(std::make_unique<Datapath>(system)),
+      routing_svc_(
+          std::make_unique<RoutingService>(system, lifeline_fd_svc_.get())),
+      counters_svc_(std::make_unique<CountersService>(
+          datapath_.get(), ConntrackMonitor::GetInstance())),
+      multicast_counters_svc_(
+          std::make_unique<MulticastCountersService>(datapath_.get())),
+      multicast_metrics_(std::make_unique<MulticastMetrics>(
+          multicast_counters_svc_.get(), metrics)),
+      ipv6_svc_(std::make_unique<GuestIPv6Service>(
+          nd_proxy_.get(), datapath_.get(), system)),
+      qos_svc_(std::make_unique<QoSService>(datapath_.get(),
+                                            ConntrackMonitor::GetInstance())),
+      downstream_network_svc_(
+          std::make_unique<DownstreamNetworkService>(metrics_,
+                                                     system_,
+                                                     datapath_.get(),
+                                                     routing_svc_.get(),
+                                                     this,
+                                                     rtnl_client_.get(),
+                                                     lifeline_fd_svc_.get(),
+                                                     shill_client_.get(),
+                                                     ipv6_svc_.get(),
+                                                     counters_svc_.get())),
+      arc_svc_(std::make_unique<ArcService>(kArcType,
+                                            datapath_.get(),
+                                            &addr_mgr_,
+                                            this,
+                                            metrics_,
+                                            dbus_client_notifier_)),
+      cros_svc_(std::make_unique<CrostiniService>(
+          &addr_mgr_, datapath_.get(), this, dbus_client_notifier_)),
+      network_monitor_svc_(std::make_unique<NetworkMonitorService>(
+          base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
+                              weak_factory_.GetWeakPtr()))),
+      clat_svc_(std::make_unique<ClatService>(
+          datapath_.get(), process_manager, system)) {
   DCHECK(rtnl_client_);
 
-  lifeline_fd_svc_ = std::make_unique<LifelineFDService>();
-
-  auto conntrack_monitor = ConntrackMonitor::GetInstance();
-  conntrack_monitor->Start(kConntrackEvents);
-
-  adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system, process_manager, cmd_path, "--adb_proxy_fd");
-  mcast_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system, process_manager, cmd_path, "--mcast_proxy_fd");
-  nd_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system, process_manager, cmd_path, "--nd_proxy_fd");
-  socket_service_ = std::make_unique<patchpanel::SubprocessController>(
-      system, process_manager, cmd_path, "--socket_service_fd");
-  datapath_ = std::make_unique<Datapath>(system);
-
-  routing_svc_ =
-      std::make_unique<RoutingService>(system, lifeline_fd_svc_.get());
-  counters_svc_ =
-      std::make_unique<CountersService>(datapath_.get(), conntrack_monitor);
-  multicast_counters_svc_ =
-      std::make_unique<MulticastCountersService>(datapath_.get());
-  multicast_metrics_ = std::make_unique<MulticastMetrics>(
-      multicast_counters_svc_.get(), metrics);
-
-  ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
-                                                 datapath_.get(), system);
-
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
-
-  qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
-
-  downstream_network_svc_ = std::make_unique<DownstreamNetworkService>(
-      metrics_, system_, datapath_.get(), routing_svc_.get(), this,
-      rtnl_client_.get(), lifeline_fd_svc_.get(), shill_client_.get(),
-      ipv6_svc_.get(), counters_svc_.get());
-
-  constexpr ArcService::ArcType arc_type = []() constexpr {
-    if (USE_ARCVM) {
-      return ArcService::ArcType::kVM;
-    } else {
-      return ArcService::ArcType::kContainer;
-    }
-  }();
-  arc_svc_ =
-      std::make_unique<ArcService>(arc_type, datapath_.get(), &addr_mgr_, this,
-                                   metrics_, dbus_client_notifier_);
-  cros_svc_ = std::make_unique<CrostiniService>(&addr_mgr_, datapath_.get(),
-                                                this, dbus_client_notifier_);
-
-  network_monitor_svc_ =
-      std::make_unique<NetworkMonitorService>(base::BindRepeating(
-          &Manager::OnNeighborReachabilityEvent, weak_factory_.GetWeakPtr()));
-  clat_svc_ =
-      std::make_unique<ClatService>(datapath_.get(), process_manager, system);
 
   // Setups the RTNL socket and listens to neighbor events. This should be
   // called before NetworkMonitorService::Start and NetworkApplier::Start.
@@ -163,17 +181,6 @@ Manager::Manager(const base::FilePath& cmd_path,
 }
 
 Manager::~Manager() {
-  network_monitor_svc_.reset();
-  cros_svc_.reset();
-  arc_svc_.reset();
-  clat_svc_.reset();
-
-  // Explicitly reset QoSService before Datapath::Stop() since the former one
-  // depends on Datapath.
-  qos_svc_.reset();
-
-  downstream_network_svc_.reset();
-
   // Tear down any remaining ConnectNamespace setup.
   std::vector<int> connected_namespaces_ifnames;
   for (const auto& [id, _] : connected_namespaces_) {
@@ -192,8 +199,8 @@ Manager::~Manager() {
     OnDnsRedirectionRulesAutoclose(lifeline_fd);
   }
 
-  multicast_counters_svc_.reset();
-  datapath_.reset();
+  // Invalidate the WeakPtr before destroying member services.
+  weak_factory_.InvalidateWeakPtrs();
 }
 
 void Manager::RunDelayedInitialization() {

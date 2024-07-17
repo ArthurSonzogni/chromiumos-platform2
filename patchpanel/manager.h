@@ -50,14 +50,16 @@ class QoSService;
 class Manager : public ForwardingService {
  public:
   // The caller should guarantee |system|, |process_manager|, |metrics| and
-  // |client| variables outlive the created Manager instance.
-  Manager(const base::FilePath& cmd_path,
-          System* system,
-          net_base::ProcessManager* process_manager,
-          MetricsLibraryInterface* metrics,
-          DbusClientNotifier* dbus_client_notifier,
-          std::unique_ptr<ShillClient> shill_client,
-          std::unique_ptr<RTNLClient> rtnl_client);
+  // |dbus_client_notifier| variables outlive the created Manager instance.
+  static std::unique_ptr<Manager> Create(
+      const base::FilePath& cmd_path,
+      System* system,
+      net_base::ProcessManager* process_manager,
+      MetricsLibraryInterface* metrics,
+      DbusClientNotifier* dbus_client_notifier,
+      std::unique_ptr<ShillClient> shill_client,
+      std::unique_ptr<RTNLClient> rtnl_client);
+
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
   virtual ~Manager();
@@ -202,6 +204,14 @@ class Manager : public ForwardingService {
  private:
   friend class ManagerTest;
 
+  Manager(const base::FilePath& cmd_path,
+          System* system,
+          net_base::ProcessManager* process_manager,
+          MetricsLibraryInterface* metrics,
+          DbusClientNotifier* dbus_client_notifier,
+          std::unique_ptr<ShillClient> shill_client,
+          std::unique_ptr<RTNLClient> rtnl_client);
+
   // The initialization tasks that are not necessary for handling dbus methods.
   void RunDelayedInitialization();
 
@@ -246,30 +256,27 @@ class Manager : public ForwardingService {
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
+  // The factory of the WeakPtr. Declare it at the beginning to make the
+  // following services able to use it.
+  // Note: We should invalidate the WeakPtr manually before releasing the
+  // following services.
+  base::WeakPtrFactory<Manager> weak_factory_{this};
+
   // patchpanel::System shared for all subsystems, owned by PatchpanelDaemon.
   System* system_;
-
   // UMA metrics client. Owned by PatchpanelDaemon.
   MetricsLibraryInterface* metrics_;
-
   // The client of the Manager.
   DbusClientNotifier* dbus_client_notifier_;
-
   // Shill Dbus client.
   std::unique_ptr<ShillClient> shill_client_;
-
   // rtnetlink client.
   std::unique_ptr<RTNLClient> rtnl_client_;
 
-  // High level routing and iptables controller service.
-  std::unique_ptr<Datapath> datapath_;
-  // Routing service.
-  std::unique_ptr<RoutingService> routing_svc_;
-  // ARC++/ARCVM service.
-  std::unique_ptr<ArcService> arc_svc_;
-  // Crostini and other VM service.
-  std::unique_ptr<CrostiniService> cros_svc_;
-
+  // IPv4 prefix and address manager.
+  AddressManager addr_mgr_;
+  // LifelineFD management service.
+  std::unique_ptr<LifelineFDService> lifeline_fd_svc_;
   // adb connection forwarder service.
   std::unique_ptr<SubprocessController> adb_proxy_;
   // IPv4 and IPv6 Multicast forwarder service.
@@ -278,26 +285,30 @@ class Manager : public ForwardingService {
   std::unique_ptr<SubprocessController> nd_proxy_;
   // Socket service process handler.
   std::unique_ptr<SubprocessController> socket_service_;
-
-  // IPv6 address provisioning / ndp forwarding service.
-  std::unique_ptr<GuestIPv6Service> ipv6_svc_;
-  // CLAT service.
-  std::unique_ptr<ClatService> clat_svc_;
+  // High level routing and iptables controller service.
+  std::unique_ptr<Datapath> datapath_;
+  // Routing service.
+  std::unique_ptr<RoutingService> routing_svc_;
   // Traffic counter service.
   std::unique_ptr<CountersService> counters_svc_;
   // Multicast packet counter service.
   std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
-  // L2 neighbor monitor service.
-  std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
+  // Fetches and reports multicast packet count to UMA metrics.
+  std::unique_ptr<MulticastMetrics> multicast_metrics_;
+  // IPv6 address provisioning / ndp forwarding service.
+  std::unique_ptr<GuestIPv6Service> ipv6_svc_;
   // QoS service.
   std::unique_ptr<QoSService> qos_svc_;
-  // LifelineFD management service
-  std::unique_ptr<LifelineFDService> lifeline_fd_svc_;
   // TetheredNetwork and LocalOnlyNetwork management service.
   std::unique_ptr<DownstreamNetworkService> downstream_network_svc_;
-
-  // IPv4 prefix and address manager.
-  AddressManager addr_mgr_;
+  // ARC++/ARCVM service.
+  std::unique_ptr<ArcService> arc_svc_;
+  // Crostini and other VM service.
+  std::unique_ptr<CrostiniService> cros_svc_;
+  // L2 neighbor monitor service.
+  std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
+  // CLAT service.
+  std::unique_ptr<ClatService> clat_svc_;
 
   // All namespaces currently connected through patchpanel ConnectNamespace
   // API, keyed by the the namespace id of the ConnectedNamespace.
@@ -312,11 +323,6 @@ class Manager : public ForwardingService {
   // API, keyed by the host-side interface name of the ConnectedNamespace of the
   // target dns-proxy instance to which the queries should be redirected.
   std::map<int, DnsRedirectionRule> dns_redirection_rules_;
-
-  // Fetches and reports multicast packet count to UMA metrics.
-  std::unique_ptr<MulticastMetrics> multicast_metrics_;
-
-  base::WeakPtrFactory<Manager> weak_factory_{this};
 };
 
 }  // namespace patchpanel
