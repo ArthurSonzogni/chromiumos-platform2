@@ -17,8 +17,8 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <pca_agent-client/pca_agent/dbus-proxies.h>
 #include <pca_agent-client-test/pca_agent/dbus-proxy-mocks.h>
+#include <pca_agent-client/pca_agent/dbus-proxies.h>
 
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_platform.h"

@@ -10,9 +10,9 @@
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"

@@ -23,13 +23,13 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
-#include <libhwsec-foundation/status/status_chain.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"

@@ -11,11 +11,11 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
-#include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hkdf.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"

@@ -14,12 +14,12 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec/frontend/cryptohome/frontend.h>
-#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hkdf.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/revocation.h"

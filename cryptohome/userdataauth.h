@@ -22,11 +22,11 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
+#include <libhwsec-foundation/status/status_chain_or.h>
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
-#include <libhwsec-foundation/status/status_chain_or.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"

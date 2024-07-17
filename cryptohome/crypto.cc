@@ -20,13 +20,13 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
-#include <libhwsec/frontend/pinweaver_manager/frontend.h>
-#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec/frontend/pinweaver_manager/frontend.h>
+#include <libhwsec/status.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>

@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/time/time.h>
 #include <base/numerics/byte_conversions.h>
+#include <base/time/time.h>
 #include <brillo/data_encoding.h>
 #include <brillo/secure_blob.h>
 #include <brillo/strings/string_utils.h>

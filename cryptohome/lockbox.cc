@@ -23,9 +23,9 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec/status.h>
 #include <libstorage/platform/platform.h>
 #include <openssl/sha.h>
 

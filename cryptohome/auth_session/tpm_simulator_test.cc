@@ -24,11 +24,11 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/backend/mock_backend.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_service.h"

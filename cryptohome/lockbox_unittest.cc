@@ -11,10 +11,10 @@
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
-#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/mock_lockbox.h"

@@ -5,6 +5,7 @@
 #include "cryptohome/fp_migration/utility.h"
 
 #include <optional>
+
 #include <gtest/gtest.h>
 
 #include "cryptohome/crypto.h"

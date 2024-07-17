@@ -28,10 +28,10 @@
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <libhwsec/factory/factory.h>
-#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec/factory/factory.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libstorage/platform/platform.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 

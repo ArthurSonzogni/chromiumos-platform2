@@ -12,8 +12,8 @@
 #include <utility>
 
 #include <chromeos/dbus/service_constants.h>
-#include <libhwsec/error/tpm_error.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libhwsec/error/tpm_error.h>
 
 #include "cryptohome/error/cryptohome_crypto_error.h"
 

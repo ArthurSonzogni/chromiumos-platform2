@@ -18,9 +18,9 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"

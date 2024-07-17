@@ -29,13 +29,13 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/secure_box.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
-#include <libhwsec-foundation/crypto/aes.h>
-#include <libhwsec-foundation/crypto/secure_box.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"

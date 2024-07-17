@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
-#include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/cryptorecovery/recovery_crypto.h"

@@ -19,13 +19,13 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <gmock/gmock.h>
 #include <gmock/gmock-matchers.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"

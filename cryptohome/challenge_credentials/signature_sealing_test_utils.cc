@@ -8,9 +8,9 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/structures/signature_sealed_data_test_utils.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/flatbuffer_schemas/structures.h"
 

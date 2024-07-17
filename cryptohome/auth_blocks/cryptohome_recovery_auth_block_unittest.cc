@@ -13,11 +13,11 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"

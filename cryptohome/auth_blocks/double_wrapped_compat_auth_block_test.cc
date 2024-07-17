@@ -11,8 +11,8 @@
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
-#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"

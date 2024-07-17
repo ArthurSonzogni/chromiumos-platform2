@@ -1535,7 +1535,7 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
     return;
   }
   LOG(INFO) << "AuthSession: Starting remove with auth_factor: "
-      << auth_factor_label;
+            << auth_factor_label;
 
   on_done = WrapCallbackWithMetricsReporting(
       std::move(on_done), stored_auth_factor->auth_factor().type(),
@@ -1758,7 +1758,7 @@ void AuthSession::AuthForDecrypt::UpdateAuthFactor(
   }
 
   LOG(INFO) << "AuthSession: Starting update with auth_factor: "
-      << request.auth_factor_label();
+            << request.auth_factor_label();
   std::optional<AuthFactorMap::ValueView> stored_auth_factor =
       session_->GetAuthFactorMap().Find(request.auth_factor_label());
   if (!stored_auth_factor) {

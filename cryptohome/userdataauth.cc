@@ -47,16 +47,16 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <dbus_adaptors/org.chromium.UserDataAuth.h>
-#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <device_management-client/device_management/dbus-proxies.h>
+#include <device_management/proto_bindings/device_management_interface.pb.h>
 #include <featured/feature_library.h>
-#include <libhwsec/factory/factory_impl.h>
-#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/utility/task_dispatching_framework.h>
+#include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/status.h>
 #include <libstorage/platform/platform.h>
 #include <metrics/timer.h>
 #include <pca_agent-client/pca_agent/dbus-proxies.h>
@@ -1886,7 +1886,6 @@ void UserDataAuth::RemoveWithSession(
     InUseAuthSession auth_session) {
   user_data_auth::RemoveReply reply;
   LOG(INFO) << "UDA: Starting removal.";
-
 
   Username account_id = auth_session->username();
   if (account_id->empty()) {

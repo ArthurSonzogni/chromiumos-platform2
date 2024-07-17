@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/mock_cryptohome_key_loader.h"

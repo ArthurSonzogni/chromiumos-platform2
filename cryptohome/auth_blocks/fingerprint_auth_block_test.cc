@@ -15,14 +15,14 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec/backend/pinweaver_manager/pinweaver_manager.h>
 #include <libhwsec/error/pinweaver_error.h>
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
-#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"

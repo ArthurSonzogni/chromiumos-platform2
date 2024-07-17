@@ -12,13 +12,13 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec/frontend/cryptohome/frontend.h>
-#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"

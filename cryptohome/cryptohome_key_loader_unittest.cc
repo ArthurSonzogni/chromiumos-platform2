@@ -9,8 +9,8 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
 using ::hwsec::TPMError;
