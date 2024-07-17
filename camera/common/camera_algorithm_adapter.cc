@@ -78,8 +78,17 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       ipc_thread_.task_runner(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  // IPCz requires an application to explicitly opt in to broker sharing
+  // and inheritance when establishing a direct connection between two
+  // non-broker nodes.
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(channel))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
       mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(channel))));
+#endif
   mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver(
       invitation.ExtractMessagePipe(pipe_name));
 
