@@ -307,30 +307,31 @@ message Authentication {
 
 // File Events.
 enum SensitiveFileType {
+  SENSITIVE_FILE_TYPE_UNKNOWN = 0;
   // The file resides on the read only rootfs.
-  ROOT_FS = 0;
+  ROOT_FS = 1;
   // The file resides in the MyFiles subdirectory on the decrypted user file
   // system.
-  USER_FILE = 1;
+  USER_FILE = 2;
   // The file is located on the Google Drive filesystem.
-  USER_GOOGLE_DRIVE_FILE = 2;
+  USER_GOOGLE_DRIVE_FILE = 3;
   // The file is a web cookie.
-  USER_WEB_COOKIE = 3;
+  USER_WEB_COOKIE = 4;
   // The file is an encrypted user credential, also known as the user secret
   // stash (USS).
-  USER_ENCRYPTED_CREDENTIAL = 4;
+  USER_ENCRYPTED_CREDENTIAL = 5;
   // This file is associated with a user password, it contains some data
   // considered not sensitive but also contains the sealed HVKKM which is used
   // in the process of decrypting the user data blob.
-  USER_AUTH_FACTORS_FILE = 5;
+  USER_AUTH_FACTORS_FILE = 6;
   // Cache file for the current logged in user policy.
-  USER_POLICY = 6;
+  USER_POLICY = 7;
   // Public key used to verify the signature of a user policy.
-  USER_POLICY_PUBLIC_KEY = 7;
+  USER_POLICY_PUBLIC_KEY = 8;
   // Cache file for device policy.
-  DEVICE_POLICY = 8;
+  DEVICE_POLICY = 9;
   // The public key used to verify the signature of a device policy.
-  DEVICE_POLICY_PUBLIC_KEY = 9;
+  DEVICE_POLICY_PUBLIC_KEY = 10;
   // Unencrypted public TPM RSA Key used in conjunction with password material
   // to generate the sealed hardware vault keyset key material(HVKKM) using the
   // TPM. This process is performed once per lifetime of a password and this
@@ -339,9 +340,9 @@ enum SensitiveFileType {
   // ephemeral vault keyset key (VKK). The VKK decrypts the sealed user secret
   // stash (USS) which is used to decrypt the encrypted user data blob on user
   // login.
-  SYSTEM_TPM_PUBLIC_KEY = 10;
+  SYSTEM_TPM_PUBLIC_KEY = 11;
   // The file is located on device identified as USB mass storage.
-  USB_MASS_STORAGE = 11;
+  USB_MASS_STORAGE = 12;
 }
 
 message FileProvenance {
@@ -367,6 +368,7 @@ message FileReadEvent {
 // File modify, either a write, modify attribute or both.
 message FileModify {
   enum ModifyType {
+    MODIFY_TYPE_UNKNOWN = 0;
     MODIFY_ATTRIBUTE = 1;
     WRITE = 2;
     WRITE_AND_MODIFY_ATTRIBUTE = 3;
