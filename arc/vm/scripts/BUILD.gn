@@ -10,6 +10,7 @@ group("all") {
     ":install_init_config",
     ":install_init_scripts",
     ":install_rsyslog",
+    ":install_tracing_config",
   ]
 }
 
@@ -21,6 +22,7 @@ install_config("install_android-sh") {
 
 install_config("install_init_scripts") {
   sources = [
+    "init/arcvm-combined-tracing.conf",
     "init/arcvm-fsverity-certs.conf",
     "init/arcvm-host.conf",
     "init/arcvm-post-login-services.conf",
@@ -37,6 +39,11 @@ install_config("install_dbus_scripts") {
 
 install_config("install_init_config") {
   sources = [ "init/config.json" ]
+  install_path = "/usr/share/arcvm"
+}
+
+install_config("install_tracing_config") {
+  sources = [ "share/arcvm-combined-tracing-config.textproto" ]
   install_path = "/usr/share/arcvm"
 }
 
