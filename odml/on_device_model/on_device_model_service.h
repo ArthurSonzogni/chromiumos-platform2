@@ -57,6 +57,9 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
   void GetPlatformModelState(const base::Uuid& uuid,
                              GetPlatformModelStateCallback callback) override;
 
+  void GetEstimatedPerformanceClass(
+      GetEstimatedPerformanceClassCallback callback) override;
+
   void LoadModel(mojom::LoadModelParamsPtr params,
                  mojo::PendingReceiver<mojom::OnDeviceModel> model,
                  LoadPlatformModelCallback callback);
@@ -65,6 +68,19 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
 
  private:
   void DeleteModel(base::WeakPtr<mojom::OnDeviceModel> model);
+
+  // If the shim is not ready, this function will retry the function with the
+  // given arguments after the shim is ready, and the ownership of callback &
+  // args will be taken in this kind of case.
+  // Returns true if the function will be retried.
+  template <typename FuncType,
+            typename CallbackType,
+            typename FailureType,
+            typename... Args>
+  bool RetryIfShimIsNotReady(FuncType func,
+                             CallbackType& callback,
+                             FailureType failure_result,
+                             Args&... args);
 
   const raw_ref<OndeviceModelFactory> factory_;
   const raw_ref<MetricsLibraryInterface> metrics_;

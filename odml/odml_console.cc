@@ -129,6 +129,18 @@ int main(int argc, char** argv) {
       /*timeout=*/std::nullopt,
       service.BindNewPipeAndPassReceiver().PassPipe());
 
+  {
+    base::RunLoop run_loop;
+    service->GetEstimatedPerformanceClass(base::BindOnce(
+        [](base::RunLoop* run_loop,
+           on_device_model::mojom::PerformanceClass result) {
+          LOG(INFO) << result;
+          run_loop->Quit();
+        },
+        &run_loop));
+    run_loop.Run();
+  }
+
   base::FilePath model_path = GetModelTestDataDir();
 
   mojo::Remote<on_device_model::mojom::OnDeviceModel> model;

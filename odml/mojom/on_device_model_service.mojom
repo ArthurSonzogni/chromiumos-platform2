@@ -71,6 +71,8 @@ enum PlatformModelState {
 
 // A service which allows loading platform trusted models which are stored
 // on-device and which may process untrustworthy data.
+// This is a ChromeOS specific interface. And the service will be implemented
+// in the ChromeOS platform side instead of the Chrome browser side.
 [Stable]
 interface OnDeviceModelPlatformService {
   // Initializes a new model instance given platform model `uuid`, this can be
@@ -87,4 +89,8 @@ interface OnDeviceModelPlatformService {
   [MinVersion=1]
   GetPlatformModelState@1(mojo_base.mojom.Uuid uuid)
       => (PlatformModelState result);
+
+  // Returns the performance class based on benchmarks run on the device.
+  [MinVersion=2]
+  GetEstimatedPerformanceClass@2() => (PerformanceClass performance_class);
 };

@@ -396,10 +396,11 @@ OnDeviceModelService::OnDeviceModelService(
     raw_ref<OndeviceModelFactory> factory,
     raw_ref<MetricsLibraryInterface> metrics,
     raw_ref<odml::OdmlShimLoader> shim_loader)
-    : factory_(factory), metrics_(metrics), shim_loader_(shim_loader) {
-  platform_model_loader_ =
-      std::make_unique<ChromeosPlatformModelLoader>(metrics_, raw_ref(*this));
-}
+    : factory_(factory),
+      metrics_(metrics),
+      shim_loader_(shim_loader),
+      platform_model_loader_(std::make_unique<ChromeosPlatformModelLoader>(
+          metrics_, raw_ref(*this))) {}
 
 OnDeviceModelService::~OnDeviceModelService() = default;
 
@@ -437,35 +438,50 @@ void OnDeviceModelService::LoadModel(
   std::move(callback).Run(mojom::LoadModelResult::kSuccess);
 }
 
+// If the shim is not ready, this function will retry the function with the
+// given arguments after the shim is ready, and the ownership of callback &
+// args will be taken in this kind of case.
+// Returns true if the function will be retried.
+template <typename FuncType,
+          typename CallbackType,
+          typename FailureType,
+          typename... Args>
+bool OnDeviceModelService::RetryIfShimIsNotReady(FuncType func,
+                                                 CallbackType& callback,
+                                                 FailureType failure_result,
+                                                 Args&... args) {
+  if (shim_loader_->IsShimReady()) {
+    return false;
+  }
+
+  auto split = base::SplitOnceCallback(std::move(callback));
+  base::OnceClosure retry_cb =
+      base::BindOnce(func, weak_ptr_factory_.GetWeakPtr(), std::move(args)...,
+                     std::move(split.first));
+
+  shim_loader_->EnsureShimReady(base::BindOnce(
+      [](CallbackType callback, base::OnceClosure retry_cb,
+         FailureType failure_result, bool result) {
+        if (!result) {
+          LOG(ERROR) << "Failed to ensure the shim is ready.";
+          std::move(callback).Run(failure_result);
+          return;
+        }
+        std::move(retry_cb).Run();
+      },
+      std::move(split.second), std::move(retry_cb), std::move(failure_result)));
+
+  return true;
+}
+
 void OnDeviceModelService::LoadPlatformModel(
     const base::Uuid& uuid,
     mojo::PendingReceiver<mojom::OnDeviceModel> model,
     mojo::PendingRemote<mojom::PlatformModelProgressObserver> progress_observer,
     LoadPlatformModelCallback callback) {
-  if (!platform_model_loader_) {
-    LOG(ERROR) << "No valid platform model loader.";
-    std::move(callback).Run(mojom::LoadModelResult::kFailedToLoadLibrary);
-    return;
-  }
-
-  if (!shim_loader_->IsShimReady()) {
-    auto split = base::SplitOnceCallback(std::move(callback));
-    base::OnceClosure retry_cb = base::BindOnce(
-        &OnDeviceModelService::LoadPlatformModel,
-        weak_ptr_factory_.GetWeakPtr(), std::move(uuid), std::move(model),
-        std::move(progress_observer), std::move(split.first));
-    shim_loader_->EnsureShimReady(base::BindOnce(
-        [](LoadPlatformModelCallback callback, base::OnceClosure retry_cb,
-           bool result) {
-          if (!result) {
-            LOG(ERROR) << "Failed to ensure the shim is ready.";
-            std::move(callback).Run(
-                mojom::LoadModelResult::kFailedToLoadLibrary);
-            return;
-          }
-          std::move(retry_cb).Run();
-        },
-        std::move(split.second), std::move(retry_cb)));
+  if (RetryIfShimIsNotReady(&OnDeviceModelService::LoadPlatformModel, callback,
+                            mojom::LoadModelResult::kFailedToLoadLibrary, uuid,
+                            model, progress_observer)) {
     return;
   }
 
@@ -476,13 +492,25 @@ void OnDeviceModelService::LoadPlatformModel(
 
 void OnDeviceModelService::GetPlatformModelState(
     const base::Uuid& uuid, GetPlatformModelStateCallback callback) {
-  if (!platform_model_loader_) {
-    LOG(ERROR) << "No valid platform model loader.";
-    std::move(callback).Run(mojom::PlatformModelState::kUnknownState);
+  if (RetryIfShimIsNotReady(&OnDeviceModelService::GetPlatformModelState,
+                            callback, mojom::PlatformModelState::kUnknownState,
+                            uuid)) {
     return;
   }
 
   platform_model_loader_->GetModelState(uuid, std::move(callback));
+}
+
+void OnDeviceModelService::GetEstimatedPerformanceClass(
+    GetEstimatedPerformanceClassCallback callback) {
+  if (RetryIfShimIsNotReady(&OnDeviceModelService::GetEstimatedPerformanceClass,
+                            callback,
+                            mojom::PerformanceClass::kFailedToLoadLibrary)) {
+    return;
+  }
+
+  std::move(callback).Run(
+      factory_->GetEstimatedPerformanceClass(metrics_, shim_loader_));
 }
 
 void OnDeviceModelService::DeleteModel(
