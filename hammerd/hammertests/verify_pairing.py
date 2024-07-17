@@ -82,7 +82,7 @@ def main(argv):
         common.connect_usb(updater)
         updater.SendSubcommand(hammerd_api.UpdateExtraCommand.JumpToRW)
         # Wait for RW to run
-        time.sleep(1)
+        time.sleep(1.5)
         updater.CloseUsb()
         time.sleep(0.5)
         # Jump to RW resets the base. Need to reconnect
