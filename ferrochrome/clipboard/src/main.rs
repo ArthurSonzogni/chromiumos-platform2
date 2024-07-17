@@ -28,7 +28,7 @@ fn server_init() -> Result<VsockListener> {
 fn send_empty_data(stream: &mut VsockStream) -> Result<()> {
     let mut header = [0; HEADER_SIZE];
     header[0] = WRITE_CLIPBOARD_TYPE_EMPTY;
-    stream.write(&header).context("Failed to write header")?;
+    stream.write_all(&header).context("Failed to write header")?;
     stream.flush().context("Failed to flush stream")
 }
 
@@ -37,8 +37,8 @@ fn send_text_plain(stream: &mut VsockStream, data: &[u8]) -> Result<()> {
     header[0] = WRITE_CLIPBOARD_TYPE_TEXT_PLAIN;
     let data_size: u32 = data.len().try_into()?;
     header[4..8].copy_from_slice(&data_size.to_le_bytes());
-    stream.write(&header).context("Failed to write header")?;
-    stream.write(data).context("Failed to write payload data")?;
+    stream.write_all(&header).context("Failed to write header")?;
+    stream.write_all(data).context("Failed to write payload data")?;
     stream.flush().context("Failed to flush stream")
 }
 
@@ -65,7 +65,7 @@ fn handle_read_clipboard(stream: &mut VsockStream) -> Result<()> {
 
 fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
     let mut buffer = vec![0; size];
-    stream.read(&mut buffer).context("Failed to read payload")?;
+    stream.read_exact(&mut buffer).context("Failed to read payload")?;
     let text_data = CStr::from_bytes_with_nul(&buffer)
         .context("Failed to convert payload data into CStr")?;
     let text_data = text_data
@@ -87,7 +87,7 @@ fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
 
 fn handle_request(stream: &mut VsockStream) -> Result<()> {
     let mut header = [0; HEADER_SIZE];
-    stream.read(&mut header).context("Failed to read header")?;
+    stream.read_exact(&mut header).context("Failed to read header")?;
     let request_type = header[0];
     let payload_size = u32::from_le_bytes(header[4..8].try_into()?).try_into()?;
     match request_type {
@@ -101,7 +101,10 @@ fn main() {
     let listener = server_init().expect("Failed to initialize clipboard sharing server");
     println!("Clipboard sharing server started");
     for stream in listener.incoming() {
-        let mut stream = stream.expect("Invalid request from the client");
-        handle_request(&mut stream).expect("Failed to handle the request from the client");
+        if let Ok(mut stream) = stream {
+            if let Err(e) = handle_request(&mut stream) {
+                println!("Failed to handle the request from the client: {e:?}");
+            }
+        }
     }
 }
