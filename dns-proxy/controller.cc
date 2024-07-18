@@ -82,8 +82,8 @@ bool WaitForChildren(std::set<pid_t> pids) {
 
 }  // namespace
 
-Controller::Controller(const std::string& progname)
-    : progname_(progname), resolv_conf_(new ResolvConf()) {}
+Controller::Controller(const std::string& progname, const std::string& vmodule)
+    : progname_(progname), vmodule_(vmodule), resolv_conf_(new ResolvConf()) {}
 
 // This ctor is only used for testing.
 Controller::Controller(std::unique_ptr<ResolvConf> resolv_conf)
@@ -299,6 +299,8 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     flag_fd = "--fd=" + std::to_string(proxy_fd.get());
     argv.push_back(const_cast<char*>(flag_fd.c_str()));
   }
+  std::string flag_vmodule = "--vmodule=" + vmodule_;
+  argv.push_back(const_cast<char*>(flag_vmodule.c_str()));
   argv.push_back(nullptr);
 
   pid_t pid;

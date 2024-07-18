@@ -31,7 +31,7 @@ namespace dns_proxy {
 // subprocesses.
 class Controller : public brillo::DBusDaemon {
  public:
-  explicit Controller(const std::string& progname);
+  explicit Controller(const std::string& progname, const std::string& vmodule);
   // For testing.
   explicit Controller(std::unique_ptr<ResolvConf> resolv_conf);
 
@@ -133,6 +133,7 @@ class Controller : public brillo::DBusDaemon {
   FRIEND_TEST(ControllerTest, ClearProxyAddrs);
 
   const std::string progname_;
+  const std::string vmodule_;
   brillo::ProcessReaper process_reaper_;
   std::set<ProxyProc> proxies_;
   std::map<ProxyProc, ProxyRestarts> restarts_;

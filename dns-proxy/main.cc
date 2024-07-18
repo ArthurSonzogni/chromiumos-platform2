@@ -28,7 +28,11 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(flags);
 
   if (FLAGS_t.empty()) {
-    dns_proxy::Controller controller(argv[0]);
+    // Get the VLOG arg from the cmdline args. This function will return an
+    // empty string if the flag does not exist so it will always be safe.
+    const std::string vmodule =
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("vmodule");
+    dns_proxy::Controller controller(argv[0], vmodule);
     return controller.Run();
   }
 
