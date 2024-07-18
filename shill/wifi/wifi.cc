@@ -669,6 +669,7 @@ void WiFi::TermsAndConditions(const std::string& url) {
     LOG(ERROR) << "failed to parse terms and condition URL";
     return;
   }
+  CHECK(GetPrimaryNetwork());
   GetPrimaryNetwork()->OnTermsAndConditions(http_url.value());
   metrics()->SendEnumToUMA(Metrics::kMetricPasspointTermsAndConditions,
                            Metrics::kPasspointTermsAndConditionsURL);
@@ -784,6 +785,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
 
+  CHECK(GetPrimaryNetwork());
   GetPrimaryNetwork()->Stop();
   // SelectService here (instead of in LinkEvent, like Ethernet), so
   // that, if we fail to bring up L2, we can attribute failure correctly.
@@ -2679,6 +2681,7 @@ void WiFi::StateChanged(const std::string& new_state) {
         // AP is on a different subnet than where we started.
         // TODO(matthewmwang): Handle the IPv6 roam case.
         is_roaming_in_progress_ = false;
+        CHECK(GetPrimaryNetwork());
         if (GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal() != std::nullopt) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
           RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPRenewOnRoam);
@@ -2707,6 +2710,7 @@ void WiFi::StateChanged(const std::string& new_state) {
               manager()->GetPortalDetectorProbingConfiguration(),
           .validation_mode = affected_service->GetNetworkValidationMode(),
       };
+      CHECK(GetPrimaryNetwork());
       GetPrimaryNetwork()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       RetrieveLinkStatistics(
@@ -2884,6 +2888,7 @@ void WiFi::OnLinkMonitorFailure(net_base::IPFamily family) {
 
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
+  CHECK(GetPrimaryNetwork());
   if ((family == net_base::IPFamily::kIPv4 &&
        !GetPrimaryNetwork()->ipv4_gateway_found()) ||
       (family == net_base::IPFamily::kIPv6 &&
@@ -3057,6 +3062,7 @@ void WiFi::OnBeforeSuspend(ResultCallback callback) {
     std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
+  CHECK(GetPrimaryNetwork());
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), std::move(callback),
@@ -4245,6 +4251,7 @@ void WiFi::OnIPv4ConfiguredWithDHCPLease(int net_interface_index) {
     return;
   }
   SLOG(this, 2) << __func__ << ": IPv4 DHCP lease obtained";
+  CHECK(GetPrimaryNetwork());
   wake_on_wifi_->OnConnectedAndReachable(
       GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal());
 }

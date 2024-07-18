@@ -250,11 +250,11 @@ const std::string& Device::UniqueName() const {
 }
 
 Network* Device::GetPrimaryNetwork() const {
-  // Return the implicit Network. The implementation of GetPrimaryNetwork() in
-  // the base Device class always expects that the implicit Network exists.
-  // Subclasses not using the implicit network should provide their own
-  // GetPrimaryNetwork() override as well.
-  CHECK(implicit_network_);
+  // Return the implicit Network or nullptr if the implicit Network was not
+  // defined. The callers are responsible for checking if the current specific
+  // Device instance has defined a primary Network or not. Subclasses not using
+  // the implicit network should provide their own GetPrimaryNetwork() override
+  // as well.
   return implicit_network_.get();
 }
 

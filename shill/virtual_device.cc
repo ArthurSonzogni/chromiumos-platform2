@@ -40,6 +40,7 @@ bool VirtualDevice::Save(StoreInterface* /*storage*/) {
 }
 
 void VirtualDevice::Start(EnabledStateChangedCallback callback) {
+  CHECK(GetPrimaryNetwork());
   if (!GetPrimaryNetwork()->fixed_ip_params()) {
     rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   }
@@ -52,6 +53,7 @@ void VirtualDevice::Stop(EnabledStateChangedCallback callback) {
 
 void VirtualDevice::UpdateNetworkConfig(
     std::unique_ptr<net_base::NetworkConfig> network_config) {
+  CHECK(GetPrimaryNetwork());
   GetPrimaryNetwork()->set_link_protocol_network_config(
       std::move(network_config));
   GetPrimaryNetwork()->Start(Network::StartOptions{
@@ -64,6 +66,7 @@ void VirtualDevice::UpdateNetworkConfig(
 }
 
 void VirtualDevice::ResetConnection() {
+  CHECK(GetPrimaryNetwork());
   GetPrimaryNetwork()->Stop();
   Device::SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
 }

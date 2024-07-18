@@ -263,6 +263,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
           manager()->GetPortalDetectorProbingConfiguration(),
       .validation_mode = service->GetNetworkValidationMode(),
   };
+  CHECK(GetPrimaryNetwork());
   GetPrimaryNetwork()->Start(opts);
   SetServiceState(Service::kStateConfiguring);
 
@@ -890,6 +891,7 @@ void Ethernet::OnNeighborReachabilityEvent(
     return;
   }
 
+  CHECK(GetPrimaryNetwork());
   if (!GetPrimaryNetwork()->IsConnected()) {
     LOG(INFO)
         << LoggingTag()
