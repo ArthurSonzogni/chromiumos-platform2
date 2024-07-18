@@ -91,7 +91,7 @@ class CountersService {
   // all known interfaces will be returned. An empty map will be returned on
   // any failure.
   std::map<CounterKey, Counter> GetCounters(
-      const std::set<std::string>& devices);
+      const std::set<std::string>& devices) const;
   // Mark socket connections opened by ARC VPN app with correct source mark.
   // Note that the sockets opened by ARC VPN app can be used for either
   // tunneling or non-tunneling.

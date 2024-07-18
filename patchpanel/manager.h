@@ -10,7 +10,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -25,7 +24,6 @@
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/dbus_client_notifier.h"
-#include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/downstream_network_info.h"
 #include "patchpanel/downstream_network_service.h"
 #include "patchpanel/forwarding_service.h"
@@ -36,6 +34,7 @@
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/network/network_applier.h"
 #include "patchpanel/network_monitor_service.h"
+#include "patchpanel/qos_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/rtnl_client.h"
 #include "patchpanel/shill_client.h"
@@ -43,8 +42,6 @@
 #include "patchpanel/system.h"
 
 namespace patchpanel {
-
-class QoSService;
 
 // The core implementation of the patchpanel daemon.
 class Manager : public ForwardingService {
@@ -198,7 +195,7 @@ class Manager : public ForwardingService {
                         NetworkApplier::Technology technology);
 
   DownstreamNetworkService* downstream_network_service() {
-    return downstream_network_svc_.get();
+    return &downstream_network_svc_;
   }
 
  private:
@@ -276,39 +273,39 @@ class Manager : public ForwardingService {
   // IPv4 prefix and address manager.
   AddressManager addr_mgr_;
   // LifelineFD management service.
-  std::unique_ptr<LifelineFDService> lifeline_fd_svc_;
+  LifelineFDService lifeline_fd_svc_;
   // adb connection forwarder service.
-  std::unique_ptr<SubprocessController> adb_proxy_;
+  SubprocessController adb_proxy_;
   // IPv4 and IPv6 Multicast forwarder service.
-  std::unique_ptr<SubprocessController> mcast_proxy_;
+  SubprocessController mcast_proxy_;
   // IPv6 neighbor discovery forwarder process handler.
-  std::unique_ptr<SubprocessController> nd_proxy_;
+  SubprocessController nd_proxy_;
   // Socket service process handler.
-  std::unique_ptr<SubprocessController> socket_service_;
+  SubprocessController socket_service_;
   // High level routing and iptables controller service.
-  std::unique_ptr<Datapath> datapath_;
+  Datapath datapath_;
   // Routing service.
-  std::unique_ptr<RoutingService> routing_svc_;
+  RoutingService routing_svc_;
   // Traffic counter service.
-  std::unique_ptr<CountersService> counters_svc_;
+  CountersService counters_svc_;
   // Multicast packet counter service.
-  std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
+  MulticastCountersService multicast_counters_svc_;
   // Fetches and reports multicast packet count to UMA metrics.
-  std::unique_ptr<MulticastMetrics> multicast_metrics_;
+  MulticastMetrics multicast_metrics_;
   // IPv6 address provisioning / ndp forwarding service.
-  std::unique_ptr<GuestIPv6Service> ipv6_svc_;
+  GuestIPv6Service ipv6_svc_;
   // QoS service.
-  std::unique_ptr<QoSService> qos_svc_;
+  QoSService qos_svc_;
   // TetheredNetwork and LocalOnlyNetwork management service.
-  std::unique_ptr<DownstreamNetworkService> downstream_network_svc_;
+  DownstreamNetworkService downstream_network_svc_;
   // ARC++/ARCVM service.
-  std::unique_ptr<ArcService> arc_svc_;
+  ArcService arc_svc_;
   // Crostini and other VM service.
-  std::unique_ptr<CrostiniService> cros_svc_;
+  CrostiniService cros_svc_;
   // L2 neighbor monitor service.
-  std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
+  NetworkMonitorService network_monitor_svc_;
   // CLAT service.
-  std::unique_ptr<ClatService> clat_svc_;
+  ClatService clat_svc_;
 
   // All namespaces currently connected through patchpanel ConnectNamespace
   // API, keyed by the the namespace id of the ConnectedNamespace.

@@ -4,7 +4,6 @@
 
 #include "patchpanel/manager.h"
 
-#include <algorithm>
 #include <optional>
 #include <utility>
 
@@ -25,9 +24,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/downstream_network_info.h"
 #include "patchpanel/downstream_network_service.h"
-#include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/network/network_applier.h"
@@ -95,55 +92,40 @@ Manager::Manager(const base::FilePath& cmd_path,
       dbus_client_notifier_(dbus_client_notifier),
       shill_client_(std::move(shill_client)),
       rtnl_client_(std::move(rtnl_client)),
-      lifeline_fd_svc_(std::make_unique<LifelineFDService>()),
-      adb_proxy_(std::make_unique<patchpanel::SubprocessController>(
-          system, process_manager, cmd_path, "--adb_proxy_fd")),
-      mcast_proxy_(std::make_unique<patchpanel::SubprocessController>(
-          system, process_manager, cmd_path, "--mcast_proxy_fd")),
-      nd_proxy_(std::make_unique<patchpanel::SubprocessController>(
-          system, process_manager, cmd_path, "--nd_proxy_fd")),
-      socket_service_(std::make_unique<patchpanel::SubprocessController>(
-          system, process_manager, cmd_path, "--socket_service_fd")),
-      datapath_(std::make_unique<Datapath>(system)),
-      routing_svc_(
-          std::make_unique<RoutingService>(system, lifeline_fd_svc_.get())),
-      counters_svc_(std::make_unique<CountersService>(
-          datapath_.get(), ConntrackMonitor::GetInstance())),
-      multicast_counters_svc_(
-          std::make_unique<MulticastCountersService>(datapath_.get())),
-      multicast_metrics_(std::make_unique<MulticastMetrics>(
-          multicast_counters_svc_.get(), metrics)),
-      ipv6_svc_(std::make_unique<GuestIPv6Service>(
-          nd_proxy_.get(), datapath_.get(), system)),
-      qos_svc_(std::make_unique<QoSService>(datapath_.get(),
-                                            ConntrackMonitor::GetInstance())),
-      downstream_network_svc_(
-          std::make_unique<DownstreamNetworkService>(metrics_,
-                                                     system_,
-                                                     datapath_.get(),
-                                                     routing_svc_.get(),
-                                                     this,
-                                                     rtnl_client_.get(),
-                                                     lifeline_fd_svc_.get(),
-                                                     shill_client_.get(),
-                                                     ipv6_svc_.get(),
-                                                     counters_svc_.get())),
-      arc_svc_(std::make_unique<ArcService>(kArcType,
-                                            datapath_.get(),
-                                            &addr_mgr_,
-                                            this,
-                                            metrics_,
-                                            dbus_client_notifier_)),
-      cros_svc_(std::make_unique<CrostiniService>(
-          &addr_mgr_, datapath_.get(), this, dbus_client_notifier_)),
-      network_monitor_svc_(std::make_unique<NetworkMonitorService>(
-          base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
-                              weak_factory_.GetWeakPtr()))),
-      clat_svc_(std::make_unique<ClatService>(
-          datapath_.get(), process_manager, system)) {
+      adb_proxy_(system, process_manager, cmd_path, "--adb_proxy_fd"),
+      mcast_proxy_(system, process_manager, cmd_path, "--mcast_proxy_fd"),
+      nd_proxy_(system, process_manager, cmd_path, "--nd_proxy_fd"),
+      socket_service_(system, process_manager, cmd_path, "--socket_service_fd"),
+      datapath_(system),
+      routing_svc_(system, &lifeline_fd_svc_),
+      counters_svc_(&datapath_, ConntrackMonitor::GetInstance()),
+      multicast_counters_svc_(&datapath_),
+      multicast_metrics_(&multicast_counters_svc_, metrics),
+      ipv6_svc_(&nd_proxy_, &datapath_, system),
+      qos_svc_(&datapath_, ConntrackMonitor::GetInstance()),
+      downstream_network_svc_(DownstreamNetworkService(metrics_,
+                                                       system_,
+                                                       &datapath_,
+                                                       &routing_svc_,
+                                                       this,
+                                                       rtnl_client_.get(),
+                                                       &lifeline_fd_svc_,
+                                                       shill_client_.get(),
+                                                       &ipv6_svc_,
+                                                       &counters_svc_)),
+      arc_svc_(kArcType,
+               &datapath_,
+               &addr_mgr_,
+               this,
+               metrics_,
+               dbus_client_notifier_),
+      cros_svc_(&addr_mgr_, &datapath_, this, dbus_client_notifier_),
+      network_monitor_svc_(base::BindRepeating(
+          &Manager::OnNeighborReachabilityEvent, weak_factory_.GetWeakPtr())),
+      clat_svc_(&datapath_, process_manager, system) {
   DCHECK(rtnl_client_);
 
-  multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
+  multicast_metrics_.Start(MulticastMetrics::Type::kTotal);
 
   // Setups the RTNL socket and listens to neighbor events. This should be
   // called before NetworkMonitorService::Start and NetworkApplier::Start.
@@ -243,16 +225,16 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
   }
 
   if (prev_device && prev_device->technology == net_base::Technology::kVPN) {
-    datapath_->StopVpnRouting(*prev_device);
-    counters_svc_->OnVpnDeviceRemoved(prev_device->ifname);
+    datapath_.StopVpnRouting(*prev_device);
+    counters_svc_.OnVpnDeviceRemoved(prev_device->ifname);
   }
 
   if (new_device && new_device->technology == net_base::Technology::kVPN) {
-    counters_svc_->OnVpnDeviceAdded(new_device->ifname);
-    datapath_->StartVpnRouting(*new_device);
+    counters_svc_.OnVpnDeviceAdded(new_device->ifname);
+    datapath_.StartVpnRouting(*new_device);
   }
 
-  cros_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
+  cros_svc_.OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
 
   // When the default logical network changes, ConnectedNamespaces' devices
   // which follow the logical network must leave their current forwarding group
@@ -290,7 +272,7 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
           base::Milliseconds(kIPv6RestartDelayMs));
     }
   }
-  clat_svc_->OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
+  clat_svc_.OnShillDefaultLogicalDeviceChanged(new_device, prev_device);
 }
 
 void Manager::OnShillDefaultPhysicalDeviceChanged(
@@ -350,9 +332,7 @@ void Manager::RestartIPv6(std::string_view netns_name) {
     return;
   }
 
-  if (datapath_) {
-    datapath_->RestartIPv6();
-  }
+  datapath_.RestartIPv6();
 }
 
 void Manager::OnShillDevicesChanged(
@@ -373,22 +353,22 @@ void Manager::OnShillDevicesChanged(
     StopIPv6NDPForwarding(device, /*ifname_virtual=*/"");
     StopMulticastForwarding(device, /*ifname_virtual=*/"");
     StopBroadcastForwarding(device, /*ifname_virtual=*/"");
-    datapath_->StopConnectionPinning(device);
-    datapath_->RemoveRedirectDnsRule(device);
-    arc_svc_->RemoveDevice(device);
-    multicast_metrics_->OnPhysicalDeviceRemoved(device);
-    counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
-    multicast_counters_svc_->OnPhysicalDeviceRemoved(device);
-    qos_svc_->OnPhysicalDeviceRemoved(device);
+    datapath_.StopConnectionPinning(device);
+    datapath_.RemoveRedirectDnsRule(device);
+    arc_svc_.RemoveDevice(device);
+    multicast_metrics_.OnPhysicalDeviceRemoved(device);
+    counters_svc_.OnPhysicalDeviceRemoved(device.ifname);
+    multicast_counters_svc_.OnPhysicalDeviceRemoved(device);
+    qos_svc_.OnPhysicalDeviceRemoved(device);
 
-    datapath_->StopSourceIPv6PrefixEnforcement(device);
+    datapath_.StopSourceIPv6PrefixEnforcement(device);
   }
 
   for (const auto& device : added) {
-    qos_svc_->OnPhysicalDeviceAdded(device);
-    counters_svc_->OnPhysicalDeviceAdded(device.ifname);
-    multicast_counters_svc_->OnPhysicalDeviceAdded(device);
-    multicast_metrics_->OnPhysicalDeviceAdded(device);
+    qos_svc_.OnPhysicalDeviceAdded(device);
+    counters_svc_.OnPhysicalDeviceAdded(device.ifname);
+    multicast_counters_svc_.OnPhysicalDeviceAdded(device);
+    multicast_metrics_.OnPhysicalDeviceAdded(device);
     for (auto& [_, nsinfo] : connected_namespaces_) {
       if (nsinfo.outbound_ifname != device.ifname) {
         continue;
@@ -403,36 +383,36 @@ void Manager::OnShillDevicesChanged(
                          nsinfo.netns_name),
           base::Milliseconds(kIPv6RestartDelayMs));
     }
-    datapath_->StartConnectionPinning(device);
+    datapath_.StartConnectionPinning(device);
 
     if (!device.ipconfig.ipv4_dns_addresses.empty()) {
-      datapath_->AddRedirectDnsRule(device,
-                                    device.ipconfig.ipv4_dns_addresses.front());
+      datapath_.AddRedirectDnsRule(device,
+                                   device.ipconfig.ipv4_dns_addresses.front());
     }
 
-    arc_svc_->AddDevice(device);
+    arc_svc_.AddDevice(device);
 
-    datapath_->StartSourceIPv6PrefixEnforcement(device);
+    datapath_.StartSourceIPv6PrefixEnforcement(device);
     if (device.ipconfig.ipv6_cidr) {
       // TODO(b/279871350): Support prefix shorter than /64.
       const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
           device.ipconfig.ipv6_cidr->address());
-      datapath_->UpdateSourceEnforcementIPv6Prefix(device, prefix);
+      datapath_.UpdateSourceEnforcementIPv6Prefix(device, prefix);
     }
   }
 
-  network_monitor_svc_->OnShillDevicesChanged(added, removed);
+  network_monitor_svc_.OnShillDevicesChanged(added, removed);
 }
 
 void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   if (shill_device.ipconfig.ipv4_dns_addresses.empty()) {
-    datapath_->RemoveRedirectDnsRule(shill_device);
+    datapath_.RemoveRedirectDnsRule(shill_device);
   } else {
-    datapath_->AddRedirectDnsRule(
+    datapath_.AddRedirectDnsRule(
         shill_device, shill_device.ipconfig.ipv4_dns_addresses.front());
   }
-  multicast_metrics_->OnIPConfigsChanged(shill_device);
-  ipv6_svc_->UpdateUplinkIPv6DNS(shill_device);
+  multicast_metrics_.OnIPConfigsChanged(shill_device);
+  ipv6_svc_.UpdateUplinkIPv6DNS(shill_device);
 
   // Update local copies of the ShillClient::Device to keep IP configuration
   // properties in sync.
@@ -445,27 +425,27 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
     }
   }
 
-  downstream_network_svc_->UpdateDeviceIPConfig(shill_device);
-  arc_svc_->UpdateDeviceIPConfig(shill_device);
+  downstream_network_svc_.UpdateDeviceIPConfig(shill_device);
+  arc_svc_.UpdateDeviceIPConfig(shill_device);
 
   const auto* default_logical_device = shill_client_->default_logical_device();
   if (default_logical_device &&
       shill_device.ifname == default_logical_device->ifname) {
-    clat_svc_->OnDefaultLogicalDeviceIPConfigChanged(shill_device);
+    clat_svc_.OnDefaultLogicalDeviceIPConfigChanged(shill_device);
   }
 
   if (!shill_device.IsConnected()) {
-    qos_svc_->OnPhysicalDeviceDisconnected(shill_device);
+    qos_svc_.OnPhysicalDeviceDisconnected(shill_device);
   }
 
-  network_monitor_svc_->OnIPConfigsChanged(shill_device);
+  network_monitor_svc_.OnIPConfigsChanged(shill_device);
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
-  ipv6_svc_->OnUplinkIPv6Changed(shill_device);
+  ipv6_svc_.OnUplinkIPv6Changed(shill_device);
 
   if (!shill_device.ipconfig.ipv6_cidr) {
-    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
+    datapath_.UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
     return;
   }
 
@@ -485,12 +465,12 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   // TODO(b/279871350): Support prefix shorter than /64.
   const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
       shill_device.ipconfig.ipv6_cidr->address());
-  datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
+  datapath_.UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
 }
 
 void Manager::OnDoHProvidersChanged(
     const ShillClient::DoHProviders& doh_providers) {
-  qos_svc_->UpdateDoHProviders(doh_providers);
+  qos_svc_.UpdateDoHProviders(doh_providers);
 }
 
 bool Manager::ArcStartup(pid_t pid) {
@@ -499,7 +479,7 @@ bool Manager::ArcStartup(pid_t pid) {
     return false;
   }
 
-  if (!arc_svc_->Start(static_cast<uint32_t>(pid)))
+  if (!arc_svc_.Start(static_cast<uint32_t>(pid)))
     return false;
 
   GuestMessage msg;
@@ -508,13 +488,13 @@ bool Manager::ArcStartup(pid_t pid) {
   msg.set_arc_pid(pid);
   SendGuestMessage(msg);
 
-  multicast_metrics_->OnARCStarted();
+  multicast_metrics_.OnARCStarted();
 
   return true;
 }
 
 void Manager::ArcShutdown() {
-  multicast_metrics_->OnARCStopped();
+  multicast_metrics_.OnARCStopped();
 
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
@@ -523,12 +503,12 @@ void Manager::ArcShutdown() {
 
   // After the ARC container has stopped, the pid is not known anymore.
   // The pid argument is ignored by ArcService.
-  arc_svc_->Stop(0);
+  arc_svc_.Stop(0);
 }
 
 std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
     uint32_t cid) {
-  if (!arc_svc_->Start(cid)) {
+  if (!arc_svc_.Start(cid)) {
     return std::nullopt;
   }
   GuestMessage msg;
@@ -537,22 +517,22 @@ std::optional<patchpanel::ArcVmStartupResponse> Manager::ArcVmStartup(
   msg.set_arcvm_vsock_cid(cid);
   SendGuestMessage(msg);
 
-  multicast_metrics_->OnARCStarted();
+  multicast_metrics_.OnARCStarted();
 
   patchpanel::ArcVmStartupResponse response;
-  if (const auto arc0_addr = arc_svc_->GetArc0IPv4Address()) {
+  if (const auto arc0_addr = arc_svc_.GetArc0IPv4Address()) {
     response.set_arc0_ipv4_address(arc0_addr->ToByteString());
   }
   // Only pass static tap devices before ARCVM starts. Hotplugged devices, if
   // any, are added after VM starts.
-  for (const auto& tap : arc_svc_->GetStaticTapDevices()) {
+  for (const auto& tap : arc_svc_.GetStaticTapDevices()) {
     response.add_tap_device_ifnames(tap);
   }
   return response;
 }
 
 void Manager::ArcVmShutdown(uint32_t cid) {
-  multicast_metrics_->OnARCStopped();
+  multicast_metrics_.OnARCStopped();
 
   GuestMessage msg;
   msg.set_event(GuestMessage::STOP);
@@ -560,12 +540,12 @@ void Manager::ArcVmShutdown(uint32_t cid) {
   msg.set_arcvm_vsock_cid(cid);
   SendGuestMessage(msg);
 
-  arc_svc_->Stop(cid);
+  arc_svc_.Stop(cid);
 }
 
 const CrostiniService::CrostiniDevice* Manager::StartCrosVm(
     uint64_t vm_id, CrostiniService::VMType vm_type, uint32_t subnet_index) {
-  const auto* guest_device = cros_svc_->Start(vm_id, vm_type, subnet_index);
+  const auto* guest_device = cros_svc_.Start(vm_id, vm_type, subnet_index);
   if (!guest_device) {
     return nullptr;
   }
@@ -581,13 +561,13 @@ void Manager::StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type) {
   msg.set_event(GuestMessage::STOP);
   msg.set_type(CrostiniService::GuestMessageTypeFromVMType(vm_type));
   SendGuestMessage(msg);
-  cros_svc_->Stop(vm_id);
+  cros_svc_.Stop(vm_id);
 }
 
 GetDevicesResponse Manager::GetDevices() const {
   GetDevicesResponse response;
 
-  for (const auto* arc_device : arc_svc_->GetDevices()) {
+  for (const auto* arc_device : arc_svc_.GetDevices()) {
     // The legacy "arc0" Device is never exposed in "GetDevices".
     if (!arc_device->shill_device_ifname()) {
       continue;
@@ -598,7 +578,7 @@ GetDevicesResponse Manager::GetDevices() const {
                                dns_proxy_ipv6_addrs_);
   }
 
-  for (const auto* crostini_device : cros_svc_->GetDevices()) {
+  for (const auto* crostini_device : cros_svc_.GetDevices()) {
     crostini_device->ConvertToProto(response.add_devices());
   }
 
@@ -658,30 +638,30 @@ const CrostiniService::CrostiniDevice* const Manager::BorealisVmStartup(
     LOG(ERROR) << "Failed to start Borealis VM network service";
     return nullptr;
   }
-  qos_svc_->OnBorealisVMStarted(guest_device->tap_device_ifname());
+  qos_svc_.OnBorealisVMStarted(guest_device->tap_device_ifname());
   return guest_device;
 }
 
 void Manager::BorealisVmShutdown(uint64_t vm_id) {
   const CrostiniService::CrostiniDevice* guest_device =
-      cros_svc_->GetDevice(vm_id);
+      cros_svc_.GetDevice(vm_id);
   if (guest_device) {
-    qos_svc_->OnBorealisVMStopped(guest_device->tap_device_ifname());
+    qos_svc_.OnBorealisVMStopped(guest_device->tap_device_ifname());
   }
   StopCrosVm(vm_id, CrostiniService::VMType::kBorealis);
 }
 
 std::map<CountersService::CounterKey, CountersService::Counter>
 Manager::GetTrafficCounters(const std::set<std::string>& shill_devices) const {
-  return counters_svc_->GetCounters(shill_devices);
+  return counters_svc_.GetCounters(shill_devices);
 }
 
 bool Manager::ModifyPortRule(const ModifyPortRuleRequest& request) {
-  return datapath_->ModifyPortRule(request);
+  return datapath_.ModifyPortRule(request);
 }
 
 void Manager::SetVpnLockdown(bool enable_vpn_lockdown) {
-  datapath_->SetVpnLockdown(enable_vpn_lockdown);
+  datapath_.SetVpnLockdown(enable_vpn_lockdown);
 }
 
 bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
@@ -730,8 +710,8 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
     }
   }
 
-  return routing_svc_->TagSocket(socket_fd.get(), network_id, policy,
-                                 annotation_id);
+  return routing_svc_.TagSocket(socket_fd.get(), network_id, policy,
+                                annotation_id);
 }
 
 void Manager::OnNeighborReachabilityEvent(
@@ -798,7 +778,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
 
-  auto cancel_lifeline_fd = lifeline_fd_svc_->AddLifelineFD(
+  auto cancel_lifeline_fd = lifeline_fd_svc_.AddLifelineFD(
       std::move(client_fd),
       base::BindOnce(&Manager::OnConnectedNamespaceAutoclose,
                      weak_factory_.GetWeakPtr(),
@@ -850,7 +830,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     }
   }
 
-  if (!datapath_->StartRoutingNamespace(nsinfo)) {
+  if (!datapath_.StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
     return response;
   }
@@ -898,7 +878,7 @@ void Manager::OnConnectedNamespaceAutoclose(int connected_namespace_id) {
         *connected_namespace_it->second.current_outbound_device,
         connected_namespace_it->second.host_ifname);
   }
-  datapath_->StopRoutingNamespace(connected_namespace_it->second);
+  datapath_.StopRoutingNamespace(connected_namespace_it->second);
   if (connected_namespace_it->second.static_ipv6_config.has_value()) {
     addr_mgr_.ReleaseIPv6Subnet(
         connected_namespace_it->second.static_ipv6_config->host_cidr
@@ -917,7 +897,7 @@ void Manager::OnDnsRedirectionRulesAutoclose(int lifeline_fd) {
   auto rule = std::move(dns_redirection_it->second);
   LOG(INFO) << __func__ << ": " << rule;
 
-  datapath_->StopDnsRedirection(rule);
+  datapath_.StopDnsRedirection(rule);
   dns_redirection_rules_.erase(dns_redirection_it);
   // Propagate DNS proxy addresses change.
   if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
@@ -936,7 +916,7 @@ void Manager::OnDnsRedirectionRulesAutoclose(int lifeline_fd) {
 bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
                                     base::ScopedFD client_fd) {
   int lifeline_fd = client_fd.get();
-  auto cancel_lifeline_fd = lifeline_fd_svc_->AddLifelineFD(
+  auto cancel_lifeline_fd = lifeline_fd_svc_.AddLifelineFD(
       std::move(client_fd),
       base::BindOnce(&Manager::OnDnsRedirectionRulesAutoclose,
                      weak_factory_.GetWeakPtr(), lifeline_fd));
@@ -967,15 +947,15 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
     }
   }
 
-  if (!datapath_->StartDnsRedirection(rule)) {
+  if (!datapath_.StartDnsRedirection(rule)) {
     LOG(ERROR) << __func__ << ": Failed to setup datapath";
     return false;
   }
   // Notify GuestIPv6Service to add a route for the IPv6 proxy address to the
   // namespace if it did not exist yet, so that the address is reachable.
   if (rule.proxy_address.GetFamily() == net_base::IPFamily::kIPv6) {
-    ipv6_svc_->RegisterDownstreamNeighborIP(
-        rule.host_ifname, *rule.proxy_address.ToIPv6Address());
+    ipv6_svc_.RegisterDownstreamNeighborIP(rule.host_ifname,
+                                           *rule.proxy_address.ToIPv6Address());
   }
 
   // Propagate DNS proxy addresses change.
@@ -1001,8 +981,8 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
 void Manager::SendGuestMessage(const GuestMessage& msg) {
   ControlMessage cm;
   *cm.mutable_guest_message() = msg;
-  adb_proxy_->SendControlMessage(cm);
-  mcast_proxy_->SendControlMessage(cm);
+  adb_proxy_.SendControlMessage(cm);
+  mcast_proxy_.SendControlMessage(cm);
 }
 
 void Manager::StartIPv6NDPForwarding(const ShillClient::Device& shill_device,
@@ -1015,8 +995,8 @@ void Manager::StartIPv6NDPForwarding(const ShillClient::Device& shill_device,
 
   // TODO(b/325359902): Change GuestIPv6Service interface to take
   // std::string_view and delete conversion here.
-  ipv6_svc_->StartForwarding(shill_device, std::string(ifname_virtual), mtu,
-                             hop_limit);
+  ipv6_svc_.StartForwarding(shill_device, std::string(ifname_virtual), mtu,
+                            hop_limit);
 }
 
 void Manager::StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
@@ -1026,11 +1006,11 @@ void Manager::StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
   }
 
   if (ifname_virtual.empty()) {
-    ipv6_svc_->StopUplink(shill_device);
+    ipv6_svc_.StopUplink(shill_device);
   } else {
     // TODO(b/325359902): Change GuestIPv6Service interface to take
     // std::string_view and delete conversion here.
-    ipv6_svc_->StopForwarding(shill_device, std::string(ifname_virtual));
+    ipv6_svc_.StopForwarding(shill_device, std::string(ifname_virtual));
   }
 }
 
@@ -1046,7 +1026,7 @@ void Manager::StartBroadcastForwarding(const ShillClient::Device& shill_device,
   BroadcastForwardingControlMessage* msg = cm.mutable_bcast_control();
   msg->set_lan_ifname(shill_device.ifname);
   msg->set_int_ifname(ifname_virtual);
-  mcast_proxy_->SendControlMessage(cm);
+  mcast_proxy_.SendControlMessage(cm);
 }
 
 void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
@@ -1069,7 +1049,7 @@ void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
   if (!ifname_virtual.empty()) {
     msg->set_int_ifname(ifname_virtual);
   }
-  mcast_proxy_->SendControlMessage(cm);
+  mcast_proxy_.SendControlMessage(cm);
 }
 
 void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
@@ -1090,7 +1070,7 @@ void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
   msg->set_lan_ifname(shill_device.ifname);
   msg->set_int_ifname(ifname_virtual);
   msg->set_dir(GetMulticastControlMessageDirection(dir));
-  mcast_proxy_->SendControlMessage(cm);
+  mcast_proxy_.SendControlMessage(cm);
 }
 
 void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
@@ -1114,7 +1094,7 @@ void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
     msg->set_int_ifname(ifname_virtual);
   }
   msg->set_dir(GetMulticastControlMessageDirection(dir));
-  mcast_proxy_->SendControlMessage(cm);
+  mcast_proxy_.SendControlMessage(cm);
 }
 
 void Manager::ConfigureNetwork(int ifindex,
@@ -1146,34 +1126,34 @@ void Manager::ConfigureNetwork(int ifindex,
 }
 
 void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
-  auto before = arc_svc_->IsWiFiMulticastForwardingRunning();
-  arc_svc_->NotifyAndroidWifiMulticastLockChange(is_held);
-  auto after = arc_svc_->IsWiFiMulticastForwardingRunning();
+  auto before = arc_svc_.IsWiFiMulticastForwardingRunning();
+  arc_svc_.NotifyAndroidWifiMulticastLockChange(is_held);
+  auto after = arc_svc_.IsWiFiMulticastForwardingRunning();
   if (!before && after) {
-    multicast_metrics_->OnARCWiFiForwarderStarted();
+    multicast_metrics_.OnARCWiFiForwarderStarted();
   } else if (before && !after) {
-    multicast_metrics_->OnARCWiFiForwarderStopped();
+    multicast_metrics_.OnARCWiFiForwarderStopped();
   }
 }
 
 void Manager::NotifyAndroidInteractiveState(bool is_interactive) {
-  auto before = arc_svc_->IsWiFiMulticastForwardingRunning();
-  arc_svc_->NotifyAndroidInteractiveState(is_interactive);
-  auto after = arc_svc_->IsWiFiMulticastForwardingRunning();
+  auto before = arc_svc_.IsWiFiMulticastForwardingRunning();
+  arc_svc_.NotifyAndroidInteractiveState(is_interactive);
+  auto after = arc_svc_.IsWiFiMulticastForwardingRunning();
   if (!before && after) {
-    multicast_metrics_->OnARCWiFiForwarderStarted();
+    multicast_metrics_.OnARCWiFiForwarderStarted();
   } else if (before && !after) {
-    multicast_metrics_->OnARCWiFiForwarderStopped();
+    multicast_metrics_.OnARCWiFiForwarderStopped();
   }
 
   if (!is_interactive) {
     std::vector<std::string_view> arc_bridge_ifnames;
-    for (const auto* arc_device : arc_svc_->GetDevices()) {
+    for (const auto* arc_device : arc_svc_.GetDevices()) {
       arc_bridge_ifnames.push_back(arc_device->bridge_ifname());
     }
-    ipv6_svc_->StartARCPacketFilter(arc_bridge_ifnames);
+    ipv6_svc_.StartARCPacketFilter(arc_bridge_ifnames);
   } else {
-    ipv6_svc_->StopARCPacketFilter();
+    ipv6_svc_.StopARCPacketFilter();
   }
 }
 
@@ -1183,7 +1163,7 @@ void Manager::NotifySocketConnectionEvent(
     LOG(ERROR) << __func__ << ": no message attached.";
     return;
   }
-  qos_svc_->ProcessSocketConnectionEvent(request.msg());
+  qos_svc_.ProcessSocketConnectionEvent(request.msg());
 }
 
 void Manager::NotifyARCVPNSocketConnectionEvent(
@@ -1192,7 +1172,7 @@ void Manager::NotifyARCVPNSocketConnectionEvent(
     LOG(ERROR) << __func__ << ": no message attached.";
     return;
   }
-  counters_svc_->HandleARCVPNSocketConnectionEvent(request.msg());
+  counters_svc_.HandleARCVPNSocketConnectionEvent(request.msg());
 }
 
 bool Manager::SetFeatureFlag(
@@ -1203,21 +1183,21 @@ bool Manager::SetFeatureFlag(
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_WIFI_QOS:
       feature_name = "WiFi QoS";
-      old_flag = qos_svc_->is_enabled();
+      old_flag = qos_svc_.is_enabled();
       if (enabled) {
-        qos_svc_->Enable();
+        qos_svc_.Enable();
       } else {
-        qos_svc_->Disable();
+        qos_svc_.Disable();
       }
       break;
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_CLAT:
       feature_name = "CLAT";
-      old_flag = clat_svc_->is_enabled();
+      old_flag = clat_svc_.is_enabled();
       if (enabled) {
-        clat_svc_->Enable();
+        clat_svc_.Enable();
       } else {
-        clat_svc_->Disable();
+        clat_svc_.Disable();
       }
       break;
     default:

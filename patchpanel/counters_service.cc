@@ -174,7 +174,7 @@ CountersService::CountersService(Datapath* datapath, ConntrackMonitor* monitor)
 CountersService::~CountersService() = default;
 
 std::map<CounterKey, Counter> CountersService::GetCounters(
-    const std::set<std::string>& devices) {
+    const std::set<std::string>& devices) const {
   std::map<CounterKey, Counter> counters;
 
   // Handles counters for IPv4 and IPv6 separately and returns failure if either
