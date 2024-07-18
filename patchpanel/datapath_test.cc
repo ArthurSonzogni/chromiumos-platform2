@@ -463,6 +463,9 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
       IpFamily::kIPv4,
       "mangle -A PREROUTING_arc_ns0 -s 100.115.92.130 -d "
       "100.115.92.129 -j ACCEPT -w");
+  runner_.ExpectCallIptables(IpFamily::kDual,
+                             "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
+                             "0x00008000/0x0000c000 -w");
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
@@ -567,6 +570,9 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
   runner_.ExpectCallIptables(IpFamily::kIPv6,
                              "mangle -A PREROUTING_arc_ns0 -s fd11::2 -d "
                              "fd11::1 -j ACCEPT -w");
+  runner_.ExpectCallIptables(IpFamily::kDual,
+                             "mangle -A PREROUTING_arc_ns0 -j MARK --set-mark "
+                             "0x00008000/0x0000c000 -w");
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
 
@@ -840,6 +846,9 @@ TEST_F(DatapathTest, StartRoutingDeviceAsUser) {
       "--mask 0xffff0000 -w");
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_vmtap0 -j skip_apply_vpn_mark -w");
+  runner_.ExpectCallIptables(IpFamily::kDual,
+                             "mangle -A PREROUTING_vmtap0 -j MARK --set-mark "
+                             "0x00008000/0x0000c000 -w");
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_vmtap0 -j apply_vpn_mark -w");
 

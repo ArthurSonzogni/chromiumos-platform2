@@ -1095,13 +1095,25 @@ void Datapath::StartRoutingDeviceAsUser(
     LOG(ERROR) << "Failed to add connected namespace IPv6 VPN bypass rule";
   }
 
-  // The jump rule below should not be applied for traffic from a
-  // ConnectNamespace traffic that needs DNS to go to the VPN
-  // (ConnectNamespace of the DNS default instance).
+  // Add a jump rule to bypass the VPN fwmark tagging rule below. This rule is
+  // needed for the outgoing traffic from guests that is routed through VPN to
+  // reach a connected namespace. Specifically, it is currently implemented for
+  // guests to be able to reach DNS proxy's default instance. Connected
+  // namespace interface can be identified by checking if the value of
+  // |peer_ipv4_addr| is not empty.
   if (!peer_ipv4_addr) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kMangle,
                    Iptables::Command::kA, subchain, kSkipApplyVpnMarkChain,
                    /*iif=*/"", /*oif=*/"");
+  }
+
+  // Add VPN fwmark to note that traffic from the namespace is expected to go
+  // through VPN for user traffic. Must only be added after the rules to bypass
+  // VPN fwmark tagging above.
+  if (!ModifyFwmark(IpFamily::kDual, subchain, Iptables::Command::kA,
+                    /*iif=*/"", /*uid_name=*/"", /*classid=*/0,
+                    kFwmarkRouteOnVpn, kFwmarkVpnMask)) {
+    LOG(ERROR) << "Failed to add user traffic VPN mark in " << subchain;
   }
 
   // Forwarded traffic from downstream interfaces routed to the logical
