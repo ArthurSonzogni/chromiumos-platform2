@@ -34,6 +34,7 @@ ioctl: arg1 == 0x5401
 lseek: 1
 # Required for syslog.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 sendto: 1
 epoll_create1: 1

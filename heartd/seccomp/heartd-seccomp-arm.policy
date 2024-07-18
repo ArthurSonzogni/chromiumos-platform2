@@ -24,6 +24,7 @@ signalfd4: 1
 write: 1
 # Required for syslog.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 connect: 1
 brk: 1
 readlinkat: 1
