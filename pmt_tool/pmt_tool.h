@@ -6,6 +6,7 @@
 #define PMT_TOOL_PMT_TOOL_H_
 
 #include <memory>
+#include <vector>
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -29,13 +30,12 @@ struct Source {
 struct Formatter {
   virtual ~Formatter() = default;
   virtual bool SetUp(const Options& opts, int fd, size_t snapshot_size) = 0;
-  virtual void Format(const pmt::Snapshot& snapshot) = 0;
+  virtual bool Format(const pmt::Snapshot& snapshot) = 0;
 };
 
 // A PMT data log as a source.
 class FileSource : public Source {
  public:
-  FileSource() = default;
   ~FileSource();
   bool SetUp(const Options& options) final;
   std::optional<const pmt::Snapshot*> TakeSnapshot() final;
@@ -52,7 +52,6 @@ class FileSource : public Source {
 // PMT data sampled using libpmt.
 class LibPmtSource : public Source {
  public:
-  LibPmtSource() = default;
   bool SetUp(const Options& options) final;
   std::optional<const pmt::Snapshot*> TakeSnapshot() final;
   size_t GetSnapshotSize() final;
@@ -69,7 +68,7 @@ class RawFormatter : public Formatter {
  public:
   RawFormatter() = default;
   bool SetUp(const Options& opts, int fd, size_t snapshot_size) final;
-  void Format(const pmt::Snapshot& snapshot) final;
+  bool Format(const pmt::Snapshot& snapshot) final;
 
  private:
   int fd_;
@@ -79,7 +78,7 @@ class DbgFormatter : public Formatter {
  public:
   DbgFormatter() = default;
   bool SetUp(const Options& opts, int fd, size_t snapshot_size) final;
-  void Format(const pmt::Snapshot& snapshot) final;
+  bool Format(const pmt::Snapshot& snapshot) final;
 
  private:
   int fd_;
@@ -89,7 +88,13 @@ class CsvFormatter : public Formatter {
  public:
   CsvFormatter() = default;
   bool SetUp(const Options& opts, int fd, size_t snapshot_size) final;
-  void Format(const pmt::Snapshot& snapshot) final;
+  bool Format(const pmt::Snapshot& snapshot) final;
+
+ private:
+  pmt::PmtDecoder decoder_;
+  std::vector<char> buffer_ = std::vector<char>(4096);
+  bool print_header_ = true;
+  int fd_;
 };
 
 // Main business logic of pmt_tool, exported for testing.

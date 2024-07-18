@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "pmt_tool/pmt_tool.h"
+
 #include <unistd.h>
 
 #include <base/command_line.h>
@@ -11,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "pmt_tool/pmt_tool.h"
 #include "pmt_tool/utils.h"
 
 using pmt_tool::Format;
@@ -32,7 +33,7 @@ class SourceMock : public Source {
 class FormatterMock : public Formatter {
  public:
   MOCK_METHOD(bool, SetUp, (const Options& opts, int fd, size_t snapshot_size));
-  MOCK_METHOD(void, Format, (const pmt::Snapshot& snapshot));
+  MOCK_METHOD(bool, Format, (const pmt::Snapshot& snapshot));
 };
 
 class pmtToolTest : public ::testing::Test {
@@ -385,7 +386,8 @@ TEST_F(pmtToolTest, Run1SampleWithInterval) {
   EXPECT_CALL(formatter_mock, SetUp(Ref(opts), STDOUT_FILENO, 123))
       .WillOnce(Return(true));
   EXPECT_CALL(source_mock, TakeSnapshot).WillOnce(Return(&fake_snapshot));
-  EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot)));
+  EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot)))
+      .WillOnce(Return(true));
 
   int result = do_run(opts, source_mock, formatter_mock);
   ASSERT_EQ(result, 0);
@@ -410,7 +412,8 @@ TEST_F(pmtToolTest, Run10SamplesWithInterval) {
       .Times(opts.sampling.duration_samples)
       .WillRepeatedly(Return(&fake_snapshot));
   EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot)))
-      .Times(opts.sampling.duration_samples);
+      .Times(opts.sampling.duration_samples)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(source_mock, Sleep(opts.sampling.interval_us))
       .Times(opts.sampling.duration_samples - 1);
 
@@ -440,7 +443,9 @@ TEST_F(pmtToolTest, RunInDumpMode) {
       .WillOnce(Return(&fake_snapshot))
       .WillOnce(Return(std::optional<const pmt::Snapshot*>()));
   EXPECT_CALL(source_mock, Sleep(opts.sampling.interval_us)).Times(3);
-  EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot))).Times(3);
+  EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot)))
+      .Times(3)
+      .WillRepeatedly(Return(true));
 
   int result = do_run(opts, source_mock, formatter_mock);
   ASSERT_EQ(result, 0);
@@ -467,7 +472,9 @@ TEST_F(pmtToolTest, RunInDumpModeNoSleep) {
       .WillOnce(Return(&fake_snapshot))
       .WillOnce(Return(&fake_snapshot))
       .WillOnce(Return(std::optional<const pmt::Snapshot*>()));
-  EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot))).Times(3);
+  EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot)))
+      .Times(3)
+      .WillRepeatedly(Return(true));
 
   int result = do_run(opts, source_mock, formatter_mock);
   ASSERT_EQ(result, 0);
@@ -492,7 +499,8 @@ TEST_F(pmtToolTest, RunInDumpModeLimitedSamples) {
       .Times(opts.sampling.duration_samples)
       .WillRepeatedly(Return(&fake_snapshot));
   EXPECT_CALL(formatter_mock, Format(Ref(fake_snapshot)))
-      .Times(opts.sampling.duration_samples);
+      .Times(opts.sampling.duration_samples)
+      .WillRepeatedly(Return(true));
 
   int result = do_run(opts, source_mock, formatter_mock);
   ASSERT_EQ(result, 0);

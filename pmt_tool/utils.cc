@@ -4,6 +4,8 @@
 
 // FIXME: needed because base/files/file.h does a typedef on `struct stat` and
 // does not include its definition.
+#include "pmt_tool/utils.h"
+
 #include <sys/stat.h>
 
 #include <absl/time/time.h>
@@ -12,8 +14,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-
-#include "pmt_tool/utils.h"
 
 namespace pmt_tool {
 
@@ -27,8 +27,8 @@ bool ParseCommandLineAndInitLogging(int argc,
   DEFINE_uint32(n, 0, "Number of samples to take");
   DEFINE_uint32(t, 0, "Sample for the specified number of seconds");
   DEFINE_string(f, "raw",
-                "output format: raw - raw binary format; dbg - debug string "
-                "from raw binary");
+                "output format: raw - raw binary format; dbg - debug string; "
+                "csv - decoded as CSV from raw binary");
 
   auto help_usage = std::string(argv[0]);
   help_usage.append(
