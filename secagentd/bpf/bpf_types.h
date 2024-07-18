@@ -212,6 +212,20 @@ struct cros_network_5_tuple {
   uint16_t remote_port;
 } __attribute__((aligned(8)));
 
+/**
+ * Key structure for the BPF hash map `allowlisted_file_inodes`.
+ *
+ * This structure represents the key used in the BPF hash map
+ * `allowlisted_file_inodes`. It consists of an inode ID (`inode_id`) and a
+ * device ID (`dev_id`) where the file or directory resides. It is used to
+ * uniquely identify entries in the map that store the monitoring mode (`enum
+ * file_monitoring_mode`) for allowlisted files and directories.
+ */
+struct inode_dev_map_key {
+  ino_t inode_id;
+  dev_t dev_id;
+} __attribute__((aligned(8)));
+
 /* The design idea behind the flow_map is that the BPF will be responsible for
  * creating and updating entries in the map. Each entry corresponds to a socket
  * identifier and a 5-tuple.
