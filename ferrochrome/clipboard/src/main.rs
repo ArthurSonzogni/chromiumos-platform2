@@ -21,6 +21,7 @@ const HEADER_SIZE: usize = 8;
 const READ_CLIPBOARD_FROM_VM: u8 = 0;
 const WRITE_CLIPBOARD_TYPE_EMPTY: u8 = 1;
 const WRITE_CLIPBOARD_TYPE_TEXT_PLAIN: u8 = 2;
+const OPEN_URL: u8 = 3;
 
 fn server_init() -> Result<VsockListener> {
     let cid = get_local_cid().context("Cannot get the local CID")?;
@@ -90,6 +91,30 @@ fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
     Ok(())
 }
 
+fn handle_open_url(stream: &mut VsockStream, size: usize) -> Result<()> {
+    let mut buffer = vec![0; size];
+    stream.read_exact(&mut buffer).context("Failed to read payload")?;
+    let text_data = from_utf8(&buffer)?;
+    let output = Command::new("dbus-send")
+        .args([
+            "--system",
+            "--print-reply",
+            "--type=method_call",
+            "--dest=org.chromium.UrlHandlerService",
+            "/org/chromium/UrlHandlerService",
+            "org.chromium.UrlHandlerServiceInterface.OpenUrl",
+            format!("string:{text_data}").as_str(),
+        ])
+        .output()
+        .context("Failed to execute command")?;
+    if !output.status.success() {
+        Err(anyhow!("Failed to send OpenUrl dbus message: {output:?}"))
+    } else {
+        info!("Sent OpenUrl dbus message");
+        Ok(())
+    }
+}
+
 fn handle_request(stream: &mut VsockStream) -> Result<()> {
     let mut header = [0; HEADER_SIZE];
     stream.read_exact(&mut header).context("Failed to read header")?;
@@ -98,6 +123,7 @@ fn handle_request(stream: &mut VsockStream) -> Result<()> {
     match request_type {
         READ_CLIPBOARD_FROM_VM => handle_read_clipboard(stream),
         WRITE_CLIPBOARD_TYPE_TEXT_PLAIN => handle_text_plain(stream, payload_size),
+        OPEN_URL => handle_open_url(stream, payload_size),
         _ => Err(anyhow!("Unknown request type: {request_type:?}")),
     }
 }
