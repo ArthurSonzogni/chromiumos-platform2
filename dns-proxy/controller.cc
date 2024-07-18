@@ -293,9 +293,10 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     flag_i += ifname;
     argv.push_back(const_cast<char*>(flag_i.c_str()));
   }
+  std::string flag_fd;
   if (type == Proxy::Type::kSystem && controller_fd.is_valid() &&
       proxy_fd.is_valid()) {
-    const std::string flag_fd = "--fd=" + std::to_string(proxy_fd.get());
+    flag_fd = "--fd=" + std::to_string(proxy_fd.get());
     argv.push_back(const_cast<char*>(flag_fd.c_str()));
   }
   argv.push_back(nullptr);
