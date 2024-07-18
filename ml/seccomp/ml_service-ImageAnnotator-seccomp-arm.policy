@@ -49,11 +49,13 @@ rt_sigtimedwait: 1
 sched_getaffinity: 1
 sched_yield: 1
 send: 1
+sendmsg: 1
 set_robust_list: 1
 
 # for lazy evaluation of brillo::InitLog(), which is called in the control
 # process but may not be evaluated until inside the worker process.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1

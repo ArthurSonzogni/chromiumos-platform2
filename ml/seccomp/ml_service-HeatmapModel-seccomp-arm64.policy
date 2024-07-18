@@ -29,9 +29,11 @@ munmap: 1
 openat: 1
 read: 1
 recvmsg: 1
+sendmsg: 1
 sendto: 1
 # Needed for ml service heatmaps.
 socket: 1
+socketpair: 1
 sysinfo: 1
 uname: 1
 write: 1

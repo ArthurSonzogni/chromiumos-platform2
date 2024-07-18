@@ -43,6 +43,7 @@ rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigtimedwait: 1
 sched_getaffinity: 1
+sendmsg: 1
 sendto: 1
 statx: 1
 sysinfo: 1
@@ -50,4 +51,5 @@ uname: 1
 
 # Line below needed for logging. This comment is necessary for the linter.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 write: 1

@@ -69,6 +69,7 @@ sysinfo: 1
 # for lazy evaluation of brillo::InitLog(), which is called in the control
 # process but may not be evaluated until inside the worker process.
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1

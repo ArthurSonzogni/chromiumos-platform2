@@ -45,7 +45,9 @@ rt_sigtimedwait: 1
 rt_sigtimedwait_time64: 1
 sched_getaffinity: 1
 send: 1
+sendmsg: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1

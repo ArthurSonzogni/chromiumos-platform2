@@ -40,8 +40,10 @@ recvmsg: 1
 rt_sigaction: 1
 rt_sigtimedwait: 1
 sched_getaffinity: 1
+sendmsg: 1
 sendto: 1
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1
