@@ -6,4 +6,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+libchromeos = { path = "../../libchromeos-rs/" } # provided by ebuild
+log = "0.4"
 vsock = "0.3"

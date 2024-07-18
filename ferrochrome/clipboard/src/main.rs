@@ -3,11 +3,16 @@
 // found in the LICENSE file.
 
 use anyhow::{anyhow, Context, Result};
+use libchromeos::syslog;
+use log::{error, info};
 use std::ffi::CStr;
 use std::io::{Read, Write};
 use std::process::Command;
 use std::str::from_utf8;
 use vsock::{get_local_cid, VsockAddr, VsockListener, VsockStream};
+
+// Program name.
+const IDENT: &str = "clipboard_sharing_server";
 
 const SERVER_VSOCK_PORT: u32 = 3580;
 
@@ -21,7 +26,7 @@ fn server_init() -> Result<VsockListener> {
     let cid = get_local_cid().context("Cannot get the local CID")?;
     let server_addr = VsockAddr::new(cid, SERVER_VSOCK_PORT);
     let listener = VsockListener::bind(&server_addr).context("Cannot listen the server")?;
-    println!("Clipboard server listening on {:?}", server_addr);
+    info!("Clipboard server listening on {:?}", server_addr);
     Ok(listener)
 }
 
@@ -49,13 +54,13 @@ fn handle_read_clipboard(stream: &mut VsockStream) -> Result<()> {
         .output()
         .context("Failed to execute command")?;
     if output.status.success() {
-        println!(
+        info!(
             "Read from clipboard: {}",
             from_utf8(&output.stdout).context("Failed to convert stdout into string")?
         );
         send_text_plain(stream, &output.stdout)
     } else {
-        println!(
+        info!(
             "Failed to read clipboard: {}",
             from_utf8(&output.stderr).context("Failed to convert stderr into string")?
         );
@@ -78,9 +83,9 @@ fn handle_text_plain(stream: &mut VsockStream, size: usize) -> Result<()> {
         .status()
         .context("Failed to execute command")?;
     if status.success() {
-        println!("Copied plain text: {}", text_data);
+        info!("Copied plain text: {}", text_data);
     } else {
-        println!("Failed to copy plain text");
+        error!("Failed to copy plain text");
     }
     Ok(())
 }
@@ -98,12 +103,13 @@ fn handle_request(stream: &mut VsockStream) -> Result<()> {
 }
 
 fn main() {
+    syslog::init(IDENT.to_string(), true /* log_to_stderr */).expect("Failed to initialize logger");
     let listener = server_init().expect("Failed to initialize clipboard sharing server");
-    println!("Clipboard sharing server started");
+    info!("Clipboard sharing server started");
     for stream in listener.incoming() {
         if let Ok(mut stream) = stream {
             if let Err(e) = handle_request(&mut stream) {
-                println!("Failed to handle the request from the client: {e:?}");
+                error!("Failed to handle the request from the client: {e:?}");
             }
         }
     }
