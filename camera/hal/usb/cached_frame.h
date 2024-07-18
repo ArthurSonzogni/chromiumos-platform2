@@ -7,10 +7,10 @@
 #define CAMERA_HAL_USB_CACHED_FRAME_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <camera/camera_metadata.h>
-#include <string>
 
 #include "cros-camera/camera_face_detection.h"
 #include "cros-camera/camera_metrics.h"
@@ -111,14 +111,16 @@ class CachedFrame {
   // Flag to disable SW decode fallback when HW decode failed
   bool force_jpeg_hw_decode_;
 
-  // Face detection handler.
-  std::unique_ptr<FaceDetector> face_detector_;
-
   // Lock to protect |faces_| from asynchronous threads.
   base::Lock faces_lock_;
   std::vector<human_sensing::CrosFace> faces_ GUARDED_BY(faces_lock_);
   int frame_count_ = 0;
   Size active_array_size_;
+
+  // Face detection handler.
+  // Ensure destruction before |face_lock_| and |faces_| to prevent asynchronous
+  // access within |OnFaceDetected()|.
+  std::unique_ptr<FaceDetector> face_detector_;
 };
 
 }  // namespace cros
