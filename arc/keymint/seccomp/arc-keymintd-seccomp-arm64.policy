@@ -54,6 +54,7 @@ write: 1
 lseek: 1
 
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 getrandom: arg2 in ~GRND_RANDOM
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd

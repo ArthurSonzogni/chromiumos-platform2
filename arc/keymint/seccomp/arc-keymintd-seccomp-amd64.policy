@@ -59,4 +59,5 @@ mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
 prctl: arg0 == PR_SET_NAME
