@@ -2,23 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/* This is critical, must be before bpf includes */
+// Include vmlinux.h first to declare all kernel types.
 #include "include/snoops/vmlinux/vmlinux.h"
-
+// Do not move vmlinux.h include
 #include <linux/errno.h>
 
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
+/* This include must be after vmlinux.h */
 #include "include/memsnoop.h"
 
 struct hkey {
-  __u64 call_id;
+  u64 call_id;
 };
 
 struct hval {
-  __s32 size;
+  size_t size;
 };
 
 /*
@@ -37,10 +38,10 @@ struct {
   __uint(max_entries, 512 * sizeof(struct memsnoop_event));
 } rb SEC(".maps");
 
-const volatile __u32 kprobe_snoop_pid = 0;
+const volatile unsigned int kprobe_snoop_pid = 0;
 
-static __u64 generate_call_id(enum memsnoop_event_type type) {
-  return (__u64)((__s32)type << 31) | (__u32)bpf_get_current_pid_tgid();
+static u64 generate_call_id(enum memsnoop_event_type type) {
+  return (u64)((s32)type << 31) | (u32)bpf_get_current_pid_tgid();
 }
 
 static int save_ustack(struct pt_regs* ctx, struct memsnoop_event* event) {
@@ -68,10 +69,10 @@ static struct memsnoop_event* bpf_ringbuf_event_get(void) {
 
 static int memsnoop_event(struct pt_regs* ctx,
                           enum memsnoop_event_type type,
-                          __u64 size,
-                          __u64 ptr) {
+                          size_t size,
+                          unsigned long ptr) {
   struct memsnoop_event* event;
-  __u64 id;
+  u64 id;
 
   event = bpf_ringbuf_event_get();
   if (!event)
@@ -79,7 +80,7 @@ static int memsnoop_event(struct pt_regs* ctx,
 
   id = bpf_get_current_pid_tgid();
   event->pid = id >> 32;
-  event->tid = (__u32)id;
+  event->tid = (u32)id;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
   if (type == MEMSNOOP_EVENT_MALLOC || type == MEMSNOOP_EVENT_MMAP) {
@@ -175,12 +176,12 @@ int BPF_URETPROBE(ret_mmap) {
 
 SEC("uprobe")
 int BPF_UPROBE(call_munmap, void* ptr) {
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_MUNMAP, 0, (__s64)ptr);
+  return memsnoop_event(ctx, MEMSNOOP_EVENT_MUNMAP, 0, (unsigned long)ptr);
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_free, void* ptr) {
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_FREE, 0, (__s64)ptr);
+  return memsnoop_event(ctx, MEMSNOOP_EVENT_FREE, 0, (unsigned long)ptr);
 }
 
 struct vm_area_struct;
@@ -189,12 +190,12 @@ SEC("kprobe/handle_mm_fault")
 int BPF_KPROBE(call_handle_mm_fault,
                struct vm_area_struct* vma,
                unsigned long ptr) {
-  __u32 pid = bpf_get_current_pid_tgid() >> 32;
+  u32 pid = bpf_get_current_pid_tgid() >> 32;
 
   if (pid != kprobe_snoop_pid)
     return 0;
 
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_PF, 0, (__s64)ptr);
+  return memsnoop_event(ctx, MEMSNOOP_EVENT_PF, 0, (unsigned long)ptr);
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";

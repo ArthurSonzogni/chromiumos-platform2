@@ -5,6 +5,10 @@
 #ifndef BPF_SNOOPS_INCLUDE_MEMSNOOP_H_
 #define BPF_SNOOPS_INCLUDE_MEMSNOOP_H_
 
+// Definitions for uint32_t and friends come either from vmlinux.h if
+// compiled for kernel BPF or from stdint.h if compiled for user-space
+// loader
+
 #define MEMSNOOP_MAX_USTACK_ENTS 10
 #define MEMSNOOP_TASK_COMM_SZ 16
 
@@ -18,14 +22,14 @@ enum memsnoop_event_type {
 };
 
 struct memsnoop_event {
-  __u32 type;
-  __u32 pid;
-  __u32 tid;
-  __s8 comm[MEMSNOOP_TASK_COMM_SZ];
-  __u64 size;
-  __u64 ptr;
-  __u64 ustack_ents[MEMSNOOP_MAX_USTACK_ENTS];
-  __s16 num_ustack_ents;
+  uint32_t pid;
+  unsigned int tid;
+  int8_t comm[MEMSNOOP_TASK_COMM_SZ];
+  uint64_t size;
+  uintptr_t ptr;
+  uintptr_t ustack_ents[MEMSNOOP_MAX_USTACK_ENTS];
+  uint16_t num_ustack_ents;
+  uint16_t type;
 };
 
 #endif  // BPF_SNOOPS_INCLUDE_MEMSNOOP_H_

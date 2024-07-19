@@ -5,12 +5,14 @@
 #ifndef BPF_SNOOPS_INCLUDE_LIBSNOOP_H_
 #define BPF_SNOOPS_INCLUDE_LIBSNOOP_H_
 
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include <string>
+
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
-
-#include <errno.h>
-#include <stdio.h>
-#include <string>
 
 namespace libsnoop {
 
@@ -49,8 +51,8 @@ namespace libsnoop {
 int init_stack_decoder(void);
 void release_stack_decoder(void);
 
-void decode_ustack(__u32 pid, __u64* ents, __s32 num_ents);
-void decode_kstack(__u64* ents, __s32 num_ents);
+void decode_ustack(uint32_t pid, uintptr_t* ents, uint32_t num_ents);
+void decode_kstack(uintptr_t* ents, uint32_t num_ents);
 
 int lookup_lib(const char* name, std::string& path);
 

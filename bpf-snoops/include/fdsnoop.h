@@ -5,6 +5,10 @@
 #ifndef BPF_SNOOPS_INCLUDE_FDSNOOP_H_
 #define BPF_SNOOPS_INCLUDE_FDSNOOP_H_
 
+// Definitions for uint32_t and friends come either from vmlinux.h if
+// compiled for kernel BPF or from stdint.h if compiled for user-space
+// loader
+
 #define FDSNOOP_MAX_USTACK_ENTS 10
 #define FDSNOOP_TASK_COMM_SZ 16
 
@@ -16,14 +20,14 @@ enum fdsnoop_event_type {
 };
 
 struct fdsnoop_event {
-  __u32 type;
-  __s32 nfd;
-  __s32 ofd;
-  __u32 pid;
-  __u32 tid;
-  __s8 comm[FDSNOOP_TASK_COMM_SZ];
-  __s16 num_ustack_ents;
-  __u64 ustack_ents[FDSNOOP_MAX_USTACK_ENTS];
+  int32_t nfd;
+  int32_t ofd;
+  uint32_t pid;
+  uint32_t tid;
+  int8_t comm[FDSNOOP_TASK_COMM_SZ];
+  uintptr_t ustack_ents[FDSNOOP_MAX_USTACK_ENTS];
+  uint16_t num_ustack_ents;
+  uint16_t type;
 };
 
 #endif  // BPF_SNOOPS_INCLUDE_FDSNOOP_H_

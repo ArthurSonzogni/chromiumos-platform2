@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
 #include <fcntl.h>
 #include <getopt.h>
-#include <linux/types.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <iostream>
+#include <string>
+
+// This include must be after stdint.h
 #include "include/fdsnoop.h"
 #include "include/libsnoop.h"
 #include "snoops/bpf_skeletons/skeleton_fdsnoop.bpf.h"
@@ -142,7 +144,6 @@ int main(int argc, char** argv) {
   ret = libsnoop::init_stack_decoder();
   if (ret)
     return ret;
-
 
   ret = fdsnoop(pid);
   libsnoop::release_stack_decoder();

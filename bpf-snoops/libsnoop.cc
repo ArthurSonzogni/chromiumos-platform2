@@ -25,7 +25,7 @@ static void show_frame(uintptr_t ip,
   printf("\n");
 }
 
-static void show_stack_trace(__u32 pid, __u64* ents, __s32 num_ents) {
+static void show_stack_trace(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
   const struct blaze_symbolize_inlined_fn* inlined;
   const struct blaze_result* res;
   const struct blaze_sym* sym;
@@ -50,7 +50,7 @@ static void show_stack_trace(__u32 pid, __u64* ents, __s32 num_ents) {
 
   for (size_t i = 0; i < num_ents; i++) {
     if (!res || res->cnt <= i || !res->syms[i].name) {
-      printf("    %016llx: <no-symbol>\n", ents[i]);
+      printf("    %016lx: <no-symbol>\n", ents[i]);
       continue;
     }
 
@@ -66,7 +66,7 @@ static void show_stack_trace(__u32 pid, __u64* ents, __s32 num_ents) {
   blaze_result_free(res);
 }
 
-void decode_ustack(__u32 pid, __u64* ents, __s32 num_ents) {
+void decode_ustack(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
   if (!pid)
     return;
   if (!num_ents)
@@ -74,7 +74,7 @@ void decode_ustack(__u32 pid, __u64* ents, __s32 num_ents) {
   show_stack_trace(pid, ents, num_ents);
 }
 
-void decode_kstack(__u64* ents, __s32 num_ents) {
+void decode_kstack(uintptr_t* ents, uint32_t num_ents) {
   if (!num_ents)
     return;
   show_stack_trace(0, ents, num_ents);

@@ -2,23 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-/* This is critical, must be before bpf includes */
+// Include vmlinux.h first to declare all kernel types.
 #include "include/snoops/vmlinux/vmlinux.h"
-
+// Do not move vmlinux.h include
 #include <linux/errno.h>
 
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
+/* This include must be after vmlinux.h */
 #include "include/fdsnoop.h"
 
 struct hkey {
-  __u64 call_id;
+  u64 call_id;
 };
 
 struct hval {
-  __s32 fd;
+  s32 fd;
 };
 
 /*
@@ -37,8 +38,8 @@ struct {
   __uint(max_entries, 1024 * sizeof(struct fdsnoop_event));
 } rb SEC(".maps");
 
-static __u64 generate_call_id(enum fdsnoop_event_type type) {
-  return (__u64)((__s32)type << 31) | (__u32)bpf_get_current_pid_tgid();
+static u64 generate_call_id(enum fdsnoop_event_type type) {
+  return (u64)((s32)type << 31) | (u32)bpf_get_current_pid_tgid();
 }
 
 static int save_ustack(struct pt_regs* ctx, struct fdsnoop_event* event) {
@@ -66,10 +67,10 @@ static struct fdsnoop_event* bpf_ringbuf_event_get(void) {
 
 static int fdsnoop_event(struct pt_regs* ctx,
                          enum fdsnoop_event_type type,
-                         __s32 nfd,
-                         __s32 ofd) {
+                         s32 nfd,
+                         s32 ofd) {
   struct fdsnoop_event* event;
-  __u64 id;
+  u64 id;
 
   event = bpf_ringbuf_event_get();
   if (!event)
@@ -77,7 +78,7 @@ static int fdsnoop_event(struct pt_regs* ctx,
 
   id = bpf_get_current_pid_tgid();
   event->pid = id >> 32;
-  event->tid = (__u32)id;
+  event->tid = (u32)id;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
   if (type == FDSNOOP_EVENT_OPEN || type == FDSNOOP_EVENT_DUP) {
@@ -115,7 +116,7 @@ int BPF_UPROBE(ret_open) {
 }
 
 SEC("uprobe")
-int BPF_UPROBE(call_dup, __s32 fd) {
+int BPF_UPROBE(call_dup, s32 fd) {
   struct hval v;
   struct hkey k;
   long ret;
@@ -146,12 +147,12 @@ int BPF_URETPROBE(ret_dup) {
 }
 
 SEC("uprobe")
-int BPF_UPROBE(call_dup2, __s32 ofd, __s32 nfd) {
+int BPF_UPROBE(call_dup2, s32 ofd, s32 nfd) {
   return fdsnoop_event(ctx, FDSNOOP_EVENT_DUP, nfd, ofd);
 }
 
 SEC("uprobe")
-int BPF_UPROBE(call_close, __s32 fd) {
+int BPF_UPROBE(call_close, s32 fd) {
   return fdsnoop_event(ctx, FDSNOOP_EVENT_CLOSE, fd, 0);
 }
 

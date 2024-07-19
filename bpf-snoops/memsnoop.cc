@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
 #include <fcntl.h>
 #include <getopt.h>
-#include <linux/types.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <iostream>
+#include <string>
+
 #include "include/libsnoop.h"
+// This include must be after stdint.h
 #include "include/memsnoop.h"
 #include "snoops/bpf_skeletons/skeleton_memsnoop.bpf.h"
 
@@ -68,7 +70,7 @@ static int handle_memsnoop_event(void* ctx, void* data, size_t data_sz) {
   printf("comm: %s pid:%d event: ", event->comm, event->pid);
   switch (event->type) {
     case MEMSNOOP_EVENT_MALLOC:
-      printf("malloc() sz=%llu ptr=%p-%p\n", event->size,
+      printf("malloc() sz=%lu ptr=%p-%p\n", event->size,
              reinterpret_cast<void*>(event->ptr),
              reinterpret_cast<void*>(event->ptr + event->size));
       break;
@@ -76,7 +78,7 @@ static int handle_memsnoop_event(void* ctx, void* data, size_t data_sz) {
       printf("free() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
       break;
     case MEMSNOOP_EVENT_MMAP:
-      printf("mmap() sz=%llu ptr=%p-%p\n", event->size,
+      printf("mmap() sz=%lu ptr=%p-%p\n", event->size,
              reinterpret_cast<void*>(event->ptr),
              reinterpret_cast<void*>(event->ptr + event->size));
       break;
