@@ -109,6 +109,8 @@ void Metrics::ReportPdConnect(std::string boot_id,
                               PartnerTypeMetric partner_type,
                               CableSpeedMetric cable_speed,
                               ModeEntryMetric mode_entry) {
+  // TODO(b/354255393): Add support for max charging rate and realized
+  // charging rate in typecd structured metrics.
   metrics::structured::events::usb_quality::UsbPdConnect()
       .SetBootId(std::move(boot_id))
       .SetUsb2ConnectionId(std::move(usb2_id))
