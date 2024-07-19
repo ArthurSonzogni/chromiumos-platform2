@@ -1700,10 +1700,16 @@
         Random ID generated at boot time to detect reboots.
       </summary>
     </metric>
-    <metric name="ConnectionId" type="hmac-string">
+    <metric name="Usb2ConnectionId" type="hmac-string">
       <summary>
         Unique device connection ID based on boot information, busnum and
-        devnum.
+        devnum for USB 2.0 devices.
+      </summary>
+    </metric>
+    <metric name="Usb3ConnectionId" type="hmac-string">
+      <summary>
+        Unique device connection ID based on boot information, busnum and
+        devnum for USB 3.2 devices.
       </summary>
     </metric>
     <metric name="VendorId" type="int">
@@ -1768,10 +1774,16 @@
         Random ID generated at boot time to detect reboots.
       </summary>
     </metric>
-    <metric name="ConnectionId" type="hmac-string">
+    <metric name="Usb2ConnectionId" type="hmac-string">
       <summary>
         Unique device connection ID based on boot information, busnum and
-        devnum.
+        devnum for USB 2.0 devices.
+      </summary>
+    </metric>
+    <metric name="Usb3ConnectionId" type="hmac-string">
+      <summary>
+        Unique device connection ID based on boot information, busnum and
+        devnum for USB 3.2 devices.
       </summary>
     </metric>
     <metric name="VendorId" type="int">
