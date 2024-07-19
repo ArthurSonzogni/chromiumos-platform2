@@ -13,20 +13,20 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace diagnostics {
 
 class LibevdevWrapper;
 
-class StylusGarageEvdevDelegate final : public EvdevUtil::Delegate {
+class StylusGarageEvdevDelegate final : public EvdevMonitor::Delegate {
  public:
   explicit StylusGarageEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::StylusGarageObserver>
           observer);
 
-  // EvdevUtil::Delegate overrides.
+  // EvdevMonitor::Delegate overrides.
   bool IsTarget(LibevdevWrapper* dev) override;
   void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
   void InitializationFail(uint32_t custom_reason,

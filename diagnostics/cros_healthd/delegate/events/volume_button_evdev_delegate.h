@@ -13,20 +13,20 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace diagnostics {
 
 class LibevdevWrapper;
 
-class VolumeButtonEvdevDelegate final : public EvdevUtil::Delegate {
+class VolumeButtonEvdevDelegate final : public EvdevMonitor::Delegate {
  public:
   explicit VolumeButtonEvdevDelegate(
       mojo::PendingRemote<ash::cros_healthd::mojom::VolumeButtonObserver>
           observer);
 
-  // EvdevUtil::Delegate overrides.
+  // EvdevMonitor::Delegate overrides.
   bool IsTarget(LibevdevWrapper* dev) override;
   void FireEvent(const input_event& event, LibevdevWrapper* dev) override;
   void InitializationFail(uint32_t custom_reason,

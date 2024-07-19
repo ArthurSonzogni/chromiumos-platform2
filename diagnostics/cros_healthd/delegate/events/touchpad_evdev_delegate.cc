@@ -4,8 +4,8 @@
 
 #include "diagnostics/cros_healthd/delegate/events/touchpad_evdev_delegate.h"
 
-#include <linux/input.h>
 #include <linux/input-event-codes.h>
+#include <linux/input.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"

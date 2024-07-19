@@ -6,6 +6,7 @@ source_set("utils") {
   sources = [
     "display_utils.cc",
     "edid.cc",
+    "evdev_monitor.cc",
     "evdev_utils.cc",
     "libevdev_wrapper_impl.cc",
     "ndt_client.cc",
@@ -30,6 +31,7 @@ if (use.test) {
   source_set("test") {
     sources = [
       "edid_test.cc",
+      "evdev_monitor_test.cc",
       "evdev_utils_test.cc",
       "ndt_client_test.cc",
       "psr_cmd_test.cc",

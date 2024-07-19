@@ -62,7 +62,7 @@
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
-#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/delegate/utils/ndt_client.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -198,12 +198,12 @@ bool HasMissingDrmField(
 namespace diagnostics {
 namespace {
 
-void MonitorEvdevEvents(std::unique_ptr<EvdevUtil::Delegate> delegate,
+void MonitorEvdevEvents(std::unique_ptr<EvdevMonitor::Delegate> delegate,
                         bool allow_multiple_devices = false) {
   // Long-run method. The following object keeps alive until the process
   // terminates.
-  EvdevUtil* evdev_util = new EvdevUtil(std::move(delegate));
-  evdev_util->StartMonitoring(allow_multiple_devices);
+  EvdevMonitor* evdev_monitor = new EvdevMonitor(std::move(delegate));
+  evdev_monitor->StartMonitoring(allow_multiple_devices);
 }
 
 }  // namespace
