@@ -56,10 +56,12 @@ bool ResolvConf::Emit() {
   const auto name_servers =
       !dns_proxy_addrs_.empty() ? dns_proxy_addrs_ : name_servers_;
   if (name_servers.empty()) {
-    LOG(WARNING) << "DNS list is empty";
+    LOG(WARNING) << "Setting resolv.conf to []";
     base::WriteFile(path_, /*data=*/"", /*size=*/0);
     return true;
   }
+  LOG(INFO) << "Setting resolv.conf to [" << base::JoinString(name_servers, ",")
+            << "]";
 
   std::vector<std::string> lines;
   for (const auto& server : name_servers) {
