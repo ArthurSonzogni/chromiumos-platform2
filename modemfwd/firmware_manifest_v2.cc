@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "modemfwd/firmware_manifest.h"
-
 #include <optional>
 #include <utility>
 
@@ -12,7 +10,7 @@
 #include <brillo/proto_file_io.h>
 
 #include "modemfwd/firmware_directory.h"
-
+#include "modemfwd/firmware_manifest.h"
 #include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
 namespace modemfwd {
@@ -24,6 +22,24 @@ bool ParseDevice(const Device& device,
                  std::map<std::string, Dlc>* dlc_per_variant) {
   if (!device.variant().empty() && device.has_dlc())
     dlc_per_variant->emplace(device.variant(), device.dlc());
+
+  // Store this device's recovery metadata location
+  if (device.has_recovery_directory()) {
+    auto recovery_directory = device.recovery_directory();
+    if (recovery_directory.filename().empty() ||
+        !Compression_IsValid(recovery_directory.compression())) {
+      LOG(ERROR) << "Found malformed recovery file in manifest";
+      return false;
+    }
+
+    auto compression =
+        ToFirmwareFileInfoCompression(recovery_directory.compression());
+    auto recovery_info = std::make_unique<FirmwareFileInfo>(
+        recovery_directory.filename(), "0", compression.value());
+    out_cache->recovery_directory = recovery_info.get();
+    out_cache->all_files.push_back(std::move(recovery_info));
+  }
+
   // Sort main firmware entries by version. Ensure the versions are
   // all separate.
   std::map<std::string, std::unique_ptr<FirmwareFileInfo>> main_firmware_infos;

@@ -72,6 +72,11 @@ void FirmwareDirectoryStub::AddCarrierFirmware(const std::string& device_id,
       std::make_pair(std::make_pair(device_id, carrier_id), info));
 }
 
+void FirmwareDirectoryStub::AddRecoveryDirectory(const std::string& device_id,
+                                                 FirmwareFileInfo info) {
+  recovery_info_.insert(std::make_pair(device_id, info));
+}
+
 FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
     const std::string& device_id, std::string* carrier_id) {
   FirmwareDirectory::Files res;
@@ -98,6 +103,11 @@ FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
   if (!res.main_firmware.has_value() &&
       GetValue(main_fw_info_, device_id, &info)) {
     res.main_firmware = info;
+  }
+
+  if (!res.recovery_directory.has_value() &&
+      GetValue(recovery_info_, device_id, &info)) {
+    res.recovery_directory = info;
   }
 
   auto it = assoc_fw_info_.begin();

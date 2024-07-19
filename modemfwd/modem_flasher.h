@@ -27,6 +27,7 @@ struct FlashConfig {
   std::string carrier_id;
   std::vector<FirmwareConfig> fw_configs;
   std::map<std::string, std::unique_ptr<FirmwareFile>> files;
+  std::vector<std::unique_ptr<FirmwareFile>> recovery_files;
   base::ScopedTempDir temp_extraction_dir_;
 };
 

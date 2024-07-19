@@ -54,6 +54,9 @@ constexpr char kDevFirmwareTag[] = "dev";
 constexpr char kDevFirmwarePath[] = "dev_firmware";
 constexpr char kDevFirmwareVersion[] = "000.012";
 
+// Recovery payloads
+constexpr char kRecoveryDirectory[] = "modem_name/recovery";
+
 }  // namespace
 
 namespace modemfwd {
@@ -484,6 +487,20 @@ TEST_F(FirmwareDirectoryTest, AssocEntryParsingV2) {
   EXPECT_FALSE(dev_it == res.assoc_firmware.end());
   EXPECT_EQ(dev_it->second.firmware_path, kDevFirmwarePath);
   EXPECT_EQ(dev_it->second.version, kDevFirmwareVersion);
+}
+
+TEST_F(FirmwareDirectoryTest, FindFirmwareWithRecoveryV2) {
+  const base::FilePath kManifest(
+      "test_protos/find_firmware_with_recovery_v2.textproto");
+  SetUpDirectory(kManifest);
+
+  std::string carrier_a(kCarrierA);
+  FirmwareDirectory::Files res =
+      firmware_directory_->FindFirmware(kDeviceId, &carrier_a);
+
+  EXPECT_TRUE(res.recovery_directory.has_value());
+  const FirmwareFileInfo& recovery_info = res.recovery_directory.value();
+  EXPECT_EQ(kRecoveryDirectory, recovery_info.firmware_path);
 }
 
 }  // namespace modemfwd

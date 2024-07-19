@@ -16,11 +16,13 @@
 #include <chromeos/switches/modemfwd_switches.h>
 #include <dbus/modemfwd/dbus-constants.h>
 
+#include "base/files/file_path.h"
 #include "modemfwd/error.h"
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
+#include "modemfwd/recovery_file.h"
 
 namespace modemfwd {
 
@@ -147,6 +149,14 @@ class ModemFlasherImpl : public ModemFlasher {
 
     if (!res->temp_extraction_dir_.CreateUniqueTempDir()) {
       LOG(ERROR) << "Failed to create temporary directory for firmware";
+      return nullptr;
+    }
+
+    if (!PrepareRecoveryFiles(modem->GetHelper(), files, firmware_directory_,
+                              res->temp_extraction_dir_.GetPath(),
+                              &res->recovery_files)) {
+      Error::AddTo(err, FROM_HERE, kErrorResultFailedToPrepareFirmwareFile,
+                   base::StringPrintf("Failed to prepare recovery files"));
       return nullptr;
     }
 

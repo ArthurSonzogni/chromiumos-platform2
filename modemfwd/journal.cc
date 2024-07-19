@@ -24,6 +24,7 @@
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/journal_entry.pb.h"
+#include "modemfwd/recovery_file.h"
 #include "modemfwd/scoped_temp_file.h"
 
 namespace modemfwd {
@@ -80,6 +81,7 @@ bool RestartOperation(const JournalEntry& entry,
   std::vector<std::string> paths_for_logging;
   // Keep a reference to all temporary uncompressed files.
   std::vector<std::unique_ptr<FirmwareFile>> all_files;
+  std::vector<std::unique_ptr<FirmwareFile>> recovery_files;
 
   base::ScopedTempDir temp_extraction_dir;
   if (!temp_extraction_dir.CreateUniqueTempDir()) {
@@ -145,6 +147,12 @@ bool RestartOperation(const JournalEntry& entry,
   }
   if (flashed_fw.size() != entry.type_size() || !flashed_fw.size()) {
     LOG(ERROR) << "Malformed journal entry with invalid types.";
+    return false;
+  }
+
+  // Prepare any files needed for recovery
+  if (!PrepareRecoveryFiles(helper, res, firmware_dir,
+                            temp_extraction_dir.GetPath(), &recovery_files)) {
     return false;
   }
 

@@ -24,6 +24,7 @@ class FirmwareDirectory {
     std::optional<FirmwareFileInfo> oem_firmware;
     std::optional<FirmwareFileInfo> carrier_firmware;
     std::map<std::string, FirmwareFileInfo> assoc_firmware;
+    std::optional<FirmwareFileInfo> recovery_directory;
   };
 
   static const char kGenericCarrierId[];

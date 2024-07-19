@@ -17,6 +17,7 @@
 
 #include "modemfwd/firmware_directory_stub.h"
 #include "modemfwd/mock_modem.h"
+#include "modemfwd/mock_modem_helper.h"
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -70,6 +71,9 @@ constexpr char kApFirmware2Version[] = "def.g50";
 constexpr char kDevFirmwareTag[] = "dev";
 constexpr char kDevFirmwarePath[] = "dev_firmware";
 constexpr char kDevFirmwareVersion[] = "000.012";
+
+// Recovery payloads
+constexpr char kRecoveryDirectory[] = "modem_name/recovery";
 
 }  // namespace
 
@@ -137,6 +141,12 @@ class ModemFlasherTest : public ::testing::Test {
                                             firmware_info);
   }
 
+  void AddRecoveryDirectory(const std::string& device_id,
+                            const base::FilePath& recovery_directory) {
+    FirmwareFileInfo recovery_info(recovery_directory.value(), "0");
+    firmware_directory_->AddRecoveryDirectory(kDeviceId1, recovery_info);
+  }
+
   std::unique_ptr<MockModem> GetDefaultModem() {
     auto modem = std::make_unique<MockModem>();
     ON_CALL(*modem, GetDeviceId()).WillByDefault(Return(kDeviceId1));
@@ -148,6 +158,7 @@ class ModemFlasherTest : public ::testing::Test {
         .WillByDefault(Return(kOemFirmware1Version));
     ON_CALL(*modem, GetCarrierFirmwareId()).WillByDefault(Return(""));
     ON_CALL(*modem, GetCarrierFirmwareVersion()).WillByDefault(Return(""));
+    ON_CALL(*modem, GetHelper()).WillByDefault(Return(&helper_));
     modems_seen_since_oobe_prefs_->Create(kDeviceId1);
     return modem;
   }
@@ -161,6 +172,7 @@ class ModemFlasherTest : public ::testing::Test {
 
   brillo::ErrorPtr err;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+  MockModemHelper helper_;
 
   base::ScopedTempDir prefs_dir_;
   std::unique_ptr<Prefs> modems_seen_since_oobe_prefs_;
@@ -652,6 +664,39 @@ TEST_F(ModemFlasherTest, OverrideCarrierGenericFallback) {
   ASSERT_EQ(cfg->fw_configs, generic_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), generic_firmware);
   ASSERT_EQ(err.get(), nullptr);
+}
+
+TEST_F(ModemFlasherTest, RecoverySectionTriggersRecoveryQuery) {
+  std::vector<base::FilePath> recovery_directories = {
+      base::FilePath("test_dir_1"), base::FilePath("test_dir_2")};
+
+  const base::FilePath recovery_directory(kRecoveryDirectory);
+  AddRecoveryDirectory(kDeviceId1, recovery_directory);
+
+  // We have recovery information, ensure we query for files required
+  auto modem = GetDefaultModem();
+  ON_CALL(helper_, GetRecoveryFileList(_))
+      .WillByDefault(Return(recovery_directories));
+  EXPECT_CALL(helper_, GetRecoveryFileList(_)).Times(1);
+
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
+
+  // Flash config will include the files returned by the GetRecoveryFileList
+  // call, followed by the recovery directory itself.
+  recovery_directories.emplace_back(base::FilePath(kRecoveryDirectory));
+  ASSERT_EQ(cfg->recovery_files.size(), recovery_directories.size());
+  for (int i = 0; i < cfg->recovery_files.size(); i++) {
+    ASSERT_EQ(cfg->recovery_files[i]->path_on_filesystem(),
+              recovery_directories[i]);
+  }
+}
+
+TEST_F(ModemFlasherTest, NoRecoverySectionHasNoRecoveryQuery) {
+  // With no recovery information, ensure we don't query for files required
+  auto modem = GetDefaultModem();
+  EXPECT_CALL(helper_, GetRecoveryFileList(_)).Times(0);
+
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 }
 
 }  // namespace modemfwd

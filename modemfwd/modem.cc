@@ -251,6 +251,8 @@ class ModemImpl : public Modem {
 
   std::string GetCarrierId() const override { return carrier_id_; }
 
+  ModemHelper* GetHelper() const override { return helper_; }
+
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;
   }
@@ -466,6 +468,8 @@ class StubModem : public Modem {
   std::string GetEquipmentId() const override { return equipment_id_; }
 
   std::string GetCarrierId() const override { return ""; }
+
+  ModemHelper* GetHelper() const override { return helper_; }
 
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;

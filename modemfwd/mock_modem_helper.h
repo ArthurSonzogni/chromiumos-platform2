@@ -39,6 +39,11 @@ class MockModemHelper : public ModemHelper {
               GetHeartbeatConfig,
               (),
               (override));
+
+  MOCK_METHOD(std::vector<base::FilePath>,
+              GetRecoveryFileList,
+              (const base::FilePath& metadata_directory),
+              (override));
 };
 
 }  // namespace modemfwd

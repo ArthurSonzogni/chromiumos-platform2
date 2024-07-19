@@ -142,6 +142,7 @@ class FlashTaskTest : public ::testing::Test {
   std::unique_ptr<FlashConfig> GetConfig(const std::string& carrier_id,
                                          std::vector<FirmwareConfig> fw_cfgs) {
     std::map<std::string, std::unique_ptr<FirmwareFile>> files;
+    std::vector<std::unique_ptr<FirmwareFile>> recovery_files;
 
     base::ScopedTempDir temp_extraction_dir;
     EXPECT_TRUE(temp_extraction_dir.CreateUniqueTempDir());
@@ -152,9 +153,9 @@ class FlashTaskTest : public ::testing::Test {
                         FirmwareFileInfo(fw_cfg.path.value(), fw_cfg.version));
       files[fw_cfg.fw_type] = std::move(file);
     }
-    return std::make_unique<FlashConfig>(carrier_id, std::move(fw_cfgs),
-                                         std::move(files),
-                                         std::move(temp_extraction_dir));
+    return std::make_unique<FlashConfig>(
+        carrier_id, std::move(fw_cfgs), std::move(files),
+        std::move(recovery_files), std::move(temp_extraction_dir));
   }
 
   brillo::ErrorPtr RunTask(FlashTask* task,

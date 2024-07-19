@@ -45,6 +45,10 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     const DeviceFirmwareCache& cache = device_it->second;
     FirmwareFileInfo info;
 
+    // Note the recovery metadata directory for this variant, if it exists
+    if (cache.recovery_directory.has_value())
+      result.recovery_directory = *cache.recovery_directory.value();
+
     // Null carrier ID -> just go for generic main and OEM firmwares.
     if (!carrier_id) {
       if (FindSpecificFirmware(cache.main_firmware, kGenericCarrierId, &info))

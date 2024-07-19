@@ -56,6 +56,9 @@ class Modem {
   // necessarily a readable name or e.g. MCC/MNC pair.
   virtual std::string GetCarrierId() const = 0;
 
+  // Get the helper associated with this modem
+  virtual ModemHelper* GetHelper() const = 0;
+
   // Information about this modem's installed firmware.
   virtual std::string GetMainFirmwareVersion() const = 0;
   virtual std::string GetOemFirmwareVersion() const = 0;

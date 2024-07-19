@@ -53,6 +53,11 @@ message Dlc {
   bool is_dlc_empty = 2;
 }
 
+message RecoveryMetadataDirectory {
+  string filename = 1;
+  Compression compression = 2;
+}
+
 message Device {
   string device_id = 1;
   string variant = 2;
@@ -61,6 +66,7 @@ message Device {
   repeated CarrierFirmwareV2 carrier_firmware = 5;
   repeated OemFirmwareV2 oem_firmware = 6;
   Dlc dlc = 7;
+  RecoveryMetadataDirectory recovery_directory = 8;
 }
 
 message FirmwareManifestV2 {

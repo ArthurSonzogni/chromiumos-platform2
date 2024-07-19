@@ -34,6 +34,9 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
                           const std::string& carrier_id,
                           FirmwareFileInfo info);
 
+  void AddRecoveryDirectory(const std::string& device_id,
+                            FirmwareFileInfo info);
+
   // modemfwd::FirmwareDirectory overrides.
   FirmwareDirectory::Files FindFirmware(const std::string& device_id,
                                         std::string* carrier_id) override;
@@ -68,6 +71,7 @@ class FirmwareDirectoryStub : public FirmwareDirectory {
   CarrierFirmwareMap oem_fw_info_for_carrier_;
   CarrierFirmwareMap carrier_fw_info_;
   base::FilePath fw_manifest_directory_;
+  std::map<std::string, FirmwareFileInfo> recovery_info_;
 };
 
 }  // namespace modemfwd

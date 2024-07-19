@@ -14,7 +14,6 @@
 #include <base/files/file_path.h>
 
 #include "modemfwd/firmware_file_info.h"
-
 #include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
 namespace modemfwd {
@@ -52,6 +51,8 @@ struct DeviceFirmwareCache {
   using AssociatedFirmware = std::map<std::string, FirmwareFileInfo*>;
   // Associated firmware should be keyed on a main firmware file.
   std::map<FirmwareFileInfo*, AssociatedFirmware> assoc_firmware;
+
+  std::optional<FirmwareFileInfo*> recovery_directory = std::nullopt;
 };
 
 using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;
