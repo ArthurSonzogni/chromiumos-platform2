@@ -1,56 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-	<!DOCTYPE Aggregator [<!ENTITY otherfile SYSTEM "mtl_common.xml">]>
-	<TELEM:Aggregator xmlns="http://schemas.intel.com/telemetry/base/1/"
+<!DOCTYPE Aggregator [
+<!ENTITY otherfile SYSTEM "mtl_common.xml">]>
+<TELEM:Aggregator
+	xmlns="http://schemas.intel.com/telemetry/base/1/"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:TELC="http://schemas.intel.com/telemetry/base/common"
 	xmlns:TELEM="http://schemas.intel.com/telemetry/base/aggregator"
 	xmlns:xi="http://www.w3.org/2001/XInclude"
  	xsi:schemaLocation="http://schemas.intel.com/telemetry/base/aggregator telemetryAggregator.xsd">
-
-	<TELC:DataTypesInclude>&otherfile;</TELC:DataTypesInclude>
+	<TELC:DataTypesInclude>tst_aggregator_interface.xml</TELC:DataTypesInclude>
 	<TELEM:name>MTL</TELEM:name>
 	<TELEM:description>MTL M/P PMT Normal telemetry in Punit samples definition and transformation rules</TELEM:description>
 	<TELEM:uniqueid>0x130670B2</TELEM:uniqueid>
 	<TELEM:productid>MTL</TELEM:productid>
 	<TELEM:address>0</TELEM:address>
 	<TELEM:SampleGroup name="Container_0" sampleID="0" sampleGroupID="Container_0">
-	<TELC:description>Groupname 0x62e8</TELC:description>
-	<TELC:length>64</TELC:length>
-	<TELC:sample name="VPU_MEMORY_BW" datatypeIDREF="tbw_KB" sampleID="VPU_MEMORY_BW">
-		<TELC:description>Average DDR BW over a time interval (VPU counts in KB)</TELC:description>
-		<TELC:sampleSubGroup>VPU_MEMORY_BW</TELC:sampleSubGroup>
-		<TELC:sampleType>Counter</TELC:sampleType>
-		<TELC:size>32</TELC:size>
-		<TELC:lsb>0</TELC:lsb>
-		<TELC:msb>31</TELC:msb>
-	</TELC:sample>
-	<TELC:sample name="VPU_D0_ACTIVE_RESIDENCY" datatypeIDREF="txtal_time" sampleID="VPU_D0_ACTIVE_RESIDENCY">
-		<TELC:description>Cycle count of amount of times VPU is in D0 active state</TELC:description>
-		<TELC:sampleSubGroup>VPU_D0_ACTIVE_RESIDENCY</TELC:sampleSubGroup>
-		<TELC:sampleType>Counter</TELC:sampleType>
-		<TELC:size>32</TELC:size>
-		<TELC:lsb>32</TELC:lsb>
-		<TELC:msb>63</TELC:msb>
-	</TELC:sample>
+		<TELC:description>Groupname 0x6010</TELC:description>
+		<TELC:length>64</TELC:length>
+		<TELC:sample name="PACKAGE_CSTATE_WAKE_REFCNT" datatypeIDREF="tevent_counter" sampleID="PACKAGE_CSTATE_WAKE_REFCNT">
+			<TELC:description>Reference count for wake cause counters. To calculate percent for each wake reason, divide by this number.</TELC:description>
+			<TELC:sampleSubGroup>PACKAGE_CSTATE_WAKE_REFCNT</TELC:sampleSubGroup>
+			<TELC:sampleType>Counter</TELC:sampleType>
+			<TELC:size>32</TELC:size>
+			<TELC:lsb>32</TELC:lsb>
+			<TELC:msb>63</TELC:msb>
+		</TELC:sample>
 	</TELEM:SampleGroup>
 	<TELEM:SampleGroup name="Container_1" sampleID="1" sampleGroupID="Container_1">
-	<TELC:description>Groupname 0x62f0</TELC:description>
-	<TELC:length>64</TELC:length>
-	<TELC:sample name="VPU_D0_ACTIVE_ENTRY_COUNT" datatypeIDREF="tevent_counter" sampleID="VPU_D0_ACTIVE_ENTRY_COUNT">
-		<TELC:description>Number of times VPU enters into D0 active state</TELC:description>
-		<TELC:sampleSubGroup>VPU_D0_ACTIVE_ENTRY_COUNT</TELC:sampleSubGroup>
-		<TELC:sampleType>Counter</TELC:sampleType>
-		<TELC:size>32</TELC:size>
-		<TELC:lsb>0</TELC:lsb>
-		<TELC:msb>31</TELC:msb>
-	</TELC:sample>
-	<TELC:sample name="VPU_D0i2_ACTIVE_RESIDENCY" datatypeIDREF="txtal_time" sampleID="VPU_D0i2_ACTIVE_RESIDENCY">
-		<TELC:description>Cycle count of amount of time VPU is in D0I2 active state</TELC:description>
-		<TELC:sampleSubGroup>VPU_D0i2_ACTIVE_RESIDENCY</TELC:sampleSubGroup>
-		<TELC:sampleType>Counter</TELC:sampleType>
-		<TELC:size>32</TELC:size>
-		<TELC:lsb>32</TELC:lsb>
-		<TELC:msb>63</TELC:msb>
-	</TELC:sample>
+		<TELC:description>Groupname 0x62e8</TELC:description>
+		<TELC:length>64</TELC:length>
+		<TELC:sample name="VPU_MEMORY_BW" datatypeIDREF="tbw_KB" sampleID="VPU_MEMORY_BW">
+			<TELC:description>Average DDR BW over a time interval (VPU counts in KB)</TELC:description>
+			<TELC:sampleSubGroup>VPU_MEMORY_BW</TELC:sampleSubGroup>
+			<TELC:sampleType>Counter</TELC:sampleType>
+			<TELC:size>32</TELC:size>
+			<TELC:lsb>0</TELC:lsb>
+			<TELC:msb>31</TELC:msb>
+		</TELC:sample>
 	</TELEM:SampleGroup>
-	</TELEM:Aggregator>
+	<TELEM:SampleGroup name="Container_2" sampleID="2" sampleGroupID="Container_2">
+		<TELC:description>Groupname 0x62f0</TELC:description>
+		<TELC:length>64</TELC:length>
+		<TELC:sample name="VPU_D0_ACTIVE_ENTRY_COUNT" datatypeIDREF="tevent_counter" sampleID="VPU_D0_ACTIVE_ENTRY_COUNT">
+			<TELC:description>Number of times VPU enters into D0 active state</TELC:description>
+			<TELC:sampleSubGroup>VPU_D0_ACTIVE_ENTRY_COUNT</TELC:sampleSubGroup>
+			<TELC:sampleType>Counter</TELC:sampleType>
+			<TELC:size>32</TELC:size>
+			<TELC:lsb>0</TELC:lsb>
+			<TELC:msb>31</TELC:msb>
+		</TELC:sample>
+		<TELC:sample name="VPU_D0i2_ACTIVE_RESIDENCY" datatypeIDREF="txtal_time" sampleID="VPU_D0i2_ACTIVE_RESIDENCY">
+			<TELC:description>Cycle count of amount of time VPU is in D0I2 active state</TELC:description>
+			<TELC:sampleSubGroup>VPU_D0i2_ACTIVE_RESIDENCY</TELC:sampleSubGroup>
+			<TELC:sampleType>Counter</TELC:sampleType>
+			<TELC:size>32</TELC:size>
+			<TELC:lsb>32</TELC:lsb>
+			<TELC:msb>63</TELC:msb>
+		</TELC:sample>
+	</TELEM:SampleGroup>
+	<TELEM:SampleGroup name="Container_3" sampleID="3" sampleGroupID="Container_3">
+		<TELC:description>Groupname 0x6380</TELC:description>
+		<TELC:length>64</TELC:length>
+		<TELC:sample name="PCH_TEMP" datatypeIDREF="ttemperature" sampleID="PCH_TEMP">
+			<TELC:description>Current PCH temperature</TELC:description>
+			<TELC:sampleSubGroup>SOC_TEMPERATURES</TELC:sampleSubGroup>
+			<TELC:sampleType>Snapshot</TELC:sampleType>
+			<TELC:size>8</TELC:size>
+			<TELC:lsb>0</TELC:lsb>
+			<TELC:msb>7</TELC:msb>
+		</TELC:sample>
+	</TELEM:SampleGroup>
+	<TELEM:SampleGroup name="Container_4" sampleID="4" sampleGroupID="Container_4">
+		<TELC:description>Groupname 0x6068</TELC:description>
+		<TELC:length>64</TELC:length>
+		<TELC:sample name="PACKAGE_CSTATE_WAKE_MEM_RSRC" datatypeIDREF="tpkgc_wake_cause" sampleID="PACKAGE_CSTATE_WAKE_MEM_RSRC">
+			<TELC:description>Package C-state wake from NONSNOOP.</TELC:description>
+			<TELC:sampleSubGroup>PACKAGE_CSTATE_WAKE_MEM_RSRC</TELC:sampleSubGroup>
+			<TELC:sampleType>Counter</TELC:sampleType>
+			<TELC:size>32</TELC:size>
+			<TELC:lsb>0</TELC:lsb>
+			<TELC:msb>31</TELC:msb>
+		</TELC:sample>
+		<TELC:sample name="PACKAGE_CSTATE_WAKE_RING_RSRC" datatypeIDREF="tpkgc_wake_cause" sampleID="PACKAGE_CSTATE_WAKE_RING_RSRC">
+			<TELC:description>Package C-state wake from RING_CF.</TELC:description>
+			<TELC:sampleSubGroup>PACKAGE_CSTATE_WAKE_RING_RSRC</TELC:sampleSubGroup>
+			<TELC:sampleType>Counter</TELC:sampleType>
+			<TELC:size>32</TELC:size>
+			<TELC:lsb>32</TELC:lsb>
+			<TELC:msb>63</TELC:msb>
+		</TELC:sample>
+	</TELEM:SampleGroup>
+</TELEM:Aggregator>

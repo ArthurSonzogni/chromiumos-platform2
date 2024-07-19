@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libpmt/pmt.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,8 +12,6 @@
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "libpmt/pmt.h"
 
 namespace pmt {
 namespace {
@@ -22,6 +22,7 @@ static constexpr Guid kId = 0x130671b2;
 static constexpr Guid kId1 = 0x130670b2;
 static constexpr Guid kId2 = 0x1a067102;
 static constexpr Guid kId3 = 0x1a067002;
+static constexpr char kTelemDataDir[] = "testdata/pmt.xml";
 static constexpr char kTelemDataPath[] = "testdata/test_telem_data";
 static constexpr size_t kTelemDataPathSize = 3352;
 
@@ -40,12 +41,17 @@ class pmtTest : public ::testing::Test {
   void SetUp() override {
     // Will be deleted by the unique_ptr.
     data_mock_ = new DataInterfaceMock();
+    dec_data_mock_ = new DataInterfaceMock();
     pmt_ = std::make_unique<PmtCollector>(
         std::unique_ptr<PmtDataInterface>(data_mock_));
+    pmt_dec_ = std::make_unique<PmtDecoder>(
+        std::unique_ptr<PmtDataInterface>(dec_data_mock_));
   }
 
   DataInterfaceMock* data_mock_;
+  DataInterfaceMock* dec_data_mock_;
   std::unique_ptr<PmtCollector> pmt_;
+  std::unique_ptr<PmtDecoder> pmt_dec_;
 };
 
 TEST_F(pmtTest, GuidDetection) {
@@ -265,6 +271,74 @@ TEST_F(pmtTest, TakeSnapshotHandleBadFilePath) {
 TEST_F(pmtTest, HandleTakesnapshotBeforeSetup) {
   auto result = pmt_->TakeSnapshot();
   ASSERT_EQ(result, -EPERM);
+}
+
+TEST_F(pmtTest, DecodingDetectMetadata) {
+  base::FilePath pmt_xml_path(kTelemDataDir);
+  EXPECT_CALL(*dec_data_mock_, GetMetadataMappingsFile())
+      .WillOnce(Return(pmt_xml_path));
+  auto result = pmt_dec_->DetectMetadata();
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], 0x130670b2);
+}
+
+TEST_F(pmtTest, DecodingDetectMetadataBadFilePath) {
+  base::FilePath pmt_xml_path("bad/path");
+  EXPECT_CALL(*dec_data_mock_, GetMetadataMappingsFile())
+      .WillOnce(Return(pmt_xml_path));
+  auto result = pmt_dec_->DetectMetadata();
+  ASSERT_EQ(result.size(), 0);
+}
+
+TEST_F(pmtTest, DecodingSetupMetadata) {
+  base::FilePath pmt_xml_path(kTelemDataDir);
+  EXPECT_CALL(*dec_data_mock_, GetMetadataMappingsFile())
+      .WillRepeatedly(Return(pmt_xml_path));
+  auto result = pmt_dec_->DetectMetadata();
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], 0x130670b2);
+  auto setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  ASSERT_EQ(setup_done, 0);
+
+  setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  ASSERT_EQ(setup_done, -EBUSY);
+}
+
+TEST_F(pmtTest, DecodingSetupMetadataUnsupportedGuid) {
+  base::FilePath pmt_xml_path(kTelemDataDir);
+  EXPECT_CALL(*dec_data_mock_, GetMetadataMappingsFile())
+      .WillRepeatedly(Return(pmt_xml_path));
+  auto result = pmt_dec_->DetectMetadata();
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], 0x130670b2);
+  auto setup_done = pmt_dec_->SetUpDecoding({0xcafebabe});
+  ASSERT_EQ(setup_done, -EINVAL);
+
+  // Next setup with a proper GUID should succeed.
+  setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  ASSERT_EQ(setup_done, 0);
+}
+
+TEST_F(pmtTest, DecodingCleanup) {
+  base::FilePath pmt_xml_path(kTelemDataDir);
+  EXPECT_CALL(*dec_data_mock_, GetMetadataMappingsFile())
+      .WillRepeatedly(Return(pmt_xml_path));
+
+  auto setup_done = pmt_dec_->CleanUpDecoding();
+  ASSERT_EQ(setup_done, -ENOENT);
+
+  auto result = pmt_dec_->DetectMetadata();
+  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result[0], 0x130670b2);
+
+  setup_done = pmt_dec_->CleanUpDecoding();
+  ASSERT_EQ(setup_done, -ENOENT);
+
+  setup_done = pmt_dec_->SetUpDecoding({0x130670b2});
+  ASSERT_EQ(setup_done, 0);
+
+  setup_done = pmt_dec_->CleanUpDecoding();
+  ASSERT_EQ(setup_done, 0);
 }
 
 }  // namespace

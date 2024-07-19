@@ -17,4 +17,25 @@ xsi:schemaLocation="http://schemas.intel.com/telemetry/base/common telemetry_com
             <TELC:symbol>%</TELC:symbol>
         </TELC:units>
 </TELC:dataType>
+<TELC:dataType name="ttemperature" datatypeID="ttemperature">
+		<TELC:dataclass>status</TELC:dataclass>
+			<TELC:units name="celcius">
+				<TELC:symbol>C</TELC:symbol>
+			</TELC:units>
+		<TELC:format>S8.7.0</TELC:format>
+	</TELC:dataType>
+    <TELC:dataType name="tbw_KB" datatypeID="tbw_KB">
+		<TELC:dataclass>counter</TELC:dataclass>
+			<TELC:units name="megabytes">
+				<TELC:symbol>MB</TELC:symbol>
+			</TELC:units>
+		<TELC:format>ANY</TELC:format>
+	</TELC:dataType>
+    <TELC:dataType name="tevent_counter" datatypeID="tevent_counter">
+		<TELC:dataclass>counter</TELC:dataclass>
+			<TELC:units name="count">
+				<TELC:symbol></TELC:symbol>
+			</TELC:units>
+		<TELC:format>ANY</TELC:format>
+	</TELC:dataType>
 </TELC:DataTypes>

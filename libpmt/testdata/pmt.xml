@@ -1,4 +1,3 @@
-const OVERVIEW_XML=`
 <pmt>
 	<lastupdated>2023-12-21</lastupdated>
 	<mappings>
@@ -184,5 +183,3 @@ const OVERVIEW_XML=`
 		</mapping>
 	</mappings>
 </pmt>
-`
-
