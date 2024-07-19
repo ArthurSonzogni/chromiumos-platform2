@@ -275,6 +275,10 @@ WiFi::WiFi(Manager* manager,
 }
 
 WiFi::~WiFi() {
+  // Remove interface from supplicant.
+  if (supplicant_present_ && supplicant_interface_proxy_) {
+    supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
+  }
   netlink_manager_->RemoveBroadcastHandler(netlink_handler_);
 }
 
