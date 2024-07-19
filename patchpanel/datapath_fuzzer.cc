@@ -22,35 +22,12 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_process_runner.h"
 #include "patchpanel/firewall.h"
+#include "patchpanel/noop_system.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/subnet.h"
-#include "patchpanel/system.h"
 
 namespace patchpanel {
 namespace {
-
-// Always succeeds
-class NoopSystem : public System {
- public:
-  NoopSystem() = default;
-  NoopSystem(const NoopSystem&) = delete;
-  NoopSystem& operator=(const NoopSystem&) = delete;
-  ~NoopSystem() override = default;
-
-  int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
-    return 0;
-  }
-  int Ioctl(int fd, ioctl_req_t request, uint64_t arg) override { return 0; }
-  int Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr) override {
-    return 0;
-  }
-  int Ioctl(int fd, ioctl_req_t request, struct rtentry* route) override {
-    return 0;
-  }
-  int Ioctl(int fd, ioctl_req_t request, struct in6_rtmsg* route) override {
-    return 0;
-  }
-};
 
 class Environment {
  public:
