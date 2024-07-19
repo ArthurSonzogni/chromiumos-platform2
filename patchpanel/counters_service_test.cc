@@ -270,46 +270,41 @@ bool CompareCounters(std::map<CounterKey, Counter> expected,
 
 class CountersServiceTest : public testing::Test {
  protected:
-  void SetUp() override {
-    datapath_ = std::make_unique<MockDatapath>();
-    conntrack_monitor_ = std::make_unique<MockConntrackMonitor>();
-    counters_svc_ = std::make_unique<CountersService>(datapath_.get(),
-                                                      conntrack_monitor_.get());
-  }
+  CountersServiceTest() : counters_svc_(&datapath_, &conntrack_monitor_) {}
 
   // Makes `iptables` and `ip6tables` returning |ipv4_output| and
   // |ipv6_output|, respectively. Expects an empty map from GetCounters().
   void TestBadIptablesOutput(const std::string& ipv4_output,
                              const std::string& ipv6_output) {
-    EXPECT_CALL(*datapath_,
+    EXPECT_CALL(datapath_,
                 DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
         .WillRepeatedly(Return(ipv4_output));
-    EXPECT_CALL(*datapath_,
+    EXPECT_CALL(datapath_,
                 DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
         .WillRepeatedly(Return(ipv6_output));
 
-    auto actual = counters_svc_->GetCounters({});
+    auto actual = counters_svc_.GetCounters({});
     std::map<CounterKey, Counter> expected;
     EXPECT_TRUE(CompareCounters(expected, actual));
   }
 
-  std::unique_ptr<MockDatapath> datapath_;
-  std::unique_ptr<MockConntrackMonitor> conntrack_monitor_;
-  std::unique_ptr<CountersService> counters_svc_;
+  MockDatapath datapath_;
+  MockConntrackMonitor conntrack_monitor_;
+  CountersService counters_svc_;
 };
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
   // The following commands are expected when eth0 comes up.
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_eth0"))
       .WillOnce(Return(false));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_eth0"))
       .WillOnce(Return(false));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               AddChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_eth0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               AddChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_eth0"))
       .WillOnce(Return(true));
   const struct {
@@ -412,12 +407,12 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceAdded) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(
-        *datapath_,
+        datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
                        StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
-  counters_svc_->OnPhysicalDeviceAdded("eth0");
+  counters_svc_.OnPhysicalDeviceAdded("eth0");
 }
 
 TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
@@ -435,26 +430,26 @@ TEST_F(CountersServiceTest, OnPhysicalDeviceRemoved) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(
-        *datapath_,
+        datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
                        StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
-  counters_svc_->OnPhysicalDeviceRemoved("eth0");
+  counters_svc_.OnPhysicalDeviceRemoved("eth0");
 }
 
 TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
   // The following commands are expected when tun0 comes up.
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_vpn"))
       .WillOnce(Return(false));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               CheckChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_vpn"))
       .WillOnce(Return(false));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               AddChain(IpFamily::kDual, Iptables::Table::kMangle, "rx_vpn"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               AddChain(IpFamily::kDual, Iptables::Table::kMangle, "tx_vpn"))
       .WillOnce(Return(true));
   const struct {
@@ -557,12 +552,12 @@ TEST_F(CountersServiceTest, OnVpnDeviceAdded) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(
-        *datapath_,
+        datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
                        StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
-  counters_svc_->OnVpnDeviceAdded("tun0");
+  counters_svc_.OnVpnDeviceAdded("tun0");
 }
 
 TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
@@ -580,24 +575,23 @@ TEST_F(CountersServiceTest, OnVpnDeviceRemoved) {
 
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(
-        *datapath_,
+        datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
                        StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
-  counters_svc_->OnVpnDeviceRemoved("ppp0");
+  counters_svc_.OnVpnDeviceRemoved("ppp0");
 }
 
 TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   // Makes the chain creation commands return false (we already have these
   // rules).
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               CheckChain(IpFamily::kDual, Iptables::Table::kMangle, _))
       .WillRepeatedly(Return(true));
 
   // Only the jump rules should be recreated.
-  EXPECT_CALL(*datapath_,
-              AddChain(IpFamily::kDual, Iptables::Table::kMangle, _))
+  EXPECT_CALL(datapath_, AddChain(IpFamily::kDual, Iptables::Table::kMangle, _))
       .Times(0);
   const struct {
     Iptables::Command command;
@@ -612,17 +606,17 @@ TEST_F(CountersServiceTest, OnSameDeviceAppearAgain) {
   };
   for (const auto& rule : expected_calls) {
     EXPECT_CALL(
-        *datapath_,
+        datapath_,
         ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, rule.command,
                        StrEq(rule.chain), ElementsAreArray(rule.argv), _));
   }
 
   // No fwmark matching rule should be created.
-  EXPECT_CALL(*datapath_, ModifyIptables(_, Iptables::Table::kMangle, _, _,
-                                         Contains("mark"), _))
+  EXPECT_CALL(datapath_, ModifyIptables(_, Iptables::Table::kMangle, _, _,
+                                        Contains("mark"), _))
       .Times(0);
 
-  counters_svc_->OnPhysicalDeviceAdded("eth0");
+  counters_svc_.OnPhysicalDeviceAdded("eth0");
 }
 
 TEST_F(CountersServiceTest, ChainNameLength) {
@@ -630,23 +624,23 @@ TEST_F(CountersServiceTest, ChainNameLength) {
   // iptables will reject the request. Uses Each() here for simplicity since no
   // other params could be longer than 29 for now.
   static constexpr int kMaxChainNameLength = 29;
-  EXPECT_CALL(*datapath_, ModifyChain(_, Iptables::Table::kMangle, _,
-                                      SizeIs(Lt(kMaxChainNameLength)), _))
+  EXPECT_CALL(datapath_, ModifyChain(_, Iptables::Table::kMangle, _,
+                                     SizeIs(Lt(kMaxChainNameLength)), _))
       .Times(AnyNumber());
 
   static const std::string kLongInterfaceName(IFNAMSIZ, 'a');
-  counters_svc_->OnPhysicalDeviceAdded(kLongInterfaceName);
+  counters_svc_.OnPhysicalDeviceAdded(kLongInterfaceName);
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCounters) {
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
 
-  auto actual = counters_svc_->GetCounters({});
+  auto actual = counters_svc_.GetCounters({});
 
   // The expected counters for eth0 and wlan0. All values are doubled because
   // the same output will be returned for both iptables and ip6tables in the
@@ -706,15 +700,15 @@ TEST_F(CountersServiceTest, QueryTrafficCounters) {
 }
 
 TEST_F(CountersServiceTest, QueryTrafficCountersWithFilter) {
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(kIptablesOutput));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(kIp6tablesOutput));
 
   // Only counters for eth0 should be returned. eth1 should be ignored.
-  auto actual = counters_svc_->GetCounters({"eth0", "eth1"});
+  auto actual = counters_svc_.GetCounters({"eth0", "eth1"});
 
   // The expected counters for eth0. All values are doubled because
   // the same output will be returned for both iptables and ip6tables in the
@@ -774,14 +768,14 @@ Chain tx_eth0 (1 references)
     211 13456            all  --  any    any     ::/0             ::/0
 )";
 
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv4, Iptables::Table::kMangle))
       .WillOnce(Return(unknown_ipv4_traffic_only));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               DumpIptables(IpFamily::kIPv6, Iptables::Table::kMangle))
       .WillOnce(Return(unknown_ipv6_traffic_only));
 
-  auto actual = counters_svc_->GetCounters({});
+  auto actual = counters_svc_.GetCounters({});
 
   std::map<CounterKey, Counter> expected{
       {{"eth0", TrafficCounter::UNKNOWN, TrafficCounter::IPV4},
@@ -839,10 +833,9 @@ Chain tx_wlan0 (1 references)
 }
 
 TEST_F(CountersServiceTest, HandleARCVPNSocketConnectionEvent) {
-  auto updater =
-      std::make_unique<MockConnmarkUpdater>(conntrack_monitor_.get());
+  auto updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor_);
   auto updater_ptr = updater.get();
-  counters_svc_->SetConnmarkUpdaterForTesting(std::move(updater));
+  counters_svc_.SetConnmarkUpdaterForTesting(std::move(updater));
 
   std::unique_ptr<patchpanel::SocketConnectionEvent> msg =
       std::make_unique<patchpanel::SocketConnectionEvent>();
@@ -857,7 +850,7 @@ TEST_F(CountersServiceTest, HandleARCVPNSocketConnectionEvent) {
   // Test that when destination address is not set in the
   // SocketConnectionEvent, ConnmarkUpdater is not called.
   EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
-  counters_svc_->HandleARCVPNSocketConnectionEvent(*msg);
+  counters_svc_.HandleARCVPNSocketConnectionEvent(*msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 
   // Test that when IP protocol of the SocketConnectionEvent is not TCP or UDP,
@@ -868,7 +861,7 @@ TEST_F(CountersServiceTest, HandleARCVPNSocketConnectionEvent) {
   msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
                      SocketConnectionEvent_IpProtocol_UNKNOWN_PROTO);
   EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
-  counters_svc_->HandleARCVPNSocketConnectionEvent(*msg);
+  counters_svc_.HandleARCVPNSocketConnectionEvent(*msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 
   // Test that ConnmarkUpdater is called with correct args when valid
@@ -885,7 +878,7 @@ TEST_F(CountersServiceTest, HandleARCVPNSocketConnectionEvent) {
       *updater_ptr,
       UpdateConnmark(Eq(tcp_conn), Fwmark::FromSource(TrafficSource::kArcVpn),
                      kFwmarkAllSourcesMask));
-  counters_svc_->HandleARCVPNSocketConnectionEvent(*msg);
+  counters_svc_.HandleARCVPNSocketConnectionEvent(*msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 }
 
