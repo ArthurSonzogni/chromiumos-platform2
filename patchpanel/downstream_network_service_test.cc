@@ -21,10 +21,8 @@
 #include <metrics/metrics_library_mock.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
-#include "patchpanel/downstream_network_info.h"
 #include "patchpanel/fake_shill_client.h"
 #include "patchpanel/fake_system.h"
-#include "patchpanel/mock_connmark_updater.h"
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_counters_service.h"
 #include "patchpanel/mock_datapath.h"
@@ -64,41 +62,33 @@ base::ScopedFD MakeTestSocket() {
 
 class DownstreamNetworkServiceTest : public testing::Test {
  protected:
-  void SetUp() override {
-    metrics_ = std::make_unique<MetricsLibraryMock>();
-    system_ = std::make_unique<FakeSystem>();
-    datapath_ = std::make_unique<MockDatapath>();
-    routing_svc_ = std::make_unique<MockRoutingService>();
-    forwarding_svc_ = std::make_unique<MockForwardingService>();
-    rtnl_client_ = std::make_unique<MockRTNLClient>();
-    lifeline_fd_svc_ = std::make_unique<MockLifelineFDService>();
-    shill_client_helper_ = std::make_unique<FakeShillClientHelper>();
-    shill_client_ = shill_client_helper_->FakeClient();
-    ipv6_svc_ = std::make_unique<MockGuestIPv6Service>();
-    conntrack_monitor_ = std::make_unique<MockConntrackMonitor>();
-    counters_svc_ = std::make_unique<MockCountersService>(
-        datapath_.get(), conntrack_monitor_.get());
+  DownstreamNetworkServiceTest()
+      : shill_client_(shill_client_helper_.FakeClient()),
+        counters_svc_(&datapath_, &conntrack_monitor_),
+        downstream_network_svc_(&metrics_,
+                                &system_,
+                                &datapath_,
+                                &routing_svc_,
+                                &forwarding_svc_,
+                                &rtnl_client_,
+                                &lifeline_fd_svc_,
+                                shill_client_.get(),
+                                &ipv6_svc_,
+                                &counters_svc_) {}
 
-    downstream_network_svc_ = std::make_unique<DownstreamNetworkService>(
-        metrics_.get(), system_.get(), datapath_.get(), routing_svc_.get(),
-        forwarding_svc_.get(), rtnl_client_.get(), lifeline_fd_svc_.get(),
-        shill_client_.get(), ipv6_svc_.get(), counters_svc_.get());
-  }
-
-  std::unique_ptr<MetricsLibraryMock> metrics_;
-  std::unique_ptr<FakeSystem> system_;
-  std::unique_ptr<MockDatapath> datapath_;
-  std::unique_ptr<MockRoutingService> routing_svc_;
-  std::unique_ptr<MockForwardingService> forwarding_svc_;
-  std::unique_ptr<MockRTNLClient> rtnl_client_;
-  std::unique_ptr<MockLifelineFDService> lifeline_fd_svc_;
-  std::unique_ptr<FakeShillClientHelper> shill_client_helper_;
+  MetricsLibraryMock metrics_;
+  FakeSystem system_;
+  MockDatapath datapath_;
+  MockRoutingService routing_svc_;
+  MockForwardingService forwarding_svc_;
+  MockRTNLClient rtnl_client_;
+  MockLifelineFDService lifeline_fd_svc_;
+  FakeShillClientHelper shill_client_helper_;
   std::unique_ptr<FakeShillClient> shill_client_;
-  std::unique_ptr<MockGuestIPv6Service> ipv6_svc_;
-  std::unique_ptr<MockConntrackMonitor> conntrack_monitor_;
-  std::unique_ptr<MockCountersService> counters_svc_;
-
-  std::unique_ptr<DownstreamNetworkService> downstream_network_svc_;
+  MockGuestIPv6Service ipv6_svc_;
+  MockConntrackMonitor conntrack_monitor_;
+  MockCountersService counters_svc_;
+  DownstreamNetworkService downstream_network_svc_;
 };
 
 TEST_F(DownstreamNetworkServiceTest,
@@ -111,30 +101,30 @@ TEST_F(DownstreamNetworkServiceTest,
   shill_client_->SetFakeDeviceProperties(dbus::ObjectPath("/device/rmnet_ipa0"),
                                          upstream);
   base::OnceClosure on_lifeline_fd_event;
-  EXPECT_CALL(*lifeline_fd_svc_, AddLifelineFD)
+  EXPECT_CALL(lifeline_fd_svc_, AddLifelineFD)
       .WillOnce(WithArgs<1>([&](base::OnceClosure cb) {
         on_lifeline_fd_event = std::move(cb);
         return base::ScopedClosureRunner(base::DoNothing());
       }));
-  EXPECT_CALL(*datapath_, StartDownstreamNetwork(
-                              DownstreamNetworkInfoHasInterfaceName("ap0")))
+  EXPECT_CALL(datapath_, StartDownstreamNetwork(
+                             DownstreamNetworkInfoHasInterfaceName("ap0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_svc_,
+  EXPECT_CALL(forwarding_svc_,
               StartIPv6NDPForwarding(EqShillDevice(upstream), "ap0", _, _));
-  EXPECT_CALL(*system_, SysNetGet(System::SysNet::kIPv6HopLimit, "qmapmux9"))
+  EXPECT_CALL(system_, SysNetGet(System::SysNet::kIPv6HopLimit, "qmapmux9"))
       .WillOnce(Return("64"));
-  EXPECT_CALL(*routing_svc_, AllocateNetworkID).WillOnce(Return(455));
-  EXPECT_CALL(*routing_svc_, AssignInterfaceToNetwork(455, "ap0", _))
+  EXPECT_CALL(routing_svc_, AllocateNetworkID).WillOnce(Return(455));
+  EXPECT_CALL(routing_svc_, AssignInterfaceToNetwork(455, "ap0", _))
       .WillOnce(Return(true));
 
   // When a shill Device exists for the upstream, none of the extra setup of
   // DownstreamNetworkService::StartTetheringUpstreamNetwork should be started.
-  EXPECT_CALL(*counters_svc_, OnPhysicalDeviceAdded).Times(0);
-  EXPECT_CALL(*datapath_, StartConnectionPinning).Times(0);
-  EXPECT_CALL(*datapath_, StartSourceIPv6PrefixEnforcement).Times(0);
-  EXPECT_CALL(*datapath_, UpdateSourceEnforcementIPv6Prefix).Times(0);
-  EXPECT_CALL(*ipv6_svc_, OnUplinkIPv6Changed).Times(0);
-  EXPECT_CALL(*ipv6_svc_, UpdateUplinkIPv6DNS).Times(0);
+  EXPECT_CALL(counters_svc_, OnPhysicalDeviceAdded).Times(0);
+  EXPECT_CALL(datapath_, StartConnectionPinning).Times(0);
+  EXPECT_CALL(datapath_, StartSourceIPv6PrefixEnforcement).Times(0);
+  EXPECT_CALL(datapath_, UpdateSourceEnforcementIPv6Prefix).Times(0);
+  EXPECT_CALL(ipv6_svc_, OnUplinkIPv6Changed).Times(0);
+  EXPECT_CALL(ipv6_svc_, UpdateUplinkIPv6DNS).Times(0);
 
   TetheredNetworkRequest request;
   request.set_upstream_ifname("qmapmux9");
@@ -143,33 +133,33 @@ TEST_F(DownstreamNetworkServiceTest,
   // TODO(b/336883268): Add coverage for IPv4 DHCP server logic.
   base::ScopedFD lifeline_fd = MakeTestSocket();
   patchpanel::TetheredNetworkResponse response =
-      downstream_network_svc_->CreateTetheredNetwork(request,
-                                                     std::move(lifeline_fd));
+      downstream_network_svc_.CreateTetheredNetwork(request,
+                                                    std::move(lifeline_fd));
   EXPECT_EQ(DownstreamNetworkResult::SUCCESS, response.response_code());
   EXPECT_EQ("ap0", response.downstream_network().downstream_ifname());
   EXPECT_EQ(455, response.downstream_network().network_id());
 
-  Mock::VerifyAndClearExpectations(system_.get());
-  Mock::VerifyAndClearExpectations(datapath_.get());
-  Mock::VerifyAndClearExpectations(forwarding_svc_.get());
-  Mock::VerifyAndClearExpectations(lifeline_fd_svc_.get());
-  Mock::VerifyAndClearExpectations(ipv6_svc_.get());
-  Mock::VerifyAndClearExpectations(counters_svc_.get());
-  Mock::VerifyAndClearExpectations(routing_svc_.get());
+  Mock::VerifyAndClearExpectations(&system_);
+  Mock::VerifyAndClearExpectations(&datapath_);
+  Mock::VerifyAndClearExpectations(&forwarding_svc_);
+  Mock::VerifyAndClearExpectations(&lifeline_fd_svc_);
+  Mock::VerifyAndClearExpectations(&ipv6_svc_);
+  Mock::VerifyAndClearExpectations(&counters_svc_);
+  Mock::VerifyAndClearExpectations(&routing_svc_);
 
-  EXPECT_CALL(*datapath_, StopDownstreamNetwork(
-                              DownstreamNetworkInfoHasInterfaceName("ap0")));
-  EXPECT_CALL(*forwarding_svc_,
+  EXPECT_CALL(datapath_, StopDownstreamNetwork(
+                             DownstreamNetworkInfoHasInterfaceName("ap0")));
+  EXPECT_CALL(forwarding_svc_,
               StopIPv6NDPForwarding(EqShillDevice(upstream), "ap0"));
-  EXPECT_CALL(*routing_svc_, ForgetNetworkID(455));
+  EXPECT_CALL(routing_svc_, ForgetNetworkID(455));
 
   // When a shill Device existed for the upstream, none of the extra teardown of
   // DownstreamNetworkService::StopTetheringUpstreamNetwork should be triggered.
-  EXPECT_CALL(*counters_svc_, OnPhysicalDeviceRemoved).Times(0);
-  EXPECT_CALL(*datapath_, StopConnectionPinning).Times(0);
-  EXPECT_CALL(*datapath_, StopSourceIPv6PrefixEnforcement).Times(0);
-  EXPECT_CALL(*ipv6_svc_, StopUplink).Times(0);
-  EXPECT_CALL(*ipv6_svc_, OnUplinkIPv6Changed).Times(0);
+  EXPECT_CALL(counters_svc_, OnPhysicalDeviceRemoved).Times(0);
+  EXPECT_CALL(datapath_, StopConnectionPinning).Times(0);
+  EXPECT_CALL(datapath_, StopSourceIPv6PrefixEnforcement).Times(0);
+  EXPECT_CALL(ipv6_svc_, StopUplink).Times(0);
+  EXPECT_CALL(ipv6_svc_, OnUplinkIPv6Changed).Times(0);
 
   // Trigger DownstreamNetworkService::OnDownstreamNetworkAutoclose()
   std::move(on_lifeline_fd_event).Run();
@@ -212,68 +202,68 @@ TEST_F(DownstreamNetworkServiceTest,
       net_base::IPv6CIDR::CreateFromAddressAndPrefix(ipv6_addr, 64);
 
   base::OnceClosure on_lifeline_fd_event;
-  EXPECT_CALL(*lifeline_fd_svc_, AddLifelineFD)
+  EXPECT_CALL(lifeline_fd_svc_, AddLifelineFD)
       .WillOnce(WithArgs<1>([&](base::OnceClosure cb) {
         on_lifeline_fd_event = std::move(cb);
         return base::ScopedClosureRunner(base::DoNothing());
       }));
-  EXPECT_CALL(*datapath_, StartDownstreamNetwork(
-                              DownstreamNetworkInfoHasInterfaceName("ap0")))
+  EXPECT_CALL(datapath_, StartDownstreamNetwork(
+                             DownstreamNetworkInfoHasInterfaceName("ap0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_svc_,
+  EXPECT_CALL(forwarding_svc_,
               StartIPv6NDPForwarding(EqShillDevice(expected_upstream_device),
                                      "ap0", _, _));
-  EXPECT_CALL(*system_, SysNetGet(System::SysNet::kIPv6HopLimit, "qmapmux9"))
+  EXPECT_CALL(system_, SysNetGet(System::SysNet::kIPv6HopLimit, "qmapmux9"))
       .WillOnce(Return("64"));
-  ON_CALL(*system_, IfNametoindex("qmapmux9")).WillByDefault(Return(2));
-  EXPECT_CALL(*routing_svc_, AllocateNetworkID).WillOnce(Return(291));
-  EXPECT_CALL(*routing_svc_, AssignInterfaceToNetwork(291, "ap0", _))
+  ON_CALL(system_, IfNametoindex("qmapmux9")).WillByDefault(Return(2));
+  EXPECT_CALL(routing_svc_, AllocateNetworkID).WillOnce(Return(291));
+  EXPECT_CALL(routing_svc_, AssignInterfaceToNetwork(291, "ap0", _))
       .WillOnce(Return(true));
 
   // When a shill Device does not exists for the upstream, expect extra setup of
   // DownstreamNetworkService::StartTetheringUpstreamNetwork.
-  EXPECT_CALL(*counters_svc_, OnPhysicalDeviceAdded("qmapmux9"));
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(counters_svc_, OnPhysicalDeviceAdded("qmapmux9"));
+  EXPECT_CALL(datapath_,
               StartConnectionPinning(EqShillDevice(expected_upstream_device)));
-  EXPECT_CALL(*datapath_, StartSourceIPv6PrefixEnforcement(
-                              EqShillDevice(expected_upstream_device)));
-  EXPECT_CALL(*datapath_, UpdateSourceEnforcementIPv6Prefix(
-                              EqShillDevice(expected_upstream_device), _));
-  EXPECT_CALL(*ipv6_svc_,
+  EXPECT_CALL(datapath_, StartSourceIPv6PrefixEnforcement(
+                             EqShillDevice(expected_upstream_device)));
+  EXPECT_CALL(datapath_, UpdateSourceEnforcementIPv6Prefix(
+                             EqShillDevice(expected_upstream_device), _));
+  EXPECT_CALL(ipv6_svc_,
               OnUplinkIPv6Changed(EqShillDevice(expected_upstream_device)));
-  EXPECT_CALL(*ipv6_svc_,
+  EXPECT_CALL(ipv6_svc_,
               UpdateUplinkIPv6DNS(EqShillDevice(expected_upstream_device)));
 
   base::ScopedFD lifeline_fd = MakeTestSocket();
   patchpanel::TetheredNetworkResponse response =
-      downstream_network_svc_->CreateTetheredNetwork(request,
-                                                     std::move(lifeline_fd));
+      downstream_network_svc_.CreateTetheredNetwork(request,
+                                                    std::move(lifeline_fd));
   EXPECT_EQ(DownstreamNetworkResult::SUCCESS, response.response_code());
   EXPECT_EQ("ap0", response.downstream_network().downstream_ifname());
   EXPECT_EQ(291, response.downstream_network().network_id());
 
-  Mock::VerifyAndClearExpectations(system_.get());
-  Mock::VerifyAndClearExpectations(datapath_.get());
-  Mock::VerifyAndClearExpectations(forwarding_svc_.get());
-  Mock::VerifyAndClearExpectations(lifeline_fd_svc_.get());
-  Mock::VerifyAndClearExpectations(ipv6_svc_.get());
-  Mock::VerifyAndClearExpectations(counters_svc_.get());
-  Mock::VerifyAndClearExpectations(routing_svc_.get());
+  Mock::VerifyAndClearExpectations(&system_);
+  Mock::VerifyAndClearExpectations(&datapath_);
+  Mock::VerifyAndClearExpectations(&forwarding_svc_);
+  Mock::VerifyAndClearExpectations(&lifeline_fd_svc_);
+  Mock::VerifyAndClearExpectations(&ipv6_svc_);
+  Mock::VerifyAndClearExpectations(&counters_svc_);
+  Mock::VerifyAndClearExpectations(&routing_svc_);
 
-  EXPECT_CALL(*datapath_, StopDownstreamNetwork(
-                              DownstreamNetworkInfoHasInterfaceName("ap0")));
+  EXPECT_CALL(datapath_, StopDownstreamNetwork(
+                             DownstreamNetworkInfoHasInterfaceName("ap0")));
   EXPECT_CALL(
-      *forwarding_svc_,
+      forwarding_svc_,
       StopIPv6NDPForwarding(EqShillDevice(expected_upstream_device), "ap0"));
-  EXPECT_CALL(*routing_svc_, ForgetNetworkID(291));
+  EXPECT_CALL(routing_svc_, ForgetNetworkID(291));
   // When a shill Device did not exists for the upstream, expect extra teardown
   // of DownstreamNetworkService::StopTetheringUpstreamNetwork.
-  EXPECT_CALL(*datapath_,
+  EXPECT_CALL(datapath_,
               StopConnectionPinning(EqShillDevice(expected_upstream_device)));
-  EXPECT_CALL(*datapath_, StopSourceIPv6PrefixEnforcement(
-                              EqShillDevice(expected_upstream_device)));
-  EXPECT_CALL(*ipv6_svc_, StopUplink(EqShillDevice(expected_upstream_device)));
-  EXPECT_CALL(*counters_svc_, OnPhysicalDeviceRemoved("qmapmux9"));
+  EXPECT_CALL(datapath_, StopSourceIPv6PrefixEnforcement(
+                             EqShillDevice(expected_upstream_device)));
+  EXPECT_CALL(ipv6_svc_, StopUplink(EqShillDevice(expected_upstream_device)));
+  EXPECT_CALL(counters_svc_, OnPhysicalDeviceRemoved("qmapmux9"));
 
   // Trigger DownstreamNetworkService::OnDownstreamNetworkAutoclose()
   std::move(on_lifeline_fd_event).Run();
@@ -287,17 +277,17 @@ TEST_F(DownstreamNetworkServiceTest, GetDownstreamNetworkInfo) {
   upstream.service_path = "/service/1";
   shill_client_->SetFakeDeviceProperties(dbus::ObjectPath("/device/rmnet_ipa0"),
                                          upstream);
-  EXPECT_CALL(*lifeline_fd_svc_, AddLifelineFD)
+  EXPECT_CALL(lifeline_fd_svc_, AddLifelineFD)
       .WillOnce(Return(base::ScopedClosureRunner(base::DoNothing())));
-  EXPECT_CALL(*datapath_, StartDownstreamNetwork(
-                              DownstreamNetworkInfoHasInterfaceName("ap0")))
+  EXPECT_CALL(datapath_, StartDownstreamNetwork(
+                             DownstreamNetworkInfoHasInterfaceName("ap0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_svc_,
+  EXPECT_CALL(forwarding_svc_,
               StartIPv6NDPForwarding(EqShillDevice(upstream), "ap0", _, _));
-  EXPECT_CALL(*system_, SysNetGet(System::SysNet::kIPv6HopLimit, "qmapmux9"))
+  EXPECT_CALL(system_, SysNetGet(System::SysNet::kIPv6HopLimit, "qmapmux9"))
       .WillOnce(Return("64"));
-  EXPECT_CALL(*routing_svc_, AllocateNetworkID).WillOnce(Return(83));
-  EXPECT_CALL(*routing_svc_, AssignInterfaceToNetwork(83, "ap0", _))
+  EXPECT_CALL(routing_svc_, AllocateNetworkID).WillOnce(Return(83));
+  EXPECT_CALL(routing_svc_, AssignInterfaceToNetwork(83, "ap0", _))
       .WillOnce(Return(true));
 
   TetheredNetworkRequest request;
@@ -306,13 +296,13 @@ TEST_F(DownstreamNetworkServiceTest, GetDownstreamNetworkInfo) {
   request.set_enable_ipv6(true);
   base::ScopedFD lifeline_fd = MakeTestSocket();
   patchpanel::TetheredNetworkResponse response =
-      downstream_network_svc_->CreateTetheredNetwork(request,
-                                                     std::move(lifeline_fd));
+      downstream_network_svc_.CreateTetheredNetwork(request,
+                                                    std::move(lifeline_fd));
   ASSERT_EQ(DownstreamNetworkResult::SUCCESS, response.response_code());
-  Mock::VerifyAndClearExpectations(system_.get());
-  Mock::VerifyAndClearExpectations(datapath_.get());
-  Mock::VerifyAndClearExpectations(forwarding_svc_.get());
-  Mock::VerifyAndClearExpectations(lifeline_fd_svc_.get());
+  Mock::VerifyAndClearExpectations(&system_);
+  Mock::VerifyAndClearExpectations(&datapath_);
+  Mock::VerifyAndClearExpectations(&forwarding_svc_);
+  Mock::VerifyAndClearExpectations(&lifeline_fd_svc_);
 
   net_base::IPv6Address ipv6_neighbor(0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0x00,
                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -323,14 +313,14 @@ TEST_F(DownstreamNetworkServiceTest, GetDownstreamNetworkInfo) {
   std::map<net_base::IPv6Address, net_base::MacAddress> ipv6_neighbors;
   ipv4_neighbors.emplace(ipv4_neighbor, neighbor_mac);
   ipv6_neighbors.emplace(ipv6_neighbor, neighbor_mac);
-  ON_CALL(*rtnl_client_, GetIPv4NeighborMacTable)
+  ON_CALL(rtnl_client_, GetIPv4NeighborMacTable)
       .WillByDefault(Return(ipv4_neighbors));
-  ON_CALL(*rtnl_client_, GetIPv6NeighborMacTable)
+  ON_CALL(rtnl_client_, GetIPv6NeighborMacTable)
       .WillByDefault(Return(ipv6_neighbors));
-  ON_CALL(*system_, IfNametoindex("ap0")).WillByDefault(Return(1));
+  ON_CALL(system_, IfNametoindex("ap0")).WillByDefault(Return(1));
 
   GetDownstreamNetworkInfoResponse network_info =
-      downstream_network_svc_->GetDownstreamNetworkInfo("ap0");
+      downstream_network_svc_.GetDownstreamNetworkInfo("ap0");
   EXPECT_TRUE(network_info.success());
   EXPECT_EQ("ap0", network_info.downstream_network().downstream_ifname());
   EXPECT_EQ(83, network_info.downstream_network().network_id());
