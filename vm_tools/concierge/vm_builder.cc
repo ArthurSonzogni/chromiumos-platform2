@@ -8,10 +8,10 @@
 #include <string>
 #include <utility>
 
-#include <base/strings/string_number_conversions.h>
 #include <base/json/json_writer.h>
-#include <base/strings/string_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/values.h>
 #include <re2/re2.h>
 
@@ -332,7 +332,7 @@ VmBuilder& VmBuilder::EnableVideoDecoder(bool enable) {
   return *this;
 }
 
-VmBuilder& VmBuilder::SetVideoDecoder(std::string video_decoder) {
+VmBuilder& VmBuilder::SetVideoDecoder(std::string_view video_decoder) {
   video_decoder_ = video_decoder;
   return *this;
 }

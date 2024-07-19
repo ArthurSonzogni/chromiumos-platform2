@@ -160,7 +160,7 @@ class VmBuilder {
   VmBuilder& EnableVideoDecoder(bool enable);
   // Sets the video decoder to use. This is only used if
   // EnableVideoDecoder(true) is called.
-  VmBuilder& SetVideoDecoder(std::string video_decoder);
+  VmBuilder& SetVideoDecoder(std::string_view video_decoder);
   VmBuilder& EnableVideoEncoder(bool enable);
   VmBuilder& EnableBattery(bool enable);
   VmBuilder& EnableSmt(bool enable);
