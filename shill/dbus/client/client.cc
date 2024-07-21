@@ -419,10 +419,12 @@ void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
     cur_path = default_service_proxy_->GetObjectPath();
   }
 
-  if (service_path != cur_path) {
-    LOG(INFO) << "Default service changed from [" << cur_path.value()
-              << "] to [" << service_path.value() << "]";
+  if (service_path == cur_path) {
+    return;
   }
+
+  LOG(INFO) << "Default service changed from [" << cur_path.value() << "] to ["
+            << service_path.value() << "]";
   ReleaseDefaultServiceProxy();
 
   // If the service is disconnected, run the handlers here since the normal flow

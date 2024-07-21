@@ -252,20 +252,6 @@ TEST_F(ClientTest, DefaultServiceHandlerCalledForValidServicePath) {
   EXPECT_EQ(default_service_type_, "eth");
 }
 
-TEST_F(ClientTest, DefaultServiceHandlerCalledForValidNoServicePath) {
-  // No registration should occur if there is no service.
-  client_->NotifyManagerPropertyChange(kDefaultServiceProperty,
-                                       dbus::ObjectPath("/"));
-  EXPECT_TRUE(default_service_changed_);
-}
-
-TEST_F(ClientTest, DefaultServiceHandlerCalledForInvalidServicePath) {
-  // No registration should occur if there is no service.
-  client_->NotifyManagerPropertyChange(kDefaultServiceProperty,
-                                       dbus::ObjectPath());
-  EXPECT_TRUE(default_service_changed_);
-}
-
 TEST_F(ClientTest, DefaultDeviceDiscoveredOnNewService) {
   // We want the device to exist first so the client doesn't run through the new
   // device setup process when it detects the change.
