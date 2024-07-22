@@ -670,9 +670,22 @@ void ReportMetricsUdevAdd(UdevMetric* udev_metric) {
   if (endpoint.size() > max_endpoint)
     endpoint.resize(max_endpoint);
 
+  // USB PD metrics log separate connection IDs for USB 2.0 and 3.2 devices in
+  // a peripheral. Because the connection ID is hashed based on the metric field
+  // name, the UsbBusConnect metric must also include USB 2.0 and USB 3.2
+  // connection ID fields to match the corresponding USB PD metric. For a single
+  // USB device, only one of the connection IDs will be valid.
+  std::string usb2_connection_id("");
+  std::string usb3_connection_id("");
+  if (speed < UMADeviceSpeed::k5000)
+    usb2_connection_id = connection_id;
+  else
+    usb3_connection_id = connection_id;
+
   metrics::structured::events::usb_quality::UsbBusConnect()
       .SetBootId(std::move(GetBootId()))
-      .SetConnectionId(std::move(connection_id))
+      .SetUsb2ConnectionId(std::move(usb2_connection_id))
+      .SetUsb3ConnectionId(std::move(usb3_connection_id))
       .SetVendorId(udev_metric->vid)
       .SetProductId(udev_metric->pid)
       .SetLockScreen(static_cast<int>(lock_screen))
@@ -692,7 +705,12 @@ void ReportMetricsUdevRemove(UdevMetric* udev_metric) {
   base::FilePath normalized_devpath = root_dir.Append("sys").Append(
       usb_bouncer::StripLeadingPathSeparators(udev_metric->devpath));
 
-  std::string connection_id = GenerateConnectionId(udev_metric);
+  // Both USB 2.0 and 3.2 connection IDs are logged because device speed
+  // is not available from sysfs at disconnect. Only the valid
+  // connection ID will match a UsbBusConnect metric.
+  std::string usb2_connection_id = GenerateConnectionId(udev_metric);
+  std::string usb3_connection_id(usb2_connection_id);
+
   std::vector<UMADeviceError> device_error = GetDeviceErrors(udev_metric);
   std::vector<int64_t> device_error_int;
   for (auto err : device_error) {
@@ -711,7 +729,8 @@ void ReportMetricsUdevRemove(UdevMetric* udev_metric) {
 
   metrics::structured::events::usb_quality::UsbBusDisconnect()
       .SetBootId(std::move(GetBootId()))
-      .SetConnectionId(std::move(connection_id))
+      .SetUsb2ConnectionId(std::move(usb2_connection_id))
+      .SetUsb3ConnectionId(std::move(usb3_connection_id))
       .SetVendorId(udev_metric->vid)
       .SetProductId(udev_metric->pid)
       .SetDeviceError(std::move(device_error_int))
