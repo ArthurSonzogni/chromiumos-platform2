@@ -594,10 +594,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("enable_dsp_hotword"))
     builder->AddFeatureEnableOverride("EnableDspHotword");
 
-  if (builder->UseFlagIsSet("variable_refresh_rate_default_enabled")) {
-    builder->AddFeatureEnableOverride("VariableRefreshRateDefaultEnabled");
-  }
-
   SetUpDelayOnActiveCameraClientChangeForNotificationFlag(builder, cros_config);
   SetUpPowerButtonPositionFlag(builder, cros_config);
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
