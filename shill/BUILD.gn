@@ -182,7 +182,6 @@ generate_dbus_adaptors("shill-chromeos-dbus-adaptors") {
 pkg_config("libshill_config") {
   pkg_deps = [
     "ModemManager",
-    "libcares",
     "libshill-client",
   ]
 }
@@ -300,7 +299,6 @@ static_library("libshill") {
     "device.cc",
     "device_id.cc",
     "device_info.cc",
-    "dns_client.cc",
     "dns_util.cc",
     "eap_credentials.cc",
     "ephemeral_profile.cc",
@@ -357,7 +355,6 @@ static_library("libshill") {
     "rpc_task.cc",
     "scope_logger.cc",
     "service.cc",
-    "shill_ares.cc",
     "shill_config.cc",
     "shill_daemon.cc",
     "shill_test_config.cc",
@@ -427,7 +424,6 @@ static_library("libshill") {
   }
 
   all_dependent_pkg_deps = [
-    "libcares",
     "libmetrics",
     "libpasswordprovider",
     "libpower_manager-client",
@@ -748,7 +744,6 @@ if (use.test) {
       "device_id_test.cc",
       "device_info_test.cc",
       "device_test.cc",
-      "dns_client_test.cc",
       "dns_util_test.cc",
       "eap_credentials_test.cc",
       "error_test.cc",
@@ -774,12 +769,10 @@ if (use.test) {
       "metrics_test.cc",
       "mobile_operator_db/service_providers_test.cc",
       "mock_adaptors.cc",
-      "mock_ares.cc",
       "mock_certificate_file.cc",
       "mock_control.cc",
       "mock_device.cc",
       "mock_device_info.cc",
-      "mock_dns_client.cc",
       "mock_eap_credentials.cc",
       "mock_event_dispatcher.cc",
       "mock_external_task.cc",
