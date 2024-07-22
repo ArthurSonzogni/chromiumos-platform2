@@ -388,8 +388,7 @@ class ManagerTest : public PropertyStoreTest {
                 (const ServiceRefPtr& physical_service));
   };
 
-  class TerminationActionTest
-      : public base::SupportsWeakPtr<TerminationActionTest> {
+  class TerminationActionTest {
    public:
     static const char kActionName[];
 
@@ -397,7 +396,7 @@ class ManagerTest : public PropertyStoreTest {
     TerminationActionTest(const TerminationActionTest&) = delete;
     TerminationActionTest& operator=(const TerminationActionTest&) = delete;
 
-    virtual ~TerminationActionTest() = default;
+    ~TerminationActionTest() = default;
 
     MOCK_METHOD(void, Done, (const Error&));
 
@@ -409,8 +408,7 @@ class ManagerTest : public PropertyStoreTest {
     Manager* manager_;
   };
 
-  class DisableTechnologyReplyHandler
-      : public base::SupportsWeakPtr<DisableTechnologyReplyHandler> {
+  class DisableTechnologyReplyHandler {
    public:
     DisableTechnologyReplyHandler() = default;
     DisableTechnologyReplyHandler(const DisableTechnologyReplyHandler&) =
@@ -418,7 +416,7 @@ class ManagerTest : public PropertyStoreTest {
     DisableTechnologyReplyHandler& operator=(
         const DisableTechnologyReplyHandler&) = delete;
 
-    virtual ~DisableTechnologyReplyHandler() = default;
+    ~DisableTechnologyReplyHandler() = default;
 
     MOCK_METHOD(void, ReportResult, (const Error&));
 
@@ -2137,7 +2135,7 @@ TEST_F(ManagerTest, TechnologyEnabledCheck) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   auto disable_technology_callback =
       base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
-                          disable_technology_reply_handler.AsWeakPtr());
+                          base::Unretained(&disable_technology_reply_handler));
   SetMockDevices(
       {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
   manager()->RegisterDevice(mock_devices_[0]);
@@ -2941,16 +2939,17 @@ TEST_F(ManagerTest, RunTerminationActions) {
   const std::string kActionName = "action";
 
   EXPECT_CALL(test_action, Done(_));
-  manager()->RunTerminationActions(
-      base::BindOnce(&TerminationActionTest::Done, test_action.AsWeakPtr()));
+  manager()->RunTerminationActions(base::BindOnce(
+      &TerminationActionTest::Done, base::Unretained(&test_action)));
 
   manager()->AddTerminationAction(
       TerminationActionTest::kActionName,
-      base::BindOnce(&TerminationActionTest::Action, test_action.AsWeakPtr()));
+      base::BindOnce(&TerminationActionTest::Action,
+                     base::Unretained(&test_action)));
   test_action.set_manager(manager());
   EXPECT_CALL(test_action, Done(_));
-  manager()->RunTerminationActions(
-      base::BindOnce(&TerminationActionTest::Done, test_action.AsWeakPtr()));
+  manager()->RunTerminationActions(base::BindOnce(
+      &TerminationActionTest::Done, base::Unretained(&test_action)));
 }
 
 TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {
@@ -3187,7 +3186,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   auto disable_technology_callback =
       base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
-                          disable_technology_reply_handler.AsWeakPtr());
+                          base::Unretained(&disable_technology_reply_handler));
   EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(2);
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
@@ -3208,7 +3207,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   auto disable_technology_callback =
       base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
-                          disable_technology_reply_handler.AsWeakPtr());
+                          base::Unretained(&disable_technology_reply_handler));
 
   SetMockDevices(
       {Technology::kEthernet, Technology::kCellular, Technology::kWiFi});
@@ -3281,7 +3280,7 @@ TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
   auto disable_technology_callback =
       base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
-                          disable_technology_reply_handler.AsWeakPtr());
+                          base::Unretained(&disable_technology_reply_handler));
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
@@ -4376,7 +4375,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   DisableTechnologyReplyHandler technology_reply_handler;
   auto enable_technology_callback =
       base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
-                          technology_reply_handler.AsWeakPtr());
+                          base::Unretained(&technology_reply_handler));
   EXPECT_CALL(*mock_devices_[2], SetEnabledChecked(true, true, _)).Times(0);
   EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(true, true, _)).Times(0);
   EXPECT_CALL(*wifi_provider_, EnableDevices(_, true, _))

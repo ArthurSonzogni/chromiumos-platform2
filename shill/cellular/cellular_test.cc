@@ -1134,14 +1134,6 @@ TEST_F(CellularTest, SetInhibited) {
   EXPECT_TRUE(device_->inhibited());
 }
 
-class TestRpcTaskDelegate : public RpcTaskDelegate,
-                            public base::SupportsWeakPtr<TestRpcTaskDelegate> {
- public:
-  virtual void GetLogin(std::string* user, std::string* password) {}
-  virtual void Notify(const std::string& reason,
-                      const std::map<std::string, std::string>& dict) {}
-};
-
 TEST_F(CellularTest, StartPPP) {
   const int kPID = 234;
   EXPECT_EQ(nullptr, device_->ppp_task_);
