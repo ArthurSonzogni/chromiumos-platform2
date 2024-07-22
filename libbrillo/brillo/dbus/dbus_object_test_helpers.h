@@ -17,7 +17,7 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
-#include <base/memory/weak_ptr.h>
+#include <base/test/bind.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_object.h>
 
@@ -37,26 +37,11 @@ class DBusInterfaceTestHelper final {
 
 namespace testing {
 
-// This is a simple class that has weak pointer semantics and holds an
-// instance of D-Bus method call response message. We use this in tests
-// to get the response in case the handler processes a method call request
-// synchronously. Otherwise the ResponseHolder object will be destroyed and
-// ResponseHolder::ReceiveResponse() will not be called since we bind the
-// callback to the object instance via a weak pointer.
-struct ResponseHolder final : public base::SupportsWeakPtr<ResponseHolder> {
-  void ReceiveResponse(std::unique_ptr<::dbus::Response> response) {
-    response_ = std::move(response);
-  }
-
-  std::unique_ptr<::dbus::Response> response_;
-};
-
 // Dispatches a D-Bus method call to the corresponding handler.
-// Used mostly for testing purposes. This method is inlined so that it is
-// not included in the shipping code of libbrillo, and included at the
-// call sites. Returns a response from the method handler or nullptr if the
-// method hasn't provided the response message immediately
-// (i.e. it is asynchronous).
+// Used for testing purposes. This method is inlined so that it is not included
+// in the shipping code of libbrillo, and included at the call sites. Returns a
+// response from the method handler. If the method hasn't provided the response
+// message immediately (i.e. it is asynchronous), aborts with a CHECK().
 inline std::unique_ptr<::dbus::Response> CallMethod(
     const DBusObject& object, ::dbus::MethodCall* method_call) {
   DBusInterface* itf = object.FindInterface(method_call->GetInterface());
@@ -66,12 +51,14 @@ inline std::unique_ptr<::dbus::Response> CallMethod(
         method_call, DBUS_ERROR_UNKNOWN_INTERFACE,
         "Interface you invoked a method on isn't known by the object.");
   } else {
-    ResponseHolder response_holder;
     DBusInterfaceTestHelper::HandleMethodCall(
         itf, method_call,
-        base::BindOnce(&ResponseHolder::ReceiveResponse,
-                       response_holder.AsWeakPtr()));
-    response = std::move(response_holder.response_);
+        base::BindLambdaForTesting(
+            [&response](std::unique_ptr<::dbus::Response> response_in) {
+              response = std::move(response_in);
+            }));
+    CHECK(response)
+        << "No response received. Asynchronous methods are not supported.";
   }
   return response;
 }
@@ -98,18 +85,21 @@ struct MethodHandlerInvoker {
       void (Class::*method)(std::unique_ptr<DBusMethodResponse<RetType>>,
                             Params...),
       Args... args) {
-    ResponseHolder response_holder;
     ::dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
+    std::unique_ptr<::dbus::Response> response;
     std::unique_ptr<DBusMethodResponse<RetType>> method_response{
         new DBusMethodResponse<RetType>(
-            &method_call, base::BindOnce(&ResponseHolder::ReceiveResponse,
-                                         response_holder.AsWeakPtr()))};
+            &method_call,
+            base::BindLambdaForTesting(
+                [&response](std::unique_ptr<::dbus::Response> response_in) {
+                  response = std::move(response_in);
+                }))};
     (instance->*method)(std::move(method_response), args...);
-    CHECK(response_holder.response_.get())
+    CHECK(response)
         << "No response received. Asynchronous methods are not supported.";
     RetType ret_val;
-    ExtractMethodCallResults(response_holder.response_.get(), error, &ret_val);
+    ExtractMethodCallResults(response.get(), error, &ret_val);
     return ret_val;
   }
 };
@@ -124,17 +114,20 @@ struct MethodHandlerInvoker<void> {
                    void (Class::*method)(std::unique_ptr<DBusMethodResponse<>>,
                                          Params...),
                    Args... args) {
-    ResponseHolder response_holder;
     ::dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
+    std::unique_ptr<::dbus::Response> response;
     std::unique_ptr<DBusMethodResponse<>> method_response{
         new DBusMethodResponse<>(
-            &method_call, base::BindOnce(&ResponseHolder::ReceiveResponse,
-                                         response_holder.AsWeakPtr()))};
+            &method_call,
+            base::BindLambdaForTesting(
+                [&response](std::unique_ptr<::dbus::Response> response_in) {
+                  response = std::move(response_in);
+                }))};
     (instance->*method)(std::move(method_response), args...);
-    CHECK(response_holder.response_.get())
+    CHECK(response)
         << "No response received. Asynchronous methods are not supported.";
-    ExtractMethodCallResults(response_holder.response_.get(), error);
+    ExtractMethodCallResults(response.get(), error);
   }
 };
 
