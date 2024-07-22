@@ -4,7 +4,6 @@
 
 #include "patchpanel/clat_service.h"
 
-#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -120,15 +119,12 @@ ShillClient::Device MakeFakeDualStackShillDevice(
 
 class ClatServiceTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    target_ = std::make_unique<ClatServiceUnderTest>(
-        &datapath_, &process_manager_, &system_);
-  }
-  MockDatapath datapath_ = MockDatapath();
-  net_base::MockProcessManager process_manager_ =
-      net_base::MockProcessManager();
+  ClatServiceTest() : target_(&datapath_, &process_manager_, &system_) {}
+
+  MockDatapath datapath_;
+  net_base::MockProcessManager process_manager_;
   FakeSystem system_;
-  std::unique_ptr<ClatServiceUnderTest> target_;
+  ClatServiceUnderTest target_;
 };
 
 // TODO(b/278970851): Merge tests for OnShillDefaultLogicalDeviceChanged into a
@@ -137,8 +133,8 @@ TEST_F(ClatServiceTest, ChangeFromIPv4DeviceToIPv6OnlyDevice) {
   const auto v4only_dev = MakeFakeIPv4OnlyShillDevice("v4only", 1);
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
 
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, &v4only_dev);
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &v4only_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromIPv6OnlyDeviceToIPv4Device) {
@@ -146,10 +142,10 @@ TEST_F(ClatServiceTest, ChangeFromIPv6OnlyDeviceToIPv4Device) {
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
 
   //  Start CLAT on the new_device.
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(true));
-  target_->OnShillDefaultLogicalDeviceChanged(&v4only_dev, &v6only_dev);
+  EXPECT_CALL(target_, StopClat(true));
+  target_.OnShillDefaultLogicalDeviceChanged(&v4only_dev, &v6only_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromIPv6OnlyDeviceToAnother) {
@@ -159,57 +155,56 @@ TEST_F(ClatServiceTest, ChangeFromIPv6OnlyDeviceToAnother) {
       MakeFakeIPv6OnlyShillDevice("prev_v6only", 1, "2001:db8::2/64");
 
   //  Start CLAT on the new_device.
-  target_->OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(true));
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("new_v6only")));
+  EXPECT_CALL(target_, StopClat(true));
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("new_v6only")));
 
-  target_->OnShillDefaultLogicalDeviceChanged(&new_v6only_dev,
-                                              &prev_v6only_dev);
+  target_.OnShillDefaultLogicalDeviceChanged(&new_v6only_dev, &prev_v6only_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromDualStackDeviceToIPv4OnlyDevice) {
   const auto dual_dev = MakeFakeDualStackShillDevice("dual_dev", 1);
   const auto v4only_dev = MakeFakeIPv4OnlyShillDevice("v4only", 2);
 
-  target_->OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnShillDefaultLogicalDeviceChanged(&v4only_dev, &dual_dev);
+  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnShillDefaultLogicalDeviceChanged(&v4only_dev, &dual_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromIPv4OnlyDeviceToDualStackDevice) {
   const auto dual_dev = MakeFakeDualStackShillDevice("dual_dev", 1);
   const auto v4only_dev = MakeFakeIPv4OnlyShillDevice("v4only", 2);
 
-  target_->OnShillDefaultLogicalDeviceChanged(&v4only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&v4only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnShillDefaultLogicalDeviceChanged(&dual_dev, &v4only_dev);
+  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnShillDefaultLogicalDeviceChanged(&dual_dev, &v4only_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromDualStackDeviceToIPv6OnlyDevice) {
   const auto dual_dev = MakeFakeDualStackShillDevice("dual_dev", 1);
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
 
-  target_->OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
+  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromIPv6OnlyDeviceToDualStackDevice) {
   const auto dual_dev = MakeFakeDualStackShillDevice("dual_dev", 1);
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
 
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(true));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnShillDefaultLogicalDeviceChanged(&dual_dev, &v6only_dev);
+  EXPECT_CALL(target_, StopClat(true));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnShillDefaultLogicalDeviceChanged(&dual_dev, &v6only_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromDualStackDeviceToAnother) {
@@ -219,30 +214,29 @@ TEST_F(ClatServiceTest, ChangeFromDualStackDeviceToAnother) {
   const auto prev_v6only_dev = MakeFakeDualStackShillDevice(
       "prev_dual_dev", 2, "10.20.0.2/24", "2001:db8::1/64");
 
-  target_->OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnShillDefaultLogicalDeviceChanged(&new_v6only_dev,
-                                              &prev_v6only_dev);
+  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnShillDefaultLogicalDeviceChanged(&new_v6only_dev, &prev_v6only_dev);
 }
 
 TEST_F(ClatServiceTest, ChangeFromNonExstingDeviceToExistingDevice) {
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only");
 
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 }
 
 TEST_F(ClatServiceTest, ChangeFromExstingDeviceToNonExistingDevice) {
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only");
 
   //  Start CLAT on the new_device.
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(true));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnShillDefaultLogicalDeviceChanged(nullptr, &v6only_dev);
+  EXPECT_CALL(target_, StopClat(true));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnShillDefaultLogicalDeviceChanged(nullptr, &v6only_dev);
 }
 
 TEST_F(ClatServiceTest,
@@ -254,25 +248,25 @@ TEST_F(ClatServiceTest,
       MakeFakeIPv6OnlyShillDevice("prev_v6only", 3, "1030:db8::1/64");
 
   //  Start CLAT on device "v6only_dev1".
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
   // Unexpectedly the default logical device changes from an device different
   // from v6only_dev1 to another.
-  EXPECT_CALL(*target_, StopClat(true));
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("new_v6only")));
-  target_->OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev,
-                                              &prev_v6only_dev);
+  EXPECT_CALL(target_, StopClat(true));
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("new_v6only")));
+  target_.OnShillDefaultLogicalDeviceChanged(&prev_v6only_dev,
+                                             &prev_v6only_dev);
 }
 
 TEST_F(ClatServiceTest, NewDefaultDeviceIsTheSameWithClatDevice) {
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 1);
   const auto dual_dev = MakeFakeDualStackShillDevice("dual", 2);
 
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
+  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
 }
 
 TEST_F(ClatServiceTest,
@@ -280,32 +274,32 @@ TEST_F(ClatServiceTest,
   const auto dual_dev = MakeFakeDualStackShillDevice("dual", 1);
   const auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 2);
 
-  target_->OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
+  target_.OnShillDefaultLogicalDeviceChanged(&dual_dev, nullptr);
 
-  EXPECT_CALL(*target_, StopClat(false));
-  target_->Disable();
+  EXPECT_CALL(target_, StopClat(false));
+  target_.Disable();
 
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.OnShillDefaultLogicalDeviceChanged(&v6only_dev, &dual_dev);
 
   // The default logical device is IPv6-only, so CLAT starts immdiately after
   // it's enabled.
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->Enable();
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.Enable();
 }
 
 TEST_F(ClatServiceTest, IPv6OnlyDeviceGetIPv4Address) {
   auto default_logical_device = MakeFakeIPv6OnlyShillDevice("v6only");
 
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
 
   // The default logical device gets IPv4 address because of IPConfig changes.
   default_logical_device.ipconfig.ipv4_cidr =
       net_base::IPv4CIDR::CreateFromCIDRString(kIPv4CIDR);
 
-  EXPECT_CALL(*target_, StopClat(true));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
+  EXPECT_CALL(target_, StopClat(true));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
 }
 
 TEST_F(ClatServiceTest, DeviceLoseIPv4Address) {
@@ -314,28 +308,28 @@ TEST_F(ClatServiceTest, DeviceLoseIPv4Address) {
   // The default logical device loses IPv4 address because of IPConfig changes.
   default_logical_device.ipconfig.ipv4_cidr.reset();
 
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("dual_stack")));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("dual_stack")));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
 }
 
 TEST_F(ClatServiceTest, IPConfigChangeWithoutIPv6AddressChange) {
   auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only");
   v6only_dev.ipconfig.ipv4_dns_addresses = std::vector<std::string>{"8.8.8.8"};
 
-  target_->OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+  target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 
   v6only_dev.ipconfig.ipv4_dns_addresses = std::vector<std::string>{"1.1.1.1"};
 
   // This change has nothing with CLAT.
-  EXPECT_CALL(*target_, StopClat(_)).Times(Exactly(0));
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+  EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 }
 
 TEST_F(ClatServiceTest, IPv6AddressChangeInTheSamePrefix) {
   auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only", 1, "2001:db8::1/64");
 
-  target_->OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+  target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 
   v6only_dev.ipconfig.ipv6_cidr =
       net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::2/64");
@@ -343,46 +337,46 @@ TEST_F(ClatServiceTest, IPv6AddressChangeInTheSamePrefix) {
   // Even the new IPn6 address of the default logical device has the same prefix
   // as the old one, CLAT needs to be reconfigured because the new address
   // conflict with the IPv6 address used by CLAT.
-  EXPECT_CALL(*target_, StopClat(true));
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+  EXPECT_CALL(target_, StopClat(true));
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("v6only")));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 }
 
 TEST_F(ClatServiceTest, EnabledAfterGettingIPv4AddressWhileDisabled) {
   auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only");
 
-  target_->OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+  target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 
-  EXPECT_CALL(*target_, StopClat(false));
-  target_->Disable();
+  EXPECT_CALL(target_, StopClat(false));
+  target_.Disable();
 
   v6only_dev.ipconfig.ipv4_cidr =
       net_base::IPv4CIDR::CreateFromCIDRString(kIPv4CIDR);
 
-  EXPECT_CALL(*target_, StopClat(true));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
+  EXPECT_CALL(target_, StopClat(true));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 
-  EXPECT_CALL(*target_, StartClat(_)).Times(Exactly(0));
-  target_->Enable();
+  EXPECT_CALL(target_, StartClat(_)).Times(Exactly(0));
+  target_.Enable();
 }
 
 TEST_F(ClatServiceTest, EnabledAfterBecomingIPv6OnlyWhileDisabled) {
   auto dual_dev = MakeFakeDualStackShillDevice("dual");
 
-  target_->OnDefaultLogicalDeviceIPConfigChanged(dual_dev);
+  target_.OnDefaultLogicalDeviceIPConfigChanged(dual_dev);
 
-  EXPECT_CALL(*target_, StopClat(false));
-  target_->Disable();
+  EXPECT_CALL(target_, StopClat(false));
+  target_.Disable();
 
   dual_dev.ipconfig.ipv4_cidr.reset();
 
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("dual")));
-  target_->OnDefaultLogicalDeviceIPConfigChanged(dual_dev);
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("dual")));
+  target_.OnDefaultLogicalDeviceIPConfigChanged(dual_dev);
 
   // The default logical device is IPv6-only, so CLAT starts immdiately after
   // it's enabled.
-  EXPECT_CALL(*target_, StartClat(ShillDeviceHasInterfaceName("dual")));
-  target_->Enable();
+  EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("dual")));
+  target_.Enable();
 }
 
 TEST_F(ClatServiceTest, VerifyStartAndStopClat) {
