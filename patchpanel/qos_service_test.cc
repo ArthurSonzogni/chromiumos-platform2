@@ -146,9 +146,25 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
   std::vector<base::WeakPtr<FakeDNSClient>> clients_;
 };
 
+class QoSServiceTest : public testing::Test {
+ protected:
+  QoSServiceTest()
+      : dns_factory_(new FakeDNSClientFactory()),
+        qos_svc_(&datapath_,
+                 base::WrapUnique(dns_factory_),
+                 &process_runner_,
+                 &conntrack_monitor_) {}
+
+  MockProcessRunner process_runner_;
+  MockDatapath datapath_;
+  FakeDNSClientFactory* dns_factory_;  // Owned by |qos_svc_|.
+  MockConntrackMonitor conntrack_monitor_;
+  QoSService qos_svc_;
+};
+
 // Verifies the interactions between QoSService and Datapath when feature on the
 // events of feature enable/disable and device change events.
-TEST(QoSServiceTest, EnableDisableQoSFeature) {
+TEST_F(QoSServiceTest, EnableDisableQoSFeature) {
   const ShillClient::Device kEth0 = {
       .technology = net_base::Technology::kEthernet,
       .ifname = "eth0",
@@ -166,67 +182,58 @@ TEST(QoSServiceTest, EnableDisableQoSFeature) {
       .ifname = "wlan1",
   };
 
-  MockDatapath datapath;
-  MockConntrackMonitor conntrack_monitor;
-  QoSService qos_svc(&datapath, &conntrack_monitor);
-
   // No interaction with Datapath before feature is enabled.
-  EXPECT_CALL(datapath, EnableQoSDetection).Times(0);
-  EXPECT_CALL(datapath, EnableQoSApplyingDSCP).Times(0);
-  qos_svc.OnPhysicalDeviceAdded(kEth0);
-  qos_svc.OnPhysicalDeviceAdded(kWlan0);
-  qos_svc.OnPhysicalDeviceRemoved(kWlan0);
-  qos_svc.OnPhysicalDeviceAdded(kWlan0);
-  Mock::VerifyAndClearExpectations(&datapath);
+  EXPECT_CALL(datapath_, EnableQoSDetection).Times(0);
+  EXPECT_CALL(datapath_, EnableQoSApplyingDSCP).Times(0);
+  qos_svc_.OnPhysicalDeviceAdded(kEth0);
+  qos_svc_.OnPhysicalDeviceAdded(kWlan0);
+  qos_svc_.OnPhysicalDeviceRemoved(kWlan0);
+  qos_svc_.OnPhysicalDeviceAdded(kWlan0);
+  Mock::VerifyAndClearExpectations(&datapath_);
 
   // On feature enabled, the detection chain should be enabled, and the DSCP
   // marking chain for the existing interface should be enabled.
-  EXPECT_CALL(datapath, EnableQoSDetection);
-  EXPECT_CALL(datapath, EnableQoSApplyingDSCP("wlan0"));
-  qos_svc.Enable();
-  Mock::VerifyAndClearExpectations(&datapath);
+  EXPECT_CALL(datapath_, EnableQoSDetection);
+  EXPECT_CALL(datapath_, EnableQoSApplyingDSCP("wlan0"));
+  qos_svc_.Enable();
+  Mock::VerifyAndClearExpectations(&datapath_);
 
   // No interaction with Datapath on uninteresting or already-tracked
   // interfaces.
-  EXPECT_CALL(datapath, EnableQoSDetection).Times(0);
-  EXPECT_CALL(datapath, EnableQoSApplyingDSCP).Times(0);
-  qos_svc.OnPhysicalDeviceAdded(kEth1);
-  qos_svc.OnPhysicalDeviceAdded(kWlan0);
-  Mock::VerifyAndClearExpectations(&datapath);
+  EXPECT_CALL(datapath_, EnableQoSDetection).Times(0);
+  EXPECT_CALL(datapath_, EnableQoSApplyingDSCP).Times(0);
+  qos_svc_.OnPhysicalDeviceAdded(kEth1);
+  qos_svc_.OnPhysicalDeviceAdded(kWlan0);
+  Mock::VerifyAndClearExpectations(&datapath_);
 
   // Device change events on interesting interfaces.
-  EXPECT_CALL(datapath, DisableQoSApplyingDSCP("wlan0"));
-  EXPECT_CALL(datapath, EnableQoSApplyingDSCP("wlan1"));
-  qos_svc.OnPhysicalDeviceRemoved(kWlan0);
-  qos_svc.OnPhysicalDeviceAdded(kWlan1);
-  Mock::VerifyAndClearExpectations(&datapath);
+  EXPECT_CALL(datapath_, DisableQoSApplyingDSCP("wlan0"));
+  EXPECT_CALL(datapath_, EnableQoSApplyingDSCP("wlan1"));
+  qos_svc_.OnPhysicalDeviceRemoved(kWlan0);
+  qos_svc_.OnPhysicalDeviceAdded(kWlan1);
+  Mock::VerifyAndClearExpectations(&datapath_);
 
   // On feature disabled.
-  EXPECT_CALL(datapath, DisableQoSDetection);
-  EXPECT_CALL(datapath, DisableQoSApplyingDSCP("wlan1"));
-  qos_svc.Disable();
-  Mock::VerifyAndClearExpectations(&datapath);
+  EXPECT_CALL(datapath_, DisableQoSDetection);
+  EXPECT_CALL(datapath_, DisableQoSApplyingDSCP("wlan1"));
+  qos_svc_.Disable();
+  Mock::VerifyAndClearExpectations(&datapath_);
 
   // Device change events when disabled, and then enable again.
-  qos_svc.OnPhysicalDeviceRemoved(kWlan1);
-  qos_svc.OnPhysicalDeviceAdded(kWlan0);
-  EXPECT_CALL(datapath, EnableQoSDetection);
-  EXPECT_CALL(datapath, EnableQoSApplyingDSCP("wlan0"));
-  qos_svc.Enable();
-  Mock::VerifyAndClearExpectations(&datapath);
+  qos_svc_.OnPhysicalDeviceRemoved(kWlan1);
+  qos_svc_.OnPhysicalDeviceAdded(kWlan0);
+  EXPECT_CALL(datapath_, EnableQoSDetection);
+  EXPECT_CALL(datapath_, EnableQoSApplyingDSCP("wlan0"));
+  qos_svc_.Enable();
+  Mock::VerifyAndClearExpectations(&datapath_);
 }
 
 // Verifies that ProcessSocketConnectionEvent behaves correctly when
 // feature on the events of feature enable/disable.
-TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
-  MockDatapath datapath;
-  MockProcessRunner runner;
-  MockConntrackMonitor conntrack_monitor;
-  QoSService qos_svc(&datapath, /*dns_client_factory=*/nullptr, &runner,
-                     &conntrack_monitor);
-  auto updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor);
+TEST_F(QoSServiceTest, ProcessSocketConnectionEvent) {
+  auto updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor_);
   auto updater_ptr = updater.get();
-  qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
+  qos_svc_.SetConnmarkUpdaterForTesting(std::move(updater));
   std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
       CreateOpenSocketConnectionEvent();
   std::unique_ptr<patchpanel::SocketConnectionEvent> close_msg =
@@ -234,17 +241,17 @@ TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
 
   // No interaction with ConnmarkUpdater before feature is enabled.
   EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
-  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  qos_svc_.ProcessSocketConnectionEvent(*open_msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 
   // After feature is enabled, process socket connection event will trigger
   // corresponding connmark update.
-  qos_svc.Enable();
+  qos_svc_.Enable();
   // When enabling QoS service, a new ConnmarkUpdater will be assigned, so
   // assign mock ConnmarkUpdater to QoS service again.
-  updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor);
+  updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor_);
   updater_ptr = updater.get();
-  qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
+  qos_svc_.SetConnmarkUpdaterForTesting(std::move(updater));
   auto tcp_conn = ConnmarkUpdater::Conntrack5Tuple{
       .src_addr = *(net_base::IPAddress::CreateFromString(kIPAddress1)),
       .dst_addr = *(net_base::IPAddress::CreateFromString(kIPAddress2)),
@@ -256,29 +263,23 @@ TEST(QoSServiceTest, ProcessSocketConnectionEvent) {
       UpdateConnmark(Eq(tcp_conn),
                      Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
                      kFwmarkQoSCategoryMask));
-  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  qos_svc_.ProcessSocketConnectionEvent(*open_msg);
   EXPECT_CALL(*updater_ptr,
               UpdateConnmark(Eq(tcp_conn),
                              Fwmark::FromQoSCategory(QoSCategory::kDefault),
                              kFwmarkQoSCategoryMask));
-  qos_svc.ProcessSocketConnectionEvent(*close_msg);
+  qos_svc_.ProcessSocketConnectionEvent(*close_msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
   // No interaction with ConnmarkUpdater after feature is disabled.
   EXPECT_CALL(*updater_ptr, UpdateConnmark).Times(0);
-  qos_svc.Disable();
-  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  qos_svc_.Disable();
+  qos_svc_.ProcessSocketConnectionEvent(*open_msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 }
 
 // QoSService should start DNS queries for each valid hostname in DoHProviders,
 // and Datapath will be notified when all DNS queries finished.
-TEST(QoSServiceTest, UpdateDoHProviders) {
-  MockDatapath mock_datapath;
-  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
-  MockConntrackMonitor conntrack_monitor;
-  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
-
+TEST_F(QoSServiceTest, UpdateDoHProviders) {
   // Update DoH list with 2 valid entries. There should be 4 DNS requests in
   // total.
   const ShillClient::DoHProviders doh_list = {
@@ -289,19 +290,19 @@ TEST(QoSServiceTest, UpdateDoHProviders) {
       "",  // check that no crash for empty string
   };
 
-  EXPECT_CALL(*dns_factory,
+  EXPECT_CALL(*dns_factory_,
               Resolve(net_base::IPFamily::kIPv4, "url-a", _, _, _));
-  EXPECT_CALL(*dns_factory,
+  EXPECT_CALL(*dns_factory_,
               Resolve(net_base::IPFamily::kIPv6, "url-a", _, _, _));
-  EXPECT_CALL(*dns_factory,
+  EXPECT_CALL(*dns_factory_,
               Resolve(net_base::IPFamily::kIPv4, "url-b", _, _, _));
-  EXPECT_CALL(*dns_factory,
+  EXPECT_CALL(*dns_factory_,
               Resolve(net_base::IPFamily::kIPv6, "url-b", _, _, _));
 
-  svc.UpdateDoHProviders(doh_list);
+  qos_svc_.UpdateDoHProviders(doh_list);
 
-  ASSERT_EQ(2, dns_factory->ipv4_callbacks().size());
-  ASSERT_EQ(2, dns_factory->ipv6_callbacks().size());
+  ASSERT_EQ(2, dns_factory_->ipv4_callbacks().size());
+  ASSERT_EQ(2, dns_factory_->ipv6_callbacks().size());
 
   // Datapath methods should only be invoked when we get all the callbacks.
   const auto kIPv4Addr1 = IPAddress::CreateFromString("1.2.3.4").value();
@@ -309,95 +310,71 @@ TEST(QoSServiceTest, UpdateDoHProviders) {
   const auto kIPv6Addr1 = IPAddress::CreateFromString("fd00::1").value();
   const auto kIPv6Addr2 = IPAddress::CreateFromString("fd00::2").value();
 
-  EXPECT_CALL(mock_datapath, UpdateDoHProvidersForQoS).Times(0);
-  dns_factory->TriggerIPv4Callback(DNSClient::Result({kIPv4Addr1}));
-  dns_factory->TriggerIPv4Callback(DNSClient::Result({kIPv4Addr1, kIPv4Addr2}));
-  dns_factory->TriggerIPv6Callback(DNSClient::Result({kIPv6Addr1, kIPv6Addr2}));
+  EXPECT_CALL(datapath_, UpdateDoHProvidersForQoS).Times(0);
+  dns_factory_->TriggerIPv4Callback(DNSClient::Result({kIPv4Addr1}));
+  dns_factory_->TriggerIPv4Callback(
+      DNSClient::Result({kIPv4Addr1, kIPv4Addr2}));
+  dns_factory_->TriggerIPv6Callback(
+      DNSClient::Result({kIPv6Addr1, kIPv6Addr2}));
 
-  EXPECT_CALL(mock_datapath,
-              UpdateDoHProvidersForQoS(
-                  IpFamily::kIPv4,
-                  std::vector<net_base::IPAddress>{kIPv4Addr1, kIPv4Addr2}));
-  EXPECT_CALL(mock_datapath,
-              UpdateDoHProvidersForQoS(
-                  IpFamily::kIPv6,
-                  std::vector<net_base::IPAddress>{kIPv6Addr1, kIPv6Addr2}));
+  EXPECT_CALL(datapath_, UpdateDoHProvidersForQoS(
+                             IpFamily::kIPv4, std::vector<net_base::IPAddress>{
+                                                  kIPv4Addr1, kIPv4Addr2}));
+  EXPECT_CALL(datapath_, UpdateDoHProvidersForQoS(
+                             IpFamily::kIPv6, std::vector<net_base::IPAddress>{
+                                                  kIPv6Addr1, kIPv6Addr2}));
   // Trigger the last callback with an error.
-  dns_factory->TriggerIPv6Callback(
+  dns_factory_->TriggerIPv6Callback(
       DNSClient::Result(base::unexpected(DNSClient::Error::kRefused)));
 }
 
 // Datapath should be notified when DoH provider list is empty.
-TEST(QoSServiceTest, UpdateDoHProvidersEmptyInput) {
-  MockDatapath mock_datapath;
-  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
-  MockConntrackMonitor conntrack_monitor;
-  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
-
-  EXPECT_CALL(mock_datapath,
+TEST_F(QoSServiceTest, UpdateDoHProvidersEmptyInput) {
+  EXPECT_CALL(datapath_,
               UpdateDoHProvidersForQoS(IpFamily::kIPv4,
                                        std::vector<net_base::IPAddress>{}));
-  EXPECT_CALL(mock_datapath,
+  EXPECT_CALL(datapath_,
               UpdateDoHProvidersForQoS(IpFamily::kIPv6,
                                        std::vector<net_base::IPAddress>{}));
 
-  svc.UpdateDoHProviders({});
+  qos_svc_.UpdateDoHProviders({});
 }
 
 // Datapath should be notified when the resolved result is empty.
-TEST(QoSServiceTest, UpdateDoHProvidersEmptyResolveResult) {
-  MockDatapath mock_datapath;
-  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
-  MockConntrackMonitor conntrack_monitor;
-  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
+TEST_F(QoSServiceTest, UpdateDoHProvidersEmptyResolveResult) {
+  qos_svc_.UpdateDoHProviders({"https://url-a", "https://url-b"});
 
-  svc.UpdateDoHProviders({"https://url-a", "https://url-b"});
-
-  EXPECT_CALL(mock_datapath,
+  EXPECT_CALL(datapath_,
               UpdateDoHProvidersForQoS(IpFamily::kIPv4,
                                        std::vector<net_base::IPAddress>{}));
-  EXPECT_CALL(mock_datapath,
+  EXPECT_CALL(datapath_,
               UpdateDoHProvidersForQoS(IpFamily::kIPv6,
                                        std::vector<net_base::IPAddress>{}));
-  dns_factory->TriggerIPv4Callback(
+  dns_factory_->TriggerIPv4Callback(
       DNSClient::Result(base::unexpected(DNSClient::Error::kNoData)));
-  dns_factory->TriggerIPv4Callback(
+  dns_factory_->TriggerIPv4Callback(
       DNSClient::Result(base::unexpected(DNSClient::Error::kRefused)));
-  dns_factory->TriggerIPv6Callback(
+  dns_factory_->TriggerIPv6Callback(
       DNSClient::Result(base::unexpected(DNSClient::Error::kBadQuery)));
-  dns_factory->TriggerIPv6Callback(
+  dns_factory_->TriggerIPv6Callback(
       DNSClient::Result(base::unexpected(DNSClient::Error::kBadResp)));
 }
 
 // If the DoH provider list is updated again when we are still processing the
 // previous update, all the ongoing DNS requests should be cancelled.
-TEST(QoSServiceTest, UpdateDoHProvidersInvalidateOngoingQueries) {
-  MockDatapath mock_datapath;
-  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
-  MockConntrackMonitor conntrack_monitor;
-  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
+TEST_F(QoSServiceTest, UpdateDoHProvidersInvalidateOngoingQueries) {
+  qos_svc_.UpdateDoHProviders({"https://url-a", "https://url-b"});
 
-  svc.UpdateDoHProviders({"https://url-a", "https://url-b"});
-
-  auto client_ptrs = dns_factory->GetWeakPtrsToExistingClients();
+  auto client_ptrs = dns_factory_->GetWeakPtrsToExistingClients();
   ASSERT_EQ(client_ptrs.size(), 4);
 
-  svc.UpdateDoHProviders({"https://url-d", "https://url-e"});
+  qos_svc_.UpdateDoHProviders({"https://url-d", "https://url-e"});
   for (const auto ptr : client_ptrs) {
     EXPECT_TRUE(ptr.WasInvalidated());
   }
 }
 
-TEST(QoSServiceTest, OnBorealisVMStarted) {
-  MockDatapath mock_datapath;
-  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
-  MockConntrackMonitor conntrack_monitor;
-  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
-
+TEST_F(QoSServiceTest, OnBorealisVMStarted) {
   const auto borealis_ipv4_subnet =
       net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29").value();
   auto ipv4_subnet =
@@ -406,18 +383,12 @@ TEST(QoSServiceTest, OnBorealisVMStarted) {
       CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
-  EXPECT_CALL(mock_datapath, AddBorealisQoSRule("vmtap1"));
+  EXPECT_CALL(datapath_, AddBorealisQoSRule("vmtap1"));
 
-  svc.OnBorealisVMStarted("vmtap1");
+  qos_svc_.OnBorealisVMStarted("vmtap1");
 }
 
-TEST(QoSServiceTest, OnBorealisVMStopped) {
-  MockDatapath mock_datapath;
-  FakeDNSClientFactory* dns_factory = new FakeDNSClientFactory();
-  MockConntrackMonitor conntrack_monitor;
-  QoSService svc(&mock_datapath, base::WrapUnique(dns_factory),
-                 /*minijailed_process_runner=*/nullptr, &conntrack_monitor);
-
+TEST_F(QoSServiceTest, OnBorealisVMStopped) {
   const auto borealis_ipv4_subnet =
       *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29");
   auto ipv4_subnet =
@@ -426,27 +397,22 @@ TEST(QoSServiceTest, OnBorealisVMStopped) {
       CrostiniService::VMType::kBorealis, "vmtap1", std::move(ipv4_subnet),
       nullptr);
 
-  EXPECT_CALL(mock_datapath, RemoveBorealisQoSRule("vmtap1"));
+  EXPECT_CALL(datapath_, RemoveBorealisQoSRule("vmtap1"));
 
-  svc.OnBorealisVMStopped("vmtap1");
+  qos_svc_.OnBorealisVMStopped("vmtap1");
 }
 
 // QoSService can handle socket connection events correctly. When socket
 // connection event is received, call ConnmarkUpdater to handle the update
 // task.
-TEST(QoSServiceTest, HandleSocketConnectionEvent) {
-  MockDatapath mock_datapath;
-  MockProcessRunner runner;
+TEST_F(QoSServiceTest, HandleSocketConnectionEvent) {
   std::unique_ptr<patchpanel::SocketConnectionEvent> open_msg =
       CreateOpenSocketConnectionEvent();
 
-  MockConntrackMonitor monitor;
-  QoSService qos_svc(&mock_datapath, /*dns_client_factory=*/nullptr, &runner,
-                     &monitor);
-  qos_svc.Enable();
-  auto updater = std::make_unique<MockConnmarkUpdater>(&monitor);
+  qos_svc_.Enable();
+  auto updater = std::make_unique<MockConnmarkUpdater>(&conntrack_monitor_);
   auto updater_ptr = updater.get();
-  qos_svc.SetConnmarkUpdaterForTesting(std::move(updater));
+  qos_svc_.SetConnmarkUpdaterForTesting(std::move(updater));
 
   // When notified of TCP socket event, call ConnmarkUpdater for connmark
   // update for this connection.
@@ -461,7 +427,7 @@ TEST(QoSServiceTest, HandleSocketConnectionEvent) {
       UpdateConnmark(Eq(tcp_conn),
                      Fwmark::FromQoSCategory(QoSCategory::kRealTimeInteractive),
                      kFwmarkQoSCategoryMask));
-  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  qos_svc_.ProcessSocketConnectionEvent(*open_msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 
   // When notified of UDP socket event, call ConnmarkUpdater for connmark
@@ -479,7 +445,7 @@ TEST(QoSServiceTest, HandleSocketConnectionEvent) {
                      kFwmarkQoSCategoryMask));
   open_msg->set_proto(patchpanel::SocketConnectionEvent::IpProtocol::
                           SocketConnectionEvent_IpProtocol_UDP);
-  qos_svc.ProcessSocketConnectionEvent(*open_msg);
+  qos_svc_.ProcessSocketConnectionEvent(*open_msg);
   Mock::VerifyAndClearExpectations(updater_ptr);
 }
 }  // namespace
