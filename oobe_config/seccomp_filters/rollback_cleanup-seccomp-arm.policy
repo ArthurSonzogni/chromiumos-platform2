@@ -85,3 +85,6 @@ gettimeofday: 1
 
 # libchrome enabling MessagePumpEpoll
 eventfd2: 1
+
+# libchrome update
+unlinkat: 1
