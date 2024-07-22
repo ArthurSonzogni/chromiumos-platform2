@@ -1,0 +1,74 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
+# seccomp required by seccomp checker
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1
+exit_group: 1
+
+brk: 1
+# Dangerous syscall needed for graphics fetcher
+clone: 1
+close: 1
+connect: 1
+epoll_create1: 1
+epoll_ctl: 1
+epoll_wait: 1
+eventfd2: 1
+fcntl: 1
+fstatfs: 1
+futex: 1
+getdents64: 1
+getegid: 1
+geteuid: 1
+getgid: 1
+getpid: 1
+getrandom: arg2 in ~GRND_RANDOM
+gettid: 1
+getuid: 1
+# Per b/346462471, allow all IOCTL arguments for graphics fetcher on reven
+# device.
+ioctl: 1
+kcmp: 1
+madvise: 1
+# Dangerous syscall needed for graphics fetcher
+memfd_create: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+# Used occasionally by glibc discovered in production use (b/167617776)
+munmap: 1
+newfstatat: 1
+openat: 1
+pipe2: 1
+poll: 1
+# Graphics fetcher will crash without prctl
+prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
+read: 1
+readlink: 1
+recvmsg: 1
+rt_sigaction: 1
+rt_sigprocmask: 1
+sched_getaffinity: 1
+sched_getattr: 1
+sched_setaffinity: 1
+sched_setattr: 1
+sched_setscheduler: 1
+sched_yield: 1
+sendmsg: 1
+sendto: 1
+set_robust_list: 1
+setpriority: 1
+signalfd4: 1
+# socket is a required syscall for logging.
+socket: arg0 == AF_UNIX
+socketpair: arg0 == AF_UNIX
+sysinfo: 1
+uname: 1
+write: 1
+access: 1
+exit: 1

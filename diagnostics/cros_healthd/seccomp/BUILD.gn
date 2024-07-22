@@ -75,7 +75,6 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
     "${_arch}/ec_led-seccomp.policy",
     "${_arch}/ec_lid_angle-seccomp.policy",
     "${_arch}/ec_thermal-seccomp.policy",
-    "${_arch}/egl-seccomp.policy",
     "${_arch}/evdev-seccomp.policy",
     "${_arch}/fingerprint-seccomp.policy",
     "${_arch}/floating_point-seccomp.policy",
@@ -87,6 +86,17 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
   ]
   if (_arch == "amd64") {
     sources += [ "${_arch}/psr-seccomp.policy" ]
+  }
+
+  # b/354620845: The reven board uses a different graphics driver than most
+  # ChromeOS device, and requires a different set of IOCTL arguments. There
+  # is very limited coverage of flex device within the labs, so graphics fetcher
+  # often crashes on real devices. The reven-specific seccomp policy enables all
+  # IOCTL arguments for graphics fetcher in reven board.
+  if (use.mesa_reven) {
+    sources += [ "reven/egl-seccomp.policy" ]
+  } else {
+    sources += [ "${_arch}/egl-seccomp.policy" ]
   }
 
   install_path = "seccomp_policy"
