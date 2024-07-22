@@ -4,15 +4,14 @@
 
 #include "arc/keymint/context/arc_remote_provisioning_context.h"
 
-#include <base/files/file_util.h>
-#include <base/strings/string_split.h>
-#include <keymaster/cppcose/cppcose.h>
-#include <libarc-attestation/lib/interface.h>
-
 #include <algorithm>
 #include <string>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
+#include <keymaster/cppcose/cppcose.h>
+#include <libarc-attestation/lib/interface.h>
 #include <openssl/rand.h>
 
 /*
@@ -419,6 +418,13 @@ ArcRemoteProvisioningContext::BuildProtectedDataPayload(
     auto error_message = signed_mac.moveMessage();
     LOG(ERROR) << "Signing while building Protected Data Payload failed: "
                << error_message;
+    return error_message;
+  }
+
+  if (boot_cert_chain.size() == 0) {
+    std::string error_message =
+        "Boot Cert Chain is empty while building protected data payload";
+    LOG(ERROR) << "ARC Remote Provisioning Context: " << error_message;
     return error_message;
   }
 
