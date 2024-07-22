@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use std::fs;
 
 use std::io::{stdin, stdout, BufRead, Write};
 
@@ -51,6 +52,7 @@ enum VmcError {
     InvalidVmDeviceAction(String),
     ExpectedPrivilegedFlagValue,
     UnknownSubcommand(String),
+    ChromeboxUnknownSubcommand(String),
     UserCancelled,
 }
 
@@ -136,6 +138,9 @@ impl fmt::Display for VmcError {
                 write!(f, "Expected <true/false> after the privileged flag")
             }
             UnknownSubcommand(s) => write!(f, "no such subcommand: `{}`", s),
+            ChromeboxUnknownSubcommand(s) => {
+                write!(f, "subcommand: `{}` only available on chromebox devices", s)
+            }
             UserCancelled => write!(f, "cancelled by user"),
         }
     }
@@ -1033,11 +1038,13 @@ const USAGE: &str = "
      usb-detach <vm name> <port> |
      usb-list <vm name> |
      key-attach <vm name> <hidraw path> |
-     pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
+     pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |";
+const USAGE_ON_CHROMEBOX: &str = "
      allow-all-io-devices [on chromeboxes, allow all keyboards/mice to connect] |
      list-primary-io-devices |
      unset-primary-keyboard |
-     unset-primary-mouse |
+     unset-primary-mouse |";
+const USAGE_END: &str = "
      --help | -h ]
 ";
 
@@ -1046,11 +1053,33 @@ const USAGE: &str = "
 pub struct Vmc<'a> {
     user_id_hash: &'a str,
     interactive: bool,
+    running_on_chromebox: bool,
 }
 
 impl Vmc<'_> {
     fn print_usage(&self, program_name: &str) {
-        eprintln!("USAGE: {}{}", program_name, USAGE);
+        eprintln!(
+            "USAGE: {}{}{}{}",
+            program_name,
+            USAGE,
+            if self.running_on_chromebox {
+                USAGE_ON_CHROMEBOX
+            } else {
+                ""
+            },
+            USAGE_END
+        );
+    }
+
+    fn try_chromebox_command(
+        &self,
+        mut f: impl FnMut() -> VmcResult,
+        command_name: &str,
+    ) -> VmcResult {
+        if !self.running_on_chromebox {
+            return Err(ChromeboxUnknownSubcommand(command_name.to_owned()).into());
+        }
+        f()
     }
 
     fn run(&self, methods: &mut Methods, args: &[&str]) -> VmcResult {
@@ -1101,10 +1130,18 @@ impl Vmc<'_> {
             "usb-list" => command.usb_list(),
             "key-attach" => command.key_attach(),
             "pvm.send-problem-report" => command.pvm_send_problem_report(),
-            "allow-all-io-devices" => command.allow_all_io_devices(),
-            "list-primary-io-devices" => command.list_primary_io_devices(),
-            "unset-primary-mouse" => command.unset_primary_mouse(),
-            "unset-primary-keyboard" => command.unset_primary_keyboard(),
+            "allow-all-io-devices" => {
+                self.try_chromebox_command(|| command.allow_all_io_devices(), command_name)
+            }
+            "list-primary-io-devices" => {
+                self.try_chromebox_command(|| command.list_primary_io_devices(), command_name)
+            }
+            "unset-primary-mouse" => {
+                self.try_chromebox_command(|| command.unset_primary_mouse(), command_name)
+            }
+            "unset-primary-keyboard" => {
+                self.try_chromebox_command(|| command.unset_primary_keyboard(), command_name)
+            }
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }
     }
@@ -1125,9 +1162,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         libchromeos::chromeos::get_user_id_hash().map_err(|_| ExpectedCrosUserIdHash)?
     };
 
+    let form_factor = fs::read_to_string("/run/chromeos-config/v1/hardware-properties/form-factor")
+        .unwrap_or("".to_string());
+    let running_on_chromebox =
+        form_factor == "CHROMEBOX" || /* unknown case */ form_factor.is_empty();
+
     let vmc = Vmc {
         user_id_hash: &user_id_hash,
         interactive,
+        running_on_chromebox,
     };
     vmc.run(&mut Methods::new()?, &args)
 }
@@ -1523,6 +1566,7 @@ mod tests {
         let vmc = Vmc {
             user_id_hash: "fake_hash",
             interactive: false,
+            running_on_chromebox: false,
         };
 
         for args in DUMMY_SUCCESS_ARGS {
@@ -1559,6 +1603,7 @@ mod tests {
         let vmc = Vmc {
             user_id_hash: "fake_hash",
             interactive: false,
+            running_on_chromebox: false,
         };
 
         for args in CONTAINER_ARGS {
