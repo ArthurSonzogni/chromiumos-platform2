@@ -4,8 +4,6 @@
 
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
 
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
-
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -23,6 +21,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/types/expected.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <metrics/metrics_library.h>
 #include <ml_core/dlc/dlc_client.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -80,6 +79,8 @@ constexpr char kVersionKey[] = "version";
 constexpr int kDefaultMaxTokens = 1024;
 constexpr char kLoadStatusHistogramName[] =
     "OnDeviceModel.LoadPlatformModelStatus";
+
+constexpr char kNotInAVerifiedState[] = "is not in a verified state.";
 
 constexpr double kFinishProgress = 1.0;
 // The DLC download progress will consume the 50% of the progress bar.
@@ -285,7 +286,12 @@ void ChromeosPlatformModelLoader::GetModelStateFromDlcState(
     GetModelStateCallback callback,
     base::expected<base::FilePath, std::string> result) {
   if (!result.has_value()) {
-    std::move(callback).Run(mojom::PlatformModelState::kInvalidDlcPackage);
+    mojom::PlatformModelState error =
+        mojom::PlatformModelState::kInvalidDlcPackage;
+    if (result.error().find(kNotInAVerifiedState) != std::string::npos) {
+      error = mojom::PlatformModelState::kInvalidDlcVerifiedState;
+    }
+    std::move(callback).Run(error);
     return;
   }
 
