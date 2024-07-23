@@ -59,6 +59,7 @@ message FileImage {
   optional uint64 canonical_uid = 6;    // Owning UID.
   optional uint64 canonical_gid = 7;    // Owning GID.
   optional uint32 mode = 8;             // Mode.
+  optional bool partial_sha256 = 9;     // SHA256 computed from sampled data.
 }
 
 // The attributes of a process.
