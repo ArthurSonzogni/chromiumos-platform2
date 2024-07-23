@@ -16,6 +16,9 @@
 
 #define __ALIGN(x, mask) (((x) + (mask)) & ~(mask))
 
+_Static_assert(sizeof(unsigned long) == sizeof(size_t),
+               "unexpected size_t size");
+
 struct hkey {
   u64 call_id;
 };
