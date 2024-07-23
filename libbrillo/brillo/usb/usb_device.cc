@@ -177,8 +177,8 @@ std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetActiveConfigDescriptor() {
 
   int result = libusb_get_active_config_descriptor(device_, &config_descriptor);
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return std::make_unique<UsbConfigDescriptor>(AsWeakPtr(), config_descriptor,
-                                                 true);
+    return std::make_unique<UsbConfigDescriptor>(weak_ptr_factory_.GetWeakPtr(),
+                                                 config_descriptor, true);
 
   return nullptr;
 }
@@ -189,8 +189,8 @@ std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptor(
 
   int result = libusb_get_config_descriptor(device_, index, &config_descriptor);
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return std::make_unique<UsbConfigDescriptor>(AsWeakPtr(), config_descriptor,
-                                                 true);
+    return std::make_unique<UsbConfigDescriptor>(weak_ptr_factory_.GetWeakPtr(),
+                                                 config_descriptor, true);
 
   return nullptr;
 }
@@ -202,8 +202,8 @@ std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptorByValue(
   int result = libusb_get_config_descriptor_by_value(
       device_, configuration_value, &config_descriptor);
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return std::make_unique<UsbConfigDescriptor>(AsWeakPtr(), config_descriptor,
-                                                 true);
+    return std::make_unique<UsbConfigDescriptor>(weak_ptr_factory_.GetWeakPtr(),
+                                                 config_descriptor, true);
 
   return nullptr;
 }
@@ -214,7 +214,7 @@ std::unique_ptr<UsbDeviceDescriptor> UsbDevice::GetDeviceDescriptor() {
 
   int result = libusb_get_device_descriptor(device_, device_descriptor_.get());
   if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
-    return std::make_unique<UsbDeviceDescriptor>(AsWeakPtr(),
+    return std::make_unique<UsbDeviceDescriptor>(weak_ptr_factory_.GetWeakPtr(),
                                                  device_descriptor_.get());
 
   return nullptr;

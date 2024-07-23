@@ -27,7 +27,7 @@ class UsbDeviceDescriptor;
 
 // A USB device, which wraps a libusb_device C struct from libusb 1.0 and
 // related libusb library functions into a C++ object.
-class BRILLO_EXPORT UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
+class BRILLO_EXPORT UsbDevice {
  public:
   // Constructs a UsbDevice object by taking a raw pointer to a libusb_device
   // struct as |device|. The ownership of |device| is not transferred, but its
@@ -118,6 +118,8 @@ class BRILLO_EXPORT UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   libusb_device_handle* device_handle_;
   std::unique_ptr<libusb_device_descriptor> device_descriptor_;
   UsbError error_;
+
+  base::WeakPtrFactory<UsbDevice> weak_ptr_factory_{this};
 };
 
 }  // namespace brillo
