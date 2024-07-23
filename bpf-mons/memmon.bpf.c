@@ -14,12 +14,17 @@
 /* This include must be after vmlinux.h */
 #include "include/memmon.h"
 
+#define __ALIGN(x, mask) (((x) + (mask)) & ~(mask))
+
 struct hkey {
   u64 call_id;
 };
 
 struct hval {
-  size_t size;
+  union {
+    size_t size;
+    unsigned long ptr;
+  };
 };
 
 /*
@@ -83,11 +88,19 @@ static int memmon_event(struct pt_regs* ctx,
   event->tid = (u32)id;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
-  if (type == MEMMON_EVENT_MALLOC || type == MEMMON_EVENT_MMAP) {
-    if (save_ustack(ctx, event)) {
-      bpf_ringbuf_submit(event, 0);
-      return -EINVAL;
-    }
+  switch (type) {
+    case MEMMON_EVENT_MALLOC:
+    case MEMMON_EVENT_MMAP:
+    case MEMMON_EVENT_CALLOC:
+    case MEMMON_EVENT_STRDUP:
+    case MEMMON_EVENT_MEMALIGN:
+      if (save_ustack(ctx, event)) {
+        bpf_ringbuf_submit(event, 0);
+        return -EINVAL;
+      }
+      break;
+    default:
+      break;
   }
 
   event->type = type;
@@ -177,6 +190,99 @@ int BPF_URETPROBE(ret_mmap) {
 SEC("uprobe")
 int BPF_UPROBE(call_munmap, void* ptr) {
   return memmon_event(ctx, MEMMON_EVENT_MUNMAP, 0, (unsigned long)ptr);
+}
+
+SEC("uprobe")
+int BPF_UPROBE(call_strdup, const char* p) {
+  struct hval v;
+  struct hkey k;
+  long ret;
+
+  k.call_id = generate_call_id(MEMMON_EVENT_STRDUP);
+  v.ptr = (unsigned long)p;
+
+  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
+  return !ret ? 0 : -EINVAL;
+}
+
+SEC("uretprobe")
+int BPF_URETPROBE(ret_strdup) {
+  struct hval* v;
+  struct hkey k;
+
+  k.call_id = generate_call_id(MEMMON_EVENT_STRDUP);
+  v = bpf_map_lookup_elem(&events, &k);
+  if (v) {
+    return memmon_event(ctx, MEMMON_EVENT_STRDUP, v->ptr, PT_REGS_RC(ctx));
+  }
+
+  /*
+   * We didn't find the pairing CALL event, so use -1 for size to indicate
+   * this
+   */
+  return memmon_event(ctx, MEMMON_EVENT_STRDUP, -1, PT_REGS_RC(ctx));
+}
+
+SEC("uprobe")
+int BPF_UPROBE(call_calloc, size_t nmemb, size_t size) {
+  struct hval v;
+  struct hkey k;
+  long ret;
+
+  k.call_id = generate_call_id(MEMMON_EVENT_CALLOC);
+  v.size = nmemb * size;
+
+  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
+  return !ret ? 0 : -EINVAL;
+}
+
+SEC("uretprobe")
+int BPF_URETPROBE(ret_calloc) {
+  struct hval* v;
+  struct hkey k;
+
+  k.call_id = generate_call_id(MEMMON_EVENT_CALLOC);
+  v = bpf_map_lookup_elem(&events, &k);
+  if (v) {
+    return memmon_event(ctx, MEMMON_EVENT_CALLOC, v->size, PT_REGS_RC(ctx));
+  }
+
+  /*
+   * We didn't find the pairing CALL event, so use -1 for size to indicate
+   * this
+   */
+  return memmon_event(ctx, MEMMON_EVENT_CALLOC, -1, PT_REGS_RC(ctx));
+}
+
+SEC("uprobe")
+int BPF_UPROBE(call_memalign, size_t align, size_t size) {
+  struct hval v;
+  struct hkey k;
+  long ret;
+
+  k.call_id = generate_call_id(MEMMON_EVENT_MEMALIGN);
+  v.size = __ALIGN(size, align);
+
+  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
+  return !ret ? 0 : -EINVAL;
+}
+
+SEC("uretprobe")
+int BPF_URETPROBE(ret_memalign) {
+  struct hval* v;
+  struct hkey k;
+
+  k.call_id = generate_call_id(MEMMON_EVENT_MEMALIGN);
+  v = bpf_map_lookup_elem(&events, &k);
+  if (v) {
+    return memmon_event(ctx, MEMMON_EVENT_MEMALIGN, v->size, PT_REGS_RC(ctx));
+  }
+
+  /*
+   * We didn't find the pairing CALL event, so use -1 for size to indicate
+   * this
+   */
+  return memmon_event(ctx, MEMMON_EVENT_MEMALIGN, -1, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")

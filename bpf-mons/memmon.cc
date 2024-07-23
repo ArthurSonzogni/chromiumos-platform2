@@ -40,6 +40,30 @@ static int attach_probes(struct memmon_bpf* mon, int pid) {
   uopts.retprobe = true;
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_malloc, &uopts);
 
+  uopts.func_name = "strdup";
+  uopts.retprobe = false;
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_strdup, &uopts);
+
+  uopts.func_name = "strdup";
+  uopts.retprobe = true;
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_strdup, &uopts);
+
+  uopts.func_name = "calloc";
+  uopts.retprobe = false;
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_calloc, &uopts);
+
+  uopts.func_name = "calloc";
+  uopts.retprobe = true;
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_calloc, &uopts);
+
+  uopts.func_name = "memalign";
+  uopts.retprobe = false;
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_memalign, &uopts);
+
+  uopts.func_name = "memalign";
+  uopts.retprobe = true;
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_memalign, &uopts);
+
   uopts.func_name = "mmap";
   uopts.retprobe = false;
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_mmap, &uopts);
@@ -83,6 +107,21 @@ static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
       break;
     case MEMMON_EVENT_MUNMAP:
       printf("munmap() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
+      break;
+    case MEMMON_EVENT_STRDUP:
+      printf("strdup() ptr=%p -> ptr=%p\n",
+             reinterpret_cast<void*>(event->size),
+             reinterpret_cast<void*>(event->ptr));
+      break;
+    case MEMMON_EVENT_CALLOC:
+      printf("calloc() sz=%lu ptr=%p-%p\n", event->size,
+             reinterpret_cast<void*>(event->ptr),
+             reinterpret_cast<void*>(event->ptr + event->size));
+      break;
+    case MEMMON_EVENT_MEMALIGN:
+      printf("memalign() sz=%lu ptr=%p-%p\n", event->size,
+             reinterpret_cast<void*>(event->ptr),
+             reinterpret_cast<void*>(event->ptr + event->size));
       break;
     case MEMMON_EVENT_PF:
       printf("handle_mm_fault() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
