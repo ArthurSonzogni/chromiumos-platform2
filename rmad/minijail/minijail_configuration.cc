@@ -4,13 +4,13 @@
 
 #include "rmad/minijail/minijail_configuration.h"
 
+#include <libminijail.h>
+#include <scoped_minijail.h>
 #include <sys/capability.h>
 #include <sys/mount.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 namespace rmad {
 
@@ -52,7 +52,7 @@ void EnterMinijail(bool set_admin_caps) {
 
   minijail_enter_pivot_root(j.get(), "/mnt/empty");
 
-  minijail_mount_tmp(j.get());
+  minijail_mount_tmp_size(j.get(), 128 * 1024 * 1024);
 
   minijail_bind(j.get(), "/", "/", 0);
   minijail_add_fs_restriction_ro(j.get(), "/");
