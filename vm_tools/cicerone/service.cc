@@ -1052,7 +1052,8 @@ void Service::UpdateApplicationList(const std::string& container_token,
   app_list->set_vm_name(vm_name);
   app_list->set_container_name(container_name);
   app_list->set_owner_id(owner_id);
-  app_list->set_vm_type(vm->GetType());
+  app_list->set_vm_type(vm->GetType() != apps::BAGUETTE ? vm->GetType()
+                                                        : apps::TERMINA);
   dbus::MethodCall method_call(
       vm_tools::apps::kVmApplicationsServiceInterface,
       vm_tools::apps::kVmApplicationsServiceUpdateApplicationListMethod);
@@ -2244,6 +2245,14 @@ CreateLxdContainerResponse Service::CreateLxdContainer(
   }
 
   std::string error_msg;
+
+  if (vm->IsContainerless()) {
+    LOG(INFO) << "Pretend LXD container already running when containerless";
+    response.set_status(CreateLxdContainerResponse::EXISTS);
+    response.set_failure_reason(error_msg);
+    return response;
+  }
+
   VirtualMachine::CreateLxdContainerStatus status = vm->CreateLxdContainer(
       request.container_name().empty() ? kDefaultContainerName
                                        : request.container_name(),
@@ -2320,6 +2329,12 @@ StartLxdContainerResponse Service::StartLxdContainer(
     LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
     response.set_failure_reason(base::StringPrintf(
         "requested VM does not exist: %s", request.vm_name().c_str()));
+    return response;
+  }
+
+  if (vm->IsContainerless()) {
+    LOG(INFO) << "Pretend LXD container already running when containerless";
+    response.set_status(StartLxdContainerResponse::RUNNING);
     return response;
   }
 
@@ -2516,6 +2531,19 @@ SetUpLxdContainerUserResponse Service::SetUpLxdContainerUser(
 
   std::string username;
   std::string error_msg;
+
+  if (vm->GetType() == apps::BAGUETTE) {
+    // TODO: b/346396184
+    LOG(WARNING)
+        << "Ignore set username request as it's not supported in baguette yet";
+    // Default username in Baguette is chronos
+    username = "chronos";
+    response.set_container_username(username);
+    response.set_status(SetUpLxdContainerUserResponse::SUCCESS);
+    response.set_failure_reason(error_msg);
+    return response;
+  }
+
   VirtualMachine::SetUpLxdContainerUserStatus status =
       vm->SetUpLxdContainerUser(
           request.container_name().empty() ? kDefaultContainerName
@@ -3013,6 +3041,11 @@ StartLxdResponse Service::StartLxd(const StartLxdRequest& request) {
     response.set_status(StartLxdResponse::FAILED);
     response.set_failure_reason(base::StringPrintf(
         "requested VM does not exist: %s", request.vm_name().c_str()));
+    return response;
+  }
+  if (vm->IsContainerless()) {
+    LOG(INFO) << "Pretend LXD already running when containerless";
+    response.set_status(StartLxdResponse::ALREADY_RUNNING);
     return response;
   }
 
