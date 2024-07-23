@@ -1601,9 +1601,6 @@ void AuthSession::AuthForDecrypt::RemoveAuthFactor(
   session_->GetAuthFactorMap().Remove(auth_factor_label);
   session_->verifier_forwarder_.ReleaseVerifier(auth_factor_label);
 
-  // Report time taken for a successful remove.
-  ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer, remove_timer_start,
-                      "" /*append_string*/);
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 

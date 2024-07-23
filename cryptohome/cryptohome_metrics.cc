@@ -146,10 +146,6 @@ constexpr TimerHistogramParams kTimerHistogramParams[] = {
      "Cryptohome.TimeToAuthSessionUpdateAuthFactorVK", 0, 6000, 60},
     {kAuthSessionUpdateAuthFactorUSSTimer,
      "Cryptohome.TimeToAuthSessionUpdateAuthFactorUSS", 0, 6000, 60},
-    // TODO(b/236415640, thomascedeno) - Add metric once RemoveAuthFactor is
-    // implemented.
-    {kAuthSessionRemoveAuthFactorVKTimer,
-     "Cryptohome.TimeToAuthSessionRemoveAuthFactorVK", 0, 6000, 60},
     {kAuthSessionRemoveAuthFactorUSSTimer,
      "Cryptohome.TimeToAuthSessionRemoveAuthFactorUSS", 0, 6000, 60},
     // Time for User Data Auth class to create a persistent user.
