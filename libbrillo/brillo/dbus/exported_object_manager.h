@@ -77,8 +77,7 @@ namespace dbus_utils {
 //     Properties my_properties_;
 //     ExampleObjectManager* object_manager_;
 //   };
-class BRILLO_EXPORT ExportedObjectManager
-    : public base::SupportsWeakPtr<ExportedObjectManager> {
+class BRILLO_EXPORT ExportedObjectManager {
  public:
   using ObjectMap =
       std::map<::dbus::ObjectPath, std::map<std::string, VariantDictionary>>;
@@ -112,6 +111,8 @@ class BRILLO_EXPORT ExportedObjectManager
 
   const scoped_refptr<::dbus::Bus>& GetBus() const { return bus_; }
 
+  base::WeakPtr<ExportedObjectManager> AsWeakPtr();
+
  private:
   BRILLO_PRIVATE ObjectMap HandleGetManagedObjects();
 
@@ -129,6 +130,8 @@ class BRILLO_EXPORT ExportedObjectManager
   std::weak_ptr<SignalInterfacesRemoved> signal_itf_removed_;
 
   friend class ExportedObjectManagerTest;
+
+  base::WeakPtrFactory<ExportedObjectManager> weak_ptr_factory_{this};
 };
 
 }  // namespace dbus_utils

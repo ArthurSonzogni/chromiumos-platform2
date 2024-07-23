@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/dbus/exported_object_manager.h>
-
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/exported_object_manager.h>
 #include <dbus/object_manager.h>
 
 using brillo::dbus_utils::AsyncEventSequencer;
@@ -77,6 +76,10 @@ void ExportedObjectManager::ReleaseInterface(
   //       OBJPATH object_path, ARRAY<STRING> interfaces);
   signal_itf_removed_.lock()->Send(path,
                                    std::vector<std::string>{interface_name});
+}
+
+base::WeakPtr<ExportedObjectManager> ExportedObjectManager::AsWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }
 
 ExportedObjectManager::ObjectMap
