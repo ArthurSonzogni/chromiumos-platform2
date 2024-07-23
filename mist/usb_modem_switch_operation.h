@@ -47,9 +47,7 @@ class UsbModemSwitchContext;
 // maximize the overall concurrency, the modem switch operation is broken up
 // into the aforementioned tasks and each task is scheduled to execute in the
 // message loop via EventDispatcher.
-class UsbModemSwitchOperation
-    : public base::SupportsWeakPtr<UsbModemSwitchOperation>,
-      public brillo::UsbDeviceEventObserver {
+class UsbModemSwitchOperation : public brillo::UsbDeviceEventObserver {
  public:
   using CompletionCallback = base::OnceCallback<void(
       UsbModemSwitchOperation* operation, bool success)>;
@@ -185,6 +183,8 @@ class UsbModemSwitchOperation
   std::unique_ptr<brillo::UsbBulkTransfer> bulk_transfer_;
   base::CancelableOnceClosure pending_task_;
   base::CancelableOnceClosure reconnect_timeout_callback_;
+
+  base::WeakPtrFactory<UsbModemSwitchOperation> weak_ptr_factory_{this};
 };
 
 }  // namespace mist

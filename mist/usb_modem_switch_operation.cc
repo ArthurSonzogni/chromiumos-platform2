@@ -472,7 +472,8 @@ void UsbModemSwitchOperation::InitiateUsbBulkTransfer(
   // of the USB bulk transfer. This avoids the need to defer the destruction
   // of this object in order to wait for the completion callback of the
   // transfer when the transfer is cancelled by this object.
-  if (!bulk_transfer->Submit(base::BindOnce(completion_handler, AsWeakPtr()))) {
+  if (!bulk_transfer->Submit(
+          base::BindOnce(completion_handler, weak_ptr_factory_.GetWeakPtr()))) {
     LOG(ERROR) << "Could not submit USB bulk transfer: "
                << bulk_transfer->error();
     Complete(false);
