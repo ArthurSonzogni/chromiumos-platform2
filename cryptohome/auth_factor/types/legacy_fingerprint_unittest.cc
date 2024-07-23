@@ -44,10 +44,14 @@ class LegacyFingerprintDriverTest : public AuthFactorDriverGenericTest {
   LegacyFingerprintDriverTest() {
     // Handle the fingerprint signals sent by the auth block service, by
     // capturing the result.
-    EXPECT_CALL(signalling_, SendAuthScanResult(_))
-        .WillRepeatedly([this](const user_data_auth::AuthScanResult& signal) {
-          signal_results_.push_back(signal.fingerprint_result());
-        });
+    EXPECT_CALL(signalling_, SendPrepareAuthFactorProgress(_))
+        .WillRepeatedly(
+            [this](const user_data_auth::PrepareAuthFactorProgress& signal) {
+              signal_results_.push_back(signal.auth_progress()
+                                            .biometrics_progress()
+                                            .scan_result()
+                                            .fingerprint_result());
+            });
   }
 
   MockFingerprintManager fp_manager_;

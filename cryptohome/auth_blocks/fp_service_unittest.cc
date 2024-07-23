@@ -182,9 +182,6 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
   std::move(start_session_callback).Run(true);
   ASSERT_THAT(start_result.IsReady(), IsTrue());
   ASSERT_THAT(start_result.Get(), IsOk());
-  user_data_auth::AuthScanResult auth_scan_result;
-  EXPECT_CALL(signalling_, SendAuthScanResult(_))
-      .WillOnce(SaveArg<0>(&auth_scan_result));
   user_data_auth::PrepareAuthFactorProgress prepare_progress;
   EXPECT_CALL(signalling_, SendPrepareAuthFactorProgress(_))
       .WillOnce(SaveArg<0>(&prepare_progress));
@@ -196,9 +193,6 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
   CryptohomeStatus verify_result = service_.Verify();
   ASSERT_THAT(verify_result, IsOk());
   // Check the signal sender has been called.
-  ASSERT_EQ(
-      auth_scan_result.fingerprint_result(),
-      user_data_auth::FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
   ASSERT_EQ(prepare_progress.purpose(),
             user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   ASSERT_EQ(prepare_progress.auth_progress().auth_factor_type(),
@@ -301,7 +295,6 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryFailure) {
   ASSERT_THAT(start_result.IsReady(), IsTrue());
   ASSERT_THAT(start_result.Get(), IsOk());
   // Simulate a retry-able scan.
-  EXPECT_CALL(signalling_, SendAuthScanResult(_)).Times(1);
   EXPECT_CALL(signalling_, SendPrepareAuthFactorProgress(_)).Times(1);
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_ALLOWED);
 
@@ -335,7 +328,6 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryDeniedFailure) {
   ASSERT_THAT(start_result.IsReady(), IsTrue());
   ASSERT_THAT(start_result.Get(), IsOk());
   // Simulate a not-retry-able scan.
-  EXPECT_CALL(signalling_, SendAuthScanResult(_)).Times(1);
   EXPECT_CALL(signalling_, SendPrepareAuthFactorProgress(_)).Times(1);
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
 
@@ -370,15 +362,10 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
 
   // Simulate multiple scan results. And Check the outgoing signal. The callback
   // shall return corresponding outgoing signal values.
-  user_data_auth::AuthScanResult auth_scan_result;
-  EXPECT_CALL(signalling_, SendAuthScanResult(_))
-      .WillRepeatedly(SaveArg<0>(&auth_scan_result));
   user_data_auth::PrepareAuthFactorProgress prepare_progress;
   EXPECT_CALL(signalling_, SendPrepareAuthFactorProgress(_))
       .WillRepeatedly(SaveArg<0>(&prepare_progress));
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_ALLOWED);
-  ASSERT_EQ(auth_scan_result.fingerprint_result(),
-            user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY);
   ASSERT_EQ(
       prepare_progress.auth_progress()
           .biometrics_progress()
@@ -386,8 +373,6 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
           .fingerprint_result(),
       user_data_auth::FingerprintScanResult::FINGERPRINT_SCAN_RESULT_RETRY);
   signal_callback.Run(FingerprintScanStatus::SUCCESS);
-  ASSERT_EQ(auth_scan_result.fingerprint_result(),
-            user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
   ASSERT_EQ(
       prepare_progress.auth_progress()
           .biometrics_progress()
@@ -395,8 +380,6 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
           .fingerprint_result(),
       user_data_auth::FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
-  ASSERT_EQ(auth_scan_result.fingerprint_result(),
-            user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT);
   ASSERT_EQ(
       prepare_progress.auth_progress()
           .biometrics_progress()

@@ -205,8 +205,8 @@ for a given user as well as the supported types of auth factors.
 non-knowledge-based auth factors before AuthenticateAuthFactor or AddAuthFactor
 is called with those auth factors. It usually stats a sensor session for the
 specified auth factor type. It also initiates a signal sender broadcasting
-a AuthScanResult signal, which contains the scan result for the specified auth
-factor type.
+a PrepareAuthFactorProgress signal, which contains the scan result for the
+specified auth factor type.
     - *Input*:
       - auth_session_id - AuthSession used to identify users.
       - auth_factor_type - The type of AuthFactor that is being prepared.
@@ -335,8 +335,8 @@ any persistent users present.
     - A success response indicates an fingerprint session has started.
     - A failure response means the session start has failed.
     - Upon a successful invocation, a signal sender that broadcasts signal
-    AuthScanResult for legacy fingerprint is initialized.
-3.  Listen on crypthome signal AuthScanResult.
+    PrepareAuthFactorProgress for legacy fingerprint is initialized.
+3.  Listen on crypthome signal PrepareAuthFactorProgress.
     - It is a success. Chrome should proceed to call AuthenticationAuthFactor
       to find out the authentication result.
     - It is a failure and indicating fingerprint auth has been locked out.
@@ -354,8 +354,8 @@ any persistent users present.
     in the current fingerprint sensor session.
 5.  `TerminateAuthFactor`
     - End the active fingerprint sensor session.
-    - The sender that broadcasts AuthScanResult for legacy fingerprint is
-    terminated.
+    - The sender that broadcasts PrepareAuthFactorProgress for legacy
+    fingerprint is terminated.
 6.  `InvalidateAuthSession`
     - If there are any outstanding snesor sessions, they will  be ended
     automatically, similar to what `TerminateAuthFactor` has done.

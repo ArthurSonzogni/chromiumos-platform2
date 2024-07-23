@@ -20,8 +20,6 @@ class SignallingInterface {
   virtual void SendAuthFactorStatusUpdate(
       const user_data_auth::AuthFactorStatusUpdate& signal) = 0;
   virtual void SendLowDiskSpace(const user_data_auth::LowDiskSpace& signal) = 0;
-  virtual void SendAuthScanResult(
-      const user_data_auth::AuthScanResult& signal) = 0;
   virtual void SendPrepareAuthFactorProgress(
       const user_data_auth::PrepareAuthFactorProgress& signal) = 0;
   virtual void SendAuthenticateStarted(
@@ -59,8 +57,6 @@ class NullSignalling : public SignallingInterface {
   void SendAuthFactorStatusUpdate(
       const user_data_auth::AuthFactorStatusUpdate& signal) override {}
   void SendLowDiskSpace(const user_data_auth::LowDiskSpace& signal) override {}
-  void SendAuthScanResult(
-      const user_data_auth::AuthScanResult& signal) override {}
   void SendPrepareAuthFactorProgress(
       const user_data_auth::PrepareAuthFactorProgress& signal) override {}
   void SendAuthenticateStarted(

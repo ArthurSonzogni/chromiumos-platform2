@@ -204,7 +204,6 @@ void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
   progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   *progress.mutable_auth_progress() = auth_progress;
   if (signalling_) {
-    signalling_->SendAuthScanResult(auth_scan_result);
     signalling_->SendPrepareAuthFactorProgress(progress);
   }
 }

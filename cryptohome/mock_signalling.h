@@ -28,10 +28,6 @@ class MockSignalling : public SignallingInterface {
               (const user_data_auth::LowDiskSpace&),
               (override));
   MOCK_METHOD(void,
-              SendAuthScanResult,
-              (const user_data_auth::AuthScanResult&),
-              (override));
-  MOCK_METHOD(void,
               SendPrepareAuthFactorProgress,
               (const user_data_auth::PrepareAuthFactorProgress&),
               (override));

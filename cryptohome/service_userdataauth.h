@@ -412,10 +412,6 @@ class UserDataAuthAdaptor
     void SendLowDiskSpace(const user_data_auth::LowDiskSpace& signal) override {
       adaptor_->SendLowDiskSpaceSignal(signal);
     }
-    void SendAuthScanResult(
-        const user_data_auth::AuthScanResult& signal) override {
-      adaptor_->SendAuthScanResultSignal(signal);
-    }
     void SendPrepareAuthFactorProgress(
         const user_data_auth::PrepareAuthFactorProgress& signal) override {
       adaptor_->SendPrepareAuthFactorProgressSignal(signal);

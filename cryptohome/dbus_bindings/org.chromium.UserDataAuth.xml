@@ -577,17 +577,6 @@ do.
       </arg>
     </signal>
 
-    <!-- AuthScanResult: Emitted when a async auth factor such as
-         fingerprint has been detected. -->
-    <signal name="AuthScanResult">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="status" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="cryptohome/proto_bindings/UserDataAuth.pb.h;user_data_auth::AuthScanResult" />
-      </arg>
-    </signal>
-
     <!-- PrepareAuthFactorProgress: Emitted when AuthFactor preparation has
          a new progress. -->
     <signal name="PrepareAuthFactorProgress">
