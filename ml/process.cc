@@ -4,15 +4,17 @@
 
 #include "ml/process.h"
 
-#include <utility>
-
+#include <libminijail.h>
+#include <pwd.h>
+#include <scoped_minijail.h>
 #include <signal.h>
-#include <sysexits.h>
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sysexits.h>
 #include <unistd.h>
-#include <pwd.h>
+
+#include <utility>
 
 #include <base/check_op.h>
 #include <base/functional/bind.h>
@@ -23,11 +25,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
-#include <libminijail.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
 #include <mojo/public/cpp/system/invitation.h>
-#include <scoped_minijail.h>
 
 #include "ml/daemon.h"
 #include "ml/machine_learning_service_impl.h"
@@ -204,6 +204,12 @@ Process::SendMojoInvitationAndGetRemote(pid_t worker_pid,
   mojo::OutgoingInvitation invitation;
   mojo::ScopedMessagePipeHandle pipe =
       invitation.AttachMessagePipe(kInternalMojoPrimordialPipeName);
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  // IPCz requires an application to explicitly opt in to broker sharing
+  // and inheritance when establishing a direct connection between two
+  // non-broker nodes.
+  invitation.set_extra_flags(MOJO_SEND_INVITATION_FLAG_SHARE_BROKER);
+#endif
 
   mojo::Remote<chromeos::machine_learning::mojom::MachineLearningService>
       remote(mojo::PendingRemote<
@@ -274,8 +280,18 @@ void Process::WorkerProcessRun() {
   {
     WallTimeMetric walltime_metric(
         "MachineLearningService.WorkerProcessAcceptMojoConnectionTime");
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+    // IPCz requires an application to explicitly opt in to broker sharing
+    // and inheritance when establishing a direct connection between two
+    // non-broker nodes.
+    invitation = mojo::IncomingInvitation::Accept(
+        mojo::PlatformChannelEndpoint(
+            mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))),
+        MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
     invitation = mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
         mojo::PlatformHandle(base::ScopedFD(mojo_bootstrap_fd_))));
+#endif
   }
   mojo::ScopedMessagePipeHandle pipe =
       invitation.ExtractMessagePipe(kInternalMojoPrimordialPipeName);

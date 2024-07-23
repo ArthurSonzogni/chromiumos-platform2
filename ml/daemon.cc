@@ -4,19 +4,19 @@
 
 #include "ml/daemon.h"
 
-#include <memory>
-#include <utility>
-
 #include <sys/types.h>
 #include <sysexits.h>
 #include <unistd.h>
+
+#include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/task/single_thread_task_runner.h>
 #include <base/memory/ref_counted.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -118,9 +118,19 @@ void Daemon::BootstrapMojoConnection(
   }
 
   // Connect to mojo in the requesting process.
+#if defined(ENABLE_IPCZ_ON_CHROMEOS)
+  // IPCz requires an application to explicitly opt in to broker sharing
+  // and inheritance when establishing a direct connection between two
+  // non-broker nodes.
+  mojo::IncomingInvitation invitation = mojo::IncomingInvitation::Accept(
+      mojo::PlatformChannelEndpoint(
+          mojo::PlatformHandle(std::move(file_handle))),
+      MOJO_ACCEPT_INVITATION_FLAG_INHERIT_BROKER);
+#else
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(mojo::PlatformChannelEndpoint(
           mojo::PlatformHandle(std::move(file_handle))));
+#endif
 
   // Bind primordial message pipe to a MachineLearningService implementation.
   machine_learning_service_ = std::make_unique<MachineLearningServiceImpl>(
