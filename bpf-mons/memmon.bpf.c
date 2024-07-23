@@ -21,10 +21,7 @@ struct hkey {
 };
 
 struct hval {
-  union {
-    size_t size;
-    unsigned long ptr;
-  };
+  size_t payload;
 };
 
 /*
@@ -125,66 +122,57 @@ static int memmon_event(struct pt_regs* ctx,
 #define BPF_URETPROBE(name, args...) BPF_KRETPROBE(name, ##args)
 #endif
 
-SEC("uprobe")
-int BPF_UPROBE(call_malloc, size_t size) {
+static int __call_event(struct pt_regs* ctx,
+                        enum memmon_event_type type,
+                        size_t payload) {
   struct hval v;
   struct hkey k;
   long ret;
 
-  k.call_id = generate_call_id(MEMMON_EVENT_MALLOC);
-  v.size = size;
+  k.call_id = generate_call_id(type);
+  v.payload = payload;
 
   ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
   return !ret ? 0 : -EINVAL;
+}
+
+static int __ret_event(struct pt_regs* ctx,
+                       enum memmon_event_type type,
+                       unsigned long retval) {
+  struct hval* v;
+  struct hkey k;
+
+  k.call_id = generate_call_id(type);
+  v = bpf_map_lookup_elem(&events, &k);
+  if (v) {
+    return memmon_event(ctx, type, v->payload, retval);
+  }
+
+  /*
+   * We didn't find the pairing CALL event, so use -1 for size to indicate
+   * this
+   */
+  return memmon_event(ctx, type, -1, retval);
+}
+
+SEC("uprobe")
+int BPF_UPROBE(call_malloc, size_t size) {
+  return __call_event(ctx, MEMMON_EVENT_MALLOC, size);
 }
 
 SEC("uretprobe")
 int BPF_URETPROBE(ret_malloc) {
-  struct hval* v;
-  struct hkey k;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_MALLOC);
-  v = bpf_map_lookup_elem(&events, &k);
-  if (v) {
-    return memmon_event(ctx, MEMMON_EVENT_MALLOC, v->size, PT_REGS_RC(ctx));
-  }
-
-  /*
-   * We didn't find the pairing CALL event, so use -1 for size to indicate
-   * this
-   */
-  return memmon_event(ctx, MEMMON_EVENT_MALLOC, -1, PT_REGS_RC(ctx));
+  return __ret_event(ctx, MEMMON_EVENT_MALLOC, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_mmap, void* addr, size_t size) {
-  struct hval v;
-  struct hkey k;
-  long ret;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_MMAP);
-  v.size = size;
-
-  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
-  return !ret ? 0 : -EINVAL;
+  return __call_event(ctx, MEMMON_EVENT_MMAP, size);
 }
 
 SEC("uretprobe")
 int BPF_URETPROBE(ret_mmap) {
-  struct hval* v;
-  struct hkey k;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_MMAP);
-  v = bpf_map_lookup_elem(&events, &k);
-  if (v) {
-    return memmon_event(ctx, MEMMON_EVENT_MMAP, v->size, PT_REGS_RC(ctx));
-  }
-
-  /*
-   * We didn't find the pairing CALL event, so use -1 for size to indicate
-   * this
-   */
-  return memmon_event(ctx, MEMMON_EVENT_MMAP, -1, PT_REGS_RC(ctx));
+  return __ret_event(ctx, MEMMON_EVENT_MMAP, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
@@ -194,95 +182,32 @@ int BPF_UPROBE(call_munmap, void* ptr) {
 
 SEC("uprobe")
 int BPF_UPROBE(call_strdup, const char* p) {
-  struct hval v;
-  struct hkey k;
-  long ret;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_STRDUP);
-  v.ptr = (unsigned long)p;
-
-  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
-  return !ret ? 0 : -EINVAL;
+  return __call_event(ctx, MEMMON_EVENT_STRDUP, (unsigned long)p);
 }
 
 SEC("uretprobe")
 int BPF_URETPROBE(ret_strdup) {
-  struct hval* v;
-  struct hkey k;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_STRDUP);
-  v = bpf_map_lookup_elem(&events, &k);
-  if (v) {
-    return memmon_event(ctx, MEMMON_EVENT_STRDUP, v->ptr, PT_REGS_RC(ctx));
-  }
-
-  /*
-   * We didn't find the pairing CALL event, so use -1 for size to indicate
-   * this
-   */
-  return memmon_event(ctx, MEMMON_EVENT_STRDUP, -1, PT_REGS_RC(ctx));
+  return __ret_event(ctx, MEMMON_EVENT_STRDUP, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_calloc, size_t nmemb, size_t size) {
-  struct hval v;
-  struct hkey k;
-  long ret;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_CALLOC);
-  v.size = nmemb * size;
-
-  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
-  return !ret ? 0 : -EINVAL;
+  return __call_event(ctx, MEMMON_EVENT_CALLOC, nmemb * size);
 }
 
 SEC("uretprobe")
 int BPF_URETPROBE(ret_calloc) {
-  struct hval* v;
-  struct hkey k;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_CALLOC);
-  v = bpf_map_lookup_elem(&events, &k);
-  if (v) {
-    return memmon_event(ctx, MEMMON_EVENT_CALLOC, v->size, PT_REGS_RC(ctx));
-  }
-
-  /*
-   * We didn't find the pairing CALL event, so use -1 for size to indicate
-   * this
-   */
-  return memmon_event(ctx, MEMMON_EVENT_CALLOC, -1, PT_REGS_RC(ctx));
+  return __ret_event(ctx, MEMMON_EVENT_CALLOC, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_memalign, size_t align, size_t size) {
-  struct hval v;
-  struct hkey k;
-  long ret;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_MEMALIGN);
-  v.size = __ALIGN(size, align);
-
-  ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
-  return !ret ? 0 : -EINVAL;
+  return __call_event(ctx, MEMMON_EVENT_MEMALIGN, __ALIGN(size, align));
 }
 
 SEC("uretprobe")
 int BPF_URETPROBE(ret_memalign) {
-  struct hval* v;
-  struct hkey k;
-
-  k.call_id = generate_call_id(MEMMON_EVENT_MEMALIGN);
-  v = bpf_map_lookup_elem(&events, &k);
-  if (v) {
-    return memmon_event(ctx, MEMMON_EVENT_MEMALIGN, v->size, PT_REGS_RC(ctx));
-  }
-
-  /*
-   * We didn't find the pairing CALL event, so use -1 for size to indicate
-   * this
-   */
-  return memmon_event(ctx, MEMMON_EVENT_MEMALIGN, -1, PT_REGS_RC(ctx));
+  return __ret_event(ctx, MEMMON_EVENT_MEMALIGN, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")

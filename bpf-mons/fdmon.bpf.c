@@ -19,7 +19,7 @@ struct hkey {
 };
 
 struct hval {
-  s32 fd;
+  s32 payload;
 };
 
 /*
@@ -67,8 +67,8 @@ static struct fdmon_event* bpf_ringbuf_event_get(void) {
 
 static int fdmon_event(struct pt_regs* ctx,
                        enum fdmon_event_type type,
-                       s32 nfd,
-                       s32 ofd) {
+                       s32 ofd,
+                       s32 nfd) {
   struct fdmon_event* event;
   u64 id;
 
@@ -110,50 +110,62 @@ static int fdmon_event(struct pt_regs* ctx,
 #define BPF_URETPROBE(name, args...) BPF_KRETPROBE(name, ##args)
 #endif
 
-SEC("uretprobe")
-int BPF_UPROBE(ret_open) {
-  return fdmon_event(ctx, FDMON_EVENT_OPEN, PT_REGS_RC(ctx), 0);
-}
-
-SEC("uprobe")
-int BPF_UPROBE(call_dup, s32 fd) {
+static int __call_event(struct pt_regs* ctx,
+                        enum fdmon_event_type type,
+                        s32 payload) {
   struct hval v;
   struct hkey k;
   long ret;
 
-  k.call_id = generate_call_id(FDMON_EVENT_DUP);
-  v.fd = fd;
+  k.call_id = generate_call_id(type);
+  v.payload = payload;
 
   ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
   return !ret ? 0 : -EINVAL;
 }
 
-SEC("uretprobe")
-int BPF_URETPROBE(ret_dup) {
+static int __ret_event(struct pt_regs* ctx,
+                       enum fdmon_event_type type,
+                       s32 retval) {
   struct hval* v;
   struct hkey k;
 
-  k.call_id = generate_call_id(FDMON_EVENT_DUP);
+  k.call_id = generate_call_id(type);
   v = bpf_map_lookup_elem(&events, &k);
   if (v) {
-    return fdmon_event(ctx, FDMON_EVENT_DUP, PT_REGS_RC(ctx), v->fd);
+    return fdmon_event(ctx, type, v->payload, retval);
   }
 
   /*
-   * We didn't find the pairing CALL event, so use -1 for old-fd to indicate
+   * We didn't find the pairing CALL event, so use -1 for fd to indicate
    * this
    */
-  return fdmon_event(ctx, FDMON_EVENT_DUP, PT_REGS_RC(ctx), -1);
+  return fdmon_event(ctx, type, -1, retval);
+}
+
+SEC("uretprobe")
+int BPF_UPROBE(ret_open) {
+  return fdmon_event(ctx, FDMON_EVENT_OPEN, 0, PT_REGS_RC(ctx));
+}
+
+SEC("uprobe")
+int BPF_UPROBE(call_dup, s32 fd) {
+  return __call_event(ctx, FDMON_EVENT_DUP, fd);
+}
+
+SEC("uretprobe")
+int BPF_URETPROBE(ret_dup) {
+  return __ret_event(ctx, FDMON_EVENT_DUP, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_dup2, s32 ofd, s32 nfd) {
-  return fdmon_event(ctx, FDMON_EVENT_DUP, nfd, ofd);
+  return fdmon_event(ctx, FDMON_EVENT_DUP, ofd, nfd);
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_close, s32 fd) {
-  return fdmon_event(ctx, FDMON_EVENT_CLOSE, fd, 0);
+  return fdmon_event(ctx, FDMON_EVENT_CLOSE, 0, fd);
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
