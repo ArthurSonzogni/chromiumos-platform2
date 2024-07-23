@@ -28,7 +28,7 @@ static int attach_probes(struct fdmon_bpf* mon, int pid) {
   LIBBPF_OPTS(bpf_uprobe_opts, uopts);
   std::string libc;
 
-  if (libmon::lookup_lib("libc.so.6", libc))
+  if (libmon::lookup_lib("libc.so", libc))
     return -ENOENT;
 
   uopts.func_name = "open";

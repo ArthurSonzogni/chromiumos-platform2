@@ -9,6 +9,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace libmon {
 
@@ -94,21 +95,26 @@ void release_stack_decoder(void) {
 }
 
 int lookup_lib(const char* name, std::string& path) {
-  char p[4096];
+  std::vector<std::filesystem::path> search = {"/lib64", "/usr/lib64"};
+  std::string lib_name = name;
 
-  snprintf(p, sizeof(p), "/lib64/%s", name);
-  if (std::filesystem::exists(p))
-    goto ok;
+  for (const auto& dir : search) {
+    if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
+      continue;
 
-  snprintf(p, sizeof(p), "/lib/%s", name);
-  if (std::filesystem::exists(p))
-    goto ok;
+    for (auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+      if (!entry.is_regular_file())
+        continue;
 
+      std::string ent = entry.path().filename();
+      /* Either full match or substring match, e.g. libc.so and libc.so.6 */
+      if (ent == lib_name || ent.find(lib_name) != std::string::npos) {
+        path = entry.path().string();
+        return 0;
+      }
+    }
+  }
   return -ENOENT;
-
-ok:
-  path = p;
-  return 0;
 }
 
 }  // namespace libmon
