@@ -35,6 +35,7 @@ using ::chromeos::machine_learning::mojom::SodaClient;
 using ::chromeos::machine_learning::mojom::SodaConfigPtr;
 using ::chromeos::machine_learning::mojom::SodaRecognitionMode;
 using ::chromeos::machine_learning::mojom::SodaRecognizer;
+using ::chromeos::machine_learning::mojom::SpeakerDiarizationMode;
 using ::chromeos::machine_learning::mojom::SpeechRecognizerEvent;
 using ::chromeos::machine_learning::mojom::SpeechRecognizerEventPtr;
 using ::speech::soda::chrome::ExtendedSodaConfigMsg;
@@ -184,8 +185,24 @@ SodaRecognizerImpl::SodaRecognizerImpl(
 
   cfg_msg.set_mask_offensive_words(spec->mask_offensive_words);
   if (spec->speaker_change_detection) {
+    if (spec->speaker_diarization_mode !=
+        SpeakerDiarizationMode::kSpeakerDiarizationModeOffDefault) {
+      LOG(DFATAL) << "speaker_change_detection and speaker_diarization_mode "
+                     "both set, ignoring speaker_change_detection";
+    } else {
+      cfg_msg.set_speaker_diarization_mode(
+          ExtendedSodaConfigMsg::SPEAKER_CHANGE_DETECTION);
+    }
+  }
+
+  if (spec->speaker_diarization_mode ==
+      SpeakerDiarizationMode::kSpeakerChangeDetection) {
     cfg_msg.set_speaker_diarization_mode(
         ExtendedSodaConfigMsg::SPEAKER_CHANGE_DETECTION);
+  } else if (spec->speaker_diarization_mode ==
+             SpeakerDiarizationMode::kSpeakerLabelDetection) {
+    cfg_msg.set_speaker_diarization_mode(
+        ExtendedSodaConfigMsg::SPEAKER_LABEL_DETECTION);
   }
 
   if (spec->multi_lang_config) {

@@ -6,6 +6,7 @@
 
 #include <string>
 #include <utility>
+
 #include <base/logging.h>
 #include <base/time/time.h>
 
@@ -64,6 +65,10 @@ SpeechRecognizerEventFromProto(const SodaResponse& soda_response) {
     speech_recognizer_event =
         chromeos::machine_learning::mojom::SpeechRecognizerEvent::
             NewLangidEvent(internal::LangIdEventFromProto(soda_response));
+  } else if (soda_response.soda_type() == SodaResponse::LABEL_CORRECTION) {
+    speech_recognizer_event = chromeos::machine_learning::mojom::
+        SpeechRecognizerEvent::NewLabelCorrectionEvent(
+            internal::LabelCorrectionEventFromProto(soda_response));
   } else {
     LOG(ERROR) << "Unexpected type of soda type to convert: "
                << speech::soda::chrome::SodaResponse_SodaMessageType_Name(
@@ -133,6 +138,15 @@ chromeos::machine_learning::mojom::PartialResultPtr PartialResultFromProto(
        soda_response.recognition_result().hypothesis()) {
     partial_result->partial_text.push_back(hyp);
   }
+  if (soda_response.recognition_result().hypothesis_part_size() > 0) {
+    partial_result->hypothesis_part.emplace();
+
+    for (const auto& hypothesis_part :
+         soda_response.recognition_result().hypothesis_part()) {
+      partial_result->hypothesis_part->push_back(
+          HypothesisPartInResultFromProto(hypothesis_part));
+    }
+  }
   if (soda_response.recognition_result().has_timing_metrics()) {
     partial_result->timing_event = TimingInfoFromTimingMetricsProto(
         soda_response.recognition_result().timing_metrics());
@@ -159,15 +173,8 @@ chromeos::machine_learning::mojom::FinalResultPtr FinalResultFromProto(
 
     for (const auto& hypothesis_part :
          soda_response.recognition_result().hypothesis_part()) {
-      auto part_in_result =
-          chromeos::machine_learning::mojom::HypothesisPartInResult::New();
-      for (const std::string& part : hypothesis_part.text()) {
-        part_in_result->text.push_back(part);
-      }
-      part_in_result->alignment =
-          base::Milliseconds(hypothesis_part.alignment_ms());
-      part_in_result->leading_space = hypothesis_part.leading_space();
-      final_result->hypothesis_part->push_back(std::move(part_in_result));
+      final_result->hypothesis_part->push_back(
+          HypothesisPartInResultFromProto(hypothesis_part));
     }
   }
   // TODO(robsc): Add endpoint reason when available from
@@ -241,6 +248,40 @@ chromeos::machine_learning::mojom::LangIdEventPtr LangIdEventFromProto(
       LOG(FATAL) << "Unknown langid asr_switch_result_type.";
   }
   return langid_event;
+}
+
+chromeos::machine_learning::mojom::LabelCorrectionEventPtr
+LabelCorrectionEventFromProto(
+    const speech::soda::chrome::SodaResponse& soda_response) {
+  auto label_correction_event =
+      chromeos::machine_learning::mojom::LabelCorrectionEvent::New();
+  CHECK_EQ(soda_response.soda_type(), SodaResponse::LABEL_CORRECTION);
+  for (const auto& hypothesis_part :
+       soda_response.label_correction_event().hypothesis_parts()) {
+    label_correction_event->hypothesis_parts.push_back(
+        HypothesisPartInResultFromProto(hypothesis_part));
+  }
+  return label_correction_event;
+}
+
+chromeos::machine_learning::mojom::HypothesisPartInResultPtr
+HypothesisPartInResultFromProto(
+    const speech::soda::chrome::HypothesisPart& hypothesis_part) {
+  auto part_in_result =
+      chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  for (const std::string& part : hypothesis_part.text()) {
+    part_in_result->text.push_back(part);
+  }
+  part_in_result->alignment =
+      base::Milliseconds(hypothesis_part.alignment_ms());
+  if (hypothesis_part.has_leading_space()) {
+    part_in_result->leading_space = hypothesis_part.leading_space();
+  }
+  part_in_result->speaker_change = hypothesis_part.speaker_change();
+  if (hypothesis_part.has_speaker_label()) {
+    part_in_result->speaker_label = hypothesis_part.speaker_label();
+  }
+  return part_in_result;
 }
 
 chromeos::machine_learning::mojom::TimingInfoPtr

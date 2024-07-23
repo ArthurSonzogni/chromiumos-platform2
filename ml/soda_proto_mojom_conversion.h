@@ -6,6 +6,7 @@
 #define ML_SODA_PROTO_MOJOM_CONVERSION_H_
 
 #include <optional>
+
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "ml/mojom/soda.mojom.h"
 
@@ -43,6 +44,14 @@ chromeos::machine_learning::mojom::EndpointerEventPtr EndpointerEventFromProto(
 
 chromeos::machine_learning::mojom::LangIdEventPtr LangIdEventFromProto(
     const speech::soda::chrome::SodaResponse& soda_response);
+
+chromeos::machine_learning::mojom::LabelCorrectionEventPtr
+LabelCorrectionEventFromProto(
+    const speech::soda::chrome::SodaResponse& soda_response);
+
+chromeos::machine_learning::mojom::HypothesisPartInResultPtr
+HypothesisPartInResultFromProto(
+    const speech::soda::chrome::HypothesisPart& hypothesis_part);
 
 chromeos::machine_learning::mojom::TimingInfoPtr
 TimingInfoFromTimingMetricsProto(

@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "ml/soda_proto_mojom_conversion.h"
+
 #include <string>
 #include <utility>
 
-#include "ml/soda_proto_mojom_conversion.h"
+#include <gtest/gtest.h>
 
 namespace ml {
 
+using speech::soda::chrome::HypothesisPart;
 using speech::soda::chrome::SodaResponse;
 using speech::soda::chrome::TimingMetrics;
 
@@ -49,6 +51,20 @@ TEST(SodaProtoMojomConversionTest, PartialResultsTest) {
   rec->add_hypothesis("second hyp");
   rec->set_result_type(speech::soda::chrome::SodaRecognitionResult::PARTIAL);
   rec->mutable_timing_metrics()->set_audio_start_epoch_usec(5);
+  // Add the hyp parts.
+  auto* hyp_part = rec->add_hypothesis_part();
+  hyp_part->add_text("first,");
+  hyp_part->add_text("first");
+  hyp_part->set_alignment_ms(0);
+  hyp_part->set_leading_space(false);
+  hyp_part->set_speaker_label("1");
+  hyp_part->set_speaker_change(true);
+
+  hyp_part = rec->add_hypothesis_part();
+  hyp_part->add_text("hypo.");
+  hyp_part->add_text("hypo");
+  hyp_part->set_alignment_ms(50);
+  hyp_part->set_leading_space(true);
 
   auto expected_rec_mojom =
       chromeos::machine_learning::mojom::PartialResult::New();
@@ -59,6 +75,22 @@ TEST(SodaProtoMojomConversionTest, PartialResultsTest) {
   expected_timing_mojom->audio_start_epoch =
       base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(5));
   expected_rec_mojom->timing_event = std::move(expected_timing_mojom);
+  expected_rec_mojom->hypothesis_part.emplace();
+  auto part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  part->text.push_back("first,");
+  part->text.push_back("first");
+  part->alignment = base::Milliseconds(0);
+  part->leading_space = false;
+  part->speaker_label = "1";
+  part->speaker_change = true;
+  expected_rec_mojom->hypothesis_part->push_back(std::move(part));
+  part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  part->text.push_back("hypo.");
+  part->text.push_back("hypo");
+  part->alignment = base::Milliseconds(50);
+  part->leading_space = true;
+  expected_rec_mojom->hypothesis_part->push_back(std::move(part));
+
   auto actual_rec_mojom = internal::PartialResultFromProto(response);
   EXPECT_TRUE(actual_rec_mojom.Equals(expected_rec_mojom));
 
@@ -115,6 +147,8 @@ TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
   hyp_part->add_text("first");
   hyp_part->set_alignment_ms(0);
   hyp_part->set_leading_space(false);
+  hyp_part->set_speaker_label("1");
+  hyp_part->set_speaker_change(true);
 
   hyp_part = rec->add_hypothesis_part();
   hyp_part->add_text("hypo.");
@@ -132,6 +166,8 @@ TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
   part->text.push_back("first");
   part->alignment = base::Milliseconds(0);
   part->leading_space = false;
+  part->speaker_label = "1";
+  part->speaker_change = true;
   expected_rec_mojom->hypothesis_part->push_back(std::move(part));
   part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
   part->text.push_back("hypo.");
@@ -192,6 +228,50 @@ TEST(SodaProtoMojomConversionTest, FinalResultsTest) {
   EXPECT_FALSE(IsShutdownSodaResponse(response));
 }
 
+TEST(SodaProtoMojomConversionTest, LabelCorrectionTest) {
+  SodaResponse response;
+  response.set_soda_type(SodaResponse::LABEL_CORRECTION);
+  auto* rec = response.mutable_label_correction_event();
+  // Add the hyp parts.
+  auto* hyp_part = rec->add_hypothesis_parts();
+  hyp_part->add_text("first,");
+  hyp_part->add_text("first");
+  hyp_part->set_alignment_ms(0);
+  hyp_part->set_leading_space(false);
+  hyp_part->set_speaker_label("1");
+  hyp_part->set_speaker_change(false);
+
+  hyp_part = rec->add_hypothesis_parts();
+  hyp_part->add_text("hypo.");
+  hyp_part->add_text("hypo");
+  hyp_part->set_alignment_ms(50);
+  hyp_part->set_leading_space(true);
+  hyp_part->set_speaker_label("2");
+  hyp_part->set_speaker_change(true);
+
+  auto expected_rec_mojom =
+      chromeos::machine_learning::mojom::LabelCorrectionEvent::New();
+  auto part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  part->text.push_back("first,");
+  part->text.push_back("first");
+  part->alignment = base::Milliseconds(0);
+  part->leading_space = false;
+  part->speaker_label = "1";
+  part->speaker_change = false;
+  expected_rec_mojom->hypothesis_parts.push_back(std::move(part));
+  part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  part->text.push_back("hypo.");
+  part->text.push_back("hypo");
+  part->alignment = base::Milliseconds(50);
+  part->leading_space = true;
+  part->speaker_label = "2";
+  part->speaker_change = true;
+  expected_rec_mojom->hypothesis_parts.push_back(std::move(part));
+
+  auto actual_rec_mojom = internal::LabelCorrectionEventFromProto(response);
+  EXPECT_TRUE(actual_rec_mojom.Equals(expected_rec_mojom));
+}
+
 TEST(SodaProtoMojomConversionTest, EndpointTest) {
   SodaResponse response;
   response.set_soda_type(SodaResponse::ENDPOINT);
@@ -235,6 +315,36 @@ TEST(SodaProtoMojomConversionTest, BooleanFunctionTest) {
   EXPECT_FALSE(IsStopSodaResponse(response));
   EXPECT_FALSE(IsStartSodaResponse(response));
   EXPECT_TRUE(IsShutdownSodaResponse(response));
+}
+
+TEST(SodaProtoMojomConversionTest, EmptyHypothesisPartInResultTest) {
+  HypothesisPart hyp_part;
+  auto expected_part =
+      chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  auto actual_part_mojom = internal::HypothesisPartInResultFromProto(hyp_part);
+  EXPECT_TRUE(actual_part_mojom.Equals(expected_part));
+}
+
+TEST(SodaProtoMojomConversionTest, HypothesisPartInResultTest) {
+  HypothesisPart hyp_part;
+  hyp_part.add_text("first,");
+  hyp_part.add_text("first");
+  hyp_part.set_alignment_ms(0);
+  hyp_part.set_leading_space(false);
+  hyp_part.set_speaker_label("1");
+  hyp_part.set_speaker_change(true);
+
+  auto expected_part =
+      chromeos::machine_learning::mojom::HypothesisPartInResult::New();
+  expected_part->text.push_back("first,");
+  expected_part->text.push_back("first");
+  expected_part->alignment = base::Milliseconds(0);
+  expected_part->leading_space = false;
+  expected_part->speaker_label = "1";
+  expected_part->speaker_change = true;
+
+  auto actual_part_mojom = internal::HypothesisPartInResultFromProto(hyp_part);
+  EXPECT_TRUE(actual_part_mojom.Equals(expected_part));
 }
 
 TEST(SodaProtoMojomConversionTest, EmptyTimeTest) {
