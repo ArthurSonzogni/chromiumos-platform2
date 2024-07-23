@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "modemfwd/error.h"
 #include "modemfwd/heartbeat_task.h"
 
 #include <vector>
@@ -13,6 +12,7 @@
 #include <dbus/modemfwd/dbus-constants.h>
 
 #include "modemfwd/daemon_delegate.h"
+#include "modemfwd/error.h"
 #include "modemfwd/logging.h"
 
 namespace modemfwd {
@@ -108,24 +108,12 @@ void HeartbeatTask::DoHealthCheck() {
   consecutive_heartbeat_failures_++;
 
   // Creating this error triggers uploading logs for anomaly detection
-  if (consecutive_heartbeat_failures_ == 1) {
-    auto err = Error::Create(
-        FROM_HERE, error::kHeartbeatHealthCheck1stFailure,
-        base::StringPrintf("Modem [%s] No response for health check, 1st time",
-                           modem_->GetDeviceId().c_str()));
-  } else if (consecutive_heartbeat_failures_ == 2) {
-    auto err = Error::Create(
-        FROM_HERE, error::kHeartbeatHealthCheck2ndFailure,
-        base::StringPrintf(
-            "Modem [%s] No response for health check, 2 consecutive times",
-            modem_->GetDeviceId().c_str()));
-  } else if (consecutive_heartbeat_failures_ == 3) {
-    auto err = Error::Create(
-        FROM_HERE, error::kHeartbeatHealthCheck3rdFailure,
-        base::StringPrintf(
-            "Modem [%s] No response for health check, 3 consecutive times",
-            modem_->GetDeviceId().c_str()));
-  }
+  auto err = Error::Create(
+      FROM_HERE, error::kHeartbeatHealthCheckFailure,
+      base::StringPrintf("Modem [%s] No response for health check, "
+                         "consecutive_heartbeat_failures_#%d",
+                         modem_->GetDeviceId().c_str(),
+                         consecutive_heartbeat_failures_));
 
   if (consecutive_heartbeat_failures_ < config_.max_failures) {
     // Wait for now.
