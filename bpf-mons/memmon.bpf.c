@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // Include vmlinux.h first to declare all kernel types.
-#include "include/snoops/vmlinux/vmlinux.h"
+#include "include/mons/vmlinux/vmlinux.h"
 // Do not move vmlinux.h include
 #include <linux/errno.h>
 
@@ -12,7 +12,7 @@
 #include <bpf/bpf_tracing.h>
 
 /* This include must be after vmlinux.h */
-#include "include/memsnoop.h"
+#include "include/memmon.h"
 
 struct hkey {
   u64 call_id;
@@ -35,16 +35,16 @@ struct {
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
-  __uint(max_entries, 512 * sizeof(struct memsnoop_event));
+  __uint(max_entries, 512 * sizeof(struct memmon_event));
 } rb SEC(".maps");
 
-const volatile unsigned int kprobe_snoop_pid = 0;
+const volatile unsigned int kprobe_mon_pid = 0;
 
-static u64 generate_call_id(enum memsnoop_event_type type) {
+static u64 generate_call_id(enum memmon_event_type type) {
   return (u64)((s32)type << 31) | (u32)bpf_get_current_pid_tgid();
 }
 
-static int save_ustack(struct pt_regs* ctx, struct memsnoop_event* event) {
+static int save_ustack(struct pt_regs* ctx, struct memmon_event* event) {
   long ret = bpf_get_stack(ctx, event->ustack_ents, sizeof(event->ustack_ents),
                            BPF_F_USER_STACK);
 
@@ -55,23 +55,23 @@ static int save_ustack(struct pt_regs* ctx, struct memsnoop_event* event) {
   return 0;
 }
 
-static struct memsnoop_event* bpf_ringbuf_event_get(void) {
-  struct memsnoop_event* event;
+static struct memmon_event* bpf_ringbuf_event_get(void) {
+  struct memmon_event* event;
 
   event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
   if (!event)
     return NULL;
 
-  event->type = MEMSNOOP_EVENT_INVALID;
+  event->type = MEMMON_EVENT_INVALID;
   event->num_ustack_ents = 0;
   return event;
 }
 
-static int memsnoop_event(struct pt_regs* ctx,
-                          enum memsnoop_event_type type,
-                          size_t size,
-                          unsigned long ptr) {
-  struct memsnoop_event* event;
+static int memmon_event(struct pt_regs* ctx,
+                        enum memmon_event_type type,
+                        size_t size,
+                        unsigned long ptr) {
+  struct memmon_event* event;
   u64 id;
 
   event = bpf_ringbuf_event_get();
@@ -83,7 +83,7 @@ static int memsnoop_event(struct pt_regs* ctx,
   event->tid = (u32)id;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
-  if (type == MEMSNOOP_EVENT_MALLOC || type == MEMSNOOP_EVENT_MMAP) {
+  if (type == MEMMON_EVENT_MALLOC || type == MEMMON_EVENT_MMAP) {
     if (save_ustack(ctx, event)) {
       bpf_ringbuf_submit(event, 0);
       return -EINVAL;
@@ -118,7 +118,7 @@ int BPF_UPROBE(call_malloc, size_t size) {
   struct hkey k;
   long ret;
 
-  k.call_id = generate_call_id(MEMSNOOP_EVENT_MALLOC);
+  k.call_id = generate_call_id(MEMMON_EVENT_MALLOC);
   v.size = size;
 
   ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
@@ -130,17 +130,17 @@ int BPF_URETPROBE(ret_malloc) {
   struct hval* v;
   struct hkey k;
 
-  k.call_id = generate_call_id(MEMSNOOP_EVENT_MALLOC);
+  k.call_id = generate_call_id(MEMMON_EVENT_MALLOC);
   v = bpf_map_lookup_elem(&events, &k);
   if (v) {
-    return memsnoop_event(ctx, MEMSNOOP_EVENT_MALLOC, v->size, PT_REGS_RC(ctx));
+    return memmon_event(ctx, MEMMON_EVENT_MALLOC, v->size, PT_REGS_RC(ctx));
   }
 
   /*
    * We didn't find the pairing CALL event, so use -1 for size to indicate
    * this
    */
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_MALLOC, -1, PT_REGS_RC(ctx));
+  return memmon_event(ctx, MEMMON_EVENT_MALLOC, -1, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
@@ -149,7 +149,7 @@ int BPF_UPROBE(call_mmap, void* addr, size_t size) {
   struct hkey k;
   long ret;
 
-  k.call_id = generate_call_id(MEMSNOOP_EVENT_MMAP);
+  k.call_id = generate_call_id(MEMMON_EVENT_MMAP);
   v.size = size;
 
   ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
@@ -161,27 +161,27 @@ int BPF_URETPROBE(ret_mmap) {
   struct hval* v;
   struct hkey k;
 
-  k.call_id = generate_call_id(MEMSNOOP_EVENT_MMAP);
+  k.call_id = generate_call_id(MEMMON_EVENT_MMAP);
   v = bpf_map_lookup_elem(&events, &k);
   if (v) {
-    return memsnoop_event(ctx, MEMSNOOP_EVENT_MMAP, v->size, PT_REGS_RC(ctx));
+    return memmon_event(ctx, MEMMON_EVENT_MMAP, v->size, PT_REGS_RC(ctx));
   }
 
   /*
    * We didn't find the pairing CALL event, so use -1 for size to indicate
    * this
    */
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_MMAP, -1, PT_REGS_RC(ctx));
+  return memmon_event(ctx, MEMMON_EVENT_MMAP, -1, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_munmap, void* ptr) {
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_MUNMAP, 0, (unsigned long)ptr);
+  return memmon_event(ctx, MEMMON_EVENT_MUNMAP, 0, (unsigned long)ptr);
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_free, void* ptr) {
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_FREE, 0, (unsigned long)ptr);
+  return memmon_event(ctx, MEMMON_EVENT_FREE, 0, (unsigned long)ptr);
 }
 
 struct vm_area_struct;
@@ -192,10 +192,10 @@ int BPF_KPROBE(call_handle_mm_fault,
                unsigned long ptr) {
   u32 pid = bpf_get_current_pid_tgid() >> 32;
 
-  if (pid != kprobe_snoop_pid)
+  if (pid != kprobe_mon_pid)
     return 0;
 
-  return memsnoop_event(ctx, MEMSNOOP_EVENT_PF, 0, (unsigned long)ptr);
+  return memmon_event(ctx, MEMMON_EVENT_PF, 0, (unsigned long)ptr);
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";

@@ -15,114 +15,112 @@
 #include <iostream>
 #include <string>
 
-#include "include/libsnoop.h"
+#include "include/libmon.h"
 // This include must be after stdint.h
-#include "include/memsnoop.h"
-#include "snoops/bpf_skeletons/skeleton_memsnoop.bpf.h"
+#include "include/memmon.h"
+#include "mons/bpf_skeletons/skeleton_memmon.bpf.h"
 
 namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {0, 0, 0, 0}};
 
-static int attach_probes(struct memsnoop_bpf* snoop, int pid) {
+static int attach_probes(struct memmon_bpf* mon, int pid) {
   LIBBPF_OPTS(bpf_uprobe_opts, uopts);
   std::string libc;
 
-  if (libsnoop::lookup_lib("libc.so.6", libc))
+  if (libmon::lookup_lib("libc.so.6", libc))
     return -ENOENT;
 
   uopts.func_name = "malloc";
   uopts.retprobe = false;
-  LIBSNOOP_ATTACH_UPROBE(snoop, pid, libc.c_str(), call_malloc, &uopts);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_malloc, &uopts);
 
   uopts.func_name = "malloc";
   uopts.retprobe = true;
-  LIBSNOOP_ATTACH_UPROBE(snoop, pid, libc.c_str(), ret_malloc, &uopts);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_malloc, &uopts);
 
   uopts.func_name = "mmap";
   uopts.retprobe = false;
-  LIBSNOOP_ATTACH_UPROBE(snoop, pid, libc.c_str(), call_mmap, &uopts);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_mmap, &uopts);
 
   uopts.func_name = "mmap";
   uopts.retprobe = true;
-  LIBSNOOP_ATTACH_UPROBE(snoop, pid, libc.c_str(), ret_mmap, &uopts);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_mmap, &uopts);
 
   uopts.func_name = "munmap";
   uopts.retprobe = false;
-  LIBSNOOP_ATTACH_UPROBE(snoop, pid, libc.c_str(), call_munmap, &uopts);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_munmap, &uopts);
 
   uopts.func_name = "free";
   uopts.retprobe = false;
-  LIBSNOOP_ATTACH_UPROBE(snoop, pid, libc.c_str(), call_free, &uopts);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_free, &uopts);
 
   LIBBPF_OPTS(bpf_kprobe_opts, kopts);
   kopts.retprobe = false;
-  LIBSNOOP_ATTACH_KPROBE(snoop, call_handle_mm_fault, "handle_mm_fault",
-                         &kopts);
+  LIBMON_ATTACH_KPROBE(mon, call_handle_mm_fault, "handle_mm_fault", &kopts);
 
   return 0;
 }
 
-static int handle_memsnoop_event(void* ctx, void* data, size_t data_sz) {
-  struct memsnoop_event* event = (struct memsnoop_event*)data;
+static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
+  struct memmon_event* event = (struct memmon_event*)data;
 
   printf("comm: %s pid:%d event: ", event->comm, event->pid);
   switch (event->type) {
-    case MEMSNOOP_EVENT_MALLOC:
+    case MEMMON_EVENT_MALLOC:
       printf("malloc() sz=%lu ptr=%p-%p\n", event->size,
              reinterpret_cast<void*>(event->ptr),
              reinterpret_cast<void*>(event->ptr + event->size));
       break;
-    case MEMSNOOP_EVENT_FREE:
+    case MEMMON_EVENT_FREE:
       printf("free() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
       break;
-    case MEMSNOOP_EVENT_MMAP:
+    case MEMMON_EVENT_MMAP:
       printf("mmap() sz=%lu ptr=%p-%p\n", event->size,
              reinterpret_cast<void*>(event->ptr),
              reinterpret_cast<void*>(event->ptr + event->size));
       break;
-    case MEMSNOOP_EVENT_MUNMAP:
+    case MEMMON_EVENT_MUNMAP:
       printf("munmap() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
       break;
-    case MEMSNOOP_EVENT_PF:
+    case MEMMON_EVENT_PF:
       printf("handle_mm_fault() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
       break;
 
-    case MEMSNOOP_EVENT_INVALID:
+    case MEMMON_EVENT_INVALID:
       printf("INVALID\n");
       return -EINVAL;
   }
 
-  libsnoop::decode_ustack(event->pid, event->ustack_ents,
-                          event->num_ustack_ents);
+  libmon::decode_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
   return 0;
 }
 
-static int memsnoop(pid_t pid) {
+static int memmon(pid_t pid) {
   struct ring_buffer* rb = NULL;
-  struct memsnoop_bpf* snoop;
+  struct memmon_bpf* mon;
   int err;
 
-  snoop = memsnoop_bpf__open();
-  if (!snoop) {
-    fprintf(stderr, "Failed to open BPF snoop\n");
+  mon = memmon_bpf__open();
+  if (!mon) {
+    fprintf(stderr, "Failed to open BPF mon\n");
     return -EINVAL;
   }
 
-  snoop->rodata->kprobe_snoop_pid = pid;
-  err = memsnoop_bpf__load(snoop);
+  mon->rodata->kprobe_mon_pid = pid;
+  err = memmon_bpf__load(mon);
   if (err) {
-    fprintf(stderr, "Failed tp load BPF snoop\n");
+    fprintf(stderr, "Failed tp load BPF mon\n");
     goto cleanup;
   }
 
-  err = attach_probes(snoop, pid);
+  err = attach_probes(mon, pid);
   if (err)
     goto cleanup;
 
-  rb = ring_buffer__new(bpf_map__fd(snoop->maps.rb), handle_memsnoop_event,
-                        NULL, NULL);
+  rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), handle_memmon_event, NULL,
+                        NULL);
   if (!rb) {
     fprintf(stderr, "Failed to open ring buffer\n");
     err = -EINVAL;
@@ -134,7 +132,7 @@ static int memsnoop(pid_t pid) {
 
 cleanup:
   ring_buffer__free(rb);
-  memsnoop_bpf__destroy(snoop);
+  memmon_bpf__destroy(mon);
   return err;
 }
 
@@ -162,12 +160,12 @@ int main(int argc, char** argv) {
     }
   }
 
-  ret = libsnoop::init_stack_decoder();
+  ret = libmon::init_stack_decoder();
   if (ret)
     return ret;
 
-  ret = memsnoop(pid);
+  ret = memmon(pid);
 
-  libsnoop::release_stack_decoder();
+  libmon::release_stack_decoder();
   return ret;
 }

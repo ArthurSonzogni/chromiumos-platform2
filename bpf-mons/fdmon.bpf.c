@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // Include vmlinux.h first to declare all kernel types.
-#include "include/snoops/vmlinux/vmlinux.h"
+#include "include/mons/vmlinux/vmlinux.h"
 // Do not move vmlinux.h include
 #include <linux/errno.h>
 
@@ -12,7 +12,7 @@
 #include <bpf/bpf_tracing.h>
 
 /* This include must be after vmlinux.h */
-#include "include/fdsnoop.h"
+#include "include/fdmon.h"
 
 struct hkey {
   u64 call_id;
@@ -35,14 +35,14 @@ struct {
 
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
-  __uint(max_entries, 1024 * sizeof(struct fdsnoop_event));
+  __uint(max_entries, 1024 * sizeof(struct fdmon_event));
 } rb SEC(".maps");
 
-static u64 generate_call_id(enum fdsnoop_event_type type) {
+static u64 generate_call_id(enum fdmon_event_type type) {
   return (u64)((s32)type << 31) | (u32)bpf_get_current_pid_tgid();
 }
 
-static int save_ustack(struct pt_regs* ctx, struct fdsnoop_event* event) {
+static int save_ustack(struct pt_regs* ctx, struct fdmon_event* event) {
   long ret = bpf_get_stack(ctx, event->ustack_ents, sizeof(event->ustack_ents),
                            BPF_F_USER_STACK);
 
@@ -53,23 +53,23 @@ static int save_ustack(struct pt_regs* ctx, struct fdsnoop_event* event) {
   return 0;
 }
 
-static struct fdsnoop_event* bpf_ringbuf_event_get(void) {
-  struct fdsnoop_event* event;
+static struct fdmon_event* bpf_ringbuf_event_get(void) {
+  struct fdmon_event* event;
 
   event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
   if (!event)
     return NULL;
 
-  event->type = FDSNOOP_EVENT_INVALID;
+  event->type = FDMON_EVENT_INVALID;
   event->num_ustack_ents = 0;
   return event;
 }
 
-static int fdsnoop_event(struct pt_regs* ctx,
-                         enum fdsnoop_event_type type,
-                         s32 nfd,
-                         s32 ofd) {
-  struct fdsnoop_event* event;
+static int fdmon_event(struct pt_regs* ctx,
+                       enum fdmon_event_type type,
+                       s32 nfd,
+                       s32 ofd) {
+  struct fdmon_event* event;
   u64 id;
 
   event = bpf_ringbuf_event_get();
@@ -81,7 +81,7 @@ static int fdsnoop_event(struct pt_regs* ctx,
   event->tid = (u32)id;
   bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
-  if (type == FDSNOOP_EVENT_OPEN || type == FDSNOOP_EVENT_DUP) {
+  if (type == FDMON_EVENT_OPEN || type == FDMON_EVENT_DUP) {
     if (save_ustack(ctx, event)) {
       bpf_ringbuf_submit(event, 0);
       return -EINVAL;
@@ -112,7 +112,7 @@ static int fdsnoop_event(struct pt_regs* ctx,
 
 SEC("uretprobe")
 int BPF_UPROBE(ret_open) {
-  return fdsnoop_event(ctx, FDSNOOP_EVENT_OPEN, PT_REGS_RC(ctx), 0);
+  return fdmon_event(ctx, FDMON_EVENT_OPEN, PT_REGS_RC(ctx), 0);
 }
 
 SEC("uprobe")
@@ -121,7 +121,7 @@ int BPF_UPROBE(call_dup, s32 fd) {
   struct hkey k;
   long ret;
 
-  k.call_id = generate_call_id(FDSNOOP_EVENT_DUP);
+  k.call_id = generate_call_id(FDMON_EVENT_DUP);
   v.fd = fd;
 
   ret = bpf_map_update_elem(&events, &k, &v, BPF_ANY);
@@ -133,27 +133,27 @@ int BPF_URETPROBE(ret_dup) {
   struct hval* v;
   struct hkey k;
 
-  k.call_id = generate_call_id(FDSNOOP_EVENT_DUP);
+  k.call_id = generate_call_id(FDMON_EVENT_DUP);
   v = bpf_map_lookup_elem(&events, &k);
   if (v) {
-    return fdsnoop_event(ctx, FDSNOOP_EVENT_DUP, PT_REGS_RC(ctx), v->fd);
+    return fdmon_event(ctx, FDMON_EVENT_DUP, PT_REGS_RC(ctx), v->fd);
   }
 
   /*
    * We didn't find the pairing CALL event, so use -1 for old-fd to indicate
    * this
    */
-  return fdsnoop_event(ctx, FDSNOOP_EVENT_DUP, PT_REGS_RC(ctx), -1);
+  return fdmon_event(ctx, FDMON_EVENT_DUP, PT_REGS_RC(ctx), -1);
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_dup2, s32 ofd, s32 nfd) {
-  return fdsnoop_event(ctx, FDSNOOP_EVENT_DUP, nfd, ofd);
+  return fdmon_event(ctx, FDMON_EVENT_DUP, nfd, ofd);
 }
 
 SEC("uprobe")
 int BPF_UPROBE(call_close, s32 fd) {
-  return fdsnoop_event(ctx, FDSNOOP_EVENT_CLOSE, fd, 0);
+  return fdmon_event(ctx, FDMON_EVENT_CLOSE, fd, 0);
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";

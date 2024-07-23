@@ -33,7 +33,7 @@ copies.
 | [bootlockbox](./bootlockbox/) | Daemon and client for boot lockbox service.|
 | [bootsplash](./bootsplash/) | Frecon-based animated boot splash service |
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
-| [bpf-snoops](./bpf-snoops/) | Collection of BPF programs for in-depth tracing |
+| [bpf-mons](./bpf-mons/) | Collection of BPF monitoring programs for in-depth tracing |
 | [build_overrides](./build_overrides/) | Customize GN-based third party products for direct platform2 integration |
 | [camera](./camera/) | ChromeOS Camera daemon |
 | [cecservice](./cecservice/) | Service for switching CEC enabled TVs on and off |

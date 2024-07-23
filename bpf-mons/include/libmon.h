@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BPF_SNOOPS_INCLUDE_LIBSNOOP_H_
-#define BPF_SNOOPS_INCLUDE_LIBSNOOP_H_
+#ifndef BPF_MONS_INCLUDE_LIBMON_H_
+#define BPF_MONS_INCLUDE_LIBMON_H_
 
 #include <errno.h>
 #include <stdint.h>
@@ -14,11 +14,11 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 
-namespace libsnoop {
+namespace libmon {
 
 #define ATTR_UNUSED __attribute__((unused))
 
-#define LIBSNOOP_ATTACH_UPROBE(s, pid, obj, prog, opts)                   \
+#define LIBMON_ATTACH_UPROBE(s, pid, obj, prog, opts)                     \
   do {                                                                    \
     printf("Attaching uprobe: " #prog "\n");                              \
     if (s->links.prog) {                                                  \
@@ -33,7 +33,7 @@ namespace libsnoop {
     }                                                                     \
   } while (false)
 
-#define LIBSNOOP_ATTACH_KPROBE(s, prog, sym, opts)                     \
+#define LIBMON_ATTACH_KPROBE(s, prog, sym, opts)                       \
   do {                                                                 \
     printf("Attaching kprobe: " #prog "\n");                           \
     if (s->links.prog) {                                               \
@@ -56,6 +56,6 @@ void decode_kstack(uintptr_t* ents, uint32_t num_ents);
 
 int lookup_lib(const char* name, std::string& path);
 
-}  // namespace libsnoop
+}  // namespace libmon
 
-#endif  // BPF_SNOOPS_INCLUDE_LIBSNOOP_H_
+#endif  // BPF_MONS_INCLUDE_LIBMON_H_

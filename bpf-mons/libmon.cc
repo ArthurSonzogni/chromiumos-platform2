@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "include/libsnoop.h"
+#include "include/libmon.h"
 
 #include <blazesym.h>
 #include <unistd.h>
@@ -10,7 +10,7 @@
 #include <filesystem>
 #include <string>
 
-namespace libsnoop {
+namespace libmon {
 
 static struct blaze_symbolizer* symb;
 
@@ -111,4 +111,4 @@ ok:
   return 0;
 }
 
-}  // namespace libsnoop
+}  // namespace libmon

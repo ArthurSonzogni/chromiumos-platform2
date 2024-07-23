@@ -1,14 +1,14 @@
-# bpf-snoops - Utilities for resources usage tracking
+# bpf-mons - Utilities for resources usage tracking
 
-A collection of `BPF` programs (snoop) for in-depth (user-space/kernel-space)
+A collection of `BPF` programs (mon) for in-depth (user-space/kernel-space)
 applications tracing.
 
-# bpf-memsnoop
+# bpf-memmon
 
 Intercepts various memory related functions (e.g. `libc` `malloc()`, `free()`,
 kernel's `handle_mm_fault()`, etc.)
 
-# bpf-fdsnoop
+# bpf-fdmon
 
 Intercepts functions that modify processes file-table (e.g. `libc` `open()`,
 `dup()`, `close()`, etc.)
@@ -19,17 +19,17 @@ Intercepts functions that modify processes file-table (e.g. `libc` `open()`,
 
 2. Build and deploy `blazesym-c`
 ```
-emerge-$BOARD blazesym-c
-cros deploy $BOARD blazesym-c
+emerge-$BOARD dev-rust/blazesym-c
+cros deploy $BOARD dev-rust/blazesym-c
 ```
 
-3. Build and deploy `BPF` snoops
+3. Build and deploy `BPF` mons
 ```
-emerge-$BOARD bpf-snoops
-cros deploy $BOARD bpf-snoops
+emerge-$BOARD dev-util/bpf-mons
+cros deploy $BOARD dev-util/bpf-mons
 ```
 
 On the DUT (for example):
 ```
-bpf-memsnoop -p $(pidof $APP)
+bpf-memmon -p $(pidof $APP)
 ```

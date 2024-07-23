@@ -7,8 +7,8 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":bpf-fdsnoop",
-    ":bpf-memsnoop",
+    ":bpf-fdmon",
+    ":bpf-memmon",
   ]
 }
 
@@ -18,42 +18,42 @@ pkg_config("target_defaults") {
 }
 
 generate_vmlinux("vmlinux_h") {
-  vmlinux_out_dir = "include/snoops/vmlinux"
+  vmlinux_out_dir = "include/mons/vmlinux"
   btf_out_dir = "bpf"
 }
 
-generate_ebpf_skeletons("bpf_memsnoop") {
-  sources = [ "memsnoop.bpf.c" ]
-  bpf_skeleton_out_dir = "include/snoops/bpf_skeletons"
+generate_ebpf_skeletons("bpf_memmon") {
+  sources = [ "memmon.bpf.c" ]
+  bpf_skeleton_out_dir = "include/mons/bpf_skeletons"
   btf_inout_dir = "bpf"
   deps = [ ":vmlinux_h" ]
 }
 
-generate_ebpf_skeletons("bpf_fdsnoop") {
-  sources = [ "fdsnoop.bpf.c" ]
-  bpf_skeleton_out_dir = "include/snoops/bpf_skeletons"
+generate_ebpf_skeletons("bpf_fdmon") {
+  sources = [ "fdmon.bpf.c" ]
+  bpf_skeleton_out_dir = "include/mons/bpf_skeletons"
   btf_inout_dir = "bpf"
   deps = [ ":vmlinux_h" ]
 }
 
-executable("bpf-memsnoop") {
+executable("bpf-memmon") {
   sources = [
-    "libsnoop.cc",
-    "memsnoop.cc",
+    "libmon.cc",
+    "memmon.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "blazesym_c" ]
-  deps = [ ":bpf_memsnoop" ]
+  deps = [ ":bpf_memmon" ]
   install_path = "bin"
 }
 
-executable("bpf-fdsnoop") {
+executable("bpf-fdmon") {
   sources = [
-    "fdsnoop.cc",
-    "libsnoop.cc",
+    "fdmon.cc",
+    "libmon.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "blazesym_c" ]
-  deps = [ ":bpf_fdsnoop" ]
+  deps = [ ":bpf_fdmon" ]
   install_path = "bin"
 }

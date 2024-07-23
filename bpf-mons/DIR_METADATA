@@ -7,5 +7,5 @@
 #   https://source.chromium.org/chromium/infra/infra/+/HEAD:go/src/infra/tools/dirmd/proto/dir_metadata.proto
 
 buganizer {
-  component_id: 1619962  # ChromeOS > Platform > Technologies > Camera > Kernel > BPF snoops
+  component_id: 1619962  # ChromeOS > Platform > Technologies > Camera > Kernel > BPF mons
 }
