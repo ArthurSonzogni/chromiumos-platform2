@@ -3,9 +3,12 @@
 // found in the LICENSE file.
 
 // Provides the command "generate_firmware_dump" for crosh through debugd.
+use getopts::Options;
 
 use crate::debugd::{Debugd, FirmwareDumpType};
-use crate::dispatcher::{self, Arguments, Command, Dispatcher};
+use crate::dispatcher::{
+    self, print_help_command_callback, Arguments, Command, Dispatcher
+};
 
 const FIRMWARE_DUMP_TYPE_ALL: &str = "all";
 const FIRMWARE_DUMP_TYPE_WIFI: &str = "wifi";
@@ -26,6 +29,17 @@ fn execute_generate_firmware_dump(
     args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
     let tokens = args.get_args();
+    let mut opts = Options::new();
+    opts.optflag("h", "help", "print command usage");
+    let matches = opts
+        .parse(tokens)
+        .map_err(|_| dispatcher::Error::CommandReturnedError)?;
+
+    if matches.opt_present("h") {
+        // Reuse the default command helper.
+        return print_help_command_callback(_cmd, args);
+    }
+
     if tokens.len() != 1 {
         return Err(dispatcher::Error::CommandInvalidArguments(String::from(
             "Invalid number of arguments",
