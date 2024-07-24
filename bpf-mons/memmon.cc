@@ -23,6 +23,7 @@
 namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
+                                       {"exec", required_argument, 0, 'e'},
                                        {0, 0, 0, 0}};
 
 static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
@@ -136,7 +137,7 @@ static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
   return 0;
 }
 
-static int memmon(pid_t pid) {
+static int memmon(pid_t pid, const char* cmd) {
   struct ring_buffer* rb = NULL;
   struct memmon_bpf* mon;
   int err;
@@ -147,10 +148,14 @@ static int memmon(pid_t pid) {
     return -EINVAL;
   }
 
+  err = libmon::prepare_target(pid, cmd);
+  if (err)
+    goto cleanup;
+
   mon->rodata->kprobe_mon_pid = pid;
   err = memmon_bpf__load(mon);
   if (err) {
-    fprintf(stderr, "Failed tp load BPF mon\n");
+    fprintf(stderr, "Failed to load BPF mon\n");
     goto cleanup;
   }
 
@@ -170,19 +175,32 @@ static int memmon(pid_t pid) {
   if (err)
     goto cleanup;
 
-  while (!libmon::should_stop()) {
+  err = libmon::follow_target(pid);
+  if (err)
+    goto cleanup;
+
+  do {
     err = ring_buffer__poll(rb, LIBMON_RB_POLL_TIMEOUT);
-    if (err == -EINTR) {
+    /* We should stop, no matter how many events are left in the rb */
+    if (libmon::should_stop()) {
       err = 0;
       break;
     }
+    if (err == -EINTR)
+      continue;
     if (err < 0) {
-      printf("RB polling error: %d\n", err);
+      printf("rb polling error: %d\n", err);
       break;
     }
-  }
+    /* Even if the target has terminated we still need to handle all events */
+    if (err > 0)
+      continue;
+    if (libmon::target_terminated())
+      break;
+  } while (1);
 
 cleanup:
+  printf("memmon status: %d\n", err);
   ring_buffer__free(rb);
   memmon_bpf__destroy(mon);
   return err;
@@ -191,13 +209,14 @@ cleanup:
 }  // namespace
 
 int main(int argc, char** argv) {
+  char* exec_cmd = NULL;
   pid_t pid = -1;
   int c, ret;
 
   while (1) {
     int option_index = 0;
 
-    c = getopt_long(argc, argv, "p:", long_options, &option_index);
+    c = getopt_long(argc, argv, "p:e:", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -207,16 +226,29 @@ int main(int argc, char** argv) {
       case 'p':
         pid = std::stol(optarg);
         break;
+      case 'e':
+        exec_cmd = optarg;
+        break;
       default:
         abort();
     }
+  }
+
+  if (pid != -1 && exec_cmd != NULL) {
+    printf("Options -p and -e are mutually exclusive\n");
+    return -EINVAL;
+  }
+
+  if (pid == -1 && exec_cmd == NULL) {
+    printf("Must specify either -p or -e\n");
+    return -EINVAL;
   }
 
   ret = libmon::init_stack_decoder();
   if (ret)
     return ret;
 
-  ret = memmon(pid);
+  ret = memmon(pid, exec_cmd);
 
   libmon::release_stack_decoder();
   return ret;
