@@ -128,15 +128,25 @@ fn handle_request(stream: &mut VsockStream) -> Result<()> {
     }
 }
 
-fn main() {
-    syslog::init(IDENT.to_string(), true /* log_to_stderr */).expect("Failed to initialize logger");
-    let listener = server_init().expect("Failed to initialize clipboard sharing server");
-    info!("Clipboard sharing server started");
+#[tokio::main]
+async fn main() -> Result<()> {
+    syslog::init(IDENT.to_string(), true /* log_to_stderr */)
+        .expect("Failed to initialize logger");
+    let listener = server_init()
+        .inspect_err(|e| error!("Failed to initialize clipboard sharing server: {e:?}"))?;
     for stream in listener.incoming() {
-        if let Ok(mut stream) = stream {
-            if let Err(e) = handle_request(&mut stream) {
-                error!("Failed to handle the request from the client: {e:?}");
+        match stream {
+            Ok(mut stream) => {
+                tokio::spawn(async move {
+                    if let Err(e) = handle_request(&mut stream) {
+                        error!("Failed to handle the request from the client: {e:?}");
+                    }
+                });
+            }
+            Err(e) => {
+                error!("Stream is invalid: {e:?}");
             }
         }
     }
+    Ok(())
 }
