@@ -20,7 +20,8 @@
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 #define MAX_ALLOWLISTED_FILE_MOD_DEVICES 16
-#define MAX_ALLOWLISTED_FILE_INODES 1024
+#define MAX_ALLOWLISTED_HARDLINKED_INODES 1024
+#define MAX_ALLOWLISTED_DIRECTORY_INODES 128
 #define MAX_PATH_DEPTH 32
 
 // File Type Macros (from standard headers)
@@ -83,26 +84,44 @@ struct {
 } device_file_monitoring_allowlist SEC(".maps");
 
 /**
- * BPF map for storing allowlisted file inodes and their monitoring modes.
+ * BPF map for storing allowlisted hardlinked inodes and their monitoring modes.
+ *
+ * This BPF map uses an LRU hash structure to associate inode and device ID
+ * pairs (represented by struct inode_dev_map_key) with their corresponding
+ * monitoring mode (represented by enum file_monitoring_mode). It manages inodes
+ * that are allowlisted but hardlinked from non-monitored paths and determines
+ * the type of monitoring they require. This map is populated during program
+ * initialization with all hard links found in the monitored directories, and it
+ * is updated dynamically as new hard links are created or deleted within those
+ * directories.
+ */
+struct {
+  __uint(type, BPF_MAP_TYPE_LRU_HASH);
+  __uint(max_entries, MAX_ALLOWLISTED_HARDLINKED_INODES);
+  __type(key, struct inode_dev_map_key);  // Key structure for inode and device
+                                          // ID pairs.
+  __uint(key_size, sizeof(struct inode_dev_map_key));
+  __type(value, enum file_monitoring_mode);
+} allowlisted_hardlinked_inodes SEC(".maps");
+
+/**
+ * BPF map for storing allowlisted directory inodes and their monitoring modes.
  *
  * This BPF map uses a hash structure to associate inode and device ID pairs
  * (represented by struct inode_dev_map_key) with their corresponding monitoring
- * mode (represented by enum file_monitoring_mode). It is used to manage and
- * efficiently look up which files or directories are allowlisted and the type
- * of monitoring they require.
+ * mode (represented by enum file_monitoring_mode). It manages which directories
+ * are allowlisted and determines the type of monitoring they require. This map
+ * is dynamically updated as new locations are mounted or unmounted.
  */
 struct {
-  __uint(type, BPF_MAP_TYPE_HASH); /**< Type of BPF map (hash map). */
-  __uint(
-      max_entries,
-      MAX_ALLOWLISTED_FILE_INODES); /**< Maximum entries allowed in the map. */
-  __type(key, struct inode_dev_map_key); /**< Key structure for inode and device
-                                            ID pairs. */
-  __uint(key_size,
-         sizeof(struct inode_dev_map_key)); /**< Size of the key structure. */
-  __type(value, enum file_monitoring_mode); /**< Monitoring mode for the file or
-                                               directory. */
-} allowlisted_file_inodes SEC(".maps");
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, MAX_ALLOWLISTED_DIRECTORY_INODES);
+  __type(key, struct inode_dev_map_key);  // Key structure for inode and device
+                                          // ID pairs.
+  __uint(key_size, sizeof(struct inode_dev_map_key));
+  __type(value, enum file_monitoring_mode);
+} allowlisted_directory_inodes SEC(".maps");
+
 /**
  * Looks up a flag value in the shared BPF map by its unique identifier.
  *
@@ -117,32 +136,33 @@ static __always_inline uint64_t* lookup_flag_value(uint32_t flag_name) {
 
 /**
  * Lookup function to retrieve the monitoring mode for a specific inode
- * and device combination from the BPF hash map.
+ * and device combination from the BPF LRU hash map.
  *
- * This function performs a lookup in the BPF hash map `allowlisted_file_inodes`
- * using the provided `device_id` and `inode_id` as the key. It returns a
- * pointer to the monitoring mode (`enum file_monitoring_mode`) if found, or
- * NULL if the entry does not exist in the map.
+ * This function performs a lookup in the BPF LRU hash map
+ * `allowlisted_hardlinked_inodes` using the provided `device_id` and `inode_id`
+ * as the key. It returns a pointer to the monitoring mode (`enum
+ * file_monitoring_mode`) if found, or NULL if the entry does not exist in the
+ * map.
  *
  * @param device_id The device ID (st_dev) of the inode.
  * @param inode_id The inode number (st_ino) of the file or directory.
  * @return Pointer to the monitoring mode if found, or NULL if not found.
  */
 static __always_inline enum file_monitoring_mode*
-bpf_map_lookup_allowlisted_file_inodes(dev_t device_id, ino_t inode_id) {
+bpf_map_lookup_allowlisted_hardlinked_inodes(dev_t device_id, ino_t inode_id) {
   struct inode_dev_map_key key;
   __builtin_memset(&key, 0, sizeof(key));
   key.inode_id = inode_id;
   key.dev_id = device_id;
   // Perform the map lookup
-  return bpf_map_lookup_elem(&allowlisted_file_inodes, &key);
+  return bpf_map_lookup_elem(&allowlisted_hardlinked_inodes, &key);
 }
 
 /**
- * Helper function to update the BPF map with inode monitoring mode.
+ * Helper function to update the BPF LRU hash map with inode monitoring mode.
  *
- * This function updates the BPF map `allowlisted_file_inodes` with the
- * monitoring mode (`monitoring_mode`) for the specified `inode_id` and
+ * This function updates the BPF LRU hash map `allowlisted_hardlinked_inodes`
+ * with the monitoring mode (`monitoring_mode`) for the specified `inode_id` and
  * `dev_id`.
  *
  * @param inode_id The inode number of the file or directory.
@@ -150,14 +170,59 @@ bpf_map_lookup_allowlisted_file_inodes(dev_t device_id, ino_t inode_id) {
  * @param monitoring_mode The monitoring mode to be associated with the inode.
  * @return 0 on success, or a negative error code on failure.
  */
-static __always_inline int bpf_map_update_allowlisted_file_inodes(
+static __always_inline int bpf_map_update_allowlisted_hardlinked_inodes(
     ino_t inode_id, dev_t dev_id, enum file_monitoring_mode monitoring_mode) {
   struct inode_dev_map_key key;
   __builtin_memset(&key, 0, sizeof(key));
   key.inode_id = inode_id;
   key.dev_id = dev_id;
-  return bpf_map_update_elem(&allowlisted_file_inodes, &key, &monitoring_mode,
-                             0);
+  return bpf_map_update_elem(&allowlisted_hardlinked_inodes, &key,
+                             &monitoring_mode, 0);
+}
+
+/**
+ * Deletes an entry from the BPF map `allowlisted_hardlinked_inodes`.
+ *
+ * This function deletes the entry corresponding to the given `inode_id` and
+ * `dev_id` from the BPF map `allowlisted_hardlinked_inodes`.
+ *
+ * @param inode_id The inode number of the file or directory to delete from the
+ * map.
+ * @param dev_id The device ID of the inode to delete from the map.
+ * @return 0 on success, or a negative error code on failure.
+ */
+static __always_inline int bpf_map_delete_allowlisted_hardlinked_inodes(
+    ino_t inode_id, dev_t dev_id) {
+  struct inode_dev_map_key key;
+  __builtin_memset(&key, 0, sizeof(key));
+  key.inode_id = inode_id;
+  key.dev_id = dev_id;
+
+  return bpf_map_delete_elem(&allowlisted_hardlinked_inodes, &key);
+}
+
+/**
+ * Lookup function to retrieve the monitoring mode for a specific directory
+ * inode and device combination from the BPF hash map.
+ *
+ * This function performs a lookup in the BPF hash map
+ * `allowlisted_directory_inodes` using the provided `device_id` and `inode_id`
+ * as the key. It returns a pointer to the monitoring mode (`enum
+ * file_monitoring_mode`) if found, or NULL if the entry does not exist in the
+ * map.
+ *
+ * @param device_id The device ID (st_dev) of the inode.
+ * @param inode_id The inode number (st_ino) of the directory.
+ * @return Pointer to the monitoring mode if found, or NULL if not found.
+ */
+static __always_inline enum file_monitoring_mode*
+bpf_map_lookup_allowlisted_directory_inodes(dev_t device_id, ino_t inode_id) {
+  struct inode_dev_map_key key;
+  __builtin_memset(&key, 0, sizeof(key));
+  key.inode_id = inode_id;
+  key.dev_id = device_id;
+  // Perform the map lookup
+  return bpf_map_lookup_elem(&allowlisted_directory_inodes, &key);
 }
 
 /**
@@ -248,10 +313,12 @@ static __always_inline bool allows_file_operation(
  * @param file_dentry     The dentry of the file to check.
  * @param dev_id          The device ID where the file resides.
  * @param fmod_type       The type of file operation (e.g., read-only,
- * read-write, hard link).
+ *                        read-write, hard link).
  * @param[out] monitoring_mode  Pointer to store the file monitoring mode if the
  *                        file or ancestor is allowlisted. Pass NULL if not
- * needed.
+ *                        needed.
+ * @param is_directory     Boolean indicating if the dentry is monitored for
+ *                         directory lookup.
  * @return true if the inode is allowlisted and matches the file operation mode,
  *         false otherwise.
  */
@@ -259,13 +326,20 @@ static __always_inline bool check_inode_allowlisted(
     struct dentry* file_dentry,
     dev_t dev_id,
     enum filemod_type fmod_type,
-    enum file_monitoring_mode* monitoring_mode) {
+    enum file_monitoring_mode* monitoring_mode,
+    bool is_directory) {
   // Read the inode number of the file
   ino_t current_ino = BPF_CORE_READ(file_dentry, d_inode, i_ino);
 
-  // Look up monitoring mode for the current inode in the allowlist map
-  enum file_monitoring_mode* mode_ptr =
-      bpf_map_lookup_allowlisted_file_inodes(dev_id, current_ino);
+  // Look up monitoring mode for the current inode in the appropriate map
+  enum file_monitoring_mode* mode_ptr;
+
+  if (is_directory) {
+    mode_ptr = bpf_map_lookup_allowlisted_directory_inodes(dev_id, current_ino);
+  } else {
+    mode_ptr =
+        bpf_map_lookup_allowlisted_hardlinked_inodes(dev_id, current_ino);
+  }
 
   // If monitoring mode not found, return false
   if (mode_ptr == NULL) {
@@ -287,13 +361,13 @@ static __always_inline bool check_inode_allowlisted(
 }
 
 /**
- * @brief Checks if any ancestor directory of a file is allowlisted for the
+ * Checks if any ancestor directory of current file is allowlisted for the
  * specified access mode.
  *
  * This function traverses the file's path upwards (towards the root directory)
  * for a maximum of MAX_PATH_DEPTH levels. It checks if any of the encountered
- * directories (including the file itself) are in the `allowlisted_file_inodes`
- * map and have a matching `file_monitoring_mode`.
+ * directories (including the file itself) are in the appropriate allowlist map
+ * and have a matching `file_monitoring_mode`.
  *
  * @param file_dentry Pointer to the dentry of the file whose ancestors need to
  * be checked.
@@ -314,17 +388,19 @@ static __always_inline bool check_ancestor(
 
   // Iterate up the directory hierarchy
   for (int i = 0; i < MAX_PATH_DEPTH; i++) {
-    // Check if the current inode is allowlisted and matches the required mode
-    if (check_inode_allowlisted(file_dentry, dev_id, fmod_type,
-                                monitoring_mode)) {
+    // Check if the current directory inode is allowlisted and matches the
+    // required mode
+    if (check_inode_allowlisted(file_dentry, dev_id, fmod_type, monitoring_mode,
+                                true)) {
       return true;  // Allowlisted ancestor found
     }
     parent_dentry = BPF_CORE_READ(file_dentry, d_parent);
 
     // Check if the current directory entry (file_dentry) is the same as the
     // parent directory entry. This is the root of the path, so break
-    if (file_dentry == parent_dentry)
+    if (file_dentry == parent_dentry) {
       break;
+    }
 
     file_dentry = parent_dentry;
   }
@@ -347,7 +423,8 @@ static __always_inline bool check_ancestor(
  * @param fmod_type       The type of file operation (e.g., read-only,
  *                        read-write, hard link).
  * @param[out] monitoring_mode Pointer to store the `file_monitoring_mode` if
- * the file or ancestor is allowlisted. Pass NULL if not needed.
+ *                            the file or ancestor is allowlisted. Pass NULL if
+ * not needed.
  * @return true if the file or any ancestor directory is allowlisted, false
  *         otherwise.
  */
@@ -381,8 +458,8 @@ static __always_inline bool is_dentry_allowlisted(
   }
 
   // Check if the current file or any ancestor directory is allowlisted
-  if (check_inode_allowlisted(file_dentry, dev_id, fmod_type,
-                              monitoring_mode)) {
+  if (check_inode_allowlisted(file_dentry, dev_id, fmod_type, monitoring_mode,
+                              false)) {
     return true;  // File or ancestor is allowlisted
   }
 
@@ -763,7 +840,7 @@ int BPF_PROG(fexit__security_inode_setattr,
 }
 
 /**
- * @brief eBPF program to monitor and potentially allowlist new hard link
+ * eBPF program to monitor and potentially allowlist new hard link
  * creations.
  *
  * This function traces the exit of the security_inode_link function and
@@ -816,9 +893,60 @@ int BPF_PROG(fexit__security_inode_link,
     // If new dentry is not allowlisted, update the allowlist map with its inode
     // ID
     ino_t inode_id = BPF_CORE_READ(old_inode, i_ino);
-    bpf_map_update_allowlisted_file_inodes(inode_id, old_dev_id,
-                                           monitoring_mode);
+    bpf_map_update_allowlisted_hardlinked_inodes(inode_id, old_dev_id,
+                                                 monitoring_mode);
   }
 
+  return 0;
+}
+
+/**
+ * eBPF program to manage allowlist for hard link unlink operations.
+ *
+ * This function traces the exit of the security_inode_unlink function and
+ * checks if the operation results in the removal of the last hard link to an
+ * inode. If the inode's hard link count drops to 1, it identifies the inode
+ * and its associated device ID, and removes the inode ID from the allowlist
+ * map if present, assuming it was previously allowlisted for monitoring.
+ *
+ * @param dir The inode of the parent directory from which `old_dentry` is
+ * unlinked.
+ * @param old_dentry Existing file or link being unlinked.
+ * @param ret Return value of the security_inode_unlink function, indicating the
+ *            outcome of the operation.
+ * @return int Always returns 0.
+ */
+SEC("fexit/security_inode_unlink")
+int BPF_PROG(fexit__security_inode_unlink,
+             struct inode* dir,
+             struct dentry* old_dentry,
+             int ret) {
+  // Exit early if the operation failed or if `old_dentry` is NULL
+  if (ret != 0 || !old_dentry) {
+    return 0;
+  }
+
+  // Initialize variables
+  struct inode* old_inode = BPF_CORE_READ(old_dentry, d_inode);
+
+  // If `old_inode` is NULL, return early as we cannot proceed further
+  if (!old_inode) {
+    return 0;
+  }
+
+  // Read the number of hard links for the inode
+  unsigned int links_count = (unsigned int)BPF_CORE_READ(old_inode, i_nlink);
+
+  // If this is the last link (nlink == 1), remove the inode ID from the map
+  if (links_count == 1) {
+    // Read the device ID of the old inode
+    dev_t old_dev_id = BPF_CORE_READ(old_inode, i_sb, s_dev);
+
+    // Retrieve the inode ID
+    ino_t inode_id = BPF_CORE_READ(old_inode, i_ino);
+    bpf_map_delete_allowlisted_hardlinked_inodes(inode_id, old_dev_id);
+  }
+
+  // Always return 0 to indicate success
   return 0;
 }
