@@ -59,6 +59,10 @@ int lookup_lib(pid_t pid, const char* name, std::string& path);
 int setup_sig_handlers(void);
 bool should_stop(void);
 
+int prepare_target(pid_t& pid, const char* cmd);
+int follow_target(pid_t pid);
+bool target_terminated(void);
+
 }  // namespace libmon
 
 #endif  // BPF_MONS_INCLUDE_LIBMON_H_

@@ -16,14 +16,29 @@ namespace libmon {
 
 static struct blaze_symbolizer* symb;
 
+static volatile bool __mon_target_terminated;
 static volatile bool __mon_should_stop;
 
 static void mon_sig_handler(int sig) {
-  __mon_should_stop = true;
+  switch (sig) {
+    case SIGINT:
+    case SIGTERM:
+      __mon_should_stop = true;
+      break;
+    case SIGCHLD:
+      __mon_target_terminated = true;
+      break;
+    default:
+      break;
+  }
 }
 
 bool should_stop(void) {
   return __mon_should_stop;
+}
+
+bool target_terminated(void) {
+  return __mon_target_terminated;
 }
 
 int setup_sig_handlers(void) {
@@ -35,7 +50,44 @@ int setup_sig_handlers(void) {
   ret = signal(SIGTERM, mon_sig_handler);
   if (ret == SIG_ERR)
     return -EINVAL;
+  ret = signal(SIGCHLD, mon_sig_handler);
+  if (ret == SIG_ERR)
+    return -EINVAL;
   return 0;
+}
+
+int prepare_target(pid_t& pid, const char* cmd) {
+  pid_t npid = -1;
+
+  if (pid != -1) {
+    kill(pid, SIGSTOP);
+    return 0;
+  }
+
+  if (cmd == NULL)
+    return -EINVAL;
+
+  npid = fork();
+  if (npid == -1)
+    return -EINVAL;
+
+  if (npid == 0) {
+    /*
+     * STOP the process so that we can load the monitor, attach it and setup
+     * all the probes.
+     */
+    raise(SIGTSTP);
+    execl(cmd, basename(cmd), NULL);
+    exit(0);
+  }
+
+  pid = npid;
+  return 0;
+}
+
+int follow_target(pid_t pid) {
+  /* Setup is done now we can resume target process */
+  return kill(pid, SIGCONT);
 }
 
 static void show_frame(uintptr_t ip,
