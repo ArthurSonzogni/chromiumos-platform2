@@ -107,7 +107,20 @@ static int fdmon(pid_t pid) {
     goto cleanup;
   }
 
-  while ((err = ring_buffer__poll(rb, -1)) >= 0) {
+  err = libmon::setup_sig_handlers();
+  if (err)
+    goto cleanup;
+
+  while (!libmon::should_stop()) {
+    err = ring_buffer__poll(rb, LIBMON_RB_POLL_TIMEOUT);
+    if (err == -EINTR) {
+      err = 0;
+      break;
+    }
+    if (err < 0) {
+      printf("RB polling error: %d\n", err);
+      break;
+    }
   }
 
 cleanup:

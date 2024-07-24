@@ -5,6 +5,7 @@
 #include "include/libmon.h"
 
 #include <blazesym.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include <filesystem>
@@ -14,6 +15,28 @@
 namespace libmon {
 
 static struct blaze_symbolizer* symb;
+
+static volatile bool __mon_should_stop;
+
+static void mon_sig_handler(int sig) {
+  __mon_should_stop = true;
+}
+
+bool should_stop(void) {
+  return __mon_should_stop;
+}
+
+int setup_sig_handlers(void) {
+  sighandler_t ret;
+
+  ret = signal(SIGINT, mon_sig_handler);
+  if (ret == SIG_ERR)
+    return -EINVAL;
+  ret = signal(SIGTERM, mon_sig_handler);
+  if (ret == SIG_ERR)
+    return -EINVAL;
+  return 0;
+}
 
 static void show_frame(uintptr_t ip,
                        uintptr_t addr,

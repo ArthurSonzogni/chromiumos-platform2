@@ -16,7 +16,7 @@
 
 namespace libmon {
 
-#define ATTR_UNUSED __attribute__((unused))
+#define LIBMON_RB_POLL_TIMEOUT 888
 
 #define LIBMON_ATTACH_UPROBE(s, pid, obj, prog, opts)                     \
   do {                                                                    \
@@ -55,6 +55,9 @@ void decode_ustack(uint32_t pid, uintptr_t* ents, uint32_t num_ents);
 void decode_kstack(uintptr_t* ents, uint32_t num_ents);
 
 int lookup_lib(uint32_t pid, const char* name, std::string& path);
+
+int setup_sig_handlers(void);
+bool should_stop(void);
 
 }  // namespace libmon
 
