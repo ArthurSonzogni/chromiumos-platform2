@@ -49,7 +49,7 @@ static void show_frame(uintptr_t ip,
   printf("\n");
 }
 
-static void show_stack_trace(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
+static void show_stack_trace(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
   const struct blaze_symbolize_inlined_fn* inlined;
   const struct blaze_result* res;
   const struct blaze_sym* sym;
@@ -57,7 +57,7 @@ static void show_stack_trace(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
   if (pid) {
     struct blaze_symbolize_src_process src = {
         .type_size = sizeof(src),
-        .pid = pid,
+        .pid = static_cast<uint32_t>(pid),
         .map_files = true,
     };
 
@@ -90,8 +90,8 @@ static void show_stack_trace(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
   blaze_result_free(res);
 }
 
-void decode_ustack(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
-  if (!pid)
+void decode_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
+  if (pid < 0)
     return;
   if (!num_ents)
     return;
@@ -117,7 +117,7 @@ void release_stack_decoder(void) {
   blaze_symbolizer_free(symb);
 }
 
-static int lookup_map_files(uint32_t pid, const char* name, std::string& path) {
+static int lookup_map_files(pid_t pid, const char* name, std::string& path) {
   std::filesystem::path dir = "/proc/" + std::to_string(pid) + "/map_files";
   std::string lib_name = name;
 
@@ -142,7 +142,7 @@ static int lookup_map_files(uint32_t pid, const char* name, std::string& path) {
   return -ENOENT;
 }
 
-int lookup_lib(uint32_t pid, const char* name, std::string& path) {
+int lookup_lib(pid_t pid, const char* name, std::string& path) {
   std::vector<std::filesystem::path> search = {"/lib64", "/usr/lib64"};
   std::string lib_name = name;
 

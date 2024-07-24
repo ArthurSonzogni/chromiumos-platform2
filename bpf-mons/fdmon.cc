@@ -24,7 +24,7 @@ namespace {
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {0, 0, 0, 0}};
 
-static int attach_probes(struct fdmon_bpf* mon, int pid) {
+static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
   LIBBPF_OPTS(bpf_uprobe_opts, uopts);
   std::string libc;
 

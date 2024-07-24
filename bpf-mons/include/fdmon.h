@@ -22,8 +22,8 @@ enum fdmon_event_type {
 struct fdmon_event {
   int32_t nfd;
   int32_t ofd;
-  uint32_t pid;
-  uint32_t tid;
+  int32_t pid;
+  int32_t tid;
   int8_t comm[FDMON_TASK_COMM_SZ];
   uintptr_t ustack_ents[FDMON_MAX_USTACK_ENTS];
   uint16_t num_ustack_ents;

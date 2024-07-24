@@ -239,7 +239,7 @@ out:
   return ret;
 }
 
-static int populate_maps(uint32_t pid) {
+static int populate_maps(pid_t pid) {
   std::ifstream in("/proc/" + std::to_string(pid) + "/maps");
   std::string input;
 
@@ -290,7 +290,7 @@ static int populate_maps(uint32_t pid) {
   return 0;
 }
 
-void decode_ustack(uint32_t pid, uintptr_t* ents, uint32_t num_ents) {
+void decode_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
   for (uint32_t fn = 1; fn < num_ents; fn++) {
     struct addr *mod, *sym;
     uintptr_t ptr;

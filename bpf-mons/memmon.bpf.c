@@ -43,10 +43,10 @@ struct {
   __uint(max_entries, 512 * sizeof(struct memmon_event));
 } rb SEC(".maps");
 
-const volatile unsigned int kprobe_mon_pid = 0;
+const volatile pid_t kprobe_mon_pid = 0;
 
 static u64 generate_call_id(enum memmon_event_type type) {
-  return (u64)((s32)type << 31) | (u32)bpf_get_current_pid_tgid();
+  return (u64)((s32)type << 31) | (s32)bpf_get_current_pid_tgid();
 }
 
 static int save_ustack(struct pt_regs* ctx, struct memmon_event* event) {
@@ -224,7 +224,7 @@ SEC("kprobe/handle_mm_fault")
 int BPF_KPROBE(call_handle_mm_fault,
                struct vm_area_struct* vma,
                unsigned long ptr) {
-  u32 pid = bpf_get_current_pid_tgid() >> 32;
+  s32 pid = bpf_get_current_pid_tgid() >> 32;
 
   if (pid != kprobe_mon_pid)
     return 0;
