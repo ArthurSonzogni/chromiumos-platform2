@@ -63,13 +63,24 @@ struct {
 } shared_process_info SEC(".maps");
 
 // Allowlist Maps
+
+/**
+ * BPF map for storing device file monitoring allowlisting settings.
+ *
+ * This BPF map uses a hash LRU structure to associate device IDs (dev_t) with
+ * their corresponding file monitoring settings (struct
+ * device_file_monitoring_settings). It is used to manage and efficiently look
+ * up which devices are allowlisted for file monitoring and the specific
+ * monitoring mode they require.
+ */
 struct {
-  __uint(type, BPF_MAP_TYPE_HASH);
-  __type(key, dev_t);   // device id
-  __type(value, bool);  // value not used
+  __uint(type, BPF_MAP_TYPE_LRU_HASH);
   __uint(max_entries, MAX_ALLOWLISTED_FILE_MOD_DEVICES);
+  __type(key, dev_t);  // Key type: device ID (dev_t).
+  __uint(key_size, sizeof(dev_t));
+  __type(value, struct device_file_monitoring_settings);
   __uint(pinning, LIBBPF_PIN_BY_NAME);
-} allowlisted_devices SEC(".maps");
+} device_file_monitoring_allowlist SEC(".maps");
 
 /**
  * BPF map for storing allowlisted file inodes and their monitoring modes.
@@ -150,13 +161,19 @@ static __always_inline int bpf_map_update_allowlisted_file_inodes(
 }
 
 /**
- * Helper function to check if a device ID is allowlisted.
+ * Helper function to retrieve device file monitoring settings for a given
+ * device ID.
+ *
+ * This function checks if the specified device ID is allowlisted for file
+ * monitoring and retrieves its associated monitoring settings if found.
  *
  * @param dev_id The device ID to check.
- * @return true if the device ID is allowlisted, false otherwise.
+ * @return A pointer to struct device_file_monitoring_settings if the device ID
+ * is allowlisted, or NULL if not found in the allowlist.
  */
-static __always_inline bool is_device_allowlisted(dev_t dev_id) {
-  return bpf_map_lookup_elem(&allowlisted_devices, &dev_id) != NULL;
+static __always_inline struct device_file_monitoring_settings*
+get_device_allowlist_settings(dev_t dev_id) {
+  return bpf_map_lookup_elem(&device_file_monitoring_allowlist, &dev_id);
 }
 
 /**
@@ -198,17 +215,45 @@ static __always_inline bool is_valid_file(struct inode* file_inode,
 }
 
 /**
- * Helper function to check if the current inode is allowlisted and
- * matches the required monitoring mode.
+ * Determines if a file monitoring mode allows a specific file operation type.
  *
- * @param file_dentry The dentry of the file to check.
- * @param dev_id      The device ID where the file resides.
- * @param fmod_type   The type of file operation (e.g., read-only, read-write,
- * hard link).
- * @param monitoring_mode Pointer to store the file_monitoring_mode if the file
- * or ancestor is allowlisted.
- * @return true if the inode is allowlisted and matches the mode, false
- * otherwise.
+ * This function checks if the specified `file_monitoring_mode` allows the given
+ * `fmod_type` file operation.
+ *
+ * Conditions checked:
+ * - Allows both read-only and read-write operations (READ_AND_READ_WRITE_BOTH).
+ * - Allows read-write operation when in READ_WRITE_ONLY mode and `fmod_type` is
+ * FMOD_READ_WRITE_OPEN.
+ * - Allows link operations (`fmod_type` is FMOD_LINK).
+ *
+ * @param file_monitoring_mode The file monitoring mode to check.
+ * @param fmod_type            The type of file operation (e.g., read-only,
+ * read-write, link).
+ * @return true if the file monitoring mode allows the file operation type,
+ * false otherwise.
+ */
+static __always_inline bool allows_file_operation(
+    enum file_monitoring_mode file_monitoring_mode,
+    enum filemod_type fmod_type) {
+  return (file_monitoring_mode == READ_AND_READ_WRITE_BOTH ||
+          (file_monitoring_mode == READ_WRITE_ONLY &&
+           fmod_type == FMOD_READ_WRITE_OPEN) ||
+          fmod_type == FMOD_LINK);
+}
+
+/**
+ * Helper function to check if the current inode is allowlisted and matches the
+ * required file operation mode.
+ *
+ * @param file_dentry     The dentry of the file to check.
+ * @param dev_id          The device ID where the file resides.
+ * @param fmod_type       The type of file operation (e.g., read-only,
+ * read-write, hard link).
+ * @param[out] monitoring_mode  Pointer to store the file monitoring mode if the
+ *                        file or ancestor is allowlisted. Pass NULL if not
+ * needed.
+ * @return true if the inode is allowlisted and matches the file operation mode,
+ *         false otherwise.
  */
 static __always_inline bool check_inode_allowlisted(
     struct dentry* file_dentry,
@@ -222,25 +267,27 @@ static __always_inline bool check_inode_allowlisted(
   enum file_monitoring_mode* mode_ptr =
       bpf_map_lookup_allowlisted_file_inodes(dev_id, current_ino);
 
-  // If monitoring mode found, check if it matches the required mode
-  if (mode_ptr != NULL) {
-    *monitoring_mode =
-        *mode_ptr;  // Update the value pointed to by monitoring_mode
-    if (*monitoring_mode == READ_AND_READ_WRITE_BOTH ||
-        (*monitoring_mode == READ_WRITE_ONLY &&
-         fmod_type == FMOD_READ_WRITE_OPEN) ||
-        fmod_type == FMOD_LINK) {
-      return true;  // Allowlisted ancestor found
-    } else {
-      return false;  // Mode mismatch, return false
-    }
+  // If monitoring mode not found, return false
+  if (mode_ptr == NULL) {
+    return false;
   }
 
-  return false;  // Inode not allowlisted
+  // If monitoring mode found and monitoring_mode pointer is provided
+  if (monitoring_mode != NULL) {
+    *monitoring_mode =
+        *mode_ptr;  // Update the value pointed to by monitoring_mode
+  }
+
+  // Check if the retrieved monitoring mode allows the specified file operation
+  if (allows_file_operation(*mode_ptr, fmod_type)) {
+    return true;  // Inode is allowlisted and mode matches
+  } else {
+    return false;  // Inode is not allowlisted or mode does not match
+  }
 }
 
 /**
- * Checks if any ancestor directory of a file is allowlisted for the
+ * @brief Checks if any ancestor directory of a file is allowlisted for the
  * specified access mode.
  *
  * This function traverses the file's path upwards (towards the root directory)
@@ -287,34 +334,53 @@ static __always_inline bool check_ancestor(
 
 /**
  * Determines if a file (represented by its dentry) is allowlisted for
- * the given operation.
+ * the specified file operation and device.
  *
  * This function checks if the file:
- *   1. Resides on an allowlisted device.
+ *   1. Resides on a device that is allowlisted.
  *   2. Is directly allowlisted, or if any of its ancestor directories are
  *      allowlisted, with the correct `file_monitoring_mode` for the given
- *      `filemod_type`.
+ *      `fmod_type`.
  *
  * @param file_dentry     The dentry of the file to check.
  * @param dev_id          The device ID where the file resides.
  * @param fmod_type       The type of file operation (e.g., read-only,
- * read-write, hard link).
- * @param monitoring_mode Pointer to store the `file_monitoring_mode` if the
- * file or ancestor is allowlisted.
+ *                        read-write, hard link).
+ * @param[out] monitoring_mode Pointer to store the `file_monitoring_mode` if
+ * the file or ancestor is allowlisted. Pass NULL if not needed.
+ * @return true if the file or any ancestor directory is allowlisted, false
+ *         otherwise.
  */
-// TODO(princya): Add caching to avoid up look-ups for folders that have been
-// seen before, and shortcut the processing
 static __always_inline bool is_dentry_allowlisted(
     struct dentry* file_dentry,
     dev_t dev_id,
     enum filemod_type fmod_type,
     enum file_monitoring_mode* monitoring_mode) {
   // Check if the device is allowlisted
-  if (!is_device_allowlisted(dev_id)) {
-    return false;  // Device ID not allowlisted
+  struct device_file_monitoring_settings* device_settings =
+      get_device_allowlist_settings(dev_id);
+
+  // Check if device is not allowlisted
+  if (device_settings == NULL) {
+    return false;
   }
 
-  // Check if the current inode is allowlisted and matches the required mode
+  // Check if monitoring all files on the device is enabled
+  if (device_settings->device_monitoring_type == MONITOR_ALL_FILES) {
+    // Check if the device allows the specified file operation
+    if (allows_file_operation(device_settings->file_monitoring_mode,
+                              fmod_type)) {
+      // Update monitoring_mode if provided
+      if (monitoring_mode != NULL) {
+        *monitoring_mode = device_settings->file_monitoring_mode;
+      }
+      return true;  // Device is allowlisted for the specified file operation
+    } else {
+      return false;  // Device is not allowlisted for this file operation
+    }
+  }
+
+  // Check if the current file or any ancestor directory is allowlisted
   if (check_inode_allowlisted(file_dentry, dev_id, fmod_type,
                               monitoring_mode)) {
     return true;  // File or ancestor is allowlisted
@@ -322,10 +388,10 @@ static __always_inline bool is_dentry_allowlisted(
 
   // Check if any ancestor directory is allowlisted
   if (check_ancestor(file_dentry, fmod_type, dev_id, monitoring_mode)) {
-    return true;  // Ancestor is allowlisted
+    return true;  // Ancestor directory is allowlisted
   }
 
-  return false;  // File or ancestor not allowlisted
+  return false;  // File or ancestor is not allowlisted
 }
 
 /**
@@ -697,7 +763,7 @@ int BPF_PROG(fexit__security_inode_setattr,
 }
 
 /**
- * eBPF program to monitor and potentially allowlist new hard link
+ * @brief eBPF program to monitor and potentially allowlist new hard link
  * creations.
  *
  * This function traces the exit of the security_inode_link function and

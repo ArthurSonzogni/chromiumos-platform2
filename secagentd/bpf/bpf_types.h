@@ -180,10 +180,26 @@ enum cros_network_protocol {
 // We only care about AF_INET and AF_INET6 (ipv4 and ipv6).
 enum cros_network_family { CROS_FAMILY_AF_INET = 2, CROS_FAMILY_AF_INET6 = 10 };
 
+// Enum to define different file monitoring modes
 enum file_monitoring_mode {
-  READ_WRITE_ONLY = 0,          // Monitored for read-write only
-  READ_AND_READ_WRITE_BOTH = 1  // Monitored for both read and read-write
+  READ_WRITE_ONLY = 0,          // Monitored for read-write access only
+  READ_AND_READ_WRITE_BOTH = 1  // Monitored for both read and read-write access
 };
+
+// Enum to specify different types of device file monitoring
+enum device_monitoring_type {
+  MONITOR_ALL_FILES,      // Monitor all files on the device
+  MONITOR_SPECIFIC_FILES  // Monitor specific files allowlisted by folder/file
+                          // allowlisting map
+};
+
+// Struct to hold device file monitoring settings
+struct device_file_monitoring_settings {
+  enum device_monitoring_type
+      device_monitoring_type;  // Type of file monitoring to apply
+  enum file_monitoring_mode
+      file_monitoring_mode;  // Mode of file access to monitor
+} __attribute__((aligned(8)));
 
 #ifdef __cplusplus
 // make sure that the values used for our definition of families matches
