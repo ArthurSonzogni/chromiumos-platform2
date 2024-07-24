@@ -130,9 +130,12 @@ KeyValueStores P2PManager::GetClientInfos(Error* /* error */) {
   return clientInfos;
 }
 
-void P2PManager::Start() {}
+void P2PManager::Start() {
+  LOG(INFO) << __func__;
+}
 
 void P2PManager::Stop() {
+  LOG(INFO) << __func__;
   if (!p2p_group_owners_.empty() || !p2p_clients_.empty()) {
     LOG(WARNING) << "P2PManager has been stopped while some of P2P devices "
                     "are still active";
@@ -158,6 +161,7 @@ void P2PManager::ActionTimerExpired(bool is_start,
     LOG(ERROR) << __func__ << ": no available callback";
     return;
   }
+  LOG(INFO) << __func__ << ": action " << (is_start ? "start" : "stop");
 
   bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
   DeleteP2PDevice(pending_p2p_device_);
@@ -244,7 +248,7 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     LOG(ERROR) << "Failed to create P2P group, primary P2PDevice proxy "
                   "is not connected";
     PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     return;
   }
 
@@ -333,7 +337,7 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
     LOG(ERROR) << "Failed to connect to P2P group, primary P2PDevice proxy "
                   "is not connected";
     PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-               std::move(callback));
+               std::move(result_callback_));
     return;
   }
 
@@ -457,6 +461,7 @@ void P2PManager::PostResult(std::string result_code,
     LOG(ERROR) << "Callback is not set";
     return;
   }
+  LOG(INFO) << __func__ << ": " << result_code;
   KeyValueStore response_dict;
   response_dict.Set<std::string>(kP2PResultCode, result_code);
   if (shill_id) {

@@ -63,8 +63,8 @@ bool LocalDevice::SetEnabled(bool enable) {
 }
 
 void LocalDevice::PostDeviceEvent(DeviceEvent event) const {
-  SLOG(1) << "Device " << link_name_.value_or("(no link_name)")
-          << " posts event: " << event;
+  LOG(INFO) << "Device " << link_name_.value_or("(no link_name)")
+            << " posts event: " << event;
 
   manager_->dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&LocalDevice::DeviceEventTask,

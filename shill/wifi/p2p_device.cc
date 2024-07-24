@@ -645,6 +645,7 @@ String P2PDevice::GetGroupPassphrase() const {
 }
 
 bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
+  LOG(INFO) << log_name() << ": " << __func__;
   RpcIdentifier interface_path = RpcIdentifier("");
   if (properties.Contains<RpcIdentifier>(
           WPASupplicant::kGroupStartedPropertyInterfaceObject)) {
@@ -753,6 +754,7 @@ void P2PDevice::TeardownGroup(const KeyValueStore& properties) {
 }
 
 void P2PDevice::TeardownGroup() {
+  LOG(INFO) << log_name() << ": " << __func__;
   // TODO(b/322557062): Ensure that the underlying kernel interface is properly
   // torn down.
   group_ssid_ = "";
