@@ -54,7 +54,7 @@ void release_stack_decoder(void);
 void decode_ustack(uint32_t pid, uintptr_t* ents, uint32_t num_ents);
 void decode_kstack(uintptr_t* ents, uint32_t num_ents);
 
-int lookup_lib(const char* name, std::string& path);
+int lookup_lib(uint32_t pid, const char* name, std::string& path);
 
 }  // namespace libmon
 

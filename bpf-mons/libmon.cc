@@ -94,9 +94,37 @@ void release_stack_decoder(void) {
   blaze_symbolizer_free(symb);
 }
 
-int lookup_lib(const char* name, std::string& path) {
+static int lookup_map_files(uint32_t pid, const char* name, std::string& path) {
+  std::filesystem::path dir = "/proc/" + std::to_string(pid) + "/map_files";
+  std::string lib_name = name;
+
+  if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
+    return -ENOENT;
+
+  for (auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+    if (!entry.is_symlink())
+      continue;
+
+    std::error_code ec;
+    std::filesystem::path link = std::filesystem::read_symlink(entry, ec);
+    if (ec)
+      continue;
+
+    std::string ent = link.filename();
+    if (ent.find(lib_name) != std::string::npos) {
+      path = link.string();
+      return 0;
+    }
+  }
+  return -ENOENT;
+}
+
+int lookup_lib(uint32_t pid, const char* name, std::string& path) {
   std::vector<std::filesystem::path> search = {"/lib64", "/usr/lib64"};
   std::string lib_name = name;
+
+  if (lookup_map_files(pid, name, path) == 0)
+    return 0;
 
   for (const auto& dir : search) {
     if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
