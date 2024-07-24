@@ -727,6 +727,8 @@ std::string SharedDataParam::to_string() const {
             {.cache = "auto", "1", "false", "1"}},
            {SharedDataParam::Cache::kAlways,
             {.cache = "always", "3600", "true", "3600"}},
+           {SharedDataParam::Cache::kAlwaysNoWriteback,
+            {.cache = "always", "3600", "false", "3600"}},
            {SharedDataParam::Cache::kNever,
             {.cache = "never", "1", "false", "1"}}});
 

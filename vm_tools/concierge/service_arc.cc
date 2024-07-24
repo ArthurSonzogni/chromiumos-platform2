@@ -436,7 +436,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .tag = "_data_media",
       .uid_map = kAndroidUidMap,
       .gid_map = kAndroidGidMap,
-      .enable_caches = SharedDataParam::Cache::kAlways,
+      // TODO(b/321254986): We disable writeback feature here until we resolve
+      // the issue. We should use `kAlways` if the root cause was fixed.
+      .enable_caches = SharedDataParam::Cache::kAlwaysNoWriteback,
       .ascii_casefold = true,
       .posix_acl = true,
       .privileged_quota_uids = privileged_quota_uids};
