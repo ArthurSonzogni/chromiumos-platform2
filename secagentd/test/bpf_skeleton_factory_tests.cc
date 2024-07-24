@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/bpf_skeleton_wrappers.h"
-
 #include <utility>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
 #include "gtest/gtest.h"
+#include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/test/mock_bpf_skeleton.h"
@@ -28,6 +27,7 @@ class BpfSkeletonFactoryTestFixture
     type = GetParam();
     auto mock_process_skel = std::make_unique<MockBpfSkeleton>();
     auto mock_network_skel = std::make_unique<MockBpfSkeleton>();
+    auto mock_file_skel = std::make_unique<MockBpfSkeleton>();
     switch (type) {
       case Types::BpfSkeleton::kProcess:
         active_skeleton = mock_process_skel.get();
@@ -35,12 +35,16 @@ class BpfSkeletonFactoryTestFixture
       case Types::BpfSkeleton::kNetwork:
         active_skeleton = mock_network_skel.get();
         break;
+      case Types::BpfSkeleton::kFile:
+        active_skeleton = mock_file_skel.get();
+        break;
     }
 
     skel_factory = base::MakeRefCounted<BpfSkeletonFactory>(
         BpfSkeletonFactory::SkeletonInjections(
             {.process = std::move(mock_process_skel),
-             .network = std::move(mock_network_skel)}));
+             .network = std::move(mock_network_skel),
+             .file = std::move(mock_file_skel)}));
     cbs.ring_buffer_event_callback =
         base::BindRepeating([](const bpf::cros_event&) {});
     cbs.ring_buffer_read_ready_callback = base::BindRepeating([]() {});
@@ -78,7 +82,8 @@ INSTANTIATE_TEST_SUITE_P(
     BpfSkeletonFactoryTest,
     BpfSkeletonFactoryTestFixture,
     ::testing::ValuesIn<Types::BpfSkeleton>({Types::BpfSkeleton::kProcess,
-                                             Types::BpfSkeleton::kNetwork}),
+                                             Types::BpfSkeleton::kNetwork,
+                                             Types::BpfSkeleton::kFile}),
     [](const ::testing::TestParamInfo<BpfSkeletonFactoryTestFixture::ParamType>&
            info) { return absl::StrFormat("%s", info.param); });
 

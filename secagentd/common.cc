@@ -4,8 +4,9 @@
 
 #include "secagentd/common.h"
 
-#include <string>
 #include <unistd.h>
+
+#include <string>
 #include <utility>
 
 #include "absl/container/flat_hash_map.h"
@@ -45,7 +46,8 @@ AbslFormatConvert(const BpfSkeleton& type,
                   const absl::FormatConversionSpec&,
                   absl::FormatSink* output_sink) {
   static const absl::flat_hash_map<Types::BpfSkeleton, std::string>
-      kTypeToString{{Types::BpfSkeleton::kProcess, "Process"}};
+      kTypeToString{{Types::BpfSkeleton::kProcess, "Process"},
+                    {Types::BpfSkeleton::kFile, "File"}};
   auto i = kTypeToString.find(type);
   output_sink->Append(i != kTypeToString.end() ? i->second : "Unknown");
   return {.value = true};
@@ -62,7 +64,9 @@ AbslFormatConvert(const Types::Plugin& type,
                   const absl::FormatConversionSpec&,
                   absl::FormatSink* sink) {
   static const absl::flat_hash_map<Types::Plugin, std::string> kTypeToString{
-      {Types::Plugin::kProcess, "Process"}, {Types::Plugin::kAgent, "Agent"}};
+      {Types::Plugin::kProcess, "Process"},
+      {Types::Plugin::kAgent, "Agent"},
+      {Types::Plugin::kFile, "File"}};
 
   auto i = kTypeToString.find(type);
   sink->Append(i != kTypeToString.end() ? i->second : "Unknown");

@@ -5,8 +5,11 @@
 #ifndef SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 #define SECAGENTD_BPF_SKELETON_WRAPPERS_H_
 
+// clang-format off
 #include <arpa/inet.h>
 #include <bpf/libbpf.h>
+// clang-format on
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -227,6 +230,7 @@ class BpfSkeletonFactoryInterface
   struct SkeletonInjections {
     std::unique_ptr<BpfSkeletonInterface> process;
     std::unique_ptr<BpfSkeletonInterface> network;
+    std::unique_ptr<BpfSkeletonInterface> file;
   };
 
   // Creates a BPF Handler class that loads and attaches a BPF application.

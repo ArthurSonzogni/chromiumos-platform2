@@ -22,8 +22,8 @@ scoped_refptr<dbus::Bus> GetDBus();
 }  // namespace common
 
 namespace Types {
-enum class BpfSkeleton { kProcess, kNetwork };
-enum class Plugin { kAgent, kNetwork, kProcess, kAuthenticate };
+enum class BpfSkeleton { kProcess, kNetwork, kFile };
+enum class Plugin { kAgent, kNetwork, kProcess, kAuthenticate, kFile };
 
 absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
 AbslFormatConvert(const BpfSkeleton& type,

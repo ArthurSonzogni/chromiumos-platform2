@@ -94,6 +94,9 @@ static constexpr EnumMetric<BpfAttachResult> kNetworkBpfAttach = {
 static constexpr EnumMetric<BpfAttachResult> kProcessBpfAttach = {
     .name = "Bpf.Process.AttachResult"};
 
+static constexpr EnumMetric<BpfAttachResult> kFileBpfAttach = {
+    .name = "Bpf.File.AttachResult"};
+
 // This should always follow the missive status code.
 // https://chromium.googlesource.com/chromiumos/platform2/+/6142bdcb70dc0987f9234c2294660f798d5df05a/missive/util/status.h#26
 enum class SendMessage {

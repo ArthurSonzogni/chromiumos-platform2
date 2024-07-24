@@ -15,8 +15,8 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
-#include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "attestation/proto_bindings/interface.pb.h"
 #include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/memory/ptr_util.h"
@@ -36,8 +36,8 @@
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
-#include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager-client/tpm_manager/dbus-proxies.h"
+#include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "user_data_auth/dbus-proxies.h"
 
 namespace secagentd {
@@ -54,6 +54,7 @@ class AgentPluginTestFixture;
 class ProcessPluginTestFixture;
 class NetworkPluginTestFixture;
 class AuthenticationPluginTestFixture;
+class FilePluginTestFixture;
 }  // namespace testing
 
 class PluginInterface {
@@ -277,6 +278,68 @@ class ProcessPlugin : public PluginInterface {
   }
 
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
+  scoped_refptr<ProcessCacheInterface> process_cache_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
+  std::unique_ptr<BatchSenderType> batch_sender_;
+  std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
+};
+
+class FilePlugin : public PluginInterface {
+ public:
+  FilePlugin(
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
+      uint32_t batch_interval_s);
+
+  // Load, verify and attach the file BPF applications.
+  absl::Status Activate() override;
+  absl::Status Deactivate() override;
+  bool IsActive() const override;
+  std::string GetName() const override;
+  void Flush() override {
+    if (batch_sender_) {
+      batch_sender_->Flush();
+    }
+  }
+
+  // Handles an individual incoming File BPF event.
+  void HandleRingBufferEvent(const bpf::cros_event& bpf_event);
+
+ private:
+  friend class testing::FilePluginTestFixture;
+
+  using BatchSenderType =
+      BatchSenderInterface<std::string,
+                           cros_xdr::reporting::XdrFileEvent,
+                           cros_xdr::reporting::FileEventAtomicVariant>;
+  // Inject the given (mock) BatchSender object for unit testing.
+  void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
+    batch_sender_ = std::move(given);
+  }
+
+  // Pushes the given file event into the next outgoing batch.
+  void EnqueueBatchedEvent(
+      std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant>
+          atomic_event);
+
+  // Callback function that is ran when the device user is ready.
+  void OnDeviceUserRetrieved(
+      std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant> atomic_event,
+      const std::string& device_user);
+
+  std::unique_ptr<cros_xdr::reporting::FileReadEvent> MakeReadEvent(
+      const secagentd::bpf::cros_file_event& close_event) const;
+  std::unique_ptr<cros_xdr::reporting::FileModifyEvent> MakeModifyEvent(
+      const secagentd::bpf::cros_file_event& close_event) const;
+  std::unique_ptr<cros_xdr::reporting::FileModifyEvent>
+  MakeAttributeModifyEvent(
+      const secagentd::bpf::cros_file_event& attribute_modify_event) const;
+
+  base::WeakPtrFactory<FilePlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;

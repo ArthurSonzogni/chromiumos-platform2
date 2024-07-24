@@ -4,12 +4,12 @@
 
 #include "secagentd/secagent.h"
 
+#include <sysexits.h>
 #include <unistd.h>
-#include <cstdlib>
 
+#include <cstdlib>
 #include <memory>
 #include <string>
-#include <sysexits.h>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -257,7 +257,10 @@ void SecAgent::CreateAndActivatePlugins() {
        std::make_pair(
            Plugin::kNetwork,
            std::optional(Feature::kCrOSLateBootSecagentdXDRNetworkEvents)),
-       std::make_pair(Plugin::kProcess, std::nullopt)};
+       std::make_pair(Plugin::kProcess, std::nullopt),
+       std::make_pair(
+           Plugin::kFile,
+           std::optional(Feature::kCrOSLateBootSecagentdXDRFileEvents))};
   std::unique_ptr<PluginInterface> plugin;
   for (const auto& p : plugins) {
     plugin = plugin_factory_->Create(p.first, message_sender_, process_cache_,

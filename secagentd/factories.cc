@@ -2,16 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// clang-format off
 #include "secagentd/plugins.h"
+// clang-format on
 
 #include <cstdint>
 #include <memory>
 #include <utility>
 
-#include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "attestation/proto_bindings/interface.pb.h"
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/bpf_skeletons/skeleton_file_bpf.h"
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/message_sender.h"
@@ -44,6 +47,17 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
         rv = std::make_unique<NetworkBpfSkeleton>(
             batch_interval_s,
             std::make_unique<shill::Client>(common::GetDBus()));
+      }
+      break;
+    case Types::BpfSkeleton::kFile:
+      if (di_.file) {
+        rv = std::move(di_.file);
+      } else {
+        SkeletonCallbacks<file_bpf> skel_cbs;
+        skel_cbs.destroy = base::BindRepeating(file_bpf__destroy);
+        skel_cbs.open = base::BindRepeating(file_bpf__open);
+        skel_cbs.open_opts = base::BindRepeating(file_bpf__open_opts);
+        rv = std::make_unique<BpfSkeleton<file_bpf>>("file", skel_cbs);
       }
       break;
     default:
@@ -93,6 +107,11 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
       rv = std::make_unique<AuthenticationPlugin>(
           message_sender, policies_features_broker, device_user,
           batch_interval_s);
+      break;
+    case Types::Plugin::kFile:
+      rv = std::make_unique<FilePlugin>(bpf_skeleton_factory_, message_sender,
+                                        process_cache, policies_features_broker,
+                                        device_user, batch_interval_s);
       break;
 
     default:

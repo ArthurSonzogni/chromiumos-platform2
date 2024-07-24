@@ -4,9 +4,10 @@
 
 #include "secagentd/secagent.h"
 
+#include <sysexits.h>
+
 #include <cstring>
 #include <memory>
-#include <sysexits.h>
 
 #include "absl/status/status.h"
 #include "base/files/file_util.h"
@@ -81,6 +82,9 @@ class SecAgentTestFixture
     authentication_plugin_ = std::make_unique<MockPlugin>();
     authentication_plugin_ref_ = authentication_plugin_.get();
 
+    file_plugin_ = std::make_unique<MockPlugin>();
+    file_plugin_ref_ = file_plugin_.get();
+
     plugin_factory_ = std::make_unique<MockPluginFactory>();
     plugin_factory_ref = plugin_factory_.get();
 
@@ -105,6 +109,8 @@ class SecAgentTestFixture
         .WillByDefault(Return("NetworkPluginTest"));
     ON_CALL(*authentication_plugin_ref_, GetName())
         .WillByDefault(Return("AuthenticationPluginTest"));
+    ON_CALL(*file_plugin_ref_, GetName())
+        .WillByDefault(Return("FilePluginTest"));
     ON_CALL(*agent_plugin_ref_, GetName())
         .WillByDefault(Return("AgentPluginRef"));
 
@@ -120,6 +126,9 @@ class SecAgentTestFixture
     ON_CALL(*authentication_plugin_ref_, IsActive)
         .WillByDefault(Invoke(
             [this]() { return authentication_plugin_ref_->is_active_; }));
+    ON_CALL(*file_plugin_ref_, IsActive).WillByDefault(Invoke([this]() {
+      return file_plugin_ref_->is_active_;
+    }));
 
     // Default behavior for plugin creation.
     ON_CALL(*plugin_factory_ref, CreateAgentPlugin)
@@ -134,6 +143,8 @@ class SecAgentTestFixture
     ON_CALL(*plugin_factory_ref,
             Create(Types::Plugin::kAuthenticate, _, _, _, _, _))
         .WillByDefault(Return(ByMove(std::move(authentication_plugin_))));
+    ON_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _))
+        .WillByDefault(Return(ByMove(std::move(file_plugin_))));
 
     // Default activate actions.
     ON_CALL(*process_plugin_ref_, MockActivate())
@@ -146,6 +157,8 @@ class SecAgentTestFixture
         .WillByDefault(Return(absl::OkStatus()));
     ON_CALL(*authentication_plugin_ref_, MockActivate())
         .WillByDefault(Return(absl::OkStatus()));
+    ON_CALL(*file_plugin_ref_, MockActivate())
+        .WillByDefault(Return(absl::OkStatus()));
   }
 
   void InstallDontCarePluginIsActive() {
@@ -153,6 +166,7 @@ class SecAgentTestFixture
     EXPECT_CALL(*agent_plugin_ref_, IsActive()).Times(AnyNumber());
     EXPECT_CALL(*network_plugin_ref_, IsActive()).Times(AnyNumber());
     EXPECT_CALL(*authentication_plugin_ref_, IsActive()).Times(AnyNumber());
+    EXPECT_CALL(*file_plugin_ref_, IsActive()).Times(AnyNumber());
   }
 
   void InstallDontCarePluginGetName() {
@@ -160,6 +174,7 @@ class SecAgentTestFixture
     EXPECT_CALL(*agent_plugin_ref_, GetName()).Times(AnyNumber());
     EXPECT_CALL(*network_plugin_ref_, GetName()).Times(AnyNumber());
     EXPECT_CALL(*authentication_plugin_ref_, GetName()).Times(AnyNumber());
+    EXPECT_CALL(*file_plugin_ref_, GetName()).Times(AnyNumber());
   }
 
   void InstallActivateExpectations() {
@@ -180,6 +195,8 @@ class SecAgentTestFixture
   MockPlugin* process_plugin_ref_;
   std::unique_ptr<MockPlugin> authentication_plugin_;
   MockPlugin* authentication_plugin_ref_;
+  std::unique_ptr<MockPlugin> file_plugin_;
+  MockPlugin* file_plugin_ref_;
   MockPluginFactory* plugin_factory_ref;
   scoped_refptr<MockMessageSender> message_sender_;
   scoped_refptr<MockProcessCache> process_cache_;
@@ -225,6 +242,11 @@ TEST_F(SecAgentTestFixture, TestReportingEnabled) {
                              kCrOSLateBootSecagentdXDRAuthenticateEvents))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRFileEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
   // All plugins should be created.
@@ -235,11 +257,13 @@ TEST_F(SecAgentTestFixture, TestReportingEnabled) {
               Create(Types::Plugin::kNetwork, _, _, _, _, _));
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kProcess, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _));
 
   // Everything is enabled so all plugins should be activated.
   EXPECT_CALL(*process_plugin_ref_, MockActivate);
   EXPECT_CALL(*network_plugin_ref_, MockActivate);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate);
   EXPECT_CALL(*agent_plugin_ref_, MockActivate);
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
@@ -272,6 +296,11 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
                              kCrOSLateBootSecagentdXDRAuthenticateEvents))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRFileEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
   // All plugins should be created.
@@ -282,11 +311,13 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
               Create(Types::Plugin::kProcess, _, _, _, _, _));
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _));
 
   // Everything is enabled so all plugins should be activated.
   EXPECT_CALL(*process_plugin_ref_, MockActivate);
   EXPECT_CALL(*network_plugin_ref_, MockActivate);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate);
   EXPECT_CALL(*agent_plugin_ref_, MockActivate);
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
@@ -295,6 +326,7 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
   ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
   ::testing::Mock::VerifyAndClearExpectations(network_plugin_ref_);
   ::testing::Mock::VerifyAndClearExpectations(authentication_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(file_plugin_ref_);
   ::testing::Mock::VerifyAndClearExpectations(policies_features_broker_.get());
   // Now on policy refresh show that we deactivate all the plugins when
   // XDR policy is disabled or emergency-XDR-kill-switch is enabled.
@@ -316,6 +348,7 @@ TEST_F(SecAgentTestFixture, TestEnabledToDisabled) {
   EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(mock_system_quit_, Quit(EX_OK));
   secagent_->CheckPolicyAndFeature();
 }
@@ -353,11 +386,14 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _))
       .Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _))
+      .Times(AtMost(1));
 
   EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate()).Times(0);
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
   // Retire expectations.
@@ -366,6 +402,7 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
   ::testing::Mock::VerifyAndClearExpectations(agent_plugin_ref_);
   ::testing::Mock::VerifyAndClearExpectations(network_plugin_ref_);
   ::testing::Mock::VerifyAndClearExpectations(authentication_plugin_ref_);
+  ::testing::Mock::VerifyAndClearExpectations(file_plugin_ref_);
 
   // Enable reporting.
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
@@ -389,6 +426,11 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
               GetFeature(PoliciesFeaturesBroker::Feature::
                              kCrOSLateBootSecagentdXDRAuthenticateEvents))
       .WillOnce(Return(true));
+  EXPECT_CALL(
+      *policies_features_broker_,
+      GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRFileEvents))
+      .WillOnce(Return(true));
   EXPECT_CALL(*plugin_factory_ref, CreateAgentPlugin).Times(1);
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kProcess, _, _, _, _, _))
@@ -399,11 +441,14 @@ TEST_F(SecAgentTestFixture, TestDisabledToEnabled) {
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _))
       .Times(1);
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _))
+      .Times(1);
   // If all plugins are activated then all XDR events are reporting.
   EXPECT_CALL(*agent_plugin_ref_, MockActivate());
   EXPECT_CALL(*process_plugin_ref_, MockActivate());
   EXPECT_CALL(*network_plugin_ref_, MockActivate());
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate());
+  EXPECT_CALL(*file_plugin_ref_, MockActivate());
   secagent_->CheckPolicyAndFeature();
 }
 
@@ -424,10 +469,13 @@ TEST_F(SecAgentTestFixture, TestFailedInitialization) {
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _))
       .Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _))
+      .Times(AtMost(1));
   EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(mock_system_quit_, Quit(EX_SOFTWARE));
   secagent_->Activate();
 }
@@ -450,6 +498,8 @@ TEST_F(SecAgentTestFixture, TestFailedPluginCreation) {
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _))
       .Times(AtMost(1));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _))
+      .Times(AtMost(1));
 
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
       .Times(AtMost(1))
@@ -470,6 +520,7 @@ TEST_F(SecAgentTestFixture, TestFailedPluginCreation) {
   EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(mock_system_quit_, Quit(EX_SOFTWARE));
 
   secagent_->Activate();
@@ -503,6 +554,11 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
                              kCrOSLateBootSecagentdXDRAuthenticateEvents))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrOSLateBootSecagentdXDRFileEvents))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(*device_user_, RegisterSessionChangeHandler);
   // All plugins should be created.
@@ -513,6 +569,7 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
               Create(Types::Plugin::kProcess, _, _, _, _, _));
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _));
 
   // Everything is enabled so all plugins should be activated.
   EXPECT_CALL(*process_plugin_ref_, MockActivate)
@@ -521,6 +578,7 @@ TEST_F(SecAgentTestFixture, TestFailedPluginActivation) {
   EXPECT_CALL(*network_plugin_ref_, MockActivate).Times(1);
   EXPECT_CALL(*agent_plugin_ref_, MockActivate).Times(1);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate).Times(1);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate).Times(1);
 
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
@@ -559,11 +617,15 @@ TEST_P(SecAgentTestFixture, TestReportingDisabled) {
   EXPECT_CALL(*plugin_factory_ref,
               Create(Types::Plugin::kAuthenticate, _, _, _, _, _))
       .Times(AtMost(1))
-      .WillOnce(Return(ByMove(std::move(network_plugin_))));
+      .WillOnce(Return(ByMove(std::move(authentication_plugin_))));
+  EXPECT_CALL(*plugin_factory_ref, Create(Types::Plugin::kFile, _, _, _, _, _))
+      .Times(AtMost(1))
+      .WillOnce(Return(ByMove(std::move(file_plugin_))));
   EXPECT_CALL(*agent_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*process_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*network_plugin_ref_, MockActivate()).Times(0);
   EXPECT_CALL(*authentication_plugin_ref_, MockActivate()).Times(0);
+  EXPECT_CALL(*file_plugin_ref_, MockActivate()).Times(0);
 
   secagent_->Activate();
   secagent_->CheckPolicyAndFeature();
