@@ -214,7 +214,6 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
   }
 
   if (created) {
-    LOG(INFO) << "Running mke2fs on " << backing;
     if (!platform_->FormatExt4(backing, mkfs_opts_, 0)) {
       LOG(ERROR) << "Failed to format ext4 filesystem";
       return false;
@@ -223,7 +222,6 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
   }
 
   // Modify features depending on whether we already have the following enabled.
-  LOG(INFO) << "Tuning filesystem features";
   if (!tune2fs_opts_.empty()) {
     if (!platform_->Tune2Fs(backing, tune2fs_opts_)) {
       if (created) {

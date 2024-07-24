@@ -487,7 +487,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
     // (recovery image, factory install shim or netboot). Do not wipe.
   } else if (IsDevToVerifiedModeTransition(0)) {
     uid_t uid;
-    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
+    bool res = platform_->FileExists(dev_mode_allowed_file_) &&
+               platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
                                        false /* follow_links */);
     if ((res && uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
       if (!DevIsDebugBuild()) {
@@ -514,7 +515,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
     uid_t uid;
-    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
+    bool res = platform_->FileExists(dev_mode_allowed_file_) &&
+               platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
                                        false /* follow_links */);
     if (!res || uid != getuid()) {
       if (!DevIsDebugBuild()) {
@@ -703,6 +705,8 @@ void ChromeosStartup::CreateDaemonStore(base::FilePath run_ds,
 // Remove /var/empty if it exists. Use /mnt/empty instead.
 void ChromeosStartup::RemoveVarEmpty() {
   base::FilePath var_empty = root_.Append(kVar).Append(kEmpty);
+  if (!platform_->DirectoryExists(var_empty))
+    return;
   platform_->SetExtFileAttributes(var_empty, 0, FS_IMMUTABLE_FL);
   if (!platform_->DeletePathRecursively(var_empty)) {
     PLOG(WARNING) << "Failed to delete path " << var_empty.value();
