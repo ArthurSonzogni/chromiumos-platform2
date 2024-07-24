@@ -72,7 +72,7 @@ std::vector<std::string> ToStringVec(const std::vector<T>& addrs) {
 }  // namespace
 
 constexpr base::TimeDelta kShillPropertyAttemptDelay = base::Milliseconds(200);
-constexpr base::TimeDelta kRequestTimeout = base::Seconds(10);
+constexpr base::TimeDelta kRequestTimeout = base::Seconds(5);
 constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
 
 constexpr char kSystemProxyType[] = "system";
