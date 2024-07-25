@@ -12,13 +12,12 @@
 #include <unordered_map>
 #include <utility>
 
-#include <hardware/camera3.h>
-
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
+#include <hardware/camera3.h>
 #include <mojo/public/cpp/bindings/associated_remote.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -64,8 +63,7 @@ ScopedCameraMetadata DeserializeCameraMetadata(
 // A wrapper around a mojo::Remote<T>.  This template class represents a
 // Mojo remote to a Mojo receiver implementation of T.
 template <typename RemoteType>
-class MojoRemoteBase
-    : public base::SupportsWeakPtr<MojoRemoteBase<RemoteType>> {
+class MojoRemoteBase {
  public:
   using Self = MojoRemoteBase<RemoteType>;
   explicit MojoRemoteBase(
@@ -81,9 +79,10 @@ class MojoRemoteBase
   void Bind(typename RemoteType::PendingType pending_remote,
             base::OnceClosure disconnect_handler) {
     task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(&Self::BindOnThread, base::AsWeakPtr(this),
-                                  std::move(pending_remote),
-                                  std::move(disconnect_handler)));
+        FROM_HERE,
+        base::BindOnce(&Self::BindOnThread, weak_ptr_factory_.GetWeakPtr(),
+                       std::move(pending_remote),
+                       std::move(disconnect_handler)));
   }
 
   ~MojoRemoteBase() {
@@ -94,10 +93,10 @@ class MojoRemoteBase
     if (task_runner_->BelongsToCurrentThread()) {
       ResetRemoteOnThread(cros::GetFutureCallback(future));
     } else {
-      task_runner_->PostTask(
-          FROM_HERE,
-          base::BindOnce(&Self::ResetRemoteOnThread, base::AsWeakPtr(this),
-                         cros::GetFutureCallback(future)));
+      task_runner_->PostTask(FROM_HERE,
+                             base::BindOnce(&Self::ResetRemoteOnThread,
+                                            weak_ptr_factory_.GetWeakPtr(),
+                                            cros::GetFutureCallback(future)));
     }
     future->Wait();
   }
@@ -129,6 +128,8 @@ class MojoRemoteBase
     remote_.reset();
     std::move(callback).Run();
   }
+
+  base::WeakPtrFactory<MojoRemoteBase<RemoteType>> weak_ptr_factory_{this};
 };
 
 template <typename T>

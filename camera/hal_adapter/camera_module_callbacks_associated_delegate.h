@@ -7,6 +7,8 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_ASSOCIATED_DELEGATE_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_ASSOCIATED_DELEGATE_H_
 
+#include <base/memory/weak_ptr.h>
+
 #include "camera/mojo/camera_common.mojom.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/future.h"
@@ -40,6 +42,9 @@ class CameraModuleCallbacksAssociatedDelegate
                                      base::OnceClosure callback);
 
   cros::CancellationRelay relay_;
+
+  base::WeakPtrFactory<CameraModuleCallbacksAssociatedDelegate>
+      weak_ptr_factory_{this};
 };
 
 }  // namespace cros

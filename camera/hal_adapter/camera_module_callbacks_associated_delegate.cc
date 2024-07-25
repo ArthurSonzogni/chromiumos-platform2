@@ -31,8 +31,8 @@ void CameraModuleCallbacksAssociatedDelegate::CameraDeviceStatusChange(
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraModuleCallbacksAssociatedDelegate::
                                     CameraDeviceStatusChangeOnThread,
-                                base::AsWeakPtr(this), camera_id, new_status,
-                                cros::GetFutureCallback(future)));
+                                weak_ptr_factory_.GetWeakPtr(), camera_id,
+                                new_status, cros::GetFutureCallback(future)));
   future->Wait();
 }
 
@@ -43,8 +43,8 @@ void CameraModuleCallbacksAssociatedDelegate::TorchModeStatusChange(
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&CameraModuleCallbacksAssociatedDelegate::
                                     TorchModeStatusChangeOnThread,
-                                base::AsWeakPtr(this), camera_id, new_status,
-                                cros::GetFutureCallback(future)));
+                                weak_ptr_factory_.GetWeakPtr(), camera_id,
+                                new_status, cros::GetFutureCallback(future)));
   future->Wait();
 }
 

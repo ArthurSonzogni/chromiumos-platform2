@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <hardware/camera3.h>
 
 #include "camera/mojo/camera3.mojom.h"
@@ -51,6 +52,8 @@ class Camera3CallbackOpsDelegate
 
   void ReturnStreamBuffersOnThread(
       std::vector<mojom::Camera3StreamBufferPtr> buffers);
+
+  base::WeakPtrFactory<Camera3CallbackOpsDelegate> weak_ptr_factory_{this};
 };
 
 }  // end of namespace cros

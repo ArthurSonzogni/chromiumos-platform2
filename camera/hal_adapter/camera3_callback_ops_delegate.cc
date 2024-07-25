@@ -7,6 +7,7 @@
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 
 #include <inttypes.h>
+
 #include <utility>
 
 #include <base/check.h>
@@ -30,13 +31,14 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
-                     base::AsWeakPtr(this), std::move(result)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(result)));
 }
 
 void Camera3CallbackOpsDelegate::Notify(mojom::Camera3NotifyMsgPtr msg) {
   task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&Camera3CallbackOpsDelegate::NotifyOnThread,
-                                base::AsWeakPtr(this), std::move(msg)));
+      FROM_HERE,
+      base::BindOnce(&Camera3CallbackOpsDelegate::NotifyOnThread,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(msg)));
 }
 
 void Camera3CallbackOpsDelegate::RequestStreamBuffers(
@@ -45,7 +47,7 @@ void Camera3CallbackOpsDelegate::RequestStreamBuffers(
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&Camera3CallbackOpsDelegate::RequestStreamBuffersOnThread,
-                     base::AsWeakPtr(this), std::move(buffer_reqs),
+                     weak_ptr_factory_.GetWeakPtr(), std::move(buffer_reqs),
                      std::move(cb)));
 }
 
@@ -54,7 +56,7 @@ void Camera3CallbackOpsDelegate::ReturnStreamBuffers(
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&Camera3CallbackOpsDelegate::ReturnStreamBuffersOnThread,
-                     base::AsWeakPtr(this), std::move(buffers)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(buffers)));
 }
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(

@@ -36,7 +36,7 @@ constexpr uint32_t kPortraitModeVendorKey = kPortraitModeVendorTagStart;
 constexpr uint32_t kPortraitModeSegmentationResultVendorKey =
     kPortraitModeVendorTagStart + 1;
 
-class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
+class PortraitModeEffect {
  public:
   PortraitModeEffect();
   ~PortraitModeEffect();
