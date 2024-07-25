@@ -51,23 +51,15 @@ bool NetlinkMessageError(const struct nlmsghdr* nlh) {
 
 }  // namespace
 
-ConntrackMonitor::ConntrackMonitor() = default;
-ConntrackMonitor::ConntrackMonitor(base::span<const EventType> events) {
-  Start(events);
-}
-
-void ConntrackMonitor::Start(
-    base::span<const ConntrackMonitor::EventType> events) {
-  // If monitor has already started, skip.
-  if (sock_ != nullptr) {
-    return;
-  }
+ConntrackMonitor::ConntrackMonitor(
+    base::span<const EventType> events,
+    std::unique_ptr<net_base::SocketFactory> socket_factory) {
   event_mask_ = 0;
   for (EventType event : events) {
     event_mask_ |= EventTypeToMask(event);
   }
 
-  sock_ = socket_factory_->CreateNetlink(NETLINK_NETFILTER, event_mask_);
+  sock_ = socket_factory->CreateNetlink(NETLINK_NETFILTER, event_mask_);
   if (!sock_) {
     LOG(ERROR) << "Unable to create conntrack monitor, open socket failed.";
     return;
@@ -80,10 +72,6 @@ void ConntrackMonitor::Start(
 
 ConntrackMonitor::~ConntrackMonitor() {
   LOG(INFO) << "Conntrack monitor removed";
-}
-
-void ConntrackMonitor::StopForTesting() {
-  sock_.reset();
 }
 
 void ConntrackMonitor::OnSocketReadable() {

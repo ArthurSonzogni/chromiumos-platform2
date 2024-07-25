@@ -86,28 +86,17 @@ class ConntrackMonitor {
     ConntrackMonitor* monitor_;
   };
 
-  ConntrackMonitor();
-  explicit ConntrackMonitor(base::span<const EventType> events);
+  // Starts the conntrack monitor. Creates a base::FileDescriptorWatcher and add
+  // it to the current message loop. The types of conntrack events this monitor
+  // handles is set by |events|.
+  explicit ConntrackMonitor(
+      base::span<const EventType> events,
+      std::unique_ptr<net_base::SocketFactory> socket_factory =
+          std::make_unique<net_base::SocketFactory>());
   virtual ~ConntrackMonitor();
 
   ConntrackMonitor(const ConntrackMonitor&) = delete;
   ConntrackMonitor& operator=(const ConntrackMonitor&) = delete;
-
-  // Starts the event-monitoring function of the conntrack monitor. This
-  // function will create a base::FileDescriptorWatcher and add it to the
-  // current message loop. The types of conntrack events this monitor handles is
-  // set by |events|.
-  virtual void Start(base::span<const EventType> events);
-
-  // Stops the event-monitoring function of the conntrack monitor, only for
-  // testing purpose.
-  void StopForTesting();
-
-  // Sets the socket factory, only for testing purpose.
-  void SetSocketFactoryForTesting(
-      std::unique_ptr<net_base::MockSocketFactory> factory) {
-    socket_factory_ = std::move(factory);
-  }
 
   // Checks if |sock_| is null, only for testing purpose.
   bool IsSocketNullForTesting() const { return sock_ == nullptr; }
@@ -130,9 +119,6 @@ class ConntrackMonitor {
   // Dispatches a conntrack event to all listeners.
   void DispatchEvent(const Event& msg);
 
-  // Setter for |event_mask_|, only used for testing.
-  void SetEventMaskForTesting(uint8_t mask) { event_mask_ = mask; }
-
  private:
   // Receives and parses buffer from socket when socket is readable, and
   // notifies registered handlers of conntrack table updates.
@@ -146,9 +132,6 @@ class ConntrackMonitor {
 
   // List of listeners for conntrack table socket connection changes.
   base::ObserverList<Listener> listeners_;
-
-  std::unique_ptr<net_base::SocketFactory> socket_factory_ =
-      std::make_unique<net_base::SocketFactory>();
 
   // Bit mask for event types handled by this monitor, this value is by set
   // by caller when `Start()` is called. Listeners can only listen to events

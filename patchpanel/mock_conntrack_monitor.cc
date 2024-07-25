@@ -4,11 +4,22 @@
 
 #include "patchpanel/mock_conntrack_monitor.h"
 
-namespace patchpanel {
+#include <chromeos/net-base/mock_socket.h>
 
-MockConntrackMonitor::MockConntrackMonitor() {
-  SetEventMaskForTesting(kNewEventBitMask | kDestroyEventBitMask |
-                         kUpdateEventBitMask);
+#include "patchpanel/conntrack_monitor.h"
+
+namespace patchpanel {
+namespace {
+constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
+    ConntrackMonitor::EventType::kNew,
+    ConntrackMonitor::EventType::kUpdate,
+    ConntrackMonitor::EventType::kDestroy,
+};
+}  // namespace
+
+MockConntrackMonitor::MockConntrackMonitor()
+    : ConntrackMonitor(kConntrackEvents,
+                       std::make_unique<net_base::MockSocketFactory>()) {
   ON_CALL(*this, AddListener)
       .WillByDefault([&, this](base::span<const EventType> events,
                                const ConntrackEventHandler& callback) {

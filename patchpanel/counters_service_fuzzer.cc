@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 
 #include <base/at_exit.h>
 #include <base/logging.h>
+#include <chromeos/net-base/socket.h>
 
 #include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/counters_service.h"
@@ -45,12 +47,23 @@ class FakeDatapath : public Datapath {
   std::string data_;
 };
 
+class NoopSocketFactory : public net_base::SocketFactory {
+ public:
+  NoopSocketFactory() = default;
+  ~NoopSocketFactory() override = default;
+
+  std::unique_ptr<net_base::Socket> Create(int domain,
+                                           int type,
+                                           int protocol = 0) override {
+    return nullptr;
+  }
+};
+
 class FakeConntrackMonitor : public ConntrackMonitor {
  public:
-  FakeConntrackMonitor() = default;
+  FakeConntrackMonitor()
+      : ConntrackMonitor({}, std::make_unique<NoopSocketFactory>()) {}
   ~FakeConntrackMonitor() override = default;
-
-  void Start(base::span<const EventType> events) override {}
 
   std::unique_ptr<Listener> AddListener(
       base::span<const EventType> events,
