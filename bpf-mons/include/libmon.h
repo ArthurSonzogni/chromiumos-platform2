@@ -10,6 +10,7 @@
 #include <stdio.h>
 
 #include <string>
+#include <vector>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
@@ -59,7 +60,7 @@ int lookup_lib(pid_t pid, const char* name, std::string& path);
 int setup_sig_handlers(void);
 bool should_stop(void);
 
-int prepare_target(pid_t& pid, const char* cmd);
+int prepare_target(pid_t& pid, const char* cmd, std::vector<char*>& args);
 int follow_target(pid_t pid);
 bool target_terminated(void);
 

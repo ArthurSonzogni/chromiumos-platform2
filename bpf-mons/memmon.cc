@@ -137,7 +137,7 @@ static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
   return 0;
 }
 
-static int memmon(pid_t pid, const char* cmd) {
+static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   struct ring_buffer* rb = NULL;
   struct memmon_bpf* mon;
   int err;
@@ -148,7 +148,7 @@ static int memmon(pid_t pid, const char* cmd) {
     return -EINVAL;
   }
 
-  err = libmon::prepare_target(pid, cmd);
+  err = libmon::prepare_target(pid, cmd, cmd_args);
   if (err)
     goto cleanup;
 
@@ -209,6 +209,7 @@ cleanup:
 }  // namespace
 
 int main(int argc, char** argv) {
+  std::vector<char*> exec_args;
   char* exec_cmd = NULL;
   pid_t pid = -1;
   int c, ret;
@@ -244,11 +245,20 @@ int main(int argc, char** argv) {
     return -EINVAL;
   }
 
+  if (exec_cmd) {
+    exec_args.push_back(basename(exec_cmd));
+    while (optind < argc) {
+      exec_args.push_back(argv[optind]);
+      optind++;
+    }
+    exec_args.push_back(NULL);
+  }
+
   ret = libmon::init_stack_decoder();
   if (ret)
     return ret;
 
-  ret = memmon(pid, exec_cmd);
+  ret = memmon(pid, exec_cmd, exec_args);
 
   libmon::release_stack_decoder();
   return ret;

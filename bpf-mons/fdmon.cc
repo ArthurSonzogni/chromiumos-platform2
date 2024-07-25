@@ -23,7 +23,6 @@ namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {"exec", required_argument, 0, 'e'},
-
                                        {0, 0, 0, 0}};
 
 static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
@@ -80,7 +79,7 @@ static int handle_fdmon_event(void* ctx, void* data, size_t data_sz) {
   return 0;
 }
 
-static int fdmon(pid_t pid, const char* cmd) {
+static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
   struct ring_buffer* rb = NULL;
   struct fdmon_bpf* mon;
   int err;
@@ -91,7 +90,7 @@ static int fdmon(pid_t pid, const char* cmd) {
     return -EINVAL;
   }
 
-  err = libmon::prepare_target(pid, cmd);
+  err = libmon::prepare_target(pid, cmd, args);
   if (err)
     goto cleanup;
 
@@ -151,6 +150,7 @@ cleanup:
 }  // namespace
 
 int main(int argc, char** argv) {
+  std::vector<char*> exec_args;
   char* exec_cmd = NULL;
   pid_t pid = -1;
   int c, ret;
@@ -190,7 +190,16 @@ int main(int argc, char** argv) {
   if (ret)
     return ret;
 
-  ret = fdmon(pid, exec_cmd);
+  if (exec_cmd) {
+    exec_args.push_back(basename(exec_cmd));
+    while (optind < argc) {
+      exec_args.push_back(argv[optind]);
+      optind++;
+    }
+    exec_args.push_back(NULL);
+  }
+
+  ret = fdmon(pid, exec_cmd, exec_args);
 
   libmon::release_stack_decoder();
   return ret;

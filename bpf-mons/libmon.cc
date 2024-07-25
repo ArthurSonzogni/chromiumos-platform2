@@ -56,7 +56,7 @@ int setup_sig_handlers(void) {
   return 0;
 }
 
-int prepare_target(pid_t& pid, const char* cmd) {
+int prepare_target(pid_t& pid, const char* cmd, std::vector<char*>& args) {
   pid_t npid = -1;
 
   if (pid != -1) {
@@ -72,12 +72,19 @@ int prepare_target(pid_t& pid, const char* cmd) {
     return -EINVAL;
 
   if (npid == 0) {
+    char** argv = new char*[args.size()];
+    if (!argv)
+      return -EINVAL;
+
+    for (int i = 0; i < args.size(); i++)
+      argv[i] = args[i];
+
     /*
      * STOP the process so that we can load the monitor, attach it and setup
      * all the probes.
      */
     raise(SIGTSTP);
-    execl(cmd, basename(cmd), NULL);
+    execvp(cmd, argv);
     exit(0);
   }
 
