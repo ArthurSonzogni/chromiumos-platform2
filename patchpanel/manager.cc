@@ -43,7 +43,7 @@ constexpr int kIPv6RestartDelayMs = 300;
 constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
     ConntrackMonitor::EventType::kNew};
 
-#ifdef USE_ARCVM
+#if USE_ARCVM
 constexpr ArcService::ArcType kArcType = ArcService::ArcType::kVM;
 #else
 constexpr ArcService::ArcType kArcType = ArcService::ArcType::kContainer;
@@ -71,8 +71,8 @@ std::unique_ptr<Manager> Manager::Create(
     DbusClientNotifier* dbus_client_notifier,
     std::unique_ptr<ShillClient> shill_client,
     std::unique_ptr<RTNLClient> rtnl_client) {
-  // Initialize the ConntrackMonitor singleton variable before creating services,
-  // because some of the services depend on it.
+  // Initialize the ConntrackMonitor singleton variable before creating
+  // services, because some of the services depend on it.
   ConntrackMonitor::GetInstance()->Start(kConntrackEvents);
 
   return base::WrapUnique(new Manager(
