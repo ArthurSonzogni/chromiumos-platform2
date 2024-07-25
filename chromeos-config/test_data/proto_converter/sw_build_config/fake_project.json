@@ -832,6 +832,7 @@
             "ucm-suffix": "alc5682i.1uf2wf.fake_ref_design"
           }
         },
+        "auto-night-light": true,
         "battery": {
           "no-battery-boot-supported": true
         },

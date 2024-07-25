@@ -2753,6 +2753,20 @@ def _build_audio(config):
     return result
 
 
+def _build_auto_night_light(hw_features):
+    screen = hw_features.screen
+    if not screen.panel_properties.panel_type:
+        return None
+
+    if (
+        screen.panel_properties.panel_type
+        == component_pb2.Component.DisplayPanel.PanelType.OLED
+    ):
+        return True
+
+    return None
+
+
 def _build_battery(hw_features):
     hw_feat_battery = hw_features.battery
 
@@ -3143,6 +3157,7 @@ def _transform_build_config(config, config_files, custom_label):
     hw_features = config.hw_design_config.hardware_features
     _upsert(_build_arc(config, config_files), result, "arc")
     _upsert(_build_audio(config), result, "audio")
+    _upsert(_build_auto_night_light(hw_features), result, "auto-night-light")
     _upsert(_build_battery(hw_features), result, "battery")
     _upsert(_build_bluetooth(config), result, "bluetooth")
     _upsert(_build_displays(hw_features), result, "displays")
