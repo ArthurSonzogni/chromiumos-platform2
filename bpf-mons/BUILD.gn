@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":bpf-fdmon",
     ":bpf-memmon",
+    ":bpf-mons-fdmem-test",
   ]
 }
 
@@ -56,4 +57,8 @@ executable("bpf-fdmon") {
   libs = [ "blazesym_c" ]
   deps = [ ":bpf_fdmon" ]
   install_path = "bin"
+}
+
+executable("bpf-mons-fdmem-test") {
+  sources = [ "test/fdmem-test.cc" ]
 }
