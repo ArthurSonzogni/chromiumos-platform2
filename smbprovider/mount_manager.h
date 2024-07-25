@@ -38,7 +38,7 @@ std::unique_ptr<password_provider::Password> GetPassword(
 
 // MountManager maintains a mapping of open mounts and the metadata associated
 // with each mount.
-class MountManager : public base::SupportsWeakPtr<MountManager> {
+class MountManager {
  public:
   using SambaInterfaceFactory =
       base::RepeatingCallback<std::unique_ptr<SambaInterface>(
@@ -50,6 +50,8 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   MountManager& operator=(const MountManager&) = delete;
 
   ~MountManager();
+
+  base::WeakPtr<MountManager> AsWeakPtr();
 
   // Returns true if |mount_id| is already mounted.
   bool IsAlreadyMounted(int32_t mount_id) const;
@@ -137,6 +139,8 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   const std::unique_ptr<MountTracker> mount_tracker_;
   const SambaInterfaceFactory samba_interface_factory_;
   const std::unique_ptr<SambaInterface> system_samba_interface_;
+
+  base::WeakPtrFactory<MountManager> weak_ptr_factory_{this};
 };
 
 }  // namespace smbprovider

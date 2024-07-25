@@ -132,6 +132,10 @@ MountManager::MountManager(std::unique_ptr<MountTracker> mount_tracker,
 
 MountManager::~MountManager() = default;
 
+base::WeakPtr<MountManager> MountManager::AsWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
+
 bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
   DCHECK_GE(mount_id, 0);
   return mount_tracker_->IsAlreadyMounted(mount_id);
