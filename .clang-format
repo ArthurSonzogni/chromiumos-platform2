@@ -26,7 +26,7 @@ IncludeIsMainRegex: '([-_](test|unittest))?$'
 SortIncludes: CaseInsensitive
 IncludeCategories:
   # C system includes
-  - Regex:           '^<(arpa/|linux/|sys/)?[0-9a-z_-]+[.]h>'
+  - Regex:           '^<((arpa|linux|net|netinet|sys)\/([0-9a-z_-]+\/)?)?[0-9a-z_-]+\.h>$'
     Priority:        1
   # C++ system includes
   - Regex:           '^<[0-9a-z_-]+>$'
