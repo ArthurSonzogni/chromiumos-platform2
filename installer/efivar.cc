@@ -77,7 +77,7 @@ class EfiLogWrapper {
       // We don't know here whether it should be treated as a warning or an
       // error, so we'll call everything a warning and let further logging
       // clarify.
-      LOG(WARNING) << source_ << "triggered efi error " << index << ": "
+      LOG(WARNING) << source_ << " triggered efi error " << index << ": "
                    << filename << ":" << line << ":" << function << " rc=" << rc
                    << " " << message << ": " << std::strerror(error);
       index += 1;
