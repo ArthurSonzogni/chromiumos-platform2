@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -18,7 +20,6 @@
 
 #include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/legacy_dhcpcd/legacy_dhcpcd_listener.h"
-#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 namespace shill {
 namespace {
@@ -187,9 +188,6 @@ TEST_F(LegacyDHCPCDProxyFactoryTest, DhcpcdArguments) {
           {{.hostname = "my_hostname"},
            {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
             "captive_portal_uri", "--nodelay", "-h", "my_hostname", "wlan0"}},
-          {{.use_arp_gateway = true},
-           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
-            "captive_portal_uri", "--nodelay", "-R", "--unicast", "wlan0"}},
           {{.use_rfc_8925 = true},
            {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
             "captive_portal_uri", "--nodelay", "-o", "ipv6_only_preferred",

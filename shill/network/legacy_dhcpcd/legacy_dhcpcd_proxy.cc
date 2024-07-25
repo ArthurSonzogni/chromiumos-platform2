@@ -77,13 +77,6 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
                 {"-h", redact_args ? "<redacted_hostname>" : options.hostname});
   }
 
-  if (options.use_arp_gateway) {
-    args.insert(args.end(), {
-                                "-R",         // ARP for default gateway.
-                                "--unicast",  // Enable unicast ARP on renew.
-                            });
-  }
-
   if (options.use_rfc_8925) {
     // Request option 108 to prefer IPv6-only. If server also supports this, no
     // dhcp lease will be assigned and dhcpcd will notify shill with an
