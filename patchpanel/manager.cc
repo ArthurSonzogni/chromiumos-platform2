@@ -63,23 +63,6 @@ GetMulticastControlMessageDirection(MulticastForwarder::Direction dir) {
   }
 }
 
-std::unique_ptr<Manager> Manager::Create(
-    const base::FilePath& cmd_path,
-    System* system,
-    net_base::ProcessManager* process_manager,
-    MetricsLibraryInterface* metrics,
-    DbusClientNotifier* dbus_client_notifier,
-    std::unique_ptr<ShillClient> shill_client,
-    std::unique_ptr<RTNLClient> rtnl_client) {
-  // Initialize the ConntrackMonitor singleton variable before creating
-  // services, because some of the services depend on it.
-  ConntrackMonitor::GetInstance()->Start(kConntrackEvents);
-
-  return base::WrapUnique(new Manager(
-      cmd_path, system, process_manager, metrics, dbus_client_notifier,
-      std::move(shill_client), std::move(rtnl_client)));
-}
-
 Manager::Manager(const base::FilePath& cmd_path,
                  System* system,
                  net_base::ProcessManager* process_manager,
@@ -98,11 +81,12 @@ Manager::Manager(const base::FilePath& cmd_path,
       socket_service_(system, process_manager, cmd_path, "--socket_service_fd"),
       datapath_(system),
       routing_svc_(system, &lifeline_fd_svc_),
-      counters_svc_(&datapath_, ConntrackMonitor::GetInstance()),
+      conntrack_monitor_(kConntrackEvents),
+      counters_svc_(&datapath_, &conntrack_monitor_),
       multicast_counters_svc_(&datapath_),
       multicast_metrics_(&multicast_counters_svc_, metrics),
       ipv6_svc_(&nd_proxy_, &datapath_, system),
-      qos_svc_(&datapath_, ConntrackMonitor::GetInstance()),
+      qos_svc_(&datapath_, &conntrack_monitor_),
       downstream_network_svc_(DownstreamNetworkService(metrics_,
                                                        system_,
                                                        &datapath_,

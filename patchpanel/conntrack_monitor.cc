@@ -9,30 +9,25 @@
 #include <linux/netfilter/nf_conntrack_tuple_common.h>
 #include <linux/netlink.h>
 #include <linux/types.h>
+#include <netinet/in.h>
 #include <stdint.h>
 
-#include <cstdint>
 #include <memory>
 #include <optional>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
-#include <base/lazy_instance.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/socket.h>
-#include <netinet/in.h>
 #include <re2/re2.h>
 
 namespace patchpanel {
 
 namespace {
-base::LazyInstance<ConntrackMonitor>::DestructorAtExit g_conntrack_monitor =
-    LAZY_INSTANCE_INITIALIZER;
-
 // Get the message type of this netlink message.
 std::optional<ConntrackMonitor::EventType> GetEventType(
     const struct nlmsghdr* nlh) {
@@ -57,6 +52,9 @@ bool NetlinkMessageError(const struct nlmsghdr* nlh) {
 }  // namespace
 
 ConntrackMonitor::ConntrackMonitor() = default;
+ConntrackMonitor::ConntrackMonitor(base::span<const EventType> events) {
+  Start(events);
+}
 
 void ConntrackMonitor::Start(
     base::span<const ConntrackMonitor::EventType> events) {
@@ -189,10 +187,6 @@ void ConntrackMonitor::OnSocketReadable() {
   }
 }
 
-ConntrackMonitor* ConntrackMonitor::GetInstance() {
-  return g_conntrack_monitor.Pointer();
-}
-
 std::unique_ptr<ConntrackMonitor::Listener> ConntrackMonitor::AddListener(
     base::span<const ConntrackMonitor::EventType> events,
     const ConntrackMonitor::ConntrackEventHandler& callback) {
@@ -207,8 +201,7 @@ std::unique_ptr<ConntrackMonitor::Listener> ConntrackMonitor::AddListener(
                   "monitor, creating monitor failed";
     return nullptr;
   }
-  auto to_add = base::WrapUnique(
-      new Listener(listen_event, callback, ConntrackMonitor::GetInstance()));
+  auto to_add = base::WrapUnique(new Listener(listen_event, callback, this));
   listeners_.AddObserver(to_add.get());
   LOG(INFO) << "ConntrackMonitor added listener";
   return to_add;

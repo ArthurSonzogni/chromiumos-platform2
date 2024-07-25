@@ -414,14 +414,13 @@ class ConntrackMonitorTest : public testing::Test {
 
     auto socket_factory = std::make_unique<net_base::MockSocketFactory>();
     socket_factory_ = socket_factory.get();
-    ConntrackMonitor::GetInstance()->SetSocketFactoryForTesting(
-        std::move(socket_factory));
+    conntrack_monitor_.SetSocketFactoryForTesting(std::move(socket_factory));
   }
 
-  ~ConntrackMonitorTest() {
+  ~ConntrackMonitorTest() override {
     // Need to clear the state for the singleton manually after each test,
     // otherwise its state will affect following tests.
-    ConntrackMonitor::GetInstance()->StopForTesting();
+    conntrack_monitor_.StopForTesting();
   }
   int read_fd() const { return pipe_fds_[0]; }
   int write_fd() const { return pipe_fds_[1]; }
@@ -434,6 +433,7 @@ class ConntrackMonitorTest : public testing::Test {
   net_base::MockSocketFactory* socket_factory_;  // Owned by ConntrackMonitor
   int pipe_fds_[2];
   base::ScopedFD write_fd_, read_fd_;
+  ConntrackMonitor conntrack_monitor_;
 };
 
 MATCHER_P(IsNetlinkAddr, groups, "") {
@@ -459,9 +459,7 @@ TEST_F(ConntrackMonitorTest, Start) {
   EXPECT_CALL(*socket_factory_,
               CreateNetlink(NETLINK_NETFILTER, kNewEventBitMask, _))
       .WillOnce(Return(std::move(socket)));
-  auto* monitor = ConntrackMonitor::GetInstance();
-  ASSERT_NE(monitor, nullptr);
-  monitor->Start(kEventType);
+  conntrack_monitor_.Start(kEventType);
   EXPECT_CALL(*sock_ptr, RecvMessage)
       .WillOnce(testing::WithArg<0>([this](std::vector<uint8_t>* buf) {
         buf->resize(sizeof(kEventBuf1), 0);
@@ -476,7 +474,7 @@ TEST_F(ConntrackMonitorTest, Start) {
         return true;
       }));
   MockCallback event_cb;
-  auto listener = monitor->AddListener(
+  auto listener = conntrack_monitor_.AddListener(
       kEventType, base::BindRepeating(&MockCallback::OnConntrackEventReceived,
                                       base::Unretained(&event_cb)));
   EXPECT_CALL(event_cb, OnConntrackEventReceived(IsConntrackEvent(kEvent1)));
@@ -492,9 +490,7 @@ TEST_F(ConntrackMonitorTest, CreateSocketIsNull) {
               CreateNetlink(NETLINK_NETFILTER, kNewEventBitMask, _))
       .WillOnce(Return(nullptr));
 
-  auto monitor = ConntrackMonitor::GetInstance();
-  ASSERT_NE(monitor, nullptr);
-  monitor->Start(kEventType);
-  EXPECT_TRUE(monitor->IsSocketNullForTesting());
+  conntrack_monitor_.Start(kEventType);
+  EXPECT_TRUE(conntrack_monitor_.IsSocketNullForTesting());
 }
 }  // namespace patchpanel

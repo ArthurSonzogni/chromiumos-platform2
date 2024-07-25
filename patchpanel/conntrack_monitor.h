@@ -14,7 +14,6 @@
 
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
-#include <base/lazy_instance.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
 #include <chromeos/net-base/ip_address.h>
@@ -23,10 +22,9 @@
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
 
 namespace patchpanel {
-// This singleton class manages a conntrack monitor that can observe changes of
-// socket connections in conntrack table in a non-blocking way. Other
-// components can get notifications of socket connection updates by registering
-// a callback.
+// This class manages a conntrack monitor that can observe changes of socket
+// connections in conntrack table in a non-blocking way. Other components can
+// get notifications of socket connection updates by registering a callback.
 // The type of socket events (new, update, or destroy) to monitor can be set
 // with |events| when the monitor is created.
 // Currently the monitor only supports: TCP, UDP.
@@ -88,8 +86,9 @@ class ConntrackMonitor {
     ConntrackMonitor* monitor_;
   };
 
-  // Gets a pointer for this singleton class.
-  static ConntrackMonitor* GetInstance();
+  ConntrackMonitor();
+  explicit ConntrackMonitor(base::span<const EventType> events);
+  virtual ~ConntrackMonitor();
 
   ConntrackMonitor(const ConntrackMonitor&) = delete;
   ConntrackMonitor& operator=(const ConntrackMonitor&) = delete;
@@ -125,10 +124,6 @@ class ConntrackMonitor {
   static constexpr uint8_t kUpdateEventBitMask = (1 << 1);
   static constexpr uint8_t kDestroyEventBitMask = (1 << 2);
 
-  explicit ConntrackMonitor(std::unique_ptr<net_base::Socket>);
-  ConntrackMonitor();
-  virtual ~ConntrackMonitor();
-
   // Convert EventType enum into bit mask.
   static uint8_t EventTypeToMask(ConntrackMonitor::EventType event);
 
@@ -139,8 +134,6 @@ class ConntrackMonitor {
   void SetEventMaskForTesting(uint8_t mask) { event_mask_ = mask; }
 
  private:
-  friend base::LazyInstanceTraitsBase<ConntrackMonitor>;
-
   // Receives and parses buffer from socket when socket is readable, and
   // notifies registered handlers of conntrack table updates.
   void OnSocketReadable();

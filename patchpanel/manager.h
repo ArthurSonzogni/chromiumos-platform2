@@ -48,14 +48,13 @@ class Manager : public ForwardingService {
  public:
   // The caller should guarantee |system|, |process_manager|, |metrics| and
   // |dbus_client_notifier| variables outlive the created Manager instance.
-  static std::unique_ptr<Manager> Create(
-      const base::FilePath& cmd_path,
-      System* system,
-      net_base::ProcessManager* process_manager,
-      MetricsLibraryInterface* metrics,
-      DbusClientNotifier* dbus_client_notifier,
-      std::unique_ptr<ShillClient> shill_client,
-      std::unique_ptr<RTNLClient> rtnl_client);
+  Manager(const base::FilePath& cmd_path,
+          System* system,
+          net_base::ProcessManager* process_manager,
+          MetricsLibraryInterface* metrics,
+          DbusClientNotifier* dbus_client_notifier,
+          std::unique_ptr<ShillClient> shill_client,
+          std::unique_ptr<RTNLClient> rtnl_client);
 
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
@@ -201,14 +200,6 @@ class Manager : public ForwardingService {
  private:
   friend class ManagerTest;
 
-  Manager(const base::FilePath& cmd_path,
-          System* system,
-          net_base::ProcessManager* process_manager,
-          MetricsLibraryInterface* metrics,
-          DbusClientNotifier* dbus_client_notifier,
-          std::unique_ptr<ShillClient> shill_client,
-          std::unique_ptr<RTNLClient> rtnl_client);
-
   // The initialization tasks that are not necessary for handling dbus methods.
   void RunDelayedInitialization();
 
@@ -286,6 +277,8 @@ class Manager : public ForwardingService {
   Datapath datapath_;
   // Routing service.
   RoutingService routing_svc_;
+  // Conntrack monitor.
+  ConntrackMonitor conntrack_monitor_;
   // Traffic counter service.
   CountersService counters_svc_;
   // Multicast packet counter service.
