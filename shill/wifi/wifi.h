@@ -717,8 +717,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void Restart();
 
-  std::string GetServiceLeaseName(const WiFiService& service);
-
   // Netlink message handler for NL80211_CMD_NEW_WIPHY messages; copies
   // device's supported frequencies from that message into
   // |all_scan_frequencies_|.

@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 #include <linux/nl80211.h>
+#include <netinet/ether.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -38,7 +39,6 @@
 #include <chromeos/net-base/netlink_manager.h>
 #include <chromeos/net-base/netlink_message.h>
 #include <chromeos/net-base/rtnl_handler.h>
-#include <netinet/ether.h>
 
 #if !defined(DISABLE_FLOSS)
 #include "shill/bluetooth/bluetooth_manager_interface.h"
@@ -2619,10 +2619,6 @@ void WiFi::AlternateSingleScans(ByteArrays* hidden_ssids) {
   broadcast_probe_was_skipped_ = !broadcast_probe_was_skipped_;
 }
 
-std::string WiFi::GetServiceLeaseName(const WiFiService& service) {
-  return service.GetStorageIdentifier();
-}
-
 const WiFiEndpointConstRefPtr WiFi::GetCurrentEndpoint() const {
   EndpointMap::const_iterator endpoint_it =
       endpoint_by_rpcid_.find(supplicant_bss_);
@@ -2702,7 +2698,6 @@ void WiFi::StateChanged(const std::string& new_state) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else {
       DHCPController::Options dhcp_opts = manager()->CreateDefaultDHCPOption();
-      dhcp_opts.lease_name = GetServiceLeaseName(*affected_service);
       // TODO(b/345372970): remove once dnsproxy can reach IPv6 link local DNS
       // servers.
       dhcp_opts.use_rfc_8925 =

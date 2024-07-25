@@ -48,13 +48,6 @@ void LogDBusError(const brillo::ErrorPtr& error,
   }
 }
 
-// Returns true if the lease file is ephemeral, which means the lease file
-// should be deleted during cleanup.
-bool IsEphemeralLease(const DHCPClientProxy::Options& options,
-                      std::string_view interface) {
-  return options.lease_name.empty() || options.lease_name == interface;
-}
-
 // Returns a list of dhcpcd args. Redacts the hostname and the lease name for
 // logging if |redact_args| is set to true.
 std::vector<std::string> GetDhcpcdArgs(Technology technology,
@@ -91,13 +84,7 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
     args.push_back("--apply_dscp");
   }
 
-  if (IsEphemeralLease(options, interface)) {
-    args.push_back(std::string(interface));
-  } else {
-    args.push_back(base::StrCat(
-        {interface, "=",
-         redact_args ? "<redacted_lease_name>" : options.lease_name}));
-  }
+  args.push_back(std::string(interface));
 
   return args;
 }
@@ -258,10 +245,8 @@ void LegacyDHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
   }
 
   // Clean up the lease file and pid file.
-  if (IsEphemeralLease(options, interface)) {
-    brillo::DeleteFile(root_.Append(
-        base::StringPrintf(kDHCPCDPathFormatLease, interface.c_str())));
-  }
+  brillo::DeleteFile(root_.Append(
+      base::StringPrintf(kDHCPCDPathFormatLease, interface.c_str())));
   brillo::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatPID, interface.c_str())));
 }

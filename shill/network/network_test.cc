@@ -449,10 +449,8 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
 // Verifies that the DHCP options in Network::Start() is properly used when
 // creating the DHCPController.
 TEST_F(NetworkTest, DHCPOptions) {
-  constexpr char kLeaseName[] = "lease-name";
   const DHCPController::Options options = {
       .use_arp_gateway = true,
-      .lease_name = kLeaseName,
       .hostname = kHostname,
   };
 
