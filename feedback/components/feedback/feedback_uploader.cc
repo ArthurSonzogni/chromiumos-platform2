@@ -51,8 +51,8 @@ FeedbackUploader::FeedbackUploader(
 FeedbackUploader::~FeedbackUploader() {}
 
 void FeedbackUploader::Init() {
-  dispatch_callback_ =
-      base::BindRepeating(&FeedbackUploader::DispatchReport, AsWeakPtr());
+  dispatch_callback_ = base::BindRepeating(&FeedbackUploader::DispatchReport,
+                                           weak_ptr_factory_.GetWeakPtr());
 }
 
 void FeedbackUploader::QueueReport(const std::string& data) {

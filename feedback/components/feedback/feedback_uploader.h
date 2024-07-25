@@ -24,7 +24,7 @@ class FeedbackReport;
 // FeedbackUploader is used to add a feedback report to the queue of reports
 // being uploaded. In case uploading a report fails, it is written to disk and
 // tried again when it's turn comes up next in the queue.
-class FeedbackUploader : public base::SupportsWeakPtr<FeedbackUploader> {
+class FeedbackUploader {
  public:
   FeedbackUploader(const base::FilePath& path,
                    scoped_refptr<base::SingleThreadTaskRunner> task_runner);
@@ -81,6 +81,8 @@ class FeedbackUploader : public base::SupportsWeakPtr<FeedbackUploader> {
   base::TimeDelta retry_delay_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
   std::string url_;
+
+  base::WeakPtrFactory<FeedbackUploader> weak_ptr_factory_{this};
 };
 
 }  // namespace feedback
