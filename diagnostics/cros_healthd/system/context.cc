@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <attestation/proto_bindings/interface.pb.h>
+// NOLINTBEGIN(build/include_alpha) dbus-proxies.h needs interface.pb.h
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/logging.h>
@@ -19,11 +20,12 @@
 #include <fwupd/dbus-proxies.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <power_manager/dbus-proxies.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs spaced.pb.h
 #include <spaced/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+// NOLINT(build/include_alpha) dbus-proxies.h needs tpm_manager.pb.h
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/bluez_event_hub.h"

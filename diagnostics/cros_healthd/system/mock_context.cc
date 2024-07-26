@@ -7,19 +7,21 @@
 #include <memory>
 
 #include <attestation/proto_bindings/interface.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs interface.pb.h
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
 #include <brillo/udev/mock_udev.h>
 #include <brillo/udev/mock_udev_monitor.h>
 #include <cras/dbus-proxy-mocks.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <fwupd/dbus-proxy-mocks.h>
+#include <gmock/gmock.h>
 #include <power_manager/dbus-proxy-mocks.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs spaced.pb.h
 #include <spaced/dbus-proxy-mocks.h>
-#include <gmock/gmock.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) dbus-proxy-mocks.h needs tpm_manager.pb.h
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "diagnostics/cros_healthd/service_config.h"
 #include "diagnostics/cros_healthd/system/cros_config.h"
