@@ -27,64 +27,24 @@ static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {0, 0, 0, 0}};
 
 static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
-  LIBBPF_OPTS(bpf_uprobe_opts, uopts);
   std::string libc;
 
   if (libmon::lookup_lib(pid, "libc.so", libc))
     return -ENOENT;
 
-  uopts.func_name = "malloc";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_malloc, &uopts);
-
-  uopts.func_name = "malloc";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_malloc, &uopts);
-
-  uopts.func_name = "strdup";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_strdup, &uopts);
-
-  uopts.func_name = "strdup";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_strdup, &uopts);
-
-  uopts.func_name = "calloc";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_calloc, &uopts);
-
-  uopts.func_name = "calloc";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_calloc, &uopts);
-
-  uopts.func_name = "memalign";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_memalign, &uopts);
-
-  uopts.func_name = "memalign";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_memalign, &uopts);
-
-  uopts.func_name = "mmap";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_mmap, &uopts);
-
-  uopts.func_name = "mmap";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_mmap, &uopts);
-
-  uopts.func_name = "munmap";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_munmap, &uopts);
-
-  uopts.func_name = "free";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_free, &uopts);
-
-  LIBBPF_OPTS(bpf_kprobe_opts, kopts);
-  kopts.retprobe = false;
-  LIBMON_ATTACH_KPROBE(mon, call_handle_mm_fault, "handle_mm_fault", &kopts);
-
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "malloc", call_malloc);
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "malloc", ret_malloc);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "strdup", call_strdup);
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "strdup", ret_strdup);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "calloc", call_calloc);
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "calloc", ret_calloc);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "memalign", call_memalign);
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "memalign", ret_memalign);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "mmap", call_mmap);
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "mmap", ret_mmap);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "munmap", call_munmap);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "free", call_free);
+  LIBMON_ATTACH_KPROBE(mon, "handle_mm_fault", call_handle_mm_fault);
   return 0;
 }
 

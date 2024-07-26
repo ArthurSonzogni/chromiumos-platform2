@@ -26,32 +26,16 @@ static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {0, 0, 0, 0}};
 
 static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
-  LIBBPF_OPTS(bpf_uprobe_opts, uopts);
   std::string libc;
 
   if (libmon::lookup_lib(pid, "libc.so", libc))
     return -ENOENT;
 
-  uopts.func_name = "open";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_open, &uopts);
-
-  uopts.func_name = "dup2";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_dup2, &uopts);
-
-  uopts.func_name = "dup";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_dup, &uopts);
-
-  uopts.func_name = "dup";
-  uopts.retprobe = true;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), ret_dup, &uopts);
-
-  uopts.func_name = "close";
-  uopts.retprobe = false;
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), call_close, &uopts);
-
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "open", ret_open);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "dup2", call_dup2);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "dup", call_dup);
+  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "dup", ret_dup);
+  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "close", call_close);
   return 0;
 }
 

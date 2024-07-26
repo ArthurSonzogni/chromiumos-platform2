@@ -19,34 +19,74 @@ namespace libmon {
 
 #define LIBMON_RB_POLL_TIMEOUT 888
 
-#define LIBMON_ATTACH_UPROBE(s, pid, obj, prog, opts)                     \
-  do {                                                                    \
-    printf("Attaching uprobe: " #prog "\n");                              \
-    if (s->links.prog) {                                                  \
-      fprintf(stderr, "Already attached: " #prog "\n");                   \
-      return -EINVAL;                                                     \
-    }                                                                     \
-    s->links.prog = bpf_program__attach_uprobe_opts(s->progs.prog, (pid), \
-                                                    (obj), 0, (opts));    \
-    if (!s->links.prog) {                                                 \
-      perror("Failed to attach: " #prog);                                 \
-      return -EINVAL;                                                     \
-    }                                                                     \
+#define LIBMON_ATTACH_UPROBE(mon, pid, obj, sym, prog)                        \
+  do {                                                                        \
+    LIBBPF_OPTS(bpf_uprobe_opts, uopts);                                      \
+    printf("Attaching uprobe: " #prog "\n");                                  \
+    uopts.func_name = sym;                                                    \
+    uopts.retprobe = false;                                                   \
+    if (mon->links.prog) {                                                    \
+      fprintf(stderr, "Already attached: " #prog "\n");                       \
+      return -EINVAL;                                                         \
+    }                                                                         \
+    mon->links.prog = bpf_program__attach_uprobe_opts(mon->progs.prog, (pid), \
+                                                      (obj), 0, &uopts);      \
+    if (!mon->links.prog) {                                                   \
+      perror("Failed to attach: " #prog);                                     \
+      return -EINVAL;                                                         \
+    }                                                                         \
   } while (false)
 
-#define LIBMON_ATTACH_KPROBE(s, prog, sym, opts)                       \
-  do {                                                                 \
-    printf("Attaching kprobe: " #prog "\n");                           \
-    if (s->links.prog) {                                               \
-      fprintf(stderr, "Already attached: " #prog "\n");                \
-      return -EINVAL;                                                  \
-    }                                                                  \
-    s->links.prog =                                                    \
-        bpf_program__attach_kprobe_opts(s->progs.prog, (sym), (opts)); \
-    if (!s->links.prog) {                                              \
-      perror("Failed to attach: " #prog);                              \
-      return -EINVAL;                                                  \
-    }                                                                  \
+#define LIBMON_ATTACH_URETPROBE(mon, pid, obj, sym, prog)                     \
+  do {                                                                        \
+    LIBBPF_OPTS(bpf_uprobe_opts, uopts);                                      \
+    printf("Attaching uretprobe: " #prog "\n");                               \
+    uopts.func_name = sym;                                                    \
+    uopts.retprobe = true;                                                    \
+    if (mon->links.prog) {                                                    \
+      fprintf(stderr, "Already attached: " #prog "\n");                       \
+      return -EINVAL;                                                         \
+    }                                                                         \
+    mon->links.prog = bpf_program__attach_uprobe_opts(mon->progs.prog, (pid), \
+                                                      (obj), 0, &uopts);      \
+    if (!mon->links.prog) {                                                   \
+      perror("Failed to attach: " #prog);                                     \
+      return -EINVAL;                                                         \
+    }                                                                         \
+  } while (false)
+
+#define LIBMON_ATTACH_KPROBE(mon, sym, prog)                             \
+  do {                                                                   \
+    LIBBPF_OPTS(bpf_kprobe_opts, kopts);                                 \
+    printf("Attaching kprobe: " #prog "\n");                             \
+    kopts.retprobe = false;                                              \
+    if (mon->links.prog) {                                               \
+      fprintf(stderr, "Already attached: " #prog "\n");                  \
+      return -EINVAL;                                                    \
+    }                                                                    \
+    mon->links.prog =                                                    \
+        bpf_program__attach_kprobe_opts(mon->progs.prog, (sym), &kopts); \
+    if (!mon->links.prog) {                                              \
+      perror("Failed to attach: " #prog);                                \
+      return -EINVAL;                                                    \
+    }                                                                    \
+  } while (false)
+
+#define LIBMON_ATTACH_KRETPROBE(mon, sym, prog)                          \
+  do {                                                                   \
+    LIBBPF_OPTS(bpf_kprobe_opts, kopts);                                 \
+    printf("Attaching kretprobe: " #prog "\n");                          \
+    kopts.retprobe = true;                                               \
+    if (mon->links.prog) {                                               \
+      fprintf(stderr, "Already attached: " #prog "\n");                  \
+      return -EINVAL;                                                    \
+    }                                                                    \
+    mon->links.prog =                                                    \
+        bpf_program__attach_kprobe_opts(mon->progs.prog, (sym), &kopts); \
+    if (!mon->links.prog) {                                              \
+      perror("Failed to attach: " #prog);                                \
+      return -EINVAL;                                                    \
+    }                                                                    \
   } while (false)
 
 int init_stack_decoder(void);
