@@ -14101,6 +14101,8 @@ mno {
     mccmnc: "311270"
     mccmnc: "311480"
     tethering_allowed: false
+    # The fallback APN breaks the OTA provisioning in Verizon.
+    use_fallback_apn: false
     # Cellular device requires IMS support, e.g. for SMS over IMS.
     mobile_apn {
       apn: "ims"
