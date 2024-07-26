@@ -8,10 +8,13 @@
 #include <string>
 #include <vector>
 
-#include <base/time/time.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
+
+namespace base {
+class TimeDelta;
+}  // namespace base
 
 namespace ec {
 class EcCommandFactoryInterface;

@@ -4,12 +4,10 @@
 
 source_set("libexecutor_delegate") {
   sources = [ "delegate_impl.cc" ]
-  public_pkg_deps = [
-    "libchrome",
-    "libmojo",
-  ]
+  public_pkg_deps = [ "libmojo" ]
   pkg_deps = [
     "libbrillo",
+    "libchrome",
     "libec",
   ]
   public_deps = [ "//diagnostics/cros_healthd/mojom:delegate_mojo_bindings" ]
