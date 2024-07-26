@@ -257,6 +257,12 @@ const std::vector<MobileAPN>& MobileOperatorMapper::apn_list() const {
   return db_info_.apn_list;
 }
 
+bool MobileOperatorMapper::use_fallback_apn() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.use_fallback_apn
+          << "]";
+  return db_info_.use_fallback_apn;
+}
+
 const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorMapper::olp_list() const {
   if (SLOG_IS_ON(Cellular, 3)) {
@@ -869,7 +875,6 @@ void MobileOperatorMapper::ReloadData(
       db_info_.entitlement_config.method = brillo::http::request_type::kPost;
       break;
   }
-  // mhs_entitlement_url_ = data.mhs_entitlement_url();
   db_info_.mhs_entitlement_params.clear();
   if (data.mhs_entitlement_param_size() > 0) {
     for (const auto& param : data.mhs_entitlement_param()) {
@@ -918,6 +923,8 @@ void MobileOperatorMapper::ReloadData(
     }
     HandleAPNListUpdate();
   }
+  // Non-inheritable property with default value set as true.
+  db_info_.use_fallback_apn = data.use_fallback_apn();
 }
 
 void MobileOperatorMapper::HandleMCCMNCUpdate() {

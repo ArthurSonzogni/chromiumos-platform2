@@ -191,6 +191,10 @@ const std::vector<MobileAPN>& MobileOperatorInfo::apn_list() const {
   return home_->apn_list();
 }
 
+bool MobileOperatorInfo::use_fallback_apn() const {
+  return home_->use_fallback_apn();
+}
+
 const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorInfo::olp_list() const {
   return home_->olp_list();

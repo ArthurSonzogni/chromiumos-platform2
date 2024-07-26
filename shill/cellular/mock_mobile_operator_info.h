@@ -32,6 +32,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD(const std::string&, mccmnc, (), (const, override));
   MOCK_METHOD(const std::string&, mcc_alpha2, (), (const, override));
   MOCK_METHOD(const std::vector<MobileAPN>&, apn_list, (), (const, override));
+  MOCK_METHOD(bool, use_fallback_apn, (), (const, override));
   MOCK_METHOD(const std::vector<MobileOperatorMapper::OnlinePortal>&,
               olp_list,
               (),

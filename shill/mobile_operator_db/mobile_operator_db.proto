@@ -166,7 +166,8 @@ message Data {
   // and MNC is a two or three digit GSM Mobile Network Code.
   repeated string mccmnc = 21;
   repeated MobileAPN mobile_apn = 22;
-
+  // If true, an empty APN is added to the back of the APN try list.
+  optional bool use_fallback_apn = 23 [default = true];
   // ///////////////////////////////////////////////////////////////////////////
   // CDMA specific properties [41-60]. No longer used but kept here so people
   // don't reuse the field IDs.

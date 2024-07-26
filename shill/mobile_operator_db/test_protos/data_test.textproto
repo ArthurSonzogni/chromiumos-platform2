@@ -76,6 +76,7 @@ mno {
       # Keep a common MCCMNC, so that it can be used to search for the MNO.
       mccmnc: "200001"
       mccmnc: "200102"
+      use_fallback_apn: false
       mobile_apn {
         apn: "test2@test.com"
         type: DEFAULT

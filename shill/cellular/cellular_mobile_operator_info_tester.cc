@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
+
 #include <iostream>
 
 #include <base/files/file_path.h>
@@ -120,6 +121,8 @@ int main(int argc, char* argv[]) {
          << mobile_operator_info->friendly_operator_name(true) << "\n";
   report << "friendly_operator_name when not roaming: "
          << mobile_operator_info->friendly_operator_name(false) << "\n";
+  report << "use_fallback_apn: " << std::boolalpha
+         << mobile_operator_info->use_fallback_apn() << "\n";
 
   shill::ApnList apn_list(/* merge_similar_apns */ false);
   apn_list.AddApns(mobile_operator_info->apn_list(),

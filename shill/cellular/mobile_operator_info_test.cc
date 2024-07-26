@@ -103,7 +103,6 @@ TEST_F(MobileOperatorInfoTest, AddDatabasePath) {
   EXPECT_CALL(*home_, AddDatabasePath(kModbPath));
   EXPECT_CALL(*serving_, AddDatabasePath(kModbPath));
   operator_info_->AddDatabasePath(kModbPath);
-  std::cerr << "TODO(remove)\n\n";
   Mock::VerifyAndClearExpectations(&home_);
   Mock::VerifyAndClearExpectations(&serving_);
 }
@@ -349,6 +348,13 @@ TEST_F(MobileOperatorInfoMainTest, apn_list) {
   std::vector<MobileAPN> apns = {apn1, apn2};
   EXPECT_CALL(*home_, apn_list()).WillOnce(ReturnRef(apns));
   EXPECT_EQ(operator_info_->apn_list(), apns);
+}
+
+TEST_F(MobileOperatorInfoMainTest, use_fallback_apn) {
+  EXPECT_CALL(*home_, use_fallback_apn()).WillOnce(Return(true));
+  EXPECT_TRUE(operator_info_->use_fallback_apn());
+  EXPECT_CALL(*home_, use_fallback_apn()).WillOnce(Return(false));
+  EXPECT_FALSE(operator_info_->use_fallback_apn());
 }
 
 TEST_F(MobileOperatorInfoMainTest, olp_list) {

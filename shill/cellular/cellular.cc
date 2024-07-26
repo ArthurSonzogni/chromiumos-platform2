@@ -3788,8 +3788,9 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     }
   }
   // Add fallback empty APN as a last try for Default and Attach
-  if (apn_type == ApnList::ApnType::kDefault ||
-      apn_type == ApnList::ApnType::kAttach) {
+  if ((apn_type == ApnList::ApnType::kDefault ||
+       apn_type == ApnList::ApnType::kAttach) &&
+      mobile_operator_info_->use_fallback_apn()) {
     Stringmap empty_apn = BuildFallbackEmptyApn(apn_type);
     apn_try_list.push_back(empty_apn);
     bool is_same_as_last_good_apn =

@@ -138,6 +138,8 @@ class MobileOperatorInfo {
   virtual std::string friendly_operator_name(bool is_roaming) const;
   // All access point names associated with this carrier entry.
   virtual const std::vector<MobileAPN>& apn_list() const;
+  // When true, an empty APN is added to the back of the APN try list
+  virtual bool use_fallback_apn() const;
   // All Online Payment Portal URLs associated with this carrier entry. There
   // are usually multiple OLPs based on access technology and it is up to the
   // application to use the appropriate one.

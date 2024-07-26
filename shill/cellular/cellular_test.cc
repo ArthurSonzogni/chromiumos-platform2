@@ -2140,14 +2140,18 @@ TEST_F(CellularTest, UpdateGeolocationObjects) {
 class FakeMobileOperatorInfo : public NiceMock<MockMobileOperatorInfo> {
  public:
   FakeMobileOperatorInfo(EventDispatcher* dispatcher,
-                         std::vector<MobileAPN> apn_list)
+                         std::vector<MobileAPN> apn_list,
+                         bool use_fallback_apn)
       : NiceMock<MockMobileOperatorInfo>(dispatcher, "Fake"),
-        apn_list_(std::move(apn_list)) {}
+        apn_list_(std::move(apn_list)),
+        use_fallback_apn_(use_fallback_apn) {}
 
   const std::vector<MobileAPN>& apn_list() const override { return apn_list_; }
+  bool use_fallback_apn() const override { return use_fallback_apn_; }
 
  private:
   std::vector<MobileAPN> apn_list_;
+  bool use_fallback_apn_;
 };
 
 TEST_F(CellularTest, SimpleApnList) {
@@ -2163,7 +2167,7 @@ TEST_F(CellularTest, SimpleApnList) {
   apn_list.emplace_back(std::move(mobile_apn));
 
   FakeMobileOperatorInfo* info =
-      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list), true);
   // Pass ownership of |info|
   device_->set_mobile_operator_info_for_testing(info);
 
@@ -2189,7 +2193,7 @@ TEST_F(CellularTest, ProfilesApnList) {
   mobile_apn.apn = kApn2;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo* info =
-      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list), true);
   // Pass ownership of |info|
   device_->set_mobile_operator_info_for_testing(info);
 
@@ -2217,7 +2221,7 @@ TEST_F(CellularTest, MergeProfileAndOperatorApn) {
   mobile_apn.operator_name_list.push_back({kApnName, ""});
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo* info =
-      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list), true);
   // Pass ownership of |info|
   device_->set_mobile_operator_info_for_testing(info);
 
@@ -2245,7 +2249,7 @@ TEST_F(CellularTest, DontMergeProfileAndOperatorApn) {
   mobile_apn.username = kUsernameFromOperator;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo* info =
-      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list), true);
   // Pass ownership of |info|
   device_->set_mobile_operator_info_for_testing(info);
 
@@ -2597,6 +2601,52 @@ TEST_F(CellularTest, BuildApnTryListWithInvalid) {
   EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 }
 
+TEST_F(CellularTest, BuildApnTryListWithoutFallback) {
+  FakeMobileOperatorInfo* info =
+      new FakeMobileOperatorInfo(&dispatcher_, {}, false);
+  device_->set_mobile_operator_info_for_testing(info);
+
+  Stringmaps apn_list;
+  Stringmap apn_modb, apn_modem;
+  apn_modb[kApnProperty] = "apn_modb";
+  apn_modb[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeIA});
+  apn_modb[kApnSourceProperty] = kApnSourceMoDb;
+  apn_modem[kApnProperty] = "apn_modem";
+  apn_modem[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
+  apn_modem[kApnSourceProperty] = kApnSourceModem;
+  apn_list.push_back(apn_modb);
+  apn_list.push_back(apn_modem);
+  device_->SetApnList(apn_list);
+
+  // With an empty CustomApnList
+  CellularService* service = SetService();
+  service->set_custom_apn_list_for_testing(Stringmaps());
+  std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  ASSERT_EQ(attach_apn_try_list.size(), 3);
+  EXPECT_EQ(attach_apn_try_list[0], apn_modem);
+  EXPECT_EQ(attach_apn_try_list[1], apn_modb);
+  EXPECT_EQ(attach_apn_try_list[2], apn_modem);
+  ASSERT_EQ(default_apn_try_list.size(), 1);
+  EXPECT_EQ(default_apn_try_list[0], apn_modem);
+
+  // Set CustomApnList
+  Stringmap apnP({{kApnProperty, "apnP"},
+                  {kApnTypesProperty,
+                   ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault})},
+                  {kApnSourceProperty, kApnSourceUi}});
+  Stringmaps custom_list = {apnP};
+  service->set_custom_apn_list_for_testing(custom_list);
+  attach_apn_try_list = device_->BuildAttachApnTryList();
+  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  EXPECT_EQ(attach_apn_try_list[0], apnP);
+  default_apn_try_list = device_->BuildDefaultApnTryList();
+  ASSERT_EQ(default_apn_try_list.size(), 1);
+  EXPECT_EQ(default_apn_try_list[0], apnP);
+}
+
 TEST_F(CellularTest, BuildTetheringApnTryList) {
   ASSERT_EQ(device_->BuildTetheringApnTryList().size(), 0);
   Stringmaps apn_list;
@@ -2743,7 +2793,7 @@ TEST_F(CellularTest, CompareApnsFromApnList) {
   mobile_apn.is_required_by_carrier_spec = true;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo* info =
-      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list), true);
   // Pass ownership of |info|
   device_->set_mobile_operator_info_for_testing(info);
   device_->UpdateHomeProvider();

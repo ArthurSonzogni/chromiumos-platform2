@@ -319,6 +319,7 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->mccmnc_list().empty());
   EXPECT_TRUE(operator_info_->operator_name_list().empty());
   EXPECT_TRUE(operator_info_->apn_list().empty());
+  EXPECT_TRUE(operator_info_->use_fallback_apn());
   EXPECT_TRUE(operator_info_->olp_list().empty());
   EXPECT_FALSE(operator_info_->requires_roaming());
   EXPECT_FALSE(operator_info_->tethering_allowed(false));
@@ -1173,6 +1174,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
                                       false /*allow_untested_carriers*/));
     EXPECT_EQ(use_dun_apn_as_default_,
               operator_info_->use_dun_apn_as_default());
+    EXPECT_EQ(use_fallback_apn_, operator_info_->use_fallback_apn());
     static const Stringmap mhs_entitlement_params = {{"imsi", imsi}};
     EXPECT_EQ("uuid200001.com", operator_info_->entitlement_config().url);
     EXPECT_EQ("GET", operator_info_->entitlement_config().method);
@@ -1185,6 +1187,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
                                       false /*allow_untested_carriers*/));
     EXPECT_EQ(use_dun_apn_as_default_,
               operator_info_->use_dun_apn_as_default());
+    EXPECT_EQ(use_fallback_apn_, operator_info_->use_fallback_apn());
     EXPECT_EQ("uuid200101.com", operator_info_->entitlement_config().url);
     EXPECT_EQ("POST", operator_info_->entitlement_config().method);
     EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
@@ -1194,6 +1197,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
         operator_info_->tethering_allowed(false /*allow_untested_carriers*/));
     EXPECT_TRUE(
         operator_info_->tethering_allowed(true /*allow_untested_carriers*/));
+    EXPECT_TRUE(use_fallback_apn_);
     EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
     EXPECT_EQ("POST", operator_info_->entitlement_config().method);
     EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
@@ -1222,6 +1226,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     requires_roaming_ = true;
     tethering_allowed_ = true;
     use_dun_apn_as_default_ = true;
+    use_fallback_apn_ = true;
     mtu_ = 1400;
     mccmnc_list_ = {"200001", "200002", "200003"};
     operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
@@ -1247,6 +1252,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     requires_roaming_ = false;
     tethering_allowed_ = false;
     use_dun_apn_as_default_ = false;
+    use_fallback_apn_ = false;
     mtu_ = 1200;
     mccmnc_list_ = {"200001", "200102"};
     operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
@@ -1269,6 +1275,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   bool requires_roaming_;
   bool tethering_allowed_;
   bool use_dun_apn_as_default_;
+  bool use_fallback_apn_;
   int32_t mtu_;
   std::set<std::string> apn_types_;
   std::vector<std::string> mccmnc_list_;
