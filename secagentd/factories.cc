@@ -53,11 +53,7 @@ std::unique_ptr<BpfSkeletonInterface> BpfSkeletonFactory::Create(
       if (di_.file) {
         rv = std::move(di_.file);
       } else {
-        SkeletonCallbacks<file_bpf> skel_cbs;
-        skel_cbs.destroy = base::BindRepeating(file_bpf__destroy);
-        skel_cbs.open = base::BindRepeating(file_bpf__open);
-        skel_cbs.open_opts = base::BindRepeating(file_bpf__open_opts);
-        rv = std::make_unique<BpfSkeleton<file_bpf>>("file", skel_cbs);
+        rv = std::make_unique<FileBpfSkeleton>(batch_interval_s);
       }
       break;
     default:

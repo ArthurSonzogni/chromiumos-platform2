@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/bpf_skeleton_wrappers.h"
-
 #include "base/check.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/bpf_skeletons/skeleton_file_bpf.h"
 #include "secagentd/common.h"
 
 namespace secagentd {
@@ -203,6 +203,35 @@ void NetworkBpfSkeleton::ScanFlowMap() {
 }
 
 void NetworkBpfSkeleton::RegisterCallbacks(BpfCallbacks cbs) {
+  default_bpf_skeleton_->RegisterCallbacks(std::move(cbs));
+}
+
+FileBpfSkeleton::FileBpfSkeleton(uint32_t batch_interval_s,
+                                 std::optional<SkeletonCallbacks<file_bpf>> cbs)
+    : batch_interval_s_(batch_interval_s), weak_ptr_factory_(this) {
+  platform_ = GetPlatform();
+  SkeletonCallbacks<file_bpf> skel_cbs;
+  if (cbs) {
+    skel_cbs = std::move(*cbs);
+  } else {
+    skel_cbs.destroy = base::BindRepeating(file_bpf__destroy);
+    skel_cbs.open = base::BindRepeating(file_bpf__open);
+    skel_cbs.open_opts = base::BindRepeating(file_bpf__open_opts);
+  }
+  default_bpf_skeleton_ =
+      std::make_unique<BpfSkeleton<file_bpf>>("file", skel_cbs);
+}
+
+int FileBpfSkeleton::ConsumeEvent() {
+  return default_bpf_skeleton_->ConsumeEvent();
+}
+
+std::pair<absl::Status, metrics::BpfAttachResult>
+FileBpfSkeleton::LoadAndAttach() {
+  return default_bpf_skeleton_->LoadAndAttach();
+}
+
+void FileBpfSkeleton::RegisterCallbacks(BpfCallbacks cbs) {
   default_bpf_skeleton_->RegisterCallbacks(std::move(cbs));
 }
 }  // namespace secagentd

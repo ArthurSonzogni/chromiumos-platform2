@@ -22,6 +22,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/strings/strcat.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/bpf_skeletons/skeleton_file_bpf.h"
 #include "secagentd/bpf_skeletons/skeleton_network_bpf.h"
 #include "secagentd/common.h"
 #include "secagentd/metrics_sender.h"
@@ -64,6 +65,7 @@ class BpfSkeletonInterface {
  protected:
   friend class BpfSkeletonFactory;
   friend class NetworkBpfSkeleton;
+  friend class FileBpfSkeleton;
   BpfSkeletonInterface() = default;
 
   virtual std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() = 0;
@@ -113,6 +115,7 @@ class BpfSkeleton : public BpfSkeletonInterface {
  protected:
   friend class BpfSkeletonFactory;
   friend class NetworkBpfSkeleton;
+  friend class FileBpfSkeleton;
   std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override {
     if (callbacks_.ring_buffer_event_callback.is_null() ||
         callbacks_.ring_buffer_read_ready_callback.is_null()) {
@@ -222,6 +225,24 @@ class NetworkBpfSkeleton : public BpfSkeletonInterface {
   base::RepeatingTimer scan_bpf_maps_timer_;
   base::WeakPtr<PlatformInterface> platform_;
   base::WeakPtrFactory<NetworkBpfSkeleton> weak_ptr_factory_;
+};
+
+class FileBpfSkeleton : public BpfSkeletonInterface {
+ public:
+  explicit FileBpfSkeleton(
+      uint32_t batch_interval_s,
+      std::optional<SkeletonCallbacks<file_bpf>> cbs = std::nullopt);
+  int ConsumeEvent() override;
+
+ protected:
+  std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override;
+  void RegisterCallbacks(BpfCallbacks cbs) override;
+
+ private:
+  uint32_t batch_interval_s_;
+  std::unique_ptr<BpfSkeleton<file_bpf>> default_bpf_skeleton_;
+  base::WeakPtr<PlatformInterface> platform_;
+  base::WeakPtrFactory<FileBpfSkeleton> weak_ptr_factory_;
 };
 
 class BpfSkeletonFactoryInterface
