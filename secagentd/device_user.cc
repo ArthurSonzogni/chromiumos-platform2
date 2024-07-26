@@ -119,6 +119,10 @@ void DeviceUser::RegisterScreenLockedHandler(
           std::move(on_connected_callback)));
 }
 
+std::string DeviceUser::GetSanitizedUsername() {
+  return sanitized_username_;
+}
+
 void DeviceUser::RegisterScreenUnlockedHandler(
     base::RepeatingClosure signal_callback,
     dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
@@ -150,6 +154,7 @@ void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
                                             const std::string& new_owner) {
   // When session manager crashes it logs user out.
   device_user_ = device_user::kEmpty;
+  sanitized_username_ = device_user::kEmpty;
 
   LOG(INFO) << "Session manager's name changed. Old: " << old_owner
             << " New: " << new_owner;
@@ -211,8 +216,10 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
     }
   } else if (state == kStopping) {
     device_user_ = device_user::kEmpty;
+    sanitized_username_ = device_user::kEmpty;
   } else if (state == kStopped) {
     device_user_ = device_user::kEmpty;
+    sanitized_username_ = device_user::kEmpty;
   }
 
   device_user_ready_ = true;
@@ -270,14 +277,17 @@ bool DeviceUser::UpdateDeviceUser(const std::string& state) {
                                                 &error) ||
       error.get()) {
     device_user_ = device_user::kUnknown;
+    sanitized_username_ = device_user::kUnknown;
     LOG(ERROR) << "Failed to retrieve primary session " << error->GetMessage();
     return true;
   } else {
     // No active session.
+    sanitized_username_ = sanitized;
     if (username.empty()) {
       // Only set as empty when Guest session retrieval succeeds.
       if (device_user_ != device_user::kUnknown) {
         device_user_ = device_user::kEmpty;
+        sanitized_username_ = device_user::kEmpty;
       }
       return true;
     }

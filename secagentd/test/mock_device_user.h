@@ -45,6 +45,7 @@ class MockDeviceUser : public DeviceUserInterface {
               (const std::string& username,
                const std::string& sanitized_username),
               (override));
+  MOCK_METHOD(std::string, GetSanitizedUsername, (), (override));
   MOCK_METHOD(void,
               SetFlushCallback,
               (base::RepeatingCallback<void()> cb),

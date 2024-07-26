@@ -75,6 +75,7 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
   virtual std::string GetUsernameBasedOnAffiliation(
       const std::string& username, const std::string& sanitized_username) = 0;
   virtual void SetFlushCallback(base::RepeatingCallback<void()>) = 0;
+  virtual std::string GetSanitizedUsername() = 0;
 
   virtual ~DeviceUserInterface() = default;
 };
@@ -122,6 +123,8 @@ class DeviceUser : public DeviceUserInterface {
   std::string GetUsernameBasedOnAffiliation(
       const std::string& username,
       const std::string& sanitized_username) override;
+  // Return sanitized username(userhash) for the current active session
+  std::string GetSanitizedUsername() override;
   // The flush callback to be called when a new sign in occurs to avoid
   // reporting unaffiliated events.
   void SetFlushCallback(base::RepeatingCallback<void()>) override;
@@ -185,6 +188,7 @@ class DeviceUser : public DeviceUserInterface {
   std::vector<base::OnceCallback<void(const std::string&)>>
       on_device_user_ready_cbs_;
   std::string device_user_ = device_user::kEmpty;
+  std::string sanitized_username_ = device_user::kEmpty;
   std::list<std::string> redacted_usernames_;
   std::string device_id_ = "";
   const base::FilePath root_path_;

@@ -4,6 +4,7 @@
 
 #include "secagentd/device_user.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -325,6 +326,7 @@ TEST_F(DeviceUserTestFixture, TestStoredUserAffiliated) {
   EXPECT_EQ(kDeviceUser, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(kSanitized, device_user_->GetSanitizedUsername());
 }
 
 TEST_F(DeviceUserTestFixture, TestStoredUserUnaffiliated) {
@@ -387,6 +389,7 @@ TEST_F(DeviceUserTestFixture, TestStoredUserUnaffiliated) {
                   .is_valid());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(kSanitized, device_user_->GetSanitizedUsername());
 }
 
 TEST_F(DeviceUserTestFixture, TestLogout) {
@@ -395,12 +398,14 @@ TEST_F(DeviceUserTestFixture, TestLogout) {
   device_user_->RegisterSessionChangeHandler();
   registration_cb_.Run(kStopping);
   EXPECT_EQ(device_user::kEmpty, GetUser());
+  EXPECT_EQ(device_user::kEmpty, device_user_->GetSanitizedUsername());
 
   SetDeviceUser(kDeviceUser);
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
   registration_cb_.Run(kStopped);
   EXPECT_EQ(device_user::kEmpty, GetUser());
+  EXPECT_EQ(device_user::kEmpty, device_user_->GetSanitizedUsername());
 }
 
 TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
@@ -511,6 +516,7 @@ TEST_F(DeviceUserTestFixture, TestFailedGuestSessionRetrieval) {
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
   EXPECT_EQ(device_user::kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, device_user_->GetSanitizedUsername());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedPrimarySessionRetrieval) {
@@ -648,6 +654,7 @@ TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   name_change_cb_.Run("", "new_name");
 
   EXPECT_EQ(device_user::kEmpty, GetUser());
+  EXPECT_EQ(device_user::kEmpty, device_user_->GetSanitizedUsername());
 }
 
 TEST_F(DeviceUserTestFixture, TestLoginLogoutMultipleTimesForRedaction) {
@@ -660,11 +667,13 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutMultipleTimesForRedaction) {
       })));
 
   std::vector<std::string> device_users;
+  std::vector<std::string> sanitized_names;
   for (int i = 0; i < times; i++) {
     auto device_user = absl::StrFormat("user%d@email.com", i);
     auto sanitized_name = absl::StrFormat("sanitized%d", i);
 
     device_users.push_back(device_user);
+    sanitized_names.push_back(sanitized_name);
 
     EXPECT_CALL(*session_manager_ref_,
                 RetrievePolicyEx(
@@ -715,9 +724,11 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutMultipleTimesForRedaction) {
     ASSERT_EQ(i + 1, device_user_->GetUsernamesForRedaction().size());
     EXPECT_EQ(device_users[i],
               device_user_->GetUsernamesForRedaction().front());
+    EXPECT_EQ(sanitized_names[i], device_user_->GetSanitizedUsername());
 
     registration_cb_.Run(kStopped);
     EXPECT_EQ(device_user::kEmpty, GetUser());
+    EXPECT_EQ(device_user::kEmpty, device_user_->GetSanitizedUsername());
     ASSERT_EQ(i + 1, device_user_->GetUsernamesForRedaction().size());
     EXPECT_EQ(device_users[i],
               device_user_->GetUsernamesForRedaction().front());
@@ -763,21 +774,25 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameAffiliated) {
   EXPECT_EQ(kDeviceUser, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(kSanitized, device_user_->GetSanitizedUsername());
 
   registration_cb_.Run(kStopped);
   EXPECT_EQ(device_user::kEmpty, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(device_user::kEmpty, device_user_->GetSanitizedUsername());
 
   registration_cb_.Run(kStarted);
   EXPECT_EQ(kDeviceUser, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(kSanitized, device_user_->GetSanitizedUsername());
 
   registration_cb_.Run(kStopped);
   EXPECT_EQ(device_user::kEmpty, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(device_user::kEmpty, device_user_->GetSanitizedUsername());
 }
 
 TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameUnaffiliated) {
