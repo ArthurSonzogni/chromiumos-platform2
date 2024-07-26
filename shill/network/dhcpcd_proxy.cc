@@ -20,8 +20,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/files/file_util.h>
-#include <chromeos/net-base/process_manager.h>
 #include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcpv4_config.h"
@@ -33,7 +33,6 @@ namespace {
 
 constexpr char kDHCPCDExecutableName[] = "dhcpcd";
 constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
-constexpr char kDHCPCDConfigPath[] = "/etc/dhcpcd.conf";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
 constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd/%s.lease";
@@ -55,9 +54,6 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
   std::vector<std::string> args = {
       // Run in foreground.
       "-B",
-      // Specify config file path.
-      "-f",
-      kDHCPCDConfigPath,
       // Static value for Vendor class info.
       "-i",
       "chromeos",
@@ -68,6 +64,16 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
       // Request the captive portal URI.
       "-o",
       "captive_portal_uri",
+      // Request the Web Proxy Auto-Discovery.
+      "-o",
+      "wpad_url",
+      // Don't request or claim the address by ARP.
+      "-A",
+      // Don't receive link messages for carrier status.
+      "-K",
+      // Send a default clientid of the hardware family and the hardware
+      // address.
+      "--clientid",
       // No initial randomised delay.
       "--nodelay",
       // Do not configure the system.
