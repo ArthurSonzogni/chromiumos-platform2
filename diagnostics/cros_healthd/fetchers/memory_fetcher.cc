@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/meminfo_reader.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -304,6 +305,30 @@ void CheckValueAndLogError(std::string_view name, uint64_t value) {
   }
 }
 
+// Handles ReadFile() response for /proc/iomem, and runs
+// FetchMemoryEncryptionInfo() to proceed.
+void HandleReadProcIomem(Context* context,
+                         FetchMemoryInfoCallback callback,
+                         mojom::MemoryInfoPtr info,
+                         const base::FilePath& root_dir,
+                         const std::optional<std::string>& content) {
+  // If /proc/iomem is read successfully, use this content to update
+  // info->total_memory_kib with more accurate information.
+  if (content.has_value()) {
+    auto total = ParseIomemContent(content.value());
+    // /proc/iomem still lacks the memory reserved outside of the kernel
+    // (ex. firmware). Round up to the next GiB to fill the gap.
+    if (total.has_value()) {
+      const uint64_t gib = 1 << 30;
+      const uint64_t rounded = ((total.value() + gib - 1) / gib) * gib;
+      info->total_memory_kib = rounded / 1024;
+    }
+  }
+
+  FetchMemoryEncryptionInfo(context, std::move(callback), std::move(info),
+                            root_dir);
+}
+
 }  // namespace
 
 void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
@@ -347,8 +372,13 @@ void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
   }
   info->page_faults_since_last_boot = page_faults_result.value();
 
-  FetchMemoryEncryptionInfo(context, std::move(callback), std::move(info),
-                            root_dir);
+  // MemTotal in /proc/meminfo lacks some memory reserved by the kernel.
+  // Read /proc/iomem to get the more accurate information via the executor
+  // as the root permissions are needed.
+  context->executor()->ReadFile(
+      mojom::Executor::File::kProcIomem,
+      base::BindOnce(&HandleReadProcIomem, context, std::move(callback),
+                     std::move(info), root_dir));
 }
 
 }  // namespace diagnostics

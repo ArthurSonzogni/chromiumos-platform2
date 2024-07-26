@@ -7,6 +7,10 @@
 
 #include <sys/types.h>
 
+#include <cstdint>
+#include <optional>
+#include <string>
+
 namespace base {
 class FilePath;
 }  // namespace base
@@ -56,6 +60,10 @@ base::FilePath GetProcUptimePath(const base::FilePath& root_dir);
 // Returns an absolute path to the crypto file in procfs. On a real device,
 // this will be /proc/crypto.
 base::FilePath GetProcCryptoPath(const base::FilePath& root_dir);
+
+// Gets the total memory size as bytes from /proc/iomem content.
+// Returns std::nullopt on error.
+std::optional<uint64_t> ParseIomemContent(const std::string& content);
 
 }  // namespace diagnostics
 

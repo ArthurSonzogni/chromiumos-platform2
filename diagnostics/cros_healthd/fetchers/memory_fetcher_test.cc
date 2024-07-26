@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
@@ -35,6 +36,11 @@ constexpr char kRelativeMtkmeActiveAlgorithmPath[] =
     "sys/kernel/mm/mktme/active_algo";
 constexpr char kRelativeMtkmeKeyCountPath[] = "sys/kernel/mm/mktme/keycnt";
 constexpr char kRelativeMtkmeKeyLengthPath[] = "sys/kernel/mm/mktme/keylen";
+
+constexpr char kFakeIomemContents[] =
+    "00000000-1f81c8ffe : System RAM\n";  // 8259363 kib
+constexpr char kFakeIomemContentsIncorrectlyFormattedFile[] =
+    "Incorrectly formatted iomem contents.\n";
 
 constexpr char kFakeVmStatContents[] = "foo 98\npgfault 654654\n";
 constexpr char kFakeVmStatContentsIncorrectlyFormattedFile[] =
@@ -93,6 +99,8 @@ class MemoryFetcherTest : public BaseFileTest {
   MemoryFetcherTest() = default;
 
   void SetUp() override {
+    ON_CALL(*mock_executor(), ReadFile(mojom::Executor::File::kProcIomem, _))
+        .WillByDefault(base::test::RunOnceCallback<1>(kFakeIomemContents));
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetRootDir().Append(kRelativeProcCpuInfoPath),
         kFakeCpuInfoNoTmeContent));
@@ -168,7 +176,8 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_memory_info());
   const auto& info = result->get_memory_info();
-  EXPECT_EQ(info->total_memory_kib, 8000424);
+  // total_memory_kib should be computed with /proc/iomem with rounding.
+  EXPECT_EQ(info->total_memory_kib, 8388608);
   EXPECT_EQ(info->free_memory_kib, 4544564);
   EXPECT_EQ(info->available_memory_kib, 5569176);
 
@@ -199,6 +208,27 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
   EXPECT_EQ(result->get_error()->msg, "Error parsing /proc/meminfo");
+}
+
+// Test that fetching memory info uses /proc/meminfo when /proc/iomem is
+// formatted incorrectly.
+TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcIomemFormattedIncorrectly) {
+  fake_meminfo_reader()->SetError(false);
+  fake_meminfo_reader()->SetTotalMemoryKib(8000424);
+
+  // Override the ReadFile behavior with an incorrectly formatted file.
+  ON_CALL(*mock_executor(), ReadFile(mojom::Executor::File::kProcIomem, _))
+      .WillByDefault(base::test::RunOnceCallback<1>(
+          kFakeIomemContentsIncorrectlyFormattedFile));
+
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
+
+  auto result = FetchMemoryInfoSync();
+  ASSERT_TRUE(result->is_memory_info());
+  const auto& info = result->get_memory_info();
+  // 8000424 in /proc/meminfo should be used instead.
+  EXPECT_EQ(info->total_memory_kib, 8000424);
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat doesn't

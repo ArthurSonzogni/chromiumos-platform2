@@ -693,7 +693,8 @@ union MemoryResult {
 // NextMinVersion: 3, NextIndex: 16
 [Stable]
 struct MemoryInfo {
-  // Total memory, in KiB.
+  // Computed total memory including memory reserved for the kernel, etc.,
+  // in KiB.
   uint32 total_memory_kib@0;
   // Free memory, in KiB.
   uint32 free_memory_kib@1;

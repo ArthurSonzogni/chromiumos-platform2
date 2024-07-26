@@ -643,7 +643,7 @@ event --help`.
 #####  MemoryInfo
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| total_memory_kib | uint32 | Total memory, in KiB. |
+| total_memory_kib | uint32 | Computed total memory including memory reserved for the kernel, etc., in KiB. |
 | free_memory_kib | uint32 | Free memory, in KiB. |
 | available_memory_kib | uint32 | Available memory, in KiB. |
 | page_faults_since_last_boot | uint64 | Number of page faults since the last boot. |

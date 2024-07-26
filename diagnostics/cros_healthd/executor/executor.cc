@@ -4,7 +4,6 @@
 
 #include "diagnostics/cros_healthd/executor/executor.h"
 
-#include <bits/types/siginfo_t.h>
 #include <inttypes.h>
 #include <linux/capability.h>
 #include <sys/capability.h>
@@ -31,6 +30,7 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
+#include <bits/types/siginfo_t.h>
 #include <brillo/process/process.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 // NOLINTNEXTLINE(build/include_alpha) dbus-proxies.h needs dlcservice.pb.h
@@ -177,6 +177,8 @@ base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
       return base::FilePath{"/sys/firmware/efi/fw_platform_size"};
     case mojom::Executor::File::kWirelessPowerScheme:
       return base::FilePath{"/sys/module/iwlmvm/parameters/power_scheme"};
+    case mojom::Executor::File::kProcIomem:
+      return base::FilePath{"/proc/iomem"};
   }
 }
 

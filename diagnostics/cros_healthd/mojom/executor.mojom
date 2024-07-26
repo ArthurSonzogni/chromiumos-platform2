@@ -236,6 +236,7 @@ interface Executor {
     kUEFISecureBootVariable,
     kUEFIPlatformSize,
     kWirelessPowerScheme,
+    kProcIomem,
   };
 
   // Reads file. Returns the content or null if failed.
