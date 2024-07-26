@@ -40,6 +40,7 @@
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
+#include "diagnostics/cros_healthd/system/fake_meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -71,15 +72,11 @@ class MemoryRoutineTestBase : public BaseFileTest {
   MemoryRoutineTestBase() = default;
 
   void SetUp() override {
-    SetMockMemoryInfo(
-        "MemTotal:        3906320 kB\n"
-        "MemFree:         2873180 kB\n"
-        "MemAvailable:    2878980 kB\n");
-    SetExecutorResponse();
-  }
+    // MemAvailable more than 500 MiB.
+    mock_context_.fake_meminfo_reader()->SetError(false);
+    mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(2878980);
 
-  void SetMockMemoryInfo(const std::string& info) {
-    SetFile({"proc", "meminfo"}, info);
+    SetExecutorResponse();
   }
 
   std::set<mojom::MemtesterTestItemEnum> GetExpectedMemtesterTests(
@@ -322,14 +319,14 @@ TEST_F(MemoryRoutineAdapterTest, RoutineSuccess) {
 
 // Test that the memory routine handles the parsing error.
 TEST_F(MemoryRoutineTest, RoutineParseError) {
-  SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
+  mock_context_.fake_meminfo_reader()->SetError(true);
   RunRoutineAndWaitForException();
 }
 
 // Test that the memory routine handles the parsing error.
 TEST_F(MemoryRoutineAdapterTest, RoutineParseError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-  SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
+  mock_context_.fake_meminfo_reader()->SetError(true);
 
   routine_adapter_->Start();
   FlushAdapter();
@@ -342,10 +339,8 @@ TEST_F(MemoryRoutineAdapterTest, RoutineParseError) {
 // Test that the memory routine handles when there is not much memory left.
 TEST_F(MemoryRoutineTest, RoutineLessThan500MBMemory) {
   // MemAvailable less than 500 MiB.
-  SetMockMemoryInfo(
-      "MemTotal:        3906320 kB\n"
-      "MemFree:         2873180 kB\n"
-      "MemAvailable:    278980 kB\n");
+  mock_context_.fake_meminfo_reader()->SetError(false);
+  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(278980);
   SetExecutorOutputFromTestFile("all_test_passed_output");
   SetExecutorReturnCode(EXIT_SUCCESS);
 
@@ -362,10 +357,8 @@ TEST_F(MemoryRoutineTest, RoutineLessThan500MBMemory) {
 TEST_F(MemoryRoutineAdapterTest, RoutineLessThan500MBMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   // MemAvailable less than 500 MiB.
-  SetMockMemoryInfo(
-      "MemTotal:        3906320 kB\n"
-      "MemFree:         2873180 kB\n"
-      "MemAvailable:    278980 kB\n");
+  mock_context_.fake_meminfo_reader()->SetError(false);
+  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(278980);
   SetExecutorOutputFromTestFile("all_test_passed_output");
   SetExecutorReturnCode(EXIT_SUCCESS);
 
@@ -383,22 +376,18 @@ TEST_F(MemoryRoutineAdapterTest, RoutineLessThan500MBMemory) {
 
 // Test that the memory routine handles when there is less than 4KB memory
 TEST_F(MemoryRoutineTest, RoutineNotEnoughMemory) {
-  // MemAvailable less than 4 KB.
-  SetMockMemoryInfo(
-      "MemTotal:        3906320 kB\n"
-      "MemFree:         2873180 kB\n"
-      "MemAvailable:    3 kB\n");
+  // MemAvailable less than 4 MiB.
+  mock_context_.fake_meminfo_reader()->SetError(false);
+  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(3);
   RunRoutineAndWaitForException();
 }
 
 // Test that the memory routine handles when there is less than 4KB memory
 TEST_F(MemoryRoutineAdapterTest, RoutineNotEnoughMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-  // MemAvailable less than 4 KB.
-  SetMockMemoryInfo(
-      "MemTotal:        3906320 kB\n"
-      "MemFree:         2873180 kB\n"
-      "MemAvailable:    3 kB\n");
+  // MemAvailable less than 4 MiB.
+  mock_context_.fake_meminfo_reader()->SetError(false);
+  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(3);
 
   routine_adapter_->Start();
   FlushAdapter();

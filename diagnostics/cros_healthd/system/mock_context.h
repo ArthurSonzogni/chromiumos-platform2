@@ -38,6 +38,7 @@ namespace diagnostics {
 class FakeBluezEventHub;
 class FakeFlossEventHub;
 class FakeMojoService;
+class FakeMeminfoReader;
 class FakePowerdAdapter;
 class FakeSystemConfig;
 class FakeSystemUtilities;
@@ -64,6 +65,7 @@ class MockContext final : public Context {
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() const;
   org::freedesktop::fwupdProxyMock* mock_fwupd_proxy() const;
   FakeMojoService* fake_mojo_service() const;
+  FakeMeminfoReader* fake_meminfo_reader() const;
   FakePowerdAdapter* fake_powerd_adapter() const;
   FakeSystemConfig* fake_system_config() const;
   FakeSystemUtilities* fake_system_utils() const;

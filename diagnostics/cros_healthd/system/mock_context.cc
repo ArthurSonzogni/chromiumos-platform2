@@ -27,6 +27,7 @@
 #include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_floss_event_hub.h"
+#include "diagnostics/cros_healthd/system/fake_meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
@@ -49,6 +50,7 @@ MockContext::MockContext() {
   fwupd_proxy_ =
       std::make_unique<testing::StrictMock<org::freedesktop::fwupdProxyMock>>();
   ground_truth_ = std::make_unique<GroundTruth>(this);
+  meminfo_reader_ = std::make_unique<FakeMeminfoReader>();
   mojo_service_ = std::make_unique<FakeMojoService>();
   power_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::PowerManagerProxyMock>>();
@@ -156,6 +158,10 @@ brillo::MockUdevMonitor* MockContext::mock_udev_monitor() const {
 
 org::chromium::SpacedProxyMock* MockContext::mock_spaced_proxy() const {
   return static_cast<org::chromium::SpacedProxyMock*>(spaced_proxy_.get());
+}
+
+FakeMeminfoReader* MockContext::fake_meminfo_reader() const {
+  return static_cast<FakeMeminfoReader*>(meminfo_reader_.get());
 }
 
 }  // namespace diagnostics

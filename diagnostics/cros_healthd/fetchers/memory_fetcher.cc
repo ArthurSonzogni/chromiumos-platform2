@@ -18,8 +18,8 @@
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/meminfo_reader.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-#include "diagnostics/cros_healthd/utils/memory_info.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -51,8 +51,8 @@ constexpr uint64_t kTmeAlgorithmAesXts256 = (uint64_t)2 << 4;
 // Returns `MemoryInfo` from reading `/proc/meminfo`. Returns unexpected error
 // if error occurs.
 base::expected<MemoryInfo, mojom::ProbeErrorPtr> ParseProcMemInfo(
-    const base::FilePath& root_dir) {
-  auto memory_info = MemoryInfo::ParseFrom(root_dir);
+    Context* context) {
+  auto memory_info = context->meminfo_reader()->GetInfo();
   if (!memory_info.has_value()) {
     return base::unexpected(CreateAndLogProbeError(
         mojom::ErrorType::kParseError, "Error parsing /proc/meminfo"));
@@ -302,7 +302,7 @@ void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
   const auto& root_dir = GetRootDir();
   auto info = mojom::MemoryInfo::New();
 
-  auto meminfo_result = ParseProcMemInfo(root_dir);
+  auto meminfo_result = ParseProcMemInfo(context);
   if (!meminfo_result.has_value()) {
     std::move(callback).Run(
         mojom::MemoryResult::NewError(std::move(meminfo_result.error())));

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/utils/memory_info.h"
+#include "diagnostics/cros_healthd/system/meminfo_reader.h"
 
 #include <stdint.h>
 
@@ -29,13 +29,14 @@ constexpr char kMemAvailableName[] = "MemAvailable";
 
 bool ParseRow(std::string raw_value, uint32_t* out_value) {
   // Parse each line in /proc/meminfo.
-  // Format of |raw_value|: "${MEM_NAME}${PAD_SPACES}${MEM_AMOUNT} kb"
+  // Format of `raw_value`: "${PAD_SPACES}${MEM_AMOUNT} kB".
   base::StringTokenizer t(raw_value, " ");
   return t.GetNext() && base::StringToUint(t.token(), out_value) &&
          t.GetNext() && t.token() == "kB";
 }
 
 std::optional<MemoryInfo> Parse(const std::string& raw_data) {
+  // Format of `raw_data`: "${MEM_NAME}:${PAD_SPACES}${MEM_AMOUNT} kB".
   base::StringPairs pairs;
   if (!base::SplitStringIntoKeyValuePairs(raw_data, ':', '\n', &pairs)) {
     LOG(ERROR) << "Incorrectly formatted /proc/meminfo";
@@ -73,10 +74,12 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
 
 }  // namespace
 
-std::optional<MemoryInfo> MemoryInfo::ParseFrom(
-    const base::FilePath& root_path) {
+MeminfoReader::MeminfoReader() = default;
+MeminfoReader::~MeminfoReader() = default;
+
+std::optional<MemoryInfo> MeminfoReader::GetInfo() const {
   std::string file_contents;
-  if (!ReadAndTrimString(root_path.Append(kRelativeMeminfoPath),
+  if (!ReadAndTrimString(GetRootDir().Append(kRelativeMeminfoPath),
                          &file_contents)) {
     LOG(ERROR) << "Unable to read /proc/meminfo";
     return std::nullopt;

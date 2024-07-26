@@ -58,6 +58,7 @@ source_set("system") {
     "floss_controller.cc",
     "floss_event_hub.cc",
     "ground_truth.cc",
+    "meminfo_reader.cc",
     "mojo_service_impl.cc",
     "powerd_adapter_impl.cc",
     "system_config.cc",
@@ -110,6 +111,7 @@ if (use.test || use.fuzzer) {
     sources = [
       "fake_bluez_event_hub.cc",
       "fake_floss_event_hub.cc",
+      "fake_meminfo_reader.cc",
       "fake_mojo_service.cc",
       "fake_pci_util.cc",
       "fake_powerd_adapter.cc",
@@ -136,8 +138,10 @@ if (use.test) {
     sources = [
       "bluez_event_hub_test.cc",
       "cros_config_test.cc",
+      "fake_meminfo_reader_test.cc",
       "floss_event_hub_test.cc",
       "ground_truth_test.cc",
+      "meminfo_reader_test.cc",
       "powerd_adapter_impl_test.cc",
       "system_config_test.cc",
       "usb_device_info_test.cc",

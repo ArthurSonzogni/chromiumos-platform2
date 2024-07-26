@@ -17,12 +17,11 @@
 #include <base/time/time.h>
 #include <re2/re2.h>
 
-#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/meminfo_reader.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
-#include "diagnostics/cros_healthd/utils/memory_info.h"
 #include "diagnostics/cros_healthd/utils/mojo_utils.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 
@@ -230,7 +229,7 @@ void MemoryRoutine::OnStart() {
 
 void MemoryRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
-  auto memory_info = MemoryInfo::ParseFrom(GetRootDir());
+  auto memory_info = context_->meminfo_reader()->GetInfo();
   if (!memory_info.has_value()) {
     RaiseException("Memory info not found");
     return;

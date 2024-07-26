@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
+#include "diagnostics/cros_healthd/system/fake_meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -42,15 +43,11 @@ class CpuCacheRoutineTestBase : public BaseFileTest {
   CpuCacheRoutineTestBase() = default;
 
   void SetUp() override {
-    SetMockMemoryInfo(
-        "MemTotal:        3906320 kB\n"
-        "MemFree:         2873180 kB\n"
-        "MemAvailable:    2878980 kB\n");
-    SetExecutorResponse();
-  }
+    // MemAvailable more than 628 MiB.
+    mock_context_.fake_meminfo_reader()->SetError(false);
+    mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(2878980);
 
-  void SetMockMemoryInfo(const std::string& info) {
-    SetFile({"proc", "meminfo"}, info);
+    SetExecutorResponse();
   }
 
   // Sets the mock executor response by binding receiver and storing how much
@@ -182,14 +179,14 @@ TEST_F(CpuCacheRoutineAdapterTest, RoutineSuccess) {
 
 // Test that the CPU cache routine handles the parsing error.
 TEST_F(CpuCacheRoutineTest, RoutineParseError) {
-  SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
+  mock_context_.fake_meminfo_reader()->SetError(true);
   RunRoutineAndWaitForException();
 }
 
 // Test that the CPU cache routine handles the parsing error.
 TEST_F(CpuCacheRoutineAdapterTest, RoutineParseError) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
-  SetMockMemoryInfo("Incorrectly formatted meminfo contents.\n");
+  mock_context_.fake_meminfo_reader()->SetError(true);
 
   routine_adapter_->Start();
   FlushAdapter();
@@ -202,10 +199,8 @@ TEST_F(CpuCacheRoutineAdapterTest, RoutineParseError) {
 // Test that the CPU cache routine handles when there is less than 628MB memory
 TEST_F(CpuCacheRoutineTest, RoutineNotEnoughMemory) {
   // MemAvailable less than 628 MB.
-  SetMockMemoryInfo(
-      "MemTotal:        3906320 kB\n"
-      "MemFree:         2873180 kB\n"
-      "MemAvailable:    500000 kB\n");
+  mock_context_.fake_meminfo_reader()->SetError(false);
+  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(500000);
   RunRoutineAndWaitForException();
 }
 
@@ -213,10 +208,8 @@ TEST_F(CpuCacheRoutineTest, RoutineNotEnoughMemory) {
 TEST_F(CpuCacheRoutineAdapterTest, RoutineNotEnoughMemory) {
   mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
   // MemAvailable less than 628 MB.
-  SetMockMemoryInfo(
-      "MemTotal:        3906320 kB\n"
-      "MemFree:         2873180 kB\n"
-      "MemAvailable:    500000 kB\n");
+  mock_context_.fake_meminfo_reader()->SetError(false);
+  mock_context_.fake_meminfo_reader()->SetAvailableMemoryKib(500000);
 
   routine_adapter_->Start();
   FlushAdapter();

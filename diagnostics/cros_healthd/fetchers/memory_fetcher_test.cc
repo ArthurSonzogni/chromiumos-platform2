@@ -17,6 +17,7 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/system/fake_meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -27,7 +28,6 @@ namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
 
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
-constexpr char kRelativeMeminfoPath[] = "proc/meminfo";
 constexpr char kRelativeVmStatPath[] = "proc/vmstat";
 constexpr char kRelativeMtkmeDirectoryPath[] = "sys/kernel/mm/mktme";
 constexpr char kRelativeMtkmeActivePath[] = "sys/kernel/mm/mktme/active";
@@ -35,12 +35,6 @@ constexpr char kRelativeMtkmeActiveAlgorithmPath[] =
     "sys/kernel/mm/mktme/active_algo";
 constexpr char kRelativeMtkmeKeyCountPath[] = "sys/kernel/mm/mktme/keycnt";
 constexpr char kRelativeMtkmeKeyLengthPath[] = "sys/kernel/mm/mktme/keylen";
-
-constexpr char kFakeMeminfoContents[] =
-    "MemTotal:      3906320 kB\nMemFree:      873180 kB\nMemAvailable:      "
-    "87980 kB\n";
-constexpr char kFakeMeminfoContentsIncorrectlyFormattedFile[] =
-    "Incorrectly formatted meminfo contents.\n";
 
 constexpr char kFakeVmStatContents[] = "foo 98\npgfault 654654\n";
 constexpr char kFakeVmStatContentsIncorrectlyFormattedFile[] =
@@ -106,8 +100,6 @@ class MemoryFetcherTest : public BaseFileTest {
 
   void CreateMkmteEnviroment() {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
     // Create /sys/kernel/mm/mktme/ directory
     ASSERT_TRUE(base::CreateDirectory(
@@ -132,6 +124,10 @@ class MemoryFetcherTest : public BaseFileTest {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
+  FakeMeminfoReader* fake_meminfo_reader() {
+    return mock_context_.fake_meminfo_reader();
+  }
+
   mojom::MemoryResultPtr FetchMemoryInfoSync() {
     base::test::TestFuture<mojom::MemoryResultPtr> future;
     FetchMemoryInfo(&mock_context_, future.GetCallback());
@@ -146,8 +142,11 @@ class MemoryFetcherTest : public BaseFileTest {
 
 // Test that memory info can be read when it exists.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
+  fake_meminfo_reader()->SetError(false);
+  fake_meminfo_reader()->SetTotalMemoryKib(3906320);
+  fake_meminfo_reader()->SetFreeMemoryKib(873180);
+  fake_meminfo_reader()->SetAvailableMemoryKib(87980);
+
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
 
@@ -163,9 +162,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
 // Test that fetching memory info returns an error when /proc/meminfo is
 // formatted incorrectly.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath),
-      kFakeMeminfoContentsIncorrectlyFormattedFile));
+  fake_meminfo_reader()->SetError(true);
 
   auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
@@ -176,9 +173,6 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
 // Test that fetching memory info returns an error when /proc/vmstat doesn't
 // exist.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcVmStat) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
-
   auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
@@ -187,8 +181,6 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcVmStat) {
 // Test that fetching memory info returns an error when /proc/vmstat is
 // formatted incorrectly.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatFormattedIncorrectly) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath),
       kFakeVmStatContentsIncorrectlyFormattedFile));
@@ -201,8 +193,6 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatFormattedIncorrectly) {
 // Test that fetching memory info returns an error when /proc/vmstat doesn't
 // contain the pgfault key.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatNoPgfault) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(
       WriteFileAndCreateParentDirs(GetRootDir().Append(kRelativeVmStatPath),
                                    kFakeVmStatContentsMissingPgfault));
@@ -217,8 +207,6 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatNoPgfault) {
 TEST_F(MemoryFetcherTest,
        TestFetchMemoryInfoProcVmStatIncorrectlyFormattedPgfault) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath),
       kFakeVmStatContentsIncorrectlyFormattedPgfault));
 
@@ -229,8 +217,6 @@ TEST_F(MemoryFetcherTest,
 
 // Test to handle missing /sys/kernel/mm/mktme directory.
 TEST_F(MemoryFetcherTest, MissingMktmeDirectory) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
 
@@ -299,8 +285,6 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
 
 // Test to verify TME info.
 TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetRootDir().Append(kRelativeMeminfoPath), kFakeMeminfoContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
   ASSERT_TRUE(DeleteFile(GetRootDir().Append(kRelativeProcCpuInfoPath)));

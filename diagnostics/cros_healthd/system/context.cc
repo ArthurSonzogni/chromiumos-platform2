@@ -33,6 +33,7 @@
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
+#include "diagnostics/cros_healthd/system/meminfo_reader.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
@@ -140,6 +141,7 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
   floss_event_hub_ = std::make_unique<FlossEventHub>(
       dbus_bus, bluetooth_manager_proxy_.get(), bluetooth_proxy_.get());
+  meminfo_reader_ = std::make_unique<MeminfoReader>();
   udev_ = brillo::Udev::Create();
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
