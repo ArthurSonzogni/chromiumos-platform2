@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <string>
+#include <unordered_map>
 
 // This include must be after stdint.h
 #include "include/fdmon.h"
@@ -23,7 +24,19 @@ namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {"exec", required_argument, 0, 'e'},
+                                       {"leakcheck", no_argument, 0, 'l'},
                                        {0, 0, 0, 0}};
+
+enum run_modes {
+  RUN_MODE_INVALID,
+  RUN_MODE_STDOUT,
+  RUN_MODE_LEAKCHECK,
+};
+
+static int run_mode = RUN_MODE_STDOUT;
+static std::unordered_map<int32_t, struct fdmon_event*> events;
+
+typedef int (*event_handler_t)(void* ctx, void* data, size_t data_sz);
 
 static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
   std::string libc;
@@ -39,7 +52,7 @@ static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
   return 0;
 }
 
-static int handle_fdmon_event(void* ctx, void* data, size_t data_sz) {
+static int stdout_fdmon_event(void* ctx, void* data, size_t data_sz) {
   struct fdmon_event* event = (struct fdmon_event*)data;
 
   printf("comm: %s pid:%d event: ", event->comm, event->pid);
@@ -63,7 +76,57 @@ static int handle_fdmon_event(void* ctx, void* data, size_t data_sz) {
   return 0;
 }
 
+static int leakcheck_fdmon_event(void* ctx, void* data, size_t data_sz) {
+  struct fdmon_event* event = (struct fdmon_event*)data;
+  struct fdmon_event* ev;
+
+  if (event->nfd < 0)
+    return 0;
+
+  switch (event->type) {
+    case FDMON_EVENT_OPEN:
+    case FDMON_EVENT_DUP:
+      if (events[event->nfd] != NULL) {
+        printf("Missed close() event for fd %d?\n", event->nfd);
+        delete events[event->nfd];
+        events[event->nfd] = NULL;
+      }
+
+      ev = new struct fdmon_event;
+      memcpy(ev, event, sizeof(*ev));
+      events[event->nfd] = ev;
+      break;
+    case FDMON_EVENT_CLOSE:
+      if (events[event->nfd]) {
+        delete events[event->nfd];
+        events[event->nfd] = NULL;
+      }
+      break;
+
+    case FDMON_EVENT_INVALID:
+      printf("INVALID\n");
+      return -EINVAL;
+  }
+
+  return 0;
+}
+
+static void show_leakcheck(void) {
+  if (run_mode != RUN_MODE_LEAKCHECK)
+    return;
+
+  for (auto& e : events) {
+    if (e.second) {
+      struct fdmon_event* ev = e.second;
+
+      printf("still available file-descriptor %d\n", e.first);
+      libmon::decode_ustack(ev->pid, ev->ustack_ents, ev->num_ustack_ents);
+    }
+  }
+}
+
 static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
+  event_handler_t event_handler = stdout_fdmon_event;
   struct ring_buffer* rb = NULL;
   struct fdmon_bpf* mon;
   int err;
@@ -88,8 +151,10 @@ static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
   if (err)
     goto cleanup;
 
-  rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), handle_fdmon_event, NULL,
-                        NULL);
+  if (run_mode == RUN_MODE_LEAKCHECK)
+    event_handler = leakcheck_fdmon_event;
+
+  rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), event_handler, NULL, NULL);
   if (!rb) {
     fprintf(stderr, "Failed to open ring buffer\n");
     err = -EINVAL;
@@ -124,6 +189,8 @@ static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
       break;
   } while (1);
 
+  show_leakcheck();
+
 cleanup:
   printf("fdmon status: %d\n", err);
   ring_buffer__free(rb);
@@ -142,7 +209,7 @@ int main(int argc, char** argv) {
   while (1) {
     int option_index = 0;
 
-    c = getopt_long(argc, argv, "p:e:", long_options, &option_index);
+    c = getopt_long(argc, argv, "p:e:l", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -154,6 +221,9 @@ int main(int argc, char** argv) {
         break;
       case 'e':
         exec_cmd = optarg;
+        break;
+      case 'l':
+        run_mode = RUN_MODE_LEAKCHECK;
         break;
       default:
         abort();
