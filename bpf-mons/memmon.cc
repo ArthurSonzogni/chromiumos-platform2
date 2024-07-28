@@ -93,7 +93,7 @@ static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
       return -EINVAL;
   }
 
-  libmon::decode_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
+  libmon::show_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
   return 0;
 }
 

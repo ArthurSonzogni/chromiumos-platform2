@@ -149,7 +149,7 @@ static void show_stack_trace(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
   blaze_result_free(res);
 }
 
-void decode_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
+void show_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
   if (pid < 0)
     return;
   if (!num_ents)
@@ -157,7 +157,7 @@ void decode_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
   show_stack_trace(pid, ents, num_ents);
 }
 
-void decode_kstack(uintptr_t* ents, uint32_t num_ents) {
+void show_kstack(uintptr_t* ents, uint32_t num_ents) {
   if (!num_ents)
     return;
   show_stack_trace(0, ents, num_ents);

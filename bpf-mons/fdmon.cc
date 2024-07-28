@@ -72,7 +72,7 @@ static int stdout_fdmon_event(void* ctx, void* data, size_t data_sz) {
       return -EINVAL;
   }
 
-  libmon::decode_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
+  libmon::show_ustack(event->pid, event->ustack_ents, event->num_ustack_ents);
   return 0;
 }
 
@@ -120,7 +120,7 @@ static void show_leakcheck(void) {
       struct fdmon_event* ev = e.second;
 
       printf("still available file-descriptor %d\n", e.first);
-      libmon::decode_ustack(ev->pid, ev->ustack_ents, ev->num_ustack_ents);
+      libmon::show_ustack(ev->pid, ev->ustack_ents, ev->num_ustack_ents);
     }
   }
 }
