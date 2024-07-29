@@ -326,6 +326,17 @@ struct file_path_info {
   uint32_t num_segments;  // Total number of segments collected.
 } __attribute__((aligned(8)));
 
+// Define the structure to hold inode attribute information
+struct inode_attr {
+  mode_t mode;                 // File mode
+  uid_t uid;                   // User ID of the file owner.
+  gid_t gid;                   // Group ID of the file owner.
+  loff_t size;                 // Size of the file in bytes.
+  struct cros_timespec atime;  // Last access time.
+  struct cros_timespec mtime;  // Last modification time.
+  struct cros_timespec ctime;  // Last status change time.
+} __attribute__((aligned(8)));
+
 // File Events Structs
 struct cros_file_image {
   struct file_path_info path_info;  // Contains file path segments and related
@@ -336,8 +347,8 @@ struct cros_file_image {
   ino_t inode;                      // The inode of the file.
   mode_t mode;                      // Mode.
   uint32_t flags;                   // Open Flags
-  uid_t uid;                        // File owner user
-  gid_t gid;                        // File owner group
+  struct inode_attr before_attr;    // Attributes of the file before the change.
+  struct inode_attr after_attr;     // Attributes of the file after the change.
 } __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };

@@ -585,28 +585,48 @@ static inline void print_file_path_info(
  *   - mount namespace ID
  *
  * @param image_info A pointer to the cros_file_image struct to be filled.
- * @param filp       A pointer to the file struct representing the opened file.
+ * @param file A pointer to the file struct representing the opened file.
+ * @param dentry A pointer to the dentry struct representing the directory
+ * entry.
+ * @param before_attr A pointer to the inode attributes before modification.
  */
-static inline __attribute__((always_inline)) void fill_image_info(
-    struct cros_file_image* image_info, struct file* filp) {
-  if (image_info == NULL || filp == NULL) {
+static inline __attribute__((always_inline)) void fill_file_image_info(
+    struct cros_file_image* image_info,
+    struct file* file,
+    struct dentry* dentry,
+    struct inode_attr* before_attr) {
+  if (!image_info || !dentry) {
     return;
   }
-  struct dentry* filp_dentry;
-  struct inode* file_inode;
-  file_inode = BPF_CORE_READ(filp, f_inode);
-  filp_dentry = BPF_CORE_READ(filp, f_path.dentry);
+
+  // Read the inode from the dentry
+  struct inode* inode = BPF_CORE_READ(dentry, d_inode);
 
   // Populate the absolute file path
-  construct_absolute_file_path(filp_dentry, &image_info->path_info);
+  construct_absolute_file_path(dentry, &image_info->path_info);
 
-  image_info->inode = BPF_CORE_READ(file_inode, i_ino);
-  image_info->mode = BPF_CORE_READ(file_inode, i_mode);
-  image_info->uid = BPF_CORE_READ(file_inode, i_uid.val);
-  image_info->gid = BPF_CORE_READ(file_inode, i_gid.val);
-  image_info->device_id = BPF_CORE_READ(file_inode, i_sb, s_dev);
-  image_info->flags = BPF_CORE_READ(filp, f_flags);
-  image_info->mnt_ns = BPF_CORE_READ(filp_dentry, d_sb, s_user_ns, ns.inum);
+  // Fill inode information
+  image_info->inode = BPF_CORE_READ(inode, i_ino);
+  image_info->device_id = BPF_CORE_READ(inode, i_sb, s_dev);
+
+  // Fill file flags if the file is not NULL
+  if (file != NULL) {
+    image_info->flags = BPF_CORE_READ(file, f_flags);
+  }
+
+  // Fill mount namespace ID
+  image_info->mnt_ns = BPF_CORE_READ(dentry, d_sb, s_user_ns, ns.inum);
+
+  // If before_attr is provided, fill the before attributes
+  if (before_attr != NULL) {
+    image_info->before_attr.mode = before_attr->mode;
+    image_info->before_attr.uid = before_attr->uid;
+    image_info->before_attr.gid = before_attr->gid;
+    image_info->before_attr.size = before_attr->size;
+    image_info->before_attr.atime = before_attr->atime;
+    image_info->before_attr.mtime = before_attr->mtime;
+    image_info->before_attr.ctime = before_attr->ctime;
+  }
 }
 
 /**
@@ -672,15 +692,40 @@ static inline __attribute__((always_inline)) bool fill_process_start(
   return false;
 }
 
-// Function to print fields of cros_file_image
+/**
+ * Prints inode attributes with a given prefix.
+ *
+ * @param attr A pointer to the inode_attr structure to print.
+ * @param prefix A prefix string to add to each print statement.
+ */
+static inline __attribute__((always_inline)) void print_inode_attributes(
+    struct inode_attr* attr, const char* prefix) {
+  bpf_printk("%s Mode: %u\n", prefix, attr->mode);
+  bpf_printk("%s UID: %u\n", prefix, attr->uid);
+  bpf_printk("%s GID: %u\n", prefix, attr->gid);
+  bpf_printk("%s Size: %llu\n", prefix, attr->size);
+  bpf_printk("%s Access Time: %llu.%09lu\n", prefix, attr->atime.tv_sec,
+             attr->atime.tv_nsec);
+  bpf_printk("%s Modification Time: %llu.%09lu\n", prefix, attr->mtime.tv_sec,
+             attr->mtime.tv_nsec);
+  bpf_printk("%s Change Time: %llu.%09lu\n", prefix, attr->ctime.tv_sec,
+             attr->ctime.tv_nsec);
+}
+
+/**
+ * Prints the fields of a cros_file_image structure.
+ *
+ * @param file_image A pointer to the cros_file_image struct to print.
+ */
 static inline __attribute__((always_inline)) void print_cros_file_image(
     struct cros_file_image* file_image) {
   print_file_path_info(&file_image->path_info);
   bpf_printk("Mnt_ns: %llu\n", file_image->mnt_ns);
   bpf_printk("Device ID: %llu\n", file_image->device_id);
   bpf_printk("Inode: %llu\n", file_image->inode);
-  bpf_printk("Mode: %u\n", file_image->mode);
   bpf_printk("Flags: %u\n", file_image->flags);
+  print_inode_attributes(&file_image->before_attr, "Before");
+  print_inode_attributes(&file_image->after_attr, "After");
 }
 
 // Function to print fields of cros_namespace_info
@@ -794,12 +839,16 @@ static inline __attribute__((always_inline)) int print_cros_event(
  * @param fmod_type The type of file modification operation.
  * @param cros_file_event_type Event type enum.
  * @param filp       The file pointer associated with the event.
+ * @param dentry The dentry associated with the event.
+ * @param before_attr The inode attributes before modification.
  * @return 0 on success, a negative error code if any step fails.
  */
 static inline __attribute__((always_inline)) int populate_rb(
     enum filemod_type fmod_type,
     enum cros_file_event_type type,
-    struct file* filp) {
+    struct file* filp,
+    struct dentry* dentry,
+    struct inode_attr* before_attr) {
   struct task_struct* task = (struct task_struct*)bpf_get_current_task();
   struct cros_event* event =
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
@@ -817,7 +866,9 @@ static inline __attribute__((always_inline)) int populate_rb(
   fc->has_full_process_info = fill_process_start(&fc->process_info, task);
 
   fill_ns_info(&fc->spawn_namespace, task);
-  fill_image_info(&fc->image_info, filp);
+  fill_file_image_info(&fc->image_info, filp, dentry, before_attr);
+
+  // print_cros_event(event);
 
   bpf_ringbuf_submit(event, 0);
   return 0;
@@ -886,7 +937,7 @@ int BPF_PROG(fexit__filp_close, struct file* filp, fl_owner_t id, int ret) {
   }
 
   // 6. Populate Ring Buffer (if allowed)
-  populate_rb(fmod_type, kFileCloseEvent, filp);
+  populate_rb(fmod_type, kFileCloseEvent, filp, filp_dentry, NULL);
   return 0;
 }
 
@@ -939,7 +990,8 @@ int BPF_PROG(fexit__security_inode_setattr,
   }
 
   // 5. Populate Ring Buffer
-  populate_rb(FMOD_ATTR, kFileAttributeModifyEvent, filp);
+  // TODO(Princy): Fill before attributes.
+  populate_rb(FMOD_ATTR, kFileAttributeModifyEvent, filp, dentry, NULL);
   return 0;
 }
 
