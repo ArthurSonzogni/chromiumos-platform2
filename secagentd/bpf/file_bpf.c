@@ -682,12 +682,19 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
  */
 static inline __attribute__((always_inline)) void fill_ns_info(
     struct cros_namespace_info* ns_info, struct task_struct* t) {
+  // Fill PID namespace ID
   ns_info->pid_ns = BPF_CORE_READ(t, nsproxy, pid_ns_for_children, ns.inum);
+  // Fill Mount namespace ID
   ns_info->mnt_ns = BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
+  // Fill Cgroup namespace ID
   ns_info->cgroup_ns = BPF_CORE_READ(t, nsproxy, cgroup_ns, ns.inum);
+  // Fill IPC namespace ID
   ns_info->ipc_ns = BPF_CORE_READ(t, nsproxy, ipc_ns, ns.inum);
+  // Fill Network namespace ID
   ns_info->net_ns = BPF_CORE_READ(t, nsproxy, net_ns, ns.inum);
+  // Fill User namespace ID
   ns_info->user_ns = BPF_CORE_READ(t, nsproxy, uts_ns, user_ns, ns.inum);
+  // Fill UTS namespace ID
   ns_info->uts_ns = BPF_CORE_READ(t, nsproxy, uts_ns, ns.inum);
 }
 
@@ -704,23 +711,62 @@ static inline __attribute__((always_inline)) void fill_ns_info(
  */
 static inline __attribute__((always_inline)) bool fill_process_start(
     struct cros_process_start* process_start, struct task_struct* t) {
+  // Get the PID from the task_struct
   pid_t pid = BPF_CORE_READ(t, tgid);
+  // Attempt to retrieve process information from the shared map
   struct cros_process_start* process_start_from_exec =
       bpf_map_lookup_elem(&shared_process_info, &pid);
   if (process_start_from_exec != NULL) {
+    // Copy task information from the shared map
     __builtin_memcpy(&process_start->task_info,
                      &process_start_from_exec->task_info,
                      sizeof(process_start->task_info));
+
+    // Copy image information from the shared map
     __builtin_memcpy(&process_start->image_info,
                      &process_start_from_exec->image_info,
                      sizeof(process_start->image_info));
+
+    // Copy namespace information from the shared map
     __builtin_memcpy(&process_start->spawn_namespace,
                      &process_start_from_exec->spawn_namespace,
                      sizeof(process_start->spawn_namespace));
     return true;
   }
+
+  // Fill task information directly from the task_struct
   cros_fill_task_info(&process_start->task_info, t);
   return false;
+}
+
+/**
+ * Prints the properties of a mount_data structure.
+ *
+ * This function prints the source device length and path, destination path
+ * information, mount flags, and mount type of the given mount_data structure.
+ *
+ */
+static inline __attribute__((always_inline)) void print_mount_data(
+    const struct mount_data* data) {
+  // Check for null pointer
+  if (!data) {
+    bpf_printk("Error: mount_data is NULL");
+    return;
+  }
+
+  // Print the source device length and path
+  bpf_printk("Source Device Length: %u", data->src_device_length);
+  bpf_printk("Source Device Path: %s", data->src_device_path);
+
+  // Print the destination path information using the existing helper function
+  bpf_printk("Destination Path Info:");
+  print_file_path_info(&data->dest_path_info);
+
+  // Print the mount flags
+  bpf_printk("Mount Flags: %lu", data->mount_flags);
+
+  // Print the mount type
+  bpf_printk("Mount Type: %s", data->mount_type);
 }
 
 /**
@@ -835,20 +881,30 @@ static inline __attribute__((always_inline)) int print_cros_file_close_event(
   return 0;
 }
 
-// Function to print fields of cros_file_event
+/**
+ * Prints the fields of a cros_file_event structure.
+ *
+ */
 static inline __attribute__((always_inline)) int print_cros_file_event(
     struct cros_file_event* file_event) {
   if (!file_event) {
     return -1;
   }
   bpf_printk("File Event Type: %d\n", file_event->type);
-  if (file_event->type == kFileCloseEvent) {
+  bpf_printk("File Modification Type: %d\n", file_event->mod_type);
+  if (file_event->mod_type != FMOD_MOUNT ||
+      file_event->mod_type != FMOD_UMOUNT) {
     print_cros_file_close_event(&(file_event->data.file_detailed_event));
+  } else {
+    print_mount_data(&(file_event->data.mount_event));
   }
   return 0;
 }
 
-// Function to print fields of cros_event
+/**
+ * Prints the fields of a cros_event structure.
+ *
+ */
 static inline __attribute__((always_inline)) int print_cros_event(
     struct cros_event* event) {
   if (!event) {
@@ -872,12 +928,14 @@ static inline __attribute__((always_inline)) int print_cros_event(
  * Return 0 on success, a negative error code if any step fails.
  */
 static inline __attribute__((always_inline)) int populate_rb(
-    enum filemod_type fmod_type,
+    enum filemod_type mod_type,
     enum cros_file_event_type event_type,
     struct file* file,
     struct dentry* dentry,
     struct inode_attr* before_attr) {
-  struct task_struct* task = (struct task_struct*)bpf_get_current_task();
+  // Get the current task
+  struct task_struct* current_task =
+      (struct task_struct*)bpf_get_current_task();
 
   // Reserve space in the ring buffer for the event
   struct cros_event* event =
@@ -886,16 +944,22 @@ static inline __attribute__((always_inline)) int populate_rb(
     bpf_printk("File Event unable to reserve buffer");
     return -1;
   }
+
+  // Populate the event type and file modification information
   event->type = kFileEvent;
-  event->data.file_event.mod_type = fmod_type;
+  event->data.file_event.mod_type = mod_type;
   event->data.file_event.type = event_type;
 
-  struct cros_file_detailed_event* fc =
+  // Fill file close event data
+  struct cros_file_detailed_event* file_detailed_event =
       &(event->data.file_event.data.file_detailed_event);
-  fc->has_full_process_info = fill_process_start(&fc->process_info, task);
-  fill_ns_info(&fc->spawn_namespace, task);
-  fill_file_image_info(&fc->image_info, file, dentry, before_attr);
+  file_detailed_event->has_full_process_info =
+      fill_process_start(&file_detailed_event->process_info, current_task);
+  fill_ns_info(&file_detailed_event->spawn_namespace, current_task);
+  fill_file_image_info(&file_detailed_event->image_info, file, dentry,
+                       before_attr);
 
+  // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
   return 0;
 }
@@ -953,7 +1017,7 @@ should_track_file_attribute_change(unsigned int ia_valid) {
 /**
  * Check if inode attributes have actually changed.
  * @before_attr: The attributes of the inode before the change
- * @attr: The new attributes to set
+ * @new_iattr: The new attributes to set
  *
  * This function compares the before and after attributes of an inode to
  * determine if any significant changes have occurred.
@@ -1334,5 +1398,128 @@ int BPF_PROG(fexit__security_inode_unlink,
   }
 
   // Always return 0 to indicate success
+  return 0;
+}
+
+/**
+ * security_sb_mount() - Check permission for mounting a filesystem
+ *
+ * Check permission before an object specified by @dev_name is mounted on the
+ * mount point named by @nd.  For an ordinary mount, @dev_name identifies a
+ * device if the file system type requires a device.  For a remount
+ * (@flags & MS_REMOUNT), @dev_name is irrelevant.  For a loopback/bind mount
+ * (@flags & MS_BIND), @dev_name identifies the pathname of the object being
+ * mounted.
+ *
+ * Return: Returns 0 if permission is granted.
+ */
+
+SEC("fexit/security_sb_mount")
+int BPF_PROG(fexit__security_sb_mount,
+             const char* dev_name,
+             struct path* path,
+             const char* mount_type,
+             unsigned long flags,
+             void* data,
+             int ret) {
+  // Check if the syscall was successful
+  if (ret != 0) {
+    return 0;
+  }
+
+  // Reserve space in the ring buffer for the event
+  struct cros_event* event =
+      (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
+  if (!event) {
+    // Unable to reserve buffer space
+    bpf_printk("Error: Unable to reserve ring buffer space");
+    return 0;
+  }
+
+  // Populate the event type and file modification information
+  event->type = kFileEvent;
+  event->data.file_event.mod_type = FMOD_MOUNT;
+  event->data.file_event.type = kFileMountEvent;
+
+  // Initialize umount data structure
+  struct mount_data* mount_data = &(event->data.file_event.data.mount_event);
+
+  mount_data->mount_flags = flags;
+
+  if (mount_type) {
+    const char* type_ptr;
+    bpf_core_read(&type_ptr, sizeof(type_ptr), &mount_type);
+    int ret_type = bpf_probe_read_kernel_str(
+        &mount_data->mount_type, sizeof(mount_data->mount_type), type_ptr);
+    if (ret_type < 0) {
+      bpf_printk("Error: Failed to read mount type %d", ret_type);
+    }
+  }
+
+  if (dev_name) {
+    const char* dev_name_ptr;
+    bpf_core_read(&dev_name_ptr, sizeof(dev_name_ptr), &dev_name);
+    mount_data->src_device_length = bpf_probe_read_kernel_str(
+        &mount_data->src_device_path, MAX_PATH_SIZE, dev_name_ptr);
+    if (mount_data->src_device_length < 0) {
+      bpf_printk("Error: Failed to read device name");
+    }
+  }
+
+  construct_absolute_file_path(BPF_CORE_READ(path, dentry),
+                               &mount_data->dest_path_info);
+
+  // Submit the event to the ring buffer
+  bpf_ringbuf_submit(event, 0);
+  return 0;
+}
+
+/**
+ * @brief BPF program to handle the exit of the umount syscall.
+ *
+ * This function captures unmount operations and submits relevant information
+ * to the ring buffer for user-space processing. It extracts the destination
+ * path information and flags from the syscall parameters.
+ */
+SEC("fexit/security_sb_umount")
+int BPF_PROG(fexit__security_sb_umount,
+             struct vfsmount* mnt,
+             int flags,
+             int ret) {
+  // Check if the syscall was successful
+  if (ret != 0) {
+    return 0;
+  }
+
+  // Reserve space in the ring buffer for the event
+  struct cros_event* event =
+      (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
+  if (!event) {
+    // Unable to reserve buffer space
+    bpf_printk("Error: Unable to reserve ring buffer space");
+    return 0;
+  }
+
+  // Populate the event type and file modification information
+  event->type = kFileEvent;
+  event->data.file_event.mod_type = FMOD_UMOUNT;
+  event->data.file_event.type = kFileMountEvent;
+
+  // Initialize umount data structure
+  struct mount_data* umount_data = &(event->data.file_event.data.mount_event);
+  umount_data->mount_flags = flags;
+
+  // Read the root directory entry (dentry) of the mount
+  struct dentry* root_dentry = BPF_CORE_READ(mnt, mnt_root);
+  if (root_dentry) {
+    // Populate the destination path information
+    construct_absolute_file_path(root_dentry, &umount_data->dest_path_info);
+  } else {
+    bpf_printk("Error: Failed to read root dentry");
+  }
+
+  // Submit the event to the ring buffer
+  bpf_ringbuf_submit(event, 0);
+
   return 0;
 }

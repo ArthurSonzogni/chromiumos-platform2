@@ -245,8 +245,8 @@ struct cros_network_5_tuple {
  * file_monitoring_mode`) for allowlisted files and directories.
  */
 struct inode_dev_map_key {
-  ino_t inode_id;
-  dev_t dev_id;
+  ino_t inode_id;  // Inode ID of the file or directory.
+  dev_t dev_id;    // Device ID where the file or directory resides.
 } __attribute__((aligned(8)));
 
 /* The design idea behind the flow_map is that the BPF will be responsible for
@@ -326,6 +326,17 @@ struct file_path_info {
   uint32_t num_segments;  // Total number of segments collected.
 } __attribute__((aligned(8)));
 
+// Structure to hold mount/umount data information.
+struct mount_data {
+  uint32_t src_device_length;           // Length of the source device path.
+  char src_device_path[MAX_PATH_SIZE];  // Source device path.
+  struct file_path_info
+      dest_path_info;  // Destination path segment information.
+
+  uint64_t mount_flags;  // Flags associated with the mount operation.
+  char mount_type[256];  // Type of mount (e.g., filesystem type).
+} __attribute__((aligned(8)));
+
 // Define the structure to hold inode attribute information
 struct inode_attr {
   mode_t mode;                 // File mode
@@ -358,6 +369,7 @@ enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };
 enum cros_file_event_type {
   kFileCloseEvent,
   kFileAttributeModifyEvent,
+  kFileMountEvent
 };
 
 // Structure to hold detailed file event information.
@@ -368,12 +380,14 @@ struct cros_file_detailed_event {
   bool has_full_process_info;
 } __attribute__((aligned(8)));
 
+// Enumerates different types of file modifications.
 enum filemod_type {
-  FMOD_READ_ONLY_OPEN,   // File opens for reads
-  FMOD_READ_WRITE_OPEN,  // File opens for writes
-  FMOD_LINK,  // Hard Link Created TODO(princya): Might not be needed, if we
-              // update the map when new hard link is created
-  FMOD_ATTR,  // File Attribute change
+  FMOD_READ_ONLY_OPEN,   // File opens for read-only access.
+  FMOD_READ_WRITE_OPEN,  // File opens for read-write access.
+  FMOD_LINK,             // Hard link created.
+  FMOD_ATTR,             // File attribute change.
+  FMOD_MOUNT,            // Mount operation.
+  FMOD_UMOUNT            // Unmount operation.
 };
 
 // Contains information needed to report process security
@@ -385,8 +399,12 @@ struct cros_file_event {
                                    // open, read-write open, mount, unmount).
 
   union {
-    struct cros_file_detailed_event file_detailed_event;
-  } data;
+    struct cros_file_detailed_event
+        file_detailed_event;  // Detailed information for regular file events.
+    struct mount_data
+        mount_event;  // Event data specific to mount/umount operations.
+  } data;  // Union to hold either detailed file event data or mount/unmount
+           // event data.
 } __attribute__((aligned(8)));
 
 // The security event structure that contains security event information
