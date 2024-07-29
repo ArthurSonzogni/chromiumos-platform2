@@ -126,12 +126,10 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_TRUE(connection_diagnostics_.running());
   }
 
-  void ExpectPingDNSServersStartSuccess() {
-    ExpectPingDNSSeversStart(true, "");
-  }
+  void ExpectPingDNSServersStartSuccess() { ExpectPingDNSSeversStart(true); }
 
   void ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed() {
-    ExpectPingDNSSeversStart(false, ConnectionDiagnostics::kIssueInternalError);
+    ExpectPingDNSSeversStart(false);
   }
 
   void ExpectPingDNSServersEndSuccessRetriesLeft() {
@@ -214,21 +212,8 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
  private:
-  // |expected_issue| only used if |is_success| is false.
-  void ExpectPingDNSSeversStart(bool is_success,
-                                const std::string& expected_issue) {
-    if (!is_success &&
-        // If the DNS server addresses are invalid, we will not even attempt to
-        // start any ICMP sessions.
-        expected_issue == ConnectionDiagnostics::kIssueDNSServersInvalid) {
-      connection_diagnostics_.dns_list_ = {};
-    } else {
-      // We are either instrumenting the success case (started pinging all
-      // DNS servers successfully) or the failure case where we fail to start
-      // any pings.
-      ASSERT_TRUE(is_success ||
-                  expected_issue == ConnectionDiagnostics::kIssueInternalError);
-
+  void ExpectPingDNSSeversStart(bool is_success) {
+    if (is_success) {
       auto dns_server_icmp_session_0 =
           std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
       auto dns_server_icmp_session_1 =

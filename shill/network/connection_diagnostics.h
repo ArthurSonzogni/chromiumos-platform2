@@ -96,28 +96,6 @@ class ConnectionDiagnostics {
     std::string message;
   };
 
-  // TODO(b/229309479) Remove obsolete descriptions.
-  // Metrics::NotifyConnectionDiagnosticsIssue depends on these kIssue strings.
-  // Any changes to these strings should be synced with that Metrics function.
-  static const char kIssueIPCollision[];
-  static const char kIssueRouting[];
-  static const char kIssueHTTP[];
-  static const char kIssueDNSServerMisconfig[];
-  static const char kIssueDNSServerNoResponse[];
-  static const char kIssueNoDNSServersConfigured[];
-  static const char kIssueDNSServersInvalid[];
-  static const char kIssueNone[];
-  static const char kIssueGatewayUpstream[];
-  static const char kIssueGatewayNotResponding[];
-  static const char kIssueServerNotResponding[];
-  static const char kIssueGatewayArpFailed[];
-  static const char kIssueServerArpFailed[];
-  static const char kIssueInternalError[];
-  static const char kIssueGatewayNoNeighborEntry[];
-  static const char kIssueServerNoNeighborEntry[];
-  static const char kIssueGatewayNeighborEntryNotConnected[];
-  static const char kIssueServerNeighborEntryNotConnected[];
-
   ConnectionDiagnostics(std::string_view iface_name,
                         int iface_index,
                         const net_base::IPAddress& ip_address,
@@ -150,9 +128,6 @@ class ConnectionDiagnostics {
                 Phase phase,
                 Result result,
                 const std::string& message = "");
-
-  // Logs all ConnectionDiagnostics events and then stop connection diagnostics.
-  void ReportResultAndStop(const std::string& issue);
 
   // Attempts to resolve the IP address of the hostname of |target_url_| using
   // |dns_list|.
