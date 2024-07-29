@@ -32,9 +32,12 @@ enum run_modes {
   RUN_MODE_INVALID,
   RUN_MODE_STDOUT,
   RUN_MODE_PERFETTO,
+  RUN_MODE_LEAKCHECK,
 };
 
 static int run_mode = RUN_MODE_STDOUT;
+static std::unordered_map<uint64_t, struct memmon_event*> events;
+
 typedef int (*event_handler_t)(void* ctx, void* data, size_t data_sz);
 
 static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
@@ -135,6 +138,60 @@ static int stdout_memmon_event(void* ctx, void* data, size_t data_sz) {
   return 0;
 }
 
+static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
+  struct memmon_event* event = (struct memmon_event*)data;
+  struct memmon_event* ev;
+
+  if (event->ptr == 0x00)
+    return 0;
+
+  switch (event->type) {
+    case MEMMON_EVENT_MALLOC:
+    case MEMMON_EVENT_MMAP:
+    case MEMMON_EVENT_STRDUP:
+    case MEMMON_EVENT_CALLOC:
+    case MEMMON_EVENT_MEMALIGN:
+      if (events[event->ptr] != NULL) {
+        printf("Missed free event for ptr %p?\n",
+               reinterpret_cast<void*>(event->ptr));
+        delete events[event->ptr];
+        events[event->ptr] = NULL;
+      }
+
+      ev = new struct memmon_event;
+      memcpy(ev, event, sizeof(*ev));
+      events[event->ptr] = ev;
+      break;
+    case MEMMON_EVENT_FREE:
+    case MEMMON_EVENT_MUNMAP:
+      if (events[event->ptr]) {
+        delete events[event->ptr];
+        events[event->ptr] = NULL;
+      }
+      break;
+
+    case MEMMON_EVENT_INVALID:
+      printf("INVALID\n");
+      return -EINVAL;
+  }
+
+  return 0;
+}
+
+static void show_leakcheck(void) {
+  if (run_mode != RUN_MODE_LEAKCHECK)
+    return;
+
+  for (auto& e : events) {
+    if (e.second) {
+      struct memmon_event* ev = e.second;
+
+      printf("still available memory %p\n", reinterpret_cast<void*>(e.first));
+      libmon::show_ustack(ev->pid, ev->ustack_ents, ev->num_ustack_ents);
+    }
+  }
+}
+
 static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   event_handler_t event_handler = stdout_memmon_event;
   struct ring_buffer* rb = NULL;
@@ -166,6 +223,9 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
     event_handler = perfetto_memmon_event;
     memmon_tracing_init();
   }
+
+  if (run_mode == RUN_MODE_LEAKCHECK)
+    event_handler = leakcheck_memmon_event;
 
   rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), event_handler, NULL, NULL);
   if (!rb) {
@@ -201,6 +261,8 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
     if (libmon::target_terminated())
       break;
   } while (1);
+
+  show_leakcheck();
 
 cleanup:
   printf("memmon status: %d\n", err);
@@ -238,6 +300,8 @@ int main(int argc, char** argv) {
           run_mode = RUN_MODE_PERFETTO;
         } else if (!strcmp(optarg, "stdout")) {
           run_mode = RUN_MODE_STDOUT;
+        } else if (!strcmp(optarg, "leakcheck")) {
+          run_mode = RUN_MODE_LEAKCHECK;
         } else {
           printf("Invalid run mode: %s\n", optarg);
           return -EINVAL;
