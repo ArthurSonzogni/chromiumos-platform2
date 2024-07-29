@@ -648,6 +648,17 @@ event --help`.
 | available_memory_kib | uint32 | Available memory, in KiB. |
 | page_faults_since_last_boot | uint64 | Number of page faults since the last boot. |
 | memory_encryption_info | [MemoryEncryptionInfo?](#MemoryEncryptionInfo) | Memory Encryption info. |
+| buffers_kib | uint64? | Relatively temporary storage for raw disk blocks, in KiB. |
+| page_cache_kib | uint64? | In-memory cache for files read from the disk, in KiB. |
+| shared_memory_kib | uint64? | Shared memory, used in tmpfs, in KiB. |
+| active_memory_kib | uint64? | More recently used memory, in KiB. |
+| inactive_memory_kib | uint64? | Less recently used memory, in KiB. |
+| total_swap_memory_kib | uint64? | Total swap memory, in KiB. |
+| free_swap_memory_kib | uint64? | Free swap memory, in KiB. |
+| cached_swap_memory_kib | uint64? | The swapped back memory in KiB, but is still in the swap. |
+| total_slab_memory_kib | uint64? | Kernal-used memory, in KiB. |
+| reclaimable_slab_memory_kib | uint64? | Reclaimable slab memory, in KiB. |
+| unreclaimable_slab_memory_kib | uint64? | Unreclaimable slab memory, in KiB. |
 
 ####  Memory Encryption
 

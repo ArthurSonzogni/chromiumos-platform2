@@ -93,6 +93,9 @@ void SetJsonDictValue(std::string_view key,
   } else if constexpr (std::is_same_v<T, std::optional<double>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
+  } else if constexpr (std::is_same_v<T, std::optional<uint64_t>>) {
+    if (value.has_value())
+      SetJsonDictValue(key, value.value(), output);
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableDoublePtr>) {
     if (value)

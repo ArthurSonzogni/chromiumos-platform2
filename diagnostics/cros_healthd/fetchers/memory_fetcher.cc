@@ -324,6 +324,21 @@ void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
   info->available_memory_kib = meminfo.available_memory_kib;
   CheckValueAndLogError("available_memory_kib", meminfo.available_memory_kib);
 
+  info->buffers_kib = meminfo.buffers_kib;
+  info->page_cache_kib = meminfo.page_cache_kib;
+  info->shared_memory_kib = meminfo.shared_memory_kib;
+
+  info->active_memory_kib = meminfo.active_memory_kib;
+  info->inactive_memory_kib = meminfo.inactive_memory_kib;
+
+  info->total_swap_memory_kib = meminfo.total_swap_memory_kib;
+  info->free_swap_memory_kib = meminfo.free_swap_memory_kib;
+  info->cached_swap_memory_kib = meminfo.cached_swap_memory_kib;
+
+  info->total_slab_memory_kib = meminfo.total_slab_memory_kib;
+  info->reclaimable_slab_memory_kib = meminfo.reclaimable_slab_memory_kib;
+  info->unreclaimable_slab_memory_kib = meminfo.unreclaimable_slab_memory_kib;
+
   auto page_faults_result = ParseProcVmStat(root_dir);
   if (!page_faults_result.has_value()) {
     std::move(callback).Run(

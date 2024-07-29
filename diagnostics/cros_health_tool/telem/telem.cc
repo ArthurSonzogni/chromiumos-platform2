@@ -704,10 +704,21 @@ void DisplayMemoryInfo(const mojom::MemoryResultPtr& result) {
   CHECK(!info.is_null());
 
   base::Value::Dict output;
+  SET_DICT(active_memory_kib, info, &output);
   SET_DICT(available_memory_kib, info, &output);
+  SET_DICT(buffers_kib, info, &output);
+  SET_DICT(cached_swap_memory_kib, info, &output);
   SET_DICT(free_memory_kib, info, &output);
+  SET_DICT(free_swap_memory_kib, info, &output);
+  SET_DICT(inactive_memory_kib, info, &output);
+  SET_DICT(page_cache_kib, info, &output);
   SET_DICT(page_faults_since_last_boot, info, &output);
+  SET_DICT(reclaimable_slab_memory_kib, info, &output);
+  SET_DICT(shared_memory_kib, info, &output);
   SET_DICT(total_memory_kib, info, &output);
+  SET_DICT(total_slab_memory_kib, info, &output);
+  SET_DICT(total_swap_memory_kib, info, &output);
+  SET_DICT(unreclaimable_slab_memory_kib, info, &output);
 
   const auto& memory_encryption_info = info->memory_encryption_info;
   if (memory_encryption_info) {

@@ -143,9 +143,24 @@ class MemoryFetcherTest : public BaseFileTest {
 // Test that memory info can be read when it exists.
 TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   fake_meminfo_reader()->SetError(false);
-  fake_meminfo_reader()->SetTotalMemoryKib(3906320);
-  fake_meminfo_reader()->SetFreeMemoryKib(873180);
-  fake_meminfo_reader()->SetAvailableMemoryKib(87980);
+  fake_meminfo_reader()->SetTotalMemoryKib(8000424);
+  fake_meminfo_reader()->SetFreeMemoryKib(4544564);
+  fake_meminfo_reader()->SetAvailableMemoryKib(5569176);
+
+  fake_meminfo_reader()->SetBuffersKib(166684);
+  fake_meminfo_reader()->SetPageCacheKib(1455512);
+  fake_meminfo_reader()->SetSharedMemoryKib(283464);
+
+  fake_meminfo_reader()->SetActiveMemoryKib(1718544);
+  fake_meminfo_reader()->SetInactiveMemoryKib(970260);
+
+  fake_meminfo_reader()->SetTotalSwapMemoryKib(16000844);
+  fake_meminfo_reader()->SetFreeSwapMemoryKib(16000422);
+  fake_meminfo_reader()->SetcachedSwapMemoryKib(132);
+
+  fake_meminfo_reader()->SetTotalSlabMemoryKib(317140);
+  fake_meminfo_reader()->SetReclaimableSlabMemoryKib(194160);
+  fake_meminfo_reader()->SetUnreclaimableSlabMemoryKib(122980);
 
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetRootDir().Append(kRelativeVmStatPath), kFakeVmStatContents));
@@ -153,9 +168,25 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoWithoutMemoryEncryption) {
   auto result = FetchMemoryInfoSync();
   ASSERT_TRUE(result->is_memory_info());
   const auto& info = result->get_memory_info();
-  EXPECT_EQ(info->total_memory_kib, 3906320);
-  EXPECT_EQ(info->free_memory_kib, 873180);
-  EXPECT_EQ(info->available_memory_kib, 87980);
+  EXPECT_EQ(info->total_memory_kib, 8000424);
+  EXPECT_EQ(info->free_memory_kib, 4544564);
+  EXPECT_EQ(info->available_memory_kib, 5569176);
+
+  EXPECT_EQ(info->buffers_kib, 166684);
+  EXPECT_EQ(info->page_cache_kib, 1455512);
+  EXPECT_EQ(info->shared_memory_kib, 283464);
+
+  EXPECT_EQ(info->active_memory_kib, 1718544);
+  EXPECT_EQ(info->inactive_memory_kib, 970260);
+
+  EXPECT_EQ(info->total_swap_memory_kib, 16000844);
+  EXPECT_EQ(info->free_swap_memory_kib, 16000422);
+  EXPECT_EQ(info->cached_swap_memory_kib, 132);
+
+  EXPECT_EQ(info->total_slab_memory_kib, 317140);
+  EXPECT_EQ(info->reclaimable_slab_memory_kib, 194160);
+  EXPECT_EQ(info->unreclaimable_slab_memory_kib, 122980);
+
   EXPECT_EQ(info->page_faults_since_last_boot, 654654);
 }
 
