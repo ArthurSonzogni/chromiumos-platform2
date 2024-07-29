@@ -60,70 +60,6 @@ const std::vector<base::TimeDelta> kEmptyResult;
 const std::vector<base::TimeDelta> kNonEmptyResult{base::Milliseconds(10)};
 }  // namespace
 
-MATCHER_P(IsEventList, expected_events, "") {
-  // Match on type, phase, and result, but not message.
-  if (arg.size() != expected_events.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < expected_events.size(); ++i) {
-    if (expected_events[i].type != arg[i].type ||
-        expected_events[i].phase != arg[i].phase ||
-        expected_events[i].result != arg[i].result) {
-      *result_listener << "\n=== Mismatch found on expected event index " << i
-                       << " ===";
-      *result_listener << "\nExpected: "
-                       << ConnectionDiagnostics::EventToString(
-                              expected_events[i]);
-      *result_listener << "\n  Actual: "
-                       << ConnectionDiagnostics::EventToString(arg[i]);
-      *result_listener << "\nExpected connection diagnostics events:";
-      for (const auto& expected_event : expected_events) {
-        *result_listener << "\n"
-                         << ConnectionDiagnostics::EventToString(
-                                expected_event);
-      }
-      *result_listener << "\nActual connection diagnostics events:";
-      for (const auto& actual_event : expected_events) {
-        *result_listener << "\n"
-                         << ConnectionDiagnostics::EventToString(actual_event);
-      }
-      return false;
-    }
-  }
-  return true;
-}
-
-MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
-  if (local_ip.Equals(arg.local_ip_address()) &&
-      remote_ip.Equals(arg.remote_ip_address()) &&
-      local_mac.Equals(arg.local_mac_address()) &&
-      remote_mac.Equals(arg.remote_mac_address())) {
-    return true;
-  }
-
-  if (!local_ip.Equals(arg.local_ip_address())) {
-    *result_listener << "Device IP '" << arg.local_ip_address().ToString()
-                     << "' (expected '" << local_ip.ToString() << "').";
-  }
-
-  if (!remote_ip.Equals(arg.remote_ip_address())) {
-    *result_listener << "Remote IP '" << arg.remote_ip_address().ToString()
-                     << "' (expected '" << remote_ip.ToString() << "').";
-  }
-
-  if (!local_mac.Equals(arg.local_mac_address())) {
-    *result_listener << "Device MAC '" << arg.local_mac_address().HexEncode()
-                     << "' (expected " << local_mac.HexEncode() << ")'.";
-  }
-
-  if (!remote_mac.Equals(arg.remote_mac_address())) {
-    *result_listener << "Remote MAC '" << arg.remote_mac_address().HexEncode()
-                     << "' (expected " << remote_mac.HexEncode() << ")'.";
-  }
-
-  return false;
-}
-
 class ConnectionDiagnosticsTest : public Test {
  public:
   ConnectionDiagnosticsTest()
@@ -134,8 +70,7 @@ class ConnectionDiagnosticsTest : public Test {
                                 kIPv4DeviceAddress,
                                 kIPv4GatewayAddress,
                                 {kIPv4DNSServer0, kIPv4DNSServer1},
-                                &dispatcher_,
-                                callback_target_.result_callback()) {}
+                                &dispatcher_) {}
 
   ~ConnectionDiagnosticsTest() override = default;
 
@@ -156,24 +91,6 @@ class ConnectionDiagnosticsTest : public Test {
   void TearDown() override {}
 
  protected:
-  class CallbackTarget {
-   public:
-    CallbackTarget() = default;
-
-    MOCK_METHOD(void,
-                ResultCallback,
-                (const std::string&,
-                 const std::vector<ConnectionDiagnostics::Event>&));
-
-    base::OnceCallback<void(const std::string&,
-                            const std::vector<ConnectionDiagnostics::Event>&)>
-    result_callback() {
-      return base::BindOnce(&CallbackTarget::ResultCallback,
-                            base::Unretained(this));
-    }
-  };
-
-  CallbackTarget& callback_target() { return callback_target_; }
   net_base::IPAddress gateway() { return gateway_; }
 
   void UseIPv6() {
@@ -182,13 +99,6 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.ip_address_ = kIPv6DeviceAddress;
     connection_diagnostics_.gateway_ = kIPv6GatewayAddress;
     connection_diagnostics_.dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
-  }
-
-  void AddExpectedEvent(ConnectionDiagnostics::Type type,
-                        ConnectionDiagnostics::Phase phase,
-                        ConnectionDiagnostics::Result result) {
-    expected_events_.push_back(
-        ConnectionDiagnostics::Event(type, phase, result, ""));
   }
 
   void AddActualEvent(ConnectionDiagnostics::Type type,
@@ -248,9 +158,6 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectPingDNSServersEndFailure() {
-    AddExpectedEvent(ConnectionDiagnostics::kTypePingDNSServers,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultFailure);
     // Post task to find DNS server route only after all (i.e. 2) pings are
     // done.
     connection_diagnostics_.OnPingDNSServerComplete(0, kEmptyResult);
@@ -259,9 +166,6 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectResolveTargetServerIPAddressStartSuccess() {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                     ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultSuccess);
     std::vector<std::string> pingable_dns_servers;
     for (const auto& dns : dns_list_) {
       pingable_dns_servers.push_back(dns.ToString());
@@ -293,8 +197,6 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectPingHostStartSuccess(ConnectionDiagnostics::Type ping_event_type,
                                   const net_base::IPAddress& address) {
-    AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultSuccess);
     EXPECT_CALL(*icmp_session_,
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(true));
@@ -303,35 +205,20 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectPingHostStartFailure(ConnectionDiagnostics::Type ping_event_type,
                                   const net_base::IPAddress& address) {
-    AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
-                     ConnectionDiagnostics::kResultFailure);
     EXPECT_CALL(*icmp_session_,
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(false));
-    EXPECT_CALL(callback_target(),
-                ResultCallback(ConnectionDiagnostics::kIssueInternalError,
-                               IsEventList(expected_events_)));
     connection_diagnostics_.PingHost(address);
   }
 
   void ExpectPingHostEndSuccess(ConnectionDiagnostics::Type ping_event_type,
                                 const net_base::IPAddress& address) {
-    AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultSuccess);
-    const auto& issue =
-        ping_event_type == ConnectionDiagnostics::kTypePingGateway
-            ? ConnectionDiagnostics::kIssueGatewayUpstream
-            : ConnectionDiagnostics::kIssueHTTP;
-    EXPECT_CALL(callback_target(),
-                ResultCallback(issue, IsEventList(expected_events_)));
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
                                                kNonEmptyResult);
   }
 
   void ExpectPingHostEndFailure(ConnectionDiagnostics::Type ping_event_type,
                                 const net_base::IPAddress& address) {
-    AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultFailure);
     // If the ping destination was not the gateway, the next action is to try
     // to ping the gateway.
     if (ping_event_type == ConnectionDiagnostics::kTypePingTargetServer) {
@@ -345,10 +232,6 @@ class ConnectionDiagnosticsTest : public Test {
   // |expected_issue| only used if |is_success| is false.
   void ExpectPingDNSSeversStart(bool is_success,
                                 const std::string& expected_issue) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypePingDNSServers,
-                     ConnectionDiagnostics::kPhaseStart,
-                     is_success ? ConnectionDiagnostics::kResultSuccess
-                                : ConnectionDiagnostics::kResultFailure);
     if (!is_success &&
         // If the DNS server addresses are invalid, we will not even attempt to
         // start any ICMP sessions.
@@ -380,13 +263,6 @@ class ConnectionDiagnosticsTest : public Test {
           std::move(dns_server_icmp_session_1);
     }
 
-    if (is_success) {
-      EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
-    } else {
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(expected_issue, IsEventList(expected_events_)));
-    }
     connection_diagnostics_.PingDNSServers();
     if (is_success) {
       EXPECT_EQ(2, connection_diagnostics_
@@ -400,8 +276,6 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectResolveTargetServerIPAddressEnd(
       ConnectionDiagnostics::Result result,
       const net_base::IPAddress& resolved_address) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                     ConnectionDiagnostics::kPhaseEnd, result);
     Error error;
     if (result == ConnectionDiagnostics::kResultSuccess) {
       error.Populate(Error::kSuccess);
@@ -411,10 +285,6 @@ class ConnectionDiagnosticsTest : public Test {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else {
       error.Populate(Error::kOperationFailed);
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
-                         IsEventList(expected_events_)));
     }
     if (error.IsSuccess()) {
       connection_diagnostics_.OnDNSResolutionComplete(resolved_address);
@@ -424,9 +294,6 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void ExpectPingDNSServersEndSuccess(bool retries_left) {
-    AddExpectedEvent(ConnectionDiagnostics::kTypePingDNSServers,
-                     ConnectionDiagnostics::kPhaseEnd,
-                     ConnectionDiagnostics::kResultSuccess);
     if (retries_left) {
       EXPECT_LT(connection_diagnostics_.num_dns_attempts_,
                 ConnectionDiagnostics::kMaxDNSRetries);
@@ -438,21 +305,15 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
     if (retries_left) {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-      EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
     } else {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
           .Times(0);
-      EXPECT_CALL(
-          callback_target(),
-          ResultCallback(ConnectionDiagnostics::kIssueDNSServerNoResponse,
-                         IsEventList(expected_events_)));
     }
     connection_diagnostics_.OnPingDNSServerComplete(1, kNonEmptyResult);
   }
 
   net_base::IPAddress gateway_;
   std::vector<net_base::IPAddress> dns_list_;
-  CallbackTarget callback_target_;
   ConnectionDiagnostics connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
 
@@ -460,10 +321,6 @@ class ConnectionDiagnosticsTest : public Test {
   // |connection_diagnostics_|.
   NiceMock<MockDnsClient>* dns_client_;
   NiceMock<MockIcmpSession>* icmp_session_;
-
-  // For each test, all events we expect to appear in the final result are
-  // accumulated in this vector.
-  std::vector<ConnectionDiagnostics::Event> expected_events_;
 };
 
 TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {

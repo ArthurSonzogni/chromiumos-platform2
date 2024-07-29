@@ -38,8 +38,7 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
                const net_base::IPAddress& ip_address,
                const net_base::IPAddress& gateway,
                const std::vector<net_base::IPAddress>& dns_list,
-               EventDispatcher* dispatcher,
-               ConnectionDiagnostics::ResultCallback result_callback),
+               EventDispatcher* dispatcher),
               (override));
 };
 

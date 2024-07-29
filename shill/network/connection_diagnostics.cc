@@ -105,8 +105,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     const net_base::IPAddress& ip_address,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
-    EventDispatcher* dispatcher,
-    ResultCallback result_callback)
+    EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
       iface_name_(iface_name),
       iface_index_(iface_index),
@@ -116,7 +115,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       icmp_session_(new IcmpSession(dispatcher_)),
       num_dns_attempts_(0),
       running_(false),
-      result_callback_(std::move(result_callback)),
       weak_ptr_factory_(this) {
   dns_client_ = std::make_unique<DnsClient>(
       ip_address_.GetFamily(), iface_name, DnsClient::kDnsTimeout, dispatcher_,
@@ -187,9 +185,6 @@ void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
               << EventToString(diagnostic_events_[i]);
   }
   LOG(INFO) << iface_name_ << ": Connection diagnostics result: " << issue;
-  if (!result_callback_.is_null()) {
-    std::move(result_callback_).Run(issue, diagnostic_events_);
-  }
   Stop();
 }
 
@@ -435,11 +430,9 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     const net_base::IPAddress& ip_address,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
-    EventDispatcher* dispatcher,
-    ConnectionDiagnostics::ResultCallback result_callback) {
+    EventDispatcher* dispatcher) {
   return std::make_unique<ConnectionDiagnostics>(
-      iface_name, iface_index, ip_address, gateway, dns_list, dispatcher,
-      std::move(result_callback));
+      iface_name, iface_index, ip_address, gateway, dns_list, dispatcher);
 }
 
 }  // namespace shill

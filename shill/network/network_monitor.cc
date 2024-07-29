@@ -359,7 +359,7 @@ void NetworkMonitor::StartConnectionDiagnostics() {
 
   connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, *local_address, *gateway_address,
-      config.dns_servers, dispatcher_, base::DoNothing());
+      config.dns_servers, dispatcher_);
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << " " << __func__

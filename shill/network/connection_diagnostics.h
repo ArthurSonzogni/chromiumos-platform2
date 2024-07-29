@@ -96,12 +96,6 @@ class ConnectionDiagnostics {
     std::string message;
   };
 
-  // The result of the diagnostics is a string describing the connection issue
-  // detected (if any), and list of events (e.g. routing table
-  // lookup, DNS resolution) performed during the diagnostics.
-  using ResultCallback =
-      base::OnceCallback<void(const std::string&, const std::vector<Event>&)>;
-
   // TODO(b/229309479) Remove obsolete descriptions.
   // Metrics::NotifyConnectionDiagnosticsIssue depends on these kIssue strings.
   // Any changes to these strings should be synced with that Metrics function.
@@ -129,8 +123,7 @@ class ConnectionDiagnostics {
                         const net_base::IPAddress& ip_address,
                         const net_base::IPAddress& gateway,
                         const std::vector<net_base::IPAddress>& dns_list,
-                        EventDispatcher* dispatcher,
-                        ResultCallback result_callback);
+                        EventDispatcher* dispatcher);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
 
@@ -161,9 +154,7 @@ class ConnectionDiagnostics {
                            Result result,
                            const std::string& message);
 
-  // Calls |result_callback_|, then stops connection diagnostics.
-  // |diagnostic_events_| and |issue| are passed as arguments to
-  // |result_callback_| to report the results of the diagnostics.
+  // Logs all ConnectionDiagnostics events and then stop connection diagnostics.
   void ReportResultAndStop(const std::string& issue);
 
   // Attempts to resolve the IP address of the hostname of |target_url_| using
@@ -237,8 +228,6 @@ class ConnectionDiagnostics {
   int num_dns_attempts_;
   bool running_;
 
-  ResultCallback result_callback_;
-
   // Record of all diagnostic events that occurred, sorted in order of
   // occurrence.
   std::vector<Event> diagnostic_events_;
@@ -260,8 +249,7 @@ class ConnectionDiagnosticsFactory {
       const net_base::IPAddress& ip_address,
       const net_base::IPAddress& gateway,
       const std::vector<net_base::IPAddress>& dns_list,
-      EventDispatcher* dispatcher,
-      ConnectionDiagnostics::ResultCallback result_callback);
+      EventDispatcher* dispatcher);
 };
 
 }  // namespace shill
