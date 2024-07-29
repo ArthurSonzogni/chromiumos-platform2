@@ -115,7 +115,7 @@ class char_test : public test {
       data_copy2[i] = data_copy[i];
 
     free(data_copy);
-    free(data_copy2);
+    /* Note that we deliberately "leak" data_copy2 */
   }
 };
 
