@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -26,6 +27,17 @@ constexpr char kRelativeMeminfoPath[] = "proc/meminfo";
 constexpr char kMemTotalName[] = "MemTotal";
 constexpr char kMemFreeName[] = "MemFree";
 constexpr char kMemAvailableName[] = "MemAvailable";
+constexpr char kBuffersName[] = "Buffers";
+constexpr char kCachedName[] = "Cached";
+constexpr char kShmemName[] = "Shmem";
+constexpr char kActiveName[] = "Active";
+constexpr char kInactiveName[] = "Inactive";
+constexpr char kSwapTotalName[] = "SwapTotal";
+constexpr char kSwapFreeName[] = "SwapFree";
+constexpr char kSwapCachedName[] = "SwapCached";
+constexpr char kSlabName[] = "Slab";
+constexpr char kSReclaimableName[] = "SReclaimable";
+constexpr char kSUnreclaimName[] = "SUnreclaim";
 
 bool ParseRow(std::string raw_value, uint64_t* out_value) {
   // Parse each line in /proc/meminfo.
@@ -43,14 +55,18 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
     return std::nullopt;
   }
 
-  // Parse the meminfo contents for MemTotal, MemFree and MemAvailable. Note
+  auto targetMemoryFields = base::MakeFixedFlatSet<std::string_view>(
+      {kMemTotalName, kMemFreeName, kMemAvailableName, kBuffersName,
+       kCachedName, kShmemName, kActiveName, kInactiveName, kSwapTotalName,
+       kSwapFreeName, kSwapCachedName, kSlabName, kSReclaimableName,
+       kSUnreclaimName});
+  // Parse the meminfo contents for items in `targetMemoryFields`. Note
   // that these values are actually reported in KiB from /proc/meminfo, despite
   // claiming to be in kB.
   std::map<std::string_view, uint64_t> memory_map_kib;
   uint64_t out_memory_kib;
   for (const auto& [field_name, value] : pairs) {
-    if (field_name == kMemTotalName || field_name == kMemFreeName ||
-        field_name == kMemAvailableName) {
+    if (targetMemoryFields.contains(field_name)) {
       if (!ParseRow(value, &out_memory_kib)) {
         LOG(ERROR) << "Incorrectly formatted: " << field_name;
         return std::nullopt;
@@ -59,17 +75,29 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
     }
   }
 
-  for (const auto& memory_name :
-       {kMemTotalName, kMemFreeName, kMemAvailableName}) {
+  for (const auto& memory_name : targetMemoryFields) {
     if (!memory_map_kib.contains(memory_name)) {
       LOG(ERROR) << memory_name << " not found in /proc/meminfo";
       return std::nullopt;
     }
   }
 
-  return MemoryInfo{.total_memory_kib = memory_map_kib[kMemTotalName],
-                    .free_memory_kib = memory_map_kib[kMemFreeName],
-                    .available_memory_kib = memory_map_kib[kMemAvailableName]};
+  return MemoryInfo{
+      .total_memory_kib = memory_map_kib[kMemTotalName],
+      .free_memory_kib = memory_map_kib[kMemFreeName],
+      .available_memory_kib = memory_map_kib[kMemAvailableName],
+      .buffers_kib = memory_map_kib[kBuffersName],
+      .page_cache_kib = memory_map_kib[kCachedName],
+      .shared_memory_kib = memory_map_kib[kShmemName],
+      .active_memory_kib = memory_map_kib[kActiveName],
+      .inactive_memory_kib = memory_map_kib[kInactiveName],
+      .total_swap_memory_kib = memory_map_kib[kSwapTotalName],
+      .free_swap_memory_kib = memory_map_kib[kSwapFreeName],
+      .cached_swap_memory_kib = memory_map_kib[kSwapCachedName],
+      .total_slab_memory_kib = memory_map_kib[kSlabName],
+      .reclaimable_slab_memory_kib = memory_map_kib[kSReclaimableName],
+      .unreclaimable_slab_memory_kib = memory_map_kib[kSUnreclaimName],
+  };
 }
 
 }  // namespace
