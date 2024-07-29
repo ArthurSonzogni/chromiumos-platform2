@@ -41,10 +41,12 @@ executable("bpf-memmon") {
   sources = [
     "libmon.cc",
     "memmon.cc",
+    "memmon_tracing.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "blazesym_c" ]
   deps = [ ":bpf_memmon" ]
+  pkg_deps = [ "perfetto" ]
   install_path = "bin"
 }
 

@@ -18,13 +18,24 @@
 #include "include/libmon.h"
 // This include must be after stdint.h
 #include "include/memmon.h"
+#include "include/memmon_tracing.h"
 #include "mons/bpf_skeletons/skeleton_memmon.bpf.h"
 
 namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {"exec", required_argument, 0, 'e'},
+                                       {"output", required_argument, 0, 'o'},
                                        {0, 0, 0, 0}};
+
+enum run_modes {
+  RUN_MODE_INVALID,
+  RUN_MODE_STDOUT,
+  RUN_MODE_PERFETTO,
+};
+
+static int run_mode = RUN_MODE_STDOUT;
+typedef int (*event_handler_t)(void* ctx, void* data, size_t data_sz);
 
 static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
   std::string libc;
@@ -48,7 +59,24 @@ static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
   return 0;
 }
 
-static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
+static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
+  struct memmon_event* event = (struct memmon_event*)data;
+
+  if (event->type == MEMMON_EVENT_MALLOC || event->type == MEMMON_EVENT_MMAP ||
+      event->type == MEMMON_EVENT_STRDUP ||
+      event->type == MEMMON_EVENT_CALLOC ||
+      event->type == MEMMON_EVENT_MEMALIGN) {
+    MEMMON_EVENT_BEGIN("mm", memmon_event_track(event));
+  }
+
+  if (event->type == MEMMON_EVENT_FREE || event->type == MEMMON_EVENT_MUNMAP) {
+    if (event->ptr != 0x00)
+      MEMMON_EVENT_END(memmon_event_track(event));
+  }
+  return 0;
+}
+
+static int stdout_memmon_event(void* ctx, void* data, size_t data_sz) {
   struct memmon_event* event = (struct memmon_event*)data;
 
   printf("comm: %s pid:%d event: ", event->comm, event->pid);
@@ -98,6 +126,7 @@ static int handle_memmon_event(void* ctx, void* data, size_t data_sz) {
 }
 
 static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
+  event_handler_t event_handler = stdout_memmon_event;
   struct ring_buffer* rb = NULL;
   struct memmon_bpf* mon;
   int err;
@@ -123,8 +152,12 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   if (err)
     goto cleanup;
 
-  rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), handle_memmon_event, NULL,
-                        NULL);
+  if (run_mode == RUN_MODE_PERFETTO) {
+    event_handler = perfetto_memmon_event;
+    memmon_tracing_init();
+  }
+
+  rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), event_handler, NULL, NULL);
   if (!rb) {
     fprintf(stderr, "Failed to open ring buffer\n");
     err = -EINVAL;
@@ -177,7 +210,7 @@ int main(int argc, char** argv) {
   while (1) {
     int option_index = 0;
 
-    c = getopt_long(argc, argv, "p:e:", long_options, &option_index);
+    c = getopt_long(argc, argv, "p:e:o:", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -189,6 +222,14 @@ int main(int argc, char** argv) {
         break;
       case 'e':
         exec_cmd = optarg;
+        break;
+      case 'o':
+        if (!strcmp(optarg, "perfetto")) {
+          run_mode = RUN_MODE_PERFETTO;
+        } else {
+          printf("unknown output type: %s\n", optarg);
+          return -EINVAL;
+        }
         break;
       default:
         abort();
