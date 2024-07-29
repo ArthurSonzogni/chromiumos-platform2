@@ -112,7 +112,7 @@ TEST_F(FilePluginTestFixture, TestBPFEventIsAvailable) {
       .data.file_event =
           {
               .type = bpf::cros_file_event_type::kFileCloseEvent,
-              .data.file_close = {},
+              .data.file_detailed_event = {},
           },
       .type = bpf::kFileEvent,
   };

@@ -120,8 +120,7 @@ struct {
 /**
  * Looks up a flag value in the shared BPF map by its unique identifier.
  *
- * @param flag_name The unique identifier (key) of the flag to look up.
- * @return A pointer to the uint64_t value associated with the flag,
+ * Return A pointer to the uint64_t value associated with the flag,
  *         or NULL if the flag is not found in the map.
  */
 static __always_inline uint64_t* lookup_flag_value(uint32_t flag_name) {
@@ -139,9 +138,7 @@ static __always_inline uint64_t* lookup_flag_value(uint32_t flag_name) {
  * file_monitoring_mode`) if found, or NULL if the entry does not exist in the
  * map.
  *
- * @param device_id The device ID (st_dev) of the inode.
- * @param inode_id The inode number (st_ino) of the file or directory.
- * @return Pointer to the monitoring mode if found, or NULL if not found.
+ * Return Pointer to the monitoring mode if found, or NULL if not found.
  */
 static __always_inline enum file_monitoring_mode*
 bpf_map_lookup_allowlisted_hardlinked_inodes(dev_t device_id, ino_t inode_id) {
@@ -160,10 +157,7 @@ bpf_map_lookup_allowlisted_hardlinked_inodes(dev_t device_id, ino_t inode_id) {
  * with the monitoring mode (`monitoring_mode`) for the specified `inode_id` and
  * `dev_id`.
  *
- * @param inode_id The inode number of the file or directory.
- * @param dev_id The device ID of the inode.
- * @param monitoring_mode The monitoring mode to be associated with the inode.
- * @return 0 on success, or a negative error code on failure.
+ * Return 0 on success, or a negative error code on failure.
  */
 static __always_inline int bpf_map_update_allowlisted_hardlinked_inodes(
     ino_t inode_id, dev_t dev_id, enum file_monitoring_mode monitoring_mode) {
@@ -181,10 +175,7 @@ static __always_inline int bpf_map_update_allowlisted_hardlinked_inodes(
  * This function deletes the entry corresponding to the given `inode_id` and
  * `dev_id` from the BPF map `allowlisted_hardlinked_inodes`.
  *
- * @param inode_id The inode number of the file or directory to delete from the
- * map.
- * @param dev_id The device ID of the inode to delete from the map.
- * @return 0 on success, or a negative error code on failure.
+ * Return 0 on success, or a negative error code on failure.
  */
 static __always_inline int bpf_map_delete_allowlisted_hardlinked_inodes(
     ino_t inode_id, dev_t dev_id) {
@@ -205,10 +196,7 @@ static __always_inline int bpf_map_delete_allowlisted_hardlinked_inodes(
  * as the key. It returns a pointer to the monitoring mode (`enum
  * file_monitoring_mode`) if found, or NULL if the entry does not exist in the
  * map.
- *
- * @param device_id The device ID (st_dev) of the inode.
- * @param inode_id The inode number (st_ino) of the directory.
- * @return Pointer to the monitoring mode if found, or NULL if not found.
+ * Return Pointer to the monitoring mode if found, or NULL if not found.
  */
 static __always_inline enum file_monitoring_mode*
 bpf_map_lookup_allowlisted_directory_inodes(dev_t device_id, ino_t inode_id) {
@@ -227,9 +215,6 @@ bpf_map_lookup_allowlisted_directory_inodes(dev_t device_id, ino_t inode_id) {
  * This function checks if the specified device ID is allowlisted for file
  * monitoring and retrieves its associated monitoring settings if found.
  *
- * @param dev_id The device ID to check.
- * @return A pointer to struct device_file_monitoring_settings if the device ID
- * is allowlisted, or NULL if not found in the allowlist.
  */
 static __always_inline struct device_file_monitoring_settings*
 get_device_allowlist_settings(dev_t dev_id) {
@@ -245,10 +230,6 @@ get_device_allowlist_settings(dev_t dev_id) {
  * or socket).
  *   2. Not opened with the O_TMPFILE flag (which indicates an unnamed temporary
  * file).
- *
- * @param file_inode A pointer to the inode structure of the file.
- * @param flags The open flags used to access the file.
- * @return true if the file is considered valid, false otherwise.
  */
 static __always_inline bool is_valid_file(struct inode* file_inode,
                                           uint32_t flags) {
@@ -286,11 +267,6 @@ static __always_inline bool is_valid_file(struct inode* file_inode,
  * FMOD_READ_WRITE_OPEN.
  * - Allows link operations (`fmod_type` is FMOD_LINK).
  *
- * @param file_monitoring_mode The file monitoring mode to check.
- * @param fmod_type            The type of file operation (e.g., read-only,
- * read-write, link).
- * @return true if the file monitoring mode allows the file operation type,
- * false otherwise.
  */
 static __always_inline bool allows_file_operation(
     enum file_monitoring_mode file_monitoring_mode,
@@ -305,17 +281,6 @@ static __always_inline bool allows_file_operation(
  * Helper function to check if the current inode is allowlisted and matches the
  * required file operation mode.
  *
- * @param file_dentry     The dentry of the file to check.
- * @param dev_id          The device ID where the file resides.
- * @param fmod_type       The type of file operation (e.g., read-only,
- *                        read-write, hard link).
- * @param[out] monitoring_mode  Pointer to store the file monitoring mode if the
- *                        file or ancestor is allowlisted. Pass NULL if not
- *                        needed.
- * @param is_directory     Boolean indicating if the dentry is monitored for
- *                         directory lookup.
- * @return true if the inode is allowlisted and matches the file operation mode,
- *         false otherwise.
  */
 static __always_inline bool check_inode_allowlisted(
     struct dentry* file_dentry,
@@ -364,15 +329,6 @@ static __always_inline bool check_inode_allowlisted(
  * directories (including the file itself) are in the appropriate allowlist map
  * and have a matching `file_monitoring_mode`.
  *
- * @param file_dentry Pointer to the dentry of the file whose ancestors need to
- * be checked.
- * @param fmod_type   The type of file modification operation (e.g., read-only,
- *                    read-write, hard link).
- * @param dev_id      The device ID where the file resides.
- * @param monitoring_mode Pointer to store the `file_monitoring_mode` if an
- *                        ancestor is allowlisted.
- * @return true if an allowlisted ancestor with a matching mode is found, false
- *         otherwise.
  */
 static __always_inline bool check_ancestor(
     struct dentry* file_dentry,
@@ -413,15 +369,6 @@ static __always_inline bool check_ancestor(
  *      allowlisted, with the correct `file_monitoring_mode` for the given
  *      `fmod_type`.
  *
- * @param file_dentry     The dentry of the file to check.
- * @param dev_id          The device ID where the file resides.
- * @param fmod_type       The type of file operation (e.g., read-only,
- *                        read-write, hard link).
- * @param[out] monitoring_mode Pointer to store the `file_monitoring_mode` if
- *                            the file or ancestor is allowlisted. Pass NULL if
- * not needed.
- * @return true if the file or any ancestor directory is allowlisted, false
- *         otherwise.
  */
 static __always_inline bool is_dentry_allowlisted(
     struct dentry* file_dentry,
@@ -583,12 +530,6 @@ static inline void print_file_path_info(
  *   - device ID
  *   - file open flags
  *   - mount namespace ID
- *
- * @param image_info A pointer to the cros_file_image struct to be filled.
- * @param file A pointer to the file struct representing the opened file.
- * @param dentry A pointer to the dentry struct representing the directory
- * entry.
- * @param before_attr A pointer to the inode attributes before modification.
  */
 static inline __attribute__((always_inline)) void fill_file_image_info(
     struct cros_file_image* image_info,
@@ -642,9 +583,6 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
  *   - Network namespace
  *   - User namespace
  *   - UTS namespace
- *
- * @param ns_info A pointer to the cros_namespace_info struct to be filled.
- * @param t        A pointer to the task_struct representing the process.
  */
 static inline __attribute__((always_inline)) void fill_ns_info(
     struct cros_namespace_info* ns_info, struct task_struct* t) {
@@ -665,10 +603,7 @@ static inline __attribute__((always_inline)) void fill_ns_info(
  * program during process execution. If the information is not found in the map,
  * it fills the task information directly from the provided `task_struct`.
  *
- * @param process_start A pointer to the cros_process_start structure to be
- * filled.
- * @param t             A pointer to the task_struct representing the process.
- * @return true if the process information was found in the shared map, false
+ * Return true if the process information was found in the shared map, false
  * otherwise.
  */
 static inline __attribute__((always_inline)) bool fill_process_start(
@@ -695,8 +630,6 @@ static inline __attribute__((always_inline)) bool fill_process_start(
 /**
  * Prints inode attributes with a given prefix.
  *
- * @param attr A pointer to the inode_attr structure to print.
- * @param prefix A prefix string to add to each print statement.
  */
 static inline __attribute__((always_inline)) void print_inode_attributes(
     struct inode_attr* attr, const char* prefix) {
@@ -715,7 +648,6 @@ static inline __attribute__((always_inline)) void print_inode_attributes(
 /**
  * Prints the fields of a cros_file_image structure.
  *
- * @param file_image A pointer to the cros_file_image struct to print.
  */
 static inline __attribute__((always_inline)) void print_cros_file_image(
     struct cros_file_image* file_image) {
@@ -778,9 +710,7 @@ static inline __attribute__((always_inline)) int print_cros_image_info(
  *   - Process image information (from cros_image_info)
  *   - Process spawn namespace information (from cros_namespace_info)
  *
- * @param process_start A pointer to the cros_process_start structure containing
- * the event data.
- * @return 0 on success, a negative error code if any of the print functions
+ * Return 0 on success, a negative error code if any of the print functions
  * fail.
  */
 static inline __attribute__((always_inline)) int print_cros_process_start(
@@ -791,13 +721,21 @@ static inline __attribute__((always_inline)) int print_cros_process_start(
   return 0;
 }
 
-// Function to print fields of cros_file_close_event
+/**
+ * Prints the fields of a cros_file_detailed_event structure.
+ *
+ * Return 0 on success, a negative error code if any step fails.
+ */
 static inline __attribute__((always_inline)) int print_cros_file_close_event(
-    struct cros_file_close_event* file_close) {
-  print_cros_process_start(&(file_close->process_info));
-  print_cros_file_image(&(file_close->image_info));
-  print_cros_namespace_info(&(file_close->spawn_namespace));
-  bpf_printk("Has Full Process Info: %d\n", file_close->has_full_process_info);
+    struct cros_file_detailed_event* file_detailed_event) {
+  if (!file_detailed_event) {
+    return -1;
+  }
+  print_cros_process_start(&(file_detailed_event->process_info));
+  print_cros_file_image(&(file_detailed_event->image_info));
+  print_cros_namespace_info(&(file_detailed_event->spawn_namespace));
+  bpf_printk("Has Full Process Info: %d\n",
+             file_detailed_event->has_full_process_info);
   return 0;
 }
 
@@ -810,7 +748,7 @@ static inline __attribute__((always_inline)) int print_cros_file_event(
   bpf_printk("File Event Type: %d\n", file_event->type);
   bpf_printk("File Mod Type: %d\n", file_event->mod_type);
   if (file_event->type == kFileCloseEvent) {
-    print_cros_file_close_event(&(file_event->data.file_close));
+    print_cros_file_close_event(&(file_event->data.file_detailed_event));
   }
   return 0;
 }
@@ -833,40 +771,34 @@ static inline __attribute__((always_inline)) int print_cros_event(
  *
  * This function does the following:
  *   1. Reserves space in the ring buffer for a cros_event.
- *   2. Fills the cros_event with file modification information:
+ *   2. Fills the cros_event with file modification information.
  *   3. Submits the event to the ring buffer.
  *
- * @param fmod_type The type of file modification operation.
- * @param cros_file_event_type Event type enum.
- * @param filp       The file pointer associated with the event.
- * @param dentry The dentry associated with the event.
- * @param before_attr The inode attributes before modification.
- * @return 0 on success, a negative error code if any step fails.
+ * Return 0 on success, a negative error code if any step fails.
  */
 static inline __attribute__((always_inline)) int populate_rb(
     enum filemod_type fmod_type,
-    enum cros_file_event_type type,
-    struct file* filp,
+    enum cros_file_event_type event_type,
+    struct file* file,
     struct dentry* dentry,
     struct inode_attr* before_attr) {
   struct task_struct* task = (struct task_struct*)bpf_get_current_task();
+
   struct cros_event* event =
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
-  if (event == NULL) {
-    bpf_printk("flip_close unable to reserve buffer");
+  if (!event) {
+    bpf_printk("File Event unable to reserve buffer");
     return -1;
   }
   event->type = kFileEvent;
-
   event->data.file_event.mod_type = fmod_type;
-  event->data.file_event.type = type;
+  event->data.file_event.type = event_type;
 
-  struct cros_file_close_event* fc = &(event->data.file_event.data.file_close);
-
+  struct cros_file_detailed_event* fc =
+      &(event->data.file_event.data.file_detailed_event);
   fc->has_full_process_info = fill_process_start(&fc->process_info, task);
-
   fill_ns_info(&fc->spawn_namespace, task);
-  fill_file_image_info(&fc->image_info, filp, dentry, before_attr);
+  fill_file_image_info(&fc->image_info, file, dentry, before_attr);
 
   // print_cros_event(event);
 
@@ -877,47 +809,45 @@ static inline __attribute__((always_inline)) int populate_rb(
 /**
  * BPF program attached to the fexit of the filp_close() kernel function.
  *
- *
- * @param filp  A pointer to the file structure being closed.
- * @param id    The file descriptor lease ID (not used here).
- * @param ret   The return value of the filp_close system call.
- * @return 0 on success (always returns 0 as it's an fexit program).
+ * return_value: Return value of the filp_close system call.
  */
 SEC("fexit/filp_close")
-int BPF_PROG(fexit__filp_close, struct file* filp, fl_owner_t id, int ret) {
-  struct dentry* filp_dentry;
+int BPF_PROG(fexit__filp_close,
+             struct file* file,
+             fl_owner_t owner_id,
+             int return_value) {
+  struct dentry* file_dentry;
   struct inode* file_inode;
 
-  // 1. Check for Successful File Close
-  if (ret != 0) {
-    // unsuccessful filp_close operation
+  // Check for successful file close operation
+  if (return_value != 0) {
     return 0;
   }
 
-  // 2. Filter Out Kernel Threads
+  // Filter out kernel threads
   struct task_struct* t = (struct task_struct*)bpf_get_current_task();
   if (is_kthread(t)) {
     return 0;
   }
 
-  // 3. Check for Valid File Type
-  file_inode = BPF_CORE_READ(filp, f_inode);
-  filp_dentry = BPF_CORE_READ(filp, f_path.dentry);
-  uint32_t flags = BPF_CORE_READ(filp, f_flags);
-  if (!is_valid_file(file_inode, flags)) {
+  // Retrieve the inode and dentry structures from the file
+  file_inode = BPF_CORE_READ(file, f_inode);
+  file_dentry = BPF_CORE_READ(file, f_path.dentry);
+  uint32_t file_flags = BPF_CORE_READ(file, f_flags);
+
+  // Check for valid file type
+  if (!is_valid_file(file_inode, file_flags)) {
     return 0;
   }
 
-  // 4. Determine File Modification Type
-  enum filemod_type fmod_type = FMOD_LINK;
-  uint64_t* o_accmode = lookup_flag_value(O_ACCMODE_FLAG_KEY);
-  uint64_t* o_rdonly = lookup_flag_value(O_RDONLY_FLAG_KEY);
+  // Determine file modification type based on access mode
+  enum filemod_type modification_type = FMOD_READ_WRITE_OPEN;
+  uint64_t* accmode_flag = lookup_flag_value(O_ACCMODE_FLAG_KEY);
+  uint64_t* rdonly_flag = lookup_flag_value(O_RDONLY_FLAG_KEY);
 
-  // Determine if the file was opened in read-only or read-write mode
-  fmod_type = FMOD_READ_WRITE_OPEN;
-  if (o_accmode != NULL && o_rdonly != NULL) {
-    if ((flags & *o_accmode) == *o_rdonly) {
-      fmod_type = FMOD_READ_ONLY_OPEN;
+  if (accmode_flag != NULL && rdonly_flag != NULL) {
+    if ((file_flags & *accmode_flag) == *rdonly_flag) {
+      modification_type = FMOD_READ_ONLY_OPEN;
     }
   } else {
     // Unable to read flags populated from userspace, not able to determine
@@ -928,16 +858,17 @@ int BPF_PROG(fexit__filp_close, struct file* filp, fl_owner_t id, int ret) {
     return 0;
   }
 
-  // 5. Check Allowlist
+  // Check if the dentry is on the allowlist
   dev_t device_id = BPF_CORE_READ(file_inode, i_sb, s_dev);
   enum file_monitoring_mode monitoring_mode;
-  if (!is_dentry_allowlisted(filp_dentry, device_id, fmod_type,
+  if (!is_dentry_allowlisted(file_dentry, device_id, modification_type,
                              &monitoring_mode)) {
     return 0;
   }
 
-  // 6. Populate Ring Buffer (if allowed)
-  populate_rb(fmod_type, kFileCloseEvent, filp, filp_dentry, NULL);
+  // Populate the ring buffer with the event data
+  populate_rb(modification_type, kFileCloseEvent, file, file_dentry, NULL);
+
   return 0;
 }
 
@@ -945,13 +876,7 @@ int BPF_PROG(fexit__filp_close, struct file* filp, fl_owner_t id, int ret) {
  * BPF program attached to the fexit of the security_inode_setattr() kernel
  * function.
  *
- * @param mnt_userns The mount user namespace of the process (not used in this
- * version).
- * @param dentry     A pointer to the dentry of the file being modified.
- * @param attr       A pointer to the iattr struct containing the new
- * attributes.
- * @param ret        The return value of the security_inode_setattr system call.
- * @return 0 on success (always returns 0 as it's an fexit program).
+ * Return 0 on success (always returns 0 as it's an fexit program).
  */
 SEC("fexit/security_inode_setattr")
 // TODO(princya): Handle different kernel version function signature
@@ -1003,14 +928,6 @@ int BPF_PROG(fexit__security_inode_setattr,
  * performs checks to determine if the operation involves allowlisted
  * directories and files. If the new link (new_dentry) is not allowlisted, it
  * updates the allowlist map with its inode ID and monitoring mode.
- *
- * @param old_dentry Existing file or link being referenced.
- * @param dir New parent directory into which the new hard link (new_dentry) is
- *            being created.
- * @param new_dentry New link that is being created.
- * @param ret Return value of the security_inode_link function, indicating the
- *            outcome of the operation.
- * @return int Always returns 0.
  */
 SEC("fexit/security_inode_link")
 int BPF_PROG(fexit__security_inode_link,
@@ -1065,12 +982,6 @@ int BPF_PROG(fexit__security_inode_link,
  * and its associated device ID, and removes the inode ID from the allowlist
  * map if present, assuming it was previously allowlisted for monitoring.
  *
- * @param dir The inode of the parent directory from which `old_dentry` is
- * unlinked.
- * @param old_dentry Existing file or link being unlinked.
- * @param ret Return value of the security_inode_unlink function, indicating the
- *            outcome of the operation.
- * @return int Always returns 0.
  */
 SEC("fexit/security_inode_unlink")
 int BPF_PROG(fexit__security_inode_unlink,

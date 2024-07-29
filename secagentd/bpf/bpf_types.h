@@ -360,7 +360,8 @@ enum cros_file_event_type {
   kFileAttributeModifyEvent,
 };
 
-struct cros_file_close_event {
+// Structure to hold detailed file event information.
+struct cros_file_detailed_event {
   struct cros_process_start process_info;
   struct cros_file_image image_info;
   struct cros_namespace_info spawn_namespace;
@@ -376,12 +377,15 @@ enum filemod_type {
 };
 
 // Contains information needed to report process security
-// event telemetry regarding processes.
+// event telemetry regarding file operations.
 struct cros_file_event {
-  enum cros_file_event_type type;
-  enum filemod_type mod_type;
+  enum cros_file_event_type type;  // Type of the file event (e.g., file close,
+                                   // attribute modify, mount).
+  enum filemod_type mod_type;      // Type of file modification (e.g., read-only
+                                   // open, read-write open, mount, unmount).
+
   union {
-    struct cros_file_close_event file_close;
+    struct cros_file_detailed_event file_detailed_event;
   } data;
 } __attribute__((aligned(8)));
 
