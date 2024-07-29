@@ -713,7 +713,7 @@ std::string FirmwareUpdater::ReadConsole() {
   cmd_ret = SendSubcommandReceiveResponse(UpdateExtraCommand::kConsoleReadInit,
                                           "", reinterpret_cast<void*>(response),
                                           response_size);
-  if (!cmd_ret) {
+  if (!cmd_ret || response[0] != 0) {
     LOG(ERROR) << "Failed to init before reading console.";
     return ret;
   }
