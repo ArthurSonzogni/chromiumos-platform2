@@ -7,15 +7,25 @@
 #include <libudev.h>
 #include <poll.h>
 #include <sys/inotify.h>
+#include <sys/stat.h>
 
 #include <string>
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
+
 #include "permission_broker/rule.h"
 
 namespace permission_broker {
+
+namespace {
+
+using ::brillo::SimplifyPath;
+
+}  // namespace
 
 RuleEngine::RuleEngine() : udev_(udev_new()) {}
 
@@ -98,23 +108,38 @@ void RuleEngine::WaitForEmptyUdevQueue() {
   close(udev_poll.fd);
 }
 
-ScopedUdevDevicePtr RuleEngine::FindUdevDevice(const std::string& path) {
-  ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev_.get()));
-  udev_enumerate_scan_devices(enumerate.get());
-
-  struct udev_list_entry* entry = nullptr;
-  udev_list_entry_foreach(entry,
-                          udev_enumerate_get_list_entry(enumerate.get())) {
-    const char* syspath = udev_list_entry_get_name(entry);
-    ScopedUdevDevicePtr device(
-        udev_device_new_from_syspath(udev_.get(), syspath));
-
-    const char* devnode = udev_device_get_devnode(device.get());
-    if (devnode && !strcmp(devnode, path.c_str()))
-      return device;
+ScopedUdevDevicePtr RuleEngine::FindUdevDevice(const std::string& raw_path) {
+  // st_rdev only works on device files, so restrict to /dev for sensibility.
+  base::FilePath path = SimplifyPath(base::FilePath(raw_path));
+  if (!path.value().starts_with("/dev/")) {
+    LOG(WARNING) << "Expected /dev path for FindUdev device, got " << raw_path
+                 << ".";
+    return nullptr;
   }
 
-  return nullptr;
+  struct stat st;
+  if (stat(path.value().c_str(), &st) < 0) {
+    PLOG(WARNING) << "Could not stat " << path << " for udev lookup";
+    return nullptr;
+  }
+
+  // Device type passed to udev_device_new_from_devnum should be either
+  // 'c' for character device or 'b' for block device.
+  char type;
+  if (S_ISCHR(st.st_mode)) {
+    type = 'c';
+  } else if (S_ISBLK(st.st_mode)) {
+    type = 'b';
+  } else {
+    LOG(WARNING) << "Expected " << path
+                 << " to be character or block device, got mode " << st.st_mode
+                 << ".";
+    return nullptr;
+  }
+
+  ScopedUdevDevicePtr device(
+      udev_device_new_from_devnum(udev_.get(), type, st.st_rdev));
+  return device;
 }
 
 }  // namespace permission_broker
