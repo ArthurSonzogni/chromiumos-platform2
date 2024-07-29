@@ -44,6 +44,11 @@ void OdmlShimLoaderImpl::EnsureShimReady(
 void OdmlShimLoaderImpl::OnInstallDlcComplete(
     base::OnceCallback<void(bool)> callback,
     base::expected<base::FilePath, std::string> result) {
+  if (IsShimReady()) {
+    std::move(callback).Run(true);
+    return;
+  }
+
   if (!result.has_value()) {
     LOG(ERROR) << "Failed to install odml-shim: " << result.error();
     std::move(callback).Run(false);
