@@ -24,7 +24,7 @@ namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {"exec", required_argument, 0, 'e'},
-                                       {"leakcheck", no_argument, 0, 'l'},
+                                       {"mode", required_argument, 0, 'm'},
                                        {0, 0, 0, 0}};
 
 enum run_modes {
@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
   while (1) {
     int option_index = 0;
 
-    c = getopt_long(argc, argv, "p:e:l", long_options, &option_index);
+    c = getopt_long(argc, argv, "p:e:m:", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -222,8 +222,15 @@ int main(int argc, char** argv) {
       case 'e':
         exec_cmd = optarg;
         break;
-      case 'l':
-        run_mode = RUN_MODE_LEAKCHECK;
+      case 'm':
+        if (!strcmp(optarg, "stdout")) {
+          run_mode = RUN_MODE_STDOUT;
+        } else if (!strcmp(optarg, "leakcheck")) {
+          run_mode = RUN_MODE_LEAKCHECK;
+        } else {
+          printf("Invalie run mode: %s\n", optarg);
+          return -EINVAL;
+        }
         break;
       default:
         abort();

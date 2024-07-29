@@ -25,7 +25,7 @@ namespace {
 
 static struct option long_options[] = {{"pid", required_argument, 0, 'p'},
                                        {"exec", required_argument, 0, 'e'},
-                                       {"output", required_argument, 0, 'o'},
+                                       {"mode", required_argument, 0, 'm'},
                                        {0, 0, 0, 0}};
 
 enum run_modes {
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
   while (1) {
     int option_index = 0;
 
-    c = getopt_long(argc, argv, "p:e:o:", long_options, &option_index);
+    c = getopt_long(argc, argv, "p:e:m:", long_options, &option_index);
 
     /* Detect the end of the options. */
     if (c == -1)
@@ -233,11 +233,13 @@ int main(int argc, char** argv) {
       case 'e':
         exec_cmd = optarg;
         break;
-      case 'o':
+      case 'm':
         if (!strcmp(optarg, "perfetto")) {
           run_mode = RUN_MODE_PERFETTO;
+        } else if (!strcmp(optarg, "stdout")) {
+          run_mode = RUN_MODE_STDOUT;
         } else {
-          printf("unknown output type: %s\n", optarg);
+          printf("Invalid run mode: %s\n", optarg);
           return -EINVAL;
         }
         break;
