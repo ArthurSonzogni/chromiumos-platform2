@@ -61,6 +61,14 @@ executable("bpf-fdmon") {
   install_path = "bin"
 }
 
+config("target_test_defaults") {
+  cflags_cc = [
+    "-O0",
+    "-g",
+  ]
+}
+
 executable("bpf-mons-fdmem-test") {
   sources = [ "test/fdmem-test.cc" ]
+  configs += [ ":target_test_defaults" ]
 }
