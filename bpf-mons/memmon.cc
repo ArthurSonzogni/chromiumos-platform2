@@ -74,8 +74,8 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
     for (auto& frame : bt)
       frames += frame + "\n";
 
-    MEMMON_EVENT_BEGIN("mm", memmon_event_track(event), "call trace",
-                       frames.c_str());
+    MEMMON_EVENT_BEGIN("mm", memmon_event_track(event), "fn",
+                       memmon_event_name(event), "call trace", frames.c_str());
   }
 
   if (event->type == MEMMON_EVENT_FREE || event->type == MEMMON_EVENT_MUNMAP) {
