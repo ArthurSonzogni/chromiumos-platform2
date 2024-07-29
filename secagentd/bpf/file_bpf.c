@@ -19,11 +19,6 @@
 
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-#define MAX_ALLOWLISTED_FILE_MOD_DEVICES 16
-#define MAX_ALLOWLISTED_HARDLINKED_INODES 1024
-#define MAX_ALLOWLISTED_DIRECTORY_INODES 128
-#define MAX_PATH_DEPTH 32
-
 // File Type Macros (from standard headers)
 #define S_IFMT 00170000
 #define S_IFSOCK 0140000
@@ -472,6 +467,112 @@ static __always_inline bool is_dentry_allowlisted(
 }
 
 /**
+ * Read the name of the current dentry and store it in the path_info structure.
+ *
+ * This function extracts the name of the current dentry and stores it in the
+ * path_segment_info structure at the specified index. It also logs the segment
+ * name and length using bpf_printk.
+ */
+static __always_inline int read_dentry_name(struct file_path_info* path_info,
+                                            struct dentry* current_dentry,
+                                            int index) {
+  struct qstr dentry_name;
+  uint32_t segment_length;
+
+  // Read the dentry name
+  dentry_name = BPF_CORE_READ(current_dentry, d_name);
+  if (!dentry_name.name) {
+    bpf_printk("Error: dentry name is NULL at depth %d", index);
+    return -1;
+  }
+
+  // Read the segment name into the segments array
+  segment_length = bpf_probe_read_str(path_info->segment_names[index],
+                                      MAX_PATH_SEGMENT_SIZE, dentry_name.name);
+  if (segment_length <= 0) {
+    bpf_printk("Error: Failed to read segment at depth %d", index);
+    return -1;
+  }
+
+  // Ensure segment length is within bounds
+  if (segment_length > MAX_PATH_SEGMENT_SIZE - 1) {
+    segment_length = MAX_PATH_SEGMENT_SIZE - 1;
+  }
+
+  // Store the segment length and increment the segment count
+  path_info->segment_lengths[index] = segment_length;
+  path_info->num_segments++;
+
+  return 0;
+}
+
+/**
+ * Populate the absolute file path segments from a given dentry.
+ *
+ * This function traverses the directory tree from the given dentry to the root,
+ * populating the path_segment_info structure with the names of each directory
+ * in the path. It stops when it reaches the root directory or a circular
+ * reference.
+ */
+static __noinline int construct_absolute_file_path(
+    struct dentry* current_dentry, struct file_path_info* path_info) {
+  struct dentry* parent_dentry;
+
+  // Check if path_info is NULL
+  if (!path_info) {
+    bpf_printk("Error: path_info is NULL");
+    return -1;
+  }
+
+  // Initialize the segment count to 0
+  path_info->num_segments = 0;
+
+  // Traverse up the dentry tree, reading segments
+  for (int i = 0; i < MAX_PATH_DEPTH && current_dentry; i++) {
+    // Read the current dentry name and store it
+    if (read_dentry_name(path_info, current_dentry, i) < 0) {
+      bpf_printk("Error: Failed to read dentry name at depth %d", i);
+      break;
+    }
+
+    // Move to the parent dentry
+    parent_dentry = BPF_CORE_READ(current_dentry, d_parent);
+    if (current_dentry != parent_dentry) {
+      current_dentry = parent_dentry;
+    } else {
+      // If current dentry is the same as parent, stop (root dentry or circular
+      // reference)
+      break;
+    }
+  }
+}
+
+/**
+ * Print the file path information.
+ *
+ * This function logs the complete file path stored in the file_path_info
+ * structure.
+ *
+ *      - path_info Pointer to the file_path_info structure to be printed.
+ */
+static inline void print_file_path_info(
+    const struct file_path_info* path_info) {
+  // Check if path_info is NULL
+  if (!path_info)
+    return;
+
+  // Print the segment count
+  bpf_printk("Segment count: %d", path_info->num_segments);
+
+  // Iterate through each segment and print its size and content
+  for (size_t i = 0; i < path_info->num_segments && i < MAX_PATH_DEPTH; i++) {
+    // Print the segment and its size
+    bpf_printk("Segment %d: %s (size=%d)", i, path_info->segment_names[i],
+               path_info->segment_lengths[i]);
+  }
+}
+
+/**
  * Fills a cros_file_image structure with information about a file from its file
  * descriptor.
  *
@@ -495,6 +596,10 @@ static inline __attribute__((always_inline)) void fill_image_info(
   struct inode* file_inode;
   file_inode = BPF_CORE_READ(filp, f_inode);
   filp_dentry = BPF_CORE_READ(filp, f_path.dentry);
+
+  // Populate the absolute file path
+  construct_absolute_file_path(filp_dentry, &image_info->path_info);
+
   image_info->inode = BPF_CORE_READ(file_inode, i_ino);
   image_info->mode = BPF_CORE_READ(file_inode, i_mode);
   image_info->uid = BPF_CORE_READ(file_inode, i_uid.val);
@@ -570,6 +675,7 @@ static inline __attribute__((always_inline)) bool fill_process_start(
 // Function to print fields of cros_file_image
 static inline __attribute__((always_inline)) void print_cros_file_image(
     struct cros_file_image* file_image) {
+  print_file_path_info(&file_image->path_info);
   bpf_printk("Mnt_ns: %llu\n", file_image->mnt_ns);
   bpf_printk("Device ID: %llu\n", file_image->device_id);
   bpf_printk("Inode: %llu\n", file_image->inode);
@@ -712,8 +818,6 @@ static inline __attribute__((always_inline)) int populate_rb(
 
   fill_ns_info(&fc->spawn_namespace, task);
   fill_image_info(&fc->image_info, filp);
-
-  // print_cros_event(event);
 
   bpf_ringbuf_submit(event, 0);
   return 0;

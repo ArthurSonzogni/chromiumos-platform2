@@ -43,10 +43,17 @@ namespace secagentd::bpf {
 // name can be regenerated from the inode in image_info.
 #define CROS_MAX_PATH_SIZE (512)
 
+#define MAX_ALLOWLISTED_FILE_MOD_DEVICES 16
+#define MAX_ALLOWLISTED_HARDLINKED_INODES 1024
+#define MAX_ALLOWLISTED_DIRECTORY_INODES 128
+#define MAX_PATH_DEPTH 32
+#define MAX_PATH_SEGMENT_SIZE (128)
+#define MAX_PATH_SIZE (MAX_PATH_DEPTH * MAX_PATH_SEGMENT_SIZE)
+
 // The size of the buffer allocated from the BPF ring buffer. The size must be
 // large enough to hold the largest BPF event structure and must also be of
 // 2^N size.
-#define CROS_MAX_STRUCT_SIZE (2048)
+#define CROS_MAX_STRUCT_SIZE (2048 * 8)
 
 #define CROS_MAX_SOCKET (1024)
 #define CROS_AVG_CONN_PER_SOCKET (2)
@@ -305,19 +312,32 @@ struct cros_network_event {
   } data;
 } __attribute__((aligned(8)));
 
+// Structure to hold file path segment information.
+// TODO(b/359261397): Convert this to a flat array.
+struct file_path_info {
+  char segment_names[MAX_PATH_DEPTH]
+                    [MAX_PATH_SEGMENT_SIZE];  // Array of path segments, each up
+                                              // to MAX_PATH_SEGMENT_SIZE in
+                                              // length.
+  uint32_t segment_lengths[MAX_PATH_DEPTH];  // Array storing the length of each
+                                             // segment; segment_lengths[i]
+                                             // corresponds to the length of
+                                             // segment_names[i].
+  uint32_t num_segments;  // Total number of segments collected.
+} __attribute__((aligned(8)));
+
 // File Events Structs
 struct cros_file_image {
-  // TODO(princya): Add code to construct path and update this field in bpf
-  // program char pathsegments [MAX_PATH_DEPTH][CROS_MAX_PATH_SIZE];  // The
-  // pathname as seen from the mount namespace, each array element representing
-  // path segment
-  uint64_t mnt_ns;  // The mount namespace of the inode
-  dev_t device_id;  // The device ID both major and minor.
-  ino_t inode;      // The inode of the file.
-  mode_t mode;      // Mode.
-  uint32_t flags;   // Open Flags
-  uid_t uid;        // File owner user
-  gid_t gid;        // File owner group
+  struct file_path_info path_info;  // Contains file path segments and related
+                                    // size information. This structure helps in
+                                    // constructing the full path of the file.
+  uint64_t mnt_ns;                  // The mount namespace of the inode
+  dev_t device_id;                  // The device ID both major and minor.
+  ino_t inode;                      // The inode of the file.
+  mode_t mode;                      // Mode.
+  uint32_t flags;                   // Open Flags
+  uid_t uid;                        // File owner user
+  gid_t gid;                        // File owner group
 } __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };
