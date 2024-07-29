@@ -32,6 +32,25 @@ const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 #define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)
 #define S_ISSOCK(m) (((m) & S_IFMT) == S_IFSOCK)
 
+#define FS_ACCESS 0x00000001 /* File was accessed */
+#define FS_MODIFY 0x00000002 /* File was modified */
+#define FS_ATTRIB 0x00000004 /* Metadata changed */
+
+/*
+ * Attribute flags.  These should be or-ed together to figure out what
+ * has been changed!
+ * NOTE: This are copied from fs.h, careful before updating.
+ */
+#define CROS_ATTR_MODE (1 << 0)
+#define CROS_ATTR_UID (1 << 1)
+#define CROS_ATTR_GID (1 << 2)
+#define CROS_ATTR_SIZE (1 << 3)
+#define CROS_ATTR_ATIME (1 << 4)
+#define CROS_ATTR_MTIME (1 << 5)
+#define CROS_ATTR_CTIME (1 << 6)
+#define CROS_ATTR_ATIME_SET (1 << 7)
+#define CROS_ATTR_MTIME_SET (1 << 8)
+
 // Ring Buffer for Event Storage
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -116,6 +135,23 @@ struct {
   __uint(key_size, sizeof(struct inode_dev_map_key));
   __type(value, enum file_monitoring_mode);
 } allowlisted_directory_inodes SEC(".maps");
+
+/**
+ * Before Attributes Map.
+ *
+ * This BPF map is an LRU (Least Recently Used) per-CPU hash map that stores
+ * the 'before' attributes of an inode. The key is a 64-bit value (pid_tgid) and
+ * the value is a structure containing inode attributes (struct inode_attr).
+ * The map can hold up to 8 entries and uses LRU eviction policy to manage
+ * entries.
+ */
+struct {
+  __uint(type,
+         BPF_MAP_TYPE_LRU_PERCPU_HASH);  // Use LRU hash map for storing data
+  __uint(max_entries, 8);                // Maximum number of entries in the map
+  __type(key, uint64_t);                 // Key type (pid_tgid)
+  __type(value, struct inode_attr);      // Value type (inode attributes)
+} before_attr_map SEC(".maps");
 
 /**
  * Looks up a flag value in the shared BPF map by its unique identifier.
@@ -274,7 +310,7 @@ static __always_inline bool allows_file_operation(
   return (file_monitoring_mode == READ_AND_READ_WRITE_BOTH ||
           (file_monitoring_mode == READ_WRITE_ONLY &&
            fmod_type == FMOD_READ_WRITE_OPEN) ||
-          fmod_type == FMOD_LINK);
+          fmod_type == FMOD_LINK || fmod_type == FMOD_ATTR);
 }
 
 /**
@@ -411,6 +447,63 @@ static __always_inline bool is_dentry_allowlisted(
   }
 
   return false;  // File or ancestor is not allowlisted
+}
+
+/**
+ * Populate inode_attr structure with attributes from a given inode.
+ *
+ * This function reads various attributes from the inode structure and populates
+ * the corresponding fields in the inode_attr structure. The attributes include
+ * mode, UID, GID, size, and timestamps (access, modification, and change
+ * times).
+ */
+static __always_inline void get_inode_attributes(struct inode* inode,
+                                                 struct inode_attr* attr) {
+  // Check if either inode or attr is NULL
+  if (!inode || !attr)
+    return;
+
+  // Read mode, UID, GID, and size
+  attr->mode = BPF_CORE_READ(inode, i_mode);
+  attr->uid = BPF_CORE_READ(inode, i_uid.val);
+  attr->gid = BPF_CORE_READ(inode, i_gid.val);
+  attr->size = BPF_CORE_READ(inode, i_size);
+
+  struct timespec64 ts;
+
+  // Starting with Linux kernel v6.7-rc1, commit 12cd4402365 ("fs: rename
+  // inode i_atime and i_mtime fields"), the field name changed.
+
+  // Read access time
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+  ts = BPF_CORE_READ(inode, __i_atime);
+#else
+  ts = BPF_CORE_READ(inode, i_atime);
+#endif
+
+  attr->atime.tv_sec = ts.tv_sec;
+  attr->atime.tv_nsec = ts.tv_nsec;
+
+  // Read modification time
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+  ts = BPF_CORE_READ(inode, __i_mtime);
+#else
+  ts = BPF_CORE_READ(inode, i_mtime);
+#endif
+
+  attr->mtime.tv_sec = ts.tv_sec;
+  attr->mtime.tv_nsec = ts.tv_nsec;
+
+// Starts from Linux kernel v6.6-rc1, commit 13bc24457850 ("fs: rename
+// i_ctime field to __i_ctime"), the field name changed.
+// Read change time
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+  ts = BPF_CORE_READ(inode, __i_ctime);
+#else
+  ts = BPF_CORE_READ(inode, i_ctime);
+#endif
+  attr->ctime.tv_sec = ts.tv_sec;
+  attr->ctime.tv_nsec = ts.tv_nsec;
 }
 
 /**
@@ -568,6 +661,9 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     image_info->before_attr.mtime = before_attr->mtime;
     image_info->before_attr.ctime = before_attr->ctime;
   }
+
+  // Get the inode attributes for the after modification state
+  get_inode_attributes(inode, &image_info->after_attr);
 }
 
 /**
@@ -746,7 +842,6 @@ static inline __attribute__((always_inline)) int print_cros_file_event(
     return -1;
   }
   bpf_printk("File Event Type: %d\n", file_event->type);
-  bpf_printk("File Mod Type: %d\n", file_event->mod_type);
   if (file_event->type == kFileCloseEvent) {
     print_cros_file_close_event(&(file_event->data.file_detailed_event));
   }
@@ -784,6 +879,7 @@ static inline __attribute__((always_inline)) int populate_rb(
     struct inode_attr* before_attr) {
   struct task_struct* task = (struct task_struct*)bpf_get_current_task();
 
+  // Reserve space in the ring buffer for the event
   struct cros_event* event =
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
   if (!event) {
@@ -800,10 +896,124 @@ static inline __attribute__((always_inline)) int populate_rb(
   fill_ns_info(&fc->spawn_namespace, task);
   fill_file_image_info(&fc->image_info, file, dentry, before_attr);
 
-  // print_cros_event(event);
-
   bpf_ringbuf_submit(event, 0);
   return 0;
+}
+
+/**
+ * Check if file attributes should be tracked. Copied from fsnotify
+ * @ia_valid: Bitmask representing the valid attributes
+ *
+ * This function checks if any of the relevant file attributes (UID, GID, size,
+ * access time, modification time, or mode) are marked as changed in the
+ * ia_valid bitmask.
+ *
+ * Return: true if any relevant attributes are marked as changed, false
+ * otherwise
+ */
+bool inline __attribute__((always_inline))
+should_track_file_attribute_change(unsigned int ia_valid) {
+  __u32 attribute_mask = 0;
+
+  // Check if UID change should be tracked
+  if (ia_valid & CROS_ATTR_UID) {
+    attribute_mask |= FS_ATTRIB;
+  }
+
+  // Check if GID change should be tracked
+  if (ia_valid & CROS_ATTR_GID) {
+    attribute_mask |= FS_ATTRIB;
+  }
+
+  // Check if size change should be tracked
+  if (ia_valid & CROS_ATTR_SIZE) {
+    attribute_mask |= FS_MODIFY;
+  }
+
+  // Check if access and modification time changes should be tracked (utime
+  // call)
+  if ((ia_valid & (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) ==
+      (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) {
+    attribute_mask |= FS_ATTRIB;
+  } else if (ia_valid & CROS_ATTR_ATIME) {
+    attribute_mask |= FS_ACCESS;
+  } else if (ia_valid & CROS_ATTR_MTIME) {
+    attribute_mask |= FS_MODIFY;
+  }
+
+  // Check if mode change should be tracked
+  if (ia_valid & CROS_ATTR_MODE) {
+    attribute_mask |= FS_ATTRIB;
+  }
+
+  // Return true if any relevant attributes are marked as changed
+  return attribute_mask & FS_ATTRIB;
+}
+
+/**
+ * Check if inode attributes have actually changed.
+ * @before_attr: The attributes of the inode before the change
+ * @attr: The new attributes to set
+ *
+ * This function compares the before and after attributes of an inode to
+ * determine if any significant changes have occurred.
+ *
+ * Return: true if any relevant attributes have changed, false otherwise
+ */
+
+static inline __attribute__((always_inline)) bool has_inode_attributes_changed(
+    const struct inode_attr* before_attr,
+    const struct iattr* new_iattr,
+    uint32_t ia_valid_flags) {
+  if (!before_attr || !new_iattr || ia_valid_flags == 0) {
+    return false;
+  }
+
+  bool attribute_changed = false;
+
+  // Check UID change
+  if (ia_valid_flags & CROS_ATTR_UID) {
+    if (before_attr->uid != BPF_CORE_READ(new_iattr, ia_uid.val)) {
+      attribute_changed = true;
+    }
+  }
+
+  // Check GID change
+  if (ia_valid_flags & CROS_ATTR_GID) {
+    if (before_attr->gid != BPF_CORE_READ(new_iattr, ia_gid.val)) {
+      attribute_changed = true;
+    }
+  }
+
+  struct timespec64 ts_mtime;
+  struct timespec64 ts_atime;
+
+  // Read access time
+  ts_atime = BPF_CORE_READ(new_iattr, ia_atime);
+
+  // Read modification time
+  ts_mtime = BPF_CORE_READ(new_iattr, ia_mtime);
+
+  // Check access and modification time change (utime call)
+  if ((ia_valid_flags & (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) ==
+      (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) {
+    if ((before_attr->atime.tv_sec != ts_atime.tv_sec ||
+         before_attr->atime.tv_nsec != ts_atime.tv_nsec) ||
+        (before_attr->mtime.tv_sec != ts_mtime.tv_sec ||
+         before_attr->mtime.tv_nsec != ts_mtime.tv_nsec)) {
+      attribute_changed = true;
+    }
+  }
+
+  // Check mode change
+  if (ia_valid_flags & CROS_ATTR_MODE) {
+    if (before_attr->mode != BPF_CORE_READ(new_iattr, ia_mode)) {
+      attribute_changed = true;
+    }
+  }
+  // Return true if any relevant attributes have changed
+  return should_track_file_attribute_change(ia_valid_flags) &&
+         attribute_changed;
 }
 
 /**
@@ -872,51 +1082,160 @@ int BPF_PROG(fexit__filp_close,
   return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
+#define NOTIFY_CHANGE_ARGS                                            \
+  struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr, \
+      struct inode **delegated_inode
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#define NOTIFY_CHANGE_ARGS                                  \
+  struct user_namespace *mnt_userns, struct dentry *dentry, \
+      struct iattr *attr, struct inode **delegated_inode
+#else
+#define NOTIFY_CHANGE_ARGS \
+  struct dentry *dentry, struct iattr *attr, struct inode **delegated_inode
+#endif
+
 /**
- * BPF program attached to the fexit of the security_inode_setattr() kernel
- * function.
+ * BPF program to capture 'before' attributes on inode setattr
  *
- * Return 0 on success (always returns 0 as it's an fexit program).
+ * This function is triggered on the entry of the notify_change function.
+ * It captures the inode attributes before they are changed and stores them
+ * in a BPF map using the pid_tgid as the key.
+ *
+ * Return: 0 on success
  */
-SEC("fexit/security_inode_setattr")
-// TODO(princya): Handle different kernel version function signature
-// TODO(princya): Need to capture both before and after attribute
-int BPF_PROG(fexit__security_inode_setattr,
+SEC("fentry/notify_change")
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
+int BPF_PROG(capture_before_inode_setattr,
+             struct mnt_idmap* idmap,
+             struct dentry* dentry,
+             struct iattr* attr,
+             struct inode** delegated_inode)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+int BPF_PROG(capture_before_inode_setattr,
              struct user_namespace* mnt_userns,
              struct dentry* dentry,
              struct iattr* attr,
-             int ret) {
-  // 1. Check for Successful Setattr Operation
+             struct inode** delegated_inode)
+#else
+int BPF_PROG(capture_before_inode_setattr,
+             struct dentry* dentry,
+             struct iattr* attr,
+             struct inode** delegated_inode)
+#endif
+{
+  struct inode_attr attr_before =
+      {};  // Structure to hold inode attributes before change
+  struct task_struct* current_task;        // Current task structure
+  struct inode* inode;                     // Inode structure
+  struct file* file;                       // File structure
+  uint32_t file_flags;                     // File flags
+  dev_t dev_id;                            // Device ID
+  enum file_monitoring_mode monitor_mode;  // File monitoring mode
+
+  if (!attr || !dentry)
+    return 0;
+  // Retrieve the current task
+  current_task = (struct task_struct*)bpf_get_current_task();
+
+  // Filter out kernel threads
+  if (is_kthread(current_task)) {
+    return 0;
+  }
+
+  // Retrieve the file and inode structures
+  file = BPF_CORE_READ(attr, ia_file);
+  inode = BPF_CORE_READ(dentry, d_inode);
+  if (!inode)
+    return 0;
+  file_flags = BPF_CORE_READ(file, f_flags);
+
+  // Check for a valid file type
+  if (!is_valid_file(inode, file_flags)) {
+    return 0;
+  }
+
+  // Retrieve the device ID
+  dev_id = BPF_CORE_READ(inode, i_sb, s_dev);
+
+  // Check if the dentry is on the allowlist
+  if (!is_dentry_allowlisted(dentry, dev_id, FMOD_ATTR, &monitor_mode)) {
+    return 0;
+  }
+
+  // Get the inode attributes before the change
+  get_inode_attributes(inode, &attr_before);
+
+  uint32_t ia_valid_flags = BPF_CORE_READ(attr, ia_valid);
+  // Check if inode attributes have actually changed
+  bool has_changed =
+      has_inode_attributes_changed(&attr_before, attr, ia_valid_flags);
+  if (!has_changed) {
+    return 0;
+  }
+
+  // Retrieve the PID and TGID
+  uint64_t pid_tgid = bpf_get_current_pid_tgid();
+  // Update the BPF map with the 'before' attributes
+  bpf_map_update_elem(&before_attr_map, &pid_tgid, &attr_before, BPF_ANY);
+
+  return 0;
+}
+
+/**
+ * BPF program to capture 'after' attributes on inode setattr exit
+ *
+ * This function is triggered on the exit of the notify_change function.
+ * It captures the inode attributes after they are changed if the operation was
+ * successful, checks if processing is needed, and if so, it resets the
+ * processing flag and populates the ring buffer with the relevant event data.
+ *
+ * Return: 0 on success, or appropriate error code.
+ */
+SEC("fexit/notify_change")
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
+int BPF_PROG(capture_after_inode_setattr,
+             struct mnt_idmap* idmap,
+             struct dentry* dentry,
+             struct iattr* attr,
+             struct inode** delegated_inode,
+             int ret)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+int BPF_PROG(capture_after_inode_setattr,
+             struct user_namespace* mnt_userns,
+             struct dentry* dentry,
+             struct iattr* attr,
+             struct inode** delegated_inode,
+             int ret)
+#else
+int BPF_PROG(capture_after_inode_setattr,
+             struct dentry* dentry,
+             struct iattr* attr,
+             struct inode** delegated_inode,
+             int ret)
+#endif
+{
+  struct inode* inode;             // Inode structure
+  struct inode_attr* attr_before;  // Pointer to 'before' inode attributes
+  uint64_t pid_tgid;               // PID and TGID combined
+
+  // Check for successful setattr operation
   if (ret != 0) {
     return 0;
   }
 
-  // 2. Filter Out Kernel Threads
-  struct task_struct* t = (struct task_struct*)bpf_get_current_task();
-  if (is_kthread(t)) {
+  // Retrieve the PID and TGID
+  pid_tgid = bpf_get_current_pid_tgid();
+  // Lookup the 'before' attributes from the BPF map
+  attr_before = bpf_map_lookup_elem(&before_attr_map, &pid_tgid);
+  bpf_map_delete_elem(&before_attr_map, &pid_tgid);
+  if (!attr_before) {
     return 0;
   }
 
-  struct inode* file_inode = BPF_CORE_READ(dentry, d_inode);
+  // Populate the ring buffer with the event data
+  populate_rb(FMOD_ATTR, kFileAttributeModifyEvent, NULL, dentry, attr_before);
 
-  struct file* filp = BPF_CORE_READ(attr, ia_file);
-  uint32_t flags = BPF_CORE_READ(filp, f_flags);
-
-  // 3. Check for Valid File Type
-  if (!is_valid_file(file_inode, flags)) {
-    return 0;
-  }
-
-  // 4. Check Allowlist
-  dev_t dev_id = BPF_CORE_READ(file_inode, i_sb, s_dev);
-  enum file_monitoring_mode monitoring_mode;
-  if (!is_dentry_allowlisted(dentry, dev_id, FMOD_ATTR, &monitoring_mode)) {
-    return 0;
-  }
-
-  // 5. Populate Ring Buffer
-  // TODO(Princy): Fill before attributes.
-  populate_rb(FMOD_ATTR, kFileAttributeModifyEvent, filp, dentry, NULL);
   return 0;
 }
 
@@ -963,8 +1282,8 @@ int BPF_PROG(fexit__security_inode_link,
   // Check if the new dentry is allowlisted for monitoring
   if (!is_dentry_allowlisted(new_dentry, new_dev_id, FMOD_LINK,
                              &new_monitoring_mode)) {
-    // If new dentry is not allowlisted, update the allowlist map with its inode
-    // ID
+    // If new dentry is not allowlisted, update the allowlist map with its
+    // inode ID
     ino_t inode_id = BPF_CORE_READ(old_inode, i_ino);
     bpf_map_update_allowlisted_hardlinked_inodes(inode_id, old_dev_id,
                                                  monitoring_mode);
