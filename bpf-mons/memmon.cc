@@ -48,8 +48,6 @@ static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
 
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "malloc", call_malloc);
   LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "malloc", ret_malloc);
-  LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "strdup", call_strdup);
-  LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "strdup", ret_strdup);
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "calloc", call_calloc);
   LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "calloc", ret_calloc);
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "memalign", call_memalign);
@@ -66,7 +64,6 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
   struct memmon_event* event = (struct memmon_event*)data;
 
   if (event->type == MEMMON_EVENT_MALLOC || event->type == MEMMON_EVENT_MMAP ||
-      event->type == MEMMON_EVENT_STRDUP ||
       event->type == MEMMON_EVENT_CALLOC ||
       event->type == MEMMON_EVENT_MEMALIGN) {
     std::vector<std::string> bt;
@@ -110,11 +107,6 @@ static int stdout_memmon_event(void* ctx, void* data, size_t data_sz) {
     case MEMMON_EVENT_MUNMAP:
       printf("munmap() ptr=%p\n", reinterpret_cast<void*>(event->ptr));
       break;
-    case MEMMON_EVENT_STRDUP:
-      printf("strdup() ptr=%p -> ptr=%p\n",
-             reinterpret_cast<void*>(event->size),
-             reinterpret_cast<void*>(event->ptr));
-      break;
     case MEMMON_EVENT_CALLOC:
       printf("calloc() sz=%lu ptr=%p-%p\n", event->size,
              reinterpret_cast<void*>(event->ptr),
@@ -148,7 +140,6 @@ static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
   switch (event->type) {
     case MEMMON_EVENT_MALLOC:
     case MEMMON_EVENT_MMAP:
-    case MEMMON_EVENT_STRDUP:
     case MEMMON_EVENT_CALLOC:
     case MEMMON_EVENT_MEMALIGN:
       if (events[event->ptr] != NULL) {

@@ -92,7 +92,6 @@ static int memmon_event(struct pt_regs* ctx,
     case MEMMON_EVENT_MALLOC:
     case MEMMON_EVENT_MMAP:
     case MEMMON_EVENT_CALLOC:
-    case MEMMON_EVENT_STRDUP:
     case MEMMON_EVENT_MEMALIGN:
       if (save_ustack(ctx, event)) {
         bpf_ringbuf_submit(event, 0);
@@ -181,16 +180,6 @@ int BPF_URETPROBE(ret_mmap) {
 SEC("uprobe")
 int BPF_UPROBE(call_munmap, void* ptr) {
   return memmon_event(ctx, MEMMON_EVENT_MUNMAP, 0, (unsigned long)ptr);
-}
-
-SEC("uprobe")
-int BPF_UPROBE(call_strdup, const char* p) {
-  return __call_event(ctx, MEMMON_EVENT_STRDUP, (unsigned long)p);
-}
-
-SEC("uretprobe")
-int BPF_URETPROBE(ret_strdup) {
-  return __ret_event(ctx, MEMMON_EVENT_STRDUP, PT_REGS_RC(ctx));
 }
 
 SEC("uprobe")

@@ -20,8 +20,6 @@ perfetto::StaticString memmon_event_name(struct memmon_event* event) {
       return "mmap";
     case MEMMON_EVENT_MUNMAP:
       return "munmap";
-    case MEMMON_EVENT_STRDUP:
-      return "strdup";
     case MEMMON_EVENT_CALLOC:
       return "calloc";
     case MEMMON_EVENT_MEMALIGN:
