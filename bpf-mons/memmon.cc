@@ -66,12 +66,22 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
       event->type == MEMMON_EVENT_STRDUP ||
       event->type == MEMMON_EVENT_CALLOC ||
       event->type == MEMMON_EVENT_MEMALIGN) {
-    MEMMON_EVENT_BEGIN("mm", memmon_event_track(event));
+    std::vector<std::string> bt;
+    std::string frames;
+
+    libmon::decode_ustack(event->pid, event->ustack_ents,
+                          event->num_ustack_ents, bt);
+    for (auto& frame : bt)
+      frames += frame + "\n";
+
+    MEMMON_EVENT_BEGIN("mm", memmon_event_track(event), "call trace",
+                       frames.c_str());
   }
 
   if (event->type == MEMMON_EVENT_FREE || event->type == MEMMON_EVENT_MUNMAP) {
-    if (event->ptr != 0x00)
-      MEMMON_EVENT_END(memmon_event_track(event));
+    if (event->ptr == 0x00)
+      return 0;
+    MEMMON_EVENT_END(memmon_event_track(event));
   }
   return 0;
 }

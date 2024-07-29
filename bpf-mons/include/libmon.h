@@ -95,6 +95,14 @@ void release_stack_decoder(void);
 void show_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents);
 void show_kstack(uintptr_t* ents, uint32_t num_ents);
 
+void decode_ustack(pid_t pid,
+                   uintptr_t* ents,
+                   uint32_t num_ents,
+                   std::vector<std::string>& trace);
+void decode_kstack(uintptr_t* ents,
+                   uint32_t num_ents,
+                   std::vector<std::string>& trace);
+
 int lookup_lib(pid_t pid, const char* name, std::string& path);
 
 int setup_sig_handlers(void);

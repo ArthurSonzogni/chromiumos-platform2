@@ -163,6 +163,73 @@ void show_kstack(uintptr_t* ents, uint32_t num_ents) {
   show_stack_trace(0, ents, num_ents);
 }
 
+static void decode_stack_trace(pid_t pid,
+                               uintptr_t* ents,
+                               uint32_t num_ents,
+                               std::vector<std::string>& trace) {
+  const struct blaze_symbolize_inlined_fn* inlined;
+  const struct blaze_result* res;
+  const struct blaze_sym* sym;
+
+  if (pid) {
+    struct blaze_symbolize_src_process src = {
+        .type_size = sizeof(src),
+        .pid = static_cast<uint32_t>(pid),
+        .map_files = true,
+    };
+
+    res = blaze_symbolize_process_abs_addrs(symb, &src, (const uintptr_t*)ents,
+                                            num_ents);
+  } else {
+    struct blaze_symbolize_src_kernel src = {
+        .type_size = sizeof(src),
+    };
+
+    res = blaze_symbolize_kernel_abs_addrs(symb, &src, (const uintptr_t*)ents,
+                                           num_ents);
+  }
+
+  for (size_t i = 0; i < num_ents; i++) {
+    std::string frame;
+
+    if (!res || res->cnt <= i || !res->syms[i].name) {
+      frame = "unknown";
+      trace.push_back(frame);
+      continue;
+    }
+
+    sym = &res->syms[i];
+    frame = sym->name;
+    trace.push_back(frame);
+
+    for (size_t j = 0; j < sym->inlined_cnt; j++) {
+      inlined = &sym->inlined[j];
+      frame = inlined->name;
+      trace.push_back(frame);
+    }
+  }
+  blaze_result_free(res);
+}
+
+void decode_ustack(pid_t pid,
+                   uintptr_t* ents,
+                   uint32_t num_ents,
+                   std::vector<std::string>& trace) {
+  if (pid < 0)
+    return;
+  if (!num_ents)
+    return;
+  decode_stack_trace(pid, ents, num_ents, trace);
+}
+
+void decode_kstack(uintptr_t* ents,
+                   uint32_t num_ents,
+                   std::vector<std::string>& trace) {
+  if (!num_ents)
+    return;
+  decode_stack_trace(0, ents, num_ents, trace);
+}
+
 int init_stack_decoder(void) {
   symb = blaze_symbolizer_new();
   if (!symb) {
