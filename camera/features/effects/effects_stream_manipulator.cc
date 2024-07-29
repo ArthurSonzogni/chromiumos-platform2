@@ -6,12 +6,6 @@
 
 #include "features/effects/effects_stream_manipulator.h"
 
-#include <GLES3/gl3.h>
-
-#include <cutils/native_handle.h>
-#include <hardware/camera3.h>
-#include <sync/sync.h>
-#include <system/camera_metadata.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -40,11 +34,16 @@
 #include <base/timer/timer.h>
 #include <base/values.h>
 #include <brillo/files/file_util.h>
+#include <cutils/native_handle.h>
+#include <GLES3/gl3.h>
+#include <hardware/camera3.h>
 #include <ml_core/dlc/dlc_ids.h>
 #include <ml_core/effects_pipeline.h>
 #include <ml_core/effects_pipeline_types.h>
 #include <ml_core/opencl_caching/constants.h>
 #include <ml_core/opencl_caching/utils.h>
+#include <sync/sync.h>
+#include <system/camera_metadata.h>
 
 #include "common/camera_buffer_pool.h"
 #include "common/camera_hal3_helpers.h"
@@ -605,7 +604,9 @@ void EffectsStreamManipulatorImpl::ResetState() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   effects_pipeline_tracker_.Reset();
   tasks_.clear();
-  helper_->Reset();
+  if (helper_ != nullptr) {
+    helper_->Reset();
+  }
   video_rgba_buffer_pool_.reset();
   still_rgba_buffer_pool_.reset();
   video_process_last_start_time_.reset();
