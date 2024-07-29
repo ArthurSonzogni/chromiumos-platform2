@@ -16,7 +16,6 @@ MockConnectionDiagnostics::MockConnectionDiagnostics()
           *net_base::IPAddress::CreateFromString("192.168.1.1"),
           {},
           nullptr,
-          nullptr,
           base::DoNothing()) {}
 
 MockConnectionDiagnostics::~MockConnectionDiagnostics() = default;

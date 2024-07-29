@@ -610,22 +610,6 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
-  const std::string& issue = ConnectionDiagnostics::kIssueIPCollision;
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA(Eq(Metrics::kMetricConnectionDiagnosticsIssue.n.name),
-                    Metrics::kConnectionDiagnosticsIssueIPCollision,
-                    Metrics::kConnectionDiagnosticsIssueMax));
-  metrics_.NotifyConnectionDiagnosticsIssue(issue);
-}
-
-TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
-  const std::string& invalid_issue = "Invalid issue string.";
-  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
-  metrics_.NotifyConnectionDiagnosticsIssue(invalid_issue);
-}
-
 TEST_F(MetricsTest, NotifyBand6GHzSupport) {
   bool band6ghz_supported = false;
   EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricBand6GHzSupport,

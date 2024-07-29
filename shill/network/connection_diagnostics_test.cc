@@ -17,7 +17,6 @@
 #include "shill/manager.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_metrics.h"
 #include "shill/network/icmp_session.h"
 #include "shill/network/mock_icmp_session.h"
 
@@ -136,7 +135,6 @@ class ConnectionDiagnosticsTest : public Test {
                                 kIPv4GatewayAddress,
                                 {kIPv4DNSServer0, kIPv4DNSServer1},
                                 &dispatcher_,
-                                &metrics_,
                                 callback_target_.result_callback()) {}
 
   ~ConnectionDiagnosticsTest() override = default;
@@ -310,8 +308,6 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(*icmp_session_,
                 Start(address, kInterfaceIndex, kInterfaceName, _))
         .WillOnce(Return(false));
-    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
-                              ConnectionDiagnostics::kIssueInternalError));
     EXPECT_CALL(callback_target(),
                 ResultCallback(ConnectionDiagnostics::kIssueInternalError,
                                IsEventList(expected_events_)));
@@ -326,7 +322,6 @@ class ConnectionDiagnosticsTest : public Test {
         ping_event_type == ConnectionDiagnostics::kTypePingGateway
             ? ConnectionDiagnostics::kIssueGatewayUpstream
             : ConnectionDiagnostics::kIssueHTTP;
-    EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(issue));
     EXPECT_CALL(callback_target(),
                 ResultCallback(issue, IsEventList(expected_events_)));
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
@@ -386,10 +381,8 @@ class ConnectionDiagnosticsTest : public Test {
     }
 
     if (is_success) {
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(_)).Times(0);
       EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
     } else {
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(expected_issue));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(expected_issue, IsEventList(expected_events_)));
@@ -418,9 +411,6 @@ class ConnectionDiagnosticsTest : public Test {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else {
       error.Populate(Error::kOperationFailed);
-      EXPECT_CALL(metrics_,
-                  NotifyConnectionDiagnosticsIssue(
-                      ConnectionDiagnostics::kIssueDNSServerMisconfig));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerMisconfig,
@@ -448,14 +438,10 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
     if (retries_left) {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-      EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(_)).Times(0);
       EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
     } else {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
           .Times(0);
-      EXPECT_CALL(metrics_,
-                  NotifyConnectionDiagnosticsIssue(
-                      ConnectionDiagnostics::kIssueDNSServerNoResponse));
       EXPECT_CALL(
           callback_target(),
           ResultCallback(ConnectionDiagnostics::kIssueDNSServerNoResponse,
@@ -467,7 +453,6 @@ class ConnectionDiagnosticsTest : public Test {
   net_base::IPAddress gateway_;
   std::vector<net_base::IPAddress> dns_list_;
   CallbackTarget callback_target_;
-  NiceMock<MockMetrics> metrics_;
   ConnectionDiagnostics connection_diagnostics_;
   NiceMock<MockEventDispatcher> dispatcher_;
 

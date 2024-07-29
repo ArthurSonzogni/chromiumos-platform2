@@ -971,54 +971,6 @@ void Metrics::ReportMilliseconds(const chromeos_metrics::TimerReporter& timer) {
   }
 }
 
-void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {
-  ConnectionDiagnosticsIssue issue_enum;
-  if (issue == ConnectionDiagnostics::kIssueIPCollision) {
-    issue_enum = kConnectionDiagnosticsIssueIPCollision;
-  } else if (issue == ConnectionDiagnostics::kIssueRouting) {
-    issue_enum = kConnectionDiagnosticsIssueRouting;
-  } else if (issue == ConnectionDiagnostics::kIssueHTTP) {
-    issue_enum = kConnectionDiagnosticsIssueHTTP;
-  } else if (issue == ConnectionDiagnostics::kIssueDNSServerMisconfig) {
-    issue_enum = kConnectionDiagnosticsIssueDNSServerMisconfig;
-  } else if (issue == ConnectionDiagnostics::kIssueDNSServerNoResponse) {
-    issue_enum = kConnectionDiagnosticsIssueDNSServerNoResponse;
-  } else if (issue == ConnectionDiagnostics::kIssueNoDNSServersConfigured) {
-    issue_enum = kConnectionDiagnosticsIssueNoDNSServersConfigured;
-  } else if (issue == ConnectionDiagnostics::kIssueDNSServersInvalid) {
-    issue_enum = kConnectionDiagnosticsIssueDNSServersInvalid;
-  } else if (issue == ConnectionDiagnostics::kIssueNone) {
-    issue_enum = kConnectionDiagnosticsIssueNone;
-  } else if (issue == ConnectionDiagnostics::kIssueGatewayUpstream) {
-    issue_enum = kConnectionDiagnosticsIssueGatewayUpstream;
-  } else if (issue == ConnectionDiagnostics::kIssueGatewayNotResponding) {
-    issue_enum = kConnectionDiagnosticsIssueGatewayNotResponding;
-  } else if (issue == ConnectionDiagnostics::kIssueServerNotResponding) {
-    issue_enum = kConnectionDiagnosticsIssueServerNotResponding;
-  } else if (issue == ConnectionDiagnostics::kIssueGatewayArpFailed) {
-    issue_enum = kConnectionDiagnosticsIssueGatewayArpFailed;
-  } else if (issue == ConnectionDiagnostics::kIssueServerArpFailed) {
-    issue_enum = kConnectionDiagnosticsIssueServerArpFailed;
-  } else if (issue == ConnectionDiagnostics::kIssueInternalError) {
-    issue_enum = kConnectionDiagnosticsIssueInternalError;
-  } else if (issue == ConnectionDiagnostics::kIssueGatewayNoNeighborEntry) {
-    issue_enum = kConnectionDiagnosticsIssueGatewayNoNeighborEntry;
-  } else if (issue == ConnectionDiagnostics::kIssueServerNoNeighborEntry) {
-    issue_enum = kConnectionDiagnosticsIssueServerNoNeighborEntry;
-  } else if (issue ==
-             ConnectionDiagnostics::kIssueGatewayNeighborEntryNotConnected) {
-    issue_enum = kConnectionDiagnosticsIssueGatewayNeighborEntryNotConnected;
-  } else if (issue ==
-             ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected) {
-    issue_enum = kConnectionDiagnosticsIssueServerNeighborEntryNotConnected;
-  } else {
-    LOG(ERROR) << __func__ << ": Invalid issue: " << issue;
-    return;
-  }
-
-  SendEnumToUMA(kMetricConnectionDiagnosticsIssue, issue_enum);
-}
-
 void Metrics::NotifyHS20Support(bool hs20_supported, int hs20_version_number) {
   if (!hs20_supported) {
     SendEnumToUMA(kMetricHS20Support, kHS20Unsupported);

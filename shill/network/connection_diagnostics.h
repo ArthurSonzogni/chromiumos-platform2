@@ -20,7 +20,6 @@
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
 
-#include "shill/metrics.h"
 #include "shill/mockable.h"
 
 namespace shill {
@@ -131,7 +130,6 @@ class ConnectionDiagnostics {
                         const net_base::IPAddress& gateway,
                         const std::vector<net_base::IPAddress>& dns_list,
                         EventDispatcher* dispatcher,
-                        Metrics* metrics,
                         ResultCallback result_callback);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
@@ -210,7 +208,6 @@ class ConnectionDiagnostics {
                               size_t num_events_ago);
 
   EventDispatcher* dispatcher_;
-  Metrics* metrics_;
 
   // The name of the network interface associated with the connection.
   std::string iface_name_;
@@ -264,7 +261,6 @@ class ConnectionDiagnosticsFactory {
       const net_base::IPAddress& gateway,
       const std::vector<net_base::IPAddress>& dns_list,
       EventDispatcher* dispatcher,
-      Metrics* metrics,
       ConnectionDiagnostics::ResultCallback result_callback);
 };
 

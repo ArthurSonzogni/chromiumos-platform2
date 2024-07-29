@@ -630,39 +630,6 @@ class Metrics {
     kCellularApnTypeDun = 4,
   };
 
-  // Connection diagnostics issue produced by ConnectionDiagnostics.
-  enum ConnectionDiagnosticsIssue {
-    kConnectionDiagnosticsIssueIPCollision = 0,
-    kConnectionDiagnosticsIssueRouting = 1,
-    kConnectionDiagnosticsIssueHTTP = 2,
-    kConnectionDiagnosticsIssueDNSServerMisconfig = 3,
-    kConnectionDiagnosticsIssueDNSServerNoResponse = 4,
-    kConnectionDiagnosticsIssueNoDNSServersConfigured = 5,
-    kConnectionDiagnosticsIssueDNSServersInvalid = 6,
-    kConnectionDiagnosticsIssueNone = 7,
-    // Not logged anymore
-    kConnectionDiagnosticsIssueCaptivePortal = 8,
-    kConnectionDiagnosticsIssueGatewayUpstream = 9,
-    kConnectionDiagnosticsIssueGatewayNotResponding = 10,
-    kConnectionDiagnosticsIssueServerNotResponding = 11,
-    kConnectionDiagnosticsIssueGatewayArpFailed = 12,
-    kConnectionDiagnosticsIssueServerArpFailed = 13,
-    kConnectionDiagnosticsIssueInternalError = 14,
-    kConnectionDiagnosticsIssueGatewayNoNeighborEntry = 15,
-    kConnectionDiagnosticsIssueServerNoNeighborEntry = 16,
-    kConnectionDiagnosticsIssueGatewayNeighborEntryNotConnected = 17,
-    kConnectionDiagnosticsIssueServerNeighborEntryNotConnected = 18,
-    kConnectionDiagnosticsIssuePlaceholder1 = 19,
-    kConnectionDiagnosticsIssuePlaceholder2 = 20,
-    kConnectionDiagnosticsIssuePlaceholder3 = 21,
-    kConnectionDiagnosticsIssuePlaceholder4 = 22,
-    kConnectionDiagnosticsIssueMax
-  };
-  static constexpr EnumMetric<FixedName> kMetricConnectionDiagnosticsIssue = {
-      .n = FixedName{"Network.Shill.ConnectionDiagnosticsIssue"},
-      .max = kConnectionDiagnosticsIssueMax,
-  };
-
   enum EthernetDriver {
     kEthernetDriverUnknown = 0,
     kEthernetDriverAlx = 1,
@@ -2161,10 +2128,6 @@ class Metrics {
 
   // Sends sparse histogram data to UMA.
   virtual bool SendSparseToUMA(const std::string& name, int sample);
-
-  // Notifies this object that connection diagnostics have been performed, and
-  // the connection issue that was diagnosed is |issue|.
-  virtual void NotifyConnectionDiagnosticsIssue(const std::string& issue);
 
   // Notifies this object that of the HS20 support of an access that has
   // been connected to.

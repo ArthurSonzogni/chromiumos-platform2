@@ -106,10 +106,8 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     EventDispatcher* dispatcher,
-    Metrics* metrics,
     ResultCallback result_callback)
     : dispatcher_(dispatcher),
-      metrics_(metrics),
       iface_name_(iface_name),
       iface_index_(iface_index),
       ip_address_(ip_address),
@@ -184,7 +182,6 @@ void ConnectionDiagnostics::AddEventWithMessage(Type type,
 }
 
 void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
-  metrics_->NotifyConnectionDiagnosticsIssue(issue);
   for (size_t i = 0; i < diagnostic_events_.size(); ++i) {
     LOG(INFO) << iface_name_ << ": Diagnostics event #" << i << ": "
               << EventToString(diagnostic_events_[i]);
@@ -439,11 +436,10 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     EventDispatcher* dispatcher,
-    Metrics* metrics,
     ConnectionDiagnostics::ResultCallback result_callback) {
   return std::make_unique<ConnectionDiagnostics>(
       iface_name, iface_index, ip_address, gateway, dns_list, dispatcher,
-      metrics, std::move(result_callback));
+      std::move(result_callback));
 }
 
 }  // namespace shill

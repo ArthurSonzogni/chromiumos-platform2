@@ -14,7 +14,6 @@
 #include <gmock/gmock.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/metrics.h"
 #include "shill/network/connection_diagnostics.h"
 
 namespace shill {
@@ -40,7 +39,6 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
                const net_base::IPAddress& gateway,
                const std::vector<net_base::IPAddress>& dns_list,
                EventDispatcher* dispatcher,
-               Metrics* metrics,
                ConnectionDiagnostics::ResultCallback result_callback),
               (override));
 };

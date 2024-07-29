@@ -7,9 +7,9 @@
 
 #include <string>
 
-#include "shill/metrics.h"
-
 #include <gmock/gmock.h>
+
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -138,10 +138,6 @@ class MockMetrics : public Metrics {
               (const Metrics::SparseMetric<Metrics::NameByTechnology>&,
                Technology,
                int),
-              (override));
-  MOCK_METHOD(void,
-              NotifyConnectionDiagnosticsIssue,
-              (const std::string&),
               (override));
 };
 
