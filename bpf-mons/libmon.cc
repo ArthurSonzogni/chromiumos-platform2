@@ -42,17 +42,26 @@ bool target_terminated(void) {
 }
 
 int setup_sig_handlers(void) {
-  sighandler_t ret;
+  struct sigaction sa;
 
-  ret = signal(SIGINT, mon_sig_handler);
-  if (ret == SIG_ERR)
+  sa.sa_handler = mon_sig_handler;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGINT, &sa, NULL) == -1)
     return -EINVAL;
-  ret = signal(SIGTERM, mon_sig_handler);
-  if (ret == SIG_ERR)
+
+  sa.sa_handler = mon_sig_handler;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGTERM, &sa, NULL) == -1)
     return -EINVAL;
-  ret = signal(SIGCHLD, mon_sig_handler);
-  if (ret == SIG_ERR)
+
+  sa.sa_handler = mon_sig_handler;
+  sa.sa_flags = SA_NOCLDSTOP;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGCHLD, &sa, NULL) == -1)
     return -EINVAL;
+
   return 0;
 }
 
