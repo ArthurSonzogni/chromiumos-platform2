@@ -190,14 +190,6 @@ class ConnectionDiagnostics {
                           const net_base::IPAddress& address_pinged,
                           const std::vector<base::TimeDelta>& result);
 
-  // Utility function that returns true iff the event in |diagnostic_events_|
-  // that is |num_events_ago| before the last event has a matching |type|,
-  // |phase|, and |result|.
-  bool DoesPreviousEventMatch(Type type,
-                              Phase phase,
-                              Result result,
-                              size_t num_events_ago);
-
   EventDispatcher* dispatcher_;
 
   // The name of the network interface associated with the connection.

@@ -407,23 +407,6 @@ void ConnectionDiagnostics::OnPingHostComplete(
   }
 }
 
-bool ConnectionDiagnostics::DoesPreviousEventMatch(Type type,
-                                                   Phase phase,
-                                                   Result result,
-                                                   size_t num_events_ago) {
-  int event_index = diagnostic_events_.size() - 1 - num_events_ago;
-  if (event_index < 0) {
-    LOG(ERROR) << iface_name_ << ": requested event " << num_events_ago
-               << " before the last event, but we only have "
-               << diagnostic_events_.size() << " logged";
-    return false;
-  }
-
-  return (diagnostic_events_[event_index].type == type &&
-          diagnostic_events_[event_index].phase == phase &&
-          diagnostic_events_[event_index].result == result);
-}
-
 std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     std::string_view iface_name,
     int iface_index,

@@ -108,14 +108,6 @@ class ConnectionDiagnosticsTest : public Test {
         ConnectionDiagnostics::Event(type, phase, result, ""));
   }
 
-  bool DoesPreviousEventMatch(ConnectionDiagnostics::Type type,
-                              ConnectionDiagnostics::Phase phase,
-                              ConnectionDiagnostics::Result result,
-                              size_t num_events_ago) {
-    return connection_diagnostics_.DoesPreviousEventMatch(type, phase, result,
-                                                          num_events_ago);
-  }
-
   bool Start(const std::string& url) {
     return connection_diagnostics_.Start(
         *net_base::HttpUrl::CreateFromString(url));
@@ -322,42 +314,6 @@ class ConnectionDiagnosticsTest : public Test {
   NiceMock<MockDnsClient>* dns_client_;
   NiceMock<MockIcmpSession>* icmp_session_;
 };
-
-TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {
-  // If |diagnostic_events| is empty, we should always fail to match an event.
-  EXPECT_FALSE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePingDNSServers,
-                             ConnectionDiagnostics::kPhaseStart,
-                             ConnectionDiagnostics::kResultSuccess, 0));
-  EXPECT_FALSE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypePingDNSServers,
-                             ConnectionDiagnostics::kPhaseStart,
-                             ConnectionDiagnostics::kResultSuccess, 2));
-
-  AddActualEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                 ConnectionDiagnostics::kPhaseStart,
-                 ConnectionDiagnostics::kResultSuccess);
-  AddActualEvent(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                 ConnectionDiagnostics::kPhaseEnd,
-                 ConnectionDiagnostics::kResultSuccess);
-
-  // Matching out of bounds should fail. (2 events total, so 2 events before the
-  // last event is out of bounds).
-  EXPECT_FALSE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                             ConnectionDiagnostics::kPhaseStart,
-                             ConnectionDiagnostics::kResultSuccess, 2));
-
-  // Valid matches.
-  EXPECT_TRUE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                             ConnectionDiagnostics::kPhaseStart,
-                             ConnectionDiagnostics::kResultSuccess, 1));
-  EXPECT_TRUE(
-      DoesPreviousEventMatch(ConnectionDiagnostics::kTypeResolveTargetServerIP,
-                             ConnectionDiagnostics::kPhaseEnd,
-                             ConnectionDiagnostics::kResultSuccess, 0));
-}
 
 TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
   // DNS resolution succeeds, and we attempt to ping the target web server but
