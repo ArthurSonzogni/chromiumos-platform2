@@ -36,6 +36,8 @@ class test {
   virtual void execute(void) = 0;
 };
 
+#define VECTOR_TEST_DATA_SZ 512
+
 /* std::vector tests */
 class vector_test : public test {
  private:
@@ -47,7 +49,7 @@ class vector_test : public test {
 
   void execute() {
     printf(":: execute vector_test\n");
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < VECTOR_TEST_DATA_SZ; i++) {
       data.push_back({i, i});
     }
 
@@ -56,6 +58,8 @@ class vector_test : public test {
     data_copy.clear();
   }
 };
+
+#define STRING_TEST_DATA_SZ 512
 
 /* std::string tests */
 class string_test : public test {
@@ -68,7 +72,7 @@ class string_test : public test {
 
   void execute() {
     printf(":: execute string_test\n");
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < STRING_TEST_DATA_SZ; i++) {
       data += 'G';
     }
 
@@ -78,6 +82,8 @@ class string_test : public test {
   }
 };
 
+#define CHAR_TEST_DATA_SZ 512
+
 /* char array string tests */
 class char_test : public test {
  private:
@@ -86,22 +92,30 @@ class char_test : public test {
  public:
   char_test() {
     printf(":: create char_test\n");
-    data = new char[256];
+    data = new char[CHAR_TEST_DATA_SZ];
     BUG_ON(!data);
-    memset(data, 0x00, 256);
+    memset(data, 0x00, CHAR_TEST_DATA_SZ);
   }
   ~char_test() { delete[] data; }
 
   void execute() {
     printf(":: execute char_test\n");
 
-    memset(data, 'G', 255);
+    memset(data, 'G', CHAR_TEST_DATA_SZ - 1);
 
     char* data_copy = strdup(data);
     BUG_ON(!data_copy);
-    memset(data_copy, 'g', 255);
+    for (int i = 0; i < CHAR_TEST_DATA_SZ; i++)
+      data_copy[i] = 'g';
+
+    char* data_copy2 =
+        reinterpret_cast<char*>(calloc(CHAR_TEST_DATA_SZ, sizeof(char)));
+    BUG_ON(!data_copy2);
+    for (int i = 0; i < CHAR_TEST_DATA_SZ; i++)
+      data_copy2[i] = data_copy[i];
 
     free(data_copy);
+    free(data_copy2);
   }
 };
 
@@ -177,7 +191,7 @@ int main(int argc, char* argv[]) {
   // This is sort of important, we need to give the monitor some time to
   // consume and process rb events (which may require /proc/self/maps to
   // still be around, for stack trace decoding)
-  sleep(8);
+  sleep(1);
 
   return 0;
 }
