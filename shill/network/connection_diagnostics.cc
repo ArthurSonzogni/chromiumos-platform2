@@ -115,6 +115,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       icmp_session_(new IcmpSession(dispatcher_)),
       num_dns_attempts_(0),
       running_(false),
+      event_number_(0),
       weak_ptr_factory_(this) {
   dns_client_ = std::make_unique<DnsClient>(
       ip_address_.GetFamily(), iface_name, DnsClient::kDnsTimeout, dispatcher_,
@@ -150,7 +151,7 @@ bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
 void ConnectionDiagnostics::Stop() {
   running_ = false;
   num_dns_attempts_ = 0;
-  diagnostic_events_.clear();
+  event_number_ = 0;
   dns_client_.reset();
   icmp_session_->Stop();
   id_to_pending_dns_server_icmp_session_.clear();
@@ -168,22 +169,22 @@ std::string ConnectionDiagnostics::EventToString(const Event& event) {
   return message;
 }
 
-void ConnectionDiagnostics::AddEvent(Type type, Phase phase, Result result) {
-  AddEventWithMessage(type, phase, result, "");
-}
-
-void ConnectionDiagnostics::AddEventWithMessage(Type type,
-                                                Phase phase,
-                                                Result result,
-                                                const std::string& message) {
-  diagnostic_events_.push_back(Event(type, phase, result, message));
+void ConnectionDiagnostics::LogEvent(Type type,
+                                     Phase phase,
+                                     Result result,
+                                     const std::string& message) {
+  event_number_++;
+  Event ev(type, phase, result, message);
+  if (result == kResultSuccess) {
+    LOG(INFO) << iface_name_ << ": Diagnostics event #" << event_number_ << ": "
+              << EventToString(ev);
+  } else {
+    LOG(WARNING) << iface_name_ << ": Diagnostics event #" << event_number_
+                 << ": " << EventToString(ev);
+  }
 }
 
 void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
-  for (size_t i = 0; i < diagnostic_events_.size(); ++i) {
-    LOG(INFO) << iface_name_ << ": Diagnostics event #" << i << ": "
-              << EventToString(diagnostic_events_[i]);
-  }
   LOG(INFO) << iface_name_ << ": Connection diagnostics result: " << issue;
   Stop();
 }
@@ -193,14 +194,14 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
   Error e;
   if (!dns_client_->Start(dns_list, target_url_->host(), &e)) {
     LOG(ERROR) << iface_name_ << ": could not start DNS on -- " << e.message();
-    AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,
-                        e.message());
+    LogEvent(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,
+             e.message());
     ReportResultAndStop(kIssueInternalError);
     return;
   }
 
-  AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseStart, kResultSuccess,
-                      base::StringPrintf("Attempt #%d", num_dns_attempts_));
+  LogEvent(kTypeResolveTargetServerIP, kPhaseStart, kResultSuccess,
+           base::StringPrintf("Attempt #%d", num_dns_attempts_));
   SLOG(2) << __func__ << ": looking up " << target_url_->host() << " (attempt "
           << num_dns_attempts_ << ")";
   ++num_dns_attempts_;
@@ -210,8 +211,8 @@ void ConnectionDiagnostics::PingDNSServers() {
   if (dns_list_.empty()) {
     LOG(ERROR) << iface_name_ << ": no DNS servers for network connection on "
                << iface_name_;
-    AddEventWithMessage(kTypePingDNSServers, kPhaseStart, kResultFailure,
-                        "No DNS servers for this connection");
+    LogEvent(kTypePingDNSServers, kPhaseStart, kResultFailure,
+             "No DNS servers for this connection");
     ReportResultAndStop(kIssueNoDNSServersConfigured);
     return;
   }
@@ -244,16 +245,15 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
-    AddEventWithMessage(
-        kTypePingDNSServers, kPhaseStart, kResultFailure,
-        "Could not start ping for any of the given DNS servers");
+    LogEvent(kTypePingDNSServers, kPhaseStart, kResultFailure,
+             "Could not start ping for any of the given DNS servers");
     if (num_invalid_dns_server_addr == dns_list_.size()) {
       ReportResultAndStop(kIssueDNSServersInvalid);
     } else if (num_failed_icmp_session_start == dns_list_.size()) {
       ReportResultAndStop(kIssueInternalError);
     }
   } else {
-    AddEvent(kTypePingDNSServers, kPhaseStart, kResultSuccess);
+    LogEvent(kTypePingDNSServers, kPhaseStart, kResultSuccess);
   }
 }
 
@@ -269,15 +269,14 @@ void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
                          address))) {
     LOG(ERROR) << iface_name_ << ": failed to start ICMP session with "
                << address.ToString();
-    AddEventWithMessage(
-        event_type, kPhaseStart, kResultFailure,
-        "Failed to start ICMP session with " + address.ToString());
+    LogEvent(event_type, kPhaseStart, kResultFailure,
+             "Failed to start ICMP session with " + address.ToString());
     ReportResultAndStop(kIssueInternalError);
     return;
   }
 
-  AddEventWithMessage(event_type, kPhaseStart, kResultSuccess,
-                      "Pinging " + address.ToString());
+  LogEvent(event_type, kPhaseStart, kResultSuccess,
+           "Pinging " + address.ToString());
 }
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
@@ -306,10 +305,9 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (pingable_dns_servers_.empty()) {
-    AddEventWithMessage(
-        kTypePingDNSServers, kPhaseEnd, kResultFailure,
-        "No DNS servers responded to pings. Pinging the gateway at " +
-            gateway_.ToString());
+    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultFailure,
+             "No DNS servers responded to pings. Pinging the gateway at " +
+                 gateway_.ToString());
     // If no DNS servers can be pinged, try to ping the gateway.
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
@@ -318,11 +316,11 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (pingable_dns_servers_.size() != dns_list_.size()) {
-    AddEventWithMessage(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
-                        "Pinged some, but not all, DNS servers successfully");
+    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
+             "Pinged some, but not all, DNS servers successfully");
   } else {
-    AddEventWithMessage(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
-                        "Pinged all DNS servers successfully");
+    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
+             "Pinged all DNS servers successfully");
   }
 
   if (num_dns_attempts_ < kMaxDNSRetries) {
@@ -341,21 +339,20 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
   SLOG(2) << __func__;
 
   if (address.has_value()) {
-    AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
-                        "Target address is " + address->ToString());
+    LogEvent(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
+             "Target address is " + address->ToString());
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
                                   weak_ptr_factory_.GetWeakPtr(), *address));
   } else if (address.error().type() == Error::kOperationTimeout) {
-    AddEventWithMessage(
-        kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
-        "DNS resolution timed out: " + address.error().message());
+    LogEvent(kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
+             "DNS resolution timed out: " + address.error().message());
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
                                          weak_ptr_factory_.GetWeakPtr()));
   } else {
-    AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultFailure,
-                        "DNS resolution failed: " + address.error().message());
+    LogEvent(kTypeResolveTargetServerIP, kPhaseEnd, kResultFailure,
+             "DNS resolution failed: " + address.error().message());
     ReportResultAndStop(kIssueDNSServerMisconfig);
   }
 }
@@ -382,7 +379,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
     LOG(WARNING) << iface_name_ << ": high packet loss when pinging "
                  << address_pinged.ToString();
   }
-  AddEventWithMessage(ping_event_type, kPhaseEnd, result_type, message);
+  LogEvent(ping_event_type, kPhaseEnd, result_type, message);
   if (result_type == kResultSuccess) {
     // If pinging the target web server succeeded, we have found a HTTP issue or
     // broken portal. Otherwise, if pinging the gateway succeeded, we have found

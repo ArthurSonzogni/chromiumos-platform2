@@ -137,22 +137,19 @@ class ConnectionDiagnostics {
   static std::string EventToString(const Event& event);
 
   bool running() const { return running_; }
+  int event_number() const { return event_number_; }
 
  private:
   friend class ConnectionDiagnosticsTest;
 
   static const int kMaxDNSRetries;
 
-  // Create a new Event with |type|, |phase|, |result|, and an empty message,
-  // and add it to the end of |diagnostic_events_|.
-  void AddEvent(Type type, Phase phase, Result result);
-
-  // Same as ConnectionDiagnostics::AddEvent, except that the added event
-  // contains the string |message|.
-  void AddEventWithMessage(Type type,
-                           Phase phase,
-                           Result result,
-                           const std::string& message);
+  // Logs a diagnostic events with |type|, |phase|, |result|, and an optional
+  // message.
+  void LogEvent(Type type,
+                Phase phase,
+                Result result,
+                const std::string& message = "");
 
   // Logs all ConnectionDiagnostics events and then stop connection diagnostics.
   void ReportResultAndStop(const std::string& issue);
@@ -220,9 +217,8 @@ class ConnectionDiagnostics {
   int num_dns_attempts_;
   bool running_;
 
-  // Record of all diagnostic events that occurred, sorted in order of
-  // occurrence.
-  std::vector<Event> diagnostic_events_;
+  // Number of record of all diagnostic events that occurred.
+  int event_number_;
 
   base::WeakPtrFactory<ConnectionDiagnostics> weak_ptr_factory_;
 };

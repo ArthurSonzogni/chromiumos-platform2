@@ -101,13 +101,6 @@ class ConnectionDiagnosticsTest : public Test {
     connection_diagnostics_.dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
   }
 
-  void AddActualEvent(ConnectionDiagnostics::Type type,
-                      ConnectionDiagnostics::Phase phase,
-                      ConnectionDiagnostics::Result result) {
-    connection_diagnostics_.diagnostic_events_.push_back(
-        ConnectionDiagnostics::Event(type, phase, result, ""));
-  }
-
   bool Start(const std::string& url) {
     return connection_diagnostics_.Start(
         *net_base::HttpUrl::CreateFromString(url));
@@ -116,7 +109,7 @@ class ConnectionDiagnosticsTest : public Test {
   void VerifyStopped() {
     EXPECT_FALSE(connection_diagnostics_.running());
     EXPECT_EQ(0, connection_diagnostics_.num_dns_attempts_);
-    EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());
+    EXPECT_EQ(0, connection_diagnostics_.event_number());
     EXPECT_EQ(nullptr, connection_diagnostics_.dns_client_);
     EXPECT_FALSE(connection_diagnostics_.icmp_session_->IsStarted());
     EXPECT_TRUE(
@@ -128,7 +121,7 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectSuccessfulStart() {
     EXPECT_FALSE(connection_diagnostics_.running());
-    EXPECT_TRUE(connection_diagnostics_.diagnostic_events_.empty());
+    EXPECT_EQ(0, connection_diagnostics_.event_number());
     EXPECT_TRUE(Start(kHttpUrl));
     EXPECT_TRUE(connection_diagnostics_.running());
   }
