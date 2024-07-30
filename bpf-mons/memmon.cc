@@ -67,6 +67,7 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
   if (event->type == MEMMON_EVENT_MALLOC || event->type == MEMMON_EVENT_MMAP ||
       event->type == MEMMON_EVENT_CALLOC ||
       event->type == MEMMON_EVENT_MEMALIGN) {
+    std::string addr = std::format("{:#x}", event->ptr);
     std::vector<std::string> bt;
     std::string frames;
 
@@ -76,7 +77,8 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
       frames += frame + "\n";
 
     MEMMON_EVENT_BEGIN("mm", memmon_event_track(event), "sz", event->size, "fn",
-                       memmon_event_name(event), "call trace", frames.c_str());
+                       memmon_event_name(event), "addr", addr.c_str(),
+                       "call trace", frames.c_str());
   }
 
   if (event->type == MEMMON_EVENT_FREE || event->type == MEMMON_EVENT_MUNMAP) {
