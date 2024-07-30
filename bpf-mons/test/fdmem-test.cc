@@ -36,7 +36,7 @@ class test {
   virtual void execute(void) = 0;
 };
 
-#define VECTOR_TEST_DATA_SZ 512
+#define VECTOR_TEST_DATA_SZ 1024
 
 /* std::vector tests */
 class vector_test : public test {
@@ -59,7 +59,7 @@ class vector_test : public test {
   }
 };
 
-#define STRING_TEST_DATA_SZ 512
+#define STRING_TEST_DATA_SZ 4096 * 3
 
 /* std::string tests */
 class string_test : public test {
@@ -82,7 +82,7 @@ class string_test : public test {
   }
 };
 
-#define CHAR_TEST_DATA_SZ 512
+#define CHAR_TEST_DATA_SZ 4096 * 8
 
 /* char array string tests */
 class char_test : public test {
