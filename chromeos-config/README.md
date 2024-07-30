@@ -837,6 +837,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | display-type | string |  | False |  | False | Denotes the type of display this device contains. |
+| ec-max-sensor-odr | integer |  | False |  | False | The maximal data rate for sensor, in mHz. Minimum value: 0x0. Maximum value: 0x61a80. |
 | fan-count | integer |  | False |  | False | The number of fan in the device. Minimum value: 0x0. Maximum value: 0x7. |
 | form-factor | string |  | False |  | False | Denotes the form factor of the device. |
 | has-audio-jack | boolean |  | False |  | False | True if the device has an audio jack. |

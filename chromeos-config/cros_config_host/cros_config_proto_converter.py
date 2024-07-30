@@ -2147,6 +2147,14 @@ def _build_hardware_properties(hw_features):
     if hw_features.HasField("fan"):
         result["fan-count"] = hw_features.fan.fan_count.value
 
+    if (
+        hw_features.HasField("embedded_controller")
+        and hw_features.embedded_controller.max_sensor_odr_mhz.value > 0
+    ):
+        result[
+            "ec-max-sensor-odr"
+        ] = hw_features.embedded_controller.max_sensor_odr_mhz.value
+
     return result
 
 

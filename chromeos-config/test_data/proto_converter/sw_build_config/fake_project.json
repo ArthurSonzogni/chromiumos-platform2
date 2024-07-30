@@ -1268,6 +1268,7 @@
           "signature-id": "project_a"
         },
         "hardware-properties": {
+          "ec-max-sensor-odr": 50000,
           "form-factor": "CONVERTIBLE",
           "has-audio-jack": true,
           "has-backlight": true,

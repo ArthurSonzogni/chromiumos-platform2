@@ -1504,6 +1504,11 @@ properties:
                   type: integer
                   minimum: 0
                   maximum: 7
+                ec-max-sensor-odr:
+                  description: The maximal data rate for sensor, in mHz.
+                  type: integer
+                  minimum: 0
+                  maximum: 400000
                 display-type: *display-type
                 stylus-category: *stylus-category
                 psu-type: *psu-type

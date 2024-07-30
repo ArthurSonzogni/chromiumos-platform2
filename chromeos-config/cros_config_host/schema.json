@@ -1040,6 +1040,12 @@
                     ],
                     "type": "string"
                   },
+                  "ec-max-sensor-odr": {
+                    "description": "The maximal data rate for sensor, in mHz.",
+                    "maximum": 400000,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
                   "fan-count": {
                     "description": "The number of fan in the device.",
                     "maximum": 7,
