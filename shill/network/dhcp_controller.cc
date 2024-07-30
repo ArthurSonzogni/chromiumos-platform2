@@ -11,6 +11,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/network_config.h>
 #include <metrics/timer.h>
 
@@ -223,7 +224,8 @@ bool DHCPController::Start() {
   last_provision_timer_ = std::make_unique<chromeos_metrics::Timer>();
   last_provision_timer_->Start();
 
-  dhcp_client_proxy_ = create_dhcp_client_proxy_cb_.Run();
+  dhcp_client_proxy_ =
+      create_dhcp_client_proxy_cb_.Run(net_base::IPFamily::kIPv4);
   if (dhcp_client_proxy_ == nullptr) {
     return false;
   }

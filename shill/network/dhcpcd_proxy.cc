@@ -296,7 +296,12 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
     std::string_view interface,
     Technology technology,
     const DHCPClientProxy::Options& options,
-    DHCPClientProxy::EventHandler* handler) {
+    DHCPClientProxy::EventHandler* handler,
+    net_base::IPFamily family) {
+  if (family != net_base::IPFamily::kIPv4) {
+    LOG(ERROR) << __func__ << ": " << family << " is not supported.";
+    return nullptr;
+  }
   const std::vector<std::string> args =
       GetDhcpcdArgs(technology, options, interface, /*redact_args=*/false);
 

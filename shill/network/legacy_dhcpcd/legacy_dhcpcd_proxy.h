@@ -85,7 +85,8 @@ class LegacyDHCPCDProxyFactory : public DHCPClientProxyFactory {
       std::string_view interface,
       Technology technology,
       const DHCPClientProxy::Options& options,
-      DHCPClientProxy::EventHandler* handler) override;
+      DHCPClientProxy::EventHandler* handler,
+      net_base::IPFamily family = net_base::IPFamily::kIPv4) override;
 
   void set_root_for_testing(const base::FilePath& root) { root_ = root; }
 

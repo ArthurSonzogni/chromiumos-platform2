@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/process_manager.h>
 #include <metrics/timer.h>
@@ -105,7 +106,8 @@ class DHCPController : public DHCPClientProxy::EventHandler {
 
  private:
   using CreateDHCPClientProxyCB =
-      base::RepeatingCallback<std::unique_ptr<DHCPClientProxy>()>;
+      base::RepeatingCallback<std::unique_ptr<DHCPClientProxy>(
+          net_base::IPFamily)>;
 
   // Starts the DHCP client if no DHCP client is running. Returns false if
   // any error occurs and the DHCP client is not running.

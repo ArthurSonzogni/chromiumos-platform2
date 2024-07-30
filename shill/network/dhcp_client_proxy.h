@@ -10,6 +10,7 @@
 #include <string_view>
 
 #include <base/functional/callback_forward.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/network_config.h>
 
 #include "shill/network/dhcpv4_config.h"
@@ -109,7 +110,8 @@ class DHCPClientProxyFactory {
       std::string_view interface,
       Technology technology,
       const DHCPClientProxy::Options& options,
-      DHCPClientProxy::EventHandler* handler) = 0;
+      DHCPClientProxy::EventHandler* handler,
+      net_base::IPFamily family) = 0;
 };
 
 }  // namespace shill

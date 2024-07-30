@@ -40,7 +40,8 @@ class MockDHCPClientProxyFactory : public DHCPClientProxyFactory {
               (std::string_view,
                Technology,
                const DHCPClientProxy::Options&,
-               DHCPClientProxy::EventHandler*),
+               DHCPClientProxy::EventHandler*,
+               net_base::IPFamily),
               (override));
 };
 

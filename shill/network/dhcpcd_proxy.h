@@ -74,7 +74,8 @@ class DHCPCDProxyFactory : public DHCPClientProxyFactory {
       std::string_view interface,
       Technology technology,
       const DHCPClientProxy::Options& options,
-      DHCPClientProxy::EventHandler* handler) override;
+      DHCPClientProxy::EventHandler* handler,
+      net_base::IPFamily family = net_base::IPFamily::kIPv4) override;
 
   // delegates the DHCP event to the corresponding proxy.
   void OnDHCPEvent(const std::map<std::string, std::string>& configuration);
