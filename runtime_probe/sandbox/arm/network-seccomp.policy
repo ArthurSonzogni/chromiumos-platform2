@@ -9,7 +9,9 @@ munmap: 1
 statx: 1
 read: 1
 close: 1
+fstat: 1
 fstatfs: 1
+fstat64: 1
 fstatfs64: 1
 readlink: 1
 access: 1
