@@ -212,7 +212,7 @@ preserve_rollback_key() {
     [ -e "${f}" ] || continue
 
     # Ignore failures.
-    key="$(grep "^rollback " "${f}")" || continue
+    key="$(grep "^rollback_data " "${f}")" || continue
     echo "${key}" >>"${pmsg}" || true
 
     # We've found a key. We're done.
