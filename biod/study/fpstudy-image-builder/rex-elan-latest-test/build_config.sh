@@ -45,21 +45,7 @@ config_apply_src_changes() {
 
     # WORKON_PKGS+=( chromeos-base/chromeos-config )
     WORKON_PKGS+=( chromeos-base/chromeos-config-bsp-private )
-    # rex/karis: Change FPMCU Nuvoton+Elan board to buccaneer
-    # https://crrev.com/i/7108657
-    #cherry_pick src/project/rex/karis cros-internal refs/changes/57/7108657/3
     # DNS: Force karis to use buccaneer
     # https://crrev.com/i/7108658
     cherry_pick src/project/rex/karis cros-internal refs/changes/58/7108658/3
-
-    #WORKON_PKGS+=( chromeos-base/fingerprint_study )
-    # fpstudy: Add initial parameters for buccaneer
-    # https://crrev.com/c/5399572
-    #cherry_pick src/platform2/biod/study cros refs/changes/72/5399572/2
-    # fpstudy: Add baseline capture for Elan 80SG
-    # https://crrev.com/c/5399650
-    #cherry_pick src/platform2/biod/study cros refs/changes/50/5399650/1
-    # chromeos-base/fingerprint_study: Add direct dep for cros_config
-    # https://crrev.com/c/5399645
-    #cherry_pick src/third_party/chromiumos-overlay/chromeos-base/fingerprint_study cros refs/changes/45/5399645/1
 }
