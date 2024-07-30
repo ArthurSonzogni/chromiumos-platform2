@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
 #include <gtest/gtest.h>
+
 #include "debugd/src/log_tool.h"
 
 namespace debugd {
@@ -89,7 +90,6 @@ const std::set<std::string_view> kEmptyEntries{
     "mm-esim-status",
     "mm-status",
     "modetest",
-    "mount-encrypted",
     "netlog",
     "netstat",
     "network-devices",

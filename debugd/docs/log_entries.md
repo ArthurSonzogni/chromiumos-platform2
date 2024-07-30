@@ -447,8 +447,6 @@ CRC mismatches and transfer timeouts.
 
 ## modetest
 
-## mount-encrypted
-
 ## mountinfo
 
 File system mount information from the init process's mount namespace. See
