@@ -22,7 +22,7 @@ namespace cryptohome {
 
 class PinAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kPin>,
-      public AfDriverWithBlockTypes<AuthBlockType::kPinWeaver>,
+      public AfDriverWithBlockType<AuthBlockType::kPinWeaver>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<PinMetadata>,

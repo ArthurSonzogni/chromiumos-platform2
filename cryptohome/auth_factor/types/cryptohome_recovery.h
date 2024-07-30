@@ -22,7 +22,7 @@ namespace cryptohome {
 
 class CryptohomeRecoveryAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kCryptohomeRecovery>,
-      public AfDriverWithBlockTypes<AuthBlockType::kCryptohomeRecovery>,
+      public AfDriverWithBlockType<AuthBlockType::kCryptohomeRecovery>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<CryptohomeRecoveryMetadata>,

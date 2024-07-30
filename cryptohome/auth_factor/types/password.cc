@@ -11,9 +11,37 @@
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_session/intent.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
+namespace {
+
+// Specifies if pinweaver is enabled for passwords. For an actual rollout this
+// should be converted to a more dynamic flag than a compile time constant.
+constexpr bool kPinweaverPasswordsEnabled = false;
+
+}  // namespace
+
+base::span<const AuthBlockType> AfDriverWithPasswordBlockTypes::block_types()
+    const {
+  base::span<const AuthBlockType> types = kBlockTypes;
+  if (!kPinweaverPasswordsEnabled) {
+    return types.subspan(1);
+  }
+  return types;
+}
+
+bool AfDriverWithPasswordBlockTypes::NeedsResetSecret() const {
+  // Reset secrets are only used for pinweaver based passwords but since we
+  // don't necessarily know at the call site what kind of auth block will be
+  // selected we're stuck assuming that it will be needed.
+  auto types = block_types();
+  bool is_pinweaver_enabled =
+      std::find(types.begin(), types.end(), AuthBlockType::kPinWeaver) !=
+      types.end();
+  return is_pinweaver_enabled;
+}
 
 bool PasswordAuthFactorDriver::IsSupportedByHardware() const {
   return true;
@@ -40,10 +68,6 @@ PasswordAuthFactorDriver::CreateCredentialVerifier(
     return nullptr;
   }
   return verifier;
-}
-
-bool PasswordAuthFactorDriver::NeedsResetSecret() const {
-  return false;
 }
 
 AuthFactorLabelArity PasswordAuthFactorDriver::GetAuthFactorLabelArity() const {

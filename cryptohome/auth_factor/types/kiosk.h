@@ -37,7 +37,6 @@ class KioskAuthFactorDriver final
 
  private:
   bool IsSupportedByHardware() const override;
-  bool NeedsResetSecret() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

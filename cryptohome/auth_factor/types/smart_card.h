@@ -27,7 +27,7 @@ namespace cryptohome {
 
 class SmartCardAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kSmartCard>,
-      public AfDriverWithBlockTypes<AuthBlockType::kChallengeCredential>,
+      public AfDriverWithBlockType<AuthBlockType::kChallengeCredential>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kNoChecks,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<SmartCardMetadata>,

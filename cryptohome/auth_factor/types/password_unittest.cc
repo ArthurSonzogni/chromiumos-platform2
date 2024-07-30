@@ -23,6 +23,7 @@ using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
+using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
@@ -34,6 +35,22 @@ class PasswordDriverTest : public AuthFactorDriverGenericTest {
   const brillo::SecureBlob kPassword{"the password"};
   const brillo::SecureBlob kWrongPassword{"not the password"};
 };
+
+TEST_F(PasswordDriverTest, BlockTypes) {
+  PasswordAuthFactorDriver password_driver;
+  AuthFactorDriver& driver = password_driver;
+
+#if USE_TPM_INSECURE_FALLBACK
+  EXPECT_THAT(
+      driver.block_types(),
+      ElementsAre(AuthBlockType::kTpmEcc, AuthBlockType::kTpmBoundToPcr,
+                  AuthBlockType::kTpmNotBoundToPcr, AuthBlockType::kScrypt));
+#else
+  EXPECT_THAT(driver.block_types(),
+              ElementsAre(AuthBlockType::kTpmEcc, AuthBlockType::kTpmBoundToPcr,
+                          AuthBlockType::kTpmNotBoundToPcr));
+#endif
+}
 
 TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   // Setup

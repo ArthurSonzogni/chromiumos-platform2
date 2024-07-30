@@ -9,6 +9,8 @@
 #include <optional>
 #include <string>
 
+#include <base/containers/span.h>
+
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
@@ -20,29 +22,40 @@
 
 namespace cryptohome {
 
-// The block types supported by password factors. The priority is defined based
-// on the following:
-//   1. Favor TPM ECC as the fastest and best choice.
-//   2. If ECC isn't available, prefer binding to PCR.
-//   3. If PCR isn't available either, unbound TPM is our last choice.
-// If cryptohome is built to allow insecure fallback then we have a fourth
+// Implements the block supported by password factors. This is implemented as
+// separate class so that it can be reused by the kiosk factor driver as well.
+//
+// The priority is defined based on the following:
+//   1. Prefer pinweaver as the best choice, if it is both available and the
+//      feature to use it is enabled.
+// If pinweaver is not available then we fall back to more raw TPM options:
+//   2. Favor TPM ECC as the fastest and best choice.
+//   3. If ECC isn't available, prefer binding to PCR.
+//   4. If PCR isn't available either, unbound TPM is our last choice.
+// If cryptohome is built to allow insecure fallback then we have a final
 // last resort choice:
-//   4. Use the scrypt block, with no TPM
-// On boards where this isn't necessary we don't even allow this option. If the
-// TPM is not functioning on such a board we prefer to get the error rather than
-// falling back to the less secure mechanism.
+//   5. Use the scrypt block, with no TPM
+// On boards where this isn't necessary we don't even allow this option. If
+// the TPM is not functioning on such a board we prefer to get the error
+// rather than falling back to the less secure mechanism.
+//
+// Unlike the other generic "block type" implementations in common, this also
+// implements the NeedsResetSecret function since its operation is tied to the
+// block types that are supported.
+class AfDriverWithPasswordBlockTypes : public virtual AuthFactorDriver {
+ protected:
+  base::span<const AuthBlockType> block_types() const final;
+  bool NeedsResetSecret() const final;
+
+ private:
+  static constexpr AuthBlockType kBlockTypes[] = {
+      AuthBlockType::kPinWeaver,     AuthBlockType::kTpmEcc,
+      AuthBlockType::kTpmBoundToPcr, AuthBlockType::kTpmNotBoundToPcr,
 #if USE_TPM_INSECURE_FALLBACK
-using AfDriverWithPasswordBlockTypes =
-    AfDriverWithBlockTypes<AuthBlockType::kTpmEcc,
-                           AuthBlockType::kTpmBoundToPcr,
-                           AuthBlockType::kTpmNotBoundToPcr,
-                           AuthBlockType::kScrypt>;
-#else
-using AfDriverWithPasswordBlockTypes =
-    AfDriverWithBlockTypes<AuthBlockType::kTpmEcc,
-                           AuthBlockType::kTpmBoundToPcr,
-                           AuthBlockType::kTpmNotBoundToPcr>;
+      AuthBlockType::kScrypt,
 #endif
+  };
+};
 
 class PasswordAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kPassword>,
@@ -70,7 +83,6 @@ class PasswordAuthFactorDriver final
       const std::string& auth_factor_label,
       const AuthInput& auth_input,
       const AuthFactorMetadata& auth_factor_metadata) const override;
-  bool NeedsResetSecret() const override;
   AuthFactorLabelArity GetAuthFactorLabelArity() const override;
 
   std::optional<user_data_auth::AuthFactor> TypedConvertToProto(

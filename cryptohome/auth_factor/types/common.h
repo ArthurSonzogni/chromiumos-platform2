@@ -22,7 +22,6 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_
 #define CRYPTOHOME_AUTH_FACTOR_TYPES_COMMON_H_
 
-#include <array>
 #include <memory>
 #include <optional>
 #include <set>
@@ -50,21 +49,22 @@ class AfDriverWithType : public virtual AuthFactorDriver {
   AuthFactorType type() const final { return kType; }
 };
 
-// Common implementation of block_type(). Takes the block types as a template
-// parameter pack. The types should be ordered from highest to lowest priority
-// the same way block_type() expects them to be listed.
-template <AuthBlockType... kTypes>
-class AfDriverWithBlockTypes : public virtual AuthFactorDriver {
+// Common implementations of block_types() for driver that support either zero
+// or one block type. In the single block type case, that is the parameter for
+// the template.
+class AfDriverNoBlockType : public virtual AuthFactorDriver {
  protected:
-  base::span<const AuthBlockType> block_types() const override {
-    return kTypeArray;
-  }
+  base::span<const AuthBlockType> block_types() const final { return {}; }
+};
+template <AuthBlockType kType>
+class AfDriverWithBlockType : public virtual AuthFactorDriver {
+ protected:
+  base::span<const AuthBlockType> block_types() const final { return kSpan; }
 
  private:
-  // The underlying storage for the auth block type list. We back all the
-  // block_types lookups with a singular static array.
-  static constexpr std::array<AuthBlockType, sizeof...(kTypes)> kTypeArray = {
-      kTypes...};
+  // Define a 1-length span backed by the single block type value.
+  static constexpr AuthBlockType kValue = kType;
+  static constexpr base::span<const AuthBlockType, 1> kSpan{&kValue, 1u};
 };
 
 // Common implementation of IsSupportedByStorage(). This implementation is
@@ -218,7 +218,7 @@ template <typename EnabledIntents, typename DisabledIntents>
 class AfDriverWithConfigurableIntents : public virtual AuthFactorDriver {
  private:
   IntentConfigurability GetIntentConfigurability(
-      AuthIntent auth_intent) const override {
+      AuthIntent auth_intent) const final {
     for (AuthIntent enabled_by_default_intent : EnabledIntents::kArray) {
       if (auth_intent == enabled_by_default_intent) {
         return IntentConfigurability::kEnabledByDefault;

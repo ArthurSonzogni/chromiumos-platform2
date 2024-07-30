@@ -26,7 +26,7 @@ namespace cryptohome {
 
 class LegacyFingerprintAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kLegacyFingerprint>,
-      public AfDriverWithBlockTypes<>,
+      public AfDriverNoBlockType,
       public AfDriverWithMetadata<std::monostate>,
       public AfDriverFullAuthUnsupported,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,

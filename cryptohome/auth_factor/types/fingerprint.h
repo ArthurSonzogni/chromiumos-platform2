@@ -29,7 +29,7 @@ namespace cryptohome {
 
 class FingerprintAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kFingerprint>,
-      public AfDriverWithBlockTypes<AuthBlockType::kFingerprint>,
+      public AfDriverWithBlockType<AuthBlockType::kFingerprint>,
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverFullAuthDecrypt,

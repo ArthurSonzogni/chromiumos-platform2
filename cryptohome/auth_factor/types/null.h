@@ -23,7 +23,7 @@ namespace cryptohome {
 // all functions implemented by a factor.
 class NullAuthFactorDriver final
     : public AfDriverWithType<AuthFactorType::kUnspecified>,
-      public AfDriverWithBlockTypes<>,
+      public AfDriverNoBlockType,
       public AfDriverNoPrepare,
       public AfDriverFullAuthUnsupported,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,

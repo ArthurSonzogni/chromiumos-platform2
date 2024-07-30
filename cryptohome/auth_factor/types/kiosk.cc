@@ -13,10 +13,6 @@ bool KioskAuthFactorDriver::IsSupportedByHardware() const {
   return true;
 }
 
-bool KioskAuthFactorDriver::NeedsResetSecret() const {
-  return false;
-}
-
 AuthFactorLabelArity KioskAuthFactorDriver::GetAuthFactorLabelArity() const {
   return AuthFactorLabelArity::kSingle;
 }
