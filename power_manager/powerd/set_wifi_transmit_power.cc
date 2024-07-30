@@ -180,6 +180,7 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
       {"rtw_8822ce", WirelessDriver::RTW88},
       {"rtw89_8852ae", WirelessDriver::RTW89},
       {"rtw89_8852ce", WirelessDriver::RTW89},
+      {"rtw89_8852be", WirelessDriver::RTW89},
       {"mt7921e", WirelessDriver::MTK},
       {"mt7921s", WirelessDriver::MTK},
   };
@@ -452,8 +453,10 @@ std::map<enum Rtw89SARBand, uint8_t> GetRtw89ChromeosConfigPowerTable(
                                      "value cannot exceed 255.";
   power_table[kRtw89SarBand5g4] = power_limit;
 
-  CHECK(config->GetString(wifi_power_table_path, "limit-6g-1", &value))
-      << "Could not get ChromeosConfig power table.";
+  if (!config->GetString(wifi_power_table_path, "limit-6g-1", &value)) {
+    return power_table;
+  }
+
   power_limit = std::stoi(value) + offset_6g;
   CHECK(power_limit <= UINT8_MAX) << "Invalid power limit configs. Limit "
                                      "value cannot exceed 255.";
