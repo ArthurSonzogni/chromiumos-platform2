@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from enum import Enum
 import pathlib
 from typing import Literal, Optional
 
@@ -14,77 +13,11 @@ import fpsutils
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import table
 
 
 class Experiment:
     """Represents a fingerprint study experiment that is being analyzed."""
-
-    class Finger(Enum):
-        Thumb_Left = 0
-        Thumb_Right = 1
-        Index_Left = 2
-        Index_Right = 3
-        Middle_Left = 4
-        Middle_Right = 5
-
-    class UserGroup(Enum):
-        A = 0
-        B = 1
-        C = 2
-        D = 3
-        E = 4
-        F = 5
-
-    class Decision(Enum):
-        Accept = "ACCEPT"
-        Reject = "REJECT"
-
-    class TableCol(Enum):
-        """All known table column names used across different table types."""
-
-        Enroll_User = "EnrollUser"
-        Enroll_Finger = "EnrollFinger"
-        Enroll_Group = "EnrollGroup"
-        Verify_User = "VerifyUser"
-        Verify_Finger = "VerifyFinger"
-        Verify_Sample = "VerifySample"
-        Verify_Group = "VerifyGroup"
-        Decision = "Decision"
-        User = "User"
-        Group = "Group"
-
-        @classmethod
-        def all(cls) -> list[Enum]:
-            return list(level for level in cls)
-
-        @classmethod
-        def all_values(cls) -> list[str]:
-            return list(level.value for level in cls)
-
-    FALSE_TABLE_COLS = [
-        TableCol.Enroll_User.value,
-        TableCol.Enroll_Finger.value,
-        TableCol.Verify_User.value,
-        TableCol.Verify_Finger.value,
-        TableCol.Verify_Sample.value,
-    ]
-    DECISION_TABLE_COLS = [
-        TableCol.Enroll_User.value,
-        TableCol.Enroll_Finger.value,
-        TableCol.Verify_User.value,
-        TableCol.Verify_Finger.value,
-        TableCol.Verify_Sample.value,
-        TableCol.Decision.value,
-    ]
-    DECISION_TABLE_GROUP_COLS = [
-        TableCol.Enroll_Group.value,
-        TableCol.Verify_Group.value,
-    ]
-    USER_GROUP_TABLE_COLS = [
-        TableCol.User.value,
-        TableCol.Group.value,
-    ]
-    """Column names used in a user_group mapping table."""
 
     @staticmethod
     def _false_table_query(
@@ -98,11 +31,11 @@ class Experiment:
         query_parts: list[str] = []
 
         for arg, col in [
-            (enroll_user_id, Experiment.TableCol.Enroll_User),
-            (enroll_finger_id, Experiment.TableCol.Enroll_Finger),
-            (verify_user_id, Experiment.TableCol.Verify_User),
-            (verify_finger_id, Experiment.TableCol.Verify_Finger),
-            (verify_sample_index, Experiment.TableCol.Verify_Sample),
+            (enroll_user_id, table.Col.Enroll_User),
+            (enroll_finger_id, table.Col.Enroll_Finger),
+            (verify_user_id, table.Col.Verify_User),
+            (verify_finger_id, table.Col.Verify_Finger),
+            (verify_sample_index, table.Col.Verify_Sample),
         ]:
             if arg:
                 query_parts.append(f"({col.value} == {arg})")
@@ -128,11 +61,11 @@ class Experiment:
         query_vals = ()
 
         for arg, col in [
-            (enroll_user_id, Experiment.TableCol.Enroll_User),
-            (enroll_finger_id, Experiment.TableCol.Enroll_Finger),
-            (verify_user_id, Experiment.TableCol.Verify_User),
-            (verify_finger_id, Experiment.TableCol.Verify_Finger),
-            (verify_sample_index, Experiment.TableCol.Verify_Sample),
+            (enroll_user_id, table.Col.Enroll_User),
+            (enroll_finger_id, table.Col.Enroll_Finger),
+            (verify_user_id, table.Col.Verify_User),
+            (verify_finger_id, table.Col.Verify_Finger),
+            (verify_sample_index, table.Col.Verify_Sample),
         ]:
             if arg:
                 query_cols.append(col.value)
@@ -166,12 +99,9 @@ class Experiment:
         if self._tbl_fa_list is None:
             far = self.far_decisions()
             fa_list = far.loc[
-                far[Experiment.TableCol.Decision.value]
-                == Experiment.Decision.Accept.value
+                far[table.Col.Decision.value] == table.Decision.Accept.value
             ].copy(deep=True)
-            fa_list.drop(
-                [Experiment.TableCol.Decision.value], axis=1, inplace=True
-            )
+            fa_list.drop([table.Col.Decision.value], axis=1, inplace=True)
             fa_list.reset_index(drop=True, inplace=True)
             self._tbl_fa_list = fa_list
 
@@ -182,12 +112,9 @@ class Experiment:
         if self._tbl_fr_list is None:
             frr = self.frr_decisions()
             fr_list = frr.loc[
-                frr[Experiment.TableCol.Decision.value]
-                == Experiment.Decision.Reject.value
+                frr[table.Col.Decision.value] == table.Decision.Reject.value
             ].copy(deep=True)
-            fr_list.drop(
-                [Experiment.TableCol.Decision.value], axis=1, inplace=True
-            )
+            fr_list.drop([table.Col.Decision.value], axis=1, inplace=True)
             fr_list.reset_index(drop=True, inplace=True)
             self._tbl_fr_list = fr_list
 
@@ -221,11 +148,11 @@ class Experiment:
         scan both FAR and FRR decision tables.
         """
 
-        def exists_with_groups(table: Optional[pd.DataFrame]) -> bool:
-            """Return True if `table` exists and contains group cols."""
-            if table is None:
+        def exists_with_groups(tbl: Optional[pd.DataFrame]) -> bool:
+            """Return True if `tbl` exists and contains group cols."""
+            if tbl is None:
                 return False
-            return fpsutils.has_columns(table, self.DECISION_TABLE_GROUP_COLS)
+            return fpsutils.has_columns(tbl, table.DECISION_TABLE_GROUP_COLS)
 
         if self._tbl_user_groups is None:
             if exists_with_groups(self._tbl_frr_decisions):
@@ -239,32 +166,30 @@ class Experiment:
 
             enroll_groups = tbl[
                 [
-                    Experiment.TableCol.Enroll_User.value,
-                    Experiment.TableCol.Enroll_Group.value,
+                    table.Col.Enroll_User.value,
+                    table.Col.Enroll_Group.value,
                 ]
             ].copy(deep=True)
             verify_groups = tbl[
                 [
-                    Experiment.TableCol.Verify_User.value,
-                    Experiment.TableCol.Verify_Group.value,
+                    table.Col.Verify_User.value,
+                    table.Col.Verify_Group.value,
                 ]
             ].copy(deep=True)
 
             # Rename columns.
             enroll_groups.columns = [
-                Experiment.TableCol.User.value,
-                Experiment.TableCol.Group.value,
+                table.Col.User.value,
+                table.Col.Group.value,
             ]
             verify_groups.columns = [
-                Experiment.TableCol.User.value,
-                Experiment.TableCol.Group.value,
+                table.Col.User.value,
+                table.Col.Group.value,
             ]
 
             user_groups = pd.concat([enroll_groups, verify_groups])
             user_groups.drop_duplicates(inplace=True)
-            user_groups.sort_values(
-                Experiment.TableCol.User.value, inplace=True
-            )
+            user_groups.sort_values(table.Col.User.value, inplace=True)
             user_groups.reset_index(inplace=True, drop=True)
             self._tbl_user_groups = user_groups
 
@@ -325,7 +250,7 @@ class Experiment:
             self.frr_decisions(), csv_file_path, exclude_groups
         )
 
-    def unique_list(self, column: TableCol) -> npt.NDArray:
+    def unique_list(self, column: table.Col) -> npt.NDArray:
         """Return a unique and sorted list of items for the given column.
 
         These items are discovered from the FAR decision table.
@@ -340,7 +265,7 @@ class Experiment:
         These are indexable from 0, since they are in a numpy array.
         """
 
-        return self.unique_list(Experiment.TableCol.Verify_User)
+        return self.unique_list(table.Col.Verify_User)
 
     def finger_list(self) -> npt.NDArray:
         """Return a unique set of sorted Finger IDs from the verification sets.
@@ -348,7 +273,7 @@ class Experiment:
         These are indexable from 0, since they are in a numpy array.
         """
 
-        return self.unique_list(Experiment.TableCol.Verify_Finger)
+        return self.unique_list(table.Col.Verify_Finger)
 
     def sample_list(self) -> npt.NDArray:
         """Return a unique set of sorted Sample IDs from the verification sets.
@@ -356,7 +281,7 @@ class Experiment:
         These are indexable from 0, since they are in a numpy array.
         """
 
-        return self.unique_list(Experiment.TableCol.Verify_Sample)
+        return self.unique_list(table.Col.Verify_Sample)
 
     def group_list(self) -> npt.NDArray:
         """Return a unique set of sorted Group IDs from the verification sets.
@@ -366,9 +291,9 @@ class Experiment:
         These are indexable from 0, since they are in a numpy array.
         """
 
-        return self.unique_list(Experiment.TableCol.Verify_Group)
+        return self.unique_list(table.Col.Verify_Group)
 
-    def fa_counts_by(self, column: TableCol) -> pd.Series:
+    def fa_counts_by(self, column: table.Col) -> pd.Series:
         """Return a Series of False Accept counts based on `column`.
 
         The series index will be `column` values and the data values will be the
@@ -400,7 +325,7 @@ class Experiment:
         # that the output series will have sorted indices.
         return non_zero_counts.reindex(index=unique_indices, fill_value=0)
 
-    def fr_counts_by(self, column: TableCol) -> pd.Series:
+    def fr_counts_by(self, column: table.Col) -> pd.Series:
         """Return a Series of False Reject counts based on `column`.
 
         The series index will be `column` values and the data values will be the
@@ -466,17 +391,17 @@ class Experiment:
             verify_sample_index=verify_sample_index,
         )
 
-    def add_far_decisions(self, table: pd.DataFrame):
+    def add_far_decisions(self, tbl: pd.DataFrame):
         """Add an FAR decision table to experiment."""
-        self._tbl_far_decisions = table
+        self._tbl_far_decisions = tbl
 
     def add_far_decisions_from_csv(self, csv_file_path: pathlib.Path):
         """Read FAR decision file and add to experiment."""
         self.add_far_decisions(_read_decision_file(csv_file_path))
 
-    def add_frr_decisions(self, table: pd.DataFrame):
+    def add_frr_decisions(self, tbl: pd.DataFrame):
         """Add an FRR decision table to experiment."""
-        self._tbl_frr_decisions = table
+        self._tbl_frr_decisions = tbl
 
     def add_frr_decisions_from_csv(self, csv_file_path: pathlib.Path):
         """Read FRR decision file and add to experiment."""
@@ -512,11 +437,11 @@ class Experiment:
         # Ensure that the required columns exist.
         if not fpsutils.has_columns(
             user_groups,
-            Experiment.USER_GROUP_TABLE_COLS,
+            table.USER_GROUP_TABLE_COLS,
         ):
             raise ValueError(
                 f"CSV file {csv_file_path} doesn't contain columns"
-                f" {Experiment.USER_GROUP_TABLE_COLS}."
+                f" {table.USER_GROUP_TABLE_COLS}."
             )
 
         self.add_groups(user_groups)
@@ -532,11 +457,11 @@ class Experiment:
         user_groups = pd.DataFrame(
             collection.discover_user_groups(),
             columns=[
-                Experiment.TableCol.User.value,
-                Experiment.TableCol.Group.value,
+                table.Col.User.value,
+                table.Col.Group.value,
             ],
         )
-        user_groups.sort_values(Experiment.TableCol.User.value, inplace=True)
+        user_groups.sort_values(table.Col.User.value, inplace=True)
         self.add_groups(user_groups)
 
     def check(self) -> None:
@@ -553,7 +478,6 @@ class Experiment:
         Raises an exception if an inconsistency is found.
         """
 
-
         def check_decisions(tbl: pd.DataFrame, name: Literal["FAR", "FRR"]):
             """Check basic decisions table properties, like columns.
 
@@ -561,14 +485,14 @@ class Experiment:
             2. Check that either both group columns are correctly absent or
                that they are both are present.
             """
-            if not fpsutils.has_columns(tbl, Experiment.DECISION_TABLE_COLS):
+            if not fpsutils.has_columns(tbl, table.DECISION_TABLE_COLS):
                 raise TypeError(
                     f"{name} decision table is missing some required columns."
                 )
 
             # If one of the Enroll/Verify group columns is present, then the
             # other must be present.
-            grps = set(tbl.columns) & set(Experiment.DECISION_TABLE_GROUP_COLS)
+            grps = set(tbl.columns) & set(table.DECISION_TABLE_GROUP_COLS)
             if len(grps) == 1:
                 raise TypeError(
                     f"{name} decision table is missing one group column."
@@ -598,11 +522,11 @@ class Experiment:
             """Return match attempts from the table that are for FA or FR."""
 
             fr_attempts_bools = (
-                tbl[Experiment.TableCol.Enroll_User.value]
-                == tbl[Experiment.TableCol.Verify_User.value]
+                tbl[table.Col.Enroll_User.value]
+                == tbl[table.Col.Verify_User.value]
             ) & (
-                tbl[Experiment.TableCol.Enroll_Finger.value]
-                == tbl[Experiment.TableCol.Verify_Finger.value]
+                tbl[table.Col.Enroll_Finger.value]
+                == tbl[table.Col.Verify_Finger.value]
             )
 
             if attempt_type == "FRR":
@@ -668,34 +592,34 @@ def _add_groups_to_table(
     """
 
     # Add Group column, if it already contains a User column.
-    if Experiment.TableCol.User.value in tbl.columns:
+    if table.Col.User.value in tbl.columns:
         tbl = tbl.join(
-            user_groups.set_index(Experiment.TableCol.Verify_User.value),
-            on=Experiment.TableCol.Verify_User.value,
+            user_groups.set_index(table.Col.Verify_User.value),
+            on=table.Col.Verify_User.value,
         )
 
     # Add Verify_Group column, if it already contains a Verify_User column.
-    if Experiment.TableCol.Verify_User.value in tbl.columns:
+    if table.Col.Verify_User.value in tbl.columns:
         tbl = tbl.join(
             user_groups.rename(
                 columns={
-                    Experiment.TableCol.User.value: Experiment.TableCol.Verify_User.value,
-                    Experiment.TableCol.Group.value: Experiment.TableCol.Verify_Group.value,
+                    table.Col.User.value: table.Col.Verify_User.value,
+                    table.Col.Group.value: table.Col.Verify_Group.value,
                 }
-            ).set_index(Experiment.TableCol.Verify_User.value),
-            on=Experiment.TableCol.Verify_User.value,
+            ).set_index(table.Col.Verify_User.value),
+            on=table.Col.Verify_User.value,
         )
 
     # Add Enroll_Group column, if it already contains an Enroll_User column.
-    if Experiment.TableCol.Enroll_User.value in tbl.columns:
+    if table.Col.Enroll_User.value in tbl.columns:
         tbl = tbl.join(
             user_groups.rename(
                 columns={
-                    Experiment.TableCol.User.value: Experiment.TableCol.Enroll_User.value,
-                    Experiment.TableCol.Group.value: Experiment.TableCol.Enroll_Group.value,
+                    table.Col.User.value: table.Col.Enroll_User.value,
+                    table.Col.Group.value: table.Col.Enroll_Group.value,
                 }
-            ).set_index(Experiment.TableCol.Enroll_User.value),
-            on=Experiment.TableCol.Enroll_User.value,
+            ).set_index(table.Col.Enroll_User.value),
+            on=table.Col.Enroll_User.value,
         )
 
     return tbl
@@ -703,18 +627,18 @@ def _add_groups_to_table(
 
 def _read_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:
     """Read a CSV decisions file into a DataFrame with supported columns."""
-    table: pd.DataFrame = pd.read_csv(csv_file_path)
+    tbl: pd.DataFrame = pd.read_csv(csv_file_path)
     # Ensure that the required columns exist.
-    if not fpsutils.has_columns(table, Experiment.DECISION_TABLE_COLS):
+    if not fpsutils.has_columns(tbl, table.DECISION_TABLE_COLS):
         raise ValueError(
             f"CSV file {csv_file_path} doesn't contain columns"
-            f" {Experiment.DECISION_TABLE_COLS}."
+            f" {table.DECISION_TABLE_COLS}."
         )
-    return table
+    return tbl
 
 
 def _write_decision_file(
-    table: pd.DataFrame,
+    tbl: pd.DataFrame,
     csv_file_path: pathlib.Path,
     exclude_groups: bool = True,
 ) -> None:
@@ -723,7 +647,7 @@ def _write_decision_file(
     Group are removed from the written out table, if `exclude_groups` is True.
     """
     if exclude_groups:
-        table = table[Experiment.DECISION_TABLE_COLS]
+        tbl = tbl[table.DECISION_TABLE_COLS]
     # Setting index to False avoids the "index" / primary-key of the
     # dataframe from being written out.
-    table.to_csv(csv_file_path, index=False)
+    tbl.to_csv(csv_file_path, index=False)

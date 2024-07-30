@@ -54,6 +54,7 @@ from report import Report
 import scipy.stats as st
 from scipy.stats import norm
 import simulate_fpstudy
+import table
 from test_case import TestCaseEnum
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
@@ -255,7 +256,7 @@ display(fa_table)
 
 def fa_count_figure(
     exp: Experiment,
-    cols: list[Experiment.TableCol],
+    cols: list[table.TableCol],
     title: str,
     xaxis_title: str,
 ) -> go.Figure:
@@ -315,7 +316,7 @@ def fa_count_figure(
 
 def fr_count_figure(
     exp: Experiment,
-    cols: list[Experiment.TableCol],
+    cols: list[table.TableCol],
     title: str,
     xaxis_title: str,
 ) -> go.Figure:
@@ -415,7 +416,7 @@ for tc in test_cases:
     # User
     fig = fa_count_figure(
         exp,
-        [Experiment.TableCol.Enroll_User, Experiment.TableCol.Verify_User],
+        [table.Col.Enroll_User, table.Col.Verify_User],
         "False Accepts by User ID of Enroll and Verify",
         "User ID",
     )
@@ -424,7 +425,7 @@ for tc in test_cases:
     )
     fig = fr_count_figure(
         exp,
-        [Experiment.TableCol.Verify_User],
+        [table.Col.Verify_User],
         "False Rejects by User ID",
         "User ID",
     )
@@ -433,7 +434,7 @@ for tc in test_cases:
     # Finger
     fig = fa_count_figure(
         exp,
-        [Experiment.TableCol.Enroll_Finger, Experiment.TableCol.Verify_Finger],
+        [table.Col.Enroll_Finger, table.Col.Verify_Finger],
         "False Accepts by Finger ID of Enroll and Verify",
         "Finger ID",
     )
@@ -442,7 +443,7 @@ for tc in test_cases:
     )
     fig = fr_count_figure(
         exp,
-        [Experiment.TableCol.Verify_Finger],
+        [table.Col.Verify_Finger],
         "False Rejects by Finger ID",
         "Finger ID",
     )
@@ -453,7 +454,7 @@ for tc in test_cases:
     # for verification.
     fig = fa_count_figure(
         exp,
-        [Experiment.TableCol.Verify_Sample],
+        [table.Col.Verify_Sample],
         "False Accepts by Verify Sample ID",
         "Sample ID",
     )
@@ -462,13 +463,13 @@ for tc in test_cases:
     )
     fig = fr_count_figure(
         exp,
-        [Experiment.TableCol.Verify_Sample],
+        [table.Col.Verify_Sample],
         "False Rejects by Sample ID. "
         "Keep in mind that different test cases may use "
         "different samples for verification.",
         "Sample ID",
     )
-    fr_counts = exp.fr_counts_by(Experiment.TableCol.Verify_Sample)
+    fr_counts = exp.fr_counts_by(table.Col.Verify_Sample)
     line = st.linregress(fr_counts.index, fr_counts.values)
     line_x = np.array(fr_counts.index)
     line = st.linregress(line_x, np.array(fr_counts.values))
@@ -479,7 +480,7 @@ for tc in test_cases:
     # Group
     fig = fa_count_figure(
         exp,
-        [Experiment.TableCol.Enroll_Group, Experiment.TableCol.Verify_Group],
+        [table.Col.Enroll_Group, table.Col.Verify_Group],
         "False Accepts by Group of Enroll and Verify",
         "Group",
     )
@@ -488,7 +489,7 @@ for tc in test_cases:
     )
     fig = fr_count_figure(
         exp,
-        [Experiment.TableCol.Verify_Group],
+        [table.Col.Verify_Group],
         "False Rejects by Group",
         "Group",
     )
@@ -503,13 +504,11 @@ rpt_tc[DISPLAY_TC].display(display)
 ### FA_by_User
 
 s1 = {
-    "EnrollUser_"
-    + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Enroll_User)
+    "EnrollUser_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_User)
     for tc in test_cases
 }
 s2 = {
-    "VerifyUser_"
-    + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_User)
+    "VerifyUser_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_User)
     for tc in test_cases
 }
 df = pd.DataFrame(s1 | s2)
@@ -548,10 +547,7 @@ rpt.overall_section().add_figure("FA_by_User", "False Accepts by User", fig)
 ### FR_by_User
 
 df = pd.DataFrame(
-    {
-        tc.name: exps[tc].fr_counts_by(Experiment.TableCol.Verify_User)
-        for tc in test_cases
-    }
+    {tc.name: exps[tc].fr_counts_by(table.Col.Verify_User) for tc in test_cases}
 )
 # [tc.name for tc in test_cases]
 fig = px.bar(
@@ -592,7 +588,7 @@ rpt.overall_section().add_figure("FR_by_User", "False Rejects by User", fig)
 
 df = pd.DataFrame(
     {
-        tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_Sample)
+        tc.name: exps[tc].fa_counts_by(table.Col.Verify_Sample)
         for tc in test_cases
     }
 )
@@ -655,13 +651,11 @@ rpt.overall_section().add_figure("FA_by_Sample", "False Accepts by Sample", fig)
 ### FA_by_Finger
 
 s1 = {
-    "EnrollFinger_"
-    + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Enroll_Finger)
+    "EnrollFinger_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_Finger)
     for tc in test_cases
 }
 s2 = {
-    "VerifyFinger_"
-    + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_Finger)
+    "VerifyFinger_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_Finger)
     for tc in test_cases
 }
 df = pd.DataFrame(s1 | s2)
@@ -681,7 +675,7 @@ rpt.overall_section().add_figure("FA_by_Finger", "False Accepts by Finger", fig)
 
 df = pd.DataFrame(
     {
-        tc.name: exps[tc].fr_counts_by(Experiment.TableCol.Verify_Finger)
+        tc.name: exps[tc].fr_counts_by(table.Col.Verify_Finger)
         for tc in test_cases
     }
 )
@@ -700,13 +694,11 @@ rpt.overall_section().add_figure("FR_by_Finger", "False Rejects by Finger", fig)
 ### FA_by_Group
 
 s1 = {
-    "EnrollGroup_"
-    + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Enroll_Group)
+    "EnrollGroup_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_Group)
     for tc in test_cases
 }
 s2 = {
-    "VerifyGroup_"
-    + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_Group)
+    "VerifyGroup_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_Group)
     for tc in test_cases
 }
 df = pd.DataFrame(s1 | s2)
@@ -726,7 +718,7 @@ rpt.overall_section().add_figure("FA_by_Group", "False Accepts by Group", fig)
 
 df = pd.DataFrame(
     {
-        tc.name: exps[tc].fr_counts_by(Experiment.TableCol.Verify_Group)
+        tc.name: exps[tc].fr_counts_by(table.Col.Verify_Group)
         for tc in test_cases
     }
 )
@@ -979,7 +971,7 @@ rpt_tc[DISPLAY_TC].display(display)
 
 
 # fig = ff.create_distplot(
-#     [exps[tc].fr_counts_by(Experiment.TableCol.Enroll_Group)
+#     [exps[tc].fr_counts_by(table.Col.Enroll_Group)
 #      for tc in test_cases],
 #     [tc.name for tc in test_cases],
 #     bin_size=1,

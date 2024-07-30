@@ -23,6 +23,7 @@ import plotly.express as px
 import plotly.graph_objs as go
 from report import Report
 import scipy.stats as st
+import table
 from test_case_enum import TestCaseEnum
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
@@ -124,7 +125,7 @@ class BootstrapFARFRRStats:
 
 def fa_count_figure(
     exp: Experiment,
-    cols: list[Experiment.TableCol],
+    cols: list[table.Col],
     title: str,
     xaxis_title: str,
 ) -> go.Figure:
@@ -184,7 +185,7 @@ def fa_count_figure(
 
 def fr_count_figure(
     exp: Experiment,
-    cols: list[Experiment.TableCol],
+    cols: list[table.Col],
     title: str,
     xaxis_title: str,
 ) -> go.Figure:
@@ -546,7 +547,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
         # User
         fig = fa_count_figure(
             exp,
-            [Experiment.TableCol.Enroll_User, Experiment.TableCol.Verify_User],
+            [table.Col.Enroll_User, table.Col.Verify_User],
             "False Accepts by User ID of Enroll and Verify",
             "User ID",
         )
@@ -555,7 +556,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
         )
         fig = fr_count_figure(
             exp,
-            [Experiment.TableCol.Verify_User],
+            [table.Col.Verify_User],
             "False Rejects by User ID",
             "User ID",
         )
@@ -565,8 +566,8 @@ def cmd_report(opts: argparse.Namespace) -> int:
         fig = fa_count_figure(
             exp,
             [
-                Experiment.TableCol.Enroll_Finger,
-                Experiment.TableCol.Verify_Finger,
+                table.Col.Enroll_Finger,
+                table.Col.Verify_Finger,
             ],
             "False Accepts by Finger ID of Enroll and Verify",
             "Finger ID",
@@ -578,7 +579,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
         )
         fig = fr_count_figure(
             exp,
-            [Experiment.TableCol.Verify_Finger],
+            [table.Col.Verify_Finger],
             "False Rejects by Finger ID",
             "Finger ID",
         )
@@ -589,7 +590,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
         # for verification.
         fig = fa_count_figure(
             exp,
-            [Experiment.TableCol.Verify_Sample],
+            [table.Col.Verify_Sample],
             "False Accepts by Verify Sample ID",
             "Sample ID",
         )
@@ -598,13 +599,13 @@ def cmd_report(opts: argparse.Namespace) -> int:
         )
         fig = fr_count_figure(
             exp,
-            [Experiment.TableCol.Verify_Sample],
+            [table.Col.Verify_Sample],
             "False Rejects by Sample ID. "
             "Keep in mind that different test cases may use "
             "different samples for verification.",
             "Sample ID",
         )
-        fr_counts = exp.fr_counts_by(Experiment.TableCol.Verify_Sample)
+        fr_counts = exp.fr_counts_by(table.Col.Verify_Sample)
         line = st.linregress(fr_counts.index, fr_counts.values)
         line_x = np.array(fr_counts.index)
         line = st.linregress(line_x, np.array(fr_counts.values))
@@ -616,8 +617,8 @@ def cmd_report(opts: argparse.Namespace) -> int:
         fig = fa_count_figure(
             exp,
             [
-                Experiment.TableCol.Enroll_Group,
-                Experiment.TableCol.Verify_Group,
+                table.Col.Enroll_Group,
+                table.Col.Verify_Group,
             ],
             "False Accepts by Group of Enroll and Verify",
             "Group",
@@ -627,7 +628,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
         )
         fig = fr_count_figure(
             exp,
-            [Experiment.TableCol.Verify_Group],
+            [table.Col.Verify_Group],
             "False Rejects by Group",
             "Group",
         )
@@ -640,13 +641,11 @@ def cmd_report(opts: argparse.Namespace) -> int:
     ### FA_by_User
 
     s1 = {
-        "EnrollUser_"
-        + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Enroll_User)
+        "EnrollUser_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_User)
         for tc in test_cases
     }
     s2 = {
-        "VerifyUser_"
-        + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_User)
+        "VerifyUser_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_User)
         for tc in test_cases
     }
     df = pd.DataFrame(s1 | s2)
@@ -686,7 +685,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fr_counts_by(Experiment.TableCol.Verify_User)
+            tc.name: exps[tc].fr_counts_by(table.Col.Verify_User)
             for tc in test_cases
         }
     )
@@ -729,7 +728,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_Sample)
+            tc.name: exps[tc].fa_counts_by(table.Col.Verify_Sample)
             for tc in test_cases
         }
     )
@@ -795,12 +794,12 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     s1 = {
         "EnrollFinger_"
-        + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Enroll_Finger)
+        + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_Finger)
         for tc in test_cases
     }
     s2 = {
         "VerifyFinger_"
-        + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_Finger)
+        + tc.name: exps[tc].fa_counts_by(table.Col.Verify_Finger)
         for tc in test_cases
     }
     df = pd.DataFrame(s1 | s2)
@@ -822,7 +821,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fr_counts_by(Experiment.TableCol.Verify_Finger)
+            tc.name: exps[tc].fr_counts_by(table.Col.Verify_Finger)
             for tc in test_cases
         }
     )
@@ -843,13 +842,11 @@ def cmd_report(opts: argparse.Namespace) -> int:
     ### FA_by_Group
 
     s1 = {
-        "EnrollGroup_"
-        + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Enroll_Group)
+        "EnrollGroup_" + tc.name: exps[tc].fa_counts_by(table.Col.Enroll_Group)
         for tc in test_cases
     }
     s2 = {
-        "VerifyGroup_"
-        + tc.name: exps[tc].fa_counts_by(Experiment.TableCol.Verify_Group)
+        "VerifyGroup_" + tc.name: exps[tc].fa_counts_by(table.Col.Verify_Group)
         for tc in test_cases
     }
     df = pd.DataFrame(s1 | s2)
@@ -871,7 +868,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     df = pd.DataFrame(
         {
-            tc.name: exps[tc].fr_counts_by(Experiment.TableCol.Verify_Group)
+            tc.name: exps[tc].fr_counts_by(table.Col.Verify_Group)
             for tc in test_cases
         }
     )

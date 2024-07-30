@@ -16,6 +16,7 @@ from typing import Optional
 from experiment import Experiment
 import numpy as np
 import pandas as pd
+import table
 
 
 def GenerateUserGroup(
@@ -39,8 +40,8 @@ def GenerateUserGroup(
 
     user_groups_tbl = pd.DataFrame(
         {
-            Experiment.TableCol.User.value: users,
-            Experiment.TableCol.Group.value: groups,
+            table.Col.User.value: users,
+            table.Col.Group.value: groups,
         }
     )
     return user_groups_tbl
@@ -97,30 +98,28 @@ def GenerateFARResults(
 
     df = pd.DataFrame(
         columns=[
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
-            Experiment.TableCol.Verify_User.value,
-            Experiment.TableCol.Verify_Finger.value,
-            Experiment.TableCol.Verify_Sample.value,
-            Experiment.TableCol.Decision.value,
+            table.Col.Enroll_User.value,
+            table.Col.Enroll_Finger.value,
+            table.Col.Verify_User.value,
+            table.Col.Verify_Finger.value,
+            table.Col.Verify_Sample.value,
+            table.Col.Decision.value,
         ]
     )
 
     if verbose:
         print("Initializing Data Frame")
-    df[Experiment.TableCol.Verify_User.value] = np.zeros(
-        num_rows_naive, dtype=int
-    )
+    df[table.Col.Verify_User.value] = np.zeros(num_rows_naive, dtype=int)
 
     if verbose:
         print("Loading Matrix Into Data Frame")
     df[
         [
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
-            Experiment.TableCol.Verify_User.value,
-            Experiment.TableCol.Verify_Finger.value,
-            Experiment.TableCol.Verify_Sample.value,
+            table.Col.Enroll_User.value,
+            table.Col.Enroll_Finger.value,
+            table.Col.Verify_User.value,
+            table.Col.Verify_Finger.value,
+            table.Col.Verify_Sample.value,
         ]
     ] = cross_mat
 
@@ -142,8 +141,8 @@ def GenerateFARResults(
     if verbose:
         print("Generating Decisions")
     rng = np.random.default_rng()
-    df[Experiment.TableCol.Decision.value] = rng.choice(
-        [Experiment.Decision.Reject.value, Experiment.Decision.Accept.value],
+    df[table.Col.Decision.value] = rng.choice(
+        [table.Decision.Reject.value, table.Decision.Accept.value],
         size=num_rows,
         p=[1 - prob, prob],
     )
@@ -209,36 +208,36 @@ def GenerateFRRResults(
 
     df = pd.DataFrame(
         columns=[
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
-            Experiment.TableCol.Verify_User.value,
-            Experiment.TableCol.Verify_Finger.value,
-            Experiment.TableCol.Verify_Sample.value,
-            Experiment.TableCol.Decision.value,
+            table.Col.Enroll_User.value,
+            table.Col.Enroll_Finger.value,
+            table.Col.Verify_User.value,
+            table.Col.Verify_Finger.value,
+            table.Col.Verify_Sample.value,
+            table.Col.Decision.value,
         ]
     )
 
     if verbose:
         print("Initializing Data Frame")
-    df[Experiment.TableCol.Enroll_User.value] = np.zeros(num_rows, dtype=int)
+    df[table.Col.Enroll_User.value] = np.zeros(num_rows, dtype=int)
 
     if verbose:
         print("Loading Matrix Into Data Frame")
     df[
         [
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
-            Experiment.TableCol.Verify_User.value,
-            Experiment.TableCol.Verify_Finger.value,
-            Experiment.TableCol.Verify_Sample.value,
+            table.Col.Enroll_User.value,
+            table.Col.Enroll_Finger.value,
+            table.Col.Verify_User.value,
+            table.Col.Verify_Finger.value,
+            table.Col.Verify_Sample.value,
         ]
     ] = cross_mat
 
     if verbose:
         print("Generating Decisions")
     rng = np.random.default_rng()
-    df[Experiment.TableCol.Decision.value] = rng.choice(
-        [Experiment.Decision.Accept.value, Experiment.Decision.Reject.value],
+    df[table.Col.Decision.value] = rng.choice(
+        [table.Decision.Accept.value, table.Decision.Reject.value],
         size=num_rows,
         p=[1 - prob, prob],
     )

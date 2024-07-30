@@ -29,6 +29,7 @@ from experiment import Experiment
 import fpsutils
 import numpy as np
 import numpy.typing as npt
+import table
 
 
 # There are many issues and performance bottlenecks when using
@@ -323,10 +324,9 @@ class BootstrapFARFlat(Bootstrap):
 
     def _init(self, exp: Experiment) -> None:
         far = exp.far_decisions()
-        assert fpsutils.has_columns(far, [Experiment.TableCol.Decision])
+        assert fpsutils.has_columns(far, [table.Col.Decision])
         self.far_list: npt.NDArray[np.bool_] = np.array(
-            far[Experiment.TableCol.Decision.value]
-            == Experiment.Decision.Accept.value,
+            far[table.Col.Decision.value] == table.Decision.Accept.value,
             dtype=bool,
         )
 
@@ -346,11 +346,11 @@ class BootstrapFullFARHierarchy(Bootstrap):
         fa_table = exp.fa_table()
         # The accepted tuples for fa_set and fa_trie.
         fa_set_tuple = [
-            Experiment.TableCol.Verify_User.value,
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Verify_Finger.value,
-            Experiment.TableCol.Enroll_Finger.value,
-            Experiment.TableCol.Verify_Sample.value,
+            table.Col.Verify_User.value,
+            table.Col.Enroll_User.value,
+            table.Col.Verify_Finger.value,
+            table.Col.Enroll_Finger.value,
+            table.Col.Verify_Sample.value,
         ]
         assert fpsutils.has_columns(fa_table, fa_set_tuple)
         self.fa_set = fpsutils.DataFrameSetAccess(fa_table, fa_set_tuple)
@@ -470,9 +470,9 @@ class BootstrapFullFRRHierarchy(Bootstrap):
         fr_table = exp.fr_table()
         # The accepted tuples for fa_set and fa_trie.
         fr_set_tuple = [
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
-            Experiment.TableCol.Verify_Sample.value,
+            table.Col.Enroll_User.value,
+            table.Col.Enroll_Finger.value,
+            table.Col.Verify_Sample.value,
         ]
         assert fpsutils.has_columns(fr_table, fr_set_tuple)
         self.fa_set = fpsutils.DataFrameSetAccess(fr_table, fr_set_tuple)

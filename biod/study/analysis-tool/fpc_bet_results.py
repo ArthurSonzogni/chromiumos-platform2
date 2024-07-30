@@ -14,6 +14,7 @@ from typing import Iterable, Optional, Union
 from cached_data_file import CachedCSVFile
 from experiment import Experiment
 import pandas as pd
+import table
 from test_case_enum import TestCaseEnum
 
 
@@ -138,18 +139,18 @@ class FPCBETResults:
             skiprows=[0, 1, 2, 3, 4],
             header=None,
             names=[
-                Experiment.TableCol.Verify_User.value,
-                Experiment.TableCol.Verify_Finger.value,
-                Experiment.TableCol.Verify_Sample.value,
-                Experiment.TableCol.Enroll_User.value,
-                Experiment.TableCol.Enroll_Finger.value,
+                table.Col.Verify_User.value,
+                table.Col.Verify_Finger.value,
+                table.Col.Verify_Sample.value,
+                table.Col.Enroll_User.value,
+                table.Col.Enroll_Finger.value,
             ]
             + [FPCBETResults.Column.Strong_FA.value],
             sep=" ?[,\/] ?",
             engine="python",
         )
 
-        for col in Experiment.FALSE_TABLE_COLS:
+        for col in table.FALSE_TABLE_COLS:
             col_text = tbl[col].str.extract("= (\d+)", expand=False)
             tbl[col] = pd.to_numeric(col_text)
 
@@ -184,12 +185,12 @@ class FPCBETResults:
 
         tbl.rename(
             columns={
-                "Enrolled user": Experiment.TableCol.Enroll_User.value,
-                "Enrolled finger": Experiment.TableCol.Enroll_Finger.value,
-                "User": Experiment.TableCol.Verify_User.value,
-                "Finger": Experiment.TableCol.Verify_Finger.value,
-                "Sample": Experiment.TableCol.Verify_Sample.value,
-                "Decision": Experiment.TableCol.Decision.value,
+                "Enrolled user": table.Col.Enroll_User.value,
+                "Enrolled finger": table.Col.Enroll_Finger.value,
+                "User": table.Col.Verify_User.value,
+                "Finger": table.Col.Verify_Finger.value,
+                "Sample": table.Col.Verify_Sample.value,
+                "Decision": table.Col.Decision.value,
             },
             inplace=True,
         )

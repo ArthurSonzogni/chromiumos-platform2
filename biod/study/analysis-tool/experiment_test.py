@@ -14,17 +14,17 @@ from experiment import *
 import fpsutils
 import pandas as pd
 import simulate_fpstudy
+import table
 
 
 class Test_has_user_groups(unittest.TestCase):
     """Test the `has_user_groups` method."""
 
     BARE_DECISIONS_TABLE = pd.DataFrame(
-        columns=Experiment.DECISION_TABLE_COLS,
+        columns=table.DECISION_TABLE_COLS,
     )
     BARE_DECISIONS_TABLE_WITH_GROUPS = pd.DataFrame(
-        columns=Experiment.DECISION_TABLE_COLS
-        + Experiment.DECISION_TABLE_GROUP_COLS,
+        columns=table.DECISION_TABLE_COLS + table.DECISION_TABLE_GROUP_COLS,
     )
 
     def setUp(self) -> None:
@@ -125,14 +125,14 @@ class Test_Experiment_CSV(unittest.TestCase):
     )
     CSV_FAR_DATAFRAME = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001, 10001],
-            Experiment.TableCol.Enroll_Finger.value: [1, 1],
-            Experiment.TableCol.Verify_User.value: [10002, 10002],
-            Experiment.TableCol.Verify_Finger.value: [3, 3],
-            Experiment.TableCol.Verify_Sample.value: [12, 13],
-            Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Reject.value,
-                Experiment.Decision.Reject.value,
+            table.Col.Enroll_User.value: [10001, 10001],
+            table.Col.Enroll_Finger.value: [1, 1],
+            table.Col.Verify_User.value: [10002, 10002],
+            table.Col.Verify_Finger.value: [3, 3],
+            table.Col.Verify_Sample.value: [12, 13],
+            table.Col.Decision.value: [
+                table.Decision.Reject.value,
+                table.Decision.Reject.value,
             ],
         }
     )
@@ -146,14 +146,14 @@ class Test_Experiment_CSV(unittest.TestCase):
     )
     CSV_FRR_DATAFRAME = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001, 10001],
-            Experiment.TableCol.Enroll_Finger.value: [1, 2],
-            Experiment.TableCol.Verify_User.value: [10001, 10001],
-            Experiment.TableCol.Verify_Finger.value: [1, 2],
-            Experiment.TableCol.Verify_Sample.value: [25, 25],
-            Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Accept.value,
-                Experiment.Decision.Accept.value,
+            table.Col.Enroll_User.value: [10001, 10001],
+            table.Col.Enroll_Finger.value: [1, 2],
+            table.Col.Verify_User.value: [10001, 10001],
+            table.Col.Verify_Finger.value: [1, 2],
+            table.Col.Verify_Sample.value: [25, 25],
+            table.Col.Decision.value: [
+                table.Decision.Accept.value,
+                table.Decision.Accept.value,
             ],
         }
     )
@@ -167,8 +167,8 @@ class Test_Experiment_CSV(unittest.TestCase):
     )
     CSV_USER_GROUP_DATAFRAME = pd.DataFrame(
         {
-            Experiment.TableCol.User.value: [10001, 10002],
-            Experiment.TableCol.Group.value: ["A", "B"],
+            table.Col.User.value: [10001, 10002],
+            table.Col.Group.value: ["A", "B"],
         }
     )
 
@@ -244,43 +244,43 @@ class Test_Experiment_User_Groups(unittest.TestCase):
 
     FRR_DATAFRAME_GROUPS = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001, 10002],
-            Experiment.TableCol.Enroll_Finger.value: [1, 2],
-            Experiment.TableCol.Verify_User.value: [10001, 10002],
-            Experiment.TableCol.Verify_Finger.value: [1, 2],
-            Experiment.TableCol.Verify_Sample.value: [25, 25],
-            Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Accept.value,
-                Experiment.Decision.Accept.value,
+            table.Col.Enroll_User.value: [10001, 10002],
+            table.Col.Enroll_Finger.value: [1, 2],
+            table.Col.Verify_User.value: [10001, 10002],
+            table.Col.Verify_Finger.value: [1, 2],
+            table.Col.Verify_Sample.value: [25, 25],
+            table.Col.Decision.value: [
+                table.Decision.Accept.value,
+                table.Decision.Accept.value,
             ],
             # With Enroll and Verify groups.
-            Experiment.TableCol.Enroll_Group.value: ["A", "B"],
-            Experiment.TableCol.Verify_Group.value: ["A", "B"],
+            table.Col.Enroll_Group.value: ["A", "B"],
+            table.Col.Verify_Group.value: ["A", "B"],
         }
     )
 
     FAR_DATAFRAME_GROUPS = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001, 10001],
-            Experiment.TableCol.Enroll_Finger.value: [1, 1],
-            Experiment.TableCol.Verify_User.value: [10002, 10002],
-            Experiment.TableCol.Verify_Finger.value: [3, 3],
-            Experiment.TableCol.Verify_Sample.value: [12, 13],
-            Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Reject.value,
-                Experiment.Decision.Reject.value,
+            table.Col.Enroll_User.value: [10001, 10001],
+            table.Col.Enroll_Finger.value: [1, 1],
+            table.Col.Verify_User.value: [10002, 10002],
+            table.Col.Verify_Finger.value: [3, 3],
+            table.Col.Verify_Sample.value: [12, 13],
+            table.Col.Decision.value: [
+                table.Decision.Reject.value,
+                table.Decision.Reject.value,
             ],
             # With Enroll and Verify groups.
-            Experiment.TableCol.Enroll_Group.value: ["A", "A"],
-            Experiment.TableCol.Verify_Group.value: ["B", "B"],
+            table.Col.Enroll_Group.value: ["A", "A"],
+            table.Col.Verify_Group.value: ["B", "B"],
         }
     )
     """This example requires the groups to be scanned from both enroll and verify."""
 
     USER_GROUPS_TABLE = pd.DataFrame(
         {
-            Experiment.TableCol.User.value: [10001, 10002],
-            Experiment.TableCol.Group.value: ["A", "B"],
+            table.Col.User.value: [10001, 10002],
+            table.Col.Group.value: ["A", "B"],
         }
     )
 
@@ -314,33 +314,30 @@ class Test_Experiment_check(unittest.TestCase):
 
     FAR_DATAFRAME = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001] * 10,
-            Experiment.TableCol.Enroll_Finger.value: [1] * 10,
-            Experiment.TableCol.Verify_User.value: [10002] * 10,
-            Experiment.TableCol.Verify_Finger.value: [1] * 10,
-            Experiment.TableCol.Verify_Sample.value: np.arange(0, 10),
-            Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Reject.value
-            ]
-            * 10,
-            Experiment.TableCol.Enroll_Group.value: ["A"] * 10,
-            Experiment.TableCol.Verify_Group.value: ["B"] * 10,
+            table.Col.Enroll_User.value: [10001] * 10,
+            table.Col.Enroll_Finger.value: [1] * 10,
+            table.Col.Verify_User.value: [10002] * 10,
+            table.Col.Verify_Finger.value: [1] * 10,
+            table.Col.Verify_Sample.value: np.arange(0, 10),
+            table.Col.Decision.value: [table.Decision.Reject.value] * 10,
+            table.Col.Enroll_Group.value: ["A"] * 10,
+            table.Col.Verify_Group.value: ["B"] * 10,
         }
     )
 
     FRR_DATAFRAME = pd.DataFrame(
         {
-            Experiment.TableCol.Enroll_User.value: [10001, 10002],
-            Experiment.TableCol.Enroll_Finger.value: [1, 2],
-            Experiment.TableCol.Verify_User.value: [10001, 10002],
-            Experiment.TableCol.Verify_Finger.value: [1, 2],
-            Experiment.TableCol.Verify_Sample.value: [25, 25],
-            Experiment.TableCol.Decision.value: [
-                Experiment.Decision.Accept.value,
-                Experiment.Decision.Accept.value,
+            table.Col.Enroll_User.value: [10001, 10002],
+            table.Col.Enroll_Finger.value: [1, 2],
+            table.Col.Verify_User.value: [10001, 10002],
+            table.Col.Verify_Finger.value: [1, 2],
+            table.Col.Verify_Sample.value: [25, 25],
+            table.Col.Decision.value: [
+                table.Decision.Accept.value,
+                table.Decision.Accept.value,
             ],
-            Experiment.TableCol.Enroll_Group.value: ["A", "B"],
-            Experiment.TableCol.Verify_Group.value: ["A", "B"],
+            table.Col.Enroll_Group.value: ["A", "B"],
+            table.Col.Verify_Group.value: ["A", "B"],
         }
     )
 
@@ -356,10 +353,10 @@ class Test_Experiment_check(unittest.TestCase):
         """Test the check method when both FAR and FRR tables are correct."""
         exp = Experiment(
             far_decisions=self.FAR_DATAFRAME.drop(
-                columns=Experiment.DECISION_TABLE_GROUP_COLS
+                columns=table.DECISION_TABLE_GROUP_COLS
             ),
             frr_decisions=self.FRR_DATAFRAME.drop(
-                columns=Experiment.DECISION_TABLE_GROUP_COLS
+                columns=table.DECISION_TABLE_GROUP_COLS
             ),
         )
         exp.check()
@@ -368,7 +365,7 @@ class Test_Experiment_check(unittest.TestCase):
         """Test that only one group column existing is detected."""
         exp = Experiment(
             far_decisions=self.FAR_DATAFRAME.drop(
-                columns=[Experiment.TableCol.Enroll_Group.value]
+                columns=[table.Col.Enroll_Group.value]
             )
         )
         with self.assertRaises(TypeError):
