@@ -206,6 +206,11 @@ void NetworkBpfSkeleton::RegisterCallbacks(BpfCallbacks cbs) {
   default_bpf_skeleton_->RegisterCallbacks(std::move(cbs));
 }
 
+absl::StatusOr<int> NetworkBpfSkeleton::FindBpfMapByName(
+    const std::string& name) {
+  return default_bpf_skeleton_->FindBpfMapByName(name);
+}
+
 FileBpfSkeleton::FileBpfSkeleton(uint32_t batch_interval_s,
                                  std::optional<SkeletonCallbacks<file_bpf>> cbs)
     : batch_interval_s_(batch_interval_s), weak_ptr_factory_(this) {
@@ -233,5 +238,8 @@ FileBpfSkeleton::LoadAndAttach() {
 
 void FileBpfSkeleton::RegisterCallbacks(BpfCallbacks cbs) {
   default_bpf_skeleton_->RegisterCallbacks(std::move(cbs));
+}
+absl::StatusOr<int> FileBpfSkeleton::FindBpfMapByName(const std::string& name) {
+  return default_bpf_skeleton_->FindBpfMapByName(name);
 }
 }  // namespace secagentd

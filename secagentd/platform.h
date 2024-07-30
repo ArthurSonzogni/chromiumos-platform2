@@ -5,9 +5,11 @@
 #ifndef SECAGENTD_PLATFORM_H_
 #define SECAGENTD_PLATFORM_H_
 
+// clang-format off
 #include <bpf/libbpf.h>
 #include <memory>
 #include <string>
+// clang-format on
 
 #include "base/files/file_descriptor_watcher_posix.h"
 #include "base/functional/callback_forward.h"
@@ -46,6 +48,8 @@ class PlatformInterface {
   virtual void BpfObjectDetachSkeleton(struct bpf_object_skeleton* s) = 0;
   virtual void BpfObjectDestroySkeleton(struct bpf_object_skeleton* s) = 0;
   virtual int BpfMapFd(const struct bpf_map* map) = 0;
+  virtual int BpfMapFdByName(struct bpf_object* obj,
+                             const std::string name) = 0;
   virtual struct ring_buffer* RingBufferNew(
       int map_fd,
       ring_buffer_sample_fn sample_cb,
@@ -92,6 +96,7 @@ class Platform : public PlatformInterface {
   void BpfObjectDetachSkeleton(struct bpf_object_skeleton* s) override;
   void BpfObjectDestroySkeleton(struct bpf_object_skeleton* s) override;
   int BpfMapFd(const struct bpf_map* map) override;
+  int BpfMapFdByName(struct bpf_object* obj, const std::string name) override;
   struct ring_buffer* RingBufferNew(
       int map_fd,
       ring_buffer_sample_fn sample_cb,

@@ -75,6 +75,10 @@ class MockPlatform : public PlatformInterface {
               (struct bpf_object_skeleton * s),
               (override));
   MOCK_METHOD(int, BpfMapFd, (const struct bpf_map* map), (override));
+  MOCK_METHOD(int,
+              BpfMapFdByName,
+              (struct bpf_object * obj, const std::string name),
+              (override));
   MOCK_METHOD(struct ring_buffer*,
               RingBufferNew,
               (int map_fd,

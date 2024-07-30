@@ -6,6 +6,7 @@
 #define SECAGENTD_TEST_MOCK_BPF_SKELETON_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "gmock/gmock.h"
@@ -30,6 +31,10 @@ class MockBpfSkeleton : public BpfSkeletonInterface {
               (override));
   MOCK_METHOD(void, RegisterCallbacks, (BpfCallbacks cbs), (override));
   MOCK_METHOD(int, ConsumeEvent, (), (override));
+  MOCK_METHOD(absl::StatusOr<int>,
+              FindBpfMapByName,
+              (const std::string& name),
+              (override));
 };
 
 class MockSkeletonFactory : public BpfSkeletonFactoryInterface {

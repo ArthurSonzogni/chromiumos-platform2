@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "attestation/proto_bindings/interface.pb.h"
@@ -88,6 +89,7 @@ class BpfSkeletonHelperInterface {
   virtual absl::Status LoadAndAttach(struct BpfCallbacks callbacks) = 0;
   virtual absl::Status DetachAndUnload() = 0;
   virtual bool IsAttached() const = 0;
+  virtual absl::StatusOr<int> FindBpfMapByName(const std::string& name) = 0;
   virtual ~BpfSkeletonHelperInterface() = default;
 };
 
@@ -129,6 +131,10 @@ class BpfSkeletonHelper : public BpfSkeletonHelperInterface {
     // Unset the skeleton_wrapper_ unloads and cleans up the BPFs.
     skeleton_wrapper_ = nullptr;
     return absl::OkStatus();
+  }
+
+  absl::StatusOr<int> FindBpfMapByName(const std::string& name) override {
+    return skeleton_wrapper_->FindBpfMapByName(name);
   }
 
   bool IsAttached() const override { return skeleton_wrapper_ != nullptr; }
@@ -330,6 +336,8 @@ class FilePlugin : public PluginInterface {
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant> atomic_event,
       const std::string& device_user);
+
+  void OnSessionStateChange(const std::string& state);
 
   std::unique_ptr<cros_xdr::reporting::FileReadEvent> MakeReadEvent(
       const secagentd::bpf::cros_file_event& close_event) const;

@@ -5,8 +5,10 @@
 #include "secagentd/platform.h"
 
 #include <net/if.h>
+
 #include <memory>
 #include <utility>
+
 #include "base/files/file_descriptor_watcher_posix.h"
 
 namespace secagentd {
@@ -89,6 +91,10 @@ void Platform::BpfObjectDestroySkeleton(struct bpf_object_skeleton* s) {
 
 int Platform::BpfMapFd(const struct bpf_map* map) {
   return bpf_map__fd(map);
+}
+
+int Platform::BpfMapFdByName(struct bpf_object* obj, const std::string name) {
+  return bpf_object__find_map_fd_by_name(obj, name.c_str());
 }
 
 struct ring_buffer* Platform::RingBufferNew(

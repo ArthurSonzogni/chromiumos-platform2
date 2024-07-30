@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "base/files/file_descriptor_watcher_posix.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
@@ -33,6 +34,10 @@ namespace secagentd {
 namespace testing {
 class NetworkBpfTestFixture;
 }
+
+static const char kErrorBpfMapInvalidParamter[] = "Bpf Map Invalid Parameter";
+static const char kErrorBpfMapNotFound[] = "Bpf Map Not Found";
+
 // Directory with min_core_btf payloads. Must match the ebuild.
 constexpr char kMinCoreBtfDir[] = "/usr/share/btf/secagentd/";
 
@@ -61,6 +66,7 @@ class BpfSkeletonInterface {
   // Consume one or more events from a BPF ring buffer, ignoring whether a ring
   // buffer has notified that data is available for read.
   virtual int ConsumeEvent() = 0;
+  virtual absl::StatusOr<int> FindBpfMapByName(const std::string& name) = 0;
 
  protected:
   friend class BpfSkeletonFactory;
@@ -110,6 +116,18 @@ class BpfSkeleton : public BpfSkeletonInterface {
       return -1;
     }
     return platform_->RingBufferConsume(rb_);
+  }
+
+  absl::StatusOr<int> FindBpfMapByName(const std::string& name) override {
+    if (name.empty() || !skel_ || !skel_->obj) {
+      return absl::InternalError(kErrorBpfMapInvalidParamter);
+    }
+
+    int fd = platform_->BpfMapFdByName(skel_->obj, name);
+    if (fd < 0) {
+      return absl::InternalError(kErrorBpfMapNotFound);
+    }
+    return fd;
   }
 
  protected:
@@ -209,6 +227,7 @@ class NetworkBpfSkeleton : public BpfSkeletonInterface {
   void ScanFlowMap();
   std::unordered_set<uint64_t> GetActiveSocketsSet();
   void RegisterCallbacks(BpfCallbacks cbs) override;
+  absl::StatusOr<int> FindBpfMapByName(const std::string& name) override;
 
  private:
   std::unique_ptr<shill::Client> shill_;
@@ -237,6 +256,7 @@ class FileBpfSkeleton : public BpfSkeletonInterface {
  protected:
   std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() override;
   void RegisterCallbacks(BpfCallbacks cbs) override;
+  absl::StatusOr<int> FindBpfMapByName(const std::string& name) override;
 
  private:
   uint32_t batch_interval_s_;
