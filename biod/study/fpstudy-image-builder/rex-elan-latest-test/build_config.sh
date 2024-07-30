@@ -47,5 +47,5 @@ config_apply_src_changes() {
     WORKON_PKGS+=( chromeos-base/chromeos-config-bsp-private )
     # DNS: Force karis to use buccaneer
     # https://crrev.com/i/7108658
-    cherry_pick src/project/rex/karis cros-internal refs/changes/58/7108658/3
+    cherry_pick src/project/rex/karis cros-internal refs/changes/58/7108658/4
 }
