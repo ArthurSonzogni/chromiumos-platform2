@@ -43,6 +43,7 @@ struct {
   __uint(max_entries, 512 * sizeof(struct memmon_event));
 } rb SEC(".maps");
 
+const volatile bool ustack_dealloc_probes = false;
 const volatile pid_t kprobe_mon_pid = 0;
 
 static u64 generate_call_id(enum memmon_event_type type) {
@@ -77,6 +78,7 @@ static int memmon_event(struct pt_regs* ctx,
                         size_t size,
                         unsigned long ptr) {
   struct memmon_event* event;
+  bool ustack = false;
   u64 id;
 
   event = bpf_ringbuf_event_get();
@@ -93,13 +95,19 @@ static int memmon_event(struct pt_regs* ctx,
     case MEMMON_EVENT_MMAP:
     case MEMMON_EVENT_CALLOC:
     case MEMMON_EVENT_MEMALIGN:
-      if (save_ustack(ctx, event)) {
-        bpf_ringbuf_submit(event, 0);
-        return -EINVAL;
-      }
+      ustack = true;
+      break;
+    case MEMMON_EVENT_FREE:
+    case MEMMON_EVENT_MUNMAP:
+      ustack = ustack_dealloc_probes;
       break;
     default:
       break;
+  }
+
+  if (ustack && save_ustack(ctx, event)) {
+    bpf_ringbuf_submit(event, 0);
+    return -EINVAL;
   }
 
   event->type = type;

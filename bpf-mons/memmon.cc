@@ -155,9 +155,18 @@ static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
       break;
     case MEMMON_EVENT_FREE:
     case MEMMON_EVENT_MUNMAP:
+      /* Most likely missed allocation event (e.g. attached after alloc) */
+      if (events.find(event->ptr) == events.end())
+        return 0;
+
       if (events[event->ptr]) {
         delete events[event->ptr];
         events[event->ptr] = NULL;
+      } else {
+        printf("Potential double-free ptr=%p\n",
+               reinterpret_cast<void*>(event->ptr));
+        libmon::show_ustack(event->pid, event->ustack_ents,
+                            event->num_ustack_ents);
       }
       break;
 
@@ -199,6 +208,16 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   if (err)
     goto cleanup;
 
+  if (run_mode == RUN_MODE_PERFETTO) {
+    event_handler = perfetto_memmon_event;
+    memmon_tracing_init();
+  }
+
+  if (run_mode == RUN_MODE_LEAKCHECK) {
+    event_handler = leakcheck_memmon_event;
+    mon->rodata->ustack_dealloc_probes = true;
+  }
+
   mon->rodata->kprobe_mon_pid = pid;
   err = memmon_bpf__load(mon);
   if (err) {
@@ -209,14 +228,6 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   err = attach_probes(mon, pid);
   if (err)
     goto cleanup;
-
-  if (run_mode == RUN_MODE_PERFETTO) {
-    event_handler = perfetto_memmon_event;
-    memmon_tracing_init();
-  }
-
-  if (run_mode == RUN_MODE_LEAKCHECK)
-    event_handler = leakcheck_memmon_event;
 
   rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), event_handler, NULL, NULL);
   if (!rb) {
