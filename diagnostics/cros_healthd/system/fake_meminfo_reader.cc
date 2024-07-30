@@ -28,15 +28,15 @@ void FakeMeminfoReader::SetError(bool value) {
   is_error_ = value;
 }
 
-void FakeMeminfoReader::SetTotalMemoryKib(uint32_t value) {
+void FakeMeminfoReader::SetTotalMemoryKib(uint64_t value) {
   fake_total_memory_kib_ = value;
 }
 
-void FakeMeminfoReader::SetFreeMemoryKib(uint32_t value) {
+void FakeMeminfoReader::SetFreeMemoryKib(uint64_t value) {
   fake_free_memory_kib_ = value;
 }
 
-void FakeMeminfoReader::SetAvailableMemoryKib(uint32_t value) {
+void FakeMeminfoReader::SetAvailableMemoryKib(uint64_t value) {
   fake_available_memory_kib_ = value;
 }
 

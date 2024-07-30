@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
@@ -296,6 +297,13 @@ void FetchMemoryEncryptionInfo(Context* context,
   }
 }
 
+// Check if the memory value exceeds maximum of uint32 and log error.
+void CheckValueAndLogError(std::string_view name, uint64_t value) {
+  if (value > UINT32_MAX) {
+    LOG(ERROR) << name << " exceeds maximum of uint32";
+  }
+}
+
 }  // namespace
 
 void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
@@ -308,9 +316,13 @@ void FetchMemoryInfo(Context* context, FetchMemoryInfoCallback callback) {
         mojom::MemoryResult::NewError(std::move(meminfo_result.error())));
     return;
   }
-  info->total_memory_kib = meminfo_result.value().total_memory_kib;
-  info->free_memory_kib = meminfo_result.value().free_memory_kib;
-  info->available_memory_kib = meminfo_result.value().available_memory_kib;
+  const auto& meminfo = meminfo_result.value();
+  info->total_memory_kib = meminfo.total_memory_kib;
+  CheckValueAndLogError("total_memory_kib", meminfo.total_memory_kib);
+  info->free_memory_kib = meminfo.free_memory_kib;
+  CheckValueAndLogError("free_memory_kib", meminfo.free_memory_kib);
+  info->available_memory_kib = meminfo.available_memory_kib;
+  CheckValueAndLogError("available_memory_kib", meminfo.available_memory_kib);
 
   auto page_faults_result = ParseProcVmStat(root_dir);
   if (!page_faults_result.has_value()) {

@@ -27,11 +27,11 @@ constexpr char kMemTotalName[] = "MemTotal";
 constexpr char kMemFreeName[] = "MemFree";
 constexpr char kMemAvailableName[] = "MemAvailable";
 
-bool ParseRow(std::string raw_value, uint32_t* out_value) {
+bool ParseRow(std::string raw_value, uint64_t* out_value) {
   // Parse each line in /proc/meminfo.
   // Format of `raw_value`: "${PAD_SPACES}${MEM_AMOUNT} kB".
   base::StringTokenizer t(raw_value, " ");
-  return t.GetNext() && base::StringToUint(t.token(), out_value) &&
+  return t.GetNext() && base::StringToUint64(t.token(), out_value) &&
          t.GetNext() && t.token() == "kB";
 }
 
@@ -46,8 +46,8 @@ std::optional<MemoryInfo> Parse(const std::string& raw_data) {
   // Parse the meminfo contents for MemTotal, MemFree and MemAvailable. Note
   // that these values are actually reported in KiB from /proc/meminfo, despite
   // claiming to be in kB.
-  std::map<std::string, uint32_t> memory_map_kib;
-  uint32_t out_memory_kib;
+  std::map<std::string_view, uint64_t> memory_map_kib;
+  uint64_t out_memory_kib;
   for (const auto& [field_name, value] : pairs) {
     if (field_name == kMemTotalName || field_name == kMemFreeName ||
         field_name == kMemAvailableName) {

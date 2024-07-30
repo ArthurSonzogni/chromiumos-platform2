@@ -21,15 +21,15 @@ class FakeMeminfoReader : public MeminfoReader {
   std::optional<MemoryInfo> GetInfo() const override;
 
   void SetError(bool value);
-  void SetTotalMemoryKib(uint32_t value);
-  void SetFreeMemoryKib(uint32_t value);
-  void SetAvailableMemoryKib(uint32_t value);
+  void SetTotalMemoryKib(uint64_t value);
+  void SetFreeMemoryKib(uint64_t value);
+  void SetAvailableMemoryKib(uint64_t value);
 
  private:
   bool is_error_ = false;
-  uint32_t fake_total_memory_kib_ = 0;
-  uint32_t fake_free_memory_kib_ = 0;
-  uint32_t fake_available_memory_kib_ = 0;
+  uint64_t fake_total_memory_kib_ = 0;
+  uint64_t fake_free_memory_kib_ = 0;
+  uint64_t fake_available_memory_kib_ = 0;
 };
 
 }  // namespace diagnostics

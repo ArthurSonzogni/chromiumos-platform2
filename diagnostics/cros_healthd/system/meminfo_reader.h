@@ -12,9 +12,9 @@ namespace diagnostics {
 
 // Stores the system memory info from |/proc/meminfo|.
 struct MemoryInfo {
-  uint32_t total_memory_kib;
-  uint32_t free_memory_kib;
-  uint32_t available_memory_kib;
+  uint64_t total_memory_kib;
+  uint64_t free_memory_kib;
+  uint64_t available_memory_kib;
 };
 
 class MeminfoReader {
