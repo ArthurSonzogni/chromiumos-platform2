@@ -12,6 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <format>
 #include <iostream>
 #include <string>
 
@@ -83,6 +84,15 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
       return 0;
     MEMMON_EVENT_END(memmon_event_track(event));
   }
+
+  if (event->type == MEMMON_EVENT_PF) {
+    std::string addr = std::format("{:#x}", event->ptr);
+
+    MEMMON_EVENT_BEGIN("pf", memmon_event_no_track(event), "fn",
+                       memmon_event_name(event), "addr", addr.c_str());
+    MEMMON_EVENT_END(memmon_event_no_track(event));
+  }
+
   return 0;
 }
 

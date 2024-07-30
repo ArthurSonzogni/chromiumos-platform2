@@ -23,6 +23,7 @@ struct memmon_event;
 
 perfetto::StaticString memmon_event_name(struct memmon_event* event);
 perfetto::Track memmon_event_track(struct memmon_event* event);
+perfetto::Track memmon_event_no_track(struct memmon_event* event);
 void memmon_tracing_init();
 
 #endif  // BPF_MONS_INCLUDE_MEMMON_TRACING_H_

@@ -37,6 +37,10 @@ perfetto::Track memmon_event_track(struct memmon_event* event) {
   return perfetto::Track(event->ptr);
 }
 
+perfetto::Track memmon_event_no_track(struct memmon_event* event) {
+  return perfetto::Track(0);
+}
+
 void memmon_tracing_init() {
   if (!perfetto::Tracing::IsInitialized()) {
     perfetto::TracingInitArgs init_args;
