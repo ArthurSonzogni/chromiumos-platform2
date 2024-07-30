@@ -258,7 +258,6 @@ struct SharedDataParam {
   enum class Cache {
     kAuto,
     kAlways,
-    kAlwaysNoWriteback,
     kNever,
   };
   std::string to_string() const;
