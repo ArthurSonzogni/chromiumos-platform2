@@ -3496,7 +3496,7 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
       cellular::kApnVersionProperty, kApnNameProperty,
       kApnLanguageProperty,          kApnSourceProperty,
       kApnLocalizedNameProperty,     kApnIsRequiredByCarrierSpecProperty,
-      kApnProfileIdProperty};
+      kApnProfileIdProperty,         kApnIdProperty};
   std::set<std::string> ignore_keys{std::begin(always_ignore_keys),
                                     std::end(always_ignore_keys)};
 
