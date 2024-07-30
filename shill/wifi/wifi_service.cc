@@ -585,7 +585,6 @@ bool WiFiService::Load(const StoreInterface* storage) {
 
   // MAC address-related load is done inside its object.
   if (!mac_address_.Load(storage, id)) {
-    LOG(ERROR) << "Failed to load MAC Address. Using Random address instead.";
     // Make sure address is cleared.
     mac_address_.Clear();
     // Address will be re-randomized at next UpdateMACAddress().
