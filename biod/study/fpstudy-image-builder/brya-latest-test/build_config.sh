@@ -25,6 +25,8 @@ KEYS=(
     "${out}/chromeos-fpstudy-recipients.txt"
 )
 
+BUILD_FLAGS+=( --chrome )
+
 config_apply_src_changes() {
     :
     #WORKON_PKGS+=( chromeos-base/chromeos-init )
