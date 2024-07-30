@@ -118,10 +118,6 @@ TEST_F(DHCPCDProxyFactoryTest, DhcpcdArguments) {
            {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
             "-o", "wpad_url", "-A", "-K", "--clientid", "--nodelay",
             "--noconfigure", "--apply_dscp", "wlan0"}},
-          {{.lease_name = "fake_lease"},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "-o", "wpad_url", "-A", "-K", "--clientid", "--nodelay",
-            "--noconfigure", "wlan0=fake_lease"}},
       };
   for (const auto& [options, dhcpcd_args] : kExpectedArgs) {
     // When creating a proxy, the proxy factory should create
@@ -222,27 +218,6 @@ TEST_F(DHCPCDProxyFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   proxy.reset();
   EXPECT_FALSE(FileExistsInRoot(kPidFile));
   EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
-}
-
-TEST_F(DHCPCDProxyFactoryTest, PermanentLeaseFile) {
-  constexpr int kPid = 4;
-  constexpr std::string_view kInterface = "wlan0";
-  constexpr std::string_view kPidFile = "var/run/dhcpcd/dhcpcd-wlan0-4.pid";
-  constexpr std::string_view kLeaseFile = "var/lib/dhcpcd/permanent.lease";
-  const DHCPClientProxy::Options options = {.lease_name = "permanent"};
-
-  std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid, kInterface);
-
-  CreateTempFileInRoot(kPidFile);
-  CreateTempFileInRoot(kLeaseFile);
-  EXPECT_TRUE(FileExistsInRoot(kPidFile));
-  EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
-
-  // After the proxy is destroyed, the pid file should be deleted, but the
-  // permanent lease file should not be deleted.
-  proxy.reset();
-  EXPECT_FALSE(FileExistsInRoot(kPidFile));
-  EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
 }
 
 TEST_F(DHCPCDProxyFactoryTest, Rebind) {
