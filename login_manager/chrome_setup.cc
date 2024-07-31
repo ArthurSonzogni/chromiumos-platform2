@@ -1078,6 +1078,16 @@ void AddFeatureManagementFlags(
   }
 }
 
+// Adds flags related to specific devices and/or overlays
+void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
+  // Ferrochrome (go/ferrochrome) specific custiomization
+  if (builder->UseFlagIsSet("ferrochrome")) {
+    // Disable Cross-Device features, e.g. Nearby Share, Smart Lock, Fast Pair,
+    // etc.
+    builder->AddFeatureDisableOverride("AllowCrossDeviceFeatureSuite");
+  }
+}
+
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
                         segmentation::FeatureManagement* feature_management,
                         bool* is_developer_end_user_out,
@@ -1108,6 +1118,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddEnterpriseFlags(&builder);
   AddMlFlags(&builder, cros_config);
   AddFeatureManagementFlags(&builder, feature_management);
+  AddDeviceSpecificFlags(&builder);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
