@@ -10,13 +10,5 @@ group("mojom") {
 
 generate_mojom_bindings("mojo_bindings") {
   mojo_root = "${platform2_root}/shill/mojom"
-  sources = [
-    "shill/mojom/passpoint.mojom",
-    "shill/mojom/portal.mojom",
-    "url/mojom/url.mojom",
-  ]
-  mojo_extra_args = [
-    "--typemap",
-    rebase_path("type_mappings.json"),
-  ]
+  sources = [ "shill/mojom/passpoint.mojom" ]
 }

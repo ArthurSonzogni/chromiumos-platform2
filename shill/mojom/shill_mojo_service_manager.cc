@@ -23,7 +23,6 @@
 
 #include "shill/manager.h"
 #include "shill/mojom/mojo_passpoint_service.h"
-#include "shill/mojom/mojo_portal_service.h"
 #include "shill/wifi/wifi_provider.h"
 
 namespace shill {
@@ -66,20 +65,12 @@ class ShillMojoServiceManagerImpl : public ShillMojoServiceManager {
       MojoPasspointService>
       passpoint_service_provider_{&passpoint_service_};
 
-  // Portal Mojo service implementation.
-  MojoPortalService portal_service_;
-  chromeos::mojo_service_manager::SimpleMojoServiceProvider<MojoPortalService>
-      portal_service_provider_{&portal_service_};
-
   // Must be the last class member.
   base::WeakPtrFactory<ShillMojoServiceManagerImpl> weak_ptr_factory_{this};
 };
 
 ShillMojoServiceManagerImpl::ShillMojoServiceManagerImpl(Manager* manager)
-    : ipc_thread_("Mojo IPC"),
-      manager_(manager),
-      passpoint_service_(manager),
-      portal_service_(manager->network_manager()) {
+    : ipc_thread_("Mojo IPC"), manager_(manager), passpoint_service_(manager) {
   // TODO(b/266150324): investigate if we really need a separate IO thread.
   ipc_thread_.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0));
@@ -127,8 +118,6 @@ void ShillMojoServiceManagerImpl::ConnectAndRegister() {
   // Register the service providers.
   passpoint_service_provider_.Register(
       service_manager_.get(), chromeos::mojo_services::kCrosPasspointService);
-  portal_service_provider_.Register(
-      service_manager_.get(), chromeos::mojo_services::kCrosPortalService);
 }
 
 void ShillMojoServiceManagerImpl::OnManagerDisconnected(
