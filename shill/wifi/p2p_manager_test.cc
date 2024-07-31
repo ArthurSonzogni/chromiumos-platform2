@@ -116,8 +116,9 @@ class P2PManagerTest : public testing::Test {
 
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
 
-  void FastForward(bool is_start) {
-    auto time = is_start ? p2p_manager_->kP2PStartTimeout
+  void FastForward(bool is_start, bool is_go) {
+    auto time = is_start ? (is_go ? p2p_manager_->kP2PGOStartTimeout
+                                  : p2p_manager_->kP2PClientStartTimeout)
                          : p2p_manager_->kP2PStopTimeout;
     dispatcher_.task_environment().FastForwardBy(time);
   }
@@ -1115,7 +1116,7 @@ TEST_F(P2PManagerTest, StartTimeout_GOStarting) {
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
-  FastForward(true);
+  FastForward(true, true);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultTimeout);
@@ -1151,7 +1152,7 @@ TEST_F(P2PManagerTest, StartTimeout_GOConfiguring) {
 
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
   OnP2PDeviceEvent(LocalDevice::DeviceEvent::kLinkUp, p2p_device);
-  FastForward(true);
+  FastForward(true, true);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultTimeout);
@@ -1189,7 +1190,7 @@ TEST_F(P2PManagerTest, StartTimeout_GOActive) {
   OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp, p2p_device);
   DispatchPendingEvents();
   EXPECT_TRUE(IsActionTimerCancelled());
-  FastForward(true);
+  FastForward(true, true);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kCreateP2PGroupResultSuccess);
@@ -1225,7 +1226,7 @@ TEST_F(P2PManagerTest, StartTimeout_ClientAssociating) {
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
   p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
-  FastForward(true);
+  FastForward(true, false);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultTimeout);
@@ -1264,7 +1265,7 @@ TEST_F(P2PManagerTest, StartTimeout_ClientConfiguring) {
 
   p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
   OnP2PDeviceEvent(LocalDevice::DeviceEvent::kLinkUp, p2p_device);
-  FastForward(true);
+  FastForward(true, false);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultTimeout);
@@ -1305,7 +1306,7 @@ TEST_F(P2PManagerTest, StartTimeout_ClientConnected) {
   OnP2PDeviceEvent(LocalDevice::DeviceEvent::kNetworkUp, p2p_device);
   DispatchPendingEvents();
   EXPECT_TRUE(IsActionTimerCancelled());
-  FastForward(true);
+  FastForward(true, false);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kConnectToP2PGroupResultSuccess);
@@ -1346,7 +1347,7 @@ TEST_F(P2PManagerTest, StopTimeout_GOStopping) {
 
   ON_CALL(*p2p_device, RemoveGroup()).WillByDefault(Return(true));
   p2p_manager_->DestroyP2PGroup(cb.Get(), expected_shill_id);
-  FastForward(false);
+  FastForward(false, true);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDestroyP2PGroupResultTimeout);
@@ -1390,7 +1391,7 @@ TEST_F(P2PManagerTest, StopTimeout_ClientDisconnecting) {
 
   ON_CALL(*p2p_device, Disconnect()).WillByDefault(Return(true));
   p2p_manager_->DisconnectFromP2PGroup(cb.Get(), expected_shill_id);
-  FastForward(false);
+  FastForward(false, false);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDisconnectFromP2PGroupResultTimeout);

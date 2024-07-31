@@ -190,7 +190,10 @@ void P2PManager::CancelActionTimer() {
 
 void P2PManager::SetActionTimer(bool is_start,
                                 LocalDevice::IfaceType iface_type) {
-  auto timeout = is_start ? kP2PStartTimeout : kP2PStopTimeout;
+  auto timeout = is_start ? (iface_type == LocalDevice::IfaceType::kP2PGO
+                                 ? kP2PGOStartTimeout
+                                 : kP2PClientStartTimeout)
+                          : kP2PStopTimeout;
   CancelActionTimer();
   action_timer_callback_.Reset(base::BindOnce(&P2PManager::ActionTimerExpired,
                                               weak_ptr_factory_.GetWeakPtr(),

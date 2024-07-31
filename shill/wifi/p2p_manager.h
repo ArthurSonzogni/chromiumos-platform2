@@ -123,9 +123,12 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   FRIEND_TEST(P2PManagerTest, StartTimeout_ClientAssociating);
   FRIEND_TEST(P2PManagerTest, StartTimeout_ClientConfiguring);
 
-  // Stop p2p device and return error if group cannot be fully configured within
-  // |kP2PStartTimeout| time.
-  static constexpr base::TimeDelta kP2PStartTimeout = base::Seconds(10);
+  // Stop p2p device and return error if GO cannot be fully configured within
+  // |kP2PGOStartTimeout| time.
+  static constexpr base::TimeDelta kP2PGOStartTimeout = base::Seconds(5);
+  // Stop p2p device and return error if group client cannot be fully configured
+  // within |kP2PClientStartTimeout| time.
+  static constexpr base::TimeDelta kP2PClientStartTimeout = base::Seconds(15);
   // Return error if p2p group cannot be fully stopped within |kP2PStopTimeout|
   // time.
   static constexpr base::TimeDelta kP2PStopTimeout = base::Seconds(5);
