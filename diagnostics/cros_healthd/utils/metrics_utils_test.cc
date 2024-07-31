@@ -461,7 +461,7 @@ const RoutineMetricNameTestCase routine_metric_name_test_cases[] = {
         .metrics = metrics_name::kDiagnosticResultPrivacyScreen,
     },
     {
-        .routine = mojom::DiagnosticRoutineEnum::kLedLitUp,
+        .routine = mojom::DiagnosticRoutineEnum::DEPRECATED_kLedLitUp,
         .metrics = metrics_name::kDiagnosticResultLedLitUp,
     },
     {

@@ -479,7 +479,7 @@ void CrosHealthdDiagnosticsService::DEPRECATED_RunLedLitUpRoutine(
     mojo::PendingRemote<mojom::DEPRECATED_LedLitUpRoutineReplier> replier,
     DEPRECATED_RunLedLitUpRoutineCallback callback) {
   // Always unsupported. The routine is deprecated.
-  ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::kLedLitUp,
+  ReportUnsupportedRoutine(mojom::DiagnosticRoutineEnum::DEPRECATED_kLedLitUp,
                            std::move(callback));
 }
 

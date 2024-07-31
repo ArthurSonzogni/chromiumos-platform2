@@ -152,7 +152,7 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
       return metrics_name::kDiagnosticResultFingerprintAlive;
     case mojom::DiagnosticRoutineEnum::kPrivacyScreen:
       return metrics_name::kDiagnosticResultPrivacyScreen;
-    case mojom::DiagnosticRoutineEnum::kLedLitUp:
+    case mojom::DiagnosticRoutineEnum::DEPRECATED_kLedLitUp:
       return metrics_name::kDiagnosticResultLedLitUp;
     case mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed:
       return metrics_name::kDiagnosticResultSmartctlCheckWithPercentageUsed;
