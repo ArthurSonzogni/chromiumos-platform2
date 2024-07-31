@@ -298,8 +298,17 @@ class WiFiService : public Service {
   mockable void EmitLinkQualityReportEvent(
       const Metrics::WiFiLinkQualityReport& report) const;
 
-  void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
-  bool expecting_disconnect() const { return expecting_disconnect_; }
+  bool expecting_disconnect() const {
+    return disconnect_type_ != Metrics::kWiFiDisconnectTypeSystem;
+  }
+
+  void set_disconnect_type(Metrics::WiFiDisconnectType type) {
+    disconnect_type_ = type;
+  }
+
+  Metrics::WiFiDisconnectType disconnect_type() const {
+    return disconnect_type_;
+  }
 
   void set_bgscan_string(const std::string& val) { bgscan_string_ = val; }
   std::string bgscan_string() const { return bgscan_string_; }
@@ -595,9 +604,9 @@ class WiFiService : public Service {
   std::set<WiFiEndpointConstRefPtr> endpoints_;
   WiFiEndpointConstRefPtr current_endpoint_;
   const std::vector<uint8_t> ssid_;
-  // Flag indicating if service disconnect is initiated by user for
-  // connecting to other service.
-  bool expecting_disconnect_;
+  // Indicates the WiFi disconnect type, should be updated whenever shill
+  // explicitly disconnects from this WiFi service.
+  enum Metrics::WiFiDisconnectType disconnect_type_;
   // The background scan configuration parameters.
   std::string bgscan_string_;
   std::unique_ptr<CertificateFile> certificate_file_;

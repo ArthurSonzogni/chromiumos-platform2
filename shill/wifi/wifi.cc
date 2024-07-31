@@ -320,6 +320,10 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   GetDeviceHardwareIds(&hw_info.vendor_id, &hw_info.product_id,
                        &hw_info.subsystem_id);
   metrics()->NotifyWiFiAdapterStateChanged(false, hw_info);
+  if (current_service_ || pending_service_) {
+    metrics()->SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                             Metrics::kWiFiDisconnectTypeDisable);
+  }
   DropConnection();
   StopScanTimer();
   for (const auto& endpoint : endpoint_by_rpcid_) {
@@ -732,7 +736,8 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
                   wifi_state_->GetScanMethod(), __func__);
     }
     // Explicitly disconnect pending service.
-    pending_service_->set_expecting_disconnect(true);
+    pending_service_->set_disconnect_type(
+        Metrics::kWiFiDisconnectTypeSwitchNetwork);
     previous_pending_service_ = pending_service_;
     DisconnectFrom(pending_service_.get());
   }
@@ -785,7 +790,8 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   if (current_service_) {
     // If we're already connected, |SelectNetwork| will make wpa_supplicant
     // disconnect the current service before connecting to the new service.
-    current_service_->set_expecting_disconnect(true);
+    current_service_->set_disconnect_type(
+        Metrics::kWiFiDisconnectTypeSwitchNetwork);
   }
   supplicant_interface_proxy_->SelectNetwork(network_rpcid);
   SetPendingService(service);
@@ -1441,8 +1447,8 @@ void WiFi::HandleDisconnect(WiFiService* affected_service) {
   metrics()->SendToUMA(Metrics::kMetricWiFiSignalAtDisconnect,
                        -disconnect_signal_dbm_);
   affected_service->NotifyCurrentEndpoint(nullptr);
-  metrics()->SendToUMA(Metrics::kMetricWiFiDisconnect,
-                       affected_service->explicitly_disconnected());
+  metrics()->SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                           affected_service->disconnect_type());
 
   if (affected_service == pending_service_.get()) {
     // The attempt to connect to |pending_service_| failed. Clear
@@ -3073,6 +3079,12 @@ void WiFi::OnBeforeSuspend(ResultCallback callback) {
     pre_suspend_bssid_ = current_service_->bssid();
   } else {
     pre_suspend_bssid_ = std::nullopt;
+  }
+  if (current_service_) {
+    current_service_->set_disconnect_type(Metrics::kWiFiDisconnectTypeSuspend);
+  }
+  if (pending_service_) {
+    pending_service_->set_disconnect_type(Metrics::kWiFiDisconnectTypeSuspend);
   }
   StopScanTimer();
   supplicant_process_proxy()->ExpectDisconnect();

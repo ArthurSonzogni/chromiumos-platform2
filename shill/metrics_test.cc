@@ -1173,4 +1173,16 @@ TEST_F(MetricsTest, BTProfileConnectionStateIntegerValues) {
   EXPECT_EQ(Metrics::kBTProfileConnectionStateActive, 4);
 }
 
+TEST_F(MetricsTest, WiFiDisconnectType) {
+  // Integer values are interpreted by the server-side pipeline, ensure that
+  // they are not changed over time.
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeSystem, 0);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeUser, 1);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeSuspend, 2);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeSwitchNetwork, 3);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeDisable, 4);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeUnload, 5);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeEthernet, 6);
+}
+
 }  // namespace shill

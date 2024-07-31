@@ -2210,7 +2210,7 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
   EXPECT_EQ(GetPendingService(), service);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
-  service->set_expecting_disconnect(true);
+  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
   InitiateDisconnect(service);
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
@@ -2282,7 +2282,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  service->set_expecting_disconnect(true);
+  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
   InitiateDisconnect(service);
 
   // |current_service_| should not change until supplicant reports
@@ -3590,7 +3590,7 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnExpectedSTA) {
   MockWiFiServiceRefPtr service =
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   int32_t reason = -IEEE_80211::kReasonCodeSenderHasLeft;
-  service->set_expecting_disconnect(true);
+  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
   // If supplicant reports a < 0 disconnection reason it means the station
   // decided to disconnect. If the service was expecting a disconnection, we
   // report that the disconnection is expected.
@@ -3622,7 +3622,7 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedSTA) {
   MockWiFiServiceRefPtr service =
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   int32_t reason = -IEEE_80211::kReasonCodeInactivity;
-  service->set_expecting_disconnect(false);
+  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
   // If supplicant reports a < 0 disconnection reason it means the station
   // decided to disconnect. If the service wasn't expecting a disconnection, we
   // report that the disconnection is unexpected.
@@ -4633,6 +4633,8 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricWifiTxBitrate, kBitrate / 10));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                                        Metrics::kWiFiDisconnectTypeDisable));
   SignalChanged(properties);
   EXPECT_EQ(kSignalAvgValue, endpoint->signal_strength());
 
@@ -6548,6 +6550,57 @@ TEST_F(WiFiMainTest, Priority) {
   EXPECT_EQ(GetPriority(), WiFi::kDefaultPriority);
   EXPECT_TRUE(SetPriority(WiFiPhy::Priority(2)));
   EXPECT_EQ(GetPriority(), WiFiPhy::Priority(2));
+}
+
+TEST_F(WiFiMainTest, DisconnectTypeSwitchNetwork) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service1(
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
+  MockWiFiServiceRefPtr service2;
+  RpcIdentifier bss_path(MakeNewEndpointAndService(-80, 0, nullptr, &service2));
+  EXPECT_EQ(GetSelectedService(), service1);
+
+  EXPECT_CALL(*service1, SetFailure(_)).Times(0);
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                            Metrics::kWiFiDisconnectTypeSwitchNetwork));
+  InitiateConnect(service2);
+  EXPECT_EQ(service1->disconnect_type(),
+            Metrics::kWiFiDisconnectTypeSwitchNetwork);
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  ReportCurrentBSSChanged(bss_path);
+  EXPECT_EQ(service2->disconnect_type(), Metrics::kWiFiDisconnectTypeSystem);
+}
+
+TEST_F(WiFiMainTest, DisconnectTypeSuspend) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                                        Metrics::kWiFiDisconnectTypeSuspend));
+  OnBeforeSuspend();
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+}
+
+TEST_F(WiFiMainTest, DisconnectTypeDisable) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                                        Metrics::kWiFiDisconnectTypeDisable));
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, DisconnectTypeUnexpected) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
+  EXPECT_EQ(GetSelectedService(), service);
+  EXPECT_CALL(*service, SetFailure(_));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
+                                        Metrics::kWiFiDisconnectTypeSystem));
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
 }
 
 }  // namespace shill

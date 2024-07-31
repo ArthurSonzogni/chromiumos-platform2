@@ -1073,22 +1073,31 @@ class Metrics {
           .num_buckets = kTimerHistogramNumBuckets,
   };
 
-  // Our disconnect enumeration values are 0 (System Disconnect) and
-  // 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
-  // enum value of 1 and the minimum number of buckets needs to be 3 (see
-  // histogram.h).  Instead of remapping System Disconnect to 1 and
-  // User Disconnect to 2, we can just leave the enumerated values as-is
-  // because Chrome implicitly creates a [0-1) bucket for us.  Using Min=1,
-  // Max=2 and NumBuckets=3 gives us the following three buckets:
-  // [0-1), [1-2), [2-INT_MAX).  We end up with an extra bucket [2-INT_MAX)
-  // that we can safely ignore.
-  static constexpr HistogramMetric<FixedName> kMetricWiFiDisconnect = {
+  // WiFi disconnect type, indicates the source of the WiFi disconnection.
+  enum WiFiDisconnectType {
+    // The disconnection is due to a system error
+    kWiFiDisconnectTypeSystem = 0,
+    // WiFi is disconnected in UI by the user
+    kWiFiDisconnectTypeUser = 1,
+    // System suspend disconnects WiFi
+    kWiFiDisconnectTypeSuspend = 2,
+    // Switching to a new network will disconnect from the current network first
+    kWiFiDisconnectTypeSwitchNetwork = 3,
+    // WiFi is disabled or stopped
+    kWiFiDisconnectTypeDisable = 4,
+    // WiFi disconnection due to unloading the WiFi service
+    kWiFiDisconnectTypeUnload = 5,
+    // WiFi disconnects when Ethernet is available if DisconnectWiFiOnEthernet
+    // is enabled
+    kWiFiDisconnectTypeEthernet = 6,
+    kWiFiDisconnectTypeMax
+  };
+
+  static constexpr EnumMetric<FixedName> kMetricWiFiDisconnect = {
       // "Wifi" is used instead of "WiFi" because the name of this metric used
       // to be derived from the display name of Technology::kWiFi.
       .n = FixedName{"Network.Shill.Wifi.Disconnect"},
-      .min = 1,
-      .max = 2,
-      .num_buckets = 3,
+      .max = kWiFiDisconnectTypeMax,
   };
 
   static constexpr HistogramMetric<FixedName> kMetricWiFiSignalAtDisconnect = {

@@ -1382,7 +1382,8 @@ bool Manager::SetDisconnectingWiFiOnEthernet(
           (service->IsConnected() || service->IsConnecting())) {
         auto wifi_service = dynamic_cast<WiFiService*>(service.get());
         if (wifi_service) {
-          wifi_service->set_expecting_disconnect(true);
+          wifi_service->set_disconnect_type(
+              Metrics::kWiFiDisconnectTypeEthernet);
         }
         service->Disconnect(&e, "Auto disconnect");
       }
@@ -1540,7 +1541,8 @@ void Manager::NotifyServiceStateChanged(const ServiceRefPtr& to_update) {
             (service->IsConnected() || service->IsConnecting())) {
           auto wifi_service = dynamic_cast<WiFiService*>(service.get());
           if (wifi_service) {
-            wifi_service->set_expecting_disconnect(true);
+            wifi_service->set_disconnect_type(
+                Metrics::kWiFiDisconnectTypeEthernet);
           }
           service->Disconnect(&e, "Auto disconnect");
         }

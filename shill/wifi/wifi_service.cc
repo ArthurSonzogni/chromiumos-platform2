@@ -161,7 +161,7 @@ WiFiService::WiFiService(Manager* manager,
       raw_signal_strength_(0),
       suspected_credential_failures_(0),
       ssid_(ssid),
-      expecting_disconnect_(false),
+      disconnect_type_(Metrics::kWiFiDisconnectTypeSystem),
       certificate_file_(new CertificateFile()),
       provider_(provider),
       roam_state_(kRoamStateIdle),
@@ -638,7 +638,7 @@ bool WiFiService::Load(const StoreInterface* storage) {
     }
   }
 
-  expecting_disconnect_ = false;
+  set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
 
   // Passpoint might not be present.
   std::string credentials_id;
@@ -739,9 +739,9 @@ bool WiFiService::Unload() {
   // Expect the service to be disconnected if is currently connected or
   // in the process of connecting.
   if (IsConnected() || IsConnecting()) {
-    expecting_disconnect_ = true;
+    set_disconnect_type(Metrics::kWiFiDisconnectTypeUnload);
   } else {
-    expecting_disconnect_ = false;
+    set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
   }
   Service::Unload();
   hidden_ssid_ = false;
@@ -1039,7 +1039,7 @@ void WiFiService::OnConnect(Error* error) {
 
   security_.Freeze();
 
-  expecting_disconnect_ = false;
+  set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
   wifi->ConnectTo(this, error);
 }
 
@@ -1351,6 +1351,8 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 }
 
 void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
+  // This function is called only when the user disconnects WiFi in UI
+  set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
   wifi_->DisconnectFrom(this);
 }
 
