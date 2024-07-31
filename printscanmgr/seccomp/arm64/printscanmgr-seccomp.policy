@@ -10,6 +10,7 @@ munmap: 1
 close: 1
 read: 1
 rt_sigaction: 1
+fstat: 1
 fstatfs: 1
 write: 1
 brk: 1
@@ -40,6 +41,7 @@ exit_group: 1
 socket: arg0 == AF_UNIX || arg0 == AF_INET || arg0 == AF_INET6
 connect: 1
 clone: 1
+clone3: 1
 wait4: 1
 futex: 1
 getgid: 1
