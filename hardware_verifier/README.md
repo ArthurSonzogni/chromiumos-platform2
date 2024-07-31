@@ -8,18 +8,18 @@ from the
 and compares it with the hardware verification spec.  The hardware
 verification spec is generated from the DLM (Device Lifecycle Management) and
 the AVL (Approved Vendor List) services and contains both the qualification
-status of each hardware components and the expected hardware probe result like
+status of each hardware component and the expected hardware probe result like
 the total DRAM size and the display panel resolution.
 
 # Motivation
 
-Various of benefits can be taken from the Hardware Verifier.
+Various benefits can be taken from the Hardware Verifier.
 The following list contains some potential scenarios:
 
 - If a hardware component were replaced by an unqualified one during the
   repairing process, we might want to warn the user about that.
 - We can include the verification result in the feedback report to describe
-  the latest device's status, which should be more up-to-date then current
+  the latest device's status, which should be more up-to-date than current
   HWID encoding.
 - In the factory, we would like to help the partner building devices with the
   right spec for each SKU and to prevent the partner from using the peripheral
