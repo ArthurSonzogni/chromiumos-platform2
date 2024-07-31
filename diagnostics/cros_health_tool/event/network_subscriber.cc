@@ -55,7 +55,7 @@ void NetworkSubscriber::OnSignalStrengthChanged(
 void NetworkSubscriber::OnNetworkListChanged(
     std::vector<chromeos::network_health::mojom::NetworkPtr> networks) {
   std::cout << "Network event received: "
-            << kHumanReadableOnNetworkListChangedEvent;
+            << kHumanReadableOnNetworkListChangedEvent << "\n";
 }
 
 }  // namespace diagnostics
