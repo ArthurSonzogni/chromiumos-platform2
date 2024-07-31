@@ -38,7 +38,6 @@
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_monitor.h"
 #include "shill/network/mock_slaac_controller.h"
-#include "shill/network/portal_notification_event.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -833,39 +832,6 @@ TEST_F(NetworkTest, UpdateNetworkValidationModeNoop) {
   EXPECT_CALL(*network_monitor_, Stop).Times(0);
   network_->UpdateNetworkValidationMode(
       NetworkMonitor::ValidationMode::kDisabled);
-}
-
-TEST_F(NetworkTest, DelegatePortalUIEventToNetworkMonitor) {
-  constexpr auto kNotificationEvent = PortalNotificationEvent::kClicked;
-  const net_base::HttpUrl kUrl = *net_base::HttpUrl::CreateFromString(
-      "http://www.gstatic.com/generate_204");
-  constexpr int kNetError = -100;
-
-  // The methods do nothing when the NetworkMonitor hasn't been initiated.
-  network_->OnNotificationEvent(kNotificationEvent);
-  network_->OnSigninPageShown(kUrl);
-  network_->OnSigninPageLoaded(kNetError);
-  network_->OnSigninPageClosed();
-
-  SetNetworkMonitor();
-
-  // The methods should delegate the events to NetworkMonitor after it's
-  // initiated.
-  EXPECT_CALL(*network_monitor_, OnNotificationEvent(kNotificationEvent));
-  network_->OnNotificationEvent(kNotificationEvent);
-  testing::Mock::VerifyAndClearExpectations(network_monitor_);
-
-  EXPECT_CALL(*network_monitor_, OnSigninPageShown(kUrl));
-  network_->OnSigninPageShown(kUrl);
-  testing::Mock::VerifyAndClearExpectations(network_monitor_);
-
-  EXPECT_CALL(*network_monitor_, OnSigninPageLoaded(kNetError));
-  network_->OnSigninPageLoaded(kNetError);
-  testing::Mock::VerifyAndClearExpectations(network_monitor_);
-
-  EXPECT_CALL(*network_monitor_, OnSigninPageClosed());
-  network_->OnSigninPageClosed();
-  testing::Mock::VerifyAndClearExpectations(network_monitor_);
 }
 
 TEST_F(NetworkTest, UpdateNetworkValidationToFullValidation) {

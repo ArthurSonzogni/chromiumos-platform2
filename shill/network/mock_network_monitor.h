@@ -13,7 +13,6 @@
 
 #include "shill/metrics.h"
 #include "shill/network/network_monitor.h"
-#include "shill/network/portal_notification_event.h"
 #include "shill/network/validation_log.h"
 #include "shill/technology.h"
 
@@ -32,11 +31,6 @@ class MockNetworkMonitor : public NetworkMonitor {
   MOCK_METHOD(void, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
-
-  MOCK_METHOD(void, OnNotificationEvent, (PortalNotificationEvent), (override));
-  MOCK_METHOD(void, OnSigninPageShown, (const net_base::HttpUrl&), (override));
-  MOCK_METHOD(void, OnSigninPageLoaded, (int32_t), (override));
-  MOCK_METHOD(void, OnSigninPageClosed, (), (override));
 };
 
 class MockNetworkMonitorFactory : public NetworkMonitorFactory {

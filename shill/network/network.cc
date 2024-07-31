@@ -39,7 +39,6 @@
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_monitor.h"
-#include "shill/network/portal_notification_event.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/network/validation_log.h"
 #include "shill/service.h"
@@ -892,30 +891,6 @@ void Network::StopPortalDetection(bool is_failure) {
     for (auto& ev : event_handlers_) {
       ev.OnNetworkValidationStop(interface_index_, is_failure);
     }
-  }
-}
-
-void Network::OnNotificationEvent(PortalNotificationEvent event) {
-  if (network_monitor_) {
-    network_monitor_->OnNotificationEvent(event);
-  }
-}
-
-void Network::OnSigninPageShown(const net_base::HttpUrl& url) {
-  if (network_monitor_) {
-    network_monitor_->OnSigninPageShown(url);
-  }
-}
-
-void Network::OnSigninPageLoaded(int32_t chrome_net_error) {
-  if (network_monitor_) {
-    network_monitor_->OnSigninPageLoaded(chrome_net_error);
-  }
-}
-
-void Network::OnSigninPageClosed() {
-  if (network_monitor_) {
-    network_monitor_->OnSigninPageClosed();
   }
 }
 
