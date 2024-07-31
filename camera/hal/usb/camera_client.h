@@ -390,6 +390,8 @@ class CameraClient {
 
   // Metrics that used to record face ae metrics.
   std::unique_ptr<CameraMetrics> camera_metrics_;
+
+  ClientType client_type_;
 };
 
 }  // namespace cros
