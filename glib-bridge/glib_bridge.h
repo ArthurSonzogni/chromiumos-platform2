@@ -16,6 +16,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 
 #include "glib-bridge/glib_bridge_export.h"
@@ -35,6 +36,7 @@ struct GLIB_BRIDGE_EXPORT GlibBridge {
   };
 
   struct Watcher {
+    base::ScopedFD watch_fd;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> reader;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> writer;
   };
@@ -44,6 +46,8 @@ struct GLIB_BRIDGE_EXPORT GlibBridge {
   void Dispatch();
 
   void OnEvent(int fd, int flag);
+
+  int WatchFdToGlibFd(int fd);
 
   // If we ever need to support multiple GMainContexts instead of just the
   // default one then we can wrap a different context here. This is a weak

@@ -80,27 +80,32 @@ void GlibBridge::PrepareIteration() {
            << poll_flags.size() << " event FDs";
 
   for (const auto& fd_flags : poll_flags) {
+    // Duplicate fds glib wants to watch so glib closing them won't crash our
+    // message loop stack. See b/349247466
+    base::ScopedFD watch_fd(dup(fd_flags.first));
+    int bare_fd = watch_fd.get();
+    PCHECK(bare_fd >= 0) << "Could not duplicate glib fd";
+
     std::unique_ptr<base::FileDescriptorWatcher::Controller> reader;
     if (fd_flags.second & G_IO_IN) {
       reader = base::FileDescriptorWatcher::WatchReadable(
-          fd_flags.first, base::BindRepeating(&GlibBridge::OnEvent,
-                                              weak_ptr_factory_.GetWeakPtr(),
-                                              fd_flags.first, G_IO_IN));
-      CHECK(reader) << "Could not set up read watcher for fd "
-                    << fd_flags.first;
+          bare_fd, base::BindRepeating(&GlibBridge::OnEvent,
+                                       weak_ptr_factory_.GetWeakPtr(), bare_fd,
+                                       G_IO_IN));
+      CHECK(reader) << "Could not set up read watcher for fd " << bare_fd;
     }
 
     std::unique_ptr<base::FileDescriptorWatcher::Controller> writer;
     if (fd_flags.second & G_IO_OUT) {
       writer = base::FileDescriptorWatcher::WatchWritable(
-          fd_flags.first, base::BindRepeating(&GlibBridge::OnEvent,
-                                              weak_ptr_factory_.GetWeakPtr(),
-                                              fd_flags.first, G_IO_OUT));
-      CHECK(writer) << "Could not set up write watcher for fd "
-                    << fd_flags.first;
+          bare_fd, base::BindRepeating(&GlibBridge::OnEvent,
+                                       weak_ptr_factory_.GetWeakPtr(), bare_fd,
+                                       G_IO_OUT));
+      CHECK(writer) << "Could not set up write watcher for fd " << bare_fd;
     }
 
-    watchers_[fd_flags.first] = Watcher{std::move(reader), std::move(writer)};
+    watchers_[fd_flags.first] =
+        Watcher{std::move(watch_fd), std::move(reader), std::move(writer)};
   }
 
   state_ = State::kWaitingForEvents;
@@ -117,14 +122,17 @@ void GlibBridge::PrepareIteration() {
 void GlibBridge::OnEvent(int fd, int flag) {
   CHECK(state_ == State::kWaitingForEvents ||
         state_ == State::kReadyForDispatch);
-  DVLOG(2) << "OnEvent(" << fd << ", " << flag << ")";
-  for (GPollFD* poll_fd : fd_map_[fd])
+  int glib_fd = WatchFdToGlibFd(fd);
+  CHECK_GE(glib_fd, 0);
+  DVLOG(2) << "OnEvent(" << fd << " [" << glib_fd << "], " << flag << ")";
+
+  for (GPollFD* poll_fd : fd_map_[glib_fd])
     poll_fd->revents |= flag & poll_fd->events;
 
   if (flag & G_IO_IN)
-    watchers_[fd].reader.reset();
+    watchers_[glib_fd].reader.reset();
   if (flag & G_IO_OUT)
-    watchers_[fd].writer.reset();
+    watchers_[glib_fd].writer.reset();
 
   // Avoid posting the dispatch task if it's already posted
   if (state_ == State::kReadyForDispatch)
@@ -162,6 +170,15 @@ void GlibBridge::Dispatch() {
       FROM_HERE, base::BindOnce(&GlibBridge::PrepareIteration,
                                 weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kPreparingIteration;
+}
+
+int GlibBridge::WatchFdToGlibFd(int fd) {
+  for (const auto& watcher : watchers_) {
+    if (watcher.second.watch_fd == fd) {
+      return watcher.first;
+    }
+  }
+  return -1;
 }
 
 }  // namespace glib_bridge
