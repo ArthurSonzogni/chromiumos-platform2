@@ -10,6 +10,7 @@ group("all") {
     ":bpf-fdmon",
     ":bpf-memmon",
     ":bpf-mons-fdmem-test",
+    ":install_configs",
   ]
 }
 
@@ -59,6 +60,11 @@ executable("bpf-fdmon") {
   libs = [ "blazesym_c" ]
   deps = [ ":bpf_fdmon" ]
   install_path = "bin"
+}
+
+install_config("install_configs") {
+  sources = [ "conf/memmon-perfetto.conf" ]
+  install_path = "/etc/bpf-mons/"
 }
 
 config("target_test_defaults") {
