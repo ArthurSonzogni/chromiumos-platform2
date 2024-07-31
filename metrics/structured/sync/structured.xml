@@ -1023,6 +1023,22 @@
         Indicates the time in milliseconds, device last connected successfully to the internet.
       </summary>
     </metric>
+    <metric name="modem_bus_type" type="int">
+      <summary>
+        Bus Type used to connect the modem.
+        Options are UNKNOWN == 0, PCI == 1, USB == 2, SOC == 3.
+      </summary>
+    </metric>
+    <metric name="modem_vendor_id" type="int">
+      <summary>
+        The vendor id of the modem.
+      </summary>
+    </metric>
+    <metric name="modem_product_id" type="int">
+      <summary>
+        The Product id of the modem.
+      </summary>
+    </metric>
   </event>
   <event name="ModemFwdFwInstallResult">
     <summary>

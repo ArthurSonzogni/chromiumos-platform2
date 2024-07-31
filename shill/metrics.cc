@@ -883,7 +883,10 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           << static_cast<int>(result.connection_attempt_type)
           << " subscription_error_seen: " << result.subscription_error_seen
           << " last_connected: " << result.last_connected
-          << " last_online: " << result.last_online;
+          << " last_online: " << result.last_online
+          << " bus_type: " << static_cast<int>(result.device_id.bus_type)
+          << " vid: " << std::hex << result.device_id.vid
+          << " pid: " << std::hex << result.device_id.pid;
 
   auto event =
       metrics::structured::events::cellular::CellularConnectionAttempt()
@@ -909,7 +912,10 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           .Setsubscription_error_seen(result.subscription_error_seen)
           .Setconnection_apn_types(connection_apn_types)
           .Setlast_connected(result.last_connected)
-          .Setlast_online(result.last_online);
+          .Setlast_online(result.last_online)
+          .Setmodem_bus_type(static_cast<int>(result.device_id.bus_type))
+          .Setmodem_vendor_id(result.device_id.vid)
+          .Setmodem_product_id(result.device_id.pid);
 
   std::optional<int64_t> gid1 = IntGid1(result.gid1);
   if (gid1.has_value()) {

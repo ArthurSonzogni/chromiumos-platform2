@@ -2043,6 +2043,18 @@ class Metrics {
     kEsim = 2,
   };
 
+  struct CellularDeviceId {
+    enum class BusType {
+      kUnknown = 0,
+      kPci = 1,
+      kUsb = 2,
+      kSoc = 3,
+    };
+    BusType bus_type;
+    uint16_t vid;
+    uint16_t pid;
+  };
+
   struct DetailedCellularConnectionResult {
     // The values are used in metrics and thus should not be changed.
     enum class APNType {
@@ -2076,6 +2088,7 @@ class Metrics {
     uint32_t subscription_error_seen;
     uint64_t last_connected;
     uint64_t last_online;
+    CellularDeviceId device_id;
   };
 
   struct CellularNetworkValidationResult {

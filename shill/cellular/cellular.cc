@@ -202,6 +202,30 @@ Metrics::DetailedCellularConnectionResult::APNType ApnTypeToMetricEnum(
   }
 }
 
+Metrics::CellularDeviceId DeviceIdToMetrics(const DeviceId* device_id) {
+  Metrics::CellularDeviceId cellular_device_id;
+  switch (device_id->bus_type()) {
+    case DeviceId::BusType::kPci:
+      cellular_device_id.bus_type = Metrics::CellularDeviceId::BusType::kPci;
+      break;
+    case DeviceId::BusType::kUsb:
+      cellular_device_id.bus_type = Metrics::CellularDeviceId::BusType::kUsb;
+      break;
+    case DeviceId::BusType::kSoc:
+      cellular_device_id.bus_type = Metrics::CellularDeviceId::BusType::kSoc;
+      break;
+    default:
+      cellular_device_id.bus_type =
+          Metrics::CellularDeviceId::BusType::kUnknown;
+      break;
+  }
+  cellular_device_id.vid =
+      device_id->vendor_id().has_value() ? device_id->vendor_id().value() : 0;
+  cellular_device_id.pid =
+      device_id->product_id().has_value() ? device_id->product_id().value() : 0;
+  return cellular_device_id;
+}
+
 }  // namespace
 
 // static
@@ -1441,6 +1465,9 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.last_connected = service_->GetLastConnectedProperty(nullptr);
   result.last_online = service_->GetLastOnlineProperty(nullptr);
   result.connection_apn_types = ConnectionApnTypesToMetrics(apn_type);
+  if (device_id()) {
+    result.device_id = DeviceIdToMetrics(device_id());
+  }
   metrics()->NotifyDetailedCellularConnectionResult(result);
 
   // Update if we reported subscription error for this card so that

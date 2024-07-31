@@ -65,6 +65,9 @@ class DeviceId {
   // Format: [bus type]:[vendor id, or "*" if unspecified]:
   //         [product id, or "*" if unspecified]
   std::string AsString() const;
+  DeviceId::BusType bus_type() const { return bus_type_; }
+  std::optional<uint16_t> vendor_id() const { return vendor_id_; }
+  std::optional<uint16_t> product_id() const { return product_id_; }
 
  private:
   BusType bus_type_;
