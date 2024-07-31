@@ -435,6 +435,14 @@ bool P2PDevice::StartSupplicantGroupForClient(const KeyValueStore& properties) {
   p2pgroup_args.Set<RpcIdentifier>(
       WPASupplicant::kGroupAddPropertyPersistentPath,
       supplicant_persistent_group_path_);
+  if (properties.Contains<Integer>(
+          WPASupplicant::kAddPersistentGroupPropertyFrequency)) {
+    // Also set GroupAdd frequency parameter for single channel scan.
+    p2pgroup_args.Set<Integer>(
+        WPASupplicant::kGroupAddPropertyFrequency,
+        properties.Get<Integer>(
+            WPASupplicant::kAddPersistentGroupPropertyFrequency));
+  }
   if (!SupplicantPrimaryP2PDeviceProxy()->GroupAdd(p2pgroup_args)) {
     LOG(ERROR) << log_name()
                << ": Failed to GroupAdd via the primary "
