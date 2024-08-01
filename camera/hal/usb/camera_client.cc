@@ -17,7 +17,6 @@
 #include <system/camera_metadata.h>
 
 #include "cros-camera/common.h"
-#include "cros-camera/device_config.h"
 #include "cros-camera/utils/camera_config.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_hal.h"
@@ -107,8 +106,7 @@ CameraClient::CameraClient(int id,
       callback_ops_(nullptr),
       sw_privacy_switch_on_(sw_privacy_switch_on),
       request_thread_("Capture request thread"),
-      camera_metrics_(CameraMetrics::New()),
-      client_type_(client_type) {
+      camera_metrics_(CameraMetrics::New()) {
   memset(&camera3_device_, 0, sizeof(camera3_device_));
   camera3_device_.common.tag = HARDWARE_DEVICE_TAG;
   // Set CAMERA_DEVICE_API_VERSION_3_5 to device version for Android P
@@ -569,20 +567,6 @@ CameraClient::BuildStreamOnParameters(
       DCHECK_NE(format, nullptr);
       streamon_params.frame_rate = GetMaximumFrameRate(*format);
     }
-  }
-
-  // TODO(b/346244623): Temporary workaround to fix some models of board zork
-  // performance issue. It cannot have stable 30 fps if resolution is more than
-  // 1280x720.
-  const std::string model_name = DeviceConfig::Create()->GetModelName();
-  if (client_type_ == ClientType::kAndroid &&
-      (model_name == "vilboz360" || model_name == "jelboz360" ||
-       model_name == "vilboz") &&
-      (streamon_params.resolution.width >= 1280 ||
-       streamon_params.resolution.height >= 720)) {
-    streamon_params.resolution = Size(1280, 720);
-    LOGF(WARNING) << "Limit resolution to 1280x720 for " << model_name
-                  << " on Android.";
   }
 
   std::string session_params_fps_range = "[]";
