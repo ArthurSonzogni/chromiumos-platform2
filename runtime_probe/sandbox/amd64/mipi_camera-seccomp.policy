@@ -14,6 +14,7 @@ close: 1
 # ioctl: arg1 == MEDIA_IOC_DEVICE_INFO || arg1 == MEDIA_IOC_ENUM_ENTITIES
 ioctl: arg1 == 0xc1007c00 || arg1 == 0xc1007c01
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+fstat: 1
 fstatfs: 1
 write: 1
 gettid: 1
