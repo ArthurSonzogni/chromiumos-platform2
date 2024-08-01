@@ -18,6 +18,7 @@ execve: 1
 exit: 1
 exit_group: 1
 fcntl64: 1
+fstat: 1
 fstatat64: 1
 fstatfs: 1
 fstatfs64: 1

@@ -15,6 +15,7 @@ exit: 1
 exit_group: 1
 faccessat: 1
 fcntl: 1
+fstat: 1
 fstatfs: 1
 fsync: 1
 futex: 1
