@@ -20,7 +20,6 @@
 #include <minios/proto_bindings/minios.pb.h>
 #include <vpd/vpd.h>
 
-#include "minios/cgpt_util.h"
 #include "minios/process_manager.h"
 
 namespace minios {
@@ -158,11 +157,6 @@ std::optional<EncryptedLogFile> EncryptLogArchive(
 // plain text data on success, nullopt otherwise.
 std::optional<brillo::SecureBlob> DecryptLogArchive(
     const EncryptedLogFile& encrypted_archive, const brillo::SecureBlob& key);
-
-// Get the size of a partition in bytes. Returns size on success, or nullopt on
-// failure.
-std::optional<uint64_t> GetPartitionSize(
-    uint64_t partition_number, std::shared_ptr<CgptUtilInterface> cgpt_util);
 
 std::optional<uint64_t> GetMiniOsPriorityPartition(
     std::shared_ptr<crossystem::Crossystem> cros_system);

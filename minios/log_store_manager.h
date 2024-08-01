@@ -15,10 +15,10 @@
 #include <gtest/gtest_prod.h>
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libstorage/platform/platform.h>
 #include <minios/proto_bindings/minios.pb.h>
 #include <vpd/vpd.h>
 
-#include "minios/cgpt_wrapper.h"
 #include "minios/disk_util.h"
 #include "minios/log_store_manifest.h"
 #include "minios/process_manager.h"
@@ -39,12 +39,9 @@ class LogStoreManagerInterface {
 
   virtual ~LogStoreManagerInterface() = default;
 
-  virtual bool Init(
-      std::shared_ptr<DiskUtil> disk_util = std::make_shared<DiskUtil>(),
-      std::shared_ptr<crossystem::Crossystem> cros_system =
-          std::make_shared<crossystem::Crossystem>(),
-      std::shared_ptr<CgptWrapperInterface> cgpt_wrapper =
-          std::make_shared<CgptWrapper>()) = 0;
+  virtual bool Init(std::unique_ptr<DiskUtil> disk_util,
+                    std::unique_ptr<crossystem::Crossystem> cros_system,
+                    std::unique_ptr<libstorage::Platform> platform) = 0;
 
   // Save logs to a specified direction. If the direction is not `Disk`, logs
   // will be written to `path`.
@@ -65,27 +62,22 @@ class LogStoreManagerInterface {
 
   // Clear logs on disk.
   virtual bool ClearLogs() const = 0;
+
+  // Set LogStoreManifest for testing.
+  virtual void SetLogStoreManifest(
+      std::unique_ptr<LogStoreManifestInterface> log_store_manifest) = 0;
 };
 
 class LogStoreManager : public LogStoreManagerInterface {
  public:
   LogStoreManager() : LogStoreManager(std::nullopt) {}
-  explicit LogStoreManager(std::optional<uint64_t> partition_number)
-      : process_manager_(std::make_shared<ProcessManager>()),
+  explicit LogStoreManager(
+      std::optional<uint64_t> partition_number,
+      std::shared_ptr<ProcessManagerInterface> process_manager =
+          std::make_shared<ProcessManager>(),
+      std::shared_ptr<vpd::Vpd> vpd = std::make_shared<vpd::Vpd>())
+      : process_manager_(process_manager),
         partition_number_(partition_number),
-        vpd_(std::make_shared<vpd::Vpd>()) {}
-
-  LogStoreManager(std::unique_ptr<LogStoreManifestInterface> log_store_manifest,
-                  std::shared_ptr<ProcessManagerInterface> process_manager,
-                  std::shared_ptr<vpd::Vpd> vpd,
-                  const base::FilePath& disk_path,
-                  uint64_t kernel_size,
-                  uint64_t partition_size)
-      : log_store_manifest_(std::move(log_store_manifest)),
-        process_manager_(process_manager),
-        disk_path_(disk_path),
-        kernel_size_(kernel_size),
-        partition_size_(partition_size),
         vpd_(vpd) {}
 
   ~LogStoreManager() override = default;
@@ -93,11 +85,9 @@ class LogStoreManager : public LogStoreManagerInterface {
   LogStoreManager(const LogStoreManager&) = delete;
   LogStoreManager& operator=(const LogStoreManager&) = delete;
 
-  bool Init(std::shared_ptr<DiskUtil> disk_util = std::make_shared<DiskUtil>(),
-            std::shared_ptr<crossystem::Crossystem> cros_system =
-                std::make_shared<crossystem::Crossystem>(),
-            std::shared_ptr<CgptWrapperInterface> cgpt_wrapper =
-                std::make_shared<CgptWrapper>()) override;
+  bool Init(std::unique_ptr<DiskUtil> disk_util,
+            std::unique_ptr<crossystem::Crossystem> cros_system,
+            std::unique_ptr<libstorage::Platform> platform) override;
 
   bool SaveLogs(
       LogDirection direction,
@@ -111,6 +101,11 @@ class LogStoreManager : public LogStoreManagerInterface {
           std::nullopt) const override;
 
   bool ClearLogs() const override;
+
+  void SetLogStoreManifest(
+      std::unique_ptr<LogStoreManifestInterface> log_store_manifest) override {
+    log_store_manifest_ = std::move(log_store_manifest);
+  }
 
  private:
   FRIEND_TEST(LogStoreManagerEncryptTest, EncryptLogsTest);
@@ -141,7 +136,8 @@ class LogStoreManager : public LogStoreManagerInterface {
 
   base::FilePath disk_path_;
   std::optional<uint64_t> kernel_size_;
-  std::optional<uint64_t> partition_size_;
+  uint64_t partition_size_ = 0;
+  uint64_t log_store_location_ = 0;
   // Partition target for saving and fetching logs.
   std::optional<uint64_t> partition_number_;
 

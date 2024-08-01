@@ -8,23 +8,25 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/file_utils.h>
 #include <brillo/secure_blob.h>
 #include <fcntl.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <libstorage/platform/mock_platform.h>
 #include <minios/proto_bindings/minios.pb.h>
 #include <vpd/fake_vpd.h>
 #include <vpd/vpd.h>
 
-#include "minios/mock_cgpt_wrapper.h"
 #include "minios/mock_disk_util.h"
 #include "minios/mock_log_store_manifest.h"
 #include "minios/mock_process_manager.h"
@@ -67,43 +69,40 @@ TEST(LogStoreManagerEncryptTest, EncryptLogsTest) {
 
 TEST(LogStoreManagerInitTest, InitTest) {
   auto log_store_manager_ = std::make_shared<LogStoreManager>();
-  auto mock_disk_util = std::make_shared<MockDiskUtil>();
-  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+  auto mock_disk_util = std::make_unique<MockDiskUtil>();
+  auto stub_crossystem = std::make_unique<crossystem::Crossystem>(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto mock_cgpt_wrapper = std::make_shared<MockCgptWrapper>();
   auto mock_process_manager_ = std::make_shared<NiceMock<MockProcessManager>>();
-
+  auto platform = std::make_unique<StrictMock<libstorage::MockPlatform>>();
   // Kernel size = 20000.
   const std::string futility_output =
       std::string{"kernel::keyblock::size::10\n"} +
       std::string{"kernel::preamble::size::10\n"} +
       std::string{"kernel::body::size::19980\n"};
 
-  // Set Partition size to 80 blocks (80 * 512 bytes).
-  const CgptAddParams result_param = {.size = 80};
-
   stub_crossystem->VbSetSystemPropertyString("minios_priority", "A");
   EXPECT_CALL(*mock_disk_util, GetFixedDrive())
       .WillOnce(Return(base::FilePath{"/dev/nvme0n1"}));
-  EXPECT_CALL(*mock_cgpt_wrapper, CgptGetPartitionDetails(_))
-      .WillOnce(DoAll(SetArgPointee<0>(result_param), Return(CGPT_OK)));
+  EXPECT_CALL(*platform, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(80 * 512), Return(true)));
   EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       Return(true)));
 
   log_store_manager_->process_manager_ = mock_process_manager_;
 
-  EXPECT_TRUE(log_store_manager_->Init(mock_disk_util, stub_crossystem,
-                                       mock_cgpt_wrapper));
+  EXPECT_TRUE(log_store_manager_->Init(std::move(mock_disk_util),
+                                       std::move(stub_crossystem),
+                                       std::move(platform)));
 }
 
 TEST(LogStoreManagerInitTest, InitSpecifiedPartitionTest) {
   auto log_store_manager_ = std::make_shared<LogStoreManager>(9);
-  auto mock_disk_util = std::make_shared<MockDiskUtil>();
-  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+  auto mock_disk_util = std::make_unique<MockDiskUtil>();
+  auto stub_crossystem = std::make_unique<crossystem::Crossystem>(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto mock_cgpt_wrapper = std::make_shared<MockCgptWrapper>();
   auto mock_process_manager = std::make_shared<NiceMock<MockProcessManager>>();
+  auto platform = std::make_unique<StrictMock<libstorage::MockPlatform>>();
 
   // Kernel size = 20000.
   const std::string futility_output =
@@ -111,62 +110,62 @@ TEST(LogStoreManagerInitTest, InitSpecifiedPartitionTest) {
       std::string{"kernel::preamble::size::10\n"} +
       std::string{"kernel::body::size::19980\n"};
 
-  // Set Partition size to 80 blocks (80 * 512 bytes).
-  const CgptAddParams result_param = {.size = 80};
   // Set crossystem to not know minios_priority, init should succeed since we
   // specified a partition.
   stub_crossystem->VbSetSystemPropertyString("minios_priority", "undefined");
   EXPECT_CALL(*mock_disk_util, GetFixedDrive())
       .WillOnce(Return(base::FilePath{"/dev/nvme0n1"}));
-  EXPECT_CALL(*mock_cgpt_wrapper, CgptGetPartitionDetails(_))
-      .WillOnce(DoAll(SetArgPointee<0>(result_param), Return(CGPT_OK)));
+  EXPECT_CALL(*platform, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(80 * 512), Return(true)));
   EXPECT_CALL(*mock_process_manager, RunCommandWithOutput(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       Return(true)));
 
   log_store_manager_->process_manager_ = mock_process_manager;
 
-  EXPECT_TRUE(log_store_manager_->Init(mock_disk_util, stub_crossystem,
-                                       mock_cgpt_wrapper));
+  EXPECT_TRUE(log_store_manager_->Init(std::move(mock_disk_util),
+                                       std::move(stub_crossystem),
+                                       std::move(platform)));
 }
 
 TEST(LogStoreManagerInitTest, InitNoFixedDriveTest) {
   auto log_store_manager_ = std::make_shared<LogStoreManager>();
-  auto mock_disk_util = std::make_shared<StrictMock<MockDiskUtil>>();
-  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+  auto mock_disk_util = std::make_unique<StrictMock<MockDiskUtil>>();
+  auto stub_crossystem = std::make_unique<crossystem::Crossystem>(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto mock_cgpt_wrapper = std::make_shared<MockCgptWrapper>();
+  auto platform = std::make_unique<StrictMock<libstorage::MockPlatform>>();
 
   EXPECT_CALL(*mock_disk_util, GetFixedDrive())
       .WillOnce(Return(base::FilePath{""}));
 
-  EXPECT_FALSE(log_store_manager_->Init(mock_disk_util, stub_crossystem,
-                                        mock_cgpt_wrapper));
+  EXPECT_FALSE(log_store_manager_->Init(std::move(mock_disk_util),
+                                        std::move(stub_crossystem),
+                                        std::move(platform)));
 }
 
 TEST(LogStoreManagerInitTest, InitUnknownPartitionSizeTest) {
   auto log_store_manager_ = std::make_shared<LogStoreManager>();
-  auto mock_disk_util = std::make_shared<MockDiskUtil>();
-  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+  auto mock_disk_util = std::make_unique<MockDiskUtil>();
+  auto stub_crossystem = std::make_unique<crossystem::Crossystem>(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto mock_cgpt_wrapper = std::make_shared<MockCgptWrapper>();
+  auto platform = std::make_unique<StrictMock<libstorage::MockPlatform>>();
 
   stub_crossystem->VbSetSystemPropertyString("minios_priority", "A");
   EXPECT_CALL(*mock_disk_util, GetFixedDrive())
       .WillOnce(Return(base::FilePath{"/dev/nvme0n1"}));
-  EXPECT_CALL(*mock_cgpt_wrapper, CgptGetPartitionDetails(_))
-      .WillOnce(Return(CGPT_FAILED));
+  EXPECT_CALL(*platform, GetBlkSize(_, _)).WillOnce(Return(false));
 
-  EXPECT_FALSE(log_store_manager_->Init(mock_disk_util, stub_crossystem,
-                                        mock_cgpt_wrapper));
+  EXPECT_FALSE(log_store_manager_->Init(std::move(mock_disk_util),
+                                        std::move(stub_crossystem),
+                                        std::move(platform)));
 }
 
 TEST(LogStoreManagerInitTest, InitUnknownPartitionTest) {
   auto log_store_manager_ = std::make_shared<LogStoreManager>();
-  auto mock_disk_util = std::make_shared<StrictMock<MockDiskUtil>>();
-  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+  auto mock_disk_util = std::make_unique<StrictMock<MockDiskUtil>>();
+  auto stub_crossystem = std::make_unique<crossystem::Crossystem>(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto mock_cgpt_wrapper = std::make_shared<MockCgptWrapper>();
+  auto platform = std::make_unique<StrictMock<libstorage::MockPlatform>>();
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
 
@@ -174,16 +173,17 @@ TEST(LogStoreManagerInitTest, InitUnknownPartitionTest) {
   EXPECT_CALL(*mock_disk_util, GetFixedDrive())
       .WillOnce(Return(base::FilePath{"/dev/nvme0n1"}));
 
-  EXPECT_FALSE(log_store_manager_->Init(mock_disk_util, stub_crossystem,
-                                        mock_cgpt_wrapper));
+  EXPECT_FALSE(log_store_manager_->Init(std::move(mock_disk_util),
+                                        std::move(stub_crossystem),
+                                        std::move(platform)));
 }
 
 TEST(LogStoreManagerInitTest, InitKernelLogStoreOverlapTest) {
   auto log_store_manager_ = std::make_shared<LogStoreManager>();
-  auto mock_disk_util = std::make_shared<MockDiskUtil>();
-  const auto stub_crossystem = std::make_shared<crossystem::Crossystem>(
+  auto mock_disk_util = std::make_unique<MockDiskUtil>();
+  auto stub_crossystem = std::make_unique<crossystem::Crossystem>(
       std::make_unique<crossystem::fake::CrossystemFake>());
-  auto mock_cgpt_wrapper = std::make_shared<MockCgptWrapper>();
+  auto platform = std::make_unique<StrictMock<libstorage::MockPlatform>>();
   auto mock_process_manager_ = std::make_shared<NiceMock<MockProcessManager>>();
 
   // Kernel size = 20000.
@@ -192,53 +192,82 @@ TEST(LogStoreManagerInitTest, InitKernelLogStoreOverlapTest) {
       std::string{"kernel::preamble::size::10\n"} +
       std::string{"kernel::body::size::19980\n"};
 
-  // Set Partition size to 60 blocks (30720). This should fail
-  // initialization due to lack of space for logstore (20000 + 11264 > 30720).
-  const CgptAddParams result_param = {.size = 60};
-
   stub_crossystem->VbSetSystemPropertyString("minios_priority", "A");
   EXPECT_CALL(*mock_disk_util, GetFixedDrive())
       .WillOnce(Return(base::FilePath{"/dev/nvme0n1"}));
-  EXPECT_CALL(*mock_cgpt_wrapper, CgptGetPartitionDetails(_))
-      .WillOnce(DoAll(SetArgPointee<0>(result_param), Return(CGPT_OK)));
+  EXPECT_CALL(*platform, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(60 * 512), Return(true)));
   EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
                       Return(true)));
 
   log_store_manager_->process_manager_ = mock_process_manager_;
 
-  EXPECT_FALSE(log_store_manager_->Init(mock_disk_util, stub_crossystem,
-                                        mock_cgpt_wrapper));
+  EXPECT_FALSE(log_store_manager_->Init(std::move(mock_disk_util),
+                                        std::move(stub_crossystem),
+                                        std::move(platform)));
 }
 
 class LogStoreManagerTest : public ::testing::Test {
  public:
   void SetUp() override {
     ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
+    const auto fixed_drive = tmp_dir_.GetPath().Append("disk");
+    disk_path_ = brillo::AppendPartition(fixed_drive, 9);
+    base::File disk_file_{
+        disk_path_, base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE};
 
-    disk_path_ = tmp_dir_.GetPath().Append("disk");
+    EXPECT_TRUE(disk_file_.IsValid());
+    disk_file_.SetLength(partition_size_);
+    disk_file_.Close();
+
     auto vpd = std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
-    base::File file{disk_path_,
-                    base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE};
-    ASSERT_TRUE(file.IsValid());
-    file.Close();
-    log_store_manager_ = std::make_shared<LogStoreManager>(
-        std::move(log_store_manifest_), mock_process_manager_, vpd, disk_path_,
-        kernel_size_, partition_size_);
+
+    EXPECT_CALL(*mock_disk_util_, GetFixedDrive())
+        .WillOnce(Return(fixed_drive));
+    stub_crossystem_->VbSetSystemPropertyString("minios_priority", "A");
+    EXPECT_CALL(*mock_storage_platform_, GetBlkSize(_, _))
+        .WillOnce(DoAll(SetArgPointee<1>(partition_size_), Return(true)));
+
+    const std::string futility_output =
+        std::string{"kernel_partition::/dev/nvme0n1p9\n"} +
+        std::string{"kernel::keyblock::size::100\n"} +
+        std::string{"kernel::preamble::size::100\n"} +
+        std::string{"kernel::preamble::body::load_address::0x100000\n"} +
+        std::string{"kernel::body::size::25400\n"};
+    EXPECT_CALL(*mock_process_manager_, RunCommandWithOutput(_, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(futility_output),
+                        testing::Return(true)));
+
+    log_store_manager_ =
+        std::make_shared<LogStoreManager>(9, mock_process_manager_, vpd);
+    EXPECT_TRUE(log_store_manager_->Init(std::move(mock_disk_util_),
+                                         std::move(stub_crossystem_),
+                                         std::move(mock_storage_platform_)));
+
+    auto log_store_manifest =
+        std::make_unique<StrictMock<MockLogStoreManifest>>();
+    log_store_manifest_ptr_ = log_store_manifest.get();
+    log_store_manager_->SetLogStoreManifest(std::move(log_store_manifest));
   }
 
-  std::unique_ptr<MockLogStoreManifest> log_store_manifest_ =
-      std::make_unique<StrictMock<MockLogStoreManifest>>();
   std::shared_ptr<MockProcessManager> mock_process_manager_ =
       std::make_shared<NiceMock<MockProcessManager>>();
-  MockLogStoreManifest* log_store_manifest_ptr_ = log_store_manifest_.get();
+  MockLogStoreManifest* log_store_manifest_ptr_;
+  std::unique_ptr<MockDiskUtil> mock_disk_util_ =
+      std::make_unique<MockDiskUtil>();
+  std::unique_ptr<crossystem::Crossystem> stub_crossystem_ =
+      std::make_unique<crossystem::Crossystem>(
+          std::make_unique<crossystem::fake::CrossystemFake>());
+  std::unique_ptr<libstorage::MockPlatform> mock_storage_platform_ =
+      std::make_unique<StrictMock<libstorage::MockPlatform>>();
 
   std::shared_ptr<LogStoreManager> log_store_manager_;
 
   base::ScopedTempDir tmp_dir_;
   base::FilePath disk_path_;
-  uint64_t kernel_size_ = 40000;
-  uint64_t partition_size_ = 50000;
+  uint64_t kernel_size_ = 25600;
+  uint64_t partition_size_ = 51200;
 };
 
 void WriteToArchive(

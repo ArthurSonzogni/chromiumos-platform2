@@ -24,9 +24,9 @@ class MockLogStoreManager : public LogStoreManagerInterface {
 
   MOCK_METHOD(bool,
               Init,
-              (std::shared_ptr<DiskUtil> disk_util,
-               std::shared_ptr<crossystem::Crossystem> cros_system,
-               std::shared_ptr<CgptWrapperInterface> cgpt_wrapper),
+              (std::unique_ptr<DiskUtil> disk_util,
+               std::unique_ptr<crossystem::Crossystem> cros_system,
+               std::unique_ptr<libstorage::Platform> platform),
               (override));
   MOCK_METHOD(bool,
               SaveLogs,
@@ -41,6 +41,10 @@ class MockLogStoreManager : public LogStoreManagerInterface {
                const std::optional<base::FilePath>& encrypted_archive_path),
               (const, override));
   MOCK_METHOD(bool, ClearLogs, (), (const, override));
+  MOCK_METHOD(void,
+              SetLogStoreManifest,
+              (std::unique_ptr<LogStoreManifestInterface>),
+              (override));
 };
 
 }  // namespace minios

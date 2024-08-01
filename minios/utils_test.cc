@@ -27,8 +27,6 @@
 #include <vpd/fake_vpd.h>
 #include <vpd/vpd.h>
 
-#include "minios/log_store_manifest.h"
-#include "minios/mock_cgpt_util.h"
 #include "minios/mock_process_manager.h"
 
 namespace minios {
@@ -439,14 +437,6 @@ TEST(UtilsTest, WriteSecureBlobToFileTest) {
   const auto& file_contents = ReadFileToSecureBlob(file_path);
   EXPECT_TRUE(file_contents.has_value());
   EXPECT_EQ(file_contents.value(), kTestData);
-}
-
-TEST(UtilsTest, GetPartitionSizeTest) {
-  const auto mock_cgpt_util = std::make_shared<MockCgptUtil>();
-  EXPECT_CALL(*mock_cgpt_util, GetSize(1)).WillOnce(Return(10));
-  EXPECT_CALL(*mock_cgpt_util, GetSize(2)).WillOnce(Return(std::nullopt));
-  EXPECT_THAT(GetPartitionSize(1, mock_cgpt_util), Optional(10 * kBlockSize));
-  EXPECT_EQ(GetPartitionSize(2, mock_cgpt_util), std::nullopt);
 }
 
 TEST(UtilsTest, GetMiniOsPriorityPartitionTest) {

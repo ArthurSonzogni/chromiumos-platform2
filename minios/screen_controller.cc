@@ -81,7 +81,10 @@ bool ScreenController::Init() {
       base::BindRepeating(&::minios::ScreenController::OnDisplayChange,
                           base::Unretained(this)));
 
-  if (log_store_manager_ && !log_store_manager_->Init()) {
+  if (log_store_manager_ &&
+      !log_store_manager_->Init(std::make_unique<DiskUtil>(),
+                                std::make_unique<crossystem::Crossystem>(),
+                                std::make_unique<libstorage::Platform>())) {
     LOG(WARNING) << "Failed to initialize log store manager.";
     log_store_manager_ = nullptr;
   }

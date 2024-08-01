@@ -29,6 +29,7 @@ pkg_config("target_defaults") {
     "libcrossystem",
     "libmetrics",
     "libshill-client",
+    "libstorage_platform",
     "libupdate_engine-client",
     "protobuf-lite",
     "system_api",
@@ -122,6 +123,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libcrossystem-test",
+      "libstorage_fake_platform",
       "libupdate_engine-client-test",
     ]
   }

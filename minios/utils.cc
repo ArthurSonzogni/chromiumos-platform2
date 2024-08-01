@@ -28,7 +28,6 @@
 #include <vpd/types.h>
 #include <vpd/vpd.h>
 
-#include "minios/log_store_manifest.h"
 #include "minios/process_manager.h"
 
 namespace {
@@ -517,18 +516,6 @@ std::optional<brillo::SecureBlob> DecryptLogArchive(
     return std::nullopt;
   }
   return plain_data;
-}
-
-std::optional<uint64_t> GetPartitionSize(
-    uint64_t partition_number, std::shared_ptr<CgptUtilInterface> cgpt_util) {
-  auto partition_blocks = cgpt_util->GetSize(partition_number);
-  if (!partition_blocks.has_value()) {
-    LOG(ERROR) << "Couldn't determine size of partition=" << partition_number;
-    return std::nullopt;
-  }
-  // `CgptUtil` returns sizes of partitions in blocks, multiply by kBlockSize to
-  // get size in bytes.
-  return partition_blocks.value() * kBlockSize;
 }
 
 std::optional<uint64_t> GetMiniOsPriorityPartition(

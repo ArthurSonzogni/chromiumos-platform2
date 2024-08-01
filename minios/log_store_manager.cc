@@ -22,7 +22,6 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <minios/proto_bindings/minios.pb.h>
 
-#include "minios/cgpt_util.h"
 #include "minios/disk_util.h"
 #include "minios/log_store_manifest.h"
 #include "minios/utils.h"
@@ -36,9 +35,9 @@ const uint64_t kMaxLogSize = 20 * kBlockSize;
 // Strip `/var/log` folder paths when extracting.
 const char kTarStripComponentFlag[] = "--strip-components=2";
 
-bool LogStoreManager::Init(std::shared_ptr<DiskUtil> disk_util,
-                           std::shared_ptr<crossystem::Crossystem> cros_system,
-                           std::shared_ptr<CgptWrapperInterface> cgpt_wrapper) {
+bool LogStoreManager::Init(std::unique_ptr<DiskUtil> disk_util,
+                           std::unique_ptr<crossystem::Crossystem> cros_system,
+                           std::unique_ptr<libstorage::Platform> platform) {
   // Identify the fixed drive along with active MiniOS side to determine the
   // current partition.
   const auto& fixed_drive = disk_util->GetFixedDrive();
@@ -48,7 +47,7 @@ bool LogStoreManager::Init(std::shared_ptr<DiskUtil> disk_util,
   }
 
   if (!partition_number_)
-    partition_number_ = GetMiniOsPriorityPartition(cros_system);
+    partition_number_ = GetMiniOsPriorityPartition(std::move(cros_system));
 
   if (!partition_number_) {
     LOG(ERROR) << "Failed to find priority MiniOS partition.";
@@ -56,10 +55,7 @@ bool LogStoreManager::Init(std::shared_ptr<DiskUtil> disk_util,
   }
   disk_path_ = brillo::AppendPartition(fixed_drive, partition_number_.value());
 
-  const auto cgpt_util = std::make_shared<CgptUtil>(fixed_drive, cgpt_wrapper);
-  partition_size_ = GetPartitionSize(partition_number_.value(), cgpt_util);
-
-  if (!partition_size_) {
+  if (!platform->GetBlkSize(disk_path_, &partition_size_)) {
     LOG(ERROR) << "Couldn't determine size of partition="
                << partition_number_.value();
     return false;
@@ -74,14 +70,22 @@ bool LogStoreManager::Init(std::shared_ptr<DiskUtil> disk_util,
     return false;
   }
 
+  if (partition_size_ < kLogStoreOffset) {
+    LOG(ERROR) << "Invalid log store offset, partition_size=" << partition_size_
+               << " LogStoreOffset=" << kLogStoreOffset;
+    return false;
+  }
+
+  log_store_location_ = partition_size_ - kLogStoreOffset;
+
   // Ensure that the log store does not encroach kernel space on disk.
-  if (kernel_size_.value() > (partition_size_.value() - kLogStoreOffset)) {
+  if (kernel_size_.value() > log_store_location_) {
     LOG(ERROR) << "Kernel overlaps with log store.";
     return false;
   }
 
   log_store_manifest_ = std::make_unique<LogStoreManifest>(
-      disk_path_, kernel_size_.value(), partition_size_.value());
+      disk_path_, kernel_size_.value(), partition_size_);
 
   return true;
 }
@@ -206,7 +210,7 @@ bool LogStoreManager::SaveLogsToDisk(
   }
 
   LogManifest::Entry entry;
-  entry.set_offset(partition_size_.value() - kLogStoreOffset);
+  entry.set_offset(log_store_location_);
   entry.set_count(encrypted_archive.ByteSizeLong());
 
   if (!log_store_manifest_) {
@@ -220,7 +224,7 @@ bool LogStoreManager::SaveLogsToDisk(
     PLOG(ERROR) << "Couldn't open file=" << disk_path_;
     return false;
   }
-  if (!file.WriteAndCheck(partition_size_.value() - kLogStoreOffset,
+  if (!file.WriteAndCheck(log_store_location_,
                           {reinterpret_cast<const uint8_t*>(
                                encrypted_archive.SerializeAsString().c_str()),
                            encrypted_archive.SerializeAsString().size()})) {
@@ -362,8 +366,8 @@ bool LogStoreManager::ClearLogs() const {
     return false;
   }
 
-  const std::string clear_data(
-      partition_size_.value() - manifest->entry().offset(), '0');
+  const std::string clear_data(partition_size_ - manifest->entry().offset(),
+                               '0');
 
   base::File file{disk_path_, base::File::FLAG_OPEN | base::File::FLAG_WRITE};
   if (!file.IsValid()) {

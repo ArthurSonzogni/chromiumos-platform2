@@ -163,7 +163,9 @@ int main(int argc, char** argv) {
     manager = partition
                   ? std::make_shared<minios::LogStoreManager>(partition.value())
                   : std::make_shared<minios::LogStoreManager>();
-    if (!manager->Init())
+    if (!manager->Init(std::make_unique<minios::DiskUtil>(),
+                       std::make_unique<crossystem::Crossystem>(),
+                       std::make_unique<libstorage::Platform>()))
       manager.reset();
     return manager;
   };
