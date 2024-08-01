@@ -71,9 +71,9 @@ fn dynamic_epp_cb(new_state: bool) {
         .expect("DYNAMIC_EPP_FLAG_CHANGED is not initialized")
         .notify_one();
     if new_state {
-        info!("Dynamic EPP is now enabled!");
+        info!("Dynamic EPP is enabled");
     } else {
-        info!("Dynamic EPP is now disabled!");
+        info!("Dynamic EPP is disabled");
     }
 }
 
@@ -349,7 +349,7 @@ pub async fn auto_epp_main() {
     // SAFETY: Safe because syscall doesn't modify user memory
     let num_cores = match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_CONF) } {
         -1 => {
-            warn!("Dynamic EPP: Failed to get the number of CPU cores. Exiting auto_epp_main!");
+            warn!("Dynamic EPP: Failed to get the number of CPU cores. Exiting auto_epp_main");
             return;
         }
         n => n as usize,
