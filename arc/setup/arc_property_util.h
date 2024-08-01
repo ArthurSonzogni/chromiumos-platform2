@@ -41,7 +41,8 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 bool ExpandPropertyContentsForTesting(const std::string& content,
                                       brillo::CrosConfigInterface* config,
                                       bool debuggable,
-                                      std::string* expanded_content);
+                                      std::string* expanded_content,
+                                      std::string* modified_content);
 
 // Truncates the value side of an Android key=val property line, including
 // handling the special case of build fingerprint.
@@ -49,24 +50,30 @@ bool TruncateAndroidPropertyForTesting(const std::string& line,
                                        std::string* truncated);
 
 // Expands properties (i.e. {property-name}) in |input| with the dictionary
-// |config| provides, and writes the results to |output|. Returns true if the
-// output file is successfully written.
+// |config| provides. Writes all properties (including ones that did not
+// require any expansion) to |output| and writes only the properties that
+// have changed to |modified_output|. Returns true if the output files are
+// successfully written.
 bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   const base::FilePath& output,
+                                  const base::FilePath& modified_output,
                                   brillo::CrosConfigInterface* config);
 
 // Calls ExpandPropertyFile for {build,default,vendor_build}.prop files in
-// |source_path|. Expanded files are written in |dest_path|. Returns true on
-// success. When |single_file| is true, only one file (|dest_path| itself) is
-// written. All expanded properties are included in the single file.
-// When |add_native_bridge_64_bit_support| is true, add / modify some properties
-// related to supported CPU ABIs. |hw_oemcrypto_support| uses D-Bus to talk to
-// the cdm-oemcrypto daemon and add specific properties needed by the Android
-// CDM when we are using HW based DRM. |debuggable| is used to populate
-// ro.debuggable property. |bus| is used for D-Bus communication when
-// |hw_oemcrypto_support| is true.
+// |source_path|. Expanded files are written in |dest_path| and the properties
+// that changed during expansion are written in |mod_path|. Returns true on
+// success. When |single_file| is true, the set of all ro. properties after
+// expansion are included in a single file (|dest_path| itself), and any ro.
+// properties that changed during expansion are also written to one file
+// (|mod_path| itself). When |add_native_bridge_64_bit_support| is true, add /
+// modify some properties related to supported CPU ABIs. |hw_oemcrypto_support|
+// uses D-Bus to talk to the cdm-oemcrypto daemon and add specific properties
+// needed by the Android CDM when we are using HW based DRM. |debuggable| is
+// used to populate ro.debuggable property. |bus| is used for D-Bus
+// communication when |hw_oemcrypto_support| is true.
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
+                         const base::FilePath& mod_path,
                          bool single_file,
                          bool hw_oemcrypto_support,
                          bool include_soc_props,

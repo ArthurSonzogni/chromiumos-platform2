@@ -16,9 +16,9 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 #include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/error.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -70,20 +70,23 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansions) {
   config()->SetString("/arc/build-properties", "brand", "alphabet");
 
   std::string expanded;
+  std::string modified;
   EXPECT_TRUE(ExpandPropertyContentsForTesting(
       "ro.a=line1\nro.b={brand}\nro.c=line3\nro.d={brand} {brand}", config(),
-      /*debuggable=*/false, &expanded));
+      /*debuggable=*/false, &expanded, &modified));
   EXPECT_EQ("ro.a=line1\nro.b=alphabet\nro.c=line3\nro.d=alphabet alphabet\n",
             expanded);
+  EXPECT_EQ("ro.b=alphabet\nro.d=alphabet alphabet\n", modified);
 }
 
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsUnmatchedBrace) {
   config()->SetString("/arc/build-properties", "brand", "alphabet");
 
   std::string expanded;
+  std::string modified;
   EXPECT_FALSE(ExpandPropertyContentsForTesting(
       "ro.a=line{1\nro.b=line}2\nro.c=line3", config(), /*debuggable=*/false,
-      &expanded));
+      &expanded, &modified));
 }
 
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsRecursive) {
@@ -91,22 +94,26 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsRecursive) {
   config()->SetString("/arc/build-properties", "model", "{brand} soup");
 
   std::string expanded;
+  std::string modified;
   EXPECT_TRUE(ExpandPropertyContentsForTesting(
-      "ro.a={model}", config(), /*debuggable=*/false, &expanded));
+      "ro.a={model}", config(), /*debuggable=*/false, &expanded, &modified));
   EXPECT_EQ("ro.a=alphabet soup\n", expanded);
+  EXPECT_EQ("ro.a=alphabet soup\n", modified);
 }
 
 // Verify that tagged forward declarations are not expanded
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionIgnoresTags) {
   std::string expanded;
+  std::string modified;
   EXPECT_TRUE(ExpandPropertyContentsForTesting(
       "ro.a={crosbuild:a}\nro.b={crosconfig:b}\nro.c={envvar:c}\nro.d={lsb:d}\n"
       "ro.e={placeholder:space}",
-      config(), /*debuggable=*/false, &expanded));
+      config(), /*debuggable=*/false, &expanded, &modified));
   EXPECT_EQ(
       "ro.a={crosbuild:a}\nro.b={crosconfig:b}\nro.c={envvar:c}\nro.d={lsb:d}\n"
       "ro.e={placeholder:space}\n",
       expanded);
+  EXPECT_EQ("", modified);
 }
 
 // Verify that recursive expansion works with tagged declarations
@@ -115,29 +122,34 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansionRecursiveWithTags) {
   config()->SetString("/arc/build-properties", "model", "{brand} soup");
 
   std::string expanded;
+  std::string modified;
   EXPECT_TRUE(ExpandPropertyContentsForTesting(
       "ro.a={lsb:foo}{model}{crosconfig:bar}", config(), /*debuggable=*/false,
-      &expanded));
+      &expanded, &modified));
   EXPECT_EQ("ro.a={lsb:foo}alphabet soup{crosconfig:bar}\n", expanded);
+  EXPECT_EQ("ro.a={lsb:foo}alphabet soup{crosconfig:bar}\n", modified);
 }
 
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsMissingProperty) {
   config()->SetString("/arc/build-properties", "model", "{brand} soup");
 
   std::string expanded;
-
+  std::string modified;
+  EXPECT_FALSE(ExpandPropertyContentsForTesting("ro.a={missing-property}",
+                                                config(), /*debuggable=*/false,
+                                                &expanded, &modified));
   EXPECT_FALSE(ExpandPropertyContentsForTesting(
-      "ro.a={missing-property}", config(), /*debuggable=*/false, &expanded));
-  EXPECT_FALSE(ExpandPropertyContentsForTesting(
-      "ro.a={model}", config(), /*debuggable=*/false, &expanded));
+      "ro.a={model}", config(), /*debuggable=*/false, &expanded, &modified));
 }
 
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionsNonexistentTag) {
   std::string expanded;
+  std::string modified;
   EXPECT_FALSE(ExpandPropertyContentsForTesting(
-      "ro.a={cros:foo}", config(), /*debuggable=*/false, &expanded));
-  EXPECT_FALSE(ExpandPropertyContentsForTesting(
-      "ro.a={cros_config:foo}", config(), /*debuggable=*/false, &expanded));
+      "ro.a={cros:foo}", config(), /*debuggable=*/false, &expanded, &modified));
+  EXPECT_FALSE(ExpandPropertyContentsForTesting("ro.a={cros_config:foo}",
+                                                config(), /*debuggable=*/false,
+                                                &expanded, &modified));
 }
 
 // Verify that ro.product.board gets copied to ro.oem.key1 as well.
@@ -145,28 +157,36 @@ TEST_F(ArcPropertyUtilTest, TestPropertyExpansionBoard) {
   config()->SetString("/arc/build-properties", "board", "testboard");
 
   std::string expanded;
-  EXPECT_TRUE(ExpandPropertyContentsForTesting(
-      "ro.product.board={board}", config(), /*debuggable=*/false, &expanded));
+  std::string modified;
+  EXPECT_TRUE(ExpandPropertyContentsForTesting("ro.product.board={board}",
+                                               config(), /*debuggable=*/false,
+                                               &expanded, &modified));
   EXPECT_EQ("ro.product.board=testboard\nro.oem.key1=testboard\n", expanded);
+  EXPECT_EQ("ro.product.board=testboard\nro.oem.key1=testboard\n", modified);
 }
 
 TEST_F(ArcPropertyUtilTest, TestPropertyExpansionDebuggable) {
   std::string expanded;
+  std::string modified;
   EXPECT_TRUE(ExpandPropertyContentsForTesting(
-      "ro.debuggable=0", config(), /*debuggable=*/false, &expanded));
+      "ro.debuggable=0", config(), /*debuggable=*/false, &expanded, &modified));
   EXPECT_EQ("ro.debuggable=0\n", expanded);
+  EXPECT_EQ("", modified);
 
   EXPECT_TRUE(ExpandPropertyContentsForTesting(
-      "ro.debuggable=1", config(), /*debuggable=*/false, &expanded));
+      "ro.debuggable=1", config(), /*debuggable=*/false, &expanded, &modified));
   EXPECT_EQ("ro.debuggable=0\n", expanded);
+  EXPECT_EQ("ro.debuggable=0\n", modified);
 
-  EXPECT_TRUE(ExpandPropertyContentsForTesting("ro.debuggable=0", config(),
-                                               /*debuggable*/ true, &expanded));
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.debuggable=0", config(), /*debuggable*/ true, &expanded, &modified));
   EXPECT_EQ("ro.debuggable=1\n", expanded);
+  EXPECT_EQ("ro.debuggable=1\n", modified);
 
-  EXPECT_TRUE(ExpandPropertyContentsForTesting("ro.debuggable=1", config(),
-                                               /*debuggable*/ true, &expanded));
+  EXPECT_TRUE(ExpandPropertyContentsForTesting(
+      "ro.debuggable=1", config(), /*debuggable*/ true, &expanded, &modified));
   EXPECT_EQ("ro.debuggable=1\n", expanded);
+  EXPECT_EQ("", modified);
 }
 
 // Non-ro property should do simple truncation.
@@ -207,10 +227,13 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_NoExpansion) {
   base::WriteFile(path, kValidProp, strlen(kValidProp));
 
   const base::FilePath dest = GetTempDir().Append("new.prop");
-  EXPECT_TRUE(ExpandPropertyFileForTesting(path, dest, config()));
+  const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
+  EXPECT_TRUE(ExpandPropertyFileForTesting(path, dest, mod_dest, config()));
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest, &content));
   EXPECT_EQ(std::string(kValidProp) + "\n", content);
+  EXPECT_TRUE(base::ReadFileToString(mod_dest, &content));
+  EXPECT_EQ("", content);
 }
 
 // Tests that ExpandPropertyFile works as intended when property expantion
@@ -225,9 +248,12 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_Expansion) {
   base::WriteFile(path, kValidProp, strlen(kValidProp));
 
   const base::FilePath dest = GetTempDir().Append("new.prop");
-  EXPECT_TRUE(ExpandPropertyFileForTesting(path, dest, config()));
+  const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
+  EXPECT_TRUE(ExpandPropertyFileForTesting(path, dest, mod_dest, config()));
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest, &content));
+  EXPECT_EQ("ro.foo=v1\nro.baz=v2\n", content);
+  EXPECT_TRUE(base::ReadFileToString(mod_dest, &content));
   EXPECT_EQ("ro.foo=v1\nro.baz=v2\n", content);
 }
 
@@ -243,9 +269,12 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_NestedExpansion) {
   base::WriteFile(path, kValidProp, strlen(kValidProp));
 
   const base::FilePath dest = GetTempDir().Append("new.prop");
-  EXPECT_TRUE(ExpandPropertyFileForTesting(path, dest, config()));
+  const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
+  EXPECT_TRUE(ExpandPropertyFileForTesting(path, dest, mod_dest, config()));
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest, &content));
+  EXPECT_EQ("ro.foo=v2\nro.baz=v2\n", content);
+  EXPECT_TRUE(base::ReadFileToString(mod_dest, &content));
   EXPECT_EQ("ro.foo=v2\nro.baz=v2\n", content);
 }
 
@@ -257,44 +286,60 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotExpand) {
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
   base::WriteFile(path, kValidProp, strlen(kValidProp));
   const base::FilePath dest = GetTempDir().Append("new.prop");
-  EXPECT_FALSE(ExpandPropertyFileForTesting(path, dest, config()));
+  const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
+  EXPECT_FALSE(ExpandPropertyFileForTesting(path, dest, mod_dest, config()));
 }
 
 // Test that ExpandPropertyFile handles the case where the input file is not
 // found.
 TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_NoSourceFile) {
-  EXPECT_FALSE(ExpandPropertyFileForTesting(base::FilePath("/nonexistent"),
-                                            base::FilePath("/nonexistent2"),
-                                            config()));
+  EXPECT_FALSE(ExpandPropertyFileForTesting(
+      base::FilePath("/nonexistent"), base::FilePath("/nonexistent2"),
+      base::FilePath("/nonexistent3"), config()));
 }
 
 // Test that ExpandPropertyFile handles the case where the output file cannot
 // be written.
-TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotWrite) {
+TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotWriteOutput) {
   constexpr const char kValidProp[] = "ro.foo=bar\nro.baz=boo\n";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
   base::WriteFile(path, kValidProp, strlen(kValidProp));
+  const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
   EXPECT_FALSE(ExpandPropertyFileForTesting(
-      path, base::FilePath("/nonexistent2"), config()));
+      path, base::FilePath("/nonexistent2"), mod_dest, config()));
+}
+
+// Test that ExpandPropertyFile handles the case where the modified output file
+// cannot be written.
+TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotWriteModified) {
+  constexpr const char kValidProp[] = "ro.foo=bar\nro.baz=boo\n";
+  base::FilePath path;
+  ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
+  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  const base::FilePath dest = GetTempDir().Append("new.prop");
+  EXPECT_FALSE(ExpandPropertyFileForTesting(
+      path, dest, base::FilePath("/nonexistent3"), config()));
 }
 
 struct TestExpander {
   const base::FilePath* source_dir{nullptr};
   const base::FilePath* dest_dir{nullptr};
+  const base::FilePath* mod_dir{nullptr};
   bool single_file{false};
 
   bool Expand() {
-    return ExpandPropertyFiles(*source_dir, *dest_dir, single_file,
+    return ExpandPropertyFiles(*source_dir, *dest_dir, *mod_dir, single_file,
                                /*hw_oemcrypto_support=*/false,
                                /*include_soc_props=*/false,
                                /*debuggable=*/false, /*bus=*/nullptr);
   }
 };
 
-TEST_F(ArcPropertyUtilTest, ExpandPropertyFilesSourceAndDestNotFound) {
+TEST_F(ArcPropertyUtilTest, ExpandPropertyFilesSourceAndDestsNotFound) {
   EXPECT_FALSE(ExpandPropertyFiles(base::FilePath("/nonexistent1"),
                                    base::FilePath("/nonexistent2"),
+                                   base::FilePath("/nonexistent3"),
                                    /*single_file=*/false,
                                    /*hw_oemcrypto_support=*/false,
                                    /*include_soc_props=*/false,
@@ -307,8 +352,10 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
   base::FilePath dest_dir;
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
+  base::FilePath mod_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &mod_dir));
 
-  TestExpander expander{&source_dir, &dest_dir};
+  TestExpander expander{&source_dir, &dest_dir, &mod_dir};
 
   EXPECT_FALSE(expander.Expand());
 
@@ -337,6 +384,9 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   EXPECT_TRUE(base::PathExists(dest_dir.Append("default.prop")));
   EXPECT_TRUE(base::PathExists(dest_dir.Append("build.prop")));
   EXPECT_TRUE(base::PathExists(dest_dir.Append("vendor_build.prop")));
+  EXPECT_TRUE(base::PathExists(mod_dir.Append("default.prop-modified")));
+  EXPECT_TRUE(base::PathExists(mod_dir.Append("build.prop-modified")));
+  EXPECT_TRUE(base::PathExists(mod_dir.Append("vendor_build.prop-modified")));
 
   // Verify their content.
   std::string content;
@@ -348,12 +398,24 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   EXPECT_TRUE(
       base::ReadFileToString(dest_dir.Append("vendor_build.prop"), &content));
   EXPECT_EQ(std::string(kVendorBuildProp) + "\n", content);
+  EXPECT_TRUE(base::ReadFileToString(mod_dir.Append("default.prop-modified"),
+                                     &content));
+  EXPECT_EQ("", content);
+  EXPECT_TRUE(
+      base::ReadFileToString(mod_dir.Append("build.prop-modified"), &content));
+  EXPECT_EQ("", content);
+  EXPECT_TRUE(base::ReadFileToString(
+      mod_dir.Append("vendor_build.prop-modified"), &content));
+  EXPECT_EQ("", content);
 
   // Expand it again, verify the previous result is cleared.
   EXPECT_TRUE(expander.Expand());
   EXPECT_TRUE(
       base::ReadFileToString(dest_dir.Append("default.prop"), &content));
   EXPECT_EQ(std::string(kDefaultProp) + "\n", content);
+  EXPECT_TRUE(base::ReadFileToString(mod_dir.Append("default.prop-modified"),
+                                     &content));
+  EXPECT_EQ("", content);
 
   // If default.prop does not exist in the source path, it should still process
   // the other files, while also ensuring that default.prop is removed from the
@@ -367,16 +429,24 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   EXPECT_TRUE(
       base::ReadFileToString(dest_dir.Append("vendor_build.prop"), &content));
   EXPECT_EQ(std::string(kVendorBuildProp) + "\n", content);
+  EXPECT_TRUE(
+      base::ReadFileToString(mod_dir.Append("build.prop-modified"), &content));
+  EXPECT_EQ("", content);
+  EXPECT_TRUE(base::ReadFileToString(
+      mod_dir.Append("vendor_build.prop-modified"), &content));
+  EXPECT_EQ("", content);
 
   // Finally, test the case where source is valid but the dest is not.
   dest_dir = base::FilePath("/nonexistent");
+  mod_dir = base::FilePath("/nonexistent");
   EXPECT_FALSE(expander.Expand());
 }
 
 TEST_F(ArcPropertyUtilTest,
-       ExpandPropertyFiles_SingleFile_SourceAndDestNotFound) {
+       ExpandPropertyFiles_SingleFile_SourceAndDestsNotFound) {
   EXPECT_FALSE(ExpandPropertyFiles(base::FilePath("/nonexistent1"),
                                    base::FilePath("/nonexistent2"),
+                                   base::FilePath("/nonexistent3"),
                                    /*single_file=*/true,
                                    /*hw_oemcrypto_support=*/false,
                                    /*include_soc_props=*/false,
@@ -391,7 +461,11 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   ASSERT_TRUE(
       base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_prop_file));
   dest_prop_file = dest_prop_file.Append("combined.prop");
-  TestExpander expander{&source_dir, &dest_prop_file};
+  base::FilePath mod_prop_file;
+  ASSERT_TRUE(
+      base::CreateTemporaryDirInDir(GetTempDir(), "test", &mod_prop_file));
+  mod_prop_file = mod_prop_file.Append("modified.prop");
+  TestExpander expander{&source_dir, &dest_prop_file, &mod_prop_file};
   expander.single_file = true;
   EXPECT_FALSE(expander.Expand());
 
@@ -453,6 +527,21 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
       base::PathExists(dest_prop_file.DirName().Append("product_build.prop")));
   EXPECT_TRUE(base::PathExists(dest_prop_file));
 
+  // Verify only one modified property file exists
+  EXPECT_FALSE(base::PathExists(
+      mod_prop_file.DirName().Append("default.prop-modified")));
+  EXPECT_FALSE(
+      base::PathExists(mod_prop_file.DirName().Append("build.prop-modified")));
+  EXPECT_FALSE(base::PathExists(
+      mod_prop_file.DirName().Append("vendor_build.prop-modified")));
+  EXPECT_FALSE(base::PathExists(
+      mod_prop_file.DirName().Append("system_ext_build.prop-modified")));
+  EXPECT_FALSE(base::PathExists(
+      mod_prop_file.DirName().Append("odm_build.prop-modified")));
+  EXPECT_FALSE(base::PathExists(
+      mod_prop_file.DirName().Append("product_build.prop-modified")));
+  EXPECT_TRUE(base::PathExists(mod_prop_file));
+
   // Verify the content.
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
@@ -461,6 +550,9 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
                                kSystemExtBuildProp, kVendorBuildProp,
                                kOdmBuildProp, kProductBuildProp),
             content);
+  EXPECT_TRUE(base::ReadFileToString(mod_prop_file, &content));
+  // Don't include kDefaultPropNonRo since that one should be filtered out.
+  EXPECT_EQ("", content);
 
   // Expand it again, verify the previous result is cleared.
   EXPECT_TRUE(expander.Expand());
@@ -469,6 +561,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
                                kSystemExtBuildProp, kVendorBuildProp,
                                kOdmBuildProp, kProductBuildProp),
             content);
+  EXPECT_TRUE(base::ReadFileToString(mod_prop_file, &content));
+  EXPECT_EQ("", content);
 
   // If optional ones e.g. default.prop does not exist in the source path, it
   // should still process the other files.
@@ -479,9 +573,12 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   EXPECT_EQ(base::StringPrintf("%s%s%s%s", kBuildProp, kSystemExtBuildProp,
                                kVendorBuildProp, kProductBuildProp),
             content);
+  EXPECT_TRUE(base::ReadFileToString(mod_prop_file, &content));
+  EXPECT_EQ("", content);
 
   // Finally, test the case where source is valid but the dest is not.
   dest_prop_file = base::FilePath("/nonexistent");
+  mod_prop_file = base::FilePath("/nonexistent");
   EXPECT_FALSE(expander.Expand());
 }
 
@@ -491,6 +588,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile_NonRo) {
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
   base::FilePath dest_dir;
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
+  base::FilePath mod_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &mod_dir));
 
   const base::FilePath default_prop = source_dir.Append("default.prop");
   constexpr const char kDefaultProp[] = "###\ndalvik.foo=bar\nro.foo=bar\n";
@@ -507,13 +606,16 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile_NonRo) {
                   strlen(kVendorBuildProp));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
-                                  false, false, nullptr));
+  const base::FilePath mod_prop_file = mod_dir.Append("modified.prop");
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, mod_prop_file,
+                                  true, false, false, false, nullptr));
 
   // Verify the content.
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
   EXPECT_EQ("ro.foo=bar\nro.baz=boo\nro.a=b\n", content);
+  EXPECT_TRUE(base::ReadFileToString(mod_prop_file, &content));
+  EXPECT_EQ("", content);
 }
 
 // Verify that the CDM properties received from cdm-oemcrypto over D-Bus are
@@ -523,6 +625,8 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
   base::FilePath dest_dir;
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
+  base::FilePath mod_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &mod_dir));
 
   base::FilePath default_prop = source_dir.Append("default.prop");
   constexpr const char kDefaultProp[] = "ro.foo=bar\n";
@@ -561,8 +665,9 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
       .WillOnce(Return(ByMove(base::ok(std::move(response)))));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, true, false,
-                                  false, bus_));
+  const base::FilePath mod_prop_file = mod_dir.Append("modified.prop");
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, mod_prop_file,
+                                  true, true, false, false, bus_));
 
   // Verify the content.
   std::string content;
@@ -570,6 +675,11 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
   EXPECT_EQ(std::string() + kDefaultProp + kBuildProp + kVendorBuildProp +
                 kProductBuildProp + "ro.vendor.cdm.manufacturer=" +
                 kManufacturer + "\nro.vendor.cdm.model=" + kModel +
+                "\nro.vendor.cdm.device=" + kMake + "\n",
+            content);
+  EXPECT_TRUE(base::ReadFileToString(mod_prop_file, &content));
+  EXPECT_EQ(std::string() + "ro.vendor.cdm.manufacturer=" + kManufacturer +
+                "\nro.vendor.cdm.model=" + kModel +
                 "\nro.vendor.cdm.device=" + kMake + "\n",
             content);
 }
@@ -581,6 +691,8 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
   base::FilePath dest_dir;
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
+  base::FilePath mod_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &mod_dir));
 
   base::FilePath default_prop = source_dir.Append("default.prop");
   constexpr const char kDefaultProp[] = "ro.foo=bar\n";
@@ -610,8 +722,9 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
       .WillOnce(Return(ByMove(base::ok(std::move(response)))));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, true, false,
-                                  false, bus_));
+  const base::FilePath mod_prop_file = mod_dir.Append("modified.prop");
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, mod_prop_file,
+                                  true, true, false, false, bus_));
 
   // Verify the content.
   std::string content;
@@ -619,6 +732,8 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
   EXPECT_EQ(std::string() + kDefaultProp + kBuildProp + kVendorBuildProp +
                 kProductBuildProp,
             content);
+  EXPECT_TRUE(base::ReadFileToString(mod_prop_file, &content));
+  EXPECT_EQ("", content);
 }
 
 TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {

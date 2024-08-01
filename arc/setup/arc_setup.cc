@@ -8,7 +8,6 @@
 #include <inttypes.h>
 #include <linux/magic.h>
 #include <sched.h>
-#include <selinux/selinux.h>
 #include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -57,6 +56,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
+#include <selinux/selinux.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "arc/setup/arc_property_util.h"
@@ -2759,6 +2759,10 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
       USE_ARCVM ? base::FilePath(kGeneratedPropertyFilesPathVm)
                       .Append("combined.prop")
                 : base::FilePath(kGeneratedPropertyFilesPath));
+  const base::FilePath modified_properties_dest_path(
+      USE_ARCVM ? base::FilePath(kGeneratedPropertyFilesPathVm)
+                      .Append("modified.prop")
+                : base::FilePath(kGeneratedPropertyFilesPath));
 
   brillo::DBusConnection dbus_connection;
   scoped_refptr<::dbus::Bus> bus = nullptr;
@@ -2769,6 +2773,7 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 
   EXIT_IF(!ExpandPropertyFiles(property_files_source_dir,
                                property_files_dest_path,
+                               modified_properties_dest_path,
                                /*single_file=*/USE_ARCVM, hw_oemcrypto_support,
                                /*include_soc_props=*/true, debuggable, bus));
 
@@ -2783,7 +2788,7 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 
   // For ARCVM, the first stage fstab file needs to be generated.
   EXIT_IF(!GenerateFirstStageFstab(
-      property_files_dest_path,
+      modified_properties_dest_path,
       base::FilePath(kGeneratedPropertyFilesPathVm).Append("fstab"),
       base::FilePath(kArcVmVendorImagePath), cache_partition));
 }

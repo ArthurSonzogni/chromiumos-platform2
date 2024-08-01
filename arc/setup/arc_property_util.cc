@@ -12,6 +12,8 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/containers/contains.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -21,16 +23,14 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/containers/contains.h>
-#include <base/containers/fixed_flat_set.h>
 #include <base/time/time.h>
 #include <brillo/cpuinfo.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/files/file_util.h>
 #include <brillo/files/safe_fd.h>
 #include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
-#include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <re2/re2.h>
 
@@ -175,6 +175,7 @@ bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
                             scoped_refptr<::dbus::Bus> bus,
                             std::string* expanded_content,
+                            std::string* modified_content,
                             bool filter_non_ro_props,
                             ExtraProps extra_props,
                             bool debuggable) {
@@ -183,11 +184,12 @@ bool ExpandPropertyContents(const std::string& content,
       base::SplitResult::SPLIT_WANT_ALL);
 
   std::string new_properties;
+  std::string modified_properties;
   for (std::string line : lines) {
     // Since Chrome only expands ro. properties at runtime, skip processing
-    // non-ro lines here for R+. For P, we cannot do that because the
-    // expanded property files will directly replace the original ones via
-    // bind mounts.
+    // non-ro lines here for ARCVM. For ARC-container, we cannot do that because
+    // the expanded property files will directly replace the original ones
+    // via bind mounts.
     if (filter_non_ro_props &&
         !base::StartsWith(line, "ro.", base::CompareCase::SENSITIVE)) {
       if (!IsComment(line) && line.find('{') != std::string::npos) {
@@ -201,6 +203,7 @@ bool ExpandPropertyContents(const std::string& content,
     // First expand {property} substitutions in the string.  The insertions
     // may contain substitutions of their own, so we need to repeat until
     // nothing more is found.
+    std::string orig_line = line;
     bool inserted;
     do {
       inserted = false;
@@ -256,6 +259,8 @@ bool ExpandPropertyContents(const std::string& content,
     }
 
     new_properties += truncated + "\n";
+    if (truncated != orig_line)
+      modified_properties += truncated + "\n";
 
     // Special-case ro.product.board to compute ro.oem.key1 at runtime, as it
     // can depend upon the device region.
@@ -264,9 +269,12 @@ bool ExpandPropertyContents(const std::string& content,
       std::string oem_key_property = ComputeOEMKey(config, property);
       new_properties +=
           std::string(kOEMKey1PropertyPrefix) + oem_key_property + "\n";
+      modified_properties +=
+          std::string(kOEMKey1PropertyPrefix) + oem_key_property + "\n";
     }
   }
 
+  std::string extra_properties;
   switch (extra_props) {
     case ExtraProps::kNone:
       break;
@@ -296,12 +304,14 @@ bool ExpandPropertyContents(const std::string& content,
         dbus::MessageReader reader(response.get());
         chromeos::cdm::ClientInformation client_info;
         if (reader.PopArrayOfBytesAsProto(&client_info)) {
-          new_properties += std::string(kCdmManufacturerProp) + "=" +
-                            client_info.manufacturer() + "\n";
-          new_properties +=
+          extra_properties += std::string(kCdmManufacturerProp) + "=" +
+                              client_info.manufacturer() + "\n";
+          extra_properties +=
               std::string(kCdmModelProp) + "=" + client_info.model() + "\n";
-          new_properties +=
+          extra_properties +=
               std::string(kCdmDeviceProp) + "=" + client_info.make() + "\n";
+          new_properties += extra_properties;
+          modified_properties += extra_properties;
         } else {
           DLOG(WARNING) << "Failed reading proto response";
         }
@@ -313,20 +323,26 @@ bool ExpandPropertyContents(const std::string& content,
 
     case ExtraProps::kArmSoc:
       AppendArmSocProperties(base::FilePath("/sys/bus/soc/devices"), config,
-                             &new_properties);
+                             &extra_properties);
+      new_properties += extra_properties;
+      modified_properties += extra_properties;
       break;
 
     case ExtraProps::kX86Soc:
-      AppendX86SocProperties(brillo::CpuInfo::DefaultPath(), &new_properties);
+      AppendX86SocProperties(brillo::CpuInfo::DefaultPath(), &extra_properties);
+      new_properties += extra_properties;
+      modified_properties += extra_properties;
       break;
   }
 
   *expanded_content = new_properties;
+  *modified_content = modified_properties;
   return true;
 }
 
 bool ExpandPropertyFile(const base::FilePath& input,
                         const base::FilePath& output,
+                        const base::FilePath& modified_output,
                         brillo::CrosConfigInterface* config,
                         scoped_refptr<::dbus::Bus> bus,
                         bool append,
@@ -334,27 +350,42 @@ bool ExpandPropertyFile(const base::FilePath& input,
                         bool debuggable) {
   std::string content;
   std::string expanded;
+  std::string modified;
   if (!base::ReadFileToString(input, &content)) {
     PLOG(ERROR) << "Failed to read " << input;
     return false;
   }
-  if (!ExpandPropertyContents(content, config, bus, &expanded,
+  if (!ExpandPropertyContents(content, config, bus, &expanded, &modified,
                               /*filter_non_ro_props=*/append, extra_props,
                               debuggable)) {
     return false;
   }
-  if (append && base::PathExists(output)) {
-    if (!base::AppendToFile(output, expanded)) {
-      PLOG(ERROR) << "Failed to append to " << output;
+
+  auto WriteFile = [](const base::FilePath& file, const std::string& data) {
+    if (!base::WriteFile(file, data)) {
+      PLOG(ERROR) << "Failed to write to " << file;
       return false;
     }
-  } else {
-    if (!base::WriteFile(output, expanded)) {
-      PLOG(ERROR) << "Failed to write to " << output;
+    return true;
+  };
+
+  auto WriteOrAppendFile = [&WriteFile](const base::FilePath& file,
+                                        const std::string& data) {
+    if (!base::PathExists(file))
+      return WriteFile(file, data);
+
+    if (!base::AppendToFile(file, data)) {
+      PLOG(ERROR) << "Failed to append to " << file;
       return false;
     }
-  }
-  return true;
+    return true;
+  };
+
+  if (!append)
+    return WriteFile(output, expanded) && WriteFile(modified_output, modified);
+
+  return WriteOrAppendFile(output, expanded) &&
+         WriteOrAppendFile(modified_output, modified);
 }
 
 // Reads the contents of a file with SafeFD and returns the results, or an empty
@@ -645,10 +676,11 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
 bool ExpandPropertyContentsForTesting(const std::string& content,
                                       brillo::CrosConfigInterface* config,
                                       bool debuggable,
-                                      std::string* expanded_content) {
-  return ExpandPropertyContents(content, config, nullptr, expanded_content,
-                                /*filter_non_ro_props=*/true, ExtraProps::kNone,
-                                debuggable);
+                                      std::string* expanded_content,
+                                      std::string* modified_content) {
+  return ExpandPropertyContents(
+      content, config, nullptr, expanded_content, modified_content,
+      /*filter_non_ro_props=*/true, ExtraProps::kNone, debuggable);
 }
 
 bool TruncateAndroidPropertyForTesting(const std::string& line,
@@ -658,21 +690,26 @@ bool TruncateAndroidPropertyForTesting(const std::string& line,
 
 bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   const base::FilePath& output,
+                                  const base::FilePath& modified_output,
                                   brillo::CrosConfigInterface* config) {
-  return ExpandPropertyFile(input, output, config, nullptr, /*append=*/false,
-                            ExtraProps::kNone, /*debuggable=*/false);
+  return ExpandPropertyFile(input, output, modified_output, config, nullptr,
+                            /*append=*/false, ExtraProps::kNone,
+                            /*debuggable=*/false);
 }
 
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
+                         const base::FilePath& mod_path,
                          bool single_file,
                          bool hw_oemcrypto_support,
                          bool include_soc_props,
                          bool debuggable,
                          scoped_refptr<::dbus::Bus> bus) {
   brillo::CrosConfig config;
-  if (single_file)
+  if (single_file) {
     brillo::DeleteFile(dest_path);
+    brillo::DeleteFile(mod_path);
+  }
 
   ExtraProps soc_props_type = ExtraProps::kNone;
   if (include_soc_props) {
@@ -705,9 +742,12 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
     if (is_optional && !base::PathExists(source_file))
       continue;
 
-    if (!ExpandPropertyFile(source_file,
-                            single_file ? dest_path : dest_path.Append(file),
-                            &config, bus,
+    const base::FilePath dest_file =
+        single_file ? dest_path : dest_path.Append(file);
+    const base::FilePath mod_file =
+        single_file ? mod_path
+                    : mod_path.Append(std::string() + file + "-modified");
+    if (!ExpandPropertyFile(source_file, dest_file, mod_file, &config, bus,
                             /*append=*/single_file, extra_props, debuggable)) {
       LOG(ERROR) << "Failed to expand " << source_file;
       return false;

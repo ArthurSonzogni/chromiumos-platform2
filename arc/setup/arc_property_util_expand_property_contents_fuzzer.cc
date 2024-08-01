@@ -2,12 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/setup/arc_property_util.h"
-
 #include <stddef.h>
 #include <stdint.h>
-
-#include <fuzzer/FuzzedDataProvider.h>
 
 #include <map>
 #include <string>
@@ -15,6 +11,9 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
+#include <fuzzer/FuzzedDataProvider.h>
+
+#include "arc/setup/arc_property_util.h"
 
 namespace {
 constexpr size_t kMaxInputSize = 64 * 1024;
@@ -64,8 +63,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   std::string expanded_content;
+  std::string modified_content;
   arc::ExpandPropertyContentsForTesting(content, &config, false,
-                                        &expanded_content);
+                                        &expanded_content, &modified_content);
 
   return 0;
 }
