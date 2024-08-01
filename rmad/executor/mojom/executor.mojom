@@ -43,6 +43,15 @@ interface Executor {
                    string system_log,
                    string diagnostics_log) => (string? file_name);
 
+  // Copy the firmware updater from rootfs to a fixed path
+  // /usr/lib/rmad/chromeos-firmwareupdate.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |success| - true if successfully copies the firmware updater.
+  CopyRootfsFirmwareUpdater() => (bool success);
+
   // Mount a ChromeOS rootfs partition and copy the firmware updater to a
   // fixed path /usr/lib/rmad/chromeos-firmwareupdate.
   //

@@ -210,6 +210,21 @@ void Executor::MountAndWriteLog(uint8_t device_id,
   std::move(callback).Run(std::nullopt);
 }
 
+void Executor::CopyRootfsFirmwareUpdater(
+    CopyRootfsFirmwareUpdaterCallback callback) {
+  const base::FilePath source_updater_path =
+      base::FilePath{"/"}.Append(kSourceFirmwareUpdaterRelPath);
+  const base::FilePath target_updater_path(kTargetFirmwareUpdaterAbsPath);
+  if (base::PathExists(source_updater_path) &&
+      base::CopyFile(source_updater_path, target_updater_path)) {
+    brillo::SyncFileOrDirectory(base::FilePath(target_updater_path),
+                                /*is_directory=*/false, /*data_sync=*/false);
+    std::move(callback).Run(true);
+    return;
+  }
+  std::move(callback).Run(false);
+}
+
 void Executor::MountAndCopyFirmwareUpdater(
     uint8_t device_id, MountAndCopyFirmwareUpdaterCallback callback) {
   // Input argument check.

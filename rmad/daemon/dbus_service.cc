@@ -315,6 +315,9 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   daemon_callback->SetExecuteMountAndWriteLogCallback(
       base::BindRepeating(&DBusService::ExecuteMountAndWriteLog,
                           weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExecuteCopyRootfsFirmwareUpdaterCallback(
+      base::BindRepeating(&DBusService::ExecuteCopyRootfsFirmwareUpdater,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteMountAndCopyFirmwareUpdaterCallback(
       base::BindRepeating(&DBusService::ExecuteMountAndCopyFirmwareUpdater,
                           weak_ptr_factory_.GetMutableWeakPtr()));
@@ -434,6 +437,11 @@ void DBusService::ExecuteMountAndWriteLog(
     base::OnceCallback<void(const std::optional<std::string>&)> callback) {
   executor_->MountAndWriteLog(device_id, text_log, json_log, system_log,
                               diagnostics_log, std::move(callback));
+}
+
+void DBusService::ExecuteCopyRootfsFirmwareUpdater(
+    base::OnceCallback<void(bool)> callback) {
+  executor_->CopyRootfsFirmwareUpdater(std::move(callback));
 }
 
 void DBusService::ExecuteMountAndCopyFirmwareUpdater(

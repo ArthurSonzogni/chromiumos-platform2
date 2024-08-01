@@ -44,6 +44,8 @@ using ExecuteMountAndWriteLogCallback = base::RepeatingCallback<void(
     const std::string&,
     const std::string&,
     base::OnceCallback<void(const std::optional<std::string>&)>)>;
+using ExecuteCopyRootfsFirmwareUpdaterCallback =
+    base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteMountAndCopyFirmwareUpdaterCallback =
     base::RepeatingCallback<void(uint8_t, base::OnceCallback<void(bool)>)>;
 using ExecuteMountAndCopyDiagnosticsAppCallback = base::RepeatingCallback<void(
@@ -97,6 +99,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
   DECLARE_CALLBACK(ExternalDiskSignalCallback, external_disk_signal_callback_);
   DECLARE_CALLBACK(ExecuteMountAndWriteLogCallback,
                    execute_mount_and_write_log_callback_);
+  DECLARE_CALLBACK(ExecuteCopyRootfsFirmwareUpdaterCallback,
+                   execute_copy_rootfs_firmware_updater_callback_);
   DECLARE_CALLBACK(ExecuteMountAndCopyFirmwareUpdaterCallback,
                    execute_mount_and_copy_firmware_updater_callback_);
   DECLARE_CALLBACK(ExecuteMountAndCopyDiagnosticsAppCallback,
