@@ -47,7 +47,7 @@ static DYNAMIC_EPP_FLAG_CHANGED: OnceCell<Notify> = OnceCell::new();
 // Register Dynamic Epp feature from dbus.rs
 pub fn init() {
     if *IS_MTL {
-        const DEFAULT_STATE: bool = false;
+        const DEFAULT_STATE: bool = true;
         feature::register_feature(
             FEATURE_DYNAMIC_EPP,
             DEFAULT_STATE,
