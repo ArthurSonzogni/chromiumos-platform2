@@ -191,6 +191,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
 /usr/sbin/chromeos-install      u:object_r:cros_chromeos_install_exec:s0
+/usr/sbin/chromeos-install.sh   u:object_r:cros_chromeos_install_exec:s0
 /usr/sbin/chromeos-postinst     u:object_r:cros_chromeos_postinst_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0

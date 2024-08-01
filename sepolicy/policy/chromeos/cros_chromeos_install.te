@@ -2,8 +2,12 @@ type cros_chromeos_install, domain, chromeos_domain;
 
 domain_auto_trans_nnp(cros_os_install_service, cros_chromeos_install_exec, cros_chromeos_install)
 
-# chromeos-install is currently a shell script (b/176492189) so it
-# needs to run lots of other programs.
+# Allow the chromeos-install binary to execute the shell script.
+# TODO(tbrandston): Can we remove this when b/356344778 is done?
+allow cros_chromeos_install cros_chromeos_install_exec:file rx_file_perms;
+
+# chromeos-install.sh is a shell script executed by chromeos-install
+# that needs to run lots of other programs.
 allow cros_chromeos_install sh_exec:file rx_file_perms;
 allow cros_chromeos_install cros_blockdev_exec:file rx_file_perms;
 allow cros_chromeos_install cros_cgpt_exec:file rx_file_perms;
