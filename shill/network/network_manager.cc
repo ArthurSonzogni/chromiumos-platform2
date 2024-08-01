@@ -22,8 +22,9 @@ NetworkManager::NetworkManager(ControlInterface* control_interface,
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      dhcp_client_proxy_factory_(
-          control_interface_->CreateDHCPClientProxyFactory()) {}
+      legacy_dhcpcd_proxy_factory_(
+          control_interface_->CreateDHCPClientProxyFactory()),
+      dhcpcd_proxy_factory_(std::make_unique<DHCPCDProxyFactory>()) {}
 NetworkManager::~NetworkManager() = default;
 
 std::unique_ptr<Network> NetworkManager::CreateNetwork(
@@ -37,7 +38,10 @@ std::unique_ptr<Network> NetworkManager::CreateNetwork(
       control_interface_, dispatcher_, metrics_, patchpanel_client,
       std::make_unique<DHCPControllerFactory>(
           dispatcher_, metrics_, Time::GetInstance(),
-          dhcp_client_proxy_factory_.get())));
+          legacy_dhcpcd_proxy_factory_.get()),
+      std::make_unique<DHCPControllerFactory>(dispatcher_, metrics_,
+                                              Time::GetInstance(),
+                                              dhcpcd_proxy_factory_.get())));
   network->SetCapportEnabled(capport_enabled_);
   network->RegisterEventHandler(this);
   alive_networks_.insert(std::make_pair(network->network_id(), network.get()));
@@ -66,8 +70,7 @@ void NetworkManager::SetCapportEnabled(bool enabled) {
 
 void NetworkManager::NotifyDHCPEvent(
     const std::map<std::string, std::string>& configuration) {
-  // TODO(b/344500617): Delegates to DHCPCDProxyFactory after we replace migrate
-  // from LegacyDHCPCDProxyFactory to DHCPCDProxyFactory.
+  dhcpcd_proxy_factory_->OnDHCPEvent(configuration);
 }
 
 void NetworkManager::OnNetworkDestroyed(int network_id, int interface_index) {

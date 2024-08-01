@@ -151,6 +151,7 @@ class NetworkInTest : public Network {
                 metrics,
                 /*patchpanel_client=*/nullptr,
                 std::move(dhcp_controller_factory),
+                /*dhcp_controller_factory=*/nullptr,
                 /*resolver=*/nullptr,
                 std::move(network_monitor_factory)) {
     ON_CALL(*this, ApplyNetworkConfig)

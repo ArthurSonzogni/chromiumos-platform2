@@ -393,7 +393,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_controller_factory_for_testing(
       std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory) {
-    dhcp_controller_factory_ = std::move(dhcp_controller_factory);
+    legacy_dhcp_controller_factory_ = std::move(dhcp_controller_factory);
   }
   void set_state_for_testing(State state) { state_ = state; }
   void set_primary_family_for_testing(
@@ -449,6 +449,7 @@ class Network : public NetworkMonitor::ClientNetwork {
           EventDispatcher* dispatcher,
           Metrics* metrics,
           patchpanel::Client* patchpanel_client,
+          std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory,
           std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory,
           Resolver* resolver = Resolver::GetInstance(),
           std::unique_ptr<NetworkMonitorFactory> network_monitor_factory =
@@ -566,6 +567,9 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   std::unique_ptr<net_base::ProcFsStub> proc_fs_;
 
+  // TODO(b/344500617): Migrate DHCPv4 to use `dhcp_controller_factory_` too and
+  // remove `legacy_dhcp_controller_factory_`.
+  std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory_;
   std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory_;
   // The instance exists when the state is not at kIdle.
   std::unique_ptr<DHCPController> dhcp_controller_;
