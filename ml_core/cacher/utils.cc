@@ -1,15 +1,16 @@
-// Copyright 2023 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ml_core/opencl_caching/utils.h"
+#include "ml_core/cacher/utils.h"
 
 #include <string>
 
 #include <base/files/dir_reader_posix.h>
 #include <base/files/file_util.h>
+#include <brillo/files/file_util.h>
 
-#include "ml_core/opencl_caching/constants.h"
+#include "ml_core/cacher/constants.h"
 
 namespace {
 const char kPrebuiltCacheDir[] = "cl_cache";
@@ -59,7 +60,7 @@ void ClearCacheDirectory() {
     }
 
     auto to_delete = base::FilePath(kOpenCLCachingDir).Append(reader.name());
-    if (!base::DeleteFile(to_delete)) {
+    if (!brillo::DeleteFile(to_delete)) {
       LOG(ERROR) << "Error deleting " << to_delete;
     }
   }

@@ -40,8 +40,8 @@
 #include <ml_core/dlc/dlc_ids.h>
 #include <ml_core/effects_pipeline.h>
 #include <ml_core/effects_pipeline_types.h>
-#include <ml_core/opencl_caching/constants.h>
-#include <ml_core/opencl_caching/utils.h>
+#include <ml_core/cacher/constants.h>
+#include <ml_core/cacher/utils.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
@@ -1160,7 +1160,7 @@ void EffectsStreamManipulatorImpl::CreatePipeline(
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   // Check to see if the cache dir is empty, and if so,
   // point the pipeline to the prebuilt cache as this may
-  // indicate the opencl_cacher tool hasn't had the chance
+  // indicate the ml_core_cacher tool hasn't had the chance
   // to run or complete yet. Niche edge case, but it does
   // cause a large startup delay for the user. This is particularly
   // true when running behind a chrome flag, as the cacher

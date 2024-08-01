@@ -13,7 +13,7 @@
 #include <ml_core/effects_pipeline_bindings.h>
 #include <session_manager/dbus-proxies.h>
 
-#include "ml_core/opencl_caching/constants.h"
+#include "ml_core/cacher/constants.h"
 
 namespace {
 

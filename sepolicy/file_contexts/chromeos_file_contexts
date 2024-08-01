@@ -131,7 +131,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/mount-passthrough-jailed u:object_r:cros_mount_passthrough_jailed_exec:s0
 /usr/bin/newblued               u:object_r:cros_newblued_exec:s0
 /usr/bin/odmld                  u:object_r:cros_odmld_exec:s0
-/usr/bin/opencl_cacher          u:object_r:cros_opencl_cacher_exec:s0
+/usr/bin/ml_core_cacher         u:object_r:cros_ml_core_cacher_exec:s0
 /usr/bin/patchpaneld            u:object_r:cros_patchpaneld_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
 /usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0

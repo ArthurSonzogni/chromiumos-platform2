@@ -1,4 +1,4 @@
-# Copyright 2022 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,7 +9,7 @@ group("all") {
     ":install_dbus",
     ":install_init",
     ":install_seccomp",
-    ":opencl_cacher",
+    ":ml_core_cacher",
   ]
 
   if (use.test) {
@@ -27,7 +27,7 @@ pkg_config("target_defaults") {
   ]
 }
 
-executable("opencl_cacher") {
+executable("ml_core_cacher") {
   sources = [
     "main.cc",
     "utils.cc",
@@ -41,17 +41,17 @@ executable("opencl_cacher") {
 }
 
 install_config("install_init") {
-  sources = [ "init/opencl-cacher.conf" ]
+  sources = [ "init/ml-core-cacher.conf" ]
   install_path = "upstart"
 }
 
 install_config("install_dbus") {
-  sources = [ "dbus/opencl-cacher-dbus.conf" ]
+  sources = [ "dbus/ml-core-cacher-dbus.conf" ]
   install_path = "dbus_system_d"
 }
 
 # Only on AMD64 for now
 install_config("install_seccomp") {
-  sources = [ "seccomp_filter/opencl-cacher-amd64.policy" ]
+  sources = [ "seccomp_filter/ml-core-cacher-amd64.policy" ]
   install_path = "seccomp_policy"
 }

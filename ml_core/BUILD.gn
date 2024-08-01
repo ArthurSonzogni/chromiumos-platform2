@@ -14,7 +14,7 @@ group("all") {
     ":maybe_install_dev_lib",
   ]
   if (use.camera_feature_effects) {
-    deps += [ "//ml_core/opencl_caching:all" ]
+    deps += [ "//ml_core/cacher:all" ]
   }
 
   # Need to do always, as some deps are for clients.
@@ -36,8 +36,8 @@ shared_library("libcros_ml_core") {
   sources = []
   if (use.camera_feature_effects) {
     sources += [
+      "cacher/utils.cc",
       "effects_pipeline.cc",
-      "opencl_caching/utils.cc",
     ]
   }
   configs += [ ":target_defaults" ]
@@ -45,7 +45,7 @@ shared_library("libcros_ml_core") {
 }
 
 install_config("install_minijail_conf") {
-  sources = [ "opencl_caching/minijail/opencl-cacher.conf" ]
+  sources = [ "cacher/minijail/ml-core-cacher.conf" ]
   install_path = "minijail_conf"
 }
 

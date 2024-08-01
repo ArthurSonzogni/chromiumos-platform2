@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,8 +11,8 @@
 #include <base/synchronization/waitable_event.h>
 #include <brillo/syslog_logging.h>
 
+#include "ml_core/cacher/utils.h"
 #include "ml_core/effects_pipeline.h"
-#include "ml_core/opencl_caching/utils.h"
 
 namespace {
 const char kForceEnableEffectsPath[] = "/run/camera/force_enable_effects";
