@@ -14,6 +14,8 @@ use log::debug;
 use log::error;
 use log::info;
 use log::warn;
+use once_cell::sync::OnceCell;
+use tokio::sync::Notify;
 use tokio::time::Instant;
 
 // Configuration parameters import
@@ -39,27 +41,38 @@ const EPP_PATH: &str = "/sys/devices/system/cpu/cpu*/cpufreq/energy_performance_
 use crate::feature;
 
 const FEATURE_DYNAMIC_EPP: &str = "CrOSLateBootDynamicEPP";
+// Notification used for waking up the co-routine on flag change.
+static DYNAMIC_EPP_FLAG_CHANGED: OnceCell<Notify> = OnceCell::new();
 
 // Register Dynamic Epp feature from dbus.rs
 pub fn init() {
-    if !*IS_MTL {
-        info!("Dynamic EPP: Unsupported SOC model. Feature not enabled")
-    } else {
-        feature::register_feature(FEATURE_DYNAMIC_EPP, false, Some(Box::new(dynamic_epp_cb)))
+    if *IS_MTL {
+        const DEFAULT_STATE: bool = false;
+        feature::register_feature(
+            FEATURE_DYNAMIC_EPP,
+            DEFAULT_STATE,
+            Some(Box::new(dynamic_epp_cb)),
+        );
+        DYNAMIC_EPP_FLAG_CHANGED
+            .set(Notify::new())
+            .expect("Double initialization of DYNAMIC_EPP_FLAG_CHANGED");
+        dynamic_epp_cb(DEFAULT_STATE);
+        // Spawn the main coroutine.
+        tokio::spawn(async move {
+            auto_epp_main().await;
+        });
     }
 }
 
 fn dynamic_epp_cb(new_state: bool) {
+    DYNAMIC_EPP.set_value(new_state);
+    DYNAMIC_EPP_FLAG_CHANGED
+        .get()
+        .expect("DYNAMIC_EPP_FLAG_CHANGED is not initialized")
+        .notify_one();
     if new_state {
-        DYNAMIC_EPP.set_value(true);
-
-        tokio::spawn(async move {
-            auto_epp_main().await;
-        });
-
         info!("Dynamic EPP is now enabled!");
     } else {
-        DYNAMIC_EPP.set_value(false);
         info!("Dynamic EPP is now disabled!");
     }
 }
@@ -346,6 +359,22 @@ pub async fn auto_epp_main() {
     let mut ema_values: Vec<f64> = vec![Default::default(); num_cores];
 
     loop {
+        // Terminating Auto EPP
+        let terminate_flag = !DYNAMIC_EPP.read_value();
+
+        // If Dynamic EPP is disabled in runtime...
+        if terminate_flag {
+            // ...ensure the default EPP is set...
+            set_epp_for_all_cores(Epp::epp_default());
+            // ...park the coroutine and wait until it's needed again.
+            DYNAMIC_EPP_FLAG_CHANGED
+                .get()
+                .expect("DYNAMIC_EPP_FLAG_CHANGED is not initialized")
+                .notified()
+                .await;
+            continue;
+        }
+
         // Initialize CPU vectors
         let mut cpu_usages: Vec<f64> = Vec::with_capacity(num_cores);
         let mut high_utilization_cores: Vec<usize> = Vec::with_capacity(num_cores);
@@ -360,9 +389,6 @@ pub async fn auto_epp_main() {
         // Media C-group Signal
         let media_cgroup_state = MEDIA_CGROUP_SIGNAL.read_value();
 
-        // Terminating Auto EPP
-        let terminate_flag = !DYNAMIC_EPP.read_value();
-
         // Resize vectors based on the current number of CPU cores
         prev_cpu_stats.resize_with(num_cores, Default::default);
         ema_values.resize_with(num_cores, Default::default);
@@ -374,11 +400,6 @@ pub async fn auto_epp_main() {
             high_utilization_cores: &mut high_utilization_cores,
             moderate_utilization_cores: &mut moderate_utilization_cores,
         };
-
-        if terminate_flag {
-            set_epp_for_all_cores(Epp::epp_default());
-            return;
-        }
 
         let (threshold_high, threshold_moderate) = if rtc_fs_value {
             (
