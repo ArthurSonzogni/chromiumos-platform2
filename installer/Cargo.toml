@@ -1,0 +1,14 @@
+[package]
+name = "chromeos-installer"
+version = "0.1.0"
+authors = ["The ChromiumOS Authors"]
+edition = "2021"
+include = [
+    "src/*.rs",
+]
+
+[dependencies]
+
+[[bin]]
+name = "chromeos-install"
+path = "src/bin/chromeos_install.rs"
