@@ -5,6 +5,7 @@
 #include "shill/network/dhcpcd_proxy.h"
 
 #include <memory>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/mock_process_manager.h>
 #include <chromeos/net-base/process_manager.h>
 #include <dbus/mock_bus.h>
@@ -99,27 +101,51 @@ class DHCPCDProxyFactoryTest : public testing::Test {
 TEST_F(DHCPCDProxyFactoryTest, DhcpcdArguments) {
   constexpr int kPid = 4;
 
-  const std::vector<
-      std::pair<DHCPClientProxy::Options, std::vector<std::string>>>
+  const std::vector<std::tuple<net_base::IPFamily, DHCPClientProxy::Options,
+                               std::vector<std::string>>>
       kExpectedArgs = {
-          {{},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "-o", "wpad_url", "-A", "-K", "--clientid", "--nodelay",
-            "--noconfigure", "wlan0"}},
-          {{.hostname = "my_hostname"},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "-o", "wpad_url", "-A", "-K", "--clientid", "--nodelay",
-            "--noconfigure", "-h", "my_hostname", "wlan0"}},
-          {{.use_rfc_8925 = true},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "-o", "wpad_url", "-A", "-K", "--clientid", "--nodelay",
-            "--noconfigure", "-o", "ipv6_only_preferred", "wlan0"}},
-          {{.apply_dscp = true},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "-o", "wpad_url", "-A", "-K", "--clientid", "--nodelay",
-            "--noconfigure", "--apply_dscp", "wlan0"}},
+          {net_base::IPFamily::kIPv4,
+           {},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-4", "-A",
+            "-K", "wlan0"}},
+          {net_base::IPFamily::kIPv4,
+           {.hostname = "my_hostname"},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-4", "-A",
+            "-K", "-h", "my_hostname", "wlan0"}},
+          {net_base::IPFamily::kIPv4,
+           {.use_rfc_8925 = true},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-4", "-A",
+            "-K", "-o", "ipv6_only_preferred", "wlan0"}},
+          {net_base::IPFamily::kIPv4,
+           {.apply_dscp = true},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-4", "-A",
+            "-K", "--apply_dscp", "wlan0"}},
+          {net_base::IPFamily::kIPv6,
+           {},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-6",
+            "--noipv6rs", "--ia_pd", "wlan0"}},
+          {net_base::IPFamily::kIPv6,
+           {.hostname = "my_hostname"},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-6",
+            "--noipv6rs", "--ia_pd", "-h", "my_hostname", "wlan0"}},
+          {net_base::IPFamily::kIPv6,
+           {.use_rfc_8925 = true /* should be ignored*/},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-6",
+            "--noipv6rs", "--ia_pd", "wlan0"}},
+          {net_base::IPFamily::kIPv6,
+           {.apply_dscp = true},
+           {"-B", "-i", "chromeos", "-q", "-o", "captive_portal_uri", "-o",
+            "wpad_url", "--clientid", "--nodelay", "--noconfigure", "-6",
+            "--noipv6rs", "--ia_pd", "--apply_dscp", "wlan0"}},
       };
-  for (const auto& [options, dhcpcd_args] : kExpectedArgs) {
+  for (const auto& [family, options, dhcpcd_args] : kExpectedArgs) {
     // When creating a proxy, the proxy factory should create
     // the dhcpcd process in minijail.
     EXPECT_CALL(mock_process_manager_,
@@ -134,7 +160,8 @@ TEST_F(DHCPCDProxyFactoryTest, DhcpcdArguments) {
               return true;
             });
 
-    proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
+    proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_,
+                           family);
   }
 }
 

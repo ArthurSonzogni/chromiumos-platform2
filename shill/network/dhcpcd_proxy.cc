@@ -20,6 +20,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/process_manager.h>
 
@@ -35,14 +36,17 @@ constexpr char kDHCPCDExecutableName[] = "dhcpcd";
 constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
+// %s - interface name.
 constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd/%s.lease";
-constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
+// %s - interface name; %d - IP family.
+constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-%d.pid";
 
 // Returns a list of dhcpcd args. Redacts the hostname and the lease name for
 // logging if |redact_args| is set to true.
 std::vector<std::string> GetDhcpcdArgs(Technology technology,
                                        const DHCPClientProxy::Options& options,
                                        std::string_view interface,
+                                       net_base::IPFamily family,
                                        bool redact_args) {
   std::vector<std::string> args = {
       // Run in foreground.
@@ -52,18 +56,12 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
       "chromeos",
       // Only warnings+errors to stderr.
       "-q",
-      // IPv4 only.
-      "-4",
       // Request the captive portal URI.
       "-o",
       "captive_portal_uri",
       // Request the Web Proxy Auto-Discovery.
       "-o",
       "wpad_url",
-      // Don't request or claim the address by ARP.
-      "-A",
-      // Don't receive link messages for carrier status.
-      "-K",
       // Send a default clientid of the hardware family and the hardware
       // address.
       "--clientid",
@@ -73,13 +71,32 @@ std::vector<std::string> GetDhcpcdArgs(Technology technology,
       "--noconfigure",
   };
 
+  if (family == net_base::IPFamily::kIPv4) {
+    args.insert(args.end(),
+                {
+                    // IPv4 only.
+                    "-4",
+                    // Don't request or claim the address by ARP.
+                    "-A",
+                    // Don't receive link messages for carrier status.
+                    "-K",
+                });
+  } else {
+    // Note that ChromeOS only support IA_PD for DHCPv6.
+    args.insert(args.end(), {
+                                "-6",
+                                "--noipv6rs",
+                                "--ia_pd",
+                            });
+  }
+
   // Request hostname from server.
   if (!options.hostname.empty()) {
     args.insert(args.end(),
                 {"-h", redact_args ? "<redacted_hostname>" : options.hostname});
   }
 
-  if (options.use_rfc_8925) {
+  if (options.use_rfc_8925 && family == net_base::IPFamily::kIPv4) {
     // Request option 108 to prefer IPv6-only. If server also supports this, no
     // dhcp lease will be assigned and dhcpcd will notify shill with an
     // IPv6OnlyPreferred StatusChanged event.
@@ -298,12 +315,8 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
     const DHCPClientProxy::Options& options,
     DHCPClientProxy::EventHandler* handler,
     net_base::IPFamily family) {
-  if (family != net_base::IPFamily::kIPv4) {
-    LOG(ERROR) << __func__ << ": " << family << " is not supported.";
-    return nullptr;
-  }
-  const std::vector<std::string> args =
-      GetDhcpcdArgs(technology, options, interface, /*redact_args=*/false);
+  const std::vector<std::string> args = GetDhcpcdArgs(
+      technology, options, interface, family, /*redact_args=*/false);
 
   const pid_t pid =
       RunDHCPCDInMinijail(process_manager_, args, /*need_cap=*/true);
@@ -316,13 +329,14 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
       // base::Unretained(this) is safe because the closure won't be passed
       // outside this instance.
       &DHCPCDProxyFactory::CleanUpDhcpcd, base::Unretained(this),
-      std::string(interface), options, pid));
+      std::string(interface), family, options, pid));
 
   // Log dhcpcd args but redact the args to exclude PII.
   LOG(INFO) << "Created dhcpcd with pid " << pid << " and args: "
-            << base::JoinString(GetDhcpcdArgs(technology, options, interface,
-                                              /*redact_args=*/true),
-                                " ");
+            << base::JoinString(
+                   GetDhcpcdArgs(technology, options, interface, family,
+                                 /*redact_args=*/true),
+                   " ");
 
   // Inject the exit callback with pid information.
   if (!process_manager_->UpdateExitCallback(
@@ -343,6 +357,7 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
 }
 
 void DHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
+                                       net_base::IPFamily family,
                                        DHCPClientProxy::Options options,
                                        int pid) {
   const auto iter = pids_need_to_stop_.find(pid);
@@ -359,7 +374,8 @@ void DHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
   brillo::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatLease, interface.c_str())));
   brillo::DeleteFile(root_.Append(
-      base::StringPrintf(kDHCPCDPathFormatPID, interface.c_str())));
+      base::StringPrintf(kDHCPCDPathFormatPID, interface.c_str(),
+                         family == net_base::IPFamily::kIPv6 ? 6 : 4)));
 }
 
 void DHCPCDProxyFactory::OnProcessExited(int pid, int exit_status) {

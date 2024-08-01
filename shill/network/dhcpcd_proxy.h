@@ -15,6 +15,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/process_manager.h>
 
 #include "shill/network/dhcp_client_proxy.h"
@@ -92,6 +93,7 @@ class DHCPCDProxyFactory : public DHCPClientProxyFactory {
 
   // Stops the dhcpcd process with |pid|, and clears the pid and lease files.
   void CleanUpDhcpcd(const std::string& interface,
+                     net_base::IPFamily family,
                      DHCPClientProxy::Options options,
                      int pid);
 
