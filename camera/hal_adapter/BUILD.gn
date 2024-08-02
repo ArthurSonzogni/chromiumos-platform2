@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libcros_camera",
     "libcros_camera_android_deps",
+    "libcros_camera_device_config",
     "libdrm",
     "libmojo",
     "libsync",

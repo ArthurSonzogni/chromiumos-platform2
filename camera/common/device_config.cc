@@ -401,6 +401,12 @@ std::vector<PlatformCameraInfo> DeviceConfig::ReadPlatformCameraInfo() {
   return platform_cameras;
 }
 
+bool DeviceConfig::HasMipiCamera() {
+  std::optional<int> count = GetCameraCount(Interface::kMipi);
+  // Assume devices without available camera count don't have MIPI camera.
+  return count.has_value() && count.value() > 0;
+}
+
 // static
 bool DeviceConfig::PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf) {
   CHECK(dev_conf);
