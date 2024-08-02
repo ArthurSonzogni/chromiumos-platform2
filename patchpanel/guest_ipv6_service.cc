@@ -51,9 +51,7 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
   switch (*type) {
     case net_base::Technology::kEthernet:
     case net_base::Technology::kWiFi:
-      // b/246444885: Make guests consider physical network off-link to reduce
-      // amount of NS/NA sent to the physical network.
-      return GuestIPv6Service::ForwardMethod::kMethodNDProxyInjectingRA;
+      return GuestIPv6Service::ForwardMethod::kMethodNDProxy;
 
     case net_base::Technology::kCellular:
       return GuestIPv6Service::ForwardMethod::kMethodRAServer;
