@@ -22,6 +22,7 @@ fchdir: 1
 fcntl: 1
 fdatasync: 1
 flock: 1
+fstat: 1
 fstatfs: 1
 futex: 1
 getdents64: 1
