@@ -4,6 +4,14 @@
 
 #include "odml/on_device_model/on_device_model_service.h"
 
+#include <algorithm>
+#include <memory>
+#include <optional>
+#include <queue>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include <base/functional/callback.h>
 #include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
@@ -12,12 +20,7 @@
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
-#include <memory>
-#include <optional>
-#include <queue>
-#include <string>
-#include <vector>
-
+#include "odml/on_device_model/features.h"
 #include "odml/on_device_model/on_device_model_factory.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
@@ -464,7 +467,7 @@ bool OnDeviceModelService::RetryIfShimIsNotReady(FuncType func,
          FailureType failure_result, bool result) {
         if (!result) {
           LOG(ERROR) << "Failed to ensure the shim is ready.";
-          std::move(callback).Run(failure_result);
+          std::move(callback).Run(std::move(failure_result));
           return;
         }
         std::move(retry_cb).Run();
@@ -511,6 +514,33 @@ void OnDeviceModelService::GetEstimatedPerformanceClass(
 
   std::move(callback).Run(
       factory_->GetEstimatedPerformanceClass(metrics_, shim_loader_));
+}
+
+void OnDeviceModelService::FormatInput(
+    const base::Uuid& uuid,
+    mojom::FormatFeature feature,
+    const base::flat_map<std::string, std::string>& fields,
+    FormatInputCallback callback) {
+  if (RetryIfShimIsNotReady(&OnDeviceModelService::FormatInput, callback,
+                            std::nullopt, uuid, feature, fields)) {
+    return;
+  }
+
+  auto format_input = shim_loader_->Get<FormatInputSignature>(kFormatInputName);
+  if (!format_input) {
+    LOG(ERROR) << "Unable to resolve FormatInput() symbol.";
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  std::unordered_map<std::string, std::string> new_fields;
+  std::copy(fields.begin(), fields.end(),
+            std::inserter(new_fields, new_fields.end()));
+
+  std::optional<std::string> result = format_input(
+      uuid.AsLowercaseString(), static_cast<Feature>(feature), new_fields);
+
+  std::move(callback).Run(result);
 }
 
 void OnDeviceModelService::DeleteModel(

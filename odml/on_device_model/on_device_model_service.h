@@ -5,6 +5,11 @@
 #ifndef ODML_ON_DEVICE_MODEL_ON_DEVICE_MODEL_SERVICE_H_
 #define ODML_ON_DEVICE_MODEL_ON_DEVICE_MODEL_SERVICE_H_
 
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+
 #include <base/containers/unique_ptr_adapters.h>
 #include <base/memory/raw_ref.h>
 #include <base/memory/scoped_refptr.h>
@@ -17,10 +22,6 @@
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
-
-#include <memory>
-#include <set>
-#include <utility>
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -59,6 +60,11 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
 
   void GetEstimatedPerformanceClass(
       GetEstimatedPerformanceClassCallback callback) override;
+
+  void FormatInput(const base::Uuid& uuid,
+                   mojom::FormatFeature feature,
+                   const base::flat_map<std::string, std::string>& fields,
+                   FormatInputCallback callback) override;
 
   void LoadModel(mojom::LoadModelParamsPtr params,
                  mojo::PendingReceiver<mojom::OnDeviceModel> model,

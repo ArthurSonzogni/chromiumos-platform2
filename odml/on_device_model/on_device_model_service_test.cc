@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/memory/raw_ref.h>
@@ -24,6 +25,7 @@
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/on_device_model/features.h"
 #include "odml/on_device_model/on_device_model_factory_fake.h"
 #include "odml/on_device_model/public/cpp/test_support/test_response_holder.h"
 #include "odml/utils/odml_shim_loader_mock.h"
@@ -37,8 +39,10 @@ constexpr char kFakeModelName2[] = "90eeb7f8-9491-452d-9ec9-5b6edd6c93fa";
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
+using ::testing::Pair;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::UnorderedElementsAre;
 
 class ContextClientWaiter : public mojom::ContextClient {
  public:
@@ -141,7 +145,7 @@ class OnDeviceModelServiceTest : public testing::Test {
 
   void FlushService() { service_.FlushForTesting(); }
 
- private:
+ protected:
   base::test::TaskEnvironment task_environment_;
   OndeviceModelFactoryFake factory_;
   MetricsLibraryMock metrics_;
@@ -465,6 +469,67 @@ TEST_F(OnDeviceModelServiceTest, Score) {
     session->Score("y", future.GetCallback());
     EXPECT_EQ(future.Get(), static_cast<float>('y'));
   }
+}
+
+TEST_F(OnDeviceModelServiceTest, FormatInput) {
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("FormatInput"))
+      .WillOnce(Return(reinterpret_cast<void*>(FormatInputSignature(
+          [](const std::string& uuid, Feature feature,
+             const std::unordered_map<std::string, std::string>& fields)
+              -> std::optional<std::string> {
+            EXPECT_EQ(uuid, kFakeModelName1);
+            EXPECT_EQ(feature, static_cast<Feature>(
+                                   mojom::FormatFeature::kAudioSummary));
+            EXPECT_THAT(fields, UnorderedElementsAre(Pair("name", "joe"),
+                                                     Pair("action", "eat")));
+            return "My final input.";
+          }))));
+
+  base::RunLoop run_loop;
+  service()->FormatInput(
+      base::Uuid::ParseLowercase(kFakeModelName1),
+      mojom::FormatFeature::kAudioSummary, {{"name", "joe"}, {"action", "eat"}},
+      base::BindLambdaForTesting([&](const std::optional<std::string>& result) {
+        EXPECT_EQ(result, "My final input.");
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(OnDeviceModelServiceTest, FormatInputNoResult) {
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("FormatInput"))
+      .WillOnce(Return(reinterpret_cast<void*>(FormatInputSignature(
+          [](const std::string& uuid, Feature feature,
+             const std::unordered_map<std::string, std::string>& fields)
+              -> std::optional<std::string> { return std::nullopt; }))));
+
+  base::RunLoop run_loop;
+  service()->FormatInput(
+      base::Uuid::ParseLowercase(kFakeModelName1),
+      mojom::FormatFeature::kAudioSummary, {{"name", "joe"}, {"action", "eat"}},
+      base::BindLambdaForTesting([&](const std::optional<std::string>& result) {
+        EXPECT_EQ(result, std::nullopt);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(OnDeviceModelServiceTest, FormatInputNoFunction) {
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("FormatInput"))
+      .WillOnce(Return(nullptr));
+
+  base::RunLoop run_loop;
+  service()->FormatInput(
+      base::Uuid::ParseLowercase(kFakeModelName1),
+      mojom::FormatFeature::kAudioSummary, {},
+      base::BindLambdaForTesting([&](const std::optional<std::string>& result) {
+        EXPECT_EQ(result, std::nullopt);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
 }
 
 }  // namespace
