@@ -38,6 +38,7 @@
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/common.h"
+#include "cros-camera/device_config.h"
 #include "cros-camera/future.h"
 #include "cros-camera/utils/camera_config.h"
 #include "features/feature_profile.h"
@@ -310,7 +311,6 @@ int CameraHalServerImpl::LoadCameraHal() {
            config->GetBoolean(constants::kCrosEnableExternalCameraOption, true);
 
   std::optional<base::flat_set<std::string>> enabled_hal_names;
-
   if (config->HasKey(constants::kCrosEnabledHalsOption)) {
     auto hal_names = config->GetStrings(constants::kCrosEnabledHalsOption,
                                         std::vector<std::string>());
@@ -321,12 +321,18 @@ int CameraHalServerImpl::LoadCameraHal() {
   for (const auto& dll : GetCameraHalPaths()) {
     LOGF(INFO) << "Try to load camera hal " << dll.value();
 
+    auto filename = dll.BaseName().value();
     if (enabled_hal_names.has_value()) {
-      auto filename = dll.BaseName().value();
       if (!base::Contains(*enabled_hal_names, filename)) {
         LOGF(INFO) << "Skipping " << dll.value() << " not in enabled_hals";
         continue;
       }
+    }
+
+    if (!DeviceConfig::Create()->HasMipiCamera() && filename != "usb.so" &&
+        filename != "fake.so") {
+      LOGF(INFO) << "No MIPI camera so skip loading camera hal " << dll.value();
+      continue;
     }
 
     void* handle = dlopen(dll.value().c_str(), RTLD_NOW | RTLD_LOCAL);
