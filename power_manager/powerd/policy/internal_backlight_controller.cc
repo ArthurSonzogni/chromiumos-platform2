@@ -815,6 +815,10 @@ void InternalBacklightController::SetExplicitBrightnessPercent(
       als_change_cause =
           AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP;
       break;
+    case BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE:
+      als_change_cause =
+          AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE;
+      break;
     default:
       als_change_cause = AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER;
       break;

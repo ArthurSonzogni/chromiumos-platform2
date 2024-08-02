@@ -1013,6 +1013,25 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightness) {
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP);
+
+  // Re-enable keyboard ALS.
+  CallSetKeyboardAmbientLightSensorEnabled(
+      true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+
+  // Simulate a system reboot and restore the previous keyboard brightness. This
+  // action will disable the keyboard's ambient light sensor.
+  dbus_wrapper_.ClearSentSignals();
+  CallSetKeyboardBrightness(
+      /*percent=*/35, SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE);
+  EXPECT_EQ(backlight_.current_level(), 35);
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      &dbus_wrapper_, /*index=*/0,
+      /*is_keyboard=*/true,
+      /*expected_ambient_light_sensor_enabled=*/false,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE);
 }
 
 TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessCauses) {

@@ -1390,6 +1390,25 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER);
+
+  // Re-enable the ambient light sensor.
+  test::CallSetAmbientLightSensorEnabled(
+      dbus_wrapper_.get(), true,
+      SetAmbientLightSensorEnabledRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+  dbus_wrapper_->ClearSentSignals();
+
+  // Simulate a system reboot and restore the previous display brightness. This
+  // action will disable the display ambient light sensor.
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kUserPercentFromSettings,
+      SetBacklightBrightnessRequest_Transition_INSTANT,
+      SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE);
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
+      /*expected_ambient_light_sensor_enabled=*/false,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_RESTORED_FROM_USER_PREFERENCE);
 }
 
 TEST_F(InternalBacklightControllerTest, BatterySaverRestoreIfUntouched) {
