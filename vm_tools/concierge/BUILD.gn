@@ -67,6 +67,7 @@ static_library("libconcierge") {
     "mm/server.cc",
     "mm/vm_socket.cc",
     "network/arc_network.cc",
+    "network/baguette_network.cc",
     "network/borealis_network.cc",
     "network/bruschetta_network.cc",
     "network/guest_os_network.cc",
