@@ -100,6 +100,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184553 || arg1 == 0x80184554 || arg1 == 0x80184555 || \
        arg1 == 0x80184556 || arg1 == 0x80184557
 write: 1
+fstat: 1
 geteuid: 1
 getuid: 1
 getegid: 1
