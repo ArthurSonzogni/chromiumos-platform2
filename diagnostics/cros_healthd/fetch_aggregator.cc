@@ -15,25 +15,7 @@
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
-#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/battery_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
-#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/fetch_delegate.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -72,7 +54,10 @@ void OnFinish(
 
 }  // namespace
 
-FetchAggregator::FetchAggregator(Context* context) : context_(context) {}
+FetchAggregator::FetchAggregator(FetchDelegate* delegate)
+    : delegate_(delegate) {
+  CHECK(delegate_);
+}
 
 FetchAggregator::~FetchAggregator() = default;
 
@@ -94,121 +79,98 @@ void FetchAggregator::Run(
 
   for (const auto category : category_set) {
     switch (category) {
-      case mojom::ProbeCategoryEnum::kUnknown: {
+      case mojom::ProbeCategoryEnum::kUnknown:
         // For interface backward compatibility.
         break;
-      }
-      case mojom::ProbeCategoryEnum::kBattery: {
-        FetchBatteryInfo(context_,
-                         CreateFetchCallback(&barrier, &info->battery_result));
+      case mojom::ProbeCategoryEnum::kBattery:
+        delegate_->FetchBatteryResult(
+            CreateFetchCallback(&barrier, &info->battery_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kCpu: {
-        FetchCpuInfo(context_,
-                     CreateFetchCallback(&barrier, &info->cpu_result));
+      case mojom::ProbeCategoryEnum::kCpu:
+        delegate_->FetchCpuResult(
+            CreateFetchCallback(&barrier, &info->cpu_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kNonRemovableBlockDevices: {
+      case mojom::ProbeCategoryEnum::kNonRemovableBlockDevices:
         info->block_device_result =
-            disk_fetcher_.FetchNonRemovableBlockDevicesInfo();
+            delegate_->FetchNonRemovableBlockDevicesResult();
         break;
-      }
-      case mojom::ProbeCategoryEnum::kTimezone: {
-        info->timezone_result = FetchTimezoneInfo();
+      case mojom::ProbeCategoryEnum::kTimezone:
+        info->timezone_result = delegate_->FetchTimezoneResult();
         break;
-      }
-      case mojom::ProbeCategoryEnum::kMemory: {
-        FetchMemoryInfo(context_,
-                        CreateFetchCallback(&barrier, &info->memory_result));
+      case mojom::ProbeCategoryEnum::kMemory:
+        delegate_->FetchMemoryResult(
+            CreateFetchCallback(&barrier, &info->memory_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kBacklight: {
-        info->backlight_result = FetchBacklightInfo(context_);
+      case mojom::ProbeCategoryEnum::kBacklight:
+        info->backlight_result = delegate_->FetchBacklightResult();
         break;
-      }
-      case mojom::ProbeCategoryEnum::kFan: {
-        FetchFanInfo(context_,
-                     CreateFetchCallback(&barrier, &info->fan_result));
+      case mojom::ProbeCategoryEnum::kFan:
+        delegate_->FetchFanResult(
+            CreateFetchCallback(&barrier, &info->fan_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kStatefulPartition: {
-        FetchStatefulPartitionInfo(
-            context_,
+      case mojom::ProbeCategoryEnum::kStatefulPartition:
+        delegate_->FetchStatefulPartitionResult(
+
             CreateFetchCallback(&barrier, &info->stateful_partition_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kBluetooth: {
-        FetchBluetoothInfo(
-            context_, CreateFetchCallback(&barrier, &info->bluetooth_result));
+      case mojom::ProbeCategoryEnum::kBluetooth:
+        delegate_->FetchBluetoothResult(
+            CreateFetchCallback(&barrier, &info->bluetooth_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kSystem: {
-        FetchSystemInfo(context_,
-                        CreateFetchCallback(&barrier, &info->system_result));
+      case mojom::ProbeCategoryEnum::kSystem:
+        delegate_->FetchSystemResult(
+            CreateFetchCallback(&barrier, &info->system_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kNetwork: {
-        FetchNetworkInfo(context_,
-                         CreateFetchCallback(&barrier, &info->network_result));
+      case mojom::ProbeCategoryEnum::kNetwork:
+        delegate_->FetchNetworkResult(
+            CreateFetchCallback(&barrier, &info->network_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kAudio: {
-        FetchAudioInfo(context_,
-                       CreateFetchCallback(&barrier, &info->audio_result));
+      case mojom::ProbeCategoryEnum::kAudio:
+        delegate_->FetchAudioResult(
+            CreateFetchCallback(&barrier, &info->audio_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kBootPerformance: {
-        context_->executor()->FetchBootPerformance(
+      case mojom::ProbeCategoryEnum::kBootPerformance:
+        delegate_->FetchBootPerformanceResult(
             CreateFetchCallback(&barrier, &info->boot_performance_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kBus: {
-        FetchBusDevices(context_,
-                        CreateFetchCallback(&barrier, &info->bus_result));
+      case mojom::ProbeCategoryEnum::kBus:
+        delegate_->FetchBusResult(
+            CreateFetchCallback(&barrier, &info->bus_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kTpm: {
-        FetchTpmInfo(context_,
-                     CreateFetchCallback(&barrier, &info->tpm_result));
+      case mojom::ProbeCategoryEnum::kTpm:
+        delegate_->FetchTpmResult(
+            CreateFetchCallback(&barrier, &info->tpm_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kNetworkInterface: {
-        FetchNetworkInterfaceInfo(
-            context_,
+      case mojom::ProbeCategoryEnum::kNetworkInterface:
+        delegate_->FetchNetworkInterfaceResult(
+
             CreateFetchCallback(&barrier, &info->network_interface_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kGraphics: {
-        context_->executor()->FetchGraphicsInfo(
+      case mojom::ProbeCategoryEnum::kGraphics:
+        delegate_->FetchGraphicsResult(
             CreateFetchCallback(&barrier, &info->graphics_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kDisplay: {
-        context_->executor()->FetchDisplayInfo(
+      case mojom::ProbeCategoryEnum::kDisplay:
+        delegate_->FetchDisplayResult(
             CreateFetchCallback(&barrier, &info->display_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kInput: {
-        FetchInputInfo(context_,
-                       CreateFetchCallback(&barrier, &info->input_result));
+      case mojom::ProbeCategoryEnum::kInput:
+        delegate_->FetchInputResult(
+            CreateFetchCallback(&barrier, &info->input_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kAudioHardware: {
-        FetchAudioHardwareInfo(
-            context_,
+      case mojom::ProbeCategoryEnum::kAudioHardware:
+        delegate_->FetchAudioHardwareResult(
+
             CreateFetchCallback(&barrier, &info->audio_hardware_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kSensor: {
-        FetchSensorInfo(context_,
-                        CreateFetchCallback(&barrier, &info->sensor_result));
+      case mojom::ProbeCategoryEnum::kSensor:
+        delegate_->FetchSensorResult(
+            CreateFetchCallback(&barrier, &info->sensor_result));
         break;
-      }
-      case mojom::ProbeCategoryEnum::kThermal: {
-        FetchThermalInfo(context_,
-                         CreateFetchCallback(&barrier, &info->thermal_result));
+      case mojom::ProbeCategoryEnum::kThermal:
+        delegate_->FetchThermalResult(
+            CreateFetchCallback(&barrier, &info->thermal_result));
         break;
-      }
     }
   }
 }

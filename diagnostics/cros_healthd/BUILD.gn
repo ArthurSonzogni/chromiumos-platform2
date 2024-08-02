@@ -26,6 +26,7 @@ source_set("libcros_healthd") {
     "cros_healthd_mojo_service.cc",
     "event_aggregator.cc",
     "fetch_aggregator.cc",
+    "fetch_delegate_impl.cc",
   ]
   public_pkg_deps = [
     "libbrillo",
@@ -57,7 +58,10 @@ source_set("libcros_healthd") {
 if (use.test) {
   executable("cros_healthd_test") {
     run_test = true
-    sources = [ "cros_healthd_diagnostics_service_test.cc" ]
+    sources = [
+      "cros_healthd_diagnostics_service_test.cc",
+      "fetch_aggregator_test.cc",
+    ]
     pkg_deps = [
       "libchrome-test",
       "libmojo",

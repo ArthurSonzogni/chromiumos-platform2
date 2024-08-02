@@ -7,19 +7,18 @@
 
 #include <vector>
 
-#include "diagnostics/cros_healthd/fetchers/disk_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
-class Context;
+class FetchDelegate;
 
 // This class is responsible for aggregating probe data from various fetchers,
 // some of which may be asynchronous, and running the given callback when all
 // probe data has been fetched.
 class FetchAggregator final {
  public:
-  explicit FetchAggregator(Context* context);
+  explicit FetchAggregator(FetchDelegate* delegate);
   FetchAggregator(const FetchAggregator&) = delete;
   FetchAggregator& operator=(const FetchAggregator&) = delete;
   ~FetchAggregator();
@@ -32,10 +31,9 @@ class FetchAggregator final {
                ProbeTelemetryInfoCallback callback);
 
  private:
-  DiskFetcher disk_fetcher_;
-
-  // The pointer to the Context object for accessing system utilities.
-  Context* const context_;
+  // Responsible for fetching telemetry data. Unowned pointer that should
+  // outlive this instance.
+  FetchDelegate* const delegate_ = nullptr;
 };
 
 }  // namespace diagnostics

@@ -15,6 +15,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
+#include "diagnostics/cros_healthd/fetch_delegate_impl.h"
 #include "diagnostics/cros_healthd/routines/cros_healthd_routine_factory_impl.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
@@ -38,13 +39,15 @@ class CrosHealthdDaemon final : public brillo::Daemon {
   // Provides access to helper objects. Used by various telemetry fetchers,
   // event implementations and diagnostic routines.
   Context context_;
-  // |fetch_aggregator_| is responsible for fulfilling all ProbeTelemetryInfo
+  // `fetch_aggregator_` delegates telemetry probing to `fetch_delegate_`.
+  FetchDelegateImpl fetch_delegate_{&context_};
+  // `fetch_aggregator_` is responsible for fulfilling all ProbeTelemetryInfo
   // requests.
-  FetchAggregator fetch_aggregator_{&context_};
-  // |event_aggregator_| is responsible for fulfilling all event requests from
+  FetchAggregator fetch_aggregator_{&fetch_delegate_};
+  // `event_aggregator_` is responsible for fulfilling all event requests from
   // CrosHealthdEventService.
   EventAggregator event_aggregator_{&context_};
-  // |diagnostics_service_| delegates routine creation to |routine_factory_|.
+  // `diagnostics_service_` delegates routine creation to `routine_factory_`.
   CrosHealthdRoutineFactoryImpl routine_factory_{&context_};
   // Maintains the Mojo connection with cros_healthd clients.
   CrosHealthdMojoService mojo_service_{&context_, &fetch_aggregator_,
