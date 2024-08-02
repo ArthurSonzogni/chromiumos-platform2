@@ -8,5 +8,5 @@ edition = "2021"
 anyhow = "1.0"
 libchromeos = { path = "../../libchromeos-rs/" } # provided by ebuild
 log = "0.4"
-tokio = { version = "1.29", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.29", features = ["macros", "rt-multi-thread", "sync", "time"] }
 vsock = "0.3"
