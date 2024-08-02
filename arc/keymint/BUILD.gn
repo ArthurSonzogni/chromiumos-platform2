@@ -10,7 +10,7 @@ import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
-keymint_src = "../../../aosp/system/keymint"
+keymint_src = "../../../aosp/system/keymint-local"
 libcppbor_src = "../../../aosp/system/libcppbor"
 libbase_src = "../../../aosp/system/libbase"
 liblog_src = "../../../aosp/system/logging/liblog"
