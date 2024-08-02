@@ -8,8 +8,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":bpf-fdmon",
+    ":bpf-lockmon",
     ":bpf-memmon",
     ":bpf-mons-fdmem-test",
+    ":bpf-mons-lock-test",
     ":install_configs",
   ]
 }
@@ -33,6 +35,13 @@ generate_ebpf_skeletons("bpf_memmon") {
 
 generate_ebpf_skeletons("bpf_fdmon") {
   sources = [ "fdmon.bpf.c" ]
+  bpf_skeleton_out_dir = "include/mons/bpf_skeletons"
+  btf_inout_dir = "bpf"
+  deps = [ ":vmlinux_h" ]
+}
+
+generate_ebpf_skeletons("bpf_lockmon") {
+  sources = [ "lockmon.bpf.c" ]
   bpf_skeleton_out_dir = "include/mons/bpf_skeletons"
   btf_inout_dir = "bpf"
   deps = [ ":vmlinux_h" ]
@@ -62,6 +71,17 @@ executable("bpf-fdmon") {
   install_path = "bin"
 }
 
+executable("bpf-lockmon") {
+  sources = [
+    "libmon.cc",
+    "lockmon.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "blazesym_c" ]
+  deps = [ ":bpf_lockmon" ]
+  install_path = "bin"
+}
+
 install_config("install_configs") {
   sources = [ "conf/memmon-perfetto.conf" ]
   install_path = "/etc/bpf-mons/"
@@ -76,5 +96,10 @@ config("target_test_defaults") {
 
 executable("bpf-mons-fdmem-test") {
   sources = [ "test/fdmem-test.cc" ]
+  configs += [ ":target_test_defaults" ]
+}
+
+executable("bpf-mons-lock-test") {
+  sources = [ "test/lock-test.cc" ]
   configs += [ ":target_test_defaults" ]
 }
