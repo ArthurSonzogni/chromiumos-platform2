@@ -5,7 +5,12 @@
 #include "include/libmon.h"
 
 #include <blazesym.h>
+#include <cxxabi.h>
+#include <fcntl.h>
+#include <gelf.h>
+#include <libelf.h>
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <filesystem>
@@ -301,6 +306,87 @@ int lookup_lib(pid_t pid, const char* name, std::string& path) {
     }
   }
   return -ENOENT;
+}
+
+static std::string cxx_demangle(const char* sym) {
+  int status;
+  char* r;
+
+  r = abi::__cxa_demangle(sym, 0, 0, &status);
+  if (r)
+    return std::string(r);
+  return sym;
+}
+
+int lookup_cxx_sym(const std::string& so, const char* fn, std::string& cxx) {
+  Elf_Scn* scn = nullptr;
+  GElf_Shdr shdr;
+  Elf* e;
+  size_t shstrndx;
+  int fd, ret;
+
+  if (elf_version(EV_CURRENT) == EV_NONE)
+    return -EINVAL;
+
+  fd = open(so.c_str(), O_RDONLY, 0);
+  if (fd < 0)
+    return -ENOENT;
+
+  e = elf_begin(fd, ELF_C_READ, nullptr);
+  if (!e) {
+    ret = -EINVAL;
+    goto out;
+  }
+
+  if (elf_kind(e) != ELF_K_ELF) {
+    ret = -EINVAL;
+    goto out;
+  }
+
+  if (elf_getshdrstrndx(e, &shstrndx) != 0) {
+    ret = -EINVAL;
+    goto out;
+  }
+
+  while ((scn = elf_nextscn(e, scn)) != nullptr) {
+    gelf_getshdr(scn, &shdr);
+    if (shdr.sh_type != SHT_SYMTAB && shdr.sh_type != SHT_DYNSYM)
+      continue;
+
+    Elf_Data* data = elf_getdata(scn, nullptr);
+    size_t symbol_count = shdr.sh_size / shdr.sh_entsize;
+    for (size_t i = 0; i < symbol_count; ++i) {
+      const char* name;
+      GElf_Sym sym;
+
+      gelf_getsym(data, i, &sym);
+
+      if (GELF_ST_TYPE(sym.st_info) != STT_FUNC)
+        continue;
+
+      if (sym.st_value == 0 || sym.st_shndx == SHN_UNDEF)
+        continue;
+
+      name = elf_strptr(e, shdr.sh_link, sym.st_name);
+      if (!name || *name == 0x00)
+        continue;
+
+      std::string d_name = cxx_demangle(name);
+      if (d_name.find(fn) != std::string::npos) {
+        cxx = name;
+        break;
+      }
+    }
+  }
+
+  ret = 0;
+
+out:
+  if (e)
+    elf_end(e);
+  if (fd > 0)
+    close(fd);
+  return ret;
 }
 
 }  // namespace libmon

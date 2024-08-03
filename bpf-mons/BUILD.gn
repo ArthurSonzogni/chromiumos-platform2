@@ -18,7 +18,10 @@ group("all") {
 
 pkg_config("target_defaults") {
   # NOSORT
-  pkg_deps = [ "libbpf" ]
+  pkg_deps = [
+    "libbpf",
+    "libelf",
+  ]
 }
 
 generate_vmlinux("vmlinux_h") {

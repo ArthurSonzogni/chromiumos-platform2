@@ -105,6 +105,8 @@ void decode_kstack(uintptr_t* ents,
 
 int lookup_lib(pid_t pid, const char* name, std::string& path);
 
+int lookup_cxx_sym(const std::string& so, const char* sym, std::string& cxx);
+
 int setup_sig_handlers(void);
 bool should_stop(void);
 
