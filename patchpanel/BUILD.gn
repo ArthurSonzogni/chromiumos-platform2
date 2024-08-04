@@ -67,12 +67,7 @@ install_config("install_setuid_restriction") {
 }
 
 pkg_config("target_defaults") {
-  cflags = [
-    "-Wconversion",
-
-    # TODO(chromium:1082873): Fix deprecated warnings and reenable.
-    "-Wno-deprecated-declarations",
-  ]
+  cflags = [ "-Wconversion" ]
   pkg_deps = [
     "libbrillo",
     "libchrome",

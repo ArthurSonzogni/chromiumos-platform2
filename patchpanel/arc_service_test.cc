@@ -1905,8 +1905,6 @@ TEST_F(ArcServiceTest, ConvertARCContainerWiFiDevice) {
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
@@ -1941,8 +1939,6 @@ TEST_F(ArcServiceTest, ConvertARCContainerCellularDevice) {
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
@@ -1976,8 +1972,6 @@ TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARCVM, proto_device.guest_type());
@@ -2011,8 +2005,6 @@ TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARCVM, proto_device.guest_type());
@@ -2049,8 +2041,6 @@ TEST_F(ArcServiceTest, ConvertARC0ForARCContainer) {
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARC, proto_device.guest_type());
@@ -2087,8 +2077,6 @@ TEST_F(ArcServiceTest, ConvertARC0ForARCVM) {
   ASSERT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  ASSERT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   ASSERT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   ASSERT_EQ(NetworkDevice::ARCVM, proto_device.guest_type());

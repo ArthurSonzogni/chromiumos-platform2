@@ -859,8 +859,6 @@ TEST_F(CrostiniServiceTest, ConvertTerminaDevice) {
   EXPECT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  EXPECT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   EXPECT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   EXPECT_EQ(NetworkDevice::TERMINA_VM, proto_device.guest_type());
@@ -891,8 +889,6 @@ TEST_F(CrostiniServiceTest, ConvertParallelsDevice) {
   EXPECT_EQ(expected_base_cidr.address(),
             net_base::IPv4Address::CreateFromBytes(
                 proto_device.ipv4_subnet().addr()));
-  EXPECT_EQ(expected_base_cidr.address().ToInAddr().s_addr,
-            proto_device.ipv4_subnet().base_addr());
   EXPECT_EQ(expected_base_cidr.prefix_length(),
             proto_device.ipv4_subnet().prefix_len());
   EXPECT_EQ(NetworkDevice::PARALLELS_VM, proto_device.guest_type());

@@ -66,7 +66,6 @@ void FillBorealisAllocationProto(
 void FillSubnetProto(const net_base::IPv4CIDR& cidr,
                      patchpanel::IPv4Subnet* output) {
   output->set_addr(cidr.address().ToByteString());
-  output->set_base_addr(cidr.address().ToInAddr().s_addr);
   output->set_prefix_len(static_cast<uint32_t>(cidr.prefix_length()));
 }
 
