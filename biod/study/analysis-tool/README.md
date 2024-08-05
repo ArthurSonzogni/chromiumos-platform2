@@ -25,6 +25,16 @@ statistically determine its FAR and FRR confidence range.
     sudo apt install -y python3-venv
     ```
 
+*   [Pandoc](https://pandoc.org/) command-line utility
+
+    The report generation component uses pandoc to generate static reports from markdown.
+
+    On Debian, you can do the following:
+
+    ```bash
+    sudo apt install -y pandoc
+    ```
+
 ## Run The Analysis
 
 ```bash
