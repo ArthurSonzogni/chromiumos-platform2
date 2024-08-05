@@ -5,16 +5,26 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CAMERA_CAMERA_FRAME_ANALYSIS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CAMERA_CAMERA_FRAME_ANALYSIS_H_
 
+#include <memory>
+
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <camera/mojo/camera_diagnostics.mojom-forward.h>
 
 #include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
+
+namespace base {
+class ElapsedTimer;
+}  // namespace base
 
 namespace diagnostics {
 class Context;
 
 class CameraFrameAnalysisRoutine final : public NoninteractiveRoutineControl {
  public:
+  // Duration for the frame analysis.
+  static constexpr uint32_t kExecutionDurationMilliseconds = 5000;
+
   explicit CameraFrameAnalysisRoutine(Context* context);
   CameraFrameAnalysisRoutine(const CameraFrameAnalysisRoutine&) = delete;
   CameraFrameAnalysisRoutine& operator=(const CameraFrameAnalysisRoutine&) =
@@ -30,6 +40,16 @@ class CameraFrameAnalysisRoutine final : public NoninteractiveRoutineControl {
   void OnSuccessResult(
       const ::cros::camera_diag::mojom::DiagnosticsResultPtr& result);
   void OnCallbackDropped();
+  // Update the progress percentage of the routine.
+  void UpdatePercentage();
+
+  // The duration of the frame analysis. The value is initialized in
+  // `OnStart()`.
+  base::TimeDelta execution_duration_;
+
+  // A timer for progress percentage calculation. The object is initialized in
+  // `OnStart()`.
+  std::unique_ptr<base::ElapsedTimer> elapsed_timer_;
 
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;

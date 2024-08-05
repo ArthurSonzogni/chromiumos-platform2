@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_CAMERA_DIAGNOSTICS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_CAMERA_DIAGNOSTICS_H_
 
+#include <optional>
+
 #include <camera/mojo/camera_diagnostics.mojom.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -25,6 +27,7 @@ class FakeCameraDiagnostics
     return receiver_;
   }
 
+  // Sets the result for invocation of `RunFrameAnalysis()`.
   void SetFrameAnalysisResult(
       ::cros::camera_diag::mojom::FrameAnalysisResultPtr frame_analysis_result);
 
@@ -34,7 +37,12 @@ class FakeCameraDiagnostics
       ::cros::camera_diag::mojom::FrameAnalysisConfigPtr config,
       RunFrameAnalysisCallback callback) override;
 
-  ::cros::camera_diag::mojom::FrameAnalysisResultPtr frame_analysis_result_;
+  // The value used for `RunFrameAnalysis()`. If this is std::nullopt, the
+  // callbacks of `RunFrameAnalysis()` will be stored in `last_callback_`.
+  std::optional<::cros::camera_diag::mojom::FrameAnalysisResultPtr>
+      frame_analysis_result_;
+
+  std::optional<RunFrameAnalysisCallback> last_callback_;
 
   // Mojo receiver for binding pipe.
   mojo::Receiver<::cros::camera_diag::mojom::CameraDiagnostics> receiver_{this};

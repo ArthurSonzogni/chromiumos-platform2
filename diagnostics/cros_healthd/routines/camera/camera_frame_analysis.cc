@@ -5,10 +5,15 @@
 #include "diagnostics/cros_healthd/routines/camera/camera_frame_analysis.h"
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
+#include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 #include <camera/mojo/camera_diagnostics.mojom.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 
@@ -23,9 +28,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 namespace camera_mojom = ::cros::camera_diag::mojom;
-
-// Duration for the frame analysis.
-constexpr uint32_t kExecutionDurationMilliseconds = 5000;
 
 mojom::CameraSubtestResult ConvertSubtestResult(
     camera_mojom::AnalyzerStatus status) {
@@ -76,12 +78,14 @@ void CameraFrameAnalysisRoutine::OnStart() {
     return;
   }
 
-  auto config = camera_mojom::FrameAnalysisConfig::New();
-  config->client_type = camera_mojom::ClientType::kHealthd;
-  config->duration_ms =
+  execution_duration_ = base::Milliseconds(
       std::clamp(kExecutionDurationMilliseconds,
                  camera_mojom::FrameAnalysisConfig::kMinDurationMs,
-                 camera_mojom::FrameAnalysisConfig::kMaxDurationMs);
+                 camera_mojom::FrameAnalysisConfig::kMaxDurationMs));
+
+  auto config = camera_mojom::FrameAnalysisConfig::New();
+  config->client_type = camera_mojom::ClientType::kHealthd;
+  config->duration_ms = execution_duration_.InMilliseconds();
 
   camera_diagnostics_service->RunFrameAnalysis(
       std::move(config),
@@ -90,6 +94,13 @@ void CameraFrameAnalysisRoutine::OnStart() {
                          weak_ptr_factory_.GetWeakPtr()),
           base::BindOnce(&CameraFrameAnalysisRoutine::OnCallbackDropped,
                          weak_ptr_factory_.GetWeakPtr())));
+
+  elapsed_timer_ = std::make_unique<base::ElapsedTimer>();
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&CameraFrameAnalysisRoutine::UpdatePercentage,
+                     weak_ptr_factory_.GetWeakPtr()),
+      execution_duration_ / 100);
 }
 
 void CameraFrameAnalysisRoutine::OnResult(
@@ -160,6 +171,23 @@ void CameraFrameAnalysisRoutine::OnSuccessResult(
 void CameraFrameAnalysisRoutine::OnCallbackDropped() {
   LOG(ERROR) << "Camera frame analysis callback dropped";
   RaiseException("Internal error.");
+}
+
+void CameraFrameAnalysisRoutine::UpdatePercentage() {
+  CHECK(elapsed_timer_);
+  uint32_t percentage = static_cast<uint32_t>(
+      100.0 * elapsed_timer_->Elapsed() / execution_duration_);
+  if (percentage > state()->percentage && percentage < 100) {
+    SetPercentage(percentage);
+  }
+
+  if (state()->percentage < 99) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&CameraFrameAnalysisRoutine::UpdatePercentage,
+                       weak_ptr_factory_.GetWeakPtr()),
+        execution_duration_ / 100);
+  }
 }
 
 }  // namespace diagnostics

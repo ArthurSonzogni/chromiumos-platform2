@@ -17,12 +17,21 @@ FakeCameraDiagnostics::~FakeCameraDiagnostics() = default;
 void FakeCameraDiagnostics::SetFrameAnalysisResult(
     ::cros::camera_diag::mojom::FrameAnalysisResultPtr frame_analysis_result) {
   frame_analysis_result_ = std::move(frame_analysis_result);
+  if (last_callback_) {
+    std::move(last_callback_.value())
+        .Run(frame_analysis_result_.value().Clone());
+    last_callback_.reset();
+  }
 }
 
 void FakeCameraDiagnostics::RunFrameAnalysis(
     ::cros::camera_diag::mojom::FrameAnalysisConfigPtr config,
     RunFrameAnalysisCallback callback) {
-  std::move(callback).Run(frame_analysis_result_.Clone());
+  if (frame_analysis_result_.has_value()) {
+    std::move(callback).Run(frame_analysis_result_.value().Clone());
+  } else {
+    last_callback_ = std::move(callback);
+  }
 }
 
 }  // namespace diagnostics

@@ -11,6 +11,7 @@
 
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <base/time/time.h>
 #include <camera/mojo/camera_diagnostics.mojom.h>
 #include <gtest/gtest.h>
 
@@ -105,10 +106,30 @@ class CameraFrameAnalysisRoutineTest : public testing::Test {
         .SetFrameAnalysisResult(std::move(result));
   }
 
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
   CameraFrameAnalysisRoutine routine_{&mock_context_};
 };
+
+TEST_F(CameraFrameAnalysisRoutineTest, RoutineProgress) {
+  routine_.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
+  RoutineObserverForTesting observer;
+  routine_.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine_.Start();
+
+  task_environment_.FastForwardBy(base::Milliseconds(
+      CameraFrameAnalysisRoutine::kExecutionDurationMilliseconds / 2));
+  EXPECT_EQ(observer.state_->percentage, 50);
+  EXPECT_TRUE(observer.state_->state_union->is_running());
+
+  SetFrameAnalysisResult(NewCameraDiagnosticsResult(
+      {.issue = camera_mojom::CameraIssue::kNone,
+       .privacy_shutter_test = camera_mojom::AnalyzerStatus::kNotRun,
+       .dirty_lens_test = camera_mojom::AnalyzerStatus::kNotRun}));
+  observer.WaitUntilRoutineFinished();
+  EXPECT_EQ(observer.state_->percentage, 100);
+}
 
 TEST_F(CameraFrameAnalysisRoutineTest, RoutinePassedWhenAllSubtestsPassed) {
   SetFrameAnalysisResult(NewCameraDiagnosticsResult(
