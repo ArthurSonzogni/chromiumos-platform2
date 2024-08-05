@@ -35,13 +35,34 @@ statistically determine its FAR and FRR confidence range.
     sudo apt install -y pandoc
     ```
 
+*   Setup `python3` Virtual Environment
+
+    From the biod/study directory, outside of the chroot, run the following:
+
+    ```bash
+    ./python-venv-setup.sh
+    ```
+
+*   Activate the Virtual Environment
+
+    In order to activate the virtual environment, run the following:
+
+    ```bash
+    . .venv/bin/activate
+    ```
+
+    In order to deactivate the virtual environment, run the following:
+
+    ```bash
+    deactivate
+    ```
+
 ## Run The Analysis
 
+You need to run the analysis from an active virtual environment terminal:
+
 ```bash
-# From the biod/study directory, outside of the chroot, run the following:
-./python-venv-setup.sh
-. .venv/bin/activate
-./analysis-tool/run.py --learn-groups-dir data/orig-data data/decisions analysis
+./analysis-tool/run.py analyze simulation
 ```
 
 ## Run Unit Tests
