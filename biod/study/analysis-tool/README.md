@@ -14,6 +14,17 @@ statistically determine its FAR and FRR confidence range.
     We still want the combined histograms to be able to compare sample
     performance across all test cases.
 
+## Install Dependencies
+
+*   Python 3 `venv` and `ensurepip` modules.
+
+    If you choose to use a virtual environment setup by [`python-venv-setup.sh`](../python-venv-setup.sh), you will need venv + ensurepip.
+    On Debian, you can do the following:
+
+    ```bash
+    sudo apt install -y python3-venv
+    ```
+
 ## Run The Analysis
 
 ```bash
