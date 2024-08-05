@@ -128,7 +128,9 @@ std::optional<DHCPClientProxy::EventReason> GetEventReason(
            {"NAK", DHCPClientProxy::EventReason::kNak},
            {"REBIND", DHCPClientProxy::EventReason::kRebind},
            {"REBOOT", DHCPClientProxy::EventReason::kReboot},
-           {"RENEW", DHCPClientProxy::EventReason::kRenew}});
+           {"RENEW", DHCPClientProxy::EventReason::kRenew},
+           {"IPV6-ONLY-PREFERRED",
+            DHCPClientProxy::EventReason::kIPv6OnlyPreferred}});
 
   const auto conf_iter =
       configuration.find(DHCPv4Config::kConfigurationKeyReason);
