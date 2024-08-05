@@ -32,6 +32,14 @@ struct BRILLO_EXPORT NetworkPriority {
   uint32_t ranking_order = kMaxRankingOrder;
 
   bool operator==(const NetworkPriority& rhs) const = default;
+
+  // Compares two priority objects in terms of routing (excluding
+  // `is_primary_for_dns`).
+  static bool HaveSameRoutingPriority(NetworkPriority a, NetworkPriority b) {
+    return a.is_primary_logical == b.is_primary_logical &&
+           a.is_primary_physical == b.is_primary_physical &&
+           a.ranking_order == b.ranking_order;
+  }
 };
 
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,

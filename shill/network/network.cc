@@ -689,6 +689,7 @@ void Network::EnableARPFiltering() {
                       net_base::ProcFsStub::kIPFlagArpIgnoreLocalOnly);
 }
 
+// TODO(jiejiang): Add unit test for this function.
 void Network::SetPriority(net_base::NetworkPriority priority) {
   if (!primary_family_) {
     LOG(WARNING) << *this << ": " << __func__
@@ -698,9 +699,16 @@ void Network::SetPriority(net_base::NetworkPriority priority) {
   if (priority_ == priority) {
     return;
   }
+  auto area = NetworkConfigArea::kDNS;
+  // Skip applying kRoutingPolicy is the routing priority does not change.
+  // kRoutingPolicy will partially reset rule tables, which may cause transient
+  // networking issue, so we want to skip this operation as much as possible.
+  if (!net_base::NetworkPriority::HaveSameRoutingPriority(priority_,
+                                                          priority)) {
+    area |= NetworkConfigArea::kRoutingPolicy;
+  }
   priority_ = priority;
-  ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy |
-                     NetworkConfigArea::kDNS);
+  ApplyNetworkConfig(area);
 }
 
 net_base::NetworkPriority Network::GetPriority() {
