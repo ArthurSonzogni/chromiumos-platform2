@@ -96,14 +96,12 @@ void CameraFrameAnalysisRoutine::OnResult(
     camera_mojom::FrameAnalysisResultPtr result) {
   CHECK(result);
   switch (result->which()) {
-    case camera_mojom::FrameAnalysisResult::Tag::kError: {
+    case camera_mojom::FrameAnalysisResult::Tag::kError:
       OnErrorResult(result->get_error());
       return;
-    }
-    case camera_mojom::FrameAnalysisResult::Tag::kRes: {
+    case camera_mojom::FrameAnalysisResult::Tag::kRes:
       OnSuccessResult(result->get_res());
       return;
-    }
   }
 }
 
@@ -111,24 +109,21 @@ void CameraFrameAnalysisRoutine::OnErrorResult(
     camera_mojom::ErrorCode error_code) {
   LOG(WARNING) << "Received frame analysis error result: " << error_code;
   switch (error_code) {
-    case camera_mojom::ErrorCode::kCameraClosed: {
+    case camera_mojom::ErrorCode::kCameraClosed:
       RaiseExceptionWithReason(
           mojom::Exception::Reason::kCameraFrontendNotOpened,
           "Camera frontend is not opened.");
       return;
-    }
-    case camera_mojom::ErrorCode::kAlreadyRunningAnalysis: {
+    case camera_mojom::ErrorCode::kAlreadyRunningAnalysis:
       RaiseException("Multiple frame analysis running.");
       return;
-    }
     // No need to disclose details to clients.
     case camera_mojom::ErrorCode::kUnknown:
     case camera_mojom::ErrorCode::kInvalidDuration:
     case camera_mojom::ErrorCode::kCrosCameraControllerNotRegistered:
-    case camera_mojom::ErrorCode::kDiagnosticsInternal: {
+    case camera_mojom::ErrorCode::kDiagnosticsInternal:
       RaiseException("Internal error.");
       return;
-    }
   }
 }
 

@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/camera/camera_frame_analysis.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,8 +30,9 @@ namespace mojom = ::ash::cros_healthd::mojom;
 namespace camera_mojom = ::cros::camera_diag::mojom;
 struct AnalyzerResults {
   camera_mojom::CameraIssue issue;
-  camera_mojom::AnalyzerStatus privacy_shutter_test;
-  camera_mojom::AnalyzerStatus dirty_lens_test;
+  std::optional<camera_mojom::AnalyzerStatus> privacy_shutter_test;
+  std::optional<camera_mojom::AnalyzerStatus> dirty_lens_test;
+  std::optional<camera_mojom::AnalyzerStatus> unknown_test;
 };
 
 // A helper function to create a camera diagnostics result.
@@ -38,13 +40,24 @@ camera_mojom::FrameAnalysisResultPtr NewCameraDiagnosticsResult(
     AnalyzerResults analyzer_results) {
   auto frame_diagnostics_result = camera_mojom::DiagnosticsResult::New();
   frame_diagnostics_result->suggested_issue = analyzer_results.issue;
-  frame_diagnostics_result->analyzer_results.push_back(
-      camera_mojom::AnalyzerResult::New(
-          camera_mojom::AnalyzerType::kPrivacyShutterSwTest,
-          analyzer_results.privacy_shutter_test));
-  frame_diagnostics_result->analyzer_results.push_back(
-      camera_mojom::AnalyzerResult::New(camera_mojom::AnalyzerType::kDirtyLens,
-                                        analyzer_results.dirty_lens_test));
+  if (analyzer_results.privacy_shutter_test.has_value()) {
+    frame_diagnostics_result->analyzer_results.push_back(
+        camera_mojom::AnalyzerResult::New(
+            camera_mojom::AnalyzerType::kPrivacyShutterSwTest,
+            analyzer_results.privacy_shutter_test.value()));
+  }
+  if (analyzer_results.dirty_lens_test.has_value()) {
+    frame_diagnostics_result->analyzer_results.push_back(
+        camera_mojom::AnalyzerResult::New(
+            camera_mojom::AnalyzerType::kDirtyLens,
+            analyzer_results.dirty_lens_test.value()));
+  }
+  if (analyzer_results.unknown_test.has_value()) {
+    frame_diagnostics_result->analyzer_results.push_back(
+        camera_mojom::AnalyzerResult::New(
+            camera_mojom::AnalyzerType::kUnknown,
+            analyzer_results.unknown_test.value()));
+  }
   return camera_mojom::FrameAnalysisResult::NewRes(
       std::move(frame_diagnostics_result));
 }
@@ -117,11 +130,26 @@ TEST_F(CameraFrameAnalysisRoutineTest, RoutinePassedWhenAllSubtestsPassed) {
   EXPECT_EQ(detail->lens_not_dirty_test, mojom::CameraSubtestResult::kPassed);
 }
 
-TEST_F(CameraFrameAnalysisRoutineTest, RoutineFailedWhenAnyIssueFound) {
+// The result of unknown analyzer type is ignored for forward compatibility.
+TEST_F(CameraFrameAnalysisRoutineTest,
+       RoutinePassedEvenAllSubtestsPassedExceptForUnknownSubtests) {
+  SetFrameAnalysisResult(NewCameraDiagnosticsResult(
+      {.issue = camera_mojom::CameraIssue::kNone,
+       .privacy_shutter_test = camera_mojom::AnalyzerStatus::kPassed,
+       .dirty_lens_test = camera_mojom::AnalyzerStatus::kPassed,
+       .unknown_test = camera_mojom::AnalyzerStatus::kFailed}));
+
+  const auto& result = StartRoutineAndGetFinalState(routine_);
+  EXPECT_EQ(result->percentage, 100);
+  ASSERT_TRUE(result->state_union->is_finished());
+  EXPECT_TRUE(result->state_union->get_finished()->has_passed);
+}
+
+TEST_F(CameraFrameAnalysisRoutineTest,
+       RoutineFailedWhenBlockedByPrivacyShutter) {
   SetFrameAnalysisResult(NewCameraDiagnosticsResult(
       {.issue = camera_mojom::CameraIssue::kPrivacyShutterOn,
-       .privacy_shutter_test = camera_mojom::AnalyzerStatus::kFailed,
-       .dirty_lens_test = camera_mojom::AnalyzerStatus::kNotRun}));
+       .privacy_shutter_test = camera_mojom::AnalyzerStatus::kFailed}));
 
   const auto& result = StartRoutineAndGetFinalState(routine_);
   EXPECT_EQ(result->percentage, 100);
@@ -134,7 +162,45 @@ TEST_F(CameraFrameAnalysisRoutineTest, RoutineFailedWhenAnyIssueFound) {
       result->state_union->get_finished()->detail->get_camera_frame_analysis();
   EXPECT_EQ(detail->privacy_shutter_open_test,
             mojom::CameraSubtestResult::kFailed);
-  EXPECT_EQ(detail->lens_not_dirty_test, mojom::CameraSubtestResult::kNotRun);
+  EXPECT_EQ(
+      detail->issue,
+      mojom::CameraFrameAnalysisRoutineDetail::Issue::kBlockedByPrivacyShutter);
+}
+
+TEST_F(CameraFrameAnalysisRoutineTest, RoutineFailedWhenLensAreDirty) {
+  SetFrameAnalysisResult(NewCameraDiagnosticsResult(
+      {.issue = camera_mojom::CameraIssue::kDirtyLens,
+       .dirty_lens_test = camera_mojom::AnalyzerStatus::kFailed}));
+
+  const auto& result = StartRoutineAndGetFinalState(routine_);
+  EXPECT_EQ(result->percentage, 100);
+  ASSERT_TRUE(result->state_union->is_finished());
+  EXPECT_FALSE(result->state_union->get_finished()->has_passed);
+
+  ASSERT_TRUE(
+      result->state_union->get_finished()->detail->is_camera_frame_analysis());
+  const auto& detail =
+      result->state_union->get_finished()->detail->get_camera_frame_analysis();
+  EXPECT_EQ(detail->lens_not_dirty_test, mojom::CameraSubtestResult::kFailed);
+  EXPECT_EQ(detail->issue,
+            mojom::CameraFrameAnalysisRoutineDetail::Issue::kLensAreDirty);
+}
+
+TEST_F(CameraFrameAnalysisRoutineTest, RoutineFailedWhenCameraServiceIsDown) {
+  SetFrameAnalysisResult(NewCameraDiagnosticsResult(
+      {.issue = camera_mojom::CameraIssue::kCameraServiceDown}));
+
+  const auto& result = StartRoutineAndGetFinalState(routine_);
+  EXPECT_EQ(result->percentage, 100);
+  ASSERT_TRUE(result->state_union->is_finished());
+  EXPECT_FALSE(result->state_union->get_finished()->has_passed);
+
+  ASSERT_TRUE(
+      result->state_union->get_finished()->detail->is_camera_frame_analysis());
+  const auto& detail =
+      result->state_union->get_finished()->detail->get_camera_frame_analysis();
+  EXPECT_EQ(detail->issue, mojom::CameraFrameAnalysisRoutineDetail::Issue::
+                               kCameraServiceNotAvailable);
 }
 
 TEST_F(CameraFrameAnalysisRoutineTest, RoutineExceptionWithCameraClosed) {
@@ -171,12 +237,21 @@ TEST_F(CameraFrameAnalysisRoutineTest, RoutineExceptionWithInternalError) {
       mojom::Exception::Reason::kUnexpected);
 }
 
+TEST_F(CameraFrameAnalysisRoutineTest, RoutineExceptionWithUnknownError) {
+  SetFrameAnalysisResult(
+      NewFrameAnalysisError(camera_mojom::ErrorCode::kUnknown));
+
+  const auto& [error, reason] = StartRoutineAndWaitForException(routine_);
+  EXPECT_EQ(reason, "Internal error.");
+  EXPECT_EQ(
+      mojom::ToKnownEnumValue(static_cast<mojom::Exception::Reason>(error)),
+      mojom::Exception::Reason::kUnexpected);
+}
+
 TEST_F(CameraFrameAnalysisRoutineTest,
        SubtestResultNotUnmappedEnumFieldWhenNoAnalyzerResults) {
-  auto frame_diagnostics_result = camera_mojom::DiagnosticsResult::New();
-  frame_diagnostics_result->analyzer_results.clear();
-  SetFrameAnalysisResult(camera_mojom::FrameAnalysisResult::NewRes(
-      std::move(frame_diagnostics_result)));
+  SetFrameAnalysisResult(
+      NewCameraDiagnosticsResult({.issue = camera_mojom::CameraIssue::kNone}));
 
   const auto& result = StartRoutineAndGetFinalState(routine_);
   EXPECT_EQ(result->percentage, 100);
