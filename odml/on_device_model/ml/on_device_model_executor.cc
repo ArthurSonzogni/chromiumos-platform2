@@ -4,6 +4,14 @@
 
 #include "odml/on_device_model/ml/on_device_model_executor.h"
 
+#include <algorithm>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <base/check.h>
 #include <base/compiler_specific.h>
 #include <base/containers/unique_ptr_adapters.h>
@@ -14,14 +22,6 @@
 #include <base/task/thread_pool.h>
 #include <base/timer/elapsed_timer.h>
 #include <metrics/metrics_library.h>
-
-#include <algorithm>
-#include <memory>
-#include <optional>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -388,7 +388,6 @@ class SessionImpl : public on_device_model::OnDeviceModel::Session {
           .max_tokens = *input->max_tokens,
           .token_offset = input->token_offset.value_or(0),
           .max_output_tokens = input->max_output_tokens.value_or(0),
-          .score_ts_interval = -1,
           .execution_output_fn = &output_fn,
           .top_k = input->top_k.value_or(1),
           .temperature = input->temperature.value_or(0),
