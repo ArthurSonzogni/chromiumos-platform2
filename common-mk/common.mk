@@ -365,7 +365,7 @@ LDFLAGS := $(LDFLAGS) \
   -z relro \
   -z noexecstack \
   -z now \
-  -Xlinker -Bsymbolic-non-weak
+  $(call check_cc,-Xlinker -Bsymbolic-non-weak)
 
 # Fancy helpers for color if a prompt is defined
 ifeq ($(COLOR),1)
