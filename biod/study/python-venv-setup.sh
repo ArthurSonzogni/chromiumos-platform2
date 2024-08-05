@@ -24,6 +24,15 @@ main() {
         loc="${script_dir}/.venv"
     fi
 
+    # Check whether python3-venv package exists.
+    if ! python3 -c 'import venv; import ensurepip' &>/dev/null; then
+        echo "Error - Python3 module venv or ensurepip is missing"
+        echo
+        echo "On Debian, you could do the following:"
+        echo "sudo apt install -y python3-venv"
+        exit 1
+    fi
+
     # Create new python3 virtual environment.
     rm -rf "${loc}"
     if ! python3 -m venv "${loc}"; then
