@@ -181,8 +181,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void RunAndWaitProcess(
       std::unique_ptr<brillo::ProcessImpl> process,
       base::OnceCallback<
-          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      bool combine_stdout_and_stderr);
+          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback);
   void OnRunAndWaitProcessFinished(
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,

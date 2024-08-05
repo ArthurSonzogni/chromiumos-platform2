@@ -378,8 +378,7 @@ void Executor::RunIw(IwCommand cmd,
                                    .enable_landlock = enable_pending_landlock_,
                                });
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback));
 }
 
 void Executor::RunMemtester(
@@ -550,8 +549,7 @@ void Executor::FetchCrashFromCrashSender(
   auto subprocess = std::make_unique<brillo::ProcessImpl>();
   subprocess->AddArg(path::kCrashSenderBinary);
   subprocess->AddArg("--dry_run");
-  RunAndWaitProcess(std::move(subprocess), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(subprocess), std::move(callback));
 }
 
 void Executor::SetLedColor(mojom::LedName name,
@@ -601,8 +599,7 @@ void Executor::GetHciDeviceConfig(int32_t hci_interface,
                                    .enable_landlock = enable_pending_landlock_,
                                });
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback));
 }
 
 void Executor::MonitorAudioJack(
@@ -828,8 +825,7 @@ void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
           .enable_landlock = enable_pending_landlock_,
       });
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback));
 }
 
 void Executor::MonitorPowerButton(
@@ -958,8 +954,7 @@ void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
                         .enable_landlock = enable_pending_landlock_,
                     });
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback));
 }
 
 void Executor::RemoveBtmonLog(RemoveBtmonLogCallback callback) {
@@ -974,15 +969,13 @@ void Executor::RemoveBtmonLog(RemoveBtmonLogCallback callback) {
           .enable_landlock = enable_pending_landlock_,
       });
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback));
 }
 
 void Executor::RunAndWaitProcess(
     std::unique_ptr<brillo::ProcessImpl> process,
-    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
-    bool combine_stdout_and_stderr) {
-  process->RedirectOutputToMemory(combine_stdout_and_stderr);
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
+  process->RedirectOutputToMemory(/*combine=*/false);
   process->Start();
 
   process_reaper_->WatchForChild(
