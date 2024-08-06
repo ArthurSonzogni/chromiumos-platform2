@@ -16,10 +16,12 @@
 #include <base/timer/timer.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/rmad_config.pb.h"
 #include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils.h"
+#include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
@@ -44,10 +46,12 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       bool update_success,
+      const base::FilePath& config_dir_path,
       std::unique_ptr<UdevUtils> udev_utils,
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
-      std::unique_ptr<PowerManagerClient> power_manager_client);
+      std::unique_ptr<PowerManagerClient> power_manager_client,
+      std::unique_ptr<CrosConfigUtils> cros_config_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kUpdateRoFirmware);
   SET_REPEATABLE;
@@ -68,6 +72,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
 
   bool CanSkipUpdate() const;
   bool SkipUpdateFromRootfs() const;
+  std::optional<RmadConfig> GetRmadConfig() const;
 
   void SendFirmwareUpdateSignal();
   std::vector<std::unique_ptr<UdevDevice>> GetRemovableBlockDevices() const;
@@ -95,10 +100,12 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   // Timer for checking USB.
   base::RepeatingTimer check_usb_timer_;
 
+  base::FilePath config_dir_path_;
   std::unique_ptr<UdevUtils> udev_utils_;
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+  std::unique_ptr<CrosConfigUtils> cros_config_utils_;
 
   // Sequence runner for thread-safe read/write of |status_| and
   // |usb_detected_|.

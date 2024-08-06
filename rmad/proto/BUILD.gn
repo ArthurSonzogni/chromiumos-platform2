@@ -9,6 +9,7 @@ proto_library("rmad-protos") {
   proto_out_dir = "include/rmad"
   sources = [
     "${proto_in_dir}/feature_enabled_devices.proto",
+    "${proto_in_dir}/rmad_config.proto",
     "${proto_in_dir}/sku_filter.proto",
   ]
 }

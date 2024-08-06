@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
@@ -22,6 +23,7 @@
 #include "rmad/udev/mock_udev_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
+#include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
@@ -32,6 +34,12 @@ using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
+
+namespace {
+
+constexpr char kModel[] = "Model";
+
+}  // namespace
 
 namespace rmad {
 
@@ -45,6 +53,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
   struct StateHandlerArgs {
     bool ro_verified = true;
     bool hwwp_enabled = false;
+    std::optional<std::string> rmad_config_textproto = std::nullopt;
     bool copy_success = true;
     bool update_success = true;
   };
@@ -83,11 +92,26 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
         std::make_unique<NiceMock<MockPowerManagerClient>>();
     ON_CALL(*mock_power_manager_client, Restart).WillByDefault(Return(true));
 
+    auto mock_cros_config_utils =
+        std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    ON_CALL(*mock_cros_config_utils, GetModelName(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kModel), Return(true)));
+
+    if (args.rmad_config_textproto.has_value()) {
+      base::FilePath textproto_dir = GetTempDirPath().Append(kModel);
+      base::FilePath textproto_path =
+          textproto_dir.Append("rmad_config.textproto");
+      EXPECT_TRUE(base::CreateDirectory(textproto_dir));
+      EXPECT_TRUE(
+          base::WriteFile(textproto_path, args.rmad_config_textproto.value()));
+    }
+
     return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
-        json_store_, daemon_callback_, args.update_success,
+        json_store_, daemon_callback_, args.update_success, GetTempDirPath(),
         std::move(mock_udev_utils), std::move(mock_cmd_utils),
         std::move(mock_write_protect_utils),
-        std::move(mock_power_manager_client));
+        std::move(mock_power_manager_client),
+        std::move(mock_cros_config_utils));
   }
 
   void ExpectSignal(UpdateRoFirmwareStatus expected_status) {
@@ -123,9 +147,46 @@ TEST_F(UpdateRoFirmwareStateHandlerTest,
   EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), false);
 }
 
+TEST_F(UpdateRoFirmwareStateHandlerTest,
+       InitializeState_Success_RmadConfig_Empty) {
+  constexpr char textproto[] = "";
+  auto handler = CreateStateHandler({.rmad_config_textproto = textproto});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
+  EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), false);
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest,
+       InitializeState_Success_RmadConfig_NonEmpty) {
+  constexpr char textproto[] = R"(
+skip_update_ro_firmware_from_rootfs: true
+  )";
+  auto handler = CreateStateHandler({.rmad_config_textproto = textproto});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  UpdateRoFirmwareState state = handler->GetState().update_ro_firmware();
+  EXPECT_EQ(state.skip_update_ro_firmware_from_rootfs(), true);
+}
+
 TEST_F(UpdateRoFirmwareStateHandlerTest, InitializeState_HwwpEnabled_Failed) {
   auto handler = CreateStateHandler({.hwwp_enabled = true});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_WP_ENABLED);
+}
+
+TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_SkipRootfs_WaitUsb) {
+  constexpr char textproto[] = R"(
+skip_update_ro_firmware_from_rootfs: true
+  )";
+  auto handler = CreateStateHandler({.rmad_config_textproto = textproto,
+                                     .copy_success = true,
+                                     .update_success = true});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  handler->RunState();
+  ExpectSignal(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
+
+  bool firmware_updated;
+  EXPECT_FALSE(json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
+               firmware_updated);
 }
 
 TEST_F(UpdateRoFirmwareStateHandlerTest, RunState_Rootfs_Success) {
