@@ -9,6 +9,7 @@
 #include <sane/sane.h>
 #include <string>
 #include <vector>
+#include <png.h>
 
 #include "lorgnette/libsane_wrapper.h"
 #include "lorgnette/libsane_wrapper_impl.h"
@@ -25,6 +26,8 @@ extern const std::string* scanner_under_test;
 
 struct ScanTestParameter {
   const std::string source;
+  uint32_t resolution;
+  std::string color_mode;
 };
 
 // Override ostream so we can get pretty printing of failed parameterized tests.
@@ -107,9 +110,116 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
 
   auto valid_standard_opts = sane_dev->GetValidOptionValues(&error);
   ASSERT_TRUE(valid_standard_opts.has_value());
+
+  // TODO(b/346843281): Allow these to be properly selected, test multiple
+  // values, and don't have defaults
+  uint32_t resolution = 200;
+  std::string color_mode = "Color";
+
+  std::cout << "Supported resolutions ("
+            << valid_standard_opts.value().resolutions.size() << "): ";
+  if (valid_standard_opts.value().resolutions.size() <= 50) {
+    for (auto res : valid_standard_opts.value().resolutions) {
+      std::cout << res << " ";
+    }
+  } else {
+    std::cout << "from " << valid_standard_opts.value().resolutions.front()
+              << " to " << valid_standard_opts.value().resolutions.back();
+  }
+  std::cout << "\n";
+
+  std::cout << "Supported color modes ("
+            << valid_standard_opts.value().color_modes.size() << "): ";
+  for (auto cmode : valid_standard_opts.value().color_modes) {
+    std::cout << cmode << " ";
+  }
+  std::cout << "\n";
+
   for (auto opt : valid_standard_opts.value().sources) {
-    ScanTestParameter new_param = ScanTestParameter(opt.name());
+    ScanTestParameter new_param =
+        ScanTestParameter(opt.name(), resolution, color_mode);
     out.push_back(new_param);
+  }
+}
+
+// copied from lorgnette/cli/file_pattern.cc
+static std::string escape_scanner_name(const std::string& scanner_name) {
+  std::string escaped;
+  for (char c : scanner_name) {
+    if (isalnum(c)) {
+      escaped += c;
+    } else {
+      escaped += '_';
+    }
+  }
+  return escaped;
+}
+
+static void verify_png_info(const char* filename,
+                            uint32_t expected_dpi,
+                            const std::string& color_mode) {
+  png_structp png_ptr =
+      png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+  ASSERT_TRUE(png_ptr);
+
+  png_infop info_ptr = png_create_info_struct(png_ptr);
+  ASSERT_TRUE(info_ptr);
+
+  FILE* fp = fopen(filename, "rb");
+  ASSERT_TRUE(fp);
+
+  if (setjmp(png_jmpbuf(png_ptr))) {
+    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+    fclose(fp);
+    ASSERT_FALSE("error in libpng");
+  }
+
+  png_init_io(png_ptr, fp);
+  png_read_info(png_ptr, info_ptr);
+
+  png_uint_32 width, height, res_x, res_y;
+  int bit_depth, color_type, res_unit_type;
+
+  png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
+               nullptr, nullptr, nullptr);
+  png_get_pHYs(png_ptr, info_ptr, &res_x, &res_y, &res_unit_type);
+  std::cout << "width=" << width << " height=" << height
+            << " bit_depth=" << bit_depth << " color_type=" << color_type
+            << "\n";
+  std::cout << "res_x=" << res_x << " res_y=" << res_y
+            << " unit_type=" << res_unit_type << "\n";
+
+  png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+  fclose(fp);
+
+  // width and height should be within 5% of expected value
+  // TODO(b/346842152): support page sizes other than letter
+  double expected_width = expected_dpi * 8.5;
+  double expected_height = expected_dpi * 11;
+  EXPECT_GT(width, expected_width * 0.95);
+  EXPECT_LT(width, expected_width * 1.05);
+  EXPECT_GT(height, expected_height * 0.95);
+  EXPECT_LT(height, expected_height * 1.05);
+
+  // SANE expresses resolution as pixels per inch; PNG pHYs chunk expresses it
+  // as pixels per meter. A more accurate conversion would be
+  // "round(expected_dpi / .0254)", but multiplying by 39.3701 and truncating to
+  // uint32_t is what lorgnette's PngReader does.
+  uint32_t expected_dpm = expected_dpi * 39.3701;
+  EXPECT_EQ(res_x, res_y);
+  EXPECT_EQ(res_x, expected_dpm);
+  EXPECT_EQ(res_unit_type, PNG_RESOLUTION_METER);
+
+  // check bit depth/color type
+  if (color_mode == "Color") {
+    EXPECT_EQ(color_type, PNG_COLOR_TYPE_RGB);
+    EXPECT_GT(bit_depth, 1);
+  } else if (color_mode == "Gray") {
+    EXPECT_EQ(color_type, PNG_COLOR_TYPE_GRAY);
+    EXPECT_GT(bit_depth, 1);
+  } else if (color_mode == "Lineart") {
+    EXPECT_EQ(color_type, PNG_COLOR_TYPE_GRAY);
+    EXPECT_EQ(bit_depth, 1);
   }
 }
 
@@ -137,7 +247,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 // Runs lorgnette_cli advanced_scan with args; returns exit code.
 static int _run_advanced_scan(const std::string& testReportDir,
-                              const std::string& scanSource,
+                              const ScanTestParameter& scanParam,
                               const std::string& scanner) {
   brillo::ProcessImpl lorgnette_cmd;
 
@@ -145,7 +255,9 @@ static int _run_advanced_scan(const std::string& testReportDir,
   lorgnette_cmd.AddArg("advanced_scan");
   lorgnette_cmd.AddArg("--scanner=" + scanner);
   lorgnette_cmd.AddArg("set_options");
-  lorgnette_cmd.AddArg("source=" + scanSource);
+  lorgnette_cmd.AddArg("resolution=" + std::to_string(scanParam.resolution));
+  lorgnette_cmd.AddArg("mode=" + scanParam.color_mode);
+  lorgnette_cmd.AddArg("source=" + scanParam.source);
 
   // %s is the scanner name, %n is the page number
   lorgnette_cmd.AddArg("--output=" + testReportDir + "/%s-page%n.png");
@@ -162,11 +274,19 @@ TEST_P(ScanTest, SinglePage) {
 
   std::string output_path = _get_test_output_path();
 
-  ASSERT_EQ(_run_advanced_scan(output_path, parameter.source,
+  std::cout << "Scan resolution: " << parameter.resolution << " dpi\n";
+  std::cout << "Color mode: " << parameter.color_mode << "\n";
+  ASSERT_EQ(_run_advanced_scan(output_path, parameter,
                                *sane_backend_tests::scanner_under_test),
             0);
 
-  // TODO(b/346608170) Validate with "identify -verbose" command
+  std::string image_path =
+      output_path + "/" +
+      escape_scanner_name(*sane_backend_tests::scanner_under_test) +
+      "-page1.png";
+  std::cout << "Output path: " << image_path << "\n";
+  verify_png_info(image_path.c_str(), parameter.resolution,
+                  parameter.color_mode);
 
   std::cout << "Do scans under " << output_path << " look OK (y/n):\n";
   ASSERT_TRUE(_y_or_no());
