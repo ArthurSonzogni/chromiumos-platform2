@@ -92,11 +92,11 @@ python -m unittest discover -v -s . -p '*_test.py'
 
 ## Experiment Directory Files
 
-1.  `FAR_decisions.csv` / `FRR_decisions.csv`:
+## Study Output Directory Files
 
-    The FAR_decisions.csv and FRR_decisions.csv use the same CSV format, but
-    should contain all matcher imposter (false-accept) and true user
-    (false-reject) attempts, respectively.
+1.  `FAR_decisions.csv`
+
+    The FAR_decisions.csv uses a CSV format, contains all matcher imposter (false-accept) attempts, and has the following format.
 
     Example **FAR_decisions.csv**:
 
@@ -107,6 +107,10 @@ python -m unittest discover -v -s . -p '*_test.py'
     10001,0,10002,0,2,ACCEPT
     ...
     ```
+
+1. `FRR_decisions.csv`:
+
+    The FRR_decisions.csv use a CSV format, contains all matcher true user (false-reject) attempts, and has the following format.
 
     Example **FRR_decisions.csv**
 
