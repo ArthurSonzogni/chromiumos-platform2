@@ -3761,6 +3761,14 @@ TEST_F(WiFiMainTest, ConnectedToUnintendedPreemptsPending) {
   EXPECT_EQ(service1, GetPendingService());
   EXPECT_EQ(nullptr, GetCurrentService());
 
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  EXPECT_EQ(service0->state(), Service::kStateIdle);
+  // Disconnection from service0 doesn't disconnect from the current pending
+  // service
+  EXPECT_EQ(service1->state(), Service::kStateAssociating);
+  // Verify the pending service and current service
+  EXPECT_EQ(service1, GetPendingService());
+  EXPECT_EQ(nullptr, GetCurrentService());
   // Connecting to another service
   MockWiFiServiceRefPtr service2(
       SetupConnectingService(RpcIdentifier(""), nullptr, nullptr));

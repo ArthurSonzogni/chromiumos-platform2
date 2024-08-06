@@ -1205,7 +1205,17 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
   StopRequestingStationInfo();
 
   if (new_bss.value() == WPASupplicant::kCurrentBSSNull) {
-    HandleDisconnect();
+    WiFiService* affected_service = nullptr;
+    EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(old_bss);
+    if (endpoint_it == endpoint_by_rpcid_.end()) {
+      LOG(WARNING) << "cannot find the endpoint of old_bss " << old_bss.value();
+      affected_service = current_service_.get() ? current_service_.get()
+                                                : pending_service_.get();
+    } else {
+      const WiFiEndpointConstRefPtr endpoint(endpoint_it->second);
+      affected_service = provider_->FindServiceForEndpoint(endpoint).get();
+    }
+    HandleDisconnect(affected_service);
     // Trigger immediate scan upon disconnect to prevent unnecessarily
     // waiting at the idle state for the next foreground scan.
     //
@@ -1384,14 +1394,7 @@ bool WiFi::IsConnectionAttemptFailure(const WiFiService& service) const {
   return is_attempt_failure;
 }
 
-void WiFi::HandleDisconnect() {
-  // Identify the affected service. We expect to get a disconnect
-  // event when we fall off a Service that we were connected
-  // to. However, we also allow for the case where we get a disconnect
-  // event while attempting to connect from a disconnected state.
-  WiFiService* affected_service =
-      current_service_.get() ? current_service_.get() : pending_service_.get();
-
+void WiFi::HandleDisconnect(WiFiService* affected_service) {
   if (!affected_service) {
     SLOG(this, 2) << "WiFi " << link_name()
                   << " disconnected while not connected or connecting";
@@ -1401,10 +1404,11 @@ void WiFi::HandleDisconnect() {
   SLOG(this, 2) << "WiFi " << link_name() << " disconnected from "
                 << " (or failed to connect to) "
                 << affected_service->log_name();
-
-  if (affected_service == current_service_.get() && pending_service_.get()) {
-    // Current service disconnected intentionally for network switching,
-    // set service state to idle.
+  if ((affected_service == current_service_.get() ||
+       affected_service == previous_pending_service_.get()) &&
+      pending_service_.get()) {
+    // Current service or previous pending service disconnected intentionally
+    // for network switching, set service state to idle, see b/339266878.
     affected_service->SetState(Service::kStateIdle);
   } else {
     bool is_attempt_failure = IsConnectionAttemptFailure(*affected_service);

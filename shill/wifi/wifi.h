@@ -536,7 +536,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // to connect to another service, which would be pending.
   bool IsConnectionAttemptFailure(const WiFiService& service) const;
 
-  void HandleDisconnect();
+  void HandleDisconnect(WiFiService* affected_service);
   // Update failure and state for disconnected service.
   // Set failure for disconnected service if disconnect is not user-initiated
   // and failure is not already set. Then set the state of the service back
