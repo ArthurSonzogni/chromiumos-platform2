@@ -4,7 +4,8 @@
 
 #include "shill/device.h"
 
-#include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
+#include <linux/if.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>
@@ -34,7 +35,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/rtnl_handler.h>
-#include <netinet/in.h>
 
 #include "shill/control_interface.h"
 #include "shill/error.h"
@@ -653,7 +653,7 @@ void Device::SetEnabledChecked(bool enable,
                                bool persist,
                                ResultCallback callback) {
   LOG(INFO) << __func__ << ": " << LoggingTag()
-            << (enable ? "starting" : "stopping");
+            << (enable ? " starting" : " stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
     std::move(callback).Run(
         Error(Error::kPermissionDenied,
