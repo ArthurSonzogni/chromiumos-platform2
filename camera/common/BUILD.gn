@@ -411,6 +411,7 @@ executable("cros_camera_algo") {
   ]
   deps = [
     ":libcros_camera",
+    ":libcros_camera_device_config",
 
     # We only need //camera/mojo/algorithm/camera_algorithm.mojom,
     # libcros_camera_mojom provides a superset mojom library containing it.

@@ -27,6 +27,9 @@ const char kCrosCameraConfigPathString[] = "/run/camera/camera_config.json";
 // camera HAL initialization failures.
 const char kForceStartCrosCameraPath[] = "/run/camera/force_start_cros_camera";
 
+const char kForceStopCrosCameraAlgoPath[] =
+    "/run/camera/force_stop_cros_camera_algo";
+
 // Special files to force control face ae.
 const char kForceEnableFaceAePath[] = "/run/camera/force_enable_face_ae";
 const char kForceDisableFaceAePath[] = "/run/camera/force_disable_face_ae";
