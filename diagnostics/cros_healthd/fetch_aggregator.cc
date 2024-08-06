@@ -110,7 +110,6 @@ void FetchAggregator::Run(
         break;
       case mojom::ProbeCategoryEnum::kStatefulPartition:
         delegate_->FetchStatefulPartitionResult(
-
             CreateFetchCallback(&barrier, &info->stateful_partition_result));
         break;
       case mojom::ProbeCategoryEnum::kBluetooth:
@@ -143,7 +142,6 @@ void FetchAggregator::Run(
         break;
       case mojom::ProbeCategoryEnum::kNetworkInterface:
         delegate_->FetchNetworkInterfaceResult(
-
             CreateFetchCallback(&barrier, &info->network_interface_result));
         break;
       case mojom::ProbeCategoryEnum::kGraphics:
@@ -160,7 +158,6 @@ void FetchAggregator::Run(
         break;
       case mojom::ProbeCategoryEnum::kAudioHardware:
         delegate_->FetchAudioHardwareResult(
-
             CreateFetchCallback(&barrier, &info->audio_hardware_result));
         break;
       case mojom::ProbeCategoryEnum::kSensor:
