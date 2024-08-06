@@ -56,13 +56,26 @@ statistically determine its FAR and FRR confidence range.
     ```bash
     deactivate
     ```
+## Create a Simulation Study Output
+
+In order to generate a simulation study output with 4 fingers, 40 samples, and FRR probability of 6%, run the following:
+
+```bash
+./analysis-tool/simulate_fpstudy.py study_output --fingers 4 --samples 40 --frr_prob_percent 6
+```
+
+The output files will be stored in the `study_output` direction and will have the following:
+
+*   FAR_decisions.csv: contains all matcher imposter (false-accept) attempts
+*   FRR_decisions.csv: contains all matcher true user (false-reject) attempts
+*   user_groups.csv: contains the user to group mapping
 
 ## Run The Analysis
 
 You need to run the analysis from an active virtual environment terminal:
 
 ```bash
-./analysis-tool/run.py analyze simulation
+./analysis-tool/run.py analyze study_output
 ```
 
 ## Run Unit Tests
