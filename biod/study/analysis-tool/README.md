@@ -68,7 +68,13 @@ You need to run the analysis from an active virtual environment terminal:
 ## Run Unit Tests
 
 ```bash
+# From the biod/study/analysis-tool directory, run the following:
 python -m unittest discover -v -s . -p '*_test.py'
+
+# discover       : search for and run all python unit tests
+# -v             : enables verbose logging
+# -s .           : specifies . as the starting directory for search
+# -p '*_test.py' : specifies tests will be in files ending with _test.py
 ```
 
 ## Experiment Directory Files
