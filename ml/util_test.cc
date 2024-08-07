@@ -2,21 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/util.h"
+
 #include <limits>
 #include <optional>
 #include <string>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <base/check.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <base/files/scoped_temp_dir.h>
-#include <base/files/file_util.h>
 #include <brillo/file_utils.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
+#include "base/files/file_path.h"
 #include "ml/test_utils.h"
-#include "ml/util.h"
 
 namespace ml {
 namespace {
@@ -240,30 +242,35 @@ TEST(GetProcessMemoryUsageTest, RealisticProcStatus) {
   EXPECT_EQ(memory_usage.VmSwapKb, 321);
 }
 
-TEST(GetRealPathTest, VariousInputs) {
-  // Store the current directory for this test.
-  base::FilePath cd;
-  base::GetCurrentDirectory(&cd);
-  const std::string cd_str(cd.value());
+TEST(ValidateAndGetRealDlcPathTest, ValidDlcPath) {
+  // Create a temporary test directory.
+  const base::FilePath real_path("/run/imageloader/fake-dlc-foo/package/root/");
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDirUnderPath(real_path));
 
-  // Resolve current directory.
-  const base::FilePath path_1(".");
-  std::optional<base::FilePath> real_1 = GetRealPath(path_1);
-  EXPECT_TRUE(real_1.has_value());
-  EXPECT_EQ(cd_str, real_1.value().value());
+  const std::optional<base::FilePath> result = ValidateAndGetRealDlcPath(
+      base::FilePath("/run/imageloader/fake-dlc-foo/package/root/../"));
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ("/run/imageloader/fake-dlc-foo/package", result.value().value());
+}
 
-  // Resolve absolute path.
-  const base::FilePath temp_path_2("/tmp/getrealpathtest/dir2");
-  base::CreateDirectory(temp_path_2);
-  const base::FilePath path_2("/tmp/getrealpathtest/dir2/../");
-  std::optional<base::FilePath> real_2 = GetRealPath(path_2);
-  EXPECT_TRUE(real_2.has_value());
-  EXPECT_EQ("/tmp/getrealpathtest", real_2.value().value());
+TEST(ValidateAndGetRealDlcPathTest, InvalidFile) {
+  // Create a temporary invalid test directory.
+  const base::FilePath invalid_path(
+      "/run/invalid-path/fake-dlc-foo/package/root/");
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDirUnderPath(invalid_path));
 
-  // Check non-existing path.
-  const base::FilePath path_4("/run/imageloader/fake-dlc-foo/package/root/");
-  std::optional<base::FilePath> real_4 = GetRealPath(path_4);
-  EXPECT_FALSE(real_4.has_value());
+  const std::optional<base::FilePath> result =
+      ValidateAndGetRealDlcPath(invalid_path);
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(ValidateAndGetRealDlcPathTest, MissingFile) {
+  const base::FilePath missing_path("/run/imageloader/missing/package/root/");
+  const std::optional<base::FilePath> result =
+      ValidateAndGetRealDlcPath(missing_path);
+  EXPECT_FALSE(result.has_value());
 }
 
 }  // namespace

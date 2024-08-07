@@ -37,6 +37,22 @@ bool GetValueFromProcStatusValueStr(const std::string& value_str,
   return base::StringToSizeT(split_value_str[0], value);
 }
 
+// Validates that a DLC file path contains the DLC base path prefix.
+bool IsDlcPathValid(const base::FilePath& path) {
+  return base::StartsWith(path.value(), kDlcBasePath);
+}
+
+// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
+// realpath's errno unchanged.
+std::optional<base::FilePath> GetRealPath(const base::FilePath& path) {
+  const std::unique_ptr<char, base::FreeDeleter> result(
+      realpath(path.value().c_str(), nullptr));
+  if (!result) {
+    return {};
+  }
+  return base::FilePath(result.get());
+}
+
 }  // namespace
 
 bool MemoryUsage::operator==(const MemoryUsage& other) const {
@@ -106,19 +122,20 @@ bool GetTotalProcessMemoryUsage(size_t* total_memory) {
   return false;
 }
 
-// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
-// realpath's errno unchanged.
-std::optional<base::FilePath> GetRealPath(const base::FilePath& path) {
-  const std::unique_ptr<char, base::FreeDeleter> result(
-      realpath(path.value().c_str(), nullptr));
-  if (!result) {
+// Gives and validates resolved DLC path using realpath(3), or empty Optional
+// upon error. Leaves realpath's errno unchanged.
+std::optional<base::FilePath> ValidateAndGetRealDlcPath(
+    const base::FilePath& path) {
+  const std::optional<base::FilePath> real_path = GetRealPath(path);
+  if (!real_path) {
+    LOG(ERROR) << "Cannot resolve real path: " << path;
     return {};
   }
-  return base::FilePath(result.get());
-}
-
-bool IsDlcPathValid(const base::FilePath& path) {
-  return base::StartsWith(path.value(), kDlcBasePath);
+  if (!IsDlcPathValid(real_path.value())) {
+    LOG(ERROR) << "Not a valid DLC path: " << path;
+    return {};
+  }
+  return real_path;
 }
 
 }  // namespace ml

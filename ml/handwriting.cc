@@ -215,19 +215,12 @@ bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
       spec->language_pack_path) {
     const std::string target_path = spec->language_pack_path.value();
     const std::optional<base::FilePath> real_language_pack_path =
-        GetRealPath(base::FilePath(target_path));
+        ValidateAndGetRealDlcPath(base::FilePath(target_path));
     if (!real_language_pack_path) {
       LOG(ERROR) << "Bad Language Pack path" << target_path;
       return false;
     }
     model_path = base::FilePath(real_language_pack_path.value());
-
-    // For security, we check that the path is pointing to a safe location on
-    // disk.
-    if (!IsDlcPathValid(model_path)) {
-      LOG(ERROR) << "Not a valid Language Pack path " << target_path;
-      return false;
-    }
   } else {
     model_path = lib_path_;
   }

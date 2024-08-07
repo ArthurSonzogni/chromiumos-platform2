@@ -4,7 +4,6 @@
 
 #include "ml/soda_recognizer_impl.h"
 
-#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -13,13 +12,11 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/strings/string_util.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "libsoda/soda_async_impl.h"
-#include "ml/request_metrics.h"
 #include "ml/soda.h"
 #include "ml/soda_proto_mojom_conversion.h"
 #include "ml/util.h"
@@ -42,7 +39,6 @@ using ::speech::soda::chrome::ExtendedSodaConfigMsg;
 using ::speech::soda::chrome::SodaResponse;
 
 constexpr char kSodaLibraryName[] = "libsoda.so";
-constexpr char kDlcBasePath[] = "/run/imageloader";
 
 void SodaCallback(const char* soda_response_str,
                   int size,
@@ -60,10 +56,6 @@ void SodaCallback(const char* soda_response_str,
 
   reinterpret_cast<SodaRecognizerImpl*>(soda_recognizer_impl)
       ->OnSodaEvent(response.SerializeAsString());
-}
-
-bool IsDlcFilePath(const base::FilePath& path) {
-  return base::StartsWith(path.value(), kDlcBasePath);
 }
 
 }  // namespace
@@ -134,24 +126,16 @@ SodaRecognizerImpl::SodaRecognizerImpl(
       receiver_(this, std::move(soda_recognizer)),
       client_remote_(std::move(soda_client)) {
   const std::optional<base::FilePath> real_library_dlc_path =
-      GetRealPath(base::FilePath(spec->library_dlc_path));
+      ValidateAndGetRealDlcPath(base::FilePath(spec->library_dlc_path));
   if (!real_library_dlc_path) {
     PLOG(ERROR) << "Bad library path " << spec->library_dlc_path;
     return;
   }
-  if (!IsDlcFilePath(*real_library_dlc_path)) {
-    LOG(DFATAL) << "Non DLC library path " << *real_library_dlc_path;
-    return;
-  }
 
   const std::optional<base::FilePath> real_language_dlc_path =
-      GetRealPath(base::FilePath(spec->language_dlc_path));
+      ValidateAndGetRealDlcPath(base::FilePath(spec->language_dlc_path));
   if (!real_language_dlc_path) {
     PLOG(ERROR) << "Bad language path " << spec->language_dlc_path;
-    return;
-  }
-  if (!IsDlcFilePath(*real_language_dlc_path)) {
-    LOG(DFATAL) << "Non DLC language path " << *real_language_dlc_path;
     return;
   }
 

@@ -42,21 +42,17 @@ bool GetProcessMemoryUsage(MemoryUsage* memory_usage);
 // Return true if successful, false otherwise.
 bool GetTotalProcessMemoryUsage(size_t* total_memory);
 
-// "dlopen() with RTLD_DEEPBIND" does not work with ASAN. So currently we only
-// support services using this (e.g. HandwritingLibrary) when the "sanitizer" is
-// not enabled (see https://crbug.com/1082632).
+// Gives and validates resolved DLC path using realpath(3), or empty Optional
+// upon error. Leaves realpath's errno unchanged.
+std::optional<base::FilePath> ValidateAndGetRealDlcPath(
+    const base::FilePath& path);
+
+// "dlopen() with RTLD_DEEPBIND" does not work with ASAN. So currently we
+// only support services using this (e.g. HandwritingLibrary) when the
+// "sanitizer" is not enabled (see https://crbug.com/1082632).
 constexpr bool IsAsan() {
   return __has_feature(address_sanitizer);
 }
-
-// Gives resolved path using realpath(3), or empty Optional upon error. Leaves
-// realpath's errno unchanged.
-std::optional<base::FilePath> GetRealPath(const base::FilePath& path);
-
-// Returns true if the given path is a valid path for DLC.
-// This allows ML Service to enforce a security check on the path received via
-// mojo.
-bool IsDlcPathValid(const base::FilePath& path);
 
 }  // namespace ml
 
