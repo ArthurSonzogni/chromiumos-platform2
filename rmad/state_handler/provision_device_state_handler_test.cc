@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/provision_device_state_handler.h"
 
+#include <inttypes.h>
+
 #include <memory>
 #include <optional>
 #include <set>
@@ -13,8 +15,8 @@
 
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
-#include <base/test/task_environment.h>
 #include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -180,9 +182,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     if (args.flash_info.has_value()) {
       const std::string start =
-          base::StringPrintf("%#lx", args.flash_info.value().wpsr_start);
+          base::StringPrintf("0x%" PRIx64, args.flash_info.value().wpsr_start);
       const std::string length =
-          base::StringPrintf("%#lx", args.flash_info.value().wpsr_length);
+          base::StringPrintf("0x%" PRIx64, args.flash_info.value().wpsr_length);
 
       ON_CALL(*mock_cmd_utils,
               GetOutputAndError(

@@ -4,7 +4,7 @@
 
 #include "rmad/state_handler/provision_device_state_handler.h"
 
-#include <openssl/rand.h>
+#include <inttypes.h>
 
 #include <algorithm>
 #include <iomanip>
@@ -25,6 +25,7 @@
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <openssl/rand.h>
 #include <re2/re2.h>
 
 #include "rmad/constants.h"
@@ -744,9 +745,9 @@ void ProvisionDeviceStateHandler::ProvisionWpsr(
 
   std::string output;
   const std::string start =
-      base::StringPrintf("%#lx", flash_info.value().wpsr_start);
+      base::StringPrintf("0x%" PRIx64, flash_info.value().wpsr_start);
   const std::string length =
-      base::StringPrintf("%#lx", flash_info.value().wpsr_length);
+      base::StringPrintf("0x%" PRIx64, flash_info.value().wpsr_length);
 
   // Try to map the flash name to one recognized by |ap_wpsr|. Some flash chips
   // do not need this transform so we are not blocking the process here.
