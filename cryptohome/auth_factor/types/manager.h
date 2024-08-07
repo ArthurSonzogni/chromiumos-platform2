@@ -17,6 +17,7 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/features.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/util/async_init.h"
@@ -37,7 +38,8 @@ class AuthFactorDriverManager {
       KeyChallengeServiceFactory* key_challenge_service_factory,
       CryptohomeRecoveryAuthBlockService* cr_service,
       FingerprintAuthBlockService* fp_service,
-      AsyncInitPtr<BiometricsAuthBlockService> bio_service);
+      AsyncInitPtr<BiometricsAuthBlockService> bio_service,
+      AsyncInitFeatures* features);
 
   AuthFactorDriverManager(const AuthFactorDriverManager&) = delete;
   AuthFactorDriverManager& operator=(const AuthFactorDriverManager&) = delete;

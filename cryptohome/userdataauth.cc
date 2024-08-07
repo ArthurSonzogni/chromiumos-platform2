@@ -865,7 +865,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
         std::make_unique<AuthFactorDriverManager>(
             platform_, crypto_, uss_manager_, async_cc_helper,
             key_challenge_service_factory_, recovery_ab_service_,
-            fingerprint_service_.get(), async_biometrics_service);
+            fingerprint_service_.get(), async_biometrics_service,
+            &async_init_features_);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
   }
 

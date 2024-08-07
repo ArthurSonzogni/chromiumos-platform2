@@ -4,6 +4,8 @@
 
 #include "cryptohome/auth_factor/types/password.h"
 
+#include <vector>
+
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -14,6 +16,7 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/test_utils.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
@@ -23,7 +26,7 @@ using ::base::test::TestFuture;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::testing::_;
-using ::testing::ElementsAre;
+using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
@@ -34,28 +37,45 @@ class PasswordDriverTest : public AuthFactorDriverGenericTest {
  protected:
   const brillo::SecureBlob kPassword{"the password"};
   const brillo::SecureBlob kWrongPassword{"not the password"};
+
+  FakeFeaturesForTesting features_;
 };
 
-TEST_F(PasswordDriverTest, BlockTypes) {
-  PasswordAuthFactorDriver password_driver;
+TEST_F(PasswordDriverTest, BlockTypesDefault) {
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
+  std::vector<AuthBlockType> expected_types = {
+      AuthBlockType::kTpmEcc, AuthBlockType::kTpmBoundToPcr,
+      AuthBlockType::kTpmNotBoundToPcr};
 #if USE_TPM_INSECURE_FALLBACK
-  EXPECT_THAT(
-      driver.block_types(),
-      ElementsAre(AuthBlockType::kTpmEcc, AuthBlockType::kTpmBoundToPcr,
-                  AuthBlockType::kTpmNotBoundToPcr, AuthBlockType::kScrypt));
-#else
-  EXPECT_THAT(driver.block_types(),
-              ElementsAre(AuthBlockType::kTpmEcc, AuthBlockType::kTpmBoundToPcr,
-                          AuthBlockType::kTpmNotBoundToPcr));
+  expected_types.push_back(AuthBlockType::kScrypt);
 #endif
+
+  EXPECT_THAT(driver.block_types(), ElementsAreArray(expected_types));
+  EXPECT_THAT(driver.NeedsResetSecret(), IsFalse());
+}
+
+TEST_F(PasswordDriverTest, BlockTypesWithPinweaver) {
+  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
+  PasswordAuthFactorDriver password_driver{&features_.async};
+  AuthFactorDriver& driver = password_driver;
+
+  std::vector<AuthBlockType> expected_types = {
+      AuthBlockType::kPinWeaver, AuthBlockType::kTpmEcc,
+      AuthBlockType::kTpmBoundToPcr, AuthBlockType::kTpmNotBoundToPcr};
+#if USE_TPM_INSECURE_FALLBACK
+  expected_types.push_back(AuthBlockType::kScrypt);
+#endif
+
+  EXPECT_THAT(driver.block_types(), ElementsAreArray(expected_types));
+  EXPECT_THAT(driver.NeedsResetSecret(), IsTrue());
 }
 
 TEST_F(PasswordDriverTest, PasswordConvertToProto) {
   // Setup
   const std::string kSalt = "fake_salt";
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
   AuthFactorMetadata metadata = CreateMetadataWithType<PasswordMetadata>(
       {.hash_info = SerializedKnowledgeFactorHashInfo{
@@ -89,7 +109,7 @@ TEST_F(PasswordDriverTest, PasswordConvertToProto) {
 
 TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
   AuthFactorMetadata metadata;
 
@@ -103,7 +123,7 @@ TEST_F(PasswordDriverTest, PasswordConvertToProtoErrorNoMetadata) {
 
 TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
@@ -132,7 +152,7 @@ TEST_F(PasswordDriverTest, SupportedWithoutKiosk) {
 
 TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
@@ -147,7 +167,7 @@ TEST_F(PasswordDriverTest, UnsupportedWithKiosk) {
 
 TEST_F(PasswordDriverTest, AlwaysSupportedByHardware) {
   // Setup
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   // Test, Verify
@@ -155,7 +175,7 @@ TEST_F(PasswordDriverTest, AlwaysSupportedByHardware) {
 }
 
 TEST_F(PasswordDriverTest, GetDelayFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   AuthFactor factor(AuthFactorType::kPassword, kLabel,
@@ -169,7 +189,7 @@ TEST_F(PasswordDriverTest, GetDelayFails) {
 }
 
 TEST_F(PasswordDriverTest, GetExpirationFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   AuthFactor factor(AuthFactorType::kPassword, kLabel,
@@ -183,7 +203,7 @@ TEST_F(PasswordDriverTest, GetExpirationFails) {
 }
 
 TEST_F(PasswordDriverTest, PrepareForAddFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -195,7 +215,7 @@ TEST_F(PasswordDriverTest, PrepareForAddFails) {
 }
 
 TEST_F(PasswordDriverTest, PrepareForAuthFails) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
@@ -207,7 +227,7 @@ TEST_F(PasswordDriverTest, PrepareForAuthFails) {
 }
 
 TEST_F(PasswordDriverTest, CreateCredentialVerifier) {
-  PasswordAuthFactorDriver password_driver;
+  PasswordAuthFactorDriver password_driver{&features_.async};
   AuthFactorDriver& driver = password_driver;
 
   AuthInput auth_input = {.user_input = kPassword};

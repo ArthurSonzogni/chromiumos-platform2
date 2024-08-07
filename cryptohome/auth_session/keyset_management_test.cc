@@ -559,7 +559,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       nullptr,
       &system_apis_.recovery_ab_service,
       fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      &features_.async};
   FpMigrationUtility fp_migration_utility_{
       &system_apis_.crypto, AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
       &features_.async};

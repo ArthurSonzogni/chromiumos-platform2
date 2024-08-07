@@ -29,6 +29,7 @@
 #include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -127,6 +128,7 @@ class AuthFactorWithDriverTest : public ::testing::Test {
       AsyncInitPtr<SignallingInterface>(&signalling_)};
   MockBiometricsCommandProcessor* bio_command_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
+  FakeFeaturesForTesting features_;
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
@@ -141,7 +143,8 @@ class AuthFactorWithDriverTest : public ::testing::Test {
           [](AuthFactorWithDriverTest* test) {
             return test->bio_service_.get();
           },
-          base::Unretained(this)))};
+          base::Unretained(this))),
+      &features_.async};
 };
 
 TEST_F(AuthFactorWithDriverTest, PasswordSupportsAllIntents) {

@@ -11,22 +11,19 @@
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
 #include "cryptohome/auth_session/intent.h"
-#include "cryptohome/error/locations.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
-namespace {
 
-// Specifies if pinweaver is enabled for passwords. For an actual rollout this
-// should be converted to a more dynamic flag than a compile time constant.
-constexpr bool kPinweaverPasswordsEnabled = false;
-
-}  // namespace
+AfDriverWithPasswordBlockTypes::AfDriverWithPasswordBlockTypes(
+    AsyncInitFeatures* features)
+    : features_(features) {}
 
 base::span<const AuthBlockType> AfDriverWithPasswordBlockTypes::block_types()
     const {
   base::span<const AuthBlockType> types = kBlockTypes;
-  if (!kPinweaverPasswordsEnabled) {
+  if (!features_->IsFeatureEnabled(Features::kPinweaverForPassword)) {
     return types.subspan(1);
   }
   return types;
@@ -42,6 +39,9 @@ bool AfDriverWithPasswordBlockTypes::NeedsResetSecret() const {
       types.end();
   return is_pinweaver_enabled;
 }
+
+PasswordAuthFactorDriver::PasswordAuthFactorDriver(AsyncInitFeatures* features)
+    : AfDriverWithPasswordBlockTypes(features) {}
 
 bool PasswordAuthFactorDriver::IsSupportedByHardware() const {
   return true;

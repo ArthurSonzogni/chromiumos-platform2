@@ -170,6 +170,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
 
+  FakeFeaturesForTesting features_;
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
@@ -179,9 +180,9 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
       &cr_service_,
       &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
-          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this)))};
+          &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this))),
+      &features_.async};
 
-  FakeFeaturesForTesting features_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
 };
 

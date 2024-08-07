@@ -342,7 +342,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       &platform_,        &crypto_,
       &uss_manager_,     AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,           &cr_service_,
-      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      &features_.async};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FpMigrationUtility fp_migration_utility_{

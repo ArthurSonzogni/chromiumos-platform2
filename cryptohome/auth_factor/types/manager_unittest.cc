@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_session/intent.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_signalling.h"
@@ -54,13 +55,15 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_),
       AsyncInitPtr<SignallingInterface>(&signalling_)};
+  FakeFeaturesForTesting features_;
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
-      &platform_,    &crypto_,
-      &uss_manager_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
-      nullptr,       &cr_service_,
-      &fp_service_,  AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,      &crypto_,
+      &uss_manager_,   AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,         &cr_service_,
+      &fp_service_,    AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      &features_.async};
 };
 
 TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {

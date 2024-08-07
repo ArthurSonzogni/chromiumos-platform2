@@ -369,6 +369,7 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockRecoverableKeyStoreBackendCertProvider> cert_provider_;
+  FakeFeaturesForTesting fake_features_;
   AuthFactorDriverManager auth_factor_driver_manager_{
       &platform_,
       &crypto_,
@@ -379,10 +380,10 @@ class AuthSessionTest : public ::testing::Test {
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
-          base::Unretained(this)))};
+          base::Unretained(this))),
+      &fake_features_.async};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
-  FakeFeaturesForTesting fake_features_;
   FpMigrationUtility fp_migration_utility_{
       &crypto_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(

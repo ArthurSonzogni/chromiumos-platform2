@@ -17,6 +17,7 @@
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
@@ -44,6 +45,8 @@ namespace cryptohome {
 // block types that are supported.
 class AfDriverWithPasswordBlockTypes : public virtual AuthFactorDriver {
  protected:
+  explicit AfDriverWithPasswordBlockTypes(AsyncInitFeatures* features);
+
   base::span<const AuthBlockType> block_types() const final;
   bool NeedsResetSecret() const final;
 
@@ -55,6 +58,8 @@ class AfDriverWithPasswordBlockTypes : public virtual AuthFactorDriver {
       AuthBlockType::kScrypt,
 #endif
   };
+
+  AsyncInitFeatures* features_;
 };
 
 class PasswordAuthFactorDriver final
@@ -74,7 +79,7 @@ class PasswordAuthFactorDriver final
       public AfDriverWithKnowledgeFactorType<
           KnowledgeFactorType::KNOWLEDGE_FACTOR_TYPE_PASSWORD> {
  public:
-  PasswordAuthFactorDriver() = default;
+  explicit PasswordAuthFactorDriver(AsyncInitFeatures* features);
 
  private:
   bool IsSupportedByHardware() const override;
