@@ -8,6 +8,7 @@ include = [
 ]
 
 [dependencies]
+nix = { version = "0.28.0", features = ["user"]}
 
 [[bin]]
 name = "chromeos-install"

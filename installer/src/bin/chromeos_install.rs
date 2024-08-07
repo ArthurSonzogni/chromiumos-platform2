@@ -7,10 +7,17 @@
 //! https://github.com/google/deshell/blob/main/playbook.md
 
 use std::process::{Command, ExitCode};
+use nix::unistd;
 
 fn main() -> ExitCode {
     // Don't include argv[0], the executable name, when passing args.
     let args = std::env::args().skip(1);
+
+    // Fail if not running as root.
+    if !unistd::Uid::effective().is_root() {
+        eprintln!("chromeos-install must be run as root");
+        return ExitCode::FAILURE;
+    }
 
     if let Ok(status) = Command::new("/usr/sbin/chromeos-install.sh")
         .args(args)
