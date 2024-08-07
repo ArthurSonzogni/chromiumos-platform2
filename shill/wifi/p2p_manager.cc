@@ -231,6 +231,14 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
   std::optional<int32_t> freq;
   if (args.Contains<int32_t>(kP2PDeviceFrequency)) {
     freq = args.Get<int32_t>(kP2PDeviceFrequency);
+    auto freqs = SupportedChannels();
+    if (std::count(freqs.begin(), freqs.end(), freq) == 0) {
+      LOG(WARNING) << __func__ << ": invalid frequency " << freq.value()
+                   << " , reset to null";
+      freq = std::nullopt;
+    } else {
+      LOG(INFO) << __func__ << ": on frequency " << freq.value();
+    }
   }
 
   if (!args.Contains<int32_t>(kP2PDevicePriority)) {
@@ -320,6 +328,14 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   std::optional<int32_t> freq;
   if (args.Contains<int32_t>(kP2PDeviceFrequency)) {
     freq = args.Get<int32_t>(kP2PDeviceFrequency);
+    auto freqs = SupportedChannels();
+    if (std::count(freqs.begin(), freqs.end(), freq) == 0) {
+      LOG(WARNING) << __func__ << ": invalid frequency " << freq.value()
+                   << " , reset to null";
+      freq = std::nullopt;
+    } else {
+      LOG(INFO) << __func__ << ": on frequency " << freq.value();
+    }
   }
 
   if (!args.Contains<int32_t>(kP2PDevicePriority)) {
