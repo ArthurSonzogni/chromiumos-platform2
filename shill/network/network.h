@@ -174,6 +174,8 @@ class Network : public NetworkMonitor::ClientNetwork {
     std::optional<DHCPController::Options> dhcp;
     // Accept router advertisements for IPv6.
     bool accept_ra = false;
+    // Start DHCP-PD for IPv6. This needs to be used together with accept_ra.
+    bool dhcp_pd = false;
     // The link local address for the device that would be an override of the
     // default EUI-64 link local address assigned by the kernel. Used in
     // cellular where the link local address is generated from the network ID
@@ -392,9 +394,13 @@ class Network : public NetworkMonitor::ClientNetwork {
   const IPConfig* get_ipconfig_for_testing() const { return ipconfig_.get(); }
   const IPConfig* get_ip6config_for_testing() const { return ip6config_.get(); }
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
-  void set_dhcp_controller_factory_for_testing(
+  void set_legacy_dhcp_controller_factory_for_testing(
       std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory) {
     legacy_dhcp_controller_factory_ = std::move(dhcp_controller_factory);
+  }
+  void set_dhcp_controller_factory_for_testing(
+      std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory) {
+    dhcp_controller_factory_ = std::move(dhcp_controller_factory);
   }
   void set_state_for_testing(State state) { state_ = state; }
   void set_primary_family_for_testing(
@@ -506,6 +512,13 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Functions for IPv6.
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
+  // Callbacks with DHCPController for DHCPv6. Interface kept same with DHCPv4
+  // but |dhcp_data|, |new_lease_acquired|, and |is_voluntary| are not used.
+  void OnNetworkConfigUpdatedFromDHCPv6(
+      const net_base::NetworkConfig& network_config,
+      const DHCPv4Config::Data& dhcp_data,
+      bool new_lease_acquired);
+  void OnDHCPv6Drop(bool is_voluntary);
 
   // Callback registered with SLAACController. |update_type| indicates the
   // update type (see comment in SLAACController declaration for detail).
@@ -572,10 +585,15 @@ class Network : public NetworkMonitor::ClientNetwork {
   // remove `legacy_dhcp_controller_factory_`.
   std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory_;
   std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory_;
-  // The instance exists when the state is not at kIdle.
+  // The instance exists when the state is not at kIdle and StartOptions has
+  // `dhcp` set.
   std::unique_ptr<DHCPController> dhcp_controller_;
-  // The instance exists when the state is not at kIdle.
+  // The instance exists when the state is not at kIdle and StartOptions has
+  // `accept_ra` set.
   std::unique_ptr<SLAACController> slaac_controller_;
+  // The instance exists when the state is not at kIdle and StartOptions has
+  // `dhcp_pd` set.
+  std::unique_ptr<DHCPController> dhcp_pd_controller_;
 
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;

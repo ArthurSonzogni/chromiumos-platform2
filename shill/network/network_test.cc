@@ -133,15 +133,17 @@ net_base::NetworkConfig CreateIPv4NetworkConfig(
 // Allows us to fake/mock some functions in this test.
 class NetworkInTest : public Network {
  public:
-  NetworkInTest(int interface_index,
-                const std::string& interface_name,
-                Technology technology,
-                bool fixed_ip_params,
-                ControlInterface* control_interface,
-                EventDispatcher* dispatcher,
-                Metrics* metrics,
-                std::unique_ptr<NetworkMonitorFactory> network_monitor_factory,
-                std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory)
+  NetworkInTest(
+      int interface_index,
+      const std::string& interface_name,
+      Technology technology,
+      bool fixed_ip_params,
+      ControlInterface* control_interface,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      std::unique_ptr<NetworkMonitorFactory> network_monitor_factory,
+      std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory,
+      std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory)
       : Network(interface_index,
                 interface_name,
                 technology,
@@ -150,8 +152,8 @@ class NetworkInTest : public Network {
                 dispatcher,
                 metrics,
                 /*patchpanel_client=*/nullptr,
+                std::move(legacy_dhcp_controller_factory),
                 std::move(dhcp_controller_factory),
-                /*dhcp_controller_factory=*/nullptr,
                 /*resolver=*/nullptr,
                 std::move(network_monitor_factory)) {
     ON_CALL(*this, ApplyNetworkConfig)
@@ -181,6 +183,9 @@ class NetworkTest : public ::testing::Test {
       return std::make_unique<MockNetworkMonitor>();
     });
 
+    auto legacy_dhcp_controller_factory =
+        std::make_unique<MockDHCPControllerFactory>();
+    legacy_dhcp_controller_factory_ = legacy_dhcp_controller_factory.get();
     auto dhcp_controller_factory =
         std::make_unique<MockDHCPControllerFactory>();
     dhcp_controller_factory_ = dhcp_controller_factory.get();
@@ -188,7 +193,9 @@ class NetworkTest : public ::testing::Test {
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
         /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-        std::move(network_monitor_factory), std::move(dhcp_controller_factory));
+        std::move(network_monitor_factory),
+        std::move(legacy_dhcp_controller_factory),
+        std::move(dhcp_controller_factory));
     network_->RegisterEventHandler(&event_handler_);
     network_->RegisterEventHandler(&event_handler2_);
     proc_fs_ = dynamic_cast<net_base::MockProcFsStub*>(
@@ -208,18 +215,38 @@ class NetworkTest : public ::testing::Test {
   void ExpectCreateDHCPController(
       bool request_ip_result,
       const DHCPController::Options& options = kDHCPOptions) {
-    EXPECT_CALL(*dhcp_controller_factory_,
-                Create(kTestIfname, kTestTechnology, options, _, _))
+    EXPECT_CALL(*legacy_dhcp_controller_factory_,
+                Create(kTestIfname, kTestTechnology, options, _, _, _))
         .WillOnce([request_ip_result, this](
                       std::string_view device_name, Technology technology,
                       const DHCPController::Options& options,
                       DHCPController::UpdateCallback update_callback,
-                      DHCPController::DropCallback drop_callback) {
+                      DHCPController::DropCallback drop_callback,
+                      net_base::IPFamily family) {
           auto dhcp_controller = std::make_unique<MockDHCPController>(
               nullptr, nullptr, nullptr, nullptr, device_name, technology,
               options, std::move(update_callback), std::move(drop_callback));
           dhcp_controller_ = dhcp_controller.get();
           EXPECT_CALL(*dhcp_controller_, RenewIP)
+              .WillOnce(Return(request_ip_result));
+          return dhcp_controller;
+        });
+  }
+
+  void ExpectCreateDHCPPDController(bool request_ip_result) {
+    EXPECT_CALL(*dhcp_controller_factory_,
+                Create(kTestIfname, kTestTechnology, _, _, _, _))
+        .WillOnce([request_ip_result, this](
+                      std::string_view device_name, Technology technology,
+                      const DHCPController::Options& options,
+                      DHCPController::UpdateCallback update_callback,
+                      DHCPController::DropCallback drop_callback,
+                      net_base::IPFamily family) {
+          auto dhcp_controller = std::make_unique<MockDHCPController>(
+              nullptr, nullptr, nullptr, nullptr, device_name, technology,
+              options, std::move(update_callback), std::move(drop_callback));
+          dhcp_pd_controller_ = dhcp_controller.get();
+          EXPECT_CALL(*dhcp_pd_controller_, RenewIP)
               .WillOnce(Return(request_ip_result));
           return dhcp_controller;
         });
@@ -271,8 +298,10 @@ class NetworkTest : public ::testing::Test {
   std::unique_ptr<NiceMock<NetworkInTest>> network_;
 
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
+  MockDHCPControllerFactory* legacy_dhcp_controller_factory_ = nullptr;
   MockDHCPControllerFactory* dhcp_controller_factory_ = nullptr;
   MockDHCPController* dhcp_controller_ = nullptr;
+  MockDHCPController* dhcp_pd_controller_ = nullptr;
   MockSLAACController* slaac_controller_ = nullptr;
   net_base::MockProcFsStub* proc_fs_ = nullptr;
   MockNetworkMonitorFactory* network_monitor_factory_ = nullptr;
@@ -490,6 +519,17 @@ TEST_F(NetworkTest, DHCPRenewWithoutController) {
   EXPECT_FALSE(network_->RenewDHCPLease());
 }
 
+TEST_F(NetworkTest, DHCPPDStartOnNetworkStart) {
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  ExpectCreateDHCPPDController(true);
+  network_->Start(Network::StartOptions{.accept_ra = true, .dhcp_pd = true});
+
+  // DHCPPD failure would not trigger Stop().
+  ExpectCreateDHCPPDController(false);
+  network_->Start(Network::StartOptions{.accept_ra = true, .dhcp_pd = true});
+}
+
 TEST_F(NetworkTest, NeighborReachabilityEvents) {
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;
@@ -698,7 +738,9 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto wifi_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kWiFi,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-      /*network_monitor_factory=*/nullptr, /*dhcp_controller_factory=*/nullptr);
+      /*network_monitor_factory=*/nullptr,
+      /*legacy_dhcp_controller_factory=*/nullptr,
+      /*dhcp_controller_factory=*/nullptr);
   wifi_network->set_ignore_link_monitoring_for_testing(true);
 
   EXPECT_CALL(
@@ -752,7 +794,9 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto eth_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kEthernet,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-      /*network_monitor_factory=*/nullptr, /*dhcp_controller_factory=*/nullptr);
+      /*network_monitor_factory=*/nullptr,
+      /*legacy_dhcp_controller_factory=*/nullptr,
+      /*dhcp_controller_factory=*/nullptr);
   eth_network->set_ignore_link_monitoring_for_testing(true);
 
   EXPECT_CALL(metrics_,

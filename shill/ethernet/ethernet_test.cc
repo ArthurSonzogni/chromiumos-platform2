@@ -117,8 +117,11 @@ class EthernetTest : public testing::Test {
     auto dhcp_controller_factory =
         std::make_unique<MockDHCPControllerFactory>();
     dhcp_controller_factory_ = dhcp_controller_factory.get();
+    ethernet_->GetPrimaryNetwork()
+        ->set_legacy_dhcp_controller_factory_for_testing(
+            std::move(dhcp_controller_factory));
     ethernet_->GetPrimaryNetwork()->set_dhcp_controller_factory_for_testing(
-        std::move(dhcp_controller_factory));
+        std::make_unique<MockDHCPControllerFactory>());
 
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 

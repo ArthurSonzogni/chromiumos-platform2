@@ -45,12 +45,14 @@ DHCPController::DHCPController(
     Technology technology,
     const Options& options,
     UpdateCallback update_callback,
-    DropCallback drop_callback)
+    DropCallback drop_callback,
+    net_base::IPFamily family)
     : dispatcher_(dispatcher),
       metrics_(metrics),
       time_(time),
       device_name_(device_name),
       technology_(technology),
+      family_(family),
       options_(options),
       update_callback_(std::move(update_callback)),
       drop_callback_(std::move(drop_callback)),
@@ -131,18 +133,15 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
     case DHCPClientProxy::EventReason::kRebind:
     case DHCPClientProxy::EventReason::kReboot:
     case DHCPClientProxy::EventReason::kRenew:
+    case DHCPClientProxy::EventReason::kBound6:
+    case DHCPClientProxy::EventReason::kRebind6:
+    case DHCPClientProxy::EventReason::kReboot6:
+    case DHCPClientProxy::EventReason::kRenew6:
       UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/false);
       return;
 
     case DHCPClientProxy::EventReason::kGatewayArp:
       UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/true);
-      return;
-
-    case DHCPClientProxy::EventReason::kBound6:
-    case DHCPClientProxy::EventReason::kRebind6:
-    case DHCPClientProxy::EventReason::kReboot6:
-    case DHCPClientProxy::EventReason::kRenew6:
-      // TODO(b/350884946): Pass DHCPPD configuration to Network.
       return;
   }
 }
@@ -231,8 +230,7 @@ bool DHCPController::Start() {
   last_provision_timer_ = std::make_unique<chromeos_metrics::Timer>();
   last_provision_timer_->Start();
 
-  dhcp_client_proxy_ =
-      create_dhcp_client_proxy_cb_.Run(net_base::IPFamily::kIPv4);
+  dhcp_client_proxy_ = create_dhcp_client_proxy_cb_.Run(family_);
   if (dhcp_client_proxy_ == nullptr) {
     return false;
   }
@@ -363,11 +361,12 @@ std::unique_ptr<DHCPController> DHCPControllerFactory::Create(
     Technology technology,
     const DHCPController::Options& options,
     DHCPController::UpdateCallback update_callback,
-    DHCPController::DropCallback drop_callback) {
+    DHCPController::DropCallback drop_callback,
+    net_base::IPFamily family) {
   return std::make_unique<DHCPController>(
       dispatcher_, metrics_, time_, dhcp_client_proxy_factory_, device_name,
-      technology, options, std::move(update_callback),
-      std::move(drop_callback));
+      technology, options, std::move(update_callback), std::move(drop_callback),
+      family);
 }
 
 }  // namespace shill

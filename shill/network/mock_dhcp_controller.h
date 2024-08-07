@@ -56,7 +56,8 @@ class MockDHCPControllerFactory : public DHCPControllerFactory {
                Technology technology,
                const DHCPClientProxy::Options& options,
                DHCPController::UpdateCallback update_callback,
-               DHCPController::DropCallback drop_callback),
+               DHCPController::DropCallback drop_callback,
+               net_base::IPFamily family),
               (override));
 };
 

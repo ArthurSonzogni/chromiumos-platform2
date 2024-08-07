@@ -213,6 +213,22 @@ void Network::Start(const Network::StartOptions& opts) {
       LOG(ERROR) << "Failed to request DHCP IP";
     }
   }
+  if (opts.dhcp_pd && !opts.accept_ra) {
+    LOG(ERROR) << "DHCP-PD needs accept_ra to function correctly";
+  }
+  if (opts.dhcp_pd && opts.accept_ra) {
+    dhcp_pd_controller_ = dhcp_controller_factory_->Create(
+        interface_name_, technology_, DHCPController::Options(),
+        base::BindRepeating(&Network::OnNetworkConfigUpdatedFromDHCPv6,
+                            AsWeakPtr()),
+        base::BindRepeating(&Network::OnDHCPv6Drop, AsWeakPtr()),
+        net_base::IPFamily::kIPv6);
+    if (!dhcp_pd_controller_) {
+      LOG(ERROR) << "Failed to create DHCPv6-PD controller";
+    } else if (!dhcp_pd_controller_->RenewIP()) {
+      LOG(ERROR) << "Failed to start DHCPv6-PD";
+    }
+  }
 
   if ((config_.GetLinkProtocol() && config_.GetLinkProtocol()->ipv4_address) ||
       config_.GetStatic().ipv4_address) {
@@ -554,6 +570,23 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   } else {
     StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);
   }
+}
+
+void Network::OnNetworkConfigUpdatedFromDHCPv6(
+    const net_base::NetworkConfig& network_config,
+    const DHCPv4Config::Data& /*dhcp_data*/,
+    bool /*new_lease_acquired*/) {
+  // |dhcp_pd_controller_| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_pd_controller_);
+  LOG(INFO) << *this << ": " << __func__ << ": " << network_config;
+  // TODO(b/350884946): Implement this callback - merge the NetworkConfig from
+  // DHCPv6-PD into CompoundNetworkConfig and stop generating address from
+  // SLAAC.
+}
+
+void Network::OnDHCPv6Drop(bool /*is_voluntary*/) {
+  LOG(INFO) << *this << ": " << __func__;
+  // TODO(b/350884946): Implement this callback.
 }
 
 bool Network::RenewDHCPLease() {

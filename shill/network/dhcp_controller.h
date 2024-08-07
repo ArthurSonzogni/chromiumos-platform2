@@ -69,7 +69,8 @@ class DHCPController : public DHCPClientProxy::EventHandler {
                  Technology technology,
                  const Options& options,
                  UpdateCallback update_callback,
-                 DropCallback drop_callback);
+                 DropCallback drop_callback,
+                 net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
   virtual ~DHCPController();
 
@@ -160,6 +161,7 @@ class DHCPController : public DHCPClientProxy::EventHandler {
 
   const std::string device_name_;
   const Technology technology_;
+  const net_base::IPFamily family_;
   const DHCPClientProxy::Options options_;
   const UpdateCallback update_callback_;
   const DropCallback drop_callback_;
@@ -204,7 +206,8 @@ class DHCPControllerFactory {
       Technology technology,
       const DHCPController::Options& options,
       DHCPController::UpdateCallback update_callback,
-      DHCPController::DropCallback drop_callback);
+      DHCPController::DropCallback drop_callback,
+      net_base::IPFamily family = net_base::IPFamily::kIPv4);
 
  private:
   EventDispatcher* dispatcher_;
