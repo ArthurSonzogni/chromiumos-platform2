@@ -37,17 +37,26 @@
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/util/async_init.h"
+#include "cryptohome/util/templates.h"
 
 namespace cryptohome {
 
 // To be supported by this generic API, an AuthBlock class must implement a
 // specific static API. This is the GenericAuthBlock concept.
-//
-// The generic auth block type must:
-//   - Have a static constexpr member kType of AuthBlockType
-//   - Have a StateType alias specifying the AuthBlockState type
-//   - Have a static function IsSupported() that returns CryptoStatus
-//   - Have a static function New() that returns unique_ptr<AuthBlock>
+template <typename T>
+concept GenericAuthBlock = requires(T a) {
+  // Must have a static constexpr AuthBlockType member.
+  std::integral_constant<AuthBlockType, T::kType>::value;
+  // Must have a StateType type alias specifying the type for AuthBlockState.
+  typename T::StateType;
+  // Must have a static IsSupported function that returns a CryptoStatus.
+  requires std::same_as<FunctionPtrReturnType<decltype(&T::IsSupported)>,
+                        CryptoStatus>;
+  // Must have a static factory function "New" that returns a unique_ptr of a
+  // constructed instance of the auth block.
+  requires std::convertible_to<FunctionPtrReturnType<decltype(&T::New)>,
+                               std::unique_ptr<AuthBlock>>;
+};
 
 // Provide a collection of functions that delegates the actual operations to the
 // appropriate auth block implementation, based on an AuthBlockType parameter.
@@ -66,7 +75,7 @@ class GenericAuthBlockFunctions {
   // This special template type is a way for us to "pass" a set of types to a
   // function. The actual type itself is empty and doesn't have any particular
   // value besides having a parameter pack of types attached to it.
-  template <typename... Types>
+  template <GenericAuthBlock... Types>
   struct TypeContainer {};
 
   // A type container with all of the auth block types that support generic
