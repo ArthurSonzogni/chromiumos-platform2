@@ -5,11 +5,31 @@
 #
 # A script to install from removable media to hard disk.
 
+# These will be set as environment variables by the calling rust binary:
+# FLAGS_dst
+# FLAGS_skip_dst_removable
+# FLAGS_skip_rootfs
+# FLAGS_yes
+# FLAGS_preserve_stateful
+# FLAGS_payload_image
+# FLAGS_pmbr_code
+# FLAGS_target_bios
+# FLAGS_debug
+# FLAGS_skip_postinstall
+# FLAGS_lab_preserve_logs
+# FLAGS_storage_diags
+# FLAGS_lvm_stateful
+# FLAGS_minimal_copy
+# FLAGS_skip_gpt_creation
+
+# To keep changes minimal, temporarily define these boolean constants which were
+# previously supplied by shflags.
+FLAGS_TRUE="0"
+FLAGS_FALSE="1"
+
 # Load functions and constants for chromeos-install.
 # shellcheck source=../chromeos-common-script/share/chromeos-common.sh
 . /usr/share/misc/chromeos-common.sh || exit 1
-# shellcheck source=../../scripts/lib/shflags/shflags
-. /usr/share/misc/shflags || exit 1
 # shellcheck source=../chromeos-common-script/share/lvm-utils.sh
 . /usr/share/misc/lvm-utils.sh || exit 1
 
@@ -27,43 +47,6 @@ HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
 TMPMNT=/tmp/install-mount-point
 # Partition numbers that have assumptions about them. This list should be kept
 # to a minimal. Check copy_partition for most special casing.
-
-# TODO(installer): Clean up all these flags. There are way too many flags in
-# this script.
-
-DEFINE_string dst "" "Destination device"
-DEFINE_boolean skip_dst_removable "${FLAGS_FALSE}" \
-  "Skip check to ensure destination is not removable"
-DEFINE_boolean skip_rootfs "${FLAGS_FALSE}" \
-  "Skip installing the rootfs; Only set up partition table and clear and \
-reinstall the stateful partition."
-DEFINE_boolean yes "${FLAGS_FALSE}" \
-  "Answer yes to everything"
-DEFINE_boolean preserve_stateful "${FLAGS_FALSE}" \
-  "Don't create a new filesystem for the stateful partition. Be careful \
-using this option as this may make the stateful partition not mountable."
-DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
-the device's hard drive"
-DEFINE_string pmbr_code "" "Path to PMBR code to be installed"
-DEFINE_string target_bios "" "Bios type to boot with (see postinst --bios)"
-DEFINE_boolean debug "${FLAGS_FALSE}" "Show debug output"
-DEFINE_boolean skip_postinstall "${FLAGS_FALSE}" \
-  "Skip postinstall for situations where you're building for a \
-non-native arch. Note that this will probably break verity."
-DEFINE_string lab_preserve_logs "" "Path to a file containing logs to be \
-preserved"
-DEFINE_boolean storage_diags "${FLAGS_FALSE}" "Print storage diagnostic \
-information on failure"
-DEFINE_boolean lvm_stateful "${FLAGS_FALSE}" "Create LVM-based stateful \
-partition"
-DEFINE_boolean minimal_copy "${FLAGS_FALSE}" "Minimal copy of partitions."
-DEFINE_boolean skip_gpt_creation "${FLAGS_FALSE}" "Skips creating the \
-GPT partition table."
-
-
-# Parse command line
-FLAGS "$@" || exit 1
-eval set -- "${FLAGS_ARGV}"
 
 die() {
   echo "$*" >&2
