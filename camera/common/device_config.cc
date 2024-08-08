@@ -176,12 +176,6 @@ int DeviceConfig::GetArcApiLevel() {
   return value;
 }
 
-bool DeviceConfig::HasMipiCamera() const {
-  std::optional<int> count = GetCameraCount(Interface::kMipi);
-  // Assume devices without available camera count don't have MIPI camera.
-  return count.has_value() && count.value() > 0;
-}
-
 void DeviceConfig::ProbeSensorSubdev(struct media_entity_desc* desc,
                                      const base::FilePath& path) {
   V4L2SensorInfo sensor{.name = desc->name};

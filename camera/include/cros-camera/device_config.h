@@ -123,9 +123,6 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   // between API levels and Android versions.
   static int GetArcApiLevel();
 
-  // Check if there is any MIPI camera.
-  bool HasMipiCamera() const;
-
  private:
   DeviceConfig() = default;
 
