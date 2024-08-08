@@ -126,9 +126,10 @@ std::unique_ptr<password_provider::Password> GetPassword(
 MountManager::MountManager(std::unique_ptr<MountTracker> mount_tracker,
                            SambaInterfaceFactory samba_interface_factory)
     : mount_tracker_(std::move(mount_tracker)),
-      samba_interface_factory_(samba_interface_factory),
-      system_samba_interface_(
-          CreateSambaInterface(MountConfig(false /* enable_ntlm */))) {}
+      samba_interface_factory_(samba_interface_factory) {
+  system_samba_interface_ =
+      CreateSambaInterface(MountConfig(false /* enable_ntlm */));
+}
 
 MountManager::~MountManager() = default;
 

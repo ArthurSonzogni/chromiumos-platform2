@@ -138,7 +138,7 @@ class MountManager {
 
   const std::unique_ptr<MountTracker> mount_tracker_;
   const SambaInterfaceFactory samba_interface_factory_;
-  const std::unique_ptr<SambaInterface> system_samba_interface_;
+  std::unique_ptr<SambaInterface> system_samba_interface_;
 
   base::WeakPtrFactory<MountManager> weak_ptr_factory_{this};
 };
