@@ -165,6 +165,7 @@ COMMIT
 -A INPUT -p icmp -j ACCEPT
 {% elif ipv6 -%}
 -A INPUT -p ipv6-icmp -j ACCEPT
+-A INPUT -p udp -m udp --dport 546 -j ACCEPT
 {% endif -%}
 -A INPUT -j ingress_port_firewall
 -A INPUT -j ingress_downstream_network
