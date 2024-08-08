@@ -26,6 +26,7 @@
 #include <chromeos/net-base/mock_rtnl_handler.h>
 #include <chromeos/net-base/mock_socket.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -97,14 +98,17 @@ class EthernetTest : public testing::Test {
  public:
   EthernetTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        ethernet_(new TestEthernet(&manager_, ifname_, hwaddr_, ifindex_)),
         eap_listener_(new MockEapListener()),
         mock_eap_service_(new MockService(&manager_)),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
-        supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
-        mock_service_(new MockEthernetService(
-            &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr())) {}
+        supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()) {
+    manager_.set_patchpanel_client_for_testing(
+        std::make_unique<patchpanel::FakeClient>());
+    ethernet_ = new TestEthernet(&manager_, ifname_, hwaddr_, ifindex_);
+    mock_service_ = new MockEthernetService(
+        &manager_, ethernet_->weak_ptr_factory_.GetWeakPtr());
+  }
   ~EthernetTest() override = default;
 
   void SetUp() override {

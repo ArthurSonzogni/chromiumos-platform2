@@ -1213,7 +1213,7 @@ class NetworkStartTest : public NetworkTest {
         *net_base::IPAddress::CreateFromString(kIPv6LinkProtocolNameserver)};
   }
 
-  void InvokeStart(const TestOptions& test_opts) {
+  void InvokeStart(const TestOptions& test_opts, bool expect_failure = false) {
     if (test_opts.static_ipv4) {
       ConfigureStaticIPv4Config();
     }
@@ -1244,9 +1244,14 @@ class NetworkStartTest : public NetworkTest {
               .Times(test_opts.expect_network_monitor_start ? 1 : 0);
           return network_monitor;
         });
+    if (!expect_failure) {
+      EXPECT_CALL(*network_,
+                  ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
+    }
     network_->Start(start_opts);
     dispatcher_.task_environment().RunUntilIdle();
     Mock::VerifyAndClearExpectations(dhcp_controller_);
+    Mock::VerifyAndClearExpectations(network_.get());
   }
 
   void ConfigureStaticIPv4Config() {
@@ -1421,7 +1426,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
   EXPECT_CALL(*network_, ApplyNetworkConfig).Times(0);
 
   ExpectCreateDHCPController(/*request_ip_result=*/false);
-  InvokeStart(test_opts);
+  InvokeStart(test_opts, /*expect_failure=*/true);
   EXPECT_EQ(network_->state(), Network::State::kIdle);
   VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kNone);
 }

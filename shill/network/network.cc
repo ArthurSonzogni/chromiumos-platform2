@@ -229,7 +229,14 @@ void Network::Start(const Network::StartOptions& opts) {
         FROM_HERE,
         base::BindOnce(&Network::StopInternal, AsWeakPtr(),
                        /*is_failure=*/true, /*trigger_callback=*/true));
+    return;
   }
+
+  // Preliminary set up routing policy to enable basic local connectivity
+  // (needed for DHCPv6). Note that priority is not assigned until Network
+  // became Connected, so here the rules are set up with default (lowest)
+  // priority.
+  ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy);
 
   LOG(INFO) << *this << ": Started IP provisioning, dhcp: "
             << (dhcp_started ? "started" : "no")
