@@ -6,7 +6,7 @@
 
 #include "common/framing_stream_manipulator.h"
 
-#include <sync/sync.h>
+#include <sys/types.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -26,7 +26,7 @@
 #include <base/system/sys_info.h>
 #include <base/task/bind_post_task.h>
 #include <ml_core/dlc/dlc_ids.h>
-#include <sys/types.h>
+#include <sync/sync.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
@@ -75,12 +75,6 @@ bool CanCreateUpsampler() {
   return base::PathExists(base::FilePath(constants::kForceEnableSuperResPath));
 }
 
-// Return true if we enable the evaluation mode for still capture.
-bool EnableEvalStillYuv() {
-  return base::PathExists(
-      base::FilePath(constants::kForceEnableSuperResEvalPath));
-}
-
 // Ensure even input dimensions for GPU cropping.
 std::pair<uint32_t, uint32_t> GetEvenInputDimensions(
     const Rect<float>& crop_region, const Size& dimension) {
@@ -102,23 +96,6 @@ bool IsUpsampleRequestValid(uint32_t target_width,
 }
 
 using ScaleMethod = FramingStreamManipulator::ScaleMethod;
-std::string ScaleMethodToString(ScaleMethod method) {
-  switch (method) {
-    case ScaleMethod::kBicubic:
-      return "bicubic";
-    case ScaleMethod::kLanczos:
-      return "lanczos";
-    case ScaleMethod::kRaisr:
-      return "raisr";
-    case ScaleMethod::kLancet:
-      return "lancet";
-    case ScaleMethod::kLancetAlpha:
-      return "lancet_alpha";
-    case ScaleMethod::kInvalid:
-      return "invalid";
-  }
-}
-
 ResamplingMethod ScaleMethodToResamplingMethod(ScaleMethod method) {
   switch (method) {
     case ScaleMethod::kLanczos:
@@ -1410,13 +1387,6 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
     ctx->client_still_yuv_buffer->acquire_fence = -1;
     ctx->client_still_yuv_buffer->release_fence = fence->release();
   }
-#if USE_CAMERA_FEATURE_SUPER_RES
-  if (EnableEvalStillYuv()) {
-    CHECK(ctx->timestamp.has_value());
-    ProduceMultiUpsamplingResults(*ctx->timestamp, *still_yuv_buffer.buffer(),
-                                  adjusted_crop_region);
-  }
-#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   ctx->still_yuv_buffer = std::nullopt;
   return true;
@@ -2027,97 +1997,5 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
   EglFence fence;
   return fence.GetNativeFd();
 }
-
-#if USE_CAMERA_FEATURE_SUPER_RES
-void FramingStreamManipulator::ProduceMultiUpsamplingResults(
-    int64_t timestamp,
-    buffer_handle_t full_yuv,
-    const Rect<float>& crop_region) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-
-  const base::FilePath dir_path("/usr/local/super_res/");
-  std::string timestamp_str = std::to_string(timestamp);
-  uint32_t output_width = CameraBufferManager::GetWidth(full_yuv);
-  uint32_t output_height = CameraBufferManager::GetHeight(full_yuv);
-
-  // *** File Structure Explanation ***
-  // Images will be stored in the following directory structure:
-  // * input_full/: Contains the original, uncropped YUV frames.
-  // * input_cropped/: Contains Bicubic cropped YUV frames.
-  // * (ScaleMethod)/: Contains upsampled YUV frames.
-
-  // Store original (full) yuv frame.
-  std::string folder = "input_full/";
-  if (!base::CreateDirectory(dir_path.Append(folder))) {
-    LOG(ERROR) << "Failed to create directory " << dir_path;
-  }
-  std::string filename =
-      folder + base::StringPrintf("%dx%d_result_%s.yuv", output_width,
-                                  output_height, timestamp_str.c_str());
-  if (!WriteBufferIntoFile(full_yuv, dir_path.Append(filename))) {
-    LOGF(ERROR) << "Failed to dump full YUV buffer";
-  }
-
-  // Store cropped yuv from the original frame.
-  Size dimension(CameraBufferManager::GetWidth(full_yuv),
-                 CameraBufferManager::GetHeight(full_yuv));
-  auto [crop_width, crop_height] =
-      GetEvenInputDimensions(crop_region, dimension);
-  ScopedBufferHandle cropped_buf = CameraBufferManager::AllocateScopedBuffer(
-      crop_width, crop_height, HAL_PIXEL_FORMAT_YCbCr_420_888,
-      kStillYuvBufferUsage);
-  std::optional<base::ScopedFD> fence = CropAndScaleOnThread(
-      full_yuv, base::ScopedFD(), *cropped_buf, base::ScopedFD(), crop_region,
-      ScaleMethod::kBicubic);
-  CHECK(fence.has_value());
-  if (fence->is_valid() && sync_wait(fence->get(), kSyncWaitTimeoutMs) != 0) {
-    LOGF(ERROR) << "sync_wait() timed out on buffer with "
-                << ScaleMethodToString(ScaleMethod::kBicubic);
-  } else {
-    folder = "input_cropped/";
-    if (!base::CreateDirectory(dir_path.Append(folder))) {
-      LOG(ERROR) << "Failed to create directory " << dir_path;
-    }
-    filename = folder +
-               base::StringPrintf("%dx%d_result_%s.yuv",
-                                  CameraBufferManager::GetWidth(*cropped_buf),
-                                  CameraBufferManager::GetHeight(*cropped_buf),
-                                  timestamp_str.c_str());
-    if (!WriteBufferIntoFile(*cropped_buf, dir_path.Append(filename))) {
-      LOGF(ERROR) << "Failed to dump cropped YUV buffer";
-    }
-  }
-
-  // Store upsampled YUV frames (using different upsampling methods).
-  ScopedBufferHandle out_buf;
-  const int kNumOfScaleMethods = 5;
-  for (int i = 0; i < kNumOfScaleMethods; i++) {
-    out_buf = CameraBufferManager::AllocateScopedBuffer(
-        output_width, output_height, HAL_PIXEL_FORMAT_YCbCr_420_888,
-        kStillYuvBufferUsage);
-    fence = CropAndScaleOnThread(full_yuv, base::ScopedFD(), *out_buf,
-                                 base::ScopedFD(), crop_region,
-                                 static_cast<ScaleMethod>(i));
-    CHECK(fence.has_value());
-    if (fence->is_valid() && sync_wait(fence->get(), kSyncWaitTimeoutMs) != 0) {
-      LOGF(ERROR) << "sync_wait() timed out on buffer with "
-                  << ScaleMethodToString(static_cast<ScaleMethod>(i));
-    } else {
-      folder = ScaleMethodToString(static_cast<ScaleMethod>(i)) + "/";
-      if (!base::CreateDirectory(dir_path.Append(folder))) {
-        LOG(ERROR) << "Failed to create directory " << dir_path;
-      }
-      filename =
-          folder + base::StringPrintf("%dx%d_result_%s.yuv", output_width,
-                                      output_height, timestamp_str.c_str());
-      if (!WriteBufferIntoFile(*out_buf, dir_path.Append(filename))) {
-        LOGF(ERROR) << "Failed to dump upsampled " +
-                           ScaleMethodToString(static_cast<ScaleMethod>(i)) +
-                           " YUV buffer";
-      }
-    }
-  }
-}
-#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
 }  // namespace cros

@@ -7,10 +7,6 @@
 #ifndef CAMERA_COMMON_FRAMING_STREAM_MANIPULATOR_H_
 #define CAMERA_COMMON_FRAMING_STREAM_MANIPULATOR_H_
 
-#include "common/stream_manipulator.h"
-
-#include <system/camera_metadata.h>
-
 #include <map>
 #include <memory>
 #include <utility>
@@ -19,11 +15,13 @@
 #include <base/containers/flat_map.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <system/camera_metadata.h>
 
 #include "common/camera_buffer_pool.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
+#include "common/stream_manipulator.h"
 #include "common/stream_manipulator_helper.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
@@ -211,15 +209,6 @@ class FramingStreamManipulator : public StreamManipulator {
       base::ScopedFD output_fence,
       const Rect<float>& crop_region,
       ScaleMethod method);
-
-#if USE_CAMERA_FEATURE_SUPER_RES
-  // In evaluation mode, we produce different upsampling results: Bicubic,
-  // Lanczos, Raisr, Lancet, LancetAlpha.
-  // TODO(julianachang): Remove this function once the evaluation is complete.
-  void ProduceMultiUpsamplingResults(int64_t timestamp,
-                                     buffer_handle_t full_yuv,
-                                     const Rect<float>& crop_region);
-#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   bool GetAutoFramingEnabled();
 
