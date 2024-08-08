@@ -77,10 +77,6 @@ int32_t FakeSambaProxy::Unlink(const std::string& file_path) {
   return fake_samba_interface_->Unlink(file_path);
 }
 
-int32_t FakeSambaProxy::RemoveDirectory(const std::string& dir_path) {
-  return fake_samba_interface_->RemoveDirectory(dir_path);
-}
-
 int32_t FakeSambaProxy::CreateFile(const std::string& file_path,
                                    int32_t* file_id) {
   return fake_samba_interface_->CreateFile(file_path, file_id);

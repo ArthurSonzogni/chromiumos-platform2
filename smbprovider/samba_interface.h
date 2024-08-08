@@ -5,10 +5,11 @@
 #ifndef SMBPROVIDER_SAMBA_INTERFACE_H_
 #define SMBPROVIDER_SAMBA_INTERFACE_H_
 
+#include <libsmbclient.h>
+
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <libsmbclient.h>
 
 namespace smbprovider {
 
@@ -90,12 +91,6 @@ class SambaInterface {
   // Unlinks (deletes) a file with the smb url |file_path|.
   // Returns 0 on success and errno on failure.
   [[nodiscard]] virtual int32_t Unlink(const std::string& file_path) = 0;
-
-  // Removes the directory with the smb url |dir_path|.
-  // Directory must be empty.
-  // Returns 0 on success and errno on failure.
-  [[nodiscard]] virtual int32_t RemoveDirectory(
-      const std::string& dir_path) = 0;
 
   // Creates a file in a given |file_path|. |file_id| will be the file handle of
   // the created file and will be -1 on failure. The file that is created will

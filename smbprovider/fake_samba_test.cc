@@ -333,12 +333,6 @@ TEST_F(FakeSambaTest, UnlinkFailsOnLockedFile) {
   EXPECT_EQ(EACCES, fake_samba_.Unlink(GetDefaultFilePath()));
 }
 
-TEST_F(FakeSambaTest, RemoveDirectoryFailsOnLockedDirectory) {
-  fake_samba_.AddLockedDirectory(GetDefaultDirectoryPath());
-
-  EXPECT_EQ(EACCES, fake_samba_.RemoveDirectory(GetDefaultDirectoryPath()));
-}
-
 TEST_F(FakeSambaTest, OpenDirectoryFailsOnLockedDirectory) {
   fake_samba_.AddLockedDirectory(GetDefaultDirectoryPath());
 

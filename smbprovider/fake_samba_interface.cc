@@ -267,20 +267,6 @@ int32_t FakeSambaInterface::Unlink(const std::string& file_path) {
   return 0;
 }
 
-int32_t FakeSambaInterface::RemoveDirectory(const std::string& dir_path) {
-  int32_t error;
-  FakeDirectory* directory = GetDirectory(RemoveURLScheme(dir_path), &error);
-  if (!directory) {
-    return error;
-  }
-  if (!directory->entries.empty()) {
-    return ENOTEMPTY;
-  }
-
-  RemoveEntryAndResetIndicies(dir_path);
-  return 0;
-}
-
 int32_t FakeSambaInterface::CreateFile(const std::string& file_path,
                                        int32_t* file_id) {
   if (EntryExists(file_path)) {
