@@ -438,6 +438,9 @@ class FuseBoxClient : public FileSystem {
       not_supported = not_supported || (attr->st_gid != kChronosAccessGID);
       to_set &= ~FUSE_SET_ATTR_GID;
     }
+    // Ignore flags to set mtime, which are currently not supported, to allow
+    // edit from Android apps (b/346906502).
+    to_set &= ~(FUSE_SET_ATTR_MTIME | FUSE_SET_ATTR_MTIME_NOW);
     not_supported =
         not_supported || ((to_set != 0) && (to_set != FUSE_SET_ATTR_SIZE));
     if (not_supported) {
