@@ -15,10 +15,11 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 
 #include <absl/cleanup/cleanup.h>
-#include <base/files/file_path.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -27,9 +28,8 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <re2/re2.h>
-
 #include <brillo/process/process.h>
+#include <re2/re2.h>
 
 namespace secanomalyd {
 
@@ -40,6 +40,7 @@ constexpr pid_t kKThreadDPid = 2;
 
 constexpr char kProcSubdirPattern[] = "[0-9]*";
 constexpr char kMinijailExecName[] = "minijail0";
+constexpr char kMinijailInitExecName[] = "minijail-init";
 
 const base::FilePath kProcStatusFile("status");
 const base::FilePath kProcCmdlineFile("cmdline");
@@ -55,6 +56,78 @@ constexpr char kSecCompModeDisabled[] = "0";
 // SECCOMP_MODE_FILTER is 2.
 
 constexpr uint64_t kCapSysAdminMask = 1 << 21;
+
+// These are known forbidden intersection process names. The names are truncated
+// to 15 characters dues to the kernel behaviour.
+const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
+    "sshd",
+    "agetty",
+    "logger",
+    "modemloggerd",
+    "udevd",
+    "frecon",
+    "session_manager",
+    "cryptohomed",
+    "cryptohome-name",
+    "update_engine",
+    "update_engine_c",
+    "thermal.sh",
+    "periodic_schedu",
+    "metrics_client",
+    "ipf_ufd",
+    "upstart-socket-",
+    "timberslide",
+    "timberslide-wat",
+    "auditd",
+    "upstart-udevd-b",
+    "udevadm",
+    "usb_bouncer",
+    "brcm_patchram_p",
+    "os_install_serv",
+    "rialto_cellular",
+    "rialto_modem_wa",
+    "netperf",
+    "imageloader",
+    "featured",
+    "cr50_disable_sl",
+    "lvmd",
+    "hiberman",
+    "swap_management",
+    "init",
+    "sh",
+    "debugd",
+    "sleep",
+    "chromeos-cleanu",
+    "systemd-tmpfile",
+    "patchpaneld",
+    "dnsproxyd",
+    "cros_healthd",
+    "flashrom",
+    "dlcservice",
+    "bash",
+    "activate_date.s",
+    "chromeos-trim",
+    "crx-import.sh",
+    "frecon-pre-star",
+    "powerd-pre-star",
+    "update_rw_vpd",
+    "vpd_get_value",
+    "vpd_icc",
+    "send-uptime-met",
+    "gsctool",
+    "gsc_flash_log",
+    "gdbus",
+    "quipper",
+    "pvs",
+    "arc-file-syncer",
+    "chromeos-kip-mo",
+    "chromeos-setgoo",
+    "dbus-send",
+    "goofy_control.s",
+    "ureadahead",
+    "sed",
+    "start",
+    "evtest"};
 
 // Reads a file under a directory, given the FD for the directory. This is
 // useful for when the OS reuses a PID, in which case the underlying FD becomes
@@ -298,7 +371,8 @@ MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries) {
 
 bool IsProcInForbiddenIntersection(const ProcEntry& proc,
                                    const ProcEntry& init_proc) {
-  if (proc.comm() == kMinijailExecName) {
+  if (proc.comm() == kMinijailExecName ||
+      proc.comm() == kMinijailInitExecName) {
     return false;
   }
   // The process is properly sandboxed if at least one of these conditions is
@@ -319,6 +393,14 @@ bool IsProcInForbiddenIntersection(const ProcEntry& proc,
     return false;
   }
 
+  return true;
+}
+
+bool IsProcUnknown(const ProcEntry& proc) {
+  if (secanomalyd::kKnownForbiddenIntersectionProcs.find(proc.comm()) !=
+      secanomalyd::kKnownForbiddenIntersectionProcs.end()) {
+    return false;
+  }
   return true;
 }
 

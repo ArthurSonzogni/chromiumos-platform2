@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "secanomalyd/audit_log_reader.h"
@@ -98,6 +97,7 @@ class Daemon : public brillo::DBusDaemon {
   MountEntryMap wx_mounts_;
   MaybeMountEntries all_mounts_;
   MaybeProcEntries forbidden_intersection_procs_;
+  MaybeProcEntries filtered_forbidden_intersection_procs_;
   MaybeProcEntries all_procs_;
   MaybeProcEntry init_proc_;
 

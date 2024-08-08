@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-
 #include <brillo/process/process.h>
 
 namespace secanomalyd {
@@ -108,6 +107,8 @@ bool FilterNonInitPidNsProcesses(const ProcEntries& all_procs,
 
 bool IsProcInForbiddenIntersection(const ProcEntry& process,
                                    const ProcEntry& init_proc);
+bool IsProcUnknown(const ProcEntry& process);
+
 MaybeProcEntry GetInitProcEntry(const ProcEntries& proc_entries);
 
 }  // namespace secanomalyd

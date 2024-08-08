@@ -24,6 +24,7 @@ bool SendWXMountCountToUMA(size_t wx_mount_count);
 
 // These functions are used for emitting anomalous process count metrics.
 bool SendForbiddenIntersectionProcCountToUMA(size_t proc_count);
+bool SendFilteredForbiddenIntersectionProcCountToUMA(size_t proc_count);
 bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count);
 
 bool SendLandlockStatusToUMA(bool enabled);

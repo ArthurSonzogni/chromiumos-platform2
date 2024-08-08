@@ -9,20 +9,18 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include <absl/strings/match.h>
 #include <base/command_line.h>
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
-
-#include <brillo/process/process.h>
 #include <brillo/message_loops/message_loop.h>
+#include <brillo/process/process.h>
 
 #include "secanomalyd/audit_log_reader.h"
 #include "secanomalyd/metrics.h"
@@ -318,16 +316,30 @@ void Daemon::DoProcScan() {
   ProcEntries procs;
   FilterKernelProcesses(all_procs_.value(), procs);
 
-  ProcEntries flagged_procs;
-  std::copy_if(procs.begin(), procs.end(), std::back_inserter(flagged_procs),
+  ProcEntries forbidden_intersection_procs;
+  std::copy_if(procs.begin(), procs.end(),
+               std::back_inserter(forbidden_intersection_procs),
                [&](const ProcEntry& e) {
                  return IsProcInForbiddenIntersection(e, init_proc_.value());
                });
+  forbidden_intersection_procs_ =
+      MaybeProcEntries(forbidden_intersection_procs);
 
-  forbidden_intersection_procs_ = MaybeProcEntries(flagged_procs);
+  ProcEntries filtered_forbidden_intersection_procs;
+  std::copy_if(forbidden_intersection_procs.begin(),
+               forbidden_intersection_procs.end(),
+               std::back_inserter(filtered_forbidden_intersection_procs),
+               [&](const ProcEntry& e) { return IsProcUnknown(e); });
+  filtered_forbidden_intersection_procs_ =
+      MaybeProcEntries(filtered_forbidden_intersection_procs);
+
   if (forbidden_intersection_procs_) {
     VLOG(1) << "|forbidden_intersection_procs_.size()| = "
             << forbidden_intersection_procs_->size();
+  }
+  if (filtered_forbidden_intersection_procs_) {
+    VLOG(1) << "|filtered_forbidden_intersection_procs_.size()| = "
+            << filtered_forbidden_intersection_procs_->size();
   }
 }
 
@@ -336,16 +348,17 @@ void Daemon::DoAnomalousSystemReporting() {
   // attempted to send a report or the anomaly does not exist.
   if ((has_attempted_wx_mount_report_ || wx_mounts_.empty()) &&
       (has_attempted_forbidden_intersection_report_ ||
-       forbidden_intersection_procs_.value().empty()) &&
+       filtered_forbidden_intersection_procs_.value().empty()) &&
       (has_attempted_memfd_exec_report_ ||
        executables_attempting_memfd_exec_.empty())) {
     return;
   }
 
   // Makes checking for this anomaly type easier.
-  ProcEntries anomalous_procs = forbidden_intersection_procs_
-                                    ? forbidden_intersection_procs_.value()
-                                    : ProcEntries();
+  ProcEntries anomalous_procs =
+      filtered_forbidden_intersection_procs_
+          ? filtered_forbidden_intersection_procs_.value()
+          : ProcEntries();
 
   // Stop subsequent reporting attempts for each discovered anomaly type.
   if (!wx_mounts_.empty()) {
@@ -480,6 +493,18 @@ void Daemon::EmitForbiddenIntersectionProcCountUma() {
           forbidden_intersection_procs_->size())) {
     LOG(WARNING)
         << "Could not upload forbidden intersection process count UMA metric";
+    return;
+  }
+  has_emitted_forbidden_intersection_uma_ = true;
+  if (!filtered_forbidden_intersection_procs_) {
+    return;
+  }
+  VLOG(1)
+      << "Reporting filtered forbidden intersection process count UMA metric";
+  if (!SendFilteredForbiddenIntersectionProcCountToUMA(
+          filtered_forbidden_intersection_procs_->size())) {
+    LOG(WARNING) << "Could not upload filtered forbidden intersection process "
+                    "count UMA metric";
   }
 }
 

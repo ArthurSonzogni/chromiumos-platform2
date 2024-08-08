@@ -6,7 +6,6 @@
 
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
-
 #include <metrics/metrics_library.h>
 
 namespace {
@@ -37,7 +36,9 @@ constexpr char kAttemptedMemfdExecHistogramName[] =
 // not sandboxed to avoid the forbidden intersection:
 // https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md#The-forbidden-intersection.
 constexpr char kForbiddenIntersectionHistogramName[] =
-    "ChromeOS.AnomalousProcCount.ForbiddenIntersection";
+    "ChromeOS.AnomalousProcCount.ForbiddenIntersection.Comprehensive";
+constexpr char kFilteredForbiddenIntersectionHistogramName[] =
+    "ChromeOS.AnomalousProcCount.ForbiddenIntersection.Filtered";
 constexpr int kAnomalousProcCountMinBucket = 0;
 constexpr int kAnomalousProcCountMaxBucket = 100;
 constexpr int kAnomalousProcCountNumBuckets = 100;
@@ -91,6 +92,14 @@ bool SendForbiddenIntersectionProcCountToUMA(size_t proc_count) {
       kForbiddenIntersectionHistogramName, base::checked_cast<int>(proc_count),
       kAnomalousProcCountMinBucket, kAnomalousProcCountMaxBucket,
       kAnomalousProcCountNumBuckets);
+}
+
+bool SendFilteredForbiddenIntersectionProcCountToUMA(size_t proc_count) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendToUMA(
+      kFilteredForbiddenIntersectionHistogramName,
+      base::checked_cast<int>(proc_count), kAnomalousProcCountMinBucket,
+      kAnomalousProcCountMaxBucket, kAnomalousProcCountNumBuckets);
 }
 
 bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count) {
