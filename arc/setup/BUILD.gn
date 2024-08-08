@@ -141,6 +141,9 @@ install_config("install_upstart_configs") {
       "init/arcvm-prepare-data.conf",
     ]
   }
+  if (use.arcvm_dlc) {
+    sources += [ "init/arcvm-install-android-image-dlc.conf" ]
+  }
   install_path = "upstart"
 }
 

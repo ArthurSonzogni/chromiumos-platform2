@@ -48,6 +48,7 @@ _IUSE = [
     "arc_hw_oemcrypto",
     "arcpp",
     "arcvm",
+    "arcvm_dlc",
     "arcvm_gki",
     "arm",
     "asan",
