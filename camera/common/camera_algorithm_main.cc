@@ -27,7 +27,6 @@
 #include "common/camera_algorithm_adapter_libcamera.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
-#include "cros-camera/device_config.h"
 #include "cros-camera/ipc_util.h"
 
 int main(int argc, char** argv) {
@@ -50,19 +49,6 @@ int main(int argc, char** argv) {
   LOG_ASSERT(logging::InitLogging(settings));
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  if (!cros::DeviceConfig::Create()->HasMipiCamera()) {
-    LOGF(INFO) << "No MIPI camera so stopping cros-camera-algo";
-    // Give cros-camera-algo a hint to stop respawning.
-    if (!base::OpenFile(
-            base::FilePath(cros::constants::kForceStopCrosCameraAlgoPath),
-            "w")) {
-      LOGF(ERROR) << "Cannot touch file: "
-                  << cros::constants::kForceStopCrosCameraAlgoPath;
-      return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-  }
 
   int ret = setpriority(PRIO_PROCESS, 0, kCameraProcessPriority);
   if (ret) {
