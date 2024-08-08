@@ -44,8 +44,16 @@ VPNDriver::VPNDriver(Manager* manager,
       process_manager_(process_manager),
       vpn_type_(vpn_type),
       properties_(properties),
-      property_count_(property_count),
-      driver_metrics_(new VPNDriverMetrics(manager->metrics(), vpn_type)) {
+      property_count_(property_count) {
+  // `manager_` should always be valid outside unit tests / fuzzer. This check
+  // is for allowing us to passing a nullptr Manager in the tests since
+  // constructing a Manager object is not trivial. Ideally we should remove the
+  // dependency of Manager instead.
+  if (manager_) {
+    driver_metrics_ =
+        std::make_unique<VPNDriverMetrics>(manager_->metrics(), vpn_type);
+  }
+
   for (size_t i = 0; i < property_count_; i++) {
     const auto flags = properties_[i].flags;
     const bool isReadOnly = flags & Property::kReadOnly;
