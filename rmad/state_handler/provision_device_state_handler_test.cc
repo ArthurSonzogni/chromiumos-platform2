@@ -302,8 +302,8 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     // Register GetFlashInfo callback.
     daemon_callback_->SetExecuteGetFlashInfoCallback(base::BindLambdaForTesting(
-        [&args](base::OnceCallback<void(const std::optional<FlashInfo>&)>
-                    callback) { std::move(callback).Run(args.flash_info); }));
+        [args](base::OnceCallback<void(const std::optional<FlashInfo>&)>
+                   callback) { std::move(callback).Run(args.flash_info); }));
 
     // Mock |TpmManagerClient|.
     auto mock_tpm_manager_client =
