@@ -20,11 +20,6 @@ class AudioEvents {
   virtual void AddObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
           observer) = 0;
-
-  // Deprecated interface. Only for backward compatibility.
-  virtual void AddObserver(
-      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
-          observer) = 0;
 };
 
 }  // namespace diagnostics

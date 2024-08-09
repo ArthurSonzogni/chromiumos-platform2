@@ -51,18 +51,11 @@ void AudioEventsImpl::AddObserver(
   observers_.Add(std::move(observer));
 }
 
-void AudioEventsImpl::AddObserver(
-    mojo::PendingRemote<mojom::CrosHealthdAudioObserver> observer) {
-  deprecated_observers_.Add(std::move(observer));
-}
-
 void AudioEventsImpl::OnUnderrunSignal() {
   mojom::AudioEventInfo info;
   info.state = mojom::AudioEventInfo::State::kUnderrun;
   for (auto& observer : observers_)
     observer->OnEvent(mojom::EventInfo::NewAudioEventInfo(info.Clone()));
-  for (auto& observer : deprecated_observers_)
-    observer->OnUnderrun();
 }
 
 void AudioEventsImpl::OnSevereUnderrunSignal() {
@@ -70,8 +63,6 @@ void AudioEventsImpl::OnSevereUnderrunSignal() {
   info.state = mojom::AudioEventInfo::State::kSevereUnderrun;
   for (auto& observer : observers_)
     observer->OnEvent(mojom::EventInfo::NewAudioEventInfo(info.Clone()));
-  for (auto& observer : deprecated_observers_)
-    observer->OnSevereUnderrun();
 }
 
 }  // namespace diagnostics

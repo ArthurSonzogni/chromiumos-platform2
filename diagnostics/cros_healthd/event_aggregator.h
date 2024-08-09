@@ -58,11 +58,6 @@ class EventAggregator final {
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
           observer);
 
-  // Deprecated interface. Only for backward compatibility.
-  void AddObserver(
-      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
-          observer);
-
  private:
   // The pointer to the Context object for accessing system utilities.
   Context* const context_;

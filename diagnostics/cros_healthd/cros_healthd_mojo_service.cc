@@ -72,7 +72,7 @@ void CrosHealthdMojoService::AddNetworkObserver(
 
 void CrosHealthdMojoService::DEPRECATED_AddAudioObserver(
     mojo::PendingRemote<mojom::CrosHealthdAudioObserver> observer) {
-  event_aggregator_->AddObserver(std::move(observer));
+  LOG(WARNING) << "Deprecated cros healthd audio event API";
 }
 
 void CrosHealthdMojoService::DEPRECATED_AddThunderboltObserver(

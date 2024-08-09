@@ -138,9 +138,4 @@ void EventAggregator::AddObserver(
   power_events_->AddObserver(std::move(observer));
 }
 
-void EventAggregator::AddObserver(
-    mojo::PendingRemote<mojom::CrosHealthdAudioObserver> observer) {
-  audio_events_->AddObserver(std::move(observer));
-}
-
 }  // namespace diagnostics
