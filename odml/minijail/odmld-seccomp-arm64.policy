@@ -7,6 +7,8 @@
 #   0x40048001 == _IOC(_IOC_WRITE, 0x80, 0x1, 0x4)
 #   0x40088007 == _IOC(_IOC_WRITE, 0x80, 0x7, 0x8)
 #   0x40088026 == _IOC(_IOC_WRITE, 0x80, 0x26, 0x8)
+#   0x40086200 == _IOC(_IOC_WRITE, 0x62, 0, 0x8)
+#   0x40086201 == _IOC(_IOC_WRITE, 0x62, 0x1, 0x8)
 #   0x40108002 == _IOC(_IOC_WRITE, 0x80, 0x2, 0x10)
 #   0x40108003 == _IOC(_IOC_WRITE, 0x80, 0x3, 0x10)
 #   0x4018800e == _IOC(_IOC_WRITE, 0x80, 0xe, 0x18)
@@ -15,7 +17,18 @@
 #   0xc0018036 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x36, 0x1)
 #   0xc0048000 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0, 0x4)
 #   0xc0208005 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x5, 0x20)
-ioctl: arg1 == 0x5401 || arg1 == 0x8004  || arg1 == 0x40048001 || arg1 == 0x40088007 || arg1 == 0x40088026 || arg1 == 0x40108002 || arg1 == 0x40108003 || arg1 == 0x4018800e || arg1 == 0x40208018 || arg1 == 0x80048011 || arg1 == 0xc0018036 || arg1 == 0xc0048000 || arg1 == 0xc0208005
+#   0xc0284100 == _IOC(_IOC_READ|_IOC_WRITE, 0x41, 0, 0x28)
+#   0xc0284120 == _IOC(_IOC_READ|_IOC_WRITE, 0x41, 0x20, 0x28)
+#   0xc0984122 == _IOC(_IOC_READ|_IOC_WRITE, 0x41, 0x22, 0x98)
+#   0xc0304121 == _IOC(_IOC_READ|_IOC_WRITE, 0x41, 0x21, 0x30)
+#   0xc0184800 == _IOC(_IOC_READ|_IOC_WRITE, 0x48, 0, 0x18)
+ioctl: arg1 == 0x5401 || arg1 == 0x8004  || arg1 == 0x40048001 || \
+       arg1 == 0x40088007 || arg1 == 0x40088026 || arg1 == 0x40108002 || \
+       arg1 == 0x40108003 || arg1 == 0x4018800e || arg1 == 0x40208018 || \
+       arg1 == 0x80048011 || arg1 == 0xc0018036 || arg1 == 0xc0048000 || \
+       arg1 == 0xc0208005 || arg1 == 0xc0284100 || arg1 == 0xc0284120 || \
+       arg1 == 0x40086201 || arg1 == 0xc0184800 || arg1 == 0x40086200 || \
+       arg1 == 0xc0984122 || arg1 == 0xc0304121
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 write: 1
 futex: 1
@@ -75,6 +88,7 @@ restart_syscall: 1
 exit_group: 1
 rt_sigreturn: 1
 shutdown: 1
+dup: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD
