@@ -278,147 +278,146 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   // image also uses initramfs but it never reaches here). When using
   // initrd+tftpboot (some old netboot factory installer), ROOTDEV_TYPE will be
   // /dev/ram.
-  if (!root_dev.empty() && root_dev != base::FilePath("/dev/ram")) {
-    // Find our stateful partition mount point.
-    stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
-    const int part_num_state =
-        GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_STATE");
-    const std::string* fs_form_state =
-        image_vars_dict.FindString("FS_FORMAT_STATE");
-    state_dev_ = brillo::AppendPartition(root_dev, part_num_state);
-    if (fs_form_state != nullptr && fs_form_state->compare("ext4") == 0) {
-      int dirty_expire_centisecs = GetDirtyExpireCentisecs(platform_, root_);
-      int commit_interval = dirty_expire_centisecs / 100;
-      if (commit_interval != 0) {
-        stateful_mount_opts = "commit=" + std::to_string(commit_interval);
-        stateful_mount_opts.append(",discard");
+  if (root_dev.empty() || root_dev == base::FilePath("/dev/ram"))
+    return;
+
+  // Find our stateful partition mount point.
+  stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
+  const int part_num_state =
+      GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_STATE");
+  const std::string* fs_form_state =
+      image_vars_dict.FindString("FS_FORMAT_STATE");
+  state_dev_ = brillo::AppendPartition(root_dev, part_num_state);
+  if (fs_form_state != nullptr && fs_form_state->compare("ext4") == 0) {
+    int dirty_expire_centisecs = GetDirtyExpireCentisecs(platform_, root_);
+    int commit_interval = dirty_expire_centisecs / 100;
+    if (commit_interval != 0) {
+      stateful_mount_opts = "commit=" + std::to_string(commit_interval);
+      stateful_mount_opts.append(",discard");
+    } else {
+      LOG(INFO) << "Using default value for commit interval";
+      stateful_mount_opts = "discard";
+    }
+  }
+
+  bool should_mount_lvm = false;
+  std::optional<brillo::Thinpool> thinpool;
+  if (USE_LVM_STATEFUL_PARTITION && flags_.lvm_stateful) {
+    brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+
+    // Attempt to get a valid volume group name.
+    bootstat_.LogEvent("pre-lvm-activation");
+    std::optional<brillo::PhysicalVolume> pv =
+        lvm->GetPhysicalVolume(state_dev_);
+
+    if (!pv && flags_.lvm_migration) {
+      // Attempt to migrate to thinpool if migration is enabled: if the
+      // migration fails, then we expect the stateful partition to be back to
+      // its original state.
+
+      if (!AttemptStatefulMigration()) {
+        LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
       } else {
-        LOG(INFO) << "Using default value for commit interval";
-        stateful_mount_opts = "discard";
+        // Reset the physical volume on success from thinpool migration.
+        pv = lvm->GetPhysicalVolume(state_dev_);
       }
     }
 
-    bool should_mount_lvm = false;
-    std::optional<brillo::Thinpool> thinpool;
-    if (USE_LVM_STATEFUL_PARTITION && flags_.lvm_stateful) {
-      brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+    if (pv && pv->IsValid()) {
+      volume_group_ = lvm->GetVolumeGroup(*pv);
+      if (volume_group_ && volume_group_->IsValid()) {
+        // First attempt to activate the thinpool. If the activation of the
+        // thinpool fails, run thin_check to check all mappings.
+        thinpool = lvm->GetThinpool(*volume_group_, "thinpool");
 
-      // Attempt to get a valid volume group name.
-      bootstat_.LogEvent("pre-lvm-activation");
-      std::optional<brillo::PhysicalVolume> pv =
-          lvm->GetPhysicalVolume(state_dev_);
-
-      if (!pv && flags_.lvm_migration) {
-        // Attempt to migrate to thinpool if migration is enabled: if the
-        // migration fails, then we expect the stateful partition to be back to
-        // its original state.
-
-        if (!AttemptStatefulMigration()) {
-          LOG(ERROR) << "Failed to migrate stateful partition to a thinpool";
-        } else {
-          // Reset the physical volume on success from thinpool migration.
-          pv = lvm->GetPhysicalVolume(state_dev_);
+        if (!thinpool) {
+          LOG(ERROR) << "Thinpool does not exist";
+          ClobberStateful({"fast", "keepimg"}, "Invalid thinpool");
+          // Not reached, except during unit tests.
+          return;
         }
-      }
 
-      if (pv && pv->IsValid()) {
-        volume_group_ = lvm->GetVolumeGroup(*pv);
-        if (volume_group_ && volume_group_->IsValid()) {
-          // First attempt to activate the thinpool. If the activation of the
-          // thinpool fails, run thin_check to check all mappings.
-          thinpool = lvm->GetThinpool(*volume_group_, "thinpool");
-
-          if (!thinpool) {
-            LOG(ERROR) << "Thinpool does not exist";
-            ClobberStateful({"fast", "keepimg"}, "Invalid thinpool");
+        if (!thinpool->Activate()) {
+          LOG(WARNING) << "Failed to activate thinpool, attempting repair";
+          if (!thinpool->Activate(/*check=*/true)) {
+            LOG(ERROR) << "Failed to repair and activate thinpool";
+            ClobberStateful({"fast", "keepimg"}, "Corrupt thinpool");
             // Not reached, except during unit tests.
             return;
           }
-
-          if (!thinpool->Activate()) {
-            LOG(WARNING) << "Failed to activate thinpool, attempting repair";
-            if (!thinpool->Activate(/*check=*/true)) {
-              LOG(ERROR) << "Failed to repair and activate thinpool";
-              ClobberStateful({"fast", "keepimg"}, "Corrupt thinpool");
-              // Not reached, except during unit tests.
-              return;
-            }
-          }
-          should_mount_lvm = true;
         }
+        should_mount_lvm = true;
       }
-      bootstat_.LogEvent("lvm-activation-complete");
     }
+    bootstat_.LogEvent("lvm-activation-complete");
+  }
 
-    if (should_mount_lvm) {
-      state_dev_ = root_.Append("dev")
-                       .Append(volume_group_->GetName())
-                       .Append("unencrypted");
+  if (should_mount_lvm) {
+    state_dev_ = root_.Append("dev")
+                     .Append(volume_group_->GetName())
+                     .Append("unencrypted");
 
-      config.unencrypted_config = {
-          .backing_device_config = {
-              .type =
-                  libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
-              .name = "unencrypted",
-              .logical_volume = {
-                  .vg = std::make_shared<brillo::VolumeGroup>(*volume_group_),
-                  .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}}};
+    config.unencrypted_config = {
+        .backing_device_config = {
+            .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
+            .name = "unencrypted",
+            .logical_volume = {
+                .vg = std::make_shared<brillo::VolumeGroup>(*volume_group_),
+                .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}}};
 
-    } else {
-      config.unencrypted_config = {
-          .backing_device_config = {
-              .type = libstorage::BackingDeviceType::kPartition,
-              .name = state_dev_.value()}};
-    }
-    config.filesystem_config = {
-        .tune2fs_opts = GenerateExt4Features(),
-        .backend_type = libstorage::StorageContainerType::kUnencrypted,
-        .recovery = libstorage::RecoveryType::kDoNothing};
+  } else {
+    config.unencrypted_config = {
+        .backing_device_config = {
+            .type = libstorage::BackingDeviceType::kPartition,
+            .name = state_dev_.value()}};
+  }
+  config.filesystem_config = {
+      .tune2fs_opts = GenerateExt4Features(),
+      .backend_type = libstorage::StorageContainerType::kUnencrypted,
+      .recovery = libstorage::RecoveryType::kDoNothing};
 
-    std::unique_ptr<libstorage::StorageContainer> container =
-        mount_helper_->GetStorageContainerFactory()->Generate(
-            config, libstorage::StorageContainerType::kExt4,
-            libstorage::FileSystemKeyReference());
+  std::unique_ptr<libstorage::StorageContainer> container =
+      mount_helper_->GetStorageContainerFactory()->Generate(
+          config, libstorage::StorageContainerType::kExt4,
+          libstorage::FileSystemKeyReference());
 
-    if (!container || !container->Setup(libstorage::FileSystemKey())) {
-      LOG(ERROR) << "Failed to setup unencrypted stateful";
+  if (!container || !container->Setup(libstorage::FileSystemKey())) {
+    LOG(ERROR) << "Failed to setup unencrypted stateful";
 
-      ClobberStateful({"fast", "keepimg", "preserve_lvs"},
-                      "Self-repair corrupted stateful partition");
-      // Not reached, except during unit tests.
-      return;
-    }
+    ClobberStateful({"fast", "keepimg", "preserve_lvs"},
+                    "Self-repair corrupted stateful partition");
+    // Not reached, except during unit tests.
+    return;
+  }
 
-    // Mount stateful partition from state_dev.
-    if (!platform_->Mount(state_dev_, stateful_, *fs_form_state,
-                          stateful_mount_flags, stateful_mount_opts)) {
-      // Try to rebuild the stateful partition by clobber-state. (Not using fast
-      // mode out of security consideration: the device might have gotten into
-      // this state through power loss during dev mode transition).
-      platform_->ReportFilesystemDetails(state_dev_,
-                                         root_.Append(kDumpe2fsStatefulLog));
-      ClobberStateful({"keepimg", "preserve_lvs"},
-                      "Self-repair corrupted stateful partition");
-      // Not reached, except during unit tests.
-      return;
-    }
+  // Mount stateful partition from state_dev.
+  if (!platform_->Mount(state_dev_, stateful_, *fs_form_state,
+                        stateful_mount_flags, stateful_mount_opts)) {
+    // Try to rebuild the stateful partition by clobber-state. (Not using fast
+    // mode out of security consideration: the device might have gotten into
+    // this state through power loss during dev mode transition).
+    platform_->ReportFilesystemDetails(state_dev_,
+                                       root_.Append(kDumpe2fsStatefulLog));
+    ClobberStateful({"keepimg", "preserve_lvs"},
+                    "Self-repair corrupted stateful partition");
+    // Not reached, except during unit tests.
+    return;
+  }
 
-    // Mount the OEM partition.
-    // mount_or_fail isn't used since this partition only has a filesystem
-    // on some boards.
-    int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
-    const int part_num_oem =
-        GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_OEM");
-    const std::string* fs_form_oem =
-        image_vars_dict.FindString("FS_FORMAT_OEM");
-    const base::FilePath oem_dev =
-        brillo::AppendPartition(root_dev, part_num_oem);
-    status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
-                              *fs_form_oem, oem_flags, "");
-    if (!status) {
-      PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
-    }
-  }  // !rootdev.empty() ...
+  // Mount the OEM partition.
+  // mount_or_fail isn't used since this partition only has a filesystem
+  // on some boards.
+  int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
+  const int part_num_oem =
+      GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_OEM");
+  const std::string* fs_form_oem = image_vars_dict.FindString("FS_FORMAT_OEM");
+  const base::FilePath oem_dev =
+      brillo::AppendPartition(root_dev, part_num_oem);
+  status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
+                            *fs_form_oem, oem_flags, "");
+  if (!status) {
+    PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
+  }
 }
 
 base::FilePath StatefulMount::GetStateDev() {
