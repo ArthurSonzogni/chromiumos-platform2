@@ -3,11 +3,13 @@
 // found in the LICENSE file.
 
 // Include vmlinux.h first to declare all kernel types.
+// clang-format off
 #include "include/secagentd/vmlinux/vmlinux.h"
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
+// clang-format on
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_endian.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 
 // TODO(b/243453873): Workaround to get code completion working in CrosIDE.
 #undef __cplusplus
@@ -732,13 +734,9 @@ int BPF_PROG(cros_handle_trace_net_dev_queue, struct sk_buff* skb) {
                     /* is_tx */ true, "cros_handle_trace_net_dev_queue");
   return 0;
 }
-CROS_IF_FUNCTION_HOOK("fexit/inet_accept", "tp_btf/cros_inet_accept_exit")
-int BPF_PROG(cros_handle_inet_accept_exit,
-             struct socket* sock,
-             struct socket* newsock,
-             int flags,
-             bool kern,
-             int rv) {
+
+static inline __attribute__((always_inline)) int cros_handle_inet_accept_exit(
+    struct socket* sock, struct socket* newsock, int flags, bool kern, int rv) {
   if (rv < 0) {
     return 0;
   }
@@ -771,6 +769,32 @@ int BPF_PROG(cros_handle_inet_accept_exit,
   }
   return 0;
 }
+
+CROS_IF_FUNCTION_HOOK("fexit/inet_accept", "tp_btf/cros_inet_accept_exit")
+// Signature of the function changed in kernel 6.10
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
+int BPF_PROG(cros_trampoline_handle_inet_accept_exit,
+             struct socket* sock,
+             struct socket* newsock,
+             struct proto_accept_arg* arg,
+             int rv) {
+  if (!arg) {
+    return 0;
+  }
+  int flags = BPF_CORE_READ(arg, flags);
+  bool kern = BPF_CORE_READ(arg, kern);
+  return cros_handle_inet_accept_exit(sock, newsock, flags, kern, rv);
+}
+#else
+int BPF_PROG(cros_trampoline_handle_inet_accept_exit,
+             struct socket* sock,
+             struct socket* newsock,
+             int flags,
+             bool kern,
+             int rv) {
+  return cros_handle_inet_accept_exit(sock, newsock, flags, kern, rv);
+}
+#endif
 
 CROS_IF_FUNCTION_HOOK("fexit/__inet_stream_connect",
                       "tp_btf/cros_inet_stream_connect_exit")
