@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-
 #include <vboot/gpt.h>
 
 #include "installer/inst_util.h"
@@ -107,6 +106,17 @@ class CgptManagerInterface {
                                        std::optional<uint64_t> start,
                                        std::optional<uint64_t> count) = 0;
 
+  // Set the label for a partition.
+  virtual CgptErrorCode SetLabel(PartitionNum partition,
+                                 const std::string& new_label) = 0;
+
+  // Add a new partition.
+  virtual CgptErrorCode AddPartition(PartitionNum partition_number,
+                                     uint64_t start,
+                                     uint64_t size,
+                                     const std::string& label,
+                                     Guid type) = 0;
+
   // In some circumstances devices will have a damaged GPT  (at least
   // b/257478857, possibly other cases). This tries to fix it.
   //
@@ -141,6 +151,17 @@ class CgptManager : public CgptManagerInterface {
   CgptErrorCode SetSectorRange(PartitionNum partition_number,
                                std::optional<uint64_t> start,
                                std::optional<uint64_t> count) override;
+  // Set the label for a partition.
+  CgptErrorCode SetLabel(PartitionNum partition,
+                         const std::string& new_label) override;
+
+  // Add a new partition.
+  CgptErrorCode AddPartition(PartitionNum partition_number,
+                             uint64_t start,
+                             uint64_t size,
+                             const std::string& label,
+                             Guid type) override;
+
   CgptErrorCode RepairPartitionTable() override;
   const base::FilePath& DeviceName() const override;
 

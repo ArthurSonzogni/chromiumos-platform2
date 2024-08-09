@@ -5,6 +5,8 @@
 #ifndef INSTALLER_MOCK_CGPT_MANAGER_H_
 #define INSTALLER_MOCK_CGPT_MANAGER_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "installer/cgpt_manager.h"
@@ -48,6 +50,18 @@ class MockCgptManager : public CgptManagerInterface {
               (override));
   MOCK_METHOD(CgptErrorCode, RepairPartitionTable, (), (override));
   MOCK_METHOD(const base::FilePath&, DeviceName, (), (const override));
+  MOCK_METHOD(CgptErrorCode,
+              SetLabel,
+              (PartitionNum partition_number, const std::string& new_label),
+              (override));
+  MOCK_METHOD(CgptErrorCode,
+              AddPartition,
+              (PartitionNum partition_number,
+               uint64_t start,
+               uint64_t size,
+               const std::string& label,
+               Guid type),
+              (override));
 };
 
 #endif  // INSTALLER_MOCK_CGPT_MANAGER_H_

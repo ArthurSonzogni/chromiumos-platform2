@@ -129,6 +129,7 @@ static_library("libcros_installer") {
     "chromeos_setimage.cc",
     "chromeos_verity.cc",
     "inst_util.cc",
+    "partition_migrator.cc",
   ]
   if (use.enable_slow_boot_notify) {
     sources += [ "slow_boot_notify_enable.cc" ]
@@ -209,6 +210,7 @@ if (!use.cros_host && use.test) {
       "chromeos_verity_test.cc",
       "encrypted_import_test.cc",
       "inst_util_test.cc",
+      "partition_migrator_test.cc",
     ]
     if (use.enable_slow_boot_notify) {
       sources += [ "slow_boot_notify_test.cc" ]

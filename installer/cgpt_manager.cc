@@ -13,12 +13,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "installer/inst_util.h"
@@ -385,6 +387,63 @@ CgptErrorCode CgptManager::SetSectorRange(PartitionNum partition_number,
     params.size = count.value();
     params.set_size = true;
   }
+
+  int retval = CgptAdd(&params);
+  if (retval != CGPT_OK)
+    return CgptErrorCode::kUnknownError;
+
+  return CgptErrorCode::kSuccess;
+}
+
+CgptErrorCode CgptManager::SetLabel(PartitionNum partition_number,
+                                    const std::string& label) {
+  if (!is_initialized_)
+    return CgptErrorCode::kNotInitialized;
+
+  CgptAddParams params;
+  memset(&params, 0, sizeof(params));
+
+  params.drive_name = const_cast<char*>(device_name_.value().c_str());
+  params.drive_size = device_size_;
+  params.partition = partition_number.Value();
+
+  params.label = label.c_str();
+
+  int retval = CgptAdd(&params);
+  if (retval != CGPT_OK)
+    return CgptErrorCode::kUnknownError;
+
+  return CgptErrorCode::kSuccess;
+}
+
+CgptErrorCode CgptManager::AddPartition(PartitionNum partition_number,
+                                        uint64_t start,
+                                        uint64_t size,
+                                        const std::string& label,
+                                        Guid type) {
+  if (!is_initialized_)
+    return CgptErrorCode::kNotInitialized;
+
+  CgptAddParams params;
+  memset(&params, 0, sizeof(params));
+
+  params.drive_name = const_cast<char*>(device_name_.value().c_str());
+  params.drive_size = device_size_;
+  params.partition = partition_number.Value();
+
+  params.label = label.c_str();
+  params.begin = start;
+  params.size = size;
+  params.type_guid = type;
+
+  // GenerateUuid() is stubbed in the libvboot_host to remove dependency
+  // libuuid.
+  base::RandBytes(base::as_writable_byte_span(params.unique_guid.u.raw));
+
+  params.set_begin = 1;
+  params.set_size = 1;
+  params.set_type = 1;
+  params.set_unique = 1;
 
   int retval = CgptAdd(&params);
   if (retval != CGPT_OK)
