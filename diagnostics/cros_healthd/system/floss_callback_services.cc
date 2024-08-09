@@ -7,12 +7,25 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/bind.h>
+#include <base/logging.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/system/floss_event_hub.h"
 
 namespace diagnostics {
+
+namespace {
+
+void HandleRegisterResult(const dbus::ObjectPath& object_path,
+                          bool is_success) {
+  if (!is_success) {
+    LOG(ERROR) << "Failed to register D-Bus object for " << object_path.value();
+  }
+}
+
+}  // namespace
 
 BluetoothCallbackService::BluetoothCallbackService(
     FlossEventHub* event_hub,
@@ -24,7 +37,8 @@ BluetoothCallbackService::BluetoothCallbackService(
       adapter_path_(adapter_path),
       dbus_object_(nullptr, bus, object_path) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAndBlock();
+  dbus_object_.RegisterAsync(
+      base::BindOnce(&HandleRegisterResult, object_path));
 }
 
 BluetoothCallbackService::~BluetoothCallbackService() = default;
@@ -92,7 +106,8 @@ ManagerCallbackService::ManagerCallbackService(
       event_hub_(event_hub),
       dbus_object_(nullptr, bus, object_path) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAndBlock();
+  dbus_object_.RegisterAsync(
+      base::BindOnce(&HandleRegisterResult, object_path));
 }
 
 ManagerCallbackService::~ManagerCallbackService() = default;
@@ -115,7 +130,8 @@ BluetoothConnectionCallbackService::BluetoothConnectionCallbackService(
       event_hub_(event_hub),
       dbus_object_(nullptr, bus, object_path) {
   RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAndBlock();
+  dbus_object_.RegisterAsync(
+      base::BindOnce(&HandleRegisterResult, object_path));
 }
 
 BluetoothConnectionCallbackService::~BluetoothConnectionCallbackService() =
