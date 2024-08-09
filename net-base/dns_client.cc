@@ -4,6 +4,7 @@
 
 #include "net-base/dns_client.h"
 
+#include <ares.h>
 #include <netdb.h>
 
 #include <memory>
@@ -12,15 +13,14 @@
 #include <utility>
 #include <vector>
 
-#include <ares.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/types/expected.h>
-#include <base/memory/ptr_util.h>
-#include <base/memory/weak_ptr.h>
 
 #include "net-base/ares_interface.h"
 #include "net-base/ip_address.h"
@@ -85,7 +85,7 @@ constexpr DNSClient::Error AresStatusToError(int status) {
     case ARES_EBADRESP:
       return Error::kBadResp;
     case ARES_ECONNREFUSED:
-      return Error::kRefused;
+      return Error::kConnRefused;
     case ARES_ETIMEOUT:
       return Error::kTimedOut;
     default:
@@ -439,7 +439,7 @@ std::string_view DNSClient::ErrorName(DNSClient::Error error) {
       return "BadFamily";
     case Error::kBadResp:
       return "BadResp";
-    case Error::kNetRefused:
+    case Error::kConnRefused:
       return "ConnectionRefused";
     case Error::kTimedOut:
       return "TimedOut";

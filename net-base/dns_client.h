@@ -53,7 +53,7 @@ class BRILLO_EXPORT DNSClient {
     // ARES_EBADRESP
     kBadResp = 10,
     // ARES_ECONNREFUSED
-    kNetRefused = 11,
+    kConnRefused = 11,
     // ARES_ETIMEOUT
     kTimedOut = 12,
     // ARES_EOF
