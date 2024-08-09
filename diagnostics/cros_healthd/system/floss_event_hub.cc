@@ -45,11 +45,6 @@ FlossEventHub::FlossEventHub(
         &FlossEventHub::OnAdapterAdded, weak_ptr_factory_.GetWeakPtr()));
     bluetooth_proxy->SetBluetoothRemovedCallback(base::BindRepeating(
         &FlossEventHub::OnAdapterRemoved, weak_ptr_factory_.GetWeakPtr()));
-
-    bluetooth_proxy->SetBluetoothGattAddedCallback(base::BindRepeating(
-        &FlossEventHub::OnAdapterGattAdded, weak_ptr_factory_.GetWeakPtr()));
-    bluetooth_proxy->SetBluetoothGattRemovedCallback(base::BindRepeating(
-        &FlossEventHub::OnAdapterGattRemoved, weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
@@ -116,11 +111,6 @@ base::CallbackListSubscription FlossEventHub::SubscribeManagerRemoved(
   return manager_removed_observers_.Add(callback);
 }
 
-base::CallbackListSubscription FlossEventHub::SubscribeScanResultReceived(
-    OnFlossScanResultReceivedCallback callback) {
-  return scan_result_received_observers_.Add(callback);
-}
-
 void FlossEventHub::OnAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
   if (adapter) {
@@ -164,23 +154,6 @@ void FlossEventHub::OnManagerAdded(
 void FlossEventHub::OnManagerRemoved(const dbus::ObjectPath& manager_path) {
   manager_callback_.reset();
   manager_removed_observers_.Notify(manager_path);
-}
-
-void FlossEventHub::OnAdapterGattAdded(
-    org::chromium::bluetooth::BluetoothGattProxyInterface* adapter) {
-  if (adapter) {
-    auto exported_path = GetNextBluetoothCallbackPath();
-    auto [on_success, on_error] = SplitDbusCallback(
-        base::BindOnce(&FlossEventHub::HandleRegisterScannerCallbackResponse,
-                       weak_ptr_factory_.GetWeakPtr(), adapter->GetObjectPath(),
-                       exported_path));
-    adapter->RegisterScannerCallbackAsync(exported_path, std::move(on_success),
-                                          std::move(on_error));
-  }
-}
-
-void FlossEventHub::OnAdapterGattRemoved(const dbus::ObjectPath& adapter_path) {
-  scanner_callbacks_[adapter_path].reset();
 }
 
 void FlossEventHub::OnAdapterPropertyChanged(
@@ -231,11 +204,6 @@ void FlossEventHub::OnDeviceBondChanged(uint32_t bt_status,
 void FlossEventHub::OnDeviceSspRequest(
     const brillo::VariantDictionary& device) {
   device_ssp_request_observers_.Notify(device);
-}
-
-void FlossEventHub::OnScanResultReceived(
-    const brillo::VariantDictionary& scan_result) {
-  scan_result_received_observers_.Notify(scan_result);
 }
 
 dbus::ObjectPath FlossEventHub::GetNextBluetoothCallbackPath() {
@@ -294,23 +262,6 @@ void FlossEventHub::HandleRegisterConnectionCallbackResponse(
     connection_callbacks_[adapter_path] =
         std::make_unique<BluetoothConnectionCallbackService>(this, bus_,
                                                              callback_path);
-  }
-}
-
-void FlossEventHub::HandleRegisterScannerCallbackResponse(
-    const dbus::ObjectPath& adapter_path,
-    const dbus::ObjectPath& callback_path,
-    brillo::Error* error,
-    uint32_t register_id) {
-  if (error) {
-    LOG(ERROR) << "Failed to register org.chromium.bluetooth.ScannerCallback";
-    return;
-  }
-
-  if (bus_) {
-    scanner_callbacks_[adapter_path].reset();
-    scanner_callbacks_[adapter_path] =
-        std::make_unique<ScannerCallbackService>(this, bus_, callback_path);
   }
 }
 

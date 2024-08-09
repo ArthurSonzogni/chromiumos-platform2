@@ -18,7 +18,6 @@
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.BluetoothCallback.h"
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.BluetoothConnectionCallback.h"
 #include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.ManagerCallback.h"
-#include "diagnostics/dbus_bindings/floss_callback/org.chromium.bluetooth.ScannerCallback.h"
 
 namespace diagnostics {
 
@@ -133,32 +132,6 @@ class BluetoothConnectionCallbackService
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothConnectionCallbackService> weak_ptr_factory_{
       this};
-};
-
-// Supports org.chromium.bluetooth.ScannerCallback registration.
-class ScannerCallbackService
-    : public org::chromium::bluetooth::ScannerCallbackInterface,
-      public org::chromium::bluetooth::ScannerCallbackAdaptor {
- public:
-  explicit ScannerCallbackService(FlossEventHub* event_hub,
-                                  const scoped_refptr<dbus::Bus>& bus,
-                                  const dbus::ObjectPath& object_path);
-  ScannerCallbackService(const ScannerCallbackService&) = delete;
-  ScannerCallbackService& operator=(const ScannerCallbackService&) = delete;
-  ~ScannerCallbackService();
-
- private:
-  // org::chromium::bluetooth::ScannerCallbackInterface overrides:
-  void OnScanResult(const brillo::VariantDictionary& scan_result) override;
-
-  // Unowned pointer. Used to notify Bluetooth events.
-  FlossEventHub* const event_hub_;
-
-  // D-Bus helper when registering callback service.
-  brillo::dbus_utils::DBusObject dbus_object_;
-
-  // Must be the last class member.
-  base::WeakPtrFactory<ScannerCallbackService> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

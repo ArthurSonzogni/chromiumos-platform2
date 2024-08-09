@@ -18,7 +18,6 @@
 
 namespace org::chromium::bluetooth {
 class BluetoothProxyInterface;
-class BluetoothGattProxyInterface;
 class ManagerProxyInterface;
 class ObjectManagerProxy;
 
@@ -32,7 +31,6 @@ namespace diagnostics {
 class BluetoothCallbackService;
 class BluetoothConnectionCallbackService;
 class ManagerCallbackService;
-class ScannerCallbackService;
 
 namespace floss {
 
@@ -110,8 +108,6 @@ using OnFlossDeviceSspRequestCallback =
 // Other floss events.
 using OnFlossManagerRemovedCallback =
     base::RepeatingCallback<void(const dbus::ObjectPath& manager_path)>;
-using OnFlossScanResultReceivedCallback =
-    base::RepeatingCallback<void(const brillo::VariantDictionary& scan_result)>;
 
 // Interface for subscribing Bluetooth events via Floss proxies.
 class FlossEventHub {
@@ -149,8 +145,6 @@ class FlossEventHub {
       OnFlossDeviceSspRequestCallback callback);
   base::CallbackListSubscription SubscribeManagerRemoved(
       OnFlossManagerRemovedCallback callback);
-  base::CallbackListSubscription SubscribeScanResultReceived(
-      OnFlossScanResultReceivedCallback callback);
 
  protected:
   // Interfaces for subclass to send events.
@@ -159,14 +153,10 @@ class FlossEventHub {
   void OnAdapterAdded(
       org::chromium::bluetooth::BluetoothProxyInterface* adapter);
   void OnAdapterRemoved(const dbus::ObjectPath& adapter_path);
-  void OnAdapterGattAdded(
-      org::chromium::bluetooth::BluetoothGattProxyInterface* adapter);
-  void OnAdapterGattRemoved(const dbus::ObjectPath& adapter_path);
 
   friend class BluetoothCallbackService;
   friend class ManagerCallbackService;
   friend class BluetoothConnectionCallbackService;
-  friend class ScannerCallbackService;
 
   // Interfaces for CallbackService to send events.
   void OnAdapterPropertyChanged(const dbus::ObjectPath& adapter_path,
@@ -184,7 +174,6 @@ class FlossEventHub {
                            const std::string& address,
                            uint32_t bond_state);
   void OnDeviceSspRequest(const brillo::VariantDictionary& device);
-  void OnScanResultReceived(const brillo::VariantDictionary& scan_result);
 
  private:
   // Get the unique object path for BluetoothProxy callback services.
@@ -200,12 +189,6 @@ class FlossEventHub {
       const dbus::ObjectPath& callback_path, brillo::Error* error);
 
   void HandleRegisterConnectionCallbackResponse(
-      const dbus::ObjectPath& adapter_path,
-      const dbus::ObjectPath& callback_path,
-      brillo::Error* error,
-      uint32_t register_id);
-
-  void HandleRegisterScannerCallbackResponse(
       const dbus::ObjectPath& adapter_path,
       const dbus::ObjectPath& callback_path,
       brillo::Error* error,
@@ -242,9 +225,6 @@ class FlossEventHub {
       device_ssp_request_observers_;
   base::RepeatingCallbackList<void(const dbus::ObjectPath& adapter_path)>
       manager_removed_observers_;
-  base::RepeatingCallbackList<void(
-      const brillo::VariantDictionary& scan_result)>
-      scan_result_received_observers_;
 
   // Used to create Floss callback services.
   scoped_refptr<dbus::Bus> bus_;
@@ -256,8 +236,6 @@ class FlossEventHub {
   std::map<dbus::ObjectPath,
            std::unique_ptr<BluetoothConnectionCallbackService>>
       connection_callbacks_;
-  std::map<dbus::ObjectPath, std::unique_ptr<ScannerCallbackService>>
-      scanner_callbacks_;
 
   // The next index used to create callback service.
   uint32_t callback_path_index_ = 0;

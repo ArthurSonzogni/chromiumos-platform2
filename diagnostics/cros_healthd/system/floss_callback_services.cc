@@ -131,27 +131,4 @@ void BluetoothConnectionCallbackService::OnDeviceDisconnected(
   event_hub_->OnDeviceConnectedChanged(device, /*connected=*/false);
 }
 
-ScannerCallbackService::ScannerCallbackService(
-    FlossEventHub* event_hub,
-    const scoped_refptr<dbus::Bus>& bus,
-    const dbus::ObjectPath& object_path)
-    : org::chromium::bluetooth::ScannerCallbackAdaptor(this),
-      event_hub_(event_hub),
-      dbus_object_(nullptr, bus, object_path) {
-  RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAndBlock();
-}
-
-ScannerCallbackService::~ScannerCallbackService() = default;
-
-void ScannerCallbackService::OnScanResult(
-    const brillo::VariantDictionary& scan_result) {
-  // The |scan_result| dictionary should contain the following keys:
-  // * "name": string
-  // * "address": string
-  // * "rssi": int16_t
-  // And others...
-  event_hub_->OnScanResultReceived(scan_result);
-}
-
 }  // namespace diagnostics

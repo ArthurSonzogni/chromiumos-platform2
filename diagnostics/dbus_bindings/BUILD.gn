@@ -22,7 +22,6 @@ generate_dbus_adaptors("floss_callback_adaptors") {
     "bluetooth_manager/org.chromium.bluetooth.ManagerCallback.xml",
     "floss/org.chromium.bluetooth.BluetoothCallback.xml",
     "floss/org.chromium.bluetooth.BluetoothConnectionCallback.xml",
-    "floss/org.chromium.bluetooth.ScannerCallback.xml",
   ]
 }
 
@@ -78,7 +77,6 @@ generate_dbus_proxies("floss_proxies") {
     "floss/org.chromium.bluetooth.BatteryManager.xml",
     "floss/org.chromium.bluetooth.Bluetooth.xml",
     "floss/org.chromium.bluetooth.BluetoothAdmin.xml",
-    "floss/org.chromium.bluetooth.BluetoothGatt.xml",
     "floss/org.chromium.bluetooth.BluetoothQA.xml",
   ]
 }
