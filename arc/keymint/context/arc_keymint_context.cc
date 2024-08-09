@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,6 +29,29 @@
 namespace arc::keymint::context {
 
 namespace {
+
+// Relate cros system property mainfw_type (main firmware type)
+// to verified boot state. Devices in normal and recovery mode
+// are in verified boot state. Devices in developer mode are in
+// an unverified boot state.
+const std::map<std::string, VerifiedBootState> kMainfwTypeToBootStateMap = {
+    {"normal", VerifiedBootState::kVerifiedBoot},
+    {"recovery", VerifiedBootState::kVerifiedBoot},
+    {"developer", VerifiedBootState::kUnverifiedBoot}};
+
+// Converts VerifiedBootState to the value expected by Android in DeviceInfo
+// for |vb_state|.
+// DeviceInfo expected values:
+// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
+const std::map<VerifiedBootState, std::string> kVerifiedBootStateToStringMap = {
+    {VerifiedBootState::kVerifiedBoot, "green"},
+    {VerifiedBootState::kUnverifiedBoot, "orange"}};
+
+// Converts VerifiedBootDeviceState to the value expected by Android in
+// DeviceInfo for |bootloader_state|.
+const std::map<VerifiedBootDeviceState, std::string> kDeviceStateToStringMap = {
+    {VerifiedBootDeviceState::kLockedDevice, "locked"},
+    {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}};
 
 bool DeserializeKeyMaterialToBlob(const std::string& key_material,
                                   ::keymaster::KeymasterKeyBlob* output) {
@@ -216,6 +240,9 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
     : PureSoftKeymasterContext(version, KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT),
       rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA) {
   CHECK(version >= ::keymaster::KmVersion::KEYMINT_1);
+
+  cros_system_ = std::make_unique<crossystem::Crossystem>();
+
   // This is a protected data member in |pure_soft_keymaster_context.cpp|
   pure_soft_remote_provisioning_context_ =
       std::make_unique<ArcRemoteProvisioningContext>(security_level_);
@@ -693,6 +720,73 @@ keymaster_error_t ArcKeyMintContext::SetChallengeForCertificateRequest(
   }
   arc_remote_provisioning_context->SetChallengeForCertificateRequest(challenge);
   return KM_ERROR_OK;
+}
+
+void ArcKeyMintContext::set_cros_system_for_tests(
+    std::unique_ptr<crossystem::Crossystem> cros_system) {
+  cros_system_ = std::move(cros_system);
+}
+
+// mainfw_type describes the main firmware type (normal, recovery, developer).
+// This property is used to determine whether or not the device is in a
+// verified boot state.
+std::string ArcKeyMintContext::DeriveVerifiedBootState() const {
+  const std::string default_unverified_state =
+      kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
+  if (!cros_system_) {
+    LOG(ERROR)
+        << "cros_system_ is null and verified boot state cannot be derived";
+    return default_unverified_state;
+  }
+  // Convert main firmware type to VerifiedBootState enum.
+  const std::string mainfw_type =
+      cros_system_->VbGetSystemPropertyString("mainfw_type")
+          .value_or("property not set");
+  auto boot_state_enum_iter = kMainfwTypeToBootStateMap.find(mainfw_type);
+  if (boot_state_enum_iter == kMainfwTypeToBootStateMap.end()) {
+    LOG(ERROR) << "Unexpected mainfw_type: " << mainfw_type;
+    return default_unverified_state;
+  }
+
+  // Convert VerifiedBootState enum to color.
+  VerifiedBootState boot_state_enum = boot_state_enum_iter->second;
+  auto boot_state_string_iter =
+      kVerifiedBootStateToStringMap.find(boot_state_enum);
+  if (boot_state_string_iter == kVerifiedBootStateToStringMap.end()) {
+    LOG(ERROR) << "Unexpected boot_state_enum: "
+               << static_cast<int>(boot_state_enum);
+    return default_unverified_state;
+  }
+
+  return boot_state_string_iter->second;
+}
+
+// cros_debug indicates if the device is in debug mode or not.
+// Devices in debug mode are considered unlocked since new
+// software can be flashed and it does not enforce verification.
+// Non-debug devices do not allow modification and must go through
+// verified boot.
+std::string ArcKeyMintContext::DeriveBootloaderState() const {
+  const std::string default_unlocked_device_state =
+      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
+  if (!cros_system_) {
+    LOG(ERROR) << "cros_system_ is null and bootloader state cannot be derived";
+    return default_unlocked_device_state;
+  }
+  const VerifiedBootDeviceState device_state_enum =
+      cros_system_->VbGetSystemPropertyInt("cros_debug") == 0
+          ? VerifiedBootDeviceState::kLockedDevice
+          : VerifiedBootDeviceState::kUnlockedDevice;
+
+  auto device_state_string_iter =
+      kDeviceStateToStringMap.find(device_state_enum);
+  if (device_state_string_iter == kDeviceStateToStringMap.end()) {
+    LOG(ERROR) << "Unexpected device_state_enum: "
+               << static_cast<int>(device_state_enum);
+    return default_unlocked_device_state;
+  }
+
+  return device_state_string_iter->second;
 }
 
 }  // namespace arc::keymint::context

@@ -50,6 +50,7 @@ executable("arc-keymintd") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcrossystem",
     "libmojo",
   ]
   deps = [
@@ -360,6 +361,8 @@ if (use.test) {
       "libbrillo",
       "libchrome",
       "libchrome-test",
+      "libcrossystem",
+      "libcrossystem-test",
     ]
   }
   executable("arc-keymintd_testrunner") {

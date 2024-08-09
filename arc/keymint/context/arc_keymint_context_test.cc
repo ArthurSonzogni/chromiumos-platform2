@@ -11,20 +11,22 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <chaps/chaps_proxy_mock.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <keymaster/android_keymaster.h>
-#include "keymaster/android_keymaster_messages.h"
 #include <keymaster/authorization_set.h>
 #include <keymaster/keymaster_tags.h>
 #include <keymaster/UniquePtr.h>
+#include <libcrossystem/crossystem_fake.h>
 
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/openssl_utils.h"
 #include "arc/keymint/key_data.pb.h"
+#include "keymaster/android_keymaster_messages.h"
 #include "keymaster/android_keymaster_utils.h"
 
 using ::testing::_;
@@ -43,6 +45,11 @@ constexpr uint32_t kOsPatchlevel = 20230705;
 constexpr int32_t kKeyMintMessageVersion = 4;
 constexpr ::keymaster::KmVersion kKeyMintVersion =
     ::keymaster::KmVersion::KEYMINT_2;
+
+constexpr char kAndroidVerifiedBootState[] = "green";
+constexpr char kAndroidUnverifiedBootState[] = "orange";
+constexpr char kLockedDeviceState[] = "locked";
+constexpr char kUnlockedDeviceState[] = "unlocked";
 
 // Arbitrary CK_SLOT_ID for user slot.
 constexpr uint64_t kUserSlotId = 11;
@@ -268,6 +275,34 @@ class ContextTestPeer {
   static ContextAdaptor& context_adaptor(ArcKeyMintContext* context) {
     return context->context_adaptor_;
   }
+
+  static void set_cros_system_for_tests(
+      ArcKeyMintContext* context,
+      std::unique_ptr<crossystem::Crossystem> cros_system) {
+    if (!context) {
+      LOG(ERROR) << "context is null";
+      return;
+    }
+    context->set_cros_system_for_tests(std::move(cros_system));
+  }
+
+  static std::optional<std::string> DeriveVerifiedBootStateForTest(
+      ArcKeyMintContext* context) {
+    if (!context) {
+      LOG(ERROR) << "context is null";
+      return std::nullopt;
+    }
+    return context->DeriveVerifiedBootState();
+  }
+
+  static std::optional<std::string> DeriveBootloaderStateForTest(
+      ArcKeyMintContext* context) {
+    if (!context) {
+      LOG(ERROR) << "context is null";
+      return std::nullopt;
+    }
+    return context->DeriveBootloaderState();
+  }
 };
 
 // Provides common values used in tests and sets up the context adaptor
@@ -296,6 +331,14 @@ class ArcKeyMintContextTest : public ::testing::Test {
                            kBlob1.size());
     sw_enforced_.push_back(::keymaster::TAG_KEY_SIZE, 47);
     sw_enforced_.push_back(::keymaster::TAG_NO_AUTH_REQUIRED);
+
+    auto fake_cros_system_ptr =
+        std::make_unique<crossystem::fake::CrossystemFake>();
+    fake_cros_system_ = fake_cros_system_ptr.get();
+    auto cros_system = std::make_unique<crossystem::Crossystem>(
+        std::move(fake_cros_system_ptr));
+    ContextTestPeer::set_cros_system_for_tests(context_,
+                                               std::move(cros_system));
   }
 
   ArcKeyMintContext* context_;  // Owned by |keymint_|.
@@ -307,6 +350,7 @@ class ArcKeyMintContextTest : public ::testing::Test {
   ::keymaster::AuthorizationSet hidden_;
   ::keymaster::AuthorizationSet hw_enforced_;
   ::keymaster::AuthorizationSet sw_enforced_;
+  crossystem::fake::CrossystemFake* fake_cros_system_;
 };
 
 TEST_F(ArcKeyMintContextTest, CreateKeyBlob) {
@@ -700,6 +744,145 @@ TEST_F(ArcKeyMintContextTest, DeserializeKeyDataBlob_InvalidKeyDataError) {
       *context_, key_blob, hidden_, &out_key_material, &out_hw_enforced,
       &out_sw_enforced);
   ASSERT_EQ(KM_ERROR_INVALID_KEY_BLOB, error);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_RecoveryMode) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "recovery");
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kAndroidVerifiedBootState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NormalMode) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "normal");
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kAndroidVerifiedBootState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_DeveloperMode) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "developer");
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_UnexpectedMainfwType) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "invalid");
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NoMainfwType) {
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NullCrosSystem) {
+  // Prepare.
+  ContextTestPeer::set_cros_system_for_tests(context_,
+                                             /* cros_system */ nullptr);
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NonDebugMode) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 0);
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kLockedDeviceState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 1);
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kUnlockedDeviceState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
+  // Prepare.
+  fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 10);
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kUnlockedDeviceState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NoCrosDebug) {
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kUnlockedDeviceState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NullCrosSystem) {
+  // Prepare.
+  ContextTestPeer::set_cros_system_for_tests(context_,
+                                             /* cros_system */ nullptr);
+
+  // Execute.
+  std::optional<std::string> result =
+      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(kUnlockedDeviceState, result);
 }
 
 }  // namespace arc::keymint::context

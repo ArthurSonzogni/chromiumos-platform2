@@ -5,6 +5,8 @@
 #ifndef ARC_KEYMINT_CONTEXT_ARC_KEYMINT_CONTEXT_H_
 #define ARC_KEYMINT_CONTEXT_ARC_KEYMINT_CONTEXT_H_
 
+#include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -15,6 +17,7 @@
 #include <keymaster/key.h>
 #include <keymaster/key_factory.h>
 #include <keymaster/UniquePtr.h>
+#include <libcrossystem/crossystem.h>
 #include <mojo/cert_store.mojom.h>
 
 #include "arc/keymint/context/arc_remote_provisioning_context.h"
@@ -23,6 +26,16 @@
 #include "arc/keymint/key_data.pb.h"
 
 namespace arc::keymint::context {
+
+enum class VerifiedBootState {
+  kUnverifiedBoot,
+  kVerifiedBoot,
+};
+
+enum class VerifiedBootDeviceState {
+  kUnlockedDevice,
+  kLockedDevice,
+};
 
 // Defines specific behavior for ARC KeyMint in ChromeOS.
 class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
@@ -136,6 +149,12 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   void DeletePlaceholderKey(
       const arc::keymint::mojom::ChromeOsKeyPtr& key) const;
 
+  // Derive values for verified boot parameters.
+  std::string DeriveVerifiedBootState() const;
+  std::string DeriveBootloaderState() const;
+  void set_cros_system_for_tests(
+      std::unique_ptr<crossystem::Crossystem> cros_system);
+
   // Since the initialization of |rsa_key_factory_| uses
   // |context_adaptor_|, hence |context_adaptor_| must
   // be declared before |rsa_key_factory_|.
@@ -143,6 +162,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   mutable CrosKeyFactory rsa_key_factory_;
 
   mutable std::vector<arc::keymint::mojom::ChromeOsKeyPtr> placeholder_keys_;
+
+  std::unique_ptr<crossystem::Crossystem> cros_system_;
 
   friend class ContextTestPeer;
 };
