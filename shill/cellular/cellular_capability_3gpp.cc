@@ -757,7 +757,7 @@ void CellularCapability3gpp::UpdatePendingActivationState() {
       // No entry exists for this ICCID. Nothing to do.
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

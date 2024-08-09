@@ -87,7 +87,7 @@ class PluginVm final : public VmBaseImpl {
     *out_error = "";
     return true;
   };
-  void SetTremplinStarted() override { NOTREACHED(); }
+  void SetTremplinStarted() override { NOTREACHED_IN_MIGRATION(); }
   void VmToolsStateChanged(bool running) override;
   vm_tools::concierge::DiskImageStatus ResizeDisk(
       uint64_t new_size, std::string* failure_reason) override;

@@ -75,7 +75,7 @@ RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
       break;
     default:
       // We already enumerated all the enums.
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   return RMAD_ERROR_OK;

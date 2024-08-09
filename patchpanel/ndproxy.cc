@@ -161,7 +161,7 @@ std::optional<net_base::IPv6CIDR> NDOptPrefixInfoToCIDR(
       break;
     }
     default: {
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
     }
   }
   return ss.str();
@@ -897,7 +897,7 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
     }
     case NDProxyControlMessage::UNKNOWN:
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

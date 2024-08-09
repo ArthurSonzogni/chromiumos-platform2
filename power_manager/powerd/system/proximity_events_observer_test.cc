@@ -40,7 +40,7 @@ class TestObserver : public UserProximityObserver {
 
   // UserProximityObserver implementation:
   void OnNewSensor(int id, uint32_t roles) override {
-    NOTREACHED() << "TestObserver::OnNewSensor shouldn't be called.";
+    NOTREACHED_IN_MIGRATION() << "TestObserver::OnNewSensor shouldn't be called.";
   }
   void OnProximityEvent(int id, UserProximity value) override {
     EXPECT_EQ(kFakeSensorId, id);

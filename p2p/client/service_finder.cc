@@ -280,7 +280,7 @@ void ServiceFinderAvahi::service_resolve_cb(AvahiServiceResolver* r,
   }
 
   if (finder->lookup_pending_resolvers_.erase(r) != 1)
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   avahi_service_resolver_free(r);
 
   finder->BrowserCheckIfDone();

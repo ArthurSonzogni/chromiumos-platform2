@@ -1465,7 +1465,7 @@ const char* Service::ConnectFailureToString(ConnectFailure failure) {
       return kErrorSuspectModemDisallowed;
 
     case kFailureMax:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   return "Invalid";
 }

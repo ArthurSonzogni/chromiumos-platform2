@@ -37,7 +37,7 @@ int64_t ConvertTimespecToMicros(const struct timespec& ts) {
 int64_t ClockNow(clockid_t clk_id) {
   struct timespec ts;
   if (clock_gettime(clk_id, &ts) != 0) {
-    NOTREACHED() << "clock_gettime(" << clk_id << ") failed.";
+    NOTREACHED_IN_MIGRATION() << "clock_gettime(" << clk_id << ") failed.";
     return 0;
   }
   return ConvertTimespecToMicros(ts);

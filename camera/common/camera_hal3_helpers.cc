@@ -689,7 +689,7 @@ void Camera3CaptureDescriptor::Unlock() {
       metadata_.unlock(raw_descriptor_->raw_result.result);
       break;
     case Type::kInvalidType:
-      NOTREACHED() << "Cannot unlock invalid descriptor";
+      NOTREACHED_IN_MIGRATION() << "Cannot unlock invalid descriptor";
   }
   for (auto& b : output_buffers_) {
     b.Unlock();

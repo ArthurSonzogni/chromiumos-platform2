@@ -64,7 +64,7 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
       return false;
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {

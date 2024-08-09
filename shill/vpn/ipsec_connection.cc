@@ -521,7 +521,7 @@ void IPsecConnection::ScheduleConnectTask(ConnectStep step) {
       }
       return;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -614,7 +614,7 @@ void IPsecConnection::WriteSwanctlConfig() {
       vpn_section->AddKeyValue("if_id_out", kIfIdString);
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   // Fields for PSK.
@@ -731,7 +731,7 @@ void IPsecConnection::WriteSwanctlConfig() {
         local->AddKeyValue("eap_id", config_->xauth_user.value());
         break;
       default:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
     }
 
     Section* xauth_section = secrets_section.AddSection("xauth-1");
@@ -761,7 +761,7 @@ void IPsecConnection::WriteSwanctlConfig() {
       child_section->AddKeyValue("mode", "tunnel");
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   child_section->AddKeyValue("set_mark_out",
                              "0x500");  // TrafficSource::HOST_VPN
@@ -1274,7 +1274,7 @@ void IPsecConnection::OnDisconnect() {
       // called later.
       return;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

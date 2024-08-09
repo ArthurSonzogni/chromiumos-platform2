@@ -362,7 +362,7 @@ class DlcServiceUtil : public brillo::Daemon {
         QuitWithExitCode(EX_SOFTWARE);
         break;
       default:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
     }
   }
 

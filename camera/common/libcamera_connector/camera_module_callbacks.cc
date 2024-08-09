@@ -38,7 +38,7 @@ void CameraModuleCallbacks::CameraDeviceStatusChange(
       device_status_callback_.Run(camera_id, false);
       break;
     default:
-      NOTREACHED() << "Unexpected new device status: " << new_status;
+      NOTREACHED_IN_MIGRATION() << "Unexpected new device status: " << new_status;
   }
 }
 

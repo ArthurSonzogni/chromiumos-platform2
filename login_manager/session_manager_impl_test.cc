@@ -621,7 +621,7 @@ class SessionManagerImplTest : public ::testing::Test,
           result.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
           break;
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
 
       switch (dalvik_memory_profile_) {
@@ -637,7 +637,7 @@ class SessionManagerImplTest : public ::testing::Test,
           result.emplace_back("DALVIK_MEMORY_PROFILE=16G");
           break;
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
 
       switch (host_ureadahead_mode_) {
@@ -651,7 +651,7 @@ class SessionManagerImplTest : public ::testing::Test,
           result.emplace_back("HOST_UREADAHEAD_MODE=DISABLED");
           break;
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
 
       return result;
@@ -2554,7 +2554,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
     case arc::UpgradeArcContainerRequest_PackageCacheMode_DEFAULT:
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   // Then, upgrade it to a fully functional one.

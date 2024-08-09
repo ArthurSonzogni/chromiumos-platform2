@@ -111,7 +111,7 @@ const dbus::ObjectPath& FakePropertiesProxy::GetObjectPath() const {
 }
 
 dbus::ObjectProxy* FakePropertiesProxy::GetObjectProxy() const {
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return nullptr;
 }
 

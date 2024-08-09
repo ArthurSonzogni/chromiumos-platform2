@@ -1218,7 +1218,7 @@ void DeviceInfo::LinkMsgHandler(const net_base::RTNLMessage& msg) {
   } else if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
     DelLinkMsgHandler(msg);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 }
 

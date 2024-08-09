@@ -36,7 +36,7 @@ class ThreadSafeDBusMethodResponse
   explicit ThreadSafeDBusMethodResponse(BaseClass&& original_callback)
       : BaseClass::DBusMethodResponse(
             nullptr, base::BindOnce([](std::unique_ptr<dbus::Response>) {
-              NOTREACHED();
+              NOTREACHED_IN_MIGRATION();
             })),
         origin_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
         origin_thread_id_(base::PlatformThread::CurrentId()),

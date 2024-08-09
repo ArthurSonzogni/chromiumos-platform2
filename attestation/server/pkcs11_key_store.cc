@@ -342,7 +342,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
     }
     ecc_point.assign(output.get(), output.get() + output_size);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   // Construct a PKCS #11 template for the public key object.
@@ -387,7 +387,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
                                  std::begin(ecc_key_attributes),
                                  std::end(ecc_key_attributes));
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
@@ -436,7 +436,7 @@ bool Pkcs11KeyStore::Register(const std::string& username,
                                   std::begin(ecc_key_attributes),
                                   std::end(ecc_key_attributes));
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
   if (C_CreateObject(session.handle(), private_key_attributes.data(),
                      private_key_attributes.size(), &object_handle) != CKR_OK) {

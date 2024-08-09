@@ -496,7 +496,7 @@ void AuthSession::RecordAuthSessionStart(
 void AuthSession::SetAuthorizedForIntents(
     base::flat_set<AuthIntent> new_authorized_intents) {
   if (new_authorized_intents.empty()) {
-    NOTREACHED() << "Empty intent set cannot be authorized";
+    NOTREACHED_IN_MIGRATION() << "Empty intent set cannot be authorized";
     return;
   }
 

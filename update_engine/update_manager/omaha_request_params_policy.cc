@@ -86,7 +86,7 @@ EvalStatus OmahaRequestParamsPolicy::Evaluate(EvaluationContext* ec,
         request_params->set_rollback_data_save_requested(true);
         break;
       case RollbackToTargetVersion::kMaxValue:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
         // Don't add a default case to let the compiler warn about newly
         // added enum values which should be added here.
     }

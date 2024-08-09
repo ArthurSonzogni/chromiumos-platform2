@@ -33,9 +33,9 @@ class EventsHandlerTest : public ::testing::Test,
   }
 
   // cros::mojom::SensorDeviceEventsObserver overrides:
-  void OnEventUpdated(cros::mojom::IioEventPtr event) override { NOTREACHED(); }
+  void OnEventUpdated(cros::mojom::IioEventPtr event) override { NOTREACHED_IN_MIGRATION(); }
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
  protected:

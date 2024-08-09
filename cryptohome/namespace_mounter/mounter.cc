@@ -1302,7 +1302,7 @@ StorageStatus Mounter::PerformMount(MountType mount_type,
       break;
     case MountType::EPHEMERAL:
     case MountType::NONE:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   if (!IsFirstMountComplete(obfuscated_username)) {

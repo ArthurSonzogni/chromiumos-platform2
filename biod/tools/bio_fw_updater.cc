@@ -166,7 +166,7 @@ int main(int argc, char* argv[]) {
   }
   switch (fw.GetStatus()) {
     case biod::CrosFpFirmware::Status::kUninitialized:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return EXIT_FAILURE;
     case biod::CrosFpFirmware::Status::kOk:
       break;
@@ -240,6 +240,6 @@ int main(int argc, char* argv[]) {
       return EXIT_SUCCESS;
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return EXIT_SUCCESS;
 }

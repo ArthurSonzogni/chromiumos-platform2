@@ -761,7 +761,7 @@ void HdrNetStreamManipulator::UploadMetrics() {
   } else {
     for (auto [e, c] : hdrnet_metrics_.errors) {
       if (e == HdrnetError::kNoError) {
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
         continue;
       }
       if (c > 0) {

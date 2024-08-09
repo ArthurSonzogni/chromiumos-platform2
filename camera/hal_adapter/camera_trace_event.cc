@@ -29,7 +29,7 @@ perfetto::StaticString ToString(HalAdapterTraceEvent event) {
     case HalAdapterTraceEvent::kCapture:
       return "Capture";
     default:
-      NOTREACHED() << "Unexpected camera trace event: "
+      NOTREACHED_IN_MIGRATION() << "Unexpected camera trace event: "
                    << static_cast<int>(event);
   }
 }

@@ -216,7 +216,7 @@ bool RsaOaepEncrypt(const brillo::SecureBlob& plaintext,
     return false;
   }
   if (encryption_result != ciphertext->size()) {
-    NOTREACHED()
+    NOTREACHED_IN_MIGRATION()
         << "RSAES-OAEP MGF1 encryption returned unexpected amount of data";
     return false;
   }

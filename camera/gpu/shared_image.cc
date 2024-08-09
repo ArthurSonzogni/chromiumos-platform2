@@ -38,7 +38,7 @@ uint32_t GetDrmPixelFormatForSubplane(buffer_handle_t buffer, int plane) {
     case DRM_FORMAT_P010:
       return (plane == 0) ? DRM_FORMAT_R16 : DRM_FORMAT_GR1616;
   }
-  NOTREACHED() << "Unsupported format: " << FormatToString(buffer_format);
+  NOTREACHED_IN_MIGRATION() << "Unsupported format: " << FormatToString(buffer_format);
   return 0;
 }
 

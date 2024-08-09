@@ -67,7 +67,7 @@ const char* InstallOperationTypeName(InstallOperation::Type op_type) {
 #ifndef __CHROMEOS__
     case InstallOperation::BSDIFF:
     case InstallOperation::MOVE:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
 #endif
   }
   return "<unknown_op>";

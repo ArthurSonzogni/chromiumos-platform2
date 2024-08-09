@@ -52,7 +52,7 @@ void DoInitialize(base::File* file,
 
   if (!open_flags && !(flags & base::File::FLAG_OPEN) &&
       !(flags & base::File::FLAG_OPEN_ALWAYS)) {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     errno = EOPNOTSUPP;
     *file = base::File(base::File::FILE_ERROR_FAILED);
     return;
@@ -69,7 +69,7 @@ void DoInitialize(base::File* file,
     // Note: For FLAG_WRITE_ATTRIBUTES and no other read/write flags, we'll
     // open the file in O_RDONLY mode (== 0, see static_assert below), so that
     // we get a fd that can be used for SetTimes().
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   if (flags & base::File::FLAG_TERMINAL_DEVICE) {

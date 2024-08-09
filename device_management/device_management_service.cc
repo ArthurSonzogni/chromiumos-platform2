@@ -155,7 +155,7 @@ DeviceManagementService::InstallAttributesStatusToProtoEnum(
     return state_map.at(status);
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   // Return is added so compiler doesn't complain.
   return device_management::InstallAttributesState::INVALID;
 }

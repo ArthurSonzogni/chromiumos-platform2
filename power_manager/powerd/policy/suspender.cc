@@ -641,7 +641,7 @@ Suspender::State Suspender::Suspend() {
       break;
 
     default:
-      NOTREACHED() << "Unexpected suspend request flavor "
+      NOTREACHED_IN_MIGRATION() << "Unexpected suspend request flavor "
                    << static_cast<int>(suspend_request_flavor_);
       break;
   }

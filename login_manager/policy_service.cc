@@ -51,7 +51,7 @@ bool IsComponentDomain(PolicyDomain domain) {
     case POLICY_DOMAIN_SIGNIN_EXTENSIONS:
       return true;
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return false;
 }
 

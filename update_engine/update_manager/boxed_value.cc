@@ -119,10 +119,10 @@ string BoxedValue::ValuePrinter<RollbackToTargetVersion>(const void* value) {
     case RollbackToTargetVersion::kRollbackAndRestoreIfPossible:
       return "Rollback and restore if possible";
     case RollbackToTargetVersion::kMaxValue:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return "Max value";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return "Unknown";
 }
 
@@ -151,7 +151,7 @@ string BoxedValue::ValuePrinter<Stage>(const void* value) {
     case Stage::kCleanupPreviousUpdate:
       return "Cleanup Previous Update";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return "Unknown";
 }
 
@@ -167,7 +167,7 @@ string BoxedValue::ValuePrinter<UpdateRequestStatus>(const void* value) {
     case UpdateRequestStatus::kPeriodic:
       return "Periodic";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return "Unknown";
 }
 
@@ -219,7 +219,7 @@ string BoxedValue::ValuePrinter<ChannelDowngradeBehavior>(const void* value) {
     case ChannelDowngradeBehavior::kAllowUserToConfigure:
       return "User decides on channel downgrade behavior";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return "Unknown";
 }
 

@@ -100,7 +100,7 @@ std::string NeighborLinkMonitor::NeighborRoleToString(
     case NeighborLinkMonitor::NeighborRole::kGatewayAndDNSServer:
       return "gateway and dns_server";
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -162,7 +162,7 @@ void NeighborLinkMonitor::UpdateWatchingEntry(const net_base::IPAddress& addr,
       it->second.role = NeighborRole::kGatewayAndDNSServer;
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

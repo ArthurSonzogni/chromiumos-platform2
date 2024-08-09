@@ -361,7 +361,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
       signal_callback = base::BindRepeating(
           &PackageKitTransaction::OnDetailsSignal, base::Unretained(this));
     } else {
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
     }
 
     transaction_proxy_->ConnectToSignal(

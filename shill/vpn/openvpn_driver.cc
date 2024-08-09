@@ -318,7 +318,7 @@ void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
 }
 
 void OpenVPNDriver::GetLogin(std::string* /*user*/, std::string* /*password*/) {
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 void OpenVPNDriver::Notify(const std::string& reason,

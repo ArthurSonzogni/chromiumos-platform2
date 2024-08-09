@@ -1307,7 +1307,7 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
 
     RestartDevice("tpm_firmware_update " + update_mode);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return false;
   }
 
@@ -1498,7 +1498,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       env_vars.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
       break;
     default:
-      NOTREACHED() << "Unhandled play store auto-update mode: "
+      NOTREACHED_IN_MIGRATION() << "Unhandled play store auto-update mode: "
                    << request.play_store_auto_update() << ".";
   }
 
@@ -1516,7 +1516,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       env_vars.emplace_back("DALVIK_MEMORY_PROFILE=16G");
       break;
     default:
-      NOTREACHED() << "Unhandled dalvik_memory_profle: "
+      NOTREACHED_IN_MIGRATION() << "Unhandled dalvik_memory_profle: "
                    << request.dalvik_memory_profile() << ".";
   }
 
@@ -1531,7 +1531,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       env_vars.emplace_back("HOST_UREADAHEAD_MODE=DISABLED");
       break;
     default:
-      NOTREACHED() << "Unhandled host_ureadahead_mode: "
+      NOTREACHED_IN_MIGRATION() << "Unhandled host_ureadahead_mode: "
                    << request.host_ureadahead_mode() << ".";
   }
 
@@ -2074,7 +2074,7 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       env_vars.emplace_back("COPY_PACKAGES_CACHE=0");
       break;
     default:
-      NOTREACHED() << "Wrong packages cache mode: "
+      NOTREACHED_IN_MIGRATION() << "Wrong packages cache mode: "
                    << request.packages_cache_mode() << ".";
   }
 

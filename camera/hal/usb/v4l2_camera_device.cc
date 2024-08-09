@@ -121,7 +121,7 @@ const int ControlTypeToCid(ControlType type) {
       return V4L2_CID_POWER_LINE_FREQUENCY;
 
     default:
-      NOTREACHED() << "Unexpected control type " << type;
+      NOTREACHED_IN_MIGRATION() << "Unexpected control type " << type;
       return -1;
   }
 }
@@ -189,7 +189,7 @@ const std::string ControlTypeToString(ControlType type) {
       return "power line frequency";
 
     default:
-      NOTREACHED() << "Unexpected control type " << type;
+      NOTREACHED_IN_MIGRATION() << "Unexpected control type " << type;
       return "N/A";
   }
 }
@@ -257,7 +257,7 @@ const std::string CidToString(int cid) {
       return "V4L2_CID_POWER_LINE_FREQUENCY";
 
     default:
-      NOTREACHED() << "Unexpected cid " << cid;
+      NOTREACHED_IN_MIGRATION() << "Unexpected cid " << cid;
       return "N/A";
   }
 }
@@ -405,7 +405,7 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
                                     kExposureTypeMenuStringManual)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_MANUAL;
           } else {
-            NOTREACHED() << "No manual exposure time type supported";
+            NOTREACHED_IN_MIGRATION() << "No manual exposure time type supported";
           }
           break;
 
@@ -420,7 +420,7 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
                                     kExposureTypeMenuStringAuto)) {
             auto_exposure_time_type_ = V4L2_EXPOSURE_AUTO;
           } else {
-            NOTREACHED() << "No auto exposure time type supported";
+            NOTREACHED_IN_MIGRATION() << "No auto exposure time type supported";
           }
           break;
 
@@ -434,7 +434,7 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
                                     kExposureTypeMenuStringAperturePriority)) {
             auto_exposure_time_type_ = V4L2_EXPOSURE_APERTURE_PRIORITY;
           } else {
-            NOTREACHED() << "No auto exposure time type supported";
+            NOTREACHED_IN_MIGRATION() << "No auto exposure time type supported";
           }
           break;
 
@@ -448,7 +448,7 @@ int V4L2CameraDevice::Connect(const base::FilePath& device_path) {
                                     kExposureTypeMenuStringShutterPriority)) {
             manual_exposure_time_type_ = V4L2_EXPOSURE_SHUTTER_PRIORITY;
           } else {
-            NOTREACHED() << "No manual exposure time type supported";
+            NOTREACHED_IN_MIGRATION() << "No manual exposure time type supported";
           }
           break;
 

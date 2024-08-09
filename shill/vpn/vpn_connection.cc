@@ -33,7 +33,7 @@ std::string StateToString(VPNConnection::State state) {
     case VPNConnection::State::kStopped:
       return "Stopped";
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

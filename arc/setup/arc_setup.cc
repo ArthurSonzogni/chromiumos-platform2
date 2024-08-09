@@ -2970,7 +2970,7 @@ void ArcSetup::Run() {
       OnUpdateRestoreconLast();
       break;
     case Mode::UNKNOWN:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
   }
 }

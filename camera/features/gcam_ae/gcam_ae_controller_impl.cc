@@ -485,7 +485,7 @@ void GcamAeControllerImpl::SetRequestAeParameters(
       }
       break;
     default:
-      NOTREACHED() << "Invalid AeOverrideMethod";
+      NOTREACHED_IN_MIGRATION() << "Invalid AeOverrideMethod";
   }
 }
 
@@ -676,14 +676,14 @@ void GcamAeControllerImpl::SetManualSensorControls(
           case V4L2_CID_POWER_LINE_FREQUENCY_60HZ:
             return kExpTimeMs60HzRounding;
           default:
-            NOTREACHED() << "Powerline frequency not set";
+            NOTREACHED_IN_MIGRATION() << "Powerline frequency not set";
             return kExpTimeMsNoRounding;
         }
         break;
       case ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF:
         return kExpTimeMsNoRounding;
       default:
-        NOTREACHED() << "Unknown antibanding_mode enum: "
+        NOTREACHED_IN_MIGRATION() << "Unknown antibanding_mode enum: "
                      << static_cast<int>(antibanding_mode);
         return kExpTimeMsNoRounding;
     }

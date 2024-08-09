@@ -128,7 +128,7 @@ void CameraDiagnosticsTestsFixture::OnDiagnosticsResult(
                  << DiagnosticsResultToJsonString(result->get_res());
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   frame_analysis_result_ = std::move(result);
   base::AutoLock lock(running_analysis_lock_);

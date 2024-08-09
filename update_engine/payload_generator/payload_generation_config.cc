@@ -258,7 +258,7 @@ bool PayloadVersion::OperationAllowed(InstallOperation::Type operation) const {
 #ifndef __CHROMEOS__
     case InstallOperation::MOVE:
     case InstallOperation::BSDIFF:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
 #endif
   }
   return false;

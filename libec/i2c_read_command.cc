@@ -29,7 +29,7 @@ uint32_t I2cReadCommand::Data() const {
       return *reinterpret_cast<const uint32_t*>(aligned_data.data());
     }
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return 0;
 }
 

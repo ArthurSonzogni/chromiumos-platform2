@@ -73,7 +73,7 @@ int GetNumberOfOpenFiles() {
       return value;
     }
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return 0;
 }
 

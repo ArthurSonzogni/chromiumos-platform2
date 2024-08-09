@@ -128,7 +128,7 @@ string OmahaRequestBuilderXml::GetAppBody(const OmahaAppData& app_data) const {
           app_body = GetPingDateBased(app_data.app_params);
           break;
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
     }
     if (!ping_only_) {

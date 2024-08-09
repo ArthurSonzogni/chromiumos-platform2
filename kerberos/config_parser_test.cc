@@ -100,7 +100,7 @@ std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
     case CONFIG_ERROR_LINE_TOO_LONG:
       return os << "Config line too long";
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   return os;
 }

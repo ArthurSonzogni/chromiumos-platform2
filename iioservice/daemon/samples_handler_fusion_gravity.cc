@@ -46,7 +46,7 @@ void SamplesHandlerFusionGravity::SetScale(cros::mojom::DeviceType type,
       break;
 
     default:
-      NOTREACHED() << "Invalid type: " << type;
+      NOTREACHED_IN_MIGRATION() << "Invalid type: " << type;
       break;
   }
 }

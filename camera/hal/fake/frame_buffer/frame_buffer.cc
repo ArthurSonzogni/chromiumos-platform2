@@ -199,7 +199,7 @@ bool FrameBuffer::ScaleInto(FrameBuffer& buffer,
       return true;
     }
     default:
-      NOTREACHED() << "Unknown scale mode " << static_cast<int>(scale_mode);
+      NOTREACHED_IN_MIGRATION() << "Unknown scale mode " << static_cast<int>(scale_mode);
       return false;
   }
 }

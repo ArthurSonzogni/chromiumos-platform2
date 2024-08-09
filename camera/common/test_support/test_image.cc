@@ -76,7 +76,7 @@ uint32_t GetImageSize(uint32_t width,
     case TestImage::PixelFormat::kNV12:
       return width * height + ((width + 1) / 2) * ((height + 1) / 2) * 2;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return 0;
   }
 }
@@ -147,7 +147,7 @@ uint32_t TestImage::hal_format() const {
     case PixelFormat::kNV12:
       return HAL_PIXEL_FORMAT_YCBCR_420_888;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return 0;
   }
 }
@@ -156,7 +156,7 @@ uint32_t TestImage::drm_format() const {
     case PixelFormat::kNV12:
       return DRM_FORMAT_NV12;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return 0;
   }
 }
@@ -206,7 +206,7 @@ bool WriteTestImageToBuffer(const TestImage& image,
       }
     }
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return false;
   }
 }

@@ -325,7 +325,7 @@ class HdrNetStreamManipulatorTest : public Test {
           break;
 
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
       expected_msg_.reset();
     }

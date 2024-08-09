@@ -195,7 +195,7 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
         break;
       case CalibrationComponentStatus::RMAD_CALIBRATION_UNKNOWN:
       default:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
         *error_code = RMAD_ERROR_REQUEST_ARGS_MISSING;
         LOG(ERROR)
             << "RmadState component missing |calibration_status| argument.";

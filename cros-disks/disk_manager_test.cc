@@ -112,7 +112,7 @@ class MockPlatform : public Platform {
       out->st_mode = S_IFBLK | 0640;
       return true;
     }
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return false;
   }
 
@@ -139,7 +139,7 @@ class MockPlatform : public Platform {
       *group_id = 444;
       return true;
     }
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return false;
   }
 };

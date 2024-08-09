@@ -69,7 +69,7 @@ std::string UnitName(const lorgnette::OptionUnit unit) {
     case lorgnette::OptionUnit::UNIT_MICROSECOND:
       return "μs";
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return "";
   }
 }
@@ -110,7 +110,7 @@ void PrintSaneValue(const lorgnette::ScannerOption& option, std::ostream& out) {
       // No value.
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
   }
 
@@ -208,7 +208,7 @@ void PrintSaneConstraint(const lorgnette::ScannerOption& option,
           constraint.int_range(), option.unit(), out);
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
   }
 }

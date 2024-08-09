@@ -221,7 +221,7 @@ vpn_metrics::ConnectionLostReason InterpretEndReasonAsConnectionLost(
     case VPNEndReason::kConnectFailureDNSLookup:
     case VPNEndReason::kConnectTimeout:
     case VPNEndReason::kInvalidConfig:
-      NOTREACHED() << __func__ << ": unexpected reason "
+      NOTREACHED_IN_MIGRATION() << __func__ << ": unexpected reason "
                    << VPNEndReasonToString(reason);
       return vpn_metrics::kConnectionLostReasonInternal;
     case VPNEndReason::kFailureInternal:
@@ -336,7 +336,7 @@ void VPNDriverMetrics::ReportDisconnected(VPNEndReason reason) {
       metric_is_in_seconds = true;
       break;
     case ConnectionState::kIdle:
-      NOTREACHED();  // Already checked above.
+      NOTREACHED_IN_MIGRATION();  // Already checked above.
       return;
   }
 

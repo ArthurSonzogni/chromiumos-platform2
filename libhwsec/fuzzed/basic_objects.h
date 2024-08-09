@@ -198,7 +198,7 @@ struct FuzzedObject<std::variant<VariantArgs...>> {
   Variant operator()(FuzzedDataProvider& provider,
                      size_t idx,
                      std::index_sequence<> int_seq) const {
-    NOTREACHED() << "Should not reach here.";
+    NOTREACHED_IN_MIGRATION() << "Should not reach here.";
     // We should not reach here.
     return FuzzedObject<Variant>()(provider);
   }

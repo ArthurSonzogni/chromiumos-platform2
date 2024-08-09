@@ -351,7 +351,7 @@ void Controller::OnProxyAddrMessage(const ProxyAddrMessage& msg) {
       resolv_conf_->SetDNSProxyAddresses({});
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -436,7 +436,7 @@ void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
       break;
 
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -486,7 +486,7 @@ void Controller::OnVirtualDeviceChanged(
       VirtualDeviceRemoved(device);
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

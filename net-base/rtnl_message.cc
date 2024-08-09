@@ -565,7 +565,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
       break;
 
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   if (!msg) {
     return nullptr;
@@ -922,7 +922,7 @@ std::vector<uint8_t> RTNLMessage::Encode() const {
       break;
 
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   if (mode_ == kModeGet) {

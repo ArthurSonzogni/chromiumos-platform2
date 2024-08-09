@@ -584,7 +584,7 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
       LOG(ERROR) << "Failed to set up user: " << response.failure_reason();
       return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return VirtualMachine::SetUpLxdContainerUserStatus::FAILED;
   }
 }

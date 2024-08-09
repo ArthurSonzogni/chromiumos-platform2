@@ -213,7 +213,7 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
           kill_pid_namespace_ ? std::move(termination_pipe.child_fd)
                               : base::ScopedFD())
           .Run();
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
     } else {
       // In parent process.
       PCHECK(base::SetNonBlocking(launcher_pipe_.parent_fd.get()));

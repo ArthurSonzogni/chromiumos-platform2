@@ -52,7 +52,7 @@ bool EphemeralProfile::AbandonService(const ServiceRefPtr& service) {
 }
 
 bool EphemeralProfile::Save() {
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return false;
 }
 

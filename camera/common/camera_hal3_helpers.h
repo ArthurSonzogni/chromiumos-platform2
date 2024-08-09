@@ -123,7 +123,7 @@ inline uint32_t GetFrameNumber(const camera3_notify_msg_t& msg) {
     case CAMERA3_MSG_SHUTTER:
       return msg.message.shutter.frame_number;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return 0u;
   }
 }

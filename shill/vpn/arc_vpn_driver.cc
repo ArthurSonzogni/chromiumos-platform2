@@ -68,7 +68,7 @@ void ArcVpnDriver::Disconnect() {
 }
 
 void ArcVpnDriver::OnConnectTimeout() {
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 std::unique_ptr<net_base::NetworkConfig> ArcVpnDriver::GetNetworkConfig()

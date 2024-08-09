@@ -30,7 +30,7 @@ inline arc::mojom::VideoPixelFormat ConvertInputFormatToMojoFormat(
     case NV12:
       return arc::mojom::VideoPixelFormat::PIXEL_FORMAT_NV12;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -44,7 +44,7 @@ inline vea_error_t ConvertMojoError(
     case arc::mojom::VideoEncodeAccelerator::Error::kPlatformFailureError:
       return PLATFORM_FAILURE_ERROR;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -68,7 +68,7 @@ inline arc::mojom::BitratePtr ConvertToMojoBitrate(
       break;
     }
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
   }
   return bitrate;

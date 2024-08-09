@@ -130,7 +130,7 @@ QueueOptions StorageOptions::PopulateQueueOptions(Priority priority) const {
           .set_upload_retry_delay(kFailedUploadRetryDelay)
           .set_can_shed_records(false);
     case UNDEFINED_PRIORITY:
-      NOTREACHED() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
+      NOTREACHED_IN_MIGRATION() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
       return QueueOptions(*this);
   }
 }

@@ -158,7 +158,7 @@ bool InstallAttributes::Init() {
         status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmUnavailable:
-        NOTREACHED() << "Should never call lockbox when TPM is unavailable.";
+        NOTREACHED_IN_MIGRATION() << "Should never call lockbox when TPM is unavailable.";
         status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmError:
@@ -264,7 +264,7 @@ bool InstallAttributes::Finalize() {
     case Status::kFirstInstall:
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   // Restamp the version.

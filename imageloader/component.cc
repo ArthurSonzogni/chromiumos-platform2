@@ -102,7 +102,7 @@ base::FilePath GetImagePath(const base::FilePath& component_dir,
   } else if (fs_type == FileSystem::kSquashFS) {
     return component_dir.Append(kImageFileNameSquashFS);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return base::FilePath();
   }
 }

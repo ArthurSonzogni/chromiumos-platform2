@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
 #endif
 
     default:
-      NOTREACHED() << "Unknown TPM executor version";
+      NOTREACHED_IN_MIGRATION() << "Unknown TPM executor version";
   }
 
   tpm2_simulator::SimulatorDaemon daemon(executor.get());

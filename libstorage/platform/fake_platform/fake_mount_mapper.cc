@@ -318,7 +318,7 @@ base::FilePath FakeMountMapper::ResolvePath(const base::FilePath& path) const {
     // to translate relatively to the source, rather than redirect.
     result = mapping->TranslateTargetToSource(result);
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 }  // namespace libstorage

@@ -81,7 +81,7 @@ base::TimeDelta CalculateWaitTimeFromSchedule(
     prev_days = days;
   }
   // Something went wrong.
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return base::Days(0);
 }
 

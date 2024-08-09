@@ -42,7 +42,7 @@ const char* GetAlgorithmLibraryName(const std::string& pipe_name) {
   if (pipe_name == "test") {
     return "libcam_algo_test.so";
   }
-  NOTREACHED() << "Unknown message pipe name: " << pipe_name;
+  NOTREACHED_IN_MIGRATION() << "Unknown message pipe name: " << pipe_name;
   return "";
 }
 

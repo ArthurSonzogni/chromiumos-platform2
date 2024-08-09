@@ -215,7 +215,7 @@ class TerminaVm final : public VmBaseImpl {
   uint64_t GetAvailableDiskSpace() override;
 
   void SetTremplinStarted() override { is_tremplin_started_ = true; }
-  void VmToolsStateChanged(bool running) override { NOTREACHED(); }
+  void VmToolsStateChanged(bool running) override { NOTREACHED_IN_MIGRATION(); }
 
   // Adjusts the amount of CPU the Termina VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);

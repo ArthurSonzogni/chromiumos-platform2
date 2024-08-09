@@ -237,7 +237,7 @@ void ChallengeCredentialAuthBlock::CreateContinueAfterScrypt(
                             std::move(key_blobs), std::move(auth_block_state));
   } else {
     // This should never happen, but handling it anyway on the safe side.
-    NOTREACHED() << "scrypt derivation failed for challenge credential.";
+    NOTREACHED_IN_MIGRATION() << "scrypt derivation failed for challenge credential.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(

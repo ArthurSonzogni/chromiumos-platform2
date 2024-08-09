@@ -917,7 +917,7 @@ class PowerSetter {
         FillMessageMTK(msg, tablet, domain);
         break;
       case WirelessDriver::NONE:
-        NOTREACHED() << "No driver found";
+        NOTREACHED_IN_MIGRATION() << "No driver found";
     }
 
     PCHECK(nl_send_auto(nl_sock_, msg) > 0) << "nl_send_auto failed";

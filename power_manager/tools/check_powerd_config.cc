@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
     printf("%" PRId64 "\n", defer_external_display_timeout);
     exit(0);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     exit(1);
   }
 }

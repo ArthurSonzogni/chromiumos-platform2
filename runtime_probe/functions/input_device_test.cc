@@ -24,7 +24,7 @@ std::string GetStylusKey() {
   } else if (kBitsPerBitmap == 32) {
     return "800 0 0 0 0 0 0 0 0 0 0";
   } else {
-    NOTREACHED() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
+    NOTREACHED_IN_MIGRATION() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
     return "";
   }
 }
@@ -35,7 +35,7 @@ std::string GetTouchscreenAbs() {
   } else if (kBitsPerBitmap == 32) {
     return "8000 0";
   } else {
-    NOTREACHED() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
+    NOTREACHED_IN_MIGRATION() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
     return "";
   }
 }
@@ -46,7 +46,7 @@ std::string GetTouchpadKey() {
   } else if (kBitsPerBitmap == 32) {
     return "400 0 10000 0 0 0 0 0 0 0 0";
   } else {
-    NOTREACHED() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
+    NOTREACHED_IN_MIGRATION() << "Invalid kBitsPerBitmap: " << kBitsPerBitmap;
     return "";
   }
 }

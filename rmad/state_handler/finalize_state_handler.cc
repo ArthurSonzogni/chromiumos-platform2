@@ -102,7 +102,7 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
         default:
           break;
       }
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
     case FinalizeState::RMAD_FINALIZE_CHOICE_RETRY:
       StartFinalize();
@@ -111,7 +111,7 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
       break;
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 

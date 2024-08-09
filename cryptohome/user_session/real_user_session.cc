@@ -66,7 +66,7 @@ MountStatus RealUserSession::MountVault(
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
   if (username_ != username) {
-    NOTREACHED() << "MountVault username mismatch.";
+    NOTREACHED_IN_MIGRATION() << "MountVault username mismatch.";
   }
 
   StorageStatus status =
@@ -108,7 +108,7 @@ MountStatus RealUserSession::EvictDeviceKey() {
 
 MountStatus RealUserSession::MountEphemeral(const Username& username) {
   if (username_ != username) {
-    NOTREACHED() << "MountEphemeral username mismatch.";
+    NOTREACHED_IN_MIGRATION() << "MountEphemeral username mismatch.";
   }
 
   if (homedirs_->IsOrWillBeOwner(obfuscated_username_)) {
@@ -133,7 +133,7 @@ MountStatus RealUserSession::MountEphemeral(const Username& username) {
 
 MountStatus RealUserSession::MountGuest() {
   if (username_ != GetGuestUsername()) {
-    NOTREACHED() << "MountGuest username mismatch.";
+    NOTREACHED_IN_MIGRATION() << "MountGuest username mismatch.";
   }
 
   StorageStatus status = mount_->MountEphemeralCryptohome(username_);

@@ -47,7 +47,7 @@ void OnDiagnosticsResult(
                  << cros::DiagnosticsResultToJsonString(result->get_res());
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   exit(0);
 }

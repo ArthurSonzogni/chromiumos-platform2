@@ -37,7 +37,7 @@ BacklightBrightnessChange_Cause AmbientLightHandler::ToProtobufCause(
     case BrightnessChangeCause::EXTERNAL_POWER_DISCONNECTED:
       return BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED;
   }
-  NOTREACHED() << "Invalid cause " << static_cast<int>(als_cause);
+  NOTREACHED_IN_MIGRATION() << "Invalid cause " << static_cast<int>(als_cause);
   return BacklightBrightnessChange_Cause_AMBIENT_LIGHT_CHANGED;
 }
 

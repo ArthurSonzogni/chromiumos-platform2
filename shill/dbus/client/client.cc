@@ -816,7 +816,7 @@ void Client::OnServicePropertyChange(const std::string& device_path,
     has_change =
         ProcessNetworkConfigChange(device_path, property_value, device);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   if (!has_change) {

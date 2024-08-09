@@ -55,7 +55,7 @@ uint8_t DegreesToRotateAndCropMode(int crop_rotate_scale_degrees) {
     case CAMERA3_STREAM_ROTATION_270:
       return ANDROID_SCALER_ROTATE_AND_CROP_270;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return ANDROID_SCALER_ROTATE_AND_CROP_NONE;
   }
 }
@@ -71,7 +71,7 @@ libyuv::RotationMode RotateAndCropModeToLibyuvRotation(uint8_t rc_mode) {
     case ANDROID_SCALER_ROTATE_AND_CROP_270:
       return libyuv::kRotate270;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return libyuv::kRotate0;
   }
 }

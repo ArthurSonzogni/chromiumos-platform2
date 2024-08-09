@@ -594,7 +594,7 @@ bool PowerSupply::ConnectedSourcesAreEqual(const PowerStatus& a,
     a_it++;
     b_it++;
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 base::TimeTicks PowerSupply::TestApi::GetCurrentTime() const {
@@ -1558,7 +1558,7 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
     case PowerSupplyProperties_BatteryState_FULL:
       break;
     default:
-      NOTREACHED() << "Unhandled battery state "
+      NOTREACHED_IN_MIGRATION() << "Unhandled battery state "
                    << static_cast<int>(status->battery_state);
   }
 

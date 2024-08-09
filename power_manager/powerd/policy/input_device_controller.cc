@@ -35,7 +35,7 @@ const char* ModeToString(InputDeviceController::Mode mode) {
     case InputDeviceController::Mode::TABLET:
       return "tablet";
   }
-  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
+  NOTREACHED_IN_MIGRATION() << "Invalid mode " << static_cast<int>(mode);
   return "unknown";
 }
 
@@ -55,7 +55,7 @@ bool IsUsableInMode(const system::TaggedDevice& device,
     case InputDeviceController::Mode::TABLET:
       return device.HasTag(InputDeviceController::kTagUsableWhenTablet);
   }
-  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
+  NOTREACHED_IN_MIGRATION() << "Invalid mode " << static_cast<int>(mode);
   return false;
 }
 
@@ -83,7 +83,7 @@ bool IsWakeupEnabledInMode(const system::TaggedDevice& device,
     case InputDeviceController::Mode::TABLET:
       return device.HasTag(InputDeviceController::kTagWakeupWhenTablet);
   }
-  NOTREACHED() << "Invalid mode " << static_cast<int>(mode);
+  NOTREACHED_IN_MIGRATION() << "Invalid mode " << static_cast<int>(mode);
   return false;
 }
 

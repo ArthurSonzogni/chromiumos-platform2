@@ -470,7 +470,7 @@ std::string CellularService::GetActivationTypeString() const {
     case kActivationTypeUnknown:
       return "";
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return "";  // Make compiler happy.
   }
 }

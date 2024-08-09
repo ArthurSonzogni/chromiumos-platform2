@@ -814,6 +814,6 @@ int main(int argc, char** argv) {
     }
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return 1;
 }

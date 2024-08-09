@@ -347,7 +347,7 @@ std::optional<std::multiset<nl80211_iftype>> WiFiPhy::RequestNewIface(
         iftype = NL80211_IFTYPE_P2P_CLIENT;
         break;
       case LocalDevice::IfaceType::kUnknown:
-        NOTREACHED() << "unknown iface type in local device "
+        NOTREACHED_IN_MIGRATION() << "unknown iface type in local device "
                      << dev->link_name().value_or("(no_link_name)");
     }
     if (dev->priority() <= priority) {

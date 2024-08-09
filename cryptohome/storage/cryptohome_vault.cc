@@ -211,7 +211,7 @@ void CryptohomeVault::ReportVaultEncryptionType() {
       break;
     default:
       // We're only interested in encrypted home directories.
-      NOTREACHED() << "Unknown homedir encryption type: "
+      NOTREACHED_IN_MIGRATION() << "Unknown homedir encryption type: "
                    << static_cast<int>(type);
       break;
   }

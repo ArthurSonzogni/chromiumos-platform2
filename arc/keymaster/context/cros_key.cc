@@ -144,7 +144,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
                               this, std::move(key_data)));
       return KM_ERROR_OK;
     case KeyData::kArcKey:
-      NOTREACHED() << "CrosKeyFactory cannot load ARC keys.";
+      NOTREACHED_IN_MIGRATION() << "CrosKeyFactory cannot load ARC keys.";
       return KM_ERROR_UNIMPLEMENTED;
     case KeyData::DATA_NOT_SET:
       LOG(ERROR) << "Tried to load CrOS key but KeyData is not set.";
@@ -158,7 +158,7 @@ keymaster_error_t CrosKeyFactory::LoadKey(
     ::keymaster::AuthorizationSet&& hw_enforced,
     ::keymaster::AuthorizationSet&& sw_enforced,
     ::keymaster::UniquePtr<::keymaster::Key>* key) const {
-  NOTREACHED() << __func__ << " should never be called";
+  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
   return KM_ERROR_UNIMPLEMENTED;
 }
 
@@ -182,7 +182,7 @@ keymaster_error_t CrosKeyFactory::GenerateKey(
     ::keymaster::KeymasterKeyBlob* key_blob,
     ::keymaster::AuthorizationSet* hw_enforced,
     ::keymaster::AuthorizationSet* sw_enforced) const {
-  NOTREACHED() << __func__ << " should never be called";
+  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
   return KM_ERROR_UNIMPLEMENTED;
 }
 
@@ -193,20 +193,20 @@ keymaster_error_t CrosKeyFactory::ImportKey(
     ::keymaster::KeymasterKeyBlob* output_key_blob,
     ::keymaster::AuthorizationSet* hw_enforced,
     ::keymaster::AuthorizationSet* sw_enforced) const {
-  NOTREACHED() << __func__ << " should never be called";
+  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
   return KM_ERROR_UNIMPLEMENTED;
 }
 
 const keymaster_key_format_t* CrosKeyFactory::SupportedImportFormats(
     size_t* format_count) const {
-  NOTREACHED() << __func__ << " should never be called";
+  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
   *format_count = 0;
   return nullptr;
 }
 
 const keymaster_key_format_t* CrosKeyFactory::SupportedExportFormats(
     size_t* format_count) const {
-  NOTREACHED() << __func__ << " should never be called";
+  NOTREACHED_IN_MIGRATION() << __func__ << " should never be called";
   *format_count = 0;
   return nullptr;
 }
@@ -288,7 +288,7 @@ CrosOperationFactory::~CrosOperationFactory() = default;
   ChapsKey* chaps_key = dynamic_cast<ChapsKey*>(&key);
 
   if (!chaps_key) {
-    NOTREACHED() << __func__ << " should not be called with non CrOS key.";
+    NOTREACHED_IN_MIGRATION() << __func__ << " should not be called with non CrOS key.";
     *error = KM_ERROR_UNKNOWN_ERROR;
     return nullptr;
   }

@@ -129,7 +129,7 @@ int SmbFsDaemon::OnEventLoopStarted() {
     }
     return EX_OK;
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   session_ = std::make_unique<FuseSession>(std::move(fs), chan_);

@@ -56,7 +56,7 @@ Metrics::ProcessType ProcessTypeOf(Proxy::Type t) {
     case Proxy::Type::kARC:
       return Metrics::ProcessType::kProxyARC;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -91,7 +91,7 @@ const char* Proxy::TypeToString(Type t) {
     case Type::kARC:
       return kARCProxyType;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -623,7 +623,7 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       break;
 
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 
@@ -1063,7 +1063,7 @@ void Proxy::OnVirtualDeviceChanged(
       StopGuestDnsRedirection(device, AF_INET6);
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

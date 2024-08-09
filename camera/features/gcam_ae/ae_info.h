@@ -155,7 +155,7 @@ struct AeFrameInfo {
       case AeStatsInputMode::kFromYuvImage:
         return HasCaptureSettings() && HasFaceInfo() && HasYuvBuffer();
       default:
-        NOTREACHED() << "Invalid AeStatsInputMode";
+        NOTREACHED_IN_MIGRATION() << "Invalid AeStatsInputMode";
         return false;
     }
   }

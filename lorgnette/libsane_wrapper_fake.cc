@@ -88,7 +88,7 @@ SANE_Status LibsaneWrapperFake::sane_control_option(
       return SANE_STATUS_UNSUPPORTED;
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 SANE_Status LibsaneWrapperFake::sane_get_parameters(SANE_Handle h,

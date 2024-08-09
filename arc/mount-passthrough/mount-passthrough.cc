@@ -86,7 +86,7 @@ std::string get_storage_source(const std::string& android_app_access_type) {
   } else if (android_app_access_type == "write") {
     return "/runtime/write";
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return "notreached";
   }
 }

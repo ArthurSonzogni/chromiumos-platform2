@@ -106,7 +106,7 @@ bool AddRule(FuzzedDataProvider& provider,
       }
     }
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return false;
   }
 }
@@ -135,7 +135,7 @@ bool RemoveRule(FakePortTracker& port_tracker, const FuzzRequest& request) {
         return port_tracker.StopUdpPortForwarding(request.port, request.ifname);
       }
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return false;
   }
 }

@@ -128,7 +128,7 @@ ScanJobFailureReason GetScanJobFailureReason(
     case ScanFailureMode_INT_MIN_SENTINEL_DO_NOT_USE_:
       [[fallthrough]];
     case ScanFailureMode_INT_MAX_SENTINEL_DO_NOT_USE_:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return ScanJobFailureReason::kUnknownScannerError;
   }
 }

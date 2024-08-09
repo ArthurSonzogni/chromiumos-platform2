@@ -102,7 +102,7 @@ std::string CrosFpDeviceUpdate::EcCurrentImageToString(enum ec_image image) {
     default:
       return "INVALID";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 std::optional<ec::CrosFpDeviceInterface::EcVersion>

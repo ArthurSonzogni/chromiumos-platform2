@@ -339,7 +339,7 @@ TEST_F(FileHandlerTest, RamoopsFileEnumeratorEmptyFolder) {
   base::FileEnumerator enumerator_empty = file_handler_.RamoopsFileEnumerator();
   for (auto file = enumerator_empty.Next(); !file.empty();
        file = enumerator_empty.Next()) {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 }
 

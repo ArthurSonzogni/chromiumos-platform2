@@ -86,11 +86,11 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
                    const brillo::Blob& iv,
                    brillo::SecureBlob* plaintext) {
   if (ciphertext.empty()) {
-    NOTREACHED() << "Empty ciphertext passed to AesGcmDecrypt.";
+    NOTREACHED_IN_MIGRATION() << "Empty ciphertext passed to AesGcmDecrypt.";
     return false;
   }
   if (tag.size() != kAesGcmTagSize) {
-    NOTREACHED() << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
+    NOTREACHED_IN_MIGRATION() << "Wrong tag size passed to AesGcmDecrypt: " << tag.size()
                  << ", expected " << kAesGcmTagSize << ".";
     return false;
   }
@@ -110,7 +110,7 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
   }
 
   if (iv.size() != kAesGcmIVSize) {
-    NOTREACHED() << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
+    NOTREACHED_IN_MIGRATION() << "Wrong iv size passed to AesGcmDecrypt: " << iv.size()
                  << ", expected " << kAesGcmIVSize << ".";
     return false;
   }
@@ -140,7 +140,7 @@ bool AesGcmDecrypt(const brillo::Blob& ciphertext,
 
   if (ad.has_value()) {
     if (ad.value().empty()) {
-      NOTREACHED() << "Empty associated data passed to AesGcmDecrypt.";
+      NOTREACHED_IN_MIGRATION() << "Empty associated data passed to AesGcmDecrypt.";
       return false;
     }
     int out_size = 0;
@@ -191,7 +191,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
                    brillo::Blob* tag,
                    brillo::Blob* ciphertext) {
   if (plaintext.empty()) {
-    NOTREACHED() << "Empty plaintext passed to AesGcmEncrypt.";
+    NOTREACHED_IN_MIGRATION() << "Empty plaintext passed to AesGcmEncrypt.";
     return false;
   }
 
@@ -237,7 +237,7 @@ bool AesGcmEncrypt(const brillo::SecureBlob& plaintext,
 
   if (ad.has_value()) {
     if (ad.value().empty()) {
-      NOTREACHED() << "Empty associated data passed to AesGcmEncrypt.";
+      NOTREACHED_IN_MIGRATION() << "Empty associated data passed to AesGcmEncrypt.";
       return false;
     }
     int out_size = 0;

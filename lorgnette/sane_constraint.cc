@@ -51,7 +51,7 @@ std::optional<SaneConstraint> SaneConstraint::Create(
       return std::nullopt;
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 SaneConstraint::SaneConstraint(SANE_Constraint_Type constraint_type,

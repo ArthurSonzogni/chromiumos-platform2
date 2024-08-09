@@ -1021,7 +1021,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
         return result;
       case google::protobuf::kint32min:
       case google::protobuf::kint32max:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
     }
 
     // Try matching app_id.
@@ -1044,7 +1044,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
         return result;
       case google::protobuf::kint32min:
       case google::protobuf::kint32max:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
     }
   }
 

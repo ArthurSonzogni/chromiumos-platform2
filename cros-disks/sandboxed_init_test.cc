@@ -107,7 +107,7 @@ class SandboxedInitTest : public testing::Test {
                   std::move(ctrl.child_fd),
                   std::move(termination_pipe_.child_fd))
         .Run();
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   // Waits for the 'init' process to terminate if |no_hang == false|. Returns

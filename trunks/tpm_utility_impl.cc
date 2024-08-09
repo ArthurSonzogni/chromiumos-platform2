@@ -115,7 +115,7 @@ std::string HashString(const std::string& plaintext,
     case trunks::TPM_ALG_SHA256:
       return crypto::SHA256HashString(plaintext);
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return std::string();
 }
 

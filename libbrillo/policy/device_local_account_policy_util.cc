@@ -94,7 +94,7 @@ GetDeviceLocalAccountType(std::string* account_id) {
   }
 
   // |user_id| is a device-local account but its type is not recognized.
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return base::unexpected(GetDeviceLocalAccountTypeError::kUnknownDomain);
 }
 
@@ -105,7 +105,7 @@ std::string ExtractDomainName(const std::string& email_address) {
   if (separator_pos != email.npos && separator_pos < email.length() - 1)
     return email.substr(separator_pos + 1);
   else
-    NOTREACHED() << "Not a proper email address: " << email;
+    NOTREACHED_IN_MIGRATION() << "Not a proper email address: " << email;
   return std::string();
 }
 

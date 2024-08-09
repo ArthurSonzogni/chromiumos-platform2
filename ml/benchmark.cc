@@ -185,7 +185,7 @@ base::flat_map<std::string, TensorPtr> TensorMapFromExample(
       } break;
       default:
         LOG(ERROR) << "InputType not supported.";
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
         break;
     }
   }
@@ -288,7 +288,7 @@ void AccumulateDistance(const TensorPtr& tensor1,
       accumulative_result->has_failure = true;
       LOG(ERROR)
           << "Not supported tensor type for calculating AccumulateDistance.";
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return;
   }
 }

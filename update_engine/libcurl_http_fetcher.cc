@@ -888,7 +888,7 @@ void UnresolvedHostStateMachine::UpdateState(bool failed_to_resolve_host) {
     case State::kRetriedSuccess:
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
   }
 }

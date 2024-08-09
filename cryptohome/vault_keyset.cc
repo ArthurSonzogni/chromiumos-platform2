@@ -790,7 +790,7 @@ void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
     SetTpmEccState(*state);
   } else {
     // other states are not supported.
-    NOTREACHED() << "Invalid auth block state type";
+    NOTREACHED_IN_MIGRATION() << "Invalid auth block state type";
     return;
   }
 }
@@ -868,7 +868,7 @@ bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
 
   // This should never happen.
   if (libscrypt_state == nullptr) {
-    NOTREACHED() << "ScryptAuthBlockState should have been created";
+    NOTREACHED_IN_MIGRATION() << "ScryptAuthBlockState should have been created";
     return false;
   }
 
@@ -932,7 +932,7 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
 
   // This should never happen.
   if (scrypt_sub_state == nullptr) {
-    NOTREACHED() << "ScryptAuthBlockState should have been created";
+    NOTREACHED_IN_MIGRATION() << "ScryptAuthBlockState should have been created";
     return false;
   }
 
@@ -945,7 +945,7 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
 
   // This should never happen but handling it on the safe side.
   if (tpm_sub_state == nullptr) {
-    NOTREACHED() << "TpmNotBoundToPcrAuthBlockState should have been created";
+    NOTREACHED_IN_MIGRATION() << "TpmNotBoundToPcrAuthBlockState should have been created";
     return false;
   }
 

@@ -618,7 +618,7 @@ void WaitForChildren(std::set<pid_t> pids, base::Time deadline) {
   }
 
   // Control should never reach here.
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 // Cached pid of this process.  Starting from version 2.24, glibc stopped

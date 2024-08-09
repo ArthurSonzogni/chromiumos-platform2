@@ -549,7 +549,7 @@ void CryptohomeRecoveryAuthBlock::PrepareForRemoval(
 CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
     const AuthBlockState& state) {
   if (!std::holds_alternative<CryptohomeRecoveryAuthBlockState>(state.state)) {
-    NOTREACHED() << "Invalid AuthBlockState";
+    NOTREACHED_IN_MIGRATION() << "Invalid AuthBlockState";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocRecoveryAuthBlockInvalidStateInPrepareForRemoval),

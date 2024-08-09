@@ -50,7 +50,7 @@ HwsecAlgorithm ConvertToHwsecAlgorithm(
     case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
-  NOTREACHED() << "Unknown algorithm, fallback to SHA1.";
+  NOTREACHED_IN_MIGRATION() << "Unknown algorithm, fallback to SHA1.";
   return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
 }
 
@@ -66,7 +66,7 @@ SerializedChallengeSignatureAlgorithm ConvertFromHwsecAlgorithm(
     case HwsecAlgorithm::kRsassaPkcs1V15Sha512:
       return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
   }
-  NOTREACHED() << "Unknown algorithm, fallback to SHA1.";
+  NOTREACHED_IN_MIGRATION() << "Unknown algorithm, fallback to SHA1.";
   return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
 }
 

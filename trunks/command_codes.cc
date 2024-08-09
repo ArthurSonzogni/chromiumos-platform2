@@ -235,7 +235,7 @@ std::string GetCommandString(trunks::TPM_CC command_code) {
     default:
       return absl::StrFormat("TPM_CC 0x%04x", command_code);
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return std::string();
 }
 

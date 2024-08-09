@@ -433,7 +433,7 @@ void ProcessManager::OnProcessExited(pid_t pid, const siginfo_t& info) {
     return;
   }
 
-  NOTREACHED() << "Unknown process " << pid << " status " << info.si_status;
+  NOTREACHED_IN_MIGRATION() << "Unknown process " << pid << " status " << info.si_status;
 }
 
 void ProcessManager::CheckProcessExitStateAndNotify(pid_t pid) {

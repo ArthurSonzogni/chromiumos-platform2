@@ -175,7 +175,7 @@ SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj) {
                  std::get_if<hwsec::Tpm12CertifiedMigratableKeyData>(&obj)) {
     *result.mutable_tpm12_certified_migratable_key_data() = ToProto(*data);
   } else {
-    NOTREACHED() << "Unknown signature sealed data type.";
+    NOTREACHED_IN_MIGRATION() << "Unknown signature sealed data type.";
   }
   return result;
 }

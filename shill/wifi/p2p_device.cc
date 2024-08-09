@@ -54,7 +54,7 @@ const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
     case P2PDevice::P2PDeviceState::kClientDisconnecting:
       return kP2PGroupInfoStateIdle;
   }
-  NOTREACHED() << "Unhandled P2P state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION() << "Unhandled P2P state " << static_cast<int>(state);
   return kP2PGroupInfoStateIdle;
 }
 
@@ -76,7 +76,7 @@ const char* ClientInfoState(P2PDevice::P2PDeviceState state) {
     case P2PDevice::P2PDeviceState::kGOStopping:
       return kP2PClientInfoStateIdle;
   }
-  NOTREACHED() << "Unhandled P2P state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION() << "Unhandled P2P state " << static_cast<int>(state);
   return kP2PClientInfoStateIdle;
 }
 }  // namespace
@@ -148,7 +148,7 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
     case P2PDeviceState::kGOStopping:
       return kP2PDeviceStateGOStopping;
   }
-  NOTREACHED() << "Unhandled P2P state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION() << "Unhandled P2P state " << static_cast<int>(state);
   return "Invalid";
 }
 

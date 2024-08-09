@@ -97,7 +97,7 @@ void SLAACControllerTest::SendRTNLMessage(
              message.type() == net_base::RTNLMessage::kTypeCaptivePortal) {
     slaac_controller_.NDOptionMsgHandler(message);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 }
 

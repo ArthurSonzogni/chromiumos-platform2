@@ -495,7 +495,7 @@ void PatchpanelAdaptor::OnNeighborReachabilityEvent(
       signal.set_role(NeighborReachabilityEventSignal::GATEWAY_AND_DNS_SERVER);
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   SendNeighborReachabilityEventSignal(signal);
 }

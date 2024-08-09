@@ -1302,7 +1302,7 @@ bool UserDataAuth::RemoveAllMounts() {
       success = false;
     }
     if (!sessions_->Remove(username)) {
-      NOTREACHED() << "Failed to remove user session on unmount";
+      NOTREACHED_IN_MIGRATION() << "Failed to remove user session on unmount";
     }
   }
   return success;
@@ -1803,7 +1803,7 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const Username& username) {
         username, legacy_mount_, /*bind_mount_downloads*/ false);
     session = owned_session.get();
     if (!sessions_->Add(username, std::move(owned_session))) {
-      NOTREACHED() << "Failed to add created user session";
+      NOTREACHED_IN_MIGRATION() << "Failed to add created user session";
       return nullptr;
     }
   }
@@ -1819,7 +1819,7 @@ void UserDataAuth::RemoveInactiveUserSession(const Username& username) {
   }
 
   if (!sessions_->Remove(username)) {
-    NOTREACHED() << "Failed to remove inactive user session.";
+    NOTREACHED_IN_MIGRATION() << "Failed to remove inactive user session.";
   }
 }
 

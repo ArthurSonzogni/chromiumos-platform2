@@ -66,7 +66,7 @@ static int ConnectToLocalPort(uint16_t port) {
   int sock = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
   if (sock == -1) {
     PLOG(ERROR) << "Creating a client socket()";
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
 
   struct sockaddr_in server_addr;
@@ -78,7 +78,7 @@ static int ConnectToLocalPort(uint16_t port) {
   if (connect(sock, reinterpret_cast<struct sockaddr*>(&server_addr),
               sizeof(server_addr)) == -1) {
     PLOG(ERROR) << "Connecting to localhost:" << port;
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
   }
   return sock;
 }

@@ -137,7 +137,7 @@ class ObjectMock : public Object {
       case 8:
         return ExtractFromByteString<uint64_t>(s);
       default:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
     }
     return default_value;
   }

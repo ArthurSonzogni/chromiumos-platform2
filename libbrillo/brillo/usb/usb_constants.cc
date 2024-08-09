@@ -24,7 +24,7 @@ const char* UsbDirectionToString(UsbDirection direction) {
     case kUsbDirectionOut:
       return "Out";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return nullptr;
 }
 
@@ -41,7 +41,7 @@ const char* UsbSpeedToString(UsbSpeed speed) {
     case kUsbSpeedSuper:
       return "Super";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return nullptr;
 }
 
@@ -58,7 +58,7 @@ const char* UsbTransferTypeToString(UsbTransferType transfer_type) {
     case kUsbTransferTypeUnknown:
       return "Unknown";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return nullptr;
 }
 
@@ -81,7 +81,7 @@ const char* UsbTransferStatusToString(UsbTransferStatus transfer_status) {
     case kUsbTransferStatusUnknown:
       return "Unknown";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return nullptr;
 }
 

@@ -456,7 +456,7 @@ class MounterTest : public ::testing::Test {
     } else if (type == MountType::DMCRYPT) {
       CheckDmcryptMount(username, expect_present);
     } else {
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
     }
     ASSERT_NO_FATAL_FAILURE(CheckRootAndDaemonStoreMounts(
         &platform_, username, GetUserMountDirectory(obfuscated_username),

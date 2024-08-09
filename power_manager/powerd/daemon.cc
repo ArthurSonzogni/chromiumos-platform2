@@ -208,7 +208,7 @@ std::string PrivacyScreenStateToString(
     case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_NOT_SUPPORTED:
       return "not supported";
     default:
-      NOTREACHED() << "Unhandled privacy screen state "
+      NOTREACHED_IN_MIGRATION() << "Unhandled privacy screen state "
                    << static_cast<int>(state);
       return base::StringPrintf("unknown (%d)", static_cast<int>(state));
   }

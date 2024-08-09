@@ -177,7 +177,7 @@ void GuestIPv6Service::StartForwarding(
                          if_id_downlink, 0);
       break;
     case ForwardMethod::kMethodUnknown:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   // Start NA proxying between the new downlink and existing downlinks, if any.
@@ -638,7 +638,7 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
   }
 
   LOG(ERROR) << "Unknown NDProxy event ";
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 void GuestIPv6Service::RegisterDownstreamNeighborIP(

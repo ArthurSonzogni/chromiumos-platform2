@@ -291,7 +291,7 @@ std::string GetErrorStringInternal(trunks::TPM_RC error) {
     default:
       return std::string();
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return std::string();
 }
 

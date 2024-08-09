@@ -114,7 +114,7 @@ std::optional<std::pair<int, int>> ParseFrameRate(
       low = values[0];
       high = values[1];
     } else {
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return std::nullopt;
     }
   } else if (auto fps_value = frame_rate->GetIfInt()) {

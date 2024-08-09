@@ -397,7 +397,7 @@ DEFINE_PROTO_FUZZER(
         break;
 
       default:
-        NOTREACHED();
+        NOTREACHED_IN_MIGRATION();
     }
   }
 }

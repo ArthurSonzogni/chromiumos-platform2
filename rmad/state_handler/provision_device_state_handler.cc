@@ -226,7 +226,7 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
       break;
   }
 
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
 }
 

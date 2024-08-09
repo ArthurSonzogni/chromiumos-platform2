@@ -109,10 +109,10 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_START";
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
       // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
       break;
     case PhyState::kBackgroundScanning:
       return "BACKGROUND_START";
@@ -125,10 +125,10 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_CONNECTING";
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
       // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
       break;
     case PhyState::kConnected:
       switch (method) {
@@ -137,10 +137,10 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_CONNECTED";
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
       // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
       break;
     case PhyState::kFoundNothing:
       switch (method) {
@@ -149,13 +149,13 @@ std::string WiFiState::LegacyStateString(WiFiState::PhyState state,
         case ScanMethod::kFull:
           return "FULL_NOCONNECTION";
         default:
-          NOTREACHED();
+          NOTREACHED_IN_MIGRATION();
       }
       // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
+      // is fixed with NOTREACHED_IN_MIGRATION(), https://crbug.com/973960.
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
   return "";  // To shut up the compiler (that doesn't understand NOTREACHED).
 }

@@ -323,7 +323,7 @@ int CalculateMedian(const base::flat_map<int, int>& histogram) {
       return v;
     }
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return 0;
 }
 #endif  // USE_CAMERA_FEATURE_AUTO_FRAMING

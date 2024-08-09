@@ -968,7 +968,7 @@ SambaInterface::SambaInterfaceId FakeSambaInterface::GetSambaInterfaceId() {
   // GetSambaInterfaceId() should never be called directly on
   // FakeSambaInterface. All tests should call FakeSambaProxy which provides a
   // unique SambaInterfaceId for each instance.
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return 0;
 }
 

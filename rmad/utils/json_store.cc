@@ -168,7 +168,7 @@ bool JsonStore::InitFromFile(bool read_only) {
       initialized_ = !read_only_;
       break;
     case READ_ERROR_MAX_ENUM:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       break;
   }
   // Check if we can write to the file.

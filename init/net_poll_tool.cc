@@ -102,5 +102,5 @@ int main(int argc, char* argv[]) {
     return PollUnixSocket(unix_socket) ? EX_OK : 1;
   }
 
-  NOTREACHED() << "Parsing logic error";
+  NOTREACHED_IN_MIGRATION() << "Parsing logic error";
 }

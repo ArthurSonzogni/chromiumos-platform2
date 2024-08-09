@@ -14,7 +14,7 @@ arc::mojom::HalPixelFormat ConvertPixelFormatToHalPixelFormat(
     case NV12:
       return arc::mojom::HalPixelFormat::HAL_PIXEL_FORMAT_NV12;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

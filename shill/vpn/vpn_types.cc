@@ -45,7 +45,7 @@ std::string VPNTypeEnumToString(VPNType type) {
     case VPNType::kWireGuard:
       return kProviderWireGuard;
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return "";
 }
 

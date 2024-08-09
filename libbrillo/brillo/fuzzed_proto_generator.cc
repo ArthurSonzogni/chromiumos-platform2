@@ -75,7 +75,7 @@ Blob FuzzedProtoGenerator::GenerateMessageOrBlob(int nesting_depth) {
       return byte_breadcrumbs_[selected_index];
     }
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return Blob();
 }
 
@@ -120,7 +120,7 @@ bool FuzzedProtoGenerator::GenerateAndAddField(
       return true;
     }
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return false;
 }
 

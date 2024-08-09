@@ -857,7 +857,7 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     LOG(INFO) << "Removed " << device;
     MtpDeviceMap::iterator device_it = device_map_.find(device);
     if (device_it == device_map_.end()) {
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       continue;
     }
 

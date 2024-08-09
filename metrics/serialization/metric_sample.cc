@@ -85,7 +85,7 @@ std::string MetricSample::ToString() const {
     return base::StringPrintf("useraction%c%s%s%c", '\0', name().c_str(),
                               samples.c_str(), '\0');
   }
-  NOTREACHED() << "Invalid sample type" << type_;
+  NOTREACHED_IN_MIGRATION() << "Invalid sample type" << type_;
   return std::string();
 }
 

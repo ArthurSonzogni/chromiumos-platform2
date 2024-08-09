@@ -181,7 +181,7 @@ void SaneOption::ReserveValueSize(const SANE_Option_Descriptor& opt) {
       break;
 
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   switch (type_) {
@@ -545,7 +545,7 @@ size_t SaneOption::GetSize() const {
     case SANE_TYPE_GROUP:
       return 0;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

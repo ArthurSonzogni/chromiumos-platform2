@@ -72,7 +72,7 @@ HwsecAlgorithm ConvertAlgorithm(
     case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return static_cast<HwsecAlgorithm>(algorithm);
 }
 

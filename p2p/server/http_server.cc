@@ -191,7 +191,7 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
 
     // ParseP2PServerMessageType ensures this case is not reached.
     case p2p::util::kNumP2PServerMessageTypes:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 }
 

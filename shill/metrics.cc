@@ -116,7 +116,7 @@ std::string VPNTypeToMetricString(VPNType type) {
     case VPNType::kWireGuard:
       return "WireGuard";
   }
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return "";
 }
 

@@ -50,7 +50,7 @@ MipiCameraFunction::DataType MipiCameraFunction::EvalImpl() const {
       node.Set("mipi_vendor", camera.v4l2_sensor->vendor_id);
       node.Set("path", camera.v4l2_sensor->subdev_path.value());
     } else {
-      NOTREACHED() << "Unknown source of camera info.";
+      NOTREACHED_IN_MIGRATION() << "Unknown source of camera info.";
     }
     node.Set("bus_type", "mipi");
     results.Append(std::move(node));

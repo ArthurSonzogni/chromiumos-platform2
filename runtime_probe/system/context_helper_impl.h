@@ -30,12 +30,12 @@ class ContextHelperImpl : public Context {
   Syscaller* syscaller() override { return &syscaller_; }
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
-    NOTREACHED() << "The helper should not call debugd.";
+    NOTREACHED_IN_MIGRATION() << "The helper should not call debugd.";
     return nullptr;
   };
 
   HelperInvoker* helper_invoker() override {
-    NOTREACHED() << "The helper should not call helper.";
+    NOTREACHED_IN_MIGRATION() << "The helper should not call helper.";
     return nullptr;
   }
 
@@ -52,7 +52,7 @@ class ContextHelperImpl : public Context {
 
   cros_healthd_mojom::CrosHealthdProbeService* GetCrosHealthdProbeServiceProxy()
       override {
-    NOTREACHED() << "The helper should not call mojo.";
+    NOTREACHED_IN_MIGRATION() << "The helper should not call mojo.";
     return nullptr;
   }
 

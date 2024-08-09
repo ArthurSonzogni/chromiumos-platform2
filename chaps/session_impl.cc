@@ -338,7 +338,7 @@ CK_OBJECT_CLASS GetExpectedObjectClass(chaps::OperationType operation,
 
     default:
       // Never used
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
       return -1;
   }
 }
@@ -1132,7 +1132,7 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
       context->key_ = key;
     context->is_valid_ = true;
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return CKR_FUNCTION_FAILED;
   }
 
@@ -1340,7 +1340,7 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
     // The data_out contents will be the computed digest.
     return ECCVerify(context, data_out, signature);
   } else {
-    NOTREACHED();
+    NOTREACHED_IN_MIGRATION();
     return false;
   }
 }

@@ -2064,12 +2064,12 @@ TEST_F(StreamManipulatorHelperTest, NotifyBufferError) {
 }  // namespace
 
 scoped_refptr<base::SingleThreadTaskRunner> StreamManipulator::GetTaskRunner() {
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
   return nullptr;
 }
 
 ScopedMapping::~ScopedMapping() {
-  NOTREACHED();
+  NOTREACHED_IN_MIGRATION();
 }
 
 // Fake buffer implementation.

@@ -116,7 +116,7 @@ std::vector<video_pixel_format_t> GetSupportedRawFormats(
       usage_flags |= GBM_BO_USE_HW_VIDEO_DECODER;
       break;
     default:
-      NOTREACHED();
+      NOTREACHED_IN_MIGRATION();
   }
 
   std::vector<video_pixel_format_t> formats;

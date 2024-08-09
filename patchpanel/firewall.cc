@@ -30,7 +30,7 @@ namespace patchpanel {
 
 const std::string ProtocolName(Protocol proto) {
   if (proto == ModifyPortRuleRequest::INVALID_PROTOCOL) {
-    NOTREACHED() << "Unexpected L4 protocol value";
+    NOTREACHED_IN_MIGRATION() << "Unexpected L4 protocol value";
   }
   return base::ToLowerASCII(ModifyPortRuleRequest::Protocol_Name(proto));
 }
