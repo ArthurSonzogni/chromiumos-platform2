@@ -7,13 +7,12 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/files/dir_reader_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-
 #include <libpmt/pmt_impl.h>
 
 namespace pmt {
@@ -56,7 +55,7 @@ std::vector<Guid> PmtSysfsData::DetectDevices() {
       return std::vector<Guid>();
     }
     base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING, &buf);
-    if (!base::StringToUint64(buf, &size)) {
+    if (!base::StringToSizeT(buf, &size)) {
       LOG(ERROR) << "Failed to parse telemetry size '" << buf << "' from "
                  << size_path;
       return std::vector<Guid>();
