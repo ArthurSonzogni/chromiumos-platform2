@@ -249,10 +249,17 @@ void StatefulMount::MountStateful() {
   std::optional<base::Value> image_vars = GetImageVars(json_file, load_vars);
   if (!image_vars) {
     PLOG(ERROR) << "Failed to read dictionary from " << json_file;
+    // We can not further, since /usr/sbin/partition_vars.json is missing
+    // or corrupted.
+    // Powerwash won't help, the image is invalid.
+    // Reboot until we rollback to the previous image.
+    utils::Reboot();
     return;
   }
   if (!image_vars->is_dict()) {
     PLOG(ERROR) << "Failed to parse dictionary from " << json_file;
+    // Reboot until we rollback to the previous image.
+    utils::Reboot();
     return;
   }
   return MountStateful(root_device_, *image_vars);
