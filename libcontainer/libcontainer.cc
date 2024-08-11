@@ -2,8 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libcontainer/libcontainer.h"
+
 #include <errno.h>
 #include <fcntl.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -36,12 +40,9 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 #include "libcontainer/cgroup.h"
 #include "libcontainer/config.h"
-#include "libcontainer/libcontainer.h"
 #include "libcontainer/libcontainer_util.h"
 
 #define QUOTE(s) ('"' + std::string(s) + '"')
@@ -648,16 +649,9 @@ bool ContainerCreateDevice(const struct container* c,
 }
 
 bool MountRunfs(struct container* c, const struct container_config* config) {
-  {
-    std::string runfs_template = base::StringPrintf(
-        "%s/%s_XXXXXX", c->rundir.value().c_str(), c->name.c_str());
-    // TODO(lhchavez): Replace this with base::CreateTemporaryDirInDir().
-    char* runfs_path = mkdtemp(const_cast<char*>(runfs_template.c_str()));
-    if (!runfs_path) {
-      PLOG(ERROR) << "Failed to mkdtemp in " << c->rundir.value();
-      return false;
-    }
-    c->runfs = base::FilePath(runfs_path);
+  if (!base::CreateTemporaryDirInDir(c->rundir, c->name, &c->runfs)) {
+    PLOG(ERROR) << "Failed to CreateTemporaryDirInDir in " << c->rundir;
+    return false;
   }
 
   int uid_userns;
