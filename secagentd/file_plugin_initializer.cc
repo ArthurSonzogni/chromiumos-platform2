@@ -5,6 +5,8 @@
 #include "secagentd/file_plugin_initializer.h"
 
 // BPF headers
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
 #include <bpf/bpf.h>
 
 #include "base/memory/weak_ptr.h"
@@ -110,14 +112,30 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY}},
 };
 
-static const std::string GetFullPath(const secagentd::PathInfo& pathInfo) {
-  if (pathInfo.pathSuffix.has_value()) {
-    return pathInfo.fullResolvedPath.value();
-  } else {
-    return pathInfo.pathPrefix;
-  }
-}
-
+// Path Category -> List of FilePathName enums
+const std::map<secagentd::FilePathCategory,
+               std::vector<secagentd::FilePathName>>
+    file_path_names_by_category = {
+        {secagentd::FilePathCategory::USER_PATH,
+         {secagentd::FilePathName::USER_FILES_DIR,
+          secagentd::FilePathName::COOKIES_DIR,
+          secagentd::FilePathName::COOKIES_JOURNAL_DIR,
+          secagentd::FilePathName::SAFE_BROWSING_COOKIES_DIR,
+          secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_DIR,
+          secagentd::FilePathName::USER_SECRET_STASH_DIR,
+          secagentd::FilePathName::GOOGLE_DRIVE_FS,
+          secagentd::FilePathName::STATEFUL_PARTITION,
+          secagentd::FilePathName::SESSION_MANAGER_POLICY_DIR,
+          secagentd::FilePathName::SESSION_MANAGER_POLICY_KEY}},
+        {secagentd::FilePathCategory::SYSTEM_PATH,
+         {secagentd::FilePathName::ROOT,
+          secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR,
+          secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
+          secagentd::FilePathName::CRYPTOHOME_KEY,
+          secagentd::FilePathName::CRYPTOHOME_ECC_KEY}},
+        {secagentd::FilePathCategory::REMOVABLE_PATH,
+         {secagentd::FilePathName::MOUNTED_ARCHIVE,
+          secagentd::FilePathName::USB_STORAGE}}};
 }  // namespace
 
 namespace secagentd {
@@ -157,6 +175,86 @@ absl::StatusOr<const struct statx> RetrieveFileStatistics(
   return fileStatx;
 }
 
+absl::Status FilePluginInitializer::PopulatePathsMapByCategory(
+    FilePathCategory category,
+    const std::optional<std::string>& optionalUserHash,
+    std::map<FilePathName, PathInfo>& pathInfoMap) {
+  // Verify if the provided category exists in the predefined mappings
+  auto categoryIt = file_path_names_by_category.find(category);
+  if (categoryIt == file_path_names_by_category.end()) {
+    return absl::InvalidArgumentError(
+        "Invalid FilePathCategory: " +
+        std::to_string(static_cast<int>(category)));
+  }
+
+  const std::vector<FilePathName>& filePathNames = categoryIt->second;
+
+  // Check if user hash is required for the given category and is provided
+  if (category == FilePathCategory::USER_PATH &&
+      !optionalUserHash.has_value()) {
+    return absl::InvalidArgumentError(
+        "Userhash needs to be provided for user path category.");
+  }
+
+  // Process each file path name for the specified category
+  for (const FilePathName& pathName : filePathNames) {
+    // Verify if the provided category exists in the predefined mappings
+    auto filePathIt = file_path_info_map.find(pathName);
+    if (filePathIt == file_path_info_map.end()) {
+      return absl::InvalidArgumentError(
+          "Invalid FilePathName: " +
+          std::to_string(static_cast<int>(pathName)));
+    }
+    PathInfo pathInfo = filePathIt->second;
+
+    // Replace the placeholder with the actual user hash if applicable
+    if (category == FilePathCategory::USER_PATH) {
+      pathInfo.fullResolvedPath = pathInfo.pathPrefix +
+                                  optionalUserHash.value() +
+                                  pathInfo.pathSuffix.value();
+    } else {
+      pathInfo.fullResolvedPath = pathInfo.pathPrefix;
+    }
+
+    pathInfoMap[pathName] = pathInfo;
+  }
+
+  return absl::OkStatus();
+}
+
+std::map<FilePathName, PathInfo> FilePluginInitializer::ConstructAllPathsMap(
+    const std::optional<std::string>& optionalUserHash) {
+  std::map<FilePathName, PathInfo> pathInfoMap;
+
+  // Check if userHash is provided for USER_PATH category
+  if (optionalUserHash) {
+    // Populate paths for USER_PATH category using the provided userHash
+    absl::Status status = PopulatePathsMapByCategory(
+        FilePathCategory::USER_PATH, optionalUserHash, pathInfoMap);
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to populate paths for USER_PATH category: "
+                 << status;
+    }
+  }
+
+  // Populate paths for SYSTEM_PATH and REMOVABLE_PATH categories without
+  // userHash
+  absl::Status status = PopulatePathsMapByCategory(
+      FilePathCategory::SYSTEM_PATH, std::nullopt, pathInfoMap);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to populate paths for SYSTEM_PATH category: "
+               << status;
+  }
+  status = PopulatePathsMapByCategory(FilePathCategory::REMOVABLE_PATH,
+                                      std::nullopt, pathInfoMap);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to populate paths for REMOVABLE_PATH category: "
+               << status;
+  }
+
+  return pathInfoMap;
+}
+
 absl::Status FilePluginInitializer::PopulateFlagsMap(int fd) {
   // Array of flag key-value pairs to populate the BPF map
   const std::vector<std::pair<uint32_t, uint64_t>> flagKeyValuePairs = {
@@ -189,7 +287,8 @@ absl::Status FilePluginInitializer::UpdateBPFMapForPathInodes(
 
   // Iterate over the map of file paths and their associated information
   for (const auto& [pathName, pathInfo] : pathsMap) {
-    const std::string& path = GetFullPath(pathInfo);  // Current path to process
+    const std::string& path =
+        pathInfo.fullResolvedPath.value();  // Current path to process
     secagentd::bpf::file_monitoring_mode monitoringMode =
         pathInfo.monitoringMode;  // Monitoring mode for the path
 
@@ -244,7 +343,8 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
 
   // Iterate through each path and update the BPF map
   for (const auto& [pathName, pathInfo] : pathsMap) {
-    const std::string& path = GetFullPath(pathInfo);  // Current path to process
+    const std::string& path =
+        pathInfo.fullResolvedPath.value();  // Current path to process
 
     // Retrieve file information for the current path using fstatat
     absl::StatusOr<const struct statx> file_statx_result =
@@ -327,8 +427,7 @@ absl::Status FilePluginInitializer::InitializeFileBpfMaps(
   assert(file_path_info_map.size() ==
          static_cast<int>(FilePathName::FILE_PATH_NAME_COUNT));
   // Construct the paths map based on the user hash
-  std::map<FilePathName, PathInfo> paths_map;
-  // TODO(princya): Populate paths_map
+  std::map<FilePathName, PathInfo> paths_map = ConstructAllPathsMap(userhash);
 
   // Update map for flags
   absl::StatusOr<int> fd_result =

@@ -36,6 +36,9 @@ enum class FilePathName {
   FILE_PATH_NAME_COUNT,
 };
 
+// Enum for file path categories
+enum class FilePathCategory { USER_PATH, SYSTEM_PATH, REMOVABLE_PATH };
+
 // Structure to hold path information
 struct PathInfo {
   std::string pathPrefix;  // Store the full path for non-user paths and for
@@ -70,6 +73,19 @@ class FilePluginInitializer {
   // monitoring modes.
   static absl::Status AddDeviceIdsToBPFMap(
       int bpfMapFd, const std::map<FilePathName, PathInfo>& pathsMap);
+
+  // Constructs a map of full paths based on the specified file path category
+  // and optional user hash.
+  static absl::Status PopulatePathsMapByCategory(
+      FilePathCategory category,
+      const std::optional<std::string>& optionalUserHash,
+      std::map<FilePathName, PathInfo>& pathInfoMap);
+
+  // Constructs a map of all path information based on the provided user hash.
+  // This includes paths for USER_PATH, SYSTEM_PATH, and REMOVABLE_PATH
+  // categories.
+  static std::map<FilePathName, PathInfo> ConstructAllPathsMap(
+      const std::optional<std::string>& userHash);
 
   // Updates BPF maps with paths and their associated information.
   // This function updates various BPF maps based on the provided paths and
