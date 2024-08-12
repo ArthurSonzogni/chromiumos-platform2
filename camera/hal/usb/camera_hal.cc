@@ -318,7 +318,8 @@ int CameraHal::OpenDevice(int id,
        (cros_device_config_->GetModelName() == "treeya360" ||
         cros_device_config_->GetModelName() == "nuwani360" ||
         cros_device_config_->GetModelName() == "pompom" ||
-        cros_device_config_->GetModelName() == "chinchou360"))) {
+        cros_device_config_->GetModelName() == "chinchou360" ||
+        cros_device_config_->GetModelName() == "wugtrio"))) {
     // It cannot open multiple cameras at the same time due to USB bandwidth
     // limitation (b/147333530, b/171856355, b/333668011).
     // TODO(shik): Use |conflicting_devices| to implement this logic after we
