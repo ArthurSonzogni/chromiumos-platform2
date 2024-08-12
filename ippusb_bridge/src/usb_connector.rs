@@ -96,7 +96,7 @@ fn interface_contains_ippusb(interface: &rusb::Interface) -> bool {
     false
 }
 
-fn set_device_config(handle: &mut rusb::DeviceHandle<Context>, new_config: u8) -> Result<()> {
+fn set_device_config(handle: &rusb::DeviceHandle<Context>, new_config: u8) -> Result<()> {
     let cur_config = handle
         .device()
         .active_config_descriptor()
@@ -249,7 +249,7 @@ fn read_ippusb_device_info<T: UsbContext>(
 }
 
 struct ClaimedInterface {
-    handle: rusb::DeviceHandle<Context>,
+    handle: Arc<rusb::DeviceHandle<Context>>,
     descriptor: IppusbDescriptor,
 }
 
@@ -279,7 +279,7 @@ impl ClaimedInterface {
 /// be shared across InterfaceManager instances and protected by a mutex.
 struct InterfaceManagerState {
     interfaces: VecDeque<ClaimedInterface>,
-    handle: rusb::DeviceHandle<Context>,
+    handle: Arc<rusb::DeviceHandle<Context>>,
     usb_config: u8,
     active: usize,
     pending_cleanup: bool,
@@ -297,7 +297,7 @@ impl InterfaceManagerState {
             .map_err(Error::ReadConfigDescriptor)?;
 
         if config.number() != self.usb_config {
-            set_device_config(&mut self.handle, self.usb_config)?;
+            set_device_config(self.handle.as_ref(), self.usb_config)?;
         }
 
         for interface in &mut self.interfaces {
@@ -343,7 +343,7 @@ pub struct InterfaceManager {
 
 impl InterfaceManager {
     fn new(
-        handle: rusb::DeviceHandle<Context>,
+        handle: Arc<rusb::DeviceHandle<Context>>,
         usb_config: u8,
         interfaces: Vec<ClaimedInterface>,
     ) -> Self {
@@ -668,36 +668,34 @@ impl UsbConnector {
             device.bus_number(),
             device.address()
         );
-        let mut handle = device.open().map_err(Error::OpenDevice)?;
+        let handle = Arc::new(device.open().map_err(Error::OpenDevice)?);
         handle
             .set_auto_detach_kernel_driver(true)
             .map_err(|e| Error::DetachDrivers(u8::MAX, e))?; // Use MAX to mean "no interface".
 
-        set_device_config(&mut handle, info.config)?;
+        set_device_config(handle.as_ref(), info.config)?;
 
         // Open the IPPUSB interfaces.
         let mut connections = Vec::new();
         for descriptor in info.interfaces {
-            let mut interface_handle = device.open().map_err(Error::OpenDevice)?;
-            interface_handle
+            handle
                 .claim_interface(descriptor.interface_number)
                 .map_err(|e| Error::ClaimInterface(descriptor.interface_number, e))?;
-            interface_handle
+            handle
                 .set_alternate_setting(descriptor.interface_number, descriptor.alternate_setting)
                 .map_err(|e| Error::SetAlternateSetting(descriptor.interface_number, e))?;
             connections.push(ClaimedInterface {
-                handle: interface_handle,
+                handle: handle.clone(),
                 descriptor,
             });
         }
 
-        let mgr_handle = device.open().map_err(Error::OpenDevice)?;
-        let mut manager = InterfaceManager::new(mgr_handle, info.config, connections);
+        let mut manager = InterfaceManager::new(handle.clone(), info.config, connections);
         manager.start_cleanup_thread()?;
 
         Ok(UsbConnector {
             verbose_log,
-            handle: Arc::new(handle),
+            handle,
             manager,
         })
     }

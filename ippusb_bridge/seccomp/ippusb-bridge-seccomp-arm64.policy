@@ -49,12 +49,13 @@ gettimeofday: 1
 # USBDEVFS_SETCONFIGURATION: 0x80045505
 # USBDEVFS_RELEASEINTERFACE: 0x80045510
 # USBDEVFS_IOCTL: 0xc0nn5512
+# USBDEVFS_DISCONNECT_CLAIM: 0x8108551b
 ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == SIOCGIFINDEX || \
        arg1 == TCGETS || arg1 == 0x4008550d || arg1 == 0x41045508 || \
        arg1 == 0x8038550a || arg1 == 0x8004551a || arg1 == 0x8004550f || \
        arg1 == 0x80085504 || arg1 == 0x80045505 || arg1 == 0x80045510 || \
        arg1 == 0xc0105512 || arg1 == 0x802c550a || arg1 == 0xc00c5512 || \
-       arg1 == 0x4004550d
+       arg1 == 0x4004550d || arg1 == 0x8108551b
 listen: 1
 lseek: 1
 madvise: 1
