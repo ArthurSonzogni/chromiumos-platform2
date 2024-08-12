@@ -13,7 +13,7 @@ use std::vec::Vec;
 
 use libchromeos::deprecated::{EventFd, PollContext};
 use log::{debug, error, info};
-use rusb::{Direction, GlobalContext, Registration, TransferType, UsbContext};
+use rusb::{Context, Direction, Registration, TransferType, UsbContext};
 use std::sync::{Condvar, Mutex};
 
 const USB_TRANSFER_TIMEOUT: Duration = Duration::from_secs(60);
@@ -37,6 +37,7 @@ pub enum Error {
     NoFreeInterface,
     NotIppUsb,
     Poll(nix::Error),
+    CreateContext(rusb::Error),
 }
 
 impl std::error::Error for Error {}
@@ -73,6 +74,7 @@ impl fmt::Display for Error {
             NoFreeInterface => write!(f, "There is no free IPP USB interface to claim."),
             NotIppUsb => write!(f, "The specified device is not an IPP USB device."),
             Poll(err) => write!(f, "Error polling shutdown fd: {}", err),
+            CreateContext(err) => write!(f, "Failed to create UsbContext: {}", err),
         }
     }
 }
@@ -94,7 +96,7 @@ fn interface_contains_ippusb(interface: &rusb::Interface) -> bool {
     false
 }
 
-fn set_device_config(handle: &mut rusb::DeviceHandle<GlobalContext>, new_config: u8) -> Result<()> {
+fn set_device_config(handle: &mut rusb::DeviceHandle<Context>, new_config: u8) -> Result<()> {
     let cur_config = handle
         .device()
         .active_config_descriptor()
@@ -247,7 +249,7 @@ fn read_ippusb_device_info<T: UsbContext>(
 }
 
 struct ClaimedInterface {
-    handle: rusb::DeviceHandle<GlobalContext>,
+    handle: rusb::DeviceHandle<Context>,
     descriptor: IppusbDescriptor,
 }
 
@@ -277,7 +279,7 @@ impl ClaimedInterface {
 /// be shared across InterfaceManager instances and protected by a mutex.
 struct InterfaceManagerState {
     interfaces: VecDeque<ClaimedInterface>,
-    handle: rusb::DeviceHandle<GlobalContext>,
+    handle: rusb::DeviceHandle<Context>,
     usb_config: u8,
     active: usize,
     pending_cleanup: bool,
@@ -341,7 +343,7 @@ pub struct InterfaceManager {
 
 impl InterfaceManager {
     fn new(
-        handle: rusb::DeviceHandle<GlobalContext>,
+        handle: rusb::DeviceHandle<Context>,
         usb_config: u8,
         interfaces: Vec<ClaimedInterface>,
     ) -> Self {
@@ -498,20 +500,20 @@ impl InterfaceManager {
 pub struct UnplugDetector {
     event_thread_run: Arc<AtomicBool>,
     // These are always Some until the destructor runs.
-    registration: Option<Registration<GlobalContext>>,
+    registration: Option<Registration<Context>>,
     event_thread: Option<std::thread::JoinHandle<()>>,
     join_event_thread: bool,
 }
 
 impl UnplugDetector {
     pub fn new(
-        device: rusb::Device<GlobalContext>,
+        device: rusb::Device<Context>,
         shutdown_fd: EventFd,
         shutdown: &'static AtomicBool,
         delay_shutdown: bool,
     ) -> Result<Self> {
+        let context = device.context().clone();
         let handler = CallbackHandler::new(device, shutdown_fd, shutdown, delay_shutdown);
-        let context = GlobalContext::default();
         let registration = context
             .register_callback(None, None, None, Box::new(handler))
             .map_err(Error::RegisterCallback)?;
@@ -561,7 +563,7 @@ impl Drop for UnplugDetector {
 }
 
 struct CallbackHandler {
-    device: rusb::Device<GlobalContext>,
+    device: rusb::Device<Context>,
     shutdown_fd: EventFd,
     shutdown_requested: &'static AtomicBool,
     delay_shutdown: bool,
@@ -569,7 +571,7 @@ struct CallbackHandler {
 
 impl CallbackHandler {
     fn new(
-        device: rusb::Device<GlobalContext>,
+        device: rusb::Device<Context>,
         shutdown_fd: EventFd,
         shutdown_requested: &'static AtomicBool,
         delay_shutdown: bool,
@@ -603,12 +605,12 @@ impl CallbackHandler {
     }
 }
 
-impl rusb::Hotplug<GlobalContext> for CallbackHandler {
-    fn device_arrived(&mut self, _device: rusb::Device<GlobalContext>) {
+impl rusb::Hotplug<Context> for CallbackHandler {
+    fn device_arrived(&mut self, _device: rusb::Device<Context>) {
         // Do nothing.
     }
 
-    fn device_left(&mut self, device: rusb::Device<GlobalContext>) {
+    fn device_left(&mut self, device: rusb::Device<Context>) {
         if device == self.device {
             info!("Device was unplugged, shutting down");
 
@@ -630,13 +632,14 @@ impl rusb::Hotplug<GlobalContext> for CallbackHandler {
 #[derive(Clone)]
 pub struct UsbConnector {
     verbose_log: bool,
-    handle: Arc<rusb::DeviceHandle<GlobalContext>>,
+    handle: Arc<rusb::DeviceHandle<Context>>,
     manager: InterfaceManager,
 }
 
 impl UsbConnector {
     pub fn new(verbose_log: bool, bus_device: Option<(u8, u8)>) -> Result<UsbConnector> {
-        let device_list = rusb::DeviceList::new().map_err(Error::DeviceList)?;
+        let context = Context::new().map_err(Error::CreateContext)?;
+        let device_list = rusb::DeviceList::new_with_context(context).map_err(Error::DeviceList)?;
 
         let (device, info) = match bus_device {
             Some((bus, address)) => {
@@ -649,7 +652,7 @@ impl UsbConnector {
                 (device, info)
             }
             None => {
-                let mut selected_device: Option<(rusb::Device<GlobalContext>, IppusbDevice)> = None;
+                let mut selected_device: Option<(rusb::Device<Context>, IppusbDevice)> = None;
                 for device in device_list.iter() {
                     if let Some(info) = read_ippusb_device_info(&device)? {
                         selected_device = Some((device, info));
@@ -699,7 +702,7 @@ impl UsbConnector {
         })
     }
 
-    pub fn device(&self) -> rusb::Device<GlobalContext> {
+    pub fn device(&self) -> rusb::Device<Context> {
         self.handle.device()
     }
 
