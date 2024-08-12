@@ -5,9 +5,12 @@
 #include "secagentd/platform.h"
 
 #include <net/if.h>
+#include <sys/syscall.h>
 
 #include <memory>
 #include <utility>
+
+#include <bpf/bpf.h>
 
 #include "base/files/file_descriptor_watcher_posix.h"
 
@@ -97,6 +100,13 @@ int Platform::BpfMapFdByName(struct bpf_object* obj, const std::string name) {
   return bpf_object__find_map_fd_by_name(obj, name.c_str());
 }
 
+int Platform::BpfMapUpdateElemBtFD(int fd,
+                                   const void* key,
+                                   const void* value,
+                                   __u64 flags) {
+  return bpf_map_update_elem(fd, key, value, flags);
+}
+
 struct ring_buffer* Platform::RingBufferNew(
     int map_fd,
     ring_buffer_sample_fn sample_cb,
@@ -121,4 +131,13 @@ std::unique_ptr<base::FileDescriptorWatcher::Controller>
 Platform::WatchReadable(int fd, const base::RepeatingClosure& callback) {
   return base::FileDescriptorWatcher::WatchReadable(fd, callback);
 }
+
+int Platform::Sys_statx(int dir_fd,
+                        const std::string& path,
+                        int flags,
+                        unsigned int mask,
+                        struct statx* statxbuf) {
+  return syscall(SYS_statx, dir_fd, path.c_str(), flags, mask, &statxbuf);
+}
+
 }  // namespace secagentd

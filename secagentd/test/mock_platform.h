@@ -98,6 +98,20 @@ class MockPlatform : public PlatformInterface {
               (int fd, const base::RepeatingClosure& callback),
               (override));
 
+  MOCK_METHOD(int,
+              BpfMapUpdateElemBtFD,
+              (int fd, const void* key, const void* value, __u64 flags),
+              (override));
+
+  MOCK_METHOD(int,
+              Sys_statx,
+              (int dir_fd,
+               const std::string& path,
+               int flags,
+               unsigned int mask,
+               struct statx* statxbuf),
+              (override));
+
  private:
   base::WeakPtrFactory<MockPlatform> weak_ptr_factory_;
 };

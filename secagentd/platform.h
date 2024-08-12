@@ -9,6 +9,7 @@
 #include <bpf/libbpf.h>
 #include <memory>
 #include <string>
+#include <sys/stat.h>
 // clang-format on
 
 #include "base/files/file_descriptor_watcher_posix.h"
@@ -50,6 +51,10 @@ class PlatformInterface {
   virtual int BpfMapFd(const struct bpf_map* map) = 0;
   virtual int BpfMapFdByName(struct bpf_object* obj,
                              const std::string name) = 0;
+  virtual int BpfMapUpdateElemBtFD(int fd,
+                                   const void* key,
+                                   const void* value,
+                                   __u64 flags) = 0;
   virtual struct ring_buffer* RingBufferNew(
       int map_fd,
       ring_buffer_sample_fn sample_cb,
@@ -60,6 +65,11 @@ class PlatformInterface {
   virtual void RingBufferFree(struct ring_buffer* rb) = 0;
   virtual std::unique_ptr<base::FileDescriptorWatcher::Controller>
   WatchReadable(int fd, const base::RepeatingClosure& callback) = 0;
+  virtual int Sys_statx(int dir_fd,
+                        const std::string& path,
+                        int flags,
+                        unsigned int mask,
+                        struct statx* statxbuf) = 0;
   virtual ~PlatformInterface() = default;
 };
 
@@ -97,6 +107,10 @@ class Platform : public PlatformInterface {
   void BpfObjectDestroySkeleton(struct bpf_object_skeleton* s) override;
   int BpfMapFd(const struct bpf_map* map) override;
   int BpfMapFdByName(struct bpf_object* obj, const std::string name) override;
+  int BpfMapUpdateElemBtFD(int fd,
+                           const void* key,
+                           const void* value,
+                           __u64 flags) override;
   struct ring_buffer* RingBufferNew(
       int map_fd,
       ring_buffer_sample_fn sample_cb,
@@ -107,6 +121,11 @@ class Platform : public PlatformInterface {
   void RingBufferFree(struct ring_buffer* rb) override;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> WatchReadable(
       int fd, const base::RepeatingClosure& callback) override;
+  int Sys_statx(int dir_fd,
+                const std::string& path,
+                int flags,
+                unsigned int mask,
+                struct statx* statxbuf) override;
 
  private:
   base::WeakPtrFactory<Platform> weak_ptr_factory_;
