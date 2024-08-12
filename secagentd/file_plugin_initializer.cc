@@ -446,4 +446,26 @@ absl::Status FilePluginInitializer::InitializeFileBpfMaps(
 
   return UpdateBPFMapForPathMaps(userhash, helper, paths_map);
 }
+
+absl::Status FilePluginInitializer::OnUserLogin(
+    const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
+    const std::string& userHash) {
+  // Create a map to hold path information
+  std::map<FilePathName, PathInfo> pathInfoMap;
+
+  // Check if userHash is not empty before processing
+  if (userHash.empty()) {
+    return absl::InvalidArgumentError("User hash is empty");
+  }
+
+  // Construct and populate paths for USER_PATH category
+  absl::Status status = PopulatePathsMapByCategory(FilePathCategory::USER_PATH,
+                                                   userHash, pathInfoMap);
+
+  if (!status.ok()) {
+    return status;
+  }
+
+  return UpdateBPFMapForPathMaps(userHash, bpfHelper, pathInfoMap);
+}
 }  // namespace secagentd

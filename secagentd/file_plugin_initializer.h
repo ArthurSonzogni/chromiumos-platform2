@@ -59,6 +59,10 @@ class FilePluginInitializer {
 
       const std::string& userhash);
 
+  static absl::Status OnUserLogin(
+      const std::unique_ptr<BpfSkeletonHelperInterface>& helper,
+      const std::string& userHash);
+
  private:
   // Function to update the BPF map with inode IDs for files in directories
   // specified in paths_map recursively, limited to a specific device ID
