@@ -701,6 +701,8 @@ class Manager {
       std::string_view name,
       KeyValueStore (Manager::*get)(Error* error),
       bool (Manager::*set)(const KeyValueStore& value, Error* error));
+  void HelpRegisterDerivedKeyValueStores(
+      std::string_view name, KeyValueStores (Manager::*get)(Error* error));
   void HelpRegisterDerivedBool(std::string_view name,
                                bool (Manager::*get)(Error* error),
                                bool (Manager::*set)(const bool& value,

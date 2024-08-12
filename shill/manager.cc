@@ -1003,7 +1003,8 @@ bool Manager::IsProfileBefore(const ProfileRefPtr& a,
       return false;
     }
   }
-  NOTREACHED_IN_MIGRATION() << "We should have found both profiles in the profiles_ list!";
+  NOTREACHED_IN_MIGRATION()
+      << "We should have found both profiles in the profiles_ list!";
   return false;
 }
 
@@ -1799,6 +1800,13 @@ void Manager::HelpRegisterDerivedKeyValueStore(
   store_.RegisterDerivedKeyValueStore(
       name, KeyValueStoreAccessor(
                 new CustomAccessor<Manager, KeyValueStore>(this, get, set)));
+}
+
+void Manager::HelpRegisterDerivedKeyValueStores(
+    std::string_view name, KeyValueStores (Manager::*get)(Error* error)) {
+  store_.RegisterDerivedKeyValueStores(
+      name, KeyValueStoresAccessor(new CustomAccessor<Manager, KeyValueStores>(
+                this, get, nullptr)));
 }
 
 void Manager::HelpRegisterDerivedBool(std::string_view name,
