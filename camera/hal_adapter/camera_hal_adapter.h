@@ -13,12 +13,11 @@
 #include <utility>
 #include <vector>
 
-#include <hardware/camera3.h>
-
 #include <base/containers/flat_set.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
+#include <hardware/camera3.h>
 #include <ml_core/dlc/dlc_client.h>
 #include <mojo/public/cpp/bindings/pending_associated_remote.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -322,6 +321,8 @@ class CameraHalAdapter {
   std::unique_ptr<GpuResources> root_gpu_resources_;
 
   bool effects_enabled_ = false;
+
+  std::unique_ptr<DlcClient> effects_dlc_client_;
 
   std::unique_ptr<DlcClient> super_res_dlc_client_;
 

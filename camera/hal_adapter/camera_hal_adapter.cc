@@ -71,8 +71,6 @@ const base::FilePath kCameraIdsWithFallbackSolutionFilePath(
 constexpr char kSWPrivacySwitchOn[] = "on";
 constexpr char kSWPrivacySwitchOff[] = "off";
 
-const char kEffectsLibraryPath[] = "/usr/share/cros-camera/libfs";
-
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(
@@ -140,12 +138,26 @@ bool CameraHalAdapter::Start() {
   }
 
   if (FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
-    LOGF(INFO) << "Effects are enabled. Setting DLC root path.";
+    LOGF(INFO) << "Effects are enabled, initiating DLC install.";
     effects_enabled_ = true;
-    stream_manipulator_runtime_options_.SetDlcRootPath(
-        dlc_client::kMlCoreDlcId, base::FilePath(kEffectsLibraryPath));
+    effects_dlc_client_ = DlcClient::Create(
+        dlc_client::kMlCoreDlcId,
+        base::BindOnce(
+            [](StreamManipulator::RuntimeOptions* options,
+               const base::FilePath& dlc_path) {
+              options->SetDlcRootPath(dlc_client::kMlCoreDlcId, dlc_path);
+            },
+            base::Unretained(&stream_manipulator_runtime_options_)),
+        base::BindOnce([](const std::string& error_msg) {
+          LOGF(ERROR) << "DLC failed:" << error_msg;
+        }));
+    if (!effects_dlc_client_) {
+      LOGF(ERROR) << "Failed to create DLC client for effects library.";
+    } else {
+      effects_dlc_client_->InstallDlc();
+    }
   } else {
-    LOGF(INFO) << "Effects are not enabled, skipping DLC.";
+    LOGF(INFO) << "Effects are not enabled, DLC will not be installed.";
   }
 
 #if USE_CAMERA_FEATURE_SUPER_RES
