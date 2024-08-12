@@ -9,6 +9,8 @@
 #include <absl/status/statusor.h>
 #include <bpf/bpf.h>
 
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "linux/bpf.h"
 #include "secagentd/bpf/bpf_types.h"
@@ -21,6 +23,7 @@
 #include <sys/types.h>
 
 #include <cerrno>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -40,6 +43,8 @@
 #define HASH_PLACEHOLDER "{HASH}"
 
 namespace {
+
+const char deviceSettingsBasePath[] = "/var/lib/devicesettings/";
 
 // Path to monitor
 static const std::map<secagentd::FilePathName, secagentd::PathInfo>
@@ -101,7 +106,7 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           cros_xdr::reporting::SensitiveFileType::USB_MASS_STORAGE,
           secagentd::FilePathCategory::REMOVABLE_PATH}},
         {secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR,
-         {"/var/lib/devicesettings/policy", std::nullopt,
+         {"/var/lib/devicesettings/policy.", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
@@ -197,8 +202,8 @@ static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
   return kernel_dev;
 }
 
-absl::StatusOr<const struct statx> RetrieveFileStatistics(
-    int dirFd, const std::string& path) {
+absl::StatusOr<const struct statx> GetFStat(int dirFd,
+                                            const std::string& path) {
   struct statx fileStatx;
   // Retrieve file information for the current path using statx
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
@@ -217,10 +222,37 @@ absl::StatusOr<const struct statx> RetrieveFileStatistics(
   return fileStatx;
 }
 
+// Traverses the base directory and applies a callback function to each
+// subdirectory.
+
+void TraverseDirectories(
+    const std::string& baseDir,
+    base::RepeatingCallback<void(const std::string&)> callback,
+    bool processSubDirectories,
+    bool processFiles) {
+  // Check if the base directory exists and is a directory
+  if (!std::filesystem::exists(baseDir) ||
+      !std::filesystem::is_directory(baseDir)) {
+    LOG(ERROR) << "The directory " << baseDir
+               << " does not exist or is not a directory.";
+    return;
+  }
+
+  // Iterate over all entries in the base directory
+  for (const auto& entry : std::filesystem::directory_iterator(baseDir)) {
+    // Check if the entry is a directory
+    if ((entry.is_directory() && processSubDirectories) ||
+        (entry.is_regular_file() && processFiles)) {
+      // Apply the callback function to the directory path
+      callback.Run(entry.path().string());
+    }
+  }
+}
+
 absl::Status FilePluginInitializer::PopulatePathsMapByCategory(
     FilePathCategory category,
     const std::optional<std::string>& optionalUserHash,
-    std::map<FilePathName, PathInfo>& pathInfoMap) {
+    std::map<FilePathName, std::vector<PathInfo>>& pathInfoMap) {
   // Verify if the provided category exists in the predefined mappings
   auto categoryIt = file_path_names_by_category.find(category);
   if (categoryIt == file_path_names_by_category.end()) {
@@ -249,24 +281,57 @@ absl::Status FilePluginInitializer::PopulatePathsMapByCategory(
     }
     PathInfo pathInfo = filePathIt->second;
 
-    // Replace the placeholder with the actual user hash if applicable
-    if (category == FilePathCategory::USER_PATH) {
+    if (categoryIt->first == FilePathCategory::REMOVABLE_PATH) {
+      TraverseDirectories(
+          pathInfo.pathPrefix,
+          base::BindRepeating(
+              [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
+                 PathInfo* pathInfo, FilePathName pathName,
+                 const std::string& path) {
+                pathInfo->fullResolvedPath = path;
+                pathInfoMap->at(pathName).push_back(*pathInfo);
+              },
+              base::Unretained(&pathInfoMap), base::Unretained(&pathInfo),
+              pathName),
+          true, false);
+    } else if (pathName == FilePathName::DEVICE_SETTINGS_OWNER_KEY ||
+               pathName == FilePathName::DEVICE_SETTINGS_POLICY_DIR) {
+      if (pathName == FilePathName::DEVICE_SETTINGS_OWNER_KEY) {
+        continue;  // Process in the policy
+      }
+
+      TraverseDirectories(
+          deviceSettingsBasePath,
+          base::BindRepeating(
+              [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
+                 const std::string& path) {
+                auto pair = MatchPathToFilePathPrefixName(path);
+                if (pair.has_value()) {
+                  pair.value().second.fullResolvedPath = path;
+                  pathInfoMap->at(pair.value().first)
+                      .push_back(pair.value().second);
+                }
+              },
+              base::Unretained(&pathInfoMap)),
+          false, true);
+    } else if (category == FilePathCategory::USER_PATH) {
       pathInfo.fullResolvedPath = pathInfo.pathPrefix +
                                   optionalUserHash.value() +
                                   pathInfo.pathSuffix.value();
+      pathInfoMap[pathName].push_back(pathInfo);
     } else {
       pathInfo.fullResolvedPath = pathInfo.pathPrefix;
+      pathInfoMap[pathName].push_back(pathInfo);
     }
-
-    pathInfoMap[pathName] = pathInfo;
   }
 
   return absl::OkStatus();
 }
 
-std::map<FilePathName, PathInfo> FilePluginInitializer::ConstructAllPathsMap(
+std::map<FilePathName, std::vector<PathInfo>>
+FilePluginInitializer::ConstructAllPathsMap(
     const std::optional<std::string>& optionalUserHash) {
-  std::map<FilePathName, PathInfo> pathInfoMap;
+  std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
 
   // Check if userHash is provided for USER_PATH category
   if (optionalUserHash.has_value()) {
@@ -321,9 +386,10 @@ absl::Status FilePluginInitializer::PopulateFlagsMap(int fd) {
 
 absl::Status FilePluginInitializer::UpdateBPFMapForPathInodes(
     int bpfMapFd,
-    const std::map<FilePathName, PathInfo>& pathsMap,
+    const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
     const std::optional<std::string>& optionalUserhash) {
-  // Open the root directory to use with fstatat for file information retrieval
+  // Open the root directory to use with fstatat for file information
+  // retrieval
   int root_fd = open("/", O_RDONLY | O_DIRECTORY);
   if (root_fd == -1) {
     return absl::InternalError(strerror(errno));
@@ -331,45 +397,47 @@ absl::Status FilePluginInitializer::UpdateBPFMapForPathInodes(
 
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate over the map of file paths and their associated information
-  for (const auto& [pathName, pathInfo] : pathsMap) {
-    const std::string& path =
-        pathInfo.fullResolvedPath.value();  // Current path to process
-    secagentd::bpf::file_monitoring_mode monitoringMode =
-        pathInfo.monitoringMode;  // Monitoring mode for the path
+  for (const auto& [pathName, pathInfoVector] : pathsMap) {
+    for (const auto& pathInfo : pathInfoVector) {
+      const std::string& path =
+          pathInfo.fullResolvedPath.value();  // Current path to process
+      secagentd::bpf::file_monitoring_mode monitoringMode =
+          pathInfo.monitoringMode;  // Monitoring mode for the path
 
-    // Retrieve file information for the current path using fstatat
-    absl::StatusOr<const struct statx> file_statx_result =
-        RetrieveFileStatistics(root_fd, path.c_str());
-    if (!file_statx_result.ok()) {
-      LOG(ERROR) << "Failed to retrieve file statistics for " << path << ": "
-                 << file_statx_result.status();
-      continue;  // Skip to the next path in the map
+      // Retrieve file information for the current path using fstatat
+      absl::StatusOr<const struct statx> file_statx_result =
+          GetFStat(root_fd, path.c_str());
+      if (!file_statx_result.ok()) {
+        LOG(ERROR) << "Failed to retrieve file statistics for " << path << ": "
+                   << file_statx_result.status();
+        continue;  // Skip to the next path in the map
+      }
+      const struct statx& fileStatx = file_statx_result.value();
+
+      // Prepare the BPF map key with inode ID and device ID
+      struct bpf::inode_dev_map_key bpfMapKey = {
+          .inode_id = fileStatx.stx_ino,
+          .dev_id = UserspaceToKernelDeviceId(fileStatx)};
+
+      // Update the BPF map with the inode key and monitoring mode value
+
+      if (platform->BpfMapUpdateElementByFd(bpfMapFd, &bpfMapKey,
+                                            &monitoringMode, 0) != 0) {
+        LOG(ERROR) << "Failed to update BPF map entry for path " << path
+                   << ". Inode: " << bpfMapKey.inode_id
+                   << ", Device ID: " << bpfMapKey.dev_id;
+        continue;  // Continue processing the next path in the map
+      }
+      if (pathInfo.pathCategory == FilePathCategory::USER_PATH &&
+          optionalUserhash.has_value()) {
+        // Add the new BPF map key to the vector
+        userhash_inodes_map[optionalUserhash.value()].push_back(bpfMapKey);
+      }
+      // Log success message for the current path
+      LOG(INFO) << "Successfully added entry to BPF map for path " << path
+                << ". Inode: " << bpfMapKey.inode_id
+                << ", Device ID: " << bpfMapKey.dev_id;
     }
-    const struct statx& fileStatx = file_statx_result.value();
-
-    // Prepare the BPF map key with inode ID and device ID
-    struct bpf::inode_dev_map_key bpfMapKey = {
-        .inode_id = fileStatx.stx_ino,
-        .dev_id = UserspaceToKernelDeviceId(fileStatx)};
-
-    // Update the BPF map with the inode key and monitoring mode value
-
-    if (platform->BpfMapUpdateElementByFd(bpfMapFd, &bpfMapKey, &monitoringMode,
-                                          0) != 0) {
-      LOG(ERROR) << "Failed to update BPF map entry for path " << path
-                 << ". Inode: " << bpfMapKey.inode_id
-                 << ", Device ID: " << bpfMapKey.dev_id;
-      continue;  // Continue processing the next path in the map
-    }
-    if (pathInfo.pathCategory == FilePathCategory::USER_PATH &&
-        optionalUserhash.has_value()) {
-      // Add the new BPF map key to the vector
-      userhash_inodes_map[optionalUserhash.value()].push_back(bpfMapKey);
-    }
-    // Log success message for the current path
-    LOG(INFO) << "Successfully added entry to BPF map for path " << path
-              << ". Inode: " << bpfMapKey.inode_id
-              << ", Device ID: " << bpfMapKey.dev_id;
   }
 
   close(root_fd);  // Close the root directory file descriptor
@@ -377,7 +445,8 @@ absl::Status FilePluginInitializer::UpdateBPFMapForPathInodes(
 }
 
 absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
-    int bpfMapFd, const std::map<FilePathName, PathInfo>& pathsMap) {
+    int bpfMapFd,
+    const std::map<FilePathName, std::vector<PathInfo>>& pathsMap) {
   // Validate BPF map file descriptor
   if (bpfMapFd < 0) {
     return absl::InvalidArgumentError("Invalid BPF map file descriptor.");
@@ -391,41 +460,44 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
 
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate through each path and update the BPF map
-  for (const auto& [pathName, pathInfo] : pathsMap) {
-    const std::string& path =
-        pathInfo.fullResolvedPath.value();  // Current path to process
+  for (const auto& [pathName, pathInfoVector] : pathsMap) {
+    for (const auto& pathInfo : pathInfoVector) {
+      const std::string& path =
+          pathInfo.fullResolvedPath.value();  // Current path to process
 
-    // Retrieve file information for the current path using fstatat
-    absl::StatusOr<const struct statx> file_statx_result =
-        RetrieveFileStatistics(root_fd, path.c_str());
-    if (!file_statx_result.ok()) {
-      LOG(ERROR) << "Failed to retrieve file statistics for " << path << ": "
-                 << file_statx_result.status();
-      continue;  // Skip to the next path in the map
+      // Retrieve file information for the current path using fstatat
+      absl::StatusOr<const struct statx> file_statx_result =
+          GetFStat(root_fd, path.c_str());
+      if (!file_statx_result.ok()) {
+        LOG(ERROR) << "Failed to retrieve file statistics for " << path << ": "
+                   << file_statx_result.status();
+        continue;  // Skip to the next path in the map
+      }
+      const struct statx& fileStatx = file_statx_result.value();
+
+      // Convert userspace device ID to kernel device ID
+      dev_t deviceId = UserspaceToKernelDeviceId(fileStatx);
+
+      struct bpf::device_file_monitoring_settings bpfSettings = {
+          .device_monitoring_type = pathInfo.deviceMonitoringType,
+          .file_monitoring_mode = pathInfo.monitoringMode,
+      };
+
+      // Update BPF map with the device ID and settings
+
+      if (platform->BpfMapUpdateElementByFd(bpfMapFd, &deviceId, &bpfSettings,
+                                            BPF_ANY) != 0) {
+        LOG(ERROR) << "Failed to update BPF map entry for device ID "
+                   << deviceId;
+        continue;  // Skip to the next path
+      }
+
+      LOG(INFO) << "Added device ID " << deviceId << " with monitoring mode "
+                << static_cast<int>(pathInfo.monitoringMode)
+                << " with device monitoring type "
+                << static_cast<int>(pathInfo.deviceMonitoringType)
+                << " to BPF map.";
     }
-    const struct statx& fileStatx = file_statx_result.value();
-
-    // Convert userspace device ID to kernel device ID
-    dev_t deviceId = UserspaceToKernelDeviceId(fileStatx);
-
-    struct bpf::device_file_monitoring_settings bpfSettings = {
-        .device_monitoring_type = pathInfo.deviceMonitoringType,
-        .file_monitoring_mode = pathInfo.monitoringMode,
-    };
-
-    // Update BPF map with the device ID and settings
-
-    if (platform->BpfMapUpdateElementByFd(bpfMapFd, &deviceId, &bpfSettings,
-                                          BPF_ANY) != 0) {
-      LOG(ERROR) << "Failed to update BPF map entry for device ID " << deviceId;
-      continue;  // Skip to the next path
-    }
-
-    LOG(INFO) << "Added device ID " << deviceId << " with monitoring mode "
-              << static_cast<int>(pathInfo.monitoringMode)
-              << " with device monitoring type "
-              << static_cast<int>(pathInfo.deviceMonitoringType)
-              << " to BPF map.";
   }
 
   close(root_fd);  // Close the root directory file descriptor
@@ -435,7 +507,7 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
 absl::Status FilePluginInitializer::UpdateBPFMapForPathMaps(
     const std::optional<std::string>& optionalUserhash,
     const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
-    const std::map<FilePathName, PathInfo>& pathsMap) {
+    const std::map<FilePathName, std::vector<PathInfo>>& pathsMap) {
   // Retrieve file descriptor for the 'allowlisted_directory_inodes' BPF map
   absl::StatusOr<int> mapFdResult =
       bpfHelper->FindBpfMapByName("allowlisted_directory_inodes");
@@ -507,7 +579,7 @@ absl::Status FilePluginInitializer::InitializeFileBpfMaps(
   const std::optional<std::string>& optionalUserhash =
       ConstructOptionalUserhash(userhash);
   // Construct the paths map based on the user hash
-  std::map<FilePathName, PathInfo> paths_map =
+  std::map<FilePathName, std::vector<PathInfo>> paths_map =
       ConstructAllPathsMap(optionalUserhash);
 
   // Update map for flags
@@ -532,7 +604,7 @@ absl::Status FilePluginInitializer::OnUserLogin(
     const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
     const std::string& userHash) {
   // Create a map to hold path information
-  std::map<FilePathName, PathInfo> pathInfoMap;
+  std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
 
   // Check if userHash is not empty before processing
   const std::optional<std::string>& optionalUserhash =
@@ -542,6 +614,7 @@ absl::Status FilePluginInitializer::OnUserLogin(
     return absl::InvalidArgumentError("User hash is empty");
   }
 
+  // Construct and populate paths for USER_PATH category
   // Construct and populate paths for USER_PATH category
   absl::Status status = PopulatePathsMapByCategory(FilePathCategory::USER_PATH,
                                                    userHash, pathInfoMap);
@@ -587,9 +660,9 @@ absl::Status FilePluginInitializer::OnDeviceMount(
   }
 
   // Create a map to hold path information
-  std::map<FilePathName, PathInfo> pathInfoMap;
+  std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
   pair.value().second.fullResolvedPath = mount_point;
-  pathInfoMap[pair.value().first] = pair.value().second;
+  pathInfoMap[pair.value().first].push_back(pair.value().second);
 
   // Update BPF maps with the constructed path information
   return UpdateBPFMapForPathMaps(std::nullopt, bpfHelper, pathInfoMap);

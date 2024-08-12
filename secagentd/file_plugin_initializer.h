@@ -82,7 +82,7 @@ class FilePluginInitializer {
   // in a map of paths.
   static absl::Status UpdateBPFMapForPathInodes(
       int bpfMapFd,
-      const std::map<FilePathName, PathInfo>& pathsMap,
+      const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
       const std::optional<std::string>& optionalUserhash);
 
   // Removes entries from the BPF map based on inode-device key mappings
@@ -93,19 +93,20 @@ class FilePluginInitializer {
   // Updates a BPF map with device IDs based on the paths and their associated
   // monitoring modes.
   static absl::Status AddDeviceIdsToBPFMap(
-      int bpfMapFd, const std::map<FilePathName, PathInfo>& pathsMap);
+      int bpfMapFd,
+      const std::map<FilePathName, std::vector<PathInfo>>& pathsMap);
 
   // Constructs a map of full paths based on the specified file path category
   // and optional user hash.
   static absl::Status PopulatePathsMapByCategory(
       FilePathCategory category,
       const std::optional<std::string>& optionalUserHash,
-      std::map<FilePathName, PathInfo>& pathInfoMap);
+      std::map<FilePathName, std::vector<PathInfo>>& pathInfoMap);
 
   // Constructs a map of all path information based on the provided user hash.
   // This includes paths for USER_PATH, SYSTEM_PATH, and REMOVABLE_PATH
   // categories.
-  static std::map<FilePathName, PathInfo> ConstructAllPathsMap(
+  static std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
       const std::optional<std::string>& userHash);
 
   // Updates BPF maps with paths and their associated information.
@@ -117,7 +118,7 @@ class FilePluginInitializer {
   static absl::Status UpdateBPFMapForPathMaps(
       const std::optional<std::string>& optionalUserhash,
       const std::unique_ptr<BpfSkeletonHelperInterface>& helper,
-      const std::map<FilePathName, PathInfo>& paths_map);
+      const std::map<FilePathName, std::vector<PathInfo>>& paths_map);
 };
 
 }  // namespace secagentd
