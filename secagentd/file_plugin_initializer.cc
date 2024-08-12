@@ -157,6 +157,17 @@ const std::map<secagentd::FilePathCategory,
          {secagentd::FilePathName::MOUNTED_ARCHIVE,
           secagentd::FilePathName::USB_STORAGE}}};
 
+// Function to match a path prefix to FilePathName
+std::optional<std::pair<const secagentd::FilePathName, secagentd::PathInfo>>
+MatchPathToFilePathPrefixName(const std::string& path) {
+  for (const auto& pair : file_path_info_map) {
+    if (path.find(pair.second.pathPrefix) == 0) {
+      return pair;
+    }
+  }
+  return std::nullopt;
+}
+
 const std::optional<std::string> ConstructOptionalUserhash(
     const std::string& userhash) {
   if (userhash.empty() || userhash == secagentd::device_user::kUnknown) {
@@ -424,7 +435,6 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
 absl::Status FilePluginInitializer::UpdateBPFMapForPathMaps(
     const std::optional<std::string>& optionalUserhash,
     const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
-
     const std::map<FilePathName, PathInfo>& pathsMap) {
   // Retrieve file descriptor for the 'allowlisted_directory_inodes' BPF map
   absl::StatusOr<int> mapFdResult =
@@ -567,4 +577,22 @@ absl::Status FilePluginInitializer::OnUserLogout(
   // TODO(princya): Remove device if not used by another directory
   // TODO(princya): Remove hard links from user directory
 }
+
+absl::Status FilePluginInitializer::OnDeviceMount(
+    const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
+    const std::string& mount_point) {
+  auto pair = MatchPathToFilePathPrefixName(mount_point);
+  if (!pair.has_value()) {
+    return absl::InvalidArgumentError("Mount point not matched any known path");
+  }
+
+  // Create a map to hold path information
+  std::map<FilePathName, PathInfo> pathInfoMap;
+  pair.value().second.fullResolvedPath = mount_point;
+  pathInfoMap[pair.value().first] = pair.value().second;
+
+  // Update BPF maps with the constructed path information
+  return UpdateBPFMapForPathMaps(std::nullopt, bpfHelper, pathInfoMap);
+}
+
 }  // namespace secagentd

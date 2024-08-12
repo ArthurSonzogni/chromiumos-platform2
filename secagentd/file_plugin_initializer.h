@@ -69,6 +69,10 @@ class FilePluginInitializer {
       const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
       const std::string& userHash);
 
+  static absl::Status OnDeviceMount(
+      const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
+      const std::string& mount_point);
+
  private:
   // Function to update the BPF map with inode IDs for files in directories
   // specified in paths_map recursively, limited to a specific device ID
