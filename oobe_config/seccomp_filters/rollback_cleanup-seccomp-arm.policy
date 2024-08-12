@@ -13,6 +13,7 @@ getpid: 1
 rt_sigprocmask: 1
 statx: 1
 access: 1
+fstat: 1
 send: 1
 write: 1
 munmap: 1
