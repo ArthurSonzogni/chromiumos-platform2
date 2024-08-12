@@ -22,7 +22,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/scoped_umask.h>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -76,7 +75,7 @@ class MockBootStatSystem : public BootStatSystem {
       : BootStatSystem(root_path),
         disk_statistics_file_path_(disk_statistics_file_path) {}
 
-  base::FilePath GetDiskStatisticsFilePath() const override {
+  base::FilePath GetDiskStatisticsFilePath() override {
     return disk_statistics_file_path_;
   }
 

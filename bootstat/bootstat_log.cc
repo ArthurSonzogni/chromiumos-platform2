@@ -102,15 +102,19 @@ BootStatSystem::BootStatSystem() : BootStatSystem(base::FilePath("/")) {}
 BootStatSystem::BootStatSystem(const base::FilePath& root_path)
     : root_path_(root_path) {}
 
-// TODO(drinkcat): Cache function output (we only need to evaluate it once)
-base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
+base::FilePath BootStatSystem::GetDiskStatisticsFilePath() {
+  if (disk_statistics_file_path_.has_value()) {
+    return disk_statistics_file_path_.value();
+  }
+
   char boot_path[PATH_MAX];
   int ret = rootdev(boot_path, sizeof(boot_path),
                     true,    // Do full resolution.
                     false);  // Do not remove partition number.
   if (ret != 0) {
     LOG(ERROR) << "Cannot get rootdev.";
-    return base::FilePath();
+    disk_statistics_file_path_ = base::FilePath();
+    return disk_statistics_file_path_.value();
   }
 
   // The general idea is to use the the root device's sysfs entry to
@@ -130,9 +134,11 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   base::FilePath norm;
   if (!base::NormalizeFilePath(stat_path, &norm)) {
     LOG(ERROR) << "Cannot normalize disk statistics file path.";
-    return base::FilePath();
+    disk_statistics_file_path_ = base::FilePath();
+    return disk_statistics_file_path_.value();
   }
-  return norm;
+  disk_statistics_file_path_ = norm;
+  return disk_statistics_file_path_.value();
 }
 
 std::optional<struct timespec> BootStatSystem::GetUpTime() const {

@@ -37,7 +37,7 @@ class BootStatSystem {
 
   // Returns the path representing the stats file for the root disk.
   // Returns an empty path on failure.
-  virtual base::FilePath GetDiskStatisticsFilePath() const;
+  virtual base::FilePath GetDiskStatisticsFilePath();
 
   // Returns the current uptime (clock_gettime's CLOCK_BOOTTIME),
   // std::nullopt on error.
@@ -54,6 +54,7 @@ class BootStatSystem {
 
  private:
   base::FilePath root_path_;
+  std::optional<base::FilePath> disk_statistics_file_path_;
 };
 
 // Basic class for bootstat API interface.
