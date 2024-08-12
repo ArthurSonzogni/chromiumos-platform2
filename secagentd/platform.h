@@ -51,10 +51,11 @@ class PlatformInterface {
   virtual int BpfMapFd(const struct bpf_map* map) = 0;
   virtual int BpfMapFdByName(struct bpf_object* obj,
                              const std::string name) = 0;
-  virtual int BpfMapUpdateElemBtFD(int fd,
-                                   const void* key,
-                                   const void* value,
-                                   __u64 flags) = 0;
+  virtual int BpfMapUpdateElementByFd(int fd,
+                                      const void* key,
+                                      const void* value,
+                                      __u64 flags) = 0;
+  virtual int BpfMapDeleteElementByFd(int fd, const void* key) = 0;
   virtual struct ring_buffer* RingBufferNew(
       int map_fd,
       ring_buffer_sample_fn sample_cb,
@@ -107,10 +108,11 @@ class Platform : public PlatformInterface {
   void BpfObjectDestroySkeleton(struct bpf_object_skeleton* s) override;
   int BpfMapFd(const struct bpf_map* map) override;
   int BpfMapFdByName(struct bpf_object* obj, const std::string name) override;
-  int BpfMapUpdateElemBtFD(int fd,
-                           const void* key,
-                           const void* value,
-                           __u64 flags) override;
+  int BpfMapUpdateElementByFd(int fd,
+                              const void* key,
+                              const void* value,
+                              __u64 flags) override;
+  int BpfMapDeleteElementByFd(int fd, const void* key) override;
   struct ring_buffer* RingBufferNew(
       int map_fd,
       ring_buffer_sample_fn sample_cb,

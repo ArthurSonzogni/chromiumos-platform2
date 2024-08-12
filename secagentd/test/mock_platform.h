@@ -99,10 +99,13 @@ class MockPlatform : public PlatformInterface {
               (override));
 
   MOCK_METHOD(int,
-              BpfMapUpdateElemBtFD,
+              BpfMapUpdateElementByFd,
               (int fd, const void* key, const void* value, __u64 flags),
               (override));
-
+  MOCK_METHOD(int,
+              BpfMapDeleteElementByFd,
+              (int fd, const void* key),
+              (override));
   MOCK_METHOD(int,
               Sys_statx,
               (int dir_fd,

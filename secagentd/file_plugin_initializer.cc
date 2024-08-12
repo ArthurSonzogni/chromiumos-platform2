@@ -10,6 +10,7 @@
 #include <bpf/bpf.h>
 
 #include "base/memory/weak_ptr.h"
+#include "linux/bpf.h"
 #include "secagentd/bpf/bpf_types.h"
 
 // C standard headers
@@ -17,6 +18,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <sys/types.h>
 
 #include <cerrno>
 #include <iostream>
@@ -29,6 +31,7 @@
 #include <vector>
 
 // Protocol headers
+#include "secagentd/device_user.h"
 #include "secagentd/platform.h"
 #include "secagentd/plugins.h"
 
@@ -44,72 +47,89 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
         {secagentd::FilePathName::USER_FILES_DIR,
          {"/home/chronos/u-", "/MyFiles",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_FILE}},
+          cros_xdr::reporting::SensitiveFileType::USER_FILE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::COOKIES_DIR,
          {"/home/chronos/u-", "/Cookies",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE}},
+          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::COOKIES_JOURNAL_DIR,
          {"/home/chronos/u-", "/Cookies-journal",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE}},
+          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::SAFE_BROWSING_COOKIES_DIR,
          {"/home/chronos/u-", "/Safe Browsing Cookies",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE}},
+          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_DIR,
          {"/home/chronos/u-", "/Safe Browsing Cookies-journal",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE}},
+          cros_xdr::reporting::SensitiveFileType::USER_WEB_COOKIE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::USER_SECRET_STASH_DIR,
          {"/home/.shadow/", "/user_secret_stash",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_ENCRYPTED_CREDENTIAL}},
+          cros_xdr::reporting::SensitiveFileType::USER_ENCRYPTED_CREDENTIAL,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::ROOT,
          {"/", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::ROOT_FS, std::nullopt,
+          cros_xdr::reporting::SensitiveFileType::ROOT_FS,
+          secagentd::FilePathCategory::SYSTEM_PATH, std::nullopt,
           secagentd::bpf::device_monitoring_type::MONITOR_ALL_FILES}},
         {secagentd::FilePathName::MOUNTED_ARCHIVE,
          {"/media/archive", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_FILE}},
+          cros_xdr::reporting::SensitiveFileType::USER_FILE,
+          secagentd::FilePathCategory::REMOVABLE_PATH}},
         {secagentd::FilePathName::GOOGLE_DRIVE_FS,
          {"/media/fuse/drivefs-", "/",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE}},
+          cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::STATEFUL_PARTITION,
          {"/home/.shadow/", "/auth_factors",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::USER_AUTH_FACTORS_FILE}},
+          cros_xdr::reporting::SensitiveFileType::USER_AUTH_FACTORS_FILE,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::USB_STORAGE,
          {"/media/removable/", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::USB_MASS_STORAGE}},
+          cros_xdr::reporting::SensitiveFileType::USB_MASS_STORAGE,
+          secagentd::FilePathCategory::REMOVABLE_PATH}},
         {secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR,
          {"/var/lib/devicesettings/policy", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY}},
+          cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY,
+          secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
          {"/var/lib/devicesettings/owner.key", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY_PUBLIC_KEY}},
+          cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY_PUBLIC_KEY,
+          secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::SESSION_MANAGER_POLICY_DIR,
          {"/run/daemon-store/session_manager/", "/policy/policy",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::USER_POLICY}},
+          cros_xdr::reporting::SensitiveFileType::USER_POLICY,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::SESSION_MANAGER_POLICY_KEY,
          {"/run/daemon-store/session_manager/", "/policy/key",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
-          cros_xdr::reporting::SensitiveFileType::USER_POLICY_PUBLIC_KEY}},
+          cros_xdr::reporting::SensitiveFileType::USER_POLICY_PUBLIC_KEY,
+          secagentd::FilePathCategory::USER_PATH}},
         {secagentd::FilePathName::CRYPTOHOME_KEY,
          {"/home/.shadow/cryptohome.key", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY}},
+          cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY,
+          secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::CRYPTOHOME_ECC_KEY,
          {"/home/.shadow/cryptohome.ecc.key", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
-          cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY}},
+          cros_xdr::reporting::SensitiveFileType::SYSTEM_TPM_PUBLIC_KEY,
+          secagentd::FilePathCategory::SYSTEM_PATH}},
 };
 
 // Path Category -> List of FilePathName enums
@@ -136,9 +156,20 @@ const std::map<secagentd::FilePathCategory,
         {secagentd::FilePathCategory::REMOVABLE_PATH,
          {secagentd::FilePathName::MOUNTED_ARCHIVE,
           secagentd::FilePathName::USB_STORAGE}}};
+
+const std::optional<std::string> ConstructOptionalUserhash(
+    const std::string& userhash) {
+  if (userhash.empty() || userhash == secagentd::device_user::kUnknown) {
+    return std::nullopt;
+  }
+  return userhash;
+}
 }  // namespace
 
 namespace secagentd {
+
+std::map<std::string, std::vector<bpf::inode_dev_map_key>> userhash_inodes_map =
+    {};
 
 static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
   dev_t userspace_dev =
@@ -227,7 +258,7 @@ std::map<FilePathName, PathInfo> FilePluginInitializer::ConstructAllPathsMap(
   std::map<FilePathName, PathInfo> pathInfoMap;
 
   // Check if userHash is provided for USER_PATH category
-  if (optionalUserHash) {
+  if (optionalUserHash.has_value()) {
     // Populate paths for USER_PATH category using the provided userHash
     absl::Status status = PopulatePathsMapByCategory(
         FilePathCategory::USER_PATH, optionalUserHash, pathInfoMap);
@@ -263,13 +294,13 @@ absl::Status FilePluginInitializer::PopulateFlagsMap(int fd) {
       {O_RDONLY_FLAG_KEY, O_RDONLY},
       {O_ACCMODE_FLAG_KEY, O_ACCMODE}};
 
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate through the key-value pairs and update the BPF map
   for (const auto& flagPair : flagKeyValuePairs) {
     // Attempt to update the BPF map with the current key-value pair
-    base::WeakPtr<PlatformInterface> platform = GetPlatform();
 
-    if (platform->BpfMapUpdateElemBtFD(fd, &flagPair.first, &flagPair.second,
-                                       BPF_ANY) != 0) {
+    if (platform->BpfMapUpdateElementByFd(fd, &flagPair.first, &flagPair.second,
+                                          BPF_ANY) != 0) {
       return absl::InternalError("Failed to update BPF map.");
     }
   }
@@ -278,13 +309,16 @@ absl::Status FilePluginInitializer::PopulateFlagsMap(int fd) {
 }
 
 absl::Status FilePluginInitializer::UpdateBPFMapForPathInodes(
-    int bpfMapFd, const std::map<FilePathName, PathInfo>& pathsMap) {
+    int bpfMapFd,
+    const std::map<FilePathName, PathInfo>& pathsMap,
+    const std::optional<std::string>& optionalUserhash) {
   // Open the root directory to use with fstatat for file information retrieval
   int root_fd = open("/", O_RDONLY | O_DIRECTORY);
   if (root_fd == -1) {
     return absl::InternalError(strerror(errno));
   }
 
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate over the map of file paths and their associated information
   for (const auto& [pathName, pathInfo] : pathsMap) {
     const std::string& path =
@@ -308,16 +342,19 @@ absl::Status FilePluginInitializer::UpdateBPFMapForPathInodes(
         .dev_id = UserspaceToKernelDeviceId(fileStatx)};
 
     // Update the BPF map with the inode key and monitoring mode value
-    base::WeakPtr<PlatformInterface> platform = GetPlatform();
 
-    if (platform->BpfMapUpdateElemBtFD(bpfMapFd, &bpfMapKey, &monitoringMode,
-                                       0) != 0) {
+    if (platform->BpfMapUpdateElementByFd(bpfMapFd, &bpfMapKey, &monitoringMode,
+                                          0) != 0) {
       LOG(ERROR) << "Failed to update BPF map entry for path " << path
                  << ". Inode: " << bpfMapKey.inode_id
                  << ", Device ID: " << bpfMapKey.dev_id;
       continue;  // Continue processing the next path in the map
     }
-
+    if (pathInfo.pathCategory == FilePathCategory::USER_PATH &&
+        optionalUserhash.has_value()) {
+      // Add the new BPF map key to the vector
+      userhash_inodes_map[optionalUserhash.value()].push_back(bpfMapKey);
+    }
     // Log success message for the current path
     LOG(INFO) << "Successfully added entry to BPF map for path " << path
               << ". Inode: " << bpfMapKey.inode_id
@@ -341,6 +378,7 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
     return absl::InternalError(strerror(errno));
   }
 
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate through each path and update the BPF map
   for (const auto& [pathName, pathInfo] : pathsMap) {
     const std::string& path =
@@ -365,10 +403,9 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
     };
 
     // Update BPF map with the device ID and settings
-    base::WeakPtr<PlatformInterface> platform = GetPlatform();
 
-    if (platform->BpfMapUpdateElemBtFD(bpfMapFd, &deviceId, &bpfSettings,
-                                       BPF_ANY) != 0) {
+    if (platform->BpfMapUpdateElementByFd(bpfMapFd, &deviceId, &bpfSettings,
+                                          BPF_ANY) != 0) {
       LOG(ERROR) << "Failed to update BPF map entry for device ID " << deviceId;
       continue;  // Skip to the next path
     }
@@ -385,7 +422,7 @@ absl::Status FilePluginInitializer::AddDeviceIdsToBPFMap(
 }
 
 absl::Status FilePluginInitializer::UpdateBPFMapForPathMaps(
-    const std::string& userHash,
+    const std::optional<std::string>& optionalUserhash,
     const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
 
     const std::map<FilePathName, PathInfo>& pathsMap) {
@@ -399,8 +436,8 @@ absl::Status FilePluginInitializer::UpdateBPFMapForPathMaps(
   }
 
   int directoryInodesMapFd = mapFdResult.value();
-  absl::Status status =
-      UpdateBPFMapForPathInodes(directoryInodesMapFd, pathsMap);
+  absl::Status status = UpdateBPFMapForPathInodes(directoryInodesMapFd,
+                                                  pathsMap, optionalUserhash);
   if (!status.ok()) {
     return status;
   }
@@ -420,14 +457,48 @@ absl::Status FilePluginInitializer::UpdateBPFMapForPathMaps(
   return absl::OkStatus();
 }
 
+absl::Status FilePluginInitializer::RemoveKeysFromBPFMap(
+    int bpfMapFd, const std::string& userhash) {
+  // Locate the entry for the given userhash in the global map
+  auto it = userhash_inodes_map.find(userhash);
+  if (it == userhash_inodes_map.end()) {
+    // Log that no entries were found for the provided userhash
+    LOG(INFO) << "No entries found for userhash " << userhash;
+    return absl::OkStatus();
+  }
+
+  // Retrieve the vector of inode-device keys for the specified userhash
+  const std::vector<bpf::inode_dev_map_key>& keysToRemove = it->second;
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
+  // Iterate over each key and attempt to remove it from the BPF map
+  for (const auto& bpfMapKey : keysToRemove) {
+    if (platform->BpfMapDeleteElementByFd(bpfMapFd, &bpfMapKey) != 0) {
+      // Log an error if removal fails
+      LOG(ERROR) << "Failed to delete BPF map entry for Inode: "
+                 << bpfMapKey.inode_id << ", Device ID: " << bpfMapKey.dev_id
+                 << ". Error: " << strerror(errno);
+      continue;
+    }
+  }
+
+  // Remove the userhash entry from the global map after processing
+  userhash_inodes_map.erase(it);
+
+  return absl::OkStatus();
+}
+
 absl::Status FilePluginInitializer::InitializeFileBpfMaps(
     const std::unique_ptr<BpfSkeletonHelperInterface>& helper,
 
     const std::string& userhash) {
   assert(file_path_info_map.size() ==
          static_cast<int>(FilePathName::FILE_PATH_NAME_COUNT));
+
+  const std::optional<std::string>& optionalUserhash =
+      ConstructOptionalUserhash(userhash);
   // Construct the paths map based on the user hash
-  std::map<FilePathName, PathInfo> paths_map = ConstructAllPathsMap(userhash);
+  std::map<FilePathName, PathInfo> paths_map =
+      ConstructAllPathsMap(optionalUserhash);
 
   // Update map for flags
   absl::StatusOr<int> fd_result =
@@ -444,7 +515,7 @@ absl::Status FilePluginInitializer::InitializeFileBpfMaps(
 
   // TODO(b/360058671): Add hardlinks processing.
 
-  return UpdateBPFMapForPathMaps(userhash, helper, paths_map);
+  return UpdateBPFMapForPathMaps(optionalUserhash, helper, paths_map);
 }
 
 absl::Status FilePluginInitializer::OnUserLogin(
@@ -454,7 +525,10 @@ absl::Status FilePluginInitializer::OnUserLogin(
   std::map<FilePathName, PathInfo> pathInfoMap;
 
   // Check if userHash is not empty before processing
-  if (userHash.empty()) {
+  const std::optional<std::string>& optionalUserhash =
+      ConstructOptionalUserhash(userHash);
+  // Check if userHash is not empty before processing
+  if (!optionalUserhash.has_value()) {
     return absl::InvalidArgumentError("User hash is empty");
   }
 
@@ -467,5 +541,30 @@ absl::Status FilePluginInitializer::OnUserLogin(
   }
 
   return UpdateBPFMapForPathMaps(userHash, bpfHelper, pathInfoMap);
+}
+
+absl::Status FilePluginInitializer::OnUserLogout(
+    const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
+    const std::string& userHash) {
+  const std::optional<std::string>& optionalUserhash =
+      ConstructOptionalUserhash(userHash);
+
+  // Check if userHash is not empty before processing
+  if (!optionalUserhash.has_value()) {
+    return absl::InvalidArgumentError("User hash is empty");
+  }
+
+  // Remove inodes for folders for that user
+  absl::StatusOr<int> mapFdResult =
+      bpfHelper->FindBpfMapByName("allowlisted_directory_inodes");
+  if (!mapFdResult.ok()) {
+    return mapFdResult.status();
+  }
+
+  int directoryInodesMapFd = mapFdResult.value();
+
+  return RemoveKeysFromBPFMap(directoryInodesMapFd, userHash);
+  // TODO(princya): Remove device if not used by another directory
+  // TODO(princya): Remove hard links from user directory
 }
 }  // namespace secagentd

@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/plugins.h"
@@ -47,6 +48,7 @@ struct PathInfo {
                                           // part after the hash placeholder
   bpf::file_monitoring_mode monitoringMode;
   cros_xdr::reporting::SensitiveFileType fileType;
+  FilePathCategory pathCategory;
   std::optional<std::string> fullResolvedPath;
   bpf::device_monitoring_type deviceMonitoringType =
       bpf::device_monitoring_type::MONITOR_SPECIFIC_FILES;
@@ -63,6 +65,10 @@ class FilePluginInitializer {
       const std::unique_ptr<BpfSkeletonHelperInterface>& helper,
       const std::string& userHash);
 
+  static absl::Status OnUserLogout(
+      const std::unique_ptr<BpfSkeletonHelperInterface>& bpfHelper,
+      const std::string& userHash);
+
  private:
   // Function to update the BPF map with inode IDs for files in directories
   // specified in paths_map recursively, limited to a specific device ID
@@ -71,7 +77,14 @@ class FilePluginInitializer {
   // Updates a BPF map with inode IDs and monitoring modes for files specified
   // in a map of paths.
   static absl::Status UpdateBPFMapForPathInodes(
-      int bpfMapFd, const std::map<FilePathName, PathInfo>& pathsMap);
+      int bpfMapFd,
+      const std::map<FilePathName, PathInfo>& pathsMap,
+      const std::optional<std::string>& optionalUserhash);
+
+  // Removes entries from the BPF map based on inode-device key mappings
+  // associated with a specific userhash.
+  static absl::Status RemoveKeysFromBPFMap(int bpfMapFd,
+                                           const std::string& userhash);
 
   // Updates a BPF map with device IDs based on the paths and their associated
   // monitoring modes.
@@ -98,7 +111,7 @@ class FilePluginInitializer {
   // It includes error handling for map retrieval and update operations, with
   // relevant logging for diagnostics.
   static absl::Status UpdateBPFMapForPathMaps(
-      const std::string& userhash,
+      const std::optional<std::string>& optionalUserhash,
       const std::unique_ptr<BpfSkeletonHelperInterface>& helper,
       const std::map<FilePathName, PathInfo>& paths_map);
 };

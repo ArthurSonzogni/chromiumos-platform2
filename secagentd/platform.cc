@@ -100,11 +100,15 @@ int Platform::BpfMapFdByName(struct bpf_object* obj, const std::string name) {
   return bpf_object__find_map_fd_by_name(obj, name.c_str());
 }
 
-int Platform::BpfMapUpdateElemBtFD(int fd,
-                                   const void* key,
-                                   const void* value,
-                                   __u64 flags) {
+int Platform::BpfMapUpdateElementByFd(int fd,
+                                      const void* key,
+                                      const void* value,
+                                      __u64 flags) {
   return bpf_map_update_elem(fd, key, value, flags);
+}
+
+int Platform::BpfMapDeleteElementByFd(int fd, const void* key) {
+  return bpf_map_delete_elem(fd, key);
 }
 
 struct ring_buffer* Platform::RingBufferNew(
