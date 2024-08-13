@@ -1,0 +1,34 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":dbus_perfetto_producer" ]
+}
+
+pkg_config("target_defaults_pkg_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libchrome",
+    "perfetto",
+  ]
+}
+
+config("target_defaults") {
+  configs = [ ":target_defaults_pkg_deps" ]
+  include_dirs = [ "${sysroot}/usr/include/perfetto" ]
+}
+
+static_library("libdbus_perfetto_producer") {
+  sources = [ "dbus_tracing_categories.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
+executable("dbus_perfetto_producer") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [ ":libdbus_perfetto_producer" ]
+}
