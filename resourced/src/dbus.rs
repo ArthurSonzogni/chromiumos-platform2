@@ -36,7 +36,6 @@ use tokio::sync::Notify;
 
 use crate::arch;
 use crate::common;
-use crate::common::read_from_file;
 use crate::config::ConfigProvider;
 use crate::feature;
 use crate::feature::is_feature_enabled;
@@ -60,6 +59,8 @@ use crate::qos::SchedQosContext;
 use crate::qos::MAX_QOS_ERROR_TYPE;
 use crate::qos::UMA_NAME_QOS_SET_PROCESS_STATE_ERROR;
 use crate::qos::UMA_NAME_QOS_SET_THREAD_STATE_ERROR;
+use crate::swappiness_config::new_swappiness_config;
+use crate::swappiness_config::SwappinessConfig;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -123,34 +124,10 @@ fn send_pressure_signal(
 fn set_game_mode_and_tune_swappiness(
     power_preferences_manager: &dyn power::PowerPreferencesManager,
     mode: common::GameMode,
-    conn: Arc<SyncConnection>,
+    swappiness_config: Arc<SwappinessConfig>,
 ) -> Result<()> {
-    if let Some(common::TuneSwappiness { swappiness }) =
-        common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"))
-    {
-        const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
-        if swappiness != read_from_file(&SWAPPINESS_PATH)? {
-            tokio::spawn(async move {
-                let swap_management_proxy = Proxy::new(
-                    "org.chromium.SwapManagement",
-                    "/org/chromium/SwapManagement",
-                    DEFAULT_DBUS_TIMEOUT,
-                    conn,
-                );
-                match swap_management_proxy
-                    .method_call(
-                        "org.chromium.SwapManagement",
-                        "SwapSetSwappiness",
-                        (swappiness,),
-                    )
-                    .await
-                {
-                    Ok(()) => (), // For type inference.
-                    Err(e) => error!("Calling SwapSetSwappiness failed: {:#}", e),
-                }
-            });
-        }
-    }
+    let tuning = common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"));
+    swappiness_config.update_tuning(tuning);
     Ok(())
 }
 
@@ -176,7 +153,11 @@ async fn get_sender_euid(conn: Arc<SyncConnection>, bus_name: Option<String>) ->
     load_euid(sender_pid).context("load euid")
 }
 
-fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceToken<DbusContext> {
+fn register_interface(
+    cr: &mut Crossroads,
+    conn: Arc<SyncConnection>,
+    swappiness_config: Arc<SwappinessConfig>,
+) -> IfaceToken<DbusContext> {
     cr.register(INTERFACE_NAME, |b: &mut IfaceBuilder<DbusContext>| {
         b.method(
             "GetAvailableMemoryKB",
@@ -244,7 +225,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
         b.method("GetGameMode", (), ("game_mode",), move |_, _, ()| {
             Ok((common::get_game_mode() as u8,))
         });
-        let conn_clone = conn.clone();
+        let swappiness_config_clone = swappiness_config.clone();
         b.method(
             "SetGameMode",
             ("game_mode",),
@@ -256,7 +237,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 set_game_mode_and_tune_swappiness(
                     context.power_preferences_manager.as_ref(),
                     mode,
-                    conn_clone.clone(),
+                    swappiness_config_clone.clone(),
                 )
                 .map_err(|e| {
                     error!("set_game_mode failed: {:#}", e);
@@ -269,7 +250,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 Ok(())
             },
         );
-        let conn_clone2 = conn.clone();
+        let swappiness_config_clone = swappiness_config.clone();
         b.method(
             "SetGameModeWithTimeout",
             ("game_mode", "timeout_sec"),
@@ -282,7 +263,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 set_game_mode_and_tune_swappiness(
                     context.power_preferences_manager.as_ref(),
                     mode,
-                    conn_clone2.clone(),
+                    swappiness_config_clone.clone(),
                 )
                 .map_err(|e| {
                     error!("set_game_mode failed: {:#}", e);
@@ -299,7 +280,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 let reset_game_mode_timer_id = context.reset_game_mode_timer_id.clone();
 
                 // Reset game mode after timeout.
-                let conn_clone = conn_clone2.clone();
+                let swappiness_config_clone2 = swappiness_config_clone.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(timeout).await;
                     // If the timer id is changed, this event is canceled.
@@ -307,7 +288,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                         && set_game_mode_and_tune_swappiness(
                             power_preferences_manager.as_ref(),
                             common::GameMode::Off,
-                            conn_clone,
+                            swappiness_config_clone2.clone(),
                         )
                         .is_err()
                     {
@@ -855,7 +836,14 @@ pub async fn service_main() -> Result<()> {
 
     arch::init();
 
-    memory::register_features();
+    let (swappiness_config, mut swappiness_proxy) = new_swappiness_config();
+    let swappiness_config = Arc::new(swappiness_config);
+    memory::register_features(swappiness_config.clone());
+
+    let conn_clone = conn.clone();
+    tokio::spawn(async move {
+        swappiness_proxy.run_proxy(conn_clone).await;
+    });
 
     let psi_memory_policy_notify = Arc::new(Notify::new());
     let notify_cloned = psi_memory_policy_notify.clone();
@@ -886,7 +874,7 @@ pub async fn service_main() -> Result<()> {
         }),
     )));
 
-    let token = register_interface(&mut cr, conn.clone());
+    let token = register_interface(&mut cr, conn.clone(), swappiness_config);
     cr.insert(PATH_NAME, &[token], context.clone());
 
     #[cfg(feature = "vm_grpc")]

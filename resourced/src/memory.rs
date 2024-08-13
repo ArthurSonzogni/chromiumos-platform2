@@ -16,6 +16,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 use std::time::Instant;
@@ -37,6 +38,7 @@ use crate::common;
 use crate::common::read_from_file;
 use crate::feature;
 use crate::metrics;
+use crate::swappiness_config::SwappinessConfig;
 use crate::sync::NoPoison;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
@@ -93,10 +95,68 @@ const PSI_ADJUST_AVAILABLE_COOLDOWN_MILLIS_PARAM: &str = "CooldownMillis";
 
 const PSI_ADJUST_AVAILABLE_COOLDOWN_DEFAULT: Duration = Duration::from_secs(10);
 
-pub fn register_features() {
+const MGLRU_SPLIT_GENERATIONS: &str = "CrOSLateBootSplitGenerations";
+
+const MGLRU_SPLIT_GENERATIONS_SWAPPINESS: &str = "Swappiness";
+
+fn update_mglru_split_settings(
+    enable_split_gens: bool,
+    swappiness_config: &Arc<SwappinessConfig>,
+) -> Result<()> {
+    let swappiness_val = if enable_split_gens {
+        feature::get_feature_param_as::<u32>(
+            MGLRU_SPLIT_GENERATIONS,
+            MGLRU_SPLIT_GENERATIONS_SWAPPINESS,
+        )
+        .ok()
+        .flatten()
+    } else {
+        None
+    };
+
+    const MGLRU_ENABLE_PATH: &str = "/sys/kernel/mm/lru_gen/enabled";
+    const MGLRU_LINKED_GEN_BIT: u64 = 0x10;
+
+    let enabled_setting: u64 = u64::from_str_radix(
+        std::str::from_utf8(
+            &std::fs::read(MGLRU_ENABLE_PATH).context("failed to read MGLRU enable state")?,
+        )
+        .context("malformed kernel output")?
+        .trim_start_matches("0x")
+        .trim(),
+        16,
+    )
+    .context("non-hex kernel output")?;
+
+    // Set the linked gen bit to the inverse of the split gen experiment state.
+    let enabled_setting = if enable_split_gens {
+        enabled_setting & !MGLRU_LINKED_GEN_BIT
+    } else {
+        enabled_setting | MGLRU_LINKED_GEN_BIT
+    };
+
+    let mut bytes = Vec::new();
+    write!(&mut bytes, "0x{:x}", enabled_setting).expect("Failed to format string");
+    std::fs::write(MGLRU_ENABLE_PATH, bytes).context("Failed to update MGLRU enable state")?;
+
+    swappiness_config.update_default_swappiness(swappiness_val);
+    Ok(())
+}
+
+pub fn register_features(swappiness: Arc<SwappinessConfig>) {
     feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, false, None);
 
     feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
+
+    feature::register_feature(
+        MGLRU_SPLIT_GENERATIONS,
+        false,
+        Some(Box::new(move |enabled| {
+            if let Err(e) = update_mglru_split_settings(enabled, &swappiness) {
+                error!("Failed to update MGLRU split settings {:?}", e);
+            }
+        })),
+    );
 }
 
 pub const PSI_MEMORY_POLICY_FEATURE_NAME: &str = "CrOSLateBootPSIMemoryPolicy";

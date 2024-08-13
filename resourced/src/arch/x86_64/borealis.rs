@@ -26,7 +26,6 @@ use crate::power::PowerSourceProvider;
 const GPU_TUNING_POLLING_INTERVAL_MS: u64 = 1000;
 
 const TUNED_SWAPPINESS_VALUE: u32 = 30;
-const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
 
 //TODO(syedfaaiz) : modify these values following a benchy run to 70/50.
 const GAMEMODE_RPS_UP: u64 = 95;
@@ -156,9 +155,7 @@ pub fn apply_borealis_tuning(root: &Path, enable: bool) -> Option<TuneSwappiness
             warn!("Failed to set TPH to default: {:?}", e);
         }
 
-        Some(TuneSwappiness {
-            swappiness: DEFAULT_SWAPPINESS_VALUE,
-        })
+        None
     }
 }
 

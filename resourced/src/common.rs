@@ -57,6 +57,7 @@ impl TryFrom<u8> for GameMode {
 
 static GAME_MODE: Mutex<GameMode> = Mutex::new(GameMode::Off);
 
+#[derive(Clone, Copy)]
 pub struct TuneSwappiness {
     pub swappiness: u32,
 }

@@ -17,6 +17,7 @@ mod proc;
 pub mod process_stats;
 mod psi;
 mod qos;
+mod swappiness_config;
 mod sync;
 mod vm_concierge_client;
 mod vm_memory_management_client;
