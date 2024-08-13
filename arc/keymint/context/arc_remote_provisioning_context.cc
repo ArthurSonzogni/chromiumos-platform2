@@ -493,7 +493,6 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
   }
   device_info_map->add(cppbor::Tstr("version"),
                        cppbor::Uint(kDeviceInfoMapVersion));
-  // TODO(b/353762969): Finalize the value of fused.
   device_info_map->add(cppbor::Tstr("fused"),
                        cppbor::Uint(kSecureBootEnforced));
 
