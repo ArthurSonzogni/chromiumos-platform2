@@ -13,13 +13,13 @@
 #include "ml_core/cacher/constants.h"
 
 namespace {
-const char kPrebuiltCacheDir[] = "cl_cache";
+const char kPrebuiltOpenCLCacheDir[] = "cl_cache";
 }  // namespace
 
 namespace cros {
 
-base::FilePath PrebuiltCacheDir(const base::FilePath& dlc_root_path) {
-  return dlc_root_path.Append(kPrebuiltCacheDir);
+base::FilePath PrebuiltOpenCLCacheDir(const base::FilePath& dlc_root_path) {
+  return dlc_root_path.Append(kPrebuiltOpenCLCacheDir);
 }
 
 bool DirIsEmpty(const base::FilePath& source_dir) {
@@ -44,9 +44,9 @@ bool DirIsEmpty(const base::FilePath& source_dir) {
   return is_empty;
 }
 
-// Deletes all the files in the cache
-void ClearCacheDirectory() {
-  base::DirReaderPosix reader(kOpenCLCachingDir);
+// Deletes all the files in the cache in |target_dir|.
+void ClearCacheDirectory(const base::FilePath& target_dir) {
+  base::DirReaderPosix reader(target_dir.value().c_str());
   if (!reader.IsValid()) {
     LOG(ERROR) << "Error opening cache directory";
     return;
@@ -59,16 +59,17 @@ void ClearCacheDirectory() {
       continue;
     }
 
-    auto to_delete = base::FilePath(kOpenCLCachingDir).Append(reader.name());
+    auto to_delete = target_dir.Append(reader.name());
     if (!brillo::DeleteFile(to_delete)) {
       LOG(ERROR) << "Error deleting " << to_delete;
     }
   }
 }
 
-// Will copy cache files from the source_dir into kOpenCLCachingDir.
+// Will copy cache files from the source_dir into |target_dir|.
 // It will overwrite any existing files of the same name.
-void CopyCacheFiles(const base::FilePath& source_dir) {
+void CopyCacheFiles(const base::FilePath& source_dir,
+                    const base::FilePath& target_dir) {
   base::DirReaderPosix reader(source_dir.value().c_str());
   if (!reader.IsValid()) {
     LOG(ERROR) << "Error opening source directory";
@@ -85,8 +86,8 @@ void CopyCacheFiles(const base::FilePath& source_dir) {
       continue;
     }
 
-    auto target = base::FilePath(kOpenCLCachingDir).Append(reader.name());
-    LOG(INFO) << "Copying " << source << " to OpenCL cache dir";
+    auto target = target_dir.Append(reader.name());
+    LOG(INFO) << "Copying " << source << " to " << target_dir;
     if (!base::CopyFile(source, target)) {
       LOG(ERROR) << "Error copying " << source << " to " << target;
     }

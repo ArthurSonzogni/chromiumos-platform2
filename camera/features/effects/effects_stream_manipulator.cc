@@ -37,11 +37,11 @@
 #include <cutils/native_handle.h>
 #include <GLES3/gl3.h>
 #include <hardware/camera3.h>
+#include <ml_core/cacher/constants.h>
+#include <ml_core/cacher/utils.h>
 #include <ml_core/dlc/dlc_ids.h>
 #include <ml_core/effects_pipeline.h>
 #include <ml_core/effects_pipeline_types.h>
-#include <ml_core/cacher/constants.h>
-#include <ml_core/cacher/utils.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
@@ -1169,9 +1169,12 @@ void EffectsStreamManipulatorImpl::CreatePipeline(
   // Don't override the cache if the marker file exists,
   // since we may be trying to recover from a bad cache.
   if (!base::PathExists(kEffectsRunningMarker)) {
+    // OpenCL cache directory is used by GPU OpenCL delegate. Caching
+    // directory for NPU (i.e. openvino delegate) is parsed from tflite
+    // settings.json.
     auto default_cache_dir = base::FilePath(kOpenCLCachingDir);
     if (DirIsEmpty(default_cache_dir)) {
-      cache_dir_override = PrebuiltCacheDir(dlc_root_path);
+      cache_dir_override = PrebuiltOpenCLCacheDir(dlc_root_path);
       LOGF(INFO) << "OpenCL cache at " << default_cache_dir
                  << " is empty, using " << cache_dir_override << " instead.";
     }

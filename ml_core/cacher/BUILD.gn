@@ -12,6 +12,10 @@ group("all") {
     ":ml_core_cacher",
   ]
 
+  if (use.intel_openvino_delegate) {
+    deps += [ ":install_stable_delegate_settings" ]
+  }
+
   if (use.test) {
     deps += []
   }
@@ -33,6 +37,7 @@ executable("ml_core_cacher") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  defines = [ "USE_INTEL_OPENVINO_DELEGATE=${use.intel_openvino_delegate}" ]
   deps = [
     "//ml_core:libcros_ml_core",
     "//ml_core/dlc:dlc_client",
@@ -54,4 +59,9 @@ install_config("install_dbus") {
 install_config("install_seccomp") {
   sources = [ "seccomp_filter/ml-core-cacher-amd64.policy" ]
   install_path = "seccomp_policy"
+}
+
+install_config("install_stable_delegate_settings") {
+  sources = [ "stable_delegate_settings.json" ]
+  install_path = "/etc/ml_core"
 }

@@ -50,7 +50,12 @@ install_config("install_minijail_conf") {
 }
 
 install_config("install_tmpfiles") {
-  sources = [ "tmpfiles.d/ml-core.conf" ]
+  if (use.intel_openvino_delegate) {
+    sources = [ "tmpfiles.d/ml-core-opencl-openvino.conf" ]
+  } else {
+    sources = [ "tmpfiles.d/ml-core-opencl.conf" ]
+  }
+  outputs = [ "ml-core.conf" ]
   install_path = "tmpfilesd"
 }
 

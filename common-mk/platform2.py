@@ -145,6 +145,7 @@ _IUSE = [
     "input_devices_weida",
     "input_devices_zinitix",
     "intel_oemcrypto",
+    "intel_openvino_delegate",
     "internal",
     "ipcz",
     "ipu6",
