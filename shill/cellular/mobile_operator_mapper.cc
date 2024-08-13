@@ -55,13 +55,12 @@ std::string GetApnAuthentication(
 }
 
 std::optional<std::string> GetIpType(
-    const shill::mobile_operator_db::MobileAPN& apn) {
-  if (!apn.has_ip_type()) {
-    return kApnIpTypeV4;
-  }
-
-  switch (apn.ip_type()) {
+    const shill::mobile_operator_db::MobileAPN& apn,
+    const shill::mobile_operator_db::MobileAPN_IpType& ip_type) {
+  switch (ip_type) {
     case mobile_operator_db::MobileAPN_IpType_UNKNOWN:
+      LOG(INFO) << __func__ << ": Unknown IP type for APN \"" << apn.apn()
+                << "\"";
       return std::nullopt;
     case mobile_operator_db::MobileAPN_IpType_IPV4:
       return kApnIpTypeV4;
@@ -70,7 +69,7 @@ std::optional<std::string> GetIpType(
     case mobile_operator_db::MobileAPN_IpType_IPV4V6:
       return kApnIpTypeV4V6;
     default:
-      return kApnIpTypeV4;
+      return std::nullopt;
   }
 }
 
@@ -1048,13 +1047,13 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
     }
     apn.authentication = GetApnAuthentication(apn_data);
     apn.apn_types = GetApnTypes(apn_data);
-    std::optional<std::string> ip_type = GetIpType(apn_data);
-    if (!ip_type.has_value()) {
-      LOG(INFO) << GetLogPrefix(__func__) << "Unknown IP type for APN \""
-                << apn_data.apn() << "\"";
-      continue;
+    const auto default_ip_type = kApnIpTypeV4;
+    if (apn_data.has_ip_type()) {
+      apn.ip_type =
+          GetIpType(apn_data, apn_data.ip_type()).value_or(default_ip_type);
+    } else {
+      apn.ip_type = default_ip_type;
     }
-    apn.ip_type = ip_type.value();
     apn.is_required_by_carrier_spec = apn_data.is_required_by_carrier_spec();
 
     db_info_.apn_list.push_back(std::move(apn));
