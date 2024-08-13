@@ -369,6 +369,11 @@ class EM060DerivFw(FwUploader):
             "main.bin": "MAIN",
             "carrier.bin": "CARRIER",
         }
+        required_recovery_files = [
+            "prog_nand_firehose_9x55.mbn",
+            "rawprogram_nand_p2K_b128K_recovery.xml",
+            "sbl1_recovery.mbn",
+        ]
         module_type_to_tarball_prefix = {
             PackageType.EM060_FW: EM060_TARBALL_PREFIX,
             PackageType.LCUK54_FW: LCUK54_TARBALL_PREFIX,
@@ -380,6 +385,15 @@ class EM060DerivFw(FwUploader):
         if self.basename not in fw_file_to_directory_name.keys():
             logging.error("File should have name {main,carrier,oem}.bin")
             return False
+
+        optional_recovery_infix = "-"
+        if "oem.bin" in self.basename:
+            optional_recovery_infix = "-with-recovery-"
+            files_present = os.listdir(os.path.dirname(self.path))
+            for recovery_file in required_recovery_files:
+                if recovery_file not in files_present:
+                    logging.error("Recovery file %s missing", recovery_file)
+                    return False
 
         # Grab package version from parent directory name, i.e. "01.300"
         parent_dir_name = self.path.split("/")[-2]
@@ -398,7 +412,7 @@ class EM060DerivFw(FwUploader):
         self.tarball_dir_name = (
             self.tarball_prefix
             + self.payload_type
-            + "-"
+            + optional_recovery_infix
             + self.firmware_version
         )
 
@@ -411,9 +425,11 @@ class EM060DerivFw(FwUploader):
         package_dir_structure = os.path.join(
             target_path, self.payload_type, self.firmware_version
         )
-        logging.info("Copying %s into %s", fw_path, package_dir_structure)
         os.makedirs(package_dir_structure)
-        shutil.copy(fw_path, package_dir_structure)
+        for f_rel in os.listdir(os.path.dirname(fw_path)):
+            f_absl = os.path.join(os.path.dirname(fw_path), f_rel)
+            logging.info("Copying %s into %s", f_absl, package_dir_structure)
+            shutil.copy(f_absl, package_dir_structure)
         return True
 
 
