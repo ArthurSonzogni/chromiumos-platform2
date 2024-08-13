@@ -367,8 +367,8 @@ absl::Status SwapTool::SwapSetSize(int32_t size) {
 }
 
 absl::Status SwapTool::SwapSetSwappiness(uint32_t swappiness) {
-  // Only allow swappiness between 0 and 100.
-  if (swappiness > 100)
+  // Only allow swappiness between 0 and 200.
+  if (swappiness > 200)
     return absl::OutOfRangeError("Invalid swappiness " +
                                  std::to_string(swappiness));
 
