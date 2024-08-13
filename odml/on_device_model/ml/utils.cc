@@ -9,9 +9,9 @@
 
 #include <base/compiler_specific.h>
 #include <base/memory/raw_ref.h>
-#include <metrics/metrics_library.h>
 #include <base/strings/strcat.h>
 #include <base/system/sys_info.h>
+#include <metrics/metrics_library.h>
 
 namespace ml {
 namespace {

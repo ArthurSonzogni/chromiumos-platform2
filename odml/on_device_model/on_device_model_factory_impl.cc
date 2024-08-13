@@ -4,13 +4,13 @@
 
 #include "odml/on_device_model/on_device_model_factory_impl.h"
 
+#include <memory>
+#include <utility>
+
 #include <base/functional/callback.h>
 #include <base/memory/raw_ref.h>
 #include <base/types/expected.h>
 #include <metrics/metrics_library.h>
-
-#include <memory>
-#include <utility>
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -41,6 +41,10 @@ OndeviceModelFactoryImpl::CreateModel(raw_ref<MetricsLibraryInterface> metrics,
 mojom::PerformanceClass OndeviceModelFactoryImpl::GetEstimatedPerformanceClass(
     raw_ref<MetricsLibraryInterface> metrics,
     raw_ref<odml::OdmlShimLoader> shim_loader) {
+  auto is_apu_available = shim_loader->Get<bool (*)()>("IsApuAvailable");
+  if (is_apu_available && is_apu_available()) {
+    return mojom::PerformanceClass::kHigh;
+  }
   auto* chrome_ml = ml::ChromeML::Get(metrics, shim_loader);
   if (!chrome_ml) {
     return mojom::PerformanceClass::kFailedToLoadLibrary;
