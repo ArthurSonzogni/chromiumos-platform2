@@ -14,6 +14,7 @@ group("all") {
       ":install_minijail_conf",
       ":install_policy",
       ":install_service_manager_policy_config",
+      ":libdmabufheap",
       ":odml_console",
       ":odmld",
     ]
@@ -34,6 +35,21 @@ pkg_config("target_defaults") {
     "protobuf-lite",
     "system_api",
   ]
+}
+
+source_set("libdmabufheap_source_set") {
+  sources = [
+    "dmabufheap/buffer_allocator.cc",
+    "dmabufheap/buffer_allocator_wrapper.cc",
+  ]
+
+  # Use -fPIC so this code can be linked into a shared library.
+  configs += [ "//common-mk:pic" ]
+}
+
+shared_library("libdmabufheap") {
+  deps = [ ":libdmabufheap_source_set" ]
+  install_path = "lib"
 }
 
 generate_mojom_bindings("mojo_bindings") {
