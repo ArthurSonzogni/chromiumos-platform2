@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
+#include <sys/mman.h>
+
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
-#include <fcntl.h>
 #include <memory>
 #include <string>
-#include <sys/mman.h>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-
 #include <libpmt/bits/pmt_data.pb.h>
 #include <libpmt/pmt_collector.h>
 #include <libpmt/pmt_impl.h>
@@ -52,7 +52,7 @@ int PmtCollector::SetUpCollection(const std::vector<Guid> guids) {
   auto sorted_guids = guids;
   std::sort(sorted_guids.begin(), sorted_guids.end());
   // Now start the initialization.
-  data_ = std::make_unique<Snapshot>(Snapshot());
+  data_ = std::make_unique<Snapshot>();
   // Set timestamp field, otherwise structure size will be incomplete.
   data_->set_timestamp(base::Time::Now().InMillisecondsSinceUnixEpoch());
   for (Guid guid : sorted_guids) {
@@ -95,7 +95,7 @@ int PmtCollector::CleanUpCollection() {
     close(dev.telemetry_fd);
   }
   ctx_.clear();
-  data_.release();
+  data_.reset();
   return 0;
 }
 
