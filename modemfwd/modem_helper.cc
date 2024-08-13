@@ -318,6 +318,14 @@ class ModemHelperImpl : public ModemHelper {
     return recovery_files;
   }
 
+  bool PowerOn() override {
+    return RunHelperProcess(helper_info_, {kPowerOn}, nullptr);
+  }
+
+  bool PowerOff() override {
+    return RunHelperProcess(helper_info_, {kPowerOff}, nullptr);
+  }
+
  private:
   HelperInfo helper_info_;
 };

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "modemfwd/logging.h"
-#include "modemfwd/modem.h"
 #include "modemfwd/modem_tracker.h"
 
 #include <memory>
@@ -17,6 +15,8 @@
 #include <brillo/variant_dictionary.h>
 #include <dbus/shill/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
+
+#include "modemfwd/logging.h"
 
 namespace modemfwd {
 
@@ -36,7 +36,8 @@ ModemTracker::ModemTracker(
     OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback,
     OnModemDeviceSeenCallback on_modem_device_seen_callback,
     OnModemStateChangeCallback on_modem_state_change_callback,
-    OnModemPowerStateChangeCallback on_modem_power_state_change_callback)
+    OnModemPowerStateChangeCallback on_modem_power_state_change_callback,
+    OnPoweredChangeCallback on_powered_change_callback)
     : bus_(bus),
       shill_proxy_(new org::chromium::flimflam::ManagerProxy(bus)),
       on_modem_carrier_id_ready_callback_(on_modem_carrier_id_ready_callback),
@@ -44,6 +45,7 @@ ModemTracker::ModemTracker(
       on_modem_state_change_callback_(on_modem_state_change_callback),
       on_modem_power_state_change_callback_(
           on_modem_power_state_change_callback),
+      on_powered_change_callback_(on_powered_change_callback),
       weak_ptr_factory_(this) {
   shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
       &ModemTracker::OnServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
@@ -180,13 +182,13 @@ void ModemTracker::OnModemPropertyChanged(
     if (modem_proxy->second->GetProperties()->power_state.is_valid()) {
       Modem::PowerState power_state =
           static_cast<Modem::PowerState>(modem_proxy->second->power_state());
-      ELOG(INFO) << __func__ << ": new power state: " << power_state;
+      EVLOG(1) << __func__ << ": new power state: " << power_state;
       on_modem_power_state_change_callback_.Run(device_id, power_state);
     }
     if (modem_proxy->second->GetProperties()->state.is_valid()) {
       Modem::State modem_state =
           static_cast<Modem::State>(modem_proxy->second->state());
-      ELOG(INFO) << __func__ << ": new modem state: " << modem_state;
+      EVLOG(1) << __func__ << ": new modem state: " << modem_state;
       on_modem_state_change_callback_.Run(device_id, modem_state);
     }
   }
@@ -198,6 +200,19 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
   // Modem object has changed. Update modem proxy
   if (property_name == shill::kDBusObjectProperty) {
     UpdateModemProxySingleDevice(device_path);
+  }
+
+  if (property_name == shill::kPoweredProperty) {
+    bool powered = property_value.TryGet<bool>();
+    EVLOG(1) << __func__ << ": value of the kPoweredProperty: " << powered;
+    auto device = std::make_unique<org::chromium::flimflam::DeviceProxy>(
+        bus_, device_path);
+    std::string device_id;
+    brillo::VariantDictionary properties;
+    if ((device->GetProperties(&properties, NULL) &&
+         properties[shill::kDeviceIdProperty].GetValue(&device_id))) {
+      on_powered_change_callback_.Run(device_id, powered);
+    }
   }
 
   // Listen for the HomeProvider change triggered by a SIM change

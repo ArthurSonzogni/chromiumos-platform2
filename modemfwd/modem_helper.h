@@ -86,6 +86,8 @@ class ModemHelper {
 
   virtual std::vector<base::FilePath> GetRecoveryFileList(
       const base::FilePath& metadata_directory) = 0;
+  virtual bool PowerOn() = 0;
+  virtual bool PowerOff() = 0;
 };
 
 std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info);

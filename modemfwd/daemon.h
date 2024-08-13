@@ -139,6 +139,9 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   void OnModemPowerStateChange(std::string device_id,
                                Modem::PowerState new_power_state);
 
+  // Called when property |Powered| is changed
+  void OnPoweredChange(std::string device_id, bool powered);
+
   // Try to flash a modem.
   void DoFlash(const std::string& device_id, const std::string& equipment_id);
 
@@ -154,6 +157,9 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   void AddTask(std::unique_ptr<Task> task);
   void RegisterOnTaskFinishedCallback(
       Task* task, base::OnceCallback<void(const brillo::ErrorPtr&)> callback);
+  bool ChangeModemPowerState(const std::string& device_id,
+                             Modem::PowerState target_state);
+  void ModemPowerOff(const std::string& device_id);
 
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;

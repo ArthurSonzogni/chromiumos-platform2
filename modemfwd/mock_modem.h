@@ -52,6 +52,11 @@ class MockModem : public Modem {
   MOCK_METHOD(bool, UpdateState, (State new_state), (override));
   MOCK_METHOD(PowerState, GetPowerState, (), (const, override));
   MOCK_METHOD(bool, UpdatePowerState, (PowerState new_power_state), (override));
+  MOCK_METHOD(bool, IsPowerOffPending, (), (const override));
+  MOCK_METHOD(void,
+              UpdatePowerOffPendingFlag,
+              (bool power_off_req),
+              (override));
 };
 
 }  // namespace modemfwd

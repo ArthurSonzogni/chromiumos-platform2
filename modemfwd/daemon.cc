@@ -51,6 +51,7 @@ const char kManifestNameLegacy[] = "firmware_manifest.prototxt";
 constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(2);
 constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
+constexpr base::TimeDelta kPowerOffHystTime = base::Minutes(1);
 
 constexpr char kPrefsDir[] = "/var/lib/modemfwd/";
 // The existence of a device id in |kModemsSeenSinceOobeKey| is used to
@@ -328,6 +329,8 @@ void Daemon::CompleteInitialization() {
       base::BindRepeating(&Daemon::OnModemStateChange,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&Daemon::OnModemPowerStateChange,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Daemon::OnPoweredChange,
                           weak_ptr_factory_.GetWeakPtr()));
 
   if (dlc_manager_) {
@@ -411,6 +414,41 @@ void Daemon::OnModemPowerStateChange(std::string device_id,
   }
   for (const auto& cb : power_state_change_callbacks_[device_id]) {
     cb.Run();
+  }
+}
+
+void Daemon::OnPoweredChange(const std::string device_id, bool powered) {
+  // Do not change modem power state during suspension.
+  if (suspend_checker_->IsSuspendAnnounced())
+    return;
+  std::string power_device_id = device_id;
+  // Once modem is powered off, the device_id of the cellular device is empty
+  if (powered && power_device_id.empty()) {
+    for (const auto& modem : modems_) {
+      if (modem.second->GetPowerState() == Modem::PowerState::OFF ||
+          // power state is unknown if modemfwd has restarted with modem off
+          modem.second->GetPowerState() == Modem::PowerState::UNKNOWN) {
+        power_device_id = modem.first;
+        break;
+      }
+    }
+  }
+  if (modems_.count(power_device_id) == 0) {
+    return;
+  }
+  if (powered) {
+    modems_[power_device_id]->UpdatePowerOffPendingFlag(false);
+    ChangeModemPowerState(power_device_id, Modem::PowerState::ON);
+  } else {
+    // post delayed task (hysteresis timer) for modem power off
+    if (!modems_[power_device_id]->IsPowerOffPending()) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&Daemon::ModemPowerOff, weak_ptr_factory_.GetWeakPtr(),
+                         power_device_id),
+          kPowerOffHystTime);
+      modems_[power_device_id]->UpdatePowerOffPendingFlag(true);
+    }
   }
 }
 
@@ -567,6 +605,48 @@ void Daemon::NotifyFlashStarting(const std::string& equipment_id) {
   }
 }
 
+bool Daemon::ChangeModemPowerState(const std::string& device_id,
+                                   Modem::PowerState target_state) {
+  auto helper = helper_directory_->GetHelperForDeviceId(device_id);
+  bool res = true;
+  if (!helper)
+    return false;
+  if (modems_.count(device_id) == 0) {
+    return false;
+  }
+  if (target_state == Modem::PowerState::ON) {
+    res = helper->PowerOn();
+    // Do not update power state here; wait for MM to report
+  } else if (target_state == Modem::PowerState::OFF &&
+             // Modem has to be stopped before powering off
+             (modems_[device_id]->GetPowerState() == Modem::PowerState::LOW ||
+              modems_[device_id]->GetPowerState() ==
+                  Modem::PowerState::UNKNOWN)) {
+    if (helper->PowerOff()) {
+      modems_[device_id]->UpdatePowerState(Modem::PowerState::OFF);
+      res = true;
+    } else {
+      res = false;
+    }
+  } else {
+    EVLOG(1) << __func__ << "power state: " << target_state << " not handled";
+    res = false;
+  }
+  ELOG(INFO) << __func__ << ": change modem with device id: " << device_id
+             << " to new power state: " << target_state << " result: " << res;
+  return res;
+}
+
+void Daemon::ModemPowerOff(const std::string& device_id) {
+  if (modems_.count(device_id) == 0) {
+    return;
+  }
+  if (modems_[device_id]->IsPowerOffPending()) {
+    modems_[device_id]->UpdatePowerOffPendingFlag(false);
+    ChangeModemPowerState(device_id, Modem::PowerState::OFF);
+  }
+}
+
 void Daemon::ForceFlashIfInFlashMode(const std::string& device_id,
                                      ModemHelper* helper) {
   EVLOG(1) << __func__ << "device_id: " << device_id;
@@ -603,6 +683,12 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
       LOG(INFO) << "Found modem " << modem_id << ", skip recovery";
       return;
     }
+  }
+
+  // Skip when the modem is turned off
+  if (modems_.count(device_id) &&
+      modems_[device_id]->GetPowerState() == Modem::PowerState::OFF) {
+    return;
   }
 
   if (!helper->FlashModeCheck()) {

@@ -16,6 +16,7 @@
 #include <dbus/object_path.h>
 #include <shill/dbus-proxies.h>
 
+#include "modemfwd/modem.h"
 #include "modemmanager/dbus-proxies.h"
 
 namespace modemfwd {
@@ -32,6 +33,9 @@ using OnModemStateChangeCallback =
 using OnModemPowerStateChangeCallback =
     base::RepeatingCallback<void(std::string, Modem::PowerState)>;
 
+using OnPoweredChangeCallback =
+    base::RepeatingCallback<void(std::string, bool)>;
+
 class ModemTracker {
  public:
   ModemTracker(
@@ -39,7 +43,8 @@ class ModemTracker {
       OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback,
       OnModemDeviceSeenCallback on_modem_device_seen_callback,
       OnModemStateChangeCallback on_modem_state_change_callback,
-      OnModemPowerStateChangeCallback on_modem_power_state_change_callback);
+      OnModemPowerStateChangeCallback on_modem_power_state_change_callback,
+      OnPoweredChangeCallback on_powered_change_callback);
   ModemTracker(const ModemTracker&) = delete;
   ModemTracker& operator=(const ModemTracker&) = delete;
 
@@ -82,6 +87,7 @@ class ModemTracker {
   OnModemDeviceSeenCallback on_modem_device_seen_callback_;
   OnModemStateChangeCallback on_modem_state_change_callback_;
   OnModemPowerStateChangeCallback on_modem_power_state_change_callback_;
+  OnPoweredChangeCallback on_powered_change_callback_;
 
   // Store the Carrier UUID for each modem Device.
   std::map<dbus::ObjectPath, std::string> modem_objects_;

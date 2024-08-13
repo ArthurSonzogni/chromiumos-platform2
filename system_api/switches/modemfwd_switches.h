@@ -23,6 +23,8 @@ const char kClearAttachAPN[] = "clear_attach_apn";
 const char kFwVersion[] = "fw_version";
 const char kGetHeartbeatConfig[] = "get_heartbeat_config";
 const char kGetRecoveryFileList[] = "get_recovery_file_list";
+const char kPowerOn[] = "power_on";
+const char kPowerOff[] = "power_off";
 
 // Keys used for the kFlashFirmware/kFwVersion/kGetFirmwareInfo switches
 const char kFwMain[] = "main";

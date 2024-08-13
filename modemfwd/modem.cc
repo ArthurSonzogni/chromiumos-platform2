@@ -229,7 +229,8 @@ class ModemImpl : public Modem {
             std::unique_ptr<Inhibitor> inhibitor,
             ModemHelper* helper,
             FirmwareInfo installed_firmware)
-      : device_id_(device_id),
+      : power_off_pending_(false),
+        device_id_(device_id),
         equipment_id_(equipment_id),
         carrier_id_(carrier_id),
         health_checker_(std::move(health_checker)),
@@ -317,7 +318,7 @@ class ModemImpl : public Modem {
     }
 
     if (state_ == new_state) {
-      ELOG(WARNING) << "State (" << state_ << ") did not change.";
+      EVLOG(1) << "State (" << state_ << ") did not change.";
       return false;
     } else {
       state_ = new_state;
@@ -334,7 +335,7 @@ class ModemImpl : public Modem {
     }
 
     if (power_state_ == new_power_state) {
-      ELOG(WARNING) << "Power state (" << power_state_ << ") did not change.";
+      EVLOG(1) << "Power state (" << power_state_ << ") did not change.";
       return false;
     } else {
       power_state_ = new_power_state;
@@ -342,10 +343,17 @@ class ModemImpl : public Modem {
     return true;
   }
 
+  bool IsPowerOffPending() const override { return power_off_pending_; }
+
+  void UpdatePowerOffPendingFlag(bool power_off_request) override {
+    power_off_pending_ = power_off_request;
+  }
+
  private:
   int heartbeat_failures_;
   State state_;
   PowerState power_state_;
+  bool power_off_pending_;
   std::string heartbeat_port_;
   std::string device_id_;
   std::string equipment_id_;
@@ -515,10 +523,17 @@ class StubModem : public Modem {
 
   bool UpdatePowerState(PowerState new_power_state) override { return true; }
 
+  bool IsPowerOffPending() const override { return power_off_pending_; }
+
+  void UpdatePowerOffPendingFlag(bool power_off_request) override {
+    power_off_pending_ = power_off_request;
+  }
+
  private:
   int heartbeat_failures_;
   State state_;
   PowerState power_state_;
+  bool power_off_pending_;
   std::string heartbeat_port_;
   std::string carrier_id_;
   std::string device_id_;

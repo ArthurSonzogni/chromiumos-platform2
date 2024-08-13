@@ -70,7 +70,10 @@ void HeartbeatTask::Stop() {
 }
 
 void HeartbeatTask::Configure() {
-  if (modem_->GetPowerState() == Modem::PowerState::LOW) {
+  // Stop modem health heartbeat check when modem is in OFF and LOW
+  // power states
+  if (modem_->GetPowerState() == Modem::PowerState::LOW ||
+      modem_->GetPowerState() == Modem::PowerState::OFF) {
     return;
   }
 

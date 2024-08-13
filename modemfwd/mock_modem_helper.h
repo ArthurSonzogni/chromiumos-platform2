@@ -44,6 +44,8 @@ class MockModemHelper : public ModemHelper {
               GetRecoveryFileList,
               (const base::FilePath& metadata_directory),
               (override));
+  MOCK_METHOD(bool, PowerOn, (), (override));
+  MOCK_METHOD(bool, PowerOff, (), (override));
 };
 
 }  // namespace modemfwd
