@@ -51,7 +51,8 @@ use crate::metrics;
 use crate::power;
 use crate::proc::load_euid;
 use crate::process_stats;
-use crate::psi;
+use crate::psi::PsiWatcher;
+use crate::psi::Target;
 use crate::qos;
 use crate::qos::set_process_state;
 use crate::qos::set_thread_state;
@@ -658,42 +659,39 @@ async fn init_battery_saver_mode(context: DbusContext, conn: Arc<SyncConnection>
     on_battery_saver_mode_change(context.clone(), powerd_response)
 }
 
-async fn memory_checker_wait(pressure_result: &Result<memory::PressureStatus>) {
-    // Stop waiting if there is 150 ms stall time in 1000 ms window.
-    const STALL_MS: u64 = 150;
-    const WINDOW_MS: u64 = 1000;
+async fn memory_checker_wait(
+    pressure_result: &Result<memory::PressureStatus>,
+    psi_watcher: Option<&mut PsiWatcher>,
+) {
+    const MEMORY_USAGE_POLL_INTERVAL_DEFAULT: Duration = Duration::from_millis(1000);
+    let Some(psi_watcher) = psi_watcher else {
+        // If opening psi fd had failed, fallback to 1 second interval.
+        tokio::time::sleep(MEMORY_USAGE_POLL_INTERVAL_DEFAULT).await;
+        return;
+    };
 
     // Wait longer when the current memory pressure is low.
-    const MIN_WAITING_MS: u64 = 500;
-    const MAX_WAITING_MS_NO_PRESSURE: u64 = 10000;
-    const MAX_WAITING_MS_MODERATE_PRESSURE: u64 = 5000;
-    const MAX_WAITING_MS_CRITICAL_PRESSURE: u64 = 1000;
+    const MAX_WAITING_NO_PRESSURE: Duration = Duration::from_millis(10000);
+    const MAX_WAITING_MODERATE_PRESSURE: Duration = Duration::from_millis(5000);
+    const MAX_WAITING_CRITICAL_PRESSURE: Duration = Duration::from_millis(1000);
 
-    let max_waiting_ms = match pressure_result {
+    let max_waiting = match pressure_result {
         Ok(pressure_status) => match pressure_status.chrome_level {
-            memory::PressureLevelChrome::None => MAX_WAITING_MS_NO_PRESSURE,
-            memory::PressureLevelChrome::Moderate => MAX_WAITING_MS_MODERATE_PRESSURE,
-            memory::PressureLevelChrome::Critical => MAX_WAITING_MS_CRITICAL_PRESSURE,
+            memory::PressureLevelChrome::None => MAX_WAITING_NO_PRESSURE,
+            memory::PressureLevelChrome::Moderate => MAX_WAITING_MODERATE_PRESSURE,
+            memory::PressureLevelChrome::Critical => MAX_WAITING_CRITICAL_PRESSURE,
         },
         Err(e) => {
             error!("get_memory_pressure_status() failed: {}", e);
-            MAX_WAITING_MS_NO_PRESSURE
+            MAX_WAITING_NO_PRESSURE
         }
     };
 
     // Waiting for certain range of duration. Interrupt if PSI memory stall exceeds the
     // threshold.
-    let wait_result =
-        psi::wait_psi_monitor_memory_event(STALL_MS, WINDOW_MS, MIN_WAITING_MS, max_waiting_ms)
-            .await;
-    if wait_result.is_err() {
-        error!(
-            "wait_psi_monitor_memory_event returns error: {:?}",
-            wait_result
-        );
-        // Fallback to 1 second waiting.
-        const MEMORY_USAGE_POLL_INTERVAL: u64 = 1000;
-        tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
+    if let Ok(Err(e)) = tokio::time::timeout(max_waiting, psi_watcher.wait()).await {
+        error!("wait_psi_monitor_memory_event returns error: {:?}", e);
+        tokio::time::sleep(MEMORY_USAGE_POLL_INTERVAL_DEFAULT).await;
     }
 }
 
@@ -777,6 +775,18 @@ async fn margin_memory_handler_loop(
     vmms_client: &VmMemoryManagementClient,
     notification_count: &Arc<AtomicI32>,
 ) {
+    // Stop waiting if there is 150 ms stall time in 1000 ms window.
+    const STALL_DURATION: Duration = Duration::from_millis(150);
+    const WINDOW_DURATION: Duration = Duration::from_millis(1000);
+    let mut psi_watcher =
+        match PsiWatcher::new_memory_pressure(Target::Some, STALL_DURATION, WINDOW_DURATION) {
+            Ok(psi_watcher) => Some(psi_watcher),
+            Err(e) => {
+                error!("failed to create psi watcher: {:?}", e);
+                None
+            }
+        };
+
     loop {
         let pressure_result = memory::get_memory_pressure_status(vmms_client).await;
 
@@ -787,7 +797,7 @@ async fn margin_memory_handler_loop(
 
         notification_count.fetch_add(1, Ordering::Relaxed);
 
-        memory_checker_wait(&pressure_result).await;
+        memory_checker_wait(&pressure_result, psi_watcher.as_mut()).await;
 
         // The feature flag change is reflected in 10 seconds since memory_checker_wait() wakes
         // within 10 seconds at least.
