@@ -4,5 +4,4 @@
 
 pub mod disk;
 pub mod lsblk;
-pub mod mount;
 pub mod util;

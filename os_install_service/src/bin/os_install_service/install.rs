@@ -8,9 +8,9 @@ use std::process::Command;
 
 use super::install_logger;
 use anyhow::Context;
+use libchromeos::mount::{FsType, Mount};
 use log::{error, info};
 use os_install_service::disk::{self, Disk};
-use os_install_service::mount::Mount;
 use os_install_service::util;
 
 #[derive(Debug, thiserror::Error)]
@@ -158,12 +158,11 @@ fn save_install_log(dest: &Path) -> anyhow::Result<()> {
     let dest_stateful_partition =
         libchromeos::disk::get_partition_device(dest, stateful_partition_num)
             .context("Unable to find correct partition path")?;
-    let stateful_partition_mount = Mount::mount_ext4(&dest_stateful_partition)?;
+    let stateful_partition_mount = Mount::new(&dest_stateful_partition, FsType::Ext4)?;
     // Get the instance log and write it to the stateful partition.
     let instance_log = install_logger::read_file_log();
     let log_dst = stateful_partition_mount
-        .mount_point
-        .path()
+        .mount_path()
         .join("flex-install.log");
     info!("writing install log to {}", log_dst.display());
     fs::write(log_dst, instance_log)?;
