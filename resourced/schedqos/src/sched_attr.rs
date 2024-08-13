@@ -18,6 +18,29 @@ pub const fn compute_uclamp_min(percent: u32) -> u32 {
 const UCLAMP_BOOST_PERCENT: u32 = 60;
 pub const UCLAMP_BOOSTED_MIN: u32 = compute_uclamp_min(UCLAMP_BOOST_PERCENT);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RtPriority {
+    Always(u32),
+    Foreground(u32),
+    Disabled,
+}
+
+impl RtPriority {
+    fn get_priority(&self, allow_foreground_rt: bool) -> Option<u32> {
+        match self {
+            RtPriority::Always(priority) => Some(*priority),
+            RtPriority::Foreground(priority) => {
+                if allow_foreground_rt {
+                    Some(*priority)
+                } else {
+                    None
+                }
+            }
+            RtPriority::Disabled => None,
+        }
+    }
+}
+
 /// Context to apply sched_attr.
 pub struct SchedAttrContext {
     uclamp_support: bool,
@@ -35,14 +58,15 @@ impl SchedAttrContext {
         &self,
         thread_id: ThreadId,
         thread_config: &ThreadStateConfig,
+        allow_foreground_rt: bool,
     ) -> io::Result<()> {
         let mut attr = sched_attr::default();
 
         sched_getattr(thread_id, &mut attr)?;
 
-        if thread_config.rt_priority.is_some() {
+        if let Some(priority) = thread_config.rt_priority.get_priority(allow_foreground_rt) {
             attr.sched_policy = libc::SCHED_RR as u32;
-            attr.sched_priority = thread_config.rt_priority.unwrap();
+            attr.sched_priority = priority;
         } else {
             attr.sched_policy = libc::SCHED_OTHER as u32;
             // sched_priority must be cleared. Otherwise sched_setattr(2) fails
@@ -183,13 +207,14 @@ pub fn assert_sched_attr(
     ctx: &SchedAttrContext,
     thread_id: ThreadId,
     thread_config: &ThreadStateConfig,
+    allow_foreground_rt: bool,
 ) {
     let mut attr = sched_attr::default();
     sched_getattr(thread_id, &mut attr).unwrap();
 
-    if thread_config.rt_priority.is_some() {
+    if let Some(priority) = thread_config.rt_priority.get_priority(allow_foreground_rt) {
         assert_eq!(attr.sched_policy, libc::SCHED_RR as u32);
-        assert_eq!(attr.sched_priority, thread_config.rt_priority.unwrap());
+        assert_eq!(attr.sched_priority, priority);
     } else {
         assert_eq!(attr.sched_policy, libc::SCHED_OTHER as u32);
         assert_eq!(attr.sched_nice, thread_config.nice);
@@ -255,13 +280,13 @@ mod tests {
 
         for (nice, uclamp_min) in [(11, 12), (13, 14), (-8, 0)] {
             let thread_config = ThreadStateConfig {
-                rt_priority: None,
+                rt_priority: RtPriority::Disabled,
                 nice,
                 uclamp_min,
                 ..ThreadStateConfig::default()
             };
 
-            ctx.set_thread_sched_attr(ThreadId(0), &thread_config)
+            ctx.set_thread_sched_attr(ThreadId(0), &thread_config, true)
                 .unwrap();
 
             let mut attr = sched_attr::default();
@@ -272,24 +297,24 @@ mod tests {
                 assert_eq!(attr.sched_util_max, UCLAMP_MAX);
                 assert_eq!(attr.sched_util_min, uclamp_min);
             }
-            assert_sched_attr(&ctx, ThreadId(0), &thread_config);
+            assert_sched_attr(&ctx, ThreadId(0), &thread_config, true);
         }
     }
 
     #[test]
-    fn test_set_thread_sched_attr_rt() {
+    fn test_set_thread_sched_attr_rt_foreground() {
         let ctx = SchedAttrContext::new().unwrap();
         let _original_thread_attr = ScopedSchedAttrRestore::new(ThreadId(0));
 
         for (nice, uclamp_min, rt_priority) in [(11, 12, 13), (14, 15, 16), (-8, 0, 1)] {
             let thread_config = ThreadStateConfig {
-                rt_priority: Some(rt_priority),
+                rt_priority: RtPriority::Foreground(rt_priority),
                 nice,
                 uclamp_min,
                 ..ThreadStateConfig::default()
             };
 
-            ctx.set_thread_sched_attr(ThreadId(0), &thread_config)
+            ctx.set_thread_sched_attr(ThreadId(0), &thread_config, true)
                 .unwrap();
 
             let mut attr = sched_attr::default();
@@ -301,7 +326,54 @@ mod tests {
                 assert_eq!(attr.sched_util_max, UCLAMP_MAX);
                 assert_eq!(attr.sched_util_min, uclamp_min);
             }
-            assert_sched_attr(&ctx, ThreadId(0), &thread_config);
+            assert_sched_attr(&ctx, ThreadId(0), &thread_config, true);
+
+            ctx.set_thread_sched_attr(ThreadId(0), &thread_config, false)
+                .unwrap();
+
+            let mut attr = sched_attr::default();
+            sched_getattr(ThreadId(0), &mut attr).unwrap();
+            assert_eq!(attr.sched_policy, libc::SCHED_OTHER as u32);
+            assert_eq!(attr.sched_priority, 0);
+            assert_eq!(attr.sched_nice, nice);
+            if ctx.uclamp_support {
+                assert_eq!(attr.sched_util_max, UCLAMP_MAX);
+                assert_eq!(attr.sched_util_min, uclamp_min);
+            }
+            assert_sched_attr(&ctx, ThreadId(0), &thread_config, false);
+        }
+    }
+
+    #[test]
+    fn test_set_thread_sched_attr_rt_all() {
+        let ctx = SchedAttrContext::new().unwrap();
+        let _original_thread_attr = ScopedSchedAttrRestore::new(ThreadId(0));
+
+        for (nice, uclamp_min, rt_priority) in [(11, 12, 13), (14, 15, 16), (-8, 0, 1)] {
+            let thread_config = ThreadStateConfig {
+                rt_priority: RtPriority::Always(rt_priority),
+                nice,
+                uclamp_min,
+                ..ThreadStateConfig::default()
+            };
+
+            ctx.set_thread_sched_attr(ThreadId(0), &thread_config, true)
+                .unwrap();
+
+            let mut attr = sched_attr::default();
+            sched_getattr(ThreadId(0), &mut attr).unwrap();
+            assert_eq!(attr.sched_policy, libc::SCHED_RR as u32);
+            assert_eq!(attr.sched_priority, rt_priority);
+            assert_eq!(attr.sched_nice, 0);
+
+            // RtPriority::All set RT regardless of allow_foreground_rt.
+            ctx.set_thread_sched_attr(ThreadId(0), &thread_config, false)
+                .unwrap();
+
+            sched_getattr(ThreadId(0), &mut attr).unwrap();
+            assert_eq!(attr.sched_policy, libc::SCHED_RR as u32);
+            assert_eq!(attr.sched_priority, rt_priority);
+            assert_eq!(attr.sched_nice, 0);
         }
     }
 
@@ -313,9 +385,10 @@ mod tests {
         ctx.set_thread_sched_attr(
             ThreadId(0),
             &ThreadStateConfig {
-                rt_priority: Some(10),
+                rt_priority: RtPriority::Always(10),
                 ..ThreadStateConfig::default()
             },
+            true,
         )
         .unwrap();
         // sched_priority must be cleared. Otherwise sched_setattr(2) fails as
@@ -324,9 +397,10 @@ mod tests {
             .set_thread_sched_attr(
                 ThreadId(0),
                 &ThreadStateConfig {
-                    rt_priority: None,
+                    rt_priority: RtPriority::Disabled,
                     ..ThreadStateConfig::default()
-                }
+                },
+                true,
             )
             .is_ok());
     }
@@ -342,6 +416,7 @@ mod tests {
                 nice: -10,
                 ..ThreadStateConfig::default()
             },
+            true,
         )
         .unwrap();
 
@@ -354,6 +429,7 @@ mod tests {
                 nice: 10,
                 ..ThreadStateConfig::default()
             },
+            true,
         )
         .unwrap();
         assert!(checker.is_changed());

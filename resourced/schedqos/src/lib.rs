@@ -24,6 +24,7 @@ use proc::load_process_timestamp;
 use proc::load_thread_timestamp;
 use proc::ThreadChecker;
 pub use sched_attr::compute_uclamp_min;
+pub use sched_attr::RtPriority;
 use sched_attr::SchedAttrContext;
 use sched_attr::UCLAMP_BOOSTED_MIN;
 pub use sched_attr::UCLAMP_MAX;
@@ -159,11 +160,13 @@ impl Config {
             // ProcessState::Normal
             ProcessStateConfig {
                 cpu_cgroup: CpuCgroup::Normal,
+                allow_foreground_rt: true,
                 allow_foreground_cpuset: true,
             },
             // Process:State::Background
             ProcessStateConfig {
                 cpu_cgroup: CpuCgroup::Background,
+                allow_foreground_rt: false,
                 allow_foreground_cpuset: false,
             },
         ]
@@ -173,7 +176,7 @@ impl Config {
         [
             // ThreadState::UrgentBursty
             ThreadStateConfig {
-                rt_priority: Some(8),
+                rt_priority: RtPriority::Always(8),
                 nice: -8,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
@@ -212,7 +215,7 @@ impl Config {
             },
             // ThreadState::UrgentBurstyServer
             ThreadStateConfig {
-                rt_priority: Some(12),
+                rt_priority: RtPriority::Always(12),
                 nice: -12,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
@@ -220,7 +223,7 @@ impl Config {
             },
             // ThreadState::UrgentBurstyClient
             ThreadStateConfig {
-                rt_priority: Some(10),
+                rt_priority: RtPriority::Always(10),
                 nice: -10,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
@@ -235,6 +238,10 @@ impl Config {
 pub struct ProcessStateConfig {
     /// The cpu cgroup
     pub cpu_cgroup: CpuCgroup,
+    /// If true, threads in [RtPriority::Foreground] are allowed to use RT.
+    /// Otherwise, threads requesting it are forced to use CFS scheduler with
+    /// nice value.
+    pub allow_foreground_rt: bool,
     /// If true, threads are allowed to use the foreground cpuset cgroup.
     /// Otherwise, threads requesting it are forced into the efficient cpuset
     /// cgroup.
@@ -244,8 +251,8 @@ pub struct ProcessStateConfig {
 /// Detailed scheduler settings for a thread QoS state.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct ThreadStateConfig {
-    /// The priority in RT (SCHED_FIFO). If this is None, it uses SCHED_OTHER instead.
-    pub rt_priority: Option<u32>,
+    /// The priority in RT (SCHED_RR). If this is None, it uses SCHED_OTHER instead.
+    pub rt_priority: RtPriority,
     /// The nice value
     pub nice: i32,
     /// sched_attr.sched_util_min
@@ -272,7 +279,7 @@ impl ThreadStateConfig {
 
     const fn default() -> Self {
         ThreadStateConfig {
-            rt_priority: None,
+            rt_priority: RtPriority::Disabled,
             nice: 0,
             uclamp_min: 0,
             cpuset_cgroup: CpusetCgroup::All,
@@ -429,6 +436,24 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
                 }
             }
             let thread_config = &self.config.thread_configs[thread.state as usize];
+            if matches!(thread_config.rt_priority, RtPriority::Foreground(_)) {
+                match self.sched_attr_context.set_thread_sched_attr(
+                    *thread_id,
+                    thread_config,
+                    process_config.allow_foreground_rt,
+                ) {
+                    Ok(_) => {}
+                    Err(e) if e.raw_os_error() == Some(libc::ESRCH) => {
+                        // Ignore the error. There is rare cases that the thread die after the
+                        // timestamp check above.
+                        return false;
+                    }
+                    Err(e) => {
+                        result = Err(Error::SchedAttr(e));
+                    }
+                }
+            }
+
             if thread_config.cpuset_cgroup == CpusetCgroup::Foreground {
                 match self.config.cgroup_context.set_cpuset_cgroup(
                     *thread_id,
@@ -505,7 +530,7 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
         let thread_config = &self.config.thread_configs[thread_state as usize];
 
         self.sched_attr_context
-            .set_thread_sched_attr(thread_id, thread_config)
+            .set_thread_sched_attr(thread_id, thread_config, process_config.allow_foreground_rt)
             .map_err(|e| {
                 if e.raw_os_error() == Some(libc::ESRCH) {
                     Error::ThreadNotFound
@@ -597,11 +622,13 @@ mod tests {
                 // ProcessState::Normal
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Normal,
+                    allow_foreground_rt: true,
                     allow_foreground_cpuset: true,
                 },
                 // Process:State::Background
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Background,
+                    allow_foreground_rt: false,
                     allow_foreground_cpuset: false,
                 },
             ],
@@ -633,16 +660,19 @@ mod tests {
         let thread_state_foreground = ThreadState::try_from(2).unwrap();
         let thread_state_efficient = ThreadState::try_from(3).unwrap();
         let thread_config_all = ThreadStateConfig {
+            rt_priority: RtPriority::Always(10),
             nice: 10,
             cpuset_cgroup: CpusetCgroup::All,
             ..ThreadStateConfig::default()
         };
         let thread_config_foreground = ThreadStateConfig {
+            rt_priority: RtPriority::Foreground(11),
             nice: 11,
             cpuset_cgroup: CpusetCgroup::Foreground,
             ..ThreadStateConfig::default()
         };
         let thread_config_efficient = ThreadStateConfig {
+            rt_priority: RtPriority::Disabled,
             nice: 12,
             cpuset_cgroup: CpusetCgroup::Efficient,
             ..ThreadStateConfig::default()
@@ -657,11 +687,13 @@ mod tests {
                 // ProcessState::Normal
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Normal,
+                    allow_foreground_rt: true,
                     allow_foreground_cpuset: true,
                 },
                 // Process:State::Background
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Background,
+                    allow_foreground_rt: false,
                     allow_foreground_cpuset: false,
                 },
             ],
@@ -705,10 +737,10 @@ mod tests {
             HashSet::from([thread_id3.0])
         );
 
-        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_all);
-        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_all);
-        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_foreground);
-        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_efficient);
+        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_all, false);
+        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_all, false);
+        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_foreground, false);
+        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_efficient, false);
         assert!(!sched_attr_unmanaged.is_changed());
 
         ctx.set_process_state(process_id, ProcessState::Normal)
@@ -724,10 +756,10 @@ mod tests {
         );
         assert_eq!(read_number(&mut cgroup_files.cpuset_efficient), None);
 
-        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_all);
-        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_all);
-        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_foreground);
-        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_efficient);
+        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_all, true);
+        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_all, true);
+        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_foreground, true);
+        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_efficient, true);
         assert!(!sched_attr_unmanaged.is_changed());
     }
 
@@ -952,7 +984,7 @@ mod tests {
         let thread_configs = [
             // ThreadState::UrgentBursty
             ThreadStateConfig {
-                rt_priority: Some(8),
+                rt_priority: RtPriority::Always(8),
                 nice: -8,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
@@ -991,7 +1023,7 @@ mod tests {
             },
             // ThreadState::UrgentBurstyServer
             ThreadStateConfig {
-                rt_priority: Some(12),
+                rt_priority: RtPriority::Always(12),
                 nice: -12,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
@@ -999,7 +1031,7 @@ mod tests {
             },
             // ThreadState::UrgentBurstyClient
             ThreadStateConfig {
-                rt_priority: Some(10),
+                rt_priority: RtPriority::Always(10),
                 nice: -10,
                 uclamp_min: UCLAMP_BOOSTED_MIN,
                 cpuset_cgroup: CpusetCgroup::All,
@@ -1012,11 +1044,13 @@ mod tests {
                 // ProcessState::Normal
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Normal,
+                    allow_foreground_rt: true,
                     allow_foreground_cpuset: true,
                 },
                 // Process:State::Background
                 ProcessStateConfig {
                     cpu_cgroup: CpuCgroup::Background,
+                    allow_foreground_rt: false,
                     allow_foreground_cpuset: false,
                 },
             ],
@@ -1055,7 +1089,7 @@ mod tests {
                     )
                 }
             }
-            assert_sched_attr(&sched_ctx, thread_id, thread_config);
+            assert_sched_attr(&sched_ctx, thread_id, thread_config, true);
         }
 
         ctx.set_process_state(process_id, ProcessState::Background)
@@ -1088,7 +1122,7 @@ mod tests {
                     )
                 }
             }
-            assert_sched_attr(&sched_ctx, thread_id, thread_config);
+            assert_sched_attr(&sched_ctx, thread_id, thread_config, false);
         }
     }
 

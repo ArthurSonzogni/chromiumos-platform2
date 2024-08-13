@@ -12,6 +12,7 @@ use anyhow::Context;
 use anyhow::Result;
 use schedqos::compute_uclamp_min;
 use schedqos::CpusetCgroup;
+use schedqos::RtPriority;
 
 use crate::common::read_from_file;
 
@@ -264,7 +265,7 @@ fn parse_config_from_path<T: FromDir>(path: &Path) -> Result<Option<T>> {
 /// Each field corresponds to fields in [schedqos::ThreadStateConfig].
 #[derive(Default, Debug, PartialEq)]
 pub struct SchedqosThreadConfig {
-    pub rt_priority: Option<Option<u32>>,
+    pub rt_priority: Option<RtPriority>,
     pub nice: Option<i32>,
     pub uclamp_min: Option<u32>,
     pub cpuset_cgroup: Option<CpusetCgroup>,
@@ -298,9 +299,9 @@ impl SchedqosThreadConfig {
             let rt_priority: i32 =
                 read_from_file(&rt_priority_path).context("failed to read rt-priority")?;
             let rt_priority = if rt_priority < 0 {
-                None
+                RtPriority::Disabled
             } else {
-                Some(rt_priority as u32)
+                RtPriority::Always(rt_priority as u32)
             };
             config.rt_priority = Some(rt_priority);
         }
@@ -894,21 +895,21 @@ mod tests {
                 normal_cpu_share: Some(1000),
                 background_cpu_share: Some(20),
                 thread_urgent_bursty: Some(SchedqosThreadConfig {
-                    rt_priority: Some(Some(1)),
+                    rt_priority: Some(RtPriority::Always(1)),
                     nice: Some(-10),
                     uclamp_min: Some(80),
                     cpuset_cgroup: Some(CpusetCgroup::All),
                     latency_sensitive: Some(true),
                 }),
                 thread_urgent: Some(SchedqosThreadConfig {
-                    rt_priority: Some(Some(10)),
+                    rt_priority: Some(RtPriority::Always(10)),
                     nice: Some(5),
                     uclamp_min: Some(70),
                     cpuset_cgroup: Some(CpusetCgroup::Efficient),
                     latency_sensitive: Some(false),
                 }),
                 thread_balanced: Some(SchedqosThreadConfig {
-                    rt_priority: Some(None),
+                    rt_priority: Some(RtPriority::Disabled),
                     nice: Some(0),
                     uclamp_min: Some(0),
                     cpuset_cgroup: None,
@@ -959,7 +960,7 @@ mod tests {
                 normal_cpu_share: Some(900),
                 background_cpu_share: None,
                 thread_urgent_bursty: Some(SchedqosThreadConfig {
-                    rt_priority: Some(Some(2)),
+                    rt_priority: Some(RtPriority::Always(2)),
                     nice: None,
                     uclamp_min: None,
                     cpuset_cgroup: None,
@@ -983,56 +984,56 @@ mod tests {
     fn test_schedqos_config_merge_into() {
         let mut thread_configs = [
             schedqos::ThreadStateConfig {
-                rt_priority: Some(2),
+                rt_priority: RtPriority::Always(2),
                 nice: -8,
                 uclamp_min: 100,
                 cpuset_cgroup: CpusetCgroup::Efficient,
                 latency_sensitive: false,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: None,
+                rt_priority: RtPriority::Disabled,
                 nice: 0,
                 uclamp_min: 200,
                 cpuset_cgroup: CpusetCgroup::All,
                 latency_sensitive: true,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: Some(3),
+                rt_priority: RtPriority::Always(3),
                 nice: 2,
                 uclamp_min: 300,
                 cpuset_cgroup: CpusetCgroup::All,
                 latency_sensitive: true,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: Some(3),
+                rt_priority: RtPriority::Always(3),
                 nice: 2,
                 uclamp_min: 300,
                 cpuset_cgroup: CpusetCgroup::All,
                 latency_sensitive: true,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: None,
+                rt_priority: RtPriority::Disabled,
                 nice: 3,
                 uclamp_min: 10,
                 cpuset_cgroup: CpusetCgroup::Efficient,
                 latency_sensitive: false,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: None,
+                rt_priority: RtPriority::Disabled,
                 nice: 4,
                 uclamp_min: 10,
                 cpuset_cgroup: CpusetCgroup::Efficient,
                 latency_sensitive: false,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: None,
+                rt_priority: RtPriority::Disabled,
                 nice: 5,
                 uclamp_min: 10,
                 cpuset_cgroup: CpusetCgroup::Efficient,
                 latency_sensitive: false,
             },
             schedqos::ThreadStateConfig {
-                rt_priority: None,
+                rt_priority: RtPriority::Disabled,
                 nice: 6,
                 uclamp_min: 10,
                 cpuset_cgroup: CpusetCgroup::Efficient,
@@ -1043,21 +1044,21 @@ mod tests {
             normal_cpu_share: None,
             background_cpu_share: None,
             thread_urgent_bursty: Some(SchedqosThreadConfig {
-                rt_priority: Some(Some(1)),
+                rt_priority: Some(RtPriority::Always(1)),
                 nice: Some(-10),
                 uclamp_min: Some(80),
                 cpuset_cgroup: Some(CpusetCgroup::All),
                 latency_sensitive: Some(true),
             }),
             thread_urgent: Some(SchedqosThreadConfig {
-                rt_priority: Some(Some(10)),
+                rt_priority: Some(RtPriority::Always(10)),
                 nice: Some(5),
                 uclamp_min: Some(70),
                 cpuset_cgroup: Some(CpusetCgroup::Efficient),
                 latency_sensitive: Some(false),
             }),
             thread_balanced: Some(SchedqosThreadConfig {
-                rt_priority: Some(None),
+                rt_priority: Some(RtPriority::Disabled),
                 nice: Some(0),
                 uclamp_min: Some(0),
                 cpuset_cgroup: None,
@@ -1078,21 +1079,21 @@ mod tests {
                 latency_sensitive: None,
             }),
             thread_background: Some(SchedqosThreadConfig {
-                rt_priority: Some(Some(3)),
+                rt_priority: Some(RtPriority::Always(3)),
                 nice: None,
                 uclamp_min: None,
                 cpuset_cgroup: None,
                 latency_sensitive: None,
             }),
             thread_urgent_bursty_server: Some(SchedqosThreadConfig {
-                rt_priority: Some(Some(4)),
+                rt_priority: Some(RtPriority::Always(4)),
                 nice: None,
                 uclamp_min: None,
                 cpuset_cgroup: None,
                 latency_sensitive: None,
             }),
             thread_urgent_bursty_client: Some(SchedqosThreadConfig {
-                rt_priority: Some(Some(5)),
+                rt_priority: Some(RtPriority::Always(5)),
                 nice: None,
                 uclamp_min: None,
                 cpuset_cgroup: None,
@@ -1105,56 +1106,56 @@ mod tests {
             thread_configs,
             [
                 schedqos::ThreadStateConfig {
-                    rt_priority: Some(1),
+                    rt_priority: RtPriority::Always(1),
                     nice: -10,
                     uclamp_min: 819,
                     cpuset_cgroup: CpusetCgroup::All,
                     latency_sensitive: true,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: Some(10),
+                    rt_priority: RtPriority::Always(10),
                     nice: 5,
                     uclamp_min: 717,
                     cpuset_cgroup: CpusetCgroup::Efficient,
                     latency_sensitive: false,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: None,
+                    rt_priority: RtPriority::Disabled,
                     nice: 0,
                     uclamp_min: 0,
                     cpuset_cgroup: CpusetCgroup::All,
                     latency_sensitive: true,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: Some(3),
+                    rt_priority: RtPriority::Always(3),
                     nice: 19,
                     uclamp_min: 300,
                     cpuset_cgroup: CpusetCgroup::All,
                     latency_sensitive: true,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: None,
+                    rt_priority: RtPriority::Disabled,
                     nice: 18,
                     uclamp_min: 10,
                     cpuset_cgroup: CpusetCgroup::Efficient,
                     latency_sensitive: false,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: Some(3),
+                    rt_priority: RtPriority::Always(3),
                     nice: 4,
                     uclamp_min: 10,
                     cpuset_cgroup: CpusetCgroup::Efficient,
                     latency_sensitive: false,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: Some(4),
+                    rt_priority: RtPriority::Always(4),
                     nice: 5,
                     uclamp_min: 10,
                     cpuset_cgroup: CpusetCgroup::Efficient,
                     latency_sensitive: false,
                 },
                 schedqos::ThreadStateConfig {
-                    rt_priority: Some(5),
+                    rt_priority: RtPriority::Always(5),
                     nice: 6,
                     uclamp_min: 10,
                     cpuset_cgroup: CpusetCgroup::Efficient,

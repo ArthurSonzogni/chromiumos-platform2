@@ -845,6 +845,8 @@ pub async fn service_main() -> Result<()> {
         swappiness_proxy.run_proxy(conn_clone).await;
     });
 
+    qos::register_features();
+
     let psi_memory_policy_notify = Arc::new(Notify::new());
     let notify_cloned = psi_memory_policy_notify.clone();
     register_feature(

@@ -18,6 +18,7 @@ use schedqos::CgroupContext;
 use schedqos::Config;
 use schedqos::ProcessKey;
 use schedqos::ProcessState;
+use schedqos::RtPriority;
 use schedqos::ThreadState;
 use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
@@ -26,6 +27,7 @@ use tokio::task::JoinHandle;
 
 use crate::config::ConfigProvider;
 use crate::cpu_utils::Cpuset;
+use crate::feature;
 use crate::proc::is_alive;
 use crate::proc::load_ruid;
 
@@ -36,6 +38,9 @@ const STATE_FILE_PATH: &str = "/run/resourced/schedqos_states";
 pub const UMA_NAME_QOS_SET_PROCESS_STATE_ERROR: &str = "Scheduling.SchedQoS.SetProcessStateError";
 pub const UMA_NAME_QOS_SET_THREAD_STATE_ERROR: &str = "Scheduling.SchedQoS.SetThreadStateError";
 pub const MAX_QOS_ERROR_TYPE: i32 = 13;
+
+const SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME: &str = "CrOSLateBootSetRtForDisplayThreads";
+const SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE: bool = false;
 
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
@@ -140,6 +145,14 @@ impl Display for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub fn register_features() {
+    feature::register_feature(
+        SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME,
+        SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE,
+        None,
+    );
+}
+
 pub fn create_schedqos_context(
     root: &Path,
     config_provider: &ConfigProvider,
@@ -163,6 +176,15 @@ pub fn create_schedqos_context(
         Err(e) => {
             error!("Failed to read sched qos config: {:?}", e);
         }
+    }
+
+    if feature::is_feature_enabled(SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME)
+        .unwrap_or(SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE)
+    {
+        // With SetRtForDisplayThreads, threads in ThreadState::Urgent states uses RT with priority
+        // 6 while the process is foreground.
+        // https://source.chromium.org/chromium/chromium/src/+/main:base/threading/platform_thread_cros.cc;l=271-288;drc=07051ab04c8c75320330dfe237c315425abb4c0e
+        thread_configs[ThreadState::Urgent as usize].rt_priority = RtPriority::Foreground(6);
     }
 
     let cpu_normal = setup_cpu_cgroup("resourced/normal", normal_cpu_share)?;
