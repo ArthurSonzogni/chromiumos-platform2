@@ -4116,6 +4116,14 @@ bool Cellular::ShouldForceInitEpsBearerSettings() {
     return true;
   }
 
+  if (IsModemRW101()) {
+    return true;
+  }
+
+  if (IsModemRW135()) {
+    return true;
+  }
+
   return false;
 }
 
