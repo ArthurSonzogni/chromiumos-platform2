@@ -5,10 +5,10 @@
 #ifndef ODML_ON_DEVICE_MODEL_PUBLIC_CPP_ON_DEVICE_MODEL_H_
 #define ODML_ON_DEVICE_MODEL_PUBLIC_CPP_ON_DEVICE_MODEL_H_
 
-#include <base/types/expected.h>
-
 #include <memory>
 #include <string>
+
+#include <base/types/expected.h>
 
 #include "odml/mojom/on_device_model.mojom.h"
 
@@ -33,7 +33,6 @@ class OnDeviceModel {
         mojom::InputOptionsPtr input,
         mojo::PendingRemote<mojom::StreamingResponder> response,
         base::OnceClosure on_complete) = 0;
-    virtual bool ClearContext() = 0;
     virtual void SizeInTokens(const std::string& text,
                               base::OnceCallback<void(uint32_t)> callback) = 0;
     virtual void Score(const std::string& text,

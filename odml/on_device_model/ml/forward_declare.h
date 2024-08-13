@@ -8,7 +8,6 @@
 extern "C" {
 
 struct DawnProcTable;
-struct GpuConfig;
 struct WGPUAdapterImpl;
 typedef struct WGPUAdapterImpl* WGPUAdapter;
 }

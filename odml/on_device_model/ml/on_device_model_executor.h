@@ -5,6 +5,12 @@
 #ifndef ODML_ON_DEVICE_MODEL_ML_ON_DEVICE_MODEL_EXECUTOR_H_
 #define ODML_ON_DEVICE_MODEL_ML_ON_DEVICE_MODEL_EXECUTOR_H_
 
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/functional/callback.h>
@@ -16,16 +22,11 @@
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include <functional>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/on_device_model/ml/chrome_ml.h"
 #include "odml/on_device_model/ml/session_accessor.h"
+#include "odml/on_device_model/ml/ts_model.h"
 #include "odml/on_device_model/public/cpp/on_device_model.h"
 
 namespace ml {
@@ -68,9 +69,8 @@ class OnDeviceModelExecutor : public on_device_model::OnDeviceModel {
 
   const raw_ref<MetricsLibraryInterface> metrics_;
   const raw_ref<const ChromeML> chrome_ml_;
-  base::MemoryMappedFile ts_data_;
-  base::MemoryMappedFile ts_sp_model_;
   scoped_refptr<LanguageDetector> language_detector_;
+  std::unique_ptr<TsModel> ts_model_;
 
   // TODO(b/323572952): Allow disposing of adaptation weights.
   std::vector<std::unique_ptr<base::MemoryMappedFile>> adaptation_data_;
