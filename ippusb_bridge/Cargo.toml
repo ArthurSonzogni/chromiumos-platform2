@@ -14,7 +14,7 @@ libc = "0.2.44"
 libchromeos = { path = "../libchromeos-rs/" } # provided by ebuild
 log = "0.4"
 nix = { version = "0.26", features = ["signal"] }
-rusb = "0.8.1"
+rusb = "0.9.4"
 tiny_http = "0.8.0"
 
 [profile.release]
