@@ -9,6 +9,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
+use libchromeos::mount::{FsType, Mount};
 use libchromeos::panic_handler;
 use log::{error, info};
 use nix::sys::{reboot::reboot, stat::Mode};
@@ -19,7 +20,6 @@ mod disk;
 mod gpt;
 mod logger;
 mod lsblk;
-mod mount;
 mod util;
 
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
@@ -58,7 +58,7 @@ impl InstallConfig {
 /// disk and can't loose the image. Since the image size is about 2.5GB, we
 /// assume that much free space in RAM.
 fn copy_installation_files_to_rootfs(config: &InstallConfig) -> Result<()> {
-    let mount = mount::Mount::mount_by_path(&config.install_partition, mount::FsType::Vfat)
+    let mount = Mount::new(&config.install_partition, FsType::Vfat)
         .context("Unable to mount the install partition")?;
 
     // Copy the image to rootfs.
@@ -106,9 +106,8 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
     disk::mkfs_ext4(new_partition_path.as_path())
         .context("Unable to write ext4 to the flex deployment partition")?;
 
-    let new_part_mount =
-        mount::Mount::mount_by_path(new_partition_path.as_path(), mount::FsType::EXT4)
-            .context("Unable to mount flex deployment partition")?;
+    let new_part_mount = Mount::new(new_partition_path.as_path(), FsType::Ext4)
+        .context("Unable to mount flex deployment partition")?;
 
     // Then uncompress the image on disk.
     let entries = util::uncompress_tar_xz(
@@ -131,13 +130,13 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
 
 /// Copies the flex config to stateful partition.
 fn copy_flex_config_to_stateful(config: &InstallConfig) -> Result<()> {
-    let stateful_mount = mount::Mount::mount_by_path(
+    let stateful_mount = Mount::new(
         &libchromeos::disk::get_partition_device(
             &config.target_device,
             disk::STATEFUL_PARTITION_NUM,
         )
         .context("Unable to find stateful partition")?,
-        mount::FsType::EXT4,
+        FsType::Ext4,
     )?;
 
     let config_path = stateful_mount
@@ -240,8 +239,7 @@ fn run(config: &InstallConfig) -> Result<()> {
 fn try_save_logs(config: &InstallConfig) -> Result<()> {
     // Case 1: The install partition still exists, so we write the logs to it.
     if matches!(config.install_partition.try_exists(), Ok(true)) {
-        let install_mount =
-            mount::Mount::mount_by_path(&config.install_partition, mount::FsType::Vfat)?;
+        let install_mount = Mount::new(&config.install_partition, FsType::Vfat)?;
         std::fs::copy(FLEXOR_LOG_FILE, install_mount.mount_path())
             .context("Unable to copy the logfile to the install partition")?;
         return Ok(());
@@ -253,7 +251,7 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
 
     // Case 2: We already have the Flex layout and can try to write to the FLEX_DEPLOY partition.
     if let Ok(true) = flex_depl_partition_path.try_exists() {
-        match mount::Mount::mount_by_path(&flex_depl_partition_path, mount::FsType::EXT4) {
+        match Mount::new(&flex_depl_partition_path, FsType::Ext4) {
             Ok(flex_depl_mount) => {
                 std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path())
                     .context("Unable to copy the logfile to the flex deployment partition")?;
@@ -262,8 +260,7 @@ fn try_save_logs(config: &InstallConfig) -> Result<()> {
                 // The partition seems to exist, but we can't mount it as ext4,
                 // so we try to create a file system and retry.
                 disk::mkfs_ext4(&flex_depl_partition_path)?;
-                let flex_depl_mount =
-                    mount::Mount::mount_by_path(&flex_depl_partition_path, mount::FsType::EXT4)?;
+                let flex_depl_mount = Mount::new(&flex_depl_partition_path, FsType::Ext4)?;
                 std::fs::copy(FLEXOR_LOG_FILE, flex_depl_mount.mount_path()).context(
                     "Unable to copy the logfile to the formatted flex deployment partition",
                 )?;

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use gpt_disk_types::{BlockSize, GptPartitionEntry, Lba, LbaRangeInclusive};
+use libchromeos::mount::{FsType, Mount};
 use log::info;
 use std::fs::File;
 use std::process::Command;
@@ -14,7 +15,6 @@ use crate::cgpt;
 use crate::gpt;
 use crate::lsblk::LsBlkDevice;
 
-use crate::mount;
 use crate::util::execute_command;
 
 /// Constants for the newly created FLEX_DEPLOY partition.
@@ -55,7 +55,7 @@ pub fn disk_info() -> Result<DiskInfo> {
 /// Checks if one of a disk's partitions contains the installation payload.
 fn get_install_disk_info(disk: LsBlkDevice) -> Option<DiskInfo> {
     fn has_install_payload(device: &Path) -> bool {
-        let Ok(mount) = mount::Mount::mount_by_path(device, mount::FsType::Vfat) else {
+        let Ok(mount) = Mount::new(device, FsType::Vfat) else {
             return false;
         };
         matches!(
