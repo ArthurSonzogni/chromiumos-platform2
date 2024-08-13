@@ -34,6 +34,7 @@ pub mod chromeos {
 
 pub mod deprecated;
 pub mod disk;
+pub mod mount;
 mod open_safely;
 mod open_safely_test;
 pub mod panic_handler;
