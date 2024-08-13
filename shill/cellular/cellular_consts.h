@@ -27,6 +27,14 @@ const int kFM101Vid = 0x2cb7;
 const int kFM101Pid = 0x01a2;
 const shill::DeviceId::BusType kFM101BusType = shill::DeviceId::BusType::kUsb;
 
+const int kRW101Vid = 0x33f8;
+const int kRW101Pid = 0x01a2;
+const shill::DeviceId::BusType kRW101BusType = shill::DeviceId::BusType::kUsb;
+
+const int kRW135Vid = 0x33f8;
+const int kRW135Pid = 0x0115;
+const shill::DeviceId::BusType kRW135BusType = shill::DeviceId::BusType::kUsb;
+
 const int kFM350Vid = 0x14c3;
 const int kFM350Pid = 0x4d75;
 const shill::DeviceId::BusType kFM350BusType = shill::DeviceId::BusType::kPci;

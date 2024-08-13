@@ -413,6 +413,8 @@ class Cellular : public Device,
     kL850GL,
     kFM101,
     kFM350,
+    kRW101,
+    kRW135,
     kOther,
   };
 
@@ -432,6 +434,9 @@ class Cellular : public Device,
   bool IsModemFM101();
   bool IsModemFM350();
   bool IsModemL850GL();
+  bool IsModemRW101();
+  bool IsModemRW135();
+
   ModemMR GetModemFWRevision();
   std::string ModemTypeEnumToString(ModemType type);
   std::string ModemMREnumToString(ModemMR mr);

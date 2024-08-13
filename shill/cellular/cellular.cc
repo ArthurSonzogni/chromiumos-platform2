@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
+#include <netinet/in.h>
 
 #include <algorithm>
 #include <ios>
@@ -37,7 +38,6 @@
 #include <chromeos/net-base/process_manager.h>
 #include <chromeos/net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
-#include <netinet/in.h>
 #include <re2/re2.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -3871,6 +3871,14 @@ void Cellular::SetDeviceId(std::unique_ptr<DeviceId> device_id) {
                                           cellular::kFM350Vid,
                                           cellular::kFM350Pid))) {
       modem_type_ = ModemType::kFM350;
+    } else if (device_id_->Match(DeviceId(cellular::kRW101BusType,
+                                          cellular::kRW101Vid,
+                                          cellular::kRW101Pid))) {
+      modem_type_ = ModemType::kRW101;
+    } else if (device_id_->Match(DeviceId(cellular::kRW135BusType,
+                                          cellular::kRW135Vid,
+                                          cellular::kRW135Pid))) {
+      modem_type_ = ModemType::kRW135;
     } else {
       modem_type_ = ModemType::kOther;
     }
@@ -4015,6 +4023,18 @@ bool Cellular::IsModemL850GL() {
   return modem_type_ == ModemType::kL850GL;
 }
 
+bool Cellular::IsModemRW101() {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " : " << std::boolalpha
+          << (modem_type_ == ModemType::kRW101);
+  return modem_type_ == ModemType::kRW101;
+}
+
+bool Cellular::IsModemRW135() {
+  SLOG(2) << LoggingTag() << ": " << __func__ << " : " << std::boolalpha
+          << (modem_type_ == ModemType::kRW135);
+  return modem_type_ == ModemType::kRW135;
+}
+
 Cellular::ModemMR Cellular::GetModemFWRevision() {
   const struct {
     ModemType modem_type;
@@ -4051,6 +4071,10 @@ std::string Cellular::ModemTypeEnumToString(ModemType type) {
       return "FM101";
     case ModemType::kFM350:
       return "FM350";
+    case ModemType::kRW101:
+      return "RW101";
+    case ModemType::kRW135:
+      return "RW135";
     case ModemType::kOther:
       return "OTHER";
     case ModemType::kUnknown:

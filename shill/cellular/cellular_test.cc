@@ -3921,6 +3921,8 @@ TEST_F(CellularTest, IsModemUnknown) {
   EXPECT_FALSE(device_->IsModemL850GL());
   EXPECT_FALSE(device_->IsModemFM101());
   EXPECT_FALSE(device_->IsModemFM350());
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
 }
 
 TEST_F(CellularTest, IsModemOther) {
@@ -3930,6 +3932,8 @@ TEST_F(CellularTest, IsModemOther) {
   EXPECT_FALSE(device_->IsModemL850GL());
   EXPECT_FALSE(device_->IsModemFM101());
   EXPECT_FALSE(device_->IsModemFM350());
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
 }
 
 TEST_F(CellularTest, IsModemL850GL) {
@@ -3939,6 +3943,8 @@ TEST_F(CellularTest, IsModemL850GL) {
   EXPECT_TRUE(device_->IsModemL850GL());
   EXPECT_FALSE(device_->IsModemFM101());
   EXPECT_FALSE(device_->IsModemFM350());
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
 }
 
 TEST_F(CellularTest, IsModemFM101) {
@@ -3948,6 +3954,8 @@ TEST_F(CellularTest, IsModemFM101) {
   EXPECT_TRUE(device_->IsModemFM101());
   EXPECT_FALSE(device_->IsModemL850GL());
   EXPECT_FALSE(device_->IsModemFM350());
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
 }
 
 TEST_F(CellularTest, IsModemFM350) {
@@ -3957,6 +3965,30 @@ TEST_F(CellularTest, IsModemFM350) {
   EXPECT_TRUE(device_->IsModemFM350());
   EXPECT_FALSE(device_->IsModemFM101());
   EXPECT_FALSE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
+}
+
+TEST_F(CellularTest, IsModemRW101) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kRW101BusType, cellular::kRW101Vid, cellular::kRW101Pid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemFM350());
+  EXPECT_TRUE(device_->IsModemRW101());
+  EXPECT_FALSE(device_->IsModemRW135());
+}
+
+TEST_F(CellularTest, IsModemRW135) {
+  auto device_id = std::make_unique<DeviceId>(
+      cellular::kRW135BusType, cellular::kRW135Vid, cellular::kRW135Pid);
+  device_->SetDeviceId(std::move(device_id));
+  EXPECT_FALSE(device_->IsModemFM101());
+  EXPECT_FALSE(device_->IsModemL850GL());
+  EXPECT_FALSE(device_->IsModemFM350());
+  EXPECT_FALSE(device_->IsModemRW101());
+  EXPECT_TRUE(device_->IsModemRW135());
 }
 
 TEST_F(CellularTest, FirmwareSupportsTetheringUnknownModem) {
