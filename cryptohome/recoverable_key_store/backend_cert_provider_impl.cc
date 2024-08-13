@@ -113,7 +113,8 @@ void RecoverableKeyStoreBackendCertProviderImpl::
   }
 
   RksCertificateAndSignature reply;
-  if (!fetcher_->GetCertificate(&reply, nullptr)) {
+  brillo::ErrorPtr error;
+  if (!fetcher_->GetCertificate(&reply, &error)) {
     LOG(ERROR) << "Unable to get certificates from fetcher.";
     return;
   }

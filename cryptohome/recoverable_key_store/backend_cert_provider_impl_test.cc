@@ -13,6 +13,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/ptr_util.h>
 #include <base/test/task_environment.h>
+#include <brillo/errors/error_codes.h>
 #include <brillo/secure_blob.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
@@ -134,6 +135,17 @@ class RecoverableKeyStoreBackendCertProviderTest : public ::testing::Test {
     reply.set_signature_xml(sig_xml);
     ON_CALL(*fetcher_, GetCertificate)
         .WillByDefault(DoAll(SetArgPointee<0>(reply), Return(true)));
+    std::move(on_fetcher_connected_).Run("", "", true);
+  }
+
+  void InitFetcherWithError() {
+    ON_CALL(*fetcher_, GetCertificate)
+        .WillByDefault([](auto, brillo::ErrorPtr* error, auto) {
+          *error =
+              brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                                    DBUS_ERROR_FAILED, "Unknown dbus error");
+          return false;
+        });
     std::move(on_fetcher_connected_).Run("", "", true);
   }
 
@@ -274,6 +286,15 @@ TEST_F(RecoverableKeyStoreBackendCertProviderTest,
   EXPECT_THAT(
       data_10014.list.certs,
       Contains(Field(&RecoverableKeyStoreCert::public_key, cert->public_key)));
+}
+
+TEST_F(RecoverableKeyStoreBackendCertProviderTest, StartFetchingErrorOnCert) {
+  // At the start, there are no loaded certs.
+  EXPECT_FALSE(provider_->GetBackendCert().has_value());
+
+  // Still no certs found when the GetCertificate call fails.
+  InitFetcherWithError();
+  EXPECT_FALSE(provider_->GetBackendCert().has_value());
 }
 
 }  // namespace
