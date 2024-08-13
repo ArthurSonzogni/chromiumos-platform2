@@ -204,13 +204,15 @@ pub async fn init(conn: &SyncConnection) -> Result<()> {
     let pending = std::mem::take(&mut *pending.do_lock());
     let feature_manager = FeatureManager::new(pending)?;
 
-    feature_manager
-        .reload_cache()
-        .context("failed to load initial feature state")?;
-
     if FEATURE_MANAGER.set(feature_manager).is_err() {
         bail!("Double initialization of FEATURE_MANAGER");
     }
+
+    FEATURE_MANAGER
+        .get()
+        .expect("FEATURE_MANAGER singleton disappeared")
+        .reload_cache()
+        .context("failed to load initial feature state")?;
 
     #[cfg(feature = "chromeos")]
     featured::listen_for_refetch_needed(conn, || {
