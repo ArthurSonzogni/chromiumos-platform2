@@ -21,10 +21,10 @@ class Test_has_user_groups(unittest.TestCase):
     """Test the `has_user_groups` method."""
 
     BARE_DECISIONS_TABLE = pd.DataFrame(
-        columns=table.DECISION_TABLE_COLS,
+        columns=table.Decisions.COLS,
     )
     BARE_DECISIONS_TABLE_WITH_GROUPS = pd.DataFrame(
-        columns=table.DECISION_TABLE_COLS + table.DECISION_TABLE_GROUP_COLS,
+        columns=table.Decisions.COLS + table.Decisions.GROUP_COLS,
     )
 
     def setUp(self) -> None:
@@ -310,7 +310,10 @@ class Test_Experiment_User_Groups(unittest.TestCase):
 
 
 class Test_Experiment_check(unittest.TestCase):
-    """Test the consistence `check` function of `Experiment`."""
+    """Test the consistence `check` function of `Experiment`.
+
+    Additional tests are in table_test.py.
+    """
 
     FAR_DATAFRAME = pd.DataFrame(
         {
@@ -353,10 +356,10 @@ class Test_Experiment_check(unittest.TestCase):
         """Test the check method when both FAR and FRR tables are correct."""
         exp = Experiment(
             far_decisions=self.FAR_DATAFRAME.drop(
-                columns=table.DECISION_TABLE_GROUP_COLS
+                columns=table.Decisions.GROUP_COLS
             ),
             frr_decisions=self.FRR_DATAFRAME.drop(
-                columns=table.DECISION_TABLE_GROUP_COLS
+                columns=table.Decisions.GROUP_COLS
             ),
         )
         exp.check()
@@ -369,46 +372,6 @@ class Test_Experiment_check(unittest.TestCase):
             )
         )
         with self.assertRaises(TypeError):
-            exp.check()
-
-    def test_far_table_contains_frr(self):
-        """Test that FRR attempts are detected in FAR table."""
-        exp = Experiment(
-            far_decisions=pd.concat(
-                [self.FAR_DATAFRAME, self.FRR_DATAFRAME],
-                ignore_index=True,
-            )
-        )
-        with self.assertRaises(ValueError):
-            exp.check()
-
-    def test_frr_table_contains_far(self):
-        """Test that FAR attempts are detected in FRR table."""
-        exp = Experiment(
-            frr_decisions=pd.concat(
-                [self.FRR_DATAFRAME, self.FAR_DATAFRAME],
-                ignore_index=True,
-            )
-        )
-        with self.assertRaises(ValueError):
-            exp.check()
-
-    def test_table_contains_duplicates(self):
-        exp = Experiment(
-            far_decisions=pd.concat(
-                [
-                    self.FAR_DATAFRAME,
-                    # Append duplicates of the first 4 rows, with the first row
-                    # appearing as a duplicate twice. This allows for manual
-                    # verification that only unique duplicates are shown as
-                    # examples to the user.
-                    self.FAR_DATAFRAME.iloc[0:1],
-                    self.FAR_DATAFRAME.iloc[0:4],
-                ],
-                ignore_index=True,
-            ),
-        )
-        with self.assertRaises(ValueError):
             exp.check()
 
 

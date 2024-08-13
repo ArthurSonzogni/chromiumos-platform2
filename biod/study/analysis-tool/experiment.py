@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Literal, Optional
+from typing import Optional
 
 from collection import Collection
 import fpsutils
@@ -152,7 +152,7 @@ class Experiment:
             """Return True if `tbl` exists and contains group cols."""
             if tbl is None:
                 return False
-            return fpsutils.has_columns(tbl, table.DECISION_TABLE_GROUP_COLS)
+            return fpsutils.has_columns(tbl, table.Decisions.GROUP_COLS)
 
         if self._tbl_user_groups is None:
             if exists_with_groups(self._tbl_frr_decisions):
@@ -478,106 +478,23 @@ class Experiment:
         Raises an exception if an inconsistency is found.
         """
 
-        def check_decisions(tbl: pd.DataFrame, name: Literal["FAR", "FRR"]):
-            """Check basic decisions table properties, like columns.
-
-            1. Check that the minimum column name set exists.
-            2. Check that either both group columns are correctly absent or
-               that they are both are present.
-            """
-            if not fpsutils.has_columns(tbl, table.DECISION_TABLE_COLS):
-                raise TypeError(
-                    f"{name} decision table is missing some required columns."
-                )
-
-            # If one of the Enroll/Verify group columns is present, then the
-            # other must be present.
-            grps = set(tbl.columns) & set(table.DECISION_TABLE_GROUP_COLS)
-            if len(grps) == 1:
-                raise TypeError(
-                    f"{name} decision table is missing one group column."
-                )
-
-        def check_duplicates(tbl: pd.DataFrame, name: Literal["FAR", "FRR"]):
-            """Check that there are no duplicate rows."""
-
-            dup_rows_bool: pd.Series[bool] = tbl.duplicated()
-            dup_rows_count = sum(dup_rows_bool)
-            if dup_rows_count > 0:
-                print(
-                    f"Found {dup_rows_count} duplicate rows in "
-                    f"the {name} decisions table."
-                )
-                print("Example:")
-                # Pass array to iloc to ensure it prints out as table row,
-                # instead of vertical single item series.
-                print(tbl[dup_rows_bool].iloc[0 : min(5, dup_rows_count)])
-                raise ValueError(
-                    f"{name} decision table contains duplicate rows."
-                )
-
-        def filter_by_attempt_type(
-            tbl: pd.DataFrame, attempt_type: Literal["FAR", "FRR"]
-        ) -> pd.DataFrame:
-            """Return match attempts from the table that are for FA or FR."""
-
-            fr_attempts_bools = (
-                tbl[table.Col.Enroll_User.value]
-                == tbl[table.Col.Verify_User.value]
-            ) & (
-                tbl[table.Col.Enroll_Finger.value]
-                == tbl[table.Col.Verify_Finger.value]
-            )
-
-            if attempt_type == "FRR":
-                return tbl[fr_attempts_bools]
-            elif attempt_type == "FAR":
-                return tbl[~fr_attempts_bools]
-
         if self.has_far_decisions():
             assert self._tbl_far_decisions is not None
-            far = self._tbl_far_decisions
+            far = table.Decisions(self._tbl_far_decisions)
 
-            check_decisions(far, "FAR")
-
-            # FAR table should not contain any match attempts against the
-            # finger's own template, where Enroll User+Finger equals
-            # Verify User+Finger.
-
-            bad_fa_attempts = filter_by_attempt_type(far, "FRR")
-            if len(bad_fa_attempts) > 0:
-                print(
-                    f"Found {len(bad_fa_attempts)} FRR match attempts in FAR "
-                    "decisions table."
-                )
-                print("Example:")
-                # Pass array to iloc to ensure it prints out as table row,
-                # instead of vertical single item series.
-                print(bad_fa_attempts.iloc[[0]])
-                raise ValueError("FAR table contains genuine match attempts.")
-
-            check_duplicates(far, "FAR")
+            far.check(
+                duplicates=True,
+                expected_match_type=table.MatchType.Imposter,
+            )
 
         if self.has_frr_decisions():
             assert self._tbl_frr_decisions is not None
-            frr = self._tbl_frr_decisions
+            frr = table.Decisions(self._tbl_frr_decisions)
 
-            check_decisions(frr, "FRR")
-
-            # FRR table should not contain any imposter matches, where the
-            # Verify User+Finger doesn't equal Enroll USer+Finger.
-
-            bad_fr_attempts = filter_by_attempt_type(frr, "FAR")
-            if len(bad_fr_attempts) > 0:
-                print(
-                    f"Found {len(bad_fr_attempts)} FAR match attempts in FRR "
-                    "decisions table."
-                )
-                print("Example:")
-                print(bad_fr_attempts.iloc[[0]])
-                raise ValueError("FRR table contains imposter match attempts.")
-
-            check_duplicates(frr, "FRR")
+            frr.check(
+                duplicates=True,
+                expected_match_type=table.MatchType.Genuine,
+            )
 
 
 def _add_groups_to_table(
@@ -629,10 +546,10 @@ def _read_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:
     """Read a CSV decisions file into a DataFrame with supported columns."""
     tbl: pd.DataFrame = pd.read_csv(csv_file_path)
     # Ensure that the required columns exist.
-    if not fpsutils.has_columns(tbl, table.DECISION_TABLE_COLS):
+    if not fpsutils.has_columns(tbl, table.Decisions.COLS):
         raise ValueError(
             f"CSV file {csv_file_path} doesn't contain columns"
-            f" {table.DECISION_TABLE_COLS}."
+            f" {table.Decisions.COLS}."
         )
     return tbl
 
@@ -647,7 +564,7 @@ def _write_decision_file(
     Group are removed from the written out table, if `exclude_groups` is True.
     """
     if exclude_groups:
-        tbl = tbl[table.DECISION_TABLE_COLS]
+        tbl = tbl[table.Decisions.COLS]
     # Setting index to False avoids the "index" / primary-key of the
     # dataframe from being written out.
     tbl.to_csv(csv_file_path, index=False)
