@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include "swap_management/metrics.h"
-#include "swap_management/utils.h"
-#include "swap_management/zram_stats.h"
 
 #include <algorithm>
 #include <memory>
@@ -15,6 +13,9 @@
 #include <base/metrics/histogram_functions.h>
 #include <base/metrics/histogram_macros.h>
 #include <base/strings/string_split.h>
+
+#include "swap_management/utils.h"
+#include "swap_management/zram_stats.h"
 
 namespace swap_management {
 
@@ -304,7 +305,7 @@ void Metrics::PeriodicReportZramWritebackMetrics() {
       (*zram_bd_stat).bd_writes - last_zram_bd_stat_->bd_writes;
 
   metrics_.SendToUMA("ChromeOS.Zram.WritebackPagesPerDay", bd_write_delta, 0,
-                     (4 << 30) / kPageSize, 100);
+                     (4ul << 30) / kPageSize, 100);
 
   last_zram_bd_stat_ = std::make_unique<ZramBdStat>(std::move(*zram_bd_stat));
 }
