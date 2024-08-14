@@ -25,8 +25,9 @@ const char kForceEnableEffectsPath[] = "/run/camera/force_enable_effects";
 // TODO(imranziad): Evaluate the risks of having a fixed temp directory.
 const char kTempCacheDir[] = "/tmp/ml_core_cache";
 #if USE_INTEL_OPENVINO_DELEGATE
+// Only used as ml-core-cacher's internal delegate settings file.
 constexpr char kStableDelegateSettingsFile[] =
-    "/etc/ml_core/stable_delegate_settings.json";
+    "/etc/ml_core/cacher_stable_delegate_settings.json";
 #endif
 base::WaitableEvent kEffectApplied;
 

@@ -1,0 +1,9 @@
+{
+  "stable_delegate_loader_settings": {
+    "delegate_name": "intel_openvino_delegate",
+    "delegate_path": "/usr/lib64/libtensorflowlite_intel_openvino_delegate.so"
+  },
+  "compilation_caching_settings": {
+    "cache_dir": "/var/lib/ml_core/openvino_cache"
+  }
+}

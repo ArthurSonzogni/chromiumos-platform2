@@ -62,6 +62,6 @@ install_config("install_seccomp") {
 }
 
 install_config("install_stable_delegate_settings") {
-  sources = [ "stable_delegate_settings.json" ]
+  sources = [ "cacher_stable_delegate_settings.json" ]
   install_path = "/etc/ml_core"
 }

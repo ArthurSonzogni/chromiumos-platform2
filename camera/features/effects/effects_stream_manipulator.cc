@@ -100,8 +100,8 @@ const base::FilePath kOverrideEffectsConfigFile(
 const base::FilePath kEnableRetouchWithRelight(
     "/run/camera/enable_retouch_with_relight");
 const base::FilePath kEnableOnlyRetouch("/run/camera/enable_only_retouch");
-constexpr char kTfliteStableDelegateSettingsFile[] =
-    "/etc/tflite/settings.json";
+constexpr char kMLCoreStableDelegateSettingsFile[] =
+    "/etc/ml_core/stable_delegate_settings.json";
 
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
@@ -218,14 +218,14 @@ EffectsConfig ConvertMojoConfig(
   if (config.segmentation_delegate == Delegate::kStable ||
       config.relighting_delegate == Delegate::kStable) {
     if (base::PathIsReadable(
-            base::FilePath(kTfliteStableDelegateSettingsFile))) {
-      static_assert(sizeof(kTfliteStableDelegateSettingsFile) <=
+            base::FilePath(kMLCoreStableDelegateSettingsFile))) {
+      static_assert(sizeof(kMLCoreStableDelegateSettingsFile) <=
                     sizeof(config.stable_delegate_settings_file));
       base::strlcpy(config.stable_delegate_settings_file,
-                    kTfliteStableDelegateSettingsFile,
+                    kMLCoreStableDelegateSettingsFile,
                     sizeof(config.stable_delegate_settings_file));
     } else {
-      LOGF(WARNING) << kTfliteStableDelegateSettingsFile
+      LOGF(WARNING) << kMLCoreStableDelegateSettingsFile
                     << " is not readable, use GPU delegate instead";
       config.segmentation_delegate = Delegate::kGpu;
       config.relighting_delegate = Delegate::kGpu;
@@ -1078,7 +1078,7 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     std::string stable_delegate_settings_file;
     if (!GetStringFromKey(json_values, kStableDelegateSettingsFileKey,
                           &stable_delegate_settings_file)) {
-      stable_delegate_settings_file = kTfliteStableDelegateSettingsFile;
+      stable_delegate_settings_file = kMLCoreStableDelegateSettingsFile;
     }
     if (stable_delegate_settings_file.size() >=
         sizeof(new_config.stable_delegate_settings_file)) {

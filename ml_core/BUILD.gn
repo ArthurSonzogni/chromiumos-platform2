@@ -15,6 +15,10 @@ group("all") {
   ]
   if (use.camera_feature_effects) {
     deps += [ "//ml_core/cacher:all" ]
+
+    if (use.intel_openvino_delegate) {
+      deps += [ ":install_stable_delegate_settings" ]
+    }
   }
 
   # Need to do always, as some deps are for clients.
@@ -99,4 +103,9 @@ install_config("unittest_deps") {
                  "package/root/libcros_ml_core_internal.so" ]
   }
   install_path = "/build/share/ml_core/"
+}
+
+install_config("install_stable_delegate_settings") {
+  sources = [ "stable_delegate_settings.json" ]
+  install_path = "/etc/ml_core"
 }
