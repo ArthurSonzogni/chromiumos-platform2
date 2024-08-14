@@ -805,8 +805,12 @@ fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::P
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let config_provider = ConfigProvider::from_root(root);
-    let scheduler_context = match qos::create_schedqos_context(root, &config_provider) {
-        Ok(ctx) => Some(Arc::new(Mutex::new(ctx))),
+    let scheduler_context = match qos::create_schedqos_context(root) {
+        Ok(ctx) => {
+            let scheduler_context = Arc::new(Mutex::new(ctx));
+            qos::register_features(root, scheduler_context.clone());
+            Some(scheduler_context)
+        }
         Err(e) => {
             error!("failed to initialize schedqos context: {e}");
             None
@@ -841,8 +845,6 @@ pub async fn service_main() -> Result<()> {
     tokio::spawn(async move {
         swappiness_proxy.run_proxy(conn_clone).await;
     });
-
-    qos::register_features();
 
     let psi_memory_policy_notify = Arc::new(Notify::new());
     let notify_cloned = psi_memory_policy_notify.clone();

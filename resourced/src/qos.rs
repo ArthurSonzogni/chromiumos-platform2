@@ -146,18 +146,30 @@ impl Display for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub fn register_features() {
+pub fn register_features(root: &Path, sched_ctx: Arc<Mutex<SchedQosContext>>) {
+    let root = root.to_path_buf();
     feature::register_feature(
         SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME,
         SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE,
-        None,
+        Some(Box::new(move |_| {
+            let config = match load_config(&root) {
+                Ok(config) => config,
+                Err(e) => {
+                    error!("failed to load schedqos config on finch reload: {:?}", e);
+                    return;
+                }
+            };
+            let mut ctx = sched_ctx.do_lock();
+
+            if let Err(e) = ctx.update_config(config) {
+                error!("failed to update schedqos config: {:?}", e);
+            }
+        })),
     );
 }
 
-pub fn create_schedqos_context(
-    root: &Path,
-    config_provider: &ConfigProvider,
-) -> anyhow::Result<SchedQosContext> {
+fn load_config(root: &Path) -> anyhow::Result<Config> {
+    let config_provider = ConfigProvider::from_root(root);
     let mut normal_cpu_share = 1024;
     let mut background_cpu_share = 10;
     let mut thread_configs = Config::default_thread_config();
@@ -196,7 +208,7 @@ pub fn create_schedqos_context(
     let cpuset_efficient =
         setup_cpuset_cgroup("resourced/efficient", &cpuset_efficient.to_string())?;
 
-    let config = Config {
+    Ok(Config {
         cgroup_context: CgroupContext {
             cpu_normal,
             cpu_background,
@@ -205,8 +217,11 @@ pub fn create_schedqos_context(
         },
         process_configs: Config::default_process_config(),
         thread_configs,
-    };
+    })
+}
 
+pub fn create_schedqos_context(root: &Path) -> anyhow::Result<SchedQosContext> {
+    let config = load_config(root)?;
     let file_path = Path::new(STATE_FILE_PATH);
     let ctx = if file_path.exists() {
         info!("Loading schedqos state from {:?}", file_path);

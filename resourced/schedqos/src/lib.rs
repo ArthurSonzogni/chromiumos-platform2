@@ -437,6 +437,58 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
         })
     }
 
+    pub fn update_config(&mut self, config: Config) -> Result<()> {
+        config.validate()?;
+        self.config = config;
+
+        // Cache the last error while updating process and thread settings. This will be returned as
+        // this method's error even if updating config succeeds. Errors while updating process and
+        // thread settings do not stop other setting updates.
+        let mut result = Ok(());
+
+        self.process_map.traverse(|process_id, mut process| {
+            match load_process_timestamp(*process_id) {
+                Ok(timestamp) => if timestamp == process.timestamp() {},
+                _ => {
+                    return;
+                }
+            }
+            let process_config = &self.config.process_configs[process.state() as usize];
+            if let Err(Error::ProcessNotFound) =
+                apply_process_state(*process_id, process_config, &mut self.config.cgroup_context)
+            {
+                return;
+            }
+
+            process.thread_map().retain_threads(|thread_id, thread| {
+                match load_thread_timestamp(*process_id, *thread_id) {
+                    Ok(timestamp) => if timestamp == thread.timestamp {},
+                    _ => {
+                        return false;
+                    }
+                }
+                let thread_config = &self.config.thread_configs[thread.state as usize];
+                match apply_thread_state(
+                    *process_id,
+                    *thread_id,
+                    process_config,
+                    thread_config,
+                    &self.sched_attr_context,
+                    &mut self.config.cgroup_context,
+                ) {
+                    Ok(_) => {}
+                    Err(Error::ThreadNotFound) => return false,
+                    Err(e) => result = Err(e),
+                }
+                true
+            });
+        });
+
+        self.process_map.compact();
+
+        result
+    }
+
     pub fn set_process_state(
         &mut self,
         process_id: ProcessId,
@@ -1375,5 +1427,98 @@ mod tests {
             read_number(&mut files.cpuset_efficient).unwrap(),
             thread_id2.0
         );
+    }
+
+    #[test]
+    fn test_update_config() {
+        let (cgroup_context, _cgroup_files) = create_fake_cgroup_context_pair();
+        let sched_ctx = SchedAttrContext::new().unwrap();
+        let thread_state = ThreadState::try_from(1).unwrap();
+        let thread_state_unchanged = ThreadState::try_from(2).unwrap();
+        let process_config_before = ProcessStateConfig {
+            cpu_cgroup: CpuCgroup::Normal,
+            allow_foreground_rt: true,
+            allow_foreground_cpuset: true,
+        };
+        let process_config_after = ProcessStateConfig {
+            cpu_cgroup: CpuCgroup::Background,
+            allow_foreground_rt: true,
+            allow_foreground_cpuset: true,
+        };
+        let thread_config_before = ThreadStateConfig {
+            nice: 10,
+            cpuset_cgroup: CpusetCgroup::All,
+            ..ThreadStateConfig::default()
+        };
+        let thread_config_after = ThreadStateConfig {
+            nice: 11,
+            cpuset_cgroup: CpusetCgroup::Efficient,
+            ..ThreadStateConfig::default()
+        };
+        let thread_config_unchanged = ThreadStateConfig {
+            nice: 12,
+            cpuset_cgroup: CpusetCgroup::All,
+            ..ThreadStateConfig::default()
+        };
+        let mut process_configs = Config::default_process_config();
+        process_configs[ProcessState::Normal as usize] = process_config_before;
+        let mut thread_configs = Config::default_thread_config();
+        thread_configs[thread_state as usize] = thread_config_before.clone();
+        thread_configs[thread_state_unchanged as usize] = thread_config_unchanged.clone();
+        let mut ctx = SchedQosContext::new_simple(Config {
+            cgroup_context,
+            process_configs: process_configs.clone(),
+            thread_configs: thread_configs.clone(),
+        })
+        .unwrap();
+
+        let process_id = ProcessId(std::process::id());
+        let (thread_id1, _thread1) = spawn_thread_for_test();
+        let (thread_id2, _thread2) = spawn_thread_for_test();
+        let (thread_id3, _thread3) = spawn_thread_for_test();
+        ctx.set_process_state(process_id, ProcessState::Normal)
+            .unwrap();
+        ctx.set_thread_state(process_id, thread_id1, thread_state)
+            .unwrap();
+        ctx.set_thread_state(process_id, thread_id2, thread_state_unchanged)
+            .unwrap();
+        ctx.set_thread_state(process_id, thread_id3, thread_state)
+            .unwrap();
+
+        let (cgroup_context, mut cgroup_files) = create_fake_cgroup_context_pair();
+        process_configs[ProcessState::Normal as usize] = process_config_after;
+        thread_configs[thread_state as usize] = thread_config_after.clone();
+        ctx.update_config(Config {
+            cgroup_context,
+            process_configs,
+            thread_configs,
+        })
+        .unwrap();
+
+        assert_eq!(read_number(&mut cgroup_files.cpu_normal), None);
+        assert_eq!(
+            read_number(&mut cgroup_files.cpu_background),
+            Some(process_id.0)
+        );
+        assert_eq!(
+            read_numbers(&mut cgroup_files.cpuset_all).collect::<HashSet<_>>(),
+            HashSet::from([thread_id2.0])
+        );
+        assert_eq!(
+            read_numbers(&mut cgroup_files.cpuset_efficient).collect::<HashSet<_>>(),
+            HashSet::from([thread_id1.0, thread_id3.0])
+        );
+        assert_sched_attr(&sched_ctx, thread_id1, &thread_config_after, true);
+        assert_sched_attr(&sched_ctx, thread_id2, &thread_config_unchanged, true);
+        assert_sched_attr(&sched_ctx, thread_id3, &thread_config_after, true);
+
+        let (thread_id4, _thread4) = spawn_thread_for_test();
+        ctx.set_thread_state(process_id, thread_id4, thread_state)
+            .unwrap();
+        assert_eq!(
+            read_numbers(&mut cgroup_files.cpuset_efficient).collect::<HashSet<_>>(),
+            HashSet::from([thread_id4.0])
+        );
+        assert_sched_attr(&sched_ctx, thread_id4, &thread_config_after, true);
     }
 }
