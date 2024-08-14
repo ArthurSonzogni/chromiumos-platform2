@@ -1184,7 +1184,7 @@ void Executor::RunUrandom(
     base::TimeDelta exec_duration,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunUrandomCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kUrandom, SandboxedProcess::Options{
                                   .enable_landlock = enable_pending_landlock_,
                               });
@@ -1204,7 +1204,7 @@ void Executor::RunNetworkBandwidthTest(
     mojo::PendingRemote<mojom::NetworkBandwidthObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control,
     RunNetworkBandwidthTestCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
+  auto delegate = CreateDelegateProcess(
       seccomp_file::kNdt,
       SandboxedProcess::Options{
           .mount_points = {MountPoint{.path = paths::run::kDnsProxy.ToFull()}},
