@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/functional/callback_forward.h>
+#include <base/memory/weak_ptr.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
@@ -84,6 +85,9 @@ class KeyDelivery {
 
   // Used to periodically trigger check for encryption key
   base::RepeatingTimer upload_timer_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Weak pointer factory.
+  base::WeakPtrFactory<KeyDelivery> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

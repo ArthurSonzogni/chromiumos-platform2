@@ -1774,7 +1774,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
 
-    // For mult-generation directory delay timer, since we now perform `Write`.
+    // For multi-generation directory delay timer, since we now perform `Write`.
     if (!storage_queue_->generation_guid_.empty()) {
       storage_queue_->inactivity_check_and_destruct_timer_.Reset();
     }

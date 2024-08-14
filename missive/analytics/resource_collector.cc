@@ -4,6 +4,7 @@
 
 #include "missive/analytics/resource_collector.h"
 
+#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -22,7 +23,9 @@ ResourceCollector::~ResourceCollector() {
 
 ResourceCollector::ResourceCollector(base::TimeDelta interval) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  timer_.Start(FROM_HERE, interval, this, &ResourceCollector::CollectWrapper);
+  timer_.Start(FROM_HERE, interval,
+               base::BindRepeating(&ResourceCollector::CollectWrapper,
+                                   weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ResourceCollector::CollectWrapper() {

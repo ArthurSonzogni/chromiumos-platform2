@@ -11,6 +11,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
@@ -48,8 +49,9 @@ KeyDelivery::~KeyDelivery() {
 void KeyDelivery::Request(RequestCallback callback) {
   StartPeriodicKeyUpdate();
   sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&KeyDelivery::EnqueueRequestAndPossiblyStart,
-                                base::Unretained(this), std::move(callback)));
+      FROM_HERE,
+      base::BindOnce(&KeyDelivery::EnqueueRequestAndPossiblyStart,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void KeyDelivery::OnKeyUpdateResult(Status status) {
@@ -61,27 +63,28 @@ void KeyDelivery::OnKeyUpdateResult(Status status) {
 
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&KeyDelivery::PostResponses,
-                                base::Unretained(this), status));
+                                weak_ptr_factory_.GetWeakPtr(), status));
 }
 
 void KeyDelivery::StartPeriodicKeyUpdate() {
   sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(
-                     [](KeyDelivery* self) {
-                       DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-                       if (self->upload_timer_.IsRunning()) {
-                         // We've already started the periodic key update.
-                         return;
-                       }
-                       // `base::Unretained` is ok here because `upload_timer_`
-                       // is destructed in the class destructor, and so is the
-                       // callback.
-                       self->upload_timer_.Start(
-                           FROM_HERE, self->key_check_period_,
-                           base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded,
-                                               base::Unretained(self)));
-                     },
-                     base::Unretained(this)));
+      FROM_HERE,
+      base::BindOnce(
+          [](base::WeakPtr<KeyDelivery> self) {
+            if (!self) {
+              return;
+            }
+            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            if (self->upload_timer_.IsRunning()) {
+              // We've already started the periodic key update.
+              return;
+            }
+            self->upload_timer_.Start(
+                FROM_HERE, self->key_check_period_,
+                base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded,
+                                    self->weak_ptr_factory_.GetWeakPtr()));
+          },
+          weak_ptr_factory_.GetWeakPtr()));
 }
 
 KeyDelivery::KeyDelivery(
@@ -115,8 +118,9 @@ void KeyDelivery::EnqueueRequestAndPossiblyStart(RequestCallback callback) {
 
   // Initiate upload with need_encryption_key flag and no records.
   UploaderInterface::UploaderInterfaceResultCb start_uploader_cb =
-      base::BindOnce(&KeyDelivery::EncryptionKeyReceiverReady,
-                     base::Unretained(this));
+      base::BindPostTaskToCurrentDefault(
+          base::BindOnce(&KeyDelivery::EncryptionKeyReceiverReady,
+                         weak_ptr_factory_.GetWeakPtr()));
   async_start_upload_cb_.Run(UploaderInterface::UploadReason::KEY_DELIVERY,
                              /*inform_cb=*/base::DoNothing(),  // No records.
                              std::move(start_uploader_cb));

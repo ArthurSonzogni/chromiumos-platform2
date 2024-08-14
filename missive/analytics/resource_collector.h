@@ -5,6 +5,7 @@
 #ifndef MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_H_
 #define MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_H_
 
+#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
@@ -45,6 +46,9 @@ class ResourceCollector {
 
   // Timer for executing the resource usage collection task.
   base::RepeatingTimer timer_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Weak pointer factory
+  base::WeakPtrFactory<ResourceCollector> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting::analytics

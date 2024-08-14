@@ -20,7 +20,7 @@
 
 namespace reporting {
 
-// Tallies the size of enqueuing records and calculate the enqueuing size per
+// Tallies the size of enqueuing records and calculates the enqueuing size per
 // second. An average rate of enqueuing records in bytes/sec since last time
 // is collected once every |interval| and can be accessed via |GetAverage|.
 class EnqueuingRecordTallier {
@@ -78,6 +78,9 @@ class EnqueuingRecordTallier {
   std::atomic<uint64_t> average_{kAverageNullOpt};
   // Timer for executing the resource usage collection task.
   base::RepeatingTimer timer_;
+
+  // Weak pointer Factory for the timer.
+  base::WeakPtrFactory<EnqueuingRecordTallier> weak_ptr_factory_{this};
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

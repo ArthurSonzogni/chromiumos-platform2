@@ -21,8 +21,9 @@
 namespace reporting {
 
 EnqueuingRecordTallier::EnqueuingRecordTallier(base::TimeDelta interval) {
-  timer_.Start(FROM_HERE, interval, this,
-               &EnqueuingRecordTallier::UpdateAverage);
+  timer_.Start(FROM_HERE, interval,
+               base::BindRepeating(&EnqueuingRecordTallier::UpdateAverage,
+                                   weak_ptr_factory_.GetWeakPtr()));
 }
 
 EnqueuingRecordTallier::~EnqueuingRecordTallier() = default;

@@ -11,7 +11,6 @@
 #include <unordered_map>
 
 #include <base/time/time.h>
-#include <base/timer/timer.h>
 
 #include "missive/analytics/resource_collector.h"
 
