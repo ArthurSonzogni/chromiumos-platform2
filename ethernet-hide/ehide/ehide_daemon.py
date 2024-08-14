@@ -19,7 +19,7 @@ import signal
 import subprocess
 import sys
 import time
-from typing import List, NoReturn, Optional
+from typing import Dict, List, NoReturn, Optional
 
 import psutil
 
@@ -600,9 +600,10 @@ class EhideDaemon(daemon.Daemon):
 
     Attributes:
         approach: The approach to hiding Ethernet. Can be FORWARDING or SHELL.
-        static_ipv4_cidr: The static IPv4 CIDR used to set the Ethernet
-            interface. If it is None then the IPv4 address will be set
-            dynamically using DHCP.
+        static_ipv4_cidr: A dict. The key is the Ethernet interface name, and
+            the value is the static IPv4 CIDR used to set this interface. For
+            those interfaces that are not in the dict, their IPv4 addresses
+            will be set dynamically using DHCP.
         dhclient_dir: The directory path of dhclient files: the dhclient lease
             file, pid file, and the configuration file.
         netns_name: The network namespace name used to hide the Ethernet
@@ -610,13 +611,16 @@ class EhideDaemon(daemon.Daemon):
         ether_ifname: Only exists in the daemon process (not the process that
             stops the daemon). The name of the Ethernet interface to hide.
         ether_mac: Only exists in the daemon process (not the process that stops
-            the daemon). The MAC address of the Ethernet interface.
+            the daemon). A dict. The key is the Ethernet interface name, and
+            the value is its MAC address.
         has_ipv4_initially: Only exists in the daemon process (not the process
-            that stops the daemon). Whether the Ethernet interface has any IPv4
-            address before starting ehide.
+            that stops the daemon). A dict. The key is the Ethernet interface
+            name, and the value is a bool indicating whether the interface has
+            any IPv4 address before starting ehide.
         has_ipv6_initially: Only exists in the daemon process (not the process
-            that stops the daemon). Whether the Ethernet interface has any IPv6
-            address before starting ehide.
+            that stops the daemon). A dict. The key is the Ethernet interface
+            name, and the value is a bool indicating whether the interface has
+            any IPv6 address before starting ehide.
         socat_proc: Only exists in the daemon process and when the approach is
             FORWARDING. It stores a subprocess.Popen object of the socat
             process. If socat is not running, then socat_proc is None.
@@ -631,7 +635,7 @@ class EhideDaemon(daemon.Daemon):
         action: str,
         approach: Approach,
         ether_ifname: Optional[str],
-        static_ipv4_cidr: Optional[str],
+        static_ipv4_cidr: Dict[str, str],
         dhclient_dir: str,
         netns_name: str,
     ):
@@ -653,9 +657,10 @@ class EhideDaemon(daemon.Daemon):
             ether_ifname: Manually specified ethernet interface name. If it is
                 None then the Ethernet interface name will be determined
                 automatically using the shill API.
-            static_ipv4_cidr: Static IPv4 CIDR used to set the Ethernet
-                interface. If it is None then the IPv4 address will be
-                dynamically configured using DHCP.
+            static_ipv4_cidr: A dict. The key is the Ethernet interface name,
+                and the value is the static IPv4 CIDR used to set this
+                interface. For those interfaces that are not in the dict, their
+                IPv4 addresses will be set dynamically using DHCP.
             dhclient_dir: The directory path of dhclient files.
             netns_name: The name of the network namespace to hide Ethernet
                 interface.
@@ -670,7 +675,7 @@ class EhideDaemon(daemon.Daemon):
         )
 
         self.approach = approach
-        self.static_ipv4_cidr: Optional[str] = static_ipv4_cidr
+        self.static_ipv4_cidr = static_ipv4_cidr
         self.dhclient_dir = dhclient_dir
         self.netns_name = netns_name
 
@@ -683,27 +688,30 @@ class EhideDaemon(daemon.Daemon):
             self.ether_ifname: str = ether_ifname
             logging.info("Ethernet interface to hide: %s.", self.ether_ifname)
 
-            self.ether_mac = get_mac_address_in_netns(self.ether_ifname)
-            if self.ether_mac:
-                logging.info(
-                    "MAC address of %s: %s.", self.ether_ifname, self.ether_mac
-                )
+            self.ether_mac = {}
+            self.has_ipv4_initially = {}
+            self.has_ipv6_initially = {}
+
+            mac = get_mac_address_in_netns(self.ether_ifname)
+            if mac:
+                logging.info("MAC address of %s: %s.", self.ether_ifname, mac)
+                self.ether_mac[self.ether_ifname] = mac
             else:
                 logging.error(
                     "Failed to acquire MAC address of %s.", self.ether_ifname
                 )
                 sys.exit(1)
-            self.has_ipv4_initially = check_interface_ip_in_netns(
-                IpFamily.IPv4, self.ether_ifname
-            )
-            if self.has_ipv4_initially:
+            self.has_ipv4_initially[
+                self.ether_ifname
+            ] = check_interface_ip_in_netns(IpFamily.IPv4, self.ether_ifname)
+            if self.has_ipv4_initially[self.ether_ifname]:
                 logging.info("Init: Found IPv4 address.")
             else:
                 logging.info("Init: Not found IPv4 address.")
-            self.has_ipv6_initially = check_interface_ip_in_netns(
-                IpFamily.IPv6, self.ether_ifname
-            )
-            if self.has_ipv6_initially:
+            self.has_ipv6_initially[
+                self.ether_ifname
+            ] = check_interface_ip_in_netns(IpFamily.IPv6, self.ether_ifname)
+            if self.has_ipv6_initially[self.ether_ifname]:
                 logging.info("Init: Found IPv6 address.")
             else:
                 logging.info("Init: Not found IPv6 address.")
@@ -757,10 +765,13 @@ class EhideDaemon(daemon.Daemon):
                     "Failed to bring up %s in %s.", ifname, self.netns_name
                 )
                 return False
-        if self.has_ipv4_initially or self.static_ipv4_cidr:
+        if (
+            self.has_ipv4_initially[self.ether_ifname]
+            or self.ether_ifname in self.static_ipv4_cidr
+        ):
             if not self._set_up_ipv4(self.ether_ifname):
                 return False
-        if self.has_ipv6_initially:
+        if self.has_ipv6_initially[self.ether_ifname]:
             if not self._set_up_ipv6(self.ether_ifname):
                 return False
         if self.approach == Approach.FORWARDING:
@@ -841,7 +852,7 @@ class EhideDaemon(daemon.Daemon):
                 if self.approach == Approach.FORWARDING:
                     self._stop_socat()
                 pids = get_pids_in_netns_with_interface(
-                    self.ether_ifname, self.ether_mac
+                    self.ether_ifname, self.ether_mac[self.ether_ifname]
                 )
                 terminate_pids(pids)
                 if not wait_for_interface_in_root_netns(self.ether_ifname):
@@ -870,7 +881,10 @@ class EhideDaemon(daemon.Daemon):
                 )
                 return False
 
-        if self.has_ipv4_initially or self.static_ipv4_cidr:
+        if (
+            self.has_ipv4_initially[self.ether_ifname]
+            or self.ether_ifname in self.static_ipv4_cidr
+        ):
             # Check IPv4 availability.
             if not check_interface_ip_in_netns(
                 IpFamily.IPv4, self.ether_ifname, self.netns_name
@@ -878,7 +892,7 @@ class EhideDaemon(daemon.Daemon):
                 logging.error("IPv4 address lost.")
                 return False
 
-        if self.has_ipv6_initially:
+        if self.has_ipv6_initially[self.ether_ifname]:
             # Check IPv6 availability.
             if not check_interface_ip_in_netns(
                 IpFamily.IPv6, self.ether_ifname, self.netns_name
@@ -886,7 +900,10 @@ class EhideDaemon(daemon.Daemon):
                 logging.error("IPv6 address lost.")
                 return False
 
-        if self.has_ipv4_initially and not self.static_ipv4_cidr:
+        if (
+            self.has_ipv4_initially[self.ether_ifname]
+            and self.ether_ifname not in self.static_ipv4_cidr
+        ):
             # Check whether dhclient is running.
             dhclient_pids = get_pids_from_proc_name_in_netns(
                 "dhclient", self.netns_name
@@ -928,14 +945,14 @@ class EhideDaemon(daemon.Daemon):
         Returns:
             A bool indicates whether the setup has been successful.
         """
-        if self.static_ipv4_cidr:
+        if ifname in self.static_ipv4_cidr:
             run(
                 "ip",
                 "-n",
                 self.netns_name,
                 "addr",
                 "add",
-                self.static_ipv4_cidr,
+                self.static_ipv4_cidr[ifname],
                 "dev",
                 ifname,
             )
@@ -968,7 +985,10 @@ class EhideDaemon(daemon.Daemon):
             f.writelines(
                 (
                     f'interface "{self.ether_ifname}" {{\n',
-                    f"    send dhcp-client-identifier 01:{self.ether_mac};\n",
+                    # Each config item should be in a single line so no line
+                    # break after "01:".
+                    "    send dhcp-client-identifier 01:",
+                    f"{self.ether_mac[self.ether_ifname]};\n",
                     "}\n",
                 )
             )
