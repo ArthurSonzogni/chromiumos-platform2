@@ -248,6 +248,11 @@ GpuVdContext::~GpuVdContext() {
 
   // Invalidate all weak pointers to stop incoming callbacks.
   weak_this_factory_.InvalidateWeakPtrs();
+
+  // We may have an outstanding |request_video_frames_cb_| and it would be a
+  // Mojo error to not call it without disconnecting the pool connection, so we
+  // disconnect here.
+  receiver_pool_.reset();
 }
 
 void GpuVdContext::OnConnectionError(uint32_t custom_reason,
