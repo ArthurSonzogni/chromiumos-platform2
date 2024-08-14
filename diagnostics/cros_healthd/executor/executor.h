@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
-#include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
@@ -222,9 +221,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   // Provides a Mojo endpoint that cros_healthd can call to access the
   // executor's Mojo methods.
   mojo::Receiver<ash::cros_healthd::mojom::Executor> receiver_;
-
-  // Prevents multiple simultaneous writes to |processes_|.
-  base::Lock lock_;
 
   // Used to hold the child process and receiver. So the remote can reset the
   // mojo connection to terminate the child process.
