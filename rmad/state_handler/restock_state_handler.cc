@@ -12,7 +12,6 @@
 
 #include "rmad/logs/logs_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
-#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
@@ -20,8 +19,7 @@ RestockStateHandler::RestockStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
 }
 
 RestockStateHandler::RestockStateHandler(

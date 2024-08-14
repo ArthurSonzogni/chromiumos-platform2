@@ -8,22 +8,15 @@
 #include <memory>
 #include <vector>
 
-#include <base/memory/scoped_refptr.h>
-#include <dbus/bus.h>
-#include <rmad/proto_bindings/rmad.pb.h>
-#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+#include <runtime_probe-client/runtime_probe/dbus-proxies.h>
 
 #include "rmad/system/runtime_probe_client.h"
-
-namespace org::chromium {
-class RuntimeProbeProxyInterface;
-}  // namespace org::chromium
 
 namespace rmad {
 
 class RuntimeProbeClientImpl : public RuntimeProbeClient {
  public:
-  explicit RuntimeProbeClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  RuntimeProbeClientImpl();
   explicit RuntimeProbeClientImpl(
       std::unique_ptr<org::chromium::RuntimeProbeProxyInterface>
           runtime_probe_proxy);

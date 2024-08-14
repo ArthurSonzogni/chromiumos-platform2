@@ -11,12 +11,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/file_utils.h>
+#include <device_management-client-test/device_management/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "device_management-client-test/device_management/dbus-proxy-mocks.h"
-#include "device_management/proto_bindings/device_management_interface.pb.h"
-#include "rmad/constants.h"
 
 using testing::_;
 using testing::DoAll;

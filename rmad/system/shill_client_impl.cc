@@ -10,13 +10,16 @@
 #include <base/logging.h>
 #include <brillo/errors/error.h>
 #include <dbus/shill/dbus-constants.h>
-#include <shill/dbus-proxies.h>
+#include <shill-client/shill/dbus-proxies.h>
+
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
-ShillClientImpl::ShillClientImpl(const scoped_refptr<dbus::Bus>& bus) {
+ShillClientImpl::ShillClientImpl() {
   flimflam_manager_proxy_ =
-      std::make_unique<org::chromium::flimflam::ManagerProxy>(bus);
+      std::make_unique<org::chromium::flimflam::ManagerProxy>(
+          DBus::GetInstance()->bus());
 }
 
 ShillClientImpl::ShillClientImpl(

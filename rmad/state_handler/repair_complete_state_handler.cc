@@ -17,7 +17,6 @@
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/sys_utils_impl.h"
 
 namespace rmad {
@@ -29,8 +28,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       working_dir_path_(kDefaultWorkingDirPath),
       unencrypted_preserve_path_(kDefaultUnencryptedPreserveFilePath),
       locked_error_(RMAD_ERROR_NOT_SET) {
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   sys_utils_ = std::make_unique<SysUtilsImpl>();

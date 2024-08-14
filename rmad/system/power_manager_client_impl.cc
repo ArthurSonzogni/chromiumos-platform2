@@ -8,12 +8,19 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
-#include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/power_manager/dbus-constants.h>
 
+#include "rmad/utils/dbus_utils.h"
+
 namespace rmad {
+
+PowerManagerClientImpl::PowerManagerClientImpl() {
+  proxy_ = DBus::GetInstance()->bus()->GetObjectProxy(
+      power_manager::kPowerManagerServiceName,
+      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+}
 
 PowerManagerClientImpl::PowerManagerClientImpl(
     const scoped_refptr<dbus::Bus>& bus) {

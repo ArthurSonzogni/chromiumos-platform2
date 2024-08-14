@@ -14,6 +14,7 @@ namespace rmad {
 
 class PowerManagerClientImpl : public PowerManagerClient {
  public:
+  PowerManagerClientImpl();
   explicit PowerManagerClientImpl(const scoped_refptr<dbus::Bus>& bus);
   PowerManagerClientImpl(const PowerManagerClientImpl&) = delete;
   PowerManagerClientImpl& operator=(const PowerManagerClientImpl&) = delete;

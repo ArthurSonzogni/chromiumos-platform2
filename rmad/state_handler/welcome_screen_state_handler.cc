@@ -18,7 +18,6 @@
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/system/hardware_verifier_client_impl.h"
-#include "rmad/utils/dbus_utils.h"
 
 namespace {
 
@@ -34,8 +33,8 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath),
-      hardware_verifier_client_(std::make_unique<HardwareVerifierClientImpl>(
-          DBus::GetInstance()->bus())) {}
+      hardware_verifier_client_(
+          std::make_unique<HardwareVerifierClientImpl>()) {}
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,

@@ -9,15 +9,18 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
 #include <dbus/bus.h>
 #include <device_management-client/device_management/dbus-proxies.h>
 
+#include "rmad/utils/dbus_utils.h"
+
 namespace rmad {
 
-DeviceManagementClientImpl::DeviceManagementClientImpl(
-    const scoped_refptr<dbus::Bus>& bus) {
+DeviceManagementClientImpl::DeviceManagementClientImpl() {
   device_management_proxy_ =
-      std::make_unique<org::chromium::DeviceManagementProxy>(bus);
+      std::make_unique<org::chromium::DeviceManagementProxy>(
+          DBus::GetInstance()->bus());
 }
 
 DeviceManagementClientImpl::DeviceManagementClientImpl(

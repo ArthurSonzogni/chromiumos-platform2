@@ -11,15 +11,21 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
-#include <dbus/bus.h>
 #include <dbus/hardware_verifier/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
 
 #include "rmad/utils/component_utils.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
+
+HardwareVerifierClientImpl::HardwareVerifierClientImpl() {
+  proxy_ = DBus::GetInstance()->bus()->GetObjectProxy(
+      hardware_verifier::kHardwareVerifierServiceName,
+      dbus::ObjectPath(hardware_verifier::kHardwareVerifierServicePath));
+}
 
 HardwareVerifierClientImpl::HardwareVerifierClientImpl(
     const scoped_refptr<dbus::Bus>& bus) {

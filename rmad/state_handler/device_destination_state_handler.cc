@@ -18,7 +18,6 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/device_management_client_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace rmad {
@@ -29,8 +28,7 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  device_management_client_ =
-      std::make_unique<DeviceManagementClientImpl>(DBus::GetInstance()->bus());
+  device_management_client_ = std::make_unique<DeviceManagementClientImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 

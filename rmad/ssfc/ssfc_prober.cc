@@ -12,13 +12,11 @@
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
 SsfcProberImpl::SsfcProberImpl() {
-  runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(DBus::GetInstance()->bus());
+  runtime_probe_client_ = std::make_unique<RuntimeProbeClientImpl>();
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   Initialize();

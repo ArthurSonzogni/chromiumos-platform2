@@ -7,22 +7,15 @@
 
 #include <memory>
 
-#include <base/memory/scoped_refptr.h>
-#include <brillo/errors/error.h>
-#include <dbus/bus.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "rmad/system/tpm_manager_client.h"
-
-namespace org::chromium {
-class TpmManagerProxyInterface;
-}  // namespace org::chromium
 
 namespace rmad {
 
 class TpmManagerClientImpl : public TpmManagerClient {
  public:
-  explicit TpmManagerClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  TpmManagerClientImpl();
   explicit TpmManagerClientImpl(
       std::unique_ptr<org::chromium::TpmManagerProxyInterface>
           tpm_manager_proxy);

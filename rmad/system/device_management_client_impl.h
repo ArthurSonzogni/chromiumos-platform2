@@ -8,22 +8,15 @@
 #include <cstdint>
 #include <memory>
 
-#include <base/memory/scoped_refptr.h>
-#include <cryptohome/proto_bindings/rpc.pb.h>
-#include <dbus/bus.h>
-#include <device_management/proto_bindings/device_management_interface.pb.h>
+#include <device_management-client/device_management/dbus-proxies.h>
 
 #include "rmad/system/device_management_client.h"
-
-namespace org::chromium {
-class DeviceManagementProxyInterface;
-}  // namespace org::chromium
 
 namespace rmad {
 
 class DeviceManagementClientImpl : public DeviceManagementClient {
  public:
-  explicit DeviceManagementClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  DeviceManagementClientImpl();
   explicit DeviceManagementClientImpl(
       std::unique_ptr<org::chromium::DeviceManagementProxyInterface>
           device_management_proxy);

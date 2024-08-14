@@ -12,7 +12,6 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 #include "rmad/utils/crossystem_utils.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils.h"
 
 namespace rmad {

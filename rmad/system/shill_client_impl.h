@@ -7,20 +7,15 @@
 
 #include <memory>
 
-#include <base/memory/scoped_refptr.h>
-#include <dbus/bus.h>
+#include <shill-client/shill/dbus-proxies.h>
 
 #include "rmad/system/shill_client.h"
-
-namespace org::chromium::flimflam {
-class ManagerProxyInterface;
-}  // namespace org::chromium::flimflam
 
 namespace rmad {
 
 class ShillClientImpl : public ShillClient {
  public:
-  explicit ShillClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  ShillClientImpl();
   explicit ShillClientImpl(
       std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
           flimflam_manager_proxy);

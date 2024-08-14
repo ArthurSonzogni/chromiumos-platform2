@@ -9,13 +9,11 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/memory/scoped_refptr.h>
-#include <brillo/errors/error.h>
 #include <dbus/bus.h>
-#include <rmad/proto_bindings/rmad.pb.h>
-#include <runtime_probe/dbus-proxies.h>
+#include <runtime_probe-client/runtime_probe/dbus-proxies.h>
 
 #include "rmad/utils/component_utils.h"
+#include "rmad/utils/dbus_utils.h"
 
 namespace {
 
@@ -72,10 +70,9 @@ void AppendComponents(rmad::RmadComponent component_type,
 
 namespace rmad {
 
-RuntimeProbeClientImpl::RuntimeProbeClientImpl(
-    const scoped_refptr<dbus::Bus>& bus) {
-  runtime_probe_proxy_ =
-      std::make_unique<org::chromium::RuntimeProbeProxy>(bus);
+RuntimeProbeClientImpl::RuntimeProbeClientImpl() {
+  runtime_probe_proxy_ = std::make_unique<org::chromium::RuntimeProbeProxy>(
+      DBus::GetInstance()->bus());
 }
 
 RuntimeProbeClientImpl::RuntimeProbeClientImpl(

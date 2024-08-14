@@ -20,7 +20,6 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/device_management_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 // Used as an unique identifier for supported components.
@@ -144,10 +143,8 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       active_(false),
       working_dir_path_(kDefaultWorkingDirPath) {
-  device_management_client_ =
-      std::make_unique<DeviceManagementClientImpl>(DBus::GetInstance()->bus());
-  runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(DBus::GetInstance()->bus());
+  device_management_client_ = std::make_unique<DeviceManagementClientImpl>();
+  runtime_probe_client_ = std::make_unique<RuntimeProbeClientImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 

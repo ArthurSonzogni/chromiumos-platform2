@@ -14,9 +14,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 

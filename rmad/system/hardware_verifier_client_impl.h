@@ -17,6 +17,10 @@ namespace rmad {
 
 class HardwareVerifierClientImpl : public HardwareVerifierClient {
  public:
+  HardwareVerifierClientImpl();
+
+  // TODO(jeffulin): Inject |HardwareVerifierProxyInterface| instead when its
+  // client interface is ready.
   explicit HardwareVerifierClientImpl(const scoped_refptr<dbus::Bus>& bus);
   HardwareVerifierClientImpl(const HardwareVerifierClientImpl&) = delete;
   HardwareVerifierClientImpl& operator=(const HardwareVerifierClientImpl&) =

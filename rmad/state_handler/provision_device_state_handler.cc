@@ -6,11 +6,8 @@
 
 #include <inttypes.h>
 
-#include <algorithm>
-#include <iomanip>
 #include <memory>
 #include <set>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -38,7 +35,6 @@
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/futility_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/hwid_utils_impl.h"
@@ -90,8 +86,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       should_calibrate_(false),
       sensor_integrity_(false) {
   ssfc_prober_ = std::make_unique<SsfcProberImpl>();
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
@@ -102,8 +97,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   hwid_utils_ = std::make_unique<HwidUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   futility_utils_ = std::make_unique<FutilityUtilsImpl>();
-  tpm_manager_client_ =
-      std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);

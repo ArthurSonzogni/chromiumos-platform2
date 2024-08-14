@@ -15,8 +15,6 @@
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
-#include "rmad/constants.h"
-
 using testing::_;
 using testing::DoAll;
 using testing::Return;

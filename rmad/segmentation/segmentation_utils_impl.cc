@@ -18,7 +18,6 @@
 #include "rmad/feature_enabled_devices.pb.h"
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 
 namespace {
@@ -35,8 +34,7 @@ SegmentationUtilsImpl::SegmentationUtilsImpl()
     : config_dir_path_(kDefaultConfigDirPath),
       feature_enabled_devices_(),
       feature_management_() {
-  tpm_manager_client_ =
-      std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   ReadFeatureEnabledDevices();

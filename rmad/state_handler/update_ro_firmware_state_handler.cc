@@ -30,8 +30,6 @@
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
-#include "rmad/utils/futility_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
@@ -65,8 +63,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
 }
 

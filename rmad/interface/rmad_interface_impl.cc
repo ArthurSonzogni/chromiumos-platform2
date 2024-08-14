@@ -33,7 +33,6 @@
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/rpc_utils.h"
 
 namespace rmad {
@@ -122,13 +121,10 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   unencrypted_rma_dir_path_ = base::FilePath(kDefaultUnencryptedRmaDirPath);
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers(daemon_callback);
-  runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(DBus::GetInstance()->bus());
-  shill_client_ = std::make_unique<ShillClientImpl>(DBus::GetInstance()->bus());
-  tpm_manager_client_ =
-      std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
-  power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
+  runtime_probe_client_ = std::make_unique<RuntimeProbeClientImpl>();
+  shill_client_ = std::make_unique<ShillClientImpl>();
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
+  power_manager_client_ = std::make_unique<PowerManagerClientImpl>();
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }

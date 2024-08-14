@@ -30,7 +30,6 @@
 #include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
-#include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/futility_utils.h"
 
 namespace {
@@ -118,8 +117,7 @@ int DBusService::OnEventLoopStarted() {
   }
 
   if (!is_external_utils_initialized_) {
-    tpm_manager_client_ =
-        std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
+    tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>();
     cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
     crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
     is_external_utils_initialized_ = true;

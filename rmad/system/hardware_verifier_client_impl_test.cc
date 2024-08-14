@@ -21,8 +21,6 @@
 #include <hardware_verifier/hardware_verifier.pb.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
-#include "rmad/constants.h"
-
 using testing::_;
 using testing::Return;
 using testing::StrictMock;
