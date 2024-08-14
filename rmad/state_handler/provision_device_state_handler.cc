@@ -91,7 +91,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       sensor_integrity_(false) {
   ssfc_prober_ = std::make_unique<SsfcProberImpl>();
   power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
@@ -102,7 +102,8 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   hwid_utils_ = std::make_unique<HwidUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   futility_utils_ = std::make_unique<FutilityUtilsImpl>();
-  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+  tpm_manager_client_ =
+      std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);

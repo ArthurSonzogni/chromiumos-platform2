@@ -33,10 +33,9 @@ WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
-      working_dir_path_(kDefaultWorkingDirPath) {
-  hardware_verifier_client_ =
-      std::make_unique<HardwareVerifierClientImpl>(GetSystemBus());
-}
+      working_dir_path_(kDefaultWorkingDirPath),
+      hardware_verifier_client_(std::make_unique<HardwareVerifierClientImpl>(
+          DBus::GetInstance()->bus())) {}
 
 WelcomeScreenStateHandler::WelcomeScreenStateHandler(
     scoped_refptr<JsonStore> json_store,

@@ -66,7 +66,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
 }
 

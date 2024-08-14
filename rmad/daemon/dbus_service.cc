@@ -119,7 +119,7 @@ int DBusService::OnEventLoopStarted() {
 
   if (!is_external_utils_initialized_) {
     tpm_manager_client_ =
-        std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+        std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
     cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
     crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
     is_external_utils_initialized_ = true;

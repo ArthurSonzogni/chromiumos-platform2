@@ -5,16 +5,29 @@
 #include "rmad/utils/dbus_utils.h"
 
 #include <base/memory/scoped_refptr.h>
+#include <base/no_destructor.h>
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 
 namespace rmad {
 
-scoped_refptr<dbus::Bus> GetSystemBus() {
+// static
+DBus* DBus::GetInstance() {
+  // This is thread-safe.
+  static base::NoDestructor<DBus> instance;
+  return instance.get();
+}
+
+const scoped_refptr<dbus::Bus>& DBus::bus() {
+  CHECK(bus_);
+  return bus_;
+}
+
+DBus::DBus() {
   CHECK(base::SequencedTaskRunner::HasCurrentDefault());
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
-  return base::MakeRefCounted<dbus::Bus>(options);
+  bus_ = base::MakeRefCounted<dbus::Bus>(options);
 }
 
 }  // namespace rmad

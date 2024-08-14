@@ -66,7 +66,6 @@ if (use.test) {
       "component_utils_test.cc",
       "cros_config_properties_test.cc",
       "cros_config_utils_impl_test.cc",
-      "dbus_utils_test.cc",
       "futility_utils_impl_test.cc",
       "gsc_utils_impl_test.cc",
       "hwid_utils_impl_test.cc",

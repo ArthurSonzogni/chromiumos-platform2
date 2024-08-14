@@ -18,7 +18,7 @@ namespace rmad {
 
 SsfcProberImpl::SsfcProberImpl() {
   runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
+      std::make_unique<RuntimeProbeClientImpl>(DBus::GetInstance()->bus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   Initialize();

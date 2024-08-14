@@ -35,7 +35,8 @@ SegmentationUtilsImpl::SegmentationUtilsImpl()
     : config_dir_path_(kDefaultConfigDirPath),
       feature_enabled_devices_(),
       feature_management_() {
-  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+  tpm_manager_client_ =
+      std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   ReadFeatureEnabledDevices();

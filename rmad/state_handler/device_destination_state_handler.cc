@@ -30,7 +30,7 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
   device_management_client_ =
-      std::make_unique<DeviceManagementClientImpl>(GetSystemBus());
+      std::make_unique<DeviceManagementClientImpl>(DBus::GetInstance()->bus());
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 

@@ -21,7 +21,7 @@ RestockStateHandler::RestockStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
   power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
 }
 
 RestockStateHandler::RestockStateHandler(

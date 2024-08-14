@@ -145,9 +145,9 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
       active_(false),
       working_dir_path_(kDefaultWorkingDirPath) {
   device_management_client_ =
-      std::make_unique<DeviceManagementClientImpl>(GetSystemBus());
+      std::make_unique<DeviceManagementClientImpl>(DBus::GetInstance()->bus());
   runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
+      std::make_unique<RuntimeProbeClientImpl>(DBus::GetInstance()->bus());
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 

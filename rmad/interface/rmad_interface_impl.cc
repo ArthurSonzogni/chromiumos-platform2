@@ -123,11 +123,12 @@ void RmadInterfaceImpl::InitializeExternalUtils(
   state_handler_manager_ = std::make_unique<StateHandlerManager>(json_store_);
   state_handler_manager_->RegisterStateHandlers(daemon_callback);
   runtime_probe_client_ =
-      std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
-  shill_client_ = std::make_unique<ShillClientImpl>(GetSystemBus());
-  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
+      std::make_unique<RuntimeProbeClientImpl>(DBus::GetInstance()->bus());
+  shill_client_ = std::make_unique<ShillClientImpl>(DBus::GetInstance()->bus());
+  tpm_manager_client_ =
+      std::make_unique<TpmManagerClientImpl>(DBus::GetInstance()->bus());
   power_manager_client_ =
-      std::make_unique<PowerManagerClientImpl>(GetSystemBus());
+      std::make_unique<PowerManagerClientImpl>(DBus::GetInstance()->bus());
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
 }

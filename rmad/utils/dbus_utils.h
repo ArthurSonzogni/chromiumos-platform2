@@ -6,11 +6,25 @@
 #define RMAD_UTILS_DBUS_UTILS_H_
 
 #include <base/memory/scoped_refptr.h>
+#include <base/no_destructor.h>
 #include <dbus/bus.h>
 
 namespace rmad {
 
-scoped_refptr<dbus::Bus> GetSystemBus();
+class DBus {
+ public:
+  const scoped_refptr<dbus::Bus>& bus();
+
+  static DBus* GetInstance();
+
+ private:
+  friend base::NoDestructor<DBus>;
+
+  DBus();
+  ~DBus() = default;
+
+  scoped_refptr<dbus::Bus> bus_;
+};
 
 }  // namespace rmad
 
