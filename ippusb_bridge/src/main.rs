@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 mod arguments;
+mod error;
+mod hotplug;
 mod http;
 mod io_adapters;
 mod listeners;
@@ -27,15 +29,16 @@ use nix::sys::signal::Signal;
 use tiny_http::{ClientConnection, Stream};
 
 use crate::arguments::Args;
+use crate::error::Error::ReadConfigDescriptor;
+use crate::hotplug::UnplugDetector;
 use crate::http::handle_request;
 use crate::listeners::{Accept, ScopedUnixListener};
-use crate::usb_connector::{UnplugDetector, UsbConnector};
-use crate::usb_connector::Error::ReadConfigDescriptor;
+use crate::usb_connector::UsbConnector;
 
 #[derive(Debug)]
 pub enum Error {
     CreateSocket(io::Error),
-    CreateUsbConnector(usb_connector::Error),
+    CreateUsbConnector(error::Error),
     DBus(dbus::Error),
     EventFd(io::Error),
     ParseArgs(arguments::Error),
@@ -230,40 +233,49 @@ fn run() -> Result<()> {
     // Start up a connection to the system bus.
     // We need to listen to a signal sent when access to USB is restored. It
     // will be needed if access to USB is blocked by usbguard.
-    let mut dbus_rule =  dbus::message::MatchRule::new();
+    let mut dbus_rule = dbus::message::MatchRule::new();
     dbus_rule.path = Some("/com/ubuntu/Upstart/jobs/usbguard_2don_2dunlock".into());
     dbus_rule.interface = Some("com.ubuntu.Upstart0_6.Job".into());
     dbus_rule.member = Some("InstanceRemoved".into());
     let dbus_conn = Connection::new_system().map_err(Error::DBus)?;
-    dbus_conn.add_match(dbus_rule, |_: (), _, _msg : &dbus::Message| {
-        info!("Received signal that access to USB was restored.");
-        true
-    }).map_err(Error::DBus)?;
+    dbus_conn
+        .add_match(dbus_rule, |_: (), _, _msg: &dbus::Message| {
+            info!("Received signal that access to USB was restored.");
+            true
+        })
+        .map_err(Error::DBus)?;
     // This is run to make sure there are no cached signals from DBus.
-    while dbus_conn.process(Duration::ZERO).map_err(Error::DBus)? {};
+    while dbus_conn.process(Duration::ZERO).map_err(Error::DBus)? {}
 
     // Try to create UsbConnector in loop until it is created successfully or
     // an unexpected error occurs. ReadConfigDescriptor error means that access
     // to USB is blocked by usbguard (e.g.: the screen is locked).
-    let usb : UsbConnector;
+    let usb: UsbConnector;
     loop {
         match UsbConnector::new(args.verbose_log, args.bus_device) {
-            Ok(obj) => { usb = obj; break }
-            Err(ReadConfigDescriptor(..)) => {},
-            Err(err) => return Err(Error::CreateUsbConnector(err))
+            Ok(obj) => {
+                usb = obj;
+                break;
+            }
+            Err(ReadConfigDescriptor(..)) => {}
+            Err(err) => return Err(Error::CreateUsbConnector(err)),
         };
         info!("Failed to create USB connector. Waiting for the signal from DBus.");
         dbus_conn.process(Duration::MAX).map_err(Error::DBus)?;
     }
     info!("USB connector created successfully.");
 
-    let unplug_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
-    let _unplug = UnplugDetector::new(
-        usb.device(),
-        unplug_shutdown_fd,
-        &SHUTDOWN,
-        args.upstart_mode,
-    );
+    let _unplug = if rusb::has_hotplug() {
+        let unplug_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
+        Some(UnplugDetector::new(
+            usb.device(),
+            unplug_shutdown_fd,
+            &SHUTDOWN,
+            args.upstart_mode,
+        ))
+    } else {
+        None
+    };
 
     let mut daemon = Daemon::new(args.verbose_log, shutdown_fd, listener, usb)?;
     daemon.run()?;
