@@ -88,6 +88,8 @@ message MobileAPN {
   // this flag will not block modem APNs. Multiple required APNs for the same
   // type are allowed.
   optional bool is_required_by_carrier_spec = 13 [default = false];
+  // The APN IpType used when roaming.
+  optional IpType roaming_ip_type = 14;
 }
 
 enum HttpMethod {

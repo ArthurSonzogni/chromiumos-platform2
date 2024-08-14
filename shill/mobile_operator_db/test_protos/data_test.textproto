@@ -48,6 +48,7 @@ mno {
       }
       username: "testuser"
       password: "is_public_boohoohoo"
+      roaming_ip_type: IPV4V6
     }
   }
   mvno {
@@ -83,6 +84,7 @@ mno {
         username: "testuser2"
         password: "is_public_boohoohoo_too"
         is_required_by_carrier_spec: true
+        roaming_ip_type: IPV4
       }
     }
   }

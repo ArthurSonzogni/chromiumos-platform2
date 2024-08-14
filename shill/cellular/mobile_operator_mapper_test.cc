@@ -1157,11 +1157,12 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
 
   std::string ApnToString(MobileAPN apn) {
     return base::StringPrintf(
-        "{apn: %s, username: %s, password: %s, authentication: %s, ip_type: %s "
-        ", apn_types: %s , operator_name_list.size(): %s, "
-        "is_required_by_carrier_spec: %d}",
+        "{apn: %s, username: %s, password: %s, authentication: %s, ip_type: %s"
+        " , roaming_ip_type: %s , apn_types: %s , operator_name_list.size(): "
+        "%s, is_required_by_carrier_spec: %d}",
         apn.apn.c_str(), apn.username.c_str(), apn.password.c_str(),
         apn.authentication.c_str(), apn.ip_type.c_str(),
+        apn.roaming_ip_type.c_str(),
         ApnList::JoinApnTypes(std::vector<std::string>(apn.apn_types.begin(),
                                                        apn.apn_types.end()))
             .c_str(),
@@ -1238,6 +1239,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn.username = "testuser";
     apn.password = "is_public_boohoohoo";
     apn.ip_type = "ipv4";
+    apn.roaming_ip_type = "ipv4v6";
     apn.operator_name_list = {{"name200003", "hi"}};
     apn.apn_types = apn_types_;
     apn_list_.push_back(std::move(apn));
@@ -1264,6 +1266,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn.username = "testuser2";
     apn.password = "is_public_boohoohoo_too";
     apn.ip_type = "ipv4";
+    apn.roaming_ip_type = "ipv4";
     apn.apn_types = apn_types_;
     apn.is_required_by_carrier_spec = true;
     apn_list_.push_back(std::move(apn));

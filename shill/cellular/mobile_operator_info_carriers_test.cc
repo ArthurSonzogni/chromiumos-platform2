@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
-#include "shill/cellular/mobile_operator_info.h"
-
 #include <map>
 #include <memory>
 #include <set>
@@ -20,7 +15,11 @@
 #include <base/strings/strcat.h>
 #include <gtest/gtest.h>
 
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include "shill/cellular/apn_list.h"
+#include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/dbus-constants.h"
 #include "shill/ipconfig.h"
@@ -75,6 +74,10 @@ class ApnBuilder {
   }
   ApnBuilder& OperatorNameList(const std::vector<LocalizedName> value) {
     apn_.operator_name_list = value;
+    return *this;
+  }
+  ApnBuilder& RoamingIpType(const string value) {
+    apn_.roaming_ip_type = value;
     return *this;
   }
 

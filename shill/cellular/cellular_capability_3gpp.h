@@ -14,12 +14,12 @@
 #include <utility>
 #include <vector>
 
-#include <ModemManager/ModemManager.h>
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <ModemManager/ModemManager.h>
 
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular.h"
@@ -342,6 +342,7 @@ class CellularCapability3gpp {
   friend class CellularCapability3gppTest;
   friend class CellularServiceProviderTest;
   // CellularCapability3gppTimerTest
+  FRIEND_TEST(CellularCapability3gppTest, FillConnectPropertyMap);
   FRIEND_TEST(CellularCapability3gppTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapability3gppTest, GetTypeString);
   FRIEND_TEST(CellularCapability3gppTest, IsMdnValid);

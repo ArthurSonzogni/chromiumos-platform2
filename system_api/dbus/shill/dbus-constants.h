@@ -585,6 +585,7 @@ constexpr char kApnIsRequiredByCarrierSpecProperty[] =
 // TODO(b/251551314): Remove kApnAttachProperty after 2025Q2
 constexpr char kApnAttachProperty[] = "attach";
 constexpr char kApnIpTypeProperty[] = "ip_type";
+constexpr char kApnRoamingIpTypeProperty[] = "roaming_ip_type";
 constexpr char kApnTypesProperty[] = "apn_types";
 constexpr char kApnIdProperty[] = "id";
 constexpr char kApnSourceProperty[] = "apn_source";

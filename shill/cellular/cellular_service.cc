@@ -150,6 +150,8 @@ void LoadApn(const StoreInterface* storage,
   LoadApnField(storage, storage_group, keytag, kApnAuthenticationProperty,
                apn_info);
   LoadApnField(storage, storage_group, keytag, kApnIpTypeProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag, kApnRoamingIpTypeProperty,
+               apn_info);
   LoadApnField(storage, storage_group, keytag, kApnTypesProperty, apn_info);
   // b/251512775: kApnAttachProperty used to be used to indicate that an APN
   // was an Attach APN. That property was replaced by |kApnTypesProperty| in
@@ -199,6 +201,8 @@ void SaveApn(StoreInterface* storage,
   SaveApnField(storage, storage_group, apn_info, keytag,
                kApnAuthenticationProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnIpTypeProperty);
+  SaveApnField(storage, storage_group, apn_info, keytag,
+               kApnRoamingIpTypeProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnTypesProperty);
   SaveApnField(storage, storage_group, apn_info, keytag,
                cellular::kApnVersionProperty);

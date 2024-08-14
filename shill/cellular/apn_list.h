@@ -42,7 +42,8 @@ class ApnList {
                                  std::string,
                                  std::string,
                                  std::string,
-                                 bool>;
+                                 bool,
+                                 std::string>;
   ApnIndexKey GetKey(const MobileAPN& mobile_apn);
 
   void AddApn(const MobileAPN& mobile_apn, ApnSource source);

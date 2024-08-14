@@ -4,11 +4,10 @@
 
 #include "shill/cellular/apn_list.h"
 
-#include <gtest/gtest.h>
-
 #include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <gtest/gtest.h>
 
 using testing::Test;
 
@@ -19,6 +18,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   MobileAPN mobile_apn1;
   mobile_apn1.apn = "apn1";
   mobile_apn1.ip_type = "IPV4";
+  mobile_apn1.roaming_ip_type = "IPV4";
   mobile_apn1.apn_types = {"DEFAULT", "IA"};
   mobile_apn1.username = "user1";
   mobile_apn1.password = "pass1";
@@ -28,6 +28,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   MobileAPN mobile_apn2;
   mobile_apn2.apn = "apn2";
   mobile_apn2.ip_type = "IPV4V6";
+  mobile_apn2.roaming_ip_type = "IPV4V6";
   mobile_apn2.apn_types = {"DEFAULT", "DUN"};
   mobile_apn2.username = "user2";
   mobile_apn2.password = "pass2";
@@ -45,6 +46,7 @@ TEST(ApnListTest, AddApnWithMerge) {
 
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn1");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4");
+  EXPECT_STREQ(apn->at(kApnRoamingIpTypeProperty).c_str(), "IPV4");
   EXPECT_TRUE(ApnList::IsAttachApn(*apn));
   EXPECT_TRUE(ApnList::IsDefaultApn(*apn));
   EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(),
@@ -59,6 +61,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   apn = &apns.at(1);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn2");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4V6");
+  EXPECT_STREQ(apn->at(kApnRoamingIpTypeProperty).c_str(), "IPV4V6");
   EXPECT_FALSE(ApnList::IsAttachApn(*apn));
   EXPECT_TRUE(ApnList::IsDefaultApn(*apn));
   EXPECT_TRUE(ApnList::IsTetheringApn(*apn));
@@ -81,6 +84,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   apn = &apns.at(0);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn1");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4");
+  EXPECT_STREQ(apn->at(kApnRoamingIpTypeProperty).c_str(), "IPV4");
   EXPECT_TRUE(ApnList::IsAttachApn(*apn));
   EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(),
                ApnList::JoinApnTypes({"DEFAULT", "IA"}).c_str());
@@ -97,6 +101,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   MobileAPN mobile_apn1;
   mobile_apn1.apn = "apn1";
   mobile_apn1.ip_type = "IPV4";
+  mobile_apn1.roaming_ip_type = "IPV4";
   mobile_apn1.apn_types = {"DEFAULT", "IA"};
   mobile_apn1.username = "user1";
   mobile_apn1.password = "pass1";
@@ -106,6 +111,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   MobileAPN mobile_apn2;
   mobile_apn2.apn = "apn2";
   mobile_apn2.ip_type = "IPV4V6";
+  mobile_apn2.roaming_ip_type = "IPV4V6";
   mobile_apn2.apn_types = {"DEFAULT"};
   mobile_apn2.username = "user2";
   mobile_apn2.password = "pass2";
@@ -124,6 +130,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   Stringmap* apn = &apns.at(0);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn1");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4");
+  EXPECT_STREQ(apn->at(kApnRoamingIpTypeProperty).c_str(), "IPV4");
   EXPECT_TRUE(ApnList::IsAttachApn(*apn));
   EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(),
                ApnList::JoinApnTypes({"DEFAULT", "IA"}).c_str());
@@ -137,6 +144,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   apn = &apns.at(1);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn2");
   EXPECT_STREQ(apn->at(kApnIpTypeProperty).c_str(), "IPV4V6");
+  EXPECT_STREQ(apn->at(kApnRoamingIpTypeProperty).c_str(), "IPV4V6");
   EXPECT_FALSE(ApnList::IsAttachApn(*apn));
   EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(), "DEFAULT");
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user2");

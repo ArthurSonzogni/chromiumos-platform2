@@ -3622,7 +3622,7 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
   static const std::string only_allowed_keys[] = {
       kApnProperty,         kApnTypesProperty,          kApnUsernameProperty,
       kApnPasswordProperty, kApnAuthenticationProperty, kApnIpTypeProperty,
-      kApnAttachProperty};
+      kApnAttachProperty,   kApnRoamingIpTypeProperty};
   std::set<std::string> allowed_keys{std::begin(only_allowed_keys),
                                      std::end(only_allowed_keys)};
   for (auto const& pair : apn1) {

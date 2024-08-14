@@ -1055,7 +1055,11 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
       apn.ip_type = default_ip_type;
     }
     apn.is_required_by_carrier_spec = apn_data.is_required_by_carrier_spec();
-
+    const auto default_roaming_ip_type = "";
+    apn.roaming_ip_type = apn_data.has_roaming_ip_type()
+                              ? GetIpType(apn_data, apn_data.roaming_ip_type())
+                                    .value_or(default_roaming_ip_type)
+                              : default_roaming_ip_type;
     db_info_.apn_list.push_back(std::move(apn));
   }
 }

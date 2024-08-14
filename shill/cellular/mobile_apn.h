@@ -71,6 +71,9 @@ struct MobileAPN {
   std::string ip_type;
   // If the APN overrides all other APNs of the same type.
   bool is_required_by_carrier_spec = false;
+  // IP type when roaming, as one of "ipv4", "ipv6", "ipv4v6".
+  // An empty string is used when no ip type is defined.
+  std::string roaming_ip_type;
 
   // If this APN was provided by the modem, then it may have a profile ID
   // associated with it. The profile ID is arbitrary and provided by the
@@ -80,7 +83,8 @@ struct MobileAPN {
  private:
   auto tuple() const {
     return std::tie(apn, operator_name_list, username, password, authentication,
-                    apn_types, ip_type, is_required_by_carrier_spec);
+                    apn_types, ip_type, is_required_by_carrier_spec,
+                    roaming_ip_type);
   }
 
  public:

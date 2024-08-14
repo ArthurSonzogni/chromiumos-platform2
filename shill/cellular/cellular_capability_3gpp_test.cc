@@ -1841,6 +1841,29 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV6));
   ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Same connection, but roaming(roaming_ip_type is empty).
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING;
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
+  EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV6));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
+
+  // Roaming IP type is IPv4v6
+  apn[kApnRoamingIpTypeProperty] = kApnIpTypeV4V6;
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
+  EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV4V6));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
+  // Set registration back to Home
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
+  EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV6));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
+
   // Connection with APN, username, password, empty auth type and IPv4v6.
   apn[kApnIpTypeProperty] = kApnIpTypeV4V6;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},

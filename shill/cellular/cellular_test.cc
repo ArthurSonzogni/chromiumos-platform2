@@ -2791,6 +2791,7 @@ TEST_F(CellularTest, CompareApnsFromApnList) {
   mobile_apn.apn_types = {"DEFAULT", "IA", "DUN"};
   mobile_apn.ip_type = kApnIpTypeV4V6;
   mobile_apn.is_required_by_carrier_spec = true;
+  mobile_apn.roaming_ip_type = kApnIpTypeV4V6;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo* info =
       new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list), true);

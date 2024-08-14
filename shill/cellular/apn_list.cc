@@ -35,10 +35,10 @@ void ApnList::AddApns(const std::vector<MobileAPN>& apns, ApnSource source) {
 }
 
 ApnList::ApnIndexKey ApnList::GetKey(const MobileAPN& mobile_apn) {
-  return std::make_tuple(mobile_apn.apn, mobile_apn.username,
-                         mobile_apn.password, mobile_apn.authentication,
-                         mobile_apn.ip_type,
-                         mobile_apn.is_required_by_carrier_spec);
+  return std::make_tuple(
+      mobile_apn.apn, mobile_apn.username, mobile_apn.password,
+      mobile_apn.authentication, mobile_apn.ip_type,
+      mobile_apn.is_required_by_carrier_spec, mobile_apn.roaming_ip_type);
 }
 
 void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
@@ -68,6 +68,8 @@ void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
     (*props)[kApnAuthenticationProperty] = mobile_apn.authentication;
   if (!mobile_apn.ip_type.empty())
     (*props)[kApnIpTypeProperty] = mobile_apn.ip_type;
+  if (!mobile_apn.roaming_ip_type.empty())
+    (*props)[kApnRoamingIpTypeProperty] = mobile_apn.roaming_ip_type;
 
   (*props)[kApnIsRequiredByCarrierSpecProperty] =
       mobile_apn.is_required_by_carrier_spec ? kApnIsRequiredByCarrierSpecTrue

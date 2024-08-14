@@ -931,8 +931,12 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
     properties->Set<uint32_t>(CellularBearer::kMMAllowedAuthProperty,
                               allowed_auth);
   }
-
-  if (base::Contains(apn_info, kApnIpTypeProperty)) {
+  if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING &&
+      base::Contains(apn_info, kApnRoamingIpTypeProperty)) {
+    properties->Set<uint32_t>(
+        CellularBearer::kMMIpTypeProperty,
+        IpTypeToMMBearerIpFamily(apn_info.at(kApnRoamingIpTypeProperty)));
+  } else if (base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
