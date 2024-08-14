@@ -33,6 +33,8 @@ const int kSuspendDelayMax = 60;
 
 const char kShutdownReasonName[] = "Power.ShutdownReason";
 
+const char kSuspendJourneyResultName[] = "Power.SuspendJourneyResult";
+
 const char kBacklightLevelName[] = "Power.BacklightLevel";
 const char kKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
 const base::TimeDelta kBacklightLevelInterval = base::Seconds(30);

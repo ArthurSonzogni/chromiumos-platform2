@@ -319,6 +319,12 @@ void MetricsCollector::GenerateDisplayAfterResumeDurationMsMetric() {
                             kDisplayAfterResumeDurationMsMax, kDefaultBuckets);
 }
 
+void MetricsCollector::SendSuspendJourneyResult(SuspendJourneyResult result) {
+  VLOG(1) << "Reporting suspend journey result: " << static_cast<int>(result);
+  SendEnumMetric(kSuspendJourneyResultName, static_cast<int>(result),
+                 static_cast<int>(SuspendJourneyResult::MAX));
+}
+
 void MetricsCollector::HandleScreenDimmedChange(
     bool dimmed, base::TimeTicks last_user_activity_time) {
   if (dimmed) {

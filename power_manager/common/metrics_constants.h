@@ -44,6 +44,8 @@ extern const int kSuspendDelayMax;
 
 extern const char kShutdownReasonName[];
 
+extern const char kSuspendJourneyResultName[];
+
 extern const char kBacklightLevelName[];
 extern const char kKeyboardBacklightLevelName[];
 extern const base::TimeDelta kBacklightLevelInterval;

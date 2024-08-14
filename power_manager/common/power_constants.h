@@ -517,6 +517,28 @@ enum class ShutdownReason {
   MAX = 12
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// Note: please keep this in sync with
+//   chromium/src tools/metrics/histograms/enums.xml
+//   e.g., https://crrev.com/c/5769996
+enum class SuspendJourneyResult {
+  // The journey ended with the device suspending (and resuming) properly.
+  RESUME = 0,
+  // The journey ended with the device shutting down, possibly due to repeated
+  // suspend failures.
+  SHUTDOWN = 1,
+  // The device was shut down after being suspended for a long time to save
+  // battery.
+  SHUTDOWN_AFTER_X = 2,
+  // The device shut down because the battery was running low.
+  LOW_POWER_SHUTDOWN = 3,
+  // The device rebooted unexpectedly while trying to suspend
+  REBOOT = 4,
+  // Keep this last and increment it if a new value is inserted.
+  MAX = 5,
+};
+
 enum class WifiRegDomain {
   FCC,
   EU,

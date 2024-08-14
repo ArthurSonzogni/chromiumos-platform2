@@ -982,6 +982,29 @@ TEST_F(MetricsCollectorTest, LockEventMetricsBattery) {
   collector_.GenerateLockEventMetrics(LockEvent::QUICK_LOCK);
 }
 
+TEST_F(MetricsCollectorTest, SuspendJourneyResult) {
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::RESUME),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::SHUTDOWN),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::SHUTDOWN_AFTER_X),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::LOW_POWER_SHUTDOWN),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::REBOOT),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+  collector_.SendSuspendJourneyResult(SuspendJourneyResult::RESUME);
+  collector_.SendSuspendJourneyResult(SuspendJourneyResult::SHUTDOWN);
+  collector_.SendSuspendJourneyResult(SuspendJourneyResult::SHUTDOWN_AFTER_X);
+  collector_.SendSuspendJourneyResult(SuspendJourneyResult::LOW_POWER_SHUTDOWN);
+  collector_.SendSuspendJourneyResult(SuspendJourneyResult::REBOOT);
+}
+
 class AdaptiveChargingMetricsTest : public TestEnvironment {
  public:
   AdaptiveChargingMetricsTest() : metrics_sender_(metrics_) {}

@@ -269,6 +269,8 @@ class MetricsCollector {
   // resume.
   void GenerateDisplayAfterResumeDurationMsMetric();
 
+  void SendSuspendJourneyResult(SuspendJourneyResult result);
+
  private:
   friend class MetricsCollectorTest;
   friend class AdaptiveChargingMetricsTest;
