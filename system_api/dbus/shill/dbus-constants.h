@@ -138,6 +138,7 @@ constexpr char kWakeOnLanEnabledProperty[] = "WakeOnLanEnabled";
 constexpr char kWifiGlobalFTEnabledProperty[] = "WiFi.GlobalFTEnabled";
 constexpr char kWifiScanAllowRoamProperty[] = "WiFi.ScanAllowRoam";
 constexpr char kWifiRequestScanTypeProperty[] = "WiFi.RequestScanType";
+constexpr char kWiFiInterfacePrioritiesProperty[] = "WiFiInterfacePriorities";
 // Valid values of DisconnectWiFiOnEthernet
 constexpr char kDisconnectWiFiOnEthernetOff[] = "off";
 constexpr char kDisconnectWiFiOnEthernetConnected[] = "connected";
@@ -1210,6 +1211,9 @@ constexpr char kP2PDevicePriority[] = "priority";
 constexpr char kP2PDeviceShillID[] = "shill_id";
 constexpr char kP2PResultCode[] = "result_code";
 
+// Manager kWiFiInterfacePriorites key names
+constexpr char kWiFiInterfacePrioritesNameProperty[] = "name";
+constexpr char kWiFiInterfacePrioritiesPriorityProperty[] = "priority";
 // Manager CreateP2PGroup result values
 constexpr char kCreateP2PGroupResultSuccess[] = "success";
 constexpr char kCreateP2PGroupResultNotAllowed[] = "not_allowed";

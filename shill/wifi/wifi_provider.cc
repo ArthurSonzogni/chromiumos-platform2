@@ -1783,4 +1783,22 @@ bool WiFiProvider::BringDownDevicesByType(std::multiset<nl80211_iftype> types) {
   return true;
 }
 
+KeyValueStores WiFiProvider::GetWiFiInterfacePriorities(
+    const std::vector<DeviceRefPtr>& devices) const {
+  KeyValueStores wifi_priorities;
+  for (const auto& device : devices) {
+    if (device->technology() != Technology::kWiFi) {
+      continue;
+    }
+    auto wifi = static_cast<WiFi*>(device.get());
+    KeyValueStore wifi_priority;
+    wifi_priority.Set<std::string>(kWiFiInterfacePrioritesNameProperty,
+                                   wifi->link_name());
+    wifi_priority.Set<int32_t>(kWiFiInterfacePrioritiesPriorityProperty,
+                               static_cast<int32_t>(wifi->priority()));
+    wifi_priorities.push_back(wifi_priority);
+  }
+  return wifi_priorities;
+}
+
 }  // namespace shill

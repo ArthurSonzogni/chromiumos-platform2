@@ -296,6 +296,8 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedStrings(kDOHIncludedDomainsProperty,
                              &Manager::GetDOHIncludedDomains,
                              &Manager::SetDOHIncludedDomains);
+  HelpRegisterDerivedKeyValueStores(kWiFiInterfacePrioritiesProperty,
+                                    &Manager::GetWiFiInterfacePriorities);
 
   tethering_manager_->InitPropertyStore(&store_);
 
@@ -3165,6 +3167,10 @@ bool Manager::SetDOHIncludedDomains(const std::vector<std::string>& domains,
   adaptor_->EmitStringsChanged(kDOHIncludedDomainsProperty,
                                props_.doh_included_domains);
   return true;
+}
+
+KeyValueStores Manager::GetWiFiInterfacePriorities(Error* error) {
+  return wifi_provider_->GetWiFiInterfacePriorities(devices_);
 }
 
 bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,

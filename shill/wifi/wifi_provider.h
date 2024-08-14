@@ -323,6 +323,10 @@ class WiFiProvider : public ProviderInterface {
 
   // Cancel all pending device requests of |type|.
   mockable void CancelDeviceRequestsOfType(nl80211_iftype type);
+  // Get the priorities of the WiFi type interfaces in |devices|.
+
+  KeyValueStores GetWiFiInterfacePriorities(
+      const std::vector<DeviceRefPtr>& devices) const;
 
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);

@@ -493,6 +493,9 @@ class Manager {
   bool SetDOHIncludedDomains(const std::vector<std::string>& domains,
                              Error* error);
 
+  // Get the priorities of all Wi-Fi interfaces.
+  KeyValueStores GetWiFiInterfacePriorities(Error* error);
+
   // Creates a set of Passpoint credentials from |properties| in the profile
   // referenced by |profile_id|.
   bool AddPasspointCredentials(const std::string& profile_rpcid,

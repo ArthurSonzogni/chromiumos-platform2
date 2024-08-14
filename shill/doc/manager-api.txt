@@ -1218,6 +1218,19 @@ Properties	object ActiveProfile [readonly]
 			(FQDN) or as domain suffixes noted using a special wildcard prefix '*'.
 			This property is used by DNS proxy service
 
+		array{dict} WiFiDevicePriorities [readonly]
+
+			List of Wi-Fi interfaces and their respective priority levels. Contains the
+			following values:
+
+			string name
+				Interface name of the Wi-Fi device, which is equivalent to the
+				Device.Interface property value.
+
+			WiFiInterfacePriority priority
+				Priority of the Wi-Fi interface.
+
+
 Enums		WiFiInterfacePriority
 
 			Represents the priority level of a Wi-Fi interface. When a new
