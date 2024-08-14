@@ -4,12 +4,12 @@
 
 #include "lorgnette/device_tracker.h"
 
+#include <fcntl.h>
+
 #include <algorithm>
 #include <memory>
 #include <optional>
 #include <utility>
-
-#include <fcntl.h>
 
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
@@ -18,8 +18,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
@@ -1050,6 +1050,12 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     LOG(ERROR) << __func__ << ": Failed to start scan on device " << handle
                << ": " << sane_strstatus(status);
     response.set_result(ToOperationResult(status));
+    // TODO(b/352543438): There is a bug in the PFU backend which requires
+    // calling CancelScan after any error condition is encountered.  While
+    // waiting for that bug to get fixed in the PFU driver, add a patch here.
+    if (base::StartsWith(state.connection_string, "pfufs:")) {
+      state.device->CancelScan(nullptr);
+    }
     return response;
   }
 
