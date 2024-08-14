@@ -397,7 +397,7 @@ wipe_stateful() {
   # state options are stored in $@.
   set --
 
-  DEV=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")
+  DEV=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE:?}")
 
   # Zero out the first block of the stateful partition to ensure that
   # mkfs/pvcreate don't get confused by existing state.
