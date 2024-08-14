@@ -24,10 +24,10 @@
 #include <libec/ec_command.h>
 #include <libec/ec_command_factory.h>
 #include <ml/dbus-proxies.h>
-#include "ml/proto_bindings/ranker_example.pb.h"
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include "ml/proto_bindings/ranker_example.pb.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/battery_saver_controller.h"
 #include "power_manager/powerd/policy/bluetooth_controller.h"
@@ -139,6 +139,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   }
   void set_sync_on_suspend_path_for_testing(const base::FilePath& path) {
     sync_on_suspend_path_ = path;
+  }
+  void set_suspend_reboot_path_for_testing(const base::FilePath& path) {
+    suspend_reboot_path_ = path;
   }
 
   bool first_run_after_boot_for_testing() { return first_run_after_boot_; }
@@ -493,6 +496,12 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // announced. Used to detect cases where powerd was restarted
   // mid-suspend-attempt and didn't announce that the attempt finished.
   base::FilePath suspend_announced_path_;
+
+  // Path to a file that's touched when a suspend attempt starts and removed
+  // right after the Daemon continues. If the device rebooted on suspend or
+  // resume, this file will be left behind. If there was a successful resume
+  // the file will be deleted.
+  base::FilePath suspend_reboot_path_;
 
   // Path to file under /run that's inspected and then touched at startup.
   // If the file doesn't already exist, then |first_run_after_boot_| is

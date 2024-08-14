@@ -27,6 +27,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
@@ -106,6 +107,10 @@ const char kShutdownAnnouncedFile[] = "shutdown_announced";
 // Basename appended to |run_dir| (see Daemon's c'tor) to produce
 // |suspend_announced_path_|.
 const char kSuspendAnnouncedFile[] = "suspend_announced";
+
+// Basename appended to |run_dir| (see Daemon's c'tor) to produce
+// |suspend_reboot_path_|.
+const char kSuspendRebootFile[] = "suspend_reboot";
 
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal. This value is defined in the session_manager
@@ -348,6 +353,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       suspended_state_path_(kDefaultSuspendedStatePath),
       shutdown_announced_path_(run_dir.Append(kShutdownAnnouncedFile)),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
+      suspend_reboot_path_(run_dir.Append(kSuspendRebootFile)),
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
       video_activity_logger_(new PeriodicActivityLogger(
           "Video activity",
@@ -388,6 +394,16 @@ void Daemon::Init() {
     if (!base::WriteFile(already_ran_path_, "")) {
       PLOG(ERROR) << "Couldn't create " << already_ran_path_.value();
     }
+  }
+
+  // If the suspend_reboot file exists at startup, it means that powerd must
+  // have been restarted before the file could be unlinked shortly after
+  // resume. This probably means there was a crash sometime between when
+  // suspend started and resume finished.
+  if (base::PathExists(suspend_reboot_path_)) {
+    LOG(INFO) << "Detected suspend_reboot file";
+    brillo::DeleteFile(suspend_reboot_path_);
+    metrics_collector_->SendSuspendJourneyResult(SuspendJourneyResult::REBOOT);
   }
 
   prefs_ = delegate_->CreatePrefs();
@@ -972,6 +988,22 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 
   wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
+
+  // Create a file that will be persisted if the device crashes on suspend or
+  // resume. Delete it when this function returns.
+  // Note that this file seems oddly similar to suspended_state, however that
+  // file is used by the unclean shutdown detector, so we can't delete it
+  // when this function returns.
+  if (!brillo::TouchFile(suspend_reboot_path_)) {
+    PLOG(ERROR) << "Unable to create " << suspend_reboot_path_.value();
+  }
+  auto suspend_reboot_deleter = base::ScopedClosureRunner(base::BindOnce(
+      [](base::FilePath path) {
+        if (base::PathExists(path) && !brillo::DeleteFile(path)) {
+          PLOG(ERROR) << "Couldn't delete " << path.value();
+        }
+      },
+      suspend_reboot_path_));
 
   const int exit_code =
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);

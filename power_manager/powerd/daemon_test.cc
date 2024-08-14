@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/file_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 #include <dbus/exported_object.h>
@@ -180,6 +181,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
     sync_on_suspend_path_ = temp_dir_.GetPath().Append("sync_on_suspend_");
     proc_path_ = temp_dir_.GetPath().Append("proc");
+    suspend_reboot_path_ = temp_dir_.GetPath().Append("suspend_reboot");
     dbus_wrapper_->SetMethodCallback(base::BindRepeating(
         &DaemonTest::HandleDBusMethodCall, base::Unretained(this)));
   }
@@ -218,6 +220,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     daemon_->set_cros_ec_path_for_testing(cros_ec_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
     daemon_->set_sync_on_suspend_path_for_testing(sync_on_suspend_path_);
+    daemon_->set_suspend_reboot_path_for_testing(suspend_reboot_path_);
     daemon_->disable_mojo_for_testing();
     daemon_->Init();
   }
@@ -633,6 +636,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   base::FilePath flashrom_lock_path_;
   base::FilePath battery_tool_lock_path_;
   base::FilePath sync_on_suspend_path_;
+  base::FilePath suspend_reboot_path_;
   base::FilePath proc_path_;
 
   // Value to return from GetPid().
@@ -1190,6 +1194,26 @@ TEST_F(DaemonTest, SetBatterySlowCharging) {
         return cmd;
       });
   EXPECT_TRUE(daemon_->SetBatterySlowCharging(1000));
+}
+
+TEST_F(DaemonTest, ReportCrashDuringSuspend) {
+  // Create a suspend_reboot file to indicate that the daemon crashed or was
+  // restarded during a suspend.
+  ASSERT_TRUE(brillo::TouchFile(suspend_reboot_path_));
+
+  Init();
+
+  // If the file exists, a suspend journey reboot result should be reported to
+  // UMA.
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
+                metrics::kSuspendJourneyResultName,
+                static_cast<int>(SuspendJourneyResult::REBOOT),
+                static_cast<int>(SuspendJourneyResult::MAX))
+                .ToString(),
+            metrics_sender_->GetMetric(0));
+
+  // The file should also have been deleted after daemon initialisation.
+  EXPECT_FALSE(base::PathExists(suspend_reboot_path_));
 }
 
 TEST_F(DaemonTest, PrepareToSuspendAndResume) {
