@@ -615,14 +615,11 @@ void Executor::MonitorAudioJack(
                             });
 
   delegate->remote()->MonitorAudioJack(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::MonitorTouchpad(
@@ -638,14 +635,11 @@ void Executor::MonitorTouchpad(
                             });
 
   delegate->remote()->MonitorTouchpad(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::RunStressAppTest(
@@ -710,14 +704,11 @@ void Executor::MonitorTouchscreen(
       });
 
   delegate->remote()->MonitorTouchscreen(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::MonitorStylusGarage(
@@ -733,14 +724,11 @@ void Executor::MonitorStylusGarage(
       });
 
   delegate->remote()->MonitorStylusGarage(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::MonitorStylus(
@@ -756,14 +744,11 @@ void Executor::MonitorStylus(
       });
 
   delegate->remote()->MonitorStylus(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::RunFio(mojom::FioJobArgumentPtr argument,
@@ -841,14 +826,11 @@ void Executor::MonitorPowerButton(
       });
 
   delegate->remote()->MonitorPowerButton(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::RunPrimeSearch(
@@ -864,14 +846,11 @@ void Executor::RunPrimeSearch(
   delegate->remote()->RunPrimeSearch(
       exec_duration, max_num,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::MonitorVolumeButton(
@@ -887,14 +866,11 @@ void Executor::MonitorVolumeButton(
       });
 
   delegate->remote()->MonitorVolumeButton(std::move(observer));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::RunFloatingPoint(
@@ -909,14 +885,11 @@ void Executor::RunFloatingPoint(
   delegate->remote()->RunFloatingPoint(
       exec_duration,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::StartBtmon(
@@ -1012,10 +985,13 @@ void Executor::RunLongRunningProcess(
 }
 
 void Executor::RunLongRunningDelegate(
-    std::unique_ptr<ProcessControl> process_control,
+    std::unique_ptr<DelegateProcess> delegate,
     mojo::PendingReceiver<mojom::ProcessControl> receiver) {
-  process_control->StartAndWait();
-  process_control_set_.Add(std::move(process_control), std::move(receiver));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
+
+  controller->StartAndWait();
+  process_control_set_.Add(std::move(controller), std::move(receiver));
 }
 
 void Executor::GetConnectedExternalDisplayConnectors(
@@ -1215,14 +1191,11 @@ void Executor::RunUrandom(
   delegate->remote()->RunUrandom(
       exec_duration,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control_receiver)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control_receiver)));
 }
 
 void Executor::RunNetworkBandwidthTest(
@@ -1244,14 +1217,11 @@ void Executor::RunNetworkBandwidthTest(
       type, oem_name, std::move(observer),
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
                                                   std::nullopt));
-  auto controller =
-      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Executor::RunLongRunningDelegate,
-                     weak_factory_.GetWeakPtr(), std::move(controller),
-                     std::move(process_control)));
+      FROM_HERE, base::BindOnce(&Executor::RunLongRunningDelegate,
+                                weak_factory_.GetWeakPtr(), std::move(delegate),
+                                std::move(process_control)));
 }
 
 void Executor::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {

@@ -188,10 +188,10 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       std::unique_ptr<brillo::ProcessImpl> process,
       const siginfo_t& siginfo);
 
-  // Runs a long running delegate process. Takes a ProcessControl which holds
-  // the delegate and a receiver to connect to the ProcessControl.
+  // Runs a long running delegate process and uses process control to track the
+  // delegate process.
   void RunLongRunningDelegate(
-      std::unique_ptr<ProcessControl> process_control,
+      std::unique_ptr<DelegateProcess> delegate,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver);
   // Runs a long running process and uses process control to track binary.
   void RunLongRunningProcess(
