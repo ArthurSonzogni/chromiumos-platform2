@@ -1199,12 +1199,10 @@ void Executor::RunUrandom(
 }
 
 void Executor::RunNetworkBandwidthTest(
-    ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+    mojom::NetworkBandwidthTestType type,
     const std::string& oem_name,
-    mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
-        observer,
-    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-        process_control,
+    mojo::PendingRemote<mojom::NetworkBandwidthObserver> observer,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control,
     RunNetworkBandwidthTestCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kNdt,
