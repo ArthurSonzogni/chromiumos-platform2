@@ -10,6 +10,7 @@ use std::sync::atomic::AtomicI32;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -31,7 +32,6 @@ use log::error;
 use log::info;
 use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
-use tokio::sync::Mutex;
 use tokio::sync::Notify;
 
 use crate::arch;
@@ -416,8 +416,7 @@ fn register_interface(
                         }
                     };
 
-                    match set_process_state(sched_ctx, process_id, process_state, sender_euid).await
-                    {
+                    match set_process_state(sched_ctx, process_id, process_state, sender_euid) {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_process_state failed: {:#}, pid={}", e, process_id);
@@ -464,9 +463,7 @@ fn register_interface(
                         thread_id,
                         thread_state,
                         sender_euid,
-                    )
-                    .await
-                    {
+                    ) {
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_thread_state failed: {:#}, pid={}", e, process_id);
