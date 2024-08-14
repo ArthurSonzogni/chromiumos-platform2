@@ -5,10 +5,13 @@
 #include <memory>
 #include <utility>
 
+#include "absl/hash/hash.h"
 #include "absl/status/status.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/common.h"
 #include "secagentd/device_user.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
@@ -198,7 +201,6 @@ const std::optional<std::string> ConstructOptionalUserhash(
 
 namespace secagentd {
 namespace pb = cros_xdr::reporting;
-
 std::map<std::string, std::vector<bpf::inode_dev_map_key>> userhash_inodes_map =
     {};
 
@@ -229,7 +231,9 @@ FilePlugin::FilePlugin(
           batch_interval_s)),
       bpf_skeleton_helper_(
           std::make_unique<BpfSkeletonHelper<Types::BpfSkeleton::kFile>>(
-              bpf_skeleton_factory, batch_interval_s)) {
+              bpf_skeleton_factory, batch_interval_s)),
+      event_map_(std::make_unique<FileEventMap>()) {
+  batch_interval_s_ = batch_interval_s;
   CHECK(message_sender != nullptr);
   CHECK(process_cache != nullptr);
   CHECK(bpf_skeleton_factory);
@@ -719,6 +723,10 @@ absl::Status FilePlugin::Activate() {
   if (status != absl::OkStatus()) {
     return status;
   }
+  coalesce_timer_.Start(FROM_HERE,
+                        base::Seconds(std::max(batch_interval_s_, 1u)),
+                        base::BindRepeating(&FilePlugin::FlushCollectedEvents,
+                                            weak_ptr_factory_.GetWeakPtr()));
 
   std::string username = device_user_->GetSanitizedUsername();
   if (InitializeFileBpfMaps(username) != absl::OkStatus()) {
@@ -733,6 +741,7 @@ absl::Status FilePlugin::Activate() {
 }
 
 absl::Status FilePlugin::Deactivate() {
+  coalesce_timer_.Stop();
   return bpf_skeleton_helper_->DetachAndUnload();
 }
 
@@ -750,18 +759,109 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     LOG(ERROR) << "Unexpected BPF event type.";
     return;
   }
-
   // const bpf::cros_file_event& fe = bpf_event.data.file_event;
-  // TODO(princya): convert to proto
+  // TODO(princya): convert to proto, if the BPF event structure contains
+  // a flag to determine whether a partial or full SHA256 needs to occur then
+  // we should definitely set the partial_sha256 field within the message.
+  // Later processing depends on this field being set correctly.
 
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&FilePlugin::OnDeviceUserRetrieved,
                      weak_ptr_factory_.GetWeakPtr(), std::move(atomic_event)));
 }
 
-void FilePlugin::EnqueueBatchedEvent(
+void FilePlugin::CollectEvent(
     std::unique_ptr<pb::FileEventAtomicVariant> atomic_event) {
-  batch_sender_->Enqueue(std::move(atomic_event));
+  FileEventKey key;
+  if (atomic_event->has_sensitive_modify()) {
+    key.process_uuid =
+        atomic_event->sensitive_modify().process().process_uuid();
+    key.device_id = atomic_event->sensitive_modify()
+                        .file_modify()
+                        .image_after()
+                        .inode_device_id();
+    key.inode =
+        atomic_event->sensitive_modify().file_modify().image_after().inode();
+    key.event_type = atomic_event->variant_type_case();
+  } else if (atomic_event->has_sensitive_read()) {
+    key.process_uuid = atomic_event->sensitive_read().process().process_uuid();
+    key.device_id =
+        atomic_event->sensitive_read().file_read().image().inode_device_id();
+    key.inode = atomic_event->sensitive_read().file_read().image().inode();
+    key.event_type = atomic_event->variant_type_case();
+  } else {
+    LOG(WARNING) << "Unknown file event variant type";
+    return;
+  }
+  auto it = event_map_->find(key);
+  if (it == event_map_->end()) {
+    event_map_->emplace(key, atomic_event.get());
+    ordered_events_.push_back(std::move(atomic_event));
+    return;
+  }
+  if (atomic_event->has_sensitive_modify() &&
+      it->second->has_sensitive_modify()) {
+    auto received_modify =
+        atomic_event->mutable_sensitive_modify()->mutable_file_modify();
+    auto stored_modify =
+        it->second->mutable_sensitive_modify()->mutable_file_modify();
+    // Writes and change attributes unconditionally coalesce together.
+    stored_modify->set_allocated_image_after(
+        received_modify->release_image_after());
+
+    const auto& stored_modify_type = stored_modify->modify_type();
+    // If the existing modify type is write or modify and the incoming
+    // modify type differs then promote the stored type to write-and-modify.
+    if (stored_modify_type !=
+            pb::FileModify_ModifyType_WRITE_AND_MODIFY_ATTRIBUTE &&
+        stored_modify_type != received_modify->modify_type()) {
+      // If the stored type is unknown then promote it to the incoming
+      // modify type.
+      if (stored_modify_type == pb::FileModify_ModifyType_MODIFY_TYPE_UNKNOWN) {
+        stored_modify->set_modify_type(received_modify->modify_type());
+      } else {
+        stored_modify->set_modify_type(
+            pb::FileModify_ModifyType::
+                FileModify_ModifyType_WRITE_AND_MODIFY_ATTRIBUTE);
+      }
+    }
+    // Attributes before will be the earliest attributes.
+    // For example if there are multiple modify attributes then the
+    // before attributes will be the attributes before the series of modify
+    // attributes occurred and the image_after will contain the attributes
+    // after all the modify attributes have finished.
+    if (!stored_modify->has_attributes_before() &&
+        received_modify->has_attributes_before()) {
+      stored_modify->set_allocated_attributes_before(
+          received_modify->release_attributes_before());
+    }
+  } else if (atomic_event->has_sensitive_read() &&
+             it->second->has_sensitive_read()) {
+    auto received_read =
+        atomic_event->mutable_sensitive_read()->mutable_file_read();
+    auto stored_read =
+        it->second->mutable_sensitive_read()->mutable_file_read();
+    stored_read->set_allocated_image(received_read->release_image());
+  } else {
+    LOG(WARNING) << "Unexpected file event received with no attached"
+                 << " variant. Dropping event.";
+  }
+}
+
+void FilePlugin::FlushCollectedEvents() {
+  // TODO(jasonling): This should be posted to a task.
+  // operations that run inside of sha256 should not acquire locks.
+  // This means that the only thing the tasks within sha256 should do is
+  // (1) compute sha256 without touching the image cache.
+  // (2) retrieve provenance also without touching the provenance cache.
+  for (auto& e : ordered_events_) {
+    batch_sender_->Enqueue(std::move(e));
+  }
+
+  ordered_events_.clear();
+  event_map_->clear();
+
+  batch_sender_->Flush();
 }
 
 void FilePlugin::OnDeviceUserRetrieved(
@@ -769,7 +869,7 @@ void FilePlugin::OnDeviceUserRetrieved(
     const std::string& device_user,
     const std::string& device_userhash) {
   atomic_event->mutable_common()->set_device_user(device_user);
-  EnqueueBatchedEvent(std::move(atomic_event));
+  CollectEvent(std::move(atomic_event));
 }
 
 std::unique_ptr<cros_xdr::reporting::FileReadEvent> FilePlugin::MakeReadEvent(

@@ -14,11 +14,11 @@
 #include <variant>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 #include "attestation-client/attestation/dbus-proxies.h"
-#include "attestation/proto_bindings/interface.pb.h"
 #include "base/check.h"
 #include "base/files/file_path.h"
 #include "base/memory/ptr_util.h"
@@ -39,7 +39,6 @@
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager-client/tpm_manager/dbus-proxies.h"
-#include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "user_data_auth/dbus-proxies.h"
 
 namespace secagentd {
@@ -333,9 +332,23 @@ class ProcessPlugin : public PluginInterface {
   std::unique_ptr<BatchSenderType> batch_sender_;
   std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
 };
-
 class FilePlugin : public PluginInterface {
  public:
+  class FileEventKey {
+   public:
+    std::string process_uuid;
+    uint64_t device_id;
+    uint64_t inode;
+    cros_xdr::reporting::FileEventAtomicVariant::VariantTypeCase event_type;
+    template <typename H>
+    friend H AbslHashValue(H h, const FileEventKey& key);
+    bool operator==(const FileEventKey& other) const = default;
+  };
+
+  using FileEventMap =
+      absl::flat_hash_map<FileEventKey,
+                          cros_xdr::reporting::FileEventAtomicVariant*>;
+
   FilePlugin(
       scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
       scoped_refptr<MessageSenderInterface> message_sender,
@@ -370,16 +383,21 @@ class FilePlugin : public PluginInterface {
     batch_sender_ = std::move(given);
   }
 
-  // Pushes the given file event into the next outgoing batch.
-  void EnqueueBatchedEvent(
-      std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant>
-          atomic_event);
+  // Collect an event for coalescing across a batching period.
+  void CollectEvent(std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant>
+                        atomic_event);
+
+  // Flush the collected events to the batch sender.
+  void FlushCollectedEvents();
 
   // Callback function that is ran when the device user is ready.
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant> atomic_event,
       const std::string& device_user,
       const std::string& device_userhash);
+
+  // Flushes out the coalesced file events in the map to the batch sender.
+  void PeriodicMapFlush();
 
   void OnSessionStateChange(const std::string& state);
 
@@ -415,7 +433,21 @@ class FilePlugin : public PluginInterface {
   scoped_refptr<DeviceUserInterface> device_user_;
   std::unique_ptr<BatchSenderType> batch_sender_;
   std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
+
+  std::unique_ptr<FileEventMap> event_map_;
+  std::vector<std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant>>
+      ordered_events_;
+
+  uint32_t batch_interval_s_;
+
+  base::RepeatingTimer coalesce_timer_;
 };
+
+template <typename H>
+H AbslHashValue(H h, const FilePlugin::FileEventKey& key) {
+  return H::combine(std::move(h), key.process_uuid, key.device_id,
+                    key.event_type, key.inode);
+}
 
 class AuthenticationPlugin : public PluginInterface {
  public:
