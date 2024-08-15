@@ -113,17 +113,17 @@ TEST_F(IntelPMTCollectorTest, NoConfig) {
 }
 
 TEST_F(IntelPMTCollectorTest, EmptyConfigShouldWork) {
-  Init();
   base::Value::Dict config;
   CreateConfig(config);
+  Init();
 
   EXPECT_TRUE(intel_pmt_collector_->HasShiftWork());
 }
 
 TEST_F(IntelPMTCollectorTest, WrongHeaderWillBeFixed) {
-  Init();
   base::Value::Dict config;
   CreateConfig(config);
+  Init();
 
   // Create a header with wrong snapshot size.
   int wrong_snapshot_size = fake_snapshot_->ByteSizeLong() + 999;
@@ -136,9 +136,9 @@ TEST_F(IntelPMTCollectorTest, WrongHeaderWillBeFixed) {
 }
 
 TEST_F(IntelPMTCollectorTest, DefaultEmptyLog) {
-  Init();
   base::Value::Dict config;
   CreateConfig(config);
+  Init();
 
   // `OneShotWork()` will create the log header if it's empty.
   intel_pmt_collector_->OneShotWork();
@@ -146,9 +146,9 @@ TEST_F(IntelPMTCollectorTest, DefaultEmptyLog) {
 }
 
 TEST_F(IntelPMTCollectorTest, VerifyCounterAndSnapshotContent) {
-  Init();
   base::Value::Dict config;
   CreateConfig(config);
+  Init();
 
   // `OneShotWork()` will create the log header if it's empty.
   intel_pmt_collector_->OneShotWork();
@@ -189,25 +189,43 @@ TEST_F(IntelPMTCollectorTest, VerifyCounterAndSnapshotContent) {
   }
 }
 
-TEST_F(IntelPMTCollectorTest, CleanUp) {
-  Init();
-  base::Value::Dict config;
-  CreateConfig(config);
-
-  // `OneShotWork()` will create the log header if it's empty.
-  intel_pmt_collector_->OneShotWork();
+TEST_F(IntelPMTCollectorTest, CleanUpInNextBootUp) {
+  // Create the log file manually.
   auto log_path = GetRoot().Append(kIntelPMTLogPath);
+  EXPECT_TRUE(base::WriteFile(log_path, ""));
   EXPECT_TRUE(base::PathExists(log_path));
 
-  // Delete the config file, so `HasShiftWork()` will report false. This will
-  // cause the `CleanUp()` to remove the log file.
-  auto config_path = GetRoot().Append(kIntelPMTConfigPath);
-  EXPECT_TRUE(brillo::DeleteFile(config_path));
+  // No config.
+  Init();
+
+  EXPECT_FALSE(intel_pmt_collector_->HasShiftWork());
 
   // Clean up.
   intel_pmt_collector_->CleanUp();
 
   EXPECT_FALSE(base::PathExists(log_path));
+}
+
+TEST_F(IntelPMTCollectorTest, NoCleanUpWithinSameLifeCycle) {
+  base::Value::Dict config;
+  CreateConfig(config);
+  Init();
+
+  // `OneShotWork()` generates the log.
+  intel_pmt_collector_->OneShotWork();
+  auto log_path = GetRoot().Append(kIntelPMTLogPath);
+  EXPECT_TRUE(base::PathExists(log_path));
+
+  // Clean up shouldn't work at this moment.
+  intel_pmt_collector_->CleanUp();
+  EXPECT_TRUE(base::PathExists(log_path));
+
+  // Delete config file.
+  EXPECT_TRUE(brillo::DeleteFile(GetRoot().Append(kIntelPMTConfigPath)));
+
+  // Clean up shouldn't work at this moment as well.
+  intel_pmt_collector_->CleanUp();
+  EXPECT_TRUE(base::PathExists(log_path));
 }
 
 }  // namespace

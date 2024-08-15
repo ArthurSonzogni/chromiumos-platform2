@@ -48,6 +48,11 @@ IntelPMTCollector::IntelPMTCollector(const base::FilePath& root_dir,
     snapshot_ = snapshot;
   }
 
+  // Exit early if there is no config file.
+  if (!base::PathExists(root_dir_.Append(kIntelPMTConfigPath))) {
+    return;
+  }
+
   // If fail to read the config file, we just use default setting.
   std::string content;
   if (base::ReadFileToString(root_dir_.Append(kIntelPMTConfigPath), &content)) {
@@ -131,8 +136,7 @@ void IntelPMTCollector::CleanUpLogsAndSetNewHeader() {
 }
 
 bool IntelPMTCollector::HasShiftWork() {
-  return snapshot_ != nullptr && log_fd_ != -1 && counter_fd_ != -1 &&
-         base::PathExists(root_dir_.Append(kIntelPMTConfigPath));
+  return snapshot_ != nullptr && log_fd_ != -1 && counter_fd_ != -1;
 }
 
 void IntelPMTCollector::AdjustSchedule() {
@@ -171,8 +175,10 @@ void IntelPMTCollector::CleanUp() {
   // Since we maintain a circular queue inside the `kIntelPMTLogPath`, so we
   // don't need to clean up the records as long as `HasShiftWork()` returns
   // true. If it returns false, we simply remove the file.
-  if (!HasShiftWork() && log_fd_ != -1) {
-    close(log_fd_);
+  if (!HasShiftWork()) {
+    if (log_fd_ != -1) {
+      close(log_fd_);
+    }
     brillo::DeleteFile(root_dir_.Append(kIntelPMTLogPath));
     return;
   }
