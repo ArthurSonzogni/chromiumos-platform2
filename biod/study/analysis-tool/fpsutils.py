@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -7,8 +6,8 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from enum import Enum
+import collections
+import enum
 import timeit
 from typing import Any, Iterable, Literal, Optional, Union
 
@@ -89,7 +88,9 @@ class DataFrameCountTrieAccess:
             cols = list(table.columns)
         self.cols = cols
 
-        self.counts_dict: Counter[tuple[Any, ...]] = Counter()
+        self.counts_dict: collections.Counter[
+            tuple[Any, ...]
+        ] = collections.Counter()
 
         for row in np.array(table[cols]):
             # Update all partial trie nodes. For example, take row (val1, val2):
@@ -147,18 +148,18 @@ def boot_sample(
 
 def boot_sample_range(
     # Scalar input is the fastest invocation to rng.choice.
-    range: int,
+    range_max: int,
     n: Optional[int] = None,
     rng: np.random.Generator = np.random.default_rng(),
 ) -> npt.NDArray[np.int64]:
-    """Sample with replacement `range` elements from `0` to `range`.
+    """Sample with replacement `range_max` elements from `0` to `range_max`.
 
     This is slightly faster than `fpsutils.boot_sample`.
 
-    Equivalent to `rng.choice(range, size=range, replace=True)`.
+    Equivalent to `rng.choice(range_max, size=range, replace=True)`.
     """
 
-    return rng.choice(range, size=range, replace=True)
+    return rng.choice(range_max, size=range_max, replace=True)
 
 
 def plot_pd_column_hist_discrete(
@@ -209,22 +210,24 @@ def discrete_hist(data) -> tuple[npt.NDArray, npt.NDArray]:
     return np.unique(data, return_counts=True)
 
 
-def has_columns(df: pd.DataFrame, cols: Iterable[Union[Enum, str]]) -> bool:
+def has_columns(
+    df: pd.DataFrame, cols: Iterable[Union[enum.Enum, str]]
+) -> bool:
     """Check if the DataFrame `df` contains all `cols`.
 
     This allows for specifying a list of Enums, whose `value` is the column
     name that is expected.
     """
 
-    col_strings = {isinstance(c, Enum) and c.value or str(c) for c in cols}
-    return col_strings <= {c for c in df.columns}
+    col_strings = {isinstance(c, enum.Enum) and c.value or str(c) for c in cols}
+    return col_strings <= set(df.columns)
 
 
 def plt_discrete_hist(data):
     counts = np.bincount(data)
 
-    # We need to zoom in, since there would be thousands of thousands of bars that
-    # are zero near the tail end.
+    # We need to zoom in, since there would be thousands of thousands of bars
+    # that are zero near the tail end.
     nonzero_indicies = np.nonzero(counts)
     first_index = np.min(nonzero_indicies)
     # first_index = 0
@@ -246,7 +249,8 @@ def plt_discrete_hist(data):
         mean = np.mean(data)
         print(f"first={first_index} last={last_index}")
         print(
-            f"mu={mu} , std={std} 3*std={3*std}, np.mean(data) = {np.mean(data)}"
+            f"mu={mu} , std={std} 3*std={3*std}, "
+            f"np.mean(data) = {np.mean(data)}"
         )
 
         # x_curve = x
@@ -301,7 +305,7 @@ def plt_discrete_hist2(data):
         )
 
 
-def elapsed_time_str(sec: float) -> str:
+def elapsed_time_str(seconds: float) -> str:
     """Convert a seconds value into a more easily interpretable units str.
 
     Example: elapsed_time_str(0.003) -> "3ms"
@@ -309,18 +313,18 @@ def elapsed_time_str(sec: float) -> str:
 
     # TODO: See if numpy.timedelta64 can be used.
 
-    hour = int(sec / 60.0**2)
-    sec -= hour * 60**2
-    min = int(sec / 60.0)
-    sec -= min * 60.0
-    s = int(sec)
-    ms = int(sec * 1e3) % 1000
-    us = int(sec * 1e6) % 1000
-    ns = (sec * 1e9) % 1000
+    hrs = int(seconds / 60.0**2)
+    seconds -= hrs * 60**2
+    mins = int(seconds / 60.0)
+    seconds -= mins * 60.0
+    s = int(seconds)
+    ms = int(seconds * 1e3) % 1000
+    us = int(seconds * 1e6) % 1000
+    ns = (seconds * 1e9) % 1000
 
     string = ""
-    string += hour and f"{hour}hr " or ""
-    string += min and f"{min}min " or ""
+    string += hrs and f"{hrs}hr " or ""
+    string += mins and f"{mins}min " or ""
     string += s and f"{s}s " or ""
     string += ms and f"{ms}ms " or ""
     string += us and f"{us}us " or ""
@@ -331,7 +335,7 @@ def elapsed_time_str(sec: float) -> str:
 def benchmark(
     stmt: str,
     setup: str = "pass",
-    globals: dict[str, Any] = {**locals(), **globals()},
+    global_vars: dict[str, Any] = {**locals(), **globals()},
 ) -> tuple[int, float, float]:
     """Measure the runtime of `stmt`.
 
@@ -341,7 +345,9 @@ def benchmark(
         (num_loops, sec_total, sec_per_loop)
     """
 
-    loops, sec = timeit.Timer(stmt, setup=setup, globals=globals).autorange()
+    loops, sec = timeit.Timer(
+        stmt, setup=setup, globals=global_vars
+    ).autorange()
     print(
         f'Ran "{stmt}" {loops} times over {sec}s.'
         " "
@@ -365,7 +371,7 @@ def fmt_far(
         the decimal point.
     """
 
-    if not fmt in ["k", "s"]:
+    if fmt not in ["k", "s"]:
         raise TypeError("type must be 'k' or 's'.")
 
     if fmt == "k":

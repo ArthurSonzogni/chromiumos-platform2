@@ -5,7 +5,7 @@
 
 """Test and benchmark the fpsutils module."""
 
-from enum import Enum
+import enum
 import time
 import unittest
 
@@ -15,6 +15,8 @@ import pandas as pd
 
 
 class Test_boot_sample(unittest.TestCase):
+    """Test the `boot_sample` function."""
+
     def test_benchmark(self):
         # self.assertEqual(inc_dec.increment(3), 4)
 
@@ -26,17 +28,21 @@ class Test_boot_sample(unittest.TestCase):
         # We would expect the first two tests to have similar runtime
         # performance.
         fpsutils.fake_use(vals)
-        vars = {**locals(), **globals()}
-        fpsutils.benchmark("fpsutils.boot_sample(vals, rng=rng)", globals=vars)
+        glbs = {**locals(), **globals()}
         fpsutils.benchmark(
-            "fpsutils.boot_sample(vals, n=1, rng=rng)", globals=vars
+            "fpsutils.boot_sample(vals, rng=rng)", global_vars=glbs
         )
         fpsutils.benchmark(
-            "fpsutils.boot_sample(vals, n=100, rng=rng)", globals=vars
+            "fpsutils.boot_sample(vals, n=1, rng=rng)", global_vars=glbs
+        )
+        fpsutils.benchmark(
+            "fpsutils.boot_sample(vals, n=100, rng=rng)", global_vars=glbs
         )
 
 
 class Test_boot_sample_range(unittest.TestCase):
+    """Test the `boot_sample_range` function."""
+
     def test_benchmark(self):
         # self.assertEqual(inc_dec.increment(3), 4)
 
@@ -48,10 +54,10 @@ class Test_boot_sample_range(unittest.TestCase):
         # These are equivalent calls and should be extremely close in runtime.
         fpsutils.benchmark(
             "fpsutils.boot_sample_range(100, rng=rng)",
-            globals={**locals(), **globals()},
+            global_vars={**locals(), **globals()},
         )
         fpsutils.benchmark(
-            "rng.choice(100, size=100)", globals={**locals(), **globals()}
+            "rng.choice(100, size=100)", global_vars={**locals(), **globals()}
         )
 
 
@@ -70,6 +76,8 @@ def generate_fake_decision_table() -> pd.DataFrame:
 
 
 class Test_DataFrameSetAccess(unittest.TestCase):
+    """Test the `DataFrameSetAccess` class."""
+
     def test_benchmark(self):
         df = generate_fake_decision_table()
         # Select the True rows and save only the columns A through B.
@@ -80,13 +88,14 @@ class Test_DataFrameSetAccess(unittest.TestCase):
         # Not in set
         self.assertFalse(s.isin((0, 0, 0, 0)))
         fpsutils.benchmark(
-            "s.isin((0, 0, 0, 0))", globals={**locals(), **globals()}
+            "s.isin((0, 0, 0, 0))", global_vars={**locals(), **globals()}
         )
 
         # In set
         self.assertTrue(s.isin((501, 501, 501, 501)))
         fpsutils.benchmark(
-            "s.isin((501, 501, 501, 501))", globals={**locals(), **globals()}
+            "s.isin((501, 501, 501, 501))",
+            global_vars={**locals(), **globals()},
         )
 
         print(
@@ -96,7 +105,7 @@ class Test_DataFrameSetAccess(unittest.TestCase):
         self.assertTrue((df == [501, 501, 501, 501, True]).all(axis=1).any())
         fpsutils.benchmark(
             "(df == (501, 501, 501, 501, True)).all(axis=1).any()",
-            globals={**locals(), **globals()},
+            global_vars={**locals(), **globals()},
         )
         # This is faster, but deprecated.
         # self.assertTrue((501, 501, 501, 501, True) in df.values)
@@ -111,13 +120,19 @@ class Test_DataFrameSetAccess(unittest.TestCase):
         # print((501, 501, 501, 501, True) in df.values)
         # fpsutils.autorange('(501, 501, 501, 501, True) in df.values',
         #                    globals={**locals(), **globals()})
-        # fpsutils.autorange('df.isin((501, 501, 501, 501, True)).all(axis=1).any()',
-        #                    globals={**locals(), **globals()})
-        # fpsutils.autorange('(df == (501, 501, 501, 501, True)).all(axis=1).any()',
-        #                    globals={**locals(), **globals()})
+        # fpsutils.autorange(
+        #     "df.isin((501, 501, 501, 501, True)).all(axis=1).any()",
+        #     globals={**locals(), **globals()},
+        # )
+        # fpsutils.autorange(
+        #     "(df == (501, 501, 501, 501, True)).all(axis=1).any()",
+        #     globals={**locals(), **globals()},
+        # )
 
 
 class Test_DataFrameCountTrieAccess(unittest.TestCase):
+    """Test the `DataFrameCountTrieAccess` class."""
+
     def test_benchmark(self):
         df = generate_fake_decision_table()
         # Select the True rows and save only the columns A through B.
@@ -128,13 +143,14 @@ class Test_DataFrameCountTrieAccess(unittest.TestCase):
         # Not in set
         self.assertFalse(s.isin((0, 0, 0, 0)))
         fpsutils.benchmark(
-            "s.isin((0, 0, 0, 0))", globals={**locals(), **globals()}
+            "s.isin((0, 0, 0, 0))", global_vars={**locals(), **globals()}
         )
 
         # In set
         self.assertTrue(s.isin((501, 501, 501, 501)))
         fpsutils.benchmark(
-            "s.isin((501, 501, 501, 501))", globals={**locals(), **globals()}
+            "s.isin((501, 501, 501, 501))",
+            global_vars={**locals(), **globals()},
         )
         self.assertGreater(s.counts(()), 1)
         self.assertEqual(s.counts((501,)), 1)
@@ -142,12 +158,15 @@ class Test_DataFrameCountTrieAccess(unittest.TestCase):
         self.assertEqual(s.counts((501, 501, 501)), 1)
         self.assertEqual(s.counts((501, 501, 501, 501)), 1)
         fpsutils.benchmark(
-            "s.isin((501, 501, 501, 501))", globals={**locals(), **globals()}
+            "s.isin((501, 501, 501, 501))",
+            global_vars={**locals(), **globals()},
         )
 
 
 class Test_has_columns(unittest.TestCase):
-    class Cols(Enum):
+    """Test the `has_columns` function."""
+
+    class Cols(enum.Enum):
         C1 = "Col1"
         C2 = "Col2"
 
@@ -181,6 +200,8 @@ class Test_has_columns(unittest.TestCase):
 
 
 class Test_Simple_Functions(unittest.TestCase):
+    """Test the simple static functions in the fpsutils module."""
+
     def test_elapsed_time_str_single_unit(self):
         self.assertEqual(fpsutils.elapsed_time_str(60.0**2), "1hr")
         self.assertEqual(fpsutils.elapsed_time_str(60.0), "1min")
@@ -222,7 +243,7 @@ class Test_Simple_Functions(unittest.TestCase):
         TIME_EQ_DELTA = 0.100
         fpsutils.fake_use(time.sleep)
         loops, sec, sec_per_loop = fpsutils.benchmark(
-            "time.sleep(SLEEP_TIME)", globals={**locals(), **globals()}
+            "time.sleep(SLEEP_TIME)", global_vars={**locals(), **globals()}
         )
 
         self.assertGreater(loops, 0)

@@ -55,15 +55,15 @@ class Test_Bootstrap(unittest.TestCase):
         boot = BootstrapFullFARHierarchy(self.exp)
         fpsutils.benchmark(
             "vals = pickle.loads(pickle.dumps(123456))",
-            globals={**locals(), **globals()},
+            global_vars={**locals(), **globals()},
         )
         _, _, pkl_time = fpsutils.benchmark(
-            "pickle.dumps(boot)", globals={**locals(), **globals()}
+            "pickle.dumps(boot)", global_vars={**locals(), **globals()}
         )
         pkl_data = pickle.dumps(boot)
         fpsutils.fake_use(pkl_data)
         _, _, unpkl_time = fpsutils.benchmark(
-            "pickle.loads(pkl_data)", globals={**locals(), **globals()}
+            "pickle.loads(pkl_data)", global_vars={**locals(), **globals()}
         )
 
         print(

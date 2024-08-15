@@ -69,23 +69,23 @@ class Test_fa_query(unittest.TestCase):
 
         fpsutils.benchmark(
             "self.exp.fa_query(verify_user_id=10071)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query(verify_user_id=10071, verify_finger_id=0)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
 
     def test_benchmark_fa_query2(self):
@@ -93,23 +93,23 @@ class Test_fa_query(unittest.TestCase):
 
         fpsutils.benchmark(
             "self.exp.fa_query2(verify_user_id=10071)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
         fpsutils.benchmark(
             "self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)",
-            globals={**globals(), **locals()},
+            global_vars={**globals(), **locals()},
         )
 
 
