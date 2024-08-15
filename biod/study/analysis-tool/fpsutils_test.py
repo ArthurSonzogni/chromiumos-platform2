@@ -101,7 +101,7 @@ class Test_DataFrameSetAccess(unittest.TestCase):
         # fpsutils.autorange('(501, 501, 501, 501, True) in df.values',
         #                    globals={**locals(), **globals()})
 
-        # print('# Try querying after we set all columns as indicies.')
+        # print('# Try querying after we set all columns as indices.')
         # df = df.set_index(['A', 'B', 'C', 'D', 'E'])
         # I can't seem to get this to work.
         # print(df.isin((501, 501, 501, 501, True)).all(axis=1).any())

@@ -38,7 +38,7 @@ class DataFrameSetAccess:
         # implementation, but having duplicates might indicate that we are
         # attempting to analyze cross sections of data using the wrong tool.
         # Just take for example that we are caching only the first three columns
-        # of a dataframe. We really migt need to know the number of rows that
+        # of a DataFrame. We really might need to know the number of rows that
         # happen to have a particular three starting values, but this accessor
         # will only say one exists.
         assert not table.duplicated(subset=cols).any()
