@@ -13,6 +13,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libdevice_management-client",
+    "libpower_manager-client",
     "libruntime_probe-client",
     "libshill-client",
     "libtpm_manager-client",
@@ -37,6 +38,7 @@ if (use.test) {
   pkg_config("test_pkg_deps") {
     pkg_deps = [
       "libdevice_management-client-test",
+      "libpower_manager-client-test",
       "libruntime_probe-client-test",
       "libshill-client-test",
       "libtpm_manager-client-test",

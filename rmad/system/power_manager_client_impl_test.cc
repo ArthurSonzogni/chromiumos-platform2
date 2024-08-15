@@ -5,6 +5,7 @@
 #include "rmad/system/power_manager_client_impl.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -14,6 +15,7 @@
 #include <dbus/power_manager/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <power_manager/dbus-proxy-mocks.h>
 
 using testing::_;
 using testing::Return;
@@ -23,67 +25,56 @@ namespace rmad {
 
 class PowerManagerClientTest : public testing::Test {
  public:
-  PowerManagerClientTest()
-      : mock_bus_(new StrictMock<dbus::MockBus>(dbus::Bus::Options())),
-        mock_object_proxy_(new StrictMock<dbus::MockObjectProxy>(
-            mock_bus_.get(),
-            power_manager::kPowerManagerServiceName,
-            dbus::ObjectPath(power_manager::kPowerManagerServicePath))) {}
+  PowerManagerClientTest() = default;
   ~PowerManagerClientTest() override = default;
-
-  dbus::MockObjectProxy* mock_object_proxy() const {
-    return mock_object_proxy_.get();
-  }
-
-  PowerManagerClientImpl* power_manager_client() const {
-    return power_manager_client_.get();
-  }
-
-  void SetUp() override {
-    EXPECT_CALL(*mock_bus_,
-                GetObjectProxy(
-                    power_manager::kPowerManagerServiceName,
-                    dbus::ObjectPath(power_manager::kPowerManagerServicePath)))
-        .WillOnce(Return(mock_object_proxy_.get()));
-    power_manager_client_ = std::make_unique<PowerManagerClientImpl>(mock_bus_);
-  }
-
- private:
-  scoped_refptr<dbus::MockBus> mock_bus_;
-  scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
-  std::unique_ptr<PowerManagerClientImpl> power_manager_client_;
 };
 
 TEST_F(PowerManagerClientTest, Restart_Success) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
-      .WillOnce([](dbus::MethodCall*, int) {
-        return base::ok(dbus::Response::CreateEmpty());
-      });
-  EXPECT_TRUE(power_manager_client()->Restart());
+  auto mock_power_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::PowerManagerProxyMock>>();
+  EXPECT_CALL(*mock_power_manager_proxy, RequestRestart(_, _, _, _))
+      .WillOnce(Return(true));
+
+  auto power_manager_client = std::make_unique<PowerManagerClientImpl>(
+      std::move(mock_power_manager_proxy));
+
+  EXPECT_TRUE(power_manager_client->Restart());
 }
 
 TEST_F(PowerManagerClientTest, Restart_Failed) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
-      .WillOnce([](dbus::MethodCall*, int) {
-        return base::unexpected(dbus::Error());
-      });
-  EXPECT_FALSE(power_manager_client()->Restart());
+  auto mock_power_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::PowerManagerProxyMock>>();
+  EXPECT_CALL(*mock_power_manager_proxy, RequestRestart(_, _, _, _))
+      .WillOnce(Return(false));
+
+  auto power_manager_client = std::make_unique<PowerManagerClientImpl>(
+      std::move(mock_power_manager_proxy));
+
+  EXPECT_FALSE(power_manager_client->Restart());
 }
 
 TEST_F(PowerManagerClientTest, Shutdown_Success) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
-      .WillOnce([](dbus::MethodCall*, int) {
-        return base::ok(dbus::Response::CreateEmpty());
-      });
-  EXPECT_TRUE(power_manager_client()->Shutdown());
+  auto mock_power_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::PowerManagerProxyMock>>();
+  EXPECT_CALL(*mock_power_manager_proxy, RequestShutdown(_, _, _, _))
+      .WillOnce(Return(true));
+
+  auto power_manager_client = std::make_unique<PowerManagerClientImpl>(
+      std::move(mock_power_manager_proxy));
+
+  EXPECT_TRUE(power_manager_client->Shutdown());
 }
 
 TEST_F(PowerManagerClientTest, Shutdown_Failed) {
-  EXPECT_CALL(*mock_object_proxy(), CallMethodAndBlock(_, _))
-      .WillOnce([](dbus::MethodCall*, int) {
-        return base::unexpected(dbus::Error());
-      });
-  EXPECT_FALSE(power_manager_client()->Shutdown());
+  auto mock_power_manager_proxy =
+      std::make_unique<StrictMock<org::chromium::PowerManagerProxyMock>>();
+  EXPECT_CALL(*mock_power_manager_proxy, RequestShutdown(_, _, _, _))
+      .WillOnce(Return(false));
+
+  auto power_manager_client = std::make_unique<PowerManagerClientImpl>(
+      std::move(mock_power_manager_proxy));
+
+  EXPECT_FALSE(power_manager_client->Shutdown());
 }
 
 }  // namespace rmad

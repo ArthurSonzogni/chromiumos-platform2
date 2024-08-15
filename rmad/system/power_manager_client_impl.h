@@ -5,8 +5,9 @@
 #ifndef RMAD_SYSTEM_POWER_MANAGER_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_POWER_MANAGER_CLIENT_IMPL_H_
 
-#include <base/memory/scoped_refptr.h>
-#include <dbus/bus.h>
+#include <memory>
+
+#include <power_manager-client/power_manager/dbus-proxies.h>
 
 #include "rmad/system/power_manager_client.h"
 
@@ -15,7 +16,9 @@ namespace rmad {
 class PowerManagerClientImpl : public PowerManagerClient {
  public:
   PowerManagerClientImpl();
-  explicit PowerManagerClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  explicit PowerManagerClientImpl(
+      std::unique_ptr<org::chromium::PowerManagerProxyInterface>
+          power_manager_proxy);
   PowerManagerClientImpl(const PowerManagerClientImpl&) = delete;
   PowerManagerClientImpl& operator=(const PowerManagerClientImpl&) = delete;
 
@@ -25,8 +28,8 @@ class PowerManagerClientImpl : public PowerManagerClient {
   bool Shutdown() override;
 
  private:
-  // Owned by external D-Bus bus.
-  dbus::ObjectProxy* proxy_;
+  std::unique_ptr<org::chromium::PowerManagerProxyInterface>
+      power_manager_proxy_;
 };
 
 }  // namespace rmad

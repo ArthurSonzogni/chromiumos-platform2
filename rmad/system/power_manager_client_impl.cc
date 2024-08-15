@@ -5,63 +5,55 @@
 #include "rmad/system/power_manager_client_impl.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/logging.h>
-#include <base/memory/scoped_refptr.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
 #include <dbus/power_manager/dbus-constants.h>
+#include <power_manager-client/power_manager/dbus-proxies.h>
 
 #include "rmad/utils/dbus_utils.h"
 
 namespace rmad {
 
 PowerManagerClientImpl::PowerManagerClientImpl() {
-  proxy_ = DBus::GetInstance()->bus()->GetObjectProxy(
-      power_manager::kPowerManagerServiceName,
-      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+  power_manager_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(
+      DBus::GetInstance()->bus());
 }
 
 PowerManagerClientImpl::PowerManagerClientImpl(
-    const scoped_refptr<dbus::Bus>& bus) {
-  proxy_ = bus->GetObjectProxy(
-      power_manager::kPowerManagerServiceName,
-      dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-}
+    std::unique_ptr<org::chromium::PowerManagerProxyInterface>
+        power_manager_proxy)
+    : power_manager_proxy_(std::move(power_manager_proxy)) {}
 
 bool PowerManagerClientImpl::Restart() {
-  dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
-                               power_manager::kRequestRestartMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendInt32(power_manager::REQUEST_RESTART_OTHER);
-  writer.AppendString("rmad request restart");
-
-  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
-      proxy_->CallMethodAndBlock(&method_call,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-
-  if (!response.has_value() || !response.value()) {
-    LOG(ERROR) << "Failed to call powerd service";
+  brillo::ErrorPtr error;
+  if (!power_manager_proxy_->RequestRestart(
+          /*in_reason=*/power_manager::RequestRestartReason::
+              REQUEST_RESTART_OTHER,
+          /*in_description=*/"rmad request restart",
+          /*error=*/&error) ||
+      error) {
+    LOG(ERROR) << "Failed to call RequestRestartReason from powerd service";
     return false;
   }
+
+  // There is no reply. Assume success if there's no errors.
   return true;
 }
 
 bool PowerManagerClientImpl::Shutdown() {
-  dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
-                               power_manager::kRequestShutdownMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendInt32(power_manager::REQUEST_SHUTDOWN_OTHER);
-  writer.AppendString("rmad request shutdown");
-
-  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response =
-      proxy_->CallMethodAndBlock(&method_call,
-                                 dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-
-  if (!response.has_value() || !response.value()) {
-    LOG(ERROR) << "Failed to call powerd service";
+  brillo::ErrorPtr error;
+  if (!power_manager_proxy_->RequestShutdown(
+          /*in_reason=*/power_manager::RequestShutdownReason::
+              REQUEST_SHUTDOWN_OTHER,
+          /*in_description=*/"rmad request shutdown",
+          /*error=*/&error) ||
+      error) {
+    LOG(ERROR) << "Failed to call RequestShutdown from powerd service";
     return false;
   }
+
+  // There is no reply. Assume success if there's no errors.
   return true;
 }
 
