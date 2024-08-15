@@ -892,11 +892,11 @@ static inline __attribute__((always_inline)) int print_cros_file_event(
   }
   bpf_printk("File Event Type: %d\n", file_event->type);
   bpf_printk("File Modification Type: %d\n", file_event->mod_type);
-  if (file_event->mod_type != FMOD_MOUNT ||
-      file_event->mod_type != FMOD_UMOUNT) {
-    print_cros_file_close_event(&(file_event->data.file_detailed_event));
-  } else {
+  if (file_event->mod_type == FMOD_MOUNT ||
+      file_event->mod_type == FMOD_UMOUNT) {
     print_mount_data(&(file_event->data.mount_event));
+  } else {
+    print_cros_file_close_event(&(file_event->data.file_detailed_event));
   }
   return 0;
 }
@@ -1468,7 +1468,6 @@ int BPF_PROG(fexit__security_sb_mount,
 
   construct_absolute_file_path(BPF_CORE_READ(path, dentry),
                                &mount_data->dest_path_info);
-
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
   return 0;
