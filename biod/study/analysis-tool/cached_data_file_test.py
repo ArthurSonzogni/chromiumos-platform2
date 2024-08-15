@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Test the cached_data_file module."""
+
 import glob
 import pathlib
 import tempfile
@@ -15,6 +17,8 @@ import simulate_fpstudy
 
 
 class Test_CachedCSVFile(unittest.TestCase):
+    """Test the `CachedCSVFile` class."""
+
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"

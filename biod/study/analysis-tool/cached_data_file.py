@@ -1,7 +1,8 @@
-#!/usr/bin/env python3
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+"""Provides cached/fast access to data backed by files."""
 
 from __future__ import annotations
 
@@ -180,14 +181,22 @@ class CachedDataFile:
 
 
 class CachedCSVFile(CachedDataFile):
+    """Persistently cache the results of parsing a particular CSV file.
+
+    This will save the parsed output from `pd.read_csv` in pickled format
+    to a file. Upon reinstantiating a CachedCSFFile for a file whose hash
+    matches that of the original parsed file, the cached version will
+    be used, instead of reparsing.
+    """
+
     def __init__(
         self,
         data_file_path: Union[pathlib.Path, str],
         verbose: bool = False,
-        **read_csv_args,
+        **read_csv_args: Any,
     ) -> None:
         self._read_csv_arg = read_csv_args
-        return super().__init__(data_file_path=data_file_path, verbose=verbose)
+        super().__init__(data_file_path=data_file_path, verbose=verbose)
 
     def _parse(self) -> Any:
         """Parse the CSV file into a pandas DataFrame."""
