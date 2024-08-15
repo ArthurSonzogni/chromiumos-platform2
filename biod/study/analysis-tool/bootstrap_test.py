@@ -66,7 +66,8 @@ class Test_Bootstrap(unittest.TestCase):
         )
 
         print(
-            f"Total pickling time is {fpsutils.elapsed_time_str(pkl_time + unpkl_time)}."
+            "Total pickling time is "
+            f"{fpsutils.elapsed_time_str(pkl_time + unpkl_time)}."
         )
 
         for c in HYPOTHETICAL_NUM_CORES:

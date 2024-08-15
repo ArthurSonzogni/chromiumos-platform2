@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""
+"""Implements the optimized bootstrap sampling methods for biometric evaluation.
 
 References
 ----------
@@ -38,6 +37,8 @@ import table
 
 
 class BootstrapResults:
+    """Holds the results from a Bootstrap sampling run."""
+
     def __init__(self, bootstrap_samples: list[int]) -> None:
         self._samples = bootstrap_samples
 
@@ -70,7 +71,6 @@ class BootstrapResults:
         ci_percent_lower = (100 - confidence_percent) / 2
         ci_percent_upper = 100 - ci_percent_lower
 
-        # 95% C.I.
         boot_limits = np.percentile(
             self._samples, [ci_percent_lower, ci_percent_upper]
         )
@@ -111,7 +111,7 @@ class Bootstrap:
     def _init(self, exp: Experiment) -> None:
         """Initialize runtime caches.
 
-        Implement this.
+        Implement this in subclasses.
 
         This will be run once before any `_sample` invocations occur.
         Save the absolute least amount of data in `self` as possible, since
@@ -127,12 +127,12 @@ class Bootstrap:
     def _sample(self, rng: np.random.Generator) -> int:
         """Complete a single bootstrap sample using.
 
-        Implement this.
+        Implement this in subclasses.
 
         Args:
             rng: The initialized random number generator to use for the sample.
 
-        Return:
+        Returns:
             Returns that count of values being observed in the sample.
         """
         return 0
@@ -151,7 +151,7 @@ class Bootstrap:
         num_samples: int,
         progress: Callable[[Iterable[Any], int], Iterable[Any]],
     ) -> list[int]:
-        boot_counts = list()
+        boot_counts: list[int] = []
 
         if self._verbose:
             print("# Initializing RNG.")
@@ -175,14 +175,16 @@ class Bootstrap:
         progress: Callable[[Iterable[Any], int], Iterable[Any]],
     ) -> list[int]:
         # All processes must have their own unique seed for their pseudo random
-        # number generator, otherwise they will all generate the same random values.
+        # number generator, otherwise they will all generate the same random
+        # values.
         #
-        # For reproducibility and testing, you can use np.random.SeedSequence.spawn
-        # or [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
+        # For reproducibility and testing, you can use
+        # np.random.SeedSequence.spawn or
+        # [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
         # See https://numpy.org/doc/stable/reference/random/parallel.html .
         #
-        # We could possible generate fewer random number generators, since we only
-        # need one per process. This might be achievable by using the Pool
+        # We could possible generate fewer random number generators, since we
+        # only need one per process. This might be achievable by using the Pool
         # constructor's initializer function to add a process local global
         # rng variable. For now, it is just safer to generate BOOTSTRAP_SAMPLES
         # random number generators. Do note that you can't really parallelize
@@ -318,6 +320,11 @@ class Bootstrap:
 
 
 class BootstrapFARFlat(Bootstrap):
+    """Perform bootstrap samples over the flat rows in the FAR table.
+
+    No validation is done on the incoming decisions data.
+    """
+
     # For the 100000 sample case, enabling this reduces overall time by
     # 3 seconds.
     USE_GLOBAL_SHARING = True
@@ -331,13 +338,19 @@ class BootstrapFARFlat(Bootstrap):
         )
 
     def _sample(self, rng: np.random.Generator) -> int:
-        """Complete a single flat bootstrap sample"""
+        """Complete a single flat bootstrap sample."""
 
         sample = fpsutils.boot_sample(self.far_list, rng=rng)
         return np.sum(sample)
 
 
 class BootstrapFullFARHierarchy(Bootstrap):
+    """Perform bootstrap samples by sequentially choosing each combination.
+
+    The 2006 ISO for evaluation demonstrates the preferred method of
+    sequentially randomly choosing each parameter.
+    """
+
     # For the 100000 sample case, enabling this reduces overall time by
     # 3 seconds.
     USE_GLOBAL_SHARING = True
@@ -366,17 +379,18 @@ class BootstrapFullFARHierarchy(Bootstrap):
         # count.
 
     def _sample(self, rng: np.random.Generator) -> int:
-        """Complete a single bootstrap sample using full hierarchy bootstrap method.
+        """Complete a single bootstrap sample using the full hierarchy method.
 
         The important parts of this approach are the following:
-        * Avoiding DataFrame queries during runtime. We use fa_set cache instead.
-        This is the difference between hundreds of _us_ vs. hundreds of _ns_
-        per query
-        * Using rng.choice (now boot_sample) on either a scalar, np.array, or list
-        is important. Other methods are very slow.
+
+        * Avoiding `DataFrame` queries during runtime. We use `fa_set` cache,
+          instead. This is the difference between hundreds of _us_ vs. hundreds
+          of _ns_ per query
+        * Using rng.choice (now boot_sample) on either a scalar, np.array, or
+          list is important. Other methods are very slow.
         * The big finale that gets the single bootstrap sample time down from
-        tens of _s_ to hundreds of _ms_ is checking for the loop abort path
-        using the fa_trie.
+          tens of _s_ to hundreds of _ms_ is checking for the loop abort path
+          using the `fa_trie`.
 
         Additional Performance:
         * Use boot_sample_range instead os boot_sample.
@@ -395,7 +409,7 @@ class BootstrapFullFARHierarchy(Bootstrap):
         for v in fpsutils.boot_sample(user_list, rng=rng):
             if not fa_trie.isin((v,)):
                 continue
-            # 72 other template users (same user with different finger is allowed)
+            # 72 other template users (same user w/ different finger is allowed)
             for t in fpsutils.boot_sample(user_list, rng=rng):
                 if not fa_trie.isin((v, t)):
                     continue
@@ -407,7 +421,9 @@ class BootstrapFullFARHierarchy(Bootstrap):
                     # FIXME: This is a hack to try to fix the possible
                     # sample pool issue described below.
                     # This is less bad, since there are only 6 fingers.
-                    # mod_finger_list = np.array([0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5])
+                    # mod_finger_list = np.array(
+                    #     [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5]
+                    # )
                     #
                     # It should be known that having this fix here or not
                     # having this fix here does not change the output
@@ -415,11 +431,13 @@ class BootstrapFullFARHierarchy(Bootstrap):
                     # histogram skew.
                     mod_finger_list = fingers_list
                     # if v == t:
-                    #     mod_finger_list = np.array(np.where(~(mod_finger_list == fv)))
+                    #     mod_finger_list = np.array(
+                    #         np.where(~(mod_finger_list == fv))
+                    #     )
 
                     for ft in fpsutils.boot_sample(mod_finger_list, rng=rng):
                         # FIXME: See below conversation.
-                        # FIXME: We could have this boot_sample keep running
+                        # FIXME: We could have this boot_sampile keep running
                         # until it has seen len(fingers_list) or
                         # len(finger_list)-1 legitimate fingers.
                         if not fa_trie.isin((v, t, fv, ft)):
@@ -436,7 +454,7 @@ class BootstrapFullFARHierarchy(Bootstrap):
                             # aggregate all subsample data, no problems should
                             # arise.
                             #
-                            # TODO: Reverify that allowing the selection of
+                            # TODO: Reverify that allowing the selecton of
                             # an invalid match doesn't skew the probabilities,
                             # since you could end up with a sample of all
                             # invalid fingers (given replace=True).
@@ -462,6 +480,12 @@ class BootstrapFullFARHierarchy(Bootstrap):
 
 
 class BootstrapFullFRRHierarchy(Bootstrap):
+    """Perform bootstrap samples by sequentially choosing each combination.
+
+    The 2006 ISO for evaluation demonstrates the preferred method of
+    sequentially randomly choosing each parameter.
+    """
+
     # For the 100000 sample case, enabling this reduces overall time by
     # 3 seconds.
     USE_GLOBAL_SHARING = True
@@ -475,30 +499,31 @@ class BootstrapFullFRRHierarchy(Bootstrap):
             table.Col.Verify_Sample.value,
         ]
         assert fpsutils.has_columns(fr_table, fr_set_tuple)
-        self.fa_set = fpsutils.DataFrameSetAccess(fr_table, fr_set_tuple)
-        self.fa_trie = fpsutils.DataFrameCountTrieAccess(fr_table, fr_set_tuple)
+        self.fr_set = fpsutils.DataFrameSetAccess(fr_table, fr_set_tuple)
+        self.fr_trie = fpsutils.DataFrameCountTrieAccess(fr_table, fr_set_tuple)
 
         self.users_list = exp.user_list()
         self.fingers_list = exp.finger_list()
         self.samples_list = exp.sample_list()
 
-        # If you add exp, fa_table, and far_decisions to the self object,
+        # If you add exp, fr_table, and frr_decisions to the self object,
         # it becomes no longer runtime feasible to use USE_GLOBAL_SHARING=False.
         # For some reason, the total runtime grows with respect to process
         # count.
 
     def _sample(self, rng: np.random.Generator) -> int:
-        """Complete a single bootstrap sample using full hierarchy bootstrap method.
+        """Complete a single bootstrap sample using the full hierarchy method.
 
         The important parts of this approach are the following:
-        * Avoiding DataFrame queries during runtime. We use fa_set cache instead.
-        This is the difference between hundreds of _us_ vs. hundreds of _ns_
-        per query
-        * Using rng.choice (now boot_sample) on either a scalar, np.array, or list
-        is important. Other methods are very slow.
+
+        * Avoiding `DataFrame` queries during runtime. We use `fr_set` cache,
+          instead. This is the difference between hundreds of _us_ vs. hundreds
+          of _ns_ per query
+        * Using rng.choice (now boot_sample) on either a scalar, np.array, or
+          list is important. Other methods are very slow.
         * The big finale that gets the single bootstrap sample time down from
-        tens of _s_ to hundreds of _ms_ is checking for the loop abort path
-        using the fa_trie.
+          tens of _s_ to hundreds of _ms_ is checking for the loop abort path
+          using the `fr_trie`.
 
         Additional Performance:
         * Use boot_sample_range instead os boot_sample.
@@ -509,20 +534,20 @@ class BootstrapFullFRRHierarchy(Bootstrap):
         fingers_list = self.fingers_list
         samples_list = self.samples_list
 
-        fa_set = self.fa_set
-        fa_trie = self.fa_trie
+        fr_set = self.fr_set
+        fr_trie = self.fr_trie
 
         sample = []
         # 72 users
         for u in fpsutils.boot_sample(user_list, rng=rng):
-            if not fa_trie.isin((u,)):
+            if not fr_trie.isin((u,)):
                 continue
             # 6 fingers
             for f in fpsutils.boot_sample(fingers_list, rng=rng):
-                if not fa_trie.isin((u, f)):
+                if not fr_trie.isin((u, f)):
                     continue
                 # 60 verification samples
                 for s in fpsutils.boot_sample(samples_list, rng=rng):
                     query = (u, f, s)
-                    sample.append(fa_set.isin(query))
+                    sample.append(fr_set.isin(query))
         return np.sum(sample)
