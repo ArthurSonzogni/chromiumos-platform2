@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::collections::hash_map::Entry;
-use std::collections::hash_map::OccupiedEntry;
 use std::collections::HashMap;
 
 use super::ProcessContext;
@@ -15,7 +14,7 @@ use crate::ProcessState;
 use crate::ThreadId;
 use crate::ThreadState;
 
-pub type SimpleProcessContext<'a> = OccupiedEntry<'a, ProcessId, SimpleProcessEntry>;
+pub type SimpleProcessContext<'a> = &'a mut SimpleProcessEntry;
 pub type SimpleProcessMap = HashMap<ProcessId, SimpleProcessEntry>;
 pub type SimpleThreadMap<'a> = &'a mut HashMap<ThreadId, ThreadEntry>;
 
@@ -29,15 +28,15 @@ impl<'a> ProcessContext for SimpleProcessContext<'a> {
     type TM<'b> = SimpleThreadMap<'b>  where Self: 'b;
 
     fn timestamp(&self) -> u64 {
-        self.get().timestamp
+        self.timestamp
     }
 
     fn state(&self) -> ProcessState {
-        self.get().state
+        self.state
     }
 
     fn thread_map(&mut self) -> SimpleThreadMap {
-        &mut self.get_mut().thread_map
+        &mut self.thread_map
     }
 }
 
@@ -55,7 +54,7 @@ impl ProcessMap for SimpleProcessMap {
                 let process = entry.get_mut();
                 process.state = state;
                 if process.timestamp == timestamp {
-                    Some(entry)
+                    self.get_mut(&process_id)
                 } else {
                     process.timestamp = timestamp;
                     // Clear all threads in the old process context.
@@ -76,10 +75,7 @@ impl ProcessMap for SimpleProcessMap {
     }
 
     fn get_process(&mut self, process_id: ProcessId) -> Option<SimpleProcessContext> {
-        match self.entry(process_id) {
-            Entry::Occupied(entry) => Some(entry),
-            Entry::Vacant(_) => None,
-        }
+        self.get_mut(&process_id)
     }
 
     fn remove_process(&mut self, process_id: ProcessId, timestamp: Option<u64>) {
@@ -92,6 +88,15 @@ impl ProcessMap for SimpleProcessMap {
 
     fn compact(&mut self) {
         // No-op.
+    }
+
+    fn traverse<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&ProcessId, Self::P<'_>),
+    {
+        for (process_id, process) in self.iter_mut() {
+            f(process_id, process);
+        }
     }
 }
 

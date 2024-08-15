@@ -51,6 +51,11 @@ pub trait ProcessMap {
     /// contexts which will cause inconsistent latency of the process/thread context update latency
     /// and performance degradation. [The Tail at Scale](https://research.google/pubs/pub40801/).
     fn compact(&mut self);
+    /// Traverse all processes stored in this storage. Each pair of process id and [ProcessContext]
+    /// is passed to the `f` callback.
+    fn traverse<F>(&mut self, f: F)
+    where
+        F: FnMut(&ProcessId, Self::P<'_>);
 }
 
 pub trait ThreadMap {

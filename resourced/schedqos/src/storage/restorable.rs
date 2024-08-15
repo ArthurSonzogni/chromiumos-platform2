@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::collections::hash_map::Entry;
-use std::collections::hash_map::OccupiedEntry;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::File;
@@ -103,13 +102,13 @@ struct RestorableThreadEntry {
 pub struct RestorableProcessContext<'a> {
     storage: &'a mut RestorableStateStorage,
     process_id: ProcessId,
-    entry: OccupiedEntry<'a, ProcessId, RestorableProcessEntry>,
+    entry: &'a mut RestorableProcessEntry,
 }
 
 #[cfg(test)]
 impl RestorableProcessContext<'_> {
     fn timestamp(&self) -> u64 {
-        self.entry.get().cell.timestamp(self.storage)
+        self.entry.cell.timestamp(self.storage)
     }
 }
 
@@ -117,12 +116,11 @@ impl<'a> ProcessContext for RestorableProcessContext<'a> {
     type TM<'b> = RestorableThreadMap<'b>  where Self: 'b;
 
     fn timestamp(&self) -> u64 {
-        self.entry.get().cell.timestamp(self.storage)
+        self.entry.cell.timestamp(self.storage)
     }
 
     fn state(&self) -> ProcessState {
         self.entry
-            .get()
             .cell
             .state(self.storage)
             .try_into()
@@ -133,7 +131,7 @@ impl<'a> ProcessContext for RestorableProcessContext<'a> {
         RestorableThreadMap {
             storage: self.storage,
             process_id: self.process_id,
-            map: &mut self.entry.get_mut().thread_map,
+            map: &mut self.entry.thread_map,
         }
     }
 }
@@ -283,11 +281,13 @@ impl ProcessMap for RestorableProcessMap {
                 let process = entry.get_mut();
                 process.cell.update_state(&mut self.storage, state as u8);
                 if process.cell.timestamp(&self.storage) == timestamp {
-                    Some(RestorableProcessContext {
-                        storage: &mut self.storage,
-                        process_id,
-                        entry,
-                    })
+                    self.map
+                        .get_mut(&process_id)
+                        .map(|process| RestorableProcessContext {
+                            storage: &mut self.storage,
+                            process_id,
+                            entry: process,
+                        })
                 } else {
                     process.cell.update_timestamp(&mut self.storage, timestamp);
                     // Clear all threads in the old process context.
@@ -315,14 +315,13 @@ impl ProcessMap for RestorableProcessMap {
     }
 
     fn get_process(&mut self, process_id: ProcessId) -> Option<RestorableProcessContext> {
-        match self.map.entry(process_id) {
-            Entry::Occupied(entry) => Some(RestorableProcessContext {
+        self.map
+            .get_mut(&process_id)
+            .map(|entry| RestorableProcessContext {
                 storage: &mut self.storage,
                 process_id,
                 entry,
-            }),
-            Entry::Vacant(_) => None,
-        }
+            })
     }
 
     fn remove_process(&mut self, process_id: ProcessId, timestamp: Option<u64>) {
@@ -399,6 +398,22 @@ impl ProcessMap for RestorableProcessMap {
                 .memory
                 .resize(new_size)
                 .expect("failed to resize");
+        }
+    }
+
+    fn traverse<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&ProcessId, Self::P<'_>),
+    {
+        for (process_id, process) in self.map.iter_mut() {
+            f(
+                process_id,
+                RestorableProcessContext {
+                    storage: &mut self.storage,
+                    process_id: *process_id,
+                    entry: process,
+                },
+            );
         }
     }
 }
