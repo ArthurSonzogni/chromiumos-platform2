@@ -685,11 +685,10 @@ class EhideDaemon(daemon.Daemon):
 
         if action == "start":
             if not ether_ifnames:
-                ifname = dbus_utils.get_connected_ethernet_interface()
-                if ifname is None:
+                ether_ifnames = dbus_utils.get_connected_ethernet_interfaces()
+                if not ether_ifnames:
                     logging.error("No Ethernet interface found.")
                     sys.exit(1)
-                ether_ifnames = [ifname]
             self.ether_ifnames = ether_ifnames
             logging.info("Ethernet interfaces to hide: %s.", self.ether_ifnames)
 

@@ -5,7 +5,7 @@
 """D-Bus utilities."""
 
 import logging
-from typing import List, Optional
+from typing import List
 
 # The dbus module works fine on the DUT, but the linter gives an "import-error".
 # pylint: disable=import-error
@@ -15,12 +15,11 @@ import dbus
 SHILL_DBUS_INTERFACE = "org.chromium.flimflam"
 
 
-def get_connected_ethernet_interface() -> Optional[str]:
-    """Get the name of the connected Ethernet interface.
+def get_connected_ethernet_interfaces() -> List[str]:
+    """Get the names of connected Ethernet interfaces.
 
     Returns:
-        The name of the connected Ethernet interface. If no interface or >=2
-        interfaces are connected, returns None.
+        A list of the names of connected Ethernet interfaces.
     """
     bus = dbus.SystemBus()
     manager = dbus.Interface(
@@ -68,14 +67,5 @@ def get_connected_ethernet_interface() -> Optional[str]:
 
     if len(ret) == 0:
         logging.error("Could not find any connected Ethernet interface")
-        return None
 
-    if len(ret) >= 2:
-        logging.error(
-            "Got %d connected Ethernet interfaces: %s, want exactly 1",
-            len(ret),
-            ret,
-        )
-        return None
-
-    return ret[0]
+    return ret
