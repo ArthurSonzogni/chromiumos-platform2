@@ -231,6 +231,15 @@ impl Config {
             },
         ]
     }
+
+    fn validate(&self) -> Result<()> {
+        for thread_config in &self.thread_configs {
+            thread_config
+                .validate()
+                .map_err(|e| Error::Config("thread validation", e))?;
+        }
+        Ok(())
+    }
 }
 
 /// Detailed scheduler settings for a process QoS state.
@@ -348,13 +357,78 @@ impl RestorableSchedQosContext {
     }
 }
 
+fn apply_process_state(
+    process_id: ProcessId,
+    process_config: &ProcessStateConfig,
+    cgroup_context: &mut CgroupContext,
+) -> Result<()> {
+    if let Err(e) = cgroup_context.set_cpu_cgroup(process_id, process_config.cpu_cgroup) {
+        if e.raw_os_error() == Some(libc::ESRCH) {
+            return Err(Error::ProcessNotFound);
+        }
+        return Err(Error::Cgroup(process_config.cpu_cgroup.name(), e));
+    }
+    Ok(())
+}
+
+fn apply_thread_state(
+    process_id: ProcessId,
+    thread_id: ThreadId,
+    process_config: &ProcessStateConfig,
+    thread_config: &ThreadStateConfig,
+    sched_attr_context: &SchedAttrContext,
+    cgroup_context: &mut CgroupContext,
+) -> Result<()> {
+    sched_attr_context
+        .set_thread_sched_attr(thread_id, thread_config, process_config.allow_foreground_rt)
+        .map_err(|e| {
+            if e.raw_os_error() == Some(libc::ESRCH) {
+                Error::ThreadNotFound
+            } else {
+                Error::SchedAttr(e)
+            }
+        })?;
+
+    cgroup_context
+        .set_cpuset_cgroup(
+            thread_id,
+            thread_config.cpuset_cgroup,
+            process_config.allow_foreground_cpuset,
+        )
+        .map_err(|e| {
+            if e.raw_os_error() == Some(libc::ESRCH) {
+                Error::ThreadNotFound
+            } else {
+                Error::Cgroup(thread_config.cpuset_cgroup.name(), e)
+            }
+        })?;
+
+    // Apply latency sensitive. Latency_sensitive will prefer idle cores.
+    // This is a patch not yet in upstream(http://crrev/c/2981472)
+    let latency_sensitive_file = format!(
+        "/proc/{}/task/{}/latency_sensitive",
+        process_id.0, thread_id.0
+    );
+    if std::path::Path::new(&latency_sensitive_file).exists() {
+        let value = if thread_config.latency_sensitive {
+            b"1"
+        } else {
+            b"0"
+        };
+        std::fs::write(&latency_sensitive_file, value).map_err(|e| {
+            if e.kind() == io::ErrorKind::NotFound {
+                Error::ThreadNotFound
+            } else {
+                Error::LatencySensitive(e)
+            }
+        })?;
+    }
+    Ok(())
+}
+
 impl<PM: ProcessMap> SchedQosContext<PM> {
     fn new(config: Config, process_map: PM) -> Result<Self> {
-        for thread_config in &config.thread_configs {
-            thread_config
-                .validate()
-                .map_err(|e| Error::Config("thread validation", e))?;
-        }
+        config.validate()?;
 
         Ok(Self {
             config,
@@ -379,24 +453,22 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             other => other?,
         };
 
-        let error_result = if let Err(e) = self
-            .config
-            .cgroup_context
-            .set_cpu_cgroup(process_id, process_config.cpu_cgroup)
-        {
-            if e.raw_os_error() == Some(libc::ESRCH) {
-                return Err(Error::ProcessNotFound);
-            }
-            // Assigning a process to a cpu cgroup can fails with EINVAL due to timing issues.
-            // See cpu_cgroup_can_attach() in the Linux kernel. For example, If a thread in the
-            // process has not yet run, it will fail with EINVAL on kernel older than Linux 6.
-            // Registering the process to the process_map should not be blocked by the timing error,
-            // otherwise, subsequent set_thread_state() will fail with
-            // `Error::ProcessNotRegistered`.
-            Some(Error::Cgroup(process_config.cpu_cgroup.name(), e))
-        } else {
-            None
-        };
+        // Cache the last error while updating thread settings. This will be returned as
+        // this method's error if process setting update succeeds. Errors while updating
+        // thread settings do not stop other setting updates.
+        let mut result =
+            apply_process_state(process_id, process_config, &mut self.config.cgroup_context)
+                .map(|_| None);
+
+        // Assigning a process to a cpu cgroup can fails with EINVAL due to timing issues.
+        // See cpu_cgroup_can_attach() in the Linux kernel. For example, If a thread in the
+        // process has not yet run, it will fail with EINVAL on kernel older than Linux 6.
+        // Registering the process to the process_map should not be blocked by the timing error,
+        // otherwise, subsequent set_thread_state() will fail with
+        // `Error::ProcessNotRegistered`.
+        if result.is_err() && !matches!(result, Err(Error::Cgroup(_, _))) {
+            return result;
+        }
 
         let Some(mut process) =
             self.process_map
@@ -411,14 +483,6 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             }));
         };
 
-        // Cache the last error while updating thread settings. This will be returned as
-        // this method's error if process setting update succeeds. Errors while updating
-        // thread settings do not stop other setting updates.
-        let mut result = if let Some(e) = error_result {
-            Err(e)
-        } else {
-            Ok(None)
-        };
         // Only apply process state thread restrictions to managed threads. Although we
         // could theoretically try to apply the restrictions to unmanaged threads as well,
         // defining coherent state transitions and properly restoring state later would be
@@ -526,56 +590,14 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
         drop(process);
         self.process_map.compact();
 
-        let process_config = &self.config.process_configs[process_state as usize];
-        let thread_config = &self.config.thread_configs[thread_state as usize];
-
-        self.sched_attr_context
-            .set_thread_sched_attr(thread_id, thread_config, process_config.allow_foreground_rt)
-            .map_err(|e| {
-                if e.raw_os_error() == Some(libc::ESRCH) {
-                    Error::ThreadNotFound
-                } else {
-                    Error::SchedAttr(e)
-                }
-            })?;
-
-        self.config
-            .cgroup_context
-            .set_cpuset_cgroup(
-                thread_id,
-                thread_config.cpuset_cgroup,
-                process_config.allow_foreground_cpuset,
-            )
-            .map_err(|e| {
-                if e.raw_os_error() == Some(libc::ESRCH) {
-                    Error::ThreadNotFound
-                } else {
-                    Error::Cgroup(thread_config.cpuset_cgroup.name(), e)
-                }
-            })?;
-
-        // Apply latency sensitive. Latency_sensitive will prefer idle cores.
-        // This is a patch not yet in upstream(http://crrev/c/2981472)
-        let latency_sensitive_file = format!(
-            "/proc/{}/task/{}/latency_sensitive",
-            process_id.0, thread_id.0
-        );
-        if std::path::Path::new(&latency_sensitive_file).exists() {
-            let value = if thread_config.latency_sensitive {
-                b"1"
-            } else {
-                b"0"
-            };
-            std::fs::write(&latency_sensitive_file, value).map_err(|e| {
-                if e.kind() == io::ErrorKind::NotFound {
-                    Error::ThreadNotFound
-                } else {
-                    Error::LatencySensitive(e)
-                }
-            })?;
-        }
-
-        Ok(())
+        apply_thread_state(
+            process_id,
+            thread_id,
+            &self.config.process_configs[process_state as usize],
+            &self.config.thread_configs[thread_state as usize],
+            &self.sched_attr_context,
+            &mut self.config.cgroup_context,
+        )
     }
 }
 
