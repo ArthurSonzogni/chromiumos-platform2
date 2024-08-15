@@ -27,26 +27,38 @@ class DataFrameSetAccess:
     This look method takes hundreds of nanoseconds vs other methods that take
     hundreds of micro seconds. Given the amount of times we must query certain
     tables, this order of magnitude difference is unacceptable.
+
+    The constructor is very slow, as it builds the cache, but all accessor
+    methods are very fast.
     """
 
     def __init__(self, table: pd.DataFrame, cols: Optional[list[str]] = None):
+        """This performs the expensive caching operation, that must occur once.
+
+        Args:
+            table: The DataFrame to cache.
+            cols: The specific columns of the DataFrame to index into the Trie.
+                If None, all columns are used.
+        """
         if not cols:
             cols = list(table.columns)
         self.cols = cols
 
-        # There is nothing wrong with having duplicate rows for this
-        # implementation, but having duplicates might indicate that we are
-        # attempting to analyze cross sections of data using the wrong tool.
+        # There is nothing incompatible with having duplicate rows for this
+        # data structure, but being providing duplicates might indicate an
+        # attempt to analyze cross sections of data using the wrong tool.
         # Just take for example that we are caching only the first three columns
-        # of a DataFrame. We really might need to know the number of rows that
-        # happen to have a particular three starting values, but this accessor
-        # will only say one exists.
+        # of a DataFrame. If this DataFrame contains match decisions, then there
+        # will be many rows that have the same first three columns. This data
+        # structure will collapse all of these identical results to one entry.
         assert not table.duplicated(subset=cols).any()
 
         # This is an expensive operation.
         self.set = {tuple(row) for row in np.array(table[cols])}
 
-    def isin(self, values: tuple) -> bool:
+    def isin(self, values: tuple[Any, ...]) -> bool:
+        """Check if the values appeared as a cached row."""
+        # This must remain very fast, so do not add additional asserts/check.
         return values in self.set
 
 
@@ -54,34 +66,47 @@ class DataFrameCountTrieAccess:
     """Provides a quick method of checking the number of matching rows.
 
     This implementation builds a trie with all partial row columns,
-    from the empty tuple to the full row tuple. At each node, the count
-    of all downstream nodes is saved.
+    from the empty tuple (all rows) to the full row in tuple form.
+    The count of all downstream nodes is saved at each trie node.
+
+    The constructor is very slow, as it builds the cache, but all accessor
+    methods are very fast.
 
     This is on par with the performance of `DataFrameSetAccess`, but still
     tens of nanoseconds slower.
     """
 
     def __init__(self, table: pd.DataFrame, cols: Optional[list[str]] = None):
-        """This is an expensive caching operation."""
+        """This performs the expensive caching operation, that must occur once.
+
+        Args:
+            table: The DataFrame to index into the Trie.
+            cols: The specific columns of the DataFrame to index into the Trie.
+                If None, all columns are used.
+        """
 
         if not cols:
             cols = list(table.columns)
         self.cols = cols
 
-        self.counts_dict = Counter[tuple]()
+        self.counts_dict: Counter[tuple[Any, ...]] = Counter()
 
         for row in np.array(table[cols]):
+            # Update all partial trie nodes. For example, take row (val1, val2):
+            # We would increment all tuples ()++, (val1)++, (val1, val2)++, ...
             for i in range(len(cols) + 1):
                 # We include the empty tuple (row[0:0]) count also.
                 t = tuple(row)[0:i]
                 self.counts_dict[t] += 1
 
-    def isin(self, values: tuple) -> bool:
+    def isin(self, values: tuple[tuple[Any, ...]]) -> bool:
         """A tuple will only be in the cache if the count is at least 1."""
+        # This must remain very fast, so do not add additional asserts/check.
         return values in self.counts_dict
 
-    def counts(self, values: tuple) -> int:
+    def counts(self, values: tuple[tuple[Any, ...]]) -> int:
         """Get the number of rows that start with `values` tuple."""
+        # This must remain very fast, so do not add additional asserts/check.
         return self.counts_dict[values]
 
 
@@ -294,7 +319,9 @@ def elapsed_time_str(sec: float) -> str:
 
 
 def benchmark(
-    stmt: str, setup: str = "pass", globals: dict = {**locals(), **globals()}
+    stmt: str,
+    setup: str = "pass",
+    globals: dict[str, Any] = {**locals(), **globals()},
 ) -> tuple[int, float, float]:
     """Measure the runtime of `stmt`.
 
