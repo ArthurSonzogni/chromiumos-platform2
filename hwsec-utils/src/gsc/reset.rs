@@ -22,11 +22,12 @@ const RETRY_DELAY: i32 = 10;
 const FRECON_PID_FILE: &str = "/run/frecon/pid";
 
 fn gbb_force_dev_mode(ctx: &mut impl Context) -> Result<(), HwsecError> {
-    // Disable SW WP and set GBB_FLAG_FORCE_DEV_SWITCH_ON (0x8) to force boot in
-    // developer mode after RMA reset.
+    // Disable SW WP and set GBB flags to 0x39 to improve the RSU flow.
+    // The critical flags are VB2_GBB_FLAG_FORCE_DEV_SWITCH_ON (0x8) and
+    // VB2_GBB_FLAG_FORCE_DEV_BOOT_USB (0x10) to enable usb boot in dev mode.
 
     ctx.cmd_runner()
-        .run("futility", vec!["gbb", "--flash", "--set", "--flags=+0x8"])
+        .run("futility", vec!["gbb", "--flash", "--set", "--flags=+0x39"])
         .map_err(|_| {
             eprintln!("Failed to run futility");
             HwsecError::CommandRunnerError
