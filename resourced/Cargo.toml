@@ -44,9 +44,7 @@ lazy_static = "1.4"
 
 [dev-dependencies]
 tempfile = "3"
-
-[dev-dependencies.tokio]
-features = ["test-util"]
+tokio = { version = "*", features = ["test-util"] }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 grpcio = { version = "0.9.1", optional = true}
