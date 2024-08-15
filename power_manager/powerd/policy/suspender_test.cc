@@ -38,7 +38,8 @@ const char kSuspend[] = "suspend";
 const char kSuspendAudio[] = "audio_suspend";
 const char kResumeAudio[] = "audio_resumed";
 const char kUnprepare[] = "unprepare";
-const char kShutDown[] = "shut_down";
+const char kShutDownFailedSuspend[] = "shut_down_failed_suspend";
+const char kShutDownFromSuspend[] = "shut_down_from_suspend";
 const char kGenerateDarkResumeMetrics[] = "generate_dark_resume_metrics";
 const char kNoActions[] = "";
 
@@ -159,14 +160,14 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
 
   void ShutDownForFailedSuspend() override {
-    AppendAction(kShutDown);
+    AppendAction(kShutDownFailedSuspend);
     if (!shutdown_callback_.is_null()) {
       shutdown_callback_.Run();
     }
   }
 
   void ShutDownFromSuspend() override {
-    AppendAction(kShutDown);
+    AppendAction(kShutDownFromSuspend);
     if (!shutdown_callback_.is_null()) {
       shutdown_callback_.Run();
     }
@@ -539,8 +540,9 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
 
   // After the last failed attempt, the system should shut down immediately.
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
-  EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, kShutDown, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(
+      JoinActions(kSuspendAudio, kSuspend, kShutDownFailedSuspend, nullptr),
+      delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 }
 
@@ -835,7 +837,7 @@ TEST_F(SuspenderTest, EventReceivedWhileHandlingEvent) {
   shutdown_from_suspend_.set_action(
       policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN);
   AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kShutDown, delegate_.GetActions());
+  EXPECT_EQ(kShutDownFromSuspend, delegate_.GetActions());
 }
 
 // Tests that a SuspendDone signal is emitted at startup and the "suspend
@@ -904,7 +906,7 @@ TEST_F(SuspenderTest, DarkResumeShutDown) {
   shutdown_from_suspend_.set_action(
       policy::ShutdownFromSuspendInterface::Action::SHUT_DOWN);
   AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kShutDown, delegate_.GetActions());
+  EXPECT_EQ(kShutDownFromSuspend, delegate_.GetActions());
 }
 
 TEST_F(SuspenderTest, DarkResumeRetry) {
@@ -970,8 +972,9 @@ TEST_F(SuspenderTest, DarkResumeRetry) {
   }
 
   // The next failure should result in the system shutting down.
-  EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, kShutDown, nullptr),
-            delegate_.GetActions());
+  EXPECT_EQ(
+      JoinActions(kSuspendAudio, kSuspend, kShutDownFailedSuspend, nullptr),
+      delegate_.GetActions());
 }
 
 TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {

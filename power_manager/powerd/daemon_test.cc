@@ -1276,6 +1276,18 @@ TEST_F(DaemonTest, SuspendResumeMetrics) {
   EXPECT_TRUE(metrics_sender_->ContainsMetric(want_metric));
 }
 
+TEST_F(DaemonTest, SuspendFailedShutdownMetrics) {
+  Init();
+
+  daemon_->ShutDownForFailedSuspend();
+
+  MetricsSenderStub::Metric want_metric = MetricsSenderStub::Metric::CreateEnum(
+      metrics::kSuspendJourneyResultName,
+      static_cast<int>(SuspendJourneyResult::SHUTDOWN),
+      static_cast<int>(SuspendJourneyResult::MAX));
+  EXPECT_TRUE(metrics_sender_->ContainsMetric(want_metric));
+}
+
 TEST_F(DaemonTest, HasAmbientLightSensor_NoSensors) {
   prefs_->SetInt64(kHasAmbientLightSensorPref, 0);
 
