@@ -110,6 +110,16 @@ class DataFrameCountTrieAccess:
         return self.counts_dict[values]
 
 
+# pylint: disable=unused-argument
+def fake_use(v: Any):
+    """Make a variable seem to be used to avoid linter warnings.
+
+    This is useful when benchmarking, since the expression being testing is
+    passed in as a statement string for evaluation.
+    """
+    return
+
+
 def boot_sample(
     # This is the fastest input to rng.choice, other than a scalar.
     a: npt.NDArray[Any],

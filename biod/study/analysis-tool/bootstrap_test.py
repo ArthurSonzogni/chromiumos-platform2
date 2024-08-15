@@ -61,6 +61,7 @@ class Test_Bootstrap(unittest.TestCase):
             "pickle.dumps(boot)", globals={**locals(), **globals()}
         )
         pkl_data = pickle.dumps(boot)
+        fpsutils.fake_use(pkl_data)
         _, _, unpkl_time = fpsutils.benchmark(
             "pickle.loads(pkl_data)", globals={**locals(), **globals()}
         )

@@ -6,7 +6,7 @@
 """Test and benchmark the fpsutils module."""
 
 from enum import Enum
-import time  # Used in benchmark unit test.
+import time
 import unittest
 
 import fpsutils
@@ -25,6 +25,7 @@ class Test_boot_sample(unittest.TestCase):
         vals = rng.integers(1000000, size=100)
         # We would expect the first two tests to have similar runtime
         # performance.
+        fpsutils.fake_use(vals)
         vars = {**locals(), **globals()}
         fpsutils.benchmark("fpsutils.boot_sample(vals, rng=rng)", globals=vars)
         fpsutils.benchmark(
@@ -43,6 +44,7 @@ class Test_boot_sample_range(unittest.TestCase):
 
         # Test the performance of boot_sample_range.
         rng = np.random.default_rng()
+        fpsutils.fake_use(rng)
         # These are equivalent calls and should be extremely close in runtime.
         fpsutils.benchmark(
             "fpsutils.boot_sample_range(100, rng=rng)",
@@ -218,6 +220,7 @@ class Test_Simple_Functions(unittest.TestCase):
     def test_benchmark(self):
         SLEEP_TIME = 1.245
         TIME_EQ_DELTA = 0.100
+        fpsutils.fake_use(time.sleep)
         loops, sec, sec_per_loop = fpsutils.benchmark(
             "time.sleep(SLEEP_TIME)", globals={**locals(), **globals()}
         )
