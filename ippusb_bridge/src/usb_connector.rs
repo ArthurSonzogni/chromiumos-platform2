@@ -4,6 +4,10 @@
 
 use std::collections::VecDeque;
 use std::io::{self, Read, Write};
+
+#[cfg(target_os = "android")]
+use std::os::fd::RawFd;
+
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -477,7 +481,36 @@ impl UsbConnector {
             device.bus_number(),
             device.address()
         );
-        let handle = Arc::new(device.open().map_err(Error::OpenDevice)?);
+
+        let handle = device.open().map_err(Error::OpenDevice)?;
+        Self::from_rusb(verbose_log, handle, info)
+    }
+
+    #[cfg(target_os = "android")]
+    pub fn from_raw_fd(verbose_log: bool, fd: RawFd) -> Result<UsbConnector> {
+        let context = rusb::Context::new().map_err(Error::OpenDevice)?;
+        // SAFETY: The fd comes from Android, which has already opened the
+        // device.  We have no way to do additional checking here.
+        let handle = unsafe { context.open_device_with_fd(fd).map_err(Error::OpenDevice)? };
+
+        let device = handle.device();
+        info!(
+            "Opening device {}:{}",
+            device.bus_number(),
+            device.address()
+        );
+
+        let info = read_ippusb_device_info(&device)?.ok_or(Error::NotIppUsb)?;
+
+        Self::from_rusb(verbose_log, handle, info)
+    }
+
+    fn from_rusb(
+        verbose_log: bool,
+        handle: rusb::DeviceHandle<Context>,
+        info: IppusbDevice,
+    ) -> Result<UsbConnector> {
+        let handle = Arc::new(handle);
         handle
             .set_auto_detach_kernel_driver(true)
             .map_err(|e| Error::DetachDrivers(u8::MAX, e))?; // Use MAX to mean "no interface".
