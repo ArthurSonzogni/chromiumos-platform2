@@ -8,6 +8,7 @@ source_set("fetchers") {
     "display_fetcher.cc",
     "graphics_fetcher.cc",
     "psr_fetcher.cc",
+    "thermal_fetcher.cc",
     "touchpad_fetcher.cc",
   ]
   libs = [ "bootstat" ]
@@ -19,6 +20,7 @@ source_set("fetchers") {
   pkg_deps = [
     "egl",
     "glesv2",
+    "libec",
     "libmetrics",
     "re2",
   ]
