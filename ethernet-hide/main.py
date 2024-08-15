@@ -121,6 +121,10 @@ def main():
     # Use GMT timezone.
     logging.Formatter.converter = time.gmtime
 
+    if opts.ether_ifname:
+        ether_ifnames = [opts.ether_ifname]
+    else:
+        ether_ifnames = []
     if opts.static_ipv4_addr and opts.ether_ifname:
         static_ipv4_cidr = {opts.ether_ifname: opts.static_ipv4_addr}
     else:
@@ -128,7 +132,7 @@ def main():
     ehide_daemon = ehide.ehide_daemon.EhideDaemon(
         action=action,
         approach=ehide.ehide_daemon.Approach.from_str(opts.approach),
-        ether_ifname=opts.ether_ifname,
+        ether_ifnames=ether_ifnames,
         static_ipv4_cidr=static_ipv4_cidr,
         dhclient_dir=opts.dhclient_dir,
         netns_name=opts.netns_name,
