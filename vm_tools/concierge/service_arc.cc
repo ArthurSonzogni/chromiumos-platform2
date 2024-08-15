@@ -374,6 +374,14 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       base::StringPrintf("androidboot.lmkd.vm_memory_management_kills_port=%d",
                          kVmMemoryManagementKillsServerPort));
 
+  // For GKI, the MGLRU admin interface moved to a module and has a different
+  // path.
+  // TODO(b:342318950) When GKI is enabled by default, update the default
+  // MGLRU admin path in the arc lmkd hooks project and remove this override.
+  if (request.use_gki()) {
+    params.emplace_back("androidboot.lmkd.mglru_module=true");
+  }
+
   const feature::PlatformFeatures::ParamsResult result =
       feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
           {&kOverrideLmkdPsiDefaultsFeature});
