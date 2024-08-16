@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/notreached.h>
+#include <base/logging.h>
 #include <base/time/time.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>

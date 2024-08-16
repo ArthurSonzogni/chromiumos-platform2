@@ -12,7 +12,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hkdf.h>
@@ -549,7 +548,7 @@ void CryptohomeRecoveryAuthBlock::PrepareForRemoval(
 CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemovalInternal(
     const AuthBlockState& state) {
   if (!std::holds_alternative<CryptohomeRecoveryAuthBlockState>(state.state)) {
-    NOTREACHED_IN_MIGRATION() << "Invalid AuthBlockState";
+    LOG(ERROR) << "Invalid AuthBlockState";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
             kLocRecoveryAuthBlockInvalidStateInPrepareForRemoval),

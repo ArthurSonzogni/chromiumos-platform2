@@ -8,7 +8,6 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>

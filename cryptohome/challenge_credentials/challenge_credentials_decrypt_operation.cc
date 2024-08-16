@@ -13,7 +13,6 @@
 #include <base/check_op.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
@@ -50,7 +49,7 @@ HwsecAlgorithm ConvertToHwsecAlgorithm(
     case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
-  NOTREACHED_IN_MIGRATION() << "Unknown algorithm, fallback to SHA1.";
+  LOG(ERROR) << "Unknown algorithm, fallback to SHA1.";
   return HwsecAlgorithm::kRsassaPkcs1V15Sha1;
 }
 
@@ -66,7 +65,7 @@ SerializedChallengeSignatureAlgorithm ConvertFromHwsecAlgorithm(
     case HwsecAlgorithm::kRsassaPkcs1V15Sha512:
       return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512;
   }
-  NOTREACHED_IN_MIGRATION() << "Unknown algorithm, fallback to SHA1.";
+  LOG(ERROR) << "Unknown algorithm, fallback to SHA1.";
   return SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1;
 }
 

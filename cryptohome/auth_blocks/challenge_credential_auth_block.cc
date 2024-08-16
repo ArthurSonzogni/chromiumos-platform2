@@ -12,7 +12,6 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 
@@ -237,7 +236,7 @@ void ChallengeCredentialAuthBlock::CreateContinueAfterScrypt(
                             std::move(key_blobs), std::move(auth_block_state));
   } else {
     // This should never happen, but handling it anyway on the safe side.
-    NOTREACHED_IN_MIGRATION() << "scrypt derivation failed for challenge credential.";
+    LOG(ERROR) << "scrypt derivation failed for challenge credential.";
     std::move(callback).Run(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(

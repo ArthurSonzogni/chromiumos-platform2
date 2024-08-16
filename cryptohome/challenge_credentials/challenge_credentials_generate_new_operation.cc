@@ -72,7 +72,8 @@ HwsecAlgorithm ConvertAlgorithm(
     case SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha512:
       return HwsecAlgorithm::kRsassaPkcs1V15Sha512;
   }
-  NOTREACHED_IN_MIGRATION();
+  LOG(ERROR) << "Unrecognized challenge signature algorithm="
+             << static_cast<int>(algorithm);
   return static_cast<HwsecAlgorithm>(algorithm);
 }
 

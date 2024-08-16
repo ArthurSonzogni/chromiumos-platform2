@@ -14,7 +14,6 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -790,7 +789,7 @@ void VaultKeyset::SetAuthBlockState(const AuthBlockState& auth_state) {
     SetTpmEccState(*state);
   } else {
     // other states are not supported.
-    NOTREACHED_IN_MIGRATION() << "Invalid auth block state type";
+    LOG(ERROR) << "Invalid auth block state type";
     return;
   }
 }
@@ -868,7 +867,7 @@ bool VaultKeyset::GetSignatureChallengeState(AuthBlockState* auth_state) const {
 
   // This should never happen.
   if (libscrypt_state == nullptr) {
-    NOTREACHED_IN_MIGRATION() << "ScryptAuthBlockState should have been created";
+    LOG(ERROR) << "ScryptAuthBlockState should have been created";
     return false;
   }
 
@@ -932,7 +931,7 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
 
   // This should never happen.
   if (scrypt_sub_state == nullptr) {
-    NOTREACHED_IN_MIGRATION() << "ScryptAuthBlockState should have been created";
+    LOG(ERROR) << "ScryptAuthBlockState should have been created";
     return false;
   }
 
@@ -945,7 +944,7 @@ bool VaultKeyset::GetDoubleWrappedCompatState(
 
   // This should never happen but handling it on the safe side.
   if (tpm_sub_state == nullptr) {
-    NOTREACHED_IN_MIGRATION() << "TpmNotBoundToPcrAuthBlockState should have been created";
+    LOG(ERROR) << "TpmNotBoundToPcrAuthBlockState should have been created";
     return false;
   }
 

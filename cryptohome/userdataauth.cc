@@ -28,7 +28,6 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
-#include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -1302,7 +1301,7 @@ bool UserDataAuth::RemoveAllMounts() {
       success = false;
     }
     if (!sessions_->Remove(username)) {
-      NOTREACHED_IN_MIGRATION() << "Failed to remove user session on unmount";
+      LOG(ERROR) << "Failed to remove user session on unmount";
     }
   }
   return success;
@@ -1803,7 +1802,7 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const Username& username) {
         username, legacy_mount_, /*bind_mount_downloads*/ false);
     session = owned_session.get();
     if (!sessions_->Add(username, std::move(owned_session))) {
-      NOTREACHED_IN_MIGRATION() << "Failed to add created user session";
+      LOG(ERROR) << "Failed to add created user session";
       return nullptr;
     }
   }
@@ -1819,7 +1818,7 @@ void UserDataAuth::RemoveInactiveUserSession(const Username& username) {
   }
 
   if (!sessions_->Remove(username)) {
-    NOTREACHED_IN_MIGRATION() << "Failed to remove inactive user session.";
+    LOG(ERROR) << "Failed to remove inactive user session.";
   }
 }
 

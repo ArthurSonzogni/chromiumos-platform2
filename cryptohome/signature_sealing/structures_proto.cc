@@ -7,7 +7,6 @@
 #include <utility>
 #include <variant>
 
-#include <base/notreached.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/structures/signature_sealed_data.h>
 
@@ -175,7 +174,7 @@ SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj) {
                  std::get_if<hwsec::Tpm12CertifiedMigratableKeyData>(&obj)) {
     *result.mutable_tpm12_certified_migratable_key_data() = ToProto(*data);
   } else {
-    NOTREACHED_IN_MIGRATION() << "Unknown signature sealed data type.";
+    LOG(ERROR) << "Unknown signature sealed data type.";
   }
   return result;
 }

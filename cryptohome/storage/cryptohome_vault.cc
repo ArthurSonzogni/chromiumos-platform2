@@ -10,7 +10,6 @@
 
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <cryptohome/storage/cryptohome_vault.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libstorage/platform/platform.h>
@@ -211,8 +210,8 @@ void CryptohomeVault::ReportVaultEncryptionType() {
       break;
     default:
       // We're only interested in encrypted home directories.
-      NOTREACHED_IN_MIGRATION() << "Unknown homedir encryption type: "
-                   << static_cast<int>(type);
+      LOG(ERROR) << "Unknown homedir encryption type: "
+                 << static_cast<int>(type);
       break;
   }
 }
