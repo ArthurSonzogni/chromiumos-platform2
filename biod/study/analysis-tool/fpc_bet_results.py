@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -7,18 +6,19 @@
 
 from __future__ import annotations
 
-from enum import Enum
+import enum
 import pathlib
 from typing import Iterable, Optional, Union
 
-from cached_data_file import CachedCSVFile
-from experiment import Experiment
+import cached_data_file
 import pandas as pd
 import table
 from test_case_enum import TestCaseEnum
 
 
 class FPCBETResults:
+    """Parses for FPC biometric evaluation tool results."""
+
     # TODO: Add parsing of the BET yaml config file to get information
     # about number of enrollment samples and whatnot.
 
@@ -54,7 +54,7 @@ class FPCBETResults:
             assert len(self.extra()) == 1
             return self.extra()[0]
 
-    class TableType(Enum):
+    class TableType(enum.Enum):
         """Identify what type of experiment data is represented in a table."""
 
         FAR_Stats = "FAR_stats_4levels.txt"
@@ -71,7 +71,7 @@ class FPCBETResults:
         def all_values(cls) -> list[str]:
             return list(level.value for level in cls)
 
-    class Column(Enum):
+    class Column(enum.Enum):
         """Columns produced when reading the non-standard stats and FA files.
 
         Count and Total are appended to `SecLevel.Target_*K`.
@@ -84,7 +84,7 @@ class FPCBETResults:
         Total = "Total"
         Strong_FA = "Strong_FA"
 
-    class SecLevel(Enum):
+    class SecLevel(enum.Enum):
         """The order of these item are in increasing security level."""
 
         Target_20K = "FPC_BIO_SECURITY_LEVEL_LOW"
@@ -118,7 +118,7 @@ class FPCBETResults:
 
     @staticmethod
     def _find_blank_lines(file_name: pathlib.Path) -> list[int]:
-        with open(file_name, "r") as f:
+        with open(file_name, "r", encoding="utf-8") as f:
             return list(i for i, l in enumerate(f.readlines()) if l.isspace())
 
     def read_fa_list_file(
@@ -126,8 +126,8 @@ class FPCBETResults:
     ) -> pd.DataFrame:
         """Read the `TableType.FA_List` (FalseAccepts.txt) file.
 
-        The table will include the following columns:
-        VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
+        The input and output table includes the columns VerifyUser,
+        VerifyFinger, VerifySample, EnrollUser, EnrollFinger, and Strong FA.
         """
 
         assert isinstance(test_case, FPCBETResults.TestCase)
@@ -146,12 +146,12 @@ class FPCBETResults:
                 table.Col.Enroll_Finger.value,
             ]
             + [FPCBETResults.Column.Strong_FA.value],
-            sep=" ?[,\/] ?",
+            sep=r" ?[,\/] ?",
             engine="python",
         )
 
         for col in table.FALSE_TABLE_COLS:
-            col_text = tbl[col].str.extract("= (\d+)", expand=False)
+            col_text = tbl[col].str.extract(r"= (\d+)", expand=False)
             tbl[col] = pd.to_numeric(col_text)
 
         tbl[FPCBETResults.Column.Strong_FA.value] = (
@@ -168,8 +168,8 @@ class FPCBETResults:
     ) -> pd.DataFrame:
         """Read the `TableType.FAR_Decision` or `TableType.FRR_Decision` file.
 
-        The table will include the following columns:
-        VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
+        The output table will include the columns EnrollUser, EnrollFinger,
+        VerifyUser, VerifyFinger, VerifySample, and Decision.
         """
 
         assert isinstance(test_case, FPCBETResults.TestCase)
@@ -180,7 +180,7 @@ class FPCBETResults:
         ]
 
         file_name = self._file_name(test_case, table_type)
-        with CachedCSVFile(file_name) as csv:
+        with cached_data_file.CachedCSVFile(file_name) as csv:
             tbl = csv.get(disable_cache=False)
 
         tbl.rename(
@@ -206,7 +206,9 @@ class FPCBETResults:
         table_type: TableType,
         sec_levels: list[SecLevel] = SecLevel.all(),
     ) -> Optional[pd.DataFrame]:
-        """Read `TableType.FAR` and `TableType.FRR` (F[AR]R_stats_4level.txt) file.
+        """Read `TableType.FAR` and `TableType.FRR` stats file.
+
+        These are the FAR_stats_4level.txt / FRR_stats_4level.txt files.
 
         This only reads the last/bottom table of the file.
         This file and function only gives a summary counts of groups of matches.
@@ -243,18 +245,18 @@ class FPCBETResults:
 
         # Fix User and Finger ID columns.
         user_id = tbl[FPCBETResults.Column.User.value].str.extract(
-            "(\d+)", expand=False
+            r"(\d+)", expand=False
         )
         finger_id = tbl[FPCBETResults.Column.Finger.value].str.extract(
-            "(\d+)", expand=False
+            r"(\d+)", expand=False
         )
         tbl[FPCBETResults.Column.User.value] = pd.to_numeric(user_id)
         tbl[FPCBETResults.Column.Finger.value] = pd.to_numeric(finger_id)
 
         # Break open each security level column into a count and total column.
         for level in sec_levels:
-            false_count = tbl[level.value].str.extract("(\d+)\/", expand=False)
-            total_count = tbl[level.value].str.extract("\/(\d+)", expand=False)
+            false_count = tbl[level.value].str.extract(r"(\d+)\/", expand=False)
+            total_count = tbl[level.value].str.extract(r"\/(\d+)", expand=False)
             tbl[level.column_count()] = pd.to_numeric(false_count)
             tbl[level.column_total()] = pd.to_numeric(total_count)
         # Remove the original count and total security column.
@@ -298,7 +300,7 @@ class FPCBETResults:
         This may be parallelized in the future.
         """
 
-        dfs = list()
+        dfs: list[Optional[pd.DataFrame]] = []
         for c in case_table_pairs:
             dfs.append(self.read_file(*c))
         return dfs
