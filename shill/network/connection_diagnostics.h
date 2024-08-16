@@ -70,28 +70,14 @@ class ConnectionDiagnostics {
     kTypePingGateway = 4,
   };
 
-  // The ConnectionDiagnostics::kPhaseNames string array depends on this enum.
-  // Any changes to this enum should be synced with that array.
-  enum Phase {
-    kPhaseStart = 0,
-    kPhaseEnd = 1,
-  };
-
   // The ConnectionDiagnostics::kResultNames string array depends on this enum.
   // Any changes to this enum should be synced with that array.
   enum Result { kResultSuccess = 0, kResultFailure = 1, kResultTimeout = 2 };
 
   struct Event {
-    Event(Type type_in,
-          Phase phase_in,
-          Result result_in,
-          const std::string& message_in)
-        : type(type_in),
-          phase(phase_in),
-          result(result_in),
-          message(message_in) {}
+    Event(Type type_in, Result result_in, const std::string& message_in)
+        : type(type_in), result(result_in), message(message_in) {}
     Type type;
-    Phase phase;
     Result result;
     std::string message;
   };
@@ -122,12 +108,8 @@ class ConnectionDiagnostics {
 
   static const int kMaxDNSRetries;
 
-  // Logs a diagnostic events with |type|, |phase|, |result|, and an optional
-  // message.
-  void LogEvent(Type type,
-                Phase phase,
-                Result result,
-                const std::string& message = "");
+  // Logs a diagnostic events with |type|, |result|, and an optional message.
+  void LogEvent(Type type, Result result, const std::string& message = "");
 
   // Attempts to resolve the IP address of the hostname of |target_url_| using
   // |dns_list|.

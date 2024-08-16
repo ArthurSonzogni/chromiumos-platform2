@@ -29,10 +29,6 @@ namespace {
 const char* const kEventNames[] = {"Portal detection", "Ping DNS servers",
                                    "DNS resolution", "Ping (target web server)",
                                    "Ping (gateway)"};
-// These strings are dependent on ConnectionDiagnostics::Phase. Any changes to
-// this array should be synced with ConnectionDiagnostics::Phase.
-const char* const kPhaseNames[] = {"Start", "End", "End (Content)", "End (DNS)",
-                                   "End (HTTP/CXN)"};
 // These strings are dependent on ConnectionDiagnostics::Result. Any changes to
 // this array should be synced with ConnectionDiagnostics::Result.
 const char* const kResultNames[] = {"Success", "Failure", "Timeout"};
@@ -108,9 +104,9 @@ void ConnectionDiagnostics::Stop() {
 
 // static
 std::string ConnectionDiagnostics::EventToString(const Event& event) {
-  auto message = base::StringPrintf(
-      "Event: %-26sPhase: %-17sResult: %-10s", kEventNames[event.type],
-      kPhaseNames[event.phase], kResultNames[event.result]);
+  auto message =
+      base::StringPrintf("Event: %-26sResult: %-10s", kEventNames[event.type],
+                         kResultNames[event.result]);
   if (!event.message.empty()) {
     message.append("Msg: " + event.message);
   }
@@ -118,11 +114,10 @@ std::string ConnectionDiagnostics::EventToString(const Event& event) {
 }
 
 void ConnectionDiagnostics::LogEvent(Type type,
-                                     Phase phase,
                                      Result result,
                                      const std::string& message) {
   event_number_++;
-  Event ev(type, phase, result, message);
+  Event ev(type, result, message);
   if (result == kResultSuccess) {
     LOG(INFO) << iface_name_ << ": Diagnostics event #" << event_number_ << ": "
               << EventToString(ev);
@@ -136,13 +131,13 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
     const std::vector<std::string>& dns_list) {
   Error e;
   if (!dns_client_->Start(dns_list, target_url_->host(), &e)) {
-    LogEvent(kTypeResolveTargetServerIP, kPhaseStart, kResultFailure,
+    LogEvent(kTypeResolveTargetServerIP, kResultFailure,
              "Could not start DNS: " + e.message());
     Stop();
     return;
   }
 
-  LogEvent(kTypeResolveTargetServerIP, kPhaseStart, kResultSuccess,
+  LogEvent(kTypeResolveTargetServerIP, kResultSuccess,
            base::StringPrintf("Attempt #%d", num_dns_attempts_));
   SLOG(2) << __func__ << ": looking up " << target_url_->host() << " (attempt "
           << num_dns_attempts_ << ")";
@@ -151,7 +146,7 @@ void ConnectionDiagnostics::ResolveTargetServerIPAddress(
 
 void ConnectionDiagnostics::PingDNSServers() {
   if (dns_list_.empty()) {
-    LogEvent(kTypePingDNSServers, kPhaseStart, kResultFailure,
+    LogEvent(kTypePingDNSServers, kResultFailure,
              "No DNS servers for this connection");
     Stop();
     return;
@@ -172,7 +167,7 @@ void ConnectionDiagnostics::PingDNSServers() {
             dns_server_ip_addr, iface_index_, iface_name_,
             base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
                            weak_ptr_factory_.GetWeakPtr(), i))) {
-      LogEvent(kTypePingDNSServers, kPhaseStart, kResultFailure,
+      LogEvent(kTypePingDNSServers, kResultFailure,
                "Failed to initiate ping to DNS server " +
                    dns_server_ip_addr.ToString());
       id_to_pending_dns_server_icmp_session_.erase(i);
@@ -183,13 +178,13 @@ void ConnectionDiagnostics::PingDNSServers() {
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {
-    LogEvent(kTypePingDNSServers, kPhaseStart, kResultFailure,
+    LogEvent(kTypePingDNSServers, kResultFailure,
              "Could not start ping for any of the given DNS servers");
     Stop();
     return;
   }
 
-  LogEvent(kTypePingDNSServers, kPhaseStart, kResultSuccess);
+  LogEvent(kTypePingDNSServers, kResultSuccess);
 }
 
 void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
@@ -202,14 +197,13 @@ void ConnectionDiagnostics::PingHost(const net_base::IPAddress& address) {
           base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
                          weak_ptr_factory_.GetWeakPtr(), event_type,
                          address))) {
-    LogEvent(event_type, kPhaseStart, kResultFailure,
+    LogEvent(event_type, kResultFailure,
              "Failed to start ICMP session with " + address.ToString());
     Stop();
     return;
   }
 
-  LogEvent(event_type, kPhaseStart, kResultSuccess,
-           "Pinging " + address.ToString());
+  LogEvent(event_type, kResultSuccess, "Pinging " + address.ToString());
 }
 
 void ConnectionDiagnostics::OnPingDNSServerComplete(
@@ -223,7 +217,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
     // any reason, |id_to_pending_dns_server_icmp_session_| might never become
     // empty, and we might never move to the next step after pinging DNS
     // servers. Stop diagnostics immediately to prevent this from happening.
-    LogEvent(kTypePingDNSServers, kPhaseStart, kResultFailure,
+    LogEvent(kTypePingDNSServers, kResultFailure,
              "No matching pending DNS server ICMP session found");
     Stop();
     return;
@@ -238,7 +232,7 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (pingable_dns_servers_.empty()) {
-    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultFailure,
+    LogEvent(kTypePingDNSServers, kResultFailure,
              "No DNS servers responded to pings. Pinging the gateway at " +
                  gateway_.ToString());
     // If no DNS servers can be pinged, try to ping the gateway.
@@ -249,15 +243,15 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   }
 
   if (pingable_dns_servers_.size() != dns_list_.size()) {
-    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
+    LogEvent(kTypePingDNSServers, kResultSuccess,
              "Pinged some, but not all, DNS servers successfully");
   } else {
-    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultSuccess,
+    LogEvent(kTypePingDNSServers, kResultSuccess,
              "Pinged all DNS servers successfully");
   }
 
   if (num_dns_attempts_ == kMaxDNSRetries) {
-    LogEvent(kTypePingDNSServers, kPhaseEnd, kResultFailure,
+    LogEvent(kTypePingDNSServers, kResultFailure,
              "No DNS result after max DNS resolution attempts reached");
     Stop();
     return;
@@ -274,19 +268,19 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(
   SLOG(2) << __func__;
 
   if (address.has_value()) {
-    LogEvent(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
+    LogEvent(kTypeResolveTargetServerIP, kResultSuccess,
              "Target address is " + address->ToString());
     dispatcher_->PostTask(
         FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
                                   weak_ptr_factory_.GetWeakPtr(), *address));
   } else if (address.error().type() == Error::kOperationTimeout) {
-    LogEvent(kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
+    LogEvent(kTypeResolveTargetServerIP, kResultTimeout,
              "DNS resolution timed out: " + address.error().message());
     dispatcher_->PostTask(FROM_HERE,
                           base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
                                          weak_ptr_factory_.GetWeakPtr()));
   } else {
-    LogEvent(kTypeResolveTargetServerIP, kPhaseEnd, kResultFailure,
+    LogEvent(kTypeResolveTargetServerIP, kResultFailure,
              "DNS resolution failed: " + address.error().message());
     Stop();
   }
@@ -310,7 +304,7 @@ void ConnectionDiagnostics::OnPingHostComplete(
 
   Result result_type =
       IcmpSession::AnyRepliesReceived(result) ? kResultSuccess : kResultFailure;
-  LogEvent(ping_event_type, kPhaseEnd, result_type, message);
+  LogEvent(ping_event_type, result_type, message);
   if (result_type == kResultFailure &&
       ping_event_type == kTypePingTargetServer) {
     // If pinging the target web server fails, try pinging the gateway.
