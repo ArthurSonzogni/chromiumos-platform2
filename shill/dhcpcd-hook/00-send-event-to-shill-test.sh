@@ -99,4 +99,34 @@ test_build_dhcpcd_configuration() {
 }
 test_build_dhcpcd_configuration
 
+# Ignore shellcheck "foo appears unused. Verify it or export it."
+# shellcheck disable=SC2034
+test_build_dhcpcd_configuration_with_pd() {
+  # The variables from dhcpcd.
+  local pid=4
+  local interface="wlan0"
+  local reason="BOUND"
+  local ifmtu="1450"
+  local new_dhcp6_ia_pd1_iaid='2fe297f5'
+  local new_dhcp6_ia_pd1_prefix1='fc00:501:ffff:111::'
+  local new_dhcp6_ia_pd1_prefix1_length='64'
+  local new_dhcp6_ia_pd2_iaid='d1445192'
+  local new_dhcp6_ia_pd2_prefix1='2001:db8:0:101::'
+  local new_dhcp6_ia_pd2_prefix1_length='96'
+  local new_dhcp6_ia_pd2_prefix2='fc00:0:0:101::'
+  local new_dhcp6_ia_pd2_prefix2_length='96'
+
+  # The expected dictionary string.
+  local expect="'Pid': '4',"
+  expect="${expect} 'Interface': 'wlan0',"
+  expect="${expect} 'Reason': 'BOUND',"
+  expect="${expect} 'InterfaceMTU': '1450',"
+  expect="${expect} 'IAPDPrefix.1.1': 'fc00:501:ffff:111::/64',"
+  expect="${expect} 'IAPDPrefix.2.1': '2001:db8:0:101::/96',"
+  expect="${expect} 'IAPDPrefix.2.2': 'fc00:0:0:101::/96'"
+
+  assert_eq "$(build_dhcpcd_configuration)" "${expect}"
+}
+test_build_dhcpcd_configuration_with_pd
+
 echo "All tests passes"
