@@ -27,6 +27,7 @@ if (use.test) {
       "power_button_evdev_delegate_test.cc",
       "stylus_garage_evdev_delegate_test.cc",
       "touchpad_evdev_delegate_test.cc",
+      "touchscreen_evdev_delegate_test.cc",
       "volume_button_evdev_delegate_test.cc",
     ]
     pkg_deps = [
