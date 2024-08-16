@@ -55,6 +55,7 @@ constexpr char kHelpContentIdProperty[] = "help-content-id";
 const char kWallpaperProperty[] = "wallpaper";
 
 const char kRegulatoryLabelProperty[] = "regulatory-label";
+const char kModelNameProperty[] = "name";
 
 const char kPowerButtonPositionPath[] = "/ui/power-button";
 const char kPowerButtonEdgeField[] = "edge";
@@ -606,6 +607,14 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpAllowAmbientEQFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
   SetUpHPEngageOneProAIOSystem(builder);
+
+  // TODO(b/360171772, b/360396368): Once this launches to all users, this can
+  // be removed as it will not be gated for one device.
+  std::string model_name;
+  if (cros_config->GetString("/", kModelNameProperty, &model_name) &&
+      model_name == "xol") {
+    builder->AddFeatureEnableOverride("ModifierSplitDeviceEnabled");
+  }
 }
 
 // Adds enterprise-related flags to the command line.
