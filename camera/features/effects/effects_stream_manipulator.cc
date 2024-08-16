@@ -87,6 +87,9 @@ constexpr char kRetouchEnabled[] = "retouch_enabled";
 constexpr char kSegmentationModelTypeKey[] = "segmentation_model_type";
 constexpr char kDefaultSegmentationModelTypeKey[] =
     "default_segmentation_model_type";
+constexpr char kDefaultSegmentationDelegateKey[] =
+    "default_segmentation_delegate";
+constexpr char kDefaultRelightingDelegateKey[] = "default_relighting_delegate";
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBA_8888;
 constexpr uint32_t kRGBABufferUsage =
@@ -181,22 +184,26 @@ class RenderedImageObserver : public ProcessedFrameObserver {
       frame_processed_callback_;
 };
 
-Delegate GetDelegateFromInferenceBackend(
-    cros::mojom::InferenceBackend backend) {
+Delegate GetDelegateFromInferenceBackend(cros::mojom::InferenceBackend backend,
+                                         const Delegate& default_delegate) {
   switch (backend) {
     case cros::mojom::InferenceBackend::kGpu:
       return Delegate::kGpu;
     case cros::mojom::InferenceBackend::kNpu:
       return Delegate::kStable;
+    case cros::mojom::InferenceBackend::kAuto:
+      return default_delegate;
     default:
       LOGF(WARNING) << "Got unexpected inference backend " << backend;
-      return Delegate::kGpu;
+      return default_delegate;
   }
 }
 
 EffectsConfig ConvertMojoConfig(
     cros::mojom::EffectsConfigPtr effects_config,
-    SegmentationModelType default_segmentation_model_type) {
+    const SegmentationModelType& default_segmentation_model_type,
+    const Delegate& default_segmentation_delegate,
+    const Delegate& default_relighting_delegate) {
   // Note: We don't copy over the GPU api fields here, since we have no
   //       need to control them from Chrome at this stage. It will use
   //       the default from effects_pipeline_types.h
@@ -207,9 +214,11 @@ EffectsConfig ConvertMojoConfig(
       .face_retouch_enabled = effects_config->retouch_enabled,
       .blur_level = static_cast<cros::BlurLevel>(effects_config->blur_level),
       .segmentation_delegate = GetDelegateFromInferenceBackend(
-          effects_config->segmentation_inference_backend),
+          effects_config->segmentation_inference_backend,
+          default_segmentation_delegate),
       .relighting_delegate = GetDelegateFromInferenceBackend(
-          effects_config->relighting_inference_backend),
+          effects_config->relighting_inference_backend,
+          default_relighting_delegate),
       .graph_max_frames_in_flight = effects_config->graph_max_frames_in_flight,
       .wait_on_render = true,
       .segmentation_model_type = static_cast<cros::SegmentationModelType>(
@@ -276,6 +285,18 @@ bool ParseSegmentationModelType(const std::string& model,
     output = SegmentationModelType::kFull;
   } else {
     LOGF(WARNING) << "Unknown Segmentation Model Type: " << model;
+    return false;
+  }
+  return true;
+}
+
+// TODO(imranziad): Use std::optional
+bool ParseDelegate(const std::string& delegate, Delegate& output) {
+  if (delegate == "gpu") {
+    output = Delegate::kGpu;
+  } else if (delegate == "stable") {
+    output = Delegate::kStable;
+  } else {
     return false;
   }
   return true;
@@ -393,6 +414,10 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   RuntimeOptions* runtime_options_;
   SegmentationModelType default_segmentation_model_type_
       GUARDED_BY_CONTEXT(gl_thread_checker_) = SegmentationModelType::kHd;
+  Delegate default_segmentation_delegate_
+      GUARDED_BY_CONTEXT(gl_thread_checker_) = Delegate::kGpu;
+  Delegate default_relighting_delegate_ GUARDED_BY_CONTEXT(gl_thread_checker_) =
+      Delegate::kGpu;
 
   // Maximum number of frames that can be queued into effects pipeline.
   // Use the default value to setup the pipeline early.
@@ -551,8 +576,9 @@ bool EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread() {
   if (!pipeline_)
     return false;
 
-  auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig(),
-                                      default_segmentation_model_type_);
+  auto new_config = ConvertMojoConfig(
+      runtime_options_->GetEffectsConfig(), default_segmentation_model_type_,
+      default_segmentation_delegate_, default_relighting_delegate_);
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
     // Ignore the mojo config if the override config file is being used. This is
@@ -927,16 +953,49 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   LOGF(INFO) << "Reloadable Options update detected";
   CHECK(pipeline_);
 
-  std::string default_segmentation_model;
-  if (GetStringFromKey(json_values, kDefaultSegmentationModelTypeKey,
-                       &default_segmentation_model)) {
-    if (ParseSegmentationModelType(default_segmentation_model,
-                                   default_segmentation_model_type_)) {
-      LOG(INFO) << "Default segmentation model type set to "
-                << default_segmentation_model;
-    } else {
-      LOG(WARNING) << "Model type " << default_segmentation_model
-                   << " not recognized, keeping original default";
+  {
+    std::string default_segmentation_model;
+    if (GetStringFromKey(json_values, kDefaultSegmentationModelTypeKey,
+                         &default_segmentation_model)) {
+      if (ParseSegmentationModelType(default_segmentation_model,
+                                     default_segmentation_model_type_)) {
+        LOGF(INFO) << "Default segmentation model type set to: "
+                   << default_segmentation_model;
+      } else {
+        LOGF(WARNING) << "Model type " << default_segmentation_model
+                      << " not recognized, keeping original default";
+      }
+    }
+  }
+
+  {
+    std::string default_segmentation_delegate;
+    if (GetStringFromKey(json_values, kDefaultSegmentationDelegateKey,
+                         &default_segmentation_delegate)) {
+      if (ParseDelegate(default_segmentation_delegate,
+                        default_segmentation_delegate_)) {
+        LOGF(INFO) << "Default segmentation delegate set to: "
+                   << default_segmentation_delegate;
+      } else {
+        LOGF(WARNING) << "Segmentation delegate "
+                      << default_segmentation_delegate
+                      << " not recognized, keeping original default";
+      }
+    }
+  }
+
+  {
+    std::string default_relighting_delegate;
+    if (GetStringFromKey(json_values, kDefaultRelightingDelegateKey,
+                         &default_relighting_delegate)) {
+      if (ParseDelegate(default_relighting_delegate,
+                        default_relighting_delegate_)) {
+        LOGF(INFO) << "Default relighting delegate set to "
+                   << default_relighting_delegate;
+      } else {
+        LOGF(WARNING) << "Relighting delegate " << default_relighting_delegate
+                      << " not recognized, keeping original default";
+      }
     }
   }
 
@@ -1005,33 +1064,30 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     LOGF(INFO) << "Retouch Strength: " << face_retouch_strength;
   }
 
-  std::string delegate;
-  if (GetStringFromKey(json_values, kDelegateKey, &delegate)) {
-    if (delegate == "gpu") {
-      new_config.segmentation_delegate = Delegate::kGpu;
-      new_config.relighting_delegate = Delegate::kGpu;
-    } else if (delegate == "stable") {
-      new_config.segmentation_delegate = Delegate::kStable;
-      new_config.relighting_delegate = Delegate::kStable;
-    } else {
-      LOGF(WARNING) << "Unknown Delegate: " << delegate;
-      return;
+  {
+    std::string delegate;
+    if (GetStringFromKey(json_values, kDelegateKey, &delegate)) {
+      if (ParseDelegate(delegate, new_config.segmentation_delegate)) {
+        new_config.relighting_delegate = new_config.segmentation_delegate;
+        LOGF(INFO) << "Delegate: " << delegate;
+      } else {
+        LOGF(WARNING) << "Unknown Delegate: " << delegate;
+        return;
+      }
     }
-    LOG(INFO) << "Delegate: " << delegate;
   }
 
-  std::string relighting_delegate;
-  if (GetStringFromKey(json_values, kRelightingDelegateKey,
-                       &relighting_delegate)) {
-    if (delegate == "gpu") {
-      new_config.relighting_delegate = Delegate::kGpu;
-    } else if (delegate == "stable") {
-      new_config.relighting_delegate = Delegate::kStable;
-    } else {
-      LOGF(WARNING) << "Unknown Delegate: " << delegate;
-      return;
+  {
+    std::string relighting_delegate;
+    if (GetStringFromKey(json_values, kRelightingDelegateKey,
+                         &relighting_delegate)) {
+      if (ParseDelegate(relighting_delegate, new_config.relighting_delegate)) {
+        LOGF(INFO) << "Relighting Delegate: " << relighting_delegate;
+      } else {
+        LOGF(WARNING) << "Unknown Relighting Delegate: " << relighting_delegate;
+        return;
+      }
     }
-    LOGF(INFO) << "Delegate: " << delegate;
   }
 
   if (new_config.segmentation_delegate == Delegate::kGpu ||
