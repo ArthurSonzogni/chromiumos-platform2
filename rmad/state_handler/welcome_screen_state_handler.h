@@ -5,13 +5,12 @@
 #ifndef RMAD_STATE_HANDLER_WELCOME_SCREEN_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_WELCOME_SCREEN_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <utility>
 
 #include <base/files/file_path.h>
 
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/hardware_verifier_client.h"
 
 namespace rmad {

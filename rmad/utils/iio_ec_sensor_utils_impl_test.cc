@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <array>
+#include "rmad/utils/iio_ec_sensor_utils_impl.h"
+
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -16,7 +18,6 @@
 
 #include "libmems/test_fakes.h"
 #include "mojo/core/embedder/embedder.h"
-#include "rmad/utils/iio_ec_sensor_utils_impl.h"
 #include "rmad/utils/mock_mojo_service_utils.h"
 #include "rmad/utils/mock_sensor_device.h"
 #include "rmad/utils/mojo_service_utils.h"

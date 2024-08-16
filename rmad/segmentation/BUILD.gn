@@ -30,7 +30,7 @@ if (use.test) {
   }
 
   source_set("libsegmentation_test") {
-    sources = [ "segmentation_utils_test.cc" ]
+    sources = [ "segmentation_utils_impl_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

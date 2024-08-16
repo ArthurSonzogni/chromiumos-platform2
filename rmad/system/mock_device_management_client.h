@@ -5,9 +5,9 @@
 #ifndef RMAD_SYSTEM_MOCK_DEVICE_MANAGEMENT_CLIENT_H_
 #define RMAD_SYSTEM_MOCK_DEVICE_MANAGEMENT_CLIENT_H_
 
-#include "rmad/system/device_management_client.h"
-
 #include <gmock/gmock.h>
+
+#include "rmad/system/device_management_client.h"
 
 namespace rmad {
 

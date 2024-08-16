@@ -5,14 +5,13 @@
 #ifndef RMAD_UTILS_WRITE_PROTECT_UTILS_IMPL_H_
 #define RMAD_UTILS_WRITE_PROTECT_UTILS_IMPL_H_
 
-#include "rmad/utils/gsc_utils.h"
-#include "rmad/utils/write_protect_utils.h"
-
 #include <memory>
 
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/ec_utils.h"
 #include "rmad/utils/futility_utils.h"
+#include "rmad/utils/gsc_utils.h"
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 

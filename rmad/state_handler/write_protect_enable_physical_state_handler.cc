@@ -8,10 +8,9 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 
 #include "rmad/utils/write_protect_utils_impl.h"
-
-#include <base/logging.h>
 
 namespace rmad {
 

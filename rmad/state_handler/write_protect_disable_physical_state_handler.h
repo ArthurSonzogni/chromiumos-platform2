@@ -5,14 +5,13 @@
 #ifndef RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_PHYSICAL_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_PHYSICAL_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"

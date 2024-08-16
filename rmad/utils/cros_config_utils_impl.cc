@@ -14,8 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>

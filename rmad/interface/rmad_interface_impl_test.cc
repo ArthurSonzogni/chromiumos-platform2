@@ -4,6 +4,7 @@
 
 #include "rmad/interface/rmad_interface_impl.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>

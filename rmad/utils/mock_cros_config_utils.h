@@ -5,12 +5,12 @@
 #ifndef RMAD_UTILS_MOCK_CROS_CONFIG_UTILS_H_
 #define RMAD_UTILS_MOCK_CROS_CONFIG_UTILS_H_
 
-#include "rmad/utils/cros_config_utils.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "rmad/utils/cros_config_utils.h"
 
 namespace rmad {
 

@@ -5,10 +5,10 @@
 #ifndef RMAD_UDEV_MOCK_UDEV_DEVICE_H_
 #define RMAD_UDEV_MOCK_UDEV_DEVICE_H_
 
-#include "rmad/udev/udev_device.h"
-
 #include <memory>
 #include <string>
+
+#include "rmad/udev/udev_device.h"
 
 namespace rmad {
 

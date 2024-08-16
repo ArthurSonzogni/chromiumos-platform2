@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,7 +20,6 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/device_destination_state_handler.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,7 +16,6 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/state_handler/device_destination_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_device_management_client.h"
 #include "rmad/utils/mock_write_protect_utils.h"

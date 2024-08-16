@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <gmock/gmock.h>
+
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace rmad {

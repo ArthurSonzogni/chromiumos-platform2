@@ -6,14 +6,15 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <dbus/hardware_verifier/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
-#include <dbus/hardware_verifier/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>

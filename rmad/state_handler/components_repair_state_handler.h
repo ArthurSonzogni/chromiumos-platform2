@@ -5,14 +5,13 @@
 #ifndef RMAD_STATE_HANDLER_COMPONENTS_REPAIR_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_COMPONENTS_REPAIR_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/device_management_client.h"
 #include "rmad/system/runtime_probe_client.h"
 #include "rmad/utils/write_protect_utils.h"

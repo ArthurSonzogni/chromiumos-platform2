@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/state_handler_manager.h"
+
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <base/test/task_environment.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "rmad/daemon/daemon_callback.h"
 #include "rmad/state_handler/mock_state_handler.h"
-#include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {

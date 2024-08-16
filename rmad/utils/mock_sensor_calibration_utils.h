@@ -5,11 +5,11 @@
 #ifndef RMAD_UTILS_MOCK_SENSOR_CALIBRATION_UTILS_H_
 #define RMAD_UTILS_MOCK_SENSOR_CALIBRATION_UTILS_H_
 
-#include "rmad/utils/sensor_calibration_utils.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "rmad/utils/sensor_calibration_utils.h"
 
 namespace rmad {
 

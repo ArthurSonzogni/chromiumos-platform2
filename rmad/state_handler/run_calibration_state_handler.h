@@ -5,8 +5,6 @@
 #ifndef RMAD_STATE_HANDLER_RUN_CALIBRATION_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_RUN_CALIBRATION_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -18,6 +16,7 @@
 #include <base/task/task_runner.h>
 #include <base/timer/timer.h>
 
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/sensor_calibration_utils.h"

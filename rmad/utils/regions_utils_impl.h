@@ -5,12 +5,12 @@
 #ifndef RMAD_UTILS_REGIONS_UTILS_IMPL_H_
 #define RMAD_UTILS_REGIONS_UTILS_IMPL_H_
 
-#include "rmad/utils/regions_utils.h"
-
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
+
+#include "rmad/utils/regions_utils.h"
 
 namespace rmad {
 

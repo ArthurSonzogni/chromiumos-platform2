@@ -4,6 +4,8 @@
 
 #include "rmad/system/power_manager_client_impl.h"
 
+#include <memory>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -12,8 +14,6 @@
 #include <dbus/power_manager/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "rmad/constants.h"
 
 using testing::_;
 using testing::Return;

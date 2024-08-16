@@ -4,12 +4,11 @@
 
 #include "rmad/udev/udev_device.h"
 
-#include <blkid/blkid.h>
-
 #include <memory>
 #include <string>
 #include <utility>
 
+#include <blkid/blkid.h>
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/utils.h>
 

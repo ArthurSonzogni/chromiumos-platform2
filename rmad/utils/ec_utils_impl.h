@@ -5,9 +5,9 @@
 #ifndef RMAD_UTILS_EC_UTILS_IMPL_H_
 #define RMAD_UTILS_EC_UTILS_IMPL_H_
 
-#include "rmad/utils/ec_utils.h"
-
 #include <base/files/scoped_file.h>
+
+#include "rmad/utils/ec_utils.h"
 
 // TODO(b/144956297): Add unittest after RebootCommand can be mocked.
 

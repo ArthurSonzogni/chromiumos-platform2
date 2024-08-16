@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/wipe_selection_state_handler.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -13,7 +15,6 @@
 #include "rmad/constants.h"
 #include "rmad/logs/logs_constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/state_handler/wipe_selection_state_handler.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;

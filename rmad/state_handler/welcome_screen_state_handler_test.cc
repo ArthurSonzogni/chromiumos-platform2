@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/welcome_screen_state_handler.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,7 +20,6 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/state_handler/welcome_screen_state_handler.h"
 #include "rmad/system/mock_hardware_verifier_client.h"
 #include "rmad/utils/json_store.h"
 

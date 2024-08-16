@@ -5,9 +5,8 @@
 #ifndef RMAD_SSFC_MOCK_SSFC_PROBER_H_
 #define RMAD_SSFC_MOCK_SSFC_PROBER_H_
 
-#include "rmad/ssfc/ssfc_prober.h"
-
 #include "gmock/gmock.h"
+#include "rmad/ssfc/ssfc_prober.h"
 
 namespace rmad {
 

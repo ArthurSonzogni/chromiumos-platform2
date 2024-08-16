@@ -5,12 +5,11 @@
 #ifndef RMAD_UTILS_GSC_UTILS_IMPL_H_
 #define RMAD_UTILS_GSC_UTILS_IMPL_H_
 
-#include <rmad/utils/gsc_utils.h>
-
 #include <memory>
 #include <string>
 
 #include "rmad/utils/cmd_utils.h"
+#include "rmad/utils/gsc_utils.h"
 
 namespace rmad {
 

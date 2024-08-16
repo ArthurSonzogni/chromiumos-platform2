@@ -5,14 +5,13 @@
 #ifndef RMAD_UTILS_IIO_SENSOR_PROBE_UTILS_IMPL_H_
 #define RMAD_UTILS_IIO_SENSOR_PROBE_UTILS_IMPL_H_
 
-#include "rmad/utils/iio_sensor_probe_utils.h"
-
 #include <memory>
 #include <set>
 
 #include <libmems/iio_context.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/utils/iio_sensor_probe_utils.h"
 
 namespace rmad {
 

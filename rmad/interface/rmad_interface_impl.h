@@ -5,8 +5,6 @@
 #ifndef RMAD_INTERFACE_RMAD_INTERFACE_IMPL_H_
 #define RMAD_INTERFACE_RMAD_INTERFACE_IMPL_H_
 
-#include "rmad/interface/rmad_interface.h"
-
 #include <algorithm>
 #include <list>
 #include <memory>
@@ -20,6 +18,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/daemon/daemon_callback.h"
+#include "rmad/interface/rmad_interface.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/power_manager_client.h"

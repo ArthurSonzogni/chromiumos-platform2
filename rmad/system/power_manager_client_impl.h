@@ -5,10 +5,10 @@
 #ifndef RMAD_SYSTEM_POWER_MANAGER_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_POWER_MANAGER_CLIENT_IMPL_H_
 
-#include "rmad/system/power_manager_client.h"
-
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
+
+#include "rmad/system/power_manager_client.h"
 
 namespace rmad {
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/restock_state_handler.h"
+
 #include <memory>
 #include <utility>
 
@@ -12,7 +14,6 @@
 
 #include "rmad/logs/logs_constants.h"
 #include "rmad/logs/logs_utils.h"
-#include "rmad/state_handler/restock_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
 

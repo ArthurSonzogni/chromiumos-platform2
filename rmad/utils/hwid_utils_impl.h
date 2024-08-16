@@ -5,9 +5,9 @@
 #ifndef RMAD_UTILS_HWID_UTILS_IMPL_H_
 #define RMAD_UTILS_HWID_UTILS_IMPL_H_
 
-#include <rmad/utils/hwid_utils.h>
-
 #include <string>
+
+#include "rmad/utils/hwid_utils.h"
 
 namespace rmad {
 

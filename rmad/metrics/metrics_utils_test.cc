@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include "rmad/metrics/metrics_utils.h"
-#include "rmad/metrics/metrics_utils_impl.h"
-#include "rmad/metrics/mock_metrics_utils.h"
 
 #include <map>
 #include <memory>
@@ -19,6 +17,8 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
+#include "rmad/metrics/metrics_utils_impl.h"
+#include "rmad/metrics/mock_metrics_utils.h"
 #include "rmad/metrics/state_metrics.h"
 #include "rmad/utils/json_store.h"
 

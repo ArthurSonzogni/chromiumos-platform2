@@ -5,8 +5,6 @@
 #ifndef RMAD_SYSTEM_DEVICE_MANAGEMENT_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_DEVICE_MANAGEMENT_CLIENT_IMPL_H_
 
-#include "rmad/system/device_management_client.h"
-
 #include <cstdint>
 #include <memory>
 
@@ -15,11 +13,11 @@
 #include <dbus/bus.h>
 #include <device_management/proto_bindings/device_management_interface.pb.h>
 
-namespace org {
-namespace chromium {
+#include "rmad/system/device_management_client.h"
+
+namespace org::chromium {
 class DeviceManagementProxyInterface;
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium
 
 namespace rmad {
 

@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "device_management/proto_bindings/device_management_interface.pb.h"
 #include "rmad/system/device_management_client_impl.h"
 
-#include <cstdint>
 #include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -16,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "device_management-client-test/device_management/dbus-proxy-mocks.h"
-
+#include "device_management/proto_bindings/device_management_interface.pb.h"
 #include "rmad/constants.h"
 
 using testing::_;

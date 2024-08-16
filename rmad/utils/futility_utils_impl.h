@@ -5,8 +5,6 @@
 #ifndef RMAD_UTILS_FUTILITY_UTILS_IMPL_H_
 #define RMAD_UTILS_FUTILITY_UTILS_IMPL_H_
 
-#include <rmad/utils/futility_utils.h>
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,6 +12,7 @@
 #include <base/files/file_path.h>
 
 #include "rmad/utils/cmd_utils.h"
+#include "rmad/utils/futility_utils.h"
 #include "rmad/utils/hwid_utils.h"
 
 namespace rmad {

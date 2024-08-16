@@ -12,8 +12,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/memory/scoped_refptr.h>
 #include <base/files/file_util.h>
+#include <base/memory/scoped_refptr.h>
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"

@@ -5,8 +5,6 @@
 #ifndef RMAD_STATE_HANDLER_FINALIZE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_FINALIZE_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 
 #include <base/files/file_path.h>
@@ -15,6 +13,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/timer/timer.h>
 
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"

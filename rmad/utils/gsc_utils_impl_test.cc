@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/gsc_utils_impl.h"
 
 #include <memory>
@@ -18,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/mock_cmd_utils.h"
 
 using testing::_;

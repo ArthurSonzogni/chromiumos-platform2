@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/utils/mojo_service_utils.h"
+
+#include <base/test/task_environment.h>
+
 #include "base/memory/scoped_refptr.h"
 #include "mojo/core/embedder/embedder.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "rmad/utils/mock_sensor_service.h"
-#include "rmad/utils/mojo_service_utils.h"
-
-#include <base/test/task_environment.h>
 
 using testing::_;
 using testing::StrictMock;

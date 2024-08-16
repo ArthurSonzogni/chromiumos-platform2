@@ -5,11 +5,11 @@
 #ifndef RMAD_INTERFACE_MOCK_RMAD_INTERFACE_H_
 #define RMAD_INTERFACE_MOCK_RMAD_INTERFACE_H_
 
-#include "rmad/interface/rmad_interface.h"
-
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "rmad/interface/rmad_interface.h"
 
 namespace rmad {
 

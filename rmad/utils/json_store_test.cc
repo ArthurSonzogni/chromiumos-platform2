@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/utils/json_store.h"
+
 #include <string>
 
 #include <base/files/file_util.h>
@@ -10,8 +12,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
-
-#include "rmad/utils/json_store.h"
 
 namespace rmad {
 

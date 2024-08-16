@@ -5,9 +5,9 @@
 #ifndef RMAD_UTILS_MOCK_EC_UTILS_H_
 #define RMAD_UTILS_MOCK_EC_UTILS_H_
 
-#include "rmad/utils/ec_utils.h"
-
 #include <gmock/gmock.h>
+
+#include "rmad/utils/ec_utils.h"
 
 namespace rmad {
 

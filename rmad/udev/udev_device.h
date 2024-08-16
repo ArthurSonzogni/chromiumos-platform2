@@ -5,10 +5,10 @@
 #ifndef RMAD_UDEV_UDEV_DEVICE_H_
 #define RMAD_UDEV_UDEV_DEVICE_H_
 
-#include <blkid/blkid.h>
-
 #include <memory>
 #include <string>
+
+#include <blkid/blkid.h>
 
 namespace brillo {
 class UdevDevice;

@@ -12,8 +12,8 @@
 
 #include <base/files/file_path.h>
 #include <libmems/iio_context.h>
-#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "rmad/utils/iio_ec_sensor_utils.h"
 #include "rmad/utils/mojo_service_utils.h"

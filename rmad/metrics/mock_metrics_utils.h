@@ -5,11 +5,10 @@
 #ifndef RMAD_METRICS_MOCK_METRICS_UTILS_H_
 #define RMAD_METRICS_MOCK_METRICS_UTILS_H_
 
-#include "rmad/metrics/metrics_utils.h"
-
 #include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
 
+#include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {

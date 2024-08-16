@@ -5,13 +5,13 @@
 #ifndef RMAD_UTILS_MOCK_FUTILITY_UTILS_H_
 #define RMAD_UTILS_MOCK_FUTILITY_UTILS_H_
 
-#include "rmad/utils/futility_utils.h"
-
 #include <cstdint>
 #include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "rmad/utils/futility_utils.h"
 
 namespace rmad {
 

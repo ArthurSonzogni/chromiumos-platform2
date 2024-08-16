@@ -5,8 +5,6 @@
 #ifndef RMAD_SYSTEM_RUNTIME_PROBE_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_RUNTIME_PROBE_CLIENT_IMPL_H_
 
-#include "rmad/system/runtime_probe_client.h"
-
 #include <memory>
 #include <vector>
 
@@ -15,11 +13,11 @@
 #include <rmad/proto_bindings/rmad.pb.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
-namespace org {
-namespace chromium {
+#include "rmad/system/runtime_probe_client.h"
+
+namespace org::chromium {
 class RuntimeProbeProxyInterface;
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium
 
 namespace rmad {
 

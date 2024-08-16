@@ -10,8 +10,8 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <dbus/bus.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 namespace rmad {
 

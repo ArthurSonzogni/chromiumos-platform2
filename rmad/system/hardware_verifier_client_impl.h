@@ -5,13 +5,13 @@
 #ifndef RMAD_SYSTEM_HARDWARE_VERIFIER_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_HARDWARE_VERIFIER_CLIENT_IMPL_H_
 
-#include "rmad/system/hardware_verifier_client.h"
-
 #include <string>
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
+
+#include "rmad/system/hardware_verifier_client.h"
 
 namespace rmad {
 

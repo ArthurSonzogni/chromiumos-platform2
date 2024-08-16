@@ -45,12 +45,12 @@ if (use.test) {
 
   source_set("libsystem_test") {
     sources = [
-      "device_management_client_test.cc",
-      "hardware_verifier_client_test.cc",
-      "power_manager_client_test.cc",
-      "runtime_probe_client_test.cc",
-      "shill_client_test.cc",
-      "tpm_manager_client_test.cc",
+      "device_management_client_impl_test.cc",
+      "hardware_verifier_client_impl_test.cc",
+      "power_manager_client_impl_test.cc",
+      "runtime_probe_client_impl_test.cc",
+      "shill_client_impl_test.cc",
+      "tpm_manager_client_impl_test.cc",
     ]
     configs += [
       "//common-mk:test",

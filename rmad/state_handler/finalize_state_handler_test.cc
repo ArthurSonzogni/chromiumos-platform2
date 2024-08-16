@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/state_handler/finalize_state_handler.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -16,7 +18,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/state_handler/finalize_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cros_config_utils.h"

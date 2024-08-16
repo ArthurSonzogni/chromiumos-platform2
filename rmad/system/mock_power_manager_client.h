@@ -5,9 +5,9 @@
 #ifndef RMAD_SYSTEM_MOCK_POWER_MANAGER_CLIENT_H_
 #define RMAD_SYSTEM_MOCK_POWER_MANAGER_CLIENT_H_
 
-#include "rmad/system/power_manager_client.h"
-
 #include <gmock/gmock.h>
+
+#include "rmad/system/power_manager_client.h"
 
 namespace rmad {
 

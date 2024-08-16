@@ -5,11 +5,11 @@
 #ifndef RMAD_SYSTEM_MOCK_RUNTIME_PROBE_CLIENT_H_
 #define RMAD_SYSTEM_MOCK_RUNTIME_PROBE_CLIENT_H_
 
-#include "rmad/system/runtime_probe_client.h"
-
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "rmad/system/runtime_probe_client.h"
 
 namespace rmad {
 

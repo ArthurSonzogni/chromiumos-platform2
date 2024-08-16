@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "rmad/constants.h"
-#include "rmad/logs/logs_utils.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
 #include <memory>
@@ -17,6 +15,8 @@
 #include <base/strings/string_util.h>
 #include <base/task/sequenced_task_runner.h>
 
+#include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/system/hardware_verifier_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 

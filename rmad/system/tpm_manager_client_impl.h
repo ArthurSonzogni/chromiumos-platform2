@@ -5,8 +5,6 @@
 #ifndef RMAD_SYSTEM_TPM_MANAGER_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_TPM_MANAGER_CLIENT_IMPL_H_
 
-#include "rmad/system/tpm_manager_client.h"
-
 #include <memory>
 
 #include <base/memory/scoped_refptr.h>
@@ -14,11 +12,11 @@
 #include <dbus/bus.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
-namespace org {
-namespace chromium {
+#include "rmad/system/tpm_manager_client.h"
+
+namespace org::chromium {
 class TpmManagerProxyInterface;
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium
 
 namespace rmad {
 

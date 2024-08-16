@@ -5,12 +5,11 @@
 #ifndef RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_METHOD_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_WRITE_PROTECT_DISABLE_METHOD_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 
 #include <base/files/file_path.h>
 
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/utils/gsc_utils.h"
 
 namespace rmad {

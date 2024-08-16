@@ -5,12 +5,11 @@
 #ifndef RMAD_UTILS_CBI_UTILS_IMPL_H_
 #define RMAD_UTILS_CBI_UTILS_IMPL_H_
 
-#include "rmad/utils/cbi_utils.h"
-
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cmd_utils.h"
 
 namespace rmad {

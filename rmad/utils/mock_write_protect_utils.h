@@ -5,9 +5,9 @@
 #ifndef RMAD_UTILS_MOCK_WRITE_PROTECT_UTILS_H_
 #define RMAD_UTILS_MOCK_WRITE_PROTECT_UTILS_H_
 
-#include "rmad/utils/write_protect_utils.h"
-
 #include <gmock/gmock.h>
+
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 

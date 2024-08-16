@@ -29,7 +29,8 @@ namespace {
 constexpr char kFutilityWriteProtectEnabledOutput[] = R"(WP status: enabled.)";
 constexpr char kFutilityWriteProtectDisabledOutput[] = R"(WP status: disabled)";
 constexpr char kFutilityWriteProtectMisconfiguredOutput[] =
-    R"(WP status: misconfigured (srp = 1, start = 0000000000, length = 0000000000))";
+    "WP status: misconfigured (srp = 1, start = 0000000000, length = "
+    "0000000000)";
 
 }  // namespace
 

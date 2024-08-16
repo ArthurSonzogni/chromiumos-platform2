@@ -28,7 +28,7 @@ source_set("libinterface") {
 
 if (use.test) {
   source_set("libinterface_test") {
-    sources = [ "rmad_interface_test.cc" ]
+    sources = [ "rmad_interface_impl_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

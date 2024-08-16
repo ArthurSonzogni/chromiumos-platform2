@@ -5,8 +5,6 @@
 #ifndef RMAD_UTILS_CROS_CONFIG_UTILS_IMPL_H_
 #define RMAD_UTILS_CROS_CONFIG_UTILS_IMPL_H_
 
-#include "rmad/utils/cros_config_utils.h"
-
 #include <map>
 #include <memory>
 #include <string>
@@ -15,6 +13,8 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
+
+#include "rmad/utils/cros_config_utils.h"
 
 namespace rmad {
 

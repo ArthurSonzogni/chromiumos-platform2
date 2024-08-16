@@ -6,11 +6,12 @@
 
 #include <fcntl.h>
 
+#include <optional>
+
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <libec/flash_protect_command.h>
 #include <libec/reboot_command.h>
-#include <optional>
 
 namespace {
 

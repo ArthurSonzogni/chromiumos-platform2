@@ -5,9 +5,9 @@
 #ifndef RMAD_SYSTEM_MOCK_TPM_MANAGER_CLIENT_H_
 #define RMAD_SYSTEM_MOCK_TPM_MANAGER_CLIENT_H_
 
-#include "rmad/system/tpm_manager_client.h"
-
 #include <gmock/gmock.h>
+
+#include "rmad/system/tpm_manager_client.h"
 
 namespace rmad {
 

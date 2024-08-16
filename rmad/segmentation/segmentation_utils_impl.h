@@ -5,8 +5,6 @@
 #ifndef RMAD_SEGMENTATION_SEGMENTATION_UTILS_IMPL_H_
 #define RMAD_SEGMENTATION_SEGMENTATION_UTILS_IMPL_H_
 
-#include "rmad/segmentation/segmentation_utils.h"
-
 #include <memory>
 #include <string>
 
@@ -14,6 +12,7 @@
 #include <libsegmentation/feature_management.h>
 
 #include "rmad/feature_enabled_devices.pb.h"
+#include "rmad/segmentation/segmentation_utils.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/gsc_utils.h"

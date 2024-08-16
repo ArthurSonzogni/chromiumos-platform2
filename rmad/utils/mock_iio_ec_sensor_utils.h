@@ -5,12 +5,12 @@
 #ifndef RMAD_UTILS_MOCK_IIO_EC_SENSOR_UTILS_H_
 #define RMAD_UTILS_MOCK_IIO_EC_SENSOR_UTILS_H_
 
-#include "rmad/utils/iio_ec_sensor_utils.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "rmad/utils/iio_ec_sensor_utils.h"
 
 namespace rmad {
 

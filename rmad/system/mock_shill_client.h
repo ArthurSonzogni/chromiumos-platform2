@@ -5,9 +5,9 @@
 #ifndef RMAD_SYSTEM_MOCK_SHILL_CLIENT_H_
 #define RMAD_SYSTEM_MOCK_SHILL_CLIENT_H_
 
-#include "rmad/system/shill_client.h"
-
 #include <gmock/gmock.h>
+
+#include "rmad/system/shill_client.h"
 
 namespace rmad {
 

@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <rmad/utils/hwid_utils_impl.h>
+#include "rmad/utils/hwid_utils_impl.h"
 
+#include <memory>
 #include <optional>
 
 #include <gtest/gtest.h>

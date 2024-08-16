@@ -5,13 +5,13 @@
 #ifndef RMAD_UTILS_MOCK_VPD_UTILS_H_
 #define RMAD_UTILS_MOCK_VPD_UTILS_H_
 
-#include "rmad/utils/vpd_utils.h"
-
 #include <map>
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "rmad/utils/vpd_utils.h"
 
 namespace rmad {
 

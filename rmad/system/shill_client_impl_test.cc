@@ -5,6 +5,7 @@
 #include "rmad/system/shill_client_impl.h"
 
 #include <memory>
+#include <utility>
 
 #include <dbus/shill/dbus-constants.h>
 #include <gmock/gmock.h>

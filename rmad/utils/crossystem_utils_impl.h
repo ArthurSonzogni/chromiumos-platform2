@@ -5,9 +5,9 @@
 #ifndef RMAD_UTILS_CROSSYSTEM_UTILS_IMPL_H_
 #define RMAD_UTILS_CROSSYSTEM_UTILS_IMPL_H_
 
-#include "rmad/utils/crossystem_utils.h"
-
 #include <string>
+
+#include "rmad/utils/crossystem_utils.h"
 
 namespace rmad {
 

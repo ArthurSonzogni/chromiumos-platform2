@@ -5,12 +5,11 @@
 #ifndef RMAD_UTILS_MOCK_CMD_UTILS_H_
 #define RMAD_UTILS_MOCK_CMD_UTILS_H_
 
-#include "rmad/utils/cmd_utils.h"
-
 #include <string>
 #include <vector>
 
 #include "gmock/gmock.h"
+#include "rmad/utils/cmd_utils.h"
 
 namespace rmad {
 

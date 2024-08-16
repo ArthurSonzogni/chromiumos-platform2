@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <iomanip>
 
 #include <base/logging.h>
@@ -11,7 +12,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include <rmad/ssfc/ssfc_prober.h>
+#include "rmad/ssfc/ssfc_prober.h"
 
 int main(int argc, char* argv[]) {
   brillo::SetLogFlags(brillo::kLogToStderr);

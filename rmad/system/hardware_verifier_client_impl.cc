@@ -12,9 +12,9 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
 #include <dbus/bus.h>
+#include <dbus/hardware_verifier/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <dbus/hardware_verifier/dbus-constants.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
 
 #include "rmad/utils/component_utils.h"

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <rmad/utils/hwid_utils_impl.h>
+#include "rmad/utils/hwid_utils_impl.h"
 
 #include <optional>
 #include <string>
@@ -11,9 +11,9 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/metrics/crc32.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace {
 

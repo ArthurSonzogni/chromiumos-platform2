@@ -5,8 +5,6 @@
 #ifndef RMAD_STATE_HANDLER_UPDATE_DEVICE_INFO_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_UPDATE_DEVICE_INFO_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -17,6 +15,7 @@
 
 #include "rmad/segmentation/segmentation_utils.h"
 #include "rmad/sku_filter.pb.h"
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/regions_utils.h"

@@ -10,10 +10,10 @@
 #include <tuple>
 #include <utility>
 
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_util.h>
-#include <gtest/gtest.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <libsegmentation/feature_management_fake.h>
 
 #include "rmad/system/mock_tpm_manager_client.h"

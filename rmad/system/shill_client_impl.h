@@ -5,20 +5,16 @@
 #ifndef RMAD_SYSTEM_SHILL_CLIENT_IMPL_H_
 #define RMAD_SYSTEM_SHILL_CLIENT_IMPL_H_
 
-#include "rmad/system/shill_client.h"
-
 #include <memory>
 
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
 
-namespace org {
-namespace chromium {
-namespace flimflam {
+#include "rmad/system/shill_client.h"
+
+namespace org::chromium::flimflam {
 class ManagerProxyInterface;
-}  // namespace flimflam
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium::flimflam
 
 namespace rmad {
 

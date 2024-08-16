@@ -5,12 +5,12 @@
 #ifndef RMAD_SYSTEM_MOCK_HARDWARE_VERIFIER_CLIENT_H_
 #define RMAD_SYSTEM_MOCK_HARDWARE_VERIFIER_CLIENT_H_
 
-#include "rmad/system/hardware_verifier_client.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "rmad/system/hardware_verifier_client.h"
 
 namespace rmad {
 

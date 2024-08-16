@@ -5,13 +5,12 @@
 #ifndef RMAD_UTILS_MOCK_IIO_SENSOR_PROBE_UTILS_H_
 #define RMAD_UTILS_MOCK_IIO_SENSOR_PROBE_UTILS_H_
 
-#include "rmad/utils/iio_sensor_probe_utils.h"
-
 #include <set>
 
 #include <gmock/gmock.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/utils/iio_sensor_probe_utils.h"
 
 namespace rmad {
 

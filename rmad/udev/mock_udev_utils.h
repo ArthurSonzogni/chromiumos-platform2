@@ -5,11 +5,11 @@
 #ifndef RMAD_UDEV_MOCK_UDEV_UTILS_H_
 #define RMAD_UDEV_MOCK_UDEV_UTILS_H_
 
-#include "rmad/udev/udev_utils.h"
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "rmad/udev/udev_utils.h"
 
 namespace rmad {
 

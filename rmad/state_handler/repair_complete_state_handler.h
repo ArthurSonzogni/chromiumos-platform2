@@ -5,8 +5,6 @@
 #ifndef RMAD_STATE_HANDLER_REPAIR_COMPLETE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_REPAIR_COMPLETE_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <utility>
 
@@ -14,6 +12,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/metrics/metrics_utils.h"
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/crossystem_utils.h"

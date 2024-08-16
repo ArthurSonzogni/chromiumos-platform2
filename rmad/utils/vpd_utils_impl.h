@@ -5,14 +5,13 @@
 #ifndef RMAD_UTILS_VPD_UTILS_IMPL_H_
 #define RMAD_UTILS_VPD_UTILS_IMPL_H_
 
-#include "rmad/utils/vpd_utils.h"
-
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "rmad/utils/cmd_utils.h"
+#include "rmad/utils/vpd_utils.h"
 
 namespace rmad {
 

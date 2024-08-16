@@ -5,13 +5,11 @@
 #ifndef RMAD_STATE_HANDLER_PROVISION_DEVICE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_PROVISION_DEVICE_STATE_HANDLER_H_
 
-#include "rmad/state_handler/base_state_handler.h"
-
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
-#include <set>
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
@@ -19,6 +17,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/ssfc/ssfc_prober.h"
+#include "rmad/state_handler/base_state_handler.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/calibration_utils.h"
