@@ -95,15 +95,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void FetchGraphicsInfo(FetchGraphicsInfoCallback callback) override;
 
  private:
-  void GetConnectedExternalDisplayConnectorsHelper(
-      std::optional<std::vector<uint32_t>> last_known_connectors,
-      GetConnectedExternalDisplayConnectorsCallback callback,
-      int times);
-
   ec::EcCommandFactoryInterface* const ec_command_factory_;
-
-  // Must be the last class member.
-  base::WeakPtrFactory<DelegateImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
