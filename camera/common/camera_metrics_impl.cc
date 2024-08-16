@@ -51,6 +51,8 @@ constexpr char kCameraOpenDeviceClientType[] =
 constexpr char kNumClientTypes =
     static_cast<int32_t>(mojom::CameraClientType::kMaxValue) + 1;
 
+constexpr char kCameraOpenDeviceError[] = "ChromeOS.Camera.OpenDeviceError";
+
 constexpr char kCameraOpenDeviceLatency[] = "ChromeOS.Camera.OpenDeviceLatency";
 
 constexpr char kCameraErrorType[] = "ChromeOS.Camera.ErrorType";
@@ -348,6 +350,10 @@ void CameraMetricsImpl::SendConfigureStreamResolution(int width,
 void CameraMetricsImpl::SendOpenDeviceClientType(int client_type) {
   metrics_lib_->SendEnumToUMA(kCameraOpenDeviceClientType, client_type,
                               kNumClientTypes);
+}
+
+void CameraMetricsImpl::SendOpenDeviceError(bool is_camera_occupied) {
+  metrics_lib_->SendBoolToUMA(kCameraOpenDeviceError, is_camera_occupied);
 }
 
 void CameraMetricsImpl::SendOpenDeviceLatency(base::TimeDelta latency) {

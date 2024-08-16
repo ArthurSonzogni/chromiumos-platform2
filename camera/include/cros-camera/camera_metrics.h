@@ -211,6 +211,10 @@ class CROS_CAMERA_EXPORT CameraMetrics {
   // Records the type of the client that called OpenDevice().
   virtual void SendOpenDeviceClientType(int client_type) = 0;
 
+  // Records when the camera fails to open camera and the value shows whether
+  // the camera is currently occupied.
+  virtual void SendOpenDeviceError(bool is_camera_occupied) = 0;
+
   // Records the process time of OpenDevice().
   virtual void SendOpenDeviceLatency(base::TimeDelta latency) = 0;
 

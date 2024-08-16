@@ -224,155 +224,16 @@ int32_t CameraHalAdapter::OpenDevice(
     int32_t camera_id,
     mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
     mojom::CameraClientType camera_client_type) {
-  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
-
-  session_timer_map_.emplace(std::piecewise_construct,
-                             std::forward_as_tuple(camera_id),
-                             std::forward_as_tuple());
-
-  camera_module_t* camera_module;
-  int internal_camera_id;
-  std::tie(camera_module, internal_camera_id) =
-      GetInternalModuleAndId(camera_id);
-
-  if (!camera_module) {
-    return -EINVAL;
-  }
-
-  if (device_adapters_.find(camera_id) != device_adapters_.end()) {
-    LOGF(WARNING) << camera_client_type << " is trying to open camera "
-                  << camera_id << " when "
-                  << device_adapters_[camera_id]->GetClientType()
-                  << " already opened it.";
-    if (device_adapters_[camera_id]->IsRequestOrResultStalling()) {
-      LOGF(WARNING) << "The camera HAL probably hung. Restart camera service "
-                       "to recover from bad state (b/155830039).";
-      main_task_runner_->PostTask(FROM_HERE, base::BindOnce([]() {
-                                    // Exit directly without attempting anything
-                                    // else to shutdown cleanly since the HAL
-                                    // thread may be wedged already.
-                                    exit(ENODEV);
-                                  }));
-      return -ENODEV;
-    }
-    return -EBUSY;
-  }
-
-  int module_id = camera_id_map_[camera_id].first;
-  cros_camera_hal_t* cros_camera_hal = camera_interfaces_[module_id].second;
-
-  // If HAL-level SW privacy switch is not available, force OpenDevice() to
-  // fail.
-  if (cros_camera_hal && !cros_camera_hal->set_privacy_switch_state &&
-      stream_manipulator_runtime_options_.sw_privacy_switch_state() ==
-          mojom::CameraPrivacySwitchState::ON) {
-    return -ENODEV;
-  }
-
-  LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id
-             << ", camera_module = " << camera_module->common.name
-             << ", internal_camera_id = " << internal_camera_id;
-
-  hw_module_t* common = &camera_module->common;
-  camera3_device_t* camera_device;
-  int ret;
-  {
-    TRACE_HAL_ADAPTER_EVENT("HAL::OpenDevice", "camera_module_name",
-                            camera_module->common.name);
-    if (cros_camera_hal && cros_camera_hal->camera_device_open_ext) {
-      ret = cros_camera_hal->camera_device_open_ext(
-          common, std::to_string(internal_camera_id).c_str(),
-          reinterpret_cast<hw_device_t**>(&camera_device),
-          static_cast<ClientType>(camera_client_type));
-    } else {
-      ret = common->methods->open(
-          common, std::to_string(internal_camera_id).c_str(),
-          reinterpret_cast<hw_device_t**>(&camera_device));
+  int32_t result = OpenDeviceImpl(camera_id, std::move(device_ops_receiver),
+                                  camera_client_type);
+  if (result != 0) {
+    bool& has_failed = has_device_open_failed_[camera_id];
+    if (!has_failed) {
+      camera_metrics_->SendOpenDeviceError(result == -EBUSY);
+      has_failed = true;
     }
   }
-  if (ret != 0) {
-    LOGF(ERROR) << "Failed to open camera device " << camera_id;
-    return ret;
-  }
-  activity_callback_.Run(camera_id, /*opened=*/true, camera_client_type);
-
-  camera_info_t info;
-  if (cros_camera_hal && cros_camera_hal->get_camera_info_ext) {
-    ret = cros_camera_hal->get_camera_info_ext(
-        internal_camera_id, &info, static_cast<ClientType>(camera_client_type));
-  } else {
-    ret = camera_module->get_camera_info(internal_camera_id, &info);
-  }
-  if (ret != 0) {
-    LOGF(ERROR) << "Failed to get camera info of camera " << camera_id;
-    return ret;
-  }
-  const camera_metadata_t* metadata = GetUpdatedCameraMetadata(
-      camera_id, camera_client_type, info.static_camera_characteristics);
-  base::RepeatingCallback<int(int)> get_internal_camera_id_callback =
-      base::BindRepeating(&CameraHalAdapter::GetInternalId,
-                          base::Unretained(this));
-  base::RepeatingCallback<int(int)> get_public_camera_id_callback =
-      base::BindRepeating(&CameraHalAdapter::GetPublicId,
-                          base::Unretained(this), module_id);
-  // This method is called by |camera_module_delegate_| on its mojo IPC
-  // handler thread.
-  // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
-  // the CameraDeviceAdapters, so it's safe to keep a reference to the task
-  // runner of the current thread in the callback functor.
-  base::OnceCallback<void()> close_callback = base::BindOnce(
-      &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
-      base::SingleThreadTaskRunner::GetCurrentDefault(), camera_id,
-      camera_client_type);
-  base::OnceCallback<void(FaceDetectionResultCallback)>
-      set_face_detection_result_callback;
-  if (cros_camera_hal->set_face_detection_result_callback != nullptr) {
-    set_face_detection_result_callback = base::BindOnce(
-        [](cros_camera_hal_t* hal, int camera_id,
-           FaceDetectionResultCallback cb) {
-          hal->set_face_detection_result_callback(camera_id, cb);
-        },
-        // The |cros_camera_hal| outlives the stream manipulator.
-        base::Unretained(cros_camera_hal), internal_camera_id);
-  }
-
-  bool do_notify_invalid_capture_request = false;
-#if USE_ARCVM
-  // b/272432362 ARCVM client will be doing async process_capture_request.
-  do_notify_invalid_capture_request =
-      camera_client_type == mojom::CameraClientType::ANDROID;
-#endif
-
-  device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
-      camera_device, info.device_version, metadata,
-      std::move(get_internal_camera_id_callback),
-      std::move(get_public_camera_id_callback), std::move(close_callback),
-      std::make_unique<StreamManipulatorManager>(
-          StreamManipulatorManager::CreateOptions{
-              .camera_module_name = camera_module->common.name,
-              .camera_info = info,
-              .set_face_detection_result_callback =
-                  std::move(set_face_detection_result_callback),
-              .sw_privacy_switch_stream_manipulator_enabled = false,
-              .diagnostics_client = camera_diagnostics_client_,
-              .camera_client_type = camera_client_type},
-          &stream_manipulator_runtime_options_, root_gpu_resources_.get(),
-          mojo_manager_token_),
-      camera_client_type, do_notify_invalid_capture_request);
-
-  if (!device_adapters_[camera_id]->Start()) {
-    device_adapters_.erase(camera_id);
-    return -ENODEV;
-  }
-  device_adapters_.at(camera_id)->Bind(std::move(device_ops_receiver));
-  camera_metrics_->SendCameraFacing(info.facing);
-  camera_metrics_->SendOpenDeviceClientType(
-      static_cast<int>(camera_client_type));
-  camera_metrics_->SendOpenDeviceLatency(
-      session_timer_map_[camera_id].Elapsed());
-
-  return 0;
+  return result;
 }
 
 void CameraHalAdapter::SetAutoFramingState(
@@ -618,6 +479,162 @@ void CameraHalAdapter::torch_mode_status_change(
       base::BindOnce(&CameraHalAdapter::TorchModeStatusChange,
                      base::Unretained(self), aux, atoi(internal_camera_id),
                      static_cast<torch_mode_status_t>(new_status)));
+}
+
+int32_t CameraHalAdapter::OpenDeviceImpl(
+    int32_t camera_id,
+    mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
+    mojom::CameraClientType camera_client_type) {
+  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
+
+  session_timer_map_.emplace(std::piecewise_construct,
+                             std::forward_as_tuple(camera_id),
+                             std::forward_as_tuple());
+
+  camera_module_t* camera_module;
+  int internal_camera_id;
+  std::tie(camera_module, internal_camera_id) =
+      GetInternalModuleAndId(camera_id);
+
+  if (!camera_module) {
+    return -EINVAL;
+  }
+
+  if (device_adapters_.find(camera_id) != device_adapters_.end()) {
+    LOGF(WARNING) << camera_client_type << " is trying to open camera "
+                  << camera_id << " when "
+                  << device_adapters_[camera_id]->GetClientType()
+                  << " already opened it.";
+    if (device_adapters_[camera_id]->IsRequestOrResultStalling()) {
+      LOGF(WARNING) << "The camera HAL probably hung. Restart camera service "
+                       "to recover from bad state (b/155830039).";
+      main_task_runner_->PostTask(FROM_HERE, base::BindOnce([]() {
+                                    // Exit directly without attempting anything
+                                    // else to shutdown cleanly since the HAL
+                                    // thread may be wedged already.
+                                    exit(ENODEV);
+                                  }));
+      return -ENODEV;
+    }
+    return -EBUSY;
+  }
+
+  int module_id = camera_id_map_[camera_id].first;
+  cros_camera_hal_t* cros_camera_hal = camera_interfaces_[module_id].second;
+
+  // If HAL-level SW privacy switch is not available, force OpenDevice() to
+  // fail.
+  if (cros_camera_hal && !cros_camera_hal->set_privacy_switch_state &&
+      stream_manipulator_runtime_options_.sw_privacy_switch_state() ==
+          mojom::CameraPrivacySwitchState::ON) {
+    return -ENODEV;
+  }
+
+  LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id
+             << ", camera_module = " << camera_module->common.name
+             << ", internal_camera_id = " << internal_camera_id;
+
+  hw_module_t* common = &camera_module->common;
+  camera3_device_t* camera_device;
+  int ret;
+  {
+    TRACE_HAL_ADAPTER_EVENT("HAL::OpenDevice", "camera_module_name",
+                            camera_module->common.name);
+    if (cros_camera_hal && cros_camera_hal->camera_device_open_ext) {
+      ret = cros_camera_hal->camera_device_open_ext(
+          common, std::to_string(internal_camera_id).c_str(),
+          reinterpret_cast<hw_device_t**>(&camera_device),
+          static_cast<ClientType>(camera_client_type));
+    } else {
+      ret = common->methods->open(
+          common, std::to_string(internal_camera_id).c_str(),
+          reinterpret_cast<hw_device_t**>(&camera_device));
+    }
+  }
+  if (ret != 0) {
+    LOGF(ERROR) << "Failed to open camera device " << camera_id;
+    return ret;
+  }
+  activity_callback_.Run(camera_id, /*opened=*/true, camera_client_type);
+
+  camera_info_t info;
+  if (cros_camera_hal && cros_camera_hal->get_camera_info_ext) {
+    ret = cros_camera_hal->get_camera_info_ext(
+        internal_camera_id, &info, static_cast<ClientType>(camera_client_type));
+  } else {
+    ret = camera_module->get_camera_info(internal_camera_id, &info);
+  }
+  if (ret != 0) {
+    LOGF(ERROR) << "Failed to get camera info of camera " << camera_id;
+    return ret;
+  }
+  const camera_metadata_t* metadata = GetUpdatedCameraMetadata(
+      camera_id, camera_client_type, info.static_camera_characteristics);
+  base::RepeatingCallback<int(int)> get_internal_camera_id_callback =
+      base::BindRepeating(&CameraHalAdapter::GetInternalId,
+                          base::Unretained(this));
+  base::RepeatingCallback<int(int)> get_public_camera_id_callback =
+      base::BindRepeating(&CameraHalAdapter::GetPublicId,
+                          base::Unretained(this), module_id);
+  // This method is called by |camera_module_delegate_| on its mojo IPC
+  // handler thread.
+  // The CameraHalAdapter (and hence |camera_module_delegate_|) must out-live
+  // the CameraDeviceAdapters, so it's safe to keep a reference to the task
+  // runner of the current thread in the callback functor.
+  base::OnceCallback<void()> close_callback = base::BindOnce(
+      &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
+      base::SingleThreadTaskRunner::GetCurrentDefault(), camera_id,
+      camera_client_type);
+  base::OnceCallback<void(FaceDetectionResultCallback)>
+      set_face_detection_result_callback;
+  if (cros_camera_hal->set_face_detection_result_callback != nullptr) {
+    set_face_detection_result_callback = base::BindOnce(
+        [](cros_camera_hal_t* hal, int camera_id,
+           FaceDetectionResultCallback cb) {
+          hal->set_face_detection_result_callback(camera_id, cb);
+        },
+        // The |cros_camera_hal| outlives the stream manipulator.
+        base::Unretained(cros_camera_hal), internal_camera_id);
+  }
+
+  bool do_notify_invalid_capture_request = false;
+#if USE_ARCVM
+  // b/272432362 ARCVM client will be doing async process_capture_request.
+  do_notify_invalid_capture_request =
+      camera_client_type == mojom::CameraClientType::ANDROID;
+#endif
+
+  device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
+      camera_device, info.device_version, metadata,
+      std::move(get_internal_camera_id_callback),
+      std::move(get_public_camera_id_callback), std::move(close_callback),
+      std::make_unique<StreamManipulatorManager>(
+          StreamManipulatorManager::CreateOptions{
+              .camera_module_name = camera_module->common.name,
+              .camera_info = info,
+              .set_face_detection_result_callback =
+                  std::move(set_face_detection_result_callback),
+              .sw_privacy_switch_stream_manipulator_enabled = false,
+              .diagnostics_client = camera_diagnostics_client_,
+              .camera_client_type = camera_client_type},
+          &stream_manipulator_runtime_options_, root_gpu_resources_.get(),
+          mojo_manager_token_),
+      camera_client_type, do_notify_invalid_capture_request);
+
+  if (!device_adapters_[camera_id]->Start()) {
+    device_adapters_.erase(camera_id);
+    return -ENODEV;
+  }
+  device_adapters_.at(camera_id)->Bind(std::move(device_ops_receiver));
+  camera_metrics_->SendCameraFacing(info.facing);
+  camera_metrics_->SendOpenDeviceClientType(
+      static_cast<int>(camera_client_type));
+  camera_metrics_->SendOpenDeviceLatency(
+      session_timer_map_[camera_id].Elapsed());
+  has_device_open_failed_[camera_id] = false;
+
+  return 0;
 }
 
 std::optional<mojom::CameraPrivacySwitchState>

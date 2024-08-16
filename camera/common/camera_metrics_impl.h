@@ -9,8 +9,8 @@
 
 #include <memory>
 
-#include <base/time/time.h>
 #include <base/process/process_metrics.h>
+#include <base/time/time.h>
 #include <cros-camera/camera_metrics.h>
 #include <metrics/metrics_library.h>
 
@@ -37,6 +37,7 @@ class CameraMetricsImpl : public CameraMetrics {
                                      int format) override;
   void SendConfigureStreamsLatency(base::TimeDelta latency) override;
   void SendOpenDeviceClientType(int client_type) override;
+  void SendOpenDeviceError(bool is_camera_occupied) override;
   void SendOpenDeviceLatency(base::TimeDelta latency) override;
   void SendError(int error_code) override;
   void SendCameraFacing(int facing) override;

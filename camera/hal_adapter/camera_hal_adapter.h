@@ -159,6 +159,12 @@ class CameraHalAdapter {
       const char* camera_id,
       int new_status);
 
+  // Returns the error code if any error happens.
+  int32_t OpenDeviceImpl(
+      int32_t camera_id,
+      mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
+      mojom::CameraClientType camera_client_type);
+
   std::optional<mojom::CameraPrivacySwitchState>
   LoadCachedCameraSWPrivacySwitchState();
   void CacheCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
@@ -288,6 +294,10 @@ class CameraHalAdapter {
   // order to do lock-free access to |device_adapters_|, we run all of them on
   // the same thread (i.e. the mojo IPC handler thread in |module_delegate_|).
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
+
+  // The map to store whether the device has failed to open so that we will not
+  // send duplicated events during a camera session.
+  std::map<int32_t, bool> has_device_open_failed_;
 
   // The vendor tag manager.
   VendorTagManager vendor_tag_manager_;
