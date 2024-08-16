@@ -435,10 +435,6 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
     return mojom::SetEffectResult::kFeatureDisabled;
   }
 
-  if (!dlc_available) {
-    return mojom::SetEffectResult::kDlcUnavailable;
-  }
-
   stream_manipulator_runtime_options_.SetEffectsConfig(std::move(config));
   return mojom::SetEffectResult::kOk;
 }

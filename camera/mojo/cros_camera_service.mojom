@@ -149,6 +149,7 @@ enum KioskVisionError {
 };
 
 // Indicates the state of requesting a switch effect.
+// TODO(b/353894111): Remove unused enums by client.
 [Extensible]
 enum SetEffectResult {
   [Default] kOk = 0,
