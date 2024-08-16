@@ -257,6 +257,10 @@ EffectsConfig ConvertMojoConfig(
   } else if (base::PathExists(kEnableRetouchWithRelight)) {
     config.face_retouch_enabled = config.relight_enabled;
   }
+  if (!effects_config->studio_look_enabled) {
+    config.face_retouch_enabled = false;
+    config.relight_enabled = false;
+  }
   return config;
 }
 

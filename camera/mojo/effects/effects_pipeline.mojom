@@ -109,4 +109,10 @@ struct EffectsConfig {
 
   [MinVersion=6]
   bool retouch_enabled;
+
+  // When Studio Look is not available, set it to always true. Otherwise, it can
+  // be set to false by UI, which will override |retouch_enabled| and
+  // |relight_enabled| and disable both effects.
+  [MinVersion=6]
+  bool studio_look_enabled = true;
 };
