@@ -4821,6 +4821,7 @@ mno {
     mccmnc: "23430"
     mccmnc: "23433"
     mccmnc: "23434"
+    tethering_allowed: true
     mobile_apn {
       apn: "everywhere"
       username: "eesecure"
@@ -7396,6 +7397,7 @@ mno {
       name: "Hanshin Cable Engineering Co."
     }
     mccmnc: "44002"
+    tethering_allowed: true
     mobile_apn {
       apn: "APN9"
       type: DEFAULT
@@ -7505,6 +7507,7 @@ mno {
     mccmnc: "44088"
     mccmnc: "44089"
     mccmnc: "44170"
+    tethering_allowed: true
     mobile_apn {
       apn: "au.au-net.ne.jp"
       apn_filter {
@@ -13111,6 +13114,7 @@ mno {
     mccmnc: "313790"
     mhs_entitlement_url: "http://entitlement.mobile.att.net/mhs1"
     mhs_entitlement_method: GET
+    tethering_allowed: true
     mobile_apn {
       apn: "broadband"
       localized_name {
@@ -13145,6 +13149,7 @@ mno {
       mccmnc: "310950"
       mhs_entitlement_url: "http://entitlement.mobile.att.net/mhs1"
       mhs_entitlement_method: GET
+      tethering_allowed: true
       mobile_apn {
         apn: "nrbroadband"
         localized_name {
@@ -13189,6 +13194,7 @@ mno {
       mccmnc: "310950"
       mhs_entitlement_url: "http://entitlement.mobile.att.net/mhs1"
       mhs_entitlement_method: GET
+      tethering_allowed: true
       mobile_apn {
         apn: "5gcbroadband"
         localized_name {
