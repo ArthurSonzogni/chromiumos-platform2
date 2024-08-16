@@ -162,19 +162,19 @@ class ConnectionDiagnosticsTest : public Test {
 
   void ExpectResolveTargetServerIPAddressEndSuccess(
       const net_base::IPAddress& resolved_address) {
-    ExpectResolveTargetServerIPAddressEnd(ConnectionDiagnostics::kResultSuccess,
-                                          resolved_address);
+    ExpectResolveTargetServerIPAddressEnd(
+        ConnectionDiagnostics::Result::kSuccess, resolved_address);
   }
 
   void ExpectResolveTargetServerIPAddressEndTimeout() {
     ExpectResolveTargetServerIPAddressEnd(
-        ConnectionDiagnostics::kResultTimeout,
+        ConnectionDiagnostics::Result::kTimeout,
         net_base::IPAddress(net_base::IPFamily::kIPv4));
   }
 
   void ExpectResolveTargetServerIPAddressEndFailure() {
     ExpectResolveTargetServerIPAddressEnd(
-        ConnectionDiagnostics::kResultFailure,
+        ConnectionDiagnostics::Result::kFailure,
         net_base::IPAddress(net_base::IPFamily::kIPv4));
   }
 
@@ -204,7 +204,7 @@ class ConnectionDiagnosticsTest : public Test {
                                 const net_base::IPAddress& address) {
     // If the ping destination was not the gateway, the next action is to try
     // to ping the gateway.
-    if (ping_event_type == ConnectionDiagnostics::kTypePingTargetServer) {
+    if (ping_event_type == ConnectionDiagnostics::Type::kPingTargetServer) {
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     }
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
@@ -247,10 +247,10 @@ class ConnectionDiagnosticsTest : public Test {
       ConnectionDiagnostics::Result result,
       const net_base::IPAddress& resolved_address) {
     Error error;
-    if (result == ConnectionDiagnostics::kResultSuccess) {
+    if (result == ConnectionDiagnostics::Result::kSuccess) {
       error.Populate(Error::kSuccess);
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
-    } else if (result == ConnectionDiagnostics::kResultTimeout) {
+    } else if (result == ConnectionDiagnostics::Result::kTimeout) {
       error.Populate(Error::kOperationTimeout);
       EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else {
@@ -299,7 +299,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartFailure(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
   VerifyStopped();
 }
@@ -360,9 +360,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_1) {
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
   VerifyStopped();
 }
@@ -375,9 +375,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
   VerifyStopped();
 }
@@ -393,9 +393,9 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
   VerifyStopped();
 }
@@ -407,13 +407,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
                              gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
+                           gateway());
   VerifyStopped();
 }
 
@@ -425,13 +426,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv6ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv6ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
                              gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
+                           gateway());
   VerifyStopped();
 }
 
@@ -445,11 +447,12 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
                              gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
+                           gateway());
   VerifyStopped();
 }
 
@@ -465,13 +468,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
   ExpectPingDNSServersEndSuccessRetriesLeft();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
                              gateway());
-  ExpectPingHostEndSuccess(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectPingHostEndSuccess(ConnectionDiagnostics::Type::kPingGateway,
+                           gateway());
   VerifyStopped();
 }
 
@@ -481,13 +485,14 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewayFailure) {
   ExpectSuccessfulStart();
   ExpectResolveTargetServerIPAddressStartSuccess();
   ExpectResolveTargetServerIPAddressEndSuccess(kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingTargetServer,
                              kIPv4ServerAddress);
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingTargetServer,
+  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingTargetServer,
                            kIPv4ServerAddress);
-  ExpectPingHostStartSuccess(ConnectionDiagnostics::kTypePingGateway,
+  ExpectPingHostStartSuccess(ConnectionDiagnostics::Type::kPingGateway,
                              gateway());
-  ExpectPingHostEndFailure(ConnectionDiagnostics::kTypePingGateway, gateway());
+  ExpectPingHostEndFailure(ConnectionDiagnostics::Type::kPingGateway,
+                           gateway());
   VerifyStopped();
 }
 

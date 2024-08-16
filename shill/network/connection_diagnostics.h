@@ -61,18 +61,16 @@ class IcmpSessionFactory;
 // servers so Chrome does not try to use them.
 class ConnectionDiagnostics {
  public:
-  // The ConnectionDiagnostics::kEventNames string array depends on this enum.
-  // Any changes to this enum should be synced with that array.
-  enum Type {
-    kTypePingDNSServers = 1,
-    kTypeResolveTargetServerIP = 2,
-    kTypePingTargetServer = 3,
-    kTypePingGateway = 4,
+  // Describes the type of a diagnostic test.
+  enum class Type {
+    kPingDNSServers,
+    kResolveTargetServerIP,
+    kPingTargetServer,
+    kPingGateway,
   };
 
-  // The ConnectionDiagnostics::kResultNames string array depends on this enum.
-  // Any changes to this enum should be synced with that array.
-  enum Result { kResultSuccess = 0, kResultFailure = 1, kResultTimeout = 2 };
+  // Describes the result of a diagnostic test.
+  enum class Result { kSuccess, kFailure, kTimeout };
 
   struct Event {
     Event(Type type_in, Result result_in, const std::string& message_in)
@@ -81,6 +79,13 @@ class ConnectionDiagnostics {
     Result result;
     std::string message;
   };
+
+  // Returns the string name of |type|.
+  static std::string TypeName(Type type);
+  // Returns the string name of |result|.
+  static std::string ResultName(Result result);
+  // Returns a string representation of |event|.
+  static std::string EventToString(const Event& event);
 
   ConnectionDiagnostics(std::string_view iface_name,
                         int iface_index,
@@ -96,10 +101,6 @@ class ConnectionDiagnostics {
   // Performs connectivity diagnostics for the hostname of the URL |url|.
   mockable bool Start(const net_base::HttpUrl& url);
   void Stop();
-
-  // Returns a string representation of |event|.
-  static std::string EventToString(const Event& event);
-
   bool running() const { return running_; }
   int event_number() const { return event_number_; }
 
