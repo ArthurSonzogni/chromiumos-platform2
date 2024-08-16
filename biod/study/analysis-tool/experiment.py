@@ -8,7 +8,7 @@ from __future__ import annotations
 import pathlib
 from typing import Optional
 
-from collection import Collection
+from collection_dir import CollectionDir
 import fpsutils
 import numpy as np
 import numpy.typing as npt
@@ -453,7 +453,7 @@ class Experiment:
         of the raw collection directory.
         """
 
-        collection = Collection(collection_dir)
+        collection = CollectionDir(collection_dir)
         user_groups = pd.DataFrame(
             collection.discover_user_groups(),
             columns=[

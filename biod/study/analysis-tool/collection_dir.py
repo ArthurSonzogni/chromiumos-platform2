@@ -11,7 +11,7 @@ import pathlib
 from typing import Union
 
 
-class Collection:
+class CollectionDir:
     """Interface for the collection directory produced by the fpstudy tool."""
 
     def __init__(self, collection_dir: Union[pathlib.Path, str]):
