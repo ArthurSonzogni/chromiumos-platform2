@@ -310,7 +310,44 @@ TEST_F(DiskManagerTest, MountFAT) {
   EXPECT_EQ(MountError::kSuccess, err);
 }
 
-TEST_F(DiskManagerTest, MountExFAT) {
+TEST_F(DiskManagerTest, MountKernelExfat) {
+  manager_ = std::make_unique<DiskManager>(
+      dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
+      &monitor_, &ejector_, this, /* use_kernel_drivers */ true);
+  CHECK(manager_->Initialize());
+
+  monitor_.disks_.push_back({
+      .is_on_boot_device = false,
+      .device_file = "/dev/sda1",
+      .filesystem_type = "exfat",
+      .label = "foo",
+  });
+
+  std::string opts;
+  EXPECT_CALL(platform_,
+              Mount("/dev/sda1", _, "exfat", HasBits(kExpectedMountFlags), _))
+      .WillOnce(DoAll(SaveArg<4>(&opts), Return(MountError::kSuccess)));
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MountError::kSuccess, mount_error_);
+  EXPECT_FALSE(read_only_);
+  auto options =
+      base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
+  EXPECT_THAT(fuse_args_, testing::IsEmpty());
+
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "exfat"))
+      .WillOnce(Return(MountError::kSuccess));
+  MountError err = manager_->Unmount("/dev/sda1");
+  EXPECT_EQ(MountError::kSuccess, err);
+}
+
+TEST_F(DiskManagerTest, MountFuseExfat) {
+  manager_ = std::make_unique<DiskManager>(
+      dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
+      &monitor_, &ejector_, this, /* use_kernel_drivers */ false);
+  CHECK(manager_->Initialize());
+
   monitor_.disks_.push_back({
       .is_on_boot_device = false,
       .device_file = "/dev/sda1",
@@ -346,7 +383,44 @@ TEST_F(DiskManagerTest, MountExFAT) {
   EXPECT_EQ(MountError::kSuccess, err);
 }
 
-TEST_F(DiskManagerTest, MountNTFS) {
+TEST_F(DiskManagerTest, MountKernelNtfs) {
+  manager_ = std::make_unique<DiskManager>(
+      dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
+      &monitor_, &ejector_, this, /* use_kernel_drivers */ true);
+  CHECK(manager_->Initialize());
+
+  monitor_.disks_.push_back({
+      .is_on_boot_device = false,
+      .device_file = "/dev/sda1",
+      .filesystem_type = "ntfs",
+      .label = "foo",
+  });
+
+  std::string opts;
+  EXPECT_CALL(platform_,
+              Mount("/dev/sda1", _, "ntfs3", HasBits(kExpectedMountFlags), _))
+      .WillOnce(DoAll(SaveArg<4>(&opts), Return(MountError::kSuccess)));
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MountError::kSuccess, mount_error_);
+  EXPECT_FALSE(read_only_);
+  auto options =
+      base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
+  EXPECT_THAT(fuse_args_, testing::IsEmpty());
+
+  EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "ntfs3"))
+      .WillOnce(Return(MountError::kSuccess));
+  MountError err = manager_->Unmount("/dev/sda1");
+  EXPECT_EQ(MountError::kSuccess, err);
+}
+
+TEST_F(DiskManagerTest, MountFuseNtfs) {
+  manager_ = std::make_unique<DiskManager>(
+      dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
+      &monitor_, &ejector_, this, /* use_kernel_drivers */ false);
+  CHECK(manager_->Initialize());
+
   monitor_.disks_.push_back({
       .is_on_boot_device = false,
       .device_file = "/dev/sda1",

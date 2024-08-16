@@ -4,13 +4,15 @@
 
 #include "cros-disks/disk_manager.h"
 
-#include <errno.h>
 #include <inttypes.h>
 #include <libudev.h>
-#include <string.h>
 #include <sys/mount.h>
+#include <sys/utsname.h>
 #include <time.h>
 
+#include <algorithm>
+#include <array>
+#include <cstdio>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -36,7 +38,6 @@
 #include "dbus/cros-disks/dbus-constants.h"
 
 namespace cros_disks {
-
 namespace {
 
 // Options passed to the mount syscall for various filesystem types.
@@ -184,7 +185,28 @@ class FATMounter : public SystemMounter {
   }
 };
 
+// Only consider the major and minor version numbers of the Linux kernel.
+using KernelVersion = std::array<int, 2>;
+
+// Gets the Linux kernel version.
+KernelVersion GetKernelVersion() {
+  KernelVersion v;
+  if (utsname b;
+      uname(&b) != 0 || sscanf(b.release, "%d.%d", &v[0], &v[1]) != v.size()) {
+    PLOG(ERROR) << "Cannot get Linux kernel version";
+    v = {0, 0};
+  }
+
+  return v;
+}
+
 }  // namespace
+
+bool DiskManager::ShouldUseKernelDrivers() {
+  // Return whether the Linux kernel is at least version 7.0.
+  return !std::ranges::lexicographical_compare(GetKernelVersion(),
+                                               KernelVersion{7, 0});
+}
 
 DiskManager::DiskManager(const std::string& mount_root,
                          Platform* platform,
@@ -192,79 +214,88 @@ DiskManager::DiskManager(const std::string& mount_root,
                          brillo::ProcessReaper* process_reaper,
                          DiskMonitor* disk_monitor,
                          DeviceEjector* device_ejector,
-                         const SandboxedProcessFactory* test_sandbox_factory)
+                         const SandboxedProcessFactory* test_sandbox_factory,
+                         bool use_kernel_drivers)
     : MountManager(mount_root, platform, metrics, process_reaper),
       disk_monitor_(disk_monitor),
       device_ejector_(device_ejector),
       test_sandbox_factory_(test_sandbox_factory),
-      eject_device_on_unmount_(true) {}
+      use_kernel_drivers(use_kernel_drivers) {}
 
 DiskManager::~DiskManager() {
   UnmountAll();
 }
 
 bool DiskManager::Initialize() {
-  OwnerUser run_as_exfat;
-  if (!platform()->GetUserAndGroupId("fuse-exfat", &run_as_exfat.uid,
-                                     &run_as_exfat.gid)) {
-    PLOG(ERROR) << "Cannot resolve fuse-exfat user";
-    return false;
-  }
-  OwnerUser run_as_ntfs;
-  if (!platform()->GetUserAndGroupId("ntfs-3g", &run_as_ntfs.uid,
-                                     &run_as_ntfs.gid)) {
-    PLOG(ERROR) << "Cannot resolve ntfs-3g user";
-    return false;
-  }
+  const std::string uid = base::StringPrintf("uid=%d", kChronosUID);
+  const std::string gid = base::StringPrintf("gid=%d", kChronosAccessGID);
 
-  std::string uid = base::StringPrintf("uid=%d", kChronosUID);
-  std::string gid = base::StringPrintf("gid=%d", kChronosAccessGID);
+  using Options = std::vector<std::string>;
+  const bool read_write = false, read_only = true;
 
   // FAT32 - typical USB stick/SD card filesystem.
   mounters_["vfat"] = std::make_unique<FATMounter>(
-      platform(), std::vector<std::string>{kMountOptionFlush, "shortname=mixed",
-                                           kMountOptionUtf8, uid, gid});
+      platform(), Options{kMountOptionFlush, "shortname=mixed",
+                          kMountOptionUtf8, uid, gid});
 
-  // Fancier newer version of FAT used for new big SD cards and USB sticks.
-  mounters_["exfat"] = std::make_unique<DiskFUSEMounter>(
-      platform(), process_reaper(), "exfat", test_sandbox_factory_,
-      SandboxedExecutable{base::FilePath("/usr/sbin/mount.exfat-fuse")},
-      run_as_exfat,
-      std::vector<std::string>{kFUSEOptionDirSync, kFUSEOptionDmask,
-                               kFUSEOptionFmask, uid, gid});
+  // exFAT (Extensible File Allocation Table) is a file system optimized for
+  // flash memory such as USB flash drives and SD cards.
+  if (use_kernel_drivers) {
+    VLOG(1) << "Using exFAT kernel driver";
+    mounters_["exfat"] = std::make_unique<SystemMounter>(
+        platform(), "exfat", read_write,
+        Options{"dmask=0022", "fmask=0133", "iocharset=utf8", uid, gid});
+  } else if (OwnerUser user; platform()->GetUserAndGroupId(
+                 "fuse-exfat", &user.uid, &user.gid)) {
+    VLOG(1) << "Using exFAT FUSE mounter";
+    mounters_["exfat"] = std::make_unique<DiskFUSEMounter>(
+        platform(), process_reaper(), "exfat", test_sandbox_factory_,
+        SandboxedExecutable{base::FilePath("/usr/sbin/mount.exfat-fuse")}, user,
+        Options{kFUSEOptionDirSync, kFUSEOptionDmask, kFUSEOptionFmask, uid,
+                gid});
+  } else {
+    PLOG(ERROR) << "Cannot resolve fuse-exfat user";
+  }
 
   // External drives and some big USB sticks would likely have NTFS.
-  mounters_["ntfs"] = std::make_unique<DiskFUSEMounter>(
-      platform(), process_reaper(), "ntfs", test_sandbox_factory_,
-      SandboxedExecutable{base::FilePath("/usr/bin/ntfs-3g")}, run_as_ntfs,
-      std::vector<std::string>{kFUSEOptionDirSync, kFUSEOptionDmask,
-                               kFUSEOptionFmask, uid, gid});
+  if (use_kernel_drivers) {
+    VLOG(1) << "Using NTFS kernel driver";
+    mounters_["ntfs"] = std::make_unique<SystemMounter>(
+        platform(), "ntfs3", read_write,
+        Options{"dmask=0022", "fmask=0133", "force", "iocharset=utf8", uid,
+                gid});
+  } else if (OwnerUser user;
+             platform()->GetUserAndGroupId("ntfs-3g", &user.uid, &user.gid)) {
+    VLOG(1) << "Using NTFS FUSE mounter";
+    mounters_["ntfs"] = std::make_unique<DiskFUSEMounter>(
+        platform(), process_reaper(), "ntfs", test_sandbox_factory_,
+        SandboxedExecutable{base::FilePath("/usr/bin/ntfs-3g")}, user,
+        Options{kFUSEOptionDirSync, kFUSEOptionDmask, kFUSEOptionFmask, uid,
+                gid});
+  } else {
+    PLOG(ERROR) << "Cannot resolve ntfs-3g user";
+  }
 
   // Typical CD/DVD filesystem. Inherently read-only.
   mounters_["iso9660"] = std::make_unique<SystemMounter>(
-      platform(), "iso9660", true,
-      std::vector<std::string>{kMountOptionUtf8, uid, gid});
+      platform(), "iso9660", read_only, Options{kMountOptionUtf8, uid, gid});
 
   // Newer DVD filesystem. Inherently read-only.
   mounters_["udf"] = std::make_unique<SystemMounter>(
-      platform(), "udf", true,
-      std::vector<std::string>{kMountOptionUtf8, uid, gid});
+      platform(), "udf", read_only, Options{kMountOptionUtf8, uid, gid});
 
   // MacOS's HFS+ is not properly/officially supported, but sort of works,
-  // although with severe limitaions.
+  // although with severe limitations.
   mounters_["hfsplus"] = std::make_unique<SystemMounter>(
-      platform(), "hfsplus", false, std::vector<std::string>{uid, gid});
+      platform(), "hfsplus", read_write, Options{uid, gid});
 
-  // Have no reasonable explanation why would one have external media
-  // with a native Linux, filesystem and use CrOS to access it, given
-  // all the problems and limitations they would face, but for compatibility
-  // with previous versions we keep it unofficially supported.
-  mounters_["ext4"] = std::make_unique<SystemMounter>(
-      platform(), "ext4", false, std::vector<std::string>{});
-  mounters_["ext3"] = std::make_unique<SystemMounter>(
-      platform(), "ext3", false, std::vector<std::string>{});
-  mounters_["ext2"] = std::make_unique<SystemMounter>(
-      platform(), "ext2", false, std::vector<std::string>{});
+  // Have no reasonable explanation why would one have external media with a
+  // native Linux, filesystem and use CrOS to access it, given all the problems
+  // and limitations they would face, but for compatibility with previous
+  // versions we keep it unofficially supported.
+  mounters_["ext4"] = std::make_unique<SystemMounter>(platform(), "ext4");
+  mounters_["ext3"] = std::make_unique<SystemMounter>(platform(), "ext3");
+  mounters_["ext2"] = std::make_unique<SystemMounter>(platform(), "ext2");
 
   return MountManager::Initialize();
 }

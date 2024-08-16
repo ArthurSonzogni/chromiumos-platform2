@@ -20,8 +20,8 @@ class SystemMounter : public Mounter {
  public:
   SystemMounter(const Platform* platform,
                 std::string filesystem_type,
-                bool read_only,
-                std::vector<std::string> options);
+                bool read_only = false,
+                std::vector<std::string> options = {});
   SystemMounter(const SystemMounter&) = delete;
   SystemMounter& operator=(const SystemMounter&) = delete;
 

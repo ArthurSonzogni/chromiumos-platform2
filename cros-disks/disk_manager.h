@@ -38,7 +38,8 @@ class DiskManager : public MountManager {
               brillo::ProcessReaper* process_reaper,
               DiskMonitor* disk_monitor,
               DeviceEjector* device_ejector,
-              const SandboxedProcessFactory* test_sandbox_factory = nullptr);
+              const SandboxedProcessFactory* test_sandbox_factory = nullptr,
+              bool use_kernel_drivers = ShouldUseKernelDrivers());
   DiskManager(const DiskManager&) = delete;
   DiskManager& operator=(const DiskManager&) = delete;
 
@@ -86,12 +87,19 @@ class DiskManager : public MountManager {
   std::unique_ptr<MountPoint> MaybeWrapMountPointForEject(
       std::unique_ptr<MountPoint> mount_point, const Disk& disk);
 
+  // Indicates if, based on the current Linux kernel version, the kernel drivers
+  // should be used instead of the FUSE mounters for exFAT and NTFS filesystems.
+  static bool ShouldUseKernelDrivers();
+
   DiskMonitor* const disk_monitor_;
   DeviceEjector* const device_ejector_;
   const SandboxedProcessFactory* const test_sandbox_factory_;
 
+  // Whether to use the in-kernel drivers instead of FUSE for exFAT and NTFS.
+  const bool use_kernel_drivers;
+
   // Set to true if devices should be ejected upon unmount.
-  bool eject_device_on_unmount_;
+  bool eject_device_on_unmount_ = true;
 
   // Mapping of filesystem types to corresponding mounters.
   std::unordered_map<std::string, std::unique_ptr<Mounter>> mounters_;
