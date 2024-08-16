@@ -4,10 +4,10 @@
 
 #include "crash-reporter/fd-logger/crash_fd_logger.h"
 
+#include <unistd.h>
+
 #include <array>
 #include <string>
-
-#include <unistd.h>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -51,6 +51,9 @@ TEST(CrashFdLoggerTest, LogOpenFilesInSystem) {
   base::FilePath exe_path = pid_path.Append("exe");
   ASSERT_EQ(symlink("/bin/fake_process", exe_path.MaybeAsASCII().c_str()), 0);
 
+  base::ScopedTempDir link_target_dir;
+  ASSERT_TRUE(link_target_dir.CreateUniqueTempDir());
+
   // Create a several sets of kMaxFiles, with each set having
   // kLinksToCreate[set_num] of links to it. We should see the files
   // that have the most links reported, and those with fewest truncated from
@@ -61,10 +64,12 @@ TEST(CrashFdLoggerTest, LogOpenFilesInSystem) {
       for (size_t file_count = 0; file_count < kMaxFiles; file_count++) {
         size_t file_num = file_count + kMaxFiles * i;
         base::FilePath link_path = fd_path.Append(std::to_string(link_num++));
-        std::string link_target =
-            std::string("file") + std::to_string(file_num);
-        ASSERT_EQ(
-            symlink(link_target.c_str(), link_path.MaybeAsASCII().c_str()), 0);
+        base::FilePath link_target = proc_dir.GetPath().Append(
+            std::string("file") + std::to_string(file_num));
+        ASSERT_TRUE(base::WriteFile(link_target, ""));
+        ASSERT_EQ(symlink(link_target.MaybeAsASCII().c_str(),
+                          link_path.MaybeAsASCII().c_str()),
+                  0);
       }
     }
   }
