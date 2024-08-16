@@ -392,6 +392,7 @@ type cros_ionice_exec, exec_type, file_type, cros_file_type, cros_system_file_ty
 
 type cros_selinux_config_file, file_type, cros_file_type, cros_system_file_type;
 type cros_featured_file, file_type, cros_file_type, cros_system_file_type;
+type cros_prometheus_config_file, file_type, cros_file_type, cros_system_file_type;
 
 type cros_var, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache, file_type, cros_file_type, cros_var_file_type;
@@ -444,7 +445,6 @@ type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ml_core, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_modemfwd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_modemloggerd, file_type, cros_file_type, cros_var_file_type;
-type cros_var_lib_node_exporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_save, file_type, cros_file_type, cros_var_file_type;
@@ -453,6 +453,7 @@ type cros_var_lib_portage, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_private_computing, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_prometheus, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_reporting, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_reporting_crash_events, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_rmad, file_type, cros_file_type, cros_var_file_type;
@@ -506,8 +507,8 @@ type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_fi
 type cros_var_log_minios_util, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_var_log_modemfwd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_modemloggerd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
-type cros_var_log_node_exporter, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_os_install_service, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_prometheus, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_recover_duts, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_secagentd_log, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_session_manager, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;

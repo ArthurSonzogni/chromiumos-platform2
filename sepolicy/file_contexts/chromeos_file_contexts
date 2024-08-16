@@ -341,7 +341,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/ml_core(/.*)?          u:object_r:cros_var_lib_ml_core:s0
 /var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
 /var/lib/modemloggerd(/.*)?     u:object_r:cros_var_lib_modemloggerd:s0
-/var/lib/node_exporter(/.*)?    u:object_r:cros_var_lib_node_exporter:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
 /var/lib/oobe_config_save(/.*)? u:object_r:cros_var_lib_oobe_config_save:s0
@@ -350,6 +349,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
 /var/lib/preload-network-drivers.* u:object_r:cros_var_lib_preload_network_drivers:s0
 /var/lib/private_computing(/.*)? u:object_r:cros_var_lib_private_computing:s0
+/var/lib/prometheus(/.*)?       u:object_r:cros_var_lib_prometheus:s0
 /var/lib/reporting/crash_events(/.*)?   u:object_r:cros_var_lib_reporting_crash_events:s0
 /var/lib/reporting(/.*)?        u:object_r:cros_var_lib_reporting:s0
 /var/lib/rmad(/.*)?             u:object_r:cros_var_lib_rmad:s0
@@ -399,8 +399,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/modemloggerd(/.*)?     u:object_r:cros_var_log_modemloggerd:s0
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
-/var/log/node_exporter.log      u:object_r:cros_var_log_node_exporter:s0
 /var/log/powerd.out             u:object_r:cros_powerd_log:s0
+/var/log/prometheus.log         u:object_r:cros_var_log_prometheus:s0
 /var/log/os_install_service(/.*)? u:object_r:cros_var_log_os_install_service:s0
 /var/log/recover_duts(/.*)?     u:object_r:cros_var_log_recover_duts:s0
 /var/log/secagentd.log          u:object_r:cros_secagentd_log:s0
@@ -450,6 +450,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /etc/shadow                     u:object_r:cros_shadow_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
 /etc/featured(/.*)?             u:object_r:cros_featured_file:s0
+/etc/prometheus(/.*)?           u:object_r:cros_prometheus_config_file:s0
 
 # All the following files are created dynamically and need to be labeled at
 # runtime.
