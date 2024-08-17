@@ -43,6 +43,14 @@ constexpr net_base::IPAddress kIPv6DNSServer0(net_base::IPv6Address(
     0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x88));
 constexpr net_base::IPAddress kIPv6DNSServer1(net_base::IPv6Address(
     0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x44));
+const std::vector<net_base::IPAddress> kIPv4DNSList{
+    net_base::IPAddress(kIPv4DNSServer0),
+    net_base::IPAddress(kIPv4DNSServer1),
+};
+const std::vector<net_base::IPAddress> kIPv6DNSList{
+    net_base::IPAddress(kIPv6DNSServer0),
+    net_base::IPAddress(kIPv6DNSServer1),
+};
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
 const auto kIPv6DeviceAddress =
     *net_base::IPAddress::CreateFromString("2001:db8::3333:4444:5555");
@@ -90,12 +98,16 @@ class ConnectionDiagnosticsTest : public Test {
  protected:
   net_base::IPAddress gateway() { return gateway_; }
 
+  void SetDNS(const std::vector<net_base::IPAddress>& dns) {
+    dns_list_ = dns;
+    connection_diagnostics_.dns_list_ = dns_list_;
+  }
+
   void UseIPv6() {
     gateway_ = kIPv6GatewayAddress;
-    dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
     connection_diagnostics_.ip_family_ = net_base::IPFamily::kIPv6,
     connection_diagnostics_.gateway_ = gateway_;
-    connection_diagnostics_.dns_list_ = dns_list_;
+    SetDNS({kIPv6DNSServer0, kIPv6DNSServer1});
   }
 
   bool Start(const std::string& url) {
@@ -123,10 +135,14 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_TRUE(connection_diagnostics_.IsRunning());
   }
 
-  void ExpectPingDNSServersStartSuccess() { ExpectPingDNSSeversStart(true); }
+  void ExpectPingDNSServersStartSuccess(
+      const std::vector<net_base::IPAddress>& dns = kIPv4DNSList) {
+    ExpectPingDNSSeversStart(dns, /*is_success=*/true);
+  }
 
-  void ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed() {
-    ExpectPingDNSSeversStart(false);
+  void ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed(
+      const std::vector<net_base::IPAddress>& dns = kIPv4DNSList) {
+    ExpectPingDNSSeversStart(dns, /*is_success=*/false);
   }
 
   void ExpectPingDNSServersEndSuccessRetriesLeft() {
@@ -209,31 +225,26 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
  private:
-  void ExpectPingDNSSeversStart(bool is_success) {
+  void ExpectPingDNSSeversStart(
+      const std::vector<net_base::IPAddress>& expected_dns, bool is_success) {
     if (is_success) {
-      auto dns_server_icmp_session_0 =
-          std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
-      auto dns_server_icmp_session_1 =
-          std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
-
-      EXPECT_CALL(*dns_server_icmp_session_0,
-                  Start(kIPv4DNSServer0, kInterfaceIndex, kInterfaceName, _))
-          .WillOnce(Return(is_success));
-      EXPECT_CALL(*dns_server_icmp_session_1,
-                  Start(kIPv4DNSServer1, kInterfaceIndex, kInterfaceName, _))
-          .WillOnce(Return(is_success));
-
       connection_diagnostics_.id_to_pending_dns_server_icmp_session_.clear();
-      connection_diagnostics_.id_to_pending_dns_server_icmp_session_[0] =
-          std::move(dns_server_icmp_session_0);
-      connection_diagnostics_.id_to_pending_dns_server_icmp_session_[1] =
-          std::move(dns_server_icmp_session_1);
+      for (size_t i = 0; i < expected_dns.size(); i++) {
+        auto dns_server_icmp_session =
+            std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
+        EXPECT_CALL(*dns_server_icmp_session,
+                    Start(expected_dns[i], kInterfaceIndex, kInterfaceName, _))
+            .WillOnce(Return(is_success));
+        connection_diagnostics_.id_to_pending_dns_server_icmp_session_[i] =
+            std::move(dns_server_icmp_session);
+      }
     }
 
     connection_diagnostics_.PingDNSServers();
     if (is_success) {
-      EXPECT_EQ(2, connection_diagnostics_
-                       .id_to_pending_dns_server_icmp_session_.size());
+      EXPECT_EQ(expected_dns.size(),
+                connection_diagnostics_.id_to_pending_dns_server_icmp_session_
+                    .size());
     } else {
       EXPECT_TRUE(connection_diagnostics_.id_to_pending_dns_server_icmp_session_
                       .empty());
@@ -493,4 +504,16 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewayFailure) {
   VerifyStopped();
 }
 
+TEST_F(ConnectionDiagnosticsTest, DualStackDNSPingFiltersIPFamily) {
+  // Configure DNS with a mix of IPv4 and IPv6 addresses.
+  std::vector<net_base::IPAddress> dns;
+  dns.insert(dns.end(), kIPv4DNSList.begin(), kIPv4DNSList.end());
+  dns.insert(dns.end(), kIPv6DNSList.begin(), kIPv6DNSList.end());
+  SetDNS(dns);
+
+  // If connection diagnostics runs for IPv4, only IPv4 DNS servers should be
+  // pinged.
+  ExpectSuccessfulStart();
+  ExpectPingDNSServersStartSuccess(kIPv4DNSList);
+}
 }  // namespace shill

@@ -77,7 +77,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
-      dns_list_(dns_list),
       icmp_session_(new IcmpSession(dispatcher_)),
       num_dns_attempts_(0),
       running_(false),
@@ -87,6 +86,11 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       ip_family_, iface_name, DnsClient::kDnsTimeout, dispatcher_,
       base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
                           weak_ptr_factory_.GetWeakPtr()));
+  for (const auto& dns : dns_list) {
+    if (dns.GetFamily() == ip_family) {
+      dns_list_.push_back(dns);
+    }
+  }
   for (size_t i = 0; i < dns_list_.size(); i++) {
     id_to_pending_dns_server_icmp_session_[i] =
         std::make_unique<IcmpSession>(dispatcher_);
