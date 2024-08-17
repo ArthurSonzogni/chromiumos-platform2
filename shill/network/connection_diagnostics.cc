@@ -98,7 +98,7 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
 }
 
 bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
-  if (running()) {
+  if (IsRunning()) {
     LOG(ERROR) << iface_name_ << ": Diagnostics already started";
     return false;
   }
@@ -122,6 +122,10 @@ void ConnectionDiagnostics::Stop() {
   icmp_session_->Stop();
   id_to_pending_dns_server_icmp_session_.clear();
   target_url_ = std::nullopt;
+}
+
+bool ConnectionDiagnostics::IsRunning() const {
+  return running_;
 }
 
 // static

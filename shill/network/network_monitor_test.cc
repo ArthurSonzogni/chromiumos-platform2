@@ -617,5 +617,60 @@ TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
                                   NetworkMonitor::CapportSource::kRA);
 }
 
+TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsNotRestartedUntilFinished) {
+  const PortalDetector::Result result{
+      .http_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_duration = base::Milliseconds(0),
+      .https_duration = base::Milliseconds(200),
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+
+  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
+  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create).WillOnce([]() {
+    auto mock_connection_diagnostics =
+        std::make_unique<MockConnectionDiagnostics>();
+    EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+    ON_CALL(*mock_connection_diagnostics, IsRunning)
+        .WillByDefault(Return(true));
+    return mock_connection_diagnostics;
+  });
+
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+
+  // A second network validation attempt does not retrigger a new
+  // ConnectionDiagnostics if the previous one is still running.
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+}
+
+TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsRestartedIfFinished) {
+  const PortalDetector::Result result{
+      .http_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_duration = base::Milliseconds(0),
+      .https_duration = base::Milliseconds(200),
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+
+  // ConnectionDiagnostics should be started when the result is kNoConnectivity.
+  EXPECT_CALL(*mock_connection_diagnostics_factory_, Create)
+      .WillRepeatedly([]() {
+        auto mock_connection_diagnostics =
+            std::make_unique<MockConnectionDiagnostics>();
+        EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+        ON_CALL(*mock_connection_diagnostics, IsRunning)
+            .WillByDefault(Return(false));
+        return mock_connection_diagnostics;
+      });
+
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+
+  // A second network validation attempt will retrigger a new
+  // ConnectionDiagnostics if the previous one has finished.
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+}
+
 }  // namespace
 }  // namespace shill

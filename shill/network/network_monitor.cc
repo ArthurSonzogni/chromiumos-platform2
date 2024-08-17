@@ -357,6 +357,14 @@ void NetworkMonitor::StartConnectionDiagnostics() {
     return;
   }
 
+  // Do not restart a new ConnectionDiagnostics instance if one is already
+  // running.
+  if (connection_diagnostics_ && connection_diagnostics_->IsRunning()) {
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Connection diagnostics already running";
+    return;
+  }
+
   connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, *local_address, *gateway_address,
       config.dns_servers, dispatcher_);
@@ -366,6 +374,7 @@ void NetworkMonitor::StartConnectionDiagnostics() {
                  << ": Failed to start connection diagnostics";
     return;
   }
+
   LOG(INFO) << logging_tag_ << " " << __func__
             << ": Connection diagnostics started";
 }

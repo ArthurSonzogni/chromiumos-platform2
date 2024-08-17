@@ -107,7 +107,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void VerifyStopped() {
-    EXPECT_FALSE(connection_diagnostics_.running());
+    EXPECT_FALSE(connection_diagnostics_.IsRunning());
     EXPECT_EQ(0, connection_diagnostics_.num_dns_attempts_);
     EXPECT_EQ(0, connection_diagnostics_.event_number());
     EXPECT_EQ(nullptr, connection_diagnostics_.dns_client_);
@@ -120,10 +120,10 @@ class ConnectionDiagnosticsTest : public Test {
   void ExpectIcmpSessionStop() { EXPECT_CALL(*icmp_session_, Stop()); }
 
   void ExpectSuccessfulStart() {
-    EXPECT_FALSE(connection_diagnostics_.running());
+    EXPECT_FALSE(connection_diagnostics_.IsRunning());
     EXPECT_EQ(0, connection_diagnostics_.event_number());
     EXPECT_TRUE(Start(kHttpUrl));
-    EXPECT_TRUE(connection_diagnostics_.running());
+    EXPECT_TRUE(connection_diagnostics_.IsRunning());
   }
 
   void ExpectPingDNSServersStartSuccess() { ExpectPingDNSSeversStart(true); }

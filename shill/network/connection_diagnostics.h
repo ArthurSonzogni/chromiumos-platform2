@@ -101,7 +101,7 @@ class ConnectionDiagnostics {
   // Performs connectivity diagnostics for the hostname of the URL |url|.
   mockable bool Start(const net_base::HttpUrl& url);
   void Stop();
-  bool running() const { return running_; }
+  mockable bool IsRunning() const;
   int event_number() const { return event_number_; }
 
  private:

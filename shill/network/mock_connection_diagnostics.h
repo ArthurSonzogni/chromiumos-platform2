@@ -24,6 +24,7 @@ class MockConnectionDiagnostics : public ConnectionDiagnostics {
   ~MockConnectionDiagnostics() override;
 
   MOCK_METHOD(bool, Start, (const net_base::HttpUrl& url), (override));
+  MOCK_METHOD(bool, IsRunning, (), (const, override));
 };
 
 class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
