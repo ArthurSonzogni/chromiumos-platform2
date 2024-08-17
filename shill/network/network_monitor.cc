@@ -225,11 +225,15 @@ void NetworkMonitor::OnPortalDetectorResult(
       std::max(result.http_duration.InMilliseconds(),
                result.https_duration.InMilliseconds());
   switch (result.GetValidationState()) {
-    case PortalDetector::ValidationState::kNoConnectivity:
+    case PortalDetector::ValidationState::kNoConnectivity: {
       // If network validation cannot verify Internet access, then start
       // additional connection diagnostics for the current network connection.
-      StartConnectionDiagnostics();
+      const net_base::NetworkConfig& network_config =
+          client_->GetCurrentConfig();
+      StartIPv4ConnectionDiagnostics(network_config);
+      StartIPv6ConnectionDiagnostics(network_config);
       break;
+    }
     case PortalDetector::ValidationState::kInternetConnectivity:
       metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
                           technology_, total_duration);
@@ -326,57 +330,84 @@ void NetworkMonitor::StopNetworkValidationLog() {
   }
 }
 
-void NetworkMonitor::StartConnectionDiagnostics() {
-  const net_base::NetworkConfig& config = client_->GetCurrentConfig();
-
-  std::optional<net_base::IPAddress> local_address = std::nullopt;
-  std::optional<net_base::IPAddress> gateway_address = std::nullopt;
-  if (config.ipv4_address) {
-    local_address = net_base::IPAddress(config.ipv4_address->address());
-    gateway_address =
-        config.ipv4_gateway
-            ? std::make_optional(net_base::IPAddress(*config.ipv4_gateway))
-            : std::nullopt;
-  } else if (!config.ipv6_addresses.empty()) {
-    local_address = net_base::IPAddress(config.ipv6_addresses[0].address());
-    gateway_address =
-        config.ipv6_gateway
-            ? std::make_optional(net_base::IPAddress(*config.ipv6_gateway))
-            : std::nullopt;
-  }
-
-  if (!local_address) {
-    LOG(ERROR)
-        << logging_tag_ << " " << __func__
-        << ": Local address unavailable, aborting connection diagnostics";
-    return;
-  }
-  if (!gateway_address) {
-    LOG(ERROR) << logging_tag_ << " " << __func__
-               << ": Gateway unavailable, aborting connection diagnostics";
-    return;
-  }
-
+void NetworkMonitor::StartIPv4ConnectionDiagnostics(
+    const net_base::NetworkConfig& network_config) {
   // Do not restart a new ConnectionDiagnostics instance if one is already
   // running.
-  if (connection_diagnostics_ && connection_diagnostics_->IsRunning()) {
+  if (ipv4_connection_diagnostics_ &&
+      ipv4_connection_diagnostics_->IsRunning()) {
     LOG(INFO) << logging_tag_ << " " << __func__
-              << ": Connection diagnostics already running";
+              << ": IPv4 ConnectionDiagnostics already running";
     return;
   }
 
-  connection_diagnostics_ = connection_diagnostics_factory_->Create(
-      interface_, interface_index_, *local_address, *gateway_address,
-      config.dns_servers, dispatcher_);
-  if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
-    connection_diagnostics_.reset();
+  if (!network_config.ipv4_address) {
+    LOG(INFO)
+        << logging_tag_ << " " << __func__
+        << ": No IPv4 address configured, aborting connection diagnostics";
+    return;
+  }
+
+  if (!network_config.ipv4_gateway) {
+    // TODO(b/229309479): Support optional gateway argument.
+    LOG(WARNING)
+        << logging_tag_ << " " << __func__
+        << ": IPv4 Gateway unavailable, aborting connection diagnostics";
+    return;
+  }
+
+  ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Create(
+      interface_, interface_index_, net_base::IPFamily::kIPv4,
+      net_base::IPAddress(*network_config.ipv4_gateway),
+      network_config.dns_servers, dispatcher_);
+  if (!ipv4_connection_diagnostics_->Start(
+          probing_configuration_.portal_http_url)) {
+    ipv4_connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << " " << __func__
-                 << ": Failed to start connection diagnostics";
+                 << ": Failed to start IPv4 ConnectionDiagnostics";
     return;
   }
 
   LOG(INFO) << logging_tag_ << " " << __func__
-            << ": Connection diagnostics started";
+            << ": IPv4 ConnectionDiagnostics started";
+}
+
+void NetworkMonitor::StartIPv6ConnectionDiagnostics(
+    const net_base::NetworkConfig& network_config) {
+  // Do not restart a new ConnectionDiagnostics instance if one is already
+  // running.
+  if (ipv6_connection_diagnostics_ &&
+      ipv6_connection_diagnostics_->IsRunning()) {
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": IPv6 ConnectionDiagnostics already running";
+    return;
+  }
+
+  // For IPv6, do no check global addresses. It is possible to have no global
+  // IPv6 address but still be able to reach the gateway with the link local
+  // address.
+  if (!network_config.ipv6_gateway) {
+    // TODO(b/229309479): Support optional gateway argument.
+    LOG(WARNING)
+        << logging_tag_ << " " << __func__
+        << ": IPv6 Gateway unavailable, aborting connection diagnostics";
+    return;
+  }
+
+  ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Create(
+      interface_, interface_index_, net_base::IPFamily::kIPv6,
+      net_base::IPAddress(*network_config.ipv6_gateway),
+      network_config.dns_servers, dispatcher_);
+  if (!ipv6_connection_diagnostics_->Start(
+          probing_configuration_.portal_http_url)) {
+    ipv6_connection_diagnostics_.reset();
+    LOG(WARNING) << logging_tag_ << " " << __func__
+                 << ": Failed to start IPv6 ConnectionDiagnostics";
+    return;
+  }
+
+  LOG(INFO) << logging_tag_ << " " << __func__
+            << ": IPv6 ConnectionDiagnostics started";
 }
 
 void NetworkMonitor::SetValidationMode(

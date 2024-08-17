@@ -68,14 +68,14 @@ std::string ConnectionDiagnostics::ResultName(Result result) {
 ConnectionDiagnostics::ConnectionDiagnostics(
     std::string_view iface_name,
     int iface_index,
-    const net_base::IPAddress& ip_address,
+    net_base::IPFamily ip_family,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
       iface_name_(iface_name),
       iface_index_(iface_index),
-      ip_address_(ip_address),
+      ip_family_(ip_family),
       gateway_(gateway),
       dns_list_(dns_list),
       icmp_session_(new IcmpSession(dispatcher_)),
@@ -84,7 +84,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       event_number_(0),
       weak_ptr_factory_(this) {
   dns_client_ = std::make_unique<DnsClient>(
-      ip_address_.GetFamily(), iface_name, DnsClient::kDnsTimeout, dispatcher_,
+      ip_family_, iface_name, DnsClient::kDnsTimeout, dispatcher_,
       base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
                           weak_ptr_factory_.GetWeakPtr()));
   for (size_t i = 0; i < dns_list_.size(); i++) {
@@ -99,11 +99,13 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
 
 bool ConnectionDiagnostics::Start(const net_base::HttpUrl& url) {
   if (IsRunning()) {
-    LOG(ERROR) << iface_name_ << ": Diagnostics already started";
+    LOG(ERROR) << iface_name_ << ": " << ip_family_
+               << " Diagnostics already started";
     return false;
   }
 
-  LOG(INFO) << iface_name_ << ": Starting diagnostics for " << url.ToString();
+  LOG(INFO) << iface_name_ << ": Starting " << ip_family_ << " diagnostics for "
+            << url.ToString();
   target_url_ = url;
   running_ = true;
   // Ping DNS servers to make sure at least one is reachable before resolving
@@ -145,11 +147,11 @@ void ConnectionDiagnostics::LogEvent(Type type,
   event_number_++;
   Event ev(type, result, message);
   if (result == Result::kSuccess) {
-    LOG(INFO) << iface_name_ << ": Diagnostics event #" << event_number_ << ": "
-              << EventToString(ev);
+    LOG(INFO) << iface_name_ << ": " << ip_family_ << " Diagnostics event #"
+              << event_number_ << ": " << EventToString(ev);
   } else {
-    LOG(WARNING) << iface_name_ << ": Diagnostics event #" << event_number_
-                 << ": " << EventToString(ev);
+    LOG(WARNING) << iface_name_ << ": " << ip_family_ << " Diagnostics event #"
+                 << event_number_ << ": " << EventToString(ev);
   }
 }
 
@@ -347,12 +349,12 @@ void ConnectionDiagnostics::OnPingHostComplete(
 std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     std::string_view iface_name,
     int iface_index,
-    const net_base::IPAddress& ip_address,
+    net_base::IPFamily ip_family,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
     EventDispatcher* dispatcher) {
   return std::make_unique<ConnectionDiagnostics>(
-      iface_name, iface_index, ip_address, gateway, dns_list, dispatcher);
+      iface_name, iface_index, ip_family, gateway, dns_list, dispatcher);
 }
 
 }  // namespace shill

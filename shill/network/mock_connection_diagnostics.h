@@ -36,7 +36,7 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
               Create,
               (std::string_view iface_name,
                int iface_index,
-               const net_base::IPAddress& ip_address,
+               net_base::IPFamily ip_family,
                const net_base::IPAddress& gateway,
                const std::vector<net_base::IPAddress>& dns_list,
                EventDispatcher* dispatcher),

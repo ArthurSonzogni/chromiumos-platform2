@@ -247,8 +247,12 @@ class NetworkMonitor {
   // Stops the |validation_log_| and records metrics.
   void StopNetworkValidationLog();
 
-  // Initiates connection diagnostics on this Network.
-  void StartConnectionDiagnostics();
+  // Initiates connection diagnostics on this Network for IPv4 or IPv6 if
+  // |network_config| has a configuration for the corresponding IP family.
+  void StartIPv4ConnectionDiagnostics(
+      const net_base::NetworkConfig& network_config);
+  void StartIPv6ConnectionDiagnostics(
+      const net_base::NetworkConfig& network_config);
 
   // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;
@@ -283,7 +287,8 @@ class NetworkMonitor {
   std::unique_ptr<ValidationLog> validation_log_;
 
   std::unique_ptr<ConnectionDiagnosticsFactory> connection_diagnostics_factory_;
-  std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
+  std::unique_ptr<ConnectionDiagnostics> ipv4_connection_diagnostics_;
+  std::unique_ptr<ConnectionDiagnostics> ipv6_connection_diagnostics_;
 
   base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_for_capport_{this};
 };

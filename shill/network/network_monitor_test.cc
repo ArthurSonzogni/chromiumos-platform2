@@ -32,10 +32,18 @@
 namespace shill {
 namespace {
 
-const std::vector<net_base::IPAddress> kDnsList = {
+const std::vector<net_base::IPAddress> kIPv4DnsList = {
     net_base::IPAddress(net_base::IPv4Address(8, 8, 8, 8)),
     net_base::IPAddress(net_base::IPv4Address(8, 8, 4, 4)),
 };
+const std::vector<net_base::IPAddress> kIPv6DnsList = {
+    *net_base::IPAddress::CreateFromString("2001:4860:4860::8888"),
+    *net_base::IPAddress::CreateFromString("2001:4860:4860::8844"),
+};
+const net_base::IPv4Address kIPv4GatewayAddress =
+    *net_base::IPv4Address::CreateFromString("192.168.1.1");
+const net_base::IPv6Address kIPv6GatewayAddress =
+    *net_base::IPv6Address::CreateFromString("fee2::11b2:53f:13be:125e");
 constexpr int kInterfaceIndex = 1;
 constexpr std::string_view kInterface = "wlan1";
 constexpr std::string_view kLoggingTag = "logging_tag";
@@ -95,7 +103,7 @@ class NetworkMonitorTest : public ::testing::Test {
     network_monitor_->set_portal_detector_for_testing(
         std::move(portal_detector));
 
-    SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);
+    SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kIPv4DnsList);
   }
 
   void SetCurrentNetworkConfig(net_base::IPFamily ip_family,
@@ -104,16 +112,28 @@ class NetworkMonitorTest : public ::testing::Test {
       case net_base::IPFamily::kIPv4:
         config_.ipv4_address =
             *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.2/24");
-        config_.ipv4_gateway =
-            *net_base::IPv4Address::CreateFromString("192.168.1.1");
+        config_.ipv4_gateway = kIPv4GatewayAddress;
         break;
       case net_base::IPFamily::kIPv6:
         config_.ipv6_addresses.push_back(
             *net_base::IPv6CIDR::CreateFromCIDRString("fd00::2/64"));
-        config_.ipv6_gateway =
-            *net_base::IPv6Address::CreateFromString("fd00::1");
+        config_.ipv6_gateway = kIPv6GatewayAddress;
         break;
     }
+    config_.dns_servers = std::move(dns_servers);
+
+    ON_CALL(client_, GetCurrentConfig)
+        .WillByDefault(testing::ReturnRef(config_));
+  }
+
+  void SetCurrentDualStackNetworkConfig(
+      std::vector<net_base::IPAddress> dns_servers) {
+    config_.ipv4_address =
+        *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.2/24");
+    config_.ipv4_gateway = kIPv4GatewayAddress;
+    config_.ipv6_addresses.push_back(
+        *net_base::IPv6CIDR::CreateFromCIDRString("fd00::2/64"));
+    config_.ipv6_gateway = kIPv6GatewayAddress;
     config_.dns_servers = std::move(dns_servers);
 
     ON_CALL(client_, GetCurrentConfig)
@@ -140,8 +160,9 @@ class NetworkMonitorTest : public ::testing::Test {
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
   void StartWithPortalDetectorResultReturned(
       bool expect_http_only, const PortalDetector::Result& result) {
-    EXPECT_CALL(*mock_portal_detector_,
-                Start(expect_http_only, net_base::IPFamily::kIPv4, kDnsList, _))
+    EXPECT_CALL(
+        *mock_portal_detector_,
+        Start(expect_http_only, net_base::IPFamily::kIPv4, kIPv4DnsList, _))
         .WillOnce(testing::WithArg<3>(
             [result](PortalDetector::ResultCallback callback) {
               std::move(callback).Run(result);
@@ -189,7 +210,7 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
   for (const auto reason : reasons) {
     EXPECT_CALL(
         *mock_portal_detector_,
-        Start(/*http_only=*/false, net_base::IPFamily::kIPv4, kDnsList, _))
+        Start(/*http_only=*/false, net_base::IPFamily::kIPv4, kIPv4DnsList, _))
         .Times(1);
     EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
     EXPECT_CALL(client_, OnValidationStarted(true)).Times(1);
@@ -214,7 +235,7 @@ TEST_F(NetworkMonitorTest, StartWithoutDNS) {
 }
 
 TEST_F(NetworkMonitorTest, SetCapportEnabled) {
-  SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);
+  SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kIPv4DnsList);
   MockCapportProxy* mock_capport_proxy = SetCapportProxy();
 
   // The capport_proxy should be called normally before CAPPORT is disabled.
@@ -601,9 +622,9 @@ TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
   EXPECT_CALL(*mock_validation_log_, SetCapportDHCPSupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
               Create(&metrics_, &patchpanel_client_, kInterface, kCapportAPI,
-                     ElementsAreArray(kDnsList), _, _))
+                     ElementsAreArray(kIPv4DnsList), _, _))
       .Times(1);
-  network_monitor_->SetCapportURL(kCapportAPI, kDnsList,
+  network_monitor_->SetCapportURL(kCapportAPI, kIPv4DnsList,
                                   NetworkMonitor::CapportSource::kDHCP);
 }
 
@@ -611,9 +632,9 @@ TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
   EXPECT_CALL(*mock_validation_log_, SetCapportRASupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
               Create(&metrics_, &patchpanel_client_, kInterface, kCapportAPI,
-                     ElementsAreArray(kDnsList), _, _))
+                     ElementsAreArray(kIPv4DnsList), _, _))
       .Times(1);
-  network_monitor_->SetCapportURL(kCapportAPI, kDnsList,
+  network_monitor_->SetCapportURL(kCapportAPI, kIPv4DnsList,
                                   NetworkMonitor::CapportSource::kRA);
 }
 
@@ -669,6 +690,44 @@ TEST_F(NetworkMonitorTest, ConnectionDiagnosticsIsRestartedIfFinished) {
 
   // A second network validation attempt will retrigger a new
   // ConnectionDiagnostics if the previous one has finished.
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+}
+
+TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
+  std::vector<net_base::IPAddress> dns;
+  dns.insert(dns.end(), kIPv4DnsList.begin(), kIPv4DnsList.end());
+  dns.insert(dns.end(), kIPv6DnsList.begin(), kIPv6DnsList.end());
+  SetCurrentDualStackNetworkConfig(dns);
+
+  const PortalDetector::Result result{
+      .http_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_duration = base::Milliseconds(0),
+      .https_duration = base::Milliseconds(200),
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+
+  // ConnectionDiagnostics should be started for both IPv4 and IPv6.
+  EXPECT_CALL(*mock_connection_diagnostics_factory_,
+              Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
+                     net_base::IPAddress(kIPv4GatewayAddress), dns, _))
+      .WillRepeatedly([]() {
+        auto mock_connection_diagnostics =
+            std::make_unique<MockConnectionDiagnostics>();
+        EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+        return mock_connection_diagnostics;
+      });
+  EXPECT_CALL(*mock_connection_diagnostics_factory_,
+              Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
+                     net_base::IPAddress(kIPv6GatewayAddress), dns, _))
+      .WillRepeatedly([]() {
+        auto mock_connection_diagnostics =
+            std::make_unique<MockConnectionDiagnostics>();
+        EXPECT_CALL(*mock_connection_diagnostics, Start).WillOnce(Return(true));
+        return mock_connection_diagnostics;
+      });
+
   StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
 }
 

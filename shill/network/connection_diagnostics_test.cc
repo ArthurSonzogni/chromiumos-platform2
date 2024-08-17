@@ -44,8 +44,6 @@ constexpr net_base::IPAddress kIPv6DNSServer0(net_base::IPv6Address(
 constexpr net_base::IPAddress kIPv6DNSServer1(net_base::IPv6Address(
     0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x44));
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
-const auto kIPv4DeviceAddress =
-    *net_base::IPAddress::CreateFromString("100.200.43.22");
 const auto kIPv6DeviceAddress =
     *net_base::IPAddress::CreateFromString("2001:db8::3333:4444:5555");
 const auto kIPv4ServerAddress =
@@ -67,7 +65,7 @@ class ConnectionDiagnosticsTest : public Test {
         dns_list_({kIPv4DNSServer0, kIPv4DNSServer1}),
         connection_diagnostics_(kInterfaceName,
                                 kInterfaceIndex,
-                                kIPv4DeviceAddress,
+                                net_base::IPFamily::kIPv4,
                                 kIPv4GatewayAddress,
                                 {kIPv4DNSServer0, kIPv4DNSServer1},
                                 &dispatcher_) {}
@@ -75,7 +73,6 @@ class ConnectionDiagnosticsTest : public Test {
   ~ConnectionDiagnosticsTest() override = default;
 
   void SetUp() override {
-    ASSERT_EQ(net_base::IPFamily::kIPv4, kIPv4DeviceAddress.GetFamily());
     ASSERT_EQ(net_base::IPFamily::kIPv4, kIPv4ServerAddress.GetFamily());
     ASSERT_EQ(net_base::IPFamily::kIPv4, kIPv4GatewayAddress.GetFamily());
     ASSERT_EQ(net_base::IPFamily::kIPv6, kIPv6ServerAddress.GetFamily());
@@ -96,9 +93,9 @@ class ConnectionDiagnosticsTest : public Test {
   void UseIPv6() {
     gateway_ = kIPv6GatewayAddress;
     dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
-    connection_diagnostics_.ip_address_ = kIPv6DeviceAddress;
-    connection_diagnostics_.gateway_ = kIPv6GatewayAddress;
-    connection_diagnostics_.dns_list_ = {kIPv6DNSServer0, kIPv6DNSServer1};
+    connection_diagnostics_.ip_family_ = net_base::IPFamily::kIPv6,
+    connection_diagnostics_.gateway_ = gateway_;
+    connection_diagnostics_.dns_list_ = dns_list_;
   }
 
   bool Start(const std::string& url) {

@@ -12,7 +12,7 @@ MockConnectionDiagnostics::MockConnectionDiagnostics()
     : ConnectionDiagnostics(
           "wlan1",
           1,
-          *net_base::IPAddress::CreateFromString("192.168.1.2"),
+          net_base::IPFamily::kIPv4,
           *net_base::IPAddress::CreateFromString("192.168.1.1"),
           {},
           nullptr) {}

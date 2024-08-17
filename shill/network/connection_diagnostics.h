@@ -89,7 +89,7 @@ class ConnectionDiagnostics {
 
   ConnectionDiagnostics(std::string_view iface_name,
                         int iface_index,
-                        const net_base::IPAddress& ip_address,
+                        net_base::IPFamily ip_family,
                         const net_base::IPAddress& gateway,
                         const std::vector<net_base::IPAddress>& dns_list,
                         EventDispatcher* dispatcher);
@@ -151,8 +151,8 @@ class ConnectionDiagnostics {
   std::string iface_name_;
   // The index of the network interface associated with the connection.
   int iface_index_;
-  // The IP address of the network interface to use for the diagnostic.
-  net_base::IPAddress ip_address_;
+  // The IP family used for all the diagnostics.
+  net_base::IPFamily ip_family_;
   // The IP address of the gateway.
   net_base::IPAddress gateway_;
   std::vector<net_base::IPAddress> dns_list_;
@@ -192,7 +192,7 @@ class ConnectionDiagnosticsFactory {
   mockable std::unique_ptr<ConnectionDiagnostics> Create(
       std::string_view iface_name,
       int iface_index,
-      const net_base::IPAddress& ip_address,
+      net_base::IPFamily ip_family,
       const net_base::IPAddress& gateway,
       const std::vector<net_base::IPAddress>& dns_list,
       EventDispatcher* dispatcher);
