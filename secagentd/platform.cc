@@ -141,7 +141,7 @@ int Platform::Sys_statx(int dir_fd,
                         int flags,
                         unsigned int mask,
                         struct statx* statxbuf) {
-  return syscall(SYS_statx, dir_fd, path.c_str(), flags, mask, &statxbuf);
+  return syscall(SYS_statx, dir_fd, path.c_str(), flags, mask, statxbuf);
 }
 
 }  // namespace secagentd

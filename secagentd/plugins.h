@@ -6,6 +6,7 @@
 #define SECAGENTD_PLUGINS_H_
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -49,6 +50,46 @@ using AuthFactorType = cros_xdr::reporting::Authentication_AuthenticationType;
 // if dbus signal is late.
 static constexpr base::TimeDelta kWaitForAuthFactorS = base::Seconds(1);
 static constexpr uint64_t kMaxDelayForLockscreenAttemptsS = 3;
+
+// File path types (from your original code)
+enum class FilePathName {
+  USER_FILES_DIR,
+  COOKIES_DIR,
+  COOKIES_JOURNAL_DIR,
+  SAFE_BROWSING_COOKIES_DIR,
+  SAFE_BROWSING_COOKIES_JOURNAL_DIR,
+  USER_SECRET_STASH_DIR,
+  ROOT,
+  MOUNTED_ARCHIVE,
+  GOOGLE_DRIVE_FS,
+  STATEFUL_PARTITION,
+  USB_STORAGE,
+  DEVICE_SETTINGS_POLICY_DIR,
+  DEVICE_SETTINGS_OWNER_KEY,
+  SESSION_MANAGER_POLICY_DIR,
+  SESSION_MANAGER_POLICY_KEY,
+  CRYPTOHOME_KEY,
+  CRYPTOHOME_ECC_KEY,
+  // Add the last element of the enum, used for counting
+  FILE_PATH_NAME_COUNT,
+};
+
+// Enum for file path categories
+enum class FilePathCategory { USER_PATH, SYSTEM_PATH, REMOVABLE_PATH };
+
+// Structure to hold path information
+struct PathInfo {
+  std::string pathPrefix;  // Store the full path for non-user paths and for
+                           // user part before the hash placeholder
+  std::optional<std::string> pathSuffix;  // Only for user hash paths. Store the
+                                          // part after the hash placeholder
+  bpf::file_monitoring_mode monitoringMode;
+  cros_xdr::reporting::SensitiveFileType fileType;
+  FilePathCategory pathCategory;
+  std::optional<std::string> fullResolvedPath;
+  bpf::device_monitoring_type deviceMonitoringType =
+      bpf::device_monitoring_type::MONITOR_SPECIFIC_FILES;
+};
 
 namespace testing {
 class AgentPluginTestFixture;
@@ -346,6 +387,24 @@ class FilePlugin : public PluginInterface {
   std::unique_ptr<cros_xdr::reporting::FileModifyEvent>
   MakeAttributeModifyEvent(
       const secagentd::bpf::cros_file_event& attribute_modify_event) const;
+
+  // Updates BPF maps with paths and their associated information.
+  // This function updates various BPF maps based on the provided paths and
+  // their monitoring modes. It uses a helper interface to retrieve the file
+  // descriptors for the BPF maps and performs updates on the maps accordingly.
+  // It includes error handling for map retrieval and update operations, with
+  // relevant logging for diagnostics.
+  absl::Status UpdateBPFMapForPathMaps(
+      const std::optional<std::string>& optionalUserhash,
+      const std::map<FilePathName, std::vector<PathInfo>>& paths_map);
+
+  absl::Status InitializeFileBpfMaps(const std::string& userhash);
+
+  absl::Status OnUserLogin(const std::string& userHash);
+
+  absl::Status OnUserLogout(const std::string& userHash);
+
+  absl::Status OnDeviceMount(const std::string& mount_point);
 
   base::WeakPtrFactory<FilePlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
