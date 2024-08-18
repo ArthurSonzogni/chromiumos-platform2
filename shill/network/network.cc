@@ -971,6 +971,13 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
 
 void Network::StartConnectivityTest(
     PortalDetector::ProbingConfiguration probe_config) {
+  LOG(INFO) << *this << " " << __func__
+            << ": Starting Internet connectivity test";
+
+  if (network_monitor_) {
+    network_monitor_->StartConnectionDiagnostics();
+  }
+
   auto family = GetNetworkValidationIPFamily();
   if (!family) {
     LOG(ERROR) << *this << " " << __func__ << ": No valid IP address";
@@ -981,7 +988,6 @@ void Network::StartConnectivityTest(
     LOG(ERROR) << *this << " " << __func__ << ": No DNS servers";
     return;
   }
-  LOG(INFO) << *this << ": Starting Internet connectivity test";
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, patchpanel_client_, interface_name_, probe_config,
       logging_tag_);

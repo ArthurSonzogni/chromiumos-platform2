@@ -350,8 +350,9 @@ class Network : public NetworkMonitor::ClientNetwork {
     return network_validation_result_;
   }
 
-  // Start a separate PortalDetector instance for the purpose of connectivity
-  // test.
+  // Start a separate PortalDetector instance and ConnectivityDiagnostics
+  // instances for the purpose of testing network and Internet connectivity on
+  // the current network.
   void StartConnectivityTest(PortalDetector::ProbingConfiguration probe_config);
 
   // Returns the RPC identifiers of the available IPConfig objects (at most two,

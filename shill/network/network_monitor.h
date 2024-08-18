@@ -214,6 +214,10 @@ class NetworkMonitor {
   // Sets the terms and conditions URL.
   mockable void SetTermsAndConditions(const net_base::HttpUrl& url);
 
+  // Starts IPv4 and IPv6 connectivity diagnostics if the IP family is
+  // configured and if there is no diagnostics already running.
+  void StartConnectionDiagnostics();
+
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(
       std::unique_ptr<PortalDetector> portal_detector);

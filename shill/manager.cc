@@ -2294,7 +2294,7 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
       if (!network->IsConnected()) {
         LOG(INFO) << device->LoggingTag()
                   << ": Skipping connectivity test: no Network connection";
-        return;
+        continue;
       }
       network->StartConnectivityTest(GetPortalDetectorProbingConfiguration());
     }
