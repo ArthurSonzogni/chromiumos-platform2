@@ -426,6 +426,13 @@ class FilePlugin : public PluginInterface {
 
   absl::Status OnDeviceMount(const std::string& mount_point);
 
+  absl::Status UpdateBPFMapForPathInodes(
+      int bpfMapFd,
+      const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
+      const std::optional<std::string>& optionalUserhash);
+
+  absl::Status RemoveKeysFromBPFMap(int bpfMapFd, const std::string& userhash);
+
   base::WeakPtrFactory<FilePlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
@@ -440,6 +447,8 @@ class FilePlugin : public PluginInterface {
   uint32_t batch_interval_s_;
 
   base::RepeatingTimer coalesce_timer_;
+  std::map<std::string, std::vector<bpf::inode_dev_map_key>>
+      userhash_inodes_map_;
 };
 
 template <typename H>

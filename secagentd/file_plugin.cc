@@ -230,8 +230,6 @@ static uint64_t KernelToUserspaceDeviceId(dev_t kernel_dev) {
 
 namespace secagentd {
 namespace pb = cros_xdr::reporting;
-std::map<std::string, std::vector<bpf::inode_dev_map_key>> userhash_inodes_map =
-    {};
 
 FilePlugin::FilePlugin(
     scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
@@ -452,7 +450,7 @@ absl::Status PopulateFlagsMap(int fd) {
   return absl::OkStatus();
 }
 
-absl::Status UpdateBPFMapForPathInodes(
+absl::Status FilePlugin::UpdateBPFMapForPathInodes(
     int bpfMapFd,
     const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
     const std::optional<std::string>& optionalUserhash) {
@@ -499,7 +497,7 @@ absl::Status UpdateBPFMapForPathInodes(
       if (pathInfo.pathCategory == FilePathCategory::USER_PATH &&
           optionalUserhash.has_value()) {
         // Add the new BPF map key to the vector
-        userhash_inodes_map[optionalUserhash.value()].push_back(bpfMapKey);
+        userhash_inodes_map_[optionalUserhash.value()].push_back(bpfMapKey);
       }
       // Log success message for the current path
       LOG(INFO) << "Successfully added entry to BPF map for path " << path
@@ -611,10 +609,11 @@ absl::Status FilePlugin::UpdateBPFMapForPathMaps(
   return absl::OkStatus();
 }
 
-absl::Status RemoveKeysFromBPFMap(int bpfMapFd, const std::string& userhash) {
+absl::Status FilePlugin::RemoveKeysFromBPFMap(int bpfMapFd,
+                                              const std::string& userhash) {
   // Locate the entry for the given userhash in the global map
-  auto it = userhash_inodes_map.find(userhash);
-  if (it == userhash_inodes_map.end()) {
+  auto it = userhash_inodes_map_.find(userhash);
+  if (it == userhash_inodes_map_.end()) {
     // Log that no entries were found for the provided userhash
     LOG(INFO) << "No entries found for userhash " << userhash;
     return absl::OkStatus();
@@ -635,7 +634,7 @@ absl::Status RemoveKeysFromBPFMap(int bpfMapFd, const std::string& userhash) {
   }
 
   // Remove the userhash entry from the global map after processing
-  userhash_inodes_map.erase(it);
+  userhash_inodes_map_.erase(it);
 
   return absl::OkStatus();
 }
