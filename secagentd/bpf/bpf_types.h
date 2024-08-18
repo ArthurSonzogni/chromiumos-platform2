@@ -376,6 +376,8 @@ struct cros_file_image {
   uint8_t sensitive_file_type;      // sensitive_file_type
   struct inode_attr before_attr;    // Attributes of the file before the change.
   struct inode_attr after_attr;     // Attributes of the file after the change.
+  bool file_system_noexec;  // Indicates if the filesystem is mounted with the
+                            // 'noexec' flag.
 } __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };

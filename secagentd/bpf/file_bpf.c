@@ -51,6 +51,9 @@ const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 #define CROS_ATTR_ATIME_SET (1 << 7)
 #define CROS_ATTR_MTIME_SET (1 << 8)
 
+// Copied from fs.h, remain same across architecture/filesystems/kernels
+#define MS_NOEXEC 8 /* Disallow program execution */
+
 // Ring Buffer for Event Storage
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -662,8 +665,10 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     image_info->flags = BPF_CORE_READ(file, f_flags);
   }
 
-  // Fill mount namespace ID
+  // Fill info from super block
   image_info->mnt_ns = BPF_CORE_READ(dentry, d_sb, s_user_ns, ns.inum);
+  image_info->file_system_noexec =
+      BPF_CORE_READ(dentry, d_sb, s_flags) & MS_NOEXEC;
 
   // If before_attr is provided, fill the before attributes
   if (before_attr != NULL) {
