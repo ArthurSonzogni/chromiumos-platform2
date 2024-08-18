@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/plugins.h"
-
 #include <memory>
 
 #include "base/functional/callback_forward.h"
@@ -16,6 +14,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "secagentd/device_user.h"
+#include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_batch_sender.h"
 #include "secagentd/test/mock_device_user.h"
@@ -147,9 +146,9 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLockToUnlock) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
-          })));
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_username)>
+                 cb) { std::move(cb).Run(kDeviceUser, kSanitized); })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
   completed.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
@@ -203,12 +202,14 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })))
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(device_user::kEmpty);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(device_user::kEmpty, device_user::kEmpty);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
@@ -264,8 +265,9 @@ TEST_F(AuthenticationPluginTestFixture, LateAuthFactor) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(2)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
@@ -324,8 +326,9 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginThenSuccess) {
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
@@ -399,8 +402,9 @@ TEST_F(AuthenticationPluginTestFixture, FailedLockscreenLogin) {
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure_pin;
@@ -631,8 +635,9 @@ TEST_F(AuthenticationPluginTestFixture, FailedLoginCreateTimestampSquashing) {
   SaveSessionStateChangeCb();
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted failure;
@@ -795,12 +800,14 @@ TEST_F(AuthenticationPluginTestFixture, TestSecagentdRestart) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(3)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(device_user::kEmpty);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(device_user::kEmpty, device_user::kEmpty);
           })))
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   // batch_sender_ will be called twice. Once for login, once for logout.
@@ -839,8 +846,9 @@ TEST_F(AuthenticationPluginTestFixture, TestUserCreation) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(1)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;

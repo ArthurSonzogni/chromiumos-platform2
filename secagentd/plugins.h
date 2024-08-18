@@ -244,7 +244,8 @@ class NetworkPlugin : public PluginInterface {
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::NetworkEventAtomicVariant>
           atomic_event,
-      const std::string& device_user);
+      const std::string& device_user,
+      const std::string& device_userhash);
 
   template <typename ProtoT>
   void FillProcessTree(ProtoT proto,
@@ -318,7 +319,8 @@ class ProcessPlugin : public PluginInterface {
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
           atomic_event,
-      const std::string& device_user);
+      const std::string& device_user,
+      const std::string& device_userhash);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
     batch_sender_ = std::move(given);
@@ -376,7 +378,8 @@ class FilePlugin : public PluginInterface {
   // Callback function that is ran when the device user is ready.
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant> atomic_event,
-      const std::string& device_user);
+      const std::string& device_user,
+      const std::string& device_userhash);
 
   void OnSessionStateChange(const std::string& state);
 
@@ -400,7 +403,7 @@ class FilePlugin : public PluginInterface {
 
   absl::Status InitializeFileBpfMaps(const std::string& userhash);
 
-  absl::Status OnUserLogin(const std::string& userHash);
+  void OnUserLogin(const std::string& device_user, const std::string& userHash);
 
   absl::Status OnUserLogout(const std::string& userHash);
 
@@ -465,10 +468,12 @@ class AuthenticationPlugin : public PluginInterface {
   // Callback function that is ran when the device user is ready.
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::UserEventAtomicVariant> atomic_event,
-      const std::string& device_user);
+      const std::string& device_user,
+      const std::string& device_userhash);
   // When the first session start happens in the case of a secagentd restart
   // check if a user is already signed in and if so send a login event.
-  void OnFirstSessionStart(const std::string& device_user);
+  void OnFirstSessionStart(const std::string& device_user,
+                           const std::string& sanitized_username);
   // Inject the given (mock) BatchSender object for unit testing.
   void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
     batch_sender_ = std::move(given);
@@ -585,7 +590,8 @@ class AgentPlugin : public PluginInterface {
   void OnDeviceUserRetrieved(
       std::unique_ptr<cros_xdr::reporting::AgentEventAtomicVariant>
           atomic_event,
-      const std::string& device_user);
+      const std::string& device_user,
+      const std::string& device_userhash);
 
   base::RepeatingTimer agent_heartbeat_timer_;
   cros_xdr::reporting::TcbAttributes tcb_attributes_;

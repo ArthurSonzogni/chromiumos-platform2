@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/plugins.h"
-
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -23,6 +21,7 @@
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
+#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "user_data_auth/dbus-proxies.h"
@@ -332,7 +331,8 @@ void AuthenticationPlugin::OnAuthenticateAuthFactorCompleted(
       OnDeviceUserRetrieved(
           std::move(failure_event),
           device_user_->GetUsernameBasedOnAffiliation(
-              completed.username(), completed.sanitized_username()));
+              completed.username(), completed.sanitized_username()),
+          completed.sanitized_username());
     }
   }
 }
@@ -359,7 +359,8 @@ void AuthenticationPlugin::DelayedCheckForAuthSignal(
 
 void AuthenticationPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::UserEventAtomicVariant> atomic_event,
-    const std::string& device_user) {
+    const std::string& device_user,
+    const std::string& device_userhash) {
   // Do not set device user for logoff events because it will be empty.
   if (!atomic_event->has_logoff()) {
     atomic_event->mutable_common()->set_device_user(device_user);
@@ -390,7 +391,8 @@ void AuthenticationPlugin::OnDeviceUserRetrieved(
   batch_sender_->Enqueue(std::move(atomic_event));
 }
 
-void AuthenticationPlugin::OnFirstSessionStart(const std::string& device_user) {
+void AuthenticationPlugin::OnFirstSessionStart(
+    const std::string& device_user, const std::string& sanitized_username) {
   // When the device_user is empty no user is signed in so do not send a login
   // event.
   // When the device_user is filled there is already a user signed in so a login

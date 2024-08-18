@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/plugins.h"
-
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
 
+#include "secagentd/plugins.h"
+
 #if __has_include(<asm/bootparam.h>)
 #include <asm/bootparam.h>
 #define HAVE_BOOTPARAM
 #endif
+#include "attestation-client-test/attestation/dbus-proxy-mocks.h"
 #include "attestation/dbus-constants.h"
 #include "attestation/proto_bindings/interface.pb.h"
-#include "attestation-client-test/attestation/dbus-proxy-mocks.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
@@ -34,9 +34,9 @@
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
+#include "tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h"
 #include "tpm_manager/dbus-constants.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
-#include "tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h"
 
 namespace secagentd::testing {
 
@@ -68,6 +68,7 @@ struct BootmodeAndTpm {
 };
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
+constexpr char kSanitized[] = "943cebc444e3e19da9a2dbf9c8a473bc7cc16d9d";
 static constexpr int kDefaultHeartbeatTimer = 300;
 
 class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
@@ -238,8 +239,9 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   // Setup message sender mock. WillOnce is for StartEvent and
@@ -299,8 +301,9 @@ TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerNonzero) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
   EXPECT_CALL(*message_sender_,
               SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
@@ -327,8 +330,9 @@ TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerZero) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   EXPECT_CALL(*message_sender_,
@@ -349,8 +353,9 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesUnavailable) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   auto agent_message = std::make_unique<pb::XdrAgentEvent>();
@@ -395,8 +400,9 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesFailedToRetrieve) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   auto agent_message = std::make_unique<pb::AgentEventAtomicVariant>();
@@ -431,8 +437,9 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventFailure) {
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .Times(kTimes)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   EXPECT_CALL(*message_sender_,

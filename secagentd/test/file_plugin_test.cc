@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstddef>
+#include <filesystem>
 #include <memory>
 
 #include "base/memory/scoped_refptr.h"
@@ -17,6 +18,7 @@
 #include "secagentd/test/mock_bpf_skeleton.h"
 #include "secagentd/test/mock_device_user.h"
 #include "secagentd/test/mock_message_sender.h"
+#include "secagentd/test/mock_platform.h"
 #include "secagentd/test/mock_policies_features_broker.h"
 #include "secagentd/test/mock_process_cache.h"
 
@@ -55,12 +57,16 @@ class FilePluginTestFixture : public ::testing::Test {
     bpf_skeleton = std::make_unique<MockBpfSkeleton>();
     bpf_skeleton_ = bpf_skeleton.get();
     skel_factory_ = base::MakeRefCounted<MockSkeletonFactory>();
+    skel_factory_ref_ = skel_factory_.get();
     message_sender_ = base::MakeRefCounted<MockMessageSender>();
     process_cache_ = base::MakeRefCounted<MockProcessCache>();
     auto batch_sender = std::make_unique<BatchSenderType>();
     batch_sender_ = batch_sender.get();
     plugin_factory_ = std::make_unique<PluginFactory>(skel_factory_);
     device_user_ = base::MakeRefCounted<MockDeviceUser>();
+
+    SetPlatform(std::make_unique<StrictMock<MockPlatform>>());
+    platform_ = static_cast<StrictMock<MockPlatform>*>(GetPlatform().get());
 
     plugin_ = plugin_factory_->Create(Types::Plugin::kFile, message_sender_,
                                       process_cache_, policies_features_broker_,
@@ -72,11 +78,62 @@ class FilePluginTestFixture : public ::testing::Test {
                 Create(Types::BpfSkeleton::kFile, _, kBatchInterval))
         .WillOnce(
             DoAll(SaveArg<1>(&cbs_), Return(ByMove(std::move(bpf_skeleton)))));
+
+    EXPECT_CALL(*platform_, OpenDirectory(_)).WillRepeatedly(Return(10));
+    EXPECT_CALL(*platform_, CloseDirectory(_)).WillRepeatedly(Return(10));
     EXPECT_CALL(*batch_sender_, Start());
+    EXPECT_CALL(*platform_, BpfMapFdByName(_, _)).WillRepeatedly(Return(42));
+    EXPECT_CALL(*platform_, BpfMapUpdateElementByFd(_, _, _, _))
+        .WillRepeatedly(Return(0));
+
+    // Define the expected return value (successful case)
+    absl::StatusOr<int> expected_result_bpf_by_name =
+        42;  // Replace 42 with your desired value
+
+    EXPECT_CALL(*bpf_skeleton_, FindBpfMapByName(_))
+        .WillRepeatedly(Return(expected_result_bpf_by_name));
+
+    EXPECT_CALL(*platform_, FilePathExists(_)).WillRepeatedly(Return(true));
+
+    EXPECT_CALL(*platform_, IsFilePathDirectory(_))
+        .WillRepeatedly(Return(true));
+
+    std::vector<std::filesystem::directory_entry> entries;
+
+    // Use std::filesystem::path to construct directory entries
+    std::filesystem::path path1("file1.txt");
+    std::filesystem::path path2("file2.txt");
+
+    // Create directory entries
+    entries.emplace_back(path1);
+    entries.emplace_back(path2);
+
+    // Set expectation
+    EXPECT_CALL(*platform_, FileSystemDirectoryIterator(_))
+        .WillRepeatedly(Return(entries));
+
+    struct statx expected_statx = {};
+    expected_statx.stx_mode = S_IFREG | S_IRUSR | S_IWUSR;  // Example mode
+    expected_statx.stx_ino = 100;
+    expected_statx.stx_dev_major = 10;
+    expected_statx.stx_dev_minor = 20;
+
+    // Set up the expectation for Sys_statx
+    EXPECT_CALL(*platform_, Sys_statx(_, _, _, _, _))
+        .WillRepeatedly([&](int dir_fd, const std::string& path, int flags,
+                            unsigned int mask, struct statx* statxbuf) -> int {
+          // Modify the statxbuf as needed
+          if (statxbuf != nullptr) {
+            *statxbuf = expected_statx;
+          }
+          // Return a specific integer value
+          return 0;  // Or any other return value you need
+        });
     EXPECT_TRUE(plugin_->Activate().ok());
   }
 
   scoped_refptr<MockSkeletonFactory> skel_factory_;
+  MockSkeletonFactory* skel_factory_ref_;
   scoped_refptr<MockMessageSender> message_sender_;
   scoped_refptr<MockProcessCache> process_cache_;
   scoped_refptr<MockDeviceUser> device_user_;
@@ -86,8 +143,13 @@ class FilePluginTestFixture : public ::testing::Test {
   std::unique_ptr<MockBpfSkeleton> bpf_skeleton;
   MockBpfSkeleton* bpf_skeleton_;
   std::unique_ptr<PluginInterface> plugin_;
+  StrictMock<MockPlatform>* platform_;
   BpfCallbacks cbs_;
 };
+
+TEST_F(FilePluginTestFixture, TestGetName) {
+  EXPECT_EQ("File", plugin_->GetName());
+}
 
 TEST_F(FilePluginTestFixture, TestActivationFailureBadSkeleton) {
   auto plugin = plugin_factory_->Create(
@@ -97,14 +159,11 @@ TEST_F(FilePluginTestFixture, TestActivationFailureBadSkeleton) {
   SetPluginBatchSenderForTesting(plugin.get(),
                                  std::make_unique<BatchSenderType>());
 
+  // Set up expectations.
   EXPECT_CALL(*skel_factory_,
               Create(Types::BpfSkeleton::kFile, _, kBatchInterval))
       .WillOnce(Return(ByMove(nullptr)));
   EXPECT_FALSE(plugin->Activate().ok());
-}
-
-TEST_F(FilePluginTestFixture, TestGetName) {
-  ASSERT_EQ("File", plugin_->GetName());
 }
 
 TEST_F(FilePluginTestFixture, TestBPFEventIsAvailable) {

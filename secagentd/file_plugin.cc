@@ -25,7 +25,6 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/sysmacros.h>
 #include <sys/types.h>
 
 #include <cerrno>
@@ -189,7 +188,8 @@ MatchPathToFilePathPrefixName(
 
 const std::optional<std::string> ConstructOptionalUserhash(
     const std::string& userhash) {
-  if (userhash.empty() || userhash == secagentd::device_user::kUnknown) {
+  if (userhash.empty() || userhash == secagentd::device_user::kUnknown ||
+      userhash == secagentd::device_user::kGuest) {
     return std::nullopt;
   }
   return userhash;
@@ -236,16 +236,9 @@ FilePlugin::FilePlugin(
 }
 
 static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
-  dev_t userspace_dev =
-      makedev(fileStatx.stx_dev_major, fileStatx.stx_dev_minor);
-  // Extract the minor number from the user-space device ID
-  unsigned minor = (userspace_dev & 0xff) | ((userspace_dev >> 12) & ~0xff);
-
-  // Extract the major number from the user-space device ID
-  unsigned major = (userspace_dev >> 8) & 0xfff;
-
   // Combine the major and minor numbers to form the kernel-space device ID
-  dev_t kernel_dev = (static_cast<dev_t>(major) << 20) | minor;
+  dev_t kernel_dev = static_cast<dev_t>((fileStatx.stx_dev_major << 20) |
+                                        fileStatx.stx_dev_minor);
 
   return kernel_dev;
 }
@@ -278,17 +271,19 @@ void TraverseDirectories(
     base::RepeatingCallback<void(const std::string&)> callback,
     bool processSubDirectories,
     bool processFiles) {
-  // Check if the base directory exists and is a directory
-  if (!std::filesystem::exists(baseDir) ||
-      !std::filesystem::is_directory(baseDir)) {
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
+  // Use Platform class to check if the base directory exists and is a directory
+  if (!platform->FilePathExists(baseDir) ||
+      !platform->IsFilePathDirectory(baseDir)) {
     LOG(ERROR) << "The directory " << baseDir
                << " does not exist or is not a directory.";
     return;
   }
 
-  // Iterate over all entries in the base directory
-  for (const auto& entry : std::filesystem::directory_iterator(baseDir)) {
-    // Check if the entry is a directory
+  // Iterate over all entries in the base directory using Platform's
+  // DirectoryIterator
+  for (const auto& entry : platform->FileSystemDirectoryIterator(baseDir)) {
+    // Check if the entry is a directory or a regular file
     if ((entry.is_directory() && processSubDirectories) ||
         (entry.is_regular_file() && processFiles)) {
       // Apply the callback function to the directory path
@@ -300,7 +295,7 @@ void TraverseDirectories(
 absl::Status PopulatePathsMapByCategory(
     FilePathCategory category,
     const std::optional<std::string>& optionalUserHash,
-    std::map<FilePathName, std::vector<PathInfo>>& pathInfoMap) {
+    std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap) {
   // Verify if the provided category exists in the predefined mappings
   auto categoryIt = kFilePathNamesByCategory.find(category);
   if (categoryIt == kFilePathNamesByCategory.end()) {
@@ -339,7 +334,7 @@ absl::Status PopulatePathsMapByCategory(
                 pathInfo->fullResolvedPath = path;
                 pathInfoMap->at(pathName).push_back(*pathInfo);
               },
-              base::Unretained(&pathInfoMap), base::Unretained(&pathInfo),
+              base::Unretained(pathInfoMap), base::Unretained(&pathInfo),
               pathName),
           true, false);
     } else if (pathName == FilePathName::DEVICE_SETTINGS_OWNER_KEY ||
@@ -361,16 +356,16 @@ absl::Status PopulatePathsMapByCategory(
                       pair.value().second);
                 }
               },
-              base::Unretained(&pathInfoMap)),
+              base::Unretained(pathInfoMap)),
           false, true);
     } else if (category == FilePathCategory::USER_PATH) {
       pathInfo.fullResolvedPath = pathInfo.pathPrefix +
                                   optionalUserHash.value() +
                                   pathInfo.pathSuffix.value();
-      pathInfoMap[pathName].push_back(pathInfo);
+      (*pathInfoMap)[pathName].push_back(pathInfo);
     } else {
       pathInfo.fullResolvedPath = pathInfo.pathPrefix;
-      pathInfoMap[pathName].push_back(pathInfo);
+      (*pathInfoMap)[pathName].push_back(pathInfo);
     }
   }
 
@@ -385,7 +380,7 @@ std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
   if (optionalUserHash.has_value()) {
     // Populate paths for USER_PATH category using the provided userHash
     absl::Status status = PopulatePathsMapByCategory(
-        FilePathCategory::USER_PATH, optionalUserHash, pathInfoMap);
+        FilePathCategory::USER_PATH, optionalUserHash, &pathInfoMap);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to populate paths for USER_PATH category: "
                  << status;
@@ -395,13 +390,13 @@ std::map<FilePathName, std::vector<PathInfo>> ConstructAllPathsMap(
   // Populate paths for SYSTEM_PATH and REMOVABLE_PATH categories without
   // userHash
   absl::Status status = PopulatePathsMapByCategory(
-      FilePathCategory::SYSTEM_PATH, std::nullopt, pathInfoMap);
+      FilePathCategory::SYSTEM_PATH, std::nullopt, &pathInfoMap);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to populate paths for SYSTEM_PATH category: "
                << status;
   }
   status = PopulatePathsMapByCategory(FilePathCategory::REMOVABLE_PATH,
-                                      std::nullopt, pathInfoMap);
+                                      std::nullopt, &pathInfoMap);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to populate paths for REMOVABLE_PATH category: "
                << status;
@@ -436,14 +431,14 @@ absl::Status UpdateBPFMapForPathInodes(
     int bpfMapFd,
     const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
     const std::optional<std::string>& optionalUserhash) {
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Open the root directory to use with fstatat for file information
   // retrieval
-  int root_fd = open("/", O_RDONLY | O_DIRECTORY);
+  int root_fd = platform->OpenDirectory("/");
   if (root_fd == -1) {
     return absl::InternalError(strerror(errno));
   }
 
-  base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate over the map of file paths and their associated information
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
@@ -487,8 +482,8 @@ absl::Status UpdateBPFMapForPathInodes(
                 << ", Device ID: " << bpfMapKey.dev_id;
     }
   }
-
-  close(root_fd);  // Close the root directory file descriptor
+  platform->CloseDirectory(
+      root_fd);  // Close the root directory file descriptor
   return absl::OkStatus();
 }
 
@@ -500,13 +495,14 @@ absl::Status AddDeviceIdsToBPFMap(
     return absl::InvalidArgumentError("Invalid BPF map file descriptor.");
   }
 
-  // Open the root directory for use with fstatat
-  int root_fd = open("/", O_RDONLY | O_DIRECTORY);
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
+  // Open the root directory to use with fstatat for file information
+  // retrieval
+  int root_fd = platform->OpenDirectory("/");
   if (root_fd == -1) {
     return absl::InternalError(strerror(errno));
   }
 
-  base::WeakPtr<PlatformInterface> platform = GetPlatform();
   // Iterate through each path and update the BPF map
   for (const auto& [pathName, pathInfoVector] : pathsMap) {
     for (const auto& pathInfo : pathInfoVector) {
@@ -548,7 +544,8 @@ absl::Status AddDeviceIdsToBPFMap(
     }
   }
 
-  close(root_fd);  // Close the root directory file descriptor
+  platform->CloseDirectory(
+      root_fd);  // Close the root directory file descriptor
   return absl::OkStatus();
 }
 
@@ -644,7 +641,8 @@ absl::Status FilePlugin::InitializeFileBpfMaps(const std::string& userhash) {
   return UpdateBPFMapForPathMaps(optionalUserhash, paths_map);
 }
 
-absl::Status FilePlugin::OnUserLogin(const std::string& userHash) {
+void FilePlugin::OnUserLogin(const std::string& device_user,
+                             const std::string& userHash) {
   // Create a map to hold path information
   std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
 
@@ -653,19 +651,24 @@ absl::Status FilePlugin::OnUserLogin(const std::string& userHash) {
       ConstructOptionalUserhash(userHash);
   // Check if userHash is not empty before processing
   if (!optionalUserhash.has_value()) {
-    return absl::InvalidArgumentError("User hash is empty");
+    LOG(ERROR) << "FilePlugin::OnUserLogin: " << "User hash is empty";
   }
 
   // Construct and populate paths for USER_PATH category
   // Construct and populate paths for USER_PATH category
   absl::Status status = PopulatePathsMapByCategory(FilePathCategory::USER_PATH,
-                                                   userHash, pathInfoMap);
+                                                   userHash, &pathInfoMap);
 
   if (!status.ok()) {
-    return status;
+    LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating paths"
+               << status.message();
   }
 
-  return UpdateBPFMapForPathMaps(userHash, pathInfoMap);
+  status = UpdateBPFMapForPathMaps(userHash, pathInfoMap);
+  if (!status.ok()) {
+    LOG(ERROR) << "FilePlugin::OnUserLogin: Error Populating BPF Maps"
+               << status.message();
+  }
 }
 
 absl::Status FilePlugin::OnUserLogout(const std::string& userHash) {
@@ -713,9 +716,19 @@ absl::Status FilePlugin::Activate() {
       &FilePlugin::HandleRingBufferEvent, weak_ptr_factory_.GetWeakPtr());
 
   absl::Status status = bpf_skeleton_helper_->LoadAndAttach(callbacks);
-  if (status == absl::OkStatus()) {
-    batch_sender_->Start();
+  if (status != absl::OkStatus()) {
+    return status;
   }
+
+  std::string username = device_user_->GetSanitizedUsername();
+  if (InitializeFileBpfMaps(username) != absl::OkStatus()) {
+    return absl::InternalError("InitializeFileBpfMaps failed");
+  }
+
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&FilePlugin::OnUserLogin, weak_ptr_factory_.GetWeakPtr()));
+  batch_sender_->Start();
+
   return status;
 }
 
@@ -753,7 +766,8 @@ void FilePlugin::EnqueueBatchedEvent(
 
 void FilePlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::FileEventAtomicVariant> atomic_event,
-    const std::string& device_user) {
+    const std::string& device_user,
+    const std::string& device_userhash) {
   atomic_event->mutable_common()->set_device_user(device_user);
   EnqueueBatchedEvent(std::move(atomic_event));
 }

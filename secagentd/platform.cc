@@ -4,6 +4,7 @@
 
 #include "secagentd/platform.h"
 
+#include <fcntl.h>
 #include <net/if.h>
 #include <sys/syscall.h>
 
@@ -142,6 +143,29 @@ int Platform::Sys_statx(int dir_fd,
                         unsigned int mask,
                         struct statx* statxbuf) {
   return syscall(SYS_statx, dir_fd, path.c_str(), flags, mask, statxbuf);
+}
+
+bool Platform::FilePathExists(const std::string& path) const {
+  return std::filesystem::exists(path);
+}
+
+bool Platform::IsFilePathDirectory(const std::string& path) const {
+  return std::filesystem::is_directory(path);
+}
+
+std::vector<std::filesystem::directory_entry>
+Platform::FileSystemDirectoryIterator(const std::string& path) const {
+  return std::vector<std::filesystem::directory_entry>(
+      std::filesystem::directory_iterator(path),
+      std::filesystem::directory_iterator());
+}
+
+int Platform::OpenDirectory(const std::string& path) const {
+  return open(path.c_str(), O_RDONLY | O_DIRECTORY);
+}
+
+int Platform::CloseDirectory(int fd) const {
+  return close(fd);
 }
 
 }  // namespace secagentd

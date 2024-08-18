@@ -52,6 +52,7 @@ class MockSystemQuit {
 
 constexpr char kAffiliatedUser[] = "deviceUser@managedchrome.com";
 constexpr char kUnaffiliatedUser[] = "67d834ce-a6ec-4df6-bcc7-0fa926edf432";
+constexpr char kSanitized[] = "943cebc444e3e19da9a2dbf9c8a473bc7cc16d9d";
 
 class DisableUnaffiliatedSecAgentTestFixture
     : public ::testing::TestWithParam<XdrFeatureAndPolicy> {
@@ -217,8 +218,9 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestReportingEnabled) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
@@ -280,12 +282,14 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture,
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })))
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kUnaffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kUnaffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
@@ -365,12 +369,14 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture,
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })))
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kUnaffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kUnaffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
@@ -445,8 +451,9 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestEnabledToDisabled) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
@@ -538,8 +545,9 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestDisabledToEnabled) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillRepeatedly(Return(false));
@@ -672,8 +680,9 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestFailedPluginCreation) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillOnce(Return(false));
@@ -727,8 +736,9 @@ TEST_F(DisableUnaffiliatedSecAgentTestFixture, TestFailedPluginActivation) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*policies_features_broker_, GetDeviceReportXDREventsPolicy)
@@ -796,8 +806,9 @@ TEST_P(DisableUnaffiliatedSecAgentTestFixture, TestReportingDisabled) {
 
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kAffiliatedUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kAffiliatedUser, kSanitized);
           })));
 
   EXPECT_CALL(*device_user_, GetIsUnaffiliated).WillRepeatedly(Return(false));

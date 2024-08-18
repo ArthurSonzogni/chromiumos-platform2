@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/plugins.h"
-
 #include <iterator>
 #include <memory>
 
@@ -15,6 +13,7 @@
 #include "gtest/gtest.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
+#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "secagentd/test/mock_batch_sender.h"
@@ -42,6 +41,7 @@ using ::testing::WithArg;
 using ::testing::WithArgs;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
+constexpr char kSanitized[] = "943cebc444e3e19da9a2dbf9c8a473bc7cc16d9d";
 
 class ProcessPluginTestFixture : public ::testing::Test {
  protected:
@@ -178,8 +178,9 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillOnce(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
@@ -290,8 +291,9 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   std::vector<std::unique_ptr<pb::ProcessEventAtomicVariant>>
@@ -363,8 +365,9 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
@@ -445,8 +448,9 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_process_event;
@@ -521,8 +525,9 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
   EXPECT_CALL(*device_user_, GetDeviceUserAsync)
       .WillRepeatedly(WithArg<0>(Invoke(
-          [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run(kDeviceUser);
+          [](base::OnceCallback<void(const std::string& device_user,
+                                     const std::string& sanitized_uname)> cb) {
+            std::move(cb).Run(kDeviceUser, kSanitized);
           })));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_process_event;

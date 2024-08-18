@@ -33,7 +33,8 @@ class MockDeviceUser : public DeviceUserInterface {
   MOCK_METHOD(void, RegisterRemoveCompletedHandler, (), (override));
   MOCK_METHOD(void,
               GetDeviceUserAsync,
-              (base::OnceCallback<void(const std::string& device_user)> cb),
+              (base::OnceCallback<void(const std::string& device_user,
+                                       const std::string& device_userhash)> cb),
               (override));
   MOCK_METHOD((std::list<std::string>),
               GetUsernamesForRedaction,

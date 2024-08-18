@@ -69,7 +69,8 @@ class DeviceUserInterface : public base::RefCounted<DeviceUserInterface> {
       base::RepeatingCallback<void(const std::string&)> cb) = 0;
   virtual void RegisterRemoveCompletedHandler() = 0;
   virtual void GetDeviceUserAsync(
-      base::OnceCallback<void(const std::string& device_user)> cb) = 0;
+      base::OnceCallback<void(const std::string& device_user,
+                              const std::string& device_userhash)> cb) = 0;
   virtual std::list<std::string> GetUsernamesForRedaction() = 0;
   virtual bool GetIsUnaffiliated() = 0;
   virtual std::string GetUsernameBasedOnAffiliation(
@@ -111,7 +112,8 @@ class DeviceUser : public DeviceUserInterface {
   void RegisterRemoveCompletedHandler() override;
   // Returns the current device user.
   void GetDeviceUserAsync(
-      base::OnceCallback<void(const std::string& device_user)> cb) override;
+      base::OnceCallback<void(const std::string& device_user,
+                              const std::string& device_userhash)> cb) override;
   // Returns the most recently used usernames so they can be redacted.
   std::list<std::string> GetUsernamesForRedaction() override;
   // Returns if the user is unaffilaited to determine if events should be
@@ -185,7 +187,7 @@ class DeviceUser : public DeviceUserInterface {
       cryptohome_proxy_;
   std::vector<base::RepeatingCallback<void(const std::string&)>>
       session_change_listeners_;
-  std::vector<base::OnceCallback<void(const std::string&)>>
+  std::vector<base::OnceCallback<void(const std::string&, const std::string&)>>
       on_device_user_ready_cbs_;
   std::string device_user_ = device_user::kEmpty;
   std::string sanitized_username_ = device_user::kEmpty;

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/plugins.h"
-
 #include <cstdint>
 #include <memory>
 #include <utility>
@@ -18,6 +16,7 @@
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
+#include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -146,7 +145,8 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
 
 void ProcessPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::ProcessEventAtomicVariant> atomic_event,
-    const std::string& device_user) {
+    const std::string& device_user,
+    const std::string& device_userhash) {
   atomic_event->mutable_common()->set_device_user(device_user);
   EnqueueBatchedEvent(std::move(atomic_event));
 }

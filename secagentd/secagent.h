@@ -17,8 +17,8 @@
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
-#include "tpm_manager/dbus-proxies.h"
 #include "tpm_manager-client/tpm_manager/dbus-proxies.h"
+#include "tpm_manager/dbus-proxies.h"
 
 namespace secagentd {
 
@@ -64,7 +64,8 @@ class SecAgent {
   void StartXDRReporting();
   // When the device user is retrieved it checks for affiliation and if
   // the user is affiliated reporting will start.
-  void OnDeviceUserRetrieved(const std::string& state);
+  void OnDeviceUserRetrieved(const std::string& state,
+                             const std::string& sanitized_username);
   // If the device user is unaffiliated restart secagentd and stop reporting.
   void OnSessionStateChange(const std::string& state);
   // Flush all plugins after new sign in to avoid mixing old events with

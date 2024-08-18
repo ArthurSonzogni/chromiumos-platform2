@@ -10,6 +10,8 @@
 #include <memory>
 #include <string>
 #include <sys/stat.h>
+#include <filesystem>
+#include <vector>
 // clang-format on
 
 #include "base/files/file_descriptor_watcher_posix.h"
@@ -71,6 +73,12 @@ class PlatformInterface {
                         int flags,
                         unsigned int mask,
                         struct statx* statxbuf) = 0;
+  virtual bool FilePathExists(const std::string& path) const = 0;
+  virtual bool IsFilePathDirectory(const std::string& path) const = 0;
+  virtual std::vector<std::filesystem::directory_entry>
+  FileSystemDirectoryIterator(const std::string& path) const = 0;
+  virtual int OpenDirectory(const std::string& path) const = 0;
+  virtual int CloseDirectory(int fd) const = 0;
   virtual ~PlatformInterface() = default;
 };
 
@@ -128,6 +136,12 @@ class Platform : public PlatformInterface {
                 int flags,
                 unsigned int mask,
                 struct statx* statxbuf) override;
+  bool FilePathExists(const std::string& path) const override;
+  bool IsFilePathDirectory(const std::string& path) const override;
+  std::vector<std::filesystem::directory_entry> FileSystemDirectoryIterator(
+      const std::string& path) const override;
+  int OpenDirectory(const std::string& path) const override;
+  int CloseDirectory(int fd) const override;
 
  private:
   base::WeakPtrFactory<Platform> weak_ptr_factory_;

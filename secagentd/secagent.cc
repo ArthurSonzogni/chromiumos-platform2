@@ -290,7 +290,8 @@ void SecAgent::OnSessionStateChange(const std::string& state) {
   }
 }
 
-void SecAgent::OnDeviceUserRetrieved(const std::string& user) {
+void SecAgent::OnDeviceUserRetrieved(const std::string& user,
+                                     const std::string& device_userhash) {
   if (reporting_events_) {
     if (device_user_->GetIsUnaffiliated()) {
       LOG(INFO) << "Stopping reporting: Unaffiliated user signed in";

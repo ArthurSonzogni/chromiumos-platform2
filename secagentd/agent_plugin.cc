@@ -2,22 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// clang-format off
 #include "secagentd/plugins.h"
+// clang-format on
 
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
-#include <sys/utsname.h>
 
 #if __has_include(<asm/bootparam.h>)
 #include <asm/bootparam.h>
 #define HAVE_BOOTPARAM
 #endif
-#include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "attestation/proto_bindings/interface.pb.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/location.h"
@@ -315,7 +317,8 @@ void AgentPlugin::SendAgentEvent(bool is_agent_start) {
 
 void AgentPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::AgentEventAtomicVariant> agent_event,
-    const std::string& device_user) {
+    const std::string& device_user,
+    const std::string& device_userhash) {
   agent_event->mutable_common()->set_device_user(device_user);
   auto xdr_proto = std::make_unique<pb::XdrAgentEvent>();
   auto batched_event = xdr_proto->add_batched_events();

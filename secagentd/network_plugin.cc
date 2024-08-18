@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "secagentd/plugins.h"
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -15,6 +13,7 @@
 #include "base/sys_byteorder.h"
 #include "secagentd/batch_sender.h"
 #include "secagentd/bpf/bpf_types.h"
+#include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
@@ -271,7 +270,8 @@ void NetworkPlugin::EnqueueBatchedEvent(
 
 void NetworkPlugin::OnDeviceUserRetrieved(
     std::unique_ptr<pb::NetworkEventAtomicVariant> atomic_event,
-    const std::string& device_user) {
+    const std::string& device_user,
+    const std::string& device_userhash) {
   atomic_event->mutable_common()->set_device_user(device_user);
   EnqueueBatchedEvent(std::move(atomic_event));
 }

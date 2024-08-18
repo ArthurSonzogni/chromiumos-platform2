@@ -161,9 +161,10 @@ void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
 }
 
 void DeviceUser::GetDeviceUserAsync(
-    base::OnceCallback<void(const std::string& device_user)> cb) {
+    base::OnceCallback<void(const std::string& device_user,
+                            const std::string& device_userhash)> cb) {
   if (device_user_ready_) {
-    std::move(cb).Run(device_user_);
+    std::move(cb).Run(device_user_, sanitized_username_);
   } else {
     on_device_user_ready_cbs_.push_back(std::move(cb));
   }
@@ -180,6 +181,7 @@ void DeviceUser::OnRegistrationResult(const std::string& interface,
     LOG(ERROR) << "Callback registration failed for dbus signal: " << signal
                << " on interface: " << interface;
     device_user_ = device_user::kUnknown;
+    sanitized_username_ = device_user::kUnknown;
   } else if (interface == "org.chromium.SessionManagerInterface" &&
              signal == "SessionStateChanged") {
     OnSessionStateChange(kInit);
@@ -224,7 +226,7 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
 
   device_user_ready_ = true;
   for (auto& cb : on_device_user_ready_cbs_) {
-    std::move(cb).Run(device_user_);
+    std::move(cb).Run(device_user_, sanitized_username_);
   }
   on_device_user_ready_cbs_.clear();
 
@@ -262,11 +264,13 @@ bool DeviceUser::UpdateDeviceUser(const std::string& state) {
   if (!session_manager_->IsGuestSessionActive(&is_guest, &error) ||
       error.get()) {
     device_user_ = device_user::kUnknown;
+    sanitized_username_ = device_user::kUnknown;
     // Do not exit method because possible that it is user session.
     LOG(ERROR) << "Failed to deterimine if guest session "
                << error->GetMessage();
   } else if (is_guest) {
     device_user_ = device_user::kGuest;
+    sanitized_username_ = device_user::kGuest;
     return true;
   }
 
@@ -282,7 +286,6 @@ bool DeviceUser::UpdateDeviceUser(const std::string& state) {
     return true;
   } else {
     // No active session.
-    sanitized_username_ = sanitized;
     if (username.empty()) {
       // Only set as empty when Guest session retrieval succeeds.
       if (device_user_ != device_user::kUnknown) {
@@ -301,6 +304,8 @@ bool DeviceUser::UpdateDeviceUser(const std::string& state) {
     if (SetDeviceUserIfLocalAccount(username)) {
       return true;
     }
+
+    sanitized_username_ = sanitized;
 
     // Check if sanitzed username directory exists.
     base::FilePath directory_path =
@@ -455,7 +460,7 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
 
   device_user_ready_ = true;
   for (auto& cb : on_device_user_ready_cbs_) {
-    std::move(cb).Run(device_user_);
+    std::move(cb).Run(device_user_, sanitized_username_);
   }
   on_device_user_ready_cbs_.clear();
 

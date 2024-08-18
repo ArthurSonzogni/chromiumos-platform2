@@ -926,10 +926,12 @@ TEST_F(DeviceUserTestFixture, TestGetDeviceUserAsync) {
   device_user_->RegisterSessionChangeHandler();
   registration_cb_.Run(kStarted);
   EXPECT_FALSE(GetDeviceUserReady());
-  base::test::TestFuture<const std::string&> future_not_ready_1;
+  base::test::TestFuture<const std::string&, const std::string&>
+      future_not_ready_1;
   device_user_->GetDeviceUserAsync(future_not_ready_1.GetCallback());
 
-  base::test::TestFuture<const std::string&> future_not_ready_2;
+  base::test::TestFuture<const std::string&, const std::string&>
+      future_not_ready_2;
   device_user_->GetDeviceUserAsync(future_not_ready_2.GetCallback());
   EXPECT_FALSE(future_not_ready_1.IsReady());
   EXPECT_EQ(2, GetDeviceUserReadyCbsSize());
@@ -937,7 +939,7 @@ TEST_F(DeviceUserTestFixture, TestGetDeviceUserAsync) {
   EXPECT_TRUE(future_not_ready_1.Wait());
   EXPECT_TRUE(future_not_ready_2.Wait());
   EXPECT_TRUE(GetDeviceUserReady());
-  base::test::TestFuture<const std::string&> future_ready;
+  base::test::TestFuture<const std::string&, const std::string&> future_ready;
   device_user_->GetDeviceUserAsync(future_ready.GetCallback());
   EXPECT_TRUE(future_ready.Wait());
 
