@@ -100,12 +100,12 @@ class DataFrameCountTrieAccess:
                 t = tuple(row)[0:i]
                 self.counts_dict[t] += 1
 
-    def isin(self, values: tuple[tuple[Any, ...]]) -> bool:
+    def isin(self, values: tuple[Any, ...]) -> bool:
         """A tuple will only be in the cache if the count is at least 1."""
         # This must remain very fast, so do not add additional asserts/check.
         return values in self.counts_dict
 
-    def counts(self, values: tuple[tuple[Any, ...]]) -> int:
+    def counts(self, values: tuple[Any, ...]) -> int:
         """Get the number of rows that start with `values` tuple."""
         # This must remain very fast, so do not add additional asserts/check.
         return self.counts_dict[values]
