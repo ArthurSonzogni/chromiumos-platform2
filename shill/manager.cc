@@ -2334,7 +2334,7 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
                   << ": Skipping connectivity test: no Network connection";
         continue;
       }
-      network->StartConnectivityTest(GetPortalDetectorProbingConfiguration());
+      network->StartConnectivityTest();
     }
   }
 }

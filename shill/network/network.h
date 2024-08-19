@@ -388,10 +388,9 @@ class Network : public NetworkMonitor::ClientNetwork {
     return network_validation_result_;
   }
 
-  // Start a separate PortalDetector instance and ConnectivityDiagnostics
-  // instances for the purpose of testing network and Internet connectivity on
-  // the current network.
-  void StartConnectivityTest(PortalDetector::ProbingConfiguration probe_config);
+  // Starts NetworkMonitor's connection diagnostic tests for the current network
+  // connection and refreshes traffic counters to print in logs.
+  void StartConnectivityTest();
 
   // Returns the RPC identifiers of the available IPConfig objects (at most two,
   // one for IPv4 and one for IPv6) owned by the Network object.
@@ -547,9 +546,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   // will be invoked with |is_failure|.
   void StopInternal(bool is_failure, bool trigger_callback);
 
-  void ConnectivityTestCallback(const std::string& logging_tag,
-                                const PortalDetector::Result& result);
-
   // Functions for IPv4.
   // Triggers a reconfiguration on connection for an IPv4 config change.
   void OnIPv4ConfigUpdated();
@@ -703,8 +699,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Only defined if NetworkMonitor completed at least one attempt for the
   // current network connection.
   std::optional<NetworkMonitor::Result> network_validation_result_;
-  // Another instance of PortalDetector used for CreateConnectivityReport.
-  std::unique_ptr<PortalDetector> connectivity_test_portal_detector_;
 
   base::ObserverList<EventHandler> event_handlers_;
 

@@ -214,8 +214,9 @@ class NetworkMonitor {
   // Sets the terms and conditions URL.
   mockable void SetTermsAndConditions(const net_base::HttpUrl& url);
 
-  // Starts IPv4 and IPv6 connectivity diagnostics if the IP family is
-  // configured and if there is no diagnostics already running.
+  // Starts IPv4 and IPv6 connectivity diagnostics and IPv4 and IPv6 portal
+  // detection if the IP family is configured and if there is no diagnostics
+  // already running. Results are only logged.
   void StartConnectionDiagnostics();
 
   // Injects the PortalDetector for testing.
@@ -257,6 +258,14 @@ class NetworkMonitor {
       const net_base::NetworkConfig& network_config);
   void StartIPv6ConnectionDiagnostics(
       const net_base::NetworkConfig& network_config);
+  // Initiates portal detection tests on this Network for IPv4 or IPv6 if
+  // |network_config| has a configuration for the corresponding IP family.
+  void StartIPv4PortalDetectorTest(
+      const net_base::NetworkConfig& network_config);
+  void IPv4PortalDetectorTestCallback(const PortalDetector::Result& result);
+  void StartIPv6PortalDetectorTest(
+      const net_base::NetworkConfig& network_config);
+  void IPv6PortalDetectorTestCallback(const PortalDetector::Result& result);
 
   // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;
@@ -293,6 +302,10 @@ class NetworkMonitor {
   std::unique_ptr<ConnectionDiagnosticsFactory> connection_diagnostics_factory_;
   std::unique_ptr<ConnectionDiagnostics> ipv4_connection_diagnostics_;
   std::unique_ptr<ConnectionDiagnostics> ipv6_connection_diagnostics_;
+  // Other instances of PortalDetector used to evaluate IPv4 and IPv6 Internet
+  // connectivity when Manager.CreateConnectivityReport is called.
+  std::unique_ptr<PortalDetector> ipv4_connectivity_test_portal_detector_;
+  std::unique_ptr<PortalDetector> ipv6_connectivity_test_portal_detector_;
 
   base::WeakPtrFactory<NetworkMonitor> weak_ptr_factory_for_capport_{this};
 };

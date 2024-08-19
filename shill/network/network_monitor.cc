@@ -330,7 +330,9 @@ void NetworkMonitor::StopNetworkValidationLog() {
 void NetworkMonitor::StartConnectionDiagnostics() {
   const net_base::NetworkConfig& network_config = client_->GetCurrentConfig();
   StartIPv4ConnectionDiagnostics(network_config);
+  StartIPv4PortalDetectorTest(network_config);
   StartIPv6ConnectionDiagnostics(network_config);
+  StartIPv6PortalDetectorTest(network_config);
 }
 
 void NetworkMonitor::StartIPv4ConnectionDiagnostics(
@@ -411,6 +413,84 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
 
   LOG(INFO) << logging_tag_ << " " << __func__
             << ": IPv6 ConnectionDiagnostics started";
+}
+
+void NetworkMonitor::StartIPv4PortalDetectorTest(
+    const net_base::NetworkConfig& network_config) {
+  if (ipv4_connectivity_test_portal_detector_) {
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": Already running";
+    return;
+  }
+  if (!network_config.ipv4_address) {
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": no IPv4 Address";
+    return;
+  }
+  std::vector<net_base::IPAddress> dns_list;
+  for (const auto& addr : network_config.dns_servers) {
+    if (addr.GetFamily() == net_base::IPFamily::kIPv4) {
+      dns_list.push_back(addr);
+    }
+  }
+  if (dns_list.empty()) {
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": No IPv4 DNS servers";
+    return;
+  }
+  LOG(INFO) << logging_tag_ << " " << __func__;
+  ipv4_connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
+      dispatcher_, patchpanel_client_, interface_, probing_configuration_,
+      logging_tag_);
+  // base::Unretained() is safe because
+  // |ipv4_connectivity_test_portal_detector_| is owned by |*this|. When the
+  // task is executed, |*this| is guaranteed alive.
+  ipv4_connectivity_test_portal_detector_->Start(
+      /*http_only=*/false, net_base::IPFamily::kIPv4, dns_list,
+      base::BindOnce(&NetworkMonitor::IPv4PortalDetectorTestCallback,
+                     base::Unretained(this)));
+}
+
+void NetworkMonitor::IPv4PortalDetectorTestCallback(
+    const PortalDetector::Result& result) {
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << result;
+  ipv4_connectivity_test_portal_detector_.reset();
+}
+
+void NetworkMonitor::StartIPv6PortalDetectorTest(
+    const net_base::NetworkConfig& network_config) {
+  if (ipv6_connectivity_test_portal_detector_) {
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": Already running";
+    return;
+  }
+  if (network_config.ipv6_addresses.empty()) {
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": no IPv6 Address";
+    return;
+  }
+  std::vector<net_base::IPAddress> dns_list;
+  for (const auto& addr : network_config.dns_servers) {
+    if (addr.GetFamily() == net_base::IPFamily::kIPv6) {
+      dns_list.push_back(addr);
+    }
+  }
+  if (dns_list.empty()) {
+    LOG(INFO) << logging_tag_ << " " << __func__ << ": No IPv6 DNS servers";
+    return;
+  }
+  LOG(INFO) << logging_tag_ << " " << __func__;
+  ipv6_connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
+      dispatcher_, patchpanel_client_, interface_, probing_configuration_,
+      logging_tag_);
+  // base::Unretained() is safe because
+  // |ipv6_connectivity_test_portal_detector_| is owned by |*this|. When the
+  // task is executed, |*this| is guaranteed alive.
+  ipv6_connectivity_test_portal_detector_->Start(
+      /*http_only=*/false, net_base::IPFamily::kIPv6, dns_list,
+      base::BindOnce(&NetworkMonitor::IPv6PortalDetectorTestCallback,
+                     base::Unretained(this)));
+}
+
+void NetworkMonitor::IPv6PortalDetectorTestCallback(
+    const PortalDetector::Result& result) {
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << result;
+  ipv6_connectivity_test_portal_detector_.reset();
 }
 
 void NetworkMonitor::SetValidationMode(

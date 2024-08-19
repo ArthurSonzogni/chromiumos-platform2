@@ -1169,42 +1169,14 @@ void Network::OnNetworkMonitorResult(const NetworkMonitor::Result& result) {
   }
 }
 
-void Network::StartConnectivityTest(
-    PortalDetector::ProbingConfiguration probe_config) {
-  LOG(INFO) << *this << " " << __func__
-            << ": Starting Internet connectivity test";
-
+void Network::StartConnectivityTest() {
   if (network_monitor_) {
     network_monitor_->StartConnectionDiagnostics();
   }
 
-  auto family = GetNetworkValidationIPFamily();
-  if (!family) {
-    LOG(ERROR) << *this << " " << __func__ << ": No valid IP address";
-    return;
-  }
-  auto dns_list = GetNetworkValidationDNSServers(*family);
-  if (dns_list.empty()) {
-    LOG(ERROR) << *this << " " << __func__ << ": No DNS servers";
-    return;
-  }
-  connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, patchpanel_client_, interface_name_, probe_config,
-      context_.logging_tag());
-  connectivity_test_portal_detector_->Start(
-      /*http_only=*/false, *family, dns_list,
-      base::BindOnce(&Network::ConnectivityTestCallback,
-                     weak_factory_.GetWeakPtr(), context_.logging_tag()));
-}
-
-void Network::ConnectivityTestCallback(const std::string& logging_tag,
-                                       const PortalDetector::Result& result) {
-  LOG(INFO) << logging_tag << ": Completed connectivity test: " << result;
-  connectivity_test_portal_detector_.reset();
-
-  RequestTrafficCounters(base::BindOnce(&Network::LogTrafficCounter,
-                                        weak_factory_.GetWeakPtr(), logging_tag,
-                                        raw_traffic_counter_snapshot_));
+  RequestTrafficCounters(
+      base::BindOnce(&Network::LogTrafficCounter, weak_factory_.GetWeakPtr(),
+                     context_.logging_tag(), raw_traffic_counter_snapshot_));
 }
 
 RpcIdentifiers Network::AvailableIPConfigIdentifiers() const {
