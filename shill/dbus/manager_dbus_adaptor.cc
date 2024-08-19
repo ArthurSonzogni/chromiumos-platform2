@@ -606,4 +606,13 @@ void ManagerDBusAdaptor::DisconnectFromP2PGroup(
       base::BindOnce(on_result_fn, std::move(response)), shill_id);
 }
 
+bool ManagerDBusAdaptor::SetWiFiInterfacePriority(brillo::ErrorPtr* error,
+                                                  const std::string& name,
+                                                  const int32_t priority) {
+  SLOG(this, 2) << __func__;
+  Error e;
+  manager_->SetWiFiInterfacePriority(name, priority, &e);
+  return !e.ToChromeosError(error);
+}
+
 }  // namespace shill

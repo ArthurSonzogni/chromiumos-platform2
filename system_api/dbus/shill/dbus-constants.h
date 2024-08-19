@@ -95,6 +95,9 @@ constexpr char kSetParametersFunction[] = "SetParameters";
 constexpr char kSendPacketFunction[] = "SendPacket";
 constexpr char kUpdateConnectionStateFunction[] = "UpdateConnectionState";
 
+// WiFi interface priority function name.
+constexpr char kSetWiFiInterfacePriorityFunction[] = "SetWiFiInterfacePriority";
+
 // Manager property names.
 constexpr char kActiveProfileProperty[] = "ActiveProfile";
 constexpr char kAlwaysOnVpnPackageProperty[] = "AlwaysOnVpnPackage";

@@ -512,6 +512,10 @@ class Manager {
   // Get the priorities of all Wi-Fi interfaces.
   KeyValueStores GetWiFiInterfacePriorities(Error* error);
 
+  void SetWiFiInterfacePriority(const std::string name,
+                                const int32_t,
+                                Error* error);
+
   // Creates a set of Passpoint credentials from |properties| in the profile
   // referenced by |profile_id|.
   bool AddPasspointCredentials(const std::string& profile_rpcid,
