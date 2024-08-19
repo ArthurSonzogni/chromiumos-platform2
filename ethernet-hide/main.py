@@ -17,8 +17,10 @@ import argparse
 import logging
 import logging.handlers
 import time
+from typing import Dict, List
 
 import ehide.ehide_daemon
+import ehide.interface
 
 
 def get_parser() -> argparse.ArgumentParser:
@@ -63,13 +65,19 @@ def get_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "-e",
-        "--ether-ifname",
+        "-i",
+        "--interface",
         type=str,
+        action="append",
         help=(
-            "Manually specify the name of the ethernet device to hide. If not "
-            "specified, ehide will automatically detect the connected Ethernet "
-            "interface."
+            "Manually specify the name of the Ethernet interface to hide. Can "
+            "appear multiple times to specify multiple interfaces. Two formats "
+            "are allowed: <ifname> or <ifname>=<cidr>. If only <ifname> is "
+            "specified then DHCP will be used for dynamic IPv4 provisioning. "
+            "If the format is <ifname>=<cidr> then the IPv4 address will be "
+            "statically set to <cidr>. If no interface is specified, ehide "
+            "will automatically detect all the connected Ethernet interfaces "
+            "to hide. "
         ),
     )
     parser.add_argument(
@@ -100,6 +108,34 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def parse_interfaces(
+    interfaces: List[str],
+) -> Dict[str, ehide.interface.Interface]:
+    """Parses interfaces from the command line arguments.
+
+    Args:
+        interfaces: A list of interfaces from the command line arguments. Each
+        is in the format of either <ifname> or <ifname>=<cidr>.
+
+    Returns:
+        A dictionary of interfaces that maps Ethernet interface names to
+        ehide.interface.Interface objects.
+    """
+    ret: Dict[str, ehide.interface.Interface] = {}
+    for interface in interfaces:
+        interface_split = interface.split("=")
+        if len(interface_split) == 1:  # <ifname>
+            ifname = interface_split[0]
+            ret[ifname] = ehide.interface.Interface(ifname)
+        elif len(interface_split) == 2:  # <ifname>=<cidr>
+            ifname, cidr = interface_split
+            ret[ifname] = ehide.interface.Interface(ifname)
+            ret[ifname].static_ipv4_cidr = cidr
+        else:
+            raise ValueError(f"Invalid interface: {interface}.")
+    return ret
+
+
 def main():
     opts = get_parser().parse_args()
     action: str = opts.action
@@ -121,19 +157,14 @@ def main():
     # Use GMT timezone.
     logging.Formatter.converter = time.gmtime
 
-    if opts.ether_ifname:
-        ether_ifnames = [opts.ether_ifname]
+    if opts.interface:
+        interfaces = parse_interfaces(opts.interface)
     else:
-        ether_ifnames = []
-    if opts.static_ipv4_addr and opts.ether_ifname:
-        static_ipv4_cidr = {opts.ether_ifname: opts.static_ipv4_addr}
-    else:
-        static_ipv4_cidr = {}
+        interfaces = {}
     ehide_daemon = ehide.ehide_daemon.EhideDaemon(
         action=action,
         approach=ehide.ehide_daemon.Approach.from_str(opts.approach),
-        ether_ifnames=ether_ifnames,
-        static_ipv4_cidr=static_ipv4_cidr,
+        interfaces=interfaces,
         dhclient_dir=opts.dhclient_dir,
         netns_name=opts.netns_name,
     )

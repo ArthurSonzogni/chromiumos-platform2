@@ -625,8 +625,7 @@ class EhideDaemon(daemon.Daemon):
         self,
         action: str,
         approach: Approach,
-        ether_ifnames: List[str],
-        static_ipv4_cidr: Dict[str, str],
+        interfaces: Dict[str, interface.Interface],
         dhclient_dir: str,
         netns_name: str,
     ):
@@ -645,13 +644,8 @@ class EhideDaemon(daemon.Daemon):
             action: The ehide action.
             approach: The approach to hiding Ethernet interface. Can be
                 FORWARDING or SHELL.
-            ether_ifnames: Manually specified ethernet interface names. If it is
-                empty then the Ethernet interface names will be determined
-                automatically using the shill API.
-            static_ipv4_cidr: A dict. The key is the Ethernet interface name,
-                and the value is the static IPv4 CIDR used to set this
-                interface. For those interfaces that are not in the dict, their
-                IPv4 addresses will be set dynamically using DHCP.
+            interfaces: A dict that maps interface names to interface.Interface
+                objects.
             dhclient_dir: The directory path of dhclient files.
             netns_name: The name of the network namespace to hide Ethernet
                 interface.
@@ -670,16 +664,19 @@ class EhideDaemon(daemon.Daemon):
         self.netns_name = netns_name
 
         if action == "start":
-            if not ether_ifnames:
+            if not interfaces:
                 ether_ifnames = dbus_utils.get_connected_ethernet_interfaces()
                 if not ether_ifnames:
                     logging.error("No Ethernet interface found.")
                     sys.exit(1)
+                for ifname in ether_ifnames:
+                    interfaces[ifname] = interface.Interface(ifname)
 
-            self.interfaces: Dict[str, interface.Interface] = {}
-            logging.info("Ethernet interfaces to hide: %s.", ether_ifnames)
-            for ifname in ether_ifnames:
-                self.interfaces[ifname] = interface.Interface(ifname)
+            self.interfaces = interfaces
+            logging.info(
+                "Ethernet interfaces to hide: %s.",
+                ", ".join(list(self.interfaces.keys())),
+            )
 
             self.is_dhcp_used = False
             for ifname, iface in self.interfaces.items():
@@ -692,8 +689,6 @@ class EhideDaemon(daemon.Daemon):
                         "Failed to acquire MAC address of %s.", ifname
                     )
                     sys.exit(1)
-                if ifname in static_ipv4_cidr:
-                    iface.static_ipv4_cidr = static_ipv4_cidr[ifname]
                 has_ipv4 = check_interface_ip_in_netns(IpFamily.IPv4, ifname)
                 if has_ipv4:
                     logging.info("Init: Found IPv4 address of %s.", ifname)
