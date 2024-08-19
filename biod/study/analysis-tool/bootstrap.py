@@ -372,6 +372,14 @@ class BootstrapFullFARHierarchy(Bootstrap):
         self.users_list = exp.user_list()
         self.fingers_list = exp.finger_list()
         self.samples_list = exp.sample_list()
+        # Precompute all possible remaining fingers_lists for the scenario
+        # when we randomly choose enrollment and verification from the same
+        # user. That means that when we select the verification finger, it
+        # should be from a fingers_list that doesn't include the enrollment
+        # finger.
+        self.fingers_remaining_map = {
+            f: np.where(self.fingers_list != f)[0] for f in self.fingers_list
+        }
 
         # If you add exp, fa_table, and far_decisions to the self object,
         # it becomes no longer runtime feasible to use USE_GLOBAL_SHARING=False.
@@ -400,6 +408,7 @@ class BootstrapFullFARHierarchy(Bootstrap):
         user_list = self.users_list
         fingers_list = self.fingers_list
         samples_list = self.samples_list
+        fingers_remaining_map = self.fingers_remaining_map
 
         fa_set = self.fa_set
         fa_trie = self.fa_trie
@@ -418,64 +427,22 @@ class BootstrapFullFARHierarchy(Bootstrap):
                     if not fa_trie.isin((v, t, fv)):
                         continue
 
-                    # FIXME: This is a hack to try to fix the possible
-                    # sample pool issue described below.
-                    # This is less bad, since there are only 6 fingers.
-                    # mod_finger_list = np.array(
-                    #     [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5]
-                    # )
-                    #
-                    # It should be known that having this fix here or not
-                    # having this fix here does not change the output
-                    # percentiles + mean. It also doesn't seem to change the
-                    # histogram skew.
-                    mod_finger_list = fingers_list
-                    # if v == t:
-                    #     mod_finger_list = np.array(
-                    #         np.where(~(mod_finger_list == fv))
-                    #     )
+                    # It should be known that using this filtered finger list or
+                    # not using this filtered finger list doesn't make any
+                    # noticeable difference in the bootstrap results, including
+                    # percentiles, mean, or skewness.
+                    rem_fingers_list = fingers_list
+                    if v == t:
+                        rem_fingers_list = fingers_remaining_map[fv]
 
-                    for ft in fpsutils.boot_sample(mod_finger_list, rng=rng):
-                        # FIXME: See below conversation.
-                        # FIXME: We could have this boot_sampile keep running
-                        # until it has seen len(fingers_list) or
-                        # len(finger_list)-1 legitimate fingers.
+                    # 6 or 5 fingers
+                    for ft in fpsutils.boot_sample(rem_fingers_list, rng=rng):
                         if not fa_trie.isin((v, t, fv, ft)):
                             continue
                         # 60 verification samples
                         for a in fpsutils.boot_sample(samples_list, rng=rng):
-                            # We don't avoid the invalid matching case,
-                            # (v == t) and (fv == ft), since it is slower than
-                            # simply querying for the results.
-                            # We actually don't care about omitting these
-                            # cases because it will always receive a 0 from the
-                            # query.
-                            # As long as we always use the sum operation to
-                            # aggregate all subsample data, no problems should
-                            # arise.
-                            #
-                            # TODO: Reverify that allowing the selecton of
-                            # an invalid match doesn't skew the probabilities,
-                            # since you could end up with a sample of all
-                            # invalid fingers (given replace=True).
-                            # On second thought, this seems like it could be
-                            # slightly wrong, but I don't recall why I thought
-                            # this should work out to be the same as selecting
-                            # always proper matches.
-                            #
-                            # I guess you only need to reduce the number of
-                            # fingers in the selection pool when the users are
-                            # the same.
-                            #
-                            # I think the original logic was that, if we aren't
-                            # keeping track of the true accepts, then
-                            # why should it matter if there are more
-                            # (invalid true-accepts), but I think this is
-                            # wrong because it reduces the chance
-                            # of getting legitimate false accepts.
                             query = (v, t, fv, ft, a)
                             sample.append(fa_set.isin(query))
-                            # pass
         return np.sum(sample)
 
 
