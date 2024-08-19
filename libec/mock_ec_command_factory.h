@@ -117,6 +117,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               MotionSenseCommandLidAngle,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetVersionCommand>,
+              GetVersionCommand,
+              (),
+              (override));
 };
 
 }  // namespace ec

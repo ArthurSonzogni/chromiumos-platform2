@@ -28,6 +28,7 @@
 #include "libec/fingerprint/fp_template_command.h"
 #include "libec/fingerprint/fp_unlock_template_command.h"
 #include "libec/flash_protect_command.h"
+#include "libec/get_version_command.h"
 #include "libec/i2c_read_command.h"
 #include "libec/led_control_command.h"
 #include "libec/motion_sense_command_lid_angle.h"
@@ -192,6 +193,12 @@ class EcCommandFactoryInterface {
                 "All commands created by this class should derive from "
                 "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::GetVersionCommand> GetVersionCommand() = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::GetVersionCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   // TODO(b/144956297): Add factory methods for all of the EC
   // commands we use so that we can easily mock them for testing.
 };
@@ -278,6 +285,8 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::MotionSenseCommandLidAngle> MotionSenseCommandLidAngle()
       override;
+
+  std::unique_ptr<ec::GetVersionCommand> GetVersionCommand() override;
 };
 
 }  // namespace ec

@@ -18,6 +18,7 @@
 #include <libec/mock_ec_command_factory.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -44,6 +45,29 @@ constexpr uint8_t kBatteryI2cAddress = 0x16;
 constexpr uint8_t kBatteryI2cManufactureDateOffset = 0x1B;
 constexpr uint8_t kBatteryI2cTemperatureOffset = 0x08;
 constexpr uint8_t kBatteryI2cReadLen = 2;
+
+class FakeGetVersionCommand : public ec::GetVersionCommand {
+ public:
+  FakeGetVersionCommand() = default;
+
+  // ec::EcCommand overrides.
+  struct ec_response_get_version* Resp() override { return &fake_response_; }
+
+  // ec::GetVersionCommand overrides.
+  bool EcCommandRun(int fd) override { return fake_run_result_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+  void SetImage(ec_image image) { fake_response_.current_image = image; }
+
+ private:
+  bool fake_run_result_ = false;
+  struct ec_response_get_version fake_response_ = {
+      .version_string_ro = "",
+      .version_string_rw = "",
+      .reserved = "",
+      .current_image = ec_image::EC_IMAGE_UNKNOWN};
+};
 
 class FakeLedControlAutoCommand : public ec::LedControlAutoCommand {
  public:
@@ -144,6 +168,15 @@ class DelegateImplTest : public BaseFileTest {
 
   void SetUp() override { SetFile(ec::kCrosEcPath, ""); }
 
+  std::pair<mojom::FingerprintInfoResultPtr, std::optional<std::string>>
+  GetFingerprintInfoSync() {
+    base::test::TestFuture<mojom::FingerprintInfoResultPtr,
+                           const std::optional<std::string>&>
+        future;
+    delegate_.GetFingerprintInfo(future.GetCallback());
+    return future.Take();
+  }
+
   std::optional<std::string> SetLedColorSync(mojom::LedName name,
                                              mojom::LedColor color) {
     base::test::TestFuture<const std::optional<std::string>&> err_future;
@@ -178,6 +211,45 @@ class DelegateImplTest : public BaseFileTest {
   ec::MockEcCommandFactory mock_ec_command_factory_;
   DelegateImpl delegate_{&mock_ec_command_factory_};
 };
+
+TEST_F(DelegateImplTest, GetFingerprintInfoSuccessRoFw) {
+  auto cmd = std::make_unique<FakeGetVersionCommand>();
+  cmd->SetRunResult(true);
+  cmd->SetImage(ec_image::EC_IMAGE_RO);
+
+  EXPECT_CALL(mock_ec_command_factory_, GetVersionCommand())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto [info, err] = GetFingerprintInfoSync();
+  ASSERT_TRUE(info);
+  EXPECT_FALSE(info->rw_fw);
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetFingerprintInfoSuccessRwFw) {
+  auto cmd = std::make_unique<FakeGetVersionCommand>();
+  cmd->SetRunResult(true);
+  cmd->SetImage(ec_image::EC_IMAGE_RW);
+
+  EXPECT_CALL(mock_ec_command_factory_, GetVersionCommand())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto [info, err] = GetFingerprintInfoSync();
+  ASSERT_TRUE(info);
+  EXPECT_TRUE(info->rw_fw);
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetFingerprintInfoFailed) {
+  auto cmd = std::make_unique<FakeGetVersionCommand>();
+  cmd->SetRunResult(false);
+
+  EXPECT_CALL(mock_ec_command_factory_, GetVersionCommand())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto [unused_info, err] = GetFingerprintInfoSync();
+  EXPECT_EQ(err, "Failed to get fingerprint version");
+}
 
 TEST_F(DelegateImplTest, SetLedColorErrorUnknownLedName) {
   auto err = SetLedColorSync(mojom::LedName::kUnmappedEnumField,

@@ -349,14 +349,14 @@ void DelegateImpl::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   auto result = mojom::FingerprintInfoResult::New();
   auto cros_fd = base::ScopedFD(open(path::kCrosFpDevice, O_RDWR));
 
-  ec::GetVersionCommand version;
-  if (!version.Run(cros_fd.get())) {
+  auto version = ec_command_factory_->GetVersionCommand();
+  if (!version || !version->Run(cros_fd.get())) {
     std::move(callback).Run(std::move(result),
                             "Failed to get fingerprint version");
     return;
   }
 
-  result->rw_fw = version.Image() == EC_IMAGE_RW;
+  result->rw_fw = version->Image() == EC_IMAGE_RW;
 
   std::move(callback).Run(std::move(result), std::nullopt);
 }

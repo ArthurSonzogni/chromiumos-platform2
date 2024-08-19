@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libec/ec_command_factory.h"
+
 #include <array>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "libec/ec_command_factory.h"
 #include "libec/fingerprint/fp_info_command.h"
 #include "libec/fingerprint/fp_template_command.h"
 #include "libec/flash_protect_command_factory.h"
@@ -133,6 +134,10 @@ std::unique_ptr<ec::I2cReadCommand> EcCommandFactory::I2cReadCommand(
 std::unique_ptr<ec::MotionSenseCommandLidAngle>
 EcCommandFactory::MotionSenseCommandLidAngle() {
   return std::make_unique<ec::MotionSenseCommandLidAngle>();
+}
+
+std::unique_ptr<ec::GetVersionCommand> EcCommandFactory::GetVersionCommand() {
+  return std::make_unique<ec::GetVersionCommand>();
 }
 
 }  // namespace ec
