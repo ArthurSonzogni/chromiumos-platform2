@@ -223,8 +223,8 @@ class Bootstrap:
             # adds a small amount of scoping. Furthermore, this isn't
             # necessarily a scope collision with other purposes, since the
             # global scope is only clobbered within each pool process, not
-            # the parent process. the assumption is that you much reinitialize
-            # a new pool for each Bootsrap sampling.
+            # the parent process. the assumption is that you must reinitialize
+            # a new pool for each Bootstrap sampling.
             self._time_pool_startup_start = time.time()
             with mp.Pool(
                 initializer=self._process_global_init,
@@ -281,7 +281,7 @@ class Bootstrap:
                          5000 samples for 99% CI
             num_proc: Number of simultaneous processes to use.
                       (None = Sequential | 0 = Max Processors | # = Specific #)
-            progress: An interable function that can track the samples progress.
+            progress: An iterable function that can track the samples progress.
         """
 
         if num_proc is None:
