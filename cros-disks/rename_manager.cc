@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
+#include <chromeos/libminijail.h>
 
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/platform.h"
@@ -161,36 +162,45 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
 
 void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
                                               const siginfo_t& info) {
-  rename_process_.erase(device_path);
-  RenameError error_type = RenameError::kUnknownError;
+  const auto node = rename_process_.extract(device_path);
+  if (!node) {
+    LOG(ERROR) << "Cannot find process renaming " << quote(device_path);
+    return;
+  }
+
+  DCHECK_EQ(node.key(), device_path);
+  const SandboxedProcess& process = node.mapped();
+  RenameError error = RenameError::kUnknownError;
+
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {
-        error_type = RenameError::kSuccess;
-        LOG(INFO) << "Process " << info.si_pid << " for renaming "
-                  << quote(device_path) << " completed successfully";
+        error = RenameError::kSuccess;
+        LOG(INFO) << "Program " << quote(process.GetProgramName())
+                  << " renamed " << quote(device_path) << " successfully";
       } else {
-        error_type = RenameError::kRenameProgramFailed;
-        LOG(ERROR) << "Process " << info.si_pid << " for renaming "
-                   << quote(device_path) << " exited with a status "
-                   << info.si_status;
+        error = RenameError::kRenameProgramFailed;
+        LOG(ERROR) << "Program " << quote(process.GetProgramName())
+                   << " renaming " << quote(device_path) << " finished with "
+                   << Process::ExitCode(info.si_status);
       }
       break;
 
     case CLD_DUMPED:
     case CLD_KILLED:
-      error_type = RenameError::kRenameProgramFailed;
-      LOG(ERROR) << "Process " << info.si_pid << " for renaming "
-                 << quote(device_path) << " killed by a signal "
-                 << info.si_status;
+      error = RenameError::kRenameProgramFailed;
+      LOG(ERROR) << "Program " << quote(process.GetProgramName())
+                 << " renaming " << quote(device_path) << " was killed by "
+                 << Process::ExitCode(MINIJAIL_ERR_SIG_BASE + info.si_status);
       break;
 
     default:
+      LOG(ERROR) << "Unexpected si_code value: " << info.si_code;
       break;
   }
 
   if (observer_)
-    observer_->OnRenameCompleted(device_path, error_type);
+    observer_->OnRenameCompleted(device_path, error);
 }
 
 bool RenameManager::CanRename(const std::string& source_path) const {
