@@ -45,6 +45,15 @@ namespace {
 
 const char kDeviceSettingsBasePath[] = "/var/lib/devicesettings/";
 
+const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
+    secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
+    secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR};
+
+const std::vector<secagentd::FilePathName> kExternalMountMatchOptions{
+    secagentd::FilePathName::USB_STORAGE,
+    secagentd::FilePathName::MOUNTED_ARCHIVE,
+    secagentd::FilePathName::GOOGLE_DRIVE_FS};
+
 // Path to monitor
 static const std::map<secagentd::FilePathName, secagentd::PathInfo>
     kFilePathInfoMap = {
@@ -163,10 +172,16 @@ const std::map<secagentd::FilePathCategory,
 
 // Function to match a path prefix to FilePathName
 std::optional<std::pair<const secagentd::FilePathName, secagentd::PathInfo>>
-MatchPathToFilePathPrefixName(const std::string& path) {
-  for (const auto& pair : kFilePathInfoMap) {
-    if (path.find(pair.second.pathPrefix) == 0) {
-      return pair;
+MatchPathToFilePathPrefixName(
+    const std::string& path,
+    const std::vector<secagentd::FilePathName>& matchOptions) {
+  for (const auto& pathname : matchOptions) {
+    auto it = kFilePathInfoMap.find(pathname);
+    if (it != kFilePathInfoMap.end()) {
+      const auto& pathPrefix = it->second.pathPrefix;
+      if (path.find(pathPrefix) == 0) {
+        return *it;
+      }
     }
   }
   return std::nullopt;
@@ -338,11 +353,12 @@ absl::Status PopulatePathsMapByCategory(
           base::BindRepeating(
               [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
                  const std::string& path) {
-                auto pair = MatchPathToFilePathPrefixName(path);
+                auto pair = MatchPathToFilePathPrefixName(
+                    path, kDeviceSettingMatchOptions);
                 if (pair.has_value()) {
                   pair.value().second.fullResolvedPath = path;
-                  pathInfoMap->at(pair.value().first)
-                      .push_back(pair.value().second);
+                  (*pathInfoMap)[pair.value().first].push_back(
+                      pair.value().second);
                 }
               },
               base::Unretained(&pathInfoMap)),
@@ -676,7 +692,8 @@ absl::Status FilePlugin::OnUserLogout(const std::string& userHash) {
 }
 
 absl::Status FilePlugin::OnDeviceMount(const std::string& mount_point) {
-  auto pair = MatchPathToFilePathPrefixName(mount_point);
+  auto pair =
+      MatchPathToFilePathPrefixName(mount_point, kExternalMountMatchOptions);
   if (!pair.has_value()) {
     return absl::InvalidArgumentError("Mount point not matched any known path");
   }
