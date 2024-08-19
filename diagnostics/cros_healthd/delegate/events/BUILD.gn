@@ -25,6 +25,7 @@ if (use.test) {
     sources = [
       "audio_jack_evdev_delegate_test.cc",
       "power_button_evdev_delegate_test.cc",
+      "stylus_evdev_delegate_test.cc",
       "stylus_garage_evdev_delegate_test.cc",
       "touchpad_evdev_delegate_test.cc",
       "touchscreen_evdev_delegate_test.cc",
