@@ -20,7 +20,6 @@
 #include "cros-disks/rename_manager_observer_interface.h"
 
 namespace cros_disks {
-
 namespace {
 
 struct RenameParameters {
@@ -29,11 +28,9 @@ struct RenameParameters {
   const char* rename_group;
 };
 
-const char kRenameUser[] = "cros-disks";
-
 // Supported file systems and their parameters
 const RenameParameters kSupportedRenameParameters[] = {
-    {"vfat", "/usr/sbin/fatlabel", "disk"},
+    {"vfat", "/usr/sbin/fatlabel", nullptr},
     {"exfat", "/usr/sbin/exfatlabel", "fuse-exfat"},
     {"ntfs", "/usr/sbin/ntfslabel", "ntfs-3g"}};
 
@@ -83,58 +80,71 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
     return RenameError::kDeviceNotAllowed;
   }
 
-  LabelError label_error = ValidateVolumeLabel(volume_name, filesystem_type);
-  if (label_error != LabelError::kSuccess) {
-    return LabelErrorToRenameError(label_error);
+  if (const LabelError e = ValidateVolumeLabel(volume_name, filesystem_type);
+      e != LabelError::kSuccess) {
+    return LabelErrorToRenameError(e);
   }
 
-  const RenameParameters* parameters = FindRenameParameters(filesystem_type);
-  // Check if tool for renaming exists
-  if (!base::PathExists(base::FilePath(parameters->program_path))) {
-    LOG(WARNING) << "Cannot find a rename program for filesystem "
-                 << quote(filesystem_type);
+  const RenameParameters* const p = FindRenameParameters(filesystem_type);
+
+  // Check if tool for renaming exists.
+  if (!p || !base::PathExists(base::FilePath(p->program_path))) {
+    LOG(ERROR) << "Cannot find a rename program for filesystem "
+               << quote(filesystem_type);
     return RenameError::kRenameProgramNotFound;
   }
 
-  if (base::Contains(rename_process_, device_path)) {
+  const auto [it, ok] = rename_process_.try_emplace(device_path);
+  if (!ok) {
     LOG(WARNING) << "Device " << quote(device_path)
                  << " is already being renamed";
     return RenameError::kDeviceBeingRenamed;
   }
 
-  uid_t rename_user_id;
-  gid_t rename_group_id;
-  if (!platform_->GetUserAndGroupId(kRenameUser, &rename_user_id, nullptr) ||
-      !platform_->GetGroupId(parameters->rename_group, &rename_group_id)) {
-    LOG(WARNING) << "Cannot find a user with name " << quote(kRenameUser)
-                 << " or a group with name " << quote(parameters->rename_group);
+  SandboxedProcess& process = it->second;
+
+  if (uid_t uid; platform_->GetUserAndGroupId("cros-disks", &uid, nullptr)) {
+    process.SetUserId(uid);
+  } else {
+    PLOG(ERROR) << "Cannot resolve user 'cros-disks'";
     return RenameError::kInternalError;
   }
 
-  // TODO(klemenko): Further restrict the capabilities
-  SandboxedProcess* process = &rename_process_[device_path];
-  process->SetUserId(rename_user_id);
-  process->SetGroupId(rename_group_id);
-  process->SetNoNewPrivileges();
-  process->NewMountNamespace();
-  process->NewIpcNamespace();
-  process->NewNetworkNamespace();
-  process->SetCapabilities(0);
-
-  process->AddArgument(parameters->program_path);
-
-  // TODO(klemenko): To improve and provide more general solution, the
-  // per-filesystem argument setup should be parameterized with RenameParameter.
-  // Construct program-name arguments
-  // Example: dosfslabel /dev/sdb1 "NEWNAME"
-  // Example: exfatlabel /dev/sdb1 "NEWNAME"
-  if (filesystem_type == "vfat" || filesystem_type == "exfat" ||
-      filesystem_type == "ntfs") {
-    process->AddArgument(device_file);
-    process->AddArgument(volume_name);
+  // The 'disk' group allows the renaming program to rename a partition that was
+  // mounted by the in-kernel driver.
+  if (gid_t gid; platform_->GetGroupId("disk", &gid)) {
+    process.SetGroupId(gid);
+  } else {
+    PLOG(ERROR) << "Cannot resolve group 'disk'";
+    return RenameError::kInternalError;
   }
 
-  if (!process->Start()) {
+  // This supplementary group allows the renaming program to rename a partition
+  // that was mounted by the FUSE mounter.
+  if (const char* const group = p->rename_group) {
+    if (gid_t gids[1]; platform_->GetGroupId(group, &gids[0])) {
+      process.SetSupplementaryGroupIds(gids);
+    } else {
+      LOG(ERROR) << "Cannot resolve group " << quote(group);
+      return RenameError::kInternalError;
+    }
+  }
+
+  process.SetNoNewPrivileges();
+  process.NewMountNamespace();
+  process.NewIpcNamespace();
+  process.NewNetworkNamespace();
+  process.SetCapabilities(0);
+
+  process.AddArgument(p->program_path);
+  process.AddArgument(device_file);
+  process.AddArgument(volume_name);
+
+  // Sets an output callback, even if it does nothing, to activate the capture
+  // of the generated messages.
+  process.SetOutputCallback(base::DoNothing());
+
+  if (!process.Start()) {
     LOG(WARNING) << "Cannot start a process for renaming " << quote(device_path)
                  << " as filesystem " << quote(filesystem_type)
                  << " and volume name " << quote(volume_name);
@@ -143,7 +153,7 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
   }
 
   process_reaper_->WatchForChild(
-      FROM_HERE, process->pid(),
+      FROM_HERE, process.pid(),
       base::BindOnce(&RenameManager::OnRenameProcessTerminated,
                      weak_ptr_factory_.GetWeakPtr(), device_path));
   return RenameError::kSuccess;
