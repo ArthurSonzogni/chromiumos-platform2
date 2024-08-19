@@ -232,9 +232,6 @@ void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("kvm_host")) {
     builder->AddFeatureEnableOverride("Crostini");
   }
-  if (builder->UseFlagIsSet("virtio_gpu")) {
-    builder->AddFeatureEnableOverride("CrostiniGpuSupport");
-  }
 }
 
 void AddPluginVmFlags(ChromiumCommandBuilder* builder) {
