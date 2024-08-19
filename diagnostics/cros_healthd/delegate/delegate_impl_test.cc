@@ -71,8 +71,8 @@ class FakeGetVersionCommand : public ec::GetVersionCommand {
 
 class FakeLedControlAutoCommand : public ec::LedControlAutoCommand {
  public:
-  explicit FakeLedControlAutoCommand(enum ec_led_id led_id)
-      : ec::LedControlAutoCommand(led_id) {}
+  FakeLedControlAutoCommand()
+      : ec::LedControlAutoCommand(/*led_id=*/EC_LED_ID_BATTERY_LED) {}
 
   // ec::EcCommand overrides.
   bool Run(int fd) override { return fake_run_result_; }
@@ -85,8 +85,8 @@ class FakeLedControlAutoCommand : public ec::LedControlAutoCommand {
 
 class FakeLedControlQueryCommand : public ec::LedControlQueryCommand {
  public:
-  explicit FakeLedControlQueryCommand(enum ec_led_id led_id)
-      : ec::LedControlQueryCommand(led_id) {}
+  FakeLedControlQueryCommand()
+      : ec::LedControlQueryCommand(/*led_id=*/EC_LED_ID_BATTERY_LED) {}
 
   // ec::EcCommand overrides.
   struct ec_response_led_control* Resp() override { return &fake_response_; }
@@ -106,8 +106,9 @@ class FakeLedControlQueryCommand : public ec::LedControlQueryCommand {
 
 class FakeLedControlSetCommand : public ec::LedControlSetCommand {
  public:
-  explicit FakeLedControlSetCommand(enum ec_led_id led_id)
-      : ec::LedControlSetCommand(led_id, /*brightness=*/{}) {}
+  FakeLedControlSetCommand()
+      : ec::LedControlSetCommand(/*led_id=*/EC_LED_ID_BATTERY_LED,
+                                 /*brightness=*/{}) {}
 
   // ec::EcCommand overrides.
   bool Run(int fd) override { return fake_run_result_; }
@@ -264,65 +265,55 @@ TEST_F(DelegateImplTest, SetLedColorErrorUnknownLedColor) {
 }
 
 TEST_F(DelegateImplTest, SetLedColorErrorEcQueryCommandFailed) {
+  auto cmd = std::make_unique<FakeLedControlQueryCommand>();
+  cmd->SetRunResult(false);
+
   EXPECT_CALL(mock_ec_command_factory_, LedControlQueryCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlQueryCommand>(led_id);
-        cmd->SetRunResult(false);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(cmd)));
 
   auto err = SetLedColorSync(kArbitraryValidLedName, kArbitraryValidLedColor);
   EXPECT_EQ(err, "Failed to query the LED brightness range");
 }
 
 TEST_F(DelegateImplTest, SetLedColorErrorUnsupportedColor) {
+  auto cmd = std::make_unique<FakeLedControlQueryCommand>();
+  cmd->SetRunResult(true);
+  cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 0);
+
   EXPECT_CALL(mock_ec_command_factory_, LedControlQueryCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlQueryCommand>(led_id);
-        cmd->SetRunResult(true);
-        cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 0);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(cmd)));
 
   auto err = SetLedColorSync(kArbitraryValidLedName, kArbitraryValidLedColor);
   EXPECT_EQ(err, "Unsupported color");
 }
 
 TEST_F(DelegateImplTest, SetLedColorErrorSetCommandFailed) {
+  auto query_cmd = std::make_unique<FakeLedControlQueryCommand>();
+  query_cmd->SetRunResult(true);
+  query_cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 1);
   EXPECT_CALL(mock_ec_command_factory_, LedControlQueryCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlQueryCommand>(led_id);
-        cmd->SetRunResult(true);
-        cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 1);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(query_cmd)));
 
+  auto set_cmd = std::make_unique<FakeLedControlSetCommand>();
+  set_cmd->SetRunResult(false);
   EXPECT_CALL(mock_ec_command_factory_, LedControlSetCommand(_, _))
-      .WillOnce(WithArg<0>([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlSetCommand>(led_id);
-        cmd->SetRunResult(false);
-        return cmd;
-      }));
+      .WillOnce(Return(std::move(set_cmd)));
 
   auto err = SetLedColorSync(kArbitraryValidLedName, kArbitraryValidLedColor);
   EXPECT_EQ(err, "Failed to set the LED color");
 }
 
 TEST_F(DelegateImplTest, SetLedColorSuccess) {
+  auto query_cmd = std::make_unique<FakeLedControlQueryCommand>();
+  query_cmd->SetRunResult(true);
+  query_cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 1);
   EXPECT_CALL(mock_ec_command_factory_, LedControlQueryCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlQueryCommand>(led_id);
-        cmd->SetRunResult(true);
-        cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 1);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(query_cmd)));
 
+  auto set_cmd = std::make_unique<FakeLedControlSetCommand>();
+  set_cmd->SetRunResult(true);
   EXPECT_CALL(mock_ec_command_factory_, LedControlSetCommand(_, _))
-      .WillOnce(WithArg<0>([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlSetCommand>(led_id);
-        cmd->SetRunResult(true);
-        return cmd;
-      }));
+      .WillOnce(Return(std::move(set_cmd)));
 
   auto err = SetLedColorSync(kArbitraryValidLedName, kArbitraryValidLedColor);
   EXPECT_EQ(err, std::nullopt);
@@ -330,23 +321,18 @@ TEST_F(DelegateImplTest, SetLedColorSuccess) {
 
 // The EC command to set LED brightness should respect the brightness range.
 TEST_F(DelegateImplTest, SetLedColorUsesMaxBrightness) {
+  auto query_cmd = std::make_unique<FakeLedControlQueryCommand>();
+  query_cmd->SetRunResult(true);
+  query_cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 64);
   EXPECT_CALL(mock_ec_command_factory_, LedControlQueryCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlQueryCommand>(led_id);
-        cmd->SetRunResult(true);
-        cmd->SetBrightness(kArbitraryValidLedColorEcEnum, 64);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(query_cmd)));
 
+  auto set_cmd = std::make_unique<FakeLedControlSetCommand>();
+  set_cmd->SetRunResult(true);
   std::array<uint8_t, EC_LED_COLOR_COUNT> received_brightness = {};
   EXPECT_CALL(mock_ec_command_factory_, LedControlSetCommand(_, _))
-      .WillOnce(DoAll(SaveArg<1>(&received_brightness),
-                      WithArg<0>([](enum ec_led_id led_id) {
-                        auto cmd =
-                            std::make_unique<FakeLedControlSetCommand>(led_id);
-                        cmd->SetRunResult(true);
-                        return cmd;
-                      })));
+      .WillOnce(
+          DoAll(SaveArg<1>(&received_brightness), Return(std::move(set_cmd))));
 
   auto err = SetLedColorSync(kArbitraryValidLedName, kArbitraryValidLedColor);
   EXPECT_EQ(err, std::nullopt);
@@ -362,24 +348,22 @@ TEST_F(DelegateImplTest, ResetLedColorErrorUnknownLedName) {
 }
 
 TEST_F(DelegateImplTest, ResetLedColorErrorEcCommandFailed) {
+  auto cmd = std::make_unique<FakeLedControlAutoCommand>();
+  cmd->SetRunResult(false);
+
   EXPECT_CALL(mock_ec_command_factory_, LedControlAutoCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlAutoCommand>(led_id);
-        cmd->SetRunResult(false);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(cmd)));
 
   auto err = ResetLedColorSync(kArbitraryValidLedName);
   EXPECT_EQ(err, "Failed to reset LED color");
 }
 
 TEST_F(DelegateImplTest, ResetLedColorSuccess) {
+  auto cmd = std::make_unique<FakeLedControlAutoCommand>();
+  cmd->SetRunResult(true);
+
   EXPECT_CALL(mock_ec_command_factory_, LedControlAutoCommand(_))
-      .WillOnce([](enum ec_led_id led_id) {
-        auto cmd = std::make_unique<FakeLedControlAutoCommand>(led_id);
-        cmd->SetRunResult(true);
-        return cmd;
-      });
+      .WillOnce(Return(std::move(cmd)));
 
   auto err = ResetLedColorSync(kArbitraryValidLedName);
   EXPECT_EQ(err, std::nullopt);
