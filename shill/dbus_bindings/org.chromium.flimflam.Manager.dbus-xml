@@ -184,6 +184,10 @@
 			<arg type="a{ss}" direction="in"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
 		</method>
+		<method name="SetWiFiInterfacePriority">
+			<arg type="s" direction="in"/>
+			<arg type="i" direction="in"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

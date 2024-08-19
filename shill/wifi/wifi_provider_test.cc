@@ -7,6 +7,7 @@
 #include <linux/nl80211.h>
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -27,6 +28,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/device.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -40,7 +42,6 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/mock_hotspot_device.h"
 #include "shill/wifi/mock_local_device.h"
-#include "shill/wifi/mock_p2p_device.h"
 #include "shill/wifi/mock_p2p_manager.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
@@ -722,16 +723,6 @@ class WiFiProviderTest : public testing::Test {
     return dev;
   }
 
-  scoped_refptr<MockP2PDevice> CreateP2PDeviceWithPriority(
-      LocalDevice::IfaceType type,
-      const std::string& link_name,
-      int32_t shill_id,
-      WiFiPhy::Priority priority) {
-    scoped_refptr<MockP2PDevice> dev = new NiceMock<MockP2PDevice>(
-        &manager_, type, link_name, 0, shill_id, priority, cb.Get());
-    return dev;
-  }
-
   LocalDeviceConstRefPtr GetLowestPriorityLocalDeviceOfType(
       std::set<LocalDeviceConstRefPtr> devices, LocalDevice::IfaceType type) {
     return WiFiProvider::GetLowestPriorityLocalDeviceOfType(devices, type);
@@ -781,6 +772,15 @@ class WiFiProviderTest : public testing::Test {
       current_req++;
       next_req++;
     }
+  }
+
+  bool RequestExists(nl80211_iftype type, WiFiPhy::Priority priority) {
+    for (auto& request : provider_->request_queue_) {
+      if (request->type == type && request->priority == priority) {
+        return true;
+      }
+    }
+    return false;
   }
 
   MockControl control_;
@@ -3160,22 +3160,22 @@ TEST_F(WiFiProviderTest, GetLowestPriorityEnabledWiFiDevice) {
 TEST_F(WiFiProviderTest, BringDownDevicesByType) {
   MockWiFiPhy* phy0 = AddMockPhy(0);
   scoped_refptr<MockLocalDevice> ap0 = CreateLocalDeviceWithPriority(
-      LocalDevice::IfaceType::kAP, "ap0", WiFiPhy::Priority(0));
+      LocalDevice::IfaceType::kAP, "ao0", WiFiPhy::Priority(0));
   phy0->AddWiFiLocalDevice(ap0);
   scoped_refptr<MockLocalDevice> ap1 = CreateLocalDeviceWithPriority(
       LocalDevice::IfaceType::kAP, "ap1", WiFiPhy::Priority(1));
   phy0->AddWiFiLocalDevice(ap1);
-  scoped_refptr<MockP2PDevice> go0 = CreateP2PDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PGO, "go0", 0, WiFiPhy::Priority(0));
+  scoped_refptr<MockLocalDevice> go0 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "go0", WiFiPhy::Priority(0));
   phy0->AddWiFiLocalDevice(go0);
-  scoped_refptr<MockP2PDevice> go1 = CreateP2PDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PGO, "go1", 1, WiFiPhy::Priority(1));
+  scoped_refptr<MockLocalDevice> go1 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "go1", WiFiPhy::Priority(1));
   phy0->AddWiFiLocalDevice(go1);
-  scoped_refptr<MockP2PDevice> client0 = CreateP2PDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PClient, "client0", 2, WiFiPhy::Priority(0));
+  scoped_refptr<MockLocalDevice> client0 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PClient, "client0", WiFiPhy::Priority(0));
   phy0->AddWiFiLocalDevice(client0);
-  scoped_refptr<MockP2PDevice> client1 = CreateP2PDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PClient, "client1", 3, WiFiPhy::Priority(1));
+  scoped_refptr<MockLocalDevice> client1 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PClient, "client1", WiFiPhy::Priority(1));
   phy0->AddWiFiLocalDevice(client1);
 
   EXPECT_CALL(manager_, device_info()).Times(2);
@@ -3241,6 +3241,71 @@ TEST_F(WiFiProviderTest, CancelDeviceRequestsOfType) {
 
   // Just check we don't crash on an empty request queue.
   provider_->CancelDeviceRequestsOfType(NL80211_IFTYPE_STATION);
+}
+
+TEST_F(WiFiProviderTest, SetWiFiInterfacePriority) {
+  Error error;
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  scoped_refptr<MockWiFi> device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/0, /*phy_index=*/0, new MockWakeOnWiFi());
+  EXPECT_EQ(device0->priority(), WiFi::kDefaultPriority);
+  provider_->SetWiFiInterfacePriority("wlan0", WiFiPhy::Priority(5), {device0},
+                                      &error);
+  EXPECT_EQ(device0->priority(), WiFiPhy::Priority(5));
+  provider_->SetWiFiInterfacePriority("wlan0", WiFiPhy::Priority(3), {device0},
+                                      &error);
+  EXPECT_EQ(device0->priority(), WiFiPhy::Priority(3));
+}
+
+TEST_F(WiFiProviderTest, SetWiFiInterfacePriority_NotFound) {
+  Error error;
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  scoped_refptr<MockWiFi> device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/0, /*phy_index=*/0, new MockWakeOnWiFi());
+  provider_->SetWiFiInterfacePriority("wlan1", WiFiPhy::Priority(5), {device0},
+                                      &error);
+  EXPECT_EQ(error.type(), Error::kNotFound);
+}
+
+TEST_F(WiFiProviderTest, SetWiFiInterfacePriority_MultipleIfaces) {
+  Error error;
+  EXPECT_CALL(manager_, device_info()).Times(2);
+  scoped_refptr<MockWiFi> device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/0, /*phy_index=*/0, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device1 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan1", kMacAddress,
+      /*interface_index=*/1, /*phy_index=*/0, new MockWakeOnWiFi());
+  EXPECT_EQ(device0->priority(), WiFi::kDefaultPriority);
+  EXPECT_EQ(device1->priority(), WiFi::kDefaultPriority);
+  provider_->SetWiFiInterfacePriority("wlan0", WiFiPhy::Priority(5),
+                                      {device0, device1}, &error);
+  EXPECT_EQ(device0->priority(), WiFiPhy::Priority(5));
+  EXPECT_EQ(device1->priority(), WiFi::kDefaultPriority);
+  provider_->SetWiFiInterfacePriority("wlan1", WiFiPhy::Priority(3),
+                                      {device0, device1}, &error);
+  EXPECT_EQ(device0->priority(), WiFiPhy::Priority(5));
+  EXPECT_EQ(device1->priority(), WiFiPhy::Priority(3));
+}
+
+TEST_F(WiFiProviderTest, SetWiFiInterfacePriority_RequestUpdates) {
+  Error error;
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  scoped_refptr<MockWiFi> device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/0, /*phy_index=*/0, new MockWakeOnWiFi());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, device0->priority(),
+                           base::DoNothing());
+  EXPECT_TRUE(RequestExists(NL80211_IFTYPE_STATION, device0->priority()));
+  phy0->AddWiFiDevice(device0);
+  EXPECT_CALL(*phy0, RequestNewIface).WillRepeatedly(Return(std::nullopt));
+  provider_->SetWiFiInterfacePriority("wlan0", WiFiPhy::Priority(5), {device0},
+                                      &error);
+  EXPECT_EQ(device0->priority(), WiFiPhy::Priority(5));
+  EXPECT_TRUE(RequestExists(NL80211_IFTYPE_STATION, device0->priority()));
 }
 
 }  // namespace shill

@@ -1803,4 +1803,45 @@ KeyValueStores WiFiProvider::GetWiFiInterfacePriorities(
   return wifi_priorities;
 }
 
+void WiFiProvider::SetWiFiInterfacePriority(
+    const std::string name,
+    const int32_t priority,
+    const std::vector<DeviceRefPtr>& devices,
+    Error* error) {
+  DeviceRefPtr device;
+  for (const auto& d : devices) {
+    if (d->technology() == Technology::kWiFi && d->link_name() == name) {
+      device = d;
+      break;
+    }
+  }
+  if (!device) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
+                          "Wi-Fi interface " + name + " not found");
+    return;
+  }
+  auto wifi = static_cast<WiFi*>(device.get());
+  if (wifi->priority() == WiFiPhy::Priority(priority)) {
+    // Nothing to do since the priority is already set to the requested value.
+    return;
+  }
+  if (!wifi->SetPriority(WiFiPhy::Priority(priority))) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        "Invalid priority value: " + std::to_string(priority));
+    return;
+  }
+  for (const auto& request : request_queue_) {
+    if (request->type == NL80211_IFTYPE_STATION) {
+      // We only support one station interface at a time, so if there is a
+      // pending station interface we can safely assume it is this interface.
+      // Update its priority, then trigger request processing to see if we
+      // can enable it.
+      request->priority = WiFiPhy::Priority(priority);
+      break;
+    }
+  }
+  ProcessDeviceRequests();
+}
+
 }  // namespace shill
