@@ -15,22 +15,24 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/notreached.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <libstorage/platform/platform.h>
 
-#include "base/check.h"
-#include "base/notreached.h"
-#include "base/strings/strcat.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
@@ -258,8 +260,7 @@ std::string_view ToString(const MigrationStage stage) {
       return kMigrated;
   }
 
-  NOTREACHED_NORETURN() << "Unexpected MigrationStage: "
-                        << static_cast<int>(stage);
+  NOTREACHED() << "Unexpected MigrationStage: " << static_cast<int>(stage);
 }
 
 // Output operator for logging.
@@ -1302,7 +1303,11 @@ StorageStatus Mounter::PerformMount(MountType mount_type,
       break;
     case MountType::EPHEMERAL:
     case MountType::NONE:
-      NOTREACHED_IN_MIGRATION();
+      return StorageStatus::Make(
+          FROM_HERE,
+          base::StringPrintf("Invalid mount type: %d",
+                             base::to_underlying(mount_type)),
+          MOUNT_ERROR_INVALID_ARGS);
   }
 
   if (!IsFirstMountComplete(obfuscated_username)) {

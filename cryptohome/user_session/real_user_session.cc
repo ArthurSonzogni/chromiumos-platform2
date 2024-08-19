@@ -8,9 +8,9 @@
 #include <string>
 #include <utility>
 
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/notreached.h>
 #include <base/values.h>
 #include <brillo/cryptohome.h>
 #include <libhwsec-foundation/crypto/hmac.h>
@@ -65,9 +65,7 @@ MountStatus RealUserSession::MountVault(
     const Username& username,
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
-  if (username_ != username) {
-    NOTREACHED_IN_MIGRATION() << "MountVault username mismatch.";
-  }
+  CHECK_EQ(username_, username) << "MountVault username mismatch.";
 
   StorageStatus status =
       mount_->MountCryptohome(username, fs_keyset, vault_options);
@@ -107,9 +105,7 @@ MountStatus RealUserSession::EvictDeviceKey() {
 }
 
 MountStatus RealUserSession::MountEphemeral(const Username& username) {
-  if (username_ != username) {
-    NOTREACHED_IN_MIGRATION() << "MountEphemeral username mismatch.";
-  }
+  CHECK_EQ(username_, username) << "MountVault username mismatch.";
 
   if (homedirs_->IsOrWillBeOwner(obfuscated_username_)) {
     return MakeStatus<CryptohomeMountError>(
@@ -132,9 +128,7 @@ MountStatus RealUserSession::MountEphemeral(const Username& username) {
 }
 
 MountStatus RealUserSession::MountGuest() {
-  if (username_ != GetGuestUsername()) {
-    NOTREACHED_IN_MIGRATION() << "MountGuest username mismatch.";
-  }
+  CHECK_EQ(username_, GetGuestUsername()) << "MountVault username mismatch.";
 
   StorageStatus status = mount_->MountEphemeralCryptohome(username_);
   if (status.ok()) {
