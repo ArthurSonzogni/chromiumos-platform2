@@ -3,22 +3,19 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
-#include <base/threading/platform_thread.h>
-#include <base/threading/thread.h>
-#include <base/time/time.h>
+#include <dbus/dbus.h>
+#include <perfetto/perfetto.h>
 
-#include "dbus_perfetto_producer/dbus_tracing_categories.h"
+#include "dbus_perfetto_producer/dbus_tracer.h"
 
 int main(int argc, char** argv) {
   perfetto::TracingInitArgs args;
-
-  // The system backend writes events into a system Perfetto daemon. Requires
-  // the Perfetto `traced` daemon to be running (e.g., on Android Pie and
-  // newer).
   args.backends |= perfetto::kSystemBackend;
-
   perfetto::Tracing::Initialize(args);
   perfetto::TrackEvent::Register();
 
+  if (!DbusTracer()) {
+    exit(1);
+  }
   return 0;
 }
