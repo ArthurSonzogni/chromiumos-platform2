@@ -286,14 +286,6 @@ void CameraHalServerImpl::IPCBridge::AddCrosCameraServiceObserver(
       camera_hal_adapter_->GetAutoFramingState());
 }
 
-void CameraHalServerImpl::IPCBridge::StartKioskVisionDetection(
-    const std::string& dlc_path,
-    mojo::PendingRemote<mojom::KioskVisionObserver> observer) {
-  DCHECK(camera_hal_adapter_);
-  camera_hal_adapter_->SetKioskVisionConfig(base::FilePath(dlc_path),
-                                            std::move(observer));
-}
-
 int CameraHalServerImpl::LoadCameraHal() {
   DCHECK(!camera_hal_adapter_);
   DCHECK_EQ(cros_camera_hals_.size(), 0);

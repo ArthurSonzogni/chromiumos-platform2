@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <ml_core/dlc/dlc_ids.h>
 
 #include "common/framing_stream_manipulator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -53,44 +52,6 @@ mojom::EffectsConfigPtr StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   base::AutoLock lock(lock_);
   // Return a copy.
   return effects_config_->Clone();
-}
-
-void StreamManipulator::RuntimeOptions::SetKioskVisionConfig(
-    const base::FilePath& dlc_path,
-    mojo::PendingRemote<mojom::KioskVisionObserver> observer) {
-  ResetKioskVisionConfig();
-
-  LOGF(INFO) << "Set Kiosk Vision config";
-  SetDlcRootPath(dlc_client::kKioskVisionDlcId, dlc_path);
-
-  base::AutoLock lock(lock_);
-
-  // During the kiosk session the video stream can be reopened which means
-  // `KioskVisionStreamManipulator` will be re-created. Binding it here
-  // allows kiosk vision feature to continue working even after the re-opening
-  // of the video stream. Video stream can be reopened e.g. when the kiosk app
-  // starts to use camera.
-  kiosk_vision_observer_.Bind(std::move(observer));
-
-  kiosk_vision_observer_.set_disconnect_handler(
-      base::BindOnce(&StreamManipulator::RuntimeOptions::ResetKioskVisionConfig,
-                     base::Unretained(this)));
-}
-
-bool StreamManipulator::RuntimeOptions::IsKioskVisionEnabled() const {
-  return !GetDlcRootPath(dlc_client::kKioskVisionDlcId).empty();
-}
-
-mojo::Remote<mojom::KioskVisionObserver>&
-StreamManipulator::RuntimeOptions::GetKioskVisionObserver() {
-  base::AutoLock lock(lock_);
-  return kiosk_vision_observer_;
-}
-
-void StreamManipulator::RuntimeOptions::ResetKioskVisionConfig() {
-  SetDlcRootPath(dlc_client::kKioskVisionDlcId, base::FilePath());
-  base::AutoLock lock(lock_);
-  kiosk_vision_observer_.reset();
 }
 
 base::FilePath StreamManipulator::RuntimeOptions::GetDlcRootPath(

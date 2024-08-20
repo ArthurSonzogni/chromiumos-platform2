@@ -99,9 +99,7 @@ class CameraHalServerImpl {
         mojo::PendingRemote<mojom::CrosCameraServiceObserver> observer)
         override;
 
-    void StartKioskVisionDetection(
-        const std::string& dlc_path,
-        mojo::PendingRemote<mojom::KioskVisionObserver> observer) override;
+    void DEPRECATED_StartKioskVisionDetection() override {}
 
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,

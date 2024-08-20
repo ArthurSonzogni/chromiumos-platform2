@@ -7,8 +7,6 @@
 #ifndef CAMERA_COMMON_STREAM_MANIPULATOR_H_
 #define CAMERA_COMMON_STREAM_MANIPULATOR_H_
 
-#include <hardware/camera3.h>
-
 #include <map>
 #include <string>
 
@@ -16,7 +14,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
-#include <mojo/public/cpp/bindings/remote.h>
+#include <hardware/camera3.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
@@ -59,12 +57,6 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     void SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
     void SetEffectsConfig(mojom::EffectsConfigPtr config);
     mojom::EffectsConfigPtr GetEffectsConfig();
-    void SetKioskVisionConfig(
-        const base::FilePath& dlc_path,
-        mojo::PendingRemote<mojom::KioskVisionObserver> observer);
-    bool IsKioskVisionEnabled() const;
-    mojo::Remote<mojom::KioskVisionObserver>& GetKioskVisionObserver();
-    void ResetKioskVisionConfig();
     void SetDlcRootPath(const std::string& dlc_id, const base::FilePath& path);
     // Returns the DLC root path for |dlc_id|.
     // Returns an empty FilePath if DLC is unavailable / not ready.
@@ -91,9 +83,6 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // configuration parameters to tune it.
     mojom::EffectsConfigPtr effects_config_ GUARDED_BY(lock_) =
         mojom::EffectsConfig::New();
-
-    mojo::Remote<mojom::KioskVisionObserver> kiosk_vision_observer_
-        GUARDED_BY(lock_);
 
     // Maps DLC ids to DLC root paths. Empty if DLC is unavailable / not
     // ready.

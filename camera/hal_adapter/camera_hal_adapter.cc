@@ -308,13 +308,6 @@ mojom::CameraAutoFramingState CameraHalAdapter::GetAutoFramingState() {
   return stream_manipulator_runtime_options_.GetAutoFramingState();
 }
 
-void CameraHalAdapter::SetKioskVisionConfig(
-    const base::FilePath& dlc_path,
-    mojo::PendingRemote<mojom::KioskVisionObserver> observer) {
-  stream_manipulator_runtime_options_.SetKioskVisionConfig(dlc_path,
-                                                           std::move(observer));
-}
-
 void CameraHalAdapter::SetCameraDiagnosticsClient(
     CameraDiagnosticsClient* client) {
   camera_diagnostics_client_ = client;
