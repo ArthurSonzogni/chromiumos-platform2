@@ -31,16 +31,16 @@ class DataFrameSetAccess:
     methods are very fast.
     """
 
-    def __init__(self, table: pd.DataFrame, cols: Optional[list[str]] = None):
+    def __init__(self, tbl: pd.DataFrame, cols: Optional[list[str]] = None):
         """This performs the expensive caching operation, that must occur once.
 
         Args:
-            table: The DataFrame to cache.
+            tbl: The DataFrame to cache.
             cols: The specific columns of the DataFrame to index into the Trie.
                 If None, all columns are used.
         """
         if not cols:
-            cols = list(table.columns)
+            cols = list(tbl.columns)
         self.cols = cols
 
         # There is nothing incompatible with having duplicate rows for this
@@ -50,10 +50,10 @@ class DataFrameSetAccess:
         # of a DataFrame. If this DataFrame contains match decisions, then there
         # will be many rows that have the same first three columns. This data
         # structure will collapse all of these identical results to one entry.
-        assert not table.duplicated(subset=cols).any()
+        assert not tbl.duplicated(subset=cols).any()
 
         # This is an expensive operation.
-        self.set = {tuple(row) for row in np.array(table[cols])}
+        self.set = {tuple(row) for row in np.array(tbl[cols])}
 
     def isin(self, values: tuple[Any, ...]) -> bool:
         """Check if the values appeared as a cached row."""
@@ -75,24 +75,24 @@ class DataFrameCountTrieAccess:
     tens of nanoseconds slower.
     """
 
-    def __init__(self, table: pd.DataFrame, cols: Optional[list[str]] = None):
+    def __init__(self, tbl: pd.DataFrame, cols: Optional[list[str]] = None):
         """This performs the expensive caching operation, that must occur once.
 
         Args:
-            table: The DataFrame to index into the Trie.
+            tbl: The DataFrame to index into the Trie.
             cols: The specific columns of the DataFrame to index into the Trie.
                 If None, all columns are used.
         """
 
         if not cols:
-            cols = list(table.columns)
+            cols = list(tbl.columns)
         self.cols = cols
 
         self.counts_dict: collections.Counter[
             tuple[Any, ...]
         ] = collections.Counter()
 
-        for row in np.array(table[cols]):
+        for row in np.array(tbl[cols]):
             # Update all partial trie nodes. For example, take row (val1, val2):
             # We would increment all tuples ()++, (val1)++, (val1, val2)++, ...
             for i in range(len(cols) + 1):
