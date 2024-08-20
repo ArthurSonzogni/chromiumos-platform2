@@ -52,11 +52,18 @@ class NetworkConfigMergeTest : public ::testing::Test {
             .value();
     slaac_config_.dns_search_domains = {"host1.domain", "host3.domain"};
     slaac_config_.mtu = 1402;
+
+    dhcppd_config_.ipv6_addresses = {
+        *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:dd::2/128")};
+    dhcppd_config_.ipv6_delegated_prefixes = {
+        *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:dd::/64")};
+    dhcppd_config_.mtu = 1403;
   }
 
  protected:
   net_base::NetworkConfig dhcp_config_;
   net_base::NetworkConfig slaac_config_;
+  net_base::NetworkConfig dhcppd_config_;
 };
 
 TEST_F(NetworkConfigMergeTest, DHCPOnly) {
@@ -273,6 +280,42 @@ TEST_F(NetworkConfigMergeTest, CellWithDynamicIPv6) {
             cnc.Get().dns_servers);
   EXPECT_EQ(slaac_config_.dns_search_domains, cnc.Get().dns_search_domains);
   EXPECT_EQ(1402, cnc.Get().mtu);  // Smaller value
+}
+
+TEST_F(NetworkConfigMergeTest, DHCPAndDHCPPD) {
+  CompoundNetworkConfig cnc("test_if");
+  EXPECT_TRUE(cnc.SetFromSLAAC(
+      std::make_unique<net_base::NetworkConfig>(slaac_config_)));
+  EXPECT_TRUE(
+      cnc.SetFromDHCP(std::make_unique<net_base::NetworkConfig>(dhcp_config_)));
+  EXPECT_TRUE(cnc.SetFromDHCPv6(
+      std::make_unique<net_base::NetworkConfig>(dhcppd_config_)));
+
+  EXPECT_EQ(dhcp_config_.ipv4_address, cnc.Get().ipv4_address);
+  EXPECT_EQ(dhcp_config_.ipv4_broadcast, cnc.Get().ipv4_broadcast);
+  EXPECT_EQ(dhcp_config_.ipv4_gateway, cnc.Get().ipv4_gateway);
+  EXPECT_EQ(dhcp_config_.excluded_route_prefixes,
+            cnc.Get().excluded_route_prefixes);
+  EXPECT_EQ(dhcp_config_.included_route_prefixes,
+            cnc.Get().included_route_prefixes);
+  EXPECT_EQ(dhcppd_config_.ipv6_addresses, cnc.Get().ipv6_addresses);
+  EXPECT_EQ(slaac_config_.ipv6_gateway, cnc.Get().ipv6_gateway);
+  EXPECT_EQ((std::vector<net_base::IPAddress>{
+                *net_base::IPAddress::CreateFromString("2001:db8:0:1::1"),
+                *net_base::IPAddress::CreateFromString("2001:db8:0:1::2"),
+                *net_base::IPAddress::CreateFromString("192.168.1.99"),
+                *net_base::IPAddress::CreateFromString("192.168.1.98")}),
+            cnc.Get().dns_servers);
+  EXPECT_EQ((std::vector<std::string>{"host1.domain", "host3.domain",
+                                      "host2.domain"}),
+            cnc.Get().dns_search_domains);
+  EXPECT_EQ(dhcppd_config_.ipv6_delegated_prefixes,
+            cnc.Get().ipv6_delegated_prefixes);
+  EXPECT_EQ(1401, cnc.Get().mtu);  // Smaller value
+
+  // SLAAC config is set prior than DHCP, so use the value from SLAAC.
+  // (Although in practice these two value should be the same).
+  EXPECT_EQ(slaac_config_.captive_portal_uri, cnc.Get().captive_portal_uri);
 }
 
 }  // namespace

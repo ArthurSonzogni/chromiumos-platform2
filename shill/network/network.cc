@@ -582,14 +582,49 @@ void Network::OnNetworkConfigUpdatedFromDHCPv6(
   // |dhcp_pd_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_pd_controller_);
   LOG(INFO) << *this << ": " << __func__ << ": " << network_config;
-  // TODO(b/350884946): Implement this callback - merge the NetworkConfig from
-  // DHCPv6-PD into CompoundNetworkConfig and stop generating address from
-  // SLAAC.
+
+  // Filter all prefixes longer than /64, and use ::2 in each prefix as ChromeOS
+  // host's own address.
+  auto edited_config =
+      std::make_unique<net_base::NetworkConfig>(network_config);
+  for (auto iter = edited_config->ipv6_delegated_prefixes.begin();
+       iter != edited_config->ipv6_delegated_prefixes.end();) {
+    if (iter->prefix_length() > 64) {
+      LOG(WARNING) << "Ignoring too-long prefix " << *iter << " from DHCP-PD.";
+      iter = edited_config->ipv6_delegated_prefixes.erase(iter);
+      continue;
+    }
+    auto bytes = iter->address().data();
+    bytes[15] = 2;
+    edited_config->ipv6_addresses.push_back(
+        *net_base::IPv6CIDR::CreateFromBytesAndPrefix(bytes, 128));
+    ++iter;
+  }
+
+  if (config_.SetFromDHCPv6(std::move(edited_config))) {
+    UpdateIPConfigDBusObject();
+    ApplyNetworkConfig(NetworkConfigArea::kMTU |
+                       NetworkConfigArea::kIPv6Address |
+                       NetworkConfigArea::kRoutingPolicy);
+    OnIPv6ConfigUpdated();
+  }
 }
 
 void Network::OnDHCPv6Drop(bool /*is_voluntary*/) {
   LOG(INFO) << *this << ": " << __func__;
-  // TODO(b/350884946): Implement this callback.
+
+  if (!config_.SetFromDHCPv6(nullptr)) {
+    // If config does not change it means we never got any lease from DHCPv6.
+    // Don't need to do anything here.
+    return;
+  }
+  if (config_.Get().ipv4_address || !config_.Get().ipv6_addresses.empty()) {
+    // If there is still a working v4 or v6 address, just update the Network.
+    UpdateIPConfigDBusObject();
+    OnIPv6ConfigUpdated();
+    return;
+  }
+  StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);
 }
 
 bool Network::RenewDHCPLease() {

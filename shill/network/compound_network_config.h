@@ -28,6 +28,7 @@ class CompoundNetworkConfig {
   // deprecated. Also see comment of the mentioned function.
   const net_base::NetworkConfig* GetLegacySavedIPConfig() const;
   // Return true if the IPv6 address is from SLAAC.
+  // TODO(b/350884946): Rename to a more precise name.
   bool HasSLAAC();
 
   void Clear();
@@ -36,6 +37,7 @@ class CompoundNetworkConfig {
   bool SetFromStatic(const net_base::NetworkConfig& config);
   bool SetFromSLAAC(std::unique_ptr<net_base::NetworkConfig> config);
   bool SetFromDHCP(std::unique_ptr<net_base::NetworkConfig> config);
+  bool SetFromDHCPv6(std::unique_ptr<net_base::NetworkConfig> config);
   bool SetFromLinkProtocol(std::unique_ptr<net_base::NetworkConfig> config);
 
   // TODO(b/269401899): Remove these temporary accessors.
@@ -60,6 +62,9 @@ class CompoundNetworkConfig {
 
   // The network configuration received from SLAAC.
   std::unique_ptr<net_base::NetworkConfig> slaac_network_config_;
+
+  // The network configuration received from DHCPv6-PD.
+  std::unique_ptr<net_base::NetworkConfig> dhcpv6_network_config_;
 
   // The static net_base::NetworkConfig from the associated Service.
   net_base::NetworkConfig static_network_config_;

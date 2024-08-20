@@ -100,6 +100,10 @@ constexpr int kIPv6LinkProtocolPrefix = 96;
 constexpr char kIPv6LinkProtocolGateway[] = "fd00:1::1";
 constexpr char kIPv6LinkProtocolNameserver[] = "fd00:1::3";
 
+// IPv6 properties from DHCPPD.
+constexpr char kIPv6DHCPPDPrefix[] = "fd00:2::";
+constexpr char kIPv6DHCPPDHostAddress[] = "fd00:2::2";
+
 MATCHER_P(ContainsAddressAndRoute, family, "") {
   if (family == net_base::IPFamily::kIPv4) {
     return arg & NetworkConfigArea::kIPv4Address &&
@@ -1246,6 +1250,7 @@ class NetworkStartTest : public NetworkTest {
     bool link_protocol_ipv4 = false;
     bool link_protocol_ipv6 = false;
     bool accept_ra = false;
+    bool dhcp_pd = false;
     bool enable_network_validation = false;
     bool expect_network_monitor_start = false;
   };
@@ -1260,6 +1265,7 @@ class NetworkStartTest : public NetworkTest {
     kIPv4LinkProtocolWithStatic,
     kIPv6SLAAC,
     kIPv6LinkProtocol,
+    kIPv6DHCPPD,
   };
 
   NetworkStartTest() {
@@ -1285,6 +1291,16 @@ class NetworkStartTest : public NetworkTest {
         net_base::IPv6Address::CreateFromString(kIPv6LinkProtocolGateway);
     ipv6_link_protocol_config_.dns_servers = {
         *net_base::IPAddress::CreateFromString(kIPv6LinkProtocolNameserver)};
+
+    ipv6_dhcppd_config_.ipv6_addresses = {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6DHCPPDHostAddress,
+                                                       128)};
+    ipv6_dhcppd_config_.ipv6_delegated_prefixes = {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6DHCPPDPrefix, 64)};
+    ipv6_dhcppd_config_.dns_servers = {
+        *net_base::IPAddress::CreateFromString(kIPv6SLAACNameserver)};
+    ipv6_dhcppd_config_.ipv6_gateway =
+        *net_base::IPv6Address::CreateFromString(kIPv6SLAACGateway);
   }
 
   void InvokeStart(const TestOptions& test_opts, bool expect_failure = false) {
@@ -1304,6 +1320,7 @@ class NetworkStartTest : public NetworkTest {
         .dhcp =
             test_opts.dhcp ? std::make_optional(kDHCPOptions) : std::nullopt,
         .accept_ra = test_opts.accept_ra,
+        .dhcp_pd = test_opts.dhcp_pd,
         .validation_mode = test_opts.enable_network_validation
                                ? NetworkMonitor::ValidationMode::kFullValidation
                                : NetworkMonitor::ValidationMode::kDisabled,
@@ -1351,10 +1368,43 @@ class NetworkStartTest : public NetworkTest {
                                             DHCPv4Config::Data{});
   }
 
+  void TriggerDHCPPDUpdateCallback() {
+    ASSERT_NE(dhcp_pd_controller_, nullptr);
+    net_base::NetworkConfig from_dhcp;
+    from_dhcp.ipv6_delegated_prefixes = {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6DHCPPDPrefix, 64)};
+    dhcp_pd_controller_->TriggerUpdateCallback(from_dhcp, DHCPv4Config::Data{});
+  }
+
+  void TriggerDHCPPDUnusableUpdateCallback() {
+    ASSERT_NE(dhcp_pd_controller_, nullptr);
+    net_base::NetworkConfig from_dhcp;
+    // ChromeOS needs DHCPPD prefix to be at least /64.
+    from_dhcp.ipv6_delegated_prefixes = {
+        *net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6DHCPPDPrefix, 96)};
+    dhcp_pd_controller_->TriggerUpdateCallback(from_dhcp, DHCPv4Config::Data{});
+  }
+
   void TriggerSLAACUpdate() {
     TriggerSLAACNameServersUpdate(
         {*net_base::IPAddress::CreateFromString(kIPv6SLAACNameserver)});
     TriggerSLAACAddressUpdate();
+  }
+
+  void TriggerSLAACUpdateWithoutAddress() {
+    slaac_config_.ipv6_gateway =
+        *net_base::IPv6Address::CreateFromString(kIPv6SLAACGateway);
+    slaac_config_.ipv6_addresses = {};
+    EXPECT_CALL(*slaac_controller_, GetNetworkConfig())
+        .WillRepeatedly(Return(slaac_config_));
+    slaac_controller_->TriggerCallback(
+        SLAACController::UpdateType::kDefaultRoute);
+    slaac_config_.dns_servers = {
+        *net_base::IPAddress::CreateFromString(kIPv6SLAACNameserver)};
+    EXPECT_CALL(*slaac_controller_, GetNetworkConfig())
+        .WillRepeatedly(Return(slaac_config_));
+    slaac_controller_->TriggerCallback(SLAACController::UpdateType::kRDNSS);
+    dispatcher_.task_environment().RunUntilIdle();
   }
 
   void TriggerSLAACAddressUpdate() {
@@ -1457,6 +1507,8 @@ class NetworkStartTest : public NetworkTest {
         return &slaac_config_;
       case IPConfigType::kIPv6LinkProtocol:
         return &ipv6_link_protocol_config_;
+      case IPConfigType::kIPv6DHCPPD:
+        return &ipv6_dhcppd_config_;
     }
   }
 
@@ -1471,6 +1523,7 @@ class NetworkStartTest : public NetworkTest {
         return net_base::IPFamily::kIPv4;
       case IPConfigType::kIPv6SLAAC:
       case IPConfigType::kIPv6LinkProtocol:
+      case IPConfigType::kIPv6DHCPPD:
         return net_base::IPFamily::kIPv6;
       case IPConfigType::kNone:
         return std::nullopt;
@@ -1485,6 +1538,7 @@ class NetworkStartTest : public NetworkTest {
 
   net_base::NetworkConfig slaac_config_;
   net_base::NetworkConfig ipv6_link_protocol_config_;
+  net_base::NetworkConfig ipv6_dhcppd_config_;
 };
 
 TEST_F(NetworkStartTest, IPv4OnlyDHCPRequestIPFailure) {
@@ -2118,6 +2172,114 @@ TEST_F(NetworkStartTest, DualStackLinkProtocol) {
                   IPConfigType::kIPv6LinkProtocol);
   VerifyGetAddresses(IPConfigType::kIPv4LinkProtocol,
                      IPConfigType::kIPv6LinkProtocol);
+}
+
+TEST_F(NetworkStartTest, DHCPPDBeforeSLAAC) {
+  const TestOptions test_opts = {.accept_ra = true, .dhcp_pd = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  ExpectCreateDHCPPDController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkConfigArea::kMTU |
+                                     NetworkConfigArea::kIPv6Address |
+                                     NetworkConfigArea::kRoutingPolicy,
+                                 _));
+  TriggerDHCPPDUpdateCallback();
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6DHCPPD);
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
+  TriggerSLAACUpdateWithoutAddress();
+
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6DHCPPD);
+  VerifyGetAddresses(IPConfigType::kNone, IPConfigType::kIPv6DHCPPD);
+}
+
+TEST_F(NetworkStartTest, DHCPPDAfterSLAAC) {
+  const TestOptions test_opts = {.accept_ra = true, .dhcp_pd = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  ExpectCreateDHCPPDController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  TriggerSLAACUpdateWithoutAddress();
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6DHCPPD);
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkConfigArea::kMTU |
+                                     NetworkConfigArea::kIPv6Address |
+                                     NetworkConfigArea::kRoutingPolicy,
+                                 _));
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
+  TriggerDHCPPDUpdateCallback();
+
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kNone, IPConfigType::kIPv6DHCPPD);
+  VerifyGetAddresses(IPConfigType::kNone, IPConfigType::kIPv6DHCPPD);
+}
+
+TEST_F(NetworkStartTest, DHCPPDWithIPv4) {
+  const TestOptions test_opts = {
+      .dhcp = true, .accept_ra = true, .dhcp_pd = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  ExpectCreateDHCPPDController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+
+  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4DHCP);
+  TriggerDHCPUpdateCallback();
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+
+  EXPECT_CALL(*network_, ApplyNetworkConfig(NetworkConfigArea::kDNS, _));
+  TriggerSLAACUpdateWithoutAddress();
+
+  EXPECT_CALL(*network_,
+              ApplyNetworkConfig(NetworkConfigArea::kMTU |
+                                     NetworkConfigArea::kIPv6Address |
+                                     NetworkConfigArea::kRoutingPolicy,
+                                 _));
+  TriggerDHCPPDUpdateCallback();
+
+  VerifyIPConfigs(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6DHCPPD);
+  VerifyGetAddresses(IPConfigType::kIPv4DHCP, IPConfigType::kIPv6DHCPPD);
+  VerifyIPTypeReportScheduled(Metrics::kIPTypeDualStack);
+}
+
+TEST_F(NetworkStartTest, DHCPPDUnusable) {
+  const TestOptions test_opts = {.accept_ra = true, .dhcp_pd = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  ExpectCreateDHCPPDController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  TriggerSLAACUpdateWithoutAddress();
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+
+  EXPECT_CALL(*network_, ApplyNetworkConfig).Times(0);
+  TriggerDHCPPDUnusableUpdateCallback();
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 }
 
 // Verifies that the exposed IPConfig objects should be cleared on stopped.

@@ -37,7 +37,8 @@ const net_base::NetworkConfig* CompoundNetworkConfig::GetLegacySavedIPConfig()
 }
 
 bool CompoundNetworkConfig::HasSLAAC() {
-  return slaac_network_config_ != nullptr;
+  return combined_network_config_->ipv6_addresses ==
+         slaac_network_config_->ipv6_addresses;
 }
 
 void CompoundNetworkConfig::Clear() {
@@ -63,6 +64,12 @@ bool CompoundNetworkConfig::SetFromSLAAC(
 bool CompoundNetworkConfig::SetFromDHCP(
     std::unique_ptr<net_base::NetworkConfig> config) {
   dhcp_network_config_ = std::move(config);
+  return Recalculate();
+}
+
+bool CompoundNetworkConfig::SetFromDHCPv6(
+    std::unique_ptr<net_base::NetworkConfig> config) {
+  dhcpv6_network_config_ = std::move(config);
   return Recalculate();
 }
 
@@ -132,6 +139,15 @@ bool CompoundNetworkConfig::Recalculate() {
       preferred_ipv6_addr_src->ipv6_addresses;
   combined_network_config_->ipv6_gateway =
       preferred_ipv6_addr_src->ipv6_gateway;
+
+  // DHCPv6 has the highest preference order for |ipv6_addresses|. It still
+  // relies on SLAAC for |ipv6_gateway|.
+  if (dhcpv6_network_config_) {
+    combined_network_config_->ipv6_addresses =
+        dhcpv6_network_config_->ipv6_addresses;
+    combined_network_config_->ipv6_delegated_prefixes =
+        dhcpv6_network_config_->ipv6_delegated_prefixes;
+  }
 
   // |ipv6_blackhole_route| is only used for VPN.
   if (link_protocol_network_config_) {
@@ -232,6 +248,7 @@ bool CompoundNetworkConfig::Recalculate() {
           }
         };
     update_mtu(dhcp_network_config_);
+    update_mtu(dhcpv6_network_config_);
     update_mtu(slaac_network_config_);
     update_mtu(link_protocol_network_config_);
   }
@@ -253,6 +270,9 @@ std::ostream& operator<<(std::ostream& stream,
   }
   if (config.slaac_network_config_) {
     stream << " SLAAC " << *config.slaac_network_config_ << ";";
+  }
+  if (config.dhcpv6_network_config_) {
+    stream << " DHCPv6 " << *config.dhcp_network_config_ << ";";
   }
   stream << " combined config " << *config.combined_network_config_;
   return stream;
