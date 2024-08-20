@@ -266,8 +266,10 @@ EffectsConfig ConvertMojoConfig(
   } else if (base::PathExists(kEnableRetouchWithRelight)) {
     config.face_retouch_enabled = config.relight_enabled;
   }
-  // TODO(b/299049278): Handle the case where the Studio Look feature is
-  // enabled.
+  if (!effects_config->studio_look_enabled) {
+    config.face_retouch_enabled = false;
+    config.relight_enabled = false;
+  }
   return config;
 }
 
