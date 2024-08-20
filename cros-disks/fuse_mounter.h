@@ -10,7 +10,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include <base/files/file.h>
@@ -81,7 +80,7 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
   const std::optional<base::FilePath> mount_namespace_;
 };
 
-// Uprivileged mounting of any FUSE filesystem. Filesystem-specific set up
+// Unprivileged mounting of any FUSE filesystem. Filesystem-specific set up
 // and sandboxing is to be done in a subclass.
 class FUSEMounter : public Mounter {
  public:

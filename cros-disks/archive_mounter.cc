@@ -7,11 +7,13 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/scoped_mount_namespace.h>
 #include <dbus/cros-disks/dbus-constants.h>
 
+#include "cros-disks/mount_options.h"
+#include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 
 namespace cros_disks {

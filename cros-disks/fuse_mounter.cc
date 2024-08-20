@@ -4,27 +4,22 @@
 
 #include "cros-disks/fuse_mounter.h"
 
-#include <base/check.h>
-#include <base/check_op.h>
-
-// Has to come before linux/fs.h due to conflicting definitions of MS_*
-// constants.
-#include <sys/mount.h>
-
 #include <fcntl.h>
 #include <linux/capability.h>
 #include <linux/fs.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/functional/bind.h>
@@ -35,6 +30,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"

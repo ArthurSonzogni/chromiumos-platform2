@@ -16,7 +16,6 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include <base/check.h>
 #include <base/containers/contains.h>

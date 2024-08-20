@@ -5,7 +5,6 @@
 #ifndef CROS_DISKS_FUSE_MOUNT_MANAGER_H_
 #define CROS_DISKS_FUSE_MOUNT_MANAGER_H_
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <vector>

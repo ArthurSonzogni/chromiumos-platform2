@@ -4,12 +4,11 @@
 
 #include "cros-disks/sandboxed_init.h"
 
-#include <string>
-#include <utility>
-
-#include <stdlib.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+
+#include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/check_op.h>

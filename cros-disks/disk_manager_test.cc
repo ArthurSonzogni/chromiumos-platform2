@@ -4,11 +4,8 @@
 
 #include "cros-disks/disk_manager.h"
 
-#include <stdlib.h>
 #include <sys/mount.h>
-#include <time.h>
 
-#include <map>
 #include <memory>
 #include <utility>
 
@@ -35,7 +32,6 @@
 #include "cros-disks/mount_point.h"
 #include "cros-disks/mounter.h"
 #include "cros-disks/platform.h"
-#include "cros-disks/system_mounter.h"
 
 namespace cros_disks {
 namespace {

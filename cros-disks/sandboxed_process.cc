@@ -4,14 +4,12 @@
 
 #include "cros-disks/sandboxed_process.h"
 
-#include <iostream>
-#include <utility>
-
-#include <stdlib.h>
-
 #include <sys/mount.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <iostream>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>

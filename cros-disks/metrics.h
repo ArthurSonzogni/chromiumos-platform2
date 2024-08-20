@@ -5,7 +5,6 @@
 #ifndef CROS_DISKS_METRICS_H_
 #define CROS_DISKS_METRICS_H_
 
-#include <string>
 #include <string_view>
 
 #include <base/files/file_path.h>

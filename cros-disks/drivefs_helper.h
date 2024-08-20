@@ -5,7 +5,6 @@
 #ifndef CROS_DISKS_DRIVEFS_HELPER_H_
 #define CROS_DISKS_DRIVEFS_HELPER_H_
 
-#include <memory>
 #include <string>
 #include <vector>
 

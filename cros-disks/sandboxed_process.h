@@ -18,7 +18,6 @@
 #include <base/functional/callback.h>
 
 #include "cros-disks/process.h"
-#include "cros-disks/sandboxed_init.h"
 
 struct minijail;
 

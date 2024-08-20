@@ -10,12 +10,11 @@
 #ifndef CROS_DISKS_MOUNT_MANAGER_H_
 #define CROS_DISKS_MOUNT_MANAGER_H_
 
+#include <sys/wait.h>
+
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
-
-#include <sys/wait.h>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>

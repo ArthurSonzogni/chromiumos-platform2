@@ -8,7 +8,6 @@
 
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/strings/string_util.h>
 #include <brillo/process/process_reaper.h>
@@ -18,9 +17,7 @@
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/mock_platform.h"
-#include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
-#include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 #include "cros-disks/uri.h"
 

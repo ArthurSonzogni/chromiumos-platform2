@@ -9,15 +9,15 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/files/safe_fd.h>
 
 #include "cros-disks/fuse_mounter.h"

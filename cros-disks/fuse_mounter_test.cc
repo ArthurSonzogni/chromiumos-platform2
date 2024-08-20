@@ -22,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "cros-disks/mock_platform.h"
-#include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/sandboxed_process.h"
 

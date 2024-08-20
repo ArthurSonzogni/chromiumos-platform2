@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include <poll.h>
-#include <stdlib.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
 #include <unistd.h>

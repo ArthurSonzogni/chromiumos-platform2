@@ -6,6 +6,8 @@
 
 #include <sys/mount.h>
 
+#include <vector>
+
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -18,9 +20,7 @@
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mock_platform.h"
-#include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
-#include "cros-disks/uri.h"
 #include "cros-disks/user.h"
 
 namespace cros_disks {
