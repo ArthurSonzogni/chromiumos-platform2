@@ -4,14 +4,12 @@
 
 #include "cros-disks/process.h"
 
-#include <algorithm>
-#include <array>
-#include <cstdlib>
-#include <string>
-
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
+
+#include <cstdlib>
+#include <string>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -158,8 +156,7 @@ char* const* Process::GetEnvironment() {
   if (environment_array_.empty()) {
     // Prepare the new environment.
     for (std::string& s : environment_) {
-      // TODO(fdegros) Remove const_cast when using C++17
-      environment_array_.push_back(const_cast<char*>(s.data()));
+      environment_array_.push_back(s.data());
     }
 
     // Append the current environment.
