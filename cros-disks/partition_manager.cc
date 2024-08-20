@@ -4,15 +4,15 @@
 
 #include "cros-disks/partition_manager.h"
 
-#include <utility>
-#include <unistd.h>
-#include <vector>
-
 #include <linux/capability.h>
+#include <unistd.h>
+
+#include <utility>
+
+#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/containers/contains.h>
 #include <base/strings/stringprintf.h>
 
 #include "cros-disks/disk.h"
@@ -28,7 +28,7 @@ const char kPartitionProgramPath[] = "/sbin/sfdisk";
 // MBR 2TB limit: (2^32 -1) partition size in sectors * 512 bytes/sectors
 const uint64_t kMBRMaxSize = 2199023255040ULL;
 
-// Initialises the process for partitionting and starts it.
+// Initialises the process for partitioning and starts it.
 PartitionError StartPartitionProcess(const base::FilePath& device_file,
                                      const std::string& partition_program,
                                      const std::string& label_type,
@@ -159,11 +159,11 @@ void PartitionManager::OnPartitionProcessTerminated(
     case CLD_EXITED:
       if (info.si_status == 0) {
         error_type = PartitionError::kSuccess;
-        LOG(INFO) << "Process " << info.si_pid << " for partitionting "
+        LOG(INFO) << "Process " << info.si_pid << " for partitioning "
                   << quote(device_path) << " completed successfully";
       } else {
         error_type = PartitionError::kProgramFailed;
-        LOG(ERROR) << "Process " << info.si_pid << " for partitionting "
+        LOG(ERROR) << "Process " << info.si_pid << " for partitioning "
                    << quote(device_path) << " exited with a status "
                    << info.si_status;
       }
@@ -172,7 +172,7 @@ void PartitionManager::OnPartitionProcessTerminated(
     case CLD_DUMPED:
     case CLD_KILLED:
       error_type = PartitionError::kProgramFailed;
-      LOG(ERROR) << "Process " << info.si_pid << " for partitionting "
+      LOG(ERROR) << "Process " << info.si_pid << " for partitioning "
                  << quote(device_path) << " killed by a signal "
                  << info.si_status;
       break;

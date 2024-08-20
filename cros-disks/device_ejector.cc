@@ -6,8 +6,6 @@
 
 #include <linux/capability.h>
 
-#include <memory>
-
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
@@ -46,7 +44,6 @@ bool DeviceEjector::Eject(const std::string& device_path) {
   process->AddArgument(device_path);
   process->SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
 
-  // TODO(benchan): Set up a timeout to kill a hanging process.
   bool started = process->Start();
   if (started) {
     process_reaper_->WatchForChild(

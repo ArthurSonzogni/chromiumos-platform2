@@ -4,14 +4,14 @@
 
 #include "cros-disks/system_mounter.h"
 
-#include <errno.h>
 #include <sys/mount.h>
 
 #include <string>
 #include <utility>
+#include <vector>
 
-#include <base/logging.h>
 #include <base/containers/util.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 
 #include "cros-disks/mount_options.h"
