@@ -76,6 +76,7 @@ TEST_F(MetricsTest, GetFilesystemType) {
   EXPECT_EQ(Metrics::kFilesystemVFAT, metrics_.GetFilesystemType("vfat"));
   EXPECT_EQ(Metrics::kFilesystemExFAT, metrics_.GetFilesystemType("exfat"));
   EXPECT_EQ(Metrics::kFilesystemNTFS, metrics_.GetFilesystemType("ntfs"));
+  EXPECT_EQ(Metrics::kFilesystemNTFS, metrics_.GetFilesystemType("ntfs3"));
   EXPECT_EQ(Metrics::kFilesystemHFSPlus, metrics_.GetFilesystemType("hfsplus"));
   EXPECT_EQ(Metrics::kFilesystemExt2, metrics_.GetFilesystemType("ext2"));
   EXPECT_EQ(Metrics::kFilesystemExt3, metrics_.GetFilesystemType("ext3"));
@@ -84,6 +85,12 @@ TEST_F(MetricsTest, GetFilesystemType) {
   EXPECT_EQ(Metrics::kFilesystemUDF, metrics_.GetFilesystemType("udf"));
   EXPECT_EQ(Metrics::kFilesystemOther, metrics_.GetFilesystemType("xfs"));
   EXPECT_EQ(Metrics::kFilesystemOther, metrics_.GetFilesystemType("btrfs"));
+  EXPECT_EQ(Metrics::kFilesystemExFAT,
+            metrics_.GetFilesystemType("fuseblk.exfat"));
+  EXPECT_EQ(Metrics::kFilesystemNTFS,
+            metrics_.GetFilesystemType("fuseblk.ntfs"));
+  EXPECT_EQ(Metrics::kFilesystemNTFS,
+            metrics_.GetFilesystemType("fuseblk.ntfs3"));
 }
 
 }  // namespace cros_disks

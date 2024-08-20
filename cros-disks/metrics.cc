@@ -5,6 +5,7 @@
 #include "cros-disks/metrics.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
@@ -12,8 +13,23 @@
 #include <base/strings/string_util.h>
 
 namespace cros_disks {
+namespace {
 
-Metrics::ArchiveType Metrics::GetArchiveType(std::string_view path) {
+// Returns a view into the input string `fs_type` with the given `prefix`
+// removed, but leaving the original string intact. If the prefix does not match
+// at the start of the string, returns the original string view instead.
+std::string_view StripPrefix(std::string_view fs_type,
+                             const std::string_view prefix) {
+  if (fs_type.starts_with(prefix)) {
+    fs_type.remove_prefix(prefix.size());
+  }
+
+  return fs_type;
+}
+
+}  // namespace
+
+Metrics::ArchiveType Metrics::GetArchiveType(const std::string_view path) {
   struct Entry {
     std::string_view ext;
     ArchiveType type;
@@ -63,18 +79,6 @@ Metrics::ArchiveType Metrics::GetArchiveType(std::string_view path) {
   return kArchiveUnknown;
 }
 
-// Strips the prefix "fuse." or "fuseblk." from a filesystem type.
-static std::string_view StripPrefix(std::string_view fs_type) {
-  for (const std::string_view prefix : {"fuse.", "fuseblk."}) {
-    if (base::StartsWith(fs_type, prefix)) {
-      fs_type.remove_prefix(prefix.size());
-      break;
-    }
-  }
-
-  return fs_type;
-}
-
 Metrics::FilesystemType Metrics::GetFilesystemType(
     const std::string_view fs_type) {
   static const auto map =
@@ -87,10 +91,12 @@ Metrics::FilesystemType Metrics::GetFilesystemType(
           {"hfsplus", kFilesystemHFSPlus},  //
           {"iso9660", kFilesystemISO9660},  //
           {"ntfs", kFilesystemNTFS},        //
+          {"ntfs3", kFilesystemNTFS},       //
           {"udf", kFilesystemUDF},          //
           {"vfat", kFilesystemVFAT},        //
       });
-  const auto it = map.find(StripPrefix(fs_type));
+
+  const auto it = map.find(StripPrefix(fs_type, "fuseblk."));
   return it != map.end() ? it->second : kFilesystemOther;
 }
 
@@ -108,21 +114,20 @@ void Metrics::RecordFilesystemType(const std::string_view fs_type) {
     LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
-void Metrics::RecordMountError(std::string_view fs_type, const error_t error) {
-  // Group all the FUSE-related filesystems under the name "fuse".
-  const std::string_view prefix = "fuse";
-  if (base::StartsWith(fs_type, prefix))
-    fs_type = prefix;
-
+void Metrics::RecordMountError(const std::string_view fs_type,
+                               const error_t error) {
   if (!metrics_library_.SendSparseToUMA(
-          base::StrCat({"CrosDisks.MountError.", fs_type}), error))
+          base::StrCat(
+              {"CrosDisks.MountError.", StripPrefix(fs_type, "fuse.")}),
+          error))
     LOG(ERROR) << "Cannot send mount error to UMA";
 }
 
 void Metrics::RecordUnmountError(const std::string_view fs_type,
                                  const error_t error) {
   if (!metrics_library_.SendSparseToUMA(
-          base::StrCat({"CrosDisks.UnmountError.", StripPrefix(fs_type)}),
+          base::StrCat(
+              {"CrosDisks.UnmountError.", StripPrefix(fs_type, "fuse.")}),
           error))
     LOG(ERROR) << "Cannot send unmount error to UMA";
 }
@@ -143,7 +148,7 @@ void Metrics::RecordReadOnlyFileSystem(const std::string_view fs_type) {
     LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
-void Metrics::RecordDeviceMediaType(DeviceType device_media_type) {
+void Metrics::RecordDeviceMediaType(const DeviceType device_media_type) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.DeviceMediaType",
                                       device_media_type))
     LOG(ERROR) << "Cannot send device media type to UMA";
