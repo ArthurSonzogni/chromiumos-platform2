@@ -138,16 +138,21 @@ std::optional<DHCPClientProxy::EventReason> GetEventReason(
     const std::map<std::string, std::string>& configuration) {
   // Constants used as event type got from dhcpcd.
   static constexpr auto kEventReasonTable =
-      base::MakeFixedFlatMap<std::string_view, DHCPClientProxy::EventReason>(
-          {{"BOUND", DHCPClientProxy::EventReason::kBound},
-           {"FAIL", DHCPClientProxy::EventReason::kFail},
-           {"GATEWAY-ARP", DHCPClientProxy::EventReason::kGatewayArp},
-           {"NAK", DHCPClientProxy::EventReason::kNak},
-           {"REBIND", DHCPClientProxy::EventReason::kRebind},
-           {"REBOOT", DHCPClientProxy::EventReason::kReboot},
-           {"RENEW", DHCPClientProxy::EventReason::kRenew},
-           {"IPV6-ONLY-PREFERRED",
-            DHCPClientProxy::EventReason::kIPv6OnlyPreferred}});
+      base::MakeFixedFlatMap<std::string_view, DHCPClientProxy::EventReason>({
+          {"BOUND", DHCPClientProxy::EventReason::kBound},
+          {"FAIL", DHCPClientProxy::EventReason::kFail},
+          {"GATEWAY-ARP", DHCPClientProxy::EventReason::kGatewayArp},
+          {"NAK", DHCPClientProxy::EventReason::kNak},
+          {"REBIND", DHCPClientProxy::EventReason::kRebind},
+          {"REBOOT", DHCPClientProxy::EventReason::kReboot},
+          {"RENEW", DHCPClientProxy::EventReason::kRenew},
+          {"IPV6-ONLY-PREFERRED",
+           DHCPClientProxy::EventReason::kIPv6OnlyPreferred},
+          {"BOUND6", DHCPClientProxy::EventReason::kBound6},
+          {"REBIND6", DHCPClientProxy::EventReason::kRebind6},
+          {"REBOOT6", DHCPClientProxy::EventReason::kReboot6},
+          {"RENEW6", DHCPClientProxy::EventReason::kRenew6},
+      });
 
   const auto conf_iter =
       configuration.find(DHCPv4Config::kConfigurationKeyReason);
@@ -219,6 +224,17 @@ void DHCPCDProxy::OnDHCPEvent(
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
 
+  if (reason == EventReason::kBound6 || reason == EventReason::kRebind6 ||
+      reason == EventReason::kReboot6 || reason == EventReason::kRenew6) {
+    network_config = ParsePDConfiguration(configuration);
+    // In DHCPv6, Each IA_PD can have different T1/T2 and each prefix can have
+    // different valid-lifetime and preferred-lifetime. Those are left to be
+    // handled by dhcpcd itself and we are not setting dhcp_data.lease_duration
+    // in shill.
+    handler_->OnDHCPEvent(*reason, network_config, dhcp_data);
+    return;
+  }
+
   if (NeedConfiguration(*reason) &&
       !DHCPv4Config::ParseConfiguration(
           ConvertConfigurationToKeyValueStore(configuration), &network_config,
@@ -229,6 +245,25 @@ void DHCPCDProxy::OnDHCPEvent(
                  << network_config;
   }
   handler_->OnDHCPEvent(*reason, network_config, dhcp_data);
+}
+
+net_base::NetworkConfig DHCPCDProxy::ParsePDConfiguration(
+    const std::map<std::string, std::string>& configuration) {
+  net_base::NetworkConfig result;
+  for (const auto& [key, value] : configuration) {
+    if (key == DHCPv4Config::kConfigurationKeyMTU) {
+      int mtu;
+      if (base::StringToInt(value, &mtu)) {
+        result.mtu = mtu;
+      }
+    } else if (key.find(DHCPv4Config::kConfigurationKeyPrefixIAPDPrefix) == 0) {
+      const auto prefix = net_base::IPv6CIDR::CreateFromCIDRString(value);
+      if (prefix) {
+        result.ipv6_delegated_prefixes.push_back(*prefix);
+      }
+    }
+  }
+  return result;
 }
 
 KeyValueStore DHCPCDProxy::ConvertConfigurationToKeyValueStore(

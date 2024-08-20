@@ -137,6 +137,13 @@ void DHCPController::OnDHCPEvent(DHCPClientProxy::EventReason reason,
     case DHCPClientProxy::EventReason::kGatewayArp:
       UpdateConfiguration(network_config, dhcp_data, /*is_gateway_arp=*/true);
       return;
+
+    case DHCPClientProxy::EventReason::kBound6:
+    case DHCPClientProxy::EventReason::kRebind6:
+    case DHCPClientProxy::EventReason::kReboot6:
+    case DHCPClientProxy::EventReason::kRenew6:
+      // TODO(b/350884946): Pass DHCPPD configuration to Network.
+      return;
   }
 }
 

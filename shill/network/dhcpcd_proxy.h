@@ -46,6 +46,9 @@ class DHCPCDProxy : public DHCPClientProxy {
   static KeyValueStore ConvertConfigurationToKeyValueStore(
       const std::map<std::string, std::string>& configuration);
 
+  static net_base::NetworkConfig ParsePDConfiguration(
+      const std::map<std::string, std::string>& configuration);
+
   // Gets the WeakPtr of this instance.
   base::WeakPtr<DHCPCDProxy> GetWeakPtr();
 

@@ -31,6 +31,10 @@ class DHCPClientProxy {
     kReboot,
     kRenew,
     kIPv6OnlyPreferred,
+    kBound6,
+    kRebind6,
+    kReboot6,
+    kRenew6,
   };
 
   // Returns true if the EventHandler::OnDHCPEvent() with |reason| needs the

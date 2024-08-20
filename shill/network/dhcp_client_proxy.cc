@@ -30,6 +30,10 @@ bool DHCPClientProxy::NeedConfiguration(DHCPClientProxy::EventReason reason) {
     case DHCPClientProxy::EventReason::kReboot:
     case DHCPClientProxy::EventReason::kRenew:
     case DHCPClientProxy::EventReason::kGatewayArp:
+    case DHCPClientProxy::EventReason::kBound6:
+    case DHCPClientProxy::EventReason::kRebind6:
+    case DHCPClientProxy::EventReason::kReboot6:
+    case DHCPClientProxy::EventReason::kRenew6:
       return true;
 
     case DHCPClientProxy::EventReason::kFail:

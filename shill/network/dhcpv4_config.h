@@ -15,6 +15,8 @@
 
 namespace shill {
 
+// TODO(b/350884946): Rename this class as the constants defined here are not
+// limited to DHCPv4.
 class DHCPv4Config {
  public:
   // The information from DHCPv4 that's not directly used in network
@@ -54,6 +56,7 @@ class DHCPv4Config {
   static constexpr char kConfigurationKeyPid[] = "Pid";
   static constexpr char kConfigurationKeyInterface[] = "Interface";
   static constexpr char kConfigurationKeyReason[] = "Reason";
+  static constexpr char kConfigurationKeyPrefixIAPDPrefix[] = "IAPDPrefix";
 
   // Parses |configuration|. The fields that are needed for network
   // configuration are parsed into |network_config|, and the others into

@@ -14,7 +14,9 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv6_address.h>
 #include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/process_manager.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -28,6 +30,7 @@ namespace shill {
 namespace {
 
 using testing::_;
+using testing::ElementsAre;
 using testing::Field;
 using testing::Return;
 
@@ -427,6 +430,27 @@ TEST(DHCPCDProxyTest, ConvertConfigurationToKeyValueStoreendorLeaseTime) {
       DHCPCDProxy::ConvertConfigurationToKeyValueStore(configuration);
 
   EXPECT_EQ(store.Get<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime), 300);
+}
+
+TEST(DHCPCDProxyTest, ParsePDConfiguration) {
+  const std::map<std::string, std::string> configuration = {
+      {"Pid", "4"},
+      {"Interface", "wlan0"},
+      {"Reason", "BOUND6"},
+      {"InterfaceMTU", "1450"},
+      {"IAPDPrefix.1.1", "fc00:501:ffff:111::/64"},
+      {"IAPDPrefix.2.1", "2001:db8:0:101::/96"},
+      {"IAPDPrefix.2.2", "fc00:0:0:101::/96"},
+  };
+  const net_base::NetworkConfig result =
+      DHCPCDProxy::ParsePDConfiguration(configuration);
+  EXPECT_EQ(result.mtu, 1450);
+  EXPECT_THAT(
+      result.ipv6_delegated_prefixes,
+      ElementsAre(
+          *net_base::IPv6CIDR::CreateFromCIDRString("fc00:501:ffff:111::/64"),
+          *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:101::/96"),
+          *net_base::IPv6CIDR::CreateFromCIDRString("fc00:0:0:101::/96")));
 }
 
 }  // namespace
