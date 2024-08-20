@@ -203,9 +203,9 @@ KernelVersion GetKernelVersion() {
 }  // namespace
 
 bool DiskManager::ShouldUseKernelDrivers() {
-  // Return whether the Linux kernel is at least version 7.0.
+  // Return whether the Linux kernel is at least version 6.6.
   return !std::ranges::lexicographical_compare(GetKernelVersion(),
-                                               KernelVersion{7, 0});
+                                               KernelVersion{6, 6});
 }
 
 DiskManager::DiskManager(const std::string& mount_root,
