@@ -96,15 +96,6 @@ def get_parser() -> argparse.ArgumentParser:
             "default value is 'netns-ehide'."
         ),
     )
-    parser.add_argument(
-        "-s",
-        "--static-ipv4-addr",
-        type=str,
-        help=(
-            "Configure static IPv4 address (CIDR) for the Ethernet interface. "
-            "If it is none, ehide will resort to DHCP."
-        ),
-    )
     return parser
 
 
