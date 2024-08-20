@@ -608,12 +608,14 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpInstantTetheringFlag(builder, cros_config);
   SetUpHPEngageOneProAIOSystem(builder);
 
-  // TODO(b/360171772, b/360396368): Once this launches to all users, this can
-  // be removed as it will not be gated for one device.
   std::string model_name;
   if (cros_config->GetString("/", kModelNameProperty, &model_name) &&
       model_name == "xol") {
+    // TODO(b/360171772, b/360396368): Once this launches to all users, this can
+    // be removed as it will not be gated for one device.
     builder->AddFeatureEnableOverride("ModifierSplitDeviceEnabled");
+    // TODO(b/358470481): Revisit this flag after finding a better approach.
+    builder->AddFeatureEnableOverride("OledScaleFactorEnabled");
   }
 }
 
