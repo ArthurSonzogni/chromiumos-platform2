@@ -6,7 +6,6 @@
 #define ARC_KEYMINT_CONTEXT_ARC_REMOTE_PROVISIONING_CONTEXT_H_
 
 #include <cppbor.h>
-#include <keymaster/contexts/pure_soft_keymaster_context.h>
 
 #include <map>
 #include <memory>
@@ -14,6 +13,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <keymaster/contexts/pure_soft_keymaster_context.h>
 
 #include "arc/keymint/context/openssl_utils.h"
 
@@ -82,6 +83,9 @@ class ArcRemoteProvisioningContext
       const std::vector<uint8_t>& additional_auth_data) const override;
 
   void SetSystemVersion(uint32_t os_version, uint32_t os_patchlevel);
+  void SetVerifiedBootInfo(std::string_view boot_state,
+                           std::string_view bootloader_state,
+                           const std::vector<uint8_t>& vbmeta_digest);
   /* To avoid replay attacks, Android provides an input challenge for generating
    certificate request. This method sets the same challenge here, and it will
    be used in getting a ChromeOS quoted blob from libarc-attestation.
@@ -94,6 +98,9 @@ class ArcRemoteProvisioningContext
   keymaster_security_level_t security_level_;
   std::optional<uint32_t> os_version_;
   std::optional<uint32_t> os_patchlevel_;
+  std::optional<std::string> verified_boot_state_;
+  std::optional<std::string> bootloader_state_;
+  std::optional<std::vector<uint8_t>> vbmeta_digest_;
   std::optional<std::vector<uint8_t>> certificate_challenge_;
 
   mutable std::once_flag bcc_initialized_flag_;

@@ -8,13 +8,11 @@
 #include <string>
 #include <utility>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <libarc-attestation/lib/test_utils.h>
-
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <libarc-attestation/lib/test_utils.h>
 
 namespace arc::keymint::context {
 
@@ -377,4 +375,66 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoFailure) {
   EXPECT_EQ(result_map->size(), 0);
 }
 
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoWithVerifiedBootInfo) {
+  // Prepare.
+  std::string file_data(kSampleProp);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
+
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
+                                        temp_dir.GetPath());
+  const std::string unlocked_bootloader_state = "unlocked";
+  const std::string unverified_boot_state = "orange";
+  const std::string vbmeta_digest_string = "0123somerandomvalue";
+  const std::vector<uint8_t> vbmeta_digest =
+      brillo::BlobFromString(vbmeta_digest_string);
+
+  // Execute.
+  remote_provisioning_context_->SetVerifiedBootInfo(
+      unverified_boot_state, unlocked_bootloader_state, vbmeta_digest);
+  auto result = remote_provisioning_context_->CreateDeviceInfo();
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
+  ASSERT_TRUE(result_map->get("bootloader_state"));
+  EXPECT_EQ(*result_map->get("bootloader_state"),
+            cppbor::Tstr(unlocked_bootloader_state));
+  ASSERT_TRUE(result_map->get("vb_state"));
+  EXPECT_EQ(*result_map->get("vb_state"), cppbor::Tstr(unverified_boot_state));
+  ASSERT_TRUE(result_map->get("vbmeta_digest"));
+  EXPECT_EQ(*result_map->get("vbmeta_digest"),
+            cppbor::Bstr(vbmeta_digest_string));
+}
+
+TEST_F(ArcRemoteProvisioningContextTest,
+       CreateDeviceInfoWithoutVerifiedBootInfo) {
+  // Prepare.
+  std::string file_data(kSampleProp);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
+
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
+                                        temp_dir.GetPath());
+
+  // Execute.
+  auto result = remote_provisioning_context_->CreateDeviceInfo();
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
+  ASSERT_FALSE(result_map->get("bootloader_state"));
+  ASSERT_FALSE(result_map->get("vb_state"));
+  ASSERT_FALSE(result_map->get("vbmeta_digest"));
+}
 }  // namespace arc::keymint::context

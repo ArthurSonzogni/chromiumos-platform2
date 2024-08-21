@@ -462,6 +462,15 @@ void ArcRemoteProvisioningContext::SetSystemVersion(uint32_t os_version,
   os_patchlevel_ = os_patchlevel;
 }
 
+void ArcRemoteProvisioningContext::SetVerifiedBootInfo(
+    std::string_view boot_state,
+    std::string_view bootloader_state,
+    const std::vector<uint8_t>& vbmeta_digest) {
+  verified_boot_state_ = boot_state;
+  bootloader_state_ = bootloader_state;
+  vbmeta_digest_ = vbmeta_digest;
+}
+
 void ArcRemoteProvisioningContext::SetChallengeForCertificateRequest(
     std::vector<uint8_t>& challenge) {
   certificate_challenge_ = std::make_optional<std::vector<uint8_t>>(
@@ -482,6 +491,18 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
 
   auto device_info_map = CreateDeviceInfoMap(properties_content);
 
+  if (bootloader_state_.has_value()) {
+    device_info_map->add(cppbor::Tstr("bootloader_state"),
+                         cppbor::Tstr(bootloader_state_.value()));
+  }
+  if (verified_boot_state_.has_value()) {
+    device_info_map->add(cppbor::Tstr("vb_state"),
+                         cppbor::Tstr(verified_boot_state_.value()));
+  }
+  if (vbmeta_digest_.has_value()) {
+    device_info_map->add(cppbor::Tstr("vbmeta_digest"),
+                         cppbor::Bstr(vbmeta_digest_.value()));
+  }
   if (os_version_.has_value()) {
     device_info_map->add(cppbor::Tstr("os_version"),
                          cppbor::Tstr(std::to_string(os_version_.value())));
