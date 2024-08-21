@@ -492,8 +492,8 @@ void Device::GetTrafficCountersPatchpanelCallback(
 
 void Device::SelectService(const ServiceRefPtr& service,
                            bool reset_old_service_state) {
-  SLOG(this, 2) << __func__ << ": " << LoggingTag() << " service "
-                << (service ? service->log_name() : "*reset*");
+  LOG(INFO) << __func__ << ": " << LoggingTag() << " service "
+            << (service ? service->log_name() : "*reset*");
 
   if (selected_service_.get() == service.get()) {
     // Network may have been previously invalidated, if so, reset.
