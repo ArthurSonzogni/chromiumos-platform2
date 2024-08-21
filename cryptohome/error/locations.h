@@ -2149,7 +2149,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionMismatchedMultipLabelSizeAuthAuthFactor = 3522,
   /* =Obsolete= */
   kLocAuthSessionLabelLookupUnimplemented = 3523,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
   /* =Obsolete= */
   kLocUSSDeserializeFailedInGetUserMetadata = 3525,
