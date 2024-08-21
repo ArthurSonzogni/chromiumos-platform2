@@ -124,6 +124,7 @@ class Cellular : public Device,
   // "/org/freedesktop/ModemManager1/Modem/0"). |service| is the modem
   // mananager service name (e.g., /org/freedesktop/ModemManager1).
   Cellular(Manager* manager,
+           const std::string& device_name,
            const std::string& link_name,
            net_base::MacAddress mac_address,
            int interface_index,
@@ -146,10 +147,10 @@ class Cellular : public Device,
 
   // Returns whether the device supports multiplexed data sessions
   bool GetMultiplexSupport();
+  std::string link_name() const override;
+  int interface_index() const override;
 
   // Inherited from Device.
-  std::string link_name() const override { return link_name_; }
-  int interface_index() const override { return interface_index_; }
   Network* GetPrimaryNetwork() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
@@ -270,9 +271,12 @@ class Cellular : public Device,
   // Register DBus Properties exposed by the Device interface of shill.
   void RegisterProperties();
 
-  // |dbus_path| and |mac_address| may change if the associated Modem restarts.
+  // |dbus_path|, |mac_address|, |interface_index| and |link_name|  may change
+  // if the associated Modem restarts.
   void UpdateModemProperties(const RpcIdentifier& dbus_path,
-                             net_base::MacAddress mac_address);
+                             net_base::MacAddress mac_address,
+                             int interface_index,
+                             std::string link_name);
 
   // Returns a unique identifier for a SIM Card. For physical cards this will be
   // the ICCID and there should only be one matching service. For eSIM cards,
@@ -532,6 +536,10 @@ class Cellular : public Device,
   static constexpr base::TimeDelta kInvalidApnCooldown = base::Minutes(15);
   void SetInvalidApnForTesting(ApnList::ApnType apn_type,
                                const shill::Stringmap& apn);
+  void set_interface_index(int interface_index) {
+    interface_index_ = interface_index;
+  }
+  void set_link_name(std::string link_name) { link_name_ = link_name; }
 
   enum class LinkState { kUnknown, kDown, kUp };
   void SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
@@ -909,12 +917,12 @@ class Cellular : public Device,
   // remember its initial link name explicitly.
   // TODO(b/352665085): Do not use the interface name for the Device's name
   // parameter.
-  const std::string link_name_;
+  std::string link_name_;
   // Interface index of the network interface managed by this Cellular Device.
   // Since the Cellular Device does not create an implicit Network, it must
   // remember its initial interface index explicitly.
   // TODO(b/352665085): Do not use the interface index for Cellular Devices.
-  const int interface_index_;
+  int interface_index_;
 
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;

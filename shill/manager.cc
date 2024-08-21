@@ -381,6 +381,8 @@ void Manager::Start() {
   }
   InitializePatchpanelClient();
 
+  modem_info_->CreateCellularDevice();
+
   // Start task for checking connection status.
   device_status_check_task_.Reset(base::BindOnce(
       &Manager::DeviceStatusCheckTask, weak_factory_.GetWeakPtr()));
@@ -1052,6 +1054,15 @@ DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
   return nullptr;
 }
 
+DeviceRefPtr Manager::GetDeviceWithTechnology(Technology technology) const {
+  for (const auto& device : devices_) {
+    if (device->technology() == technology) {
+      return device;
+    }
+  }
+  return nullptr;
+}
+
 const ProfileRefPtr& Manager::ActiveProfile() const {
   DCHECK(!profiles_.empty());
   return profiles_.back();
@@ -1280,6 +1291,15 @@ void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {
     // Load device configuration, if any exists, as well as hidden services.
     profile->ConfigureDevice(device);
   }
+}
+
+bool Manager::ContainsIdentifier(const std::string& id) {
+  for (const auto& profile : profiles_) {
+    if (profile->ContainsIdentifier(id)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void Manager::EmitDeviceProperties() {

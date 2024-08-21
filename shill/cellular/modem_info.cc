@@ -7,6 +7,9 @@
 #include <memory>
 #include <utility>
 
+#include <base/check.h>
+#include <base/containers/contains.h>
+#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <ModemManager/ModemManager.h>
 
@@ -17,10 +20,6 @@
 #include "shill/dbus/dbus_objectmanager_proxy.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-
-#include <base/check.h>
-#include <base/containers/contains.h>
-#include <base/logging.h>
 
 namespace shill {
 
@@ -52,6 +51,10 @@ void ModemInfo::Stop() {
   pending_activation_store_.reset();
   proxy_.reset();
   Disconnect();
+}
+
+void ModemInfo::CreateCellularDevice() {
+  Modem::CreateCellularDevice(manager_->device_info());
 }
 
 void ModemInfo::OnDeviceInfoAvailable(const std::string& link_name) {

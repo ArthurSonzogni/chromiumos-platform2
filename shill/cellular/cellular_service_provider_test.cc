@@ -97,9 +97,9 @@ class CellularServiceProviderTest : public testing::Test {
   // TODO(b/154014577): Provide eID for identifying sim cards once supported.
   CellularRefPtr CreateDevice(const std::string& imsi,
                               const std::string& iccid) {
-    CellularRefPtr cellular =
-        new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress,
-                     kTestInterfaceIndex, kDBusService, kDBusPath);
+    CellularRefPtr cellular = new Cellular(
+        &manager_, kTestDeviceName, kTestDeviceName, kTestDeviceAddress,
+        kTestInterfaceIndex, kDBusService, kDBusPath);
     if (!iccid.empty()) {
       Cellular::SimProperties sim_properties;
       sim_properties.iccid = iccid;

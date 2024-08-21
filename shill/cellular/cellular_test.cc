@@ -128,6 +128,7 @@ class CellularPropertyTest : public PropertyStoreTest {
   CellularPropertyTest()
       : device_(new Cellular(manager(),
                              kTestInterfaceName,
+                             kTestInterfaceName,
                              kTestInterfaceAddress0,
                              kTestInterfaceIndex,
                              "",
@@ -179,9 +180,9 @@ class CellularTest : public testing::Test {
     shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
 
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
-    device_ =
-        new Cellular(&manager_, kTestInterfaceName, kTestInterfaceAddress0,
-                     kTestInterfaceIndex, kDBusService, kTestModemDBusPath);
+    device_ = new Cellular(&manager_, kTestInterfaceName, kTestInterfaceName,
+                           kTestInterfaceAddress0, kTestInterfaceIndex,
+                           kDBusService, kTestModemDBusPath);
     PopulateProxies();
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
 
@@ -596,7 +597,7 @@ class CellularTest : public testing::Test {
 };
 
 TEST_F(CellularTest, GetStorageIdentifier) {
-  EXPECT_EQ("device_wwan0", device_->GetStorageIdentifier());
+  EXPECT_EQ("device_cellular_store", device_->GetStorageIdentifier());
 }
 
 TEST_F(CellularTest, HomeProviderServingOperator) {
@@ -897,7 +898,8 @@ TEST_F(CellularTest, SimSlotSwitch) {
 
   // Simulate MM changes that occur when a new MM DBus object appears after a
   // slot switch
-  device_->UpdateModemProperties(kTestModemDBusPath, kTestInterfaceAddress1);
+  device_->UpdateModemProperties(kTestModemDBusPath, kTestInterfaceAddress1,
+                                 kTestInterfaceIndex, kTestInterfaceName);
   device_->OnModemStateChanged(Cellular::kModemStateDisabled);
   slot_properties[1].iccid = "8900000000000000000",
   GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);

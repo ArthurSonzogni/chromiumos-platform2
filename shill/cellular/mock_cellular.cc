@@ -17,8 +17,13 @@ MockCellular::MockCellular(Manager* manager,
                            int interface_index,
                            const std::string& service,
                            const RpcIdentifier& path)
-    : Cellular(
-          manager, link_name, mac_address, interface_index, service, path) {}
+    : Cellular(manager,
+               link_name,
+               link_name,
+               mac_address,
+               interface_index,
+               service,
+               path) {}
 
 MockCellular::~MockCellular() = default;
 

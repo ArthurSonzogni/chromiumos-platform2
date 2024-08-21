@@ -38,6 +38,8 @@ class Modem {
   // Gathers information and passes it to CreateDeviceFromModemProperties.
   void CreateDevice(const InterfaceToProperties& properties);
 
+  static void CreateCellularDevice(DeviceInfo* device_info);
+
   void OnDeviceInfoAvailable(const std::string& link_name);
 
   const std::string& link_name() const { return link_name_; }
@@ -57,6 +59,9 @@ class Modem {
   static constexpr net_base::MacAddress kFakeDevAddress{0x00, 0x00, 0x00,
                                                         0x00, 0x00, 0x00};
   static constexpr int kFakeDevInterfaceIndex = -1;
+  static constexpr char kCellularDeviceName[] = "cellular_device";
+  static constexpr char kCellularDefaultInterfaceName[] = "cellular_interface";
+  static constexpr int kCellularDefaultInterfaceIndex = -2;
 
  private:
   friend class ModemTest;
@@ -77,7 +82,7 @@ class Modem {
 
   CellularRefPtr GetOrCreateCellularDevice(int interface_index,
                                            net_base::MacAddress mac_address);
-  CellularRefPtr GetExistingCellularDevice(int interface_index) const;
+  CellularRefPtr GetExistingCellularDevice() const;
 
   InterfaceToProperties initial_properties_;
 

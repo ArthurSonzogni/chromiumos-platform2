@@ -182,6 +182,7 @@ class Manager {
 
   // Persists |to_update| into an appropriate profile.
   virtual void UpdateDevice(const DeviceRefPtr& to_update);
+  bool ContainsIdentifier(const std::string& id);
 
   virtual std::vector<DeviceRefPtr> FilterByTechnology(Technology tech) const;
 
@@ -362,6 +363,9 @@ class Manager {
   // Return a Device with technology |technology| in the enabled state.
   virtual DeviceRefPtr GetEnabledDeviceWithTechnology(
       Technology technology) const;
+
+  // Return a Device with technology |technology|.
+  virtual DeviceRefPtr GetDeviceWithTechnology(Technology technology) const;
 
   // Returns true if at least one connection exists, and false if there's no
   // connected service.

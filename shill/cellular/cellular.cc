@@ -51,6 +51,7 @@
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mobile_operator_info.h"
+#include "shill/cellular/modem.h"
 #include "shill/cellular/modem_info.h"
 #include "shill/control_interface.h"
 #include "shill/data_types.h"
@@ -318,13 +319,23 @@ Stringmap Cellular::BuildFallbackEmptyApn(ApnList::ApnType apn_type) {
   return apn;
 }
 
+std::string Cellular::link_name() const {
+  SLOG(1) << LoggingTag() << " link name: " << link_name_;
+  return link_name_;
+}
+int Cellular::interface_index() const {
+  SLOG(1) << LoggingTag() << " if index: " << interface_index_;
+  return interface_index_;
+}
+
 Cellular::Cellular(Manager* manager,
+                   const std::string& name,
                    const std::string& link_name,
                    net_base::MacAddress mac_address,
                    int interface_index,
                    const std::string& service,
                    const RpcIdentifier& path)
-    : Device(manager, link_name, mac_address, Technology::kCellular),
+    : Device(manager, name, mac_address, Technology::kCellular),
       link_name_(link_name),
       interface_index_(interface_index),
       mobile_operator_info_(
@@ -342,8 +353,12 @@ Cellular::Cellular(Manager* manager,
                  << "IPv6 will be unavailable.";
   }
 
-  // Create an initial Capability.
-  CreateCapability();
+  // With single device approach, cellular device will exist irrespective of
+  // modem exposed by MM so we will not create capability here in device
+  // constructor and it will be created when MM reports the mode.
+  if (Modem::kCellularDefaultInterfaceIndex != interface_index) {
+    CreateCapability();
+  }
 
   // Reset networks
   default_pdn_apn_type_ = std::nullopt;
@@ -449,34 +464,14 @@ Network* Cellular::GetPrimaryNetwork() const {
 }
 
 std::string Cellular::GetLegacyEquipmentIdentifier() const {
-  // 3GPP devices are uniquely identified by IMEI, which has 15 decimal digits.
-  if (!imei_.empty())
-    return imei_;
-
-  // 3GPP2 devices are uniquely identified by MEID, which has 14 hexadecimal
-  // digits.
-  if (!meid_.empty())
-    return meid_;
-
-  // An equipment ID may be reported by ModemManager, which is typically the
-  // serial number of a legacy AT modem, and is either the IMEI, MEID, or ESN
-  // of a MBIM/QMI modem. This is used as a fallback in case neither IMEI nor
-  // MEID could be retrieved through ModemManager (e.g. when there is no SIM
-  // inserted, ModemManager doesn't expose modem 3GPP interface where the IMEI
-  // is reported).
-  if (!equipment_id_.empty())
-    return equipment_id_;
-
-  // If none of IMEI, MEID, and equipment ID is available, fall back to MAC
-  // address.
-  return GetMacAddressHexString();
+  return "device_" + link_name();
 }
 
 std::string Cellular::DeviceStorageSuffix() const {
-  // Cellular is not guaranteed to have a valid MAC address, and other unique
-  // identifiers may not be initially available. Use the link name to
-  // differentiate between internal devices and external devices.
-  return link_name();
+  // With single device, we can not use interface related
+  // parameters for suffix as device will exist even when
+  // underlying modem is not available.
+  return "cellular_store";
 }
 
 bool Cellular::Load(const StoreInterface* storage) {
@@ -506,7 +501,7 @@ bool Cellular::Save(StoreInterface* storage) {
   bool result = Device::Save(storage);
   SLOG(2) << LoggingTag() << ": " << __func__ << ": Device ID: " << id;
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": " << result;
-  // TODO(b/181843251): Remove when number of users on M92 are negligible.
+  // TODO(b/361345218): Remove when number of users on R132 are negligible.
   if (result && !legacy_storage_id_.empty() &&
       storage->ContainsGroup(legacy_storage_id_)) {
     SLOG(2) << LoggingTag() << ": " << __func__
@@ -1330,6 +1325,10 @@ void Cellular::OnModemDestroyed() {
   // In that case, the termination action associated with this cellular object
   // may not have been removed.
   manager()->RemoveTerminationAction(link_name());
+
+  // Reset interface index and link name to default
+  set_interface_index(Modem::kCellularDefaultInterfaceIndex);
+  set_link_name(Modem::kCellularDefaultInterfaceName);
 }
 
 void Cellular::CreateCapability() {
@@ -3610,7 +3609,13 @@ void Cellular::RegisterProperties() {
 }
 
 void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
-                                     net_base::MacAddress mac_address) {
+                                     net_base::MacAddress mac_address,
+                                     int interface_index,
+                                     std::string link_name) {
+  SLOG(1) << LoggingTag() << ": " << __func__
+          << ":Existing : " << dbus_path_.value()
+          << " Incoming : " << dbus_path.value();
+
   if (dbus_path_ == dbus_path) {
     SLOG(1) << LoggingTag() << ": " << __func__
             << ": Skipping update. Same dbus_path provided: "
@@ -3622,6 +3627,8 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
   SetDbusPath(dbus_path);
   SetModemState(kModemStateUnknown);
   set_mac_address(mac_address);
+  set_interface_index(interface_index);
+  set_link_name(link_name);
   CreateCapability();
 }
 

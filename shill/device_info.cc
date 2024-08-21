@@ -14,6 +14,8 @@
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
 #include <linux/version.h>
+#include <net/if_arp.h>
+#include <netinet/ether.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -48,8 +50,6 @@
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/netlink_manager.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net/if_arp.h>
-#include <netinet/ether.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -318,6 +318,11 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
+  if (infos_[device->interface_index()].technology == Technology::kUnknown) {
+    LOG(INFO) << ": set tech at register "
+              << TechnologyName(device->technology());
+    infos_[device->interface_index()].technology = device->technology();
+  }
   if (metrics_->IsDeviceRegistered(device->interface_index(),
                                    device->technology())) {
     metrics_->NotifyDeviceInitialized(device->interface_index());

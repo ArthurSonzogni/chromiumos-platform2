@@ -132,6 +132,8 @@ class Profile : public base::RefCounted<Profile> {
 
   // Return whether |service| can configure itself from the profile.
   bool ContainsService(const ServiceConstRefPtr& service);
+  // Return whether profile contains storage identifier
+  bool ContainsIdentifier(const std::string& id);
 
   RpcIdentifiers EnumerateAvailableServices(Error* error);
   std::vector<std::string> EnumerateEntries(Error* error);

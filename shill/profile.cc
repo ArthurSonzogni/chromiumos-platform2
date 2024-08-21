@@ -223,6 +223,10 @@ bool Profile::ContainsService(const ServiceConstRefPtr& service) {
   return service->IsLoadableFrom(*storage_);
 }
 
+bool Profile::ContainsIdentifier(const std::string& id) {
+  return storage_->ContainsGroup(id);
+}
+
 void Profile::DeleteEntry(const std::string& entry_name, Error* error) {
   if (!storage_->ContainsGroup(entry_name)) {
     Error::PopulateAndLog(

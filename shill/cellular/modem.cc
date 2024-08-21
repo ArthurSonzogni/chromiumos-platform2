@@ -4,6 +4,7 @@
 
 #include "shill/cellular/modem.h"
 
+#include <memory>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -13,8 +14,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <chromeos/net-base/mac_address.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <chromeos/net-base/mac_address.h>
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/cellular.h"
@@ -46,13 +47,7 @@ Modem::~Modem() {
   if (!interface_index_.has_value())
     return;
 
-  // Note: The Cellular Device |device_| is owned by DeviceInfo. It will not
-  // be destroyed here, instead it will be kept around until/unless an RTNL
-  // link delete message is received. If/when a new Modem instance is
-  // constructed (e.g. after modemmanager restarts), the call to
-  // GetOrCreateCellularDevice will return the existing device for the
-  // interface.
-  CellularRefPtr cellular = GetExistingCellularDevice(interface_index_.value());
+  CellularRefPtr cellular = GetExistingCellularDevice();
   if (cellular)
     cellular->OnModemDestroyed();
 }
@@ -121,6 +116,36 @@ bool Modem::GetLinkName(const KeyValueStore& modem_props,
   return true;
 }
 
+void Modem::CreateCellularDevice(DeviceInfo* device_info) {
+  CellularRefPtr cellular;
+
+  std::unique_ptr<brillo::CrosConfigInterface> cros_config =
+      std::make_unique<brillo::CrosConfig>();
+
+  std::string variant;
+  if (!cros_config->GetString("/modem", "firmware-variant", &variant)) {
+    LOG(INFO) << __func__
+              << "Not creating cellular device for non-cellular variant.";
+    return;
+  }
+
+  if (!device_info->manager()->ContainsIdentifier("device_cellular_store")) {
+    LOG(INFO) << "Skipping device creation at startup to allow storage id "
+                 "migration for variant: "
+              << variant;
+    return;
+  }
+
+  LOG(INFO) << "creating cellular device for variant" << variant;
+
+  cellular = new Cellular(device_info->manager(), kCellularDeviceName,
+                          kCellularDefaultInterfaceName, kFakeDevAddress,
+                          kCellularDefaultInterfaceIndex,
+                          modemmanager::kModemManager1ServiceName,
+                          shill::RpcIdentifier());
+  device_info->RegisterDevice(cellular);
+}
+
 void Modem::CreateDeviceFromModemProperties(
     const InterfaceToProperties& properties) {
   SLOG(this, 1) << __func__;
@@ -187,33 +212,36 @@ Modem::GetLinkDetailsFromDeviceInfo() {
 
 CellularRefPtr Modem::GetOrCreateCellularDevice(
     int interface_index, net_base::MacAddress mac_address) {
-  LOG(INFO) << __func__ << " Index: " << interface_index;
-  CellularRefPtr cellular = GetExistingCellularDevice(interface_index);
-  if (cellular && cellular->link_name() != link_name_) {
-    SLOG(this, 1) << "Cellular link name changed: " << link_name_;
-    cellular = nullptr;
-    device_info_->DeregisterDevice(interface_index);
-  }
-  if (cellular && (cellular->dbus_service() != service_)) {
-    SLOG(this, 1) << "Cellular service changed: " << service_;
-    cellular = nullptr;
-    device_info_->DeregisterDevice(interface_index);
-  }
+  LOG(INFO) << __func__ << "new interface index: " << interface_index
+            << " new interface name: " << link_name_
+            << " new MAC address: " << mac_address;
+
+  CellularRefPtr cellular = GetExistingCellularDevice();
+
   if (cellular) {
-    LOG(INFO) << "Using existing Cellular Device: " << cellular->enabled();
-    // Update the Cellular dbus path and mac address to match the new Modem.
-    cellular->UpdateModemProperties(path_, mac_address);
+    // Update the Cellular modem dbus path, mac address, interface index
+    // and interface name to match the new Modem.
+    cellular->UpdateModemProperties(path_, mac_address, interface_index,
+                                    link_name_);
     return cellular;
   }
 
-  cellular = new Cellular(device_info_->manager(), link_name_, mac_address,
-                          interface_index, service_, path_);
+  // In regular cases we should always find the existing device above,
+  // which was created during manager startup based on variant lookup.
+  // We should reach here only if this is first boot with new storage id
+  // or for cellular devices where variant is not configured correctly.
+  cellular =
+      new Cellular(device_info_->manager(), kCellularDeviceName, link_name_,
+                   mac_address, interface_index, service_, path_);
   device_info_->RegisterDevice(cellular);
   return cellular;
 }
 
-CellularRefPtr Modem::GetExistingCellularDevice(int interface_index) const {
-  DeviceRefPtr device = device_info_->GetDevice(interface_index);
+CellularRefPtr Modem::GetExistingCellularDevice() const {
+  DeviceRefPtr device = nullptr;
+  device =
+      device_info_->manager()->GetDeviceWithTechnology(Technology::kCellular);
+  LOG(INFO) << __func__ << "device: " << device;
   if (!device)
     return nullptr;
   CHECK_EQ(device->technology(), Technology::kCellular);

@@ -81,6 +81,8 @@ const RpcIdentifier kSimPath2("/foo/sim/2");
 const char kOperatorCode[] = "10010";
 const char kOperatorName[] = "default_test_operator_name";
 const char kOperatorCountry[] = "us";
+const RpcIdentifier kTestModemDBusPath(
+    "/org/freedesktop/ModemManager1/Modem/0");
 
 }  // namespace
 
@@ -168,9 +170,11 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         .Times(AnyNumber());
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
 
-    cellular_ = new Cellular(
-        &manager_, "", net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
-        0, "", RpcIdentifier(""));
+    cellular_ =
+        new Cellular(&manager_, "", "",
+                     net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
+                     0, "", RpcIdentifier(""));
+
     service_ = new MockCellularService(&manager_, cellular_);
     device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     capability_ = static_cast<CellularCapability3gpp*>(
