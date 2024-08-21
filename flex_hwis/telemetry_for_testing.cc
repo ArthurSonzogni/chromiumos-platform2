@@ -126,6 +126,8 @@ void TelemetryForTesting::AddInputInfo() {
   input_info->touchpad_devices =
       std::vector<ash::cros_healthd::mojom::TouchpadDevicePtr>{};
   input_info->touchpad_devices->push_back(std::move(touchpad_device));
+  input_info->touchpad_devices.value()[0]->vendor_id = kTouchpadVendorId;
+  input_info->touchpad_devices.value()[0]->product_id = kTouchpadProductId;
 
   info_->input_result =
       mojom::InputResult::NewInputInfo({std::move(input_info)});

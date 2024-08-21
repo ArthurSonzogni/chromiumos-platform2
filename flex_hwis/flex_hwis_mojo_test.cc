@@ -3,21 +3,22 @@
 // found in the LICENSE file.
 
 #include "flex_hwis/flex_hwis_mojo.h"
-#include "flex_hwis/hwis_data.pb.h"
-#include "flex_hwis/telemetry_for_testing.h"
 
 #include <optional>
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
 #include <diagnostics/mojom/public/cros_healthd.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h>
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom-shared.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/service_constants.h>
+
+#include "flex_hwis/hwis_data.pb.h"
+#include "flex_hwis/telemetry_for_testing.h"
 
 namespace flex_hwis {
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -147,6 +148,8 @@ TEST_F(FlexHwisMojoTest, MojoInput) {
   EXPECT_EQ(data.touchpad().stack(), kTouchpadLibraryName);
   EXPECT_EQ(data.touchpad().driver().size(), 1);
   EXPECT_EQ(data.touchpad().driver()[0], kTouchpadDriverName);
+  EXPECT_EQ(data.touchpad().vendor_id(), kTouchpadVendorId);
+  EXPECT_EQ(data.touchpad().product_id(), kTouchpadProductId);
 }
 
 TEST_F(FlexHwisMojoTest, MojoTpm) {

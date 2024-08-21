@@ -76,6 +76,8 @@ message Device {
   message Touchpad {
     string stack = 1;
     repeated string driver = 2;
+    string vendor_id = 3;
+    string product_id = 4;
   }
 
   message TPM {

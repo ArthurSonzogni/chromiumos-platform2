@@ -286,6 +286,10 @@ void FlexHwisMojo::SetInputInfo(hwis_proto::Device* data) {
   if (input_info->touchpad_devices && !input_info->touchpad_devices->empty()) {
     for (const auto& touchpad_device : input_info->touchpad_devices.value()) {
       data->mutable_touchpad()->add_driver(touchpad_device->driver_name);
+      data->mutable_touchpad()->set_product_id(
+          touchpad_device->product_id.value_or(""));
+      data->mutable_touchpad()->set_vendor_id(
+          touchpad_device->vendor_id.value_or(""));
     }
   }
 }
