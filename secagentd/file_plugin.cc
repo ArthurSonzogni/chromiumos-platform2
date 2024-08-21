@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 
 #include <cerrno>
@@ -197,6 +198,34 @@ const std::optional<std::string> ConstructOptionalUserhash(
   }
   return userhash;
 }
+
+std::unique_ptr<std::string> mergePathSegments(
+    const secagentd::bpf::file_path_info& path_info) {
+  std::filesystem::path merged_path;
+
+  for (int i = path_info.num_segments - 1; i >= 0; --i) {
+    merged_path /= path_info.segment_names[i];
+  }
+
+  return std::make_unique<std::string>(merged_path.string());
+}
+
+static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
+  // Combine the major and minor numbers to form the kernel-space device ID
+  dev_t kernel_dev = static_cast<dev_t>((fileStatx.stx_dev_major << 20) |
+                                        fileStatx.stx_dev_minor);
+
+  return kernel_dev;
+}
+
+static uint64_t KernelToUserspaceDeviceId(dev_t kernel_dev) {
+  // Extract major and minor numbers from the kernel-space device ID
+  uint32_t major = (kernel_dev >> 20) & 0xfff;  // Major number (12 bits)
+  uint32_t minor = kernel_dev & 0xfffff;        // Minor number (20 bits)
+
+  return makedev(major, minor);
+}
+
 }  // namespace
 
 namespace secagentd {
@@ -237,14 +266,6 @@ FilePlugin::FilePlugin(
   CHECK(message_sender != nullptr);
   CHECK(process_cache != nullptr);
   CHECK(bpf_skeleton_factory);
-}
-
-static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
-  // Combine the major and minor numbers to form the kernel-space device ID
-  dev_t kernel_dev = static_cast<dev_t>((fileStatx.stx_dev_major << 20) |
-                                        fileStatx.stx_dev_minor);
-
-  return kernel_dev;
 }
 
 absl::StatusOr<const struct statx> GetFStat(int dirFd,
@@ -336,7 +357,7 @@ absl::Status PopulatePathsMapByCategory(
                  PathInfo* pathInfo, FilePathName pathName,
                  const std::string& path) {
                 pathInfo->fullResolvedPath = path;
-                pathInfoMap->at(pathName).push_back(*pathInfo);
+                (*pathInfoMap)[pathName].push_back(*pathInfo);
               },
               base::Unretained(pathInfoMap), base::Unretained(&pathInfo),
               pathName),
@@ -759,11 +780,25 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     LOG(ERROR) << "Unexpected BPF event type.";
     return;
   }
-  // const bpf::cros_file_event& fe = bpf_event.data.file_event;
+
   // TODO(princya): convert to proto, if the BPF event structure contains
   // a flag to determine whether a partial or full SHA256 needs to occur then
   // we should definitely set the partial_sha256 field within the message.
   // Later processing depends on this field being set correctly.
+  const bpf::cros_file_event& fe = bpf_event.data.file_event;
+  if (fe.type == bpf::kFileCloseEvent) {
+    if (fe.mod_type == secagentd::bpf::FMOD_READ_ONLY_OPEN) {
+      atomic_event->set_allocated_sensitive_read(
+          MakeFileReadEvent(fe.data.file_detailed_event).release());
+    } else if (fe.mod_type == secagentd::bpf::FMOD_READ_WRITE_OPEN) {
+      atomic_event->set_allocated_sensitive_modify(
+          MakeFileModifyEvent(fe.data.file_detailed_event).release());
+    }
+  } else if (fe.type == bpf::kFileAttributeModifyEvent) {
+    atomic_event->set_allocated_sensitive_modify(
+        MakeFileAttributeModifyEvent(fe.data.file_detailed_event).release());
+  }
+  // TODO(princya): handle mount/umount events
 
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&FilePlugin::OnDeviceUserRetrieved,
@@ -872,24 +907,92 @@ void FilePlugin::OnDeviceUserRetrieved(
   CollectEvent(std::move(atomic_event));
 }
 
-std::unique_ptr<cros_xdr::reporting::FileReadEvent> FilePlugin::MakeReadEvent(
-    const secagentd::bpf::cros_file_event& close_event) const {
-  auto read_proto = std::make_unique<pb::FileReadEvent>();
-  return read_proto;
+// Fills out the file image information in the proto.
+// This function does not fill out the SHA256 information or
+// the provenance information.
+void FilePlugin::FillFileImageInfo(
+    cros_xdr::reporting::FileImage* file_image,
+    const secagentd::bpf::cros_file_image& image_info,
+    bool use_after_modification_attribute) {
+  if (use_after_modification_attribute) {
+    file_image->set_allocated_pathname(
+        mergePathSegments(image_info.path_info).release());
+    file_image->set_mnt_ns(image_info.mnt_ns);
+
+    file_image->set_inode_device_id(
+        KernelToUserspaceDeviceId(image_info.device_id));
+    file_image->set_inode(image_info.inode);
+    file_image->set_mode(image_info.after_attr.mode);
+    file_image->set_canonical_gid(image_info.after_attr.gid);
+    file_image->set_canonical_uid(image_info.after_attr.uid);
+  } else {
+    file_image->set_mode(image_info.before_attr.mode);
+    file_image->set_canonical_gid(image_info.before_attr.gid);
+    file_image->set_canonical_uid(image_info.before_attr.uid);
+  }
+}
+
+std::unique_ptr<cros_xdr::reporting::FileReadEvent>
+FilePlugin::MakeFileReadEvent(
+    const secagentd::bpf::cros_file_detailed_event& file_detailed_event) {
+  auto read_event_proto = std::make_unique<pb::FileReadEvent>();
+  auto* file_read_proto = read_event_proto->mutable_file_read();
+
+  ProcessCache::FillProcessTree(
+      read_event_proto.get(), file_detailed_event.process_info,
+      file_detailed_event.has_full_process_info, process_cache_, device_user_);
+
+  //  optional SensitiveFileType sensitive_file_type = 1;
+  // optional FileProvenance file_provenance = 2;
+
+  FillFileImageInfo(file_read_proto->mutable_image(),
+                    file_detailed_event.image_info, true);
+
+  return read_event_proto;
 }
 
 std::unique_ptr<cros_xdr::reporting::FileModifyEvent>
-FilePlugin::MakeModifyEvent(
-    const secagentd::bpf::cros_file_event& close_event) const {
-  auto modify_proto = std::make_unique<pb::FileModifyEvent>();
-  return modify_proto;
+FilePlugin::MakeFileModifyEvent(
+    const secagentd::bpf::cros_file_detailed_event& file_detailed_event) {
+  auto modify_event_proto = std::make_unique<pb::FileModifyEvent>();
+  auto* file_modify_proto = modify_event_proto->mutable_file_modify();
+
+  ProcessCache::FillProcessTree(
+      modify_event_proto.get(), file_detailed_event.process_info,
+      file_detailed_event.has_full_process_info, process_cache_, device_user_);
+  file_modify_proto->set_modify_type(cros_xdr::reporting::FileModify::WRITE);
+
+  //  optional SensitiveFileType sensitive_file_type = 1;
+  // optional FileProvenance file_provenance = 2;
+
+  FillFileImageInfo(file_modify_proto->mutable_image_after(),
+                    file_detailed_event.image_info, true);
+
+  return modify_event_proto;
 }
 
 std::unique_ptr<cros_xdr::reporting::FileModifyEvent>
-FilePlugin::MakeAttributeModifyEvent(
-    const secagentd::bpf::cros_file_event& attribute_modify_event) const {
-  auto modify_proto = std::make_unique<pb::FileModifyEvent>();
-  return modify_proto;
+FilePlugin::MakeFileAttributeModifyEvent(
+    const secagentd::bpf::cros_file_detailed_event& file_detailed_event) {
+  auto modify_event_proto = std::make_unique<pb::FileModifyEvent>();
+  auto* file_modify_proto = modify_event_proto->mutable_file_modify();
+
+  file_modify_proto->set_modify_type(
+      cros_xdr::reporting::FileModify::MODIFY_ATTRIBUTE);
+
+  ProcessCache::FillProcessTree(
+      modify_event_proto.get(), file_detailed_event.process_info,
+      file_detailed_event.has_full_process_info, process_cache_, device_user_);
+
+  //  optional SensitiveFileType sensitive_file_type = 1;
+  // optional FileProvenance file_provenance = 2;
+
+  FillFileImageInfo(file_modify_proto->mutable_image_after(),
+                    file_detailed_event.image_info, true);
+  FillFileImageInfo(file_modify_proto->mutable_attributes_before(),
+                    file_detailed_event.image_info, false);
+
+  return modify_event_proto;
 }
 
 }  // namespace secagentd

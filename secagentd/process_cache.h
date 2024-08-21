@@ -125,6 +125,14 @@ class ProcessCache : public ProcessCacheInterface {
       cros_xdr::reporting::Process* process_proto,
       const std::list<std::string>& redacted_usernames) override;
 
+  template <typename ProtoT>
+  static void FillProcessTree(
+      ProtoT proto,
+      const bpf::cros_process_start& process_start,
+      bool has_full_process_start,
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<DeviceUserInterface> device_user);
+
   // Appends an absolute path to the given base path. base::FilePath has a
   // DCHECK that avoids appending such absolute paths. We absolutely do need
   // to though because /proc/pid/exe is an absolute symlink that needs to be
@@ -198,6 +206,53 @@ class ProcessCache : public ProcessCacheInterface {
   InternalFilterRuleSetType filter_rules_process_;
   int64_t earliest_seen_exec_rel_s_;
 };
+
+template <typename ProtoT>
+void ProcessCache::FillProcessTree(
+    ProtoT proto,
+    const bpf::cros_process_start& process_start,
+    bool has_full_process_start,
+    scoped_refptr<ProcessCacheInterface> process_cache,
+    scoped_refptr<DeviceUserInterface> device_user) {
+  if (has_full_process_start) {
+    process_cache->FillProcessFromBpf(
+        process_start.task_info, process_start.image_info,
+        proto->mutable_process(), device_user->GetUsernamesForRedaction());
+    auto parent_process = process_cache->GetProcessHierarchy(
+        process_start.task_info.ppid, process_start.task_info.parent_start_time,
+        1);
+    if (parent_process.size() == 1) {
+      proto->set_allocated_parent_process(parent_process[0].release());
+    }
+    return;
+  }
+  // No full process info included, fallback to using cache.
+  auto hierarchy = process_cache->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
+  if (hierarchy.empty()) {
+    VLOG(1) << absl::StrFormat(
+        "pid %d cmdline(%s) not in process cache. "
+        "Creating a degraded %s filled with information available from BPF"
+        "process map.",
+        process_start.task_info.pid, process_start.task_info.commandline,
+        proto->GetTypeName());
+    ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+        process_start.task_info, proto->mutable_process(),
+        device_user->GetUsernamesForRedaction());
+    auto parent_process = process_cache->GetProcessHierarchy(
+        process_start.task_info.ppid, process_start.task_info.parent_start_time,
+        1);
+    if (parent_process.size() == 1) {
+      proto->set_allocated_parent_process(parent_process[0].release());
+    }
+  }
+  if (hierarchy.size() >= 1) {
+    proto->set_allocated_process(hierarchy[0].release());
+  }
+  if (hierarchy.size() == 2) {
+    proto->set_allocated_parent_process(hierarchy[1].release());
+  }
+}
 
 }  // namespace secagentd
 

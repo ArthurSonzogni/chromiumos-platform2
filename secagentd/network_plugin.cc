@@ -276,51 +276,6 @@ void NetworkPlugin::OnDeviceUserRetrieved(
   EnqueueBatchedEvent(std::move(atomic_event));
 }
 
-template <typename ProtoT>
-void NetworkPlugin::FillProcessTree(
-    ProtoT proto,
-    const bpf::cros_process_start& process_start,
-    bool has_full_process_start) const {
-  if (has_full_process_start) {
-    process_cache_->FillProcessFromBpf(
-        process_start.task_info, process_start.image_info,
-        proto->mutable_process(), device_user_->GetUsernamesForRedaction());
-    auto parent_process = process_cache_->GetProcessHierarchy(
-        process_start.task_info.ppid, process_start.task_info.parent_start_time,
-        1);
-    if (parent_process.size() == 1) {
-      proto->set_allocated_parent_process(parent_process[0].release());
-    }
-    return;
-  }
-  // No full process info included, fallback to using cache.
-  auto hierarchy = process_cache_->GetProcessHierarchy(
-      process_start.task_info.pid, process_start.task_info.start_time, 2);
-  if (hierarchy.empty()) {
-    VLOG(1) << absl::StrFormat(
-        "pid %d cmdline(%s) not in process cache. "
-        "Creating a degraded %s filled with information available from BPF"
-        "process map.",
-        process_start.task_info.pid, process_start.task_info.commandline,
-        proto->GetTypeName());
-    ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-        process_start.task_info, proto->mutable_process(),
-        device_user_->GetUsernamesForRedaction());
-    auto parent_process = process_cache_->GetProcessHierarchy(
-        process_start.task_info.ppid, process_start.task_info.parent_start_time,
-        1);
-    if (parent_process.size() == 1) {
-      proto->set_allocated_parent_process(parent_process[0].release());
-    }
-  }
-  if (hierarchy.size() >= 1) {
-    proto->set_allocated_process(hierarchy[0].release());
-  }
-  if (hierarchy.size() == 2) {
-    proto->set_allocated_parent_process(hierarchy[1].release());
-  }
-}
-
 std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
     const bpf::cros_network_socket_listen& l) const {
   auto listen_proto = std::make_unique<pb::NetworkSocketListenEvent>();
@@ -360,7 +315,10 @@ std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
       socket->set_socket_type(pb::SocketType::SOCK_PACKET);
       break;
   }
-  FillProcessTree(listen_proto.get(), l.process_info, l.has_full_process_info);
+
+  ProcessCache::FillProcessTree(listen_proto.get(), l.process_info,
+                                l.has_full_process_info, process_cache_,
+                                device_user_);
   return listen_proto;
 }
 
@@ -447,8 +405,10 @@ NetworkPlugin::MakeFlowEvent(
       break;
   }
 
-  FillProcessTree(flow_proto.get(), flow_event.flow_map_value.process_info,
-                  flow_event.flow_map_value.has_full_process_info);
+  ProcessCache::FillProcessTree(flow_proto.get(),
+                                flow_event.flow_map_value.process_info,
+                                flow_event.flow_map_value.has_full_process_info,
+                                process_cache_, device_user_);
   // TODO(b:294579287): Make event filtering more generic, before doing that
   // process cache hits need to be drastically improved.
   if (IsFilteredOut(*flow_proto)) {

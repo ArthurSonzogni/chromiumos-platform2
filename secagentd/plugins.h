@@ -246,11 +246,6 @@ class NetworkPlugin : public PluginInterface {
       const std::string& device_user,
       const std::string& device_userhash);
 
-  template <typename ProtoT>
-  void FillProcessTree(ProtoT proto,
-                       const bpf::cros_process_start& process_start,
-                       bool has_full_process_start) const;
-
   std::unique_ptr<cros_xdr::reporting::NetworkSocketListenEvent>
   MakeListenEvent(
       const secagentd::bpf::cros_network_socket_listen& listen_event) const;
@@ -401,13 +396,17 @@ class FilePlugin : public PluginInterface {
 
   void OnSessionStateChange(const std::string& state);
 
-  std::unique_ptr<cros_xdr::reporting::FileReadEvent> MakeReadEvent(
-      const secagentd::bpf::cros_file_event& close_event) const;
-  std::unique_ptr<cros_xdr::reporting::FileModifyEvent> MakeModifyEvent(
-      const secagentd::bpf::cros_file_event& close_event) const;
+  void FillFileImageInfo(cros_xdr::reporting::FileImage* file_image,
+                         const secagentd::bpf::cros_file_image& image_info,
+                         bool use_after_attribute);
+
+  std::unique_ptr<cros_xdr::reporting::FileReadEvent> MakeFileReadEvent(
+      const secagentd::bpf::cros_file_detailed_event& detailed_event);
+  std::unique_ptr<cros_xdr::reporting::FileModifyEvent> MakeFileModifyEvent(
+      const secagentd::bpf::cros_file_detailed_event& detailed_event);
   std::unique_ptr<cros_xdr::reporting::FileModifyEvent>
-  MakeAttributeModifyEvent(
-      const secagentd::bpf::cros_file_event& attribute_modify_event) const;
+  MakeFileAttributeModifyEvent(
+      const secagentd::bpf::cros_file_detailed_event& detailed_event);
 
   // Updates BPF maps with paths and their associated information.
   // This function updates various BPF maps based on the provided paths and

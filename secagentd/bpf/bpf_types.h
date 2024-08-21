@@ -356,7 +356,6 @@ struct cros_file_image {
   uint64_t mnt_ns;                  // The mount namespace of the inode
   dev_t device_id;                  // The device ID both major and minor.
   ino_t inode;                      // The inode of the file.
-  mode_t mode;                      // Mode.
   uint32_t flags;                   // Open Flags
   struct inode_attr before_attr;    // Attributes of the file before the change.
   struct inode_attr after_attr;     // Attributes of the file after the change.
