@@ -5,9 +5,10 @@
 #ifndef SECAGENTD_TEST_MOCK_SHILL_H_
 #define SECAGENTD_TEST_MOCK_SHILL_H_
 
-#include <gmock/gmock.h>
 #include <memory>
 #include <vector>
+
+#include <gmock/gmock.h>
 
 #include "shill/dbus/client/fake_client.h"
 
@@ -51,16 +52,6 @@ class MockShill : public shill::FakeClient {
 
   MOCK_METHOD(std::unique_ptr<shill::Client::ManagerPropertyAccessor>,
               ManagerProperties,
-              (const base::TimeDelta& timeout),
-              (const override));
-
-  MOCK_METHOD(std::unique_ptr<shill::Client::ServicePropertyAccessor>,
-              DefaultServicePropertyAccessor,
-              (const base::TimeDelta& timeout),
-              (const override));
-
-  MOCK_METHOD(std::unique_ptr<brillo::VariantDictionary>,
-              GetDefaultServiceProperties,
               (const base::TimeDelta& timeout),
               (const override));
 

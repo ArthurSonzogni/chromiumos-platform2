@@ -855,59 +855,6 @@ TEST_F(ClientTest, ManagerPropertyAccessor) {
   props->Set("foo", "bar", base::DoNothing(), base::DoNothing());
 }
 
-TEST_F(ClientTest, DefaultServicePropertyAccessor) {
-  brillo::Any bar("bar");
-  EXPECT_CALL(*client_->default_service(),
-              SetProperty(StrEq("foo"), bar, _, -1));
-  EXPECT_CALL(*client_->default_service(),
-              SetProperty(StrEq("foo"), bar, _, 10));
-  EXPECT_CALL(*client_->default_service(),
-              SetPropertyAsync(StrEq("foo"), bar, _, _, -1));
-  EXPECT_CALL(*client_->default_service(),
-              SetPropertyAsync(StrEq("foo"), bar, _, _, 10));
-  EXPECT_CALL(*client_->default_service(),
-              DoRegisterPropertyChangedSignalHandler(_, _))
-      .Times(2);
-
-  auto props = client_->DefaultServicePropertyAccessor();
-  props->Set("foo", "bar", nullptr);
-  props->Set("foo", "bar", base::DoNothing(),
-             base::BindRepeating([](brillo::Error*) {}));
-
-  props = client_->DefaultServicePropertyAccessor(base::Milliseconds(10));
-  props->Set("foo", "bar", nullptr);
-  props->Set("foo", "bar", base::DoNothing(),
-             base::BindRepeating([](brillo::Error*) {}));
-}
-
-TEST_F(ClientTest, GetDefaultServiceProperties) {
-  brillo::VariantDictionary service_props;
-
-  // No property in the dictionary
-  EXPECT_CALL(*client_->default_service(), GetProperties(_, _, _))
-      .WillRepeatedly(
-          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
-
-  std::unique_ptr<brillo::VariantDictionary> props1 =
-      client_->GetDefaultServiceProperties();
-  EXPECT_TRUE(props1 != nullptr);
-  EXPECT_EQ(brillo::GetVariantValueOrDefault<bool>(*props1, kMeteredProperty),
-            false);
-
-  // Property in the dictionary
-  service_props[kMeteredProperty] = true;
-
-  EXPECT_CALL(*client_->default_service(), GetProperties(_, _, _))
-      .WillRepeatedly(
-          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
-
-  std::unique_ptr<brillo::VariantDictionary> props2 =
-      client_->GetDefaultServiceProperties();
-  EXPECT_TRUE(props2 != nullptr);
-  EXPECT_EQ(brillo::GetVariantValueOrDefault<bool>(*props2, kMeteredProperty),
-            true);
-}
-
 TEST_F(ClientTest, DefaultDeviceReturnsCorrectDeviceForVPN) {
   dbus::ObjectPath service0_path("/service/0"), service1_path("/service/1"),
       device0_path("/dev/0"), device1_path("/dev/1");

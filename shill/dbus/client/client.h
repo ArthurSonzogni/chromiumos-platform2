@@ -200,8 +200,6 @@ class BRILLO_EXPORT Client {
 
   using ManagerPropertyAccessor =
       PropertyAccessor<org::chromium::flimflam::ManagerProxyInterface>;
-  using ServicePropertyAccessor =
-      PropertyAccessor<org::chromium::flimflam::ServiceProxyInterface>;
 
   using DefaultServiceChangedHandler =
       base::RepeatingCallback<void(const std::string& type)>;
@@ -267,17 +265,6 @@ class BRILLO_EXPORT Client {
 
   // Returns a manipulator interface for Manager properties.
   virtual std::unique_ptr<ManagerPropertyAccessor> ManagerProperties(
-      const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
-
-  // Returns a manipulator interface for Default service properties.
-  virtual std::unique_ptr<ServicePropertyAccessor>
-  DefaultServicePropertyAccessor(
-      const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
-
-  // Returns a snapshot of all the default service properties. It may return
-  // a nullptr.
-  virtual std::unique_ptr<brillo::VariantDictionary>
-  GetDefaultServiceProperties(
       const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
 
   // Returns the default device.
