@@ -15,6 +15,9 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+
 namespace pmt_tool {
 
 bool ParseCommandLineAndInitLogging(int argc,
@@ -29,6 +32,9 @@ bool ParseCommandLineAndInitLogging(int argc,
   DEFINE_string(f, "raw",
                 "output format: raw - raw binary format; dbg - debug string; "
                 "csv - decoded as CSV from raw binary");
+  DEFINE_string(
+      m, "",
+      "Optional path to the PMT metadata directory where pmt.xml is located");
 
   auto help_usage = std::string(argv[0]);
   help_usage.append(
@@ -64,6 +70,11 @@ bool ParseCommandLineAndInitLogging(int argc,
     LOG(ERROR) << "Unknown format: " << FLAGS_f;
     return false;
   }
+  auto metadata_path = base::FilePath(FLAGS_m);
+  if (!FLAGS_m.empty() && !base::PathExists(metadata_path)) {
+    LOG(ERROR) << "Metadata directory " << FLAGS_m << " not found";
+    return false;
+  }
   // Flags are valid, set them.
   new_opts.sampling.interval_us =
       absl::ToInt64Microseconds(absl::Seconds(FLAGS_i));
@@ -75,6 +86,7 @@ bool ParseCommandLineAndInitLogging(int argc,
     new_opts.sampling.duration_samples = FLAGS_n;
 
   new_opts.decoding.format = *val;
+  new_opts.decoding.metadata_path = metadata_path;
 
   // Out of the rest of arguments treat the fist one as a path to the pmt.log.
   auto cl = base::CommandLine::ForCurrentProcess();

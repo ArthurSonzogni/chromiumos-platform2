@@ -44,6 +44,8 @@ struct Options {
   struct {
     // -f: Output format.
     Format format = Format::RAW;
+    // Path to the PMT metadata directory.
+    base::FilePath metadata_path;
   } decoding;
 };
 

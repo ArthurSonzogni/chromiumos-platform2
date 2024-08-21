@@ -13,6 +13,8 @@
 #include <libpmt/bits/pmt_data.pb.h>
 #include <libpmt/pmt.h>
 
+#include "base/files/file_path.h"
+#include "libpmt/pmt_impl.h"
 #include "pmt_tool/utils.h"
 
 namespace pmt_tool {
@@ -86,7 +88,8 @@ class DbgFormatter : public Formatter {
 
 class CsvFormatter : public Formatter {
  public:
-  CsvFormatter() = default;
+  explicit CsvFormatter(const base::FilePath& metadata_path)
+      : decoder_(std::make_unique<pmt::PmtSysfsData>(metadata_path)) {}
   bool SetUp(const Options& opts, int fd, size_t snapshot_size) final;
   bool Format(const pmt::Snapshot& snapshot) final;
 

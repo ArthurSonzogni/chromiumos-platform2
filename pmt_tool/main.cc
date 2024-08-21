@@ -35,7 +35,8 @@ int main(int argc, const char* argv[]) {
       formatter = std::make_unique<pmt_tool::DbgFormatter>();
       break;
     case pmt_tool::Format::CSV:
-      formatter = std::make_unique<pmt_tool::CsvFormatter>();
+      formatter =
+          std::make_unique<pmt_tool::CsvFormatter>(opts.decoding.metadata_path);
       break;
   }
   return do_run(opts, *source, *formatter);
