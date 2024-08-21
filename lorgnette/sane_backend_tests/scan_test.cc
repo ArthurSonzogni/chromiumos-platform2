@@ -4,10 +4,12 @@
 
 #include <png.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
 
+#include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
@@ -34,7 +36,8 @@ struct ScanTestParameter {
 
 // Override ostream so we can get pretty printing of failed parameterized tests.
 void operator<<(std::ostream& stream, const ScanTestParameter& param) {
-  stream << "source=" << param.source << ", color_mode=" << param.color_mode;
+  stream << "source=" << param.source << ", resolution=" << param.resolution
+         << ", color_mode=" << param.color_mode;
 }
 
 // Returns string that represents where outputs for this specific test goes to.
@@ -113,27 +116,23 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   auto valid_standard_opts = sane_dev->GetValidOptionValues(&error);
   ASSERT_TRUE(valid_standard_opts.has_value());
 
-  // TODO(b/346843281): Allow these to be properly selected, test multiple
-  // values, and don't have defaults
-  uint32_t resolution = 200;
-
-  std::cout << "Supported resolutions ("
-            << valid_standard_opts.value().resolutions.size() << "): ";
-  if (valid_standard_opts.value().resolutions.size() <= 50) {
-    for (auto res : valid_standard_opts.value().resolutions) {
-      std::cout << res << " ";
-    }
-  } else {
-    std::cout << "from " << valid_standard_opts.value().resolutions.front()
-              << " to " << valid_standard_opts.value().resolutions.back();
-  }
-  std::cout << "\n";
+  auto resolutions = valid_standard_opts.value().resolutions;
+  ASSERT_GT(resolutions.size(), 0);
+  std::sort(resolutions.begin(), resolutions.end());
+  auto min_res = resolutions.front();
+  auto max_res = resolutions.back();
 
   for (auto source : valid_standard_opts.value().sources) {
     for (auto color_mode : valid_standard_opts.value().color_modes) {
-      ScanTestParameter new_param =
-          ScanTestParameter(source.name(), resolution, color_mode);
-      out.push_back(new_param);
+      ScanTestParameter min_res_param =
+          ScanTestParameter(source.name(), min_res, color_mode);
+      out.push_back(min_res_param);
+
+      if (min_res != max_res) {
+        ScanTestParameter max_res_param =
+            ScanTestParameter(source.name(), max_res, color_mode);
+        out.push_back(max_res_param);
+      }
     }
   }
 }
@@ -238,7 +237,9 @@ INSTANTIATE_TEST_SUITE_P(
           (std::remove_if(source.begin(), source.end(),
                           [](unsigned char x) { return std::isspace(x); })),
           source.end());
-      return "SourceIs" + source + "ColorModeIs" + info.param.color_mode;
+      return base::StringPrintf("SourceIs%sResolutionIs%uColorModeis%s",
+                                source.c_str(), info.param.resolution,
+                                info.param.color_mode.c_str());
     });
 
 // Runs lorgnette_cli advanced_scan with args; returns exit code.
