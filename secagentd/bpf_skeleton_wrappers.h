@@ -167,15 +167,19 @@ class BpfSkeleton : public BpfSkeletonInterface {
                                 {name_, "BPF skeleton failed to open."})),
                             metrics::BpfAttachResult::kErrorOpen);
     }
-    if (platform_->BpfObjectLoadSkeleton(skel_->skeleton)) {
+    int load_status = platform_->BpfObjectLoadSkeleton(skel_->skeleton);
+    if (load_status) {
       return std::make_pair(
           absl::InternalError(base::StrCat(
-              {name_, ": application failed loading and verification."})),
+              {name_, ": application failed loading and verification. ",
+               strerror(-load_status)})),
           metrics::BpfAttachResult::kErrorLoad);
     }
-    if (platform_->BpfObjectAttachSkeleton(skel_->skeleton)) {
+    int attach_status = platform_->BpfObjectAttachSkeleton(skel_->skeleton);
+    if (attach_status) {
       return std::make_pair(absl::InternalError(base::StrCat(
-                                {name_, ": program failed to attach."})),
+                                {name_, ": program failed to attach.",
+                                 strerror(-attach_status)})),
                             metrics::BpfAttachResult::kErrorAttach);
     }
 

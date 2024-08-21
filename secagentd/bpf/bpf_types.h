@@ -205,6 +205,17 @@ struct device_file_monitoring_settings {
   enum device_monitoring_type
       device_monitoring_type;  // Type of file monitoring to apply
   enum file_monitoring_mode
+      file_monitoring_mode;     // Mode of file access to monitor
+  uint8_t sensitive_file_type;  // 1,USER_FILE = 2, etc. defined in
+                                // cros_xdr::reporting::SensitiveFile
+                                // Used only when monitor_all_files is selected
+} __attribute__((aligned(8)));
+
+struct file_monitoring_settings {
+  uint8_t sensitive_file_type;  // SENSITIVE_FILE_TYPE_UNKNOWN = 0 ROOT_FS =
+                                // 1,USER_FILE = 2, etc.
+                                // defined in cros_xdr::reporting::SensitiveFile
+  enum file_monitoring_mode
       file_monitoring_mode;  // Mode of file access to monitor
 } __attribute__((aligned(8)));
 
@@ -348,6 +359,11 @@ struct inode_attr {
   struct cros_timespec ctime;  // Last status change time.
 } __attribute__((aligned(8)));
 
+struct before_attribute_map_value {
+  uint8_t sensitive_file_type;
+  struct inode_attr attr;
+} __attribute__((aligned(8)));
+
 // File Events Structs
 struct cros_file_image {
   struct file_path_info path_info;  // Contains file path segments and related
@@ -357,6 +373,7 @@ struct cros_file_image {
   dev_t device_id;                  // The device ID both major and minor.
   ino_t inode;                      // The inode of the file.
   uint32_t flags;                   // Open Flags
+  uint8_t sensitive_file_type;      // sensitive_file_type
   struct inode_attr before_attr;    // Attributes of the file before the change.
   struct inode_attr after_attr;     // Attributes of the file after the change.
 } __attribute__((aligned(8)));

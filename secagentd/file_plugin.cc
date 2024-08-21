@@ -469,8 +469,8 @@ absl::Status UpdateBPFMapForPathInodes(
     for (const auto& pathInfo : pathInfoVector) {
       const std::string& path =
           pathInfo.fullResolvedPath.value();  // Current path to process
-      secagentd::bpf::file_monitoring_mode monitoringMode =
-          pathInfo.monitoringMode;  // Monitoring mode for the path
+      secagentd::bpf::file_monitoring_settings monitoringSettings{
+          (uint8_t)pathInfo.fileType, pathInfo.monitoringMode};
 
       // Retrieve file information for the current path using fstatat
       absl::StatusOr<const struct statx> file_statx_result =
@@ -490,7 +490,7 @@ absl::Status UpdateBPFMapForPathInodes(
       // Update the BPF map with the inode key and monitoring mode value
 
       if (platform->BpfMapUpdateElementByFd(bpfMapFd, &bpfMapKey,
-                                            &monitoringMode, 0) != 0) {
+                                            &monitoringSettings, 0) != 0) {
         LOG(ERROR) << "Failed to update BPF map entry for path " << path
                    << ". Inode: " << bpfMapKey.inode_id
                    << ", Device ID: " << bpfMapKey.dev_id;
@@ -550,6 +550,9 @@ absl::Status AddDeviceIdsToBPFMap(
       struct bpf::device_file_monitoring_settings bpfSettings = {
           .device_monitoring_type = pathInfo.deviceMonitoringType,
           .file_monitoring_mode = pathInfo.monitoringMode,
+          .sensitive_file_type =
+              (uint8_t)pathInfo.fileType,  // Respected only when
+                                           // MONITOR_ALL_FILES is selected
       };
 
       // Update BPF map with the device ID and settings
@@ -577,11 +580,11 @@ absl::Status AddDeviceIdsToBPFMap(
 absl::Status FilePlugin::UpdateBPFMapForPathMaps(
     const std::optional<std::string>& optionalUserhash,
     const std::map<FilePathName, std::vector<PathInfo>>& pathsMap) {
-  // Retrieve file descriptor for the 'allowlisted_directory_inodes' BPF map
+  // Retrieve file descriptor for the 'predefined_allowed_inodes' BPF map
   absl::StatusOr<int> mapFdResult =
-      bpf_skeleton_helper_->FindBpfMapByName("allowlisted_directory_inodes");
+      bpf_skeleton_helper_->FindBpfMapByName("predefined_allowed_inodes");
   if (!mapFdResult.ok()) {
-    LOG(ERROR) << "Failed to find BPF map 'allowlisted_directory_inodes': "
+    LOG(ERROR) << "Failed to find BPF map 'predefined_allowed_inodes': "
                << mapFdResult.status();
     return mapFdResult.status();
   }
@@ -593,10 +596,9 @@ absl::Status FilePlugin::UpdateBPFMapForPathMaps(
     return status;
   }
 
-  // Retrieve file descriptor for the 'device_file_monitoring_allowlist' BPF
-  // map
-  mapFdResult = bpf_skeleton_helper_->FindBpfMapByName(
-      "device_file_monitoring_allowlist");
+  // Retrieve file descriptor for the 'device_monitoring_allowlist' BPF map
+  mapFdResult =
+      bpf_skeleton_helper_->FindBpfMapByName("device_monitoring_allowlist");
   if (!mapFdResult.ok()) {
     return mapFdResult.status();
   }
@@ -707,7 +709,7 @@ absl::Status FilePlugin::OnUserLogout(const std::string& userHash) {
 
   // Remove inodes for folders for that user
   absl::StatusOr<int> mapFdResult =
-      bpf_skeleton_helper_->FindBpfMapByName("allowlisted_directory_inodes");
+      bpf_skeleton_helper_->FindBpfMapByName("predefined_allowed_inodes");
   if (!mapFdResult.ok()) {
     return mapFdResult.status();
   }
@@ -744,6 +746,7 @@ absl::Status FilePlugin::Activate() {
   if (status != absl::OkStatus()) {
     return status;
   }
+
   coalesce_timer_.Start(FROM_HERE,
                         base::Seconds(std::max(batch_interval_s_, 1u)),
                         base::BindRepeating(&FilePlugin::FlushCollectedEvents,
@@ -757,7 +760,6 @@ absl::Status FilePlugin::Activate() {
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&FilePlugin::OnUserLogin, weak_ptr_factory_.GetWeakPtr()));
   batch_sender_->Start();
-
   return status;
 }
 
@@ -944,6 +946,8 @@ FilePlugin::MakeFileReadEvent(
 
   //  optional SensitiveFileType sensitive_file_type = 1;
   // optional FileProvenance file_provenance = 2;
+  file_read_proto->set_sensitive_file_type(static_cast<pb::SensitiveFileType>(
+      file_detailed_event.image_info.sensitive_file_type));
 
   FillFileImageInfo(file_read_proto->mutable_image(),
                     file_detailed_event.image_info, true);
@@ -962,7 +966,8 @@ FilePlugin::MakeFileModifyEvent(
       file_detailed_event.has_full_process_info, process_cache_, device_user_);
   file_modify_proto->set_modify_type(cros_xdr::reporting::FileModify::WRITE);
 
-  //  optional SensitiveFileType sensitive_file_type = 1;
+  file_modify_proto->set_sensitive_file_type(static_cast<pb::SensitiveFileType>(
+      file_detailed_event.image_info.sensitive_file_type));
   // optional FileProvenance file_provenance = 2;
 
   FillFileImageInfo(file_modify_proto->mutable_image_after(),
@@ -984,7 +989,8 @@ FilePlugin::MakeFileAttributeModifyEvent(
       modify_event_proto.get(), file_detailed_event.process_info,
       file_detailed_event.has_full_process_info, process_cache_, device_user_);
 
-  //  optional SensitiveFileType sensitive_file_type = 1;
+  file_modify_proto->set_sensitive_file_type(static_cast<pb::SensitiveFileType>(
+      file_detailed_event.image_info.sensitive_file_type));
   // optional FileProvenance file_provenance = 2;
 
   FillFileImageInfo(file_modify_proto->mutable_image_after(),
