@@ -164,16 +164,16 @@ void ClatService::OnDefaultLogicalDeviceIPConfigChanged(
 
   // CLAT is running on the default logical device.
 
-  DCHECK(!clat_running_device_->ipconfig.ipv4_cidr.has_value());
-  DCHECK(clat_running_device_->ipconfig.ipv6_cidr.has_value());
+  DCHECK(!clat_running_device_->network_config.ipv4_address.has_value());
+  DCHECK(!clat_running_device_->network_config.ipv6_addresses.empty());
 
   if (!NeedsClat(default_logical_device)) {
     StopClat();
     return;
   }
 
-  if (clat_running_device_->ipconfig.ipv6_cidr !=
-      default_logical_device.ipconfig.ipv6_cidr) {
+  if (clat_running_device_->network_config.ipv6_addresses[0] !=
+      default_logical_device.network_config.ipv6_addresses[0]) {
     // TODO(b/278970851): Optimize the restart process of CLAT. Resources
     // such as the tun device can be reused.
     StopClat();
@@ -192,13 +192,13 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
     return;
   }
 
-  if (!shill_device.ipconfig.ipv6_cidr) {
+  if (shill_device.network_config.ipv6_addresses.empty()) {
     LOG(ERROR) << shill_device << " doesn't have an IPv6 address";
     return;
   }
 
   auto clat_ipv6_cidr = AddressManager::GetRandomizedIPv6Address(
-      shill_device.ipconfig.ipv6_cidr->GetPrefixCIDR());
+      shill_device.network_config.ipv6_addresses[0].GetPrefixCIDR());
   if (!clat_ipv6_cidr) {
     LOG(ERROR) << "Failed to get randomized IPv6 address from " << shill_device;
     return;

@@ -67,37 +67,16 @@ bool IsActiveDevice(const ShillClient::Device& device) {
   return device.primary_multiplexed_interface.has_value();
 }
 
-ShillClient::IPConfig NetworkConfigToIPConfig(
-    const net_base::NetworkConfig& network_config) {
-  ShillClient::IPConfig ret;
-  ret.ipv4_cidr = network_config.ipv4_address;
-  ret.ipv4_gateway = network_config.ipv4_gateway;
-  if (network_config.ipv6_addresses.size() > 0) {
-    // The first one is the primary address.
-    ret.ipv6_cidr = network_config.ipv6_addresses[0];
-  }
-  ret.ipv6_gateway = network_config.ipv6_gateway;
-  for (const auto& dns : network_config.dns_servers) {
-    switch (dns.GetFamily()) {
-      case net_base::IPFamily::kIPv4:
-        ret.ipv4_dns_addresses.push_back(dns.ToString());
-        break;
-      case net_base::IPFamily::kIPv6:
-        ret.ipv6_dns_addresses.push_back(dns.ToString());
-        break;
-    }
-  }
-  return ret;
-}
-
 }  // namespace
 
 bool ShillClient::Device::IsConnected() const {
-  return ipconfig.ipv4_cidr || ipconfig.ipv6_cidr;
+  return network_config.ipv4_address.has_value() ||
+         !network_config.ipv6_addresses.empty();
 }
 
 bool ShillClient::Device::IsIPv6Only() const {
-  return !ipconfig.ipv4_cidr && ipconfig.ipv6_cidr;
+  return !network_config.ipv4_address.has_value() &&
+         !network_config.ipv6_addresses.empty();
 }
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
@@ -169,18 +148,16 @@ void ShillClient::ScanDevices() {
 
 void ShillClient::UpdateNetworkConfigCache(
     int ifindex, const net_base::NetworkConfig& network_config) {
-  IPConfig new_ipconfig = NetworkConfigToIPConfig(network_config);
-
   const auto it = network_config_cache_.find(ifindex);
 
   bool has_changed = false;
   if (it == network_config_cache_.end()) {
-    network_config_cache_.insert({ifindex, new_ipconfig});
+    network_config_cache_.insert({ifindex, network_config});
     has_changed = true;
   } else {
-    has_changed = it->second != new_ipconfig;
+    has_changed = it->second != network_config;
     if (has_changed) {
-      it->second = new_ipconfig;
+      it->second = network_config;
     }
   }
 
@@ -559,9 +536,9 @@ std::optional<ShillClient::Device> ShillClient::GetDeviceProperties(
 
   if (const auto it = network_config_cache_.find(output->ifindex);
       it != network_config_cache_.end()) {
-    output->ipconfig = it->second;
+    output->network_config = it->second;
   } else {
-    output->ipconfig = {};
+    output->network_config = {};
   }
 
   // Optional property: a Device does not necessarily have a selected Service at
@@ -643,7 +620,7 @@ void ShillClient::OnDevicePrimaryMultiplexedInterfaceChange(
     const auto& device_it = devices_.find(device_path);
     if (device_it != devices_.end() && IsActiveDevice(device_it->second)) {
       NotifyIPConfigChangeHandlers(device_it->second);
-      NotifyIPv6NetworkChangeHandlers(device_it->second, std::nullopt);
+      NotifyIPv6NetworkChangeHandlers(device_it->second, {});
     }
     return;
   }
@@ -692,7 +669,7 @@ void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
   }
 
   const dbus::ObjectPath& device_path = device_it->first;
-  IPConfig old_ip_config = device_it->second.ipconfig;
+  net_base::NetworkConfig old_ip_config = device_it->second.network_config;
 
   // Refresh all properties at once.
   const std::optional<Device> updated_device = GetDeviceProperties(device_path);
@@ -705,7 +682,7 @@ void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
 
   // Do not run the IPConfigsChangeHandler and IPv6NetworkChangeHandler
   // callbacks if there is no IPConfig change.
-  const IPConfig& new_ip_config = device_it->second.ipconfig;
+  const auto& new_ip_config = device_it->second.network_config;
   if (old_ip_config == new_ip_config) {
     return;
   }
@@ -727,7 +704,8 @@ void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
   LOG(INFO) << "[" << device_path.value()
             << "]: IPConfig changed: " << new_ip_config;
   NotifyIPConfigChangeHandlers(device_it->second);
-  NotifyIPv6NetworkChangeHandlers(device_it->second, old_ip_config.ipv6_cidr);
+  NotifyIPv6NetworkChangeHandlers(device_it->second,
+                                  old_ip_config.ipv6_addresses);
 }
 
 void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
@@ -737,15 +715,16 @@ void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
 }
 
 void ShillClient::NotifyIPv6NetworkChangeHandlers(
-    const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr) {
+    const Device& device, const std::vector<net_base::IPv6CIDR>& old_cidr) {
   // Compares if the new IPv6 network is the same as the old one by checking its
-  // prefix.
-  const auto& new_cidr = device.ipconfig.ipv6_cidr;
-  if (!old_cidr && !new_cidr) {
+  // prefix. Note that we are currently only assuming all addresses are of a
+  // same prefix, and only comparing the first address.
+  const auto& new_cidr = device.network_config.ipv6_addresses;
+  if (old_cidr.empty() && new_cidr.empty()) {
     return;
   }
-  if (old_cidr && new_cidr &&
-      old_cidr->GetPrefixCIDR() == new_cidr->GetPrefixCIDR()) {
+  if (!old_cidr.empty() && !new_cidr.empty() &&
+      old_cidr[0].GetPrefixCIDR() == new_cidr[0].GetPrefixCIDR()) {
     return;
   }
   for (const auto& handler : ipv6_network_handlers_) {
@@ -804,19 +783,4 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device* dev) {
   return stream << *dev;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         const ShillClient::IPConfig& ipconfig) {
-  return stream << "{ ipv4_cidr: "
-                << ipconfig.ipv4_cidr.value_or(net_base::IPv4CIDR())
-                << ", ipv4_gateway: "
-                << ipconfig.ipv4_gateway.value_or(net_base::IPv4Address())
-                << ", ipv4_dns: ["
-                << base::JoinString(ipconfig.ipv4_dns_addresses, ",")
-                << "], ipv6_cidr: "
-                << ipconfig.ipv6_cidr.value_or(net_base::IPv6CIDR())
-                << ", ipv6_gateway: "
-                << ipconfig.ipv6_gateway.value_or(net_base::IPv6Address())
-                << ", ipv6_dns: ["
-                << base::JoinString(ipconfig.ipv6_dns_addresses, ",") << "]}";
-}
 }  // namespace patchpanel

@@ -43,34 +43,6 @@ namespace patchpanel {
 // - Invoke callbacks when the IPConfigs of a shill Device has changed.
 class ShillClient {
  public:
-  // IPConfig for a shill Device. If the shill Device does not have a valid
-  // ipv4/ipv6 config, the corresponding fields will be empty or std::nullopt.
-  // TODO(b/340974631): Replace this struct with net_base::NetworkConfig.
-  struct IPConfig {
-    std::optional<net_base::IPv4CIDR> ipv4_cidr;
-    std::optional<net_base::IPv4Address> ipv4_gateway;
-    std::vector<std::string> ipv4_dns_addresses;
-
-    // Note due to the limitation of shill, we will only get one IPv6 address
-    // from it. This address should be the privacy address for device with type
-    // of ethernet or wifi.
-    std::optional<net_base::IPv6CIDR> ipv6_cidr;
-    std::optional<net_base::IPv6Address> ipv6_gateway;
-    std::vector<std::string> ipv6_dns_addresses;
-    bool operator==(const IPConfig& b) const {
-      return ipv4_cidr == b.ipv4_cidr && ipv4_gateway == b.ipv4_gateway &&
-             std::set<std::string>(ipv4_dns_addresses.begin(),
-                                   ipv4_dns_addresses.end()) ==
-                 std::set<std::string>(b.ipv4_dns_addresses.begin(),
-                                       b.ipv4_dns_addresses.end()) &&
-             ipv6_cidr == b.ipv6_cidr && ipv6_gateway == b.ipv6_gateway &&
-             std::set<std::string>(ipv6_dns_addresses.begin(),
-                                   ipv6_dns_addresses.end()) ==
-                 std::set<std::string>(b.ipv6_dns_addresses.begin(),
-                                       b.ipv6_dns_addresses.end());
-    }
-  };
-
   // Represents the properties of an object of org.chromium.flimflam.Device.
   // Only contains the properties we care about.
   struct Device {
@@ -100,7 +72,7 @@ class ShillClient {
     // IP configuration for this shill Device. For multiplexed Cellular Devices
     // this corresponds to the IP configuration of the primary network
     // interface.
-    IPConfig ipconfig;
+    net_base::NetworkConfig network_config;
 
     // Return if the device is connected by checking if IPv4 or IPv6 address is
     // available.
@@ -225,7 +197,7 @@ class ShillClient {
   virtual void OnDeviceNetworkConfigChange(int ifindex);
   void NotifyIPConfigChangeHandlers(const Device& device);
   void NotifyIPv6NetworkChangeHandlers(
-      const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr);
+      const Device& device, const std::vector<net_base::IPv6CIDR>& old_cidr);
 
   // Fetches Device dbus properties via dbus for the shill Device identified
   // by |device_path|. Returns std::nullopt if an error occurs. Note that this
@@ -249,7 +221,7 @@ class ShillClient {
       const dbus::ObjectPath& service_path);
 
   // Getter for FakeShillClient.
-  const std::map<int, IPConfig>& network_config_cache() const {
+  const std::map<int, net_base::NetworkConfig>& network_config_cache() const {
     return network_config_cache_;
   }
 
@@ -309,8 +281,7 @@ class ShillClient {
   // not track it). The NetworkConfig in the Device objects exposed by
   // ShillClient will be updated and retrieved from this cache instead of some
   // other D-Bus calls to shill.
-  // TODO(b/340974631): Replace with net_base::NetworkConfig.
-  std::map<int, IPConfig> network_config_cache_;
+  std::map<int, net_base::NetworkConfig> network_config_cache_;
 
   // Tracks the DoH providers from the DNSProxyDOHProviders property on shill's
   // Manager.
@@ -341,8 +312,6 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev);
 std::ostream& operator<<(std::ostream& stream,
                          const std::optional<ShillClient::Device>& dev);
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device* dev);
-std::ostream& operator<<(std::ostream& stream,
-                         const ShillClient::IPConfig& ipconfig);
 
 }  // namespace patchpanel
 

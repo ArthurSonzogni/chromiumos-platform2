@@ -13,6 +13,8 @@
 
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv6_address.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -369,9 +371,10 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1);
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr, kIPv4CIDR1);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses,
-            std::vector<std::string>({kIPv4DNS1.ToString()}));
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
+            kIPv4CIDR1);
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.dns_servers,
+            std::vector<net_base::IPAddress>({kIPv4DNS1}));
 
   // No callback should be triggered for the same update.
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1);
@@ -381,9 +384,9 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config2);
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr, kIPv4CIDR2);
-  EXPECT_TRUE(
-      ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses.empty());
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
+            kIPv4CIDR2);
+  EXPECT_TRUE(ipconfig_change_calls_.back().network_config.dns_servers.empty());
 
   // Removes the device. The device will first lose its IP configuration before
   // disappearing.
@@ -391,9 +394,9 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, brillo::Any());
   ASSERT_EQ(ipconfig_change_calls_.size(), 3u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr, std::nullopt);
-  EXPECT_TRUE(
-      ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses.empty());
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
+            std::nullopt);
+  EXPECT_TRUE(ipconfig_change_calls_.back().network_config.dns_servers.empty());
 
   // Adds the device again. The device will first appear before it acquires a
   // new IP configuration.
@@ -401,9 +404,10 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config1);
   ASSERT_EQ(ipconfig_change_calls_.size(), 4u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_cidr, kIPv4CIDR1);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv4_dns_addresses,
-            std::vector<std::string>({kIPv4DNS1.ToString()}));
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv4_address,
+            kIPv4CIDR1);
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.dns_servers,
+            std::vector<net_base::IPAddress>({kIPv4DNS1}));
 }
 
 TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
@@ -437,13 +441,16 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config);
   ASSERT_EQ(ipconfig_change_calls_.size(), 1u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_cidr, kIPv6CIDR);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway, kIPv6Gateway);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses,
-            std::vector<std::string>({kIPv6DNS.ToString()}));
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_addresses,
+            std::vector<net_base::IPv6CIDR>{kIPv6CIDR});
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_gateway,
+            kIPv6Gateway);
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.dns_servers,
+            std::vector<net_base::IPAddress>({kIPv6DNS}));
   ASSERT_EQ(ipv6_network_change_calls_.size(), 1u);
   EXPECT_EQ(ipv6_network_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_cidr, kIPv6CIDR);
+  EXPECT_EQ(ipv6_network_change_calls_.back().network_config.ipv6_addresses,
+            std::vector<net_base::IPv6CIDR>{kIPv6CIDR});
 
   // Removes the device. The device will first lose its IP configuration before
   // disappearing.
@@ -451,13 +458,15 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   client_->NotifyManagerPropertyChange(shill::kDevicesProperty, brillo::Any());
   ASSERT_EQ(ipconfig_change_calls_.size(), 2u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_cidr, std::nullopt);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway, std::nullopt);
   EXPECT_TRUE(
-      ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses.empty());
+      ipconfig_change_calls_.back().network_config.ipv6_addresses.empty());
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_gateway,
+            std::nullopt);
+  EXPECT_TRUE(ipconfig_change_calls_.back().network_config.dns_servers.empty());
   ASSERT_EQ(ipv6_network_change_calls_.size(), 2u);
   EXPECT_EQ(ipv6_network_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_cidr, std::nullopt);
+  EXPECT_TRUE(
+      ipconfig_change_calls_.back().network_config.ipv6_addresses.empty());
 
   // Adds the device again. The device will first appear before it acquires a
   // new IP configuration, without DNS.
@@ -467,13 +476,15 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config);
   ASSERT_EQ(ipconfig_change_calls_.size(), 3u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_cidr, kIPv6CIDR);
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_gateway, kIPv6Gateway);
-  EXPECT_TRUE(
-      ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses.empty());
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_addresses,
+            std::vector<net_base::IPv6CIDR>{kIPv6CIDR});
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.ipv6_gateway,
+            kIPv6Gateway);
+  EXPECT_TRUE(ipconfig_change_calls_.back().network_config.dns_servers.empty());
   ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);
   EXPECT_EQ(ipv6_network_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipv6_network_change_calls_.back().ipconfig.ipv6_cidr, kIPv6CIDR);
+  EXPECT_EQ(ipv6_network_change_calls_.back().network_config.ipv6_addresses,
+            std::vector<net_base::IPv6CIDR>{kIPv6CIDR});
 
   // Adds IPv6 DNS, IPv6NetworkChangedHandler is not triggered.
   network_config.dns_servers.push_back(kIPv6DNS);
@@ -481,8 +492,8 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   client_->UpdateNetworkConfigCache(kInterfaceIndex, network_config);
   ASSERT_EQ(ipconfig_change_calls_.size(), 4u);
   EXPECT_EQ(ipconfig_change_calls_.back().ifname, "wlan0");
-  EXPECT_EQ(ipconfig_change_calls_.back().ipconfig.ipv6_dns_addresses,
-            std::vector<std::string>({kIPv6DNS.ToString()}));
+  EXPECT_EQ(ipconfig_change_calls_.back().network_config.dns_servers,
+            std::vector<net_base::IPAddress>({kIPv6DNS}));
   ASSERT_EQ(ipv6_network_change_calls_.size(), 3u);
 }
 

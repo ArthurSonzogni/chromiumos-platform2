@@ -6,6 +6,7 @@
 #define PATCHPANEL_NETWORK_MONITOR_SERVICE_H_
 
 #include <linux/neighbour.h>
+
 #include <map>
 #include <memory>
 #include <string>
@@ -14,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/rtnl_listener.h>
 #include <chromeos/net-base/rtnl_message.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -108,7 +110,7 @@ class NeighborLinkMonitor {
   //   empty or not.
   // - For each new added address, send a neighbor get request to the kernel
   //   immediately.
-  void OnIPConfigChanged(const ShillClient::IPConfig& ipconfig);
+  void OnIPConfigChanged(const net_base::NetworkConfig& ipconfig);
 
   static std::string NeighborRoleToString(
       NeighborLinkMonitor::NeighborRole role);

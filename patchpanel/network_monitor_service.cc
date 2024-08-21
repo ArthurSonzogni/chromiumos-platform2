@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -167,21 +168,35 @@ void NeighborLinkMonitor::UpdateWatchingEntry(const net_base::IPAddress& addr,
 }
 
 void NeighborLinkMonitor::OnIPConfigChanged(
-    const ShillClient::IPConfig& ipconfig) {
+    const net_base::NetworkConfig& ipconfig) {
   LOG(INFO) << "ipconfigs changed on " << ifname_
             << ", update watching entries";
   const auto old_watching_entries = std::move(watching_entries_);
   watching_entries_.clear();
 
-  if (ipconfig.ipv4_cidr && ipconfig.ipv4_gateway) {
-    AddWatchingEntries(net_base::IPCIDR(*ipconfig.ipv4_cidr),
-                       net_base::IPAddress(*ipconfig.ipv4_gateway),
-                       ipconfig.ipv4_dns_addresses);
+  // TODO(b/340974631): Use net_base::IPAddress for |dns_addrs| in
+  // AddWatchingEntries.
+  std::vector<std::string> ipv4_dns_addresses;
+  std::vector<std::string> ipv6_dns_addresses;
+  for (const auto& dns : ipconfig.dns_servers) {
+    switch (dns.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        ipv4_dns_addresses.push_back(dns.ToString());
+        break;
+      case net_base::IPFamily::kIPv6:
+        ipv6_dns_addresses.push_back(dns.ToString());
+        break;
+    }
   }
-  if (ipconfig.ipv6_cidr && ipconfig.ipv6_gateway) {
-    AddWatchingEntries(net_base::IPCIDR(*ipconfig.ipv6_cidr),
+  if (ipconfig.ipv4_address && ipconfig.ipv4_gateway) {
+    AddWatchingEntries(net_base::IPCIDR(*ipconfig.ipv4_address),
+                       net_base::IPAddress(*ipconfig.ipv4_gateway),
+                       ipv4_dns_addresses);
+  }
+  if (!ipconfig.ipv6_addresses.empty() && ipconfig.ipv6_gateway) {
+    AddWatchingEntries(net_base::IPCIDR(ipconfig.ipv6_addresses[0]),
                        net_base::IPAddress(*ipconfig.ipv6_gateway),
-                       ipconfig.ipv6_dns_addresses);
+                       ipv6_dns_addresses);
   }
 
   if (watching_entries_.empty()) {
@@ -383,7 +398,7 @@ void NetworkMonitorService::OnShillDevicesChanged(
 
     auto link_monitor = std::make_unique<NeighborLinkMonitor>(
         device.ifindex, device.ifname, rtnl_handler_, &neighbor_event_handler_);
-    link_monitor->OnIPConfigChanged(device.ipconfig);
+    link_monitor->OnIPConfigChanged(device.network_config);
     neighbor_link_monitors_[device.ifname] = std::move(link_monitor);
   }
 
@@ -398,7 +413,7 @@ void NetworkMonitorService::OnIPConfigsChanged(
   if (it == neighbor_link_monitors_.end())
     return;
 
-  it->second->OnIPConfigChanged(device.ipconfig);
+  it->second->OnIPConfigChanged(device.network_config);
 }
 
 }  // namespace patchpanel

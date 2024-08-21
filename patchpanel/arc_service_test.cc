@@ -748,10 +748,12 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
 
   // New physical device eth0.
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
-  eth_dev.ipconfig.ipv4_cidr =
+  eth_dev.network_config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.16/24");
-  eth_dev.ipconfig.ipv4_gateway = net_base::IPv4Address(192, 168, 1, 1);
-  eth_dev.ipconfig.ipv4_dns_addresses = {"192.168.1.1", "8.8.8.8"};
+  eth_dev.network_config.ipv4_gateway = net_base::IPv4Address(192, 168, 1, 1);
+  eth_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("192.168.1.1"),
+      *net_base::IPAddress::CreateFromString("8.8.8.8")};
   // guest IP and host IP addresses in network order.
   std::vector<uint32_t> guest_ips, host_ips;
   for (const auto& cidr : kArcPhysicalGuestCIDRs) {
@@ -810,10 +812,11 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_THAT(device_signal_it->second.ipv4_addr(), AnyOfArray(guest_ips));
   EXPECT_THAT(device_signal_it->second.host_ipv4_addr(), AnyOfArray(host_ips));
 
-  eth_dev.ipconfig.ipv4_cidr =
+  eth_dev.network_config.ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("172.16.0.72/16");
-  eth_dev.ipconfig.ipv4_gateway = net_base::IPv4Address(172, 16, 0, 1);
-  eth_dev.ipconfig.ipv4_dns_addresses = {"172.17.1.1"};
+  eth_dev.network_config.ipv4_gateway = net_base::IPv4Address(172, 16, 0, 1);
+  eth_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("172.17.1.1")};
   svc->UpdateDeviceIPConfig(eth_dev);
 
   // ArcService stops

@@ -343,7 +343,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
   const std::string& ifname = upstream_shill_device.ifname;
   const auto old_uplink_ip = GetUplinkIp(ifname);
 
-  if (!upstream_shill_device.ipconfig.ipv6_cidr) {
+  if (upstream_shill_device.network_config.ipv6_addresses.empty()) {
     LOG(INFO) << __func__ << ": uplink: " << ifname << ", {"
               << ((old_uplink_ip) ? old_uplink_ip->ToString() : "")
               << "} to {}";
@@ -373,7 +373,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
   }
 
   const auto new_uplink_ip =
-      upstream_shill_device.ipconfig.ipv6_cidr->address();
+      upstream_shill_device.network_config.ipv6_addresses[0].address();
   LOG(INFO) << __func__ << ": uplink: " << ifname << ", {"
             << ((old_uplink_ip) ? old_uplink_ip->ToString() : "") << "} to {"
             << new_uplink_ip << "}";
@@ -409,8 +409,8 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
       for (auto iter = neighbor_ips.begin(); iter != neighbor_ips.end();) {
         // Skip and remove downstream neighbor IP cache if it is not in the same
         // prefix with the new uplink IP.
-        if (!upstream_shill_device.ipconfig.ipv6_cidr->InSameSubnetWith(
-                *iter)) {
+        if (!upstream_shill_device.network_config.ipv6_addresses[0]
+                 .InSameSubnetWith(*iter)) {
           LOG(INFO) << __func__ << ": " << pair
                     << ", removing cached downstream neighbor IP {" << *iter
                     << "} because it's not in the subnet of new uplink IP {"
@@ -462,27 +462,19 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
     const ShillClient::Device& upstream_shill_device) {
   const std::string& ifname = upstream_shill_device.ifname;
   const auto& old_dns = uplink_dns_[ifname];
+  // TODO(b/340974631): Use net_base::IPAddress for DNS caches.
+  std::vector<std::string> new_dns;
+  for (const auto& dns : upstream_shill_device.network_config.dns_servers) {
+    if (dns.GetFamily() == net_base::IPFamily::kIPv6) {
+      new_dns.push_back(dns.ToString());
+    }
+  }
+  std::sort(new_dns.begin(), new_dns.end());
+
   VLOG(1) << __func__ << ": " << ifname << ", {"
           << base::JoinString(old_dns, ",") << "} to {"
-          << base::JoinString(upstream_shill_device.ipconfig.ipv6_dns_addresses,
-                              ",")
-          << "}";
-
-  // Check if the new dns list is identical with the old one.
-  auto sorted_dns = upstream_shill_device.ipconfig.ipv6_dns_addresses;
-  std::sort(sorted_dns.begin(), sorted_dns.end());
-  bool identical = true;
-  if (old_dns.size() == sorted_dns.size()) {
-    for (size_t i = 0; i < old_dns.size(); ++i) {
-      if (old_dns[i] != sorted_dns[i]) {
-        identical = false;
-        break;
-      }
-    }
-  } else {
-    identical = false;
-  }
-  if (identical) {
+          << base::JoinString(new_dns, ",") << "}";
+  if (old_dns == new_dns) {
     return;
   }
 
@@ -494,7 +486,7 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
       if (uplink_ip) {
         const auto prefix = IPAddressTo64BitPrefix(*uplink_ip);
         StopRAServer(ifname_downlink);
-        if (!StartRAServer(ifname_downlink, prefix, sorted_dns, it->second.mtu,
+        if (!StartRAServer(ifname_downlink, prefix, new_dns, it->second.mtu,
                            it->second.hop_limit)) {
           const LinkPair pair = {.uplink = ifname, .downlink = ifname_downlink};
           LOG(WARNING)
@@ -505,7 +497,7 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
       }
     }
   }
-  uplink_dns_[ifname] = sorted_dns;
+  uplink_dns_[ifname] = new_dns;
 }
 
 void GuestIPv6Service::StartARCPacketFilter(

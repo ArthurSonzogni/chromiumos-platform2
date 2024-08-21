@@ -4,16 +4,17 @@
 
 #include "patchpanel/network_monitor_service.h"
 
+#include <linux/rtnetlink.h>
+
 #include <memory>
 #include <set>
-
-#include <linux/rtnetlink.h>
 
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/mock_rtnl_handler.h>
 #include <gtest/gtest.h>
 
@@ -204,10 +205,11 @@ class NeighborLinkMonitorTest : public testing::Test {
 };
 
 TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
-  ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.6")};
 
   // On ipconfig changed, the link monitor should send only one dump request, to
   // fetch current NUD state of these new addresses.
@@ -218,10 +220,11 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborDumpMessageOnIPConfigChanged) {
 }
 
 TEST_F(NeighborLinkMonitorTest, WatchLinkLocalIPv6DNSServerAddress) {
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv6_cidr = *net_base::IPv6CIDR::CreateFromCIDRString("2401::1/64");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2401::1/64")};
   ipconfig.ipv6_gateway = *net_base::IPv6Address::CreateFromString("fe80::1");
-  ipconfig.ipv6_dns_addresses = {"fe80::2"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("fe80::2")};
 
   link_monitor_->OnIPConfigChanged(ipconfig);
 
@@ -238,8 +241,9 @@ TEST_F(NeighborLinkMonitorTest, WatchLinkLocalIPv6DNSServerAddress) {
 
 TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
   // Only the gateway should be in the watching list.
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
   link_monitor_->OnIPConfigChanged(ipconfig);
 
@@ -270,13 +274,14 @@ TEST_F(NeighborLinkMonitorTest, SendNeighborProbeMessage) {
 }
 
 TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
-  ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.6")};
   link_monitor_->OnIPConfigChanged(ipconfig);
 
-  ipconfig.ipv4_dns_addresses = {"1.2.3.7"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.7")};
   // One dump request is expected since there is a new address.
   EXPECT_CALL(*mock_rtnl_handler_, DoSendMessage(IsNeighborDumpMessage(), _))
       .WillOnce(Return(true));
@@ -308,10 +313,11 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntries) {
 }
 
 TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntriesWithSameAddress) {
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
-  ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.6")};
   link_monitor_->OnIPConfigChanged(ipconfig);
 
   // No dump request is expected.
@@ -321,8 +327,9 @@ TEST_F(NeighborLinkMonitorTest, UpdateWatchingEntriesWithSameAddress) {
 }
 
 TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
 
   fake_neighbor_event_handler_.Enable();
@@ -353,14 +360,15 @@ TEST_F(NeighborLinkMonitorTest, NotifyNeighborReachabilityEvent) {
 }
 
 TEST_F(NeighborLinkMonitorTest, NeighborRole) {
-  ShillClient::IPConfig ipconfig;
-  ipconfig.ipv4_cidr = *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
+  net_base::NetworkConfig ipconfig;
+  ipconfig.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24");
 
   fake_neighbor_event_handler_.Enable();
 
   SCOPED_TRACE("On neighbor as gateway or DNS server failed.");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
-  ipconfig.ipv4_dns_addresses = {"1.2.3.6"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.6")};
   link_monitor_->OnIPConfigChanged(ipconfig);
   fake_neighbor_event_handler_.Expect(
       kTestInterfaceIndex, "1.2.3.5",
@@ -381,7 +389,7 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
 
   SCOPED_TRACE("On neighbor as gateway and DNS server failed");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 5);
-  ipconfig.ipv4_dns_addresses = {"1.2.3.5"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.5")};
   link_monitor_->OnIPConfigChanged(ipconfig);
   fake_neighbor_event_handler_.Expect(
       kTestInterfaceIndex, "1.2.3.5",
@@ -396,7 +404,7 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
 
   SCOPED_TRACE("Swaps the roles.");
   ipconfig.ipv4_gateway = net_base::IPv4Address(1, 2, 3, 6);
-  ipconfig.ipv4_dns_addresses = {"1.2.3.5"};
+  ipconfig.dns_servers = {*net_base::IPAddress::CreateFromString("1.2.3.5")};
   link_monitor_->OnIPConfigChanged(ipconfig);
   fake_neighbor_event_handler_.Expect(
       kTestInterfaceIndex, "1.2.3.5",

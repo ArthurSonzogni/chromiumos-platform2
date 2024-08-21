@@ -202,8 +202,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
                              "down1", *net_base::IPv6Address::CreateFromString(
                                           "2001:db8:0:100::1234")))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(
@@ -227,8 +227,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
   target_.StopForwarding(up1_dev, "down1");
 
   // OnUplinkIPv6Changed -> StartForwarding
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target_, SendNDProxyControl(
@@ -353,8 +353,8 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
                                 "2001:db8:0:200::/64"),
                             std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target_,
@@ -406,8 +406,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
                                 "2001:db8:0:200::/64"),
                             std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target_, StopRAServer("down1")).WillOnce(Return(true));
@@ -417,8 +417,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
                                 "2001:db8:0:100::/64"),
                             std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   // OnUplinkIPv6Changed should cause existing /128 routes to be updated.
@@ -437,8 +437,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::9999/128"),
           net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")));
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target_, StopRAServer("down1")).WillOnce(Return(true));
@@ -463,8 +463,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
                                 "2001:db8:0:200::/64"),
                             std::vector<std::string>{}, mtu, hop_limit))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   // Update DNS should trigger RA server restart.
@@ -477,15 +477,17 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
           std::vector<std::string>{"2001:db8:0:cafe::2", "2001:db8:0:cafe::3"},
           mtu, hop_limit))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_dns_addresses = {"2001:db8:0:cafe::2",
-                                         "2001:db8:0:cafe::3"};
+  up1_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("2001:db8:0:cafe::2"),
+      *net_base::IPAddress::CreateFromString("2001:db8:0:cafe::3")};
   target_.UpdateUplinkIPv6DNS(up1_dev);
 
   // If the content of DNS did not change, no restart should be triggered.
   EXPECT_CALL(target_, StopRAServer).Times(0);
   EXPECT_CALL(target_, StartRAServer).Times(0);
-  up1_dev.ipconfig.ipv6_dns_addresses = {"2001:db8:0:cafe::3",
-                                         "2001:db8:0:cafe::2"};
+  up1_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("2001:db8:0:cafe::3"),
+      *net_base::IPAddress::CreateFromString("2001:db8:0:cafe::2")};
   target_.UpdateUplinkIPv6DNS(up1_dev);
 
   // Removal of a DNS address should trigger RA server restart.
@@ -497,7 +499,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkDNSChange) {
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::/64"),
           std::vector<std::string>{"2001:db8:0:cafe::3"}, mtu, hop_limit))
       .WillOnce(Return(true));
-  up1_dev.ipconfig.ipv6_dns_addresses = {"2001:db8:0:cafe::3"};
+  up1_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("2001:db8:0:cafe::3")};
   target_.UpdateUplinkIPv6DNS(up1_dev);
 
   EXPECT_CALL(target_, StopRAServer("down1")).WillOnce(Return(true));
@@ -511,8 +514,8 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
   ON_CALL(system_, IfNametoindex("up1")).WillByDefault(Return(1));
   ON_CALL(system_, IfNametoindex("down1")).WillByDefault(Return(101));
 
-  up1_dev.ipconfig.ipv6_cidr =
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64");
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
 
   EXPECT_CALL(target_, SendNDProxyControl(

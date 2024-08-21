@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <chromeos/net-base/network_config.h>
 // Ignore Wconversion warnings in dbus headers.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -137,8 +138,9 @@ class FakeShillClient : public ShillClient {
     for (auto& [_, device] : fake_device_properties_) {
       if (device.ifindex == ifindex) {
         const auto it = network_config_cache().find(ifindex);
-        device.ipconfig =
-            (it == network_config_cache().end() ? IPConfig{} : it->second);
+        device.network_config =
+            (it == network_config_cache().end() ? net_base::NetworkConfig{}
+                                                : it->second);
         break;
       }
     }

@@ -381,18 +381,20 @@ DownstreamNetworkService::StartTetheringUpstreamNetwork(
   // the prefix of the upstream Network, and also call
   // Datapath::StartSourceIPv6PrefixEnforcement()
   if (request.has_uplink_ipv6_config()) {
-    upstream_network.ipconfig.ipv6_cidr =
-        net_base::IPv6CIDR::CreateFromBytesAndPrefix(
-            request.uplink_ipv6_config().uplink_ipv6_cidr().addr(),
-            request.uplink_ipv6_config().uplink_ipv6_cidr().prefix_len());
-    if (!upstream_network.ipconfig.ipv6_cidr) {
+    auto prefix_from_config = net_base::IPv6CIDR::CreateFromBytesAndPrefix(
+        request.uplink_ipv6_config().uplink_ipv6_cidr().addr(),
+        request.uplink_ipv6_config().uplink_ipv6_cidr().prefix_len());
+    if (prefix_from_config) {
+      upstream_network.network_config.ipv6_addresses.push_back(
+          *prefix_from_config);
+    } else {
       LOG(WARNING) << __func__ << ": failed to parse uplink IPv6 configuration";
     }
     for (const auto& dns : request.uplink_ipv6_config().dns_servers()) {
       auto addr = net_base::IPv6Address::CreateFromBytes(dns);
       if (addr) {
-        upstream_network.ipconfig.ipv6_dns_addresses.push_back(
-            addr->ToString());
+        upstream_network.network_config.dns_servers.push_back(
+            net_base::IPAddress(*addr));
       }
     }
   }
@@ -404,17 +406,17 @@ DownstreamNetworkService::StartTetheringUpstreamNetwork(
   // (ConnectNamespace, dns-proxy redirection, ArcService, CrostiniService,
   // neighbor monitoring).
   LOG(INFO) << __func__ << ": Configuring datapath for fake shill Device "
-            << upstream_network << " with IPConfig "
-            << upstream_network.ipconfig;
+            << upstream_network << " with NetworkConfig "
+            << upstream_network.network_config;
   counters_svc_->OnPhysicalDeviceAdded(upstream_ifname);
   datapath_->StartConnectionPinning(upstream_network);
-  if (upstream_network.ipconfig.ipv6_cidr) {
+  if (!upstream_network.network_config.ipv6_addresses.empty()) {
     ipv6_svc_->OnUplinkIPv6Changed(upstream_network);
     ipv6_svc_->UpdateUplinkIPv6DNS(upstream_network);
     datapath_->StartSourceIPv6PrefixEnforcement(upstream_network);
     // TODO(b/279871350): Support prefix shorter than /64.
     const auto ipv6_prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
-        upstream_network.ipconfig.ipv6_cidr->address());
+        upstream_network.network_config.ipv6_addresses[0].address());
     datapath_->UpdateSourceEnforcementIPv6Prefix(upstream_network, ipv6_prefix);
   }
 
@@ -432,7 +434,7 @@ void DownstreamNetworkService::StopTetheringUpstreamNetwork(
   // b/305257482: Ensure that GuestIPv6Service forgets the IPv6
   // configuration of the upstream network by faking IPv6 disconnection.
   auto fake_disconneted_network = upstream_network;
-  fake_disconneted_network.ipconfig.ipv6_cidr = std::nullopt;
+  fake_disconneted_network.network_config.ipv6_addresses = {};
   ipv6_svc_->OnUplinkIPv6Changed(fake_disconneted_network);
 }
 

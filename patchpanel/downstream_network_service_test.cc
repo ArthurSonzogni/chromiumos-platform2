@@ -49,7 +49,8 @@ MATCHER_P(EqShillDevice, expected_shill_device, "") {
   return arg.technology == expected_shill_device.technology &&
          arg.ifindex == expected_shill_device.ifindex &&
          arg.ifname == expected_shill_device.ifname &&
-         arg.ipconfig.ipv6_cidr == expected_shill_device.ipconfig.ipv6_cidr;
+         arg.network_config.ipv6_addresses ==
+             expected_shill_device.network_config.ipv6_addresses;
 }
 
 MATCHER_P(DownstreamNetworkInfoHasInterfaceName,
@@ -204,8 +205,8 @@ TEST_F(DownstreamNetworkServiceTest,
   expected_upstream_device.technology = net_base::Technology::kCellular;
   expected_upstream_device.ifindex = 2;
   expected_upstream_device.ifname = "qmapmux9";
-  expected_upstream_device.ipconfig.ipv6_cidr =
-      net_base::IPv6CIDR::CreateFromAddressAndPrefix(ipv6_addr, 64);
+  expected_upstream_device.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromAddressAndPrefix(ipv6_addr, 64)};
 
   base::OnceClosure on_lifeline_fd_event;
   EXPECT_CALL(lifeline_fd_svc_, AddLifelineFD)

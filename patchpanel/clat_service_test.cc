@@ -91,7 +91,8 @@ ShillClient::Device MakeFakeIPv4OnlyShillDevice(
     int ifindex = 1,
     const char ipv4_cidr[] = kIPv4CIDR) {
   ShillClient::Device dev = MakeFakeShillDevice(ifname, ifindex);
-  dev.ipconfig.ipv4_cidr = net_base::IPv4CIDR::CreateFromCIDRString(ipv4_cidr);
+  dev.network_config.ipv4_address =
+      net_base::IPv4CIDR::CreateFromCIDRString(ipv4_cidr);
 
   return dev;
 }
@@ -101,7 +102,8 @@ ShillClient::Device MakeFakeIPv6OnlyShillDevice(
     int ifindex = 1,
     const char ipv6_cidr[] = kIPv6CIDR) {
   ShillClient::Device dev = MakeFakeShillDevice(ifname, ifindex);
-  dev.ipconfig.ipv6_cidr = net_base::IPv6CIDR::CreateFromCIDRString(ipv6_cidr);
+  dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString(ipv6_cidr)};
 
   return dev;
 }
@@ -112,8 +114,10 @@ ShillClient::Device MakeFakeDualStackShillDevice(
     const char ipv4_cidr[] = kIPv4CIDR,
     const char ipv6_cidr[] = kIPv6CIDR) {
   ShillClient::Device dev = MakeFakeShillDevice(ifname, ifindex);
-  dev.ipconfig.ipv4_cidr = net_base::IPv4CIDR::CreateFromCIDRString(ipv4_cidr);
-  dev.ipconfig.ipv6_cidr = net_base::IPv6CIDR::CreateFromCIDRString(ipv6_cidr);
+  dev.network_config.ipv4_address =
+      net_base::IPv4CIDR::CreateFromCIDRString(ipv4_cidr);
+  dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString(ipv6_cidr)};
 
   return dev;
 }  // namespace
@@ -299,7 +303,7 @@ TEST_F(ClatServiceTest, IPv6OnlyDeviceGetIPv4Address) {
   target_.OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
 
   // The default logical device gets IPv4 address because of IPConfig changes.
-  default_logical_device.ipconfig.ipv4_cidr =
+  default_logical_device.network_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString(kIPv4CIDR);
 
   EXPECT_CALL(target_, StopClat(true));
@@ -310,7 +314,7 @@ TEST_F(ClatServiceTest, DeviceLoseIPv4Address) {
   auto default_logical_device = MakeFakeDualStackShillDevice("dual_stack", 1);
 
   // The default logical device loses IPv4 address because of IPConfig changes.
-  default_logical_device.ipconfig.ipv4_cidr.reset();
+  default_logical_device.network_config.ipv4_address.reset();
 
   EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("dual_stack")));
   target_.OnDefaultLogicalDeviceIPConfigChanged(default_logical_device);
@@ -318,11 +322,13 @@ TEST_F(ClatServiceTest, DeviceLoseIPv4Address) {
 
 TEST_F(ClatServiceTest, IPConfigChangeWithoutIPv6AddressChange) {
   auto v6only_dev = MakeFakeIPv6OnlyShillDevice("v6only");
-  v6only_dev.ipconfig.ipv4_dns_addresses = std::vector<std::string>{"8.8.8.8"};
+  v6only_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("8.8.8.8")};
 
   target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 
-  v6only_dev.ipconfig.ipv4_dns_addresses = std::vector<std::string>{"1.1.1.1"};
+  v6only_dev.network_config.dns_servers = {
+      *net_base::IPAddress::CreateFromString("1.1.1.1")};
 
   // This change has nothing with CLAT.
   EXPECT_CALL(target_, StopClat(_)).Times(Exactly(0));
@@ -335,8 +341,8 @@ TEST_F(ClatServiceTest, IPv6AddressChangeInTheSamePrefix) {
 
   target_.OnDefaultLogicalDeviceIPConfigChanged(v6only_dev);
 
-  v6only_dev.ipconfig.ipv6_cidr =
-      net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::2/64");
+  v6only_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8::2/64")};
 
   // Even the new IPn6 address of the default logical device has the same prefix
   // as the old one, CLAT needs to be reconfigured because the new address
@@ -354,7 +360,7 @@ TEST_F(ClatServiceTest, EnabledAfterGettingIPv4AddressWhileDisabled) {
   EXPECT_CALL(target_, StopClat(false));
   target_.Disable();
 
-  v6only_dev.ipconfig.ipv4_cidr =
+  v6only_dev.network_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString(kIPv4CIDR);
 
   EXPECT_CALL(target_, StopClat(true));
@@ -372,7 +378,7 @@ TEST_F(ClatServiceTest, EnabledAfterBecomingIPv6OnlyWhileDisabled) {
   EXPECT_CALL(target_, StopClat(false));
   target_.Disable();
 
-  dual_dev.ipconfig.ipv4_cidr.reset();
+  dual_dev.network_config.ipv4_address.reset();
 
   EXPECT_CALL(target_, StartClat(ShillDeviceHasInterfaceName("dual")));
   target_.OnDefaultLogicalDeviceIPConfigChanged(dual_dev);

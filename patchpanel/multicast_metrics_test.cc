@@ -89,7 +89,8 @@ TEST_F(MulticastMetricsTest, IPConfigChanges_StartStop) {
   ShillClient::Device device;
   device.ifname = "eth0";
   device.technology = net_base::Technology::kEthernet;
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // Device is connected.
   multicast_metrics_.OnIPConfigsChanged(device);
@@ -100,7 +101,7 @@ TEST_F(MulticastMetricsTest, IPConfigChanges_StartStop) {
   EXPECT_TRUE(multicast_metrics_.pollers_[Type::kEthernet]->IsTimerRunning());
 
   // Device is disconnected.
-  device.ipconfig.ipv4_cidr.reset();
+  device.network_config.ipv4_address.reset();
   multicast_metrics_.OnIPConfigsChanged(device);
   EXPECT_FALSE(multicast_metrics_.pollers_[Type::kEthernet]->IsTimerRunning());
 }
@@ -115,7 +116,8 @@ TEST_F(MulticastMetricsTest, DeviceChanges_StartStop) {
   EXPECT_FALSE(multicast_metrics_.pollers_[Type::kEthernet]->IsTimerRunning());
 
   // Device is added and connected.
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
   multicast_metrics_.OnPhysicalDeviceAdded(device);
   EXPECT_TRUE(multicast_metrics_.pollers_[Type::kEthernet]->IsTimerRunning());
 
@@ -128,12 +130,14 @@ TEST_F(MulticastMetricsTest, MultipleDeviceChanges_StartStop) {
   ShillClient::Device device0;
   device0.ifname = "eth0";
   device0.technology = net_base::Technology::kEthernet;
-  device0.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device0.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   ShillClient::Device device1;
   device1.ifname = "eth1";
   device1.technology = net_base::Technology::kEthernet;
-  device1.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device1.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // First device added.
   multicast_metrics_.OnPhysicalDeviceAdded(device0);
@@ -160,7 +164,8 @@ TEST_F(MulticastMetricsTest, ARC_StartStop) {
   ShillClient::Device device;
   device.ifname = "wlan0";
   device.technology = net_base::Technology::kWiFi;
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
   multicast_metrics_.OnPhysicalDeviceAdded(device);
@@ -207,7 +212,8 @@ TEST_F(MulticastMetricsTest, ARC_StartStopWithForwardingChanges) {
   ShillClient::Device device;
   device.ifname = "wlan0";
   device.technology = net_base::Technology::kWiFi;
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // ARC started.
   multicast_metrics_.OnARCStarted();
@@ -249,7 +255,8 @@ TEST_F(MulticastMetricsTest, ARC_SendActiveTimeMetrics) {
   ShillClient::Device device;
   device.ifname = "wlan0";
   device.technology = net_base::Technology::kWiFi;
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
   multicast_metrics_.OnPhysicalDeviceAdded(device);
@@ -275,7 +282,8 @@ TEST_F(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsNoStop) {
   ShillClient::Device device;
   device.ifname = "wlan0";
   device.technology = net_base::Technology::kWiFi;
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
   multicast_metrics_.OnPhysicalDeviceAdded(device);
@@ -297,7 +305,8 @@ TEST_F(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsARCNotRunning) {
   ShillClient::Device device;
   device.ifname = "wlan0";
   device.technology = net_base::Technology::kWiFi;
-  device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
+  device.network_config.ipv4_address =
+      *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
   multicast_metrics_.OnPhysicalDeviceAdded(device);
