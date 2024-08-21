@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/process/process.h>
+#include <png.h>
+
 #include <filesystem>
+#include <string>
+#include <vector>
+
+#include <brillo/process/process.h>
 #include <gtest/gtest.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <sane/sane.h>
-#include <string>
-#include <vector>
-#include <png.h>
 
 #include "lorgnette/libsane_wrapper.h"
 #include "lorgnette/libsane_wrapper_impl.h"
@@ -32,7 +34,7 @@ struct ScanTestParameter {
 
 // Override ostream so we can get pretty printing of failed parameterized tests.
 void operator<<(std::ostream& stream, const ScanTestParameter& param) {
-  stream << "source=" << param.source;
+  stream << "source=" << param.source << ", color_mode=" << param.color_mode;
 }
 
 // Returns string that represents where outputs for this specific test goes to.
@@ -114,7 +116,6 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   // TODO(b/346843281): Allow these to be properly selected, test multiple
   // values, and don't have defaults
   uint32_t resolution = 200;
-  std::string color_mode = "Color";
 
   std::cout << "Supported resolutions ("
             << valid_standard_opts.value().resolutions.size() << "): ";
@@ -128,17 +129,12 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   }
   std::cout << "\n";
 
-  std::cout << "Supported color modes ("
-            << valid_standard_opts.value().color_modes.size() << "): ";
-  for (auto cmode : valid_standard_opts.value().color_modes) {
-    std::cout << cmode << " ";
-  }
-  std::cout << "\n";
-
-  for (auto opt : valid_standard_opts.value().sources) {
-    ScanTestParameter new_param =
-        ScanTestParameter(opt.name(), resolution, color_mode);
-    out.push_back(new_param);
+  for (auto source : valid_standard_opts.value().sources) {
+    for (auto color_mode : valid_standard_opts.value().color_modes) {
+      ScanTestParameter new_param =
+          ScanTestParameter(source.name(), resolution, color_mode);
+      out.push_back(new_param);
+    }
   }
 }
 
@@ -242,7 +238,7 @@ INSTANTIATE_TEST_SUITE_P(
           (std::remove_if(source.begin(), source.end(),
                           [](unsigned char x) { return std::isspace(x); })),
           source.end());
-      return "SourceIs" + source;
+      return "SourceIs" + source + "ColorModeIs" + info.param.color_mode;
     });
 
 // Runs lorgnette_cli advanced_scan with args; returns exit code.
