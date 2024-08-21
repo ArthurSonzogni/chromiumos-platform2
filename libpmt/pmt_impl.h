@@ -37,7 +37,7 @@ class BRILLO_EXPORT PmtSysfsData : public PmtDataInterface {
 
   // Get the path to the PMT metadata mapping file.
   //
-  // @retval /usr/share/libpmt/metadata/pmt.xml
+  // @retval /usr/local/share/libpmt/metadata/pmt.xml
   base::FilePath GetMetadataMappingsFile() const final;
 
   // Checks whether a given device is in devices_.

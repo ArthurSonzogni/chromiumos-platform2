@@ -77,7 +77,7 @@ std::vector<Guid> PmtSysfsData::DetectDevices() {
 }
 
 base::FilePath PmtSysfsData::GetMetadataMappingsFile() const {
-  return base::FilePath("/usr/share/libpmt/metadata/pmt.xml");
+  return base::FilePath("/usr/local/share/libpmt/metadata/pmt.xml");
 }
 
 bool PmtSysfsData::IsValid(Guid guid) const {
