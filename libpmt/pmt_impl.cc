@@ -19,6 +19,15 @@ namespace pmt {
 
 static constexpr char kPmtSysfsPath[] = "/sys/class/intel_pmt";
 
+static constexpr char kDefaultMetadataPath[] =
+    "/usr/local/share/libpmt/metadata";
+
+PmtSysfsData::PmtSysfsData(const base::FilePath& metadata_path) {
+  metadata_path_ = !metadata_path.empty()
+                       ? metadata_path
+                       : base::FilePath(kDefaultMetadataPath);
+}
+
 std::vector<Guid> PmtSysfsData::DetectDevices() {
   base::DirReaderPosix reader(kPmtSysfsPath);
   if (!reader.IsValid()) {
@@ -77,7 +86,7 @@ std::vector<Guid> PmtSysfsData::DetectDevices() {
 }
 
 base::FilePath PmtSysfsData::GetMetadataMappingsFile() const {
-  return base::FilePath("/usr/local/share/libpmt/metadata/pmt.xml");
+  return metadata_path_.Append("pmt.xml");
 }
 
 bool PmtSysfsData::IsValid(Guid guid) const {

@@ -10,6 +10,7 @@
 
 #include <brillo/brillo_export.h>
 
+#include "base/files/file_path.h"
 #include "bits/pmt_data_interface.h"
 
 namespace pmt {
@@ -27,7 +28,7 @@ struct PmtDevice {
 class BRILLO_EXPORT PmtSysfsData : public PmtDataInterface {
  public:
   // Default implementation using the real filesystem to gather data.
-  PmtSysfsData() = default;
+  explicit PmtSysfsData(const base::FilePath& metadata_path = base::FilePath());
   ~PmtSysfsData() = default;
 
   // Detect the PMT devices on the system and return their GUIDs.
@@ -37,7 +38,7 @@ class BRILLO_EXPORT PmtSysfsData : public PmtDataInterface {
 
   // Get the path to the PMT metadata mapping file.
   //
-  // @retval /usr/local/share/libpmt/metadata/pmt.xml
+  // @retval metadata_path_/pmt.xml
   base::FilePath GetMetadataMappingsFile() const final;
 
   // Checks whether a given device is in devices_.
@@ -57,6 +58,8 @@ class BRILLO_EXPORT PmtSysfsData : public PmtDataInterface {
 
  private:
   std::map<Guid, PmtDevice> devices_;
+  // Location of the PMT metadata directory.
+  base::FilePath metadata_path_;
 };
 
 }  // namespace pmt
