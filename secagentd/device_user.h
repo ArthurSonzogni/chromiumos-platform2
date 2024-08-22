@@ -106,6 +106,9 @@ class DeviceUser : public DeviceUserInterface {
       base::RepeatingClosure signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override;
   // Registers a callback to be notified when the session state changes.
+  // It will use the username & sanitized_username during init and start events,
+  // and it will use the last sanitized username before stopping & stopped
+  // state.
   void RegisterSessionChangeListener(
       base::RepeatingCallback<void(const std::string&)> cb) override;
   // Starts listening for RemoveCompleted signal.

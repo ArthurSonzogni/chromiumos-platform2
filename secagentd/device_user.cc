@@ -216,12 +216,6 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
     if (!UpdateDeviceUser(state)) {
       return;
     }
-  } else if (state == kStopping) {
-    device_user_ = device_user::kEmpty;
-    sanitized_username_ = device_user::kEmpty;
-  } else if (state == kStopped) {
-    device_user_ = device_user::kEmpty;
-    sanitized_username_ = device_user::kEmpty;
   }
 
   device_user_ready_ = true;
@@ -232,6 +226,14 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
 
   for (auto cb : session_change_listeners_) {
     cb.Run(state);
+  }
+
+  if (state == kStopping) {
+    device_user_ = device_user::kEmpty;
+    sanitized_username_ = device_user::kEmpty;
+  } else if (state == kStopped) {
+    device_user_ = device_user::kEmpty;
+    sanitized_username_ = device_user::kEmpty;
   }
 }
 
