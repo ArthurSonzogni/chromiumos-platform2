@@ -678,9 +678,9 @@ void FilePlugin::OnUserLogin(const std::string& device_user,
   // Check if userHash is not empty before processing
   if (!optionalUserhash.has_value()) {
     LOG(ERROR) << "FilePlugin::OnUserLogin: " << "User hash is empty";
+    return;
   }
 
-  // Construct and populate paths for USER_PATH category
   // Construct and populate paths for USER_PATH category
   absl::Status status = PopulatePathsMapByCategory(FilePathCategory::USER_PATH,
                                                    userHash, &pathInfoMap);
@@ -697,25 +697,33 @@ void FilePlugin::OnUserLogin(const std::string& device_user,
   }
 }
 
-absl::Status FilePlugin::OnUserLogout(const std::string& userHash) {
+void FilePlugin::OnUserLogout(const std::string& userHash) {
   const std::optional<std::string>& optionalUserhash =
       ConstructOptionalUserhash(userHash);
 
   // Check if userHash is not empty before processing
   if (!optionalUserhash.has_value()) {
-    return absl::InvalidArgumentError("User hash is empty");
+    return;
   }
 
   // Remove inodes for folders for that user
   absl::StatusOr<int> mapFdResult =
       bpf_skeleton_helper_->FindBpfMapByName("predefined_allowed_inodes");
   if (!mapFdResult.ok()) {
-    return mapFdResult.status();
+    LOG(ERROR) << "Failed to find predefined_allowed_inodes bpf map "
+               << mapFdResult.status().message();
+    return;
   }
 
   int directoryInodesMapFd = mapFdResult.value();
 
-  return RemoveKeysFromBPFMap(directoryInodesMapFd, userHash);
+  absl::Status status = RemoveKeysFromBPFMap(directoryInodesMapFd, userHash);
+
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to remove File monitoring paths from bpf_map. "
+                 << status.message();
+  }
+
   // TODO(princya): Remove device if not used by another directory
   // TODO(princya): Remove hard links from user directory
 }
@@ -736,6 +744,18 @@ absl::Status FilePlugin::OnDeviceMount(const std::string& mount_point) {
   return UpdateBPFMapForPathMaps(std::nullopt, pathInfoMap);
 }
 
+void FilePlugin::OnSessionStateChange(const std::string& state) {
+  std::string sanitized_username;
+  if (state == kInit) {
+    device_user_->GetDeviceUserAsync(base::BindOnce(
+        &FilePlugin::OnUserLogin, weak_ptr_factory_.GetWeakPtr()));
+  } else if (state == kStarted) {
+    OnUserLogin("", device_user_->GetSanitizedUsername());
+  } else if (state == kStopping || state == kStopped) {
+    OnUserLogout(device_user_->GetSanitizedUsername());
+  }
+}
+
 absl::Status FilePlugin::Activate() {
   struct BpfCallbacks callbacks;
   callbacks.ring_buffer_event_callback = base::BindRepeating(
@@ -751,13 +771,14 @@ absl::Status FilePlugin::Activate() {
                         base::BindRepeating(&FilePlugin::FlushCollectedEvents,
                                             weak_ptr_factory_.GetWeakPtr()));
 
+  device_user_->RegisterSessionChangeListener(base::BindRepeating(
+      &FilePlugin::OnSessionStateChange, weak_ptr_factory_.GetWeakPtr()));
+
   std::string username = device_user_->GetSanitizedUsername();
   if (InitializeFileBpfMaps(username) != absl::OkStatus()) {
     return absl::InternalError("InitializeFileBpfMaps failed");
   }
 
-  device_user_->GetDeviceUserAsync(
-      base::BindOnce(&FilePlugin::OnUserLogin, weak_ptr_factory_.GetWeakPtr()));
   batch_sender_->Start();
   return status;
 }

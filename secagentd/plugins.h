@@ -422,7 +422,7 @@ class FilePlugin : public PluginInterface {
 
   void OnUserLogin(const std::string& device_user, const std::string& userHash);
 
-  absl::Status OnUserLogout(const std::string& userHash);
+  void OnUserLogout(const std::string& userHash);
 
   absl::Status OnDeviceMount(const std::string& mount_point);
 
