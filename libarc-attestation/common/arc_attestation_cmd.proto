@@ -48,3 +48,11 @@ message QuoteCrOSBlobCmdResult {
   // The CrOS-specific blob.
   CrOSSpecificBlob blob = 2;
 }
+
+message GetEndorsementPublicKeyCmdResult {
+  // Result of the GetDkCertChain() call.
+  PrintableAndroidStatus status = 1;
+
+  // The Endorsement Public Key.
+  bytes blob = 2;
+}

@@ -18,7 +18,7 @@
 namespace {
 
 constexpr char kUsage[] = R"(
-Usage: arc-attestation-command <command> [<options/arguments>]
+Usage: arc-attestation-cmd <command> [<options/arguments>]
 
 Commands:
   provision
@@ -32,6 +32,8 @@ Commands:
   quote_cros_blob
       Produce a ChromeOS-specific quotation blob with the given challenge.
       The challenge is specified through --data=<base64 data>
+  get_endorsement_public_key
+      Fetch the Endorsement Public Key of the device.
 
 Options:
   --binary
@@ -43,6 +45,7 @@ constexpr char kCommandProvision[] = "provision";
 constexpr char kCommandGetCertChain[] = "get_cert_chain";
 constexpr char kCommandSign[] = "sign";
 constexpr char kCommandQuoteCrOSBlob[] = "quote_cros_blob";
+constexpr char kCommandGetEndorsementPublicKey[] = "get_endorsement_public_key";
 
 constexpr char kDataSwitch[] = "data";
 
@@ -164,6 +167,22 @@ int main(int argc, char** argv) {
     arc_attestation::QuoteCrOSBlobCmdResult result;
     *result.mutable_status() = AndroidStatusToProtobuf(status);
     result.mutable_blob()->ParseFromString(brillo::BlobToString(blob));
+
+    // Output the result.
+    PrintResultProtobuf(command_line->HasSwitch("binary"), result);
+    return (status.is_ok()) ? 0 : 1;
+  } else if (command == kCommandGetEndorsementPublicKey) {
+    arc_attestation::AndroidStatus status =
+        arc_attestation::ProvisionDkCert(true);
+    CHECK(status.is_ok());
+
+    brillo::Blob ek_public_key;
+    status = arc_attestation::GetEndorsementPublicKey(ek_public_key);
+
+    // Convert to protobuf.
+    arc_attestation::GetEndorsementPublicKeyCmdResult result;
+    *result.mutable_status() = AndroidStatusToProtobuf(status);
+    result.set_blob(brillo::BlobToString(ek_public_key));
 
     // Output the result.
     PrintResultProtobuf(command_line->HasSwitch("binary"), result);
