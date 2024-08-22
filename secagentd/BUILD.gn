@@ -103,6 +103,7 @@ static_library("libsecagent") {
     "device_user.cc",
     "factories.cc",
     "file_plugin.cc",
+    "image_cache.cc",
     "message_sender.cc",
     "metrics_sender.cc",
     "network_plugin.cc",

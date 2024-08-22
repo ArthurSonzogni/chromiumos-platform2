@@ -20,6 +20,7 @@
 #include "base/synchronization/lock.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/device_user.h"
+#include "secagentd/image_cache.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -79,24 +80,6 @@ class ProcessCache : public ProcessCacheInterface {
   using InternalProcessCacheType =
       base::LRUCache<InternalProcessKeyType, InternalProcessValueType>;
 
-  struct InternalImageKeyType {
-    uint64_t inode_device_id;
-    uint64_t inode;
-    bpf::cros_timespec mtime;
-    bpf::cros_timespec ctime;
-    bool operator<(const InternalImageKeyType& rhs) const {
-      return std::tie(inode_device_id, inode, mtime.tv_sec, mtime.tv_nsec,
-                      ctime.tv_sec, ctime.tv_nsec) <
-             std::tie(rhs.inode_device_id, rhs.inode, rhs.mtime.tv_sec,
-                      rhs.mtime.tv_nsec, rhs.ctime.tv_sec, rhs.ctime.tv_nsec);
-    }
-  };
-  struct InternalImageValueType {
-    std::string sha256;
-  };
-  using InternalImageCacheType =
-      base::LRUCache<InternalImageKeyType, InternalImageValueType>;
-
   struct InternalFilterRule {
     std::string image_pathname;
     // Optionally match against the entire commandline.
@@ -133,13 +116,6 @@ class ProcessCache : public ProcessCacheInterface {
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<DeviceUserInterface> device_user);
 
-  // Appends an absolute path to the given base path. base::FilePath has a
-  // DCHECK that avoids appending such absolute paths. We absolutely do need
-  // to though because /proc/pid/exe is an absolute symlink that needs to be
-  // resolved and appended to /proc/pid/root or root_path_.
-  static absl::StatusOr<base::FilePath> SafeAppendAbsolutePath(
-      const base::FilePath& path, const base::FilePath& abs_component);
-
   explicit ProcessCache(scoped_refptr<DeviceUserInterface> device_user);
   void PutFromBpfExec(const bpf::cros_process_start& process_start) override;
   void EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) override;
@@ -166,8 +142,9 @@ class ProcessCache : public ProcessCacheInterface {
  private:
   friend class testing::ProcessCacheTestFixture;
   // Internal constructor used for testing.
-  explicit ProcessCache(const base::FilePath& root_path,
-                        scoped_refptr<DeviceUserInterface> device_user);
+  ProcessCache(const base::FilePath& root_path,
+               scoped_refptr<DeviceUserInterface> device_user,
+               scoped_refptr<ImageCacheInterface> image_cache);
   // Like LRUCache::Get, returns an internal iterator to the given key. Unlike
   // LRUCache::Get, best-effort tries to fetch missing keys from procfs. Then
   // inclusively Puts them in process_cache_ if successful and returns an
@@ -176,35 +153,24 @@ class ProcessCache : public ProcessCacheInterface {
   InclusiveGetProcess(const InternalProcessKeyType& key);
   absl::StatusOr<InternalProcessValueType> MakeFromProcfs(
       const InternalProcessKeyType& key);
-  // Similar to InclusiveGetProcess but operates on image_cache_.
-  InternalImageCacheType::const_iterator InclusiveGetImage(
-      const InternalImageKeyType& image_key,
-      uint64_t pid_for_setns,
-      const base::FilePath& image_path_in_ns);
   // Fills in the image proto from the given procfs directory. Uses
   // pid_for_setns to resolve any exe symlinks.
   absl::Status FillImageFromProcfs(
       const base::FilePath& proc_pid_dir,
       uint64_t pid_for_setns,
       cros_xdr::reporting::FileImage* file_image_proto);
-  // Returns a hashable and statable path of the given image path in the current
-  // (i.e init) mount namespace.
-  absl::StatusOr<base::FilePath> GetPathInCurrentMountNs(
-      uint64_t pid_for_setns,
-      const base::FilePath& image_path_in_pids_ns) const;
   // Sends what percentage of process cache is full.
   void SendPolledMetrics();
 
   base::WeakPtrFactory<ProcessCache> weak_ptr_factory_;
   base::Lock process_cache_lock_;
   std::unique_ptr<InternalProcessCacheType> process_cache_;
-  base::Lock image_cache_lock_;
-  std::unique_ptr<InternalImageCacheType> image_cache_;
   scoped_refptr<DeviceUserInterface> device_user_;
   const base::FilePath root_path_;
   InternalFilterRuleSetType filter_rules_parent_;
   InternalFilterRuleSetType filter_rules_process_;
   int64_t earliest_seen_exec_rel_s_;
+  scoped_refptr<ImageCacheInterface> image_cache_;
 };
 
 template <typename ProtoT>

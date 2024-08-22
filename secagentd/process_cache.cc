@@ -35,7 +35,6 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
-#include "openssl/sha.h"
 #include "re2/re2.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/device_user.h"
@@ -46,13 +45,12 @@ namespace {
 
 namespace bpf = secagentd::bpf;
 namespace pb = cros_xdr::reporting;
-using secagentd::ProcessCache;
+using ProcessCache = secagentd::ProcessCache;
 
 static const char kErrorFailedToStat[] = "Failed to stat ";
 static const char kErrorFailedToResolve[] = "Failed to resolve ";
 static const char kErrorFailedToRead[] = "Failed to read ";
 static const char kErrorFailedToParse[] = "Failed to parse ";
-static const char kErrorSslSha[] = "SSL SHA error";
 static const char kRedactMessage[] = "(EMAIL_REDACTED)";
 
 std::string StableUuid(ProcessCache::InternalProcessKeyType seed) {
@@ -168,59 +166,6 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
   return absl::OkStatus();
 }
 
-absl::StatusOr<std::string> GenerateImageHash(
-    const base::FilePath& image_path_in_current_ns) {
-  base::File image(image_path_in_current_ns,
-                   base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!image.IsValid()) {
-    return absl::NotFoundError(
-        base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
-  }
-  SHA256_CTX ctx;
-  if (!SHA256_Init(&ctx)) {
-    return absl::InternalError(kErrorSslSha);
-  }
-  std::array<char, 4096> buf;
-  int bytes_read = 0;
-  while ((bytes_read = image.ReadAtCurrentPos(buf.data(), buf.size())) > 0) {
-    if (!SHA256_Update(&ctx, buf.data(), bytes_read)) {
-      return absl::InternalError(kErrorSslSha);
-    }
-  }
-  if (bytes_read < 0) {
-    return absl::AbortedError(
-        base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
-  }
-  static_assert(sizeof(buf) >= SHA256_DIGEST_LENGTH);
-  if (!SHA256_Final(reinterpret_cast<unsigned char*>(buf.data()), &ctx)) {
-    return absl::InternalError(kErrorSslSha);
-  }
-  return base::HexEncode(buf.data(), SHA256_DIGEST_LENGTH);
-}
-
-absl::StatusOr<ProcessCache::InternalImageValueType>
-VerifyStatAndGenerateImageHash(
-    const ProcessCache::InternalImageKeyType& image_key,
-    const base::FilePath& image_path_in_current_ns) {
-  auto hash = GenerateImageHash(image_path_in_current_ns);
-  if (!hash.ok()) {
-    return hash.status();
-  }
-  base::stat_wrapper_t image_stat;
-  if (base::File::Stat(image_path_in_current_ns, &image_stat) ||
-      (image_stat.st_dev != image_key.inode_device_id) ||
-      (image_stat.st_ino != image_key.inode) ||
-      (image_stat.st_mtim.tv_sec != image_key.mtime.tv_sec) ||
-      (image_stat.st_mtim.tv_nsec != image_key.mtime.tv_nsec) ||
-      (image_stat.st_ctim.tv_sec != image_key.ctime.tv_sec) ||
-      (image_stat.st_ctim.tv_nsec != image_key.ctime.tv_nsec)) {
-    return absl::NotFoundError(
-        base::StrCat({"Failed to match stat of image hashed at ",
-                      image_path_in_current_ns.value()}));
-  }
-  return ProcessCache::InternalImageValueType{.sha256 = hash.value()};
-}
-
 // Safely initialized and trivially destructible static value of SC_CLK_TCK.
 const uint64_t GetScClockTck() {
   static const uint64_t kScClockTck = sysconf(_SC_CLK_TCK);
@@ -270,8 +215,6 @@ namespace secagentd {
 
 constexpr ProcessCache::InternalProcessCacheType::size_type
     kProcessCacheMaxSize = 281;
-constexpr ProcessCache::InternalImageCacheType::size_type kImageCacheMaxSize =
-    256;
 
 uint64_t ProcessCache::LossyNsecToClockT(bpf::time_ns_t ns) {
   static constexpr uint64_t kNsecPerSec = 1000000000;
@@ -310,36 +253,21 @@ void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
   process_proto->set_rel_start_time_s(ClockTToSeconds(key.start_time_t));
 }
 
-absl::StatusOr<base::FilePath> ProcessCache::SafeAppendAbsolutePath(
-    const base::FilePath& path, const base::FilePath& abs_component) {
-  // TODO(b/279213783): abs_component is expected to be an absolute and
-  // resolved path. But that's sometimes not the case. If the path references
-  // parent it likely won't resolve and possibly may attempt to escape the
-  // pid_mnt_root namespace. So err on the side of safety. Similarly, if the
-  // path is not absolute, it likely won't resolve because we don't have its
-  // CWD.
-  if (!abs_component.IsAbsolute() || abs_component.ReferencesParent()) {
-    return absl::InvalidArgumentError(base::StrCat(
-        {"Refusing to translate relative or parent-referencing path ",
-         abs_component.value()}));
-  }
-  return path.Append(
-      base::StrCat({base::FilePath::kCurrentDirectory, abs_component.value()}));
-}
-
 ProcessCache::ProcessCache(const base::FilePath& root_path,
-                           scoped_refptr<DeviceUserInterface> device_user)
+                           scoped_refptr<DeviceUserInterface> device_user,
+                           scoped_refptr<ImageCacheInterface> image_cache)
     : weak_ptr_factory_(this),
       process_cache_(
           std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
-      image_cache_(
-          std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)),
       device_user_(device_user),
       root_path_(root_path),
-      earliest_seen_exec_rel_s_(INT64_MAX) {}
+      earliest_seen_exec_rel_s_(INT64_MAX),
+      image_cache_(image_cache) {}
 
 ProcessCache::ProcessCache(scoped_refptr<DeviceUserInterface> device_user)
-    : ProcessCache(base::FilePath("/"), device_user) {}
+    : ProcessCache(base::FilePath("/"),
+                   device_user,
+                   base::MakeRefCounted<ImageCache>()) {}
 
 void ProcessCache::FillProcessFromBpf(
     const bpf::cros_process_task_info& task_info,
@@ -352,14 +280,15 @@ void ProcessCache::FillProcessFromBpf(
 
   process_proto->set_meta_first_appearance(process_proto->rel_start_time_s() <=
                                            earliest_seen_exec_rel_s_);
-  InternalImageKeyType image_key{image_info.inode_device_id, image_info.inode,
-                                 image_info.mtime, image_info.ctime};
+  ImageCacheInterface::ImageCacheKeyType image_key{
+      image_info.inode_device_id, image_info.inode, image_info.mtime,
+      image_info.ctime};
   {
-    base::AutoLock cache_lock(image_cache_lock_);
-    auto it = InclusiveGetImage(image_key, image_info.pid_for_setns,
-                                base::FilePath(image_info.pathname));
-    if (it != image_cache_->end()) {
-      process_proto->mutable_image()->set_sha256(it->second.sha256);
+    auto result =
+        image_cache_->InclusiveGetImage(image_key, image_info.pid_for_setns,
+                                        base::FilePath(image_info.pathname));
+    if (result.ok()) {
+      process_proto->mutable_image()->set_sha256(result.value().sha256);
     }
   }
 }
@@ -430,61 +359,8 @@ ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
       return std::make_pair(process_cache_->end(), metrics::Cache::kCacheMiss);
     }
   }
-
   it = process_cache_->Put(key, std::move(*statusor));
   return std::make_pair(it, metrics::Cache::kProcfsFilled);
-}
-
-ProcessCache::InternalImageCacheType::const_iterator
-ProcessCache::InclusiveGetImage(const InternalImageKeyType& image_key,
-                                uint64_t pid_for_setns,
-                                const base::FilePath& image_path_in_pids_ns) {
-  image_cache_lock_.AssertAcquired();
-  auto it = image_cache_->Get(image_key);
-  if (it != image_cache_->end()) {
-    if (it->first.mtime.tv_sec == 0 || it->first.ctime.tv_sec == 0) {
-      // Invalidate entry and force checksum if its cached ctime or mtime seems
-      // missing.
-      image_cache_->Erase(it);
-      it = image_cache_->end();
-    } else {
-      return it;
-    }
-  }
-
-  absl::StatusOr<InternalImageValueType> statusorhash;
-  {
-    base::AutoUnlock unlock(image_cache_lock_);
-    // First try our own (i.e root) namespace. This will almost always work
-    // because minijail mounts are 1:1. Stat will save us from false positive
-    // matches.
-    auto statusorpath =
-        SafeAppendAbsolutePath(root_path_, image_path_in_pids_ns);
-    if (statusorpath.ok()) {
-      statusorhash = VerifyStatAndGenerateImageHash(image_key, *statusorpath);
-    }
-    // If !statusorpath.ok() then GetPathInCurrentMountNs will call
-    // SafeAppendAbsolutePath with the same image_path_in_pids_ns which will
-    // return the same status. No point in trying.
-    if (statusorpath.ok() && !statusorhash.ok()) {
-      statusorpath =
-          GetPathInCurrentMountNs(pid_for_setns, image_path_in_pids_ns);
-      if (statusorpath.ok()) {
-        statusorhash = VerifyStatAndGenerateImageHash(image_key, *statusorpath);
-      }
-    }
-
-    if (!statusorpath.ok() || !statusorhash.ok()) {
-      LOG(ERROR) << "Failed to hash " << image_path_in_pids_ns
-                 << " in mnt ns of pid " << pid_for_setns << ": "
-                 << (!statusorpath.ok() ? statusorpath.status()
-                                        : statusorhash.status());
-      return image_cache_->end();
-    }
-  }
-
-  it = image_cache_->Put(image_key, std::move(*statusorhash));
-  return it;
 }
 
 std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
@@ -684,14 +560,14 @@ void ProcessCache::InitializeFilter(bool underscorify) {
                      '_');
       }
       k.image_pathname = root_path_.Append(k.image_pathname).value();
-      auto result = GenerateImageHash(base::FilePath(k.image_pathname));
+      auto result =
+          ImageCache::GenerateImageHash(base::FilePath(k.image_pathname));
       if (!result.ok()) {
         LOG(ERROR) << "XdrProcessEvent filter failed to create rule for "
                    << "image_path_name:" << k.image_pathname
                    << " error:" << result.status();
         continue;
       }
-
       v.first.emplace(std::make_pair(result.value(), std::move(k)));
     }
   }
@@ -717,14 +593,6 @@ void ProcessCache::InitializeFilter(bool underscorify) {
   }
 }
 
-absl::StatusOr<base::FilePath> ProcessCache::GetPathInCurrentMountNs(
-    uint64_t pid_for_setns, const base::FilePath& image_path_in_pids_ns) const {
-  const base::FilePath pid_mnt_root =
-      root_path_.Append(base::StringPrintf("proc/%" PRIu64, pid_for_setns))
-          .Append("root");
-  return SafeAppendAbsolutePath(pid_mnt_root, image_path_in_pids_ns);
-}
-
 absl::Status ProcessCache::FillImageFromProcfs(
     const base::FilePath& proc_pid_dir,
     uint64_t pid_for_setns,
@@ -736,7 +604,8 @@ absl::Status ProcessCache::FillImageFromProcfs(
     return absl::OkStatus();
   }
   base::stat_wrapper_t exe_stat;
-  auto statusorpath = GetPathInCurrentMountNs(pid_for_setns, exe_path);
+  auto statusorpath =
+      image_cache_->GetPathInCurrentMountNs(pid_for_setns, exe_path);
   if (!statusorpath.ok()) {
     return statusorpath.status();
   }
@@ -759,16 +628,16 @@ absl::Status ProcessCache::FillImageFromProcfs(
   file_image_proto->set_canonical_gid(exe_stat.st_gid);
   file_image_proto->set_mode(exe_stat.st_mode);
 
-  InternalImageKeyType image_key{
+  ImageCacheInterface::ImageCacheKeyType image_key{
       exe_stat.st_dev,
       exe_stat.st_ino,
       {exe_stat.st_mtim.tv_sec, exe_stat.st_mtim.tv_nsec},
       {exe_stat.st_ctim.tv_sec, exe_stat.st_ctim.tv_nsec}};
   {
-    base::AutoLock lock(image_cache_lock_);
-    auto it = InclusiveGetImage(image_key, pid_for_setns, exe_path);
-    if (it != image_cache_->end()) {
-      file_image_proto->set_sha256(it->second.sha256);
+    auto result =
+        image_cache_->InclusiveGetImage(image_key, pid_for_setns, exe_path);
+    if (result.ok()) {
+      file_image_proto->set_sha256(result.value().sha256);
     }
   }
   return absl::OkStatus();

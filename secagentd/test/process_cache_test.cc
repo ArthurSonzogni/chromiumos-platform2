@@ -95,7 +95,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
     // root which needs to exist for the test to work.
     EXPECT_NE(mock_procfs_.end(), setns_proc)
         << "Test error. No procfs entry exists for pid " << pid_for_setns;
-    auto statusorpath = ProcessCache::SafeAppendAbsolutePath(
+    auto statusorpath = ImageCache::SafeAppendAbsolutePath(
         setns_proc->second.mnt_ns_root, path);
     EXPECT_TRUE(statusorpath.ok());
     return *statusorpath;
@@ -164,7 +164,9 @@ class ProcessCacheTestFixture : public ::testing::Test {
     const base::FilePath& root = fake_root_.GetPath();
     ASSERT_TRUE(fake_container_root_.CreateUniqueTempDir());
     const base::FilePath& container_root = fake_container_root_.GetPath();
-    process_cache_ = ProcessCache::CreateForTesting(root, device_user_);
+
+    process_cache_ = ProcessCache::CreateForTesting(
+        root, device_user_, ImageCache::CreateForTesting(root));
 
     mock_procfs_ = {
         {kPidInit,
