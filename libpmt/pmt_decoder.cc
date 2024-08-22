@@ -551,7 +551,7 @@ const DecodingResult* PmtDecoder::Decode(const Snapshot* const data) {
     const auto& info = ctx_.info_[i];
     auto& value = ctx_.result_.values_[i];
     // When moving to a new GUID, switch the data pointer.
-    if (UNLIKELY(guid != meta.guid_)) {
+    if (guid != meta.guid_) [[unlikely]] {
       pmt_data = nullptr;
       for (const auto& device : data->devices()) {
         if (device.guid() == meta.guid_) {
@@ -563,7 +563,7 @@ const DecodingResult* PmtDecoder::Decode(const Snapshot* const data) {
       // There is an edge case where user set up collection for a different
       // set of GUIDs than decoding. It's better to error out in that case
       // instead of silently skipping all the samples for that GUID.
-      if (UNLIKELY(pmt_data == nullptr)) {
+      if (pmt_data == nullptr) [[unlikely]] {
         LOG(ERROR) << "GUID 0x" << hex << meta.guid_
                    << " is not present in the PMT snapshot.";
         return nullptr;
@@ -574,7 +574,7 @@ const DecodingResult* PmtDecoder::Decode(const Snapshot* const data) {
     // PMT schema assumes that PMC should generate more data. This means
     // either schema error or a need to perform a uCode update. To maintain
     // forward compatibility: warn and skip.
-    if (UNLIKELY(info.offset_ > pmt_data_size)) {
+    if (info.offset_ > pmt_data_size) [[unlikely]] {
       LOG(WARNING) << "Not enough data in PMT: " << meta.name_
                    << " is missing (" << info.offset_ << " > " << pmt_data_size
                    << ")";

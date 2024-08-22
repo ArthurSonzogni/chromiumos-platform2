@@ -47,7 +47,7 @@ bool PrintCsvRow(const pmt::DecodingResult& result,
   size_t offset = 0;
   size_t left = buffer.size();
   int would_write = SNPrintF(buffer.data() + offset, left, "%s,", first_column);
-  if (UNLIKELY(would_write < 0)) {
+  if (would_write < 0) [[unlikely]] {
     PLOG(ERROR) << "Failed to format 1st column '" << first_column << "'";
     return false;
   }
@@ -61,7 +61,7 @@ bool PrintCsvRow(const pmt::DecodingResult& result,
     auto& meta = result.meta_[i];
     auto& value = result.values_[i];
     would_write = writer(buffer, value, meta, offset, left);
-    if (UNLIKELY(would_write < 0)) {
+    if (would_write < 0) [[unlikely]] {
       PLOG(ERROR) << "Failed to format column for 0x" << std::hex << meta.guid_
                   << "/" << meta.group_ << "/" << meta.name_;
       return false;
@@ -282,7 +282,7 @@ bool CsvFormatter::Format(const pmt::Snapshot& snapshot) {
       desc_writer;
   ValueWriter value_writer;
 
-  if (UNLIKELY(print_header_)) {
+  if (print_header_) [[unlikely]] {
     if (!PrintCsvRow(*result, buffer_, fd_, guid_writer, "Guid"))
       return false;
     if (!PrintCsvRow(*result, buffer_, fd_, subgroup_writer, "Group"))
