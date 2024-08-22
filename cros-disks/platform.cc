@@ -6,6 +6,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -20,8 +21,10 @@
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
@@ -84,6 +87,22 @@ std::ostream& operator<<(std::ostream& out, MountFlags flags) {
     out << sep << static_cast<std::uint64_t>(flags);
 
   return out << "}";
+}
+
+// Synchronizes the filesystem at the given mount path.
+error_t SyncFs(const base::FilePath& mount_path) {
+  // Open file descriptor to mount path.
+  const int fd =
+      HANDLE_EINTR(open(mount_path.value().c_str(),
+                        O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW));
+  if (fd < 0)
+    return errno;
+
+  // Ensure that the file descriptor will be closed.
+  const base::ScopedFD scoped_fd(fd);
+
+  // Synchronize the filesystem.
+  return syncfs(fd) ? errno : 0;
 }
 
 }  // namespace
@@ -299,28 +318,45 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
 }
 
 MountError Platform::Unmount(const base::FilePath& mount_path,
-                             const std::string& filesystem_type) const {
+                             const std::string& fs_type) const {
   // We take a 2-step approach to unmounting FUSE filesystems. First, we try a
   // normal unmount. This lets the VFS flush any pending data and lets the
   // filesystem shut down cleanly.
   //
   // However, if the filesystem is currently busy, this fails with an EBUSY
   // error.
-  VLOG(2) << "Unmounting " << filesystem_type << " " << quote(mount_path);
+  VLOG(1) << "Unmounting " << fs_type << " " << quote(mount_path);
   base::ElapsedTimer timer;
   error_t error = umount(mount_path.value().c_str()) ? errno : 0;
   if (metrics_)
-    metrics_->RecordSysCall("umount", filesystem_type, error, timer.Elapsed());
+    metrics_->RecordSysCall("umount", fs_type, error, timer.Elapsed());
 
   if (!error) {
-    VLOG(1) << "Unmounted " << filesystem_type << " " << quote(mount_path);
-
+    LOG(INFO) << "Cleanly unmounted " << fs_type << " " << quote(mount_path);
     return MountError::kSuccess;
   }
 
   if (error == EBUSY) {
-    // The normal unmount failed because the filesystem is busy. We now try to
-    // force-unmount the filesystem. This is done because there is no good
+    LOG(INFO) << "Cannot cleanly unmount " << fs_type << " "
+              << quote(mount_path) << ": The filesystem is busy";
+    // The normal unmount failed because the filesystem is busy.
+    // Try synchronizing (ie flushing) the filesystem.
+    VLOG(1) << "Synchronizing " << fs_type << " " << quote(mount_path);
+    timer = base::ElapsedTimer();
+    error = SyncFs(mount_path);
+    if (metrics_)
+      metrics_->RecordSysCall("syncfs", fs_type, error, timer.Elapsed());
+
+    if (error) {
+      errno = error;
+      PLOG(ERROR) << "Cannot synchronize " << fs_type << " "
+                  << redact(mount_path);
+    } else {
+      LOG(INFO) << "Synchronized " << fs_type << " " << quote(mount_path)
+                << " in " << timer.Elapsed();
+    }
+
+    // Forcefully unmount the filesystem. This is done because there is no good
     // recovery path the user can take, and these filesystems are sometimes
     // unmounted implicitly on login/logout/suspend.
     //
@@ -333,28 +369,24 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
     //
     // On a non-FUSE filesystem, MNT_FORCE doesn't have any effect. Only
     // MNT_DETACH matters in this case, but it's OK to pass MNT_FORCE too.
-    VLOG(1) << "Force-unmounting " << filesystem_type << " "
-            << quote(mount_path);
-    timer = base::ElapsedTimer();
+    VLOG(1) << "Detaching " << fs_type << " " << quote(mount_path);
+    base::ElapsedTimer timer2;
     error =
         umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) ? errno : 0;
 
     if (metrics_)
-      metrics_->RecordSysCall("umount2", filesystem_type, error,
-                              timer.Elapsed());
+      metrics_->RecordSysCall("umount2", fs_type, error, timer2.Elapsed());
 
     if (!error) {
-      LOG(WARNING) << "Force-unmounted " << filesystem_type << " "
-                   << redact(mount_path);
-
+      LOG(WARNING) << "Detached " << fs_type << " " << redact(mount_path)
+                   << " in " << timer.Elapsed();
       return MountError::kSuccess;
     }
   }
 
   DCHECK_GT(error, 0);
   errno = error;
-  PLOG(ERROR) << "Cannot unmount " << filesystem_type << " "
-              << redact(mount_path);
+  PLOG(ERROR) << "Cannot unmount " << fs_type << " " << redact(mount_path);
 
   switch (error) {
     case EINVAL:  // |mount_path| is not a mount point
