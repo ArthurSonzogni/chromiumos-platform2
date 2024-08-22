@@ -12427,6 +12427,25 @@ mno {
 
 mno {
   data {
+    uuid: "c05ee069-b108-4150-a18d-33964056b057"
+    country: "th"
+    localized_name {
+      name: "TRUE-H INTERNET"
+    }
+    mccmnc: "52000"
+    mccmnc: "52004"
+    mobile_apn {
+      apn: "internet"
+      username: "true"
+      password: "true"
+      authentication: PAP
+      type: DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
     uuid: "e91f4d3a-b324-490f-9093-5e566147c5f1"
     country: "th"
     localized_name {
