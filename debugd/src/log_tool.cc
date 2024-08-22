@@ -271,7 +271,7 @@ const std::array kCommandLogs {
     "for f in /sys/class/drm/card?-*/edid; do "
       "echo \"----------- ${f}\"; "
       // edid-decode's stderr output is redundant, so silence it.
-      "edid-decode --skip-hex-dump \"${f}\" 2>/dev/null; "
+      "edid-decode --skip-hex-dump --hide-serial-numbers \"${f}\" 2>/dev/null; "
     "done"},
   Log{kFile, "file-nr", "/proc/sys/fs/file-nr", kRoot, kRoot},
   Log{kCommand, "folder_size_dump",
