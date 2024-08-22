@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/storage.h"
-
 #include <atomic>
 #include <cstdint>
 #include <optional>
@@ -43,6 +41,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/storage/storage.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
@@ -187,12 +186,6 @@ class LegacyStorageDegradationTest
   void SetUp() override {
     ASSERT_TRUE(location_.CreateUniqueTempDir());
     options_.set_directory(location_.GetPath());
-
-    // Let upload statistics UMA accept all results.
-    EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-                SendSparseToUMA(
-                    StartsWith(StorageQueue::kUploadToStorageRatePrefix), _))
-        .WillRepeatedly(Return(true));
 
     // Turn uploads to no-ops unless other expectation is set (any later
     // EXPECT_CALL will take precedence over this one).

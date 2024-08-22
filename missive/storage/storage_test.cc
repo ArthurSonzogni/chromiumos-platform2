@@ -1956,14 +1956,6 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[0]);
   }
 
@@ -1981,14 +1973,6 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[1]);
   }
 
@@ -2010,14 +1994,6 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "SLOW_BATCH"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     task_environment_.FastForwardBy(base::Seconds(20));
   }
 
@@ -2036,14 +2012,6 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[2]);
   }
   WriteStringOrDie(SLOW_BATCH, kMoreData[2]);
@@ -2064,14 +2032,6 @@ TEST_P(StorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "SLOW_BATCH"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     task_environment_.FastForwardBy(base::Seconds(20));
   }
 }

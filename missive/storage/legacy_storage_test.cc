@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/storage.h"
-
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -51,6 +49,7 @@
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/key_delivery.h"
+#include "missive/storage/storage.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/server_configuration_controller.h"
@@ -1893,14 +1892,6 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[0]);
   }
 
@@ -1918,14 +1909,6 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[1]);
   }
 
@@ -1947,14 +1930,6 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "SLOW_BATCH"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     task_environment_.FastForwardBy(base::Seconds(20));
   }
 
@@ -1973,14 +1948,6 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "IMMEDIATE"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     WriteStringOrDie(IMMEDIATE, kData[2]);
   }
   WriteStringOrDie(SLOW_BATCH, kMoreData[2]);
@@ -2001,14 +1968,6 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
                   .Complete();
             }))
         .RetiresOnSaturation();
-    // Check UMA matches priority.
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendSparseToUMA(
-            StrEq(base::StrCat(
-                {StorageQueue::kUploadToStorageRatePrefix, "SLOW_BATCH"})),
-            Gt(0)))
-        .WillOnce(Return(true));
     task_environment_.FastForwardBy(base::Seconds(20));
   }
 }

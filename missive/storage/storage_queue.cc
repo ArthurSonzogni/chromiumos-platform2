@@ -1303,18 +1303,6 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     current_file_ = files_.end();
     // If uploader was created, notify it about completion.
     if (uploader_) {
-      // In case of success, upload UMA.
-      if (status.ok() && total_files_size_ > 0uL) {
-        const auto res = analytics::Metrics::SendSparseToUMA(
-            base::StrCat({kUploadToStorageRatePrefix, storage_queue_->uma_id_}),
-            UmaCeil(total_upload_size_ * 100uL,  // per-cent
-                    std::max(total_files_size_, total_upload_size_)));
-        LOG_IF(ERROR, !res)
-            << "Send upload statistics UMA failure, ID="
-            << storage_queue_->uma_id_ << " " << total_upload_size_
-            << " out of " << total_files_size_;
-      }
-
       uploader_->Completed(status);
     }
     // If retry delay is specified, check back after the delay.

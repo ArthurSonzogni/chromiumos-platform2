@@ -142,8 +142,6 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
       "Platform.Missive.ResourceExhaustedCase";
   static constexpr char kStorageDegradationAmount[] =
       "Platform.Missive.StorageDegradationAmount";
-  static constexpr char kUploadToStorageRatePrefix[] =
-      "Platform.Missive.UploadToStorageRate.";
 
   // Creates StorageQueue instance with the specified options and returns it.
   // Starts asynchronous initialization, that will run `initialized_cb` callback
