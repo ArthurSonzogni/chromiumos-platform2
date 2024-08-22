@@ -86,6 +86,16 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   keymaster_error_t SetChallengeForCertificateRequest(
       std::vector<uint8_t>& challenge);
 
+  /* Creates a unique ID based on hardware bound key of the device and other
+     parameters. Should follow guidelines in
+     hardware/interfaces/security/keymint/aidl/android/hardware/security/
+     keymint/Tag.aidl.
+  */
+  keymaster::Buffer GenerateUniqueId(uint64_t creation_date_time,
+                                     const keymaster_blob_t& application_id,
+                                     bool reset_since_rotation,
+                                     keymaster_error_t* error) const override;
+
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|
   // and auth sets. Otherwise it is a CrOS owned key, deserialized into |key|.

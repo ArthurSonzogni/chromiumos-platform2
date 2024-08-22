@@ -17,9 +17,11 @@
 #include <base/base64.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <crypto/sha2.h>
 #include <keymaster/android_keymaster_utils.h>
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/software_keyblobs.h>
+#include <libarc-attestation/lib/interface.h>
 #include <mojo/cert_store.mojom.h>
 #include <openssl/evp.h>
 
@@ -232,6 +234,24 @@ std::optional<std::string> ExtractBase64Spki(
   // Encode subject public key info to base 64.
   std::string der_spki_string(der_spki.begin(), der_spki.end());
   return base::Base64Encode(der_spki_string);
+}
+
+std::optional<std::vector<uint8_t>> fetchEndorsementPublicKey() {
+  // Fetch endorsement public key from libarc-attestation.
+  std::vector<uint8_t> ek_public_key;
+  arc_attestation::AndroidStatus ek_key_status =
+      arc_attestation::GetEndorsementPublicKey(ek_public_key);
+  if (!ek_key_status.is_ok()) {
+    LOG(ERROR)
+        << "Error in fetching endorsement public key from libarc-attestation";
+    return std::nullopt;
+  }
+
+  if (ek_public_key.empty()) {
+    LOG(ERROR) << "Endorsement Public Key from libarc-attestation is empty";
+    return std::nullopt;
+  }
+  return ek_public_key;
 }
 
 }  // namespace
@@ -789,4 +809,25 @@ std::string ArcKeyMintContext::DeriveBootloaderState() const {
   return device_state_string_iter->second;
 }
 
+keymaster::Buffer ArcKeyMintContext::GenerateUniqueId(
+    uint64_t creation_date_time,
+    const keymaster_blob_t& application_id,
+    bool reset_since_rotation,
+    keymaster_error_t* error) const {
+  auto ek_public_key = fetchEndorsementPublicKey();
+  if (!ek_public_key.has_value() || ek_public_key.value().empty()) {
+    LOG(ERROR)
+        << "Failed to get Endorsement Public Key from lib arc-attestation";
+    *error = KM_ERROR_INVALID_KEY_BLOB;
+    return keymaster::generate_unique_id({}, creation_date_time, application_id,
+                                         reset_since_rotation);
+  }
+  const std::string ek_pub_key_hash =
+      crypto::SHA256HashString(brillo::BlobToString(ek_public_key.value()));
+  auto ek_pub_key_hash_vector = brillo::BlobFromString(ek_pub_key_hash);
+  *error = KM_ERROR_OK;
+  return keymaster::generate_unique_id(ek_pub_key_hash_vector,
+                                       creation_date_time, application_id,
+                                       reset_since_rotation);
+}
 }  // namespace arc::keymint::context
