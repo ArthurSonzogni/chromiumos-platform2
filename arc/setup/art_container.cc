@@ -4,6 +4,7 @@
 
 #include "arc/setup/art_container.h"
 
+#include <scoped_minijail.h>
 #include <stdlib.h>
 #include <sys/mount.h>
 #include <unistd.h>
@@ -21,7 +22,6 @@
 #include <base/logging.h>
 #include <base/process/process.h>
 #include <chromeos/libminijail.h>
-#include <scoped_minijail.h>
 
 namespace arc {
 
@@ -56,10 +56,9 @@ struct Identity {
   using type = T;
 };
 
-#define CHECK_CONSTEXPR(x, out, dummy) \
-  (UNLIKELY(!(x))) ? (LOG(ERROR) << "Check failed: " << #x out, dummy):
-
-#define DCHECK_CONSTEXPR(x, out, dummy) CHECK_CONSTEXPR(x, out, dummy)
+#define CHECK_RETURN(x, out, dummy) \
+  if (!(x)) [[unlikely]]            \
+  return LOG(ERROR) << "Check failed: " << #x out, dummy
 
 template <typename T>
 static constexpr int CLZ(T x) {
@@ -67,10 +66,10 @@ static constexpr int CLZ(T x) {
   static_assert(std::is_unsigned<T>::value, "T must be unsigned");
   static_assert(sizeof(T) <= sizeof(long long),  // NOLINT [runtime/int] [4]
                 "T too large, must be smaller than long long");
-  return DCHECK_CONSTEXPR(x != 0, "x must not be zero",
-                          T(0))(sizeof(T) == sizeof(uint32_t))
-             ? __builtin_clz(x)
-             : __builtin_clzll(x);
+
+  CHECK_RETURN(x != 0, "x must not be zero", T(0));
+  return (sizeof(T) == sizeof(uint32_t)) ? __builtin_clz(x)
+                                         : __builtin_clzll(x);
 }
 
 template <typename T>
@@ -82,7 +81,8 @@ static constexpr bool IsPowerOfTwo(T x) {
 // For rounding integers.
 template <typename T>
 static constexpr T RoundDown(T x, typename Identity<T>::type n) {
-  return DCHECK_CONSTEXPR(IsPowerOfTwo(n), , T(0))(x & -n);
+  CHECK_RETURN(IsPowerOfTwo(n), , T(0));
+  return x & -n;
 }
 
 template <typename T>
