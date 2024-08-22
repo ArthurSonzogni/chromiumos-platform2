@@ -75,10 +75,6 @@ namespace {
 constexpr size_t kRetries = 5u;
 constexpr base::TimeDelta kBackOff = base::Seconds(1);
 
-// Storage queue parsing failure UMA metric name.
-constexpr char kStorageQueueParsingFailureUma[] =
-    "Platform.Missive.StorageQueueParsingFailure";
-
 // Helper function for ResourceExhaustedCase UMA upload.
 void SendResExCaseToUma(StorageQueue::ResourceExhaustedCase case_enum) {
   // The ChromeOS metrics instance.
@@ -1944,7 +1940,6 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     if (!wrapped_record.ParseFrom<
             google::protobuf::MessageLite::ParseFlags::kParseWithAliasing>(
             buffer)) {
-      analytics::Metrics::SendBoolToUMA(kStorageQueueParsingFailureUma, true);
       analytics::Metrics::SendEnumToUMA(
           kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_PARSE_RECORD,
           DataLossErrorReason::MAX_VALUE);
