@@ -47,6 +47,24 @@ class ImageCacheInterface
              std::tie(rhs.inode_device_id, rhs.inode, rhs.mtime.tv_sec,
                       rhs.mtime.tv_nsec, rhs.ctime.tv_sec, rhs.ctime.tv_nsec);
     }
+
+    bool operator==(const ImageCacheKeyType& other) const {
+      return std::tie(inode_device_id, inode, mtime.tv_nsec, mtime.tv_sec,
+                      ctime.tv_nsec, ctime.tv_sec) ==
+             std::tie(other.inode_device_id, other.inode, other.mtime.tv_nsec,
+                      other.mtime.tv_sec, other.ctime.tv_nsec,
+                      other.ctime.tv_sec);
+    }
+    friend std::ostream& operator<<(std::ostream& os,
+                                    const ImageCacheKeyType& obj) {
+      os << absl::StrFormat(
+          "ImageCacheKeyType{.inode_device_id=%d, .inode=%d,"
+          ".mtime={.tv_nsec=%d, .tv_sec=%d}}"
+          ".ctime={.tv_nsec=%d, .tv_sec=%d}}",
+          obj.inode_device_id, obj.inode, obj.mtime.tv_nsec, obj.mtime.tv_sec,
+          obj.ctime.tv_nsec, obj.ctime.tv_sec);
+      return os;
+    }
   };
   struct HashValue {
     std::string sha256;

@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
-#include "absl/hash/hash.h"
 #include "absl/status/status.h"
-#include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "secagentd/bpf/bpf_types.h"
@@ -46,6 +45,7 @@
 
 namespace {
 
+using secagentd::FilePlugin;
 const char kDeviceSettingsBasePath[] = "/var/lib/devicesettings/";
 
 const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
@@ -210,6 +210,108 @@ static uint64_t KernelToUserspaceDeviceId(dev_t kernel_dev) {
   return makedev(major, minor);
 }
 
+// Inspired by cros-disks/archive_manager.cc
+// TODO(b:363053701): find a better home for this code.
+bool IsExternalMedia(const base::FilePath& source_path) {
+  std::vector<std::string> parts = source_path.GetComponents();
+
+  if (parts.size() < 2 || parts[0] != "/")
+    return false;
+
+  if (parts[1] == "media")
+    return parts.size() > 4 && (parts[2] == "archive" || parts[2] == "fuse" ||
+                                parts[2] == "removable");
+
+  if (parts[1] == "run")
+    return parts.size() > 8 && parts[2] == "arc" && parts[3] == "sdcard" &&
+           parts[4] == "write" && parts[5] == "emulated" && parts[6] == "0";
+
+  return false;
+}
+
+absl::StatusOr<FilePlugin::HashComputeResult> AsyncHashCompute(
+    FilePlugin::HashComputeInput input,
+    scoped_refptr<secagentd::ImageCacheInterface> image_cache) {
+  // Ready to start calling image_cache with metadata.
+
+  auto& meta = input.meta_data;
+  secagentd::ImageCacheInterface::ImageCacheKeyType image_key;
+  image_key.mtime.tv_nsec = meta.mtime.tv_nsec;
+  image_key.mtime.tv_sec = meta.mtime.tv_sec;
+
+  image_key.ctime.tv_nsec = meta.ctime.tv_nsec;
+  image_key.ctime.tv_sec = meta.ctime.tv_sec;
+
+  auto& inode_key = input.key.inode_key;
+  image_key.inode = inode_key.inode;
+  image_key.inode_device_id = inode_key.device_id;
+  bool force_full_sha256 = false;
+  base::FilePath file_name(meta.file_name);
+  // If the file resides on an exec filesystem or resides in a location where
+  // external media is mounted then force the full SHA.
+  if (!meta.is_noexec || IsExternalMedia(file_name)) {
+    force_full_sha256 = true;
+  }
+  auto image_result = image_cache->InclusiveGetImage(
+      image_key, force_full_sha256, meta.pid_for_setns,
+      base::FilePath(file_name));
+  if (!image_result.ok()) {
+    return absl::InternalError("Failed to hash file");
+  }
+  FilePlugin::HashComputeResult hash_result{.key = input.key,
+                                            .generation = input.generation};
+  hash_result.sha256 = image_result.value().sha256;
+  hash_result.sha256_is_partial = image_result.value().sha256_is_partial;
+  return hash_result;
+}
+
+absl::StatusOr<cros_xdr::reporting::FileImage*> GetMutableImage(
+    cros_xdr::reporting::FileEventAtomicVariant& event) {
+  switch (event.variant_type_case()) {
+    case cros_xdr::reporting::FileEventAtomicVariant::kSensitiveRead:
+      return event.mutable_sensitive_read()
+          ->mutable_file_read()
+          ->mutable_image();
+      break;
+    case cros_xdr::reporting::FileEventAtomicVariant::kSensitiveModify:
+      return event.mutable_sensitive_modify()
+          ->mutable_file_modify()
+          ->mutable_image_after();
+      break;
+    case cros_xdr::reporting::FileEventAtomicVariant::VARIANT_TYPE_NOT_SET:
+      return absl::InternalError("Event has no variant type");
+      break;
+  }
+}
+
+absl::StatusOr<FilePlugin::InodeKey> GenerateInodeKey(
+    cros_xdr::reporting::FileEventAtomicVariant& event) {
+  auto result = GetMutableImage(event);
+  if (!result.ok()) {
+    return result.status();
+  }
+  return FilePlugin::InodeKey{.inode = result.value()->inode(),
+                              .device_id = result.value()->inode_device_id()};
+}
+
+absl::StatusOr<FilePlugin::FileEventKey> GenerateFileEventKey(
+    cros_xdr::reporting::FileEventAtomicVariant& atomic_event) {
+  FilePlugin::FileEventKey key;
+  auto result = GenerateInodeKey(atomic_event);
+  if (!result.ok()) {
+    return result.status();
+  }
+  key.inode_key = result.value();
+  key.event_type = atomic_event.variant_type_case();
+  if (atomic_event.has_sensitive_modify()) {
+    key.process_uuid = atomic_event.sensitive_modify().process().process_uuid();
+  } else if (atomic_event.has_sensitive_read()) {
+    key.process_uuid = atomic_event.sensitive_read().process().process_uuid();
+  }
+  // No need to handle no variant type, GenerateInodeKey returns a status
+  // error in this case.
+  return key;
+}
 }  // namespace
 
 namespace secagentd {
@@ -222,8 +324,28 @@ FilePlugin::FilePlugin(
     scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
     scoped_refptr<DeviceUserInterface> device_user,
     uint32_t batch_interval_s)
+    : FilePlugin(bpf_skeleton_factory,
+                 message_sender,
+                 process_cache,
+                 base::MakeRefCounted<ImageCache>(),
+                 policies_features_broker,
+                 device_user,
+                 batch_interval_s,
+                 std::max((batch_interval_s / 10), 1u)) {}
+
+// Constructor for testing only, allows for image cache injection.
+FilePlugin::FilePlugin(
+    scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+    scoped_refptr<MessageSenderInterface> message_sender,
+    scoped_refptr<ProcessCacheInterface> process_cache,
+    scoped_refptr<ImageCacheInterface> image_cache,
+    scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+    scoped_refptr<DeviceUserInterface> device_user,
+    uint32_t batch_interval_s,
+    uint32_t async_timeout_s)
     : weak_ptr_factory_(this),
       process_cache_(process_cache),
+      image_cache_(image_cache),
       policies_features_broker_(policies_features_broker),
       device_user_(device_user),
       batch_sender_(std::make_unique<BatchSender<std::string,
@@ -243,11 +365,12 @@ FilePlugin::FilePlugin(
       bpf_skeleton_helper_(
           std::make_unique<BpfSkeletonHelper<Types::BpfSkeleton::kFile>>(
               bpf_skeleton_factory, batch_interval_s)),
-      event_map_(std::make_unique<FileEventMap>()) {
-  batch_interval_s_ = batch_interval_s;
+      batch_interval_s_(batch_interval_s),
+      async_timeout_s_(async_timeout_s) {
   CHECK(message_sender != nullptr);
   CHECK(process_cache != nullptr);
   CHECK(bpf_skeleton_factory);
+  CHECK(async_timeout_s < (batch_interval_s / 2));
 }
 
 absl::StatusOr<const struct statx> GetFStat(int dirFd,
@@ -756,11 +879,10 @@ absl::Status FilePlugin::Activate() {
   if (status != absl::OkStatus()) {
     return status;
   }
-
-  coalesce_timer_.Start(FROM_HERE,
-                        base::Seconds(std::max(batch_interval_s_, 1u)),
-                        base::BindRepeating(&FilePlugin::FlushCollectedEvents,
-                                            weak_ptr_factory_.GetWeakPtr()));
+  stage_async_task_timer_.Start(
+      FROM_HERE, base::Seconds(std::max(batch_interval_s_, 1u)),
+      base::BindRepeating(&FilePlugin::StageEventsForAsyncProcessing,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   device_user_->RegisterSessionChangeListener(base::BindRepeating(
       &FilePlugin::OnSessionStateChange, weak_ptr_factory_.GetWeakPtr()));
@@ -769,13 +891,12 @@ absl::Status FilePlugin::Activate() {
   if (InitializeFileBpfMaps(username) != absl::OkStatus()) {
     return absl::InternalError("InitializeFileBpfMaps failed");
   }
-
-  batch_sender_->Start();
   return status;
 }
 
 absl::Status FilePlugin::Deactivate() {
-  coalesce_timer_.Stop();
+  OnAsyncHashComputeTimeout();
+  stage_async_task_timer_.Stop();
   return bpf_skeleton_helper_->DetachAndUnload();
 }
 
@@ -820,49 +941,60 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     }
   }
 
+  std::unique_ptr<FileEventValue> fev = std::make_unique<FileEventValue>();
+  auto& image_info = fe.data.file_detailed_event.image_info;
+  auto& file_attr = image_info.after_attr;
+  fev->meta_data.is_noexec = image_info.file_system_noexec;
+  fev->meta_data.pid_for_setns = image_info.pid_for_setns;
+  fev->meta_data.mtime.tv_sec = file_attr.mtime.tv_sec;
+  fev->meta_data.mtime.tv_nsec = file_attr.mtime.tv_nsec;
+  fev->meta_data.ctime.tv_sec = file_attr.ctime.tv_sec;
+  fev->meta_data.ctime.tv_nsec = file_attr.ctime.tv_nsec;
+  fev->event = std::move(atomic_event);
+  auto result = GetMutableImage(*fev->event);
+  if (!result.ok()) {
+    return;
+  }
+  fev->meta_data.file_name = result.value()->pathname();
+
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&FilePlugin::OnDeviceUserRetrieved,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(atomic_event)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(fev)));
 }
 
-void FilePlugin::CollectEvent(
-    std::unique_ptr<pb::FileEventAtomicVariant> atomic_event) {
-  FileEventKey key;
-  if (atomic_event->has_sensitive_modify()) {
-    key.process_uuid =
-        atomic_event->sensitive_modify().process().process_uuid();
-    key.device_id = atomic_event->sensitive_modify()
-                        .file_modify()
-                        .image_after()
-                        .inode_device_id();
-    key.inode =
-        atomic_event->sensitive_modify().file_modify().image_after().inode();
-    key.event_type = atomic_event->variant_type_case();
-  } else if (atomic_event->has_sensitive_read()) {
-    key.process_uuid = atomic_event->sensitive_read().process().process_uuid();
-    key.device_id =
-        atomic_event->sensitive_read().file_read().image().inode_device_id();
-    key.inode = atomic_event->sensitive_read().file_read().image().inode();
-    key.event_type = atomic_event->variant_type_case();
-  } else {
-    LOG(WARNING) << "Unknown file event variant type";
+void FilePlugin::CollectEvent(std::unique_ptr<FileEventValue> fev) {
+  auto& event = *fev->event;
+
+  auto result = GenerateFileEventKey(event);
+  if (!result.ok()) {
+    LOG(ERROR) << result.status();
     return;
   }
-  auto it = event_map_->find(key);
-  if (it == event_map_->end()) {
-    event_map_->emplace(key, atomic_event.get());
-    ordered_events_.push_back(std::move(atomic_event));
+  const FileEventKey& key = result.value();
+
+  FileEventMap& event_map = current_events_->event_map;
+  OrderedEvents& ordered_events = *(current_events_->ordered_events);
+  auto it = event_map.find(key);
+  if (it == event_map.end()) {
+    event_map[key] = fev->GetWeakPtr();
+    ordered_events.push_back(std::move(fev));
     return;
   }
-  if (atomic_event->has_sensitive_modify() &&
-      it->second->has_sensitive_modify()) {
+  if (ordered_events.empty()) {
+    LOG(ERROR) << "Unexpected empty ordered events";
+    return;
+  }
+  if (event.has_sensitive_modify() &&
+      it->second->event->has_sensitive_modify()) {
     auto received_modify =
-        atomic_event->mutable_sensitive_modify()->mutable_file_modify();
+        event.mutable_sensitive_modify()->mutable_file_modify();
     auto stored_modify =
-        it->second->mutable_sensitive_modify()->mutable_file_modify();
+        it->second->event->mutable_sensitive_modify()->mutable_file_modify();
     // Writes and change attributes unconditionally coalesce together.
     stored_modify->set_allocated_image_after(
         received_modify->release_image_after());
+    // Also coalesce metadata.
+    it->second->meta_data = fev->meta_data;
 
     const auto& stored_modify_type = stored_modify->modify_type();
     // If the existing modify type is write or modify and the incoming
@@ -890,41 +1022,35 @@ void FilePlugin::CollectEvent(
       stored_modify->set_allocated_attributes_before(
           received_modify->release_attributes_before());
     }
-  } else if (atomic_event->has_sensitive_read() &&
-             it->second->has_sensitive_read()) {
-    auto received_read =
-        atomic_event->mutable_sensitive_read()->mutable_file_read();
+  } else if (event.has_sensitive_read() &&
+             it->second->event->has_sensitive_read()) {
+    auto received_read = event.mutable_sensitive_read()->mutable_file_read();
     auto stored_read =
-        it->second->mutable_sensitive_read()->mutable_file_read();
+        it->second->event->mutable_sensitive_read()->mutable_file_read();
     stored_read->set_allocated_image(received_read->release_image());
+    it->second->meta_data = fev->meta_data;
   } else {
     LOG(WARNING) << "Unexpected file event received with no attached"
                  << " variant. Dropping event.";
   }
 }
-
-void FilePlugin::FlushCollectedEvents() {
-  // TODO(jasonling): This should be posted to a task.
-  // operations that run inside of sha256 should not acquire locks.
-  // This means that the only thing the tasks within sha256 should do is
-  // (1) compute sha256 without touching the image cache.
-  // (2) retrieve provenance also without touching the provenance cache.
-  for (auto& e : ordered_events_) {
-    batch_sender_->Enqueue(std::move(e));
+void FilePlugin::OnAsyncHashComputeTimeout() {
+  // Cancel all tasks that have not yet started running.
+  async_io_task_tracker_.TryCancelAll();
+  // TODO(b:362014987): Record the number of SHA256s that were aborted.
+  for (std::unique_ptr<FileEventValue>& e : *staged_events_->ordered_events) {
+    batch_sender_->Enqueue(std::move(e->event));
   }
-
-  ordered_events_.clear();
-  event_map_->clear();
-
   batch_sender_->Flush();
+  staged_events_->Reset(0);
 }
 
 void FilePlugin::OnDeviceUserRetrieved(
-    std::unique_ptr<pb::FileEventAtomicVariant> atomic_event,
+    std::unique_ptr<FileEventValue> file_event_value,
     const std::string& device_user,
     const std::string& device_userhash) {
-  atomic_event->mutable_common()->set_device_user(device_user);
-  CollectEvent(std::move(atomic_event));
+  file_event_value->event->mutable_common()->set_device_user(device_user);
+  CollectEvent(std::move(file_event_value));
 }
 
 // Fills out the file image information in the proto.
@@ -1015,6 +1141,115 @@ FilePlugin::MakeFileAttributeModifyEvent(
                     file_detailed_event.image_info, false);
 
   return modify_event_proto;
+}
+
+void FilePlugin::StageEventsForAsyncProcessing() {
+  /* This collects the EventKeys that need a SHA256 computed on them.
+   * The algorithm is as follows:
+   * For a given inode there is a vector of keytypes that need their SHAs
+   * filled asynchronously.
+   * ordered_events_ is a chronologically ordered vector of event keys where
+   * ordered_events_.back() is the most recent event key.
+   * We iterate through ordered_events_ (from the past to the present) and
+   * If a event key is encountered is a read then the key will be added
+   * to a event key vector associated with the inode.
+   * If an event key corresponds to an event that modifies the contents of the
+   * file then the event key vector for the inode will be cleared and the
+   * event key will be added to the vector.
+   *
+   * The desired effect is reduce the likelihood that SHA256s are incorrect
+   * as much as possible.
+   */
+
+  absl::flat_hash_map<InodeKey, std::vector<HashComputeInput>> hash_jobs;
+  staged_events_.swap(current_events_);
+  // advance the generation.
+  current_events_->Reset(staged_events_->generation + 1);
+
+  for (const auto& event_info : *(staged_events_->ordered_events)) {
+    auto result = GenerateFileEventKey(*event_info->event);
+    if (!result.ok()) {
+      LOG(WARNING) << "Unable to defer SHA256 for a file key generation failed:"
+                   << result.status();
+      continue;
+    }
+    auto& event_key = result.value();
+    auto& inode_key = event_key.inode_key;
+    if (event_key.event_type == pb::FileEventAtomicVariant::kSensitiveModify) {
+      auto modify_type =
+          event_info->event->sensitive_modify().file_modify().modify_type();
+      // An event that modifies a file aborts all the preceding SHA256s
+      // on that file.
+      if (modify_type == pb::FileModify::WRITE ||
+          modify_type == pb::FileModify::WRITE_AND_MODIFY_ATTRIBUTE) {
+        hash_jobs[inode_key].clear();
+      }
+    }
+    hash_jobs[inode_key].push_back(
+        HashComputeInput{.key = event_key,
+                         .generation = staged_events_->generation,
+                         .meta_data = event_info->meta_data});
+  }  // For ordered events.
+
+  for (const auto& [_, jobs] : hash_jobs) {
+    for (const auto& job : jobs) {
+      // TODO(b:362014987): Add metrics about the total time it takes to
+      // calculate a SHA256. Need to record start time of jobs in flight
+      // and then the time the result takes to come back.
+      async_io_task_tracker_.PostTaskAndReplyWithResult(
+          async_io_task_.get(), FROM_HERE,
+          base::BindOnce(&AsyncHashCompute, std::move(job), image_cache_),
+          base::BindOnce(&FilePlugin::ReceiveHashComputeResults,
+                         weak_ptr_factory_.GetWeakPtr()));
+    }
+  }
+  async_abort_timer_.Start(
+      FROM_HERE, base::Seconds(async_timeout_s_),
+      base::BindOnce(&FilePlugin::OnAsyncHashComputeTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void FilePlugin::ReceiveHashComputeResults(
+    absl::StatusOr<HashComputeResult> hash_result) {
+  // TODO(jasonling): Add logic to guarantee that this method is only
+  //  ever executed on the same sequence that the object was created on.
+  if (!hash_result.ok()) {
+    // TODO(b:362014987): record metrics on SHA256 failures.
+    return;
+  }
+  auto& result = hash_result.value();
+  if (result.generation == staged_events_->generation) {
+    auto it = staged_events_->event_map.find(result.key);
+    if (it == staged_events_->event_map.end()) {
+      LOG(ERROR)
+          << "Hash compute result received for the current staged"
+          << " generation but the corresponding event couldn't be found.";
+      return;
+    }
+    base::WeakPtr<FileEventValue>& fev = it->second;
+    if (!fev) {
+      // This should never happens, this means that the event map and
+      // ordered event vector are not coherent.
+      // TODO(b:362014987): Add metrics.
+      LOG(ERROR) << "keytype is associated with a destroyed event";
+      return;
+    }
+    pb::FileEventAtomicVariant& pb_event = *fev->event;
+    // Update the SHA256
+    auto image_result = GetMutableImage(pb_event);
+    if (!image_result.ok()) {
+      LOG(ERROR) << image_result.status();
+      return;
+    }
+    image_result.value()->set_sha256(result.sha256);
+    image_result.value()->set_partial_sha256(result.sha256_is_partial);
+  }
+}
+
+void FilePlugin::CollectedEvents::Reset(uint64_t generation_in) {
+  generation = generation_in;
+  event_map.clear();
+  ordered_events->clear();
 }
 
 }  // namespace secagentd

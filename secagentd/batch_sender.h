@@ -135,7 +135,9 @@ class BatchSender
       events_byte_size_ = 0;
     }
     // Automatically re-fires timer after the same delay.
-    batch_timer_.Reset();
+    if (batch_timer_.user_task()) {
+      batch_timer_.Reset();
+    }
   }
 
   base::WeakPtrFactory<BatchSender> weak_ptr_factory_;

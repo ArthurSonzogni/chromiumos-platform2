@@ -219,7 +219,6 @@ void ProcessCache::FillProcessTree(
     proto->set_allocated_parent_process(hierarchy[1].release());
   }
 }
-
 }  // namespace secagentd
 
 #endif  // SECAGENTD_PROCESS_CACHE_H_

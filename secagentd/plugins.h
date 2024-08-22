@@ -21,9 +21,11 @@
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/check.h"
 #include "base/files/file_path.h"
+#include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/task/cancelable_task_tracker.h"
 #include "base/timer/timer.h"
 #include "cryptohome/proto_bindings/auth_factor.pb.h"
 #include "cryptohome/proto_bindings/UserDataAuth.pb.h"
@@ -33,6 +35,7 @@
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
+#include "secagentd/image_cache.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/policies_features_broker.h"
@@ -329,28 +332,95 @@ class ProcessPlugin : public PluginInterface {
 };
 class FilePlugin : public PluginInterface {
  public:
+  class InodeKey {
+   public:
+    uint64_t inode;
+    uint64_t device_id;
+    template <typename H>
+    friend H AbslHashValue(H h, const InodeKey& key);
+    bool operator==(const InodeKey& other) const = default;
+  };
+
+  // Uniquely identifies a single entry in the ordered_events vector.
   class FileEventKey {
    public:
     std::string process_uuid;
-    uint64_t device_id;
-    uint64_t inode;
+    InodeKey inode_key;
     cros_xdr::reporting::FileEventAtomicVariant::VariantTypeCase event_type;
     template <typename H>
     friend H AbslHashValue(H h, const FileEventKey& key);
     bool operator==(const FileEventKey& other) const = default;
   };
 
-  using FileEventMap =
-      absl::flat_hash_map<FileEventKey,
-                          cros_xdr::reporting::FileEventAtomicVariant*>;
+  struct FileMetadata {
+    // The filename as seen in pid_for_setns.
+    std::string file_name;
+    uint64_t pid_for_setns;
+    timespec mtime;
+    timespec ctime;
+    bool is_noexec;
+  };
 
-  FilePlugin(
+  class FileEventValue {
+   public:
+    FileEventValue() : weak_ptr_factory_(this) {}
+    std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant> event;
+    // Metadata is needed for SHA computation.
+    FileMetadata meta_data;
+    inline base::WeakPtr<FileEventValue> GetWeakPtr() {
+      return weak_ptr_factory_.GetWeakPtr();
+    }
+
+   private:
+    base::WeakPtrFactory<FileEventValue> weak_ptr_factory_;
+  };
+
+  struct HashComputeInput {
+    // Key identifies a pb event that is staged for transmission.
+    FileEventKey key;
+    // Can remove generation when key is disambiguated by also containing
+    // event timestamp data.
+    uint64_t generation;
+    FileMetadata meta_data;  // Needed for computing the hash.
+  };
+  struct HashComputeResult {
+    FileEventKey key;
+    bool sha256_is_partial;
+    uint64_t generation;
+    std::string sha256;
+  };
+
+  using OrderedEvents = std::vector<std::unique_ptr<FileEventValue>>;
+
+  using FileEventMap =
+      absl::flat_hash_map<FileEventKey, base::WeakPtr<FileEventValue>>;
+
+  class CollectedEvents : public base::RefCountedThreadSafe<CollectedEvents> {
+   public:
+    CollectedEvents() : ordered_events(std::make_unique<OrderedEvents>()) {}
+    uint64_t generation{0};
+    // Maps a key to an event in the ordered_events vector, the mapping
+    // is 1:1.
+    FileEventMap event_map;
+    std::unique_ptr<OrderedEvents> ordered_events;
+    // Resets and sets generation.
+    void Reset(uint64_t generation);
+
+   private:
+    // This will catch non ref counted declarations at compile time.
+    friend class base::RefCountedThreadSafe<CollectedEvents>;
+    ~CollectedEvents() = default;
+  };
+
+  explicit FilePlugin(
       scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
       scoped_refptr<DeviceUserInterface> device_user,
       uint32_t batch_interval_s);
+
+  FilePlugin() = delete;
 
   // Load, verify and attach the file BPF applications.
   absl::Status Activate() override;
@@ -369,6 +439,23 @@ class FilePlugin : public PluginInterface {
  private:
   friend class testing::FilePluginTestFixture;
 
+  // Test only constructor.
+  explicit FilePlugin(
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<ImageCacheInterface> image_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      scoped_refptr<DeviceUserInterface> device_user,
+      uint32_t batch_interval_s,
+      uint32_t async_timeout_s);
+
+  template <typename... Args>
+  static std::unique_ptr<PluginInterface> CreateForTesting(Args&&... args) {
+    return std::unique_ptr<FilePlugin>(
+        new FilePlugin(std::forward<Args>(args)...));
+  }
+
   using BatchSenderType =
       BatchSenderInterface<std::string,
                            cros_xdr::reporting::XdrFileEvent,
@@ -379,17 +466,15 @@ class FilePlugin : public PluginInterface {
   }
 
   // Collect an event for coalescing across a batching period.
-  void CollectEvent(std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant>
-                        atomic_event);
+  void CollectEvent(std::unique_ptr<FileEventValue> file_event_value);
 
   // Flush the collected events to the batch sender.
-  void FlushCollectedEvents();
+  void OnAsyncHashComputeTimeout();
 
   // Callback function that is ran when the device user is ready.
-  void OnDeviceUserRetrieved(
-      std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant> atomic_event,
-      const std::string& device_user,
-      const std::string& device_userhash);
+  void OnDeviceUserRetrieved(std::unique_ptr<FileEventValue> file_event_value,
+                             const std::string& device_user,
+                             const std::string& device_userhash);
 
   // Flushes out the coalesced file events in the map to the batch sender.
   void PeriodicMapFlush();
@@ -433,28 +518,50 @@ class FilePlugin : public PluginInterface {
 
   absl::Status RemoveKeysFromBPFMap(int bpfMapFd, const std::string& userhash);
 
+  void StageEventsForAsyncProcessing();
+
   base::WeakPtrFactory<FilePlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
+  scoped_refptr<ImageCacheInterface> image_cache_;
   scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<DeviceUserInterface> device_user_;
   std::unique_ptr<BatchSenderType> batch_sender_;
   std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
 
-  std::unique_ptr<FileEventMap> event_map_;
-  std::vector<std::unique_ptr<cros_xdr::reporting::FileEventAtomicVariant>>
-      ordered_events_;
+  scoped_refptr<CollectedEvents> current_events_{
+      base::MakeRefCounted<CollectedEvents>()};
+  // This is shared across the main sequence task runner
+  // and the async_io_task task runner.
+  scoped_refptr<CollectedEvents> staged_events_{
+      base::MakeRefCounted<CollectedEvents>()};
 
   uint32_t batch_interval_s_;
+  uint32_t async_timeout_s_;
 
-  base::RepeatingTimer coalesce_timer_;
+  base::RepeatingTimer stage_async_task_timer_;
+
   std::map<std::string, std::vector<bpf::inode_dev_map_key>>
       userhash_inodes_map_;
+
+  // Track in flight tasks so they can be canceled on abort.
+  base::CancelableTaskTracker async_io_task_tracker_;
+  scoped_refptr<base::SequencedTaskRunner> async_io_task_ =
+      base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()});
+  // Timer to prevent long running async tasks from blocking forward progress
+  // of file events.
+  base::OneShotTimer async_abort_timer_;
+
+  void ReceiveHashComputeResults(absl::StatusOr<HashComputeResult> result);
 };
 
 template <typename H>
+H AbslHashValue(H h, const FilePlugin::InodeKey& key) {
+  return H::combine(std::move(h), key.inode, key.device_id);
+}
+
+template <typename H>
 H AbslHashValue(H h, const FilePlugin::FileEventKey& key) {
-  return H::combine(std::move(h), key.process_uuid, key.device_id,
-                    key.event_type, key.inode);
+  return H::combine(std::move(h), key.process_uuid, key.inode_key);
 }
 
 class AuthenticationPlugin : public PluginInterface {
