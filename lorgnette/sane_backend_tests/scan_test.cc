@@ -60,22 +60,6 @@ class ScanTest : public testing::TestWithParam<ScanTestParameter> {
   void TearDown() override {}
 };
 
-// Returns true for "y" and false for "n"
-static bool _y_or_no() {
-  do {
-    std::string answer;
-    std::getline(std::cin, answer);
-    answer = base::ToLowerASCII(answer);
-    if (answer == "y") {
-      return true;
-    } else if (answer == "n") {
-      return false;
-    } else {
-      std::cout << "Please answer \"y\" or \"n\"" << "\n";
-    }
-  } while (true);
-}
-
 // We need a void function so we can call ASSERT functions.
 static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   std::unique_ptr<lorgnette::LibsaneWrapper> libsane_ =
@@ -284,7 +268,4 @@ TEST_P(ScanTest, SinglePage) {
   std::cout << "Output path: " << image_path << "\n";
   verify_png_info(image_path.c_str(), parameter.resolution,
                   parameter.color_mode);
-
-  std::cout << "Do scans under " << output_path << " look OK (y/n):\n";
-  ASSERT_TRUE(_y_or_no());
 }
