@@ -5,6 +5,7 @@
 """D-Bus utilities."""
 
 import logging
+import re
 from typing import List
 
 # The dbus module works fine on the DUT, but the linter gives an "import-error".
@@ -13,13 +14,15 @@ import dbus
 
 
 SHILL_DBUS_INTERFACE = "org.chromium.flimflam"
+INTERFACE_PATTERN = r"^eth\d+$"
 
 
 def get_connected_ethernet_interfaces() -> List[str]:
-    """Get the names of connected Ethernet interfaces.
+    r"""Get the names of connected Ethernet interfaces.
 
     Returns:
-        A list of the names of connected Ethernet interfaces.
+        A list of the names of connected Ethernet interfaces. Only those
+        interfaces with names "eth\d+" will be returned.
     """
     bus = dbus.SystemBus()
     manager = dbus.Interface(
@@ -60,6 +63,12 @@ def get_connected_ethernet_interfaces() -> List[str]:
                 )
             except (dbus.DBusException, KeyError) as e:
                 logging.warning("Failed to get the service properties: %s", e)
+                continue
+
+            # Only hide interfaces with names "eth\d+" by default. This avoids
+            # ehide from hiding virtual devices such as virtualnet leftovers.
+            if re.match(INTERFACE_PATTERN, interface) is None:
+                logging.warning("Ignoring interface: %s", interface)
                 continue
 
             if service_is_connected:
