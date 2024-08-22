@@ -25,7 +25,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/http_request.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"

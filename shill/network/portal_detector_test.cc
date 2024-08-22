@@ -26,8 +26,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/http_request.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/network/http_request.h"
 
 using testing::_;
 using testing::AnyOfArray;

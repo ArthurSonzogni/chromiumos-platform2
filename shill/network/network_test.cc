@@ -27,7 +27,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/http_request.h"
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
@@ -36,6 +35,7 @@
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provision_reasons.h"
 #include "shill/network/dhcpv4_config.h"
+#include "shill/network/http_request.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_monitor.h"

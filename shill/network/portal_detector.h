@@ -24,9 +24,9 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/http_request.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/http_request.h"
 
 namespace shill {
 
