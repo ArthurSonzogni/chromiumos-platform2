@@ -49,6 +49,8 @@ constexpr char kSysNetIPv6ProxyNDPPath[] =
     "/proc/sys/net/ipv6/conf/all/proxy_ndp";
 constexpr char kSysNetIPv6HopLimitPath[] =
     "/proc/sys/net/ipv6/conf/%s/hop_limit";
+// Controls the default TTL value for IPv4.
+constexpr char kSysNetIPv4DefaultTTL[] = "/proc/sys/net/ipv4/ip_default_ttl";
 
 constexpr char kTunDev[] = "/dev/net/tun";
 }  // namespace
@@ -144,6 +146,8 @@ std::string System::SysNetPath(SysNet target, std::string_view iface) const {
         return "";
       }
       return base::StringPrintf(kSysNetIPv6HopLimitPath, iface.data());
+    case SysNet::kIPv4DefaultTTL:
+      return kSysNetIPv4DefaultTTL;
   }
 }
 

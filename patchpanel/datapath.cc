@@ -56,6 +56,11 @@ constexpr net_base::IPv4Address kLocalhostAddr(127, 0, 0, 1);
 constexpr char kDefaultDnsPort[] = "53";
 constexpr uint16_t kAdbServerPort = 5555;
 
+// b/360132462: The default value of IPv4 TTL and IPv6 Hop Limit on ChromeOS
+// host. The corresponding value in packets from ConnectedNamespaces are set to
+// this value + 1 to match the packets from host when outbound.
+constexpr int kDefaultTTL = 64;
+
 constexpr std::string_view kIptablesStartScriptPath =
     "/etc/patchpanel/iptables.start";
 constexpr std::string_view kIp6tablesStartScriptPath =
@@ -686,6 +691,20 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
       RemoveInterface(nsinfo.host_ifname);
       NetnsDeleteName(nsinfo.netns_name);
       return false;
+    }
+
+    // b/360132462: Set IPv4 TTL and IPv6 Hop Limit inside the netns to 65
+    // (default + 1) to bypass TTL filter on certain mobile carrier.
+    if (!system_->SysNetSet(System::SysNet::kIPv4DefaultTTL,
+                            std::to_string(kDefaultTTL + 1))) {
+      LOG(WARNING) << "Failed to set IPv4 default TTL inside netns pid "
+                   << nsinfo.pid;
+    }
+    if (!system_->SysNetSet(System::SysNet::kIPv6HopLimit,
+                            std::to_string(kDefaultTTL + 1),
+                            nsinfo.peer_ifname)) {
+      LOG(WARNING) << "Failed to set IPv6 default hop limit inside netns pid "
+                   << nsinfo.pid;
     }
 
     if (!AddIPv4Route(nsinfo.host_ipv4_cidr.address(), /*subnet_cidr=*/{})) {

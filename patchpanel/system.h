@@ -57,6 +57,9 @@ class System {
     // Used for modifying "net.ipv6.conf.%s.hop_limit", requires an interface
     // argument
     kIPv6HopLimit,
+    // Used for modifying "net.ipv4.ip_default_ttl", this is a global setting
+    // and does not require an interface argument.
+    kIPv4DefaultTTL,
   };
 
   System() = default;

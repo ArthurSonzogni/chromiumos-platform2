@@ -29,6 +29,8 @@ TEST(SystemTest, SysNetPath) {
             "/proc/sys/net/ipv6/conf/all/proxy_ndp");
   EXPECT_EQ(system.SysNetPath(System::SysNet::kIPv6HopLimit, "eth0"),
             "/proc/sys/net/ipv6/conf/eth0/hop_limit");
+  EXPECT_EQ(system.SysNetPath(System::SysNet::kIPv4DefaultTTL),
+            "/proc/sys/net/ipv4/ip_default_ttl");
 
   // Failure cases.
   EXPECT_EQ(system.SysNetPath(System::SysNet::kIPv4RouteLocalnet, ""), "");
