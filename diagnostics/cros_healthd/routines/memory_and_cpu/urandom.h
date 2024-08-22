@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_H_
 
 #include <cstdint>
 
@@ -19,14 +19,14 @@ class Context;
 
 // The urandom routine checks that the device can repeatedly read from urandom
 // correctly.
-class UrandomRoutineV2 final : public NoninteractiveRoutineControl {
+class UrandomRoutine final : public NoninteractiveRoutineControl {
  public:
-  explicit UrandomRoutineV2(
+  explicit UrandomRoutine(
       Context* context,
       const ash::cros_healthd::mojom::UrandomRoutineArgumentPtr& arg);
-  UrandomRoutineV2(const UrandomRoutineV2&) = delete;
-  UrandomRoutineV2& operator=(const UrandomRoutineV2&) = delete;
-  ~UrandomRoutineV2() override;
+  UrandomRoutine(const UrandomRoutine&) = delete;
+  UrandomRoutine& operator=(const UrandomRoutine&) = delete;
+  ~UrandomRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -54,9 +54,9 @@ class UrandomRoutineV2 final : public NoninteractiveRoutineControl {
   base::TimeTicks start_ticks_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<UrandomRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<UrandomRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_H_

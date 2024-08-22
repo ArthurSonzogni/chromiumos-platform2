@@ -17,7 +17,7 @@ source_set("memory_and_cpu") {
     "floating_point.cc",
     "memory.cc",
     "prime_search.cc",
-    "urandom_v2.cc",
+    "urandom.cc",
   ]
   configs += [ ":memory_and_cpu_pkg_config" ]
   public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
@@ -36,7 +36,7 @@ if (use.test) {
       "floating_point_test.cc",
       "memory_test.cc",
       "prime_search_test.cc",
-      "urandom_v2_test.cc",
+      "urandom_test.cc",
     ]
     configs += [ ":memory_and_cpu_pkg_config" ]
     deps = [

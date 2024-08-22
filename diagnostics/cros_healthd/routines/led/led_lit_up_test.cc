@@ -63,7 +63,7 @@ struct CreateRoutineOption {
   mojom::LedColor led_color = kArbitraryLedColor;
 };
 
-class LedLitUpRoutineV2Test : public BaseFileTest {
+class LedLitUpRoutineTest : public BaseFileTest {
  protected:
   void SetUp() override { SetFile(paths::sysfs::kCrosEc, ""); }
 
@@ -89,7 +89,7 @@ class LedLitUpRoutineV2Test : public BaseFileTest {
   MockContext mock_context_;
 };
 
-TEST_F(LedLitUpRoutineV2Test, UnsupportedForUnexpectedLedName) {
+TEST_F(LedLitUpRoutineTest, UnsupportedForUnexpectedLedName) {
   auto routine_create =
       CreateRoutine({.led_name = mojom::LedName::kUnmappedEnumField});
   ASSERT_FALSE(routine_create.has_value());
@@ -100,7 +100,7 @@ TEST_F(LedLitUpRoutineV2Test, UnsupportedForUnexpectedLedName) {
             mojom::Unsupported::New("Unexpected LED name", /*reason=*/nullptr));
 }
 
-TEST_F(LedLitUpRoutineV2Test, UnsupportedForUnexpectedLedColor) {
+TEST_F(LedLitUpRoutineTest, UnsupportedForUnexpectedLedColor) {
   auto routine_create =
       CreateRoutine({.led_color = mojom::LedColor::kUnmappedEnumField});
   ASSERT_FALSE(routine_create.has_value());
@@ -112,7 +112,7 @@ TEST_F(LedLitUpRoutineV2Test, UnsupportedForUnexpectedLedColor) {
       mojom::Unsupported::New("Unexpected LED color", /*reason=*/nullptr));
 }
 
-TEST_F(LedLitUpRoutineV2Test, InitializedStateBeforeStart) {
+TEST_F(LedLitUpRoutineTest, InitializedStateBeforeStart) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
   auto routine = std::move(routine_create.value());
@@ -122,7 +122,7 @@ TEST_F(LedLitUpRoutineV2Test, InitializedStateBeforeStart) {
   EXPECT_TRUE(result->state_union->is_initialized());
 }
 
-TEST_F(LedLitUpRoutineV2Test, SetLedColorError) {
+TEST_F(LedLitUpRoutineTest, SetLedColorError) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
   auto routine = std::move(routine_create.value());
@@ -133,7 +133,7 @@ TEST_F(LedLitUpRoutineV2Test, SetLedColorError) {
   EXPECT_EQ(reason, "Failed to set LED color.");
 }
 
-TEST_F(LedLitUpRoutineV2Test, ErrorWhenResetLedColorFailed) {
+TEST_F(LedLitUpRoutineTest, ErrorWhenResetLedColorFailed) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
   auto routine = std::move(routine_create.value());
@@ -155,7 +155,7 @@ TEST_F(LedLitUpRoutineV2Test, ErrorWhenResetLedColorFailed) {
   EXPECT_EQ(reason, "Failed to reset LED color.");
 }
 
-TEST_F(LedLitUpRoutineV2Test, FailedWhenColorNotMatched) {
+TEST_F(LedLitUpRoutineTest, FailedWhenColorNotMatched) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
   auto routine = std::move(routine_create.value());
@@ -178,7 +178,7 @@ TEST_F(LedLitUpRoutineV2Test, FailedWhenColorNotMatched) {
   EXPECT_FALSE(result->state_union->get_finished()->has_passed);
 }
 
-TEST_F(LedLitUpRoutineV2Test, PassedWhenColorMatched) {
+TEST_F(LedLitUpRoutineTest, PassedWhenColorMatched) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
   auto routine = std::move(routine_create.value());

@@ -31,7 +31,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/cros_healthd/routines/network/network_bandwidth.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
@@ -288,7 +288,7 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kUrandom: {
-      auto routine = std::make_unique<UrandomRoutineV2>(
+      auto routine = std::make_unique<UrandomRoutine>(
           context_, routine_arg->get_urandom());
       std::move(callback).Run(base::ok(std::move(routine)));
       return;

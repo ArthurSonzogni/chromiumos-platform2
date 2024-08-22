@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 
 #include <cstdint>
 #include <memory>
@@ -24,8 +24,8 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-UrandomRoutineV2::UrandomRoutineV2(Context* context,
-                                   const mojom::UrandomRoutineArgumentPtr& arg)
+UrandomRoutine::UrandomRoutine(Context* context,
+                               const mojom::UrandomRoutineArgumentPtr& arg)
     : context_(context) {
   exec_duration_ = arg->exec_duration.value_or(kDefaultCpuRoutineRuntime);
 
@@ -38,22 +38,22 @@ UrandomRoutineV2::UrandomRoutineV2(Context* context,
   CHECK(context_);
 }
 
-UrandomRoutineV2::~UrandomRoutineV2() = default;
+UrandomRoutine::~UrandomRoutine() = default;
 
-void UrandomRoutineV2::OnStart() {
+void UrandomRoutine::OnStart() {
   SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
                   "Waiting for memory and CPU resource");
   context_->memory_cpu_resource_queue()->Enqueue(
-      base::BindOnce(&UrandomRoutineV2::Run, weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&UrandomRoutine::Run, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void UrandomRoutineV2::Run(
+void UrandomRoutine::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
   SetRunningState();
 
   context_->executor()->RunUrandom(
       exec_duration_, scoped_process_control_.BindNewPipeAndPassReceiver(),
-      base::BindOnce(&UrandomRoutineV2::OnFinished,
+      base::BindOnce(&UrandomRoutine::OnFinished,
                      weak_ptr_factory_.GetWeakPtr()));
   scoped_process_control_.AddOnTerminateCallback(
       std::move(notify_resource_queue_finished));
@@ -61,17 +61,17 @@ void UrandomRoutineV2::Run(
   start_ticks_ = base::TimeTicks::Now();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&UrandomRoutineV2::UpdatePercentage,
+      base::BindOnce(&UrandomRoutine::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),
       exec_duration_ / 100);
 }
 
-void UrandomRoutineV2::OnFinished(bool passed) {
+void UrandomRoutine::OnFinished(bool passed) {
   scoped_process_control_.Reset();
   SetFinishedState(passed, /*detail=*/nullptr);
 }
 
-void UrandomRoutineV2::UpdatePercentage() {
+void UrandomRoutine::UpdatePercentage() {
   uint32_t percentage = static_cast<uint32_t>(
       100.0 * (base::TimeTicks::Now() - start_ticks_) / exec_duration_);
   if (percentage > state()->percentage && percentage < 100) {
@@ -81,7 +81,7 @@ void UrandomRoutineV2::UpdatePercentage() {
   if (state()->percentage < 99) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&UrandomRoutineV2::UpdatePercentage,
+        base::BindOnce(&UrandomRoutine::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
         exec_duration_ / 100);
   }

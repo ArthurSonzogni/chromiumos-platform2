@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 
 #include <memory>
 #include <string>
@@ -30,13 +30,13 @@ namespace mojom = ash::cros_healthd::mojom;
 
 using ::testing::_;
 
-class UrandomRoutineV2Test : public testing::Test {
+class UrandomRoutineTest : public testing::Test {
  public:
-  UrandomRoutineV2Test(const UrandomRoutineV2Test&) = delete;
-  UrandomRoutineV2Test& operator=(const UrandomRoutineV2Test&) = delete;
+  UrandomRoutineTest(const UrandomRoutineTest&) = delete;
+  UrandomRoutineTest& operator=(const UrandomRoutineTest&) = delete;
 
  protected:
-  UrandomRoutineV2Test() = default;
+  UrandomRoutineTest() = default;
 
   void SetUp() {
     EXPECT_CALL(*mock_context_.mock_executor(), RunUrandom(_, _, _))
@@ -48,7 +48,7 @@ class UrandomRoutineV2Test : public testing::Test {
               received_exec_duration_ = exec_duration;
               received_callback_ = std::move(callback);
             });
-    routine_ = std::make_unique<UrandomRoutineV2>(
+    routine_ = std::make_unique<UrandomRoutine>(
         &mock_context_, mojom::UrandomRoutineArgument::New(
                             /*exec_duration=*/std::nullopt));
   }
@@ -86,7 +86,7 @@ class UrandomRoutineV2Test : public testing::Test {
 };
 
 // Test that the routine can run successfully.
-TEST_F(UrandomRoutineV2Test, RoutineSuccess) {
+TEST_F(UrandomRoutineTest, RoutineSuccess) {
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit(true);
   EXPECT_EQ(result->percentage, 100);
   EXPECT_TRUE(result->state_union->is_finished());
@@ -94,7 +94,7 @@ TEST_F(UrandomRoutineV2Test, RoutineSuccess) {
 }
 
 // Test that the routine can fail successfully.
-TEST_F(UrandomRoutineV2Test, RoutineFailure) {
+TEST_F(UrandomRoutineTest, RoutineFailure) {
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit(false);
   EXPECT_EQ(result->percentage, 100);
   EXPECT_TRUE(result->state_union->is_finished());
@@ -102,14 +102,14 @@ TEST_F(UrandomRoutineV2Test, RoutineFailure) {
 }
 
 // Test that the routine defaults to 60 seconds if no duration is provided.
-TEST_F(UrandomRoutineV2Test, DefaultTestSeconds) {
+TEST_F(UrandomRoutineTest, DefaultTestSeconds) {
   RunRoutineAndWaitForExit(true);
   EXPECT_EQ(received_exec_duration_, base::Seconds(60));
 }
 
 // Test that the routine can run with custom time.
-TEST_F(UrandomRoutineV2Test, CustomTestSeconds) {
-  routine_ = std::make_unique<UrandomRoutineV2>(
+TEST_F(UrandomRoutineTest, CustomTestSeconds) {
+  routine_ = std::make_unique<UrandomRoutine>(
       &mock_context_, mojom::UrandomRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(20)));
   RunRoutineAndWaitForExit(true);
@@ -118,8 +118,8 @@ TEST_F(UrandomRoutineV2Test, CustomTestSeconds) {
 
 // Test that the routine defaults to minimum running time (1 second) if invalid
 // duration is provided.
-TEST_F(UrandomRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
-  routine_ = std::make_unique<UrandomRoutineV2>(
+TEST_F(UrandomRoutineTest, InvalidTestSecondsFallbackToMinimumDefault) {
+  routine_ = std::make_unique<UrandomRoutine>(
       &mock_context_, mojom::UrandomRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(0)));
   RunRoutineAndWaitForExit(true);
@@ -127,8 +127,8 @@ TEST_F(UrandomRoutineV2Test, InvalidTestSecondsFallbackToMinimumDefault) {
 }
 
 // Test that the routine can report progress correctly.
-TEST_F(UrandomRoutineV2Test, IncrementalProgress) {
-  routine_ = std::make_unique<UrandomRoutineV2>(
+TEST_F(UrandomRoutineTest, IncrementalProgress) {
+  routine_ = std::make_unique<UrandomRoutine>(
       &mock_context_, mojom::UrandomRoutineArgument::New(
                           /*exec_duration=*/base::Seconds(60)));
   routine_->SetOnExceptionCallback(
