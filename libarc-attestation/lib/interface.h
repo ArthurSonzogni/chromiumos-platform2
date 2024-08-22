@@ -21,7 +21,10 @@ class ARC_ATTESTATION_EXPORT AndroidStatus final {
   // The codes that are used in this library is defined here, we duplicated the
   // code used from the Android codebase so as to prevent dependency from
   // Android code base which can complicate the build process for this library.
-  enum class KeymintSpecificErrorCode { SECURE_HW_COMMUNICATION_FAILED = -49 };
+  enum class KeymintSpecificErrorCode {
+    INVALID_KEY_BLOB = -33,
+    SECURE_HW_COMMUNICATION_FAILED = -49
+  };
 
   // These are error code used by Android's binder::Status class, and they're to
   // be kept in sync with frameworks/native/libs/binder/include/binder/Status.h
@@ -81,6 +84,11 @@ AndroidStatus ARC_ATTESTATION_EXPORT SignWithP256Dk(
 // server side to verify the client's version.
 AndroidStatus ARC_ATTESTATION_EXPORT QuoteCrOSBlob(
     const std::vector<uint8_t>& challenge, std::vector<uint8_t>& output);
+
+// GetEndorsementPublicKey will fetch the Endorsement Public Key from
+// ChromeOS attestation service.
+AndroidStatus ARC_ATTESTATION_EXPORT
+GetEndorsementPublicKey(std::vector<uint8_t>& output);
 
 }  // namespace arc_attestation
 

@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <libarc-attestation/lib/manager.h>
-
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
-
+#include <libarc-attestation/lib/manager.h>
 #include <libarc-attestation/lib/provisioner.h>
 #include <libarc-attestation/lib/version_attester.h>
 
@@ -111,6 +109,21 @@ AndroidStatus ArcAttestationManager::QuoteCrOSBlob(
                 manager->version_attester_->QuoteCrOSBlob(challenge, *output);
           },
           this, &result, challenge, &output));
+  return result;
+}
+
+AndroidStatus ArcAttestationManager::GetEndorsementPublicKey(
+    brillo::Blob& ek_public_key_out) {
+  AndroidStatus result;
+  RunInTaskRunnerBlocking(
+      library_task_runner_.get(),
+      base::BindOnce(
+          [](ArcAttestationManager* manager, AndroidStatus* result,
+             brillo::Blob* ek_public_key_out) {
+            *result = manager->provisioner_->GetEndorsementPublicKey(
+                *ek_public_key_out);
+          },
+          this, &result, &ek_public_key_out));
   return result;
 }
 

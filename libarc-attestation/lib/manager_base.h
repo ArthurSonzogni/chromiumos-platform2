@@ -8,8 +8,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
-#include <brillo/secure_blob.h>
 
+#include <brillo/secure_blob.h>
 #include <libarc-attestation/lib/interface.h>
 
 namespace arc_attestation {
@@ -35,6 +35,9 @@ class ARC_ATTESTATION_EXPORT ArcAttestationManagerBase {
   // Quote the ChromeOS specific blob for ARC Attestation.
   virtual AndroidStatus QuoteCrOSBlob(const brillo::Blob& challenge,
                                       brillo::Blob& output) = 0;
+
+  // Get Endorsement Public Key from ChromeOS attestation service.
+  virtual AndroidStatus GetEndorsementPublicKey(brillo::Blob& output) = 0;
 };
 
 class ARC_ATTESTATION_EXPORT ArcAttestationManagerSingleton {

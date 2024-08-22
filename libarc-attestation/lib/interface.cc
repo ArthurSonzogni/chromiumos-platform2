@@ -2,13 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <libarc-attestation/lib/interface.h>
-
 #include <memory>
 #include <utility>
 
 #include <base/logging.h>
-
+#include <libarc-attestation/lib/interface.h>
 #include <libarc-attestation/lib/manager.h>
 
 namespace arc_attestation {
@@ -33,6 +31,12 @@ AndroidStatus QuoteCrOSBlob(const brillo::Blob& challenge,
                             brillo::Blob& output) {
   return ArcAttestationManagerSingleton::Get()->manager()->QuoteCrOSBlob(
       challenge, output);
+}
+
+AndroidStatus GetEndorsementPublicKey(std::vector<uint8_t>& output) {
+  return ArcAttestationManagerSingleton::Get()
+      ->manager()
+      ->GetEndorsementPublicKey(output);
 }
 
 }  // namespace arc_attestation

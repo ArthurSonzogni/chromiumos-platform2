@@ -11,8 +11,8 @@
 
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
-#include <libarc-attestation/lib/manager_base.h>
 #include <libarc-attestation/lib/interface.h>
+#include <libarc-attestation/lib/manager_base.h>
 #include <libarc-attestation/lib/provisioner.h>
 #include <libarc-attestation/lib/version_attester.h>
 
@@ -31,6 +31,8 @@ class ArcAttestationManager : public ArcAttestationManagerBase {
                                brillo::Blob& signature) override;
   AndroidStatus QuoteCrOSBlob(const brillo::Blob& challenge,
                               brillo::Blob& output) override;
+  AndroidStatus GetEndorsementPublicKey(
+      brillo::Blob& ek_public_key_out) override;
 
   Provisioner* GetProvisionerForTesting() { return provisioner_.get(); }
 

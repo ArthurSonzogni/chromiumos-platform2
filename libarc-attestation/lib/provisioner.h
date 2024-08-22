@@ -11,11 +11,10 @@
 #include <utility>
 #include <vector>
 
-#include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/threading/thread.h>
 #include <dbus/bus.h>
-
 #include <libarc-attestation/lib/interface.h>
 
 namespace arc_attestation {
@@ -41,6 +40,11 @@ class Provisioner {
   // This must be invoked on the task runner.
   AndroidStatus SignWithP256Dk(const std::vector<uint8_t>& input,
                                std::vector<uint8_t>& signature);
+
+  // Call this to fetch the Endorsement Public Key from attestation service.
+  // This must be invoked on the task runner.
+  AndroidStatus GetEndorsementPublicKey(
+      std::vector<uint8_t>& ek_public_key_out);
 
   // Call this to obtain the ARC TPM Certifying Key's key blob.
   // This must be invoked on the task runner.

@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <gmock/gmock.h>
-
 #include <libarc-attestation/lib/manager_base.h>
 
 namespace arc_attestation {
@@ -38,6 +37,11 @@ class MockArcAttestationManager : public ArcAttestationManagerBase {
   MOCK_METHOD(AndroidStatus,
               QuoteCrOSBlob,
               (const brillo::Blob&, brillo::Blob&));
+
+  MOCK_METHOD(AndroidStatus,
+              GetEndorsementPublicKey,
+              (brillo::Blob&),
+              (override));
 };
 
 }  // namespace arc_attestation

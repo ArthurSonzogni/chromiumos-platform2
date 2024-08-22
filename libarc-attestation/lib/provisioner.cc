@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <libarc-attestation/lib/provisioner.h>
-
 #include <string>
 #include <vector>
 
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
+#include <libarc-attestation/lib/provisioner.h>
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -261,6 +260,50 @@ std::optional<std::string> Provisioner::GetTpmCertifyingKeyCert() {
   CHECK(tck_data_);
 
   return tck_data_->certificate();
+}
+
+AndroidStatus Provisioner::GetEndorsementPublicKey(
+    std::vector<uint8_t>& ek_public_key_out) {
+  if (!EnsureDbus()) {
+    LOG(ERROR)
+        << "DBus is not available in Provisioner::GetEndorsementPublicKey()";
+    return AndroidStatus::from_keymint_code(
+        AndroidStatus::KeymintSpecificErrorCode::
+            SECURE_HW_COMMUNICATION_FAILED);
+  }
+
+  attestation::GetEndorsementInfoRequest request;
+
+  attestation::GetEndorsementInfoReply reply;
+  brillo::ErrorPtr err;
+  if (!proxy_->GetEndorsementInfo(request, &reply, &err,
+                                  kSignTimeout.InMilliseconds())) {
+    // DBus call failed.
+    return AndroidStatus::from_keymint_code(
+        AndroidStatus::KeymintSpecificErrorCode::
+            SECURE_HW_COMMUNICATION_FAILED);
+  }
+
+  // Examine the result.
+  if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
+    // The method call failed.
+    LOG(ERROR) << "GetEndorsementInfo() call during "
+                  "Provisioner::GetEndorsementPublicKey() failed";
+    return AndroidStatus::from_keymint_code(
+        AndroidStatus::KeymintSpecificErrorCode::
+            SECURE_HW_COMMUNICATION_FAILED);
+  }
+
+  // Examine if reply carries the Endorsement Key.
+  if (!reply.has_ek_public_key()) {
+    LOG(ERROR)
+        << "Reply from GetEndorsementInfo() does not carry Endorsement Key";
+    return AndroidStatus::from_keymint_code(
+        AndroidStatus::KeymintSpecificErrorCode::INVALID_KEY_BLOB);
+  }
+
+  ek_public_key_out = brillo::BlobFromString(reply.ek_public_key());
+  return AndroidStatus::ok();
 }
 
 }  // namespace arc_attestation

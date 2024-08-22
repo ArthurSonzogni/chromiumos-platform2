@@ -5,22 +5,22 @@
 #include <attestation/proto_bindings/interface.pb.h>
 #include <libarc-attestation/lib/interface.h>
 #include <libarc-attestation/lib/manager.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/factory/mock_factory.h>
 #include <libhwsec/frontend/arc_attestation/mock_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 
 // This needs to be after interface.pb.h due to protobuf dependency.
 #include <attestation/dbus-proxy-mocks.h>
-
-#include <gtest/gtest.h>
-
 #include <base/strings/string_number_conversions.h>
+#include <gtest/gtest.h>
 
 using attestation::ACAType;
 using attestation::AttestationStatus;
 using attestation::CertificateProfile;
 using attestation::GetCertificateReply;
 using attestation::GetCertificateRequest;
+using attestation::GetEndorsementInfoReply;
+using attestation::GetEndorsementInfoRequest;
 using attestation::KeyType;
 using attestation::SignReply;
 using attestation::SignRequest;
@@ -108,6 +108,14 @@ class ArcAttestationThreadedTest : public ::testing::Test {
   void ExpectSignSuccess(const SignReply& reply, const SignRequest& request) {
     EXPECT_CALL(*attestation_proxy_, Sign(ProtobufEquals(request), _, _,
                                           Ge(kSignMinTimeout.InMilliseconds())))
+        .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+  }
+
+  void ExpectEndorsementKeySuccess(const GetEndorsementInfoReply& reply,
+                                   const GetEndorsementInfoRequest& request) {
+    EXPECT_CALL(*attestation_proxy_,
+                GetEndorsementInfo(ProtobufEquals(request), _, _,
+                                   Ge(kSignMinTimeout.InMilliseconds())))
         .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
   }
 
@@ -371,6 +379,46 @@ TEST_F(ArcAttestationThreadedTest, AttestVersionFailed) {
   // Call to QuoteCrOSBlob should fail.
   Blob quoted_blob;
   result = QuoteCrOSBlob(BlobFromString(kFakeChallenge), quoted_blob);
+  EXPECT_FALSE(result.is_ok());
+}
+
+TEST_F(ArcAttestationThreadedTest, GetEndorsementKeySuccess) {
+  // We need to be provisioned to test this.
+  SetupSuccessfulProvision();
+  AndroidStatus result = ProvisionDkCert(true);
+  ASSERT_TRUE(result.is_ok());
+
+  // Setup endorsement key success.
+  GetEndorsementInfoRequest request;
+  GetEndorsementInfoReply reply;
+  reply.set_status(AttestationStatus::STATUS_SUCCESS);
+  reply.set_ek_public_key(kFakePublicKey1);
+
+  ExpectEndorsementKeySuccess(reply, request);
+
+  // Call and it should succeed.
+  Blob ek_public_key;
+  result = GetEndorsementPublicKey(ek_public_key);
+  EXPECT_TRUE(result.is_ok());
+  EXPECT_EQ(ek_public_key, brillo::BlobFromString(kFakePublicKey1));
+}
+
+TEST_F(ArcAttestationThreadedTest, GetEndorsementKeyFailure) {
+  // We need to be provisioned to test this.
+  SetupSuccessfulProvision();
+  AndroidStatus result = ProvisionDkCert(true);
+  ASSERT_TRUE(result.is_ok());
+
+  // Setup endorsement key failure.
+  GetEndorsementInfoRequest request;
+  GetEndorsementInfoReply reply;
+  reply.set_status(AttestationStatus::STATUS_UNEXPECTED_DEVICE_ERROR);
+
+  ExpectEndorsementKeySuccess(reply, request);
+
+  // Call and it should fail.
+  Blob ek_public_key;
+  result = GetEndorsementPublicKey(ek_public_key);
   EXPECT_FALSE(result.is_ok());
 }
 
