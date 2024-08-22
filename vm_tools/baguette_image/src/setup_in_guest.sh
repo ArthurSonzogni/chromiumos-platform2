@@ -10,6 +10,7 @@ set -eux -o pipefail
 
 CROS_PACKAGES=(
   cros-garcon
+  cros-port-listener
   cros-sommelier
   cros-sommelier-config
   cros-wayland
