@@ -1061,13 +1061,18 @@ int DoAuthenticateAuthFactor(
         "Exactly one of `key_label` and `key_labels` should be specified.\n");
     return 1;
   }
-  req.set_auth_factor_label(cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-  std::vector<std::string> labels =
-      base::SplitString(cl->GetSwitchValueASCII(switches::kKeyLabelsSwitch),
-                        ",", base::WhitespaceHandling::KEEP_WHITESPACE,
-                        base::SplitResult::SPLIT_WANT_ALL);
-  for (std::string& label : labels) {
-    req.add_auth_factor_labels(std::move(label));
+  if (has_key_label_switch) {
+    req.add_auth_factor_labels(
+        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+  }
+  if (has_key_labels_switch) {
+    std::vector<std::string> labels =
+        base::SplitString(cl->GetSwitchValueASCII(switches::kKeyLabelsSwitch),
+                          ",", base::WhitespaceHandling::KEEP_WHITESPACE,
+                          base::SplitResult::SPLIT_WANT_ALL);
+    for (std::string& label : labels) {
+      req.add_auth_factor_labels(std::move(label));
+    }
   }
   if (!BuildAuthInput(*printer, cl, misc_proxy, req.mutable_auth_input())) {
     return 1;
