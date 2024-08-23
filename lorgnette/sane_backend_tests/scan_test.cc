@@ -20,8 +20,9 @@
 #include "lorgnette/sane_client.h"
 #include "lorgnette/sane_client_impl.h"
 
-// TODO(b/347749519): Make test report and scans accessible via the guest user.
-static const base::FilePath report_root_dir("sane_backend_wwcb_tests_report.d");
+// TODO(b/347749519): Make test artifacts to accessible to guest user.
+static const base::FilePath scan_test_images_dir(
+    "sane_backend_wwcb_tests_scan_test_images.d");
 
 namespace sane_backend_tests {
 // Declared by GoogleTest main wrapper.
@@ -45,7 +46,7 @@ void operator<<(std::ostream& stream, const ScanTestParameter& param) {
 static std::string _get_test_output_path() {
   return base::StringPrintf(
       // There current_test_suite()->name() has an embedded "/"
-      "%s/%s%s", report_root_dir.value().c_str(),
+      "%s/%s%s", scan_test_images_dir.value().c_str(),
       testing::UnitTest::GetInstance()->current_test_suite()->name(),
       testing::UnitTest::GetInstance()->current_test_info()->name());
 }
