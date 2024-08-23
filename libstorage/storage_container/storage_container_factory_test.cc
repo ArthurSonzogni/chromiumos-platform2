@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <memory>
-#include <utility>
-
 #include "libstorage/storage_container/storage_container_factory.h"
 
 #include <linux/magic.h>
 #include <sys/statfs.h>
+
+#include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>

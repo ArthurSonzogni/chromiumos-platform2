@@ -8,10 +8,9 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include <base/files/file_path.h>
 #include <libstorage/platform/mock_platform.h>
 #include <metrics/metrics_library_mock.h>
 

@@ -18,7 +18,6 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-
 #include <libstorage/platform/platform.h>
 #include <metrics/metrics_library.h>
 

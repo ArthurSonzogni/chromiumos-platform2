@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libstorage/storage_container/unencrypted_container.h"
+
 #include <memory>
 #include <utility>
-
-#include "libstorage/storage_container/unencrypted_container.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

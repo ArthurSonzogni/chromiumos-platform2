@@ -5,8 +5,6 @@
 #ifndef LIBSTORAGE_STORAGE_CONTAINER_EXT4_CONTAINER_H_
 #define LIBSTORAGE_STORAGE_CONTAINER_EXT4_CONTAINER_H_
 
-#include "libstorage/storage_container/storage_container.h"
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -18,6 +16,7 @@
 #include <metrics/metrics_library.h>
 
 #include "libstorage/storage_container/filesystem_key.h"
+#include "libstorage/storage_container/storage_container.h"
 
 namespace libstorage {
 
