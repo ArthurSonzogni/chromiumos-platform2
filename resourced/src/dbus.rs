@@ -987,14 +987,21 @@ pub async fn service_main() -> Result<()> {
             }
             notification_count_clone.store(0, Ordering::Relaxed);
 
-            match process_stats::get_all_memory_stats("/proc", "/run") {
-                Ok(stats) => {
-                    if let Err(err) = report_memory_stats(stats) {
-                        error!("Failed to report memory stats: {}", err);
+            // Gathering memory stats is a non-trival amount of work, so do it on
+            // a separate thread to avoid blocking resourced's other work.
+            let res = tokio::task::spawn_blocking(|| {
+                match process_stats::get_all_memory_stats("/proc", "/run") {
+                    Ok(stats) => {
+                        if let Err(err) = report_memory_stats(stats) {
+                            error!("Failed to report memory stats: {}", err);
+                        }
                     }
+                    Err(e) => error!("Failed to gather memory stats {:?}", e),
                 }
-                Err(e) => error!("Failed to gather memory stats {:?}", e),
-            }
+            }).await;
+            if let Err(e) = res {
+                error!("Error gathering memory stats {:?}", e);
+            };
         }
     });
 
