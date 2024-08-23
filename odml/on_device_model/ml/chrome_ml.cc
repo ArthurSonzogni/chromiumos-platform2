@@ -97,7 +97,6 @@ void RecordCustomCountsHistogram(
 }  // namespace
 
 ChromeML::ChromeML(raw_ref<MetricsLibraryInterface> metrics,
-                   base::PassKey<ChromeML>,
                    const ChromeMLAPI* api)
     : api_(api) {
   CHECK(api_);
@@ -129,10 +128,6 @@ ChromeML* ChromeML::Get(raw_ref<MetricsLibraryInterface> metrics,
   }();
 
   return chrome_ml->get();
-}
-
-ChromeML* ChromeML::Get() {
-  return g_chrome_ml;
 }
 
 // static
@@ -177,13 +172,7 @@ std::unique_ptr<ChromeML> ChromeML::Create(
   if (api->SetFatalErrorNonGpuFn) {
     api->SetFatalErrorNonGpuFn(&FatalErrorFn);
   }
-  return std::make_unique<ChromeML>(metrics, base::PassKey<ChromeML>(), api);
-}
-
-DISABLE_CFI_DLSYM
-bool ChromeML::IsGpuBlocked() const {
-  // We wouldn't block GPU on ChromeOS devices.
-  return false;
+  return std::make_unique<ChromeML>(metrics, api);
 }
 
 }  // namespace ml

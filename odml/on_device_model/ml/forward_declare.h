@@ -9,7 +9,12 @@ extern "C" {
 
 struct DawnProcTable;
 struct WGPUAdapterImpl;
+struct WGPUDeviceImpl;
+struct WGPUTextureImpl;
+struct WGPUAdapterProperties;
 typedef struct WGPUAdapterImpl* WGPUAdapter;
+typedef struct WGPUDeviceImpl* WGPUDevice;
+typedef struct WGPUTextureImpl* WGPUTexture;
 }
 
 #endif  // ODML_ON_DEVICE_MODEL_ML_FORWARD_DECLARE_H_

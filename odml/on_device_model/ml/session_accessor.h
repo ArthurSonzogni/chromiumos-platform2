@@ -13,6 +13,7 @@
 #include <base/task/sequenced_task_runner.h>
 
 #include "odml/mojom/on_device_model.mojom.h"
+#include "odml/on_device_model/ml/chrome_ml.h"
 #include "odml/on_device_model/ml/chrome_ml_api.h"
 
 namespace ml {
@@ -23,7 +24,8 @@ class SessionAccessor {
  public:
   using Ptr = std::unique_ptr<SessionAccessor, base::OnTaskRunnerDeleter>;
 
-  static Ptr Create(scoped_refptr<base::SequencedTaskRunner> task_runner,
+  static Ptr Create(const ChromeML& chrome_ml,
+                    scoped_refptr<base::SequencedTaskRunner> task_runner,
                     ChromeMLModel model,
                     base::File adaptation_data = base::File());
 
@@ -42,7 +44,8 @@ class SessionAccessor {
  private:
   class Canceler;
 
-  SessionAccessor(scoped_refptr<base::SequencedTaskRunner> task_runner,
+  SessionAccessor(const ChromeML& chrome_ml,
+                  scoped_refptr<base::SequencedTaskRunner> task_runner,
                   ChromeMLModel model);
 
   void CloneFrom(SessionAccessor* other);
@@ -55,6 +58,7 @@ class SessionAccessor {
   void SizeInTokensInternal(const std::string& text,
                             ChromeMLSizeInTokensFn size_in_tokens_fn);
 
+  const raw_ref<const ChromeML> chrome_ml_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   ChromeMLModel model_;
   ChromeMLSession session_ = 0;

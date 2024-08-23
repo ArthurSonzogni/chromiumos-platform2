@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <memory>
+
 #include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
@@ -19,12 +24,8 @@
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
-#include <sys/types.h>
-#include <unistd.h>
 
-#include <memory>
-
-#include "odml/on_device_model/on_device_model_factory_impl.h"
+#include "odml/on_device_model/ml/on_device_model_internal.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
 
@@ -37,8 +38,10 @@ class ServiceProviderImpl
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
       : receiver_(this),
-        service_impl_(
-            raw_ref(factory_impl_), raw_ref(metrics_), raw_ref(shim_loader_)) {
+        service_impl_(raw_ref(metrics_),
+                      raw_ref(shim_loader_),
+                      ml::GetOnDeviceModelInternalImpl(raw_ref(metrics_),
+                                                       raw_ref(shim_loader_))) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
@@ -55,8 +58,6 @@ class ServiceProviderImpl
             std::move(receiver)));
   }
 
-  // The model factory.
-  on_device_model::OndeviceModelFactoryImpl factory_impl_;
   // The metrics lib.
   MetricsLibrary metrics_;
   // The odml_shim loader.

@@ -5,12 +5,11 @@
 #ifndef ODML_ON_DEVICE_MODEL_ML_CHROME_ML_H_
 #define ODML_ON_DEVICE_MODEL_ML_CHROME_ML_H_
 
+#include <memory>
+
 #include <base/memory/raw_ptr.h>
 #include <base/memory/raw_ref.h>
-#include <base/types/pass_key.h>
 #include <metrics/metrics_library.h>
-
-#include <memory>
 
 #include "odml/on_device_model/ml/chrome_ml_api.h"
 #include "odml/utils/odml_shim_loader.h"
@@ -23,9 +22,7 @@ namespace ml {
 class ChromeML {
  public:
   // Use Get() to acquire a global instance.
-  ChromeML(raw_ref<MetricsLibraryInterface> metrics,
-           base::PassKey<ChromeML>,
-           const ChromeMLAPI* api);
+  ChromeML(raw_ref<MetricsLibraryInterface> metrics, const ChromeMLAPI* api);
   ~ChromeML();
 
   // Gets a lazily initialized global instance of ChromeML. May return null
@@ -33,19 +30,8 @@ class ChromeML {
   static ChromeML* Get(raw_ref<MetricsLibraryInterface> metrics,
                        raw_ref<odml::OdmlShimLoader> shim_loader);
 
-  // Gets the  initialized global instance of ChromeML.
-  // May return null if the underlying library is not initialized.
-  static ChromeML* Get();
-
   // Exposes the raw ChromeMLAPI functions defined by the library.
   const ChromeMLAPI& api() const { return *api_; }
-
-  // Whether or not the GPU is blocklisted.
-  bool IsGpuBlocked() const;
-
-  void SetAllowGpuForTesting(bool allow_gpu) {
-    allow_gpu_for_testing_ = allow_gpu;
-  }
 
  private:
   static std::unique_ptr<ChromeML> Create(
@@ -53,7 +39,6 @@ class ChromeML {
       raw_ref<odml::OdmlShimLoader> shim_loader);
 
   const raw_ptr<const ChromeMLAPI> api_;
-  bool allow_gpu_for_testing_ = false;
 };
 
 }  // namespace ml

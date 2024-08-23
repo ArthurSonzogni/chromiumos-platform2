@@ -92,11 +92,12 @@ source_set("mojo_bindings_lib") {
 source_set("odml") {
   sources = [
     "on_device_model/ml/chrome_ml.cc",
+    "on_device_model/ml/gpu_blocklist.cc",
     "on_device_model/ml/on_device_model_executor.cc",
+    "on_device_model/ml/on_device_model_internal.cc",
     "on_device_model/ml/session_accessor.cc",
     "on_device_model/ml/ts_model.cc",
     "on_device_model/ml/utils.cc",
-    "on_device_model/on_device_model_factory_impl.cc",
     "on_device_model/on_device_model_service.cc",
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
@@ -159,7 +160,8 @@ if (use.test) {
 
   executable("testrunner") {
     sources = [
-      "on_device_model/on_device_model_factory_fake.cc",
+      "on_device_model/fake/fake_chrome_ml_api.cc",
+      "on_device_model/on_device_model_fake.cc",
       "on_device_model/on_device_model_service_test.cc",
       "on_device_model/public/cpp/test_support/test_response_holder.cc",
     ]

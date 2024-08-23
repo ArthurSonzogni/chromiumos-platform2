@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/raw_ref.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
@@ -26,7 +27,7 @@
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/on_device_model/features.h"
-#include "odml/on_device_model/on_device_model_factory_fake.h"
+#include "odml/on_device_model/on_device_model_fake.h"
 #include "odml/on_device_model/public/cpp/test_support/test_response_holder.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
@@ -66,13 +67,46 @@ class ContextClientWaiter : public mojom::ContextClient {
   int tokens_processed_ = 0;
 };
 
+class FakeFile {
+ public:
+  explicit FakeFile(const std::string& content) {
+    base::ScopedAllowBlockingForTesting allow_blocking;
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    base::File file(temp_dir_.GetPath().Append("file"),
+                    base::File::FLAG_OPEN | base::File::FLAG_CREATE |
+                        base::File::FLAG_WRITE | base::File::FLAG_READ);
+    CHECK(file.IsValid());
+    file.WriteAtCurrentPos(base::as_byte_span(content));
+  }
+  ~FakeFile() = default;
+
+  base::File Open() {
+    base::ScopedAllowBlockingForTesting allow_blocking;
+    return base::File(
+        temp_dir_.GetPath().Append("file"),
+        base::File::FLAG_OPEN | base::File::FLAG_WRITE | base::File::FLAG_READ);
+  }
+
+ private:
+  base::ScopedTempDir temp_dir_;
+};
+
 class OnDeviceModelServiceTest : public testing::Test {
  public:
   OnDeviceModelServiceTest()
-      : service_impl_(
-            raw_ref(factory_), raw_ref(metrics_), raw_ref(shim_loader_)) {
+      : service_impl_(raw_ref(metrics_),
+                      raw_ref(shim_loader_),
+                      GetOnDeviceModelFakeImpl(raw_ref(metrics_),
+                                               raw_ref(shim_loader_))) {
     mojo::core::Init();
     service_impl_.AddReceiver(service_.BindNewPipeAndPassReceiver());
+  }
+
+  void SetUp() override {
+    EXPECT_CALL(
+        metrics_,
+        SendTimeToUMA("OnDeviceModel.LoadAdaptationModelDuration", _, _, _, _))
+        .WillRepeatedly(Return(true));
   }
 
   mojo::Remote<mojom::OnDeviceModelPlatformService>& service() {
@@ -107,16 +141,13 @@ class OnDeviceModelServiceTest : public testing::Test {
   }
 
   mojo::Remote<mojom::OnDeviceModel> LoadAdaptation(
-      mojom::OnDeviceModel& model) {
-    EXPECT_CALL(
-        metrics_,
-        SendTimeToUMA("OnDeviceModel.LoadAdaptationModelDuration", _, _, _, _))
-        .WillOnce(Return(true));
-
+      mojom::OnDeviceModel& model, base::File adaptation_data) {
     base::RunLoop run_loop;
     mojo::Remote<mojom::OnDeviceModel> remote;
+    auto params = mojom::LoadAdaptationParams::New();
+    params->assets.weights = std::move(adaptation_data);
     model.LoadAdaptation(
-        mojom::LoadAdaptationParams::New(), remote.BindNewPipeAndPassReceiver(),
+        std::move(params), remote.BindNewPipeAndPassReceiver(),
         base::BindLambdaForTesting([&](mojom::LoadModelResult result) {
           EXPECT_EQ(mojom::LoadModelResult::kSuccess, result);
           run_loop.Quit();
@@ -147,7 +178,6 @@ class OnDeviceModelServiceTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  OndeviceModelFactoryFake factory_;
   MetricsLibraryMock metrics_;
   odml::OdmlShimLoaderMock shim_loader_;
   mojo::Remote<mojom::OnDeviceModelPlatformService> service_;
@@ -397,41 +427,47 @@ TEST_F(OnDeviceModelServiceTest, MultipleSessionsWaitPreviousSession) {
 }
 
 TEST_F(OnDeviceModelServiceTest, LoadsAdaptation) {
+  FakeFile weights1("Adapt1");
+  FakeFile weights2("Adapt2");
   auto model = LoadModel();
-  auto adaptation1 = LoadAdaptation(*model);
+  auto adaptation1 = LoadAdaptation(*model, weights1.Open());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Input: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
-              ElementsAre("Adaptation: 1\n", "Input: foo\n"));
+              ElementsAre("Adaptation: Adapt1\n", "Input: foo\n"));
 
-  auto adaptation2 = LoadAdaptation(*model);
+  auto adaptation2 = LoadAdaptation(*model, weights2.Open());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Input: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
-              ElementsAre("Adaptation: 1\n", "Input: foo\n"));
+              ElementsAre("Adaptation: Adapt1\n", "Input: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation2, "foo"),
-              ElementsAre("Adaptation: 2\n", "Input: foo\n"));
+              ElementsAre("Adaptation: Adapt2\n", "Input: foo\n"));
 }
 
 TEST_F(OnDeviceModelServiceTest,
        MultipleSessionsLoadingAdaptationNotCancelsSession) {
+  FakeFile weights1("Adapt1");
   auto model = LoadModel();
 
   mojo::Remote<mojom::Session> session;
   model->StartSession(session.BindNewPipeAndPassReceiver());
   session.reset_on_disconnect();
 
-  LoadAdaptation(*model);
+  LoadAdaptation(*model, weights1.Open());
   FlushService();
   EXPECT_TRUE(session);
 }
 
 TEST_F(OnDeviceModelServiceTest, DeletesModel) {
+  FakeFile weights1("Adapt1");
+  FakeFile weights2("Adapt2");
+  FakeFile weights3("Adapt3");
   auto model1 = LoadModel();
-  auto adaptation1 = LoadAdaptation(*model1);
-  auto adaptation2 = LoadAdaptation(*model1);
+  auto adaptation1 = LoadAdaptation(*model1, weights1.Open());
+  auto adaptation2 = LoadAdaptation(*model1, weights2.Open());
   EXPECT_EQ(GetNumModels(), 1u);
 
   auto model2 = LoadModel(kFakeModelName2);
-  auto adaptation3 = LoadAdaptation(*model2);
+  auto adaptation3 = LoadAdaptation(*model2, weights3.Open());
   EXPECT_EQ(GetNumModels(), 2u);
 
   adaptation1.reset();

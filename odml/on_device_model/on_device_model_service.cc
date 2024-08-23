@@ -21,10 +21,9 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "odml/on_device_model/features.h"
-#include "odml/on_device_model/on_device_model_factory.h"
+#include "odml/on_device_model/ml/on_device_model_internal.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
-#include "odml/on_device_model/public/cpp/on_device_model.h"
 
 namespace on_device_model {
 namespace {
@@ -43,7 +42,7 @@ class SessionWrapper final : public mojom::Session {
  public:
   SessionWrapper(base::WeakPtr<ModelWrapper> model,
                  mojo::PendingReceiver<mojom::Session> receiver,
-                 std::unique_ptr<OnDeviceModel::Session> session)
+                 std::unique_ptr<ml::SessionImpl> session)
       : model_(model),
         receiver_(this, std::move(receiver)),
         session_(std::move(session)) {}
@@ -100,7 +99,7 @@ class SessionWrapper final : public mojom::Session {
 
   base::WeakPtr<ModelWrapper> model_;
   mojo::Receiver<mojom::Session> receiver_;
-  std::unique_ptr<OnDeviceModel::Session> session_;
+  std::unique_ptr<ml::SessionImpl> session_;
   std::vector<mojom::InputOptionsPtr> previous_contexts_;
   base::WeakPtrFactory<SessionWrapper> weak_ptr_factory_{this};
 };
@@ -110,7 +109,7 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   explicit ModelWrapper(
       raw_ref<MetricsLibraryInterface> metrics,
       bool support_multiple_sessions,
-      std::unique_ptr<on_device_model::OnDeviceModel> model,
+      std::unique_ptr<ml::OnDeviceModelExecutor> model,
       mojo::PendingReceiver<mojom::OnDeviceModel> receiver,
       base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete)
       : metrics_(metrics),
@@ -154,12 +153,12 @@ class ModelWrapper final : public mojom::OnDeviceModel {
 
   void ClassifyTextSafety(const std::string& text,
                           ClassifyTextSafetyCallback callback) override {
-    std::move(callback).Run(model_->ClassifyTextSafety(text));
+    model_->ClassifyTextSafety(text, std::move(callback));
   }
 
   void DetectLanguage(const std::string& text,
                       DetectLanguageCallback callback) override {
-    std::move(callback).Run(model_->DetectLanguage(text));
+    model_->DetectLanguage(text, std::move(callback));
   }
 
   void LoadAdaptation(mojom::LoadAdaptationParamsPtr params,
@@ -178,7 +177,7 @@ class ModelWrapper final : public mojom::OnDeviceModel {
 
   void AddSession(
       mojo::PendingReceiver<mojom::Session> receiver,
-      std::unique_ptr<on_device_model::OnDeviceModel::Session> session,
+      std::unique_ptr<ml::SessionImpl> session,
       const std::vector<mojom::InputOptionsPtr>& previous_contexts) {
     auto current_session = std::make_unique<SessionWrapper>(
         weak_ptr_factory_.GetWeakPtr(), std::move(receiver),
@@ -276,7 +275,7 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   bool support_multiple_sessions_;
   std::set<std::unique_ptr<SessionWrapper>, base::UniquePtrComparator>
       sessions_;
-  std::unique_ptr<on_device_model::OnDeviceModel> model_;
+  std::unique_ptr<ml::OnDeviceModelExecutor> model_;
   mojo::ReceiverSet<mojom::OnDeviceModel, std::optional<uint32_t>> receivers_;
   base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete_;
   std::queue<PendingTask> pending_tasks_;
@@ -381,12 +380,12 @@ void SessionWrapper::CloneInternal(
 }  // namespace
 
 OnDeviceModelService::OnDeviceModelService(
-    raw_ref<OndeviceModelFactory> factory,
     raw_ref<MetricsLibraryInterface> metrics,
-    raw_ref<odml::OdmlShimLoader> shim_loader)
-    : factory_(factory),
-      metrics_(metrics),
+    raw_ref<odml::OdmlShimLoader> shim_loader,
+    std::unique_ptr<const ml::OnDeviceModelInternalImpl> impl)
+    : metrics_(metrics),
       shim_loader_(shim_loader),
+      impl_(std::move(impl)),
       platform_model_loader_(std::make_unique<ChromeosPlatformModelLoader>(
           metrics_, raw_ref(*this))) {}
 
@@ -398,8 +397,8 @@ void OnDeviceModelService::LoadModel(
     LoadPlatformModelCallback callback) {
   auto start = base::TimeTicks::Now();
   bool support_multiple_sessions = params->support_multiple_sessions;
-  auto model_impl = factory_->CreateModel(
-      metrics_, shim_loader_, std::move(params),
+  auto model_impl = impl_->CreateModel(
+      std::move(params),
       base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
                          base::BindOnce(
                              [](base::WeakPtr<OnDeviceModelService> self,
@@ -497,8 +496,7 @@ void OnDeviceModelService::GetEstimatedPerformanceClass(
     return;
   }
 
-  std::move(callback).Run(
-      factory_->GetEstimatedPerformanceClass(metrics_, shim_loader_));
+  std::move(callback).Run(impl_->GetEstimatedPerformanceClass());
 }
 
 void OnDeviceModelService::FormatInput(
