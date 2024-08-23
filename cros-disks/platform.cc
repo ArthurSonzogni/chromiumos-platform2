@@ -24,6 +24,7 @@
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/userdb_utils.h>
 
 #include "cros-disks/quote.h"
@@ -306,16 +307,18 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
   // However, if the filesystem is currently busy, this fails with an EBUSY
   // error.
   VLOG(2) << "Unmounting " << filesystem_type << " " << quote(mount_path);
-  if (umount(mount_path.value().c_str()) == 0) {
-    VLOG(1) << "Unmounted " << filesystem_type << " " << quote(mount_path);
+  base::ElapsedTimer timer;
+  error_t error = umount(mount_path.value().c_str()) ? errno : 0;
+  if (metrics_)
+    metrics_->RecordSysCall("umount", filesystem_type, error, timer.Elapsed());
 
-    if (metrics_)
-      metrics_->RecordUnmountError(filesystem_type, 0);
+  if (!error) {
+    VLOG(1) << "Unmounted " << filesystem_type << " " << quote(mount_path);
 
     return MountError::kSuccess;
   }
 
-  if (errno == EBUSY) {
+  if (error == EBUSY) {
     // The normal unmount failed because the filesystem is busy. We now try to
     // force-unmount the filesystem. This is done because there is no good
     // recovery path the user can take, and these filesystems are sometimes
@@ -332,25 +335,26 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
     // MNT_DETACH matters in this case, but it's OK to pass MNT_FORCE too.
     VLOG(1) << "Force-unmounting " << filesystem_type << " "
             << quote(mount_path);
-    if (umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) == 0) {
+    timer = base::ElapsedTimer();
+    error =
+        umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) ? errno : 0;
+
+    if (metrics_)
+      metrics_->RecordSysCall("umount2", filesystem_type, error,
+                              timer.Elapsed());
+
+    if (!error) {
       LOG(WARNING) << "Force-unmounted " << filesystem_type << " "
                    << redact(mount_path);
-
-      if (metrics_)
-        metrics_->RecordUnmountError(filesystem_type, EBUSY);
 
       return MountError::kSuccess;
     }
   }
 
-  const error_t error = errno;
   DCHECK_GT(error, 0);
-
+  errno = error;
   PLOG(ERROR) << "Cannot unmount " << filesystem_type << " "
               << redact(mount_path);
-
-  if (metrics_)
-    metrics_->RecordUnmountError(filesystem_type, error);
 
   switch (error) {
     case EINVAL:  // |mount_path| is not a mount point
@@ -370,27 +374,29 @@ MountError Platform::Mount(const std::string& source_path,
                            const std::string& filesystem_type,
                            const uint64_t flags,
                            const std::string& options) const {
-  if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
-            flags, options.c_str()) == 0) {
+  base::ElapsedTimer timer;
+  const error_t error = mount(source_path.c_str(), target_path.c_str(),
+                              filesystem_type.c_str(), flags, options.c_str())
+                            ? errno
+                            : 0;
+  if (metrics_)
+    metrics_->RecordSysCall("mount", filesystem_type, error, timer.Elapsed());
+
+  if (!error) {
     VLOG(1) << "Created mount point " << filesystem_type << " "
             << quote(target_path) << " for " << quote(source_path)
             << " with flags " << MountFlags(flags) << " and options "
             << quote(options);
 
-    if (metrics_)
-      metrics_->RecordMountError(filesystem_type, 0);
-
     return MountError::kSuccess;
   }
 
-  const error_t error = errno;
+  DCHECK_GT(error, 0);
+  errno = error;
   PLOG(ERROR) << "Cannot create mount point " << filesystem_type << " "
               << redact(target_path) << " for " << redact(source_path)
               << " with flags " << MountFlags(flags) << " and options "
               << quote(options);
-
-  if (metrics_)
-    metrics_->RecordMountError(filesystem_type, error);
 
   switch (error) {
     case ENODEV:

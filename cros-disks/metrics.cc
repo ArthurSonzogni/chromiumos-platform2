@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
@@ -114,22 +115,16 @@ void Metrics::RecordFilesystemType(const std::string_view fs_type) {
     LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
-void Metrics::RecordMountError(const std::string_view fs_type,
-                               const error_t error) {
-  if (!metrics_library_.SendSparseToUMA(
-          base::StrCat(
-              {"CrosDisks.MountError.", StripPrefix(fs_type, "fuse.")}),
-          error))
-    LOG(ERROR) << "Cannot send mount error to UMA";
-}
-
-void Metrics::RecordUnmountError(const std::string_view fs_type,
-                                 const error_t error) {
-  if (!metrics_library_.SendSparseToUMA(
-          base::StrCat(
-              {"CrosDisks.UnmountError.", StripPrefix(fs_type, "fuse.")}),
-          error))
-    LOG(ERROR) << "Cannot send unmount error to UMA";
+void Metrics::RecordSysCall(const std::string_view syscall,
+                            std::string_view fs_type,
+                            const error_t error,
+                            base::TimeDelta elapsed_time) {
+  fs_type = StripPrefix(fs_type, "fuse.");
+  metrics_library_.SendSparseToUMA(
+      base::StrCat({"CrosDisks.Error.", syscall, ".", fs_type}), error);
+  metrics_library_.SendTimeToUMA(
+      base::StrCat({"CrosDisks.Time.", syscall, ".", fs_type}),
+      std::move(elapsed_time), base::Milliseconds(1), base::Seconds(10), 50);
 }
 
 void Metrics::RecordDaemonError(const std::string_view program_name,

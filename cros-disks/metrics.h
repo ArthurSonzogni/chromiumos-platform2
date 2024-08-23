@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
@@ -29,13 +30,12 @@ class Metrics {
   // Records the type of filesystem that cros-disks is trying to mount.
   void RecordFilesystemType(std::string_view fs_type);
 
-  // Records the error returned by the mount() system call when trying to mount
-  // a file system.
-  void RecordMountError(std::string_view fs_type, error_t error);
-
-  // Records the error returned by the umount() system call when trying to
-  // unmount a file system.
-  void RecordUnmountError(std::string_view fs_type, error_t error);
+  // Records the error (or success) and the elapsed time of a system call
+  // related to a filesystem.
+  void RecordSysCall(std::string_view syscall,
+                     std::string_view fs_type,
+                     error_t error,
+                     base::TimeDelta elapsed_time);
 
   // Records the error returned by a FUSE daemon when it unexpectedly
   // terminates.
