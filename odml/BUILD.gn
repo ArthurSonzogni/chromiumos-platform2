@@ -19,7 +19,10 @@ group("all") {
       ":odmld",
     ]
     if (use.test) {
-      deps += [ ":testrunner" ]
+      deps += [
+        ":coral_testrunner",
+        ":odml_testrunner",
+      ]
     }
   }
 }
@@ -91,9 +94,19 @@ source_set("mojo_bindings_lib") {
   configs += [ ":target_defaults" ]
 }
 
+source_set("coral") {
+  sources = [
+    "coral/clustering/engine.cc",
+    "coral/embedding/engine.cc",
+    "coral/service.cc",
+    "coral/title_generation/engine.cc",
+  ]
+  public_deps = [ ":mojo_bindings_lib" ]
+  configs += [ ":target_defaults" ]
+}
+
 source_set("odml") {
   sources = [
-    "coral/service.cc",
     "on_device_model/ml/chrome_ml.cc",
     "on_device_model/ml/gpu_blocklist.cc",
     "on_device_model/ml/on_device_model_executor.cc",
@@ -125,7 +138,10 @@ executable("odmld") {
   install_path = "bin"
   sources = [ "odmld.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":odml" ]
+  deps = [
+    ":coral",
+    ":odml",
+  ]
 }
 
 # Install the policy for mojo service manager.
@@ -161,7 +177,7 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
 
-  executable("testrunner") {
+  executable("odml_testrunner") {
     sources = [
       "on_device_model/fake/fake_chrome_ml_api.cc",
       "on_device_model/on_device_model_fake.cc",
@@ -175,6 +191,21 @@ if (use.test) {
     ]
     run_test = true
     deps = [
+      ":odml",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("coral_testrunner") {
+    sources = [ "coral/service_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    run_test = true
+    deps = [
+      ":coral",
       ":odml",
       "//common-mk/testrunner",
     ]
