@@ -72,6 +72,8 @@ const QuirksMap& GetQuirksMap() {
       {{"04f2", "b82f"}, kQuirkPreferLargePreviewResolution},
       // LuxVisions BBA503N3 (b/343586796)
       {{"30c9", "00f1"}, kQuirkPreferLargePreviewResolution},
+      // Chicony CKAO519-1
+      {{"04f2", "b843"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
