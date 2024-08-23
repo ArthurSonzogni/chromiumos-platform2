@@ -7,7 +7,6 @@
 #include <memory>
 #include <utility>
 
-#include <absl/base/macros.h>
 #include <base/files/file_path.h>
 #include <libstorage/platform/keyring/keyring.h>
 #include <libstorage/platform/keyring/real_keyring.h>

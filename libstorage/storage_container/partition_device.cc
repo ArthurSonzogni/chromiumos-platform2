@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <absl/cleanup/cleanup.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback_helpers.h>
 #include <libstorage/platform/platform.h>
