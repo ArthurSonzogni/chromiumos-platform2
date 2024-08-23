@@ -58,10 +58,12 @@ generate_mojom_bindings("mojo_bindings") {
     use_pic = true
   }
   sources = [
+    "mojom/coral_service.mojom",
     "mojom/file.mojom",
     "mojom/on_device_model.mojom",
     "mojom/on_device_model_service.mojom",
     "mojom/read_only_file.mojom",
+    "mojom/url.mojom",
     "mojom/uuid.mojom",
   ]
   mojo_extra_args = [
@@ -91,6 +93,7 @@ source_set("mojo_bindings_lib") {
 
 source_set("odml") {
   sources = [
+    "coral/service.cc",
     "on_device_model/ml/chrome_ml.cc",
     "on_device_model/ml/gpu_blocklist.cc",
     "on_device_model/ml/on_device_model_executor.cc",
