@@ -160,6 +160,7 @@ install_config("install_minijail_config") {
 executable("sane_backend_wwcb_tests") {
   sources = [
     "sane_backend_tests/main.cc",
+    "sane_backend_tests/option_descriptor_test.cc",
     "sane_backend_tests/scan_test.cc",
   ]
   configs += [
