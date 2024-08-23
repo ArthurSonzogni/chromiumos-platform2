@@ -16,7 +16,9 @@
 
 #include "libstorage/storage_container/fake_storage_container.h"
 #include "libstorage/storage_container/filesystem_key.h"
+#include "libstorage/storage_container/partition_device.h"
 #include "libstorage/storage_container/storage_container.h"
+#include "libstorage/storage_container/unencrypted_container.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -283,4 +285,73 @@ TEST_F(Ext4ContainerTest, ResetFileSystemContainerTest) {
   EXPECT_FALSE(container_->Reset());
   EXPECT_TRUE(container_->Teardown());
 }
+
+class Ext4ContainerPartitionTest : public ::testing::Test {
+ public:
+  Ext4ContainerPartitionTest() {}
+
+  void GenerateContainer() {
+    ASSERT_TRUE(platform_.WriteStringToFile(partition_file_, ""));
+    base::stat_wrapper_t st;
+    st.st_mode = S_IFBLK;
+    EXPECT_CALL(platform_, Stat(partition_file_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(st), Return(true)));
+
+    std::unique_ptr<PartitionDevice> backing_device;
+    backing_device = std::make_unique<PartitionDevice>(
+        config_.unencrypted_config.backing_device_config, &platform_);
+    std::unique_ptr<UnencryptedContainer> backing_container;
+    backing_container = std::make_unique<UnencryptedContainer>(
+        std::move(backing_device), &platform_);
+    container_ = std::make_unique<Ext4Container>(config_.filesystem_config,
+                                                 std::move(backing_container),
+                                                 &platform_, nullptr);
+  }
+
+ protected:
+  base::FilePath partition_file_{"/dev/mmcp10"};
+  libstorage::StorageContainerConfig config_{
+      .filesystem_config = {.tune2fs_opts = {"-Q", "project"},
+                            .backend_type = StorageContainerType::kUnencrypted,
+                            .recovery = RecoveryType::kDoNothing},
+      .unencrypted_config = {
+          .backing_device_config = {
+              .type = libstorage::BackingDeviceType::kPartition,
+              .name = partition_file_.value()}}};
+  MockPlatform platform_;
+  std::unique_ptr<Ext4Container> container_;
+};
+
+// Tests the normal path.
+TEST_F(Ext4ContainerPartitionTest, SetupCreateCheck) {
+  EXPECT_CALL(platform_, FormatExt4(partition_file_, _, _)).Times(0);
+  int fsck_err = 0;
+  EXPECT_CALL(platform_, Fsck(partition_file_, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(fsck_err), Return(false)));
+  EXPECT_CALL(platform_, Tune2Fs(partition_file_, _)).WillOnce(Return(true));
+
+  GenerateContainer();
+
+  // Make sure we can read the superblock.
+  ASSERT_TRUE(
+      platform_.WriteStringToFile(partition_file_, std::string(2048, 0)));
+
+  FileSystemKey key;
+  EXPECT_TRUE(container_->Setup(key));
+}
+
+TEST_F(Ext4ContainerPartitionTest, SetupNoSuperblock) {
+  EXPECT_CALL(platform_, FormatExt4(partition_file_, _, _)).Times(0);
+  int fsck_err = 0;
+  EXPECT_CALL(platform_, Fsck(partition_file_, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(fsck_err), Return(false)));
+  EXPECT_CALL(platform_, Tune2Fs(partition_file_, _)).WillOnce(Return(true));
+
+  GenerateContainer();
+  FileSystemKey key;
+
+  // superblock is too small, will fail.
+  EXPECT_FALSE(container_->Setup(key));
+}
+
 }  // namespace libstorage

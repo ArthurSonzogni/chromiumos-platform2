@@ -31,6 +31,7 @@ bool UnencryptedContainer::Exists() {
 }
 
 bool UnencryptedContainer::Purge() {
+  std::ignore = Teardown();
   return backing_device_->Purge();
 }
 
@@ -78,9 +79,7 @@ bool UnencryptedContainer::Reset() {
 }
 
 bool UnencryptedContainer::Teardown() {
-  // Try purging backing device even if teardown failed.
-  std::ignore = backing_device_->Teardown();
-  return backing_device_->Purge();
+  return backing_device_->Teardown();
 }
 
 base::FilePath UnencryptedContainer::GetBackingLocation() const {

@@ -103,10 +103,10 @@ TEST_F(StorageContainerFactoryTest, ValidEphemeral) {
             libstorage::StorageContainerType::kEphemeral);
   // When tearing down the container, we will try to delete the ramdisk file in
   // teardown and purge.
-  EXPECT_CALL(platform_, GetLoopDeviceManager());
+  EXPECT_CALL(platform_, GetLoopDeviceManager()).Times(2);
   EXPECT_CALL(platform_,
               DeleteFile(base::FilePath(kBackingBase).Append(kBackingFile)))
-      .Times(2);
+      .Times(1);
   EXPECT_CALL(platform_, DeleteFileDurable(
                              base::FilePath(kBackingBase).Append(kBackingFile)))
       .Times(3);

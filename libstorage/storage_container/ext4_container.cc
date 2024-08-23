@@ -131,10 +131,6 @@ Ext4Container::Ext4Container(
       metrics_prefix_(GetMetricsPrefix(GetBackingLocation())),
       blk_count_(0) {}
 
-bool Ext4Container::Purge() {
-  return backing_container_->Purge();
-}
-
 bool Ext4Container::Exists() {
   if (!backing_container_->Exists())
     return false;

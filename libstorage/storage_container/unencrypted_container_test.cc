@@ -48,10 +48,10 @@ TEST_F(UnencryptedContainerTest, Construct) {
   EXPECT_TRUE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath(kDevice)));
   EXPECT_TRUE(container_->Teardown());
-  EXPECT_FALSE(container_->Exists());
+  // Device is not attached anymore, but still exists.
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));
-  EXPECT_FALSE(
-      container_->Purge());  // false for unencrypted teardown does purge
+  EXPECT_TRUE(container_->Exists());
+  EXPECT_TRUE(container_->Purge());
   EXPECT_FALSE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));
 }

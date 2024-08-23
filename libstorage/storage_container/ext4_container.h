@@ -34,16 +34,13 @@ class BRILLO_EXPORT Ext4Container : public StorageContainer {
 
   ~Ext4Container() {}
 
-  bool Purge() override;
-
   bool Setup(const FileSystemKey& encryption_key) override;
 
   bool EvictKey() override { return backing_container_->EvictKey(); }
-
   bool RestoreKey(const FileSystemKey& encryption_key) override {
     return backing_container_->RestoreKey(encryption_key);
   }
-
+  bool Purge() override { return backing_container_->Purge(); }
   bool Teardown() override { return backing_container_->Teardown(); }
 
   bool Exists() override;
