@@ -13,6 +13,7 @@ read: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 epoll_wait: 1
+eventfd2: 1
 fstat: 1
 newfstatat: 1
 stat: 1
