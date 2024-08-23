@@ -23,8 +23,6 @@ class BRILLO_EXPORT FakeClient : public Client {
       base::OnceCallback<void(bool)> handler) override;
   void RegisterProcessChangedHandler(
       const base::RepeatingCallback<void(bool)>& handler) override;
-  void RegisterDefaultServiceChangedHandler(
-      const DefaultServiceChangedHandler& handler) override;
   void RegisterDefaultDeviceChangedHandler(
       const DeviceChangedHandler& handler) override;
   void RegisterDeviceChangedHandler(
@@ -42,7 +40,6 @@ class BRILLO_EXPORT FakeClient : public Client {
  protected:
   base::OnceCallback<void(bool)> available_handler_;
   base::RepeatingCallback<void(bool)> process_handler_;
-  std::vector<DefaultServiceChangedHandler> default_service_handlers_;
   std::vector<DeviceChangedHandler> default_device_handlers_;
   std::vector<DeviceChangedHandler> device_handlers_;
   std::vector<DeviceChangedHandler> device_added_handlers_;

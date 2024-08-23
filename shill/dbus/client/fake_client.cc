@@ -20,11 +20,6 @@ void FakeClient::RegisterProcessChangedHandler(
   process_handler_ = handler;
 }
 
-void FakeClient::RegisterDefaultServiceChangedHandler(
-    const FakeClient::DefaultServiceChangedHandler& handler) {
-  default_service_handlers_.push_back(handler);
-}
-
 void FakeClient::RegisterDefaultDeviceChangedHandler(
     const FakeClient::DeviceChangedHandler& handler) {
   default_device_handlers_.push_back(handler);

@@ -150,7 +150,6 @@ class FakeClient : public Client {
 class ClientTest : public testing::Test {
  protected:
   void SetUp() override {
-    default_service_changed_ = false;
     default_device_ = {};
     devices_.clear();
     last_device_changed_.clear();
@@ -166,8 +165,6 @@ class ClientTest : public testing::Test {
     EXPECT_CALL(*base_mock_, SetNameOwnerChangedCallback(_));
 
     client_ = std::make_unique<FakeClient>(bus_mock_);
-    client_->RegisterDefaultServiceChangedHandler(base::BindRepeating(
-        &ClientTest::DefaultServiceHandler, base::Unretained(this)));
     client_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
         &ClientTest::DefaultDeviceHandler, base::Unretained(this)));
     client_->RegisterDeviceAddedHandler(base::BindRepeating(
@@ -186,10 +183,6 @@ class ClientTest : public testing::Test {
 
   void TearDown() override { client_.reset(); }
 
-  void DefaultServiceHandler(const std::string& type) {
-    default_service_type_ = type;
-    default_service_changed_ = true;
-  }
   void DeviceAddedHandler(const Client::Device* const device) {
     ASSERT_TRUE(device);
     EXPECT_TRUE(devices_.find(device->ifname) == devices_.end());
@@ -218,8 +211,6 @@ class ClientTest : public testing::Test {
   scoped_refptr<dbus::MockObjectProxy> base_mock_;
   std::unique_ptr<FakeClient> client_;
 
-  bool default_service_changed_;
-  std::string default_service_type_;
   Client::Device default_device_;
   std::map<std::string, Client::Device> devices_;
   std::string last_device_changed_;
@@ -230,26 +221,6 @@ ACTION_TEMPLATE(MovePointee,
                 HAS_1_TEMPLATE_PARAMS(int, k),
                 AND_1_VALUE_PARAMS(pointer)) {
   *pointer = std::move(*(::std::get<k>(args)));
-}
-
-TEST_F(ClientTest, DefaultServiceHandlerCalledForValidServicePath) {
-  // When the default service changes, the client will start listening for
-  // property changes on that proxy.
-  dbus::ObjectProxy::OnConnectedCallback callback;
-  EXPECT_CALL(*client_->default_service(),
-              DoRegisterPropertyChangedSignalHandler(_, _))
-      .WillOnce(MovePointee<1>(&callback));
-  client_->NotifyManagerPropertyChange(kDefaultServiceProperty,
-                                       dbus::ObjectPath("/service/0"));
-
-  brillo::VariantDictionary props;
-  props[kTypeProperty] = std::string("eth");
-  EXPECT_CALL(*client_->default_service(), GetProperties(_, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<0>(props), Return(true)));
-
-  std::move(callback).Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
-  EXPECT_TRUE(default_service_changed_);
-  EXPECT_EQ(default_service_type_, "eth");
 }
 
 TEST_F(ClientTest, DefaultDeviceDiscoveredOnNewService) {

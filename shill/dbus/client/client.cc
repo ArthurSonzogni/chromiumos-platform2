@@ -311,11 +311,6 @@ void Client::RegisterProcessChangedHandler(
   process_handler_ = handler;
 }
 
-void Client::RegisterDefaultServiceChangedHandler(
-    const DefaultServiceChangedHandler& handler) {
-  default_service_handlers_.emplace_back(handler);
-}
-
 void Client::RegisterDefaultDeviceChangedHandler(
     const DeviceChangedHandler& handler) {
   // Provide the current default device to the new handler.
@@ -430,9 +425,6 @@ void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
   // If the service is disconnected, run the handlers here since the normal flow
   // of doing so on property callback registration won't run.
   if (!service_path.IsValid() || service_path.value() == "/") {
-    for (auto& handler : default_service_handlers_) {
-      handler.Run("");
-    }
     VLOG(2) << "Default service device is removed";
     for (auto& handler : default_device_handlers_) {
       handler.Run(nullptr);
@@ -506,13 +498,6 @@ void Client::OnDefaultServicePropertyChangeRegistration(
     LOG(ERROR) << "Unable to get properties for the default service ["
                << service_path << "]";
     return;
-  }
-
-  // Notify that the default service has changed.
-  const auto type =
-      brillo::GetVariantValueOrDefault<std::string>(properties, kTypeProperty);
-  for (auto& handler : default_service_handlers_) {
-    handler.Run(type);
   }
 
   OnDefaultServicePropertyChange(

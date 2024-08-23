@@ -27,10 +27,6 @@ class MockShill : public shill::FakeClient {
               (override));
 
   MOCK_METHOD(void,
-              RegisterDefaultServiceChangedHandler,
-              (const shill::Client::DefaultServiceChangedHandler& handler),
-              (override));
-  MOCK_METHOD(void,
               RegisterDefaultDeviceChangedHandler,
               (const shill::Client::DeviceChangedHandler& handler),
               (override));

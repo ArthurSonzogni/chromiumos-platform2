@@ -200,9 +200,6 @@ class BRILLO_EXPORT Client {
 
   using ManagerPropertyAccessor =
       PropertyAccessor<org::chromium::flimflam::ManagerProxyInterface>;
-
-  using DefaultServiceChangedHandler =
-      base::RepeatingCallback<void(const std::string& type)>;
   using DeviceChangedHandler =
       base::RepeatingCallback<void(const Device* const)>;
 
@@ -226,13 +223,6 @@ class BRILLO_EXPORT Client {
   // Only one handler may be registered.
   virtual void RegisterProcessChangedHandler(
       const base::RepeatingCallback<void(bool)>& handler);
-
-  // |handler| will be invoked whenever the default service changes, i.e.
-  // whenever the default service switches from "none" to a valid path or
-  // vice-versa.
-  // Multiple handlers may be registered.
-  virtual void RegisterDefaultServiceChangedHandler(
-      const DefaultServiceChangedHandler& handler);
 
   // |handler| will be invoked whenever the device associated with the default
   // service changes. The following changes will triggers this handler:
@@ -385,8 +375,7 @@ class BRILLO_EXPORT Client {
   };
 
   // This callback is invoked whenever the default service changes, that is,
-  // when it switches from one service to another. If applicable, the callback
-  // set via RegisterDefaultServiceChangedHandler will be invoked.
+  // when it switches from one service to another.
   void HandleDefaultServiceChanged(const brillo::Any& property_value);
 
   // This callback is invoked whenever the (physical) device list provided by
@@ -445,7 +434,6 @@ class BRILLO_EXPORT Client {
   scoped_refptr<dbus::Bus> bus_;
 
   base::RepeatingCallback<void(bool)> process_handler_;
-  std::vector<DefaultServiceChangedHandler> default_service_handlers_;
   std::vector<DeviceChangedHandler> default_device_handlers_;
   std::vector<DeviceChangedHandler> device_handlers_;
   std::vector<DeviceChangedHandler> device_added_handlers_;
