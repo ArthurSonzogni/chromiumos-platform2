@@ -3419,30 +3419,10 @@ void UserDataAuth::AuthenticateAuthFactorWithSession(
       signalling_intf_, std::move(start_signal), std::move(on_done));
 
   user_data_auth::AuthenticateAuthFactorReply reply;
-
-  // |auth_factor_labels| is intended to replace |auth_factor_label|, reject
-  // requests specifying both fields.
-  // TODO(b/265151254): Deprecate |auth_factor_label| and remove this check.
-  if (!request.auth_factor_label().empty() &&
-      request.auth_factor_labels_size() > 0) {
-    LOG(ERROR) << "Cannot accept request with both auth_factor_label and "
-                  "auth_factor_labels.";
-    ReplyWithError(
-        std::move(on_done_with_signal), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataMalformedRequestInAuthAuthFactor),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
-  }
   std::vector<std::string> auth_factor_labels;
-  if (!request.auth_factor_label().empty()) {
-    auth_factor_labels.push_back(request.auth_factor_label());
-  } else {
-    for (auto label : request.auth_factor_labels()) {
-      auth_factor_labels.push_back(label);
-    }
+  auth_factor_labels.reserve(request.auth_factor_labels_size());
+  for (const auto& label : request.auth_factor_labels()) {
+    auth_factor_labels.push_back(label);
   }
 
   auto user_policy_file_status =

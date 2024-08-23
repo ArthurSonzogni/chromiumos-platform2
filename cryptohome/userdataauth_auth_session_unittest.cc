@@ -1449,7 +1449,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     user_data_auth::AuthenticateAuthFactorRequest request;
     request.set_auth_session_id(
         AuthSession::GetSerializedStringFromToken(token));
-    request.set_auth_factor_label(auth_factor_label);
+    request.add_auth_factor_labels(auth_factor_label);
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
     return AuthenticateAuthFactor(request);
@@ -1642,7 +1642,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(serialized_token);
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
@@ -1667,7 +1667,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
 
   // Act. Omit setting `auth_session_id` in the `request`.
   user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
@@ -1692,7 +1692,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id("bad-session-id");
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
@@ -1729,7 +1729,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(auth_session_id);
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
@@ -1764,7 +1764,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(serialized_token);
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
@@ -1809,7 +1809,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
   // Act.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(serialized_token);
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
@@ -1834,30 +1834,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
   // Act. Omit setting `auth_input` in `request`.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(serialized_token);
-  request.set_auth_factor_label(kPasswordLabel);
-  const user_data_auth::AuthenticateAuthFactorReply reply =
-      AuthenticateAuthFactor(request);
-
-  // Assert.
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_FALSE(reply.auth_properties().has_seconds_left());
-  EXPECT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
-  EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
-}
-
-// Test that AuthenticateAuthFactor fails when both |auth_factor_label| and
-// |auth_factor_labels| are specified.
-TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
-  // Arrange.
-  std::string serialized_token = StartAuthenticatedAuthSession(
-      kUsernameString, user_data_auth::AUTH_INTENT_DECRYPT);
-
-  // Act.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(serialized_token);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
-  request.set_auth_factor_label(kPasswordLabel);
-  request.add_auth_factor_labels(kPasswordLabel2);
+  request.add_auth_factor_labels(kPasswordLabel);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);
 
@@ -2128,7 +2105,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
       });
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(serialized_token);
-  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
   const user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticateAuthFactor(request);

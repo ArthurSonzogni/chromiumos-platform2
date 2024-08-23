@@ -5035,7 +5035,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
                                  const std::string& password) {
     user_data_auth::AuthenticateAuthFactorRequest auth_request;
     auth_request.set_auth_session_id(auth_session_id);
-    auth_request.set_auth_factor_label(label);
+    auth_request.add_auth_factor_labels(label);
     auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
     return AuthenticateAuthFactorSync(auth_request);
@@ -5047,7 +5047,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
                             const std::string& pin) {
     user_data_auth::AuthenticateAuthFactorRequest auth_request;
     auth_request.set_auth_session_id(auth_session_id);
-    auth_request.set_auth_factor_label(label);
+    auth_request.add_auth_factor_labels(label);
     auth_request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
     return AuthenticateAuthFactorSync(auth_request);
   }
@@ -5451,8 +5451,6 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
   auth_request.set_auth_session_id(session_id.value());
-  // Intentionally set empty label.
-  auth_request.set_auth_factor_label("");
   auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
       kPassword1);
 

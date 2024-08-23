@@ -308,7 +308,7 @@ bool StatefulRecovery::Mount(const Username& username,
   // Authenticate.
   user_data_auth::AuthenticateAuthFactorRequest authenticate_req;
   authenticate_req.set_auth_session_id(auth_session_reply.auth_session_id());
-  authenticate_req.set_auth_factor_label(auth_factor_label);
+  authenticate_req.add_auth_factor_labels(auth_factor_label);
   authenticate_req.mutable_auth_input()->mutable_password_input()->set_secret(
       passkey);
   user_data_auth::AuthenticateAuthFactorReply authenticate_reply;

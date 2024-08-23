@@ -102,14 +102,11 @@ CryptohomeStatus RunAddAuthFactor(
 CryptohomeStatus RunAuthenticateAuthFactor(
     const user_data_auth::AuthenticateAuthFactorRequest& request,
     AuthSession& auth_session) {
-  // Convert |auth_factor_label| or |auth_factor_labels| into an array.
+  // Convert |auth_factor_labels| into an array.
   std::vector<std::string> auth_factor_labels;
-  if (!request.auth_factor_label().empty()) {
-    auth_factor_labels.push_back(request.auth_factor_label());
-  } else {
-    for (auto label : request.auth_factor_labels()) {
-      auth_factor_labels.push_back(label);
-    }
+  auth_factor_labels.reserve(request.auth_factor_labels_size());
+  for (const auto& label : request.auth_factor_labels()) {
+    auth_factor_labels.push_back(label);
   }
   TestFuture<const AuthSession::PostAuthAction&, CryptohomeStatus> future;
   AuthSession::AuthenticateAuthFactorRequest auth_request{
@@ -138,7 +135,7 @@ CryptohomeStatus AuthenticatePasswordFactor(const std::string& label,
                                             AuthSession& auth_session) {
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(label);
+  request.add_auth_factor_labels(label);
   request.mutable_auth_input()->mutable_password_input()->set_secret(password);
   return RunAuthenticateAuthFactor(request, auth_session);
 }
@@ -177,7 +174,7 @@ CryptohomeStatus AuthenticatePinFactor(const std::string& label,
                                        AuthSession& auth_session) {
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(label);
+  request.add_auth_factor_labels(label);
   request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
   return RunAuthenticateAuthFactor(request, auth_session);
 }
@@ -261,7 +258,7 @@ CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
   // Authenticate auth factor.
   user_data_auth::AuthenticateAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kRecoveryLabel);
+  request.add_auth_factor_labels(kRecoveryLabel);
   user_data_auth::CryptohomeRecoveryAuthInput& input =
       *request.mutable_auth_input()->mutable_cryptohome_recovery_input();
   input.set_epoch_response(epoch_response.SerializeAsString());
