@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
+#include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/client.h>
@@ -368,7 +369,9 @@ void NetworkMonitor::StartIPv4ConnectionDiagnostics(
   ipv4_connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, net_base::IPFamily::kIPv4,
       net_base::IPAddress(*network_config.ipv4_gateway),
-      network_config.dns_servers, logging_tag_, dispatcher_);
+      network_config.dns_servers,
+      std::make_unique<net_base::DNSClientFactory>(), logging_tag_,
+      dispatcher_);
   ipv4_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 
@@ -396,7 +399,9 @@ void NetworkMonitor::StartIPv6ConnectionDiagnostics(
   ipv6_connection_diagnostics_ = connection_diagnostics_factory_->Create(
       interface_, interface_index_, net_base::IPFamily::kIPv6,
       net_base::IPAddress(*network_config.ipv6_gateway),
-      network_config.dns_servers, logging_tag_, dispatcher_);
+      network_config.dns_servers,
+      std::make_unique<net_base::DNSClientFactory>(), logging_tag_,
+      dispatcher_);
   ipv6_connection_diagnostics_->Start(probing_configuration_.portal_http_url);
 }
 

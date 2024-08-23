@@ -9,6 +9,7 @@
 #include <string_view>
 #include <vector>
 
+#include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
@@ -39,6 +40,7 @@ class MockConnectionDiagnosticsFactory : public ConnectionDiagnosticsFactory {
                net_base::IPFamily ip_family,
                const net_base::IPAddress& gateway,
                const std::vector<net_base::IPAddress>& dns_list,
+               std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
                std::string_view logging_tag,
                EventDispatcher* dispatcher),
               (override));

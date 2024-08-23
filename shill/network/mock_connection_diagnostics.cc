@@ -15,6 +15,7 @@ MockConnectionDiagnostics::MockConnectionDiagnostics()
           net_base::IPFamily::kIPv4,
           *net_base::IPAddress::CreateFromString("192.168.1.1"),
           {},
+          nullptr,
           "wlan1 mock_service sid=0",
           nullptr) {}
 

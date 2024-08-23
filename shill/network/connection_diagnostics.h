@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -17,6 +18,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
+#include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
 
@@ -67,13 +69,15 @@ class ConnectionDiagnostics {
   // Returns a string representation of |event|.
   static std::string EventToString(const Event& event);
 
-  ConnectionDiagnostics(std::string_view iface_name,
-                        int iface_index,
-                        net_base::IPFamily ip_family,
-                        const net_base::IPAddress& gateway,
-                        const std::vector<net_base::IPAddress>& dns_list,
-                        std::string_view logging_tag,
-                        EventDispatcher* dispatcher);
+  ConnectionDiagnostics(
+      std::string_view iface_name,
+      int iface_index,
+      net_base::IPFamily ip_family,
+      const net_base::IPAddress& gateway,
+      const std::vector<net_base::IPAddress>& dns_list,
+      std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
+      std::string_view logging_tag,
+      EventDispatcher* dispatcher);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
 
@@ -116,7 +120,6 @@ class ConnectionDiagnostics {
   // Attempts to resolve the IP address of the hostname of |url| using
   // |dns_list|.
   void ResolveTargetServerIPAddress(
-      int dns_resolution_diagnostic_id,
       const net_base::HttpUrl& url,
       const std::vector<net_base::IPAddress>& dns_list);
 
@@ -148,8 +151,9 @@ class ConnectionDiagnostics {
 
   // Called after the DNS IP address resolution on started in
   // ConnectionDiagnostics::ResolveTargetServerIPAddress completes.
-  void OnDNSResolutionComplete(
-      const base::expected<net_base::IPAddress, Error>& address);
+  void OnDNSResolutionComplete(int diagnostic_id,
+                               const net_base::IPAddress& dns,
+                               const net_base::DNSClient::Result& result);
 
   // Called after the IcmpSession started in ConnectionDiagnostics::PingHost on
   // |address_pinged| finishes or times out. |ping_event_type| indicates the
@@ -172,6 +176,7 @@ class ConnectionDiagnostics {
   void ClearDiagnosticId(int diag_id);
 
   EventDispatcher* dispatcher_;
+  std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
 
   // The name of the network interface associated with the connection.
   std::string iface_name_;
@@ -183,9 +188,12 @@ class ConnectionDiagnostics {
   net_base::IPAddress gateway_;
   std::vector<net_base::IPAddress> dns_list_;
 
-  // TODO(b/307880493): Migrate to net_base::DNSClient.
-  int host_dns_resolution_diag_id_;
-  std::unique_ptr<DnsClient> dns_client_;
+  // All DNS queries resolving the host of |target_url_| currently in-flight,
+  // keyed by the DNS server address.
+  std::map<net_base::IPAddress, std::unique_ptr<net_base::DNSClient>>
+      dns_queries_;
+  // All addresses for the host of |target_url_| found with DNS queries so far.
+  std::set<net_base::IPAddress> target_url_addresses_;
 
   // Used to ping multiple DNS servers in parallel.
   std::map<int, std::unique_ptr<IcmpSession>>
@@ -222,6 +230,7 @@ class ConnectionDiagnosticsFactory {
       net_base::IPFamily ip_family,
       const net_base::IPAddress& gateway,
       const std::vector<net_base::IPAddress>& dns_list,
+      std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
       std::string_view logging_tag,
       EventDispatcher* dispatcher);
 };

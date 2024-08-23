@@ -723,7 +723,7 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
   // ConnectionDiagnostics should be started for both IPv4 and IPv6.
   EXPECT_CALL(*mock_connection_diagnostics_factory_,
               Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv4,
-                     net_base::IPAddress(kIPv4GatewayAddress), dns, _, _))
+                     net_base::IPAddress(kIPv4GatewayAddress), dns, _, _, _))
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();
@@ -732,7 +732,7 @@ TEST_F(NetworkMonitorTest, DualStackConnectionDiagnostics) {
       });
   EXPECT_CALL(*mock_connection_diagnostics_factory_,
               Create(kInterface, kInterfaceIndex, net_base::IPFamily::kIPv6,
-                     net_base::IPAddress(kIPv6GatewayAddress), dns, _, _))
+                     net_base::IPAddress(kIPv6GatewayAddress), dns, _, _, _))
       .WillRepeatedly([]() {
         auto mock_connection_diagnostics =
             std::make_unique<MockConnectionDiagnostics>();

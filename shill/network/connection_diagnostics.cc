@@ -14,9 +14,10 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
+#include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/http_url.h>
 
-#include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -25,11 +26,10 @@
 #include "shill/network/icmp_session.h"
 
 namespace {
-// These strings are dependent on ConnectionDiagnostics::Type. Any changes to
-// this array should be synced with ConnectionDiagnostics::Type.
-// These strings are dependent on ConnectionDiagnostics::Result. Any changes to
-// this array should be synced with ConnectionDiagnostics::Result.
-
+// Maximum number of query tries per name server.
+constexpr int kDNSNumberOfQueries = 2;
+// Timeout of a single query to a single name server.
+constexpr base::TimeDelta kDNSTimeoutOfQueries = base::Seconds(2);
 }  // namespace
 
 namespace shill {
@@ -72,23 +72,20 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     net_base::IPFamily ip_family,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
+    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
     std::string_view logging_tag,
     EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
+      dns_client_factory_(std::move(dns_client_factory)),
       iface_name_(iface_name),
       iface_index_(iface_index),
       ip_family_(ip_family),
       gateway_(gateway),
-      host_dns_resolution_diag_id_(0),
       running_(false),
       event_number_(0),
       logging_tag_(logging_tag),
       next_diagnostic_id_(0),
       weak_ptr_factory_(this) {
-  dns_client_ = std::make_unique<DnsClient>(
-      ip_family_, iface_name, DnsClient::kDnsTimeout, dispatcher_,
-      base::BindRepeating(&ConnectionDiagnostics::OnDNSResolutionComplete,
-                          weak_ptr_factory_.GetWeakPtr()));
   for (const auto& dns : dns_list) {
     if (dns.GetFamily() == ip_family) {
       dns_list_.push_back(dns);
@@ -122,7 +119,8 @@ void ConnectionDiagnostics::Stop() {
             << " diagnostics";
   running_ = false;
   event_number_ = 0;
-  dns_client_.reset();
+  dns_queries_.clear();
+  target_url_addresses_.clear();
   id_to_pending_dns_server_icmp_session_.clear();
   icmp_sessions_.clear();
 }
@@ -171,33 +169,31 @@ void ConnectionDiagnostics::PrintEvents() {
 }
 
 void ConnectionDiagnostics::StartHostDiagnostic(const net_base::HttpUrl& url) {
-  host_dns_resolution_diag_id_ = AssignDiagnosticId(
-      Type::kResolveTargetServerIP, "Resolving " + url.host());
   dispatcher_->PostTask(
       FROM_HERE,
       base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                     weak_ptr_factory_.GetWeakPtr(),
-                     host_dns_resolution_diag_id_, url, dns_list_));
+                     weak_ptr_factory_.GetWeakPtr(), url, dns_list_));
 }
 
 void ConnectionDiagnostics::ResolveTargetServerIPAddress(
-    int dns_resolution_diagnostic_id,
     const net_base::HttpUrl& url,
     const std::vector<net_base::IPAddress>& dns_list) {
-  std::vector<std::string> dns;
-  for (const auto& addr : dns_list) {
-    dns.push_back(addr.ToString());
+  for (const auto& dns : dns_list) {
+    net_base::DNSClient::Options opts = {
+        .number_of_tries = kDNSNumberOfQueries,
+        .per_query_initial_timeout = kDNSTimeoutOfQueries,
+        .interface = iface_name_,
+        .name_server = dns,
+    };
+    int diagnostic_id = AssignDiagnosticId(
+        Type::kResolveTargetServerIP,
+        "Resolving " + url.host() + " with DNS " + dns.ToString());
+    dns_queries_[dns] = dns_client_factory_->Resolve(
+        ip_family_, url.host(),
+        base::BindOnce(&ConnectionDiagnostics::OnDNSResolutionComplete,
+                       weak_ptr_factory_.GetWeakPtr(), diagnostic_id, dns),
+        opts);
   }
-
-  Error e;
-  if (!dns_client_->Start(dns, url.host(), &e)) {
-    LogEvent(dns_resolution_diagnostic_id, Type::kResolveTargetServerIP,
-             Result::kFailure, "Could not start DNS: " + e.message());
-    Stop();
-    return;
-  }
-
-  SLOG(2) << logging_tag_ << " " << __func__ << ": looking up " << url.host();
 }
 
 void ConnectionDiagnostics::StartDNSServerPingDiagnostic() {
@@ -298,16 +294,40 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
 }
 
 void ConnectionDiagnostics::OnDNSResolutionComplete(
-    const base::expected<net_base::IPAddress, Error>& address) {
-  SLOG(2) << logging_tag_ << " " << __func__;
-  if (address.has_value()) {
-    LogEvent(host_dns_resolution_diag_id_, Type::kResolveTargetServerIP,
-             Result::kSuccess, "Target address is " + address->ToString());
-    StartPingDiagnostic(Type::kPingTargetServer, *address);
+    int diagnostic_id,
+    const net_base::IPAddress& dns,
+    const net_base::DNSClient::Result& result) {
+  if (result.has_value()) {
+    std::string message = dns.ToString() + " returned ";
+    std::string sep = "";
+    for (const auto addr : *result) {
+      message += sep;
+      message += addr.ToString();
+      sep = ", ";
+    }
+    LogEvent(diagnostic_id, Type::kResolveTargetServerIP, Result::kSuccess,
+             message);
+    target_url_addresses_.insert(result->begin(), result->end());
   } else {
-    LogEvent(host_dns_resolution_diag_id_, Type::kResolveTargetServerIP,
-             Result::kFailure, address.error().message());
-    Stop();
+    std::string message =
+        base::StrCat({"DNS ", dns.ToString(), ": ",
+                      net_base::DNSClient::ErrorName(result.error())});
+    LogEvent(diagnostic_id, Type::kResolveTargetServerIP, Result::kFailure,
+             message);
+  }
+
+  dns_queries_.erase(dns);
+
+  // Starts pinging the addresses of the target host if all queries have
+  // finished.
+  if (dns_queries_.empty()) {
+    if (target_url_addresses_.empty()) {
+      Stop();
+      return;
+    }
+    for (const auto& target_addr : target_url_addresses_) {
+      StartPingDiagnostic(Type::kPingTargetServer, target_addr);
+    }
   }
 }
 
@@ -319,9 +339,14 @@ void ConnectionDiagnostics::OnPingHostComplete(
   SLOG(2) << logging_tag_ << " " << __func__ << "(" << address_pinged << ")";
   OnPingResult(diagnostic_id, event_type, address_pinged, result);
   icmp_sessions_.erase(address_pinged);
-  // Pinging the target server is the last operation.
   if (event_type == Type::kPingTargetServer) {
-    Stop();
+    // Pinging the last address of the target server is the last operation.
+    // TODO(b/229309479) This is actually not true if for some reasons some of
+    // the parallel sessions end later.
+    target_url_addresses_.erase(address_pinged);
+    if (target_url_addresses_.empty()) {
+      Stop();
+    }
   }
 }
 
@@ -354,11 +379,12 @@ std::unique_ptr<ConnectionDiagnostics> ConnectionDiagnosticsFactory::Create(
     net_base::IPFamily ip_family,
     const net_base::IPAddress& gateway,
     const std::vector<net_base::IPAddress>& dns_list,
+    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
     std::string_view logging_tag,
     EventDispatcher* dispatcher) {
-  return std::make_unique<ConnectionDiagnostics>(iface_name, iface_index,
-                                                 ip_family, gateway, dns_list,
-                                                 logging_tag, dispatcher);
+  return std::make_unique<ConnectionDiagnostics>(
+      iface_name, iface_index, ip_family, gateway, dns_list,
+      std::move(dns_client_factory), logging_tag, dispatcher);
 }
 
 std::unique_ptr<IcmpSession> ConnectionDiagnostics::StartIcmpSession(
