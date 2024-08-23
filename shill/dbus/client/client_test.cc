@@ -39,11 +39,8 @@ namespace {
 class FakeClient : public Client {
  public:
   explicit FakeClient(scoped_refptr<dbus::Bus> bus)
-      : Client(bus),
-        manager_mock_(new ManagerProxyMock),
-        service_mock_(new ServiceProxyMock) {
+      : Client(bus), manager_mock_(new ManagerProxyMock) {
     manager_proxy_.reset(manager_mock_);
-    default_service_proxy_.reset(service_mock_);
   }
   virtual ~FakeClient() = default;
 
@@ -55,11 +52,6 @@ class FakeClient : public Client {
   void NotifyManagerPropertyChange(const std::string& name,
                                    const brillo::Any& value) {
     OnManagerPropertyChange(name, value);
-  }
-
-  void NotifyDefaultServicePropertyChange(const std::string& name,
-                                          const brillo::Any& value) {
-    OnDefaultServicePropertyChange(name, value);
   }
 
   void NotifyDevicePropertyChange(const std::string& path,
@@ -75,8 +67,6 @@ class FakeClient : public Client {
   }
 
   ManagerProxyMock* manager() { return manager_mock_; }
-  ServiceProxyMock* default_service() { return service_mock_; }
-  dbus::ObjectPath default_service_path() { return service_path_; }
 
   DeviceProxyMock* PreMakeDevice(const dbus::ObjectPath& device_path) {
     auto* mock = new DeviceProxyMock();
@@ -105,13 +95,6 @@ class FakeClient : public Client {
   }
 
  protected:
-  // Erase the default implementations so we can keep the same proxy pointers
-  // throughout.
-  void NewDefaultServiceProxy(const dbus::ObjectPath& service_path) override {
-    service_path_ = service_path;
-  }
-  void ReleaseDefaultServiceProxy() override {}
-
   // Pass back the pre-allocated device which is necessary for correctly setting
   // expectations in tests. Unfortunately this isn't going to let us re-add a
   // device with the same path.
@@ -134,15 +117,12 @@ class FakeClient : public Client {
     ServiceProxyMock* ptr = (it == service_mocks_.end())
                                 ? PreMakeService(service_path)
                                 : it->second;
-
     std::unique_ptr<ServiceProxyMock> mock;
     mock.reset(ptr);
     return mock;
   }
 
   ManagerProxyMock* manager_mock_;
-  ServiceProxyMock* service_mock_;
-  dbus::ObjectPath service_path_;
   std::map<std::string, DeviceProxyMock*> device_mocks_;
   std::map<std::string, ServiceProxyMock*> service_mocks_;
 };
@@ -173,12 +153,6 @@ class ClientTest : public testing::Test {
         &ClientTest::DeviceRemovedHandler, base::Unretained(this)));
     client_->RegisterDeviceChangedHandler(base::BindRepeating(
         &ClientTest::DeviceChangedHandler, base::Unretained(this)));
-
-    // These are not blindly added - we expect the Client to issue these calls
-    // on the service in order to recover the path.
-    EXPECT_CALL(*client_->default_service(), GetObjectPath)
-        .WillRepeatedly(
-            Invoke([&]() { return client_->default_service_path(); }));
   }
 
   void TearDown() override { client_.reset(); }
@@ -223,7 +197,7 @@ ACTION_TEMPLATE(MovePointee,
   *pointer = std::move(*(::std::get<k>(args)));
 }
 
-TEST_F(ClientTest, DefaultDeviceDiscoveredOnNewService) {
+TEST_F(ClientTest, DefaultServiceChangeCallsDefaultHandler) {
   // We want the device to exist first so the client doesn't run through the new
   // device setup process when it detects the change.
   const dbus::ObjectPath device_path("/device/eth0");
@@ -246,26 +220,18 @@ TEST_F(ClientTest, DefaultDeviceDiscoveredOnNewService) {
   std::move(device_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
 
-  // This configures the default service properties and fires the initial
-  // callback that is normally run after the proxy registers.
-  const dbus::ObjectPath service_path("/service/0");
-  auto* mock_service = client_->default_service();
-  dbus::ObjectProxy::OnConnectedCallback service_callback;
-  EXPECT_CALL(*mock_service, DoRegisterPropertyChangedSignalHandler(_, _))
-      .WillOnce(MovePointee<1>(&service_callback));
-
-  client_->NotifyManagerPropertyChange(kDefaultServiceProperty, service_path);
-
-  brillo::VariantDictionary service_props;
-  service_props[kIsConnectedProperty] = true;
-  service_props[kDeviceProperty] = device_path;
-  EXPECT_CALL(*mock_service, GetProperties(_, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
-
   EXPECT_EQ(default_device_.ifname, "");
 
-  std::move(service_callback)
-      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
+  // Set the default service.
+  const dbus::ObjectPath service_path("/service/1");
+  auto* mock_default_service = client_->PreMakeService(service_path);
+  brillo::VariantDictionary service_props;
+  service_props[kDeviceProperty] = device_path;
+  EXPECT_CALL(*mock_default_service, GetProperties)
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
+
+  client_->NotifyManagerPropertyChange(kDefaultServiceProperty, service_path);
 
   EXPECT_EQ(default_device_.ifname, "eth0");
 }
@@ -293,62 +259,23 @@ TEST_F(ClientTest, DefaultServiceDisconnectedCallsDefaultHandler) {
   std::move(device_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
 
-  // Set the default device.
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, device_path);
+  // Set the default service.
+  const dbus::ObjectPath service_path("/service/1");
+  auto* mock_default_service = client_->PreMakeService(service_path);
+  brillo::VariantDictionary service_props;
+  service_props[kDeviceProperty] = device_path;
+  EXPECT_CALL(*mock_default_service, GetProperties)
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
 
-  // IsConnected property change should not trigger the handler.
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, false);
+  client_->NotifyManagerPropertyChange(kDefaultServiceProperty, service_path);
+
   EXPECT_EQ(default_device_.ifname, "eth0");
 
   // Service disconnection should trigger the handler.
   client_->NotifyManagerPropertyChange(kDefaultServiceProperty,
                                        dbus::ObjectPath("/"));
   EXPECT_EQ(default_device_.ifname, "");
-}
-
-TEST_F(ClientTest, DefaultServiceDeviceChangeCallsDefaultHandler) {
-  // Add the devices.
-  const dbus::ObjectPath eth0_path("/device/eth0"), wlan0_path("/device/wlan0"),
-      eth0_service_path("service/0"), wlan0_service_path("/service/1");
-  auto* eth0_device = client_->PreMakeDevice(eth0_path);
-  auto* wlan0_device = client_->PreMakeDevice(wlan0_path);
-  dbus::ObjectProxy::OnConnectedCallback eth0_callback, wlan0_callback;
-  EXPECT_CALL(*eth0_device, DoRegisterPropertyChangedSignalHandler(_, _))
-      .WillOnce(MovePointee<1>(&eth0_callback));
-  EXPECT_CALL(*wlan0_device, DoRegisterPropertyChangedSignalHandler(_, _))
-      .WillOnce(MovePointee<1>(&wlan0_callback));
-
-  client_->NotifyManagerPropertyChange(
-      kDevicesProperty, std::vector<dbus::ObjectPath>({eth0_path, wlan0_path}));
-
-  brillo::VariantDictionary eth0_props, wlan0_props;
-  eth0_props[kTypeProperty] = std::string(kTypeEthernet);
-  eth0_props[kInterfaceProperty] = std::string("eth0");
-  eth0_props[kSelectedServiceProperty] = eth0_service_path;
-  EXPECT_CALL(*eth0_device, GetProperties(_, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<0>(eth0_props), Return(true)));
-  wlan0_props[kTypeProperty] = std::string(kTypeWifi);
-  wlan0_props[kInterfaceProperty] = std::string("wlan0");
-  wlan0_props[kSelectedServiceProperty] = wlan0_service_path;
-  EXPECT_CALL(*wlan0_device, GetProperties(_, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<0>(wlan0_props), Return(true)));
-
-  std::move(eth0_callback)
-      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
-  std::move(wlan0_callback)
-      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
-
-  // Set up initial state.
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, eth0_path);
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-
-  EXPECT_EQ(default_device_.ifname, "eth0");
-
-  // Now trigger the default device change to wifi.
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, wlan0_path);
-
-  EXPECT_EQ(default_device_.ifname, "wlan0");
 }
 
 TEST_F(ClientTest, DefaultServiceChangeAddsDefaultDeviceIfMissing) {
@@ -372,9 +299,16 @@ TEST_F(ClientTest, DefaultServiceChangeAddsDefaultDeviceIfMissing) {
   EXPECT_CALL(*mock_device, GetProperties(_, _, _))
       .WillOnce(DoAll(testing::SetArgPointee<0>(device_props), Return(true)));
 
+  const dbus::ObjectPath service_path("/service/vpn");
+  auto* mock_default_service = client_->PreMakeService(service_path);
+  brillo::VariantDictionary service_props;
+  service_props[kDeviceProperty] = device_path;
+  EXPECT_CALL(*mock_default_service, GetProperties)
+      .WillRepeatedly(
+          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
+
   // Trigger the state change.
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, device_path);
+  client_->NotifyManagerPropertyChange(kDefaultServiceProperty, service_path);
 
   std::move(device_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
@@ -715,14 +649,21 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceStateChange) {
   EXPECT_CALL(*wlan0_device, GetProperties(_, _, _))
       .WillOnce(DoAll(testing::SetArgPointee<0>(wlan0_props), Return(true)));
 
-  brillo::VariantDictionary service_props;
-  service_props[kStateProperty] = std::string(kStateOnline);
-  EXPECT_CALL(*eth0_service, GetProperties(_, _, _))
+  brillo::VariantDictionary eth0_service_props, wlan0_service_props;
+  eth0_service_props[kStateProperty] = std::string(kStateOnline);
+  eth0_service_props[kDeviceProperty] = dbus::ObjectPath(eth0_path);
+  wlan0_service_props[kStateProperty] = std::string(kStateOnline);
+  wlan0_service_props[kDeviceProperty] = dbus::ObjectPath(wlan0_path);
+
+  EXPECT_CALL(*eth0_service, GetProperties)
       .WillRepeatedly(
-          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
-  EXPECT_CALL(*wlan0_service, GetProperties(_, _, _))
+          DoAll(testing::SetArgPointee<0>(eth0_service_props), Return(true)));
+  EXPECT_CALL(*wlan0_service, GetProperties)
       .WillRepeatedly(
-          DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
+          DoAll(testing::SetArgPointee<0>(wlan0_service_props), Return(true)));
+
+  // We don't set default service and do the related check here, since it's
+  // would be hard to do that under the current architecture.
 
   std::move(eth0_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
@@ -733,26 +674,16 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceStateChange) {
   std::move(wlan0_service_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
 
-  // Set up initial state.
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, eth0_path);
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-
   last_device_changed_.clear();
-  // First check the non-default device.
   client_->NotifyServicePropertyChange("/device/wlan0", kStateProperty,
                                        std::string(kStateFailure));
   EXPECT_EQ(last_device_changed_, "wlan0");
   EXPECT_EQ(last_device_cxn_state_, Client::Device::ConnectionState::kFailure);
 
-  // Now the default. We're also going to verify the default device handler is
-  // called next, so clear that state first as well.
-  default_device_ = {};
   client_->NotifyServicePropertyChange("/device/eth0", kStateProperty,
                                        std::string(kStateReady));
   EXPECT_EQ(last_device_changed_, "eth0");
   EXPECT_EQ(last_device_cxn_state_, Client::Device::ConnectionState::kReady);
-  EXPECT_EQ(default_device_.state, Client::Device::ConnectionState::kReady);
-  EXPECT_EQ(default_device_.ifname, "eth0");
 }
 
 TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceChange) {
@@ -793,9 +724,6 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceChange) {
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
   std::move(service0_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
-  // Set up initial state.
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, wlan0_path);
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
 
   last_device_changed_.clear();
   client_->NotifyDevicePropertyChange("/device/wlan0", kSelectedServiceProperty,

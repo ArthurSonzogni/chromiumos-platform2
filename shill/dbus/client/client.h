@@ -290,12 +290,6 @@ class BRILLO_EXPORT Client {
   void OnManagerPropertyChange(const std::string& property_name,
                                const brillo::Any& property_value);
 
-  // This callback is invoked whenever the default service property change
-  // signal is received; if the property is one we pay attention to the
-  // corresponding Handler*Changed handler will be called.
-  void OnDefaultServicePropertyChange(const std::string& property_name,
-                                      const brillo::Any& property_value);
-
   // This callback is invoked whenever a device property change signal is
   // received; if the property is one we pay attention to the corresponding
   // handler will be invoked.
@@ -312,11 +306,6 @@ class BRILLO_EXPORT Client {
                                const std::string& property_name,
                                const brillo::Any& property_value);
 
-  // Methods for managing proxy objects. These are overridden in tests to ensure
-  // registration hooks, callbacks and properties can be plumbed back through
-  // the interfaces as needed.
-  virtual void NewDefaultServiceProxy(const dbus::ObjectPath& service_path);
-  virtual void ReleaseDefaultServiceProxy();
   virtual std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>
   NewDeviceProxy(const dbus::ObjectPath& device_path);
   virtual std::unique_ptr<org::chromium::flimflam::ServiceProxyInterface>
@@ -324,8 +313,6 @@ class BRILLO_EXPORT Client {
 
   std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface>
       manager_proxy_;
-  std::unique_ptr<org::chromium::flimflam::ServiceProxyInterface>
-      default_service_proxy_;
 
  private:
   // Wraps a device with its DBus proxy on which property change signals are
@@ -400,14 +387,6 @@ class BRILLO_EXPORT Client {
                                            const std::string& signal_name,
                                            bool success);
 
-  // This callback is invoked whenever a new default service proxy is created.
-  // It will trigger the discovery of the device associated with the default
-  // service.
-  void OnDefaultServicePropertyChangeRegistration(
-      const std::string& interface,
-      const std::string& signal_name,
-      bool success);
-
   // This callback is invoked whenever a new device proxy is created. It will
   // trigger the discovery of the device properties we care about including its
   // type, interface name and IP configuration.
@@ -424,7 +403,6 @@ class BRILLO_EXPORT Client {
                                            const std::string& signal_name,
                                            bool success);
 
-  void SetupDefaultServiceProxy(const dbus::ObjectPath& service_path);
   void SetupSelectedServiceProxy(const dbus::ObjectPath& service_path,
                                  const dbus::ObjectPath& device_path);
   void SetupDeviceProxy(const dbus::ObjectPath& device_path);
@@ -440,6 +418,7 @@ class BRILLO_EXPORT Client {
   std::vector<DeviceChangedHandler> device_removed_handlers_;
 
   std::string default_device_path_;
+  std::string default_service_path_;
 
   // Tracked devices keyed by path.
   std::map<std::string, std::unique_ptr<DeviceWrapper>> devices_;

@@ -235,30 +235,6 @@ Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
                      weak_factory_.GetWeakPtr()));
 }
 
-void Client::NewDefaultServiceProxy(const dbus::ObjectPath& service_path) {
-  default_service_proxy_ = std::make_unique<ServiceProxy>(bus_, service_path);
-}
-
-void Client::SetupDefaultServiceProxy(const dbus::ObjectPath& service_path) {
-  NewDefaultServiceProxy(service_path);
-  default_service_proxy_->RegisterPropertyChangedSignalHandler(
-      base::BindRepeating(&Client::OnDefaultServicePropertyChange,
-                          weak_factory_.GetWeakPtr()),
-      base::BindOnce(&Client::OnDefaultServicePropertyChangeRegistration,
-                     weak_factory_.GetWeakPtr()));
-}
-
-void Client::ReleaseDefaultServiceProxy() {
-  default_device_path_.clear();
-
-  if (default_service_proxy_) {
-    bus_->RemoveObjectProxy(kFlimflamServiceName,
-                            default_service_proxy_->GetObjectPath(),
-                            base::DoNothing());
-    default_service_proxy_.reset();
-  }
-}
-
 std::unique_ptr<DeviceProxyInterface> Client::NewDeviceProxy(
     const dbus::ObjectPath& device_path) {
   return std::make_unique<DeviceProxy>(bus_, device_path);
@@ -351,7 +327,6 @@ void Client::OnOwnerChange(const std::string& old_owner,
     return;
   }
 
-  ReleaseDefaultServiceProxy();
   for (const auto& device : devices_) {
     device.second->release_object_proxy();
   }
@@ -408,22 +383,22 @@ void Client::OnManagerPropertyChange(const std::string& property_name,
 }
 
 void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
-  dbus::ObjectPath cur_path,
-      service_path = property_value.TryGet<dbus::ObjectPath>();
-  if (default_service_proxy_) {
-    cur_path = default_service_proxy_->GetObjectPath();
-  }
-
-  if (service_path == cur_path) {
+  dbus::ObjectPath service_path = property_value.TryGet<dbus::ObjectPath>();
+  if (service_path.value() == default_service_path_) {
     return;
   }
 
-  LOG(INFO) << "Default service changed from [" << cur_path.value() << "] to ["
-            << service_path.value() << "]";
-  ReleaseDefaultServiceProxy();
+  LOG(INFO) << "Default service changed from [" << default_service_path_
+            << "] to [" << service_path.value() << "]";
 
-  // If the service is disconnected, run the handlers here since the normal flow
-  // of doing so on property callback registration won't run.
+  default_service_path_ = service_path.value();
+
+  // Reset the default device path at first. This will be set at the end of this
+  // function if we can get it.
+  default_device_path_ = "";
+
+  // If the service is disconnected, run the handlers here since the normal
+  // flow of doing so on property callback registration won't run.
   if (!service_path.IsValid() || service_path.value() == "/") {
     VLOG(2) << "Default service device is removed";
     for (auto& handler : default_device_handlers_) {
@@ -432,7 +407,36 @@ void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
     return;
   }
 
-  SetupDefaultServiceProxy(service_path);
+  // Otherwise try to get the device path attached to this new service.
+  auto proxy = NewServiceProxy(service_path);
+  brillo::VariantDictionary properties;
+  if (!proxy->GetProperties(&properties, /*error=*/nullptr)) {
+    LOG(ERROR) << "Unable to get properties for the new default service "
+               << service_path.value();
+    return;
+  }
+
+  const auto device_path =
+      GetVariant<dbus::ObjectPath>(properties, shill::kDeviceProperty);
+  if (device_path.value() == "" || device_path.value() == "/") {
+    LOG(ERROR) << "Selected service " << service_path.value()
+               << " has an invalid Device " << device_path.value();
+    return;
+  }
+
+  default_device_path_ = device_path.value();
+
+  // We generally expect to already be aware of the default device unless it
+  // happens to be a VPN. In the case of the latter, add and track it (this will
+  // ultimately fire the same handler after reading all the properties.
+  const auto& it = devices_.find(default_device_path_);
+  if (it != devices_.end()) {
+    for (auto& handler : default_device_handlers_) {
+      handler.Run(it->second->device());
+    }
+  } else {
+    AddDevice(device_path);
+  }
 }
 
 void Client::AddDevice(const dbus::ObjectPath& device_path) {
@@ -468,79 +472,6 @@ void Client::HandleDevicesChanged(const brillo::Any& property_value) {
     } else {
       ++it;
     }
-  }
-}
-
-void Client::OnDefaultServicePropertyChangeRegistration(
-    const std::string& interface,
-    const std::string& signal_name,
-    bool success) {
-  if (!success) {
-    std::string path;
-    if (default_service_proxy_) {
-      path = default_service_proxy_->GetObjectPath().value();
-    }
-
-    LOG(ERROR) << "Unable to register for Service [" << path
-               << "] change events " << " for " << signal_name << " on "
-               << interface;
-    return;
-  }
-
-  if (!default_service_proxy_) {
-    LOG(ERROR) << "No default service";
-    return;
-  }
-  const std::string service_path =
-      default_service_proxy_->GetObjectPath().value();
-  brillo::VariantDictionary properties;
-  if (!default_service_proxy_->GetProperties(&properties, nullptr)) {
-    LOG(ERROR) << "Unable to get properties for the default service ["
-               << service_path << "]";
-    return;
-  }
-
-  OnDefaultServicePropertyChange(
-      kIsConnectedProperty,
-      brillo::GetVariantValueOrDefault<bool>(properties, kIsConnectedProperty));
-  OnDefaultServicePropertyChange(
-      kDeviceProperty, brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
-                           properties, kDeviceProperty));
-}
-
-void Client::OnDefaultServicePropertyChange(const std::string& property_name,
-                                            const brillo::Any& property_value) {
-  if (property_name != kDeviceProperty) {
-    return;
-  }
-
-  std::string path = property_value.TryGet<dbus::ObjectPath>().value();
-  if (path == default_device_path_) {
-    return;
-  }
-
-  VLOG(2) << "Default service device changed to [" << path << "]";
-  default_device_path_ = path;
-
-  // When there is no service, run the handlers with a nullptr to indicate this
-  // condition.
-  if (default_device_path_ == "" || default_device_path_ == "/") {
-    for (auto& handler : default_device_handlers_) {
-      handler.Run(nullptr);
-    }
-    return;
-  }
-
-  // We generally expect to already be aware of the default device unless it
-  // happens to be a VPN. In the case of the latter, add and track it (this will
-  // ultimately fire the same handler after reading all the properties.
-  const auto& it = devices_.find(default_device_path_);
-  if (it != devices_.end()) {
-    for (auto& handler : default_device_handlers_) {
-      handler.Run(it->second->device());
-    }
-  } else {
-    AddDevice(dbus::ObjectPath(default_device_path_));
   }
 }
 
