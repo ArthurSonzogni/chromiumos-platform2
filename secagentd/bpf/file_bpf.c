@@ -51,6 +51,16 @@ const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 #define CROS_ATTR_ATIME_SET (1 << 7)
 #define CROS_ATTR_MTIME_SET (1 << 8)
 
+// These are used to satisfy bpf verifier to assume that we would always be
+// reading path smaller than the max allowed length, theoretically this will
+// only trim segment greater than max length, which probably won't happen in
+// practicality
+#define MAX_PATH_BUFFER_SIZE (MAX_PATH_SIZE << 1)
+#define HALF_MAX_BUFFER_SIZE (MAX_PATH_BUFFER_SIZE >> 1)
+#define LIMIT_HALF_MAX_BUFFER_SIZE(x) ((x) & (HALF_MAX_BUFFER_SIZE - 1))
+
+#define LIMIT_PATH_SIZE(x) ((x) & (MAX_PATH_SIZE - 1))
+
 // Copied from fs.h, remain same across architecture/filesystems/kernels
 #define MS_NOEXEC 8 /* Disallow program execution */
 
@@ -159,6 +169,147 @@ struct {
   __type(value,
          struct before_attribute_map_value);  // Value type (inode attributes)
 } before_attr_map SEC(".maps");
+
+struct buffer {
+  u8 data[MAX_PATH_BUFFER_SIZE];
+};
+
+struct {
+  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+  __type(key, u32);
+  __type(value, struct buffer);
+  __uint(max_entries, 1);
+} file_path_buffer_map SEC(".maps");
+
+static __attribute__((__always_inline__)) struct buffer*
+get_file_path_buffer() {
+  u32 zero = 0;
+  return (struct buffer*)bpf_map_lookup_elem(&file_path_buffer_map, &zero);
+}
+
+/**
+ * Construct a path as a string from struct path object.
+ *
+ * 1. get_file_path_buffer() retrieves a
+ * pre-allocated buffer to store the constructed file path.
+ * 2. Iterates through the file path components, starting from the given file
+ * and moving upwards toward the root of the file system.
+ * 3. Specific logic to handle situations
+ * where the file path crosses mount points, ensuring accurate construction of
+ * the full path across various file systems.
+ * 4. In each iteration, name of the current path
+ * component is copied into the buffer, with slashes added as separators.
+ * 5. checks if the buffer has enough space to store
+ * each component name and the final null terminator.
+ * Returns a pointer to the start of the constructed path
+ * string and the length of the path is returned.
+
+ **/
+static __attribute__((__always_inline__)) long resolve_path_to_string(
+    u_char** path_str, struct path* path) {
+  long ret;
+  struct dentry *curr_dentry, *d_parent, *mnt_root;
+  struct vfsmount* curr_vfsmount;
+  struct mount *mnt, *mnt_parent;
+  const u_char* name;
+  size_t name_len;
+
+  struct buffer* out_buf = get_file_path_buffer();
+  if (!out_buf) {
+    bpf_printk(
+        "resolve_path_to_string: Unable to retrieve buffer from bpf map.");
+    return -1;
+  }
+
+  curr_dentry = BPF_CORE_READ(path, dentry);
+  curr_vfsmount = BPF_CORE_READ(path, mnt);
+  mnt = container_of(curr_vfsmount, struct mount, mnt);
+  mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
+
+  size_t buf_off =
+      HALF_MAX_BUFFER_SIZE;  // Initialize buffer offset to halfway point
+
+#pragma unroll
+  for (int i = 0; i < MAX_PATH_DEPTH; i++) {
+    mnt_root = BPF_CORE_READ(curr_vfsmount, mnt_root);
+    d_parent = BPF_CORE_READ(curr_dentry, d_parent);
+
+    // Check if we've reached the root of the current mount or the filesystem
+    if (curr_dentry == mnt_root || curr_dentry == d_parent) {
+      if (curr_dentry != mnt_root) {
+        // If we've reached the root but not the mount root, something is wrong;
+        // break
+        break;
+      }
+      if (mnt != mnt_parent) {
+        // Reached root of current filesystem, set mnt to parent filesystem and
+        // continue path construction.
+        curr_dentry = BPF_CORE_READ(mnt, mnt_mountpoint);
+        mnt = BPF_CORE_READ(mnt, mnt_parent);
+        mnt_parent = BPF_CORE_READ(mnt, mnt_parent);
+        curr_vfsmount = __builtin_preserve_access_index(&mnt->mnt);
+        continue;
+      }
+      // Reached root of the current mount namespace. mnt has no more parents.
+      break;
+    }
+
+    // Get the current dentry name and its length
+    name_len = LIMIT_PATH_SIZE(BPF_CORE_READ(curr_dentry, d_name.len));
+    name = BPF_CORE_READ(curr_dentry, d_name.name);
+
+    name_len = name_len + 1;  // Include space for a slash '/'
+    if (name_len > buf_off) {
+      break;  // Not enough space; exit loop
+    }
+
+    // Calculate the new buffer offset for the next dentry name
+    volatile size_t new_buff_offset = buf_off - name_len;  // satisfy verifier
+
+    // Read the dentry name into the buffer at the calculated offset
+    ret = bpf_core_read_str(&(out_buf->data[LIMIT_HALF_MAX_BUFFER_SIZE(
+                                new_buff_offset)  // satisfy verifier
+    ]),
+                            name_len, name);
+    if (ret < 0) {
+      return ret;  // If read fails, return the error code
+    }
+
+    // TODO(b/362121019): Factor out the string buffer manipulation stuff into a
+    // unit testable module.
+    if (ret > 1) {   // Check if the read was successful and more than just a
+                     // null terminator
+      buf_off -= 1;  // Adjust offset for the slash separator
+      buf_off = LIMIT_HALF_MAX_BUFFER_SIZE(
+          buf_off);  // Ensure the offset is within buffer bounds
+      out_buf->data[buf_off] = '/';  // Add the slash to the buffer
+      buf_off -= ret - 1;  // Adjust buffer offset for the length of the name
+      buf_off = LIMIT_HALF_MAX_BUFFER_SIZE(
+          buf_off);  // Satisfy verifier for safe access
+    } else {
+      // If read returned 0 or 1, it's an error (path can't be empty or null)
+      break;
+    }
+
+    // Move to the parent directory entry
+    curr_dentry = d_parent;
+  }
+
+  // Ensure there's enough space in the buffer to add a leading slash
+  if (buf_off != 0) {
+    buf_off -= 1;  // Decrement offset for the leading slash
+    buf_off =
+        LIMIT_HALF_MAX_BUFFER_SIZE(buf_off);  // Satisfy verifier constraints
+    out_buf->data[buf_off] = '/';  // Add the leading slash to the buffer
+  }
+
+  // Null terminate the path string
+  out_buf->data[HALF_MAX_BUFFER_SIZE - 1] = 0;
+  *path_str = &out_buf->data[buf_off];  // Update the pointer to the start of
+                                        // the path in the buffer
+  return HALF_MAX_BUFFER_SIZE - buf_off -
+         1;  // Return the length of the path string
+}
 
 /**
  * Looks up a flag value in the shared BPF map by its unique identifier.
@@ -298,6 +449,66 @@ static __always_inline bool is_valid_file(struct inode* file_inode,
   }
 
   return true;
+}
+
+// Helper function to check if string_to_match starts with prefix.
+// Assumes that all strings are null terminated.
+static inline bool strings_starts_with(const char* string_to_match,
+                                       const char* prefix,
+                                       size_t max_len) {
+#pragma unroll
+  for (size_t i = 0; i < max_len; i++) {
+    char c1, c2;
+    int err;
+    err = bpf_core_read(&c1, sizeof(c1), &string_to_match[i]);
+    if (err) {
+      return false;  // Handle read error
+    }
+
+    err = bpf_core_read(&c2, sizeof(c2), &prefix[i]);
+    if (err) {
+      return false;  // Handle read error
+    }
+
+    if (c2 == '\0') {
+      return true;
+    }
+
+    if (c1 != c2) {
+      return false;
+    }
+  }
+  return false;
+}
+
+// Helper function to check if two strings are equal.
+// Assumes that all strings are null terminated.
+static inline bool strings_are_equal(const char* string1,
+                                     const char* string2,
+                                     size_t max_len) {
+#pragma unroll
+  for (size_t i = 0; i < max_len; i++) {
+    char c1, c2;
+    int err;
+    err = bpf_core_read(&c1, sizeof(c1), &string1[i]);
+    if (err) {
+      return false;  // Handle read error
+    }
+
+    err = bpf_core_read(&c2, sizeof(c2), &string2[i]);
+    if (err) {
+      return false;  // Handle read error
+    }
+    if (c1 == '\0' && c2 == '\0') {
+      return true;
+    }
+
+    if (c1 != c2) {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -542,8 +753,8 @@ static __always_inline int read_dentry_name(struct file_path_info* path_info,
   }
 
   // Read the segment name into the segments array
-  segment_length = bpf_probe_read_str(path_info->segment_names[index],
-                                      MAX_PATH_SEGMENT_SIZE, dentry_name.name);
+  segment_length = bpf_core_read_str(path_info->segment_names[index],
+                                     MAX_PATH_SEGMENT_SIZE, dentry_name.name);
   if (segment_length <= 0) {
     bpf_printk("Error: Failed to read segment at depth %d", index);
     return -1;
@@ -1473,25 +1684,40 @@ int BPF_PROG(fexit__security_sb_mount,
   if (mount_type) {
     const char* type_ptr;
     bpf_core_read(&type_ptr, sizeof(type_ptr), &mount_type);
-    int ret_type = bpf_probe_read_kernel_str(
-        &mount_data->mount_type, sizeof(mount_data->mount_type), type_ptr);
+    int ret_type = bpf_core_read_str(&mount_data->mount_type,
+                                     sizeof(mount_data->mount_type), type_ptr);
     if (ret_type < 0) {
       bpf_printk("Error: Failed to read mount type %d", ret_type);
+    }
+
+    // Compare mount_type_buffer with "tmpfs"
+    if (strings_are_equal(mount_data->mount_type, "tmpfs", sizeof("tmpfs"))) {
+      bpf_ringbuf_discard(event, 0);
+      return 0;
     }
   }
 
   if (dev_name) {
     const char* dev_name_ptr;
     bpf_core_read(&dev_name_ptr, sizeof(dev_name_ptr), &dev_name);
-    mount_data->src_device_length = bpf_probe_read_kernel_str(
+    mount_data->src_device_length = bpf_core_read_str(
         &mount_data->src_device_path, MAX_PATH_SIZE, dev_name_ptr);
     if (mount_data->src_device_length < 0) {
       bpf_printk("Error: Failed to read device name");
     }
   }
 
-  construct_absolute_file_path(BPF_CORE_READ(path, dentry),
-                               &mount_data->dest_path_info);
+  u_char* file_path = NULL;
+  resolve_path_to_string(&file_path, path);
+  bpf_core_read_str(mount_data->dest_device_path, MAX_PATH_SIZE, file_path);
+
+  // Compare mount_type_buffer with "/media"
+  if (!strings_starts_with(mount_data->dest_device_path, "/media/",
+                           sizeof("/media/"))) {
+    bpf_ringbuf_discard(event, 0);
+    return 0;
+  }
+
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
   return 0;

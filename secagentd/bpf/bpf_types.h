@@ -43,9 +43,9 @@ namespace secagentd::bpf {
 // name can be regenerated from the inode in image_info.
 #define CROS_MAX_PATH_SIZE (512)
 
-#define MAX_ALLOWLISTED_FILE_MOD_DEVICES 16
+#define MAX_ALLOWLISTED_FILE_MOD_DEVICES 128
 #define MAX_ALLOWLISTED_HARDLINKED_INODES 1024
-#define MAX_ALLOWLISTED_DIRECTORY_INODES 128
+#define MAX_ALLOWLISTED_DIRECTORY_INODES 256
 #define MAX_PATH_DEPTH 32
 #define MAX_PATH_SEGMENT_SIZE (128)
 #define MAX_PATH_SIZE (MAX_PATH_DEPTH * MAX_PATH_SEGMENT_SIZE)
@@ -341,11 +341,13 @@ struct file_path_info {
 struct mount_data {
   uint32_t src_device_length;           // Length of the source device path.
   char src_device_path[MAX_PATH_SIZE];  // Source device path.
+  // TODO(princya): Remove this struct
   struct file_path_info
       dest_path_info;  // Destination path segment information.
 
   uint64_t mount_flags;  // Flags associated with the mount operation.
   char mount_type[256];  // Type of mount (e.g., filesystem type).
+  char dest_device_path[MAX_PATH_SIZE];
 } __attribute__((aligned(8)));
 
 // Define the structure to hold inode attribute information
