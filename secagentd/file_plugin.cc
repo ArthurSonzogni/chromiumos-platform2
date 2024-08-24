@@ -52,11 +52,6 @@ const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
     secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
     secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR};
 
-const std::vector<secagentd::FilePathName> kExternalMountMatchOptions{
-    secagentd::FilePathName::USB_STORAGE,
-    secagentd::FilePathName::MOUNTED_ARCHIVE,
-    secagentd::FilePathName::GOOGLE_DRIVE_FS};
-
 // Path to monitor
 static const std::map<secagentd::FilePathName, secagentd::PathInfo>
     kFilePathInfoMap = {
@@ -102,10 +97,10 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           cros_xdr::reporting::SensitiveFileType::USER_FILE,
           secagentd::FilePathCategory::REMOVABLE_PATH}},
         {secagentd::FilePathName::GOOGLE_DRIVE_FS,
-         {"/media/fuse/drivefs-", "/",
+         {"/media/fuse/", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE,
-          secagentd::FilePathCategory::USER_PATH}},
+          secagentd::FilePathCategory::REMOVABLE_PATH}},
         {secagentd::FilePathName::STATEFUL_PARTITION,
          {"/home/.shadow/", "/auth_factors",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
@@ -159,7 +154,6 @@ const std::map<secagentd::FilePathCategory,
           secagentd::FilePathName::SAFE_BROWSING_COOKIES_DIR,
           secagentd::FilePathName::SAFE_BROWSING_COOKIES_JOURNAL_DIR,
           secagentd::FilePathName::USER_SECRET_STASH_DIR,
-          secagentd::FilePathName::GOOGLE_DRIVE_FS,
           secagentd::FilePathName::STATEFUL_PARTITION,
           secagentd::FilePathName::SESSION_MANAGER_POLICY_DIR,
           secagentd::FilePathName::SESSION_MANAGER_POLICY_KEY}},
@@ -171,7 +165,8 @@ const std::map<secagentd::FilePathCategory,
           secagentd::FilePathName::CRYPTOHOME_ECC_KEY}},
         {secagentd::FilePathCategory::REMOVABLE_PATH,
          {secagentd::FilePathName::MOUNTED_ARCHIVE,
-          secagentd::FilePathName::USB_STORAGE}}};
+          secagentd::FilePathName::USB_STORAGE,
+          secagentd::FilePathName::GOOGLE_DRIVE_FS}}};
 
 // Function to match a path prefix to FilePathName
 std::optional<std::pair<const secagentd::FilePathName, secagentd::PathInfo>>
@@ -728,20 +723,27 @@ void FilePlugin::OnUserLogout(const std::string& userHash) {
   // TODO(princya): Remove hard links from user directory
 }
 
-absl::Status FilePlugin::OnDeviceMount(const std::string& mount_point) {
-  auto pair =
-      MatchPathToFilePathPrefixName(mount_point, kExternalMountMatchOptions);
+void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
+  std::string destination_path = data.dest_device_path;
+
+  auto pair = MatchPathToFilePathPrefixName(
+      destination_path,
+      kFilePathNamesByCategory.at(FilePathCategory::REMOVABLE_PATH));
   if (!pair.has_value()) {
-    return absl::InvalidArgumentError("Mount point not matched any known path");
+    return;
   }
 
   // Create a map to hold path information
   std::map<FilePathName, std::vector<PathInfo>> pathInfoMap;
-  pair.value().second.fullResolvedPath = mount_point;
+  pair.value().second.fullResolvedPath = destination_path;
   pathInfoMap[pair.value().first].push_back(pair.value().second);
 
   // Update BPF maps with the constructed path information
-  return UpdateBPFMapForPathMaps(std::nullopt, pathInfoMap);
+  auto status = UpdateBPFMapForPathMaps(std::nullopt, pathInfoMap);
+  if (!status.ok()) {
+    // TODO(b/362014987): Add error metrics.
+    LOG(ERROR) << "Failed to add the new mount path to monitoring";
+  }
 }
 
 void FilePlugin::OnSessionStateChange(const std::string& state) {
@@ -819,8 +821,15 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
   } else if (fe.type == bpf::kFileAttributeModifyEvent) {
     atomic_event->set_allocated_sensitive_modify(
         MakeFileAttributeModifyEvent(fe.data.file_detailed_event).release());
+  } else if (fe.type == bpf::kFileMountEvent) {
+    if (fe.mod_type == bpf::FMOD_MOUNT) {
+      OnMountEvent(fe.data.mount_event);
+      return;
+    } else {
+      // TODO(princya): handle umount events
+      return;
+    }
   }
-  // TODO(princya): handle mount/umount events
 
   device_user_->GetDeviceUserAsync(
       base::BindOnce(&FilePlugin::OnDeviceUserRetrieved,

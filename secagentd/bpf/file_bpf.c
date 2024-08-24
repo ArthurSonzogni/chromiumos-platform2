@@ -1637,20 +1637,12 @@ int BPF_PROG(fexit__security_inode_unlink,
 }
 
 /**
- * security_sb_mount() - Check permission for mounting a filesystem
+ * eBPF program to monitor and potentially allowlist new mounts.
+ * This function is triggered on the exit of path_mount() function.
  *
- * Check permission before an object specified by @dev_name is mounted on the
- * mount point named by @nd.  For an ordinary mount, @dev_name identifies a
- * device if the file system type requires a device.  For a remount
- * (@flags & MS_REMOUNT), @dev_name is irrelevant.  For a loopback/bind mount
- * (@flags & MS_BIND), @dev_name identifies the pathname of the object being
- * mounted.
- *
- * Return: Returns 0 if permission is granted.
  */
-
-SEC("fexit/security_sb_mount")
-int BPF_PROG(fexit__security_sb_mount,
+SEC("fexit/path_mount")
+int BPF_PROG(fexit__path_mount,
              const char* dev_name,
              struct path* path,
              const char* mount_type,
@@ -1667,7 +1659,7 @@ int BPF_PROG(fexit__security_sb_mount,
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
   if (!event) {
     // Unable to reserve buffer space
-    bpf_printk("Error: Unable to reserve ring buffer space");
+    bpf_printk("Mount Error: Unable to reserve ring buffer space.");
     return 0;
   }
 
@@ -1687,7 +1679,7 @@ int BPF_PROG(fexit__security_sb_mount,
     int ret_type = bpf_core_read_str(&mount_data->mount_type,
                                      sizeof(mount_data->mount_type), type_ptr);
     if (ret_type < 0) {
-      bpf_printk("Error: Failed to read mount type %d", ret_type);
+      bpf_printk("Mount Error: Failed to read mount type %d", ret_type);
     }
 
     // Compare mount_type_buffer with "tmpfs"
@@ -1703,7 +1695,7 @@ int BPF_PROG(fexit__security_sb_mount,
     mount_data->src_device_length = bpf_core_read_str(
         &mount_data->src_device_path, MAX_PATH_SIZE, dev_name_ptr);
     if (mount_data->src_device_length < 0) {
-      bpf_printk("Error: Failed to read device name");
+      bpf_printk("Mount Error: Failed to read device name");
     }
   }
 

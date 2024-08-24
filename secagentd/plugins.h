@@ -424,7 +424,7 @@ class FilePlugin : public PluginInterface {
 
   void OnUserLogout(const std::string& userHash);
 
-  absl::Status OnDeviceMount(const std::string& mount_point);
+  void OnMountEvent(const secagentd::bpf::mount_data& data);
 
   absl::Status UpdateBPFMapForPathInodes(
       int bpfMapFd,
