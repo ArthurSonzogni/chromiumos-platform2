@@ -946,8 +946,13 @@ void FilePlugin::FillFileImageInfo(
     const secagentd::bpf::cros_file_image& image_info,
     bool use_after_modification_attribute) {
   if (use_after_modification_attribute) {
-    file_image->set_allocated_pathname(
-        mergePathSegments(image_info.path_info).release());
+    if (std::strlen(image_info.path) > 0) {
+      file_image->set_pathname(std::string(image_info.path));
+    } else {
+      // Ensure that mergePathSegments returns a unique_ptr to std::string
+      file_image->set_allocated_pathname(
+          mergePathSegments(image_info.path_info).release());
+    }
     file_image->set_mnt_ns(image_info.mnt_ns);
 
     file_image->set_inode_device_id(

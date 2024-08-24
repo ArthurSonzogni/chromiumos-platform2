@@ -368,6 +368,9 @@ struct before_attribute_map_value {
 
 // File Events Structs
 struct cros_file_image {
+  char path[MAX_PATH_SIZE];  // Path including mount information. This must be
+                             // null terminated.
+  // TODO(princya): Deprecate the below struct and property
   struct file_path_info path_info;  // Contains file path segments and related
                                     // size information. This structure helps in
                                     // constructing the full path of the file.

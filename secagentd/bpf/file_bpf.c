@@ -103,7 +103,7 @@ struct {
  * Updated by both userspace and bpf code.
  */
 struct {
-  __uint(type, BPF_MAP_TYPE_LRU_HASH);
+  __uint(type, BPF_MAP_TYPE_HASH);
   __uint(max_entries, MAX_ALLOWLISTED_FILE_MOD_DEVICES);
   __type(key, dev_t);  // Key type: device ID (dev_t).
   __uint(key_size, sizeof(dev_t));
@@ -124,7 +124,7 @@ struct {
  * Updated by both userspace and bpf code.
  */
 struct {
-  __uint(type, BPF_MAP_TYPE_LRU_HASH);
+  __uint(type, BPF_MAP_TYPE_HASH);
   __uint(max_entries, MAX_ALLOWLISTED_HARDLINKED_INODES);
   __type(key, struct inode_dev_map_key);  // Key structure for inode and device
                                           // ID pairs.
@@ -854,6 +854,7 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     struct cros_file_image* image_info,
     struct file* file,
     struct dentry* dentry,
+    struct path* path,
     struct inode_attr* before_attr,
     uint8_t sensitive_file_type) {
   if (!image_info || !dentry) {
@@ -863,8 +864,14 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
   // Read the inode from the dentry
   struct inode* inode = BPF_CORE_READ(dentry, d_inode);
 
-  // Populate the absolute file path
-  construct_absolute_file_path(dentry, &image_info->path_info);
+  if (path) {
+    u_char* file_path = NULL;
+    resolve_path_to_string(&file_path, path);
+    bpf_core_read_str(image_info->path, MAX_PATH_SIZE, file_path);
+  } else {
+    // Populate the absolute file path
+    construct_absolute_file_path(dentry, &image_info->path_info);
+  }
 
   // Fill inode information
   image_info->inode = BPF_CORE_READ(inode, i_ino);
@@ -1163,6 +1170,7 @@ static inline __attribute__((always_inline)) int populate_rb(
     enum cros_file_event_type event_type,
     struct file* file,
     struct dentry* dentry,
+    struct path* path,
     struct inode_attr* before_attr) {
   // Get the current task
   struct task_struct* current_task =
@@ -1187,7 +1195,7 @@ static inline __attribute__((always_inline)) int populate_rb(
   file_detailed_event->has_full_process_info =
       fill_process_start(&file_detailed_event->process_info, current_task);
   fill_ns_info(&file_detailed_event->spawn_namespace, current_task);
-  fill_file_image_info(&file_detailed_event->image_info, file, dentry,
+  fill_file_image_info(&file_detailed_event->image_info, file, dentry, path,
                        before_attr, sensitive_file_type);
 
   // Submit the event to the ring buffer
@@ -1323,6 +1331,7 @@ int BPF_PROG(fexit__filp_close,
              int return_value) {
   struct dentry* file_dentry;
   struct inode* file_inode;
+  struct path file_path;
 
   // Check for successful file close operation
   if (return_value != 0) {
@@ -1337,6 +1346,7 @@ int BPF_PROG(fexit__filp_close,
 
   // Retrieve the inode and dentry structures from the file
   file_inode = BPF_CORE_READ(file, f_inode);
+  file_path = BPF_CORE_READ(file, f_path);
   file_dentry = BPF_CORE_READ(file, f_path.dentry);
   uint32_t file_flags = BPF_CORE_READ(file, f_flags);
 
@@ -1373,7 +1383,7 @@ int BPF_PROG(fexit__filp_close,
 
   // Populate the ring buffer with the event data
   populate_rb(modification_type, file_monitoring_settings.sensitive_file_type,
-              kFileCloseEvent, file, file_dentry, NULL);
+              kFileCloseEvent, file, file_dentry, &file_path, NULL);
 
   return 0;
 }
@@ -1533,7 +1543,7 @@ int BPF_PROG(capture_after_inode_setattr,
 
   // Populate the ring buffer with the event data
   populate_rb(FMOD_ATTR, map_value->sensitive_file_type,
-              kFileAttributeModifyEvent, NULL, dentry, &map_value->attr);
+              kFileAttributeModifyEvent, NULL, dentry, NULL, &map_value->attr);
 
   return 0;
 }
