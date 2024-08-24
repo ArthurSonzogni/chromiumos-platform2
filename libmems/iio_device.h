@@ -6,8 +6,8 @@
 #define LIBMEMS_IIO_DEVICE_H_
 
 #include <iio.h>
-
 #include <linux/iio/events.h>
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -90,11 +90,6 @@ class LIBMEMS_EXPORT IioDevice {
 
   // Returns true if this device has a fifo queue for samples.
   virtual bool HasFifo() const = 0;
-
-  // Returns true if this device represents a single sensor, vs. a device
-  // representing all available cros_ec sensors on the system, as defined
-  // before 3.18 kernel.
-  bool IsSingleSensor() const;
 
   // Returns the iio_device object underlying this object, if any is available.
   // Returns nullptr if no iio_device exists, e.g. a mock object.

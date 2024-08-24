@@ -12,8 +12,8 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
@@ -21,14 +21,13 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
-#include <re2/re2.h>
-
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/iio_device_impl.h>
 #include <libsar/sar_config_reader.h>
+#include <re2/re2.h>
 
 #include "mems_setup/sensor_location.h"
 
@@ -229,23 +228,16 @@ bool Configuration::CopyLightCalibrationFromVpd() {
 }
 
 bool Configuration::CopyImuCalibationFromVpd(int max_value) {
-  if (sensor_->IsSingleSensor()) {
-    auto location = sensor_->GetLocation();
-    if (!location || location->empty()) {
-      LOG(ERROR) << "cannot read a valid sensor location";
-      return false;
-    }
-    return CopyImuCalibationFromVpd(max_value, location->c_str());
-  } else {
-    bool base_config = CopyImuCalibationFromVpd(max_value, kBaseSensorLocation);
-    bool lid_config = CopyImuCalibationFromVpd(max_value, kLidSensorLocation);
-    return base_config && lid_config;
+  auto location = sensor_->GetLocation();
+  if (!location || location->empty()) {
+    LOG(ERROR) << "cannot read a valid sensor location";
+    return false;
   }
+  return CopyImuCalibationFromVpd(max_value, location->c_str());
 }
 
 bool Configuration::CopyImuCalibationFromVpd(int max_value,
                                              const std::string& location) {
-  const bool is_single_sensor = sensor_->IsSingleSensor();
   std::string kind = SensorKindToString(kind_);
 
   std::vector<ImuVpdCalibrationEntry> calib_attributes = {
@@ -293,9 +285,6 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
       continue;
     auto chn_id =
         base::StringPrintf("%s_%s", kind.c_str(), calib_attribute.name.c_str());
-
-    if (!is_single_sensor)
-      chn_id = base::StringPrintf("%s_%s", chn_id.c_str(), location.c_str());
 
     auto chn = sensor_->GetChannel(chn_id);
     if (!chn) {
@@ -404,22 +393,8 @@ bool Configuration::EnableAccelScanElements() {
     return false;
   }
 
-  std::vector<std::string> channels_to_enable;
-
-  if (sensor_->IsSingleSensor()) {
-    for (const auto& axis : kAccelAxes) {
-      channels_to_enable.push_back(base::StringPrintf("accel_%s", axis));
-    }
-  } else {
-    for (const auto& axis : kAccelAxes) {
-      channels_to_enable.push_back(
-          base::StringPrintf("accel_%s_%s", axis, kBaseSensorLocation));
-      channels_to_enable.push_back(
-          base::StringPrintf("accel_%s_%s", axis, kLidSensorLocation));
-    }
-  }
-
-  for (const auto& chan_name : channels_to_enable) {
+  for (const auto& axis : kAccelAxes) {
+    std::string chan_name = base::StringPrintf("accel_%s", axis);
     auto channel = sensor_->GetChannel(chan_name);
     if (!channel) {
       LOG(ERROR) << "cannot find channel " << chan_name;

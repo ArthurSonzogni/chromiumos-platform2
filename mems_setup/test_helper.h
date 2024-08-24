@@ -15,6 +15,7 @@
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/test_fakes.h>
+
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
 #include "mems_setup/sensor_kind.h"
@@ -57,8 +58,7 @@ class SensorTestBase {
 
   SensorTestBase(const char* name, int id);
 
-  void SetSingleSensor(const char* location);
-  void SetSharedSensor();
+  void SetSingleSensor(const char* location, bool new_location = false);
   void SetColorLightSensor();
 
   void ConfigureVpd(

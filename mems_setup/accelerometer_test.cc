@@ -3,14 +3,13 @@
 // found in the LICENSE file.
 
 #include <base/files/file_util.h>
-
 #include <gtest/gtest.h>
-
 #include <libmems/common_types.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/iio_device_impl.h>
 #include <libmems/test_fakes.h>
+
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
 #include "mems_setup/sensor_location.h"
@@ -231,6 +230,35 @@ TEST_F(AccelerometerTest, CalibscaleZeroData) {
                    .value());
 }
 
+TEST_F(AccelerometerTest, CalibscaleZeroDataNewLocation) {
+  SetSingleSensor(kBaseSensorLabel, true);
+  ConfigureVpd({{"in_accel_x_base_calibscale", "5"},
+                {"in_accel_y_base_calibscale", "6"},
+                {"in_accel_z_base_calibscale", "0"}});
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+
+  EXPECT_TRUE(mock_device_->GetChannel("accel_x")
+                  ->ReadNumberAttribute("calibscale")
+                  .has_value());
+  EXPECT_TRUE(mock_device_->GetChannel("accel_y")
+                  ->ReadNumberAttribute("calibscale")
+                  .has_value());
+  EXPECT_TRUE(mock_device_->GetChannel("accel_z")
+                  ->ReadNumberAttribute("calibscale")
+                  .has_value());
+
+  EXPECT_EQ(5, mock_device_->GetChannel("accel_x")
+                   ->ReadNumberAttribute("calibscale")
+                   .value());
+  EXPECT_EQ(6, mock_device_->GetChannel("accel_y")
+                   ->ReadNumberAttribute("calibscale")
+                   .value());
+  EXPECT_EQ(0, mock_device_->GetChannel("accel_z")
+                   ->ReadNumberAttribute("calibscale")
+                   .value());
+}
+
 TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
   SetSingleSensor(kBaseSensorLocation);
   ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
@@ -240,49 +268,6 @@ TEST_F(AccelerometerTest, NotLoadingTriggerModule) {
   EXPECT_TRUE(GetConfiguration()->Configure());
 
   EXPECT_EQ(0, mock_delegate_->GetNumModulesProbed());
-}
-
-TEST_F(AccelerometerTest, MultipleSensorDevice) {
-  SetSharedSensor();
-  ConfigureVpd({{"in_accel_x_base_calibbias", "50"},
-                {"in_accel_y_base_calibbias", "104"},
-                {"in_accel_z_base_calibbias", "85"},
-                {"in_accel_y_lid_calibbias", "27"}});
-
-  EXPECT_TRUE(GetConfiguration()->Configure());
-
-  EXPECT_TRUE(mock_device_->GetChannel("accel_x_base")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-  EXPECT_TRUE(mock_device_->GetChannel("accel_y_base")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-  EXPECT_TRUE(mock_device_->GetChannel("accel_z_base")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-
-  EXPECT_EQ(50, mock_device_->GetChannel("accel_x_base")
-                    ->ReadNumberAttribute("calibbias")
-                    .value());
-  EXPECT_EQ(104, mock_device_->GetChannel("accel_y_base")
-                     ->ReadNumberAttribute("calibbias")
-                     .value());
-  EXPECT_EQ(85, mock_device_->GetChannel("accel_z_base")
-                    ->ReadNumberAttribute("calibbias")
-                    .value());
-
-  EXPECT_FALSE(mock_device_->GetChannel("accel_x_lid")
-                   ->ReadNumberAttribute("calibbias")
-                   .has_value());
-  EXPECT_TRUE(mock_device_->GetChannel("accel_y_lid")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-  EXPECT_EQ(27, mock_device_->GetChannel("accel_y_lid")
-                    ->ReadNumberAttribute("calibbias")
-                    .value());
-  EXPECT_FALSE(mock_device_->GetChannel("accel_z_lid")
-                   ->ReadNumberAttribute("calibbias")
-                   .has_value());
 }
 
 TEST_F(AccelerometerTest, TriggerPermissions) {
@@ -350,13 +335,6 @@ TEST_F(AccelerometerTest, SetPairAccelRangeNoGyroLid) {
   mock_base_accel->WriteStringAttribute("location", kBaseSensorLocation);
   mock_context_->AddDevice(std::move(mock_base_accel));
 
-  EXPECT_TRUE(GetConfiguration()->Configure());
-  EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
-}
-
-TEST_F(AccelerometerTest, SetRangeNoGyroLidOld) {
-  SetSharedSensor();
-  SetSingleSensor(kBaseSensorLocation);
   EXPECT_TRUE(GetConfiguration()->Configure());
   EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
 }

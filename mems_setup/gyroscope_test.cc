@@ -7,11 +7,11 @@
 #include <string>
 
 #include <gtest/gtest.h>
-
 #include <libmems/common_types.h>
 #include <libmems/iio_context.h>
 #include <libmems/iio_device.h>
 #include <libmems/test_fakes.h>
+
 #include "mems_setup/configuration.h"
 #include "mems_setup/delegate.h"
 #include "mems_setup/sensor_location.h"
@@ -115,49 +115,6 @@ TEST_F(GyroscopeTest, NotLoadingTriggerModule) {
   EXPECT_TRUE(GetConfiguration()->Configure());
 
   EXPECT_EQ(0, mock_delegate_->GetNumModulesProbed());
-}
-
-TEST_F(GyroscopeTest, MultipleSensorDevice) {
-  SetSharedSensor();
-  ConfigureVpd({{"in_anglvel_x_base_calibbias", "50"},
-                {"in_anglvel_y_base_calibbias", "104"},
-                {"in_anglvel_z_base_calibbias", "85"},
-                {"in_anglvel_y_lid_calibbias", "27"}});
-
-  EXPECT_TRUE(GetConfiguration()->Configure());
-
-  EXPECT_TRUE(mock_device_->GetChannel("anglvel_x_base")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-  EXPECT_TRUE(mock_device_->GetChannel("anglvel_y_base")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-  EXPECT_TRUE(mock_device_->GetChannel("anglvel_z_base")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-
-  EXPECT_EQ(50, mock_device_->GetChannel("anglvel_x_base")
-                    ->ReadNumberAttribute("calibbias")
-                    .value());
-  EXPECT_EQ(104, mock_device_->GetChannel("anglvel_y_base")
-                     ->ReadNumberAttribute("calibbias")
-                     .value());
-  EXPECT_EQ(85, mock_device_->GetChannel("anglvel_z_base")
-                    ->ReadNumberAttribute("calibbias")
-                    .value());
-
-  EXPECT_FALSE(mock_device_->GetChannel("anglvel_x_lid")
-                   ->ReadNumberAttribute("calibbias")
-                   .has_value());
-  EXPECT_TRUE(mock_device_->GetChannel("anglvel_y_lid")
-                  ->ReadNumberAttribute("calibbias")
-                  .has_value());
-  EXPECT_EQ(27, mock_device_->GetChannel("anglvel_y_lid")
-                    ->ReadNumberAttribute("calibbias")
-                    .value());
-  EXPECT_FALSE(mock_device_->GetChannel("anglvel_z_lid")
-                   ->ReadNumberAttribute("calibbias")
-                   .has_value());
 }
 
 }  // namespace

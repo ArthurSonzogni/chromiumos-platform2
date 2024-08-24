@@ -8,6 +8,9 @@
 namespace mems_setup {
 constexpr char kBaseSensorLocation[] = "base";
 constexpr char kLidSensorLocation[] = "lid";
+
+constexpr char kBaseSensorLabel[] = "accel-base";
+constexpr char kLidSensorLabel[] = "accel-display";
 }  // namespace mems_setup
 
 #endif  // MEMS_SETUP_SENSOR_LOCATION_H_

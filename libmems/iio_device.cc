@@ -55,10 +55,6 @@ std::optional<std::string> IioDevice::GetLocation() const {
   return ReadStringAttribute(kLocationAttr);
 }
 
-bool IioDevice::IsSingleSensor() const {
-  return ReadStringAttribute(kLocationAttr).has_value();
-}
-
 // static
 std::optional<int> IioDevice::GetIdAfterPrefix(const char* id_str,
                                                const char* prefix) {

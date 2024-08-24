@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "mems_setup/test_helper.h"
+
 #include <libmems/common_types.h>
 #include <libmems/iio_device_impl.h>
-#include "mems_setup/test_helper.h"
 
 using libmems::fakes::FakeIioChannel;
 using libmems::fakes::FakeIioContext;
@@ -53,8 +54,11 @@ SensorTestBase::SensorTestBase(const char* name, int id)
   mock_delegate_->CreateFile(dev_path);
 }
 
-void SensorTestBase::SetSingleSensor(const char* location) {
-  mock_device_->WriteStringAttribute("location", location);
+void SensorTestBase::SetSingleSensor(const char* location, bool new_location) {
+  if (new_location)
+    mock_device_->WriteStringAttribute("label", location);
+  else
+    mock_device_->WriteStringAttribute("location", location);
 
   if (sensor_kind_ == SensorKind::ACCELEROMETER) {
     mock_device_->AddChannel(
@@ -87,44 +91,6 @@ void SensorTestBase::SetSingleSensor(const char* location) {
         std::make_unique<FakeIioChannel>("proximity0", false));
     mock_device_->AddChannel(
         std::make_unique<FakeIioChannel>("proximity1", false));
-  }
-}
-
-void SensorTestBase::SetSharedSensor() {
-  if (sensor_kind_ == SensorKind::ACCELEROMETER) {
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("accel_x_base", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("accel_y_base", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("accel_z_base", false));
-
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("accel_x_lid", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("accel_y_lid", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("accel_z_lid", false));
-
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("timestamp", true));
-  } else if (sensor_kind_ == SensorKind::GYROSCOPE) {
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("anglvel_x_base", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("anglvel_y_base", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("anglvel_z_base", false));
-
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("anglvel_x_lid", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("anglvel_y_lid", false));
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("anglvel_z_lid", false));
-
-    mock_device_->AddChannel(
-        std::make_unique<FakeIioChannel>("timestamp", true));
   }
 }
 
