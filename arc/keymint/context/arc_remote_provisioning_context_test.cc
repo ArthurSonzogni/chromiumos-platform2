@@ -388,7 +388,8 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoWithVerifiedBootInfo) {
                                         temp_dir.GetPath());
   const std::string unlocked_bootloader_state = "unlocked";
   const std::string unverified_boot_state = "orange";
-  const std::string vbmeta_digest_string = "0123somerandomvalue";
+  const std::string vbmeta_digest_string =
+      "ab76eece2ea8e2bea108d4dfd618bb6ab41096b291c6e83937637a941d87b303";
   const std::vector<uint8_t> vbmeta_digest =
       brillo::BlobFromString(vbmeta_digest_string);
 
@@ -435,6 +436,34 @@ TEST_F(ArcRemoteProvisioningContextTest,
   ASSERT_TRUE(result_map);
   ASSERT_FALSE(result_map->get("bootloader_state"));
   ASSERT_FALSE(result_map->get("vb_state"));
+  ASSERT_FALSE(result_map->get("vbmeta_digest"));
+}
+
+TEST_F(ArcRemoteProvisioningContextTest,
+       CreateDeviceInfoWithEmptyVbMetaDigest) {
+  // Prepare.
+  std::string file_data(kSampleProp);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::WriteFile(
+      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
+
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
+                                        temp_dir.GetPath());
+
+  // Execute.
+  remote_provisioning_context_->SetVerifiedBootInfo(
+      /* boot_state */ "orange",
+      /* bootloader_state */ "unlocked",
+      /* vbmeta_digest */ {});
+  auto result = remote_provisioning_context_->CreateDeviceInfo();
+
+  // Test.
+  ASSERT_TRUE(result);
+  ASSERT_TRUE(result->type() == cppbor::MAP);
+  auto result_map = result->asMap();
+  ASSERT_TRUE(result_map);
   ASSERT_FALSE(result_map->get("vbmeta_digest"));
 }
 }  // namespace arc::keymint::context

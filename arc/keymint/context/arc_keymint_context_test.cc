@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
@@ -46,10 +47,14 @@ constexpr int32_t kKeyMintMessageVersion = 4;
 constexpr ::keymaster::KmVersion kKeyMintVersion =
     ::keymaster::KmVersion::KEYMINT_2;
 
-constexpr char kAndroidVerifiedBootState[] = "green";
-constexpr char kAndroidUnverifiedBootState[] = "orange";
-constexpr char kLockedDeviceState[] = "locked";
-constexpr char kUnlockedDeviceState[] = "unlocked";
+constexpr char kVerifiedBootState[] = "green";
+constexpr char kUnverifiedBootState[] = "orange";
+constexpr char kLockedBootloaderState[] = "locked";
+constexpr char kUnlockedBootloaderState[] = "unlocked";
+
+constexpr char kSampleVbMetaDigest[] =
+    "ab76eece2ea8e2bea108d4dfd618bb6ab41096b291c6e83937637a941d87b303";
+constexpr const char kVbMetaDigestFileName[] = "arcvm_vbmeta_digest.sha256";
 
 // Arbitrary CK_SLOT_ID for user slot.
 constexpr uint64_t kUserSlotId = 11;
@@ -276,32 +281,44 @@ class ContextTestPeer {
     return context->context_adaptor_;
   }
 
+  static std::optional<std::string> bootloader_state(
+      ArcKeyMintContext* context) {
+    return context->bootloader_state_;
+  }
+
+  static std::optional<std::string> verified_boot_state(
+      ArcKeyMintContext* context) {
+    return context->verified_boot_state_;
+  }
+
+  static std::optional<std::vector<uint8_t>> vbmeta_digest(
+      ArcKeyMintContext* context) {
+    return context->vbmeta_digest_;
+  }
+
   static void set_cros_system_for_tests(
       ArcKeyMintContext* context,
       std::unique_ptr<crossystem::Crossystem> cros_system) {
-    if (!context) {
-      LOG(ERROR) << "context is null";
-      return;
-    }
     context->set_cros_system_for_tests(std::move(cros_system));
   }
 
-  static std::optional<std::string> DeriveVerifiedBootStateForTest(
+  static std::string DeriveVerifiedBootStateForTest(
       ArcKeyMintContext* context) {
-    if (!context) {
-      LOG(ERROR) << "context is null";
-      return std::nullopt;
-    }
     return context->DeriveVerifiedBootState();
   }
 
-  static std::optional<std::string> DeriveBootloaderStateForTest(
-      ArcKeyMintContext* context) {
-    if (!context) {
-      LOG(ERROR) << "context is null";
-      return std::nullopt;
-    }
+  static void set_vbmeta_digest_file_dir_for_tests(ArcKeyMintContext* context,
+                                                   base::FilePath file_path) {
+    context->set_vbmeta_digest_file_dir_for_tests(file_path);
+  }
+
+  static std::string DeriveBootloaderStateForTest(ArcKeyMintContext* context) {
     return context->DeriveBootloaderState();
+  }
+
+  static std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFileForTest(
+      ArcKeyMintContext* context) {
+    return context->GetVbMetaDigestFromFile();
   }
 };
 
@@ -751,12 +768,11 @@ TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_RecoveryMode) {
   fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "recovery");
 
   // Execute.
-  std::optional<std::string> result =
+  std::string result =
       ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kAndroidVerifiedBootState, result);
+  EXPECT_EQ(kVerifiedBootState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NormalMode) {
@@ -764,12 +780,11 @@ TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NormalMode) {
   fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "normal");
 
   // Execute.
-  std::optional<std::string> result =
+  std::string result =
       ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kAndroidVerifiedBootState, result);
+  EXPECT_EQ(kVerifiedBootState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_DeveloperMode) {
@@ -777,12 +792,11 @@ TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_DeveloperMode) {
   fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "developer");
 
   // Execute.
-  std::optional<std::string> result =
+  std::string result =
       ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+  EXPECT_EQ(kUnverifiedBootState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_UnexpectedMainfwType) {
@@ -790,22 +804,20 @@ TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_UnexpectedMainfwType) {
   fake_cros_system_->VbSetSystemPropertyString("mainfw_type", "invalid");
 
   // Execute.
-  std::optional<std::string> result =
+  std::string result =
       ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+  EXPECT_EQ(kUnverifiedBootState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NoMainfwType) {
   // Execute.
-  std::optional<std::string> result =
+  std::string result =
       ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+  EXPECT_EQ(kUnverifiedBootState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NullCrosSystem) {
@@ -814,12 +826,11 @@ TEST_F(ArcKeyMintContextTest, DeriveVerifiedBootState_NullCrosSystem) {
                                              /* cros_system */ nullptr);
 
   // Execute.
-  std::optional<std::string> result =
+  std::string result =
       ContextTestPeer::DeriveVerifiedBootStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kAndroidUnverifiedBootState, result);
+  EXPECT_EQ(kUnverifiedBootState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NonDebugMode) {
@@ -827,12 +838,10 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NonDebugMode) {
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 0);
 
   // Execute.
-  std::optional<std::string> result =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+  std::string result = ContextTestPeer::DeriveBootloaderStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kLockedDeviceState, result);
+  EXPECT_EQ(kLockedBootloaderState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
@@ -840,12 +849,10 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 1);
 
   // Execute.
-  std::optional<std::string> result =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+  std::string result = ContextTestPeer::DeriveBootloaderStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kUnlockedDeviceState, result);
+  EXPECT_EQ(kUnlockedBootloaderState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
@@ -853,22 +860,18 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 10);
 
   // Execute.
-  std::optional<std::string> result =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+  std::string result = ContextTestPeer::DeriveBootloaderStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kUnlockedDeviceState, result);
+  EXPECT_EQ(kUnlockedBootloaderState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NoCrosDebug) {
   // Execute.
-  std::optional<std::string> result =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+  std::string result = ContextTestPeer::DeriveBootloaderStateForTest(context_);
 
   // Test.
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kUnlockedDeviceState, result);
+  EXPECT_EQ(kUnlockedBootloaderState, result);
 }
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NullCrosSystem) {
@@ -877,12 +880,78 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NullCrosSystem) {
                                              /* cros_system */ nullptr);
 
   // Execute.
-  std::optional<std::string> result =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+  std::string result = ContextTestPeer::DeriveBootloaderStateForTest(context_);
+
+  // Test.
+  EXPECT_EQ(kUnlockedBootloaderState, result);
+}
+
+TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Success) {
+  // Prepare.
+  std::string file_data(kSampleVbMetaDigest);
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ASSERT_TRUE(base::WriteFile(temp_dir.GetPath().Append(kVbMetaDigestFileName),
+                              file_data));
+  ContextTestPeer::set_vbmeta_digest_file_dir_for_tests(context_,
+                                                        temp_dir.GetPath());
+
+  // Execute.
+  std::optional<std::vector<uint8_t>> result =
+      ContextTestPeer::GetVbMetaDigestFromFileForTest(context_);
 
   // Test.
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kUnlockedDeviceState, result);
+  EXPECT_EQ(kSampleVbMetaDigest, brillo::BlobToString(result.value()));
+}
+
+TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Failure) {
+  // Prepare.
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  ContextTestPeer::set_vbmeta_digest_file_dir_for_tests(context_,
+                                                        temp_dir.GetPath());
+
+  // Execute.
+  std::optional<std::vector<uint8_t>> result =
+      ContextTestPeer::GetVbMetaDigestFromFileForTest(context_);
+
+  // Test.
+  ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(ArcKeyMintContextTest, SetVerifiedBootParams_Success) {
+  // Prepare
+  std::vector<uint8_t> vbmeta_digest =
+      brillo::BlobFromString(kSampleVbMetaDigest);
+
+  // Execute.
+  keymaster_error_t error = context_->SetVerifiedBootParams(
+      kUnverifiedBootState, kUnlockedBootloaderState, vbmeta_digest);
+
+  // Test.
+  ASSERT_EQ(KM_ERROR_OK, error);
+  ASSERT_TRUE(ContextTestPeer::bootloader_state(context_).has_value());
+  EXPECT_EQ(kUnlockedBootloaderState,
+            ContextTestPeer::bootloader_state(context_).value());
+  ASSERT_TRUE(ContextTestPeer::verified_boot_state(context_).has_value());
+  EXPECT_EQ(kUnverifiedBootState,
+            ContextTestPeer::verified_boot_state(context_).value());
+  ASSERT_TRUE(ContextTestPeer::vbmeta_digest(context_).has_value());
+  EXPECT_EQ(
+      kSampleVbMetaDigest,
+      brillo::BlobToString(ContextTestPeer::vbmeta_digest(context_).value()));
+}
+
+TEST_F(ArcKeyMintContextTest, SetVerifiedBootParams_EmptyVbMetaDigest) {
+  // Execute.
+  keymaster_error_t error = context_->SetVerifiedBootParams(
+      kUnverifiedBootState, kUnlockedBootloaderState,
+      /* vbmeta_digest */ {});
+
+  // Test.
+  ASSERT_EQ(KM_ERROR_OK, error);
+  ASSERT_FALSE(ContextTestPeer::vbmeta_digest(context_).has_value());
 }
 
 }  // namespace arc::keymint::context

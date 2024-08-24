@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <hardware/keymaster_defs.h>
 #include <keymaster/authorization_set.h>
@@ -72,6 +73,11 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
       const ::keymaster::KeymasterKeyBlob& key_to_upgrade,
       const ::keymaster::AuthorizationSet& upgrade_params,
       ::keymaster::KeymasterKeyBlob* upgraded_key) const override;
+  // TODO(b/353381387): override SetVerifiedBootInfo from ChromeOS context.
+  keymaster_error_t SetVerifiedBootParams(
+      std::string_view boot_state,
+      std::string_view bootloader_state,
+      const std::vector<uint8_t>& vbmeta_digest);
 
   // Expose SerializeAuthorizationSetToBlob for tests.
   brillo::Blob TestSerializeAuthorizationSetToBlob(
@@ -162,8 +168,12 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   // Derive values for verified boot parameters.
   std::string DeriveVerifiedBootState() const;
   std::string DeriveBootloaderState() const;
+  std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFile() const;
+
   void set_cros_system_for_tests(
       std::unique_ptr<crossystem::Crossystem> cros_system);
+  void set_vbmeta_digest_file_dir_for_tests(
+      base::FilePath& vbmeta_digest_file_dir);
 
   // Since the initialization of |rsa_key_factory_| uses
   // |context_adaptor_|, hence |context_adaptor_| must
@@ -174,6 +184,7 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   mutable std::vector<arc::keymint::mojom::ChromeOsKeyPtr> placeholder_keys_;
 
   std::unique_ptr<crossystem::Crossystem> cros_system_;
+  base::FilePath vbmeta_digest_file_dir_;
 
   friend class ContextTestPeer;
 };

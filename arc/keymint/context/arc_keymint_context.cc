@@ -32,6 +32,10 @@ namespace arc::keymint::context {
 
 namespace {
 
+constexpr const char kVbMetaDigestFileDir[] = "/opt/google/vms/android/";
+constexpr const char kVbMetaDigestFileName[] = "arcvm_vbmeta_digest.sha256";
+constexpr uint32_t kExpectedVbMetaDigestSize = 64;
+
 // Relate cros system property mainfw_type (main firmware type)
 // to verified boot state. Devices in normal and recovery mode
 // are in verified boot state. Devices in developer mode are in
@@ -258,14 +262,28 @@ std::optional<std::vector<uint8_t>> fetchEndorsementPublicKey() {
 
 ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
     : PureSoftKeymasterContext(version, KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT),
-      rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA) {
+      rsa_key_factory_(context_adaptor_.GetWeakPtr(), KM_ALGORITHM_RSA),
+      vbmeta_digest_file_dir_(kVbMetaDigestFileDir) {
   CHECK(version >= ::keymaster::KmVersion::KEYMINT_1);
 
   cros_system_ = std::make_unique<crossystem::Crossystem>();
+  const std::string boot_state = DeriveVerifiedBootState();
+  const std::string bootloader_state = DeriveBootloaderState();
+  const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
+      GetVbMetaDigestFromFile();
+
+  // vbmeta_digest will an empty vector unless a valid result was
+  // returned from GetVbMetaDigestFromFile.
+  std::vector<uint8_t> vbmeta_digest = {};
+  if (vbmeta_digest_opt.has_value()) {
+    vbmeta_digest = vbmeta_digest_opt.value();
+  }
 
   // This is a protected data member in |pure_soft_keymaster_context.cpp|
   pure_soft_remote_provisioning_context_ =
       std::make_unique<ArcRemoteProvisioningContext>(security_level_);
+
+  SetVerifiedBootParams(boot_state, bootloader_state, vbmeta_digest);
 }
 
 ArcKeyMintContext::~ArcKeyMintContext() = default;
@@ -747,6 +765,36 @@ void ArcKeyMintContext::set_cros_system_for_tests(
   cros_system_ = std::move(cros_system);
 }
 
+void ArcKeyMintContext::set_vbmeta_digest_file_dir_for_tests(
+    base::FilePath& vbmeta_digest_file_dir) {
+  vbmeta_digest_file_dir_ = base::FilePath(vbmeta_digest_file_dir);
+}
+
+std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
+    const {
+  base::FilePath vbmeta_digest_file_path =
+      vbmeta_digest_file_dir_.Append(kVbMetaDigestFileName);
+  std::string vbmeta_digest;
+  if (!base::PathExists(vbmeta_digest_file_path) ||
+      !base::ReadFileToString(base::FilePath(vbmeta_digest_file_path),
+                              &vbmeta_digest)) {
+    // In case of failure to read vb meta digest into string, return nullopt.
+    LOG(ERROR) << "Failed to read vb meta digest file from path "
+               << vbmeta_digest_file_path;
+    return std::nullopt;
+  }
+  std::vector<uint8_t> vbmeta_digest_result =
+      brillo::BlobFromString(vbmeta_digest);
+  if (vbmeta_digest_result.size() != kExpectedVbMetaDigestSize) {
+    LOG(ERROR) << "vbmeta digest is not a valid hash. "
+               << "Expected size: " << kExpectedVbMetaDigestSize
+               << ". Actual size: " << vbmeta_digest_result.size();
+    return std::nullopt;
+  }
+
+  return vbmeta_digest_result;
+}
+
 // mainfw_type describes the main firmware type (normal, recovery, developer).
 // This property is used to determine whether or not the device is in a
 // verified boot state.
@@ -830,4 +878,38 @@ keymaster::Buffer ArcKeyMintContext::GenerateUniqueId(
                                        creation_date_time, application_id,
                                        reset_since_rotation);
 }
+keymaster_error_t ArcKeyMintContext::SetVerifiedBootParams(
+    std::string_view boot_state,
+    std::string_view bootloader_state,
+    const std::vector<uint8_t>& vbmeta_digest) {
+  // These are protected data members in |pure_soft_keymaster_context.cpp|
+  bootloader_state_ = bootloader_state;
+  verified_boot_state_ = boot_state;
+  if (!vbmeta_digest.empty()) {
+    vbmeta_digest_ = vbmeta_digest;
+  } else {
+    LOG(ERROR) << "vbmeta_digest is empty when trying to set vb boot params";
+  }
+
+  // We also need to set the fields in Arc Remote Provisioning Context.
+  // Hence, dynamic casting a base class pointer to derived class.
+  if (pure_soft_remote_provisioning_context_ == nullptr) {
+    LOG(ERROR) << "pure_soft_remote_provisioning_context_ is null. Cannot set "
+                  "verified boot info.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  ArcRemoteProvisioningContext* arc_remote_provisioning_context =
+      dynamic_cast<ArcRemoteProvisioningContext*>(
+          pure_soft_remote_provisioning_context_.get());
+
+  if (arc_remote_provisioning_context == nullptr) {
+    LOG(ERROR) << "arc_remote_provisioning_context is null. Cannot set "
+                  "verified boot info.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  arc_remote_provisioning_context->SetVerifiedBootInfo(
+      boot_state, bootloader_state, vbmeta_digest);
+  return KM_ERROR_OK;
+}
+
 }  // namespace arc::keymint::context

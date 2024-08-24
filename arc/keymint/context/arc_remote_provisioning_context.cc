@@ -468,7 +468,9 @@ void ArcRemoteProvisioningContext::SetVerifiedBootInfo(
     const std::vector<uint8_t>& vbmeta_digest) {
   verified_boot_state_ = boot_state;
   bootloader_state_ = bootloader_state;
-  vbmeta_digest_ = vbmeta_digest;
+  if (!vbmeta_digest.empty()) {
+    vbmeta_digest_ = vbmeta_digest;
+  }
 }
 
 void ArcRemoteProvisioningContext::SetChallengeForCertificateRequest(
