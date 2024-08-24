@@ -67,7 +67,10 @@ int main(int argc, char** argv) {
   power_supply.Init(path, cros_ec_path, &ec_command_factory, &prefs, &udev,
                     &dbus_wrapper, battery_percentage_converter.get());
 
-  CHECK(power_supply.RefreshImmediatelyWithRetry());
+  if (!power_supply.RefreshImmediatelyWithRetry()) {
+    fprintf(stderr, "Error reading power supply info\n");
+    return 1;
+  }
   const power_manager::system::PowerStatus status =
       power_supply.GetPowerStatus();
 

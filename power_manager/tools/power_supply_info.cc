@@ -110,7 +110,10 @@ int main(int argc, char** argv) {
   power_supply.Init(path, cros_ec_path, &ec_command_factory, &prefs, &udev,
                     &dbus_wrapper, battery_percentage_converter.get());
 
-  CHECK(power_supply.RefreshImmediatelyWithRetry());
+  if (!power_supply.RefreshImmediatelyWithRetry()) {
+    std::cerr << "Error reading power supply info" << std::endl;
+    return 1;
+  }
   const PowerStatus status = power_supply.GetPowerStatus();
 
   // NOTE, autotests (see autotest/files/client/cros/power_status.py) rely on
