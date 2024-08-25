@@ -32,24 +32,25 @@ const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 #define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)
 #define S_ISSOCK(m) (((m) & S_IFMT) == S_IFSOCK)
 
-#define FS_ACCESS 0x00000001 /* File was accessed */
-#define FS_MODIFY 0x00000002 /* File was modified */
-#define FS_ATTRIB 0x00000004 /* Metadata changed */
+// Copied from stdint.h
+#define UINT32_MAX (4294967295U)
 
-/*
- * Attribute flags.  These should be or-ed together to figure out what
- * has been changed!
- * NOTE: This are copied from fs.h, careful before updating.
- */
-#define CROS_ATTR_MODE (1 << 0)
-#define CROS_ATTR_UID (1 << 1)
-#define CROS_ATTR_GID (1 << 2)
-#define CROS_ATTR_SIZE (1 << 3)
-#define CROS_ATTR_ATIME (1 << 4)
-#define CROS_ATTR_MTIME (1 << 5)
-#define CROS_ATTR_CTIME (1 << 6)
-#define CROS_ATTR_ATIME_SET (1 << 7)
-#define CROS_ATTR_MTIME_SET (1 << 8)
+/* Protection bits.  */
+// Copied from bits/stat.h
+#define __S_ISUID 04000 /* Set user ID on execution.  */
+#define __S_ISGID 02000 /* Set group ID on execution.  */
+#define __S_ISVTX 01000 /* Save swapped text after use (sticky).  */
+#define __S_IREAD 0400  /* Read by owner.  */
+#define __S_IWRITE 0200 /* Write by owner.  */
+#define __S_IEXEC 0100  /* Execute by owner.  */
+
+// Copied from sys/stat.h
+#define S_IRWXU (__S_IREAD | __S_IWRITE | __S_IEXEC)
+#define S_IRWXG (S_IRWXU >> 3)
+#define S_IRWXO (S_IRWXG >> 3)
+#define ACCESSPERMS (S_IRWXU | S_IRWXG | S_IRWXO)
+#define ALLPERMS \
+  (__S_ISUID | __S_ISGID | __S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO)
 
 // These are used to satisfy bpf verifier to assume that we would always be
 // reading path smaller than the max allowed length, theoretically this will
@@ -168,7 +169,25 @@ struct {
   __type(key, uint64_t);                 // Key type (pid_tgid)
   __type(value,
          struct before_attribute_map_value);  // Value type (inode attributes)
-} before_attr_map SEC(".maps");
+} before_attr_chmod_map SEC(".maps");
+
+struct {
+  __uint(type,
+         BPF_MAP_TYPE_LRU_PERCPU_HASH);  // Use LRU hash map for storing data
+  __uint(max_entries, 8);                // Maximum number of entries in the map
+  __type(key, uint64_t);                 // Key type (pid_tgid)
+  __type(value,
+         struct before_attribute_map_value);  // Value type (inode attributes)
+} before_attr_chown_map SEC(".maps");
+
+struct {
+  __uint(type,
+         BPF_MAP_TYPE_LRU_PERCPU_HASH);  // Use LRU hash map for storing data
+  __uint(max_entries, 8);                // Maximum number of entries in the map
+  __type(key, uint64_t);                 // Key type (pid_tgid)
+  __type(value,
+         struct before_attribute_map_value);  // Value type (inode attributes)
+} before_attr_utime_map SEC(".maps");
 
 struct buffer {
   u8 data[MAX_PATH_BUFFER_SIZE];
@@ -206,7 +225,7 @@ get_file_path_buffer() {
 
  **/
 static __attribute__((__always_inline__)) long resolve_path_to_string(
-    u_char** path_str, struct path* path) {
+    u_char** path_str, const struct path* path) {
   long ret;
   struct dentry *curr_dentry, *d_parent, *mnt_root;
   struct vfsmount* curr_vfsmount;
@@ -441,7 +460,7 @@ static __always_inline bool is_valid_file(struct inode* file_inode,
   // temporary files)
   uint64_t* o_tmpfile = lookup_flag_value(O_TMPFILE_FLAG_KEY);
 
-  if (o_tmpfile) {
+  if (o_tmpfile && flags > 0) {
     uint64_t value = *o_tmpfile;
     if ((flags & value) > 0) {
       return false;
@@ -854,7 +873,7 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     struct cros_file_image* image_info,
     struct file* file,
     struct dentry* dentry,
-    struct path* path,
+    const struct path* path,
     struct inode_attr* before_attr,
     uint8_t sensitive_file_type) {
   if (!image_info || !dentry) {
@@ -1035,6 +1054,7 @@ static inline __attribute__((always_inline)) void print_cros_file_image(
   bpf_printk("Device ID: %llu\n", file_image->device_id);
   bpf_printk("Inode: %llu\n", file_image->inode);
   bpf_printk("Flags: %u\n", file_image->flags);
+  bpf_printk("Sensitive File Info: %u\n", file_image->sensitive_file_type);
   print_inode_attributes(&file_image->before_attr, "Before");
   print_inode_attributes(&file_image->after_attr, "After");
 }
@@ -1170,7 +1190,7 @@ static inline __attribute__((always_inline)) int populate_rb(
     enum cros_file_event_type event_type,
     struct file* file,
     struct dentry* dentry,
-    struct path* path,
+    const struct path* path,
     struct inode_attr* before_attr) {
   // Get the current task
   struct task_struct* current_task =
@@ -1201,122 +1221,6 @@ static inline __attribute__((always_inline)) int populate_rb(
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
   return 0;
-}
-
-/**
- * Check if file attributes should be tracked. Copied from fsnotify
- * @ia_valid: Bitmask representing the valid attributes
- *
- * This function checks if any of the relevant file attributes (UID, GID, size,
- * access time, modification time, or mode) are marked as changed in the
- * ia_valid bitmask.
- *
- * Return: true if any relevant attributes are marked as changed, false
- * otherwise
- */
-bool inline __attribute__((always_inline))
-should_track_file_attribute_change(unsigned int ia_valid) {
-  __u32 attribute_mask = 0;
-
-  // Check if UID change should be tracked
-  if (ia_valid & CROS_ATTR_UID) {
-    attribute_mask |= FS_ATTRIB;
-  }
-
-  // Check if GID change should be tracked
-  if (ia_valid & CROS_ATTR_GID) {
-    attribute_mask |= FS_ATTRIB;
-  }
-
-  // Check if size change should be tracked
-  if (ia_valid & CROS_ATTR_SIZE) {
-    attribute_mask |= FS_MODIFY;
-  }
-
-  // Check if access and modification time changes should be tracked (utime
-  // call)
-  if ((ia_valid & (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) ==
-      (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) {
-    attribute_mask |= FS_ATTRIB;
-  } else if (ia_valid & CROS_ATTR_ATIME) {
-    attribute_mask |= FS_ACCESS;
-  } else if (ia_valid & CROS_ATTR_MTIME) {
-    attribute_mask |= FS_MODIFY;
-  }
-
-  // Check if mode change should be tracked
-  if (ia_valid & CROS_ATTR_MODE) {
-    attribute_mask |= FS_ATTRIB;
-  }
-
-  // Return true if any relevant attributes are marked as changed
-  return attribute_mask & FS_ATTRIB;
-}
-
-/**
- * Check if inode attributes have actually changed.
- * @before_attr: The attributes of the inode before the change
- * @new_iattr: The new attributes to set
- *
- * This function compares the before and after attributes of an inode to
- * determine if any significant changes have occurred.
- *
- * Return: true if any relevant attributes have changed, false otherwise
- */
-
-static inline __attribute__((always_inline)) bool has_inode_attributes_changed(
-    const struct inode_attr* before_attr,
-    const struct iattr* new_iattr,
-    uint32_t ia_valid_flags) {
-  if (!before_attr || !new_iattr || ia_valid_flags == 0) {
-    return false;
-  }
-
-  bool attribute_changed = false;
-
-  // Check UID change
-  if (ia_valid_flags & CROS_ATTR_UID) {
-    if (before_attr->uid != BPF_CORE_READ(new_iattr, ia_uid.val)) {
-      attribute_changed = true;
-    }
-  }
-
-  // Check GID change
-  if (ia_valid_flags & CROS_ATTR_GID) {
-    if (before_attr->gid != BPF_CORE_READ(new_iattr, ia_gid.val)) {
-      attribute_changed = true;
-    }
-  }
-
-  struct timespec64 ts_mtime;
-  struct timespec64 ts_atime;
-
-  // Read access time
-  ts_atime = BPF_CORE_READ(new_iattr, ia_atime);
-
-  // Read modification time
-  ts_mtime = BPF_CORE_READ(new_iattr, ia_mtime);
-
-  // Check access and modification time change (utime call)
-  if ((ia_valid_flags & (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) ==
-      (CROS_ATTR_ATIME | CROS_ATTR_MTIME)) {
-    if ((before_attr->atime.tv_sec != ts_atime.tv_sec ||
-         before_attr->atime.tv_nsec != ts_atime.tv_nsec) ||
-        (before_attr->mtime.tv_sec != ts_mtime.tv_sec ||
-         before_attr->mtime.tv_nsec != ts_mtime.tv_nsec)) {
-      attribute_changed = true;
-    }
-  }
-
-  // Check mode change
-  if (ia_valid_flags & CROS_ATTR_MODE) {
-    if (before_attr->mode != BPF_CORE_READ(new_iattr, ia_mode)) {
-      attribute_changed = true;
-    }
-  }
-  // Return true if any relevant attributes have changed
-  return should_track_file_attribute_change(ia_valid_flags) &&
-         attribute_changed;
 }
 
 /**
@@ -1388,162 +1292,198 @@ int BPF_PROG(fexit__filp_close,
   return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-#define NOTIFY_CHANGE_ARGS                                            \
-  struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr, \
-      struct inode **delegated_inode
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-#define NOTIFY_CHANGE_ARGS                                  \
-  struct user_namespace *mnt_userns, struct dentry *dentry, \
-      struct iattr *attr, struct inode **delegated_inode
-#else
-#define NOTIFY_CHANGE_ARGS \
-  struct dentry *dentry, struct iattr *attr, struct inode **delegated_inode
-#endif
+// Helper function to handle fentry for attribute change methods
+static inline __attribute__((always_inline)) void attr_change_fentry_common(
+    const struct path* path,
+    void* map,
+    bool check_mode,
+    umode_t mode,
+    bool check_user_group,
+    uid_t user,
+    gid_t group,
+    bool check_times,
+    struct timespec64* times) {
+  if (!path)
+    return;
 
-/**
- * BPF program to capture 'before' attributes on inode setattr
- *
- * This function is triggered on the entry of the notify_change function.
- * It captures the inode attributes before they are changed and stores them
- * in a BPF map using the pid_tgid as the key.
- *
- * Return: 0 on success
- */
-SEC("fentry/notify_change")
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-int BPF_PROG(capture_before_inode_setattr,
-             struct mnt_idmap* idmap,
-             struct dentry* dentry,
-             struct iattr* attr,
-             struct inode** delegated_inode)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-int BPF_PROG(capture_before_inode_setattr,
-             struct user_namespace* mnt_userns,
-             struct dentry* dentry,
-             struct iattr* attr,
-             struct inode** delegated_inode)
-#else
-int BPF_PROG(capture_before_inode_setattr,
-             struct dentry* dentry,
-             struct iattr* attr,
-             struct inode** delegated_inode)
-#endif
-{
-  struct before_attribute_map_value map_value = {};
-  struct task_struct* current_task;                  // Current task structure
-  struct inode* inode;                               // Inode structure
-  struct file* file;                                 // File structure
-  uint32_t file_flags;                               // File flags
-  dev_t dev_id;                                      // Device ID
+  struct before_attribute_map_value map_value =
+      {};  // Structure to hold inode attributes before change
   struct file_monitoring_settings monitor_settings;  // File monitoring settings
+  struct task_struct* current_task;
+  struct dentry* dentry;
+  struct inode* inode;
+  dev_t dev_id;
 
-  if (!attr || !dentry)
-    return 0;
   // Retrieve the current task
   current_task = (struct task_struct*)bpf_get_current_task();
 
   // Filter out kernel threads
-  if (is_kthread(current_task)) {
-    return 0;
-  }
+  if (is_kthread(current_task))
+    return;
 
-  // Retrieve the file and inode structures
-  file = BPF_CORE_READ(attr, ia_file);
+  // Read the dentry from the path structure
+  dentry = BPF_CORE_READ(path, dentry);
+  if (!dentry)
+    return;
+
+  // Retrieve the inode structure
   inode = BPF_CORE_READ(dentry, d_inode);
   if (!inode)
-    return 0;
-  file_flags = BPF_CORE_READ(file, f_flags);
+    return;
 
   // Check for a valid file type
-  if (!is_valid_file(inode, file_flags)) {
-    return 0;
+  if (!is_valid_file(inode, 0))
+    return;
+
+  // Get the inode attributes before the change
+  get_inode_attributes(inode, &map_value.attr);
+
+  // Check if inode mode matches mode passed to chmod
+  if (check_mode && (map_value.attr.mode & ALLPERMS) == (mode & ALLPERMS)) {
+    return;
+  }
+
+  // Skip if ownership has not changed in chown
+  if (check_user_group) {
+    bool user_notpassed_or_match =
+        ((user == UINT32_MAX) || (map_value.attr.uid == user));
+    bool group_notpassed_or_match =
+        ((group == UINT32_MAX) || (map_value.attr.gid == group));
+
+    if (user_notpassed_or_match && group_notpassed_or_match)
+      return;
+  }
+
+  // Safely check if times have actually changed for utimes
+  if (check_times) {
+    if (!times) {
+      return;
+    }
+    struct timespec64 times_buffer[2];
+    int ret = bpf_core_read(&times_buffer, sizeof(times_buffer), times);
+    if (ret) {
+      return;
+    }
+    bool has_changed =
+        map_value.attr.atime.tv_sec != times_buffer[0].tv_sec ||
+        map_value.attr.atime.tv_nsec != times_buffer[0].tv_nsec ||
+        map_value.attr.mtime.tv_sec != times_buffer[1].tv_sec ||
+        map_value.attr.mtime.tv_nsec != times_buffer[1].tv_nsec;
+    if (!has_changed) {
+      return;
+    }
   }
 
   // Retrieve the device ID
   dev_id = BPF_CORE_READ(inode, i_sb, s_dev);
 
   // Check if the dentry is on the allowlist
-  if (!is_dentry_allowlisted(dentry, dev_id, FMOD_ATTR, &monitor_settings)) {
-    return 0;
-  }
+  if (!is_dentry_allowlisted(dentry, dev_id, FMOD_ATTR, &monitor_settings))
+    return;
 
-  // Get the inode attributes before the change
-  get_inode_attributes(inode, &map_value.attr);
-
-  uint32_t ia_valid_flags = BPF_CORE_READ(attr, ia_valid);
-  // Check if inode attributes have actually changed
-  bool has_changed =
-      has_inode_attributes_changed(&map_value.attr, attr, ia_valid_flags);
-  if (!has_changed) {
-    return 0;
-  }
+  uint8_t* file_path = NULL;
+  resolve_path_to_string(&file_path, path);
 
   map_value.sensitive_file_type = monitor_settings.sensitive_file_type;
 
   // Retrieve the PID and TGID
   uint64_t pid_tgid = bpf_get_current_pid_tgid();
+
   // Update the BPF map with the 'before' attributes
-  bpf_map_update_elem(&before_attr_map, &pid_tgid, &map_value, BPF_ANY);
+  bpf_map_update_elem(map, &pid_tgid, &map_value, BPF_ANY);
+}
+
+SEC("fentry/chmod_common")
+int BPF_PROG(capture_before_chmod, const struct path* path, umode_t mode) {
+  attr_change_fentry_common(path, &before_attr_chmod_map, true, mode, false, 0,
+                            0, false, NULL);
+  return 0;
+}
+
+SEC("fentry/chown_common")
+int BPF_PROG(capture_before_chown,
+             const struct path* path,
+             uid_t user,
+             gid_t group) {
+  attr_change_fentry_common(path, &before_attr_chown_map, false, 0, true, user,
+                            group, false, NULL);
+  return 0;
+}
+
+SEC("fentry/vfs_utimes")
+int BPF_PROG(capture_before_vfs_utimes,
+             const struct path* path,
+             struct timespec64* times) {
+  attr_change_fentry_common(path, &before_attr_utime_map, false, 0, false, 0, 0,
+                            true, times);
+  return 0;
+}
+
+// Helper function to handle fexit for attribute change methods
+static inline __attribute__((always_inline)) void attr_change_fexit_common(
+    const struct path* path, void* map, int ret) {
+  // Retrieve the PID and TGID
+  uint64_t pid_tgid = bpf_get_current_pid_tgid();
+
+  // Lookup the 'before' attributes from the BPF map
+  struct before_attribute_map_value* map_value =
+      bpf_map_lookup_elem(map, &pid_tgid);
+  if (!map_value) {
+    return;  // Return if the map lookup fails
+  }
+
+  uint8_t sensitive_file_type = map_value->sensitive_file_type;
+  struct inode_attr before_attr = map_value->attr;
+
+  // Delete the entry from the map
+  bpf_map_delete_elem(map, &pid_tgid);
+
+  // Check for successful operation
+  if (ret != 0) {
+    return;
+  }
+
+  struct dentry* dentry = BPF_CORE_READ(path, dentry);
+  if (!dentry)
+    return;
+
+  struct inode* inode = BPF_CORE_READ(dentry, d_inode);
+  if (!inode) {
+    return;  // Return if inode retrieval fails
+  }
+
+  // Populate the ring buffer with the event data
+  populate_rb(FMOD_ATTR, sensitive_file_type, kFileAttributeModifyEvent, NULL,
+              dentry, path, &before_attr);
+}
+
+SEC("fexit/chmod_common")
+int BPF_PROG(capture_after_chmod,
+             const struct path* path,
+             umode_t mode,
+             int ret) {
+  attr_change_fexit_common(path, &before_attr_chmod_map, ret);
 
   return 0;
 }
 
-/**
- * BPF program to capture 'after' attributes on inode setattr exit
- *
- * This function is triggered on the exit of the notify_change function.
- * It captures the inode attributes after they are changed if the operation was
- * successful, checks if processing is needed, and if so, it resets the
- * processing flag and populates the ring buffer with the relevant event data.
- *
- * Return: 0 on success, or appropriate error code.
- */
-SEC("fexit/notify_change")
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-int BPF_PROG(capture_after_inode_setattr,
-             struct mnt_idmap* idmap,
-             struct dentry* dentry,
-             struct iattr* attr,
-             struct inode** delegated_inode,
-             int ret)
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
-int BPF_PROG(capture_after_inode_setattr,
-             struct user_namespace* mnt_userns,
-             struct dentry* dentry,
-             struct iattr* attr,
-             struct inode** delegated_inode,
-             int ret)
-#else
-int BPF_PROG(capture_after_inode_setattr,
-             struct dentry* dentry,
-             struct iattr* attr,
-             struct inode** delegated_inode,
-             int ret)
-#endif
-{
-  struct inode* inode;  // Inode structure
-  struct before_attribute_map_value*
-      map_value;      // Pointer to 'before' inode attributes
-  uint64_t pid_tgid;  // PID and TGID combined
+SEC("fexit/chown_common")
+int BPF_PROG(capture_after_chown,
+             const struct path* path,
+             uid_t user,
+             gid_t group,
+             int ret) {
+  attr_change_fexit_common(path, &before_attr_chown_map, ret);
 
-  // Check for successful setattr operation
-  if (ret != 0) {
-    return 0;
-  }
+  return 0;
+}
 
-  // Retrieve the PID and TGID
-  pid_tgid = bpf_get_current_pid_tgid();
-  // Lookup the 'before' attributes from the BPF map
-  map_value = bpf_map_lookup_elem(&before_attr_map, &pid_tgid);
-  bpf_map_delete_elem(&before_attr_map, &pid_tgid);
-  if (!map_value) {
-    return 0;
-  }
-
-  // Populate the ring buffer with the event data
-  populate_rb(FMOD_ATTR, map_value->sensitive_file_type,
-              kFileAttributeModifyEvent, NULL, dentry, NULL, &map_value->attr);
+SEC("fexit/vfs_utimes")
+int BPF_PROG(capture_after_vfs_utimes,
+             const struct path* path,
+             struct timespec64* times,
+             int ret) {
+  attr_change_fexit_common(path, &before_attr_utime_map, ret);
 
   return 0;
 }
