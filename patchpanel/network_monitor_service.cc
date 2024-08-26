@@ -339,10 +339,11 @@ void NeighborLinkMonitor::OnNeighborMessage(const net_base::RTNLMessage& msg) {
               << ", old_state=" << NUDStateToString(old_nud_state);
   }
 
+  // NUD_FAILED is a strong signal on network issues.
   if (new_nud_state == NUD_FAILED) {
-    LOG(WARNING) << "Neighbor becomes NUD_FAILED from "
-                 << NUDStateToString(old_nud_state) << " on " << ifname_ << " "
-                 << it->second.ToString();
+    LOG(ERROR) << "Neighbor becomes NUD_FAILED from "
+               << NUDStateToString(old_nud_state) << " on " << ifname_ << " "
+               << it->second.ToString();
   }
 
   // NUD_REACHABLE indicates the bidirectional reachability has been confirmed.
