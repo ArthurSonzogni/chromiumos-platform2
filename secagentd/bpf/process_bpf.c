@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 // Include vmlinux.h first to declare all kernel types.
+// clang-format off
 #include "include/secagentd/vmlinux/vmlinux.h"
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+// clang-format on
 
 // TODO(b/243453873): Workaround to get code completion working in CrosIDE.
 #undef __cplusplus
@@ -49,23 +51,6 @@ static inline __attribute__((always_inline)) void fill_ns_info(
   ns_info->net_ns = BPF_CORE_READ(t, nsproxy, net_ns, ns.inum);
   ns_info->user_ns = BPF_CORE_READ(t, nsproxy, uts_ns, user_ns, ns.inum);
   ns_info->uts_ns = BPF_CORE_READ(t, nsproxy, uts_ns, ns.inum);
-}
-
-static inline __attribute__((always_inline)) const struct task_struct*
-normalize_to_last_newns(const struct task_struct* t) {
-  const struct task_struct* ret = t;
-  // Arbitrarily selected limit to convince the verifier that the BPF will
-  // always halt.
-  for (int i = 0; i < 64; ++i) {
-    struct task_struct* parent = BPF_CORE_READ(ret, real_parent, group_leader);
-    if ((!parent) || (BPF_CORE_READ(parent, tgid) == 0) ||
-        (BPF_CORE_READ(ret, nsproxy, mnt_ns, ns.inum) !=
-         BPF_CORE_READ(parent, nsproxy, mnt_ns, ns.inum))) {
-      break;
-    }
-    ret = parent;
-  }
-  return ret;
 }
 
 static inline __attribute__((always_inline)) void fill_image_info(

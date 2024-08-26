@@ -30,6 +30,23 @@ cros_normalize_to_last_exec(const struct task_struct* t) {
   return ret;
 }
 
+static inline __attribute__((always_inline)) const struct task_struct*
+normalize_to_last_newns(const struct task_struct* t) {
+  const struct task_struct* ret = t;
+  // Arbitrarily selected limit to convince the verifier that the BPF will
+  // always halt.
+  for (int i = 0; i < 64; ++i) {
+    struct task_struct* parent = BPF_CORE_READ(ret, real_parent, group_leader);
+    if ((!parent) || (BPF_CORE_READ(parent, tgid) == 0) ||
+        (BPF_CORE_READ(ret, nsproxy, mnt_ns, ns.inum) !=
+         BPF_CORE_READ(parent, nsproxy, mnt_ns, ns.inum))) {
+      break;
+    }
+    ret = parent;
+  }
+  return ret;
+}
+
 static inline __attribute__((always_inline)) void cros_fill_task_info(
     struct cros_process_task_info* task_info, const struct task_struct* t) {
   const struct task_struct* parent =

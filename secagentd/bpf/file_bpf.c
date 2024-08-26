@@ -875,7 +875,8 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     struct dentry* dentry,
     const struct path* path,
     struct inode_attr* before_attr,
-    uint8_t sensitive_file_type) {
+    uint8_t sensitive_file_type,
+    const struct task_struct* t) {
   if (!image_info || !dentry) {
     return;
   }
@@ -891,6 +892,9 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
   image_info->inode = BPF_CORE_READ(inode, i_ino);
   image_info->device_id = BPF_CORE_READ(inode, i_sb, s_dev);
   image_info->sensitive_file_type = sensitive_file_type;
+
+  const struct task_struct* n = normalize_to_last_newns(t);
+  image_info->pid_for_setns = BPF_CORE_READ(n, tgid);
 
   // Fill file flags if the file is not NULL
   if (file != NULL) {
@@ -1210,7 +1214,7 @@ static inline __attribute__((always_inline)) int populate_rb(
       fill_process_start(&file_detailed_event->process_info, current_task);
   fill_ns_info(&file_detailed_event->spawn_namespace, current_task);
   fill_file_image_info(&file_detailed_event->image_info, file, dentry, path,
-                       before_attr, sensitive_file_type);
+                       before_attr, sensitive_file_type, current_task);
 
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);

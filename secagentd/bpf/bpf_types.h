@@ -379,6 +379,7 @@ struct cros_file_image {
   struct inode_attr after_attr;   // Attributes of the file after the change.
   bool file_system_noexec;  // Indicates if the filesystem is mounted with the
                             // 'noexec' flag.
+  uint32_t pid_for_setns;
 } __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };

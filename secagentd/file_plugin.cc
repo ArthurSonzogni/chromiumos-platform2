@@ -937,7 +937,6 @@ void FilePlugin::FillFileImageInfo(
   if (use_after_modification_attribute) {
     file_image->set_pathname(std::string(image_info.path));
     file_image->set_mnt_ns(image_info.mnt_ns);
-
     file_image->set_inode_device_id(
         KernelToUserspaceDeviceId(image_info.device_id));
     file_image->set_inode(image_info.inode);
