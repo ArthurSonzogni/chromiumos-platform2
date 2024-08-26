@@ -25,26 +25,33 @@
 #include <mojo_service_manager/lib/connect.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "odml/coral/service.h"
 #include "odml/on_device_model/ml/on_device_model_internal.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
 
 namespace {
 
-class ServiceProviderImpl
+class OnDeviceModelServiceProviderImpl
     : public chromeos::mojo_service_manager::mojom::ServiceProvider {
  public:
-  explicit ServiceProviderImpl(
+  OnDeviceModelServiceProviderImpl(
+      raw_ref<MetricsLibrary> metrics,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this),
-        service_impl_(raw_ref(metrics_),
-                      raw_ref(shim_loader_),
-                      ml::GetOnDeviceModelInternalImpl(raw_ref(metrics_),
-                                                       raw_ref(shim_loader_))) {
+      : metrics_(metrics),
+        receiver_(this),
+        service_impl_(
+            metrics_,
+            raw_ref(shim_loader_),
+            ml::GetOnDeviceModelInternalImpl(metrics_, raw_ref(shim_loader_))) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
+  }
+
+  raw_ref<on_device_model::OnDeviceModelService> service() {
+    return raw_ref(service_impl_);
   }
 
  private:
@@ -59,7 +66,7 @@ class ServiceProviderImpl
   }
 
   // The metrics lib.
-  MetricsLibrary metrics_;
+  raw_ref<MetricsLibrary> metrics_;
   // The odml_shim loader.
   odml::OdmlShimLoaderImpl shim_loader_;
   // The receiver of ServiceProvider.
@@ -67,6 +74,40 @@ class ServiceProviderImpl
       receiver_;
   // The implementation of on_device_model::mojom::OnDeviceModelPlatformService.
   on_device_model::OnDeviceModelService service_impl_;
+};
+
+class CoralServiceProviderImpl
+    : public chromeos::mojo_service_manager::mojom::ServiceProvider {
+ public:
+  CoralServiceProviderImpl(
+      raw_ref<MetricsLibrary> metrics,
+      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
+          service_manager,
+      raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+          on_device_model_service)
+      : metrics_(metrics),
+        receiver_(this),
+        service_impl_(on_device_model_service) {
+    service_manager->Register(chromeos::mojo_services::kCrosCoralService,
+                              receiver_.BindNewPipeAndPassRemote());
+  }
+
+ private:
+  // overrides ServiceProvider.
+  void Request(
+      chromeos::mojo_service_manager::mojom::ProcessIdentityPtr identity,
+      mojo::ScopedMessagePipeHandle receiver) override {
+    service_impl_.AddReceiver(
+        mojo::PendingReceiver<coral::mojom::CoralService>(std::move(receiver)));
+  }
+
+  // The metrics lib.
+  raw_ref<MetricsLibrary> metrics_;
+  // The receiver of ServiceProvider.
+  mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
+      receiver_;
+  // The implementation of on_device_model::mojom::CoralService.
+  coral::CoralService service_impl_;
 };
 
 class Daemon : public brillo::Daemon {
@@ -100,8 +141,12 @@ class Daemon : public brillo::Daemon {
                     << ". Shutdown and wait for respawn.";
         }));
 
-    service_provider_impl_ =
-        std::make_unique<ServiceProviderImpl>(service_manager_);
+    on_device_model_service_provider_impl_ =
+        std::make_unique<OnDeviceModelServiceProviderImpl>(raw_ref(metrics_),
+                                                           service_manager_);
+    coral_service_provider_impl_ = std::make_unique<CoralServiceProviderImpl>(
+        raw_ref(metrics_), service_manager_,
+        on_device_model_service_provider_impl_->service());
     return 0;
   }
 
@@ -111,7 +156,13 @@ class Daemon : public brillo::Daemon {
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;
 
-  std::unique_ptr<ServiceProviderImpl> service_provider_impl_;
+  // The metrics lib. Should be destructed after both service providers.
+  MetricsLibrary metrics_;
+
+  std::unique_ptr<OnDeviceModelServiceProviderImpl>
+      on_device_model_service_provider_impl_;
+
+  std::unique_ptr<CoralServiceProviderImpl> coral_service_provider_impl_;
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_factory_{this};

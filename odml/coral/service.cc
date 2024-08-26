@@ -9,6 +9,7 @@
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/mojom/on_device_model_service.mojom.h"
 
 namespace coral {
 
@@ -19,16 +20,22 @@ using mojom::GroupResponse;
 using mojom::GroupResult;
 }  // namespace
 
-CoralService::CoralService()
-    : CoralService(std::make_unique<EmbeddingEngine>(),
+CoralService::CoralService(
+    raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+        on_device_model_service)
+    : CoralService(on_device_model_service,
+                   std::make_unique<EmbeddingEngine>(),
                    std::make_unique<ClusteringEngine>(),
                    std::make_unique<TitleGenerationEngine>()) {}
 
 CoralService::CoralService(
+    raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+        on_device_model_service,
     std::unique_ptr<EmbeddingEngineInterface> embedding_engine,
     std::unique_ptr<ClusteringEngineInterface> clustering_engine,
     std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine)
-    : embedding_engine_(std::move(embedding_engine)),
+    : on_device_model_service_(on_device_model_service),
+      embedding_engine_(std::move(embedding_engine)),
       clustering_engine_(std::move(clustering_engine)),
       title_generation_engine_(std::move(title_generation_engine)) {}
 

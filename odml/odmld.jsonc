@@ -3,19 +3,22 @@
   {
     "identity": "u:r:cros_odml_service:s0",
     "own": [
-      "CrosOdmlService"
+      "CrosOdmlService",
+      "CrosCoralService"
     ]
   },
   {
     "identity": "u:r:cros_browser:s0",
     "request": [
-      "CrosOdmlService"
+      "CrosOdmlService",
+      "CrosCoralService"
     ]
   },
   {
     "identity": "u:r:cros_ssh_session:s0",
     "request": [
-      "CrosOdmlService"
+      "CrosOdmlService",
+      "CrosCoralService"
     ]
   }
 ]

@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
@@ -19,13 +20,18 @@
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/mojom/on_device_model_service.mojom.h"
 
 namespace coral {
 
 class CoralService : public mojom::CoralService {
  public:
-  CoralService();
+  explicit CoralService(
+      raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+          on_device_model_service);
   CoralService(
+      raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+          on_device_model_service,
       std::unique_ptr<EmbeddingEngineInterface> embedding_engine,
       std::unique_ptr<ClusteringEngineInterface> clustering_engine,
       std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine);
@@ -56,6 +62,9 @@ class CoralService : public mojom::CoralService {
   void OnTitleGenerationResult(mojom::GroupRequestPtr request,
                                GroupCallback callback,
                                CoralResult<TitleGenerationResponse> result);
+
+  const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+      on_device_model_service_;
 
   std::unique_ptr<EmbeddingEngineInterface> embedding_engine_;
   std::unique_ptr<ClusteringEngineInterface> clustering_engine_;

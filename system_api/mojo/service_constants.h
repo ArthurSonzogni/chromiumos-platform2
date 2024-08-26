@@ -37,6 +37,7 @@ constexpr char kIioSensor[] = "IioSensor";
 constexpr char kVideoCaptureDeviceInfoMonitor[] =
     "VideoCaptureDeviceInfoMonitor";
 constexpr char kCrosOdmlService[] = "CrosOdmlService";
+constexpr char kCrosCoralService[] = "CrosCoralService";
 
 }  // namespace chromeos::mojo_services
 

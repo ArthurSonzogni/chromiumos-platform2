@@ -14,6 +14,7 @@
 #include "odml/coral/test_util.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/on_device_model/mock_on_device_model_service.h"
 
 namespace coral {
 namespace {
@@ -121,8 +122,8 @@ class CoralServiceTest : public testing::Test {
     title_generation_engine_ = title_generation_engine.get();
 
     service_ = std::make_unique<CoralService>(
-        std::move(embedding_engine), std::move(clustering_engine),
-        std::move(title_generation_engine));
+        raw_ref(model_service_), std::move(embedding_engine),
+        std::move(clustering_engine), std::move(title_generation_engine));
   }
 
  protected:
@@ -147,6 +148,8 @@ class CoralServiceTest : public testing::Test {
     ASSERT_TRUE(result->is_error());
     EXPECT_EQ(result->get_error(), error);
   }
+
+  on_device_model::MockOnDeviceModelService model_service_;
 
   MockEmbeddingEngine* embedding_engine_;
   MockClusteringEngine* clustering_engine_;
