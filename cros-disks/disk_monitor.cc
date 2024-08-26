@@ -310,8 +310,8 @@ bool DiskMonitor::GetDeviceEvents(DeviceEventList* events) {
   const char* subsystem = dev->GetSubsystem();
   const char* action = dev->GetAction();
 
-  LOG(INFO) << "Got action " << quote(action) << " on device "
-            << quote(dev->GetSysName());
+  VLOG(1) << "Got action " << quote(action) << " on device "
+          << quote(dev->GetSysName());
   LogUdevDevice(*dev);
 
   if (!sys_path || !subsystem || !action) {

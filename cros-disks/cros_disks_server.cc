@@ -74,7 +74,7 @@ void CrosDisksServer::Format(const std::string& path,
   }
 
   if (error != FormatError::kSuccess) {
-    LOG(ERROR) << "Cannot format device " << quote(path) << " as filesystem "
+    LOG(ERROR) << "Cannot format device " << quote(path) << " as "
                << quote(filesystem_type) << ": " << error;
     SendFormatCompletedSignal(static_cast<uint32_t>(error), path);
   }
@@ -343,7 +343,7 @@ void CrosDisksServer::OnSessionStopped() {
 }
 
 void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
-  LOG(INFO) << "Dispatching device event " << event;
+  VLOG(1) << "Dispatching device event " << event;
   switch (event.event_type) {
     case DeviceEvent::kIgnored:
       break;
