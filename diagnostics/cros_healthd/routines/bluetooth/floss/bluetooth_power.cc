@@ -131,7 +131,8 @@ void BluetoothPowerRoutine::HandleHciConfigResponse(
   int32_t return_code = result->return_code;
 
   if (!err.empty() || return_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "GetHciConfig failed with return code: " << return_code
+    LOG(ERROR) << "Failed to get HCI config for hci" << default_adapter_hci_
+               << " with return code: " << return_code
                << " and error: " << err.c_str();
     SetResultAndStop(base::unexpected(
         "Failed to parse powered status from HCI device config."));
