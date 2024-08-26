@@ -1,63 +1,15 @@
 // Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-use std::arch::x86_64::__cpuid;
 use std::time::Duration;
 
-use lazy_static::lazy_static;
+use super::platform::IS_MTL;
 
 // Feature flag
 pub const PREVENT_OVERTURBO: bool = true;
 
 // Track Max consecutive errors while parsing cpu stats
 pub const MAX_CONSECUTIVE_ERRORS: u32 = 100;
-
-// CPU model constants
-// for ADL set MTL to 0x906 to enable this feature
-const MTL: u32 = 0xA06;
-
-// CPUID constants
-const CPUID_EAX_VERSION_INFO: u32 = 0x0000_0001;
-
-// IS_MTL variable is used to check for MTL SOCs.
-// If dynamic EPP needs to be enabled for other SOCs,
-// define corresponding varible to check for those model numbers
-// and add it to the epp, thresholds, timeconstants list below.
-lazy_static! {
-    pub static ref IS_MTL: bool = {
-        // Check if it's an Intel platform
-        let is_intel_platform = is_intel_platform().unwrap_or(false);
-        // Check for a specific Intel CPU model
-        let version_info = unsafe { __cpuid(CPUID_EAX_VERSION_INFO) };
-        let model_info = (version_info.eax >> 8) & 0xFFF;
-
-
-        let is_specific_model = model_info == MTL;
-
-        is_intel_platform && is_specific_model
-    };
-}
-
-fn is_intel_platform() -> Result<bool, String> {
-    const CPUID_EAX_FOR_HFP_MID: u32 = 0;
-    const CPUID_GENUINE_INTEL_EBX: u32 = 0x756e6547;
-    const CPUID_GENUINE_INTEL_ECX: u32 = 0x6c65746e;
-    const CPUID_GENUINE_INTEL_EDX: u32 = 0x49656e69;
-    const CPUID_EAX_EXT_FEATURE: u32 = 7;
-
-    let result = unsafe { __cpuid(CPUID_EAX_FOR_HFP_MID) };
-
-    if result.eax >= CPUID_EAX_EXT_FEATURE
-        && result.ebx == CPUID_GENUINE_INTEL_EBX
-        && result.ecx == CPUID_GENUINE_INTEL_ECX
-        && result.edx == CPUID_GENUINE_INTEL_EDX
-    {
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
 
 // Configure EPP constants for differnt SOCs/Platforms
 // epp_perf: Epp setting for performance mode

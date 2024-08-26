@@ -22,7 +22,6 @@ use tokio::time::Instant;
 use super::auto_epp_config::Epp;
 use super::auto_epp_config::ThresholdsIntel;
 use super::auto_epp_config::TimeConstantsIntel;
-use super::auto_epp_config::IS_MTL;
 use super::auto_epp_config::MAX_CONSECUTIVE_ERRORS;
 use super::auto_epp_config::PREVENT_OVERTURBO;
 // globals
@@ -30,6 +29,7 @@ use super::globals::BSM_SIGNAL;
 use super::globals::DYNAMIC_EPP;
 use super::globals::MEDIA_CGROUP_SIGNAL;
 use super::globals::RTC_FS_SIGNAL;
+use super::platform::IS_MTL;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 
 // File path

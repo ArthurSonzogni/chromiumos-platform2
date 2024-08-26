@@ -9,9 +9,9 @@ mod cgroup_x86_64;
 mod cpu_scaling;
 mod globals;
 mod gpu_freq_scaling;
+mod platform;
 
 use std::path::Path;
-use std::path::PathBuf;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -73,7 +73,7 @@ fn get_first_scaling_governor(root_path: &Path) -> Result<String> {
 
 // Intel only tuning to limit GPU frequency (i.e. power draw) during video conference
 fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
-    if intel_device::is_intel_device(PathBuf::from("/")) {
+    if platform::is_intel_platform()? {
         set_gt_boost_freq_mhz_impl(Path::new("/"), mode)
     } else {
         /* AMD */
