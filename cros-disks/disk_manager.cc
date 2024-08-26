@@ -24,6 +24,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <base/time/time.h>
 
 #include "cros-disks/device_ejector.h"
@@ -203,6 +204,15 @@ KernelVersion GetKernelVersion() {
 }  // namespace
 
 bool DiskManager::ShouldUseKernelDrivers() {
+  // Check the ChromeOS release channel. If it is not test, canary nor dev, then
+  // we don't allow kernel drivers for the time being.
+  if (std::string channel;
+      !base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel) ||
+      (channel != "testimage-channel" && channel != "canary-channel" &&
+       channel != "dev-channel")) {
+    return false;
+  }
+
   // Return whether the Linux kernel is at least version 6.6.
   return !std::ranges::lexicographical_compare(GetKernelVersion(),
                                                KernelVersion{6, 6});
