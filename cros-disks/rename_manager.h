@@ -11,6 +11,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/cros-disks/dbus-constants.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/sandboxed_process.h"

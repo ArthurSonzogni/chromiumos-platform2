@@ -199,6 +199,14 @@ void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
       break;
   }
 
+  // Log the captured output, if it hasn't been already logged as it was getting
+  // captured.
+  if (error != RenameError::kSuccess && !LOG_IS_ON(INFO)) {
+    for (const std::string& s : process.GetCapturedOutput()) {
+      LOG(ERROR) << process.GetProgramName() << ": " << s;
+    }
+  }
+
   if (observer_)
     observer_->OnRenameCompleted(device_path, error);
 }
