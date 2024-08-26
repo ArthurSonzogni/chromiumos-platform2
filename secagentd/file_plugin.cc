@@ -194,17 +194,6 @@ const std::optional<std::string> ConstructOptionalUserhash(
   return userhash;
 }
 
-std::unique_ptr<std::string> mergePathSegments(
-    const secagentd::bpf::file_path_info& path_info) {
-  std::filesystem::path merged_path;
-
-  for (int i = path_info.num_segments - 1; i >= 0; --i) {
-    merged_path /= path_info.segment_names[i];
-  }
-
-  return std::make_unique<std::string>(merged_path.string());
-}
-
 static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
   // Combine the major and minor numbers to form the kernel-space device ID
   dev_t kernel_dev = static_cast<dev_t>((fileStatx.stx_dev_major << 20) |
@@ -946,13 +935,7 @@ void FilePlugin::FillFileImageInfo(
     const secagentd::bpf::cros_file_image& image_info,
     bool use_after_modification_attribute) {
   if (use_after_modification_attribute) {
-    if (std::strlen(image_info.path) > 0) {
-      file_image->set_pathname(std::string(image_info.path));
-    } else {
-      // Ensure that mergePathSegments returns a unique_ptr to std::string
-      file_image->set_allocated_pathname(
-          mergePathSegments(image_info.path_info).release());
-    }
+    file_image->set_pathname(std::string(image_info.path));
     file_image->set_mnt_ns(image_info.mnt_ns);
 
     file_image->set_inode_device_id(

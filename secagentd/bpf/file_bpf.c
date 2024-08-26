@@ -883,14 +883,9 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
   // Read the inode from the dentry
   struct inode* inode = BPF_CORE_READ(dentry, d_inode);
 
-  if (path) {
-    u_char* file_path = NULL;
-    resolve_path_to_string(&file_path, path);
-    bpf_core_read_str(image_info->path, MAX_PATH_SIZE, file_path);
-  } else {
-    // Populate the absolute file path
-    construct_absolute_file_path(dentry, &image_info->path_info);
-  }
+  u_char* file_path = NULL;
+  resolve_path_to_string(&file_path, path);
+  bpf_core_read_str(image_info->path, MAX_PATH_SIZE, file_path);
 
   // Fill inode information
   image_info->inode = BPF_CORE_READ(inode, i_ino);
@@ -1049,7 +1044,6 @@ static inline __attribute__((always_inline)) void print_inode_attributes(
  */
 static inline __attribute__((always_inline)) void print_cros_file_image(
     struct cros_file_image* file_image) {
-  print_file_path_info(&file_image->path_info);
   bpf_printk("Mnt_ns: %llu\n", file_image->mnt_ns);
   bpf_printk("Device ID: %llu\n", file_image->device_id);
   bpf_printk("Inode: %llu\n", file_image->inode);

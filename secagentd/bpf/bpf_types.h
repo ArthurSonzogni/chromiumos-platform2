@@ -370,17 +370,13 @@ struct before_attribute_map_value {
 struct cros_file_image {
   char path[MAX_PATH_SIZE];  // Path including mount information. This must be
                              // null terminated.
-  // TODO(princya): Deprecate the below struct and property
-  struct file_path_info path_info;  // Contains file path segments and related
-                                    // size information. This structure helps in
-                                    // constructing the full path of the file.
-  uint64_t mnt_ns;                  // The mount namespace of the inode
-  dev_t device_id;                  // The device ID both major and minor.
-  ino_t inode;                      // The inode of the file.
-  uint32_t flags;                   // Open Flags
-  uint8_t sensitive_file_type;      // sensitive_file_type
-  struct inode_attr before_attr;    // Attributes of the file before the change.
-  struct inode_attr after_attr;     // Attributes of the file after the change.
+  uint64_t mnt_ns;           // The mount namespace of the inode
+  dev_t device_id;           // The device ID both major and minor.
+  ino_t inode;               // The inode of the file.
+  uint32_t flags;            // Open Flags
+  uint8_t sensitive_file_type;    // sensitive_file_type
+  struct inode_attr before_attr;  // Attributes of the file before the change.
+  struct inode_attr after_attr;   // Attributes of the file after the change.
   bool file_system_noexec;  // Indicates if the filesystem is mounted with the
                             // 'noexec' flag.
 } __attribute__((aligned(8)));
