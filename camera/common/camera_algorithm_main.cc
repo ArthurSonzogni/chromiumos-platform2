@@ -18,7 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/message_loop/message_pump_libevent.h>
+#include <base/message_loop/message_pump_epoll.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/public/cpp/platform/socket_utils_posix.h>
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
   }
 
   // Enable epoll message pump.
-  base::MessagePumpLibevent::InitializeFeatures();
+  base::MessagePumpEpoll::InitializeFeatures();
 
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   logging::LoggingSettings settings;

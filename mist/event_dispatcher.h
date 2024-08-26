@@ -18,7 +18,7 @@ namespace mist {
 
 // An event dispatcher for posting a task to a message loop. To allow file
 // descriptor monitoring via libevent, base::SingleThreadTaskExecutor, which
-// uses base::MessagePumpLibevent, is used as the underlying message loop.
+// uses base::MessagePumpEpoll, is used as the underlying message loop.
 class EventDispatcher {
  public:
   EventDispatcher();

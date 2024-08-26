@@ -242,8 +242,8 @@ class MockSocketQrtr : public SocketInterface {
     // Return without setting up a MessageLoop::WatchFileDescriptor. The epoll
     // syscall does not always support regular file descriptors. Libevent could
     // be configured not to use epoll, but this would require modifying or
-    // substituting base::MessagePumpLibevent. Instead, ModemQrtrTest will
-    // manually call the DataAvailableCallback as needed.
+    // substituting base::MessagePumpEpoll. Instead, ModemQrtrTest will manually
+    // call the DataAvailableCallback as needed.
     return true;
   }
 

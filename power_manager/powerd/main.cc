@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/sysinfo.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <cstdlib>
 #include <memory>
 #include <string>
 #include <utility>
-
-#include <sys/sysinfo.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include <base/at_exit.h>
 #include <base/check.h>
@@ -19,7 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/message_loop/message_pump_libevent.h>
+#include <base/message_loop/message_pump_epoll.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
@@ -34,7 +34,6 @@
 #include <libsar/sar_config_reader_delegate_impl.h>
 #include <metrics/metrics_library.h>
 #include <ml/dbus-proxies.h>
-
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -421,7 +420,7 @@ int main(int argc, char* argv[]) {
 
   brillo::FlagHelper::Init(argc, argv,
                            "powerd, the Chromium OS userspace power manager.");
-  base::MessagePumpLibevent::InitializeFeatures();
+  base::MessagePumpEpoll::InitializeFeatures();
 
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";

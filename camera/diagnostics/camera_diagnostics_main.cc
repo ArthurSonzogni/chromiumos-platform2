@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/command_line.h>
-#include <base/message_loop/message_pump_libevent.h>
+#include <base/message_loop/message_pump_epoll.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
   // Enable epoll message pump.
-  base::MessagePumpLibevent::InitializeFeatures();
+  base::MessagePumpEpoll::InitializeFeatures();
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   // Override the log items set by brillo::InitLog.

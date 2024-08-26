@@ -8,14 +8,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <hardware/hardware.h>
-
 #include <base/command_line.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/message_loop/message_pump_libevent.h>
+#include <base/message_loop/message_pump_epoll.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
+#include <hardware/hardware.h>
 
 #include "cros-camera/common.h"
 #include "hal_adapter/camera_hal_adapter.h"
@@ -40,7 +39,7 @@ int main(int argc, char* argv[]) {
   // Init CommandLine for InitLogging.
   base::CommandLine::Init(argc, argv);
   // Enable epoll message pump.
-  base::MessagePumpLibevent::InitializeFeatures();
+  base::MessagePumpEpoll::InitializeFeatures();
   int kCameraProcessPriority = 0;
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
