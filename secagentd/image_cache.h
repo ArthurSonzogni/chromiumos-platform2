@@ -13,6 +13,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "base/containers/lru_cache.h"
+#include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
@@ -23,6 +24,9 @@
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
+
+static const size_t kShaChunkSize = 4096;
+static const size_t kMaxFileSizeForFullSha = 75 * 1024 * 1024;
 
 namespace testing {
 class ProcessCacheTestFixture;
@@ -55,6 +59,7 @@ class ImageCacheInterface
   // internal cache afterwards.
   virtual absl::StatusOr<HashValue> InclusiveGetImage(
       const ImageCacheKeyType& image_key,
+      bool force_full_sha256,
       uint64_t pid_for_setns,
       const base::FilePath& image_path_in_ns) = 0;
   // Returns a hashable and statable path of the given image path in the current
@@ -62,6 +67,10 @@ class ImageCacheInterface
   virtual absl::StatusOr<base::FilePath> GetPathInCurrentMountNs(
       uint64_t pid_for_setns,
       const base::FilePath& image_path_in_pids_ns) const = 0;
+  // Bypass the image cache and generate a SHA256 directly.
+  virtual absl::StatusOr<HashValue> GenerateImageHash(
+      const base::FilePath& image_path_in_current_ns,
+      bool force_full_sha256) = 0;
 };
 
 class ImageCache : public ImageCacheInterface {
@@ -71,6 +80,7 @@ class ImageCache : public ImageCacheInterface {
 
   absl::StatusOr<HashValue> InclusiveGetImage(
       const ImageCacheKeyType& image_key,
+      bool force_full_sha256,
       uint64_t pid_for_setns,
       const base::FilePath& image_path_in_ns) override;
   // Returns a hashable and statable path of the given image path in the current
@@ -93,16 +103,27 @@ class ImageCache : public ImageCacheInterface {
       const base::FilePath& path, const base::FilePath& abs_component);
 
   // Bypass the image cache and generate a SHA256 directly.
-  static absl::StatusOr<std::string> GenerateImageHash(
-      const base::FilePath& image_path_in_current_ns);
+  absl::StatusOr<HashValue> GenerateImageHash(
+      const base::FilePath& image_path_in_current_ns,
+      bool force_full_sha256) override;
 
   ImageCache(const ImageCache&) = delete;
   ImageCache& operator=(const ImageCache&) = delete;
 
  private:
   friend class testing::ProcessCacheTestFixture;
-  explicit ImageCache(base::FilePath path);
+  explicit ImageCache(
+      base::FilePath path,
+      size_t sha_chunk_size = kShaChunkSize,
+      size_t max_file_size_default_full_sha256 = kMaxFileSizeForFullSha);
+  absl::StatusOr<HashValue> VerifyStatAndGenerateImageHash(
+      const ImageCacheKeyType& image_key,
+      bool force_full_sha256,
+      const base::FilePath& image_path_in_current_ns);
+
   const base::FilePath root_path_;
+  const size_t sha_chunk_size_;
+  const size_t max_file_size_for_full_sha_;
   base::Lock cache_lock_;
   std::unique_ptr<InternalImageCacheType> cache_;
 };

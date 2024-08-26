@@ -7,11 +7,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cinttypes>
 #include <cstdint>
 #include <list>
 #include <memory>
-#include <string>
 #include <utility>
 
 #include "absl/status/status.h"
@@ -26,20 +26,28 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
+#include "brillo/secure_blob.h"
 #include "openssl/sha.h"
 #include "secagentd/bpf/bpf_types.h"
 namespace {
 
-static const char kErrorFailedToRead[] = "Failed to read ";
+static const char kErrorFailedToRead[] = "Error reading file ";
 static const char kErrorSslSha[] = "SSL SHA error";
+static const char kErrorBytesRead[] =
+    "Failed to read the expected number of bytes from the file. ";
+}  // namespace
 
-using ImageCacheIfc = secagentd::ImageCacheInterface;
+namespace secagentd {
 
-absl::StatusOr<ImageCacheIfc::HashValue> VerifyStatAndGenerateImageHash(
-    const ImageCacheIfc::ImageCacheKeyType& image_key,
+constexpr ImageCache::InternalImageCacheType::size_type kImageCacheMaxSize =
+    256;
+
+absl::StatusOr<ImageCacheInterface::HashValue>
+ImageCache::VerifyStatAndGenerateImageHash(
+    const ImageCacheInterface::ImageCacheKeyType& image_key,
+    bool force_full_sha256,
     const base::FilePath& image_path_in_current_ns) {
-  auto hash =
-      secagentd::ImageCache::GenerateImageHash(image_path_in_current_ns);
+  auto hash = GenerateImageHash(image_path_in_current_ns, force_full_sha256);
   if (!hash.ok()) {
     return hash.status();
   }
@@ -55,44 +63,83 @@ absl::StatusOr<ImageCacheIfc::HashValue> VerifyStatAndGenerateImageHash(
         base::StrCat({"Failed to match stat of image hashed at ",
                       image_path_in_current_ns.value()}));
   }
-  return ImageCacheIfc::HashValue{.sha256 = hash.value()};
+  return hash;
 }
-}  // namespace
 
-namespace secagentd {
-
-constexpr ImageCache::InternalImageCacheType::size_type kImageCacheMaxSize =
-    256;
-
-absl::StatusOr<std::string> ImageCache::GenerateImageHash(
-    const base::FilePath& image_path_in_current_ns) {
-  base::File image(image_path_in_current_ns,
-                   base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!image.IsValid()) {
+// The function determines whether to compute a full or partial hash based on
+// file size and force_full_sha. For a partial hash, it divides the file into
+// chunks, processes a fixed-size portion of each chunk, and handles any
+// remaining bytes in the last chunk separately. For a full hash, it reads and
+// processes the entire file in chunks of a specified size. It updates the hash
+// with each chunk of data and finalizes the computation. The result indicates
+// if the hash was for the full file or just a part.
+absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
+    const base::FilePath& image_path_in_current_ns, bool force_full_sha) {
+  base::File file(image_path_in_current_ns,
+                  base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!file.IsValid()) {
     return absl::NotFoundError(
         base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
   }
+
   SHA256_CTX ctx;
   if (!SHA256_Init(&ctx)) {
     return absl::InternalError(kErrorSslSha);
   }
-  std::array<char, 4096> buf;
-  int bytes_read = 0;
-  while ((bytes_read = image.ReadAtCurrentPos(buf.data(), buf.size())) > 0) {
+
+  size_t file_size = file.GetLength();
+  bool is_partial =
+      !force_full_sha && (file_size > (max_file_size_for_full_sha_));
+
+  size_t chunk_size;
+
+  if (is_partial) {
+    size_t chunk_count = max_file_size_for_full_sha_ / sha_chunk_size_;
+    chunk_size = file_size / chunk_count;
+  } else {
+    chunk_size = sha_chunk_size_;
+  }
+
+  // If last chunk is less that the chunk_count, we would end up
+  // computing full hash, even though partial is needed, updating is_partial
+  // correctly
+  is_partial =
+      is_partial &&
+      (file_size > (max_file_size_for_full_sha_ +
+                    ((max_file_size_for_full_sha_ / sha_chunk_size_) - 1)));
+
+  brillo::SecureBlob buf(sha_chunk_size_);
+  size_t offset = 0;
+
+  while (offset < file_size) {
+    // Determine bytes to read for this iteration
+    size_t bytes_to_read = std::min(sha_chunk_size_, file_size - offset);
+    // Read bytes from the file
+    int bytes_read = file.Read(offset, buf.char_data(), bytes_to_read);
+    if (bytes_read < bytes_to_read) {
+      return absl::AbortedError(
+          base::StrCat({kErrorBytesRead, image_path_in_current_ns.value()}));
+    }
+
+    // Update SHA256 context with the read data
     if (!SHA256_Update(&ctx, buf.data(), bytes_read)) {
       return absl::InternalError(kErrorSslSha);
     }
+
+    offset += chunk_size;  // Move to the next position
   }
-  if (bytes_read < 0) {
-    return absl::AbortedError(
-        base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
-  }
-  static_assert(sizeof(buf) >= SHA256_DIGEST_LENGTH);
-  if (!SHA256_Final(reinterpret_cast<unsigned char*>(buf.data()), &ctx)) {
+
+  // Finalize the SHA calculation
+  std::array<unsigned char, SHA256_DIGEST_LENGTH> final_hash;
+  if (!SHA256_Final(final_hash.data(), &ctx)) {
     return absl::InternalError(kErrorSslSha);
   }
-  return base::HexEncode(buf.data(), SHA256_DIGEST_LENGTH);
+
+  // Convert hash to a hexadecimal string and return
+  return ImageCacheInterface::HashValue{
+      base::HexEncode(final_hash.data(), SHA256_DIGEST_LENGTH), is_partial};
 }
+
 absl::StatusOr<base::FilePath> ImageCache::SafeAppendAbsolutePath(
     const base::FilePath& path, const base::FilePath& abs_component) {
   // TODO(b/279213783): abs_component is expected to be an absolute and
@@ -110,21 +157,26 @@ absl::StatusOr<base::FilePath> ImageCache::SafeAppendAbsolutePath(
       base::StrCat({base::FilePath::kCurrentDirectory, abs_component.value()}));
 }
 
-ImageCache::ImageCache(base::FilePath path)
+ImageCache::ImageCache(base::FilePath path,
+                       size_t sha_chunk_size,
+                       size_t max_file_size_for_full_sha)
     : root_path_(path),
+      sha_chunk_size_(sha_chunk_size),
+      max_file_size_for_full_sha_(max_file_size_for_full_sha),
       cache_(std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)) {}
 ImageCache::ImageCache() : ImageCache(base::FilePath("/")) {}
 
 absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::InclusiveGetImage(
     const ImageCacheKeyType& image_key,
+    bool force_full_sha256,
     uint64_t pid_for_setns,
     const base::FilePath& image_path_in_pids_ns) {
   base::AutoLock lock(cache_lock_);
   auto it = cache_->Get(image_key);
   if (it != cache_->end()) {
     if (it->first.mtime.tv_sec == 0 || it->first.ctime.tv_sec == 0) {
-      // Invalidate entry and force checksum if its cached ctime or mtime seems
-      // missing.
+      // Invalidate entry and force checksum if its cached ctime or mtime
+      // seems missing.
       cache_->Erase(it);
       it = cache_->end();
     } else {
@@ -141,7 +193,8 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::InclusiveGetImage(
     auto statusorpath =
         SafeAppendAbsolutePath(root_path_, image_path_in_pids_ns);
     if (statusorpath.ok()) {
-      statusorhash = VerifyStatAndGenerateImageHash(image_key, *statusorpath);
+      statusorhash = VerifyStatAndGenerateImageHash(
+          image_key, force_full_sha256, *statusorpath);
     }
     // If !statusorpath.ok() then GetPathInCurrentMountNs will call
     // SafeAppendAbsolutePath with the same image_path_in_pids_ns which will
@@ -150,7 +203,8 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::InclusiveGetImage(
       statusorpath =
           GetPathInCurrentMountNs(pid_for_setns, image_path_in_pids_ns);
       if (statusorpath.ok()) {
-        statusorhash = VerifyStatAndGenerateImageHash(image_key, *statusorpath);
+        statusorhash = VerifyStatAndGenerateImageHash(
+            image_key, force_full_sha256, *statusorpath);
       }
     }
 

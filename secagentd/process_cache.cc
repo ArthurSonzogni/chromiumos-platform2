@@ -284,9 +284,9 @@ void ProcessCache::FillProcessFromBpf(
       image_info.inode_device_id, image_info.inode, image_info.mtime,
       image_info.ctime};
   {
-    auto result =
-        image_cache_->InclusiveGetImage(image_key, image_info.pid_for_setns,
-                                        base::FilePath(image_info.pathname));
+    auto result = image_cache_->InclusiveGetImage(
+        image_key, true, image_info.pid_for_setns,
+        base::FilePath(image_info.pathname));
     if (result.ok()) {
       process_proto->mutable_image()->set_sha256(result.value().sha256);
     }
@@ -560,15 +560,15 @@ void ProcessCache::InitializeFilter(bool underscorify) {
                      '_');
       }
       k.image_pathname = root_path_.Append(k.image_pathname).value();
-      auto result =
-          ImageCache::GenerateImageHash(base::FilePath(k.image_pathname));
+      auto result = image_cache_->GenerateImageHash(
+          base::FilePath(k.image_pathname), true);
       if (!result.ok()) {
         LOG(ERROR) << "XdrProcessEvent filter failed to create rule for "
                    << "image_path_name:" << k.image_pathname
                    << " error:" << result.status();
         continue;
       }
-      v.first.emplace(std::make_pair(result.value(), std::move(k)));
+      v.first.emplace(std::make_pair(result.value().sha256, std::move(k)));
     }
   }
   LOG(INFO) << "Process filter rules created:";
@@ -634,8 +634,8 @@ absl::Status ProcessCache::FillImageFromProcfs(
       {exe_stat.st_mtim.tv_sec, exe_stat.st_mtim.tv_nsec},
       {exe_stat.st_ctim.tv_sec, exe_stat.st_ctim.tv_nsec}};
   {
-    auto result =
-        image_cache_->InclusiveGetImage(image_key, pid_for_setns, exe_path);
+    auto result = image_cache_->InclusiveGetImage(image_key, true,
+                                                  pid_for_setns, exe_path);
     if (result.ok()) {
       file_image_proto->set_sha256(result.value().sha256);
     }
