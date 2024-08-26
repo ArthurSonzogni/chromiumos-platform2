@@ -6,15 +6,33 @@
 #include <dbus/dbus.h>
 #include <perfetto/perfetto.h>
 
+#include "dbus_perfetto_producer/dbus_request.h"
 #include "dbus_perfetto_producer/dbus_tracer.h"
 
 int main(int argc, char** argv) {
+  DBusConnection* connection;
+  DBusError error;
+  DBusBusType type = DBUS_BUS_SYSTEM;
+  ProcessMap processes = {};
+
+  dbus_error_init(&error);
+  connection = dbus_bus_get_private(type, &error);
+  if (!connection) {
+    LOG(ERROR) << "Failed to open a connection";
+    dbus_error_free(&error);
+    exit(1);
+  }
+
+  if (!StoreProcessesNames(connection, &error, &processes)) {
+    exit(1);
+  }
+
   perfetto::TracingInitArgs args;
   args.backends |= perfetto::kSystemBackend;
   perfetto::Tracing::Initialize(args);
   perfetto::TrackEvent::Register();
 
-  if (!DbusTracer()) {
+  if (!DbusTracer(connection, &error, &processes)) {
     exit(1);
   }
   return 0;

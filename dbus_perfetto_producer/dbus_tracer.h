@@ -5,7 +5,10 @@
 #ifndef DBUS_PERFETTO_PRODUCER_DBUS_TRACER_H_
 #define DBUS_PERFETTO_PRODUCER_DBUS_TRACER_H_
 
+#include <dbus/dbus.h>
 #include <perfetto/perfetto.h>
+
+#include "dbus_perfetto_producer/dbus_request.h"
 
 #define DBUS_PERFETTO_PRODUCER_PERFETTO_CATEGORY "dbus_perfetto_producer"
 
@@ -13,6 +16,6 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category(DBUS_PERFETTO_PRODUCER_PERFETTO_CATEGORY)
         .SetDescription("D-Bus Event"));
 
-bool DbusTracer();
+bool DbusTracer(DBusConnection*, DBusError*, ProcessMap*);
 
 #endif  // DBUS_PERFETTO_PRODUCER_DBUS_TRACER_H_
