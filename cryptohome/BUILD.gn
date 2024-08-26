@@ -447,6 +447,7 @@ if (use.test) {
     ]
     libs = [
       "chaps",
+      "fake_platform_features",
       "hwsec_test",
       "keyutils",
       "policy",

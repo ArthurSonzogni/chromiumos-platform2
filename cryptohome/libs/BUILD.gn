@@ -631,7 +631,6 @@ static_library("libcryptohome") {
   libs = [
     "biod_proxy",
     "chaps",
-    "fake_platform_features",
     "hwsec",
     "policy",
   ]

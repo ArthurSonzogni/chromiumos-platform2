@@ -14,6 +14,7 @@
 
 #include <base/memory/scoped_refptr.h>
 #include <dbus/mock_bus.h>
+#include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 
 #include "cryptohome/features.h"

@@ -11,7 +11,6 @@
 #include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
-#include <featured/fake_platform_features.h>
 #include <featured/feature_library.h>
 
 namespace cryptohome {
