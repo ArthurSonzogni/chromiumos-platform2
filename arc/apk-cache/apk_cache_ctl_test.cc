@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/apk-cache/apk_cache_ctl_commands.h"
+#include <sqlite3.h>
 
 #include <cinttypes>
 #include <iostream>
@@ -14,8 +14,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
-#include <sqlite3.h>
 
+#include "arc/apk-cache/apk_cache_ctl_commands.h"
 #include "arc/apk-cache/apk_cache_database.h"
 #include "arc/apk-cache/apk_cache_database_test_utils.h"
 #include "arc/apk-cache/apk_cache_utils.h"
@@ -65,7 +65,7 @@ bool CreateFileEntry(const base::FilePath& db_path,
     return false;
 
   base::FilePath file_path = files_path.Append(GetFileNameById(id));
-  return base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent));
+  return base::WriteFile(file_path, kTestFileContent);
 }
 
 bool CreateValidPackage(const base::FilePath& db_path,

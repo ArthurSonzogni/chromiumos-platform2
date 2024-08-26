@@ -73,9 +73,7 @@ TEST_F(LocalFileTest, Pread) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const base::FilePath file_path = temp_dir.GetPath().Append("test_file.txt");
   constexpr char kFileContent[] = "abcdefghijklmnopqrstuvwxyz";
-  // Trim trailing '\0'.
-  ASSERT_EQ(sizeof(kFileContent) - 1,
-            base::WriteFile(file_path, kFileContent, sizeof(kFileContent) - 1));
+  ASSERT_TRUE(base::WriteFile(file_path, kFileContent));
 
   base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_RDONLY)));
   ASSERT_TRUE(fd.is_valid());
@@ -118,9 +116,7 @@ TEST_F(LocalFileTest, Fstat) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const base::FilePath file_path = temp_dir.GetPath().Append("test_file.txt");
   constexpr char kFileContent[] = "abcdefghijklmnopqrstuvwxyz";
-  // Trim trailing '\0'.
-  ASSERT_EQ(sizeof(kFileContent) - 1,
-            base::WriteFile(file_path, kFileContent, sizeof(kFileContent) - 1));
+  ASSERT_TRUE(base::WriteFile(file_path, kFileContent));
 
   base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_RDONLY)));
   ASSERT_TRUE(fd.is_valid());
@@ -152,7 +148,7 @@ TEST_F(LocalFileTest, Ftruncate) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const base::FilePath file_path = temp_dir.GetPath().Append("test_file.txt");
-  ASSERT_EQ(0, base::WriteFile(file_path, nullptr, 0));
+  ASSERT_TRUE(base::WriteFile(file_path, ""));
 
   base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_WRONLY)));
   ASSERT_TRUE(fd.is_valid());

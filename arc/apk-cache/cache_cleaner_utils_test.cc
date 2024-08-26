@@ -40,7 +40,7 @@ class CacheCleanerUtilsTest : public testing::Test {
 // should not be removed.
 TEST_F(CacheCleanerUtilsTest, RemoveFile) {
   base::FilePath file_path = temp_path().Append("test_file");
-  base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent));
+  base::WriteFile(file_path, kTestFileContent);
   base::FilePath dir_path = temp_path().Append("test_dir");
   base::CreateDirectory(dir_path);
 
@@ -58,7 +58,7 @@ TEST_F(CacheCleanerUtilsTest, RemoveFile) {
 // Files should not be removed.
 TEST_F(CacheCleanerUtilsTest, RemoveDirectory) {
   base::FilePath file_path = temp_path().Append("test_file");
-  base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent));
+  base::WriteFile(file_path, kTestFileContent);
   base::FilePath dir_path = temp_path().Append("test_dir");
   base::CreateDirectory(dir_path);
 
@@ -75,7 +75,7 @@ TEST_F(CacheCleanerUtilsTest, RemoveDirectory) {
 // Symbolic links should be removed if SHOW_SYM_LINKS is passed.
 TEST_F(CacheCleanerUtilsTest, RemoveSymbolicLink) {
   base::FilePath file_path = temp_path().Append("test_file");
-  base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent));
+  base::WriteFile(file_path, kTestFileContent);
   base::FilePath link_path = temp_path().Append("test_link");
   base::CreateSymbolicLink(file_path, link_path);
 
@@ -95,13 +95,12 @@ TEST_F(CacheCleanerUtilsTest, RemoveSymbolicLink) {
 // Expected files and directories should not be removed.
 TEST_F(CacheCleanerUtilsTest, NotRemoveExpected) {
   base::FilePath file_path = temp_path().Append("test_file");
-  base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent));
+  base::WriteFile(file_path, kTestFileContent);
   base::FilePath dir_path = temp_path().Append("test_dir");
   base::CreateDirectory(dir_path);
 
   base::FilePath expected_file_path = temp_path().Append("expected_file");
-  base::WriteFile(expected_file_path, kTestFileContent,
-                  strlen(kTestFileContent));
+  base::WriteFile(expected_file_path, kTestFileContent);
   base::FilePath expected_dir_path = temp_path().Append("expected_dir");
   base::CreateDirectory(expected_dir_path);
 

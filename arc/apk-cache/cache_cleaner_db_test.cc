@@ -4,6 +4,8 @@
 
 #include "arc/apk-cache/cache_cleaner_db.h"
 
+#include <sqlite3.h>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -11,7 +13,6 @@
 #include <base/functional/bind.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
-#include <sqlite3.h>
 
 #include "arc/apk-cache/apk_cache_database.h"
 #include "arc/apk-cache/apk_cache_database_test_utils.h"
@@ -63,7 +64,7 @@ bool CreateFileEntry(const base::FilePath& db_path,
     return false;
 
   base::FilePath file_path = files_path.Append(GetFileNameById(id));
-  return base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent));
+  return base::WriteFile(file_path, kTestFileContent);
 }
 
 bool CreateValidPackage(const base::FilePath& db_path,
@@ -103,8 +104,7 @@ TEST_F(CacheCleanerDBTest, DatabaseNotExist) {
   ASSERT_TRUE(base::CreateDirectory(files_path));
   // Write a random file to files directory.
   base::FilePath file_path = files_path.Append("test");
-  ASSERT_TRUE(
-      base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent)));
+  ASSERT_TRUE(base::WriteFile(file_path, kTestFileContent));
   // Clean.
   EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
   // Files directory should be removed.
@@ -115,15 +115,14 @@ TEST_F(CacheCleanerDBTest, DatabaseNotExist) {
 TEST_F(CacheCleanerDBTest, EmptyDatabase) {
   // Write empty database file.
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
-  ASSERT_TRUE(base::WriteFile(db_path, "\0", 1));
+  ASSERT_TRUE(base::WriteFile(db_path, std::string_view("\0", 1)));
   ASSERT_TRUE(base::PathExists(db_path));
   // Create files directory.
   base::FilePath files_path = temp_path().Append(kFilesBase);
   ASSERT_TRUE(base::CreateDirectory(files_path));
   // Write a random file to files directory.
   base::FilePath file_path = files_path.Append("test");
-  ASSERT_TRUE(
-      base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent)));
+  ASSERT_TRUE(base::WriteFile(file_path, kTestFileContent));
   // Clean.
   EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
   // Files directory should be removed.
@@ -142,16 +141,14 @@ TEST_F(CacheCleanerDBTest, ApkCacheDatabase) {
 TEST_F(CacheCleanerDBTest, BrokenDatabaseFile) {
   // Write random content to database file.
   base::FilePath db_path = temp_path().Append(kDatabaseFile);
-  base::WriteFile(db_path, kBrokenDatabaseContent,
-                  strlen(kBrokenDatabaseContent));
+  base::WriteFile(db_path, kBrokenDatabaseContent);
   EXPECT_TRUE(base::PathExists(db_path));
   // Create files directory.
   base::FilePath files_path = temp_path().Append(kFilesBase);
   ASSERT_TRUE(base::CreateDirectory(files_path));
   // Write a random file to files directory.
   base::FilePath file_path = files_path.Append("test");
-  ASSERT_TRUE(
-      base::WriteFile(file_path, kTestFileContent, strlen(kTestFileContent)));
+  ASSERT_TRUE(base::WriteFile(file_path, kTestFileContent));
   // Clean.
   EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
   // Both database file and files directory should be removed.
@@ -307,7 +304,7 @@ TEST_F(CacheCleanerDBTest, FileWithoutRecord) {
   EXPECT_TRUE(CreateValidPackage(db_path, files_path));
   // Create a random file in files directory.
   base::FilePath random_file = files_path.Append("foobar");
-  base::WriteFile(random_file, kTestFileContent, strlen(kTestFileContent));
+  base::WriteFile(random_file, kTestFileContent);
   // The file should exist.
   EXPECT_TRUE(base::PathExists(random_file));
   // Clean.
@@ -329,8 +326,7 @@ TEST_F(CacheCleanerDBTest, DirectoryInFiles) {
   base::FilePath random_dir = files_path.Append("foobar");
   base::CreateDirectory(random_dir);
   base::FilePath random_file = random_dir.Append("test");
-  ASSERT_TRUE(
-      base::WriteFile(random_file, kTestFileContent, strlen(kTestFileContent)));
+  ASSERT_TRUE(base::WriteFile(random_file, kTestFileContent));
   // The directory should exist.
   EXPECT_TRUE(base::PathExists(random_dir));
   EXPECT_TRUE(base::PathExists(random_file));

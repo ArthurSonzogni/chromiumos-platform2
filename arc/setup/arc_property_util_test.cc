@@ -224,7 +224,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_NoExpansion) {
   constexpr const char kValidProp[] = "ro.foo=bar\nro.baz=boo";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
-  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  base::WriteFile(path, kValidProp);
 
   const base::FilePath dest = GetTempDir().Append("new.prop");
   const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
@@ -245,7 +245,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_Expansion) {
   constexpr const char kValidProp[] = "ro.foo={k1}\nro.baz={k2}";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
-  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  base::WriteFile(path, kValidProp);
 
   const base::FilePath dest = GetTempDir().Append("new.prop");
   const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
@@ -266,7 +266,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_NestedExpansion) {
   constexpr const char kValidProp[] = "ro.foo={k1}\nro.baz={k2}";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
-  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  base::WriteFile(path, kValidProp);
 
   const base::FilePath dest = GetTempDir().Append("new.prop");
   const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
@@ -284,7 +284,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotExpand) {
       "ro.foo={nonexistent-property}\nro.baz=boo\n";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
-  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  base::WriteFile(path, kValidProp);
   const base::FilePath dest = GetTempDir().Append("new.prop");
   const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
   EXPECT_FALSE(ExpandPropertyFileForTesting(path, dest, mod_dest, config()));
@@ -304,7 +304,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotWriteOutput) {
   constexpr const char kValidProp[] = "ro.foo=bar\nro.baz=boo\n";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
-  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  base::WriteFile(path, kValidProp);
   const base::FilePath mod_dest = GetTempDir().Append("mod.prop");
   EXPECT_FALSE(ExpandPropertyFileForTesting(
       path, base::FilePath("/nonexistent2"), mod_dest, config()));
@@ -316,7 +316,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFile_CannotWriteModified) {
   constexpr const char kValidProp[] = "ro.foo=bar\nro.baz=boo\n";
   base::FilePath path;
   ASSERT_TRUE(CreateTemporaryFileInDir(GetTempDir(), &path));
-  base::WriteFile(path, kValidProp, strlen(kValidProp));
+  base::WriteFile(path, kValidProp);
   const base::FilePath dest = GetTempDir().Append("new.prop");
   EXPECT_FALSE(ExpandPropertyFileForTesting(
       path, dest, base::FilePath("/nonexistent3"), config()));
@@ -364,20 +364,19 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   // Add a non-ro property to make sure that the property is NOT filetered out
   // when not in the "append" mode.
   constexpr const char kDefaultProp[] = "dalvik.a=b\nro.foo=bar\n";
-  base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
+  base::WriteFile(default_prop, kDefaultProp);
   EXPECT_FALSE(expander.Expand());
 
   // Add build.prop too. The call should not succeed still.
   base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "ro.baz=boo\n";
-  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+  base::WriteFile(build_prop, kBuildProp);
   EXPECT_FALSE(expander.Expand());
 
   // Add vendor_build.prop too. Then the call should succeed.
   base::FilePath vendor_build_prop = source_dir.Append("vendor_build.prop");
   constexpr const char kVendorBuildProp[] = "ro.a=b\n";
-  base::WriteFile(vendor_build_prop, kVendorBuildProp,
-                  strlen(kVendorBuildProp));
+  base::WriteFile(vendor_build_prop, kVendorBuildProp);
   EXPECT_TRUE(expander.Expand());
 
   // Verify all dest files are there.
@@ -482,35 +481,32 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   // Add build.prop too. The call should not succeed still.
   const base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "ro.baz=boo\n";
-  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+  base::WriteFile(build_prop, kBuildProp);
   EXPECT_FALSE(expander.Expand());
 
   // Add vendor_build.prop too. Then the call should succeed.
   const base::FilePath vendor_build_prop =
       source_dir.Append("vendor_build.prop");
   constexpr const char kVendorBuildProp[] = "ro.a=b\n";
-  base::WriteFile(vendor_build_prop, kVendorBuildProp,
-                  strlen(kVendorBuildProp));
+  base::WriteFile(vendor_build_prop, kVendorBuildProp);
   EXPECT_TRUE(expander.Expand());
 
   // Add other optional files too. Then the call should succeed.
   const base::FilePath system_ext_build_prop =
       source_dir.Append("system_ext_build.prop");
   constexpr const char kSystemExtBuildProp[] = "ro.c=d\n";
-  base::WriteFile(system_ext_build_prop, kSystemExtBuildProp,
-                  strlen(kSystemExtBuildProp));
+  base::WriteFile(system_ext_build_prop, kSystemExtBuildProp);
   EXPECT_TRUE(expander.Expand());
 
   const base::FilePath odm_build_prop = source_dir.Append("odm_build.prop");
   constexpr const char kOdmBuildProp[] = "ro.e=f\n";
-  base::WriteFile(odm_build_prop, kOdmBuildProp, strlen(kOdmBuildProp));
+  base::WriteFile(odm_build_prop, kOdmBuildProp);
   EXPECT_TRUE(expander.Expand());
 
   const base::FilePath product_build_prop =
       source_dir.Append("product_build.prop");
   constexpr const char kProductBuildProp[] = "ro.g=h\n";
-  base::WriteFile(product_build_prop, kProductBuildProp,
-                  strlen(kProductBuildProp));
+  base::WriteFile(product_build_prop, kProductBuildProp);
   EXPECT_TRUE(expander.Expand());
 
   // Verify only one dest file exists.
@@ -593,17 +589,16 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile_NonRo) {
 
   const base::FilePath default_prop = source_dir.Append("default.prop");
   constexpr const char kDefaultProp[] = "###\ndalvik.foo=bar\nro.foo=bar\n";
-  base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
+  base::WriteFile(default_prop, kDefaultProp);
 
   const base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "###\ndalvik.baz=boo\nro.baz=boo\n";
-  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+  base::WriteFile(build_prop, kBuildProp);
 
   const base::FilePath vendor_build_prop =
       source_dir.Append("vendor_build.prop");
   constexpr const char kVendorBuildProp[] = "###\ndalvik.a=b\nro.a=b\n";
-  base::WriteFile(vendor_build_prop, kVendorBuildProp,
-                  strlen(kVendorBuildProp));
+  base::WriteFile(vendor_build_prop, kVendorBuildProp);
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
   const base::FilePath mod_prop_file = mod_dir.Append("modified.prop");
@@ -630,21 +625,19 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
 
   base::FilePath default_prop = source_dir.Append("default.prop");
   constexpr const char kDefaultProp[] = "ro.foo=bar\n";
-  base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
+  base::WriteFile(default_prop, kDefaultProp);
 
   base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "ro.baz=boo\n";
-  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+  base::WriteFile(build_prop, kBuildProp);
 
   base::FilePath vendor_build_prop = source_dir.Append("vendor_build.prop");
   constexpr const char kVendorBuildProp[] = "ro.a=b\n";
-  base::WriteFile(vendor_build_prop, kVendorBuildProp,
-                  strlen(kVendorBuildProp));
+  base::WriteFile(vendor_build_prop, kVendorBuildProp);
 
   base::FilePath product_build_prop = source_dir.Append("product_build.prop");
   constexpr const char kProductBuildProp[] = "ro.c=d\n";
-  base::WriteFile(product_build_prop, kProductBuildProp,
-                  strlen(kProductBuildProp));
+  base::WriteFile(product_build_prop, kProductBuildProp);
 
   EXPECT_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
                                     A<const dbus::ObjectPath&>()))
@@ -696,21 +689,19 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
 
   base::FilePath default_prop = source_dir.Append("default.prop");
   constexpr const char kDefaultProp[] = "ro.foo=bar\n";
-  base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
+  base::WriteFile(default_prop, kDefaultProp);
 
   base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "ro.baz=boo\n";
-  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+  base::WriteFile(build_prop, kBuildProp);
 
   base::FilePath vendor_build_prop = source_dir.Append("vendor_build.prop");
   constexpr const char kVendorBuildProp[] = "ro.a=b\n";
-  base::WriteFile(vendor_build_prop, kVendorBuildProp,
-                  strlen(kVendorBuildProp));
+  base::WriteFile(vendor_build_prop, kVendorBuildProp);
 
   base::FilePath product_build_prop = source_dir.Append("product_build.prop");
   constexpr const char kProductBuildProp[] = "ro.c=d\n";
-  base::WriteFile(product_build_prop, kProductBuildProp,
-                  strlen(kProductBuildProp));
+  base::WriteFile(product_build_prop, kProductBuildProp);
 
   EXPECT_CALL(*bus_, GetObjectProxy(A<const std::string&>(),
                                     A<const dbus::ObjectPath&>()))

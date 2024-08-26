@@ -25,7 +25,7 @@ constexpr char kPackage1[] = "com.example.package1";
 constexpr int kObbVersion = 1;
 
 bool CreateFile(const base::FilePath& file_path) {
-  return base::WriteFile(file_path, "", 0) == 0;
+  return base::WriteFile(file_path, "");
 }
 
 bool DeleteFile(const base::FilePath& file_path) {
@@ -74,9 +74,7 @@ bool WriteAttributes(const base::FilePath& dir_path,
       "}",
       package_name.c_str(), TimeToString(time).c_str());
 
-  const int written_bytes = base::WriteFile(
-      dir_path.Append(kAttrJson), json_content.c_str(), json_content.length());
-  return written_bytes == json_content.length();
+  return base::WriteFile(dir_path.Append(kAttrJson), json_content);
 }
 
 bool CreateValidPackage(const base::FilePath& cache_root_path,
