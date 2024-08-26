@@ -163,9 +163,10 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
     ON_CALL(platform_, PathExists)
         .WillByDefault(Invoke(&platform_, &MockPlatform::PathExistsImpl));
     ON_CALL(platform_, PathExists("/dev/sda1")).WillByDefault(Return(true));
-    manager_ = std::make_unique<DiskManager>(dir_.GetPath().value(), &platform_,
-                                             &metrics_, &process_reaper_,
-                                             &monitor_, &ejector_, this);
+    manager_ = std::make_unique<DiskManager>(
+        dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
+        &monitor_, &ejector_,
+        DiskManager::Options{.test_sandbox_factory = this});
     CHECK(manager_->Initialize());
   }
 
@@ -313,7 +314,9 @@ TEST_F(DiskManagerTest, MountFAT) {
 TEST_F(DiskManagerTest, MountKernelExfat) {
   manager_ = std::make_unique<DiskManager>(
       dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
-      &monitor_, &ejector_, this, /* use_kernel_drivers */ true);
+      &monitor_, &ejector_,
+      DiskManager::Options{.test_sandbox_factory = this,
+                           .in_kernel_exfat = true});
   CHECK(manager_->Initialize());
 
   monitor_.disks_.push_back({
@@ -345,7 +348,9 @@ TEST_F(DiskManagerTest, MountKernelExfat) {
 TEST_F(DiskManagerTest, MountFuseExfat) {
   manager_ = std::make_unique<DiskManager>(
       dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
-      &monitor_, &ejector_, this, /* use_kernel_drivers */ false);
+      &monitor_, &ejector_,
+      DiskManager::Options{.test_sandbox_factory = this,
+                           .in_kernel_exfat = false});
   CHECK(manager_->Initialize());
 
   monitor_.disks_.push_back({
@@ -386,7 +391,9 @@ TEST_F(DiskManagerTest, MountFuseExfat) {
 TEST_F(DiskManagerTest, MountKernelNtfs) {
   manager_ = std::make_unique<DiskManager>(
       dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
-      &monitor_, &ejector_, this, /* use_kernel_drivers */ true);
+      &monitor_, &ejector_,
+      DiskManager::Options{.test_sandbox_factory = this,
+                           .in_kernel_ntfs = true});
   CHECK(manager_->Initialize());
 
   monitor_.disks_.push_back({
@@ -418,7 +425,9 @@ TEST_F(DiskManagerTest, MountKernelNtfs) {
 TEST_F(DiskManagerTest, MountFuseNtfs) {
   manager_ = std::make_unique<DiskManager>(
       dir_.GetPath().value(), &platform_, &metrics_, &process_reaper_,
-      &monitor_, &ejector_, this, /* use_kernel_drivers */ false);
+      &monitor_, &ejector_,
+      DiskManager::Options{.test_sandbox_factory = this,
+                           .in_kernel_ntfs = false});
   CHECK(manager_->Initialize());
 
   monitor_.disks_.push_back({

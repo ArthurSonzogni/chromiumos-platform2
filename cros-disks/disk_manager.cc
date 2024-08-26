@@ -203,19 +203,23 @@ KernelVersion GetKernelVersion() {
 
 }  // namespace
 
-bool DiskManager::ShouldUseKernelDrivers() {
+DiskManager::Options DiskManager::ShouldUseKernelDrivers() {
+  Options opts;
+
   // Check the ChromeOS release channel. If it is not test, canary nor dev, then
   // we don't allow kernel drivers for the time being.
+  // Else check whether the Linux kernel is at least version 6.6.
   if (std::string channel;
-      !base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel) ||
-      (channel != "testimage-channel" && channel != "canary-channel" &&
-       channel != "dev-channel")) {
-    return false;
+      base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel) &&
+      (channel == "testimage-channel" || channel == "canary-channel" ||
+       channel == "dev-channel") &&
+      !std::ranges::lexicographical_compare(GetKernelVersion(),
+                                            KernelVersion{6, 6})) {
+    opts.in_kernel_exfat = true;
+    opts.in_kernel_ntfs = true;
   }
 
-  // Return whether the Linux kernel is at least version 6.6.
-  return !std::ranges::lexicographical_compare(GetKernelVersion(),
-                                               KernelVersion{6, 6});
+  return opts;
 }
 
 DiskManager::DiskManager(const std::string& mount_root,
@@ -224,13 +228,13 @@ DiskManager::DiskManager(const std::string& mount_root,
                          brillo::ProcessReaper* process_reaper,
                          DiskMonitor* disk_monitor,
                          DeviceEjector* device_ejector,
-                         const SandboxedProcessFactory* test_sandbox_factory,
-                         bool use_kernel_drivers)
+                         const Options& opts)
     : MountManager(mount_root, platform, metrics, process_reaper),
       disk_monitor_(disk_monitor),
       device_ejector_(device_ejector),
-      test_sandbox_factory_(test_sandbox_factory),
-      use_kernel_drivers(use_kernel_drivers) {}
+      test_sandbox_factory_(opts.test_sandbox_factory),
+      in_kernel_exfat_(opts.in_kernel_exfat),
+      in_kernel_ntfs_(opts.in_kernel_ntfs) {}
 
 DiskManager::~DiskManager() {
   UnmountAll();
@@ -250,7 +254,7 @@ bool DiskManager::Initialize() {
 
   // exFAT (Extensible File Allocation Table) is a file system optimized for
   // flash memory such as USB flash drives and SD cards.
-  if (use_kernel_drivers) {
+  if (in_kernel_exfat_) {
     VLOG(1) << "Using exFAT kernel driver";
     mounters_["exfat"] = std::make_unique<SystemMounter>(
         platform(), "exfat", read_write,
@@ -268,7 +272,7 @@ bool DiskManager::Initialize() {
   }
 
   // External drives and some big USB sticks would likely have NTFS.
-  if (use_kernel_drivers) {
+  if (in_kernel_ntfs_) {
     VLOG(1) << "Using NTFS kernel driver";
     mounters_["ntfs"] = std::make_unique<SystemMounter>(
         platform(), "ntfs3", read_write,

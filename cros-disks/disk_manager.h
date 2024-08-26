@@ -32,14 +32,23 @@ class SandboxedProcessFactory;
 // and should not be considered thread safe.
 class DiskManager : public MountManager {
  public:
+  struct Options {
+    const SandboxedProcessFactory* test_sandbox_factory = nullptr;
+
+    // Whether to use the in-kernel driver instead of FUSE for exFAT.
+    bool in_kernel_exfat = false;
+
+    // Whether to use the in-kernel driver instead of FUSE for NTFS.
+    bool in_kernel_ntfs = false;
+  };
+
   DiskManager(const std::string& mount_root,
               Platform* platform,
               Metrics* metrics,
               brillo::ProcessReaper* process_reaper,
               DiskMonitor* disk_monitor,
               DeviceEjector* device_ejector,
-              const SandboxedProcessFactory* test_sandbox_factory = nullptr,
-              bool use_kernel_drivers = ShouldUseKernelDrivers());
+              const Options& opts = ShouldUseKernelDrivers());
   DiskManager(const DiskManager&) = delete;
   DiskManager& operator=(const DiskManager&) = delete;
 
@@ -89,14 +98,17 @@ class DiskManager : public MountManager {
 
   // Indicates if, based on the current Linux kernel version, the kernel drivers
   // should be used instead of the FUSE mounters for exFAT and NTFS filesystems.
-  static bool ShouldUseKernelDrivers();
+  static Options ShouldUseKernelDrivers();
 
   DiskMonitor* const disk_monitor_;
   DeviceEjector* const device_ejector_;
   const SandboxedProcessFactory* const test_sandbox_factory_;
 
-  // Whether to use the in-kernel drivers instead of FUSE for exFAT and NTFS.
-  const bool use_kernel_drivers;
+  // Whether to use the in-kernel driver instead of FUSE for exFAT.
+  const bool in_kernel_exfat_;
+
+  // Whether to use the in-kernel driver instead of FUSE for NTFS.
+  const bool in_kernel_ntfs_;
 
   // Set to true if devices should be ejected upon unmount.
   bool eject_device_on_unmount_ = true;
