@@ -11,6 +11,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_tokenizer.h>
 
