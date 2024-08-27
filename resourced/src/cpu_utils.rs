@@ -16,6 +16,7 @@ use glob::glob;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
+use crate::arch;
 use crate::common::read_from_file;
 
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
@@ -428,6 +429,7 @@ fn get_physical_cores(root: &Path) -> Result<u32> {
 }
 
 pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
+    arch::platform_hotplug_cpus_pre_hook(action);
     match action {
         HotplugCpuAction::OnlineAll => {
             let all_cores = Cpuset::all_cores(root)?;
@@ -458,7 +460,7 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
             }
         }
     }
-
+    arch::platform_hotplug_cpus_post_hook(action);
     Ok(())
 }
 

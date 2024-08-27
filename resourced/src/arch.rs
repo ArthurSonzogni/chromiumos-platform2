@@ -18,3 +18,7 @@ pub use arch_impl::apply_borealis_tuning;
 pub use arch_impl::apply_platform_power_preferences;
 pub use arch_impl::apply_platform_power_settings;
 pub use arch_impl::init;
+// TODO(b:340143934): Remove this workaround to for CPU offlining hooks
+// when TGL platform BSM system hang issue is fixed
+pub use arch_impl::platform_hotplug_cpus_post_hook;
+pub use arch_impl::platform_hotplug_cpus_pre_hook;

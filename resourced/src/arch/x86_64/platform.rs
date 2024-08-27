@@ -5,28 +5,70 @@
 use std::arch::x86_64::CpuidResult;
 use std::arch::x86_64::__cpuid;
 use std::arch::x86_64::__cpuid_count;
+use std::fs::read_to_string;
+use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::Result;
+use glob::glob;
 use lazy_static::lazy_static;
 
 // CPU model constants
+const TGL: u32 = 0x806;
 const MTL: u32 = 0xA06;
 
 // CPUID constants
 const CPUID_EAX_VERSION_INFO: u32 = 0x0000_0001;
 
+fn is_cpu_model(model: u32) -> bool {
+    // Check if it's an Intel platform
+    let is_intel_platform = is_intel_platform().unwrap_or(false);
+    // Check for a specific Intel CPU model
+    let version_info = unsafe { __cpuid(CPUID_EAX_VERSION_INFO) };
+    let model_info = (version_info.eax >> 8) & 0xFFF;
+
+    let is_specific_model = model_info == model;
+
+    is_intel_platform && is_specific_model
+}
+
+// Finds the sysfs path of the TBT controllers if exist
+fn find_tbt_controllers(root: &Path) -> Option<Vec<PathBuf>> {
+    // The TBT controllers list contains the PCI device ID which causes system hang
+    // while CPU offline.
+    let tbt_controllers = ["0x9a23", "0x9a25", "0x9a27", "0x9a29"];
+    let mut found_tbt: Vec<PathBuf> = Vec::new();
+
+    let pattern = root
+        .join("sys/devices/pci*/*")
+        .to_str()
+        .expect("Failed to construct sys/devices/pci*/* glob pattern")
+        .to_owned();
+
+    if let Ok(pci_paths) = glob(&pattern) {
+        for entry in pci_paths.flatten() {
+            match read_to_string(&entry.join("device")) {
+                Ok(pci_id) => {
+                    if tbt_controllers.contains(&pci_id.trim()) {
+                        found_tbt.push(entry);
+                    }
+                }
+                Err(_) => continue,
+            }
+        }
+    }
+
+    if found_tbt.is_empty() {
+        None
+    } else {
+        Some(found_tbt)
+    }
+}
+
 lazy_static! {
-    pub static ref IS_MTL: bool = {
-        // Check if it's an Intel platform
-        let is_intel_platform = is_intel_platform().unwrap_or(false);
-        // Check for a specific Intel CPU model
-        let version_info = unsafe { __cpuid(CPUID_EAX_VERSION_INFO) };
-        let model_info = (version_info.eax >> 8) & 0xFFF;
-
-        let is_specific_model = model_info == MTL;
-
-        is_intel_platform && is_specific_model
-    };
+    pub static ref IS_TGL: bool = is_cpu_model(TGL);
+    pub static ref IS_MTL: bool = is_cpu_model(MTL);
+    pub static ref TBT_CONTROLLERS: Option<Vec<PathBuf>> = find_tbt_controllers(Path::new("/"));
 }
 
 // Check if the platform is Intel
@@ -79,7 +121,13 @@ pub fn is_intel_hybrid_platform() -> Result<bool> {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::create_dir_all;
+    use std::fs::write;
+
+    use tempfile::tempdir;
+
     use super::*;
+
     #[test]
     fn test_is_intel_hybrid_system() {
         // cpuid with EAX=0: Highest Function Parameter and Manufacturer ID.
@@ -125,5 +173,53 @@ mod tests {
             "Does platform support Intel hybrid feature? {}",
             intel_hybrid_platform
         );
+    }
+
+    #[test]
+    fn test_find_tbt_controllers() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+
+        // Create a mock PCI device directory but don't have the "device" file
+        let device_dir = root.join("sys/devices/pci0000:00/0000:00:00.0");
+        create_dir_all(&device_dir).unwrap();
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, None);
+
+        // Create a 0x9a23 TBT controller
+        write(device_dir.join("device"), "0x9a23\n").unwrap();
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, Some(vec![device_dir.clone()]));
+
+        // Create a 0x9a25 TBT controller
+        write(device_dir.join("device"), "0x9a25\n").unwrap();
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, Some(vec![device_dir.clone()]));
+
+        // Create a 0x9a27 TBT controller
+        write(device_dir.join("device"), "0x9a27\n").unwrap();
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, Some(vec![device_dir.clone()]));
+
+        // Create a 0x9a28 TBT controller
+        write(device_dir.join("device"), "0x9a29\n").unwrap();
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, Some(vec![device_dir.clone()]));
+
+        // Create a mismatching TBT controller
+        write(device_dir.join("device"), "0x1234\n").unwrap();
+
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, None);
+
+        // Create multiple mock PCI device directories
+        write(device_dir.join("device"), "0x1234\n").unwrap();
+
+        let device_dir1 = root.join("sys/devices/pci0000:00/0000:00:01.0");
+        create_dir_all(&device_dir1).unwrap();
+        write(device_dir1.join("device"), "0x9a25\n").unwrap();
+
+        let results = find_tbt_controllers(root);
+        assert_eq!(results, Some(vec![device_dir1]));
     }
 }

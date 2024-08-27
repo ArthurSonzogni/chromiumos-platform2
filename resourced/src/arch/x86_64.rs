@@ -11,6 +11,7 @@ mod globals;
 mod gpu_freq_scaling;
 mod platform;
 
+use std::fs;
 use std::path::Path;
 
 use anyhow::Context;
@@ -25,6 +26,8 @@ use self::globals::DYNAMIC_EPP;
 use self::globals::MEDIA_CGROUP_SIGNAL;
 use self::globals::RTC_FS_SIGNAL;
 use self::gpu_freq_scaling::intel_device;
+use self::platform::IS_TGL;
+use self::platform::TBT_CONTROLLERS;
 use crate::common::BatterySaverMode;
 use crate::common::FullscreenVideo;
 use crate::common::RTCAudioActive;
@@ -32,6 +35,7 @@ use crate::config::EnergyPerformancePreference;
 use crate::config::PowerPreferences;
 use crate::config::PowerSourceType;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
+use crate::cpu_utils::HotplugCpuAction;
 
 fn has_epp(root_path: &Path) -> Result<bool> {
     const CPU0_EPP_PATH: &str =
@@ -99,6 +103,40 @@ fn set_default_epp(root_path: &Path) -> Result<()> {
             // Default EPP
             set_epp(root_path, EnergyPerformancePreference::BalancePerformance)
         }
+    }
+}
+
+// Sets the TBT controller to specific mode if TBT controller exists
+fn set_tbt_controller_power_management(mode: &str) {
+    if TBT_CONTROLLERS.is_some() {
+        for tbt in TBT_CONTROLLERS.to_owned().unwrap() {
+            let tbt_ctrl = tbt.join("power/control");
+            if let Err(err) = fs::write(tbt_ctrl.clone(), mode) {
+                error!(
+                    "Failed to write '{:#}' to {:#}, {:#}",
+                    mode,
+                    tbt_ctrl.display(),
+                    err
+                )
+            }
+        }
+    }
+}
+
+pub fn platform_hotplug_cpus_pre_hook(action: HotplugCpuAction) {
+    // The TGL platforms will hang when CPU offline if the TBT controller is in
+    // the D3 cold power state. Set TBT controller to "on" before offlining CPU
+    // to workaround the issue. (b/340143934)
+    if *IS_TGL && action != HotplugCpuAction::OnlineAll {
+        set_tbt_controller_power_management("on")
+    }
+}
+
+pub fn platform_hotplug_cpus_post_hook(action: HotplugCpuAction) {
+    // Set TBT controller to "auto" after offlining CPU to workaround the system
+    // hang issue. (b/340143934)
+    if *IS_TGL && action != HotplugCpuAction::OnlineAll {
+        set_tbt_controller_power_management("auto")
     }
 }
 
