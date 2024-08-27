@@ -57,6 +57,7 @@
 #include "swap_management/dbus-constants.h"
 #include "update_engine/dbus-constants.h"
 #include "usbguard/dbus-constants.h"
+#include "vhost_user_starter/dbus-constants.h"
 #include "vm_applications/dbus-constants.h"
 #include "vm_cicerone/dbus-constants.h"
 #include "vm_concierge/dbus-constants.h"

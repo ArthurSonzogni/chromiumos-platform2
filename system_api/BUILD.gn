@@ -85,6 +85,7 @@ group("all") {
     ":system_api-u2f-protos",
     ":system_api-update_engine-goprotos",
     ":system_api-update_engine-protos",
+    ":system_api-vhost_user_starter-protos",
     ":system_api-vm_applications-goprotos",
     ":system_api-vm_applications-protos",
     ":system_api-vm_cicerone-goprotos",
@@ -942,6 +943,14 @@ proto_library("system_api-regmon-protos") {
   proto_in_dir = "dbus/regmon"
   proto_out_dir = "include/regmon/proto_bindings"
   sources = [ "${proto_in_dir}/regmon_service.proto" ]
+  standalone = true
+  install_package = true
+}
+
+proto_library("system_api-vhost_user_starter-protos") {
+  proto_in_dir = "dbus/vhost_user_starter"
+  proto_out_dir = "include/vhost_user_starter/proto_bindings"
+  sources = [ "${proto_in_dir}/vhost_user_starter.proto" ]
   standalone = true
   install_package = true
 }

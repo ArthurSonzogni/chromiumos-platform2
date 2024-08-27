@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-use chromeos_dbus_bindings::{generate_module, BindingsType};
+use chromeos_dbus_bindings::{generate_module, BindingsType, CROSSROADS_SERVER_OPTS};
 
 // The parent path of system_api.
 const SOURCE_DIR: &str = "..";
@@ -79,6 +79,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         "org_chromium_userdataauth",
         "cryptohome/dbus_bindings/org.chromium.UserDataAuth.xml",
         BindingsType::Client(OPTS),
+    ),
+    (
+        "org_chromium_vhostuserstarter",
+        "vm_tools/dbus_bindings/org.chromium.VhostUserStarter.xml",
+        BindingsType::Server(CROSSROADS_SERVER_OPTS),
     ),
     (
         "org_chromium_vm_concierge",
@@ -151,6 +156,10 @@ const PROTOS_TO_GENERATE: &[(&str, &str)] = &[
     (
         "UserDataAuth",
         "system_api/dbus/cryptohome/UserDataAuth.proto",
+    ),
+    (
+        "vhost_user_starter",
+        "system_api/dbus/vhost_user_starter/vhost_user_starter.proto"
     ),
     (
         "vm_memory_management",

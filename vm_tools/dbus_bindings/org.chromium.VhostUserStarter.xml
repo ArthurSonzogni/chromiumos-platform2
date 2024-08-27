@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Copyright 2024 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+  -->
+<!--
+  Configuration for /chromeos-dbus-bindings/.
+-->
+<node name="/org/chromium/VhostUserStarter"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.VhostUserStarter">
+    <method name="StartVhostUserFs">
+      <tp:docstring>
+        Starts vhost user fs device.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vhost_user_starter/proto_bindings/vhost_user_starter.pb.h;vm_tools::vhost_user_starter::StartVhostUserFsRequest"/>
+      </arg>
+      <arg type="ah" name="socket" direction="in">
+        <tp:docstring>
+          Expected to contain 1 fd, where the fd is the vhost-user fs backend device socket fd.
+          The other end needs to be connected to crosvm vhost-user fs frontend device.
+        </tp:docstring>
+      </arg>
+       <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vhost_user_starter/proto_bindings/vhost_user_starter.pb.h;vm_tools::vhost_user_starter::StartVhostUserFsResponse"/>
+      </arg>
+    </method>
+  </interface>
+</node>
