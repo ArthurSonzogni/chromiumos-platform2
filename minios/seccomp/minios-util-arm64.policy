@@ -4,6 +4,8 @@
 
 brk: 1
 # Used to fork `futility` & `tar`
+clock_nanosleep: 1
+# Used to fork `futility` & `tar`
 clone: 1
 close: 1
 dup3: 1
