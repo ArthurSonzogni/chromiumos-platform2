@@ -4,6 +4,7 @@
 
 #include "ml_core/dlc/dlc_client.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -13,10 +14,11 @@
 #include <base/location.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
+#include <base/time/time.h>
 #include <dbus/bus.h>
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <dlcservice/dbus-constants.h>
 #include <dlcservice/dbus-proxies.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include "ml_core/dlc/dlc_ids.h"
 #include "ml_core/dlc/dlc_metrics.h"
@@ -25,9 +27,11 @@ namespace {
 
 // The first install attempt will take place at t=0.
 // The nth retry will take place at t=kBaseDelay*2^n.
-// E.g. {0, 2*kBaseDelay, 4*kBaseDelay, 8*kBaseDelay, ...}
+// The maximum delay between retries is capped at kMaxDelay.
+// E.g. {0, 2*kBaseDelay, 4*kBaseDelay, 8*kBaseDelay, ..., kMaxDelay}.
 constexpr base::TimeDelta kBaseDelay = base::Seconds(1);
-constexpr int kMaxInstallAttempts = 8;
+constexpr base::TimeDelta kMaxDelay = base::Minutes(2);
+constexpr int kMaxInstallAttempts = 12;
 
 // Timeout for each install attempt.
 constexpr int kDlcInstallTimeout = 50000;
@@ -137,7 +141,8 @@ class DlcClientImpl : public cros::DlcClient {
 
         metrics_.RecordBeginInstallResult(
             cros::DlcBeginInstallResult::kDlcServiceBusyWillRetry);
-        auto retry_delay = kBaseDelay * std::exp2(attempt - 1);
+        auto retry_delay =
+            std::min(kBaseDelay * std::exp2(attempt - 1), kMaxDelay);
         LOG(ERROR) << "dlcservice is busy. Retrying in " << retry_delay;
 
         task_runner_->PostDelayedTask(
