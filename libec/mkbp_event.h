@@ -18,14 +18,14 @@ namespace ec {
 class BRILLO_EXPORT MkbpEvent {
  public:
   MkbpEvent(int fd, enum ec_mkbp_event event_type);
-  ~MkbpEvent() = default;
+  virtual ~MkbpEvent() = default;
 
   // The return value is the same as ioctl.
-  int Enable();
+  virtual int Enable();
 
   // This is a blocking function, it'll wait until timeout.
   // The return value of only successful case is 1.
-  int Wait(int timeout);
+  virtual int Wait(int timeout);
 
  private:
   int fd_;
