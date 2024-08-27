@@ -209,7 +209,7 @@ void RenameManager::OnDone(const std::string& fs_type,
   }
 
   if (metrics_)
-    metrics_->RecordRenaming(fs_type, exit_code, timer.Elapsed());
+    metrics_->RecordAction("Rename", fs_type, exit_code, timer.Elapsed());
 
   if (observer_)
     observer_->OnRenameCompleted(device_path,

@@ -40,10 +40,11 @@ class Metrics {
                      base::TimeDelta elapsed_time);
 
   // Records the error (or success) and the elapsed time of the program that
-  // tried to rename a partition on a removable drive.
-  void RecordRenaming(std::string_view fs_type,
-                      Process::ExitCode exit_code,
-                      base::TimeDelta elapsed_time);
+  // tried to perform an action on a partition of a removable drive.
+  void RecordAction(std::string_view action,
+                    std::string_view fs_type,
+                    Process::ExitCode exit_code,
+                    base::TimeDelta elapsed_time);
 
   // Records the error returned by a FUSE daemon when it unexpectedly
   // terminates.

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
@@ -49,8 +50,10 @@ class FormatManager {
   FRIEND_TEST(FormatManagerTest, GetFormatProgramPath);
   FRIEND_TEST(FormatManagerTest, IsFilesystemSupported);
 
-  void OnFormatProcessTerminated(const std::string& device_path,
-                                 const siginfo_t& info);
+  void OnDone(const std::string& fs_type,
+              const std::string& device_path,
+              const base::ElapsedTimer& timer,
+              const siginfo_t& info);
 
   // Returns the full path of an external formatting program if it is
   // found in some predefined locations. Otherwise, an empty string is

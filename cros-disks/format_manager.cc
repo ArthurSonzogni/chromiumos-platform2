@@ -6,6 +6,7 @@
 
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/containers/contains.h>
@@ -193,19 +194,20 @@ FormatManager::FormatManager(Platform* const platform,
 FormatError FormatManager::StartFormatting(
     const std::string& device_path,
     const std::string& device_file,
-    const std::string& filesystem,
+    const std::string& fs_type,
     const std::vector<std::string>& options) {
   // Check if the file system is supported for formatting
-  if (!IsFilesystemSupported(filesystem)) {
-    LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
+  if (!IsFilesystemSupported(fs_type)) {
+    LOG(WARNING) << "Filesystem " << quote(fs_type)
+                 << " is not supported for formatting";
     return FormatError::kUnsupportedFilesystem;
   }
 
   // Localize mkfs on disk
-  std::string format_program = GetFormatProgramPath(filesystem);
+  std::string format_program = GetFormatProgramPath(fs_type);
   if (format_program.empty()) {
     LOG(WARNING) << "Cannot find a format program for filesystem "
-                 << quote(filesystem);
+                 << quote(fs_type);
     return FormatError::kFormatProgramNotFound;
   }
 
@@ -215,7 +217,7 @@ FormatError FormatManager::StartFormatting(
   }
 
   if (const LabelError error =
-          ValidateVolumeLabel(format_options.label, filesystem);
+          ValidateVolumeLabel(format_options.label, fs_type);
       error != LabelError::kSuccess) {
     return LabelErrorToFormatError(error);
   }
@@ -230,10 +232,10 @@ FormatError FormatManager::StartFormatting(
     return FormatError::kDeviceBeingFormatted;
   }
 
-  if (const FormatError error =
-          StartFormatProcess(device_file, format_program,
-                             CreateFormatArguments(filesystem, format_options),
-                             platform_, &process);
+  base::ElapsedTimer timer;
+  if (const FormatError error = StartFormatProcess(
+          device_file, format_program,
+          CreateFormatArguments(fs_type, format_options), platform_, &process);
       error != FormatError::kSuccess) {
     format_process_.erase(it);
     return error;
@@ -241,13 +243,15 @@ FormatError FormatManager::StartFormatting(
 
   reaper_->WatchForChild(
       FROM_HERE, process.pid(),
-      base::BindOnce(&FormatManager::OnFormatProcessTerminated,
-                     weak_ptr_factory_.GetWeakPtr(), device_path));
+      base::BindOnce(&FormatManager::OnDone, weak_ptr_factory_.GetWeakPtr(),
+                     fs_type, device_path, std::move(timer)));
   return FormatError::kSuccess;
 }
 
-void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
-                                              const siginfo_t& info) {
+void FormatManager::OnDone(const std::string& fs_type,
+                           const std::string& device_path,
+                           const base::ElapsedTimer& timer,
+                           const siginfo_t& info) {
   const auto node = format_process_.extract(device_path);
   if (!node) {
     LOG(ERROR) << "Cannot find process formatting " << quote(device_path);
@@ -256,46 +260,53 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
 
   DCHECK_EQ(node.key(), device_path);
   const SandboxedProcess& process = node.mapped();
+  Process::ExitCode exit_code = Process::ExitCode::kNone;
 
-  FormatError error = FormatError::kUnknownError;
   switch (info.si_code) {
     case CLD_EXITED:
-      if (info.si_status == 0) {
-        error = FormatError::kSuccess;
+      exit_code = Process::ExitCode(info.si_status);
+      if (exit_code == Process::ExitCode::kSuccess) {
         LOG(INFO) << "Program " << quote(process.GetProgramName())
-                  << " formatting " << quote(device_path) << " finished with "
-                  << Process::ExitCode(info.si_status);
+                  << " formatted " << fs_type << " " << quote(device_path)
+                  << " successfully";
       } else {
-        error = FormatError::kFormatProgramFailed;
         LOG(ERROR) << "Program " << quote(process.GetProgramName())
-                   << " formatting " << quote(device_path) << " finished with "
-                   << Process::ExitCode(info.si_status);
+                   << " formatting " << fs_type << " " << quote(device_path)
+                   << " finished with " << exit_code;
       }
       break;
 
     case CLD_DUMPED:
     case CLD_KILLED:
-      error = FormatError::kFormatProgramFailed;
+      exit_code = Process::ExitCode(MINIJAIL_ERR_SIG_BASE + info.si_status);
       LOG(ERROR) << "Program " << quote(process.GetProgramName())
-                 << " formatting " << quote(device_path) << " was killed by "
-                 << Process::ExitCode(MINIJAIL_ERR_SIG_BASE + info.si_status);
+                 << " formatting " << fs_type << " " << quote(device_path)
+                 << " was killed by " << exit_code;
       break;
 
     default:
-      LOG(ERROR) << "Unexpected si_code value: " << info.si_code;
+      LOG(ERROR) << "Unexpected si_code value " << info.si_code
+                 << " for program " << quote(process.GetProgramName())
+                 << " formatting " << fs_type << " " << quote(device_path);
       break;
   }
 
-  if (error != FormatError::kSuccess && !LOG_IS_ON(INFO)) {
-    // The mkfs program finished with an error, and its capture messages have
-    // not been logged yet. Log them now as errors.
-    for (const std::string_view line : process.GetCapturedOutput()) {
-      LOG(ERROR) << process.GetProgramName() << ": " << line;
+  // Log the captured output, if it hasn't been already logged as it was getting
+  // captured.
+  if (exit_code != Process::ExitCode::kSuccess && !LOG_IS_ON(INFO)) {
+    for (const std::string& s : process.GetCapturedOutput()) {
+      LOG(ERROR) << process.GetProgramName() << ": " << s;
     }
   }
 
+  if (metrics_)
+    metrics_->RecordAction("Format", fs_type, exit_code, timer.Elapsed());
+
   if (observer_)
-    observer_->OnFormatCompleted(device_path, error);
+    observer_->OnFormatCompleted(device_path,
+                                 exit_code == Process::ExitCode::kSuccess
+                                     ? FormatError::kSuccess
+                                     : FormatError::kFormatProgramFailed);
 }
 
 std::string FormatManager::GetFormatProgramPath(
