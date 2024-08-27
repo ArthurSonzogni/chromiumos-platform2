@@ -40,6 +40,7 @@ constexpr char kFakeModelName2[] = "90eeb7f8-9491-452d-9ec9-5b6edd6c93fa";
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
+using ::testing::NiceMock;
 using ::testing::Pair;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -102,13 +103,6 @@ class OnDeviceModelServiceTest : public testing::Test {
     service_impl_.AddReceiver(service_.BindNewPipeAndPassReceiver());
   }
 
-  void SetUp() override {
-    EXPECT_CALL(
-        metrics_,
-        SendTimeToUMA("OnDeviceModel.LoadAdaptationModelDuration", _, _, _, _))
-        .WillRepeatedly(Return(true));
-  }
-
   mojo::Remote<mojom::OnDeviceModelPlatformService>& service() {
     return service_;
   }
@@ -120,12 +114,6 @@ class OnDeviceModelServiceTest : public testing::Test {
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
 
     EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
-    EXPECT_CALL(metrics_,
-                SendEnumToUMA("OnDeviceModel.LoadPlatformModelStatus", 0, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(metrics_,
-                SendTimeToUMA("OnDeviceModel.LoadModelDuration", _, _, _, _))
-        .WillOnce(Return(true));
 
     base::RunLoop run_loop;
     mojo::Remote<mojom::OnDeviceModel> remote;
@@ -178,7 +166,7 @@ class OnDeviceModelServiceTest : public testing::Test {
 
  protected:
   base::test::TaskEnvironment task_environment_;
-  MetricsLibraryMock metrics_;
+  NiceMock<MetricsLibraryMock> metrics_;
   odml::OdmlShimLoaderMock shim_loader_;
   mojo::Remote<mojom::OnDeviceModelPlatformService> service_;
   OnDeviceModelService service_impl_;
