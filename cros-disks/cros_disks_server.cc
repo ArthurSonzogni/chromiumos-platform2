@@ -41,8 +41,13 @@ CrosDisksServer::CrosDisksServer(scoped_refptr<dbus::Bus> bus,
   DCHECK(partition_manager_);
   DCHECK(rename_manager_);
 
-  format_manager_->set_observer(this);
-  rename_manager_->set_observer(this);
+  format_manager_->SetObserver(this);
+  rename_manager_->SetObserver(this);
+}
+
+CrosDisksServer::~CrosDisksServer() {
+  rename_manager_->SetObserver(nullptr);
+  format_manager_->SetObserver(nullptr);
 }
 
 void CrosDisksServer::RegisterAsync(
@@ -51,9 +56,9 @@ void CrosDisksServer::RegisterAsync(
   dbus_object_.RegisterAsync(std::move(cb));
 }
 
-void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
-  CHECK(mount_manager) << "Invalid mount manager object";
-  mount_managers_.push_back(mount_manager);
+void CrosDisksServer::RegisterMountManager(MountManager* const manager) {
+  DCHECK(manager);
+  mount_managers_.push_back(manager);
 }
 
 void CrosDisksServer::Format(const std::string& path,
@@ -116,7 +121,8 @@ void CrosDisksServer::Rename(const std::string& path,
 
 MountManager* CrosDisksServer::FindMounter(
     const std::string& source_path) const {
-  for (const auto& manager : mount_managers_) {
+  for (MountManager* const manager : mount_managers_) {
+    DCHECK(manager);
     if (manager->CanMount(source_path)) {
       return manager;
     }
@@ -192,7 +198,8 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
       << redact(path);
 
   MountError error = MountError::kPathNotMounted;
-  for (const auto& manager : mount_managers_) {
+  for (MountManager* const manager : mount_managers_) {
+    DCHECK(manager);
     error = manager->Unmount(path);
     if (error != MountError::kPathNotMounted)
       break;
@@ -205,7 +212,7 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
 }
 
 void CrosDisksServer::UnmountAll() {
-  for (const auto& manager : mount_managers_) {
+  for (MountManager* const manager : mount_managers_) {
     manager->UnmountAll();
   }
 }
@@ -321,14 +328,16 @@ void CrosDisksServer::OnScreenIsUnlocked() {}
 
 void CrosDisksServer::OnSessionStarted() {
   LOG(INFO) << "Starting session...";
-  for (const auto& manager : mount_managers_) {
+  for (MountManager* const manager : mount_managers_) {
+    DCHECK(manager);
     manager->StartSession();
   }
 }
 
 void CrosDisksServer::OnSessionStopped() {
   LOG(INFO) << "Stopping session...";
-  for (const auto& manager : mount_managers_) {
+  for (MountManager* const manager : mount_managers_) {
+    DCHECK(manager);
     manager->StopSession();
   }
 }

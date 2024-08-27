@@ -46,14 +46,14 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
                   PartitionManager* partition_manager,
                   RenameManager* rename_manager);
 
-  ~CrosDisksServer() override = default;
+  ~CrosDisksServer() override;
 
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
   // Registers a mount manager.
-  void RegisterMountManager(MountManager* mount_manager);
+  void RegisterMountManager(MountManager* manager);
 
   // Implementation of org::chromium::CrosDisks:
 
@@ -162,11 +162,11 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   MountManager* FindMounter(const std::string& source_path) const;
 
   brillo::dbus_utils::DBusObject dbus_object_;
-  Platform* platform_;
-  DiskMonitor* disk_monitor_;
-  FormatManager* format_manager_;
-  PartitionManager* partition_manager_;
-  RenameManager* rename_manager_;
+  Platform* const platform_;
+  DiskMonitor* const disk_monitor_;
+  FormatManager* const format_manager_;
+  PartitionManager* const partition_manager_;
+  RenameManager* const rename_manager_;
   std::vector<MountManager*> mount_managers_;
 };
 

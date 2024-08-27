@@ -37,13 +37,13 @@ class FormatManager {
 
   FormatManager(const FormatManager&) = delete;
 
+  void SetObserver(Observer* const observer) { observer_ = observer; }
+
   // Starts a formatting process of a given device.
   FormatError StartFormatting(const std::string& device_path,
                               const std::string& device_file,
                               const std::string& filesystem,
                               const std::vector<std::string>& options);
-
-  void set_observer(Observer* observer) { observer_ = observer; }
 
  private:
   FRIEND_TEST(FormatManagerTest, GetFormatProgramPath);

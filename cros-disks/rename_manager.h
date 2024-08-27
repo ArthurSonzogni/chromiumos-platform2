@@ -36,13 +36,13 @@ class RenameManager {
 
   RenameManager(const RenameManager&) = delete;
 
+  void SetObserver(Observer* const observer) { observer_ = observer; }
+
   // Starts a renaming process of a given device.
   RenameError StartRenaming(const std::string& device_path,
                             const std::string& device_file,
                             const std::string& volume_name,
                             const std::string& fs_type);
-
-  void set_observer(Observer* observer) { observer_ = observer; }
 
  private:
   FRIEND_TEST(RenameManagerTest, CanRename);
