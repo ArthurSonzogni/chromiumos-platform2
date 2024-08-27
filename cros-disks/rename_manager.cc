@@ -16,9 +16,7 @@
 #include <chromeos/libminijail.h>
 
 #include "cros-disks/filesystem_label.h"
-#include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
-#include "cros-disks/rename_manager_observer_interface.h"
 
 namespace cros_disks {
 namespace {
@@ -61,13 +59,10 @@ RenameError LabelErrorToRenameError(LabelError error_code) {
 
 }  // namespace
 
-RenameManager::RenameManager(Platform* platform,
-                             brillo::ProcessReaper* process_reaper)
-    : platform_(platform),
-      process_reaper_(process_reaper),
-      weak_ptr_factory_(this) {}
-
-RenameManager::~RenameManager() = default;
+RenameManager::RenameManager(Platform* const platform,
+                             Reaper* const reaper,
+                             Metrics* const metrics)
+    : platform_(platform), reaper_(reaper), metrics_(metrics) {}
 
 RenameError RenameManager::StartRenaming(const std::string& device_path,
                                          const std::string& device_file,
@@ -153,7 +148,7 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
     return RenameError::kRenameProgramFailed;
   }
 
-  process_reaper_->WatchForChild(
+  reaper_->WatchForChild(
       FROM_HERE, process.pid(),
       base::BindOnce(&RenameManager::OnRenameProcessTerminated,
                      weak_ptr_factory_.GetWeakPtr(), device_path));

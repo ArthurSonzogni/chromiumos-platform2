@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
+#include <dbus/cros-disks/dbus-constants.h>
 
 #include "cros-disks/device_ejector.h"
 #include "cros-disks/disk_monitor.h"
@@ -36,7 +37,6 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/system_mounter.h"
-#include "dbus/cros-disks/dbus-constants.h"
 
 namespace cros_disks {
 namespace {

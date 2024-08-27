@@ -5,7 +5,6 @@
 #ifndef CROS_DISKS_CROS_DISKS_SERVER_H_
 #define CROS_DISKS_CROS_DISKS_SERVER_H_
 
-#include <map>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -19,29 +18,26 @@
 #include "cros-disks/dbus_adaptors/org.chromium.CrosDisks.h"
 #include "cros-disks/device_event_dispatcher_interface.h"
 #include "cros-disks/device_event_queue.h"
-#include "cros-disks/disk.h"
-#include "cros-disks/format_manager_observer_interface.h"
+#include "cros-disks/format_manager.h"
 #include "cros-disks/mount_point.h"
-#include "cros-disks/rename_manager_observer_interface.h"
+#include "cros-disks/rename_manager.h"
 #include "cros-disks/session_manager_observer_interface.h"
 
 namespace cros_disks {
 
 class DiskMonitor;
-class FormatManager;
 class MountManager;
 class PartitionManager;
 class Platform;
-class RenameManager;
 
 struct DeviceEvent;
 
 class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
                         public org::chromium::CrosDisksInterface,
                         public DeviceEventDispatcherInterface,
-                        public FormatManagerObserverInterface,
                         public SessionManagerObserverInterface,
-                        public RenameManagerObserverInterface {
+                        public FormatManager::Observer,
+                        public RenameManager::Observer {
  public:
   CrosDisksServer(scoped_refptr<dbus::Bus> bus,
                   Platform* platform,
@@ -49,6 +45,7 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
                   FormatManager* format_manager,
                   PartitionManager* partition_manager,
                   RenameManager* rename_manager);
+
   ~CrosDisksServer() override = default;
 
   // Registers the D-Bus object and interfaces.
@@ -113,8 +110,8 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   void AddDeviceToAllowlist(const std::string& device_path) override;
   void RemoveDeviceFromAllowlist(const std::string& device_path) override;
 
-  // Implements the FormatManagerObserverInterface interface to handle
-  // the event when a formatting operation has completed.
+  // Implements FormatManager::Observer to handle the event when a formatting
+  // operation has completed.
   void OnFormatCompleted(const std::string& device_path,
                          FormatError error_type) override;
 
@@ -134,8 +131,8 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
       const base::FilePath& device_path,
       PartitionError error_type);
 
-  // Implements the RenameManagerObserverInterface interface to handle
-  // the event when a renaming operation has completed.
+  // Implements RenameManager::Observer to handle the event when a renaming
+  // operation has completed.
   void OnRenameCompleted(const std::string& device_path,
                          RenameError error_type) override;
 

@@ -14,22 +14,28 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
+#include "cros-disks/metrics.h"
+#include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
 
-class Platform;
-
-class FormatManagerObserverInterface;
-
 class FormatManager {
  public:
-  explicit FormatManager(Platform* platform,
-                         brillo::ProcessReaper* process_reaper);
-  FormatManager(const FormatManager&) = delete;
-  FormatManager& operator=(const FormatManager&) = delete;
+  class Observer {
+   public:
+    // Called when a formatting operation on a device has completed.
+    virtual void OnFormatCompleted(const std::string& device_path,
+                                   FormatError error_type) = 0;
+  };
 
-  ~FormatManager();
+  using Reaper = brillo::ProcessReaper;
+
+  explicit FormatManager(Platform* platform,
+                         Reaper* reaper,
+                         Metrics* metrics = nullptr);
+
+  FormatManager(const FormatManager&) = delete;
 
   // Starts a formatting process of a given device.
   FormatError StartFormatting(const std::string& device_path,
@@ -37,9 +43,7 @@ class FormatManager {
                               const std::string& filesystem,
                               const std::vector<std::string>& options);
 
-  void set_observer(FormatManagerObserverInterface* observer) {
-    observer_ = observer;
-  }
+  void set_observer(Observer* observer) { observer_ = observer; }
 
  private:
   FRIEND_TEST(FormatManagerTest, GetFormatProgramPath);
@@ -59,14 +63,19 @@ class FormatManager {
   // Platform service.
   Platform* const platform_;
 
-  brillo::ProcessReaper* process_reaper_;
+  // Process reaper.
+  Reaper* const reaper_;
 
-  // A list of outstanding formatting processes indexed by device path.
+  // Optional UMA metrics collector.
+  Metrics* const metrics_;
+
+  // Optional observer.
+  Observer* observer_ = nullptr;
+
+  // Outstanding formatting processes indexed by device path.
   std::map<std::string, SandboxedProcess> format_process_;
 
-  FormatManagerObserverInterface* observer_;
-
-  base::WeakPtrFactory<FormatManager> weak_ptr_factory_;
+  base::WeakPtrFactory<FormatManager> weak_ptr_factory_{this};
 };
 
 }  // namespace cros_disks

@@ -15,12 +15,10 @@
 #include "cros-disks/device_event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk_monitor.h"
-#include "cros-disks/format_manager.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/partition_manager.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
-#include "cros-disks/rename_manager.h"
 
 namespace cros_disks {
 

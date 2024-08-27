@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <base/containers/contains.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
@@ -20,8 +20,6 @@
 #include <chromeos/libminijail.h>
 
 #include "cros-disks/filesystem_label.h"
-#include "cros-disks/format_manager_observer_interface.h"
-#include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
 #include "cros-disks/sandboxed_process.h"
 
@@ -187,13 +185,10 @@ FormatError StartFormatProcess(const std::string& device_file,
 
 }  // namespace
 
-FormatManager::FormatManager(Platform* platform,
-                             brillo::ProcessReaper* process_reaper)
-    : platform_(platform),
-      process_reaper_(process_reaper),
-      weak_ptr_factory_(this) {}
-
-FormatManager::~FormatManager() = default;
+FormatManager::FormatManager(Platform* const platform,
+                             Reaper* const reaper,
+                             Metrics* const metrics)
+    : platform_(platform), reaper_(reaper), metrics_(metrics) {}
 
 FormatError FormatManager::StartFormatting(
     const std::string& device_path,
@@ -244,7 +239,7 @@ FormatError FormatManager::StartFormatting(
     return error;
   }
 
-  process_reaper_->WatchForChild(
+  reaper_->WatchForChild(
       FROM_HERE, process.pid(),
       base::BindOnce(&FormatManager::OnFormatProcessTerminated,
                      weak_ptr_factory_.GetWeakPtr(), device_path));

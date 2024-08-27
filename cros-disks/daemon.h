@@ -57,9 +57,9 @@ class Daemon : public brillo::DBusServiceDaemon {
   FUSEMountManager fuse_manager_{"/media/fuse", "/run/fuse", &platform_,
                                  &metrics_, &process_reaper_};
 
-  FormatManager format_manager_{&platform_, &process_reaper_};
   PartitionManager partition_manager_{&process_reaper_, &disk_monitor_};
-  RenameManager rename_manager_{&platform_, &process_reaper_};
+  FormatManager format_manager_{&platform_, &process_reaper_, &metrics_};
+  RenameManager rename_manager_{&platform_, &process_reaper_, &metrics_};
 
   std::unique_ptr<DeviceEventModerator> event_moderator_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
