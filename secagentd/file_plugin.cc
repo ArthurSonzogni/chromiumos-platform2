@@ -7,8 +7,10 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "base/files/file.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/strings/string_split.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
@@ -172,13 +174,16 @@ const std::map<secagentd::FilePathCategory,
 
 // Function to match a path prefix to FilePathName
 std::optional<std::pair<const secagentd::FilePathName, secagentd::PathInfo>>
-MatchPathToFilePathPrefixName(
+MatchNonUserPathToFilePathName(
     const std::string& path,
     const std::vector<secagentd::FilePathName>& matchOptions) {
   for (const auto& pathname : matchOptions) {
     auto it = kFilePathInfoMap.find(pathname);
     if (it != kFilePathInfoMap.end()) {
-      const auto& pathPrefix = it->second.pathPrefix;
+      std::string pathPrefix = it->second.pathPrefix;
+      if (it->second.pathSuffix.has_value()) {
+        pathPrefix += it->second.pathSuffix.value();
+      }
       if (path.find(pathPrefix) == 0) {
         return *it;
       }
@@ -207,6 +212,96 @@ static uint64_t KernelToUserspaceDeviceId(uint64_t kernel_dev) {
   uint32_t minor = kernel_dev & 0xfffff;        // Minor number (20 bits)
 
   return makedev(major, minor);
+}
+
+bool ReadLine(base::File* file,
+              std::string* line,
+              std::string* remaining_line) {
+  if (!file || !line || !remaining_line) {
+    return false;  // Invalid arguments
+  }
+
+  line->clear();
+  const size_t kBufferSize = 1024;
+  std::string buffer(kBufferSize, '\0');
+
+  // Handle any leftover data from the previous read
+  if (!remaining_line->empty()) {
+    size_t newline_pos = remaining_line->find('\n');
+    if (newline_pos != std::string::npos) {
+      *line = remaining_line->substr(0, newline_pos);
+      *remaining_line = remaining_line->substr(newline_pos + 1);
+      return true;
+    }
+    // If no newline, continue appending
+    *line = *remaining_line;
+    remaining_line->clear();
+  }
+
+  // Read new data
+  while (true) {
+    int bytes_read = file->ReadAtCurrentPos(&buffer[0], kBufferSize);
+    if (bytes_read < 0) {
+      return false;
+    }
+    // Check if there is any remaining data to process
+    if (bytes_read == 0) {
+      // End of file
+      if (!line->empty()) {
+        return true;
+      } else if (!remaining_line->empty()) {
+        *line = *remaining_line;
+        remaining_line->clear();
+        return true;
+      }
+      return false;
+    }
+
+    std::string buffer_data = buffer.substr(0, bytes_read);
+    size_t start = 0;
+    size_t newline_pos;
+    if ((newline_pos = buffer_data.find('\n', start)) != std::string::npos) {
+      *line += buffer_data.substr(start, newline_pos - start);
+      *remaining_line = buffer_data.substr(newline_pos + 1);
+      return true;
+    }
+
+    // No newline found, accumulate buffer content
+    *line += buffer_data;
+  }
+}
+
+bool IsDeviceStillMounted(uint32_t kernel_dev) {
+  uint64_t user_dev = KernelToUserspaceDeviceId(kernel_dev);
+  uint32_t dev_major = major(user_dev), dev_minor = minor(user_dev);
+  base::File mountinfo(base::FilePath("/proc/self/mountinfo"),
+                       base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!mountinfo.IsValid()) {
+    LOG(ERROR) << "Failed to open /proc/self/mountinfo";
+    return false;
+  }
+
+  std::string line;
+  std::string remaining_line;
+
+  while (ReadLine(&mountinfo, &line, &remaining_line)) {
+    std::vector<std::string> tokens = base::SplitString(
+        line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+    // The 3rd token (index 2) in /proc/self/mountinfo represents the
+    // major:minor device numbers
+    if (tokens.size() > 2) {
+      // Extract the device major:minor
+      unsigned int major, minor;
+      if (sscanf(tokens[2].c_str(), "%u:%u", &major, &minor) == 2) {
+        if (major == dev_major && minor == dev_minor) {
+          return true;  // Device is still mounted somewhere
+        }
+      }
+    }
+  }
+
+  return false;  // Device is not mounted anywhere
 }
 
 // Inspired by cros-disks/archive_manager.cc
@@ -772,8 +867,18 @@ absl::Status FilePlugin::UpdateBPFMapForPathMaps(
   return absl::OkStatus();
 }
 
-absl::Status FilePlugin::RemoveKeysFromBPFMap(int bpfMapFd,
-                                              const std::string& userhash) {
+absl::Status FilePlugin::RemoveKeysFromBPFMapOnUnmount(int bpfMapFd,
+                                                       const uint32_t dev) {
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
+  if (platform->BpfMapDeleteElementByFd(bpfMapFd, &dev) != 0) {
+    return absl::InternalError(
+        absl::StrCat("Failed to delete BPF map entry for Device ID: ", dev,
+                     ". Error: ", strerror(errno)));
+  }
+  return absl::OkStatus();
+}
+absl::Status FilePlugin::RemoveKeysFromBPFMapOnLogout(
+    int bpfMapFd, const std::string& userhash) {
   // Locate the entry for the given userhash in the global map
   auto it = userhash_inodes_map_.find(userhash);
   if (it == userhash_inodes_map_.end()) {
@@ -886,7 +991,8 @@ void FilePlugin::OnUserLogout(const std::string& userHash) {
 
   int directoryInodesMapFd = mapFdResult.value();
 
-  absl::Status status = RemoveKeysFromBPFMap(directoryInodesMapFd, userHash);
+  absl::Status status =
+      RemoveKeysFromBPFMapOnLogout(directoryInodesMapFd, userHash);
 
   if (!status.ok()) {
     LOG(WARNING) << "Failed to remove File monitoring paths from bpf_map. "
@@ -900,7 +1006,7 @@ void FilePlugin::OnUserLogout(const std::string& userHash) {
 void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
   std::string destination_path = data.dest_device_path;
 
-  auto pair = MatchPathToFilePathPrefixName(
+  auto pair = MatchNonUserPathToFilePathName(
       destination_path,
       kFilePathNamesByCategory.at(FilePathCategory::REMOVABLE_PATH));
   if (!pair.has_value()) {
@@ -917,6 +1023,39 @@ void FilePlugin::OnMountEvent(const secagentd::bpf::mount_data& data) {
   if (!status.ok()) {
     // TODO(b/362014987): Add error metrics.
     LOG(ERROR) << "Failed to add the new mount path to monitoring";
+  }
+}
+
+void FilePlugin::OnUnmountEvent(
+    const secagentd::bpf::umount_event& umount_event) {
+  auto pair = MatchNonUserPathToFilePathName(
+      umount_event.dest_device_path,
+      kFilePathNamesByCategory.at(FilePathCategory::REMOVABLE_PATH));
+  if (!pair.has_value()) {
+    LOG(INFO) << "Mount point not matched any known path. Path: "
+              << umount_event.dest_device_path;
+    return;
+  }
+
+  if (umount_event.ref_count != 0 && umount_event.active_counter != 0 &&
+      IsDeviceStillMounted(umount_event.device_id)) {
+    return;
+  }
+
+  // Remove inodes for folders for that user
+  absl::StatusOr<int> mapFdResult =
+      bpf_skeleton_helper_->FindBpfMapByName("device_monitoring_allowlist");
+  if (!mapFdResult.ok()) {
+    LOG(ERROR) << "Unable to find bpf map device_monitoring_allowlist by name: "
+               << mapFdResult.status().message();
+    return;
+  }
+  int deviceMapFd = mapFdResult.value();
+
+  absl::Status status =
+      RemoveKeysFromBPFMapOnUnmount(deviceMapFd, umount_event.device_id);
+  if (!status.ok()) {
+    LOG(ERROR) << status.message();
   }
 }
 
@@ -998,7 +1137,7 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       OnMountEvent(fe.data.mount_event);
       return;
     } else {
-      // TODO(princya): handle umount events
+      OnUnmountEvent(fe.data.umount_event);
       return;
     }
   }

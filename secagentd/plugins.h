@@ -513,15 +513,19 @@ class FilePlugin : public PluginInterface {
 
   void OnMountEvent(const secagentd::bpf::mount_data& data);
 
+  void OnUnmountEvent(const secagentd::bpf::umount_event& umount_event);
+
   absl::Status UpdateBPFMapForPathInodes(
       int bpfMapFd,
       const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
       const std::optional<std::string>& optionalUserhash);
 
-  absl::Status RemoveKeysFromBPFMap(int bpfMapFd, const std::string& userhash);
+  absl::Status RemoveKeysFromBPFMapOnLogout(int bpfMapFd,
+                                            const std::string& userhash);
 
   void StageEventsForAsyncProcessing();
 
+  absl::Status RemoveKeysFromBPFMapOnUnmount(int bpfMapFd, const uint32_t dev);
   base::WeakPtrFactory<FilePlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<ImageCacheInterface> image_cache_;

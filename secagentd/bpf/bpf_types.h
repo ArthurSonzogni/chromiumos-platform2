@@ -350,6 +350,13 @@ struct mount_data {
   char dest_device_path[MAX_PATH_SIZE];
 } __attribute__((aligned(8)));
 
+struct umount_event {
+  char dest_device_path[MAX_PATH_SIZE];  // Root path of the vfs mnt_root
+  uint64_t device_id;                    // The device ID both major and minor.
+  int ref_count;                         // Reference count of the vfsmount
+  int active_counter;
+} __attribute__((aligned(8)));
+
 // Define the structure to hold inode attribute information
 struct inode_attr {
   uint32_t mode;               // File mode
@@ -423,6 +430,7 @@ struct cros_file_event {
         file_detailed_event;  // Detailed information for regular file events.
     struct mount_data
         mount_event;  // Event data specific to mount/umount operations.
+    struct umount_event umount_event;
   } data;  // Union to hold either detailed file event data or mount/unmount
            // event data.
 } __attribute__((aligned(8)));

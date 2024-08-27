@@ -201,12 +201,36 @@ struct buffer {
   u8 data[MAX_PATH_BUFFER_SIZE];
 };
 
+#define UMOUNT_TASK_MAP_SIZE 8
+
 struct {
   __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
   __type(key, u32);
   __type(value, struct buffer);
   __uint(max_entries, 1);
 } file_path_buffer_map SEC(".maps");
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+struct {
+  __uint(type, BPF_MAP_TYPE_TASK_STORAGE);
+  __uint(map_flags, BPF_F_NO_PREALLOC);
+  __type(key, u32);
+  __type(value, char[MAX_PATH_SIZE]);
+} before_umount_path_map SEC(".maps");
+#else
+struct {
+  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+  __type(key, uint32_t);
+  __type(value, char[MAX_PATH_SIZE]);
+  __uint(max_entries, UMOUNT_TASK_MAP_SIZE);
+} before_umount_path_map SEC(".maps");
+struct {
+  __uint(type, BPF_MAP_TYPE_LRU_PERCPU_HASH);
+  __type(key, uint64_t);
+  __type(value, uint32_t);
+  __uint(max_entries, UMOUNT_TASK_MAP_SIZE);
+} unmount_task_hash_map SEC(".maps");
+#endif
 
 static __attribute__((__always_inline__)) struct buffer*
 get_file_path_buffer() {
@@ -859,6 +883,7 @@ static __noinline int construct_absolute_file_path(
       break;
     }
   }
+  return 0;
 }
 
 /**
@@ -1041,15 +1066,25 @@ static inline __attribute__((always_inline)) void print_mount_data(
   bpf_printk("Source Device Length: %u", data->src_device_length);
   bpf_printk("Source Device Path: %s", data->src_device_path);
 
-  // Print the destination path information using the existing helper function
-  bpf_printk("Destination Path Info:");
-  print_file_path_info(&data->dest_path_info);
-
   // Print the mount flags
   bpf_printk("Mount Flags: %lu", data->mount_flags);
 
   // Print the mount type
   bpf_printk("Mount Type: %s", data->mount_type);
+}
+
+static inline __attribute__((always_inline)) void print_umount_event(
+    const struct umount_event* data) {
+  // Check for null pointer
+  if (!data) {
+    bpf_printk("Error: Umount_event is NULL");
+    return;
+  }
+
+  bpf_printk("Umount Dest Device Path: %s", data->dest_device_path);
+  bpf_printk("Umount Device Id: %d", data->device_id);
+  bpf_printk("Umount Ref Count: %d", data->ref_count);
+  bpf_printk("Umount Active Counter: %d", data->active_counter);
 }
 
 /**
@@ -1195,7 +1230,13 @@ static inline __attribute__((always_inline)) int print_cros_event(
   }
   bpf_printk("Event Type: %d\n", event->type);
   if (event->type == kFileEvent) {
-    print_cros_file_event(&(event->data.file_event));
+    if (event->data.file_event.mod_type == FMOD_UMOUNT) {
+      print_umount_event(&event->data.file_event.data.umount_event);
+    } else if (event->data.file_event.mod_type == FMOD_MOUNT) {
+      print_mount_data(&event->data.file_event.data.mount_event);
+    } else {
+      print_cros_file_event(&(event->data.file_event));
+    }
   }
   return 0;
 }
@@ -1698,20 +1739,78 @@ int BPF_PROG(fexit__path_mount,
 }
 
 /**
- * @brief BPF program to handle the exit of the umount syscall.
+ * BPF program to handle the exit of the umount syscall.
  *
  * This function captures unmount operations and submits relevant information
  * to the ring buffer for user-space processing. It extracts the destination
  * path information and flags from the syscall parameters.
  */
-CROS_IF_FUNCTION_HOOK("fexit/security_sb_umount",
-                      "tp_btf/cros_security_sb_umount_exit")
-int BPF_PROG(fexit__security_sb_umount,
-             struct vfsmount* mnt,
-             int flags,
-             int ret) {
-  // Check if the syscall was successful
+CROS_IF_FUNCTION_HOOK("fentry/path_umount", "tp_btf/cros_path_umount_entry")
+int BPF_PROG(fentry__path_umount, struct path* path, int flags) {
+  if (!path) {
+    return 0;
+  }
+  // Read the root directory entry (dentry) of the mount
+  u_char* file_path = NULL;
+  resolve_path_to_string(&file_path, path);
+
+  // Compare mount_type_buffer with "/media"
+  if (!strings_starts_with(file_path, "/media/", sizeof("/media/"))) {
+    return 0;
+  }
+
+  char* dest_path = NULL;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+  struct task_struct* task = bpf_get_current_task_btf();
+
+  dest_path = bpf_task_storage_get(&before_umount_path_map, task, 0,
+                                   BPF_LOCAL_STORAGE_GET_F_CREATE);
+#else
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  uint32_t index = pid_tid % UMOUNT_TASK_MAP_SIZE;
+  bpf_map_update_elem(&unmount_task_hash_map, &pid_tid, &index, BPF_ANY);
+  dest_path = bpf_map_lookup_elem(&before_umount_path_map, &index);
+#endif
+
+  if (!dest_path) {
+    return 0;
+  }
+
+  uint64_t ret = bpf_core_read_str(dest_path, MAX_PATH_SIZE, file_path);
+  if (ret < 0) {
+    bpf_printk(
+        "Umount: Failed to copy path to the bpf map in fentry, error code: "
+        "%llu",
+        ret);
+  }
+  return 0;
+}
+
+CROS_IF_FUNCTION_HOOK("fexit/path_umount", "tp_btf/cros_path_umount_exit")
+int BPF_PROG(fexit__path_umount, struct path* path, int flags, int ret) {
   if (ret != 0) {
+    return 0;
+  }
+
+  struct task_struct* task = bpf_get_current_task_btf();
+  char* ptr = NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+  ptr = bpf_task_storage_get(&before_umount_path_map, task, NULL, 0);
+
+#else
+
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  uint32_t* index_value = bpf_map_lookup_elem(&unmount_task_hash_map, &pid_tid);
+
+  if (index_value) {
+    uint32_t index = *index_value;
+    ptr = bpf_map_lookup_elem(&before_umount_path_map, &index);
+  }
+
+#endif
+
+  if (!ptr) {
     return 0;
   }
 
@@ -1720,7 +1819,7 @@ int BPF_PROG(fexit__security_sb_umount,
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
   if (!event) {
     // Unable to reserve buffer space
-    bpf_printk("Error: Unable to reserve ring buffer space");
+    bpf_printk("Umount Error: Unable to reserve ring buffer space");
     return 0;
   }
 
@@ -1730,20 +1829,28 @@ int BPF_PROG(fexit__security_sb_umount,
   event->data.file_event.type = kFileMountEvent;
 
   // Initialize umount data structure
-  struct mount_data* umount_data = &(event->data.file_event.data.mount_event);
-  umount_data->mount_flags = flags;
-
-  // Read the root directory entry (dentry) of the mount
-  struct dentry* root_dentry = BPF_CORE_READ(mnt, mnt_root);
-  if (root_dentry) {
-    // Populate the destination path information
-    construct_absolute_file_path(root_dentry, &umount_data->dest_path_info);
-  } else {
-    bpf_printk("Error: Failed to read root dentry");
+  struct umount_event* umount_event =
+      &(event->data.file_event.data.umount_event);
+  if (!umount_event) {
+    return 0;
   }
+
+  umount_event->device_id = BPF_CORE_READ(path, mnt, mnt_sb, s_dev);
+  umount_event->ref_count = BPF_CORE_READ(path, mnt, mnt_sb, s_count);
+  umount_event->active_counter =
+      BPF_CORE_READ(path, mnt, mnt_sb, s_active.counter);
+
+  bpf_core_read_str(
+      &(event->data.file_event.data.umount_event.dest_device_path),
+      MAX_PATH_SIZE, ptr);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+  bpf_task_storage_delete(&before_umount_path_map, task);
+#else
+  bpf_map_delete_elem(&unmount_task_hash_map, &pid_tid);
+#endif
 
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
-
   return 0;
 }
