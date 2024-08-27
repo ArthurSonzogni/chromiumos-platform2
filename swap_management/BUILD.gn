@@ -26,6 +26,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libfeatures",
     "libmetrics",
+    "libpower_manager-client",
     "protobuf",
     "system_api",
   ]
@@ -36,6 +37,7 @@ static_library("libswapmanagement") {
     "dbus_adaptor.cc",
     "metrics.cc",
     "status.cc",
+    "suspend_history.cc",
     "swap_tool.cc",
     "utils.cc",
     "zram_idle.cc",
@@ -104,6 +106,7 @@ if (use.test) {
   executable("test") {
     sources = [
       "metrics_test.cc",
+      "suspend_history_test.cc",
       "swap_tool_test.cc",
       "zram_recompression_test.cc",
       "zram_stats_test.cc",

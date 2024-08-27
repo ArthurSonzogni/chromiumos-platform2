@@ -5,17 +5,21 @@
 #ifndef SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
 #define SWAP_MANAGEMENT_DBUS_ADAPTOR_H_
 
-#include "swap_management/dbus_adaptors/org.chromium.SwapManagement.h"
-#include "swap_management/swap_tool.h"
-
 #include <memory>
 #include <string>
 
+#include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
-#include <brillo/dbus/dbus_method_response.h>
+#include <power_manager/dbus-proxies.h>
+
+#include "swap_management/dbus_adaptors/org.chromium.SwapManagement.h"
+#include "swap_management/swap_tool.h"
 
 namespace swap_management {
+
+void RegisterPowerManagerProxyHandlers(
+    org::chromium::PowerManagerProxyInterface* power_manager_proxy);
 
 class DBusAdaptor : public org::chromium::SwapManagementAdaptor,
                     public org::chromium::SwapManagementInterface {

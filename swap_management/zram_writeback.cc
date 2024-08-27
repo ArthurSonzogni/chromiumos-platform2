@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/metrics.h"
-#include "swap_management/zram_idle.h"
-#include "swap_management/zram_stats.h"
 #include "swap_management/zram_writeback.h"
 
 #include <algorithm>
@@ -21,6 +18,11 @@
 #include <base/strings/stringprintf.h>
 #include <base/timer/timer.h>
 #include <brillo/errors/error.h>
+
+#include "base/time/time.h"
+#include "swap_management/metrics.h"
+#include "swap_management/zram_idle.h"
+#include "swap_management/zram_stats.h"
 
 namespace swap_management {
 
@@ -415,6 +417,20 @@ absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
   return Utils::Get()->WriteFile(filepath, *mode_str);
 }
 
+void ZramWriteback::OnSuspendImminent() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  suspend_history_.OnSuspendImminent();
+}
+
+void ZramWriteback::OnSuspendDone(base::TimeDelta suspend_duration) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  suspend_history_.OnSuspendDone(suspend_duration);
+}
+
+ZramWriteback::ZramWriteback() {
+  suspend_history_.SetMaxIdleDuration(params_.idle_max_time);
+}
+
 ZramWriteback::~ZramWriteback() {
   writeback_timer_.Stop();
   Cleanup();
@@ -472,11 +488,17 @@ absl::Status ZramWriteback::SetZramWritebackConfigIfOverriden(
     if (!buf.ok())
       return buf.status();
     params_.idle_max_time = base::Seconds(*buf);
+    suspend_history_.SetMaxIdleDuration(params_.idle_max_time);
   } else if (key == "max_pages_per_day") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
     if (!buf.ok())
       return buf.status();
     params_.max_pages_per_day = *buf;
+  } else if (key == "suspend_aware") {
+    auto buf = Utils::Get()->SimpleAtob(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.suspend_aware = *buf;
   } else {
     return absl::InvalidArgumentError("Unknown key " + key);
   }
@@ -540,6 +562,11 @@ absl::StatusOr<uint64_t> ZramWriteback::GetWritebackLimit() {
 }
 
 void ZramWriteback::PeriodicWriteback() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (params_.suspend_aware && suspend_history_.IsSuspended()) {
+    // Disable writeback if device is suspended.
+    return;
+  }
   // Is writeback ongoing?
   if (is_currently_writing_back_)
     return;
@@ -590,7 +617,13 @@ void ZramWriteback::PeriodicWriteback() {
           current_writeback_mode = WRITEBACK_HUGE;
           continue;
         }
-        status = MarkIdle(*idle_age_sec);
+        base::TimeDelta idle_age = base::Seconds(*idle_age_sec);
+        if (params_.suspend_aware) {
+          base::TimeDelta suspend_adjustment =
+              suspend_history_.CalculateTotalSuspendedDuration(idle_age);
+          idle_age += suspend_adjustment;
+        }
+        status = MarkIdle(idle_age.InSeconds());
         if (!status.ok()) {
           LOG(ERROR) << "Can not mark zram idle:" << status;
           return;

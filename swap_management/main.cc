@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/dbus_adaptor.h"
-#include "swap_management/metrics.h"
-
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sysexits.h>
 #include <unistd.h>
+
+#include <memory>
 
 #include <absl/status/status.h>
 #include <base/command_line.h>
@@ -19,7 +18,11 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
-#include <memory>
+#include <power_manager/dbus-proxies.h>
+#include <power_manager/proto_bindings/suspend.pb.h>
+
+#include "swap_management/dbus_adaptor.h"
+#include "swap_management/metrics.h"
 
 namespace {
 
@@ -35,10 +38,16 @@ class Daemon : public brillo::DBusServiceDaemon {
     adaptor_ = std::make_unique<swap_management::DBusAdaptor>(bus_);
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
+    power_manager_proxy_ =
+        std::make_unique<org::chromium::PowerManagerProxy>(bus_);
+    swap_management::RegisterPowerManagerProxyHandlers(
+        power_manager_proxy_.get());
   }
 
  private:
   std::unique_ptr<swap_management::DBusAdaptor> adaptor_;
+  std::unique_ptr<org::chromium::PowerManagerProxyInterface>
+      power_manager_proxy_;
 };
 
 }  // namespace

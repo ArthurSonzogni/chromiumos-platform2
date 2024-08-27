@@ -5,8 +5,6 @@
 #ifndef SWAP_MANAGEMENT_ZRAM_WRITEBACK_H_
 #define SWAP_MANAGEMENT_ZRAM_WRITEBACK_H_
 
-#include "swap_management/utils.h"
-
 #include <iostream>
 #include <list>
 #include <memory>
@@ -16,8 +14,12 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/memory/weak_ptr.h>
+#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
+
+#include "swap_management/suspend_history.h"
+#include "swap_management/utils.h"
 
 namespace swap_management {
 
@@ -79,9 +81,11 @@ class ZramWriteback {
   absl::Status SetWritebackLimit(uint32_t num_pages);
   absl::Status InitiateWriteback(ZramWritebackMode mode);
 
- private:
-  ZramWriteback() = default;
+  void OnSuspendImminent();
+  void OnSuspendDone(base::TimeDelta suspend_duration);
 
+ private:
+  ZramWriteback();
   ~ZramWriteback();
 
   friend class MockZramWriteback;
@@ -111,6 +115,7 @@ class ZramWriteback {
     bool writeback_huge = true;
     base::TimeDelta idle_min_time = base::Hours(20);
     base::TimeDelta idle_max_time = base::Hours(25);
+    bool suspend_aware = false;
 
     friend std::ostream& operator<<(std::ostream& out,
                                     const ZramWritebackParams& p) {
@@ -126,6 +131,7 @@ class ZramWriteback {
       out << "writeback_huge=" << p.writeback_huge << " ";
       out << "idle_min_time=" << p.idle_min_time << " ";
       out << "idle_max_time=" << p.idle_max_time << " ";
+      out << "suspend_aware=" << p.suspend_aware << " ";
       out << "]";
 
       return out;
@@ -144,6 +150,9 @@ class ZramWriteback {
   uint64_t zram_nr_pages_ = 0;
   bool is_currently_writing_back_ = false;
   base::Time last_writeback_ = base::Time::Min();
+  SuspendHistory suspend_history_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  SEQUENCE_CHECKER(sequence_checker_);
 
   base::WeakPtrFactory<ZramWriteback> weak_factory_{this};
 };

@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/mock_utils.h"
 #include "swap_management/zram_writeback.h"
 
 #include <utility>
@@ -11,6 +10,9 @@
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
+
+#include "base/time/time.h"
+#include "swap_management/mock_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -325,6 +327,90 @@ TEST_F(ZramWritebackTest, DailyLimit) {
   // 8th writeback (172800), history: {(108000, 2000), (129600, 500)}, return
   // 30268 pages.
   EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 30268);
+}
+
+TEST_F(ZramWritebackTest, DisabledWhileSuspended) {
+  InSequence s;
+
+  EXPECT_THAT(mock_zram_writeback_->SetZramWritebackConfigIfOverriden(
+                  "suspend_aware", "true"),
+              absl::OkStatus());
+
+  // GetAllowedWritebackLimit
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(base::FilePath("/sys/block/zram0/mm_stat"), _))
+      .Times(0);
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(base::FilePath("/sys/block/zram0/bd_stat"), _))
+      .Times(0);
+  // SetWritebackLimit
+  EXPECT_CALL(
+      mock_util_,
+      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit_enable"), _))
+      .Times(0);
+  EXPECT_CALL(
+      mock_util_,
+      ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
+      .Times(0);
+  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).Times(0);
+  // MarkIdle
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/idle"), _))
+      .Times(0);
+  // InitiateWriteback
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/sys/block/zram0/writeback"), _))
+      .Times(0);
+
+  mock_zram_writeback_->OnSuspendImminent();
+  mock_zram_writeback_->PeriodicWriteback();
+}
+
+TEST_F(ZramWritebackTest, AdjustThresholdBySuspendTime) {
+  InSequence s;
+
+  EXPECT_THAT(mock_zram_writeback_->SetZramWritebackConfigIfOverriden(
+                  "suspend_aware", "true"),
+              absl::OkStatus());
+
+  // GetAllowedWritebackLimit
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(base::FilePath("/sys/block/zram0/mm_stat"), _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>("4760850432 1936262113 1973989376        0 "
+                           "1975132160     8534     5979      530      531\n"),
+          Return(absl::OkStatus())));
+  EXPECT_CALL(mock_util_,
+              ReadFileToString(base::FilePath("/sys/block/zram0/bd_stat"), _))
+      .WillOnce(DoAll(SetArgPointee<1>("       1        0        1\n"),
+                      Return(absl::OkStatus())));
+  // SetWritebackLimit
+  EXPECT_CALL(
+      mock_util_,
+      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit_enable"), "1"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit"), "21918"))
+      .WillOnce(Return(absl::OkStatus()));
+  // GetWritebackLimit
+  EXPECT_CALL(
+      mock_util_,
+      ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
+      .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
+  // huge_idle
+  // GetCurrentIdleTimeSec
+  base::SystemMemoryInfoKB mock_meminfo;
+  mock_meminfo.available = 346452;
+  mock_meminfo.total = 8144296;
+  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
+  // MarkIdle (72150 + 3600)
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/sys/block/zram0/idle"), "75750"))
+      .WillOnce(Return(absl::CancelledError()));
+
+  mock_zram_writeback_->OnSuspendImminent();
+  mock_zram_writeback_->OnSuspendDone(base::Hours(1));
+  mock_zram_writeback_->PeriodicWriteback();
 }
 
 }  // namespace swap_management

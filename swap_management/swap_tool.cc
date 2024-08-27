@@ -2,13 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "featured/c_feature_library.h"
-#include "swap_management/metrics.h"
 #include "swap_management/swap_tool.h"
-#include "swap_management/utils.h"
-#include "swap_management/zram_idle.h"
-#include "swap_management/zram_recompression.h"
-#include "swap_management/zram_writeback.h"
 
 #include <algorithm>
 #include <optional>
@@ -27,6 +21,13 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "featured/c_feature_library.h"
+#include "swap_management/metrics.h"
+#include "swap_management/utils.h"
+#include "swap_management/zram_idle.h"
+#include "swap_management/zram_recompression.h"
+#include "swap_management/zram_writeback.h"
+
 namespace swap_management {
 
 namespace {
@@ -43,6 +44,8 @@ constexpr VariationsFeature kSwapZramWritebackFeature{
     "CrOSLateBootSwapZramWriteback", FEATURE_ENABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramRecompressionFeature{
     "CrOSLateBootSwapZramRecompression", FEATURE_ENABLED_BY_DEFAULT};
+constexpr VariationsFeature kSwapSuspendAwareZramWritebackFeature{
+    "CrOSLateBootSuspendAwareSwapZramWriteback", FEATURE_DISABLED_BY_DEFAULT};
 
 // Reclaimable memory types.
 //
@@ -441,6 +444,15 @@ absl::Status SwapTool::EnableZramWriteback() {
   auto params = GetFeatureParams(kSwapZramWritebackFeature);
   if (!params.has_value())
     return absl::OkStatus();
+
+  if (GetFeatureParams(kSwapSuspendAwareZramWritebackFeature).has_value()) {
+    absl::Status status =
+        ZramWriteback::Get()->SetZramWritebackConfigIfOverriden("suspend_aware",
+                                                                "true");
+    LOG_IF(WARNING, !status.ok())
+        << "Failed to set zram writeback config [suspend_aware: true]: "
+        << status;
+  }
 
   // Read config from feature and override the default.
   for (const auto& [key, value] : *params) {
