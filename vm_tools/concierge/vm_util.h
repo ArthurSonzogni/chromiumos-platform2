@@ -289,6 +289,18 @@ struct SharedDataParam {
                                           bool ascii_casefold) const;
 };
 
+// Parameters for vhost-user-fs frontend.
+struct VhostUserFsFrontParam {
+  // Tag for the shared directory.
+  std::string tag;
+  // Vhost_user frontend socket fd is co-owned by concierge and Crosvm.
+  // The lifetime of this variable is owned by vhost_user_front_socket_fds
+  // variable in concierge. The fd is closed on concierge side when exiting
+  // ArcVm::Start function scope, but kept on crosvm side while it's useful.
+  const base::ScopedFD& socket_fd;
+  std::string to_string() const;
+};
+
 // Creates the font-specific shared data parameter for crosvm.
 SharedDataParam CreateFontsSharedDataParam();
 
