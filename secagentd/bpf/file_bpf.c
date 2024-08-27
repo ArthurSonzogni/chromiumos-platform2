@@ -901,8 +901,7 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     image_info->flags = BPF_CORE_READ(file, f_flags);
   }
 
-  // Fill info from super block
-  image_info->mnt_ns = BPF_CORE_READ(dentry, d_sb, s_user_ns, ns.inum);
+  image_info->mnt_ns = BPF_CORE_READ(t, nsproxy, mnt_ns, ns.inum);
   image_info->file_system_noexec =
       BPF_CORE_READ(dentry, d_sb, s_flags) & MS_NOEXEC;
 
