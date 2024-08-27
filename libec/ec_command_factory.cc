@@ -110,6 +110,11 @@ EcCommandFactory::FpPairingKeyWrapCommand(const brillo::Blob& pub_x,
   return FpPairingKeyWrapCommand::Create(pub_x, pub_y, encrypted_priv);
 }
 
+std::unique_ptr<ec::FpModeCommand> EcCommandFactory::FpModeCommand(
+    FpMode mode) {
+  return std::make_unique<ec::FpModeCommand>(mode);
+}
+
 std::unique_ptr<ec::LedControlQueryCommand>
 EcCommandFactory::LedControlQueryCommand(enum ec_led_id led_id) {
   return std::make_unique<ec::LedControlQueryCommand>(led_id);
@@ -138,6 +143,11 @@ EcCommandFactory::MotionSenseCommandLidAngle() {
 
 std::unique_ptr<ec::GetVersionCommand> EcCommandFactory::GetVersionCommand() {
   return std::make_unique<ec::GetVersionCommand>();
+}
+
+std::unique_ptr<ec::GetProtocolInfoCommand>
+EcCommandFactory::GetProtocolInfoCommand() {
+  return std::make_unique<ec::GetProtocolInfoCommand>();
 }
 
 }  // namespace ec

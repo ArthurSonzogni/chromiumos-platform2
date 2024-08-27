@@ -96,6 +96,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
                const brillo::Blob& pub_y,
                const brillo::Blob& encrypted_priv),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpModeCommand>,
+              FpModeCommand,
+              (FpMode mode),
+              (override));
   MOCK_METHOD(std::unique_ptr<ec::LedControlQueryCommand>,
               LedControlQueryCommand,
               (enum ec_led_id led_id),
@@ -119,6 +123,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               (override));
   MOCK_METHOD(std::unique_ptr<ec::GetVersionCommand>,
               GetVersionCommand,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetProtocolInfoCommand>,
+              GetProtocolInfoCommand,
               (),
               (override));
 };

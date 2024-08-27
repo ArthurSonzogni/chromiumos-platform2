@@ -19,6 +19,7 @@
 #include "libec/fingerprint/fp_get_nonce_command.h"
 #include "libec/fingerprint/fp_info_command.h"
 #include "libec/fingerprint/fp_migrate_template_to_nonce_context_command.h"
+#include "libec/fingerprint/fp_mode_command.h"
 #include "libec/fingerprint/fp_pairing_key_keygen_command.h"
 #include "libec/fingerprint/fp_pairing_key_load_command.h"
 #include "libec/fingerprint/fp_pairing_key_wrap_command.h"
@@ -28,6 +29,7 @@
 #include "libec/fingerprint/fp_template_command.h"
 #include "libec/fingerprint/fp_unlock_template_command.h"
 #include "libec/flash_protect_command.h"
+#include "libec/get_protocol_info_command.h"
 #include "libec/get_version_command.h"
 #include "libec/i2c_read_command.h"
 #include "libec/led_control_command.h"
@@ -158,6 +160,11 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::FpModeCommand> FpModeCommand(FpMode mode) = 0;
+  static_assert(std::is_base_of<EcCommandInterface, ec::FpModeCommand>::value,
+                "All commands created by this class should derive from "
+                "EcCommandInterface");
+
   virtual std::unique_ptr<ec::LedControlQueryCommand> LedControlQueryCommand(
       enum ec_led_id led_id) = 0;
   static_assert(
@@ -196,6 +203,13 @@ class EcCommandFactoryInterface {
   virtual std::unique_ptr<ec::GetVersionCommand> GetVersionCommand() = 0;
   static_assert(
       std::is_base_of<EcCommandInterface, ec::GetVersionCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::GetProtocolInfoCommand>
+  GetProtocolInfoCommand() = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::GetProtocolInfoCommand>::value,
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
@@ -268,6 +282,8 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       const brillo::Blob& pub_y,
       const brillo::Blob& encrypted_priv) override;
 
+  std::unique_ptr<ec::FpModeCommand> FpModeCommand(FpMode mode) override;
+
   std::unique_ptr<ec::I2cReadCommand> I2cReadCommand(uint8_t port,
                                                      uint8_t addr8,
                                                      uint8_t offset,
@@ -287,6 +303,8 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       override;
 
   std::unique_ptr<ec::GetVersionCommand> GetVersionCommand() override;
+
+  std::unique_ptr<ec::GetProtocolInfoCommand> GetProtocolInfoCommand() override;
 };
 
 }  // namespace ec
