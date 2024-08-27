@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/cros-disks/dbus-constants.h>
@@ -39,15 +40,17 @@ class RenameManager {
   RenameError StartRenaming(const std::string& device_path,
                             const std::string& device_file,
                             const std::string& volume_name,
-                            const std::string& filesystem_type);
+                            const std::string& fs_type);
 
   void set_observer(Observer* observer) { observer_ = observer; }
 
  private:
   FRIEND_TEST(RenameManagerTest, CanRename);
 
-  void OnRenameProcessTerminated(const std::string& device_path,
-                                 const siginfo_t& info);
+  void OnDone(const std::string& fs_type,
+              const std::string& device_path,
+              const base::ElapsedTimer& timer,
+              const siginfo_t& info);
 
   // Returns true if renaming |source_path| is supported.
   bool CanRename(const std::string& source_path) const;

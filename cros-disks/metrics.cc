@@ -127,6 +127,17 @@ void Metrics::RecordSysCall(const std::string_view syscall,
       std::move(elapsed_time), base::Milliseconds(1), base::Seconds(10), 50);
 }
 
+void Metrics::RecordRenaming(const std::string_view fs_type,
+                             const Process::ExitCode exit_code,
+                             base::TimeDelta elapsed_time) {
+  metrics_library_.SendSparseToUMA(
+      base::StrCat({"CrosDisks.Error.Rename.", fs_type}),
+      static_cast<int>(exit_code));
+  metrics_library_.SendTimeToUMA(
+      base::StrCat({"CrosDisks.Time.Rename.", fs_type}),
+      std::move(elapsed_time), base::Milliseconds(1), base::Seconds(10), 50);
+}
+
 void Metrics::RecordDaemonError(const std::string_view program_name,
                                 const int error) {
   std::string name(program_name);

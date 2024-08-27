@@ -13,6 +13,8 @@
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
 
+#include "cros-disks/process.h"
+
 namespace cros_disks {
 
 // A class for collecting cros-disks related UMA metrics.
@@ -36,6 +38,12 @@ class Metrics {
                      std::string_view fs_type,
                      error_t error,
                      base::TimeDelta elapsed_time);
+
+  // Records the error (or success) and the elapsed time of the program that
+  // tried to rename a partition on a removable drive.
+  void RecordRenaming(std::string_view fs_type,
+                      Process::ExitCode exit_code,
+                      base::TimeDelta elapsed_time);
 
   // Records the error returned by a FUSE daemon when it unexpectedly
   // terminates.
