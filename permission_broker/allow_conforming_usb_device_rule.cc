@@ -4,7 +4,6 @@
 
 #include "permission_broker/allow_conforming_usb_device_rule.h"
 
-#include <brillo/errors/error.h>
 #include <libudev.h>
 #include <linux/usb/ch9.h>
 
@@ -12,6 +11,8 @@
 #include <optional>
 #include <string>
 #include <utility>
+
+#include <brillo/errors/error.h>
 
 #include "base/check.h"
 #include "base/logging.h"
@@ -21,7 +22,6 @@
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/udev_scopers.h"
 #include "permission_broker/usb_subsystem_udev_rule.h"
-
 #include "primary_io_manager/dbus-proxies.h"
 
 namespace {
@@ -397,7 +397,7 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
 
   // If permissive USB is enabled, but we have no tag information, fall back
   // to legacy behavior.
-  if (legacy_usb_passthrough && cros_usb_location.has_value()) {
+  if (!legacy_usb_passthrough && cros_usb_location.has_value()) {
     Result result = ProcessTaggedDevice(device, cros_usb_location.value());
     // If the tagged flow was truly not able to make a decision for a device,
     // allow the legacy flow to have an opinion.
