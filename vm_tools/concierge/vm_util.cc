@@ -768,6 +768,26 @@ std::string SharedDataParam::to_string() const {
   return result;
 }
 
+void SharedDataParam::set_vhost_user_virtio_fs_cfg(
+    vhost_user_starter::VhostUserVirtioFsConfig* cfg) const {
+  CHECK(cfg != nullptr);
+  CacheParameters cache_params =
+      create_cache_parameters(enable_caches, ascii_casefold);
+
+  cfg->set_cache(cache_params.cache);
+  cfg->set_timeout(cache_params.timeout);
+  cfg->set_writeback(cache_params.writeback);
+  cfg->set_negative_timeout(cache_params.negative_timeout);
+
+  cfg->set_rewrite_security_xattrs(rewrite_security_xattrs);
+  cfg->set_ascii_casefold(ascii_casefold);
+  cfg->set_posix_acl(posix_acl);
+
+  for (uid_t uid : privileged_quota_uids) {
+    cfg->add_privileged_quota_uids(uid);
+  }
+}
+
 SharedDataParam CreateFontsSharedDataParam() {
   return SharedDataParam{.data_dir = base::FilePath(kFontsSharedDir),
                          .tag = kFontsSharedDirTag,

@@ -13,6 +13,7 @@ group("host") {
     "//vm_tools/seneschal",
     "//vm_tools/seneschal:seneschal_client",
     "//vm_tools/syslog:vmlog_forwarder",
+    "//vm_tools/vhost_user_starter:libvhost_user_starter",
     "//vm_tools/vsh",
     "//vm_tools/vsh:vshd",
   ]

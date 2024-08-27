@@ -1,0 +1,16 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+
+generate_dbus_proxies("vhost_user_starter-proxies") {
+  sources = [ "../dbus_bindings/org.chromium.VhostUserStarter.xml" ]
+  proxy_output_file = "include/vm_tools/vhost_user_starter/dbus-proxies.h"
+  dbus_service_config =
+      "../dbus_bindings/vhost-user-starter-dbus-service-config.json"
+}
+
+static_library("libvhost_user_starter") {
+  deps = [ ":vhost_user_starter-proxies" ]
+}

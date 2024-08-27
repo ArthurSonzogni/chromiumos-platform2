@@ -95,6 +95,7 @@ static_library("libconcierge") {
     "thread_utils.cc",
     "tracing.cc",
     "untrusted_vm_utils.cc",
+    "vhost_user_starter_client.cc",
     "virtio_blk_metrics.cc",
     "vm_base_impl.cc",
     "vm_builder.cc",
@@ -149,6 +150,7 @@ static_library("libconcierge") {
     ":libconcierge-client.pc",
     ":protos",
     "//vm_tools/cicerone:cicerone-proxies",
+    "//vm_tools/vhost_user_starter:libvhost_user_starter",
   ]
 }
 
@@ -193,6 +195,7 @@ if (use.test) {
       "termina_vm_test.cc",
       "thread_utils_test.cc",
       "untrusted_vm_utils_test.cc",
+      "vhost_user_starter_client_test.cc",
       "virtio_blk_metrics_test.cc",
       "vm_builder_test.cc",
       "vm_util_test.cc",

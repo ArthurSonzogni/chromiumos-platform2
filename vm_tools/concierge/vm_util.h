@@ -24,6 +24,7 @@
 #include <base/values.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
+#include <vhost_user_starter/proto_bindings/vhost_user_starter.pb.h>
 #include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
@@ -267,6 +268,11 @@ struct SharedDataParam {
     uint32_t negative_timeout;
   };
   std::string to_string() const;
+  // Set VhostUserVirtioFsConfig proto message according to SharedDataParam,
+  // this message will be parsed by vhost_user_starter daemon and config
+  // vhost-user-fs backend's --cfg option in crosvm.
+  void set_vhost_user_virtio_fs_cfg(
+      vm_tools::vhost_user_starter::VhostUserVirtioFsConfig* cfg) const;
 
   base::FilePath data_dir;
   std::string tag;
