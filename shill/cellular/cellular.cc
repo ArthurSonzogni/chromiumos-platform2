@@ -388,9 +388,14 @@ void Cellular::GetModemfwdProperties() {
     return;
   }
 
-  auto properties =
-      modemfwd_dbus_properties_proxy_->GetAll(modemfwd::kModemfwdInterface);
-  OnModemfwdPropertiesChanged(modemfwd::kModemfwdInterface, properties);
+  modemfwd_dbus_properties_proxy_->GetAllAsync(
+      modemfwd::kModemfwdInterface,
+      base::BindOnce(&Cellular::OnModemfwdPropertiesChanged,
+                     weak_ptr_factory_.GetWeakPtr(),
+                     modemfwd::kModemfwdInterface),
+      base::BindOnce([](const Error& error) {
+        LOG(ERROR) << "Error fetching modemfwd properties: " << error;
+      }));
 }
 
 // Process in-progress tasks from modemfwd and update the flashing property.
