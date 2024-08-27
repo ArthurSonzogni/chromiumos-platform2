@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/delegate/delegate_impl.h"
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <optional>
@@ -14,7 +15,9 @@
 #include <chromeos/ec/ec_commands.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libec/fingerprint/fp_mode_command.h>
 #include <libec/led_control_command.h>
+#include <libec/mkbp_event.h>
 #include <libec/mock_ec_command_factory.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -45,6 +48,102 @@ constexpr uint8_t kBatteryI2cAddress = 0x16;
 constexpr uint8_t kBatteryI2cManufactureDateOffset = 0x1B;
 constexpr uint8_t kBatteryI2cTemperatureOffset = 0x08;
 constexpr uint8_t kBatteryI2cReadLen = 2;
+
+class FakeFpInfoCommand : public ec::FpInfoCommand {
+ public:
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+  struct ec_response_fp_info* Resp() override { return &fake_response_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+  void SetSensorImageSize(uint16_t width, uint16_t height) {
+    fake_response_.width = width;
+    fake_response_.height = height;
+  }
+
+ private:
+  struct ec_response_fp_info fake_response_ = {
+      .frame_size = 0,
+      .pixel_format = 0,
+      .width = 0,
+      .height = 0,
+      .bpp = 0,
+  };
+  // If `fake_run_result_` is declared before `fake_response_`, there will be
+  // "runtime error: reference binding to misaligned address" errors in ubsan.
+  bool fake_run_result_ = false;
+};
+
+class FakeMkbpEvent : public ec::MkbpEvent {
+ public:
+  FakeMkbpEvent() : ec::MkbpEvent(0, EC_MKBP_EVENT_FINGERPRINT) {}
+  ~FakeMkbpEvent() = default;
+
+  // ec::MkbpEvent overrides.
+  int Enable() override { return fake_enable_result_; }
+  int Wait(int timeout) override { return fake_wait_result_; }
+
+  void SetEnableResult(int result) { fake_enable_result_ = result; }
+  void SetWaitResult(int result) { fake_wait_result_ = result; }
+
+ private:
+  int fake_enable_result_ = 0;
+  int fake_wait_result_ = 0;
+};
+
+class FakeFpModeCommand : public ec::FpModeCommand {
+ public:
+  FakeFpModeCommand()
+      : ec::FpModeCommand(ec::FpMode(ec::FpMode::Mode::kCapture)) {}
+  ~FakeFpModeCommand() = default;
+
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+ private:
+  bool fake_run_result_ = false;
+};
+
+class FakeGetProtocolInfoCommand : public ec::GetProtocolInfoCommand {
+ public:
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+ private:
+  bool fake_run_result_ = false;
+};
+
+class FakeFpFrameCommand : public ec::FpFrameCommand {
+ public:
+  explicit FakeFpFrameCommand(uint32_t frame_size)
+      : ec::FpFrameCommand(FP_FRAME_INDEX_RAW_IMAGE, frame_size, frame_size) {}
+  ~FakeFpFrameCommand() = default;
+
+  // ec::EcCommand overrides.
+  ec::FpFramePacket* Resp() override { return &fake_response_; }
+
+  // ec::FpFrameCommand overrides.
+  bool EcCommandRun(int fd) override { return fake_run_result_; }
+  void Sleep(base::TimeDelta duration) override {
+    // No-op.
+  }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+  void SetFrame(const std::vector<uint8_t>& frame) {
+    CHECK(frame.size() <= fake_response_.size());
+    std::copy(frame.begin(), frame.end(), fake_response_.begin());
+  }
+
+ private:
+  bool fake_run_result_ = false;
+  ec::FpFramePacket fake_response_{0};
+};
 
 class FakeGetVersionCommand : public ec::GetVersionCommand {
  public:
@@ -159,6 +258,20 @@ class FakeMotionSenseCommandLidAngle : public ec::MotionSenseCommandLidAngle {
   uint16_t fake_lid_angle_ = 0;
 };
 
+class MockDelegateImpl : public DelegateImpl {
+ public:
+  explicit MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory)
+      : DelegateImpl(ec_command_factory) {}
+  MockDelegateImpl(const MockDelegateImpl&) = delete;
+  MockDelegateImpl& operator=(const MockDelegateImpl&) = delete;
+  ~MockDelegateImpl() = default;
+
+  MOCK_METHOD(std::unique_ptr<ec::MkbpEvent>,
+              CreateMkbpEvent,
+              (int fd, enum ec_mkbp_event event_type),
+              (override));
+};
+
 class DelegateImplTest : public BaseFileTest {
  public:
   DelegateImplTest(const DelegateImplTest&) = delete;
@@ -168,6 +281,15 @@ class DelegateImplTest : public BaseFileTest {
   DelegateImplTest() = default;
 
   void SetUp() override { SetFile(ec::kCrosEcPath, ""); }
+
+  std::pair<mojom::FingerprintFrameResultPtr, std::optional<std::string>>
+  GetFingerprintFrameSync(mojom::FingerprintCaptureType type) {
+    base::test::TestFuture<mojom::FingerprintFrameResultPtr,
+                           const std::optional<std::string>&>
+        future;
+    delegate_.GetFingerprintFrame(type, future.GetCallback());
+    return future.Take();
+  }
 
   std::pair<mojom::FingerprintInfoResultPtr, std::optional<std::string>>
   GetFingerprintInfoSync() {
@@ -210,8 +332,239 @@ class DelegateImplTest : public BaseFileTest {
   }
 
   ec::MockEcCommandFactory mock_ec_command_factory_;
-  DelegateImpl delegate_{&mock_ec_command_factory_};
+  MockDelegateImpl delegate_{&mock_ec_command_factory_};
 };
+
+TEST_F(DelegateImplTest, GetFingerprintFrameFpInfoCommandFailed) {
+  auto cmd = std::make_unique<FakeFpInfoCommand>();
+  cmd->SetRunResult(false);
+
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Failed to run ec::FpInfoCommand");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameMkbpEventEnableFailed) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(1);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Failed to enable fingerprint event");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameFpModeCommandFailed) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(false);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Failed to set capture mode");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameMkbpEventWaitFailed) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  mkbp_event->SetWaitResult(0);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Failed to poll fingerprint event after 5 seconds");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameGetProtocolInfoCommandFailed) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  mkbp_event->SetWaitResult(1);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto protocol_cmd = std::make_unique<FakeGetProtocolInfoCommand>();
+  protocol_cmd->SetRunResult(false);
+  EXPECT_CALL(mock_ec_command_factory_, GetProtocolInfoCommand())
+      .WillOnce(Return(std::move(protocol_cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Failed to get EC protocol info");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameFrameSizeZero) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  fp_info_cmd->SetSensorImageSize(/*width=*/0, /*height=*/0);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  mkbp_event->SetWaitResult(1);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto protocol_cmd = std::make_unique<FakeGetProtocolInfoCommand>();
+  protocol_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, GetProtocolInfoCommand())
+      .WillOnce(Return(std::move(protocol_cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Frame size is zero");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameFpFrameCommandFailed) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  fp_info_cmd->SetSensorImageSize(/*width=*/2, /*height=*/3);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  mkbp_event->SetWaitResult(1);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto protocol_cmd = std::make_unique<FakeGetProtocolInfoCommand>();
+  protocol_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, GetProtocolInfoCommand())
+      .WillOnce(Return(std::move(protocol_cmd)));
+
+  auto fp_frame_cmd = std::make_unique<FakeFpFrameCommand>(6);
+  fp_frame_cmd->SetRunResult(false);
+  EXPECT_CALL(mock_ec_command_factory_, FpFrameCommand(_, _, _))
+      .WillOnce(Return(std::move(fp_frame_cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Failed to get fingerprint frame");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameFrameSizeMismatched) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  fp_info_cmd->SetSensorImageSize(/*width=*/2, /*height=*/3);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  mkbp_event->SetWaitResult(1);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto protocol_cmd = std::make_unique<FakeGetProtocolInfoCommand>();
+  protocol_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, GetProtocolInfoCommand())
+      .WillOnce(Return(std::move(protocol_cmd)));
+
+  auto fp_frame_cmd = std::make_unique<FakeFpFrameCommand>(5);
+  fp_frame_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpFrameCommand(_, _, _))
+      .WillOnce(Return(std::move(fp_frame_cmd)));
+
+  auto [unused, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, "Frame size is not equal to width * height");
+}
+
+TEST_F(DelegateImplTest, GetFingerprintFrameSuccess) {
+  auto fp_info_cmd = std::make_unique<FakeFpInfoCommand>();
+  fp_info_cmd->SetRunResult(true);
+  fp_info_cmd->SetSensorImageSize(/*width=*/2, /*height=*/3);
+  EXPECT_CALL(mock_ec_command_factory_, FpInfoCommand())
+      .WillOnce(Return(std::move(fp_info_cmd)));
+
+  auto mkbp_event = std::make_unique<FakeMkbpEvent>();
+  mkbp_event->SetEnableResult(0);
+  mkbp_event->SetWaitResult(1);
+  EXPECT_CALL(delegate_, CreateMkbpEvent(_, _))
+      .WillOnce(Return(std::move(mkbp_event)));
+
+  auto fp_mode_cmd = std::make_unique<FakeFpModeCommand>();
+  fp_mode_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, FpModeCommand(_))
+      .WillOnce(Return(std::move(fp_mode_cmd)));
+
+  auto protocol_cmd = std::make_unique<FakeGetProtocolInfoCommand>();
+  protocol_cmd->SetRunResult(true);
+  EXPECT_CALL(mock_ec_command_factory_, GetProtocolInfoCommand())
+      .WillOnce(Return(std::move(protocol_cmd)));
+
+  std::vector<uint8_t> fake_frame = {0, 1, 2, 3, 4, 5};
+  auto fp_frame_cmd = std::make_unique<FakeFpFrameCommand>(6);
+  fp_frame_cmd->SetRunResult(true);
+  fp_frame_cmd->SetFrame(fake_frame);
+  EXPECT_CALL(mock_ec_command_factory_, FpFrameCommand(_, _, _))
+      .WillOnce(Return(std::move(fp_frame_cmd)));
+
+  auto [result, err] =
+      GetFingerprintFrameSync(mojom::FingerprintCaptureType::kCheckerboardTest);
+  EXPECT_EQ(err, std::nullopt);
+  ASSERT_TRUE(result);
+  EXPECT_EQ(result->width, 2);
+  EXPECT_EQ(result->height, 3);
+  EXPECT_EQ(result->frame, fake_frame);
+}
 
 TEST_F(DelegateImplTest, GetFingerprintInfoSuccessRoFw) {
   auto cmd = std::make_unique<FakeGetVersionCommand>();

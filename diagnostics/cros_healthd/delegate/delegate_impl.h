@@ -5,9 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
+#include <chromeos/ec/ec_commands.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
@@ -18,6 +20,7 @@ class TimeDelta;
 
 namespace ec {
 class EcCommandFactoryInterface;
+class MkbpEvent;
 }  // namespace ec
 
 namespace diagnostics {
@@ -93,6 +96,11 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
           observer,
       RunNetworkBandwidthTestCallback callback) override;
   void FetchGraphicsInfo(FetchGraphicsInfoCallback callback) override;
+
+ protected:
+  // Mark as virtual to be overridden in tests.
+  virtual std::unique_ptr<ec::MkbpEvent> CreateMkbpEvent(
+      int fd, enum ec_mkbp_event event_type);
 
  private:
   ec::EcCommandFactoryInterface* const ec_command_factory_;

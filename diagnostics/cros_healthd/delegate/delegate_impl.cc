@@ -266,26 +266,29 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
   auto result = mojom::FingerprintFrameResult::New();
   auto cros_fd = base::ScopedFD(open(path::kCrosFpDevice, O_RDWR));
 
-  ec::FpInfoCommand info;
-  if (!info.Run(cros_fd.get())) {
+  std::unique_ptr<ec::FpInfoCommand> info =
+      ec_command_factory_->FpInfoCommand();
+  if (!info || !info->Run(cros_fd.get())) {
     std::move(callback).Run(std::move(result),
                             "Failed to run ec::FpInfoCommand");
     return;
   }
 
-  result->width = info.sensor_image()->width;
-  result->height = info.sensor_image()->height;
+  result->width = info->sensor_image()->width;
+  result->height = info->sensor_image()->height;
 
-  ec::MkbpEvent mkbp_event(cros_fd.get(), EC_MKBP_EVENT_FINGERPRINT);
-  if (mkbp_event.Enable() != 0) {
+  std::unique_ptr<ec::MkbpEvent> mkbp_event =
+      CreateMkbpEvent(cros_fd.get(), EC_MKBP_EVENT_FINGERPRINT);
+  if (!mkbp_event || mkbp_event->Enable() != 0) {
     PLOG(ERROR) << "Failed to enable fingerprint event";
     std::move(callback).Run(std::move(result),
                             "Failed to enable fingerprint event");
     return;
   }
 
-  ec::FpModeCommand fp_mode_cmd(ToEcFpMode(type));
-  if (!fp_mode_cmd.Run(cros_fd.get())) {
+  std::unique_ptr<ec::FpModeCommand> fp_mode_cmd =
+      ec_command_factory_->FpModeCommand(ToEcFpMode(type));
+  if (!fp_mode_cmd || !fp_mode_cmd->Run(cros_fd.get())) {
     std::move(callback).Run(std::move(result), "Failed to set capture mode");
     return;
   }
@@ -299,7 +302,7 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
   //   launch, once it's done, it'll be terminated from the caller side.
   //   - Caller is the executor process, which uses async interface to
   //   communicate with delegate process.
-  int rv = mkbp_event.Wait(5000);
+  int rv = mkbp_event->Wait(5000);
   if (rv != 1) {
     PLOG(ERROR) << "Failed to poll fingerprint event after 5 seconds";
     std::move(callback).Run(std::move(result),
@@ -307,8 +310,10 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
     return;
   }
 
-  ec::GetProtocolInfoCommand ec_protocol_cmd;
-  if (!ec_protocol_cmd.RunWithMultipleAttempts(cros_fd.get(), 2)) {
+  std::unique_ptr<ec::GetProtocolInfoCommand> ec_protocol_cmd =
+      ec_command_factory_->GetProtocolInfoCommand();
+  if (!ec_protocol_cmd ||
+      !ec_protocol_cmd->RunWithMultipleAttempts(cros_fd.get(), 2)) {
     std::move(callback).Run(std::move(result),
                             "Failed to get EC protocol info");
     return;
@@ -320,15 +325,9 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
     return;
   }
 
-  auto fp_frame_command = ec::FpFrameCommand::Create(
-      FP_FRAME_INDEX_RAW_IMAGE, size, ec_protocol_cmd.MaxReadBytes());
-  if (!fp_frame_command) {
-    std::move(callback).Run(std::move(result),
-                            "Failed to create fingerprint frame command");
-    return;
-  }
-
-  if (!fp_frame_command->Run(cros_fd.get())) {
+  auto fp_frame_command = ec_command_factory_->FpFrameCommand(
+      FP_FRAME_INDEX_RAW_IMAGE, size, ec_protocol_cmd->MaxReadBytes());
+  if (!fp_frame_command || !fp_frame_command->Run(cros_fd.get())) {
     std::move(callback).Run(std::move(result),
                             "Failed to get fingerprint frame");
     return;
@@ -751,6 +750,11 @@ void DelegateImpl::RunNetworkBandwidthTest(
 
 void DelegateImpl::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
   std::move(callback).Run(GetGraphicsInfo());
+}
+
+std::unique_ptr<ec::MkbpEvent> DelegateImpl::CreateMkbpEvent(
+    int fd, enum ec_mkbp_event event_type) {
+  return std::make_unique<ec::MkbpEvent>(fd, event_type);
 }
 
 }  // namespace diagnostics
