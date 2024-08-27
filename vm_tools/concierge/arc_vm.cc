@@ -257,6 +257,8 @@ ArcVm::ArcVm(Config config)
       vm_swapping_notify_callback_(
           std::move(config.vm_swapping_notify_callback)),
       virtio_blk_metrics_(std::move(config.virtio_blk_metrics)),
+      vhost_user_front_socket_fds_(
+          std::move(config.vhost_user_front_socket_fds)),
       weak_ptr_factory_(this) {
   if (config.is_vmm_swap_enabled) {
     vmm_swap_usage_policy_.Init();
@@ -289,6 +291,10 @@ std::unique_ptr<ArcVm> ArcVm::Create(Config config) {
 bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  // The vhost_user_front socket fds can be released either when failed to start
+  // arcvm, or after concierge forked crosvm successfully.
+  std::vector<base::ScopedFD> vhost_user_front_socket_fds_closer =
+      std::move(vhost_user_front_socket_fds_);
   // Open the tap device(s).
   bool no_tap_fd_added = true;
   for (const auto& tap : GetNetworkAllocation().tap_device_ifnames) {

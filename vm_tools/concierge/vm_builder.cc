@@ -225,6 +225,11 @@ VmBuilder& VmBuilder::AppendSharedDir(SharedDataParam shared_dir) {
   return *this;
 }
 
+VmBuilder& VmBuilder::AppendVhostUserFsFrontend(VhostUserFsFrontParam param) {
+  vhost_user_fs_fronts_.push_back(std::move(param));
+  return *this;
+}
+
 VmBuilder& VmBuilder::AppendCustomParam(std::string_view key,
                                         std::string_view value) {
   custom_params_.emplace_back(key, value);
@@ -693,6 +698,10 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   for (const auto& shared_dir : shared_dirs_) {
     args.emplace_back("--shared-dir", shared_dir.to_string());
+  }
+
+  for (const auto& vhost_user_fs_dir : vhost_user_fs_fronts_) {
+    args.emplace_back("--vhost-user-fs", vhost_user_fs_dir.to_string());
   }
 
   for (const auto& custom_param : custom_params_) {
