@@ -9,14 +9,14 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/functional/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <brillo/files/file_util.h>
-#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <lorgnette-client/lorgnette/dbus-proxies.h>
+#include <lorgnette/proto_bindings/lorgnette_service.pb.h>
 #include <printscanmgr/proto_bindings/printscanmgr_service.pb.h>
 
 namespace printscanmgr {
@@ -133,7 +133,7 @@ bool PrintscanTool::CreateEmptyFile(PrintscanFilePaths path) {
       full_path = root_path_.Append(kIppusbFilePath);
       break;
   }
-  return base::WriteFile(full_path, "", 0) == 0;
+  return base::WriteFile(full_path, "");
 }
 
 // Delete a file at the given path from root_path_.
