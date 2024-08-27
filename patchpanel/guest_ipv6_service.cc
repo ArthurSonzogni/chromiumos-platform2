@@ -30,6 +30,7 @@
 #include <chromeos/net-base/ipv6_address.h>
 #include <chromeos/net-base/technology.h>
 
+#include "patchpanel/ndproxy.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -42,6 +43,15 @@ constexpr char kRadvdConfigFilePrefix[] = "radvd.conf.";
 constexpr char kRadvdPidFilePrefix[] = "radvd.pid.";
 constexpr base::TimeDelta kTimeoutForSIGTERM = base::Seconds(2);
 constexpr base::TimeDelta kTimeoutForSIGKILL = base::Seconds(1);
+
+// b/360132462: To bypass the filter on certain mobile carriers that block
+// tethering traffic, set RA server to advertise 65 as CurrentHopLimit, and
+// ndproxy to increase CurrentHopLimit value by 1 when proxying RA, so that
+// packets from guest have a Hop Limit value of  64 when sent outbound. Note
+// that the actual tethering traffic should not use this value and should
+// specific one during StartForwarding().
+constexpr int kDefaultDownstreamHopLimit =
+    NDProxy::kIncreaseCurHopLimit ? 65 : 64;
 
 GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     std::optional<net_base::Technology> type) {
@@ -761,8 +771,9 @@ bool GuestIPv6Service::CreateConfigFile(const std::string& ifname,
           /*$2=*/prefix.ToString(),
           /*$3=*/(mtu ? base::StringPrintf("AdvLinkMTU %d;", *mtu) : ""),
           /*$4=*/
-          (hop_limit ? base::StringPrintf("AdvCurHopLimit %d;", *hop_limit)
-                     : ""),
+          (base::StringPrintf(
+              "AdvCurHopLimit %d;",
+              hop_limit ? *hop_limit : kDefaultDownstreamHopLimit)),
           /*$5=*/
           (!rdnss.empty()
                ? base::StrCat({"RDNSS ", base::JoinString(rdnss, " "), " {};"})
