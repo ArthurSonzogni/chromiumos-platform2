@@ -126,7 +126,7 @@ bool PeriodicScheduler::Run(bool start_immediately) {
   while (true) {
     if (!start_immediately) {
       if (!base::PathExists(spool_file)) {
-        base::WriteFile(spool_file, nullptr, 0);
+        base::WriteFile(spool_file, "");
         auto now = base::Time::Now();
         base::TouchFile(spool_file, now, now);
       }
@@ -138,7 +138,7 @@ bool PeriodicScheduler::Run(bool start_immediately) {
 
     if (start_immediately || current_time - file_last_mtime > period_seconds_) {
       brillo::DeleteFile(spool_file);
-      base::WriteFile(spool_file, nullptr, 0);
+      base::WriteFile(spool_file, "");
       auto now = base::Time::Now();
       base::TouchFile(spool_file, now, now);
 

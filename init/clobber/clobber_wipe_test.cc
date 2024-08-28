@@ -17,8 +17,8 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem.h>
@@ -27,7 +27,6 @@
 #include <libdlcservice/utils.h>
 
 #include "gmock/gmock.h"
-
 #include "init/clobber/clobber_wipe_mock.h"
 
 using ::testing::_;
@@ -38,8 +37,7 @@ using ::testing::StrictMock;
 bool CreateDirectoryAndWriteFile(const base::FilePath& path,
                                  const std::string& contents) {
   return base::CreateDirectory(path.DirName()) &&
-         base::WriteFile(path, contents.c_str(), contents.length()) ==
-             contents.length();
+         base::WriteFile(path, contents);
 }
 
 class IsRotationalTest : public ::testing::Test {

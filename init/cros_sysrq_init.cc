@@ -29,7 +29,5 @@ bool IsDevMode() {
 int main(int argc, char* argv[]) {
   const base::FilePath sysrq(kSysrqPath);
   const std::string value = IsDevMode() ? kSysrqDevValue : kSysrqNormalValue;
-  return base::WriteFile(sysrq, value.c_str(), value.size()) == value.size()
-             ? 0
-             : 1;
+  return base::WriteFile(sysrq, value) ? 0 : 1;
 }

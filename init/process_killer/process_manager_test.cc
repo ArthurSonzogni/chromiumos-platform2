@@ -14,9 +14,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <re2/re2.h>
-
 #include <init/process_killer/process.h>
+#include <re2/re2.h>
 
 namespace init {
 namespace {
@@ -114,8 +113,9 @@ class ProcessManagerTest : public ::testing::Test {
 };
 
 TEST_F(ProcessManagerTest, InvalidProcessTest) {
-  ASSERT_TRUE(base::WriteFile(tmp_dir_.GetPath().Append("proc").Append("123"),
-                              "foo", 3));
+  base::FilePath proc_dir = tmp_dir_.GetPath().Append("proc");
+  ASSERT_TRUE(base::CreateDirectory(proc_dir));
+  ASSERT_TRUE(base::WriteFile(proc_dir.Append("123"), "foo"));
   EXPECT_EQ(pm_->GetProcessList(true, true).size(), 1);
 }
 

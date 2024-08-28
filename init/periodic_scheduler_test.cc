@@ -93,7 +93,7 @@ TEST_F(PeriodicSchedulerTest, BasicSanity) {
 TEST_F(PeriodicSchedulerTest, OldFileTest) {
   SetupDefaultDirectories();
 
-  base::WriteFile(test_process_file_, nullptr, 0);
+  base::WriteFile(test_process_file_, "");
   base::Time old_timestamp;
   CHECK(base::Time::FromUTCString("1999-12-31 23:59", &old_timestamp));
   base::TouchFile(test_process_file_, old_timestamp, old_timestamp);
@@ -109,7 +109,7 @@ TEST_F(PeriodicSchedulerTest, OldFileTest) {
 TEST_F(PeriodicSchedulerTest, EarlyKillTest) {
   SetupDefaultDirectories();
 
-  base::WriteFile(test_process_file_, nullptr, 0);
+  base::WriteFile(test_process_file_, "");
 
   auto now = base::Time::Now();
   base::TouchFile(test_process_file_, now, now);

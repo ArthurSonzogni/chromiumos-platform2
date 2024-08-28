@@ -58,8 +58,7 @@ bool SaveKey(const libstorage::FileSystemKey& key) {
 
   std::string store_contents = store.SaveToString();
   if (store_contents.empty() ||
-      !base::WriteFile(base::FilePath(kPmsgDevicePath), store_contents.data(),
-                       store_contents.size())) {
+      !base::WriteFile(base::FilePath(kPmsgDevicePath), store_contents)) {
     return false;
   }
   return true;

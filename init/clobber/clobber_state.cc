@@ -47,11 +47,11 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <chromeos/constants/imageloader.h>
-#include <libdlcservice/utils.h>
+#include <chromeos/secure_erase_file/secure_erase_file.h>
 #include <libcrossystem/crossystem.h>
+#include <libdlcservice/utils.h>
 #include <libstorage/platform/platform.h>
 #include <rootdev/rootdev.h>
-#include <chromeos/secure_erase_file/secure_erase_file.h>
 
 #include "init/clobber/clobber_state_log.h"
 #include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
@@ -233,13 +233,12 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
 bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
   int value;
   if (!utils::ReadFileToInt(path, &value) || value < 0 || value >= INT_MAX) {
-    return base::WriteFile(path, "1\n", 2) == 2;
+    return base::WriteFile(path, "1\n");
   }
 
   std::string new_value = std::to_string(value + 1);
   new_value.append("\n");
-  return new_value.size() ==
-         base::WriteFile(path, new_value.c_str(), new_value.size());
+  return base::WriteFile(path, new_value);
 }
 
 // static
@@ -850,8 +849,7 @@ int ClobberState::Run() {
     if (ret != 0) {
       LOG(WARNING) << "Restoring preserved files failed with code " << ret;
     }
-    base::WriteFile(stateful_.Append("unencrypted/.powerwash_completed"), "",
-                    0);
+    base::WriteFile(stateful_.Append("unencrypted/.powerwash_completed"), "");
     // TODO(b/190143108) Add one unit test in the context of
     // ClobberState::Run() to check the powerwash time file existence.
     if (!WriteLastPowerwashTime(stateful_.Append(kLastPowerWashTimePath),
@@ -932,7 +930,7 @@ bool ClobberState::IsInDeveloperMode() {
 
 bool ClobberState::MarkDeveloperMode() {
   if (IsInDeveloperMode())
-    return base::WriteFile(stateful_.Append(".developer_mode"), "", 0) == 0;
+    return base::WriteFile(stateful_.Append(".developer_mode"), "");
 
   return true;
 }
