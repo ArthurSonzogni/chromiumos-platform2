@@ -205,19 +205,31 @@ KernelVersion GetKernelVersion() {
 
 DiskManager::Options DiskManager::ShouldUseKernelDrivers() {
   Options opts;
+  DCHECK(!opts.in_kernel_exfat);
+  DCHECK(!opts.in_kernel_ntfs);
 
-  // Check the ChromeOS release channel. If it is not test, canary nor dev, then
-  // we don't allow kernel drivers for the time being.
-  // Else check whether the Linux kernel is at least version 6.6.
-  if (std::string channel;
-      base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel) &&
-      (channel == "testimage-channel" || channel == "canary-channel" ||
-       channel == "dev-channel") &&
-      !std::ranges::lexicographical_compare(GetKernelVersion(),
-                                            KernelVersion{6, 6})) {
-    opts.in_kernel_exfat = true;
-    opts.in_kernel_ntfs = true;
+  // Get the ChromeOS release channel.
+  std::string channel;
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel)) {
+    LOG(ERROR) << "Cannot get ChromeOS release channel";
+    return opts;
   }
+
+  VLOG(1) << "ChromeOS release channel " << quote(channel);
+
+  // Check the ChromeOS release channel.
+  if (channel != "testimage-channel" && channel != "canary-channel" &&
+      channel != "dev-channel") {
+    return opts;
+  }
+
+  // Check the minimum kernel version to use the kernel drivers.
+  const KernelVersion v = GetKernelVersion();
+  VLOG(1) << "Linux kernel version " << v[0] << "." << v[1];
+
+  const KernelVersion min_version_for_exfat{6, 6};
+  opts.in_kernel_exfat =
+      !std::ranges::lexicographical_compare(v, min_version_for_exfat);
 
   return opts;
 }
