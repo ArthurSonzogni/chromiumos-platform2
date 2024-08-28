@@ -159,8 +159,8 @@ struct CacheEmbeddingsRequest {
 };
 
 // Does not yet contain any fields.
-[Native, Stable]
-struct CacheEmbeddingsResponse;
+[Stable]
+struct CacheEmbeddingsResponse {};
 
 [Stable]
 union CacheEmbeddingsResult {
