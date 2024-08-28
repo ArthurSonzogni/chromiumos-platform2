@@ -4,7 +4,6 @@
 
 #include "crash-reporter/user_collector.h"
 
-#include <bits/wordsize.h>
 #include <elf.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -28,6 +27,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
+#include <bits/wordsize.h>
 #include <brillo/process/process.h>
 #include <chromeos/constants/crash_reporter.h>
 #include <metrics/metrics_library.h>
@@ -103,7 +103,7 @@ bool LockCorePattern() {
     return true;
   }
 
-  if (base::WriteFile(core_pattern_lock_file, "1", 1) != 1) {
+  if (!base::WriteFile(core_pattern_lock_file, "1")) {
     PLOG(ERROR) << "Failed to lock core pattern";
     return false;
   }
@@ -218,15 +218,12 @@ bool UserCollector::SetUpInternal(bool enabled, bool early) {
   CHECK(initialized_);
   LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " user crash handling";
 
-  if (base::WriteFile(FilePath(core_pipe_limit_file_), kCorePipeLimit,
-                      strlen(kCorePipeLimit)) !=
-      static_cast<int>(strlen(kCorePipeLimit))) {
+  if (!base::WriteFile(FilePath(core_pipe_limit_file_), kCorePipeLimit)) {
     PLOG(ERROR) << "Unable to write " << core_pipe_limit_file_;
     return false;
   }
   std::string pattern = GetPattern(enabled, early);
-  if (base::WriteFile(FilePath(core_pattern_file_), pattern.c_str(),
-                      pattern.length()) != static_cast<int>(pattern.length())) {
+  if (!base::WriteFile(FilePath(core_pattern_file_), pattern)) {
     int saved_errno = errno;
     // If the core pattern is locked and we try to reset the |core_pattern|
     // while disabling |user_collector| or resetting it to what it already was,
@@ -276,10 +273,9 @@ bool UserCollector::SetUpInternal(bool enabled, bool early) {
 
   // Write out a flag file for testing to indicate we have started correctly.
   char data[] = "enabled";
-  size_t write_len = sizeof(data) - 1;
-  if (base::WriteFile(base::FilePath(crash_reporter_state_path_)
-                          .Append(kCrashHandlingEnabledFlagFile),
-                      data, write_len) != write_len) {
+  if (!base::WriteFile(base::FilePath(crash_reporter_state_path_)
+                           .Append(kCrashHandlingEnabledFlagFile),
+                       data)) {
     PLOG(WARNING) << "Unable to create flag file for crash reporter enabled";
   }
 

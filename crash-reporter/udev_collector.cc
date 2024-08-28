@@ -26,10 +26,9 @@
 #include <base/types/expected.h>
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
+#include <crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <metrics/metrics_library.h>
-
-#include <crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h>
 
 #include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/constants.h"
@@ -526,7 +525,7 @@ CrashCollectionStatus UdevCollector::AppendDevCoredump(
 }
 
 bool UdevCollector::ClearDevCoredump(const FilePath& coredump_path) {
-  if (!base::WriteFile(coredump_path, "0", 1)) {
+  if (!base::WriteFile(coredump_path, "0")) {
     PLOG(ERROR) << "Failed to delete the coredump data file "
                 << coredump_path.value();
     return false;

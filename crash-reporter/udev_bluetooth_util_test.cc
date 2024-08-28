@@ -12,7 +12,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/strings/string_utils.h>
-
 #include <gtest/gtest.h>
 
 #include "crash-reporter/paths.h"
@@ -32,8 +31,7 @@ class UdevBluetoothUtilTest : public ::testing::Test {
     // Clear previous test files, if any
     ASSERT_TRUE(base::DeleteFile(file_path));
 
-    ASSERT_EQ(base::WriteFile(file_path, data_str.c_str(), data_str.length()),
-              data_str.length());
+    ASSERT_TRUE(base::WriteFile(file_path, data_str));
   }
 
   base::FilePath dump_path_;

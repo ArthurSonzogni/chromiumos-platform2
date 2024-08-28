@@ -17,10 +17,10 @@
 #include <bindings/device_management_backend.pb.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
+#include <crash-reporter-client/crash-reporter/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
-#include <crash-reporter-client/crash-reporter/dbus-constants.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -554,8 +554,7 @@ TEST_F(UdevCollectorTest,
       "TestData",
   };
   std::string data_str = brillo::string_utils::Join("\n", data);
-  ASSERT_EQ(base::WriteFile(data_path, data_str.c_str(), data_str.length()),
-            data_str.length());
+  ASSERT_TRUE(base::WriteFile(data_path, data_str));
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
 
@@ -891,8 +890,7 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
       "TestData",
   };
   std::string data_str = brillo::string_utils::Join("\n", data);
-  ASSERT_EQ(base::WriteFile(data_path, data_str.c_str(), data_str.length()),
-            data_str.length());
+  ASSERT_TRUE(base::WriteFile(data_path, data_str));
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
 
@@ -923,8 +921,7 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
       "Vendor: TestVen",
   };
   std::string data_str = brillo::string_utils::Join("\n", data);
-  ASSERT_EQ(base::WriteFile(data_path, data_str.c_str(), data_str.length()),
-            data_str.length());
+  ASSERT_TRUE(base::WriteFile(data_path, data_str));
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
 

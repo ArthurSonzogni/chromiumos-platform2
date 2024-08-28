@@ -65,8 +65,8 @@ class ECCollectorTest : public ::testing::Test {
       else
         data[PANIC_DATA_FLAGS_BYTE] &= ~PANIC_DATA_FLAG_OLD_HOSTCMD;
 
-      ASSERT_EQ(base::WriteFile(panicinfo_path, data, sizeof(data)),
-                static_cast<int>(sizeof(data)));
+      ASSERT_TRUE(base::WriteFile(panicinfo_path,
+                                  std::string_view(data, sizeof(data))));
     } else {
       base::DeleteFile(panicinfo_path);
     }

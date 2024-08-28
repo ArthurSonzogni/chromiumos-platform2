@@ -4,7 +4,6 @@
 
 #include <cstddef>
 #include <cstdint>
-
 #include <string>
 #include <vector>
 
@@ -63,7 +62,7 @@ void CreateRandomFile(std::string_view suffix,
       provider->ConsumeRandomLengthString(kArbitraryMaxFileSize);
 
   base::CreateDirectory(file_path.DirName());
-  base::WriteFile(file_path, content.c_str(), content.length());
+  base::WriteFile(file_path, content);
 }
 
 // Make the lock file. If we don't make the lock file's directory,
@@ -74,7 +73,7 @@ void MakeLockFile() {
   base::FilePath lock_file_path = paths::Get(paths::kCrashSenderLockFile);
   base::FilePath lock_file_dir = lock_file_path.DirName();
   CHECK(base::CreateDirectory(lock_file_dir));
-  CHECK_GE(base::WriteFile(lock_file_path, "", 0), 0);
+  CHECK(base::WriteFile(lock_file_path, ""));
 }
 
 }  // namespace

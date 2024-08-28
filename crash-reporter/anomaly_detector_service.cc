@@ -9,14 +9,14 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/functional/bind.h>
-#include <base/time/default_clock.h>
-#include <chromeos/dbus/service_constants.h>
-#include <metrics/metrics_library.h>
-#include <metrics_event/proto_bindings/metrics_event.pb.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
+#include <base/time/default_clock.h>
 #include <brillo/process/process.h>
+#include <chromeos/dbus/service_constants.h>
+#include <metrics/metrics_library.h>
+#include <metrics_event/proto_bindings/metrics_event.pb.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>
 
 #include "crash-reporter/anomaly_detector.h"
@@ -170,7 +170,7 @@ bool Service::Init() {
   // Indicate to tast tests that anomaly-detector has started.
   base::FilePath path = base::FilePath(paths::kSystemRunStateDirectory)
                             .Append(paths::kAnomalyDetectorReady);
-  if (base::WriteFile(path, "", 0) == -1) {
+  if (!base::WriteFile(path, "")) {
     // Log but don't prevent anomaly detector from starting because this file
     // is not essential to its operation.
     PLOG(ERROR) << "Couldn't write " << path.value() << " (tests may fail)";

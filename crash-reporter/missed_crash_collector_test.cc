@@ -41,7 +41,7 @@ void RunTestWithLogContents(std::string_view log_contents) {
   ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
 
   base::FilePath input = tmp_dir.GetPath().Append("input.txt");
-  base::WriteFile(input, log_contents.data(), log_contents.length());
+  base::WriteFile(input, log_contents);
 
   base::ScopedFILE input_file(fopen(input.value().c_str(), "r"));
   ASSERT_TRUE(input_file.get());

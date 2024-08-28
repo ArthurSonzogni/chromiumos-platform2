@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <fcntl.h>      // for open
+#include <fcntl.h>  // for open
+#include <libminijail.h>
 #include <sys/mount.h>  // for MS_SLAVE
 
 #include <optional>
@@ -23,7 +24,6 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <libminijail.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_writer.h>
 
@@ -68,7 +68,7 @@ const char kUncleanShutdownDetected[] =
 const char kBootCollectorDone[] = "/run/crash_reporter/boot-collector-done";
 
 bool TouchFile(const FilePath& file_path) {
-  return base::WriteFile(file_path, "", 0) == 0;
+  return base::WriteFile(file_path, "");
 }
 
 bool SetUpLockFile() {

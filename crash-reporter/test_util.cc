@@ -74,8 +74,7 @@ base::Time GetDefaultTime() {
 bool CreateFile(const base::FilePath& file_path, std::string_view content) {
   if (!base::CreateDirectory(file_path.DirName()))
     return false;
-  return base::WriteFile(file_path, content.data(), content.size()) ==
-         content.size();
+  return base::WriteFile(file_path, content);
 }
 
 void SetActiveSessions(org::chromium::SessionManagerInterfaceProxyMock* mock,

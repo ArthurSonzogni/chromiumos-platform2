@@ -587,9 +587,8 @@ TEST_F(CrashReporterParserTest, LongLogs) {
     base::StrAppend(&long_message_log,
                     {"This is line ", base::NumberToString(i), "\n"});
   }
-  EXPECT_EQ(base::WriteFile(paths::Get(paths::kMessageLogPath),
-                            long_message_log.data(), long_message_log.size()),
-            long_message_log.size());
+  EXPECT_TRUE(
+      base::WriteFile(paths::Get(paths::kMessageLogPath), long_message_log));
 
   std::string expected_long_message_log_tail;
   for (int i = 4950; i < 5000; i++) {
@@ -646,9 +645,7 @@ TEST_F(CrashReporterParserTest, LongLine) {
   for (int i = 0; i < 10000; i++) {
     base::StrAppend(&long_line, {base::NumberToString(i), "|"});
   }
-  EXPECT_EQ(base::WriteFile(paths::Get(paths::kMessageLogPath),
-                            long_line.data(), long_line.size()),
-            long_line.size());
+  EXPECT_TRUE(base::WriteFile(paths::Get(paths::kMessageLogPath), long_line));
   const std::string expected_message_log_tail = long_line.substr(
       long_line.length() - CrashReporterParser::kMaxLogBytesRead);
 
@@ -687,9 +684,7 @@ TEST_F(CrashReporterParserTest, EmbeddedNuls) {
                     {base::NumberToString(i), std::string_view("\0\n", 2)});
   }
   EXPECT_EQ(std::count(message_log.begin(), message_log.end(), '\0'), 25);
-  EXPECT_EQ(base::WriteFile(paths::Get(paths::kMessageLogPath),
-                            message_log.data(), message_log.size()),
-            message_log.size());
+  EXPECT_TRUE(base::WriteFile(paths::Get(paths::kMessageLogPath), message_log));
 
   // Make the previous chrome log a long log file with embedded nuls.
   std::string long_previous_chrome_log;
@@ -729,9 +724,7 @@ TEST_F(CrashReporterParserTest, EmbeddedNuls) {
 
   // Create a meminfo with embedded nuls too.
   std::string meminfo("Mem\05", 5);
-  EXPECT_EQ(base::WriteFile(paths::Get(paths::kProcMeminfo), meminfo.data(),
-                            meminfo.size()),
-            meminfo.size());
+  EXPECT_TRUE(base::WriteFile(paths::Get(paths::kProcMeminfo), meminfo));
 
   expected_text_ = base::StrCat({
       R"(===/proc/sys/fs/file-nr===

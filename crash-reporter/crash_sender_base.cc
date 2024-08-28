@@ -147,7 +147,7 @@ void RecordCrashDone() {
     LOG(INFO) << "crash_sender done. (mock)";
     base::FilePath done_file =
         paths::GetAt(paths::kSystemRunStateDirectory, paths::kCrashSenderDone);
-    if (base::WriteFile(done_file, "", 0) != 0) {
+    if (!base::WriteFile(done_file, "")) {
       PLOG(ERROR) << "Error writing out crash-sender-done file: " << done_file;
     }
   }
@@ -229,8 +229,7 @@ std::string GetClientId() {
   // Strip out the dashes, we don't want those.
   base::RemoveChars(client_id, "-", &client_id);
 
-  if (base::WriteFile(client_id_file, client_id.c_str(), client_id.length()) !=
-      client_id.length()) {
+  if (!base::WriteFile(client_id_file, client_id)) {
     PLOG(ERROR) << "Error writing out client ID to file: "
                 << client_id_file.value();
   }

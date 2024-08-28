@@ -189,7 +189,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // just use normal files here.
   base::FilePath test_input_path = test_dir.Append("test_input");
   std::string input = provider.ConsumeRemainingBytesAsString();
-  base::WriteFile(test_input_path, input.c_str(), input.length());
+  base::WriteFile(test_input_path, input);
   base::File test_input(test_input_path,
                         base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!test_input.IsValid()) {

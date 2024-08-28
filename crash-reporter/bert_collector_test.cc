@@ -70,10 +70,10 @@ class BERTCollectorTest : public ::testing::Test {
           sizeof(data),
           0x000000000001234,
       };
-      ASSERT_EQ(sizeof(struct acpi_table_bert),
-                base::WriteFile(testberttable_path,
-                                reinterpret_cast<const char*>(&bert_tab_test),
-                                sizeof(struct acpi_table_bert)));
+      ASSERT_TRUE(base::WriteFile(
+          testberttable_path, base::as_bytes(base::make_span(
+                                  reinterpret_cast<const char*>(&bert_tab_test),
+                                  sizeof(struct acpi_table_bert)))));
     }
   }
 

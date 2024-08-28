@@ -38,10 +38,10 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <brillo/syslog_logging.h>
-#include <dbus/object_path.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/object_path.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
@@ -2295,9 +2295,7 @@ TEST_F(CrashCollectorTest, MetaDataDoesntOverwriteSymlink) {
   const char kSymlinkTarget[] = "important_file";
   FilePath symlink_target_path = test_dir_.Append(kSymlinkTarget);
   const char kOriginalContents[] = "Very important contents";
-  EXPECT_EQ(base::WriteFile(symlink_target_path, kOriginalContents,
-                            strlen(kOriginalContents)),
-            strlen(kOriginalContents));
+  EXPECT_TRUE(base::WriteFile(symlink_target_path, kOriginalContents));
 
   FilePath meta_symlink_path = test_dir_.Append("symlink.meta");
   ASSERT_EQ(0, symlink(kSymlinkTarget, meta_symlink_path.value().c_str()));
@@ -2774,9 +2772,7 @@ TEST_F(CrashCollectorTest, CreateDirectoryWithSettings_FixPermissionsShallow) {
   ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo/bar"), 0744));
 
   const char contents[] = "hello";
-  ASSERT_EQ(
-      base::WriteFile(crash_dir.Append("file"), contents, strlen(contents)),
-      strlen(contents));
+  ASSERT_TRUE(base::WriteFile(crash_dir.Append("file"), contents));
   ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("file"), 0600));
 
   int fd;
@@ -2818,9 +2814,7 @@ TEST_F(CrashCollectorTest,
   ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo/bar"), 0744));
 
   const char contents[] = "hello";
-  ASSERT_EQ(
-      base::WriteFile(crash_dir.Append("file"), contents, strlen(contents)),
-      strlen(contents));
+  ASSERT_TRUE(base::WriteFile(crash_dir.Append("file"), contents));
   ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("file"), 0600));
 
   int fd;
@@ -2863,9 +2857,7 @@ TEST_F(CrashCollectorTest, CreateDirectoryWithSettings_FixSubdirPermissions) {
   ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("foo/bar"), 0744));
 
   const char contents[] = "hello";
-  ASSERT_EQ(
-      base::WriteFile(crash_dir.Append("file"), contents, strlen(contents)),
-      strlen(contents));
+  ASSERT_TRUE(base::WriteFile(crash_dir.Append("file"), contents));
   ASSERT_TRUE(base::SetPosixFilePermissions(crash_dir.Append("file"), 0600));
 
   int fd;

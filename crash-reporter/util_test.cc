@@ -23,11 +23,11 @@
 #include <base/strings/strcat.h>
 #include <base/test/simple_test_clock.h>
 #include <base/time/time.h>
-#include <libcrossystem/crossystem_fake.h>
 #include <brillo/process/process.h>
 #include <brillo/streams/memory_stream.h>
 #include <brillo/syslog_logging.h>
 #include <gtest/gtest.h>
+#include <libcrossystem/crossystem_fake.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -435,8 +435,7 @@ TEST_F(CrashCommonUtilTest, GzipStream) {
   // Remove the file we will decompress to or gzip will fail on decompression.
   ASSERT_TRUE(base::DeleteFile(compressed_file_name));
   compressed_file_name = compressed_file_name.AddExtension(".gz");
-  ASSERT_EQ(base::WriteFile(raw_file, content.c_str(), content.length()),
-            content.length());
+  ASSERT_TRUE(base::WriteFile(raw_file, content));
   {
     base::File compressed_file(
         compressed_file_name, base::File::FLAG_WRITE | base::File::FLAG_CREATE);
