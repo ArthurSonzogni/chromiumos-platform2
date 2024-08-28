@@ -8,6 +8,7 @@ include = [
 ]
 
 [dependencies]
+libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 nix = { version = "0.28.0", features = ["user"]}
 
 [[bin]]

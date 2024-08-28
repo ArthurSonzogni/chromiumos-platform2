@@ -10,6 +10,8 @@ use std::process::{Command, ExitCode};
 use nix::unistd;
 
 fn main() -> ExitCode {
+    libchromeos::panic_handler::install_memfd_handler();
+
     // Don't include argv[0], the executable name, when passing args.
     let args = std::env::args().skip(1);
 
