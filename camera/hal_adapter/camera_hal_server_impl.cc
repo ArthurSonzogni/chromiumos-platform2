@@ -321,18 +321,12 @@ int CameraHalServerImpl::LoadCameraHal() {
   for (const auto& dll : GetCameraHalPaths()) {
     LOGF(INFO) << "Try to load camera hal " << dll.value();
 
-    auto filename = dll.BaseName().value();
     if (enabled_hal_names.has_value()) {
+      auto filename = dll.BaseName().value();
       if (!base::Contains(*enabled_hal_names, filename)) {
         LOGF(INFO) << "Skipping " << dll.value() << " not in enabled_hals";
         continue;
       }
-    }
-
-    if (filename != "usb.so" && filename != "fake.so" && filename != "ip.so" &&
-        !DeviceConfig::Create()->HasMipiCamera()) {
-      LOGF(INFO) << "No MIPI camera so skip loading camera hal " << dll.value();
-      continue;
     }
 
     void* handle = dlopen(dll.value().c_str(), RTLD_NOW | RTLD_LOCAL);

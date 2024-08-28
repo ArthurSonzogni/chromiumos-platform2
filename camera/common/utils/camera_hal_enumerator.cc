@@ -11,6 +11,9 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 
+#include "cros-camera/common.h"
+#include "cros-camera/device_config.h"
+
 namespace cros {
 
 std::vector<base::FilePath> GetCameraHalPaths() {
@@ -23,6 +26,12 @@ std::vector<base::FilePath> GetCameraHalPaths() {
   for (base::FilePath dir : kCameraHalDirs) {
     base::FileEnumerator dlls(dir, false, base::FileEnumerator::FILES, "*.so");
     for (base::FilePath dll = dlls.Next(); !dll.empty(); dll = dlls.Next()) {
+      auto filename = dll.BaseName().value();
+      if (filename != "usb.so" && filename != "fake.so" &&
+          filename != "ip.so" && !DeviceConfig::Create()->HasMipiCamera()) {
+        LOGF(INFO) << "No MIPI camera so skip camera hal " << dll.value();
+        continue;
+      }
       camera_hal_paths.push_back(dll);
     }
   }
