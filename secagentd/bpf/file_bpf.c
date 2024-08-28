@@ -1225,7 +1225,7 @@ static inline __attribute__((always_inline)) int populate_rb(
  *
  * return_value: Return value of the filp_close system call.
  */
-SEC("fexit/filp_close")
+CROS_IF_FUNCTION_HOOK("fentry/filp_close", "tp_btf/cros_filp_close_exit")
 int BPF_PROG(fexit__filp_close,
              struct file* file,
              fl_owner_t owner_id,
@@ -1390,14 +1390,14 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
   bpf_map_update_elem(map, &pid_tgid, &map_value, BPF_ANY);
 }
 
-SEC("fentry/chmod_common")
+CROS_IF_FUNCTION_HOOK("fentry/chmod_common", "tp_btf/cros_chmod_common_enter")
 int BPF_PROG(capture_before_chmod, const struct path* path, umode_t mode) {
   attr_change_fentry_common(path, &before_attr_chmod_map, true, mode, false, 0,
                             0, false, NULL);
   return 0;
 }
 
-SEC("fentry/chown_common")
+CROS_IF_FUNCTION_HOOK("fentry/chown_common", "tp_btf/cros_chown_common_enter")
 int BPF_PROG(capture_before_chown,
              const struct path* path,
              uid_t user,
@@ -1407,7 +1407,7 @@ int BPF_PROG(capture_before_chown,
   return 0;
 }
 
-SEC("fentry/vfs_utimes")
+CROS_IF_FUNCTION_HOOK("fentry/vfs_utimes", "tp_btf/cros_vfs_utimes_enter")
 int BPF_PROG(capture_before_vfs_utimes,
              const struct path* path,
              struct timespec64* times) {
@@ -1454,7 +1454,7 @@ static inline __attribute__((always_inline)) void attr_change_fexit_common(
               dentry, path, &before_attr);
 }
 
-SEC("fexit/chmod_common")
+CROS_IF_FUNCTION_HOOK("fexit/chmod_common", "tp_btf/cros_chmod_common_exit")
 int BPF_PROG(capture_after_chmod,
              const struct path* path,
              umode_t mode,
@@ -1464,7 +1464,7 @@ int BPF_PROG(capture_after_chmod,
   return 0;
 }
 
-SEC("fexit/chown_common")
+CROS_IF_FUNCTION_HOOK("fexit/chown_common", "tp_btf/cros_chown_common_exit")
 int BPF_PROG(capture_after_chown,
              const struct path* path,
              uid_t user,
@@ -1475,7 +1475,7 @@ int BPF_PROG(capture_after_chown,
   return 0;
 }
 
-SEC("fexit/vfs_utimes")
+CROS_IF_FUNCTION_HOOK("fexit/vfs_utimes", "tp_btf/cros_vfs_utimes_exit")
 int BPF_PROG(capture_after_vfs_utimes,
              const struct path* path,
              struct timespec64* times,
@@ -1494,7 +1494,8 @@ int BPF_PROG(capture_after_vfs_utimes,
  * directories and files. If the new link (new_dentry) is not allowlisted, it
  * updates the allowlist map with its inode ID and monitoring mode.
  */
-SEC("fexit/security_inode_link")
+CROS_IF_FUNCTION_HOOK("fexit/security_inode_link",
+                      "tp_btf/cros_security_inode_link_exit")
 int BPF_PROG(fexit__security_inode_link,
              struct dentry* old_dentry,
              struct inode* dir,
@@ -1548,7 +1549,8 @@ int BPF_PROG(fexit__security_inode_link,
  * map if present, assuming it was previously allowlisted for monitoring.
  *
  */
-SEC("fexit/security_inode_unlink")
+CROS_IF_FUNCTION_HOOK("fexit/security_inode_unlink",
+                      "tp_btf/cros_security_inode_unlink_exit")
 int BPF_PROG(fexit__security_inode_unlink,
              struct inode* dir,
              struct dentry* old_dentry,
@@ -1588,7 +1590,7 @@ int BPF_PROG(fexit__security_inode_unlink,
  * This function is triggered on the exit of path_mount() function.
  *
  */
-SEC("fexit/path_mount")
+CROS_IF_FUNCTION_HOOK("fexit/path_mount", "tp_btf/cros_path_mount_exit")
 int BPF_PROG(fexit__path_mount,
              const char* dev_name,
              struct path* path,
@@ -1669,7 +1671,8 @@ int BPF_PROG(fexit__path_mount,
  * to the ring buffer for user-space processing. It extracts the destination
  * path information and flags from the syscall parameters.
  */
-SEC("fexit/security_sb_umount")
+CROS_IF_FUNCTION_HOOK("fexit/security_sb_umount",
+                      "tp_btf/cros_security_sb_umount_exit")
 int BPF_PROG(fexit__security_sb_umount,
              struct vfsmount* mnt,
              int flags,
