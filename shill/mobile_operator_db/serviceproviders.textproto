@@ -6708,6 +6708,8 @@ mno {
       localized_name {
         name: "WINDTRE"
       }
+      ip_type: IPV4V6
+      roaming_ip_type: IPV4
       type: DEFAULT
     }
   }
