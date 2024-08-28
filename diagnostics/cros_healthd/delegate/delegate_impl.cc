@@ -203,12 +203,11 @@ void GetConnectedExternalDisplayConnectorsHelper(
     std::optional<std::vector<uint32_t>> last_known_connectors,
     DelegateImpl::GetConnectedExternalDisplayConnectorsCallback callback,
     int times) {
-  DisplayUtil display_util;
-
-  if (!display_util.Initialize()) {
+  std::unique_ptr<DisplayUtil> display_util = DisplayUtil::Create();
+  if (!display_util) {
     std::move(callback).Run(
         base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},
-        "Failed to initialize DisplayUtil");
+        "Failed to create DisplayUtil");
     return;
   }
 
@@ -216,7 +215,7 @@ void GetConnectedExternalDisplayConnectorsHelper(
       external_display_connectors;
 
   std::vector<uint32_t> connector_ids =
-      display_util.GetExternalDisplayConnectorIDs();
+      display_util->GetExternalDisplayConnectorIDs();
 
   if (last_known_connectors.has_value()) {
     std::sort(connector_ids.begin(), connector_ids.end());
@@ -236,7 +235,7 @@ void GetConnectedExternalDisplayConnectorsHelper(
 
   for (const auto& connector_id : connector_ids) {
     external_display_connectors[connector_id] =
-        display_util.GetExternalDisplayInfo(connector_id);
+        display_util->GetExternalDisplayInfo(connector_id);
     // If the connector info has missing fields, it is possible that DRM have
     // not fully detected all information yet. Retry to ensure that all DRM
     // changes are detected.
@@ -497,24 +496,24 @@ void DelegateImpl::GetConnectedExternalDisplayConnectors(
 }
 
 void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
-  DisplayUtil display_util;
-  if (!display_util.Initialize()) {
+  std::unique_ptr<DisplayUtil> display_util = DisplayUtil::Create();
+  if (!display_util) {
     std::move(callback).Run(mojom::GetPrivacyScreenInfoResult::NewError(
-        "Failed to initialize DisplayUtil"));
+        "Failed to create DisplayUtil"));
     return;
   }
 
   std::optional<uint32_t> connector_id =
-      display_util.GetEmbeddedDisplayConnectorID();
+      display_util->GetEmbeddedDisplayConnectorID();
   if (!connector_id.has_value()) {
     std::move(callback).Run(mojom::GetPrivacyScreenInfoResult::NewError(
         "Failed to find valid display"));
     return;
   }
   auto info = mojom::PrivacyScreenInfo::New();
-  display_util.FillPrivacyScreenInfo(connector_id.value(),
-                                     &info->privacy_screen_supported,
-                                     &info->privacy_screen_enabled);
+  display_util->FillPrivacyScreenInfo(connector_id.value(),
+                                      &info->privacy_screen_supported,
+                                      &info->privacy_screen_enabled);
 
   std::move(callback).Run(
       mojom::GetPrivacyScreenInfoResult::NewInfo(std::move(info)));

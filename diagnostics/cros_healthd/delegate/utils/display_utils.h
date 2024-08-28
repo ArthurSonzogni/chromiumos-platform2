@@ -5,11 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTILS_H_
 
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-#include <xf86drm.h>
-#include <xf86drmMode.h>
 
 #include <base/files/file.h>
 
@@ -20,10 +21,13 @@ namespace diagnostics {
 
 class DisplayUtil {
  public:
-  DisplayUtil() = default;
-  DisplayUtil(const DisplayUtil& oth) = delete;
-  DisplayUtil(DisplayUtil&& oth) = delete;
-  ~DisplayUtil() = default;
+  // Creates and returns a DisplayUtil with valid drm resources.
+  // Returns a null value if no valid device is found.
+  static std::unique_ptr<DisplayUtil> Create();
+
+  DisplayUtil(const DisplayUtil&) = delete;
+  DisplayUtil(DisplayUtil&&) = delete;
+  ~DisplayUtil();
 
   struct DrmModeResDeleter {
     void operator()(drmModeRes* resources) { drmModeFreeResources(resources); }
@@ -64,7 +68,6 @@ class DisplayUtil {
       std::unique_ptr<drmModeEncoder, DrmModeEncoderDeleter>;
   using ScopedDrmModeCrtcPtr = std::unique_ptr<drmModeCrtc, DrmModeCrtcDeleter>;
 
-  bool Initialize();
   std::optional<uint32_t> GetEmbeddedDisplayConnectorID();
   std::vector<uint32_t> GetExternalDisplayConnectorIDs();
   void FillPrivacyScreenInfo(const uint32_t connector_id,
@@ -82,6 +85,10 @@ class DisplayUtil {
   ash::cros_healthd::mojom::ExternalDisplayInfoPtr GetExternalDisplayInfo(
       const uint32_t connector_id);
   ash::cros_healthd::mojom::EmbeddedDisplayInfoPtr GetEmbeddedDisplayInfo();
+
+ protected:
+  // Used only by the factory function.
+  explicit DisplayUtil(base::File device_file);
 
  private:
   // This function iterates all the properties in |connector| and find the

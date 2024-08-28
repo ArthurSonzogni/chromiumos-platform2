@@ -4,13 +4,15 @@
 
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
 
-#include <cstdint>
-#include <utility>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
-#include <base/files/file_enumerator.h>
+#include <cstdint>
+#include <utility>
+
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
+#include <base/memory/ptr_util.h>
 
 #include "diagnostics/cros_healthd/delegate/utils/edid.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
@@ -25,10 +27,7 @@ constexpr uint32_t INVALID_ENCODER_ID = 0;
 
 }  // namespace
 
-bool DisplayUtil::Initialize() {
-  if (device_file_.IsValid()) {
-    return true;
-  }
+std::unique_ptr<DisplayUtil> DisplayUtil::Create() {
   ScopedDrmModeResPtr resource;
   // Find valid device.
   base::FileEnumerator lister(base::FilePath("/dev/dri"), false,
@@ -48,12 +47,16 @@ bool DisplayUtil::Initialize() {
       if (drmIsMaster(file.GetPlatformFile())) {
         drmDropMaster(file.GetPlatformFile());
       }
-      device_file_ = std::move(file);
-      return true;
+      return base::WrapUnique(new DisplayUtil(std::move(file)));
     }
   }
-  return false;
+  return nullptr;
 }
+
+DisplayUtil::DisplayUtil(base::File device_file)
+    : device_file_(std::move(device_file)) {}
+
+DisplayUtil::~DisplayUtil() = default;
 
 std::optional<uint32_t> DisplayUtil::GetEmbeddedDisplayConnectorID() {
   ScopedDrmModeResPtr resource;
