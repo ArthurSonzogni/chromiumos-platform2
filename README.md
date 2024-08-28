@@ -66,6 +66,7 @@ copies.
 | [ethernet-hide](./ethernet-hide/) | Tool for hiding Ethernet interfaces while enabling the SSH connection |
 | [extended-updates](./extended-updates/) | Utilities supporting the Extended Auto Updates process |
 | [faced](./faced/) | Face Authentication Daemon |
+| [farfetchd](./farfetchd/) | Farfetchd Readahead Daemon |
 | [fbpreprocessor](./fbpreprocessor/) | Debug file preprocessing for feedback reports |
 | [feature_usage](./feature_usage/) | Library to provide a unified approach to report feature usage events |
 | [featured](./featured/) | Feature daemon for enabling and managing platform features |

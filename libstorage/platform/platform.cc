@@ -28,8 +28,6 @@
 #include <sys/xattr.h>
 #include <unistd.h>
 
-#include <base/check_op.h>
-
 #include <algorithm>
 #include <cstdio>
 #include <limits>
@@ -40,6 +38,7 @@
 #endif
 
 #include <base/check.h>
+#include <base/check_op.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -707,6 +706,24 @@ bool Platform::ReadFileToSecureBlob(const FilePath& path,
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
   return ReadFileToBlob<brillo::SecureBlob>(path, sblob);
+}
+
+ssize_t Platform::PreadFile(int fd,
+                            void* buf,
+                            size_t num_bytes,
+                            __off64_t offset) {
+  return pread(fd, buf, num_bytes, offset);
+}
+
+#define READAHEAD_MAX_LENGTH (32 * 4096)
+
+ssize_t Platform::ReadaheadFile(int fd, __off64_t offset, size_t count) {
+  return readahead(fd, offset, count);
+}
+
+void* Platform::MmapFile(
+    void* addr, size_t len, int prot, int flags, int fd, __off64_t offset) {
+  return mmap(addr, len, prot, flags, fd, offset);
 }
 
 bool Platform::CreateDirectory(const FilePath& path) {

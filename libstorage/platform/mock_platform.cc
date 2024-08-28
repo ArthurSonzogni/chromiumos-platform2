@@ -98,6 +98,14 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::ReadFileToSecureBlob));
 
+  ON_CALL(*this, PreadFile(_, _, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::PreadFile));
+  ON_CALL(*this, ReadaheadFile(_, _, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::ReadaheadFile));
+  ON_CALL(*this, MmapFile(_, _, _, _, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::MmapFile));
+
   ON_CALL(*this, WriteFile(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::WriteFile));
   ON_CALL(*this, WriteSecureBlobToFile(_, _))

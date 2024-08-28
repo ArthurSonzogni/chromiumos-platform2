@@ -154,6 +154,12 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               ReadFileToSecureBlob,
               (const base::FilePath&, brillo::SecureBlob*),
               (override));
+  MOCK_METHOD(ssize_t, PreadFile, (int, void*, size_t, __off64_t), (override));
+  MOCK_METHOD(ssize_t, ReadaheadFile, (int, __off64_t, size_t), (override));
+  MOCK_METHOD(void*,
+              MmapFile,
+              (void*, size_t, int, int, int, __off64_t),
+              (override));
   MOCK_METHOD(bool,
               WriteFile,
               (const base::FilePath&, const brillo::Blob&),

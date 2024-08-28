@@ -472,6 +472,14 @@ class BRILLO_EXPORT Platform {
   virtual bool ReadFileToSecureBlob(const base::FilePath& path,
                                     brillo::SecureBlob* sblob);
 
+  virtual ssize_t PreadFile(int fd,
+                            void* buf,
+                            size_t num_bytes,
+                            __off64_t offset);
+  virtual ssize_t ReadaheadFile(int fd, __off64_t offset, size_t count);
+  virtual void* MmapFile(
+      void* addr, size_t len, int prot, int flags, int fd, __off64_t offset);
+
   // Writes the entirety of the given data to |path| with 0640 permissions
   // (modulo umask).  If missing, parent (and parent of parent etc.) directories
   // are created with 0700 permissions (modulo umask).  Returns true on success.

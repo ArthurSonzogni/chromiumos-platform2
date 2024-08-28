@@ -4,11 +4,11 @@
 
 #include "libstorage/platform/fake_platform.h"
 
-#include <stdint.h>
-
 #include <linux/fs.h>
+#include <stdint.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <map>
 #include <memory>
 #include <optional>
@@ -26,9 +26,8 @@
 #include <libcrossystem/crossystem_fake.h>
 #include <secure_erase_file/secure_erase_file.h>
 
-#include "libstorage/platform/util/get_random_suffix.h"
-
 #include "libstorage/platform/fake_platform/test_file_path.h"
+#include "libstorage/platform/util/get_random_suffix.h"
 
 namespace libstorage {
 
@@ -373,6 +372,20 @@ bool FakePlatform::ReadFileToString(const base::FilePath& path,
 bool FakePlatform::ReadFileToSecureBlob(const base::FilePath& path,
                                         brillo::SecureBlob* sblob) {
   return real_platform_.ReadFileToSecureBlob(TestFilePath(path), sblob);
+}
+
+ssize_t FakePlatform::PreadFile(int fd,
+                                void* buf,
+                                size_t num_bytes,
+                                __off64_t offset) {
+  return real_platform_.PreadFile(fd, buf, num_bytes, offset);
+}
+ssize_t FakePlatform::ReadaheadFile(int fd, __off64_t offset, size_t count) {
+  return real_platform_.ReadaheadFile(fd, offset, count);
+}
+void* FakePlatform::MmapFile(
+    void* addr, size_t len, int prot, int flags, int fd, __off64_t offset) {
+  return real_platform_.MmapFile(addr, len, prot, flags, fd, offset);
 }
 
 bool FakePlatform::WriteFile(const base::FilePath& path,

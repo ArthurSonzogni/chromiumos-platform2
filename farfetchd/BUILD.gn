@@ -1,0 +1,91 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":farfetchd",
+    ":farfetchd_adaptor",
+    ":farfetchd_proxy",
+    ":install_dbus_config",
+    ":install_headers",
+    ":install_init",
+  ]
+
+  if (use.test) {
+    deps += [ ":farfetchd_unittests" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libstorage_platform",
+  ]
+}
+
+generate_dbus_adaptors("farfetchd_adaptor") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/farfetchd/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.Farfetchd.xml" ]
+}
+
+generate_dbus_proxies("farfetchd_proxy") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/farfetchd/dbus-proxies.h"
+  mock_output_file = "include/farfetchd/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "farfetchd/dbus-proxies.h"
+  sources = [ "dbus_bindings/org.chromium.Farfetchd.xml" ]
+}
+
+executable("farfetchd") {
+  sources = [
+    "daemon.cc",
+    "main.cc",
+    "prefetch_helper.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  install_path = "sbin"
+  deps = [ ":farfetchd_adaptor" ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus_bindings/org.chromium.Farfetchd.conf" ]
+  install_path = "dbus_system_d"
+}
+
+install_config("install_headers") {
+  sources = [
+    "daemon.h",
+    "prefetch_helper.h",
+  ]
+  install_path = "/usr/include/farfetchd"
+}
+
+install_config("install_init") {
+  sources = [ "init/farfetchd.conf" ]
+  install_path = "upstart"
+}
+
+if (use.test) {
+  executable("farfetchd_unittests") {
+    sources = [
+      "daemon.cc",
+      "prefetch_helper.cc",
+      "prefetch_helper_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [ "//common-mk/testrunner" ]
+    pkg_deps = [ "libstorage_fake_platform" ]
+  }
+}

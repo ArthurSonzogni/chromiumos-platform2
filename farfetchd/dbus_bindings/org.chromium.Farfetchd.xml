@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2024 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/Farfetchd"
+    xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.Farfetchd">
+  <method name="PreloadFile">
+    <tp:docstring>
+        Read file into cache using pread.
+    </tp:docstring>
+    <arg name="path" type="s" direction="in"/>
+    <arg name="reply" type="b" direction="out"/>
+    <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+  </method>
+  <method name="PreloadFileMmap">
+    <tp:docstring>
+        Read file into cache using mmap.
+    </tp:docstring>
+    <arg name="path" type="s" direction="in"/>
+    <arg name="reply" type="b" direction="out"/>
+    <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+  </method>
+  <method name="PreloadFileAsync">
+    <tp:docstring>
+        Read file into cache using readahead.
+    </tp:docstring>
+    <arg name="path" type="s" direction="in"/>
+    <arg name="reply" type="b" direction="out"/>
+    <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+  </method>
+  </interface>
+</node>
