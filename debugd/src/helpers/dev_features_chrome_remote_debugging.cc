@@ -32,10 +32,9 @@ bool ConfigureChromeRemoteDebugging() {
   } else {
     // This is basically touching a new empty file.  It's only checked for
     // existence.  The content is not used.
-    int bytes_written = base::WriteFile(
-        base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath), "",
-        0);
-    if (bytes_written < 0) {
+    if (!base::WriteFile(
+            base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath),
+            "")) {
       PLOG(WARNING) << "Failed to write Chrome remote debugging marker file.";
       result = false;
     }

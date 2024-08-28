@@ -50,9 +50,7 @@ class SchedulerConfigurationHelperTest : public testing::Test {
       base::FilePath cpu_subroot =
           cpu_root_dir.Append("cpu" + std::to_string(cur_online_cpu));
       ASSERT_TRUE(base::CreateDirectory(cpu_subroot));
-      std::string flag = "1";
-      ASSERT_EQ(flag.size(), base::WriteFile(cpu_subroot.Append("online"),
-                                             flag.c_str(), flag.size()));
+      ASSERT_TRUE(base::WriteFile(cpu_subroot.Append("online"), "1"));
 
       // Establish odd CPUs as virtual siblings.
       base::FilePath topology = cpu_subroot.Append("topology");
@@ -73,40 +71,33 @@ class SchedulerConfigurationHelperTest : public testing::Test {
       } else if (cur_online_cpu == 2 || cur_online_cpu == 3) {
         ASSERT_EQ(topology_str, "2-3");
       }
-      ASSERT_EQ(topology_str.size(),
-                base::WriteFile(topology.Append("thread_siblings_list"),
-                                topology_str.c_str(), topology_str.size()));
+      ASSERT_TRUE(base::WriteFile(topology.Append("thread_siblings_list"),
+                                  topology_str));
     }
 
     // Establish the control files.
     base::FilePath online_cpus_file = cpu_root_dir.Append("online");
     std::string online_cpus = GetOnlineOrPresentString(online);
-    ASSERT_EQ(online_cpus.size(),
-              base::WriteFile(online_cpus_file, online_cpus.c_str(),
-                              online_cpus.size()));
+    ASSERT_TRUE(base::WriteFile(online_cpus_file, online_cpus));
 
     // Create set of present CPUs.
     base::FilePath present_cpus_file = cpu_root_dir.Append("present");
     std::string present_cpus = GetOnlineOrPresentString(present);
 
-    ASSERT_EQ(present_cpus.size(),
-              base::WriteFile(present_cpus_file, present_cpus.c_str(),
-                              present_cpus.size()));
+    ASSERT_TRUE(base::WriteFile(present_cpus_file, present_cpus));
 
     // Establish the offline CPUs.
     base::FilePath offline_cpus_file = cpu_root_dir.Append("offline");
     if (online == total) {
       // If all CPUs are online, the offline file is empty.
-      const char terminator = 0xa;
-      ASSERT_EQ(1, base::WriteFile(offline_cpus_file, &terminator, 1));
+      std::vector<uint8_t> terminator = {0xa};
+      ASSERT_TRUE(base::WriteFile(offline_cpus_file, terminator));
     } else {
       // If not all CPUs are online, offline file is "online-(total - 1)".
       // So if 2 CPUs online and 8 CPUs total, online string would be "0-1"
       // and offline string would be "2-7".
       std::string offline_cpus = GetOfflineString(online, total);
-      ASSERT_EQ(offline_cpus.size(),
-                base::WriteFile(offline_cpus_file, offline_cpus.c_str(),
-                                offline_cpus.size()));
+      ASSERT_TRUE(base::WriteFile(offline_cpus_file, offline_cpus));
     }
 
     // Setup the cpu set files.
@@ -122,8 +113,7 @@ class SchedulerConfigurationHelperTest : public testing::Test {
       ASSERT_TRUE(base::CreateDirectory(cpuset.DirName()));
       // Sets the range to A to make sure the debugd code updates it.
       std::string range = "A";
-      ASSERT_EQ(range.size(),
-                base::WriteFile(cpuset, range.data(), range.size()));
+      ASSERT_TRUE(base::WriteFile(cpuset, range));
     }
   }
 
@@ -264,12 +254,8 @@ TEST_F(SchedulerConfigurationHelperTest, TestSchedulers) {
   base::FilePath offline_cpus_file = cpu_root_dir.Append("offline");
   std::string online_now = "0,2";
   std::string offline_now = "1,3";
-  ASSERT_EQ(
-      online_now.size(),
-      base::WriteFile(online_cpus_file, online_now.c_str(), online_now.size()));
-  ASSERT_EQ(offline_now.size(),
-            base::WriteFile(offline_cpus_file, offline_now.c_str(),
-                            offline_now.size()));
+  ASSERT_TRUE(base::WriteFile(online_cpus_file, online_now));
+  ASSERT_TRUE(base::WriteFile(offline_cpus_file, offline_now));
 
   // Re-enable performance and test.
   SchedulerConfigurationUtils utils3(temp_dir.GetPath());

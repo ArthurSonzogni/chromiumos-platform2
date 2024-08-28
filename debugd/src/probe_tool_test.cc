@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "debugd/src/probe_tool.h"
+
 #include <set>
 #include <utility>
 #include <vector>
@@ -13,8 +15,6 @@
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "debugd/src/probe_tool.h"
 
 namespace debugd {
 namespace {
@@ -187,7 +187,7 @@ TEST(ProbeToolTest, GetValidMinijailArguments_BindNormalFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto file = temp_dir.GetPath().Append("file");
-  ASSERT_EQ(base::WriteFile(file, "", 0), 0);
+  ASSERT_TRUE(base::WriteFile(file, ""));
   auto kMinijailArgs = base::StringPrintf(
       R"({
         "func1": {

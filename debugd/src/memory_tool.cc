@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "debugd/src/memory_tool.h"
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-
-#include "debugd/src/memory_tool.h"
 
 #include "debugd/src/process_with_id.h"
 
@@ -37,11 +37,9 @@ std::string MemtesterTool::Start(const base::ScopedFD& outfd,
 
   // Make it the most killable possible instead of the default (unkillable).
   base::FilePath oom_file(base::StringPrintf(kOomScoreAdjFileFormat, p->pid()));
-  ssize_t bytes_written =
-      base::WriteFile(oom_file, kOomScoreKillable, strlen(kOomScoreKillable));
-  if (bytes_written < 0 ||
-      static_cast<size_t>(bytes_written) < strlen(kOomScoreKillable))
-    PLOG(WARNING) << "memtester: can't write OOM score, got: " << bytes_written;
+  if (!base::WriteFile(oom_file, kOomScoreKillable)) {
+    PLOG(WARNING) << "memtester: can't write OOM score";
+  }
 
   return p->id();
 }

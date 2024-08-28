@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "debugd/src/log_tool.h"
+
 #include <grp.h>
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -13,13 +16,11 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <dbus/mock_bus.h>
-#include <gtest/gtest.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <dbus/mock_bus.h>
+#include <gtest/gtest.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
-
-#include "debugd/src/log_tool.h"
 
 using testing::_;
 using testing::Invoke;
@@ -30,8 +31,7 @@ namespace {
 bool CreateDirectoryAndWriteFile(const base::FilePath& path,
                                  const std::string& contents) {
   return base::CreateDirectory(path.DirName()) &&
-         base::WriteFile(path, contents.c_str(), contents.length()) ==
-             contents.length();
+         base::WriteFile(path, contents);
 }
 }  // namespace
 

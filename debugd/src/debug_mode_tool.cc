@@ -100,8 +100,9 @@ void MaybeWriteSysfs(const char* sysfs_path, const char* data) {
 
   if (base::PathExists(path)) {
     int len = strlen(data);
-    if (base::WriteFile(path, data, len) != len)
+    if (!base::WriteFile(path, std::string_view(data, len))) {
       PLOG(WARNING) << "Writing to " << path.value() << " failed";
+    }
   }
 }
 void WifiSetDebugLevels(bool enable) {

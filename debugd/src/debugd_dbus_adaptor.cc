@@ -522,8 +522,8 @@ bool DebugdDBusAdaptor::EnableDevCoredumpUpload(brillo::ErrorPtr* error) {
     VLOG(1) << "Device coredump upload already enabled";
     return true;
   }
-  if (base::WriteFile(base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), "",
-                      0) < 0) {
+  if (!base::WriteFile(base::FilePath(debugd::kDeviceCoredumpUploadFlagPath),
+                       "")) {
     DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString,
                      "Failed to write flag file.");
     PLOG(ERROR) << "Failed to write flag file.";

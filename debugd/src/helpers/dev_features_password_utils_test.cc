@@ -59,8 +59,7 @@ class DevFeaturesPasswordHelperTest : public Test {
 
   // Writes |contents| to password_file_path_.
   bool WritePasswordFile(const std::string& contents) {
-    int length = contents.length();
-    return base::WriteFile(file_path_, contents.c_str(), length) == length;
+    return base::WriteFile(file_path_, contents);
   }
 
   // Deletes the password file if it exists.

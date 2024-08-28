@@ -162,16 +162,11 @@ void OomScoreSetter::SetOne(const pid_t pid,
   }
 
   std::string score_str = std::to_string(score);
-  const size_t len = score_str.length();
   base::FilePath oom_file(base::StringPrintf(kOomScoreAdjFileFormat, pid));
-  ssize_t bytes_written = base::WriteFile(oom_file, score_str.c_str(), len);
 
   std::string write_error;
-  if (bytes_written < 0) {
+  if (!base::WriteFile(oom_file, score_str)) {
     write_error = strerror(errno);
-  } else if ((size_t)bytes_written != len) {
-    write_error = base::StringPrintf("%zd instead of %zu bytes written",
-                                     bytes_written, len);
   }
 
   if (!write_error.empty()) {

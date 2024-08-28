@@ -107,7 +107,7 @@ bool PrintscanTool::CreateEmptyFile(PrintscanFilePaths path) {
       full_path = root_path_.Append(kLorgnetteFilePath);
       break;
   }
-  return base::WriteFile(full_path, "", 0) == 0;
+  return base::WriteFile(full_path, "");
 }
 
 // Delete a file at the given path from root_path_.

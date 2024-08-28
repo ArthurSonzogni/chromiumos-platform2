@@ -5,6 +5,7 @@
 #include "debugd/src/drm_trace_tool.h"
 
 #include <limits.h>
+
 #include <memory>
 #include <optional>
 
@@ -47,23 +48,22 @@ class DRMTraceToolTest : public testing::Test {
     // Create files that we expect to interact with in DRMTraceTool.
     ASSERT_TRUE(base::CreateDirectory(
         temp_dir_.GetPath().Append("sys/module/drm/parameters")));
-    ASSERT_EQ(0, base::WriteFile(temp_dir_.GetPath().Append(
-                                     "sys/module/drm/parameters/trace"),
-                                 "", 0));
+    ASSERT_TRUE(base::WriteFile(
+        temp_dir_.GetPath().Append("sys/module/drm/parameters/trace"), ""));
 
     ASSERT_TRUE(base::CreateDirectory(
         temp_dir_.GetPath().Append("sys/kernel/tracing/instances/drm")));
-    ASSERT_EQ(0, base::WriteFile(
-                     temp_dir_.GetPath().Append(
-                         "sys/kernel/tracing/instances/drm/buffer_size_kb"),
-                     "", 0));
-    ASSERT_EQ(
-        0, base::WriteFile(temp_dir_.GetPath().Append(
-                               "sys/kernel/tracing/instances/drm/trace_marker"),
-                           "", 0));
-    ASSERT_EQ(0, base::WriteFile(temp_dir_.GetPath().Append(
-                                     "sys/kernel/tracing/instances/drm/trace"),
-                                 "", 0));
+    ASSERT_TRUE(
+        base::WriteFile(temp_dir_.GetPath().Append(
+                            "sys/kernel/tracing/instances/drm/buffer_size_kb"),
+                        ""));
+    ASSERT_TRUE(
+        base::WriteFile(temp_dir_.GetPath().Append(
+                            "sys/kernel/tracing/instances/drm/trace_marker"),
+                        ""));
+    ASSERT_TRUE(base::WriteFile(
+        temp_dir_.GetPath().Append("sys/kernel/tracing/instances/drm/trace"),
+        ""));
 
     ASSERT_TRUE(base::CreateDirectory(
         temp_dir_.GetPath().Append("var/log/display_debug")));

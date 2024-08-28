@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
-
 #include "debugd/src/debug_logs_tool.h"
-#include "debugd/src/log_tool.h"
+
+#include <string>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
+
+#include "debugd/src/log_tool.h"
 
 namespace debugd {
 
@@ -42,8 +43,7 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed, const base::ScopedFD& fd) {
   for (const auto& l : logs) {
     const std::string& name = l.first;
     const std::string& contents = l.second;
-    if (base::WriteFile(logs_path.Append(name), contents.data(),
-                        contents.size()) < 0) {
+    if (!base::WriteFile(logs_path.Append(name), contents)) {
       PLOG(WARNING) << "Failed to write file: " << name;
     }
   }

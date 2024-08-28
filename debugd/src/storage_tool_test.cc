@@ -4,11 +4,12 @@
 
 #include "debugd/src/storage_tool.h"
 
+#include <stdlib.h>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-#include <stdlib.h>
 
 namespace {
 
@@ -34,7 +35,7 @@ TEST(StorageToolTest, TestIsSupportedMMC) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath typeFile = temp_dir.GetPath().Append("mmc_type");
   base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
-  base::WriteFile(typeFile, kTypeFileDataMMC, sizeof(kTypeFileDataMMC));
+  base::WriteFile(typeFile, kTypeFileDataMMC);
 
   debugd::StorageTool sTool;
   std::string msg;
@@ -48,7 +49,7 @@ TEST(StorageToolTest, TestIsSupportedNoVend) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
   base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
-  base::WriteFile(typeFile, kTypeFileDataTarget, sizeof(kTypeFileDataTarget));
+  base::WriteFile(typeFile, kTypeFileDataTarget);
 
   debugd::StorageTool sTool;
   std::string msg;
@@ -62,10 +63,9 @@ TEST(StorageToolTest, TestIsSupportedVendEmpty) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
   base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
-  base::WriteFile(typeFile, kTypeFileDataTarget, sizeof(kTypeFileDataTarget));
+  base::WriteFile(typeFile, kTypeFileDataTarget);
 
-  const char* vendData = "";
-  base::WriteFile(vendFile, vendData, 0);
+  base::WriteFile(vendFile, "");
 
   debugd::StorageTool sTool;
   std::string msg;
@@ -79,10 +79,9 @@ TEST(StorageToolTest, TestIsSupportedOther) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
   base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
-  base::WriteFile(typeFile, kTypeFileDataTarget, sizeof(kTypeFileDataTarget));
+  base::WriteFile(typeFile, kTypeFileDataTarget);
 
-  constexpr char vendData[] = "OTHER";
-  base::WriteFile(vendFile, vendData, sizeof(vendData));
+  base::WriteFile(vendFile, "OTHER");
 
   debugd::StorageTool sTool;
   std::string msg;
@@ -96,10 +95,9 @@ TEST(StorageToolTest, TestIsSupportedATA) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath typeFile = temp_dir.GetPath().Append("target_type");
   base::FilePath vendFile = temp_dir.GetPath().Append("vendor");
-  base::WriteFile(typeFile, kTypeFileDataTarget, sizeof(kTypeFileDataTarget));
+  base::WriteFile(typeFile, kTypeFileDataTarget);
 
-  constexpr char vendData[] = "ATA";
-  base::WriteFile(vendFile, vendData, sizeof(vendData));
+  base::WriteFile(vendFile, "ATA");
 
   debugd::StorageTool sTool;
   std::string msg;
