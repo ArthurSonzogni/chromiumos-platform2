@@ -874,6 +874,14 @@ int ChromeosStartup::Run() {
     }
     if (platform_->FileExists(encrypted_failed))
       platform_->DeleteFile(encrypted_failed);
+
+    if (!tpm_system_key.Export()) {
+      // Unable to write to /tmp. Clobber will not help, the root or
+      // kernel has a problem, request a recovery.
+      crossystem->VbSetSystemPropertyInt("recovery_request", 1);
+      utils::Reboot();
+      return 0;
+    }
   }
 
   // Mount encstateful
