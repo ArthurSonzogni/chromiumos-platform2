@@ -109,6 +109,8 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   auto min_res = resolutions.front();
   auto max_res = resolutions.back();
 
+  // TODO(b/362753378): Handle DefaultSource source option for source-less
+  // scanner.
   for (auto source : valid_standard_opts.value().sources) {
     for (auto color_mode : valid_standard_opts.value().color_modes) {
       ScanTestParameter min_res_param =
@@ -262,6 +264,39 @@ TEST_P(ScanTest, SinglePage) {
       (source.find("duplex") == std::string::npos) ? 1 : 2;
   ASSERT_EQ(image_paths.size(), expected_images);
 
+  for (auto image_path : image_paths) {
+    verify_png_info(image_path.c_str(), parameter.resolution,
+                    parameter.color_mode);
+  }
+}
+
+TEST_P(ScanTest, TwoPage) {
+  const ScanTestParameter parameter = GetParam();
+  const std::string source = base::ToLowerASCII(parameter.source);
+  if (source.find("adf") != std::string::npos) {
+    std::cout << "Ensure ADF scanner is in \"continous\" mode if applicable"
+              << "\n";
+
+  } else {
+    GTEST_SKIP() << "Source is not ADF and so is not suitable for test";
+  }
+
+  std::cout
+      << "Press enter when two pages suitable for continuous scanning from "
+      << parameter.source << " are available in the document feeder..." << "\n";
+
+  std::string ignored;
+  std::getline(std::cin, ignored);
+
+  std::string output_path = _get_test_output_path();
+  std::vector<std::string> image_paths;
+  ASSERT_EQ(
+      _run_advanced_scan(output_path, parameter,
+                         *sane_backend_tests::scanner_under_test, image_paths),
+      0);
+  const uint8_t expected_images =
+      (source.find("duplex") == std::string::npos) ? 2 : 4;
+  ASSERT_EQ(image_paths.size(), expected_images);
   for (auto image_path : image_paths) {
     verify_png_info(image_path.c_str(), parameter.resolution,
                     parameter.color_mode);
