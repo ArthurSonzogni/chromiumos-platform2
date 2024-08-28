@@ -152,8 +152,7 @@ class DeviceIdFromSysfsTest : public testing::Test {
                              const std::string& data) const {
     base::FilePath file_path =
         temp_dir_.GetPath().Append(device_name).Append(file_name);
-    ASSERT_EQ(base::WriteFile(file_path, data.c_str(), data.length()),
-              data.length());
+    ASSERT_TRUE(base::WriteFile(file_path, data));
   }
 
   base::FilePath GetDevicePath(const std::string& device_name) const {

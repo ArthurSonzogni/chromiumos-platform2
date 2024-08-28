@@ -122,9 +122,7 @@ base::FilePath CertificateFile::WriteFile(const std::string& output_data) {
     return base::FilePath();
   }
 
-  size_t written =
-      base::WriteFile(output_file, output_data.c_str(), output_data.length());
-  if (written != output_data.length()) {
+  if (!base::WriteFile(output_file, output_data)) {
     LOG(ERROR) << "Unable to write to output file.";
     return base::FilePath();
   }

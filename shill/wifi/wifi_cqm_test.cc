@@ -87,7 +87,7 @@ class WiFiCQMTest : public ::testing::Test {
             .Append("sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm")
             .Append("fw_dbg_collect");
     EXPECT_TRUE(base::CreateDirectory(fw_dump_path.DirName()));
-    EXPECT_TRUE(base::WriteFile(fw_dump_path, "1", 1));
+    EXPECT_TRUE(base::WriteFile(fw_dump_path, "1"));
     EXPECT_TRUE(base::PathExists(fw_dump_path));
     wifi_cqm_->fw_dump_path_ = fw_dump_path;
   }

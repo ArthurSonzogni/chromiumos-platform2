@@ -259,9 +259,7 @@ void OpenVPNDriverTest::SetupLSBRelease() {
       "CHROMEOS_RELEASE_NAME=Chromium OS\n"
       "CHROMEOS_RELEASE_VERSION=2202.0\n";
   EXPECT_TRUE(base::CreateTemporaryFile(&lsb_release_file_));
-  EXPECT_EQ(std::size(kLSBReleaseContents),
-            base::WriteFile(lsb_release_file_, kLSBReleaseContents,
-                            std::size(kLSBReleaseContents)));
+  EXPECT_TRUE(base::WriteFile(lsb_release_file_, kLSBReleaseContents));
   EXPECT_EQ(OpenVPNDriver::kLSBReleaseFile, driver_->lsb_release_file_.value());
   driver_->lsb_release_file_ = lsb_release_file_;
 }
@@ -1251,7 +1249,7 @@ TEST_F(OpenVPNDriverTest, GetCommandLineArgs) {
   ASSERT_EQ("UV_PLAT_REL", actual[6]);
   ASSERT_EQ("2202.0", actual[7]);
 
-  EXPECT_EQ(0, base::WriteFile(lsb_release_file_, "", 0));
+  EXPECT_TRUE(base::WriteFile(lsb_release_file_, ""));
   // Still returns --config arg and path value.
   EXPECT_EQ(2, driver_->GetCommandLineArgs().size());
 }

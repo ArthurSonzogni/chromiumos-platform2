@@ -80,7 +80,7 @@ class DHCPCDProxyFactoryTest : public testing::Test {
   void CreateTempFileInRoot(std::string_view file) {
     const base::FilePath path_in_root = root_path_.Append(file);
     EXPECT_TRUE(base::CreateDirectory(path_in_root.DirName()));
-    EXPECT_EQ(0, base::WriteFile(path_in_root, "", 0));
+    EXPECT_TRUE(base::WriteFile(path_in_root, ""));
   }
 
   bool FileExistsInRoot(std::string_view file) {

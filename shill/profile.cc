@@ -363,8 +363,7 @@ bool Profile::SaveUserProfileList(const base::FilePath& path,
         "%s %s\n", IdentifierToString(id).c_str(), id.user_hash.c_str()));
   }
   std::string content = base::JoinString(lines, "");
-  size_t ret = base::WriteFile(path, content.c_str(), content.length());
-  return ret == content.length();
+  return base::WriteFile(path, content);
 }
 
 bool Profile::MatchesIdentifier(const Identifier& name) const {

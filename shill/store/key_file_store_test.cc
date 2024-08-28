@@ -4,6 +4,7 @@
 
 #include "shill/store/key_file_store.h"
 
+#include <inttypes.h>
 #include <sys/stat.h>
 
 #include <limits>
@@ -20,7 +21,6 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
-#include <inttypes.h>
 
 #include "shill/data_types.h"
 #include "shill/store/key_value_store.h"
@@ -60,7 +60,7 @@ std::string KeyFileStoreTest::ReadKeyFile() {
 }
 
 void KeyFileStoreTest::WriteKeyFile(std::string data) {
-  EXPECT_EQ(data.size(), base::WriteFile(test_file_, data.data(), data.size()));
+  EXPECT_TRUE(base::WriteFile(test_file_, data));
 }
 
 TEST_F(KeyFileStoreTest, OpenClose) {

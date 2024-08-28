@@ -99,9 +99,7 @@ bool Resolver::Emit() {
   const auto contents = base::JoinString(lines, "\n");
 
   SLOG(2) << "Writing DNS out to " << path_.value();
-  int count = base::WriteFile(path_, contents.c_str(), contents.size());
-
-  return count == static_cast<int>(contents.size());
+  return base::WriteFile(path_, contents);
 }
 
 bool Resolver::SetDNSProxyAddresses(
