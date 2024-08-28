@@ -28,3 +28,19 @@ define(`I2C_SLAVE_FORCE', `0x706')
 define(`I2C_RDWR', `0x707')
 define(`I2C_PEC', `0x708')
 define(`I2C_SMBUS', `0x720')
+
+# fd ioctls are defined in
+# src/third_party/kernel/v*/include/uapi/linux/fd.h
+define(`FDGETFDCSTAT', `0x215')
+
+# hdreg ioctls are defined in
+# src/third_party/kernel/v*/include/uapi/linux/hdreg.h
+define(`HDIO_GETGEO', `0x301')
+
+# fs ioctls are defined in
+# src/third_party/kernel/v*/include/uapi/linux/fs.h
+define(`BLKRRPART', `0x125F')
+
+# tty ioctls are defined in
+# src/third_party/kernel/v*/include/uapi/asm-generic/ioctls.h
+define(`TIOCGWINSZ', `0x5413')

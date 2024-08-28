@@ -18,3 +18,12 @@ allow cros_parted device:blk_file rw_file_perms;
 allow cros_parted device:lnk_file r_file_perms;
 allow cros_parted proc_swaps:file r_file_perms;
 r_dir_file(cros_parted sysfs)
+allow cros_parted cros_run_udev:dir search;
+allow cros_parted kernel:system ipc_info;
+allowxperm cros_lsblk cros_os_install_service:fifo_file ioctl TIOCGWINSZ;
+allowxperm cros_chromeos_install cros_os_install_service:fifo_file ioctl TIOCGWINSZ;
+allowxperm cros_chromeos_install device:blk_file ioctl {
+  FDGETFDCSTAT
+  HDIO_GETGEO
+  BLKRRPART
+};

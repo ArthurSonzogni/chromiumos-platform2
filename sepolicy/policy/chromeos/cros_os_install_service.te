@@ -19,8 +19,7 @@ allow cros_os_install_service cros_var_log_os_install_service:file rw_file_perms
 # Allow running chromeos-install
 allow cros_os_install_service sh_exec:file rx_file_perms;
 
-# Allow mounting and unmounting the target stateful partition to copy the install log, these rules are needed only for Reven
-no_arc(`
+
 allow cros_os_install_service cros_os_install_service:capability sys_admin;
 allow cros_os_install_service kernel:process setsched;
 allow cros_os_install_service labeledfs:filesystem { mount unmount };
@@ -31,4 +30,3 @@ allow cros_os_install_service cros_os_install_service_tmp_file:dir { mounton cre
 # Label our log file and allow access.
 filetrans_pattern(cros_os_install_service, unlabeled, cros_os_install_service_tmp_file, file, "flex-install.log");
 allow cros_os_install_service cros_os_install_service_tmp_file:file { create_file_perms};
-')
