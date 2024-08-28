@@ -40,7 +40,9 @@ struct Args {
 
     /// Skip installing the rootfs; Only set up partition table and clear and
     /// reinstall the stateful partition.
-    #[arg(long)]
+    // TODO(b/365748385): find a better name for this, since it doesn't just
+    // skip ROOT-A/B, but also KERN-* and all the others.
+    #[arg(long, requires("pmbr_code"))]
     skip_rootfs: bool,
 
     /// Don't create a new filesystem for the stateful partition. Be careful
@@ -229,5 +231,11 @@ mod tests {
         // String flags are empty if not specified.
         let target_bios = env.iter().find(|(key, _)| key == "FLAGS_target_bios");
         assert_eq!(target_bios.unwrap().1, String::new());
+    }
+
+    #[test]
+    fn skip_rootfs_needs_pmbr() {
+        let args = Args::try_parse_from(["arg0", "--skip_rootfs"]);
+        assert!(args.is_err());
     }
 }
