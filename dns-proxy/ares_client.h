@@ -44,9 +44,11 @@ class AresClient {
   // such as "8.8.8.8" or "2001:4860:4860::8888".
   // The callback will return the wire-format response.
   // See: |QueryCallback|
+  // |ifname| specifies which network interface to bind to (SO_BINDTODEVICE).
   virtual bool Resolve(const base::span<const unsigned char>& query,
                        const QueryCallback& callback,
                        const std::string& name_servers,
+                       std::string_view ifname = "",
                        int type = SOCK_DGRAM);
 
  private:
@@ -96,7 +98,9 @@ class AresClient {
   // Initialize an ares channel. This will used for holding multiple concurrent
   // queries.
   // |type| is the socket protocol used, either SOCK_STREAM or SOCK_DGRAM.
-  ares_channel InitChannel(const std::string& name_server, int type);
+  ares_channel InitChannel(const std::string& name_server,
+                           std::string_view ifname,
+                           int type);
 
   // Stop watching file descriptors given by ares's channel |channel|. This must
   // be done before any ares processing because ares might close the watched

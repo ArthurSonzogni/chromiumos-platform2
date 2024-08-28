@@ -5,6 +5,7 @@
 #include <base/at_exit.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <net/if.h>
 
 #include "dns-proxy/ares_client.h"
 #include "dns-proxy/doh_curl_client.h"
@@ -30,6 +31,7 @@ class FakeAresClient : public AresClient {
   bool Resolve(const base::span<const unsigned char>& query,
                const AresClient::QueryCallback& callback,
                const std::string& name_server,
+               std::string_view ifname,
                int type) override {
     return provider_->ConsumeBool();
   }
@@ -46,7 +48,8 @@ class FakeCurlClient : public DoHCurlClientInterface {
   bool Resolve(const base::span<const char>&,
                const DoHCurlClient::QueryCallback&,
                const std::vector<std::string>&,
-               const std::string&) override {
+               const std::string&,
+               std::string_view) override {
     return provider_->ConsumeBool();
   }
 
@@ -59,10 +62,12 @@ class TestResolver : public Resolver {
  public:
   TestResolver(std::unique_ptr<AresClient> ares_client,
                std::unique_ptr<DoHCurlClientInterface> curl_client,
-               std::unique_ptr<net_base::SocketFactory> socket_factory)
+               std::unique_ptr<net_base::SocketFactory> socket_factory,
+               std::string_view ifname)
       : Resolver(std::move(ares_client),
                  std::move(curl_client),
-                 std::move(socket_factory)) {}
+                 std::move(socket_factory),
+                 ifname) {}
 
   TestResolver(const TestResolver&) = delete;
   TestResolver& operator=(const TestResolver&) = delete;
@@ -101,8 +106,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto ares_client = std::make_unique<FakeAresClient>(&provider);
   auto curl_client = std::make_unique<FakeCurlClient>(&provider);
   auto socket_factory = std::make_unique<net_base::SocketFactory>();
+  std::string ifname = provider.ConsumeRandomLengthString(IFNAMSIZ - 1);
   TestResolver resolver(std::move(ares_client), std::move(curl_client),
-                        std::move(socket_factory));
+                        std::move(socket_factory), ifname);
 
   while (provider.remaining_bytes() > 0) {
     size_t n = provider.ConsumeIntegralInRange<size_t>(0, 99);

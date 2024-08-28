@@ -5,18 +5,18 @@
 #ifndef DNS_PROXY_DOH_CURL_CLIENT_H_
 #define DNS_PROXY_DOH_CURL_CLIENT_H_
 
-#include <curl/curl.h>
-
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/containers/span.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
 #include <base/time/time.h>
+#include <curl/curl.h>
 
 namespace dns_proxy {
 
@@ -49,10 +49,12 @@ class DoHCurlClientInterface {
   // |callback| will be called upon query completion.
   // |query| is owned by the caller of this function. The caller is responsible
   // for their lifecycle.
+  // |ifname| specifies which network interface to bind to (SO_BINDTODEVICE).
   virtual bool Resolve(const base::span<const char>& query,
                        const QueryCallback& callback,
                        const std::vector<std::string>& name_servers,
-                       const std::string& doh_provider) = 0;
+                       const std::string& doh_provider,
+                       std::string_view ifname = "") = 0;
 };
 
 // DoHCurlClient receives a wire-format DNS query and re-send it using secure
@@ -79,7 +81,8 @@ class DoHCurlClient : public DoHCurlClientInterface {
   bool Resolve(const base::span<const char>& query,
                const DoHCurlClientInterface::QueryCallback& callback,
                const std::vector<std::string>& name_servers,
-               const std::string& doh_provider) override;
+               const std::string& doh_provider,
+               std::string_view ifname = "") override;
 
   // Returns a weak pointer to ensure that callbacks don't run after this class
   // is destroyed.
@@ -124,7 +127,8 @@ class DoHCurlClient : public DoHCurlClientInterface {
   std::unique_ptr<State> InitCurl(const std::string& doh_provider,
                                   const base::span<const char>& query,
                                   const QueryCallback& callback,
-                                  const std::vector<std::string>& name_servers);
+                                  const std::vector<std::string>& name_servers,
+                                  std::string_view ifname);
 
   // Callback informed about what to wait for. When called, register or remove
   // the socket given from watchers.

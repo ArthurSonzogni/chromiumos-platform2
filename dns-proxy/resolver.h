@@ -143,7 +143,10 @@ class Resolver {
     base::Time start_time;
   };
 
+  // When |ifname| is not empty, all DNS queries will be sent with the sockets
+  // bound to |ifname|.
   Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
+           std::string_view ifname,
            base::TimeDelta timeout,
            base::TimeDelta retry_delay,
            int max_num_retries);
@@ -151,6 +154,7 @@ class Resolver {
   Resolver(std::unique_ptr<AresClient> ares_client,
            std::unique_ptr<DoHCurlClientInterface> curl_client,
            std::unique_ptr<net_base::SocketFactory> socket_factory,
+           std::string_view ifname = "",
            bool disable_probe = true,
            std::unique_ptr<Metrics> metrics = nullptr);
   virtual ~Resolver() = default;
@@ -391,6 +395,10 @@ class Resolver {
 
   // Map of SocketFds keyed by its SocketFd ID.
   std::map<int, std::unique_ptr<SocketFd>> sock_fds_;
+
+  // Interface name that is bound for DNS queries. If empty, the sockets are not
+  // bound to any interface.
+  std::string ifname_;
 
   // Map of incomplete DNS transaction's SocketFds keyed by its fd. This is
   // necessary because for TCP, it is possible for the DNS query to be sent

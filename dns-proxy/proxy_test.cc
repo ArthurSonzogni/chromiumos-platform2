@@ -157,6 +157,7 @@ class MockResolver : public Resolver {
  public:
   MockResolver()
       : Resolver(base::DoNothing(),
+                 /*ifname=*/"",
                  kRequestTimeout,
                  kRequestRetryDelay,
                  kRequestMaxRetry) {}

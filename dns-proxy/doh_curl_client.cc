@@ -241,7 +241,8 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
     const std::string& doh_provider,
     const base::span<const char>& query,
     const QueryCallback& callback,
-    const std::vector<std::string>& name_servers) {
+    const std::vector<std::string>& name_servers,
+    std::string_view ifname) {
   CURL* curl;
   curl = curl_easy_init();
   if (!curl) {
@@ -259,6 +260,11 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
   // This uses ares and will be done asynchronously.
   curl_easy_setopt(curl, CURLOPT_DNS_SERVERS,
                    base::JoinString(name_servers, ",").c_str());
+
+  // Set CURL network interface to bind to.
+  if (!ifname.empty()) {
+    curl_easy_setopt(curl, CURLOPT_INTERFACE, ifname.data());
+  }
 
   // Set the HTTP header to the needed DoH header. The stored value needs to
   // be released when query is finished.
@@ -297,9 +303,10 @@ std::unique_ptr<DoHCurlClient::State> DoHCurlClient::InitCurl(
 bool DoHCurlClient::Resolve(const base::span<const char>& query,
                             const QueryCallback& callback,
                             const std::vector<std::string>& name_servers,
-                            const std::string& doh_provider) {
+                            const std::string& doh_provider,
+                            std::string_view ifname) {
   std::unique_ptr<State> state =
-      InitCurl(doh_provider, query, callback, name_servers);
+      InitCurl(doh_provider, query, callback, name_servers, ifname);
   if (!state) {
     return false;
   }

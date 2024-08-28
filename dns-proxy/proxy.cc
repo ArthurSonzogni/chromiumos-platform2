@@ -517,9 +517,15 @@ void Proxy::Stop() {
 std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
                                              base::TimeDelta retry_delay,
                                              int max_num_retries) {
+  // ARC proxies listen on a specific network interface. Bind the sending socket
+  // to the interface.
+  std::string ifname = "";
+  if (root_ns_enabled_ && opts_.type == Type::kARC) {
+    ifname = opts_.ifname;
+  }
   return std::make_unique<Resolver>(
-      base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()), timeout,
-      retry_delay, max_num_retries);
+      base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()), ifname,
+      timeout, retry_delay, max_num_retries);
 }
 
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {

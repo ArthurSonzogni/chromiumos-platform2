@@ -218,6 +218,7 @@ Resolver::ProbeState::ProbeState(const std::string& target,
     : target(target), doh(doh), validated(validated), num_retries(0) {}
 
 Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
+                   std::string_view ifname,
                    base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
                    int max_num_retries)
@@ -226,7 +227,8 @@ Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
-      metrics_(new Metrics) {
+      metrics_(new Metrics),
+      ifname_(ifname) {
   ares_client_ = std::make_unique<AresClient>(timeout);
   curl_client_ = std::make_unique<DoHCurlClient>(timeout);
 }
@@ -234,6 +236,7 @@ Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
 Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<DoHCurlClientInterface> curl_client,
                    std::unique_ptr<net_base::SocketFactory> socket_factory,
+                   std::string_view ifname,
                    bool disable_probe,
                    std::unique_ptr<Metrics> metrics)
     : logger_(base::DoNothing()),
@@ -242,6 +245,7 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
       doh_enabled_(false),
       disable_probe_(disable_probe),
       metrics_(std::move(metrics)),
+      ifname_(ifname),
       ares_client_(std::move(ares_client)),
       curl_client_(std::move(curl_client)) {}
 
@@ -927,7 +931,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
               base::BindRepeating(
                   &Resolver::HandleCurlResult, weak_factory_.GetWeakPtr(),
                   sock_fd, doh_providers_[target]->weak_factory.GetWeakPtr()),
-              name_servers, target)) {
+              name_servers, target, ifname_)) {
         continue;
       }
     } else {
@@ -939,7 +943,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
               base::BindRepeating(
                   &Resolver::HandleAresResult, weak_factory_.GetWeakPtr(),
                   sock_fd, name_servers_[target]->weak_factory.GetWeakPtr()),
-              target, sock_fd->type)) {
+              target, ifname_, sock_fd->type)) {
         continue;
       }
     }
@@ -1031,7 +1035,7 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
         base::BindRepeating(&Resolver::HandleDoHProbeResult,
                             weak_factory_.GetWeakPtr(), probe_state,
                             probe_data),
-        GetActiveNameServers(), probe_state->target);
+        GetActiveNameServers(), probe_state->target, ifname_);
   } else {
     ares_client_->Resolve(
         base::span<const unsigned char>(
@@ -1040,7 +1044,7 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
         base::BindRepeating(&Resolver::HandleDo53ProbeResult,
                             weak_factory_.GetWeakPtr(), probe_state,
                             probe_data),
-        probe_state->target);
+        probe_state->target, ifname_);
   }
   probe_state->num_retries++;
 }

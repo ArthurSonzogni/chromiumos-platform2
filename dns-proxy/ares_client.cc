@@ -163,7 +163,9 @@ void AresClient::ResetTimeout(ares_channel channel) {
       base::Milliseconds(timeout_ms));
 }
 
-ares_channel AresClient::InitChannel(const std::string& name_server, int type) {
+ares_channel AresClient::InitChannel(const std::string& name_server,
+                                     std::string_view ifname,
+                                     int type) {
   struct ares_options options;
   memset(&options, 0, sizeof(options));
   int optmask = 0;
@@ -228,14 +230,20 @@ ares_channel AresClient::InitChannel(const std::string& name_server, int type) {
     return nullptr;
   }
 
+  // Set network interface to bind to.
+  if (!ifname.empty()) {
+    ares_set_local_dev(channel, ifname.data());
+  }
+
   return channel;
 }
 
 bool AresClient::Resolve(const base::span<const unsigned char>& query,
                          const QueryCallback& callback,
                          const std::string& name_server,
+                         std::string_view ifname,
                          int type) {
-  ares_channel channel = InitChannel(name_server, type);
+  ares_channel channel = InitChannel(name_server, ifname, type);
   if (!channel) {
     return false;
   }
