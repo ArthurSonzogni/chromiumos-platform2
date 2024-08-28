@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/http/http_form_data.h>
+#include "brillo/http/http_form_data.h"
 
 #include <set>
 #include <utility>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <brillo/mime_utils.h>
-#include <brillo/streams/file_stream.h>
-#include <brillo/streams/input_stream_set.h>
 #include <gtest/gtest.h>
+
+#include "brillo/mime_utils.h"
+#include "brillo/streams/file_stream.h"
+#include "brillo/streams/input_stream_set.h"
 
 namespace brillo {
 namespace http {
@@ -45,9 +46,7 @@ TEST(HttpFormData, FileFormField) {
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   std::string file_content{"text line1\ntext line2\n"};
   base::FilePath file_name = dir.GetPath().Append("sample.txt");
-  ASSERT_EQ(file_content.size(),
-            static_cast<size_t>(base::WriteFile(file_name, file_content.data(),
-                                                file_content.size())));
+  ASSERT_TRUE(base::WriteFile(file_name, file_content));
 
   StreamPtr stream =
       FileStream::Open(file_name, Stream::AccessMode::READ,
@@ -70,12 +69,10 @@ TEST(HttpFormData, MultiPartFormField) {
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   std::string file1{"text line1\ntext line2\n"};
   base::FilePath filename1 = dir.GetPath().Append("sample.txt");
-  ASSERT_EQ(file1.size(), static_cast<size_t>(base::WriteFile(
-                              filename1, file1.data(), file1.size())));
+  ASSERT_TRUE(base::WriteFile(filename1, file1));
   std::string file2{"\x01\x02\x03\x04\x05"};
   base::FilePath filename2 = dir.GetPath().Append("test.bin");
-  ASSERT_EQ(file2.size(), static_cast<size_t>(base::WriteFile(
-                              filename2, file2.data(), file2.size())));
+  ASSERT_TRUE(base::WriteFile(filename2, file2));
 
   MultiPartFormField form_field{"foo", mime::multipart::kFormData, "Delimiter"};
   form_field.AddTextField("name", "John Doe");
@@ -139,12 +136,10 @@ TEST(HttpFormData, FormData) {
   ASSERT_TRUE(dir.CreateUniqueTempDir());
   std::string file1{"text line1\ntext line2\n"};
   base::FilePath filename1 = dir.GetPath().Append("sample.txt");
-  ASSERT_EQ(file1.size(), static_cast<size_t>(base::WriteFile(
-                              filename1, file1.data(), file1.size())));
+  ASSERT_TRUE(base::WriteFile(filename1, file1));
   std::string file2{"\x01\x02\x03\x04\x05"};
   base::FilePath filename2 = dir.GetPath().Append("test.bin");
-  ASSERT_EQ(file2.size(), static_cast<size_t>(base::WriteFile(
-                              filename2, file2.data(), file2.size())));
+  ASSERT_TRUE(base::WriteFile(filename2, file2));
 
   FormData form_data{"boundary1"};
   form_data.AddTextField("name", "John Doe");

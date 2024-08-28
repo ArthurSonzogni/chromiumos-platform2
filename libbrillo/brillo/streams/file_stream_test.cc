@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/streams/file_stream.h>
+#include "brillo/streams/file_stream.h"
 
 #include <sys/stat.h>
 
@@ -18,12 +18,13 @@
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <brillo/errors/error_codes.h>
-#include <brillo/message_loops/base_message_loop.h>
-#include <brillo/message_loops/message_loop_utils.h>
-#include <brillo/streams/stream_errors.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "brillo/errors/error_codes.h"
+#include "brillo/message_loops/base_message_loop.h"
+#include "brillo/message_loops/message_loop_utils.h"
+#include "brillo/streams/stream_errors.h"
 
 using testing::_;
 using testing::DoAll;
@@ -711,8 +712,7 @@ TEST_F(FileStreamTest, OpenRead) {
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::vector<char> buffer(1024 * 1024);
   base::RandBytes(base::as_writable_byte_span(buffer));
-  int file_size = buffer.size();  // Stupid base::WriteFile taking "int" size.
-  ASSERT_EQ(file_size, base::WriteFile(path, buffer.data(), file_size));
+  ASSERT_TRUE(base::WriteFile(path, base::as_bytes(base::make_span(buffer))));
 
   StreamPtr stream =
       FileStream::Open(path, Stream::AccessMode::READ,
@@ -765,8 +765,7 @@ TEST_F(FileStreamTest, Open_OpenExisting) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
-  int data_size = data.size();  // I hate ints for data size...
-  ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
+  ASSERT_TRUE(base::WriteFile(path, data));
 
   StreamPtr stream =
       FileStream::Open(path, Stream::AccessMode::READ_WRITE,
@@ -818,8 +817,7 @@ TEST_F(FileStreamTest, Open_CreateAlways_Existing) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
-  int data_size = data.size();  // I hate ints for data size...
-  ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
+  ASSERT_TRUE(base::WriteFile(path, data));
 
   StreamPtr stream =
       FileStream::Open(path, Stream::AccessMode::READ_WRITE,
@@ -857,8 +855,7 @@ TEST_F(FileStreamTest, Open_CreateNewOnly_Existing) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
-  int data_size = data.size();  // I hate ints for data size...
-  ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
+  ASSERT_TRUE(base::WriteFile(path, data));
 
   ErrorPtr error;
   StreamPtr stream =
@@ -888,8 +885,7 @@ TEST_F(FileStreamTest, Open_TruncateExisting_Existing) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::string data{"Lorem ipsum dolor sit amet ..."};
-  int data_size = data.size();  // I hate ints for data size...
-  ASSERT_EQ(data_size, base::WriteFile(path, data.data(), data_size));
+  ASSERT_TRUE(base::WriteFile(path, data));
 
   StreamPtr stream =
       FileStream::Open(path, Stream::AccessMode::READ_WRITE,

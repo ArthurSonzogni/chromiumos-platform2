@@ -52,13 +52,6 @@ class FileUtilsTest : public testing::Test {
   base::FilePath file_path_;
   base::ScopedTempDir temp_dir_;
 
-  // Writes |contents| to |file_path_|. Pulled into a separate function just
-  // to improve readability of tests.
-  void WriteFile(const std::string& contents) {
-    EXPECT_EQ(contents.length(),
-              base::WriteFile(file_path_, contents.c_str(), contents.length()));
-  }
-
   // Verifies that the file at |file_path_| exists and contains |contents|.
   void ExpectFileContains(const std::string& contents) {
     EXPECT_TRUE(base::PathExists(file_path_));
@@ -101,7 +94,7 @@ TEST_F(FileUtilsTest, TouchFileCreateDirectoryStructure) {
 }
 
 TEST_F(FileUtilsTest, TouchFileExisting) {
-  WriteFile("abcd");
+  EXPECT_TRUE(base::WriteFile(file_path_, "abcd"));
   EXPECT_TRUE(TouchFile(file_path_));
   ExpectFileContains("abcd");
 }
@@ -122,13 +115,13 @@ TEST_F(FileUtilsTest, TouchFileReplaceSymlink) {
 }
 
 TEST_F(FileUtilsTest, TouchFileReplaceOtherUser) {
-  WriteFile("abcd");
+  EXPECT_TRUE(base::WriteFile(file_path_, "abcd"));
   EXPECT_TRUE(TouchFile(file_path_, kPermissions777, geteuid() + 1, getegid()));
   ExpectFileContains("");
 }
 
 TEST_F(FileUtilsTest, TouchFileReplaceOtherGroup) {
-  WriteFile("abcd");
+  EXPECT_TRUE(base::WriteFile(file_path_, "abcd"));
   EXPECT_TRUE(TouchFile(file_path_, kPermissions777, geteuid(), getegid() + 1));
   ExpectFileContains("");
 }

@@ -313,7 +313,7 @@ TEST_F(ProcessTest, RedirectStdinUsingPipe) {
   EXPECT_TRUE(process_.Start());
   int write_fd = process_.GetPipe(STDIN_FILENO);
   EXPECT_EQ(-1, process_.GetPipe(STDERR_FILENO));
-  EXPECT_TRUE(base::WriteFile(GetFdPath(write_fd), kMessage, strlen(kMessage)));
+  EXPECT_TRUE(base::WriteFile(GetFdPath(write_fd), kMessage));
   close(write_fd);
   EXPECT_EQ(0, process_.Wait());
   ExpectFileEquals(kMessage, output_file_.value().c_str());
@@ -389,7 +389,7 @@ TEST_F(ProcessTest, ProcessExists) {
 TEST_F(ProcessTest, ResetPidByFile) {
   FilePath pid_path = temp_dir_.GetPath().Append("pid");
   EXPECT_FALSE(process_.ResetPidByFile(pid_path));
-  EXPECT_TRUE(base::WriteFile(pid_path, "456\n", 4));
+  EXPECT_TRUE(base::WriteFile(pid_path, "456\n"));
   EXPECT_TRUE(process_.ResetPidByFile(pid_path));
   EXPECT_EQ(456, process_.pid());
   // The purpose of this unit test is to check if Process::ResetPidByFile() can

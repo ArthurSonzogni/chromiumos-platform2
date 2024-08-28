@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/key_value_store.h>
+#include "brillo/key_value_store.h"
 
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <brillo/map_utils.h>
 #include <gtest/gtest.h>
+
+#include "brillo/map_utils.h"
 
 using base::FilePath;
 using base::ReadFileToString;
@@ -76,7 +77,7 @@ TEST_F(KeyValueStoreTest, LoadAndSaveFromFile) {
       temp_dir_.GetPath().Append("saved_temp.conf");
 
   string blob = "A=B\n# Comment\n";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
+  ASSERT_TRUE(base::WriteFile(temp_file_, blob));
   ASSERT_TRUE(store_.Load(temp_file_));
 
   string value;

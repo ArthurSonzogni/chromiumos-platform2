@@ -390,8 +390,7 @@ TEST_F(SafeFDTest, CopyContentsTo_PseudoFsLargeFallbackSuccess) {
     ASSERT_TRUE(file.is_valid());
 
     // Write test data to the pipe.
-    EXPECT_TRUE(
-        base::WriteFile(GetFdPath(pipes.writer), kTestData, sizeof(kTestData)));
+    EXPECT_TRUE(base::WriteFile(GetFdPath(pipes.writer), kTestData));
   }
 
   ASSERT_EQ(file.CopyContentsTo(&destination.first), SafeFD::Error::kNoError);
@@ -401,8 +400,10 @@ TEST_F(SafeFDTest, CopyContentsTo_PseudoFsLargeFallbackSuccess) {
   auto to_result = destination.first.ReadContents();
   EXPECT_EQ(to_result.second, SafeFD::Error::kNoError);
 
-  ASSERT_EQ(to_result.first.size(), sizeof(kTestData));
-  EXPECT_EQ(memcmp(to_result.first.data(), kTestData, sizeof(kTestData)), 0);
+  // Don't include the trailing \0 in the size.
+  const size_t expected_size = sizeof(kTestData) - 1;
+  ASSERT_EQ(to_result.first.size(), expected_size);
+  EXPECT_EQ(memcmp(to_result.first.data(), kTestData, expected_size), 0);
 }
 
 TEST_F(SafeFDTest, CopyContentsTo_NotInitialized) {

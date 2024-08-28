@@ -130,8 +130,7 @@ bool FileTest::WriteFile(const std::string& contents) {
   if (!SetupSubdir()) {
     return false;
   }
-  if (contents.length() !=
-      base::WriteFile(file_path_, contents.c_str(), contents.length())) {
+  if (!base::WriteFile(file_path_, contents)) {
     PLOG(ERROR) << "base::WriteFile failed";
     return false;
   }
@@ -192,7 +191,7 @@ TEST_F(FileUtilTest, OpenOrRemakeDir_SimpleSuccess) {
 }
 
 TEST_F(FileUtilTest, OpenOrRemakeDir_SuccessAfterRetry) {
-  ASSERT_NE(base::WriteFile(sub_dir_path_, "", 0), -1);
+  ASSERT_TRUE(base::WriteFile(sub_dir_path_, ""));
   SafeFD::Error err;
   SafeFD dir;
 

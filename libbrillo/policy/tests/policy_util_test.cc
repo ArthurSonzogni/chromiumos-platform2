@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "policy/policy_util.h"
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-
-#include "policy/policy_util.h"
+#include <gtest/gtest.h>
 
 namespace em = enterprise_management;
 
@@ -26,8 +25,7 @@ TEST(DevicePolicyUtilTest, LoadPolicyFromPath) {
 
   // Create the file with invalid data.
   std::string data = "invalid data";
-  ASSERT_TRUE(
-      base::WriteFile(invalid_policy_data_path, data.data(), data.size()));
+  ASSERT_TRUE(base::WriteFile(invalid_policy_data_path, data));
 
   // Create the file with good policy data.
   em::PolicyData policy_data;
@@ -36,8 +34,7 @@ TEST(DevicePolicyUtilTest, LoadPolicyFromPath) {
   policy_data.set_request_token("codepath-must-ignore-dmtoken");
   std::string policy_blob;
   policy_data.SerializeToString(&policy_blob);
-  ASSERT_TRUE(base::WriteFile(good_policy_data_path, policy_blob.data(),
-                              policy_blob.size()));
+  ASSERT_TRUE(base::WriteFile(good_policy_data_path, policy_blob));
 
   std::string policy_data_str;
   enterprise_management::PolicyFetchResponse policy;

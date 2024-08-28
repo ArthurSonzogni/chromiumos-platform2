@@ -402,15 +402,8 @@ bool WriteToFile(const base::FilePath& path, const char* data, size_t size) {
       return false;
     }
   }
-  // base::WriteFile takes an int size.
-  if (size > std::numeric_limits<int>::max()) {
-    LOG(ERROR) << "Cannot write to " << path.value()
-               << ". Data is too large: " << size << " bytes.";
-    return false;
-  }
 
-  int data_written = base::WriteFile(path, data, size);
-  return data_written == static_cast<int>(size);
+  return base::WriteFile(path, std::string_view(data, size));
 }
 
 bool SyncFileOrDirectory(const base::FilePath& path,

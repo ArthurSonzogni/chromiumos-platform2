@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
-#include <brillo/osrelease_reader.h>
+#include "brillo/osrelease_reader.h"
 
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -45,9 +45,9 @@ TEST_F(OsReleaseReaderTest, CompleteTest) {
   string bob = "bob";
   string osreleasecontent = "TEST_KEY=bonjour\nNAME=bob\n";
 
-  base::WriteFile(osreleased_.Append("TEST_KEY"), hello.data(), hello.size());
-  base::WriteFile(osreleased_.Append("GREETINGS"), ola.data(), ola.size());
-  base::WriteFile(osrelease_, osreleasecontent.data(), osreleasecontent.size());
+  base::WriteFile(osreleased_.Append("TEST_KEY"), hello);
+  base::WriteFile(osreleased_.Append("GREETINGS"), ola);
+  base::WriteFile(osrelease_, osreleasecontent);
 
   store_.LoadTestingOnly(temp_dir_.GetPath());
 
@@ -79,9 +79,8 @@ TEST_F(OsReleaseReaderTest, NoNewLine) {
   string hello = "hello\n";
   string bonjour = "bonjour\ngarbage";
 
-  base::WriteFile(osreleased_.Append("HELLO"), hello.data(), hello.size());
-  base::WriteFile(osreleased_.Append("BONJOUR"), bonjour.data(),
-                  bonjour.size());
+  base::WriteFile(osreleased_.Append("HELLO"), hello);
+  base::WriteFile(osreleased_.Append("BONJOUR"), bonjour);
 
   store_.LoadTestingOnly(temp_dir_.GetPath());
 
