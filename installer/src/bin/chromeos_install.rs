@@ -51,7 +51,10 @@ struct Args {
     preserve_stateful: bool,
 
     /// Path to a Chromium OS image to install onto the device's hard drive
-    #[arg(long)]
+    // TODO(b/356344778): Does this _have_ to conflict with skip_rootfs?
+    // See `check_payload_image` in chromeos-install.sh to understand why.
+    // I expect this to get worked out as we continue to rustify.
+    #[arg(long, conflicts_with("skip_rootfs"))]
     payload_image: Option<String>,
 
     /// Path to PMBR code to be installed
@@ -236,6 +239,12 @@ mod tests {
     #[test]
     fn skip_rootfs_needs_pmbr() {
         let args = Args::try_parse_from(["arg0", "--skip_rootfs"]);
+        assert!(args.is_err());
+    }
+
+    #[test]
+    fn payload_image_cant_skip_rootfs() {
+        let args = Args::try_parse_from(["arg0", "--skip_rootfs", "--payload_image", "/path"]);
         assert!(args.is_err());
     }
 }
