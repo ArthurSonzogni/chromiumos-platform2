@@ -526,6 +526,33 @@ void OnDeviceModelService::FormatInput(
   std::move(callback).Run(result);
 }
 
+void OnDeviceModelService::ValidateSafetyResult(
+    mojom::SafetyFeature safety_feature,
+    const std::string& text,
+    mojom::SafetyInfoPtr safety_info,
+    ValidateSafetyResultCallback callback) {
+  if (RetryIfShimIsNotReady(&OnDeviceModelService::ValidateSafetyResult,
+                            callback, false, safety_feature, text,
+                            safety_info)) {
+    return;
+  }
+
+  auto validate_safety_result =
+      shim_loader_->Get<ValidateSafetyResultSignature>(
+          kValidateSafetyResultName);
+  if (!validate_safety_result) {
+    LOG(ERROR) << "Unable to resolve ValidateSafetyResult() symbol.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  bool result =
+      validate_safety_result(static_cast<SafetyFeature>(safety_feature), text,
+                             safety_info->class_scores);
+
+  std::move(callback).Run(result);
+}
+
 void OnDeviceModelService::DeleteModel(
     base::WeakPtr<mojom::OnDeviceModel> model) {
   if (!model) {

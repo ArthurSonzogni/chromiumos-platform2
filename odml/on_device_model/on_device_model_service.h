@@ -70,6 +70,11 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
                    const base::flat_map<std::string, std::string>& fields,
                    FormatInputCallback callback) override;
 
+  void ValidateSafetyResult(mojom::SafetyFeature safety_feature,
+                            const std::string& text,
+                            mojom::SafetyInfoPtr safety_info,
+                            ValidateSafetyResultCallback callback) override;
+
   void LoadModel(mojom::LoadModelParamsPtr params,
                  mojo::PendingReceiver<mojom::OnDeviceModel> model,
                  LoadPlatformModelCallback callback);

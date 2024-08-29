@@ -558,5 +558,49 @@ TEST_F(OnDeviceModelServiceTest, FormatInputNoFunction) {
   run_loop.Run();
 }
 
+TEST_F(OnDeviceModelServiceTest, ValidateSafetyResult) {
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("ValidateSafetyResult"))
+      .WillOnce(Return(reinterpret_cast<void*>(ValidateSafetyResultSignature(
+          [](SafetyFeature feature, const std::string& input,
+             const std::vector<float>& score) -> bool {
+            EXPECT_EQ(feature, static_cast<SafetyFeature>(
+                                   mojom::SafetyFeature::kAudioSummaryRequest));
+            EXPECT_EQ(input, "My input");
+            EXPECT_THAT(score, ElementsAre(1.0, 0.0, 0.5));
+            return true;
+          }))));
+
+  auto safety_info = on_device_model::mojom::SafetyInfo::New();
+  safety_info->class_scores = std::vector<float>({1.0, 0.0, 0.5});
+
+  base::RunLoop run_loop;
+  service()->ValidateSafetyResult(mojom::SafetyFeature::kAudioSummaryRequest,
+                                  "My input", std::move(safety_info),
+                                  base::BindLambdaForTesting([&](bool result) {
+                                    EXPECT_TRUE(result);
+                                    run_loop.Quit();
+                                  }));
+  run_loop.Run();
+}
+
+TEST_F(OnDeviceModelServiceTest, ValidateSafetyResultNoFunction) {
+  EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("ValidateSafetyResult"))
+      .WillOnce(Return(nullptr));
+
+  auto safety_info = on_device_model::mojom::SafetyInfo::New();
+  safety_info->class_scores = std::vector<float>({1.0, 0.0, 0.5});
+
+  base::RunLoop run_loop;
+  service()->ValidateSafetyResult(mojom::SafetyFeature::kAudioSummaryRequest,
+                                  "My input", std::move(safety_info),
+                                  base::BindLambdaForTesting([&](bool result) {
+                                    EXPECT_FALSE(result);
+                                    run_loop.Quit();
+                                  }));
+  run_loop.Run();
+}
+
 }  // namespace
 }  // namespace on_device_model
