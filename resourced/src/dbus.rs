@@ -42,6 +42,7 @@ use crate::feature::is_feature_enabled;
 use crate::feature::register_feature;
 use crate::memory;
 use crate::memory::MemInfo;
+use crate::memory::MemoryMarginsBps;
 use crate::memory::PsiMemoryHandler;
 use crate::memory::PsiPolicyResult;
 use crate::memory::MAX_PSI_ERROR_TYPE;
@@ -99,6 +100,7 @@ fn send_pressure_signal(
     signal_name: &str,
     level: u8,
     reclaim_target_kb: u64,
+    discard_type_option: Option<u8>,
 ) {
     let signal_origin_timestamp_ms = match get_monotonic_timestamp_ms() {
         Ok(timestamp) => timestamp,
@@ -116,6 +118,14 @@ fn send_pressure_signal(
     // Since the origin timestamp originates from CLOCK_MONOTONIC,
     // it should not be used from any guest context. It can only be compared within the host.
     .append3(level, reclaim_target_kb, signal_origin_timestamp_ms);
+
+    let msg = if let Some(discard_type) = discard_type_option {
+        // Appends argument discard type for Chrome.
+        msg.append1(discard_type)
+    } else {
+        msg
+    };
+
     if conn.send(msg).is_err() {
         error!("Send Chrome pressure signal failed.");
     }
@@ -191,7 +201,7 @@ fn register_interface(
             ("critical", "moderate"),
             move |_, _, ()| {
                 let margins = memory::get_memory_margins_kb();
-                Ok((margins.0, margins.1))
+                Ok((margins.critical, margins.moderate))
             },
         );
         b.method(
@@ -201,8 +211,9 @@ fn register_interface(
             move |_, _, ()| {
                 let margins = memory::get_component_margins_kb();
                 let result = HashMap::from([
-                    ("ChromeCritical", margins.chrome_critical),
                     ("ChromeModerate", margins.chrome_moderate),
+                    ("ChromeCritical", margins.chrome_critical),
+                    ("ChromeCriticalProtected", margins.chrome_critical_protected),
                     ("ArcvmForeground", margins.arcvm.foreground),
                     ("ArcvmPerceptible", margins.arcvm.perceptible),
                     ("ArcvmCached", margins.arcvm.cached),
@@ -214,13 +225,44 @@ fn register_interface(
             },
         );
         b.method(
+            "SetMemoryMargins",
+            ("raw_bytes",),
+            (),
+            move |_, _, (raw_bytes,): (Vec<u8>,)| {
+                let memory_margins: system_api::resource_manager::MemoryMargins =
+                    match protobuf::Message::parse_from_bytes(&raw_bytes) {
+                        Ok(result) => result,
+                        Err(e) => {
+                            error!("Failed to parse MemoryMargins protobuf: {:#}", e);
+                            return Err(MethodErr::failed(
+                                "Failed to parse MemoryMargins protobuf",
+                            ));
+                        }
+                    };
+                let margins_bps = MemoryMarginsBps {
+                    critical: memory_margins.critical_bps.into(),
+                    moderate: memory_margins.moderate_bps.into(),
+                    critical_protected: memory_margins.critical_protected_bps.into(),
+                };
+                memory::set_memory_margins_bps(margins_bps);
+                Ok(())
+            },
+        );
+        // TODO(vovoy): remove this method.
+        b.method(
             "SetMemoryMarginsBps",
             ("critical_bps", "moderate_bps"),
             ("critical", "moderate"),
             move |_, _, (critical_bps, moderate_bps): (u32, u32)| {
-                memory::set_memory_margins_bps(critical_bps, moderate_bps);
+                // Set critical protected margin the same as critical margin for the old API.
+                let margins_bps = MemoryMarginsBps {
+                    critical: critical_bps.into(),
+                    moderate: moderate_bps.into(),
+                    critical_protected: critical_bps.into(),
+                };
+                memory::set_memory_margins_bps(margins_bps);
                 let margins = memory::get_memory_margins_kb();
-                Ok((margins.0, margins.1))
+                Ok((margins.critical, margins.moderate))
             },
         );
         b.method("GetGameMode", (), ("game_mode",), move |_, _, ()| {
@@ -792,6 +834,7 @@ fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::P
         "MemoryPressureChrome",
         pressure_status.chrome_level as u8,
         pressure_status.chrome_reclaim_target_kb,
+        Some(pressure_status.discard_type as u8),
     );
     if pressure_status.arc_container_level != memory::PressureLevelArcContainer::None {
         send_pressure_signal(
@@ -799,6 +842,7 @@ fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::P
             "MemoryPressureArcContainer",
             pressure_status.arc_container_level as u8,
             pressure_status.arc_container_reclaim_target_kb,
+            None,
         );
     }
 }

@@ -305,6 +305,7 @@ mod tests {
         ComponentMarginsKb {
             chrome_critical: critical,
             chrome_moderate: moderate,
+            chrome_critical_protected: critical,
             arcvm: ArcMarginsKb {
                 foreground: critical * 3 / 4,
                 perceptible: critical,

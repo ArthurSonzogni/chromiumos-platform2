@@ -44,17 +44,19 @@ use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
 // memory. See also /usr/share/cros/init/swap.sh on DUT. BPS are basis points.
-// TODO(b/226425011): Please do not change DEFAULT_CRITICAL_MARGIN_BPS before
-// 2024/06.
-const DEFAULT_CRITICAL_MARGIN_BPS: u64 = 520;
 const DEFAULT_MODERATE_MARGIN_BPS: u64 = 4000;
+const DEFAULT_CRITICAL_MARGIN_BPS: u64 = 520;
+const DEFAULT_CRITICAL_PROTECTED_MARGIN_BPS: u64 = DEFAULT_CRITICAL_MARGIN_BPS;
 
 // A quarter of swap free is counted as available memory.
 const DEFAULT_RAM_SWAP_WEIGHT: u64 = 4;
 
 // Memory config paths.
 const RESOURCED_CONFIG_DIR: &str = "run/resourced";
-const MARGINS_FILENAME: &str = "margins_kb";
+// /run/resourced/margins_kb file is removed. Use D-Bus method SetMemoryMargins to set the
+// margins instead.
+// The old margins_kb is confusing that it doesn't update when the D-Bus method is called to update
+// the margin.
 const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 
 // The available memory for background components is discounted by 300 MiB.
@@ -382,45 +384,33 @@ pub fn get_background_available_memory_kb(meminfo: &MemInfo, game_mode: common::
     }
 }
 
-fn parse_margins<R: BufRead>(reader: R) -> Result<Vec<u64>> {
-    let first_line = reader
-        .lines()
-        .next()
-        .context("No content in margin buffer")??;
-    let margins = first_line
-        .split_whitespace()
-        .map(|x| x.parse().context("Couldn't parse an element in margins"))
-        .collect::<Result<Vec<u64>>>()?;
-    if margins.len() < 2 {
-        bail!("Less than 2 numbers in margin content.");
-    } else {
-        Ok(margins)
-    }
+pub struct MemoryMarginsBps {
+    pub moderate: u64,
+    pub critical: u64,
+    pub critical_protected: u64,
 }
 
-struct MemoryMarginsKb {
-    critical: u64,
-    moderate: u64,
+#[derive(Clone, Copy)]
+pub struct MemoryMarginsKb {
+    pub moderate: u64,
+    pub critical: u64,
+    critical_protected: u64,
 }
 
 static MEMORY_MARGINS: Lazy<Mutex<MemoryMarginsKb>> =
     Lazy::new(|| Mutex::new(get_default_memory_margins_kb_impl()));
 
-// Given the total system memory in KB and the basis points for critical and moderate margins
-// calculate the absolute values in KBs.
-fn total_mem_to_margins_bps(total_mem_kb: u64, critical_bps: u64, moderate_bps: u64) -> (u64, u64) {
+// Given the total system memory in KB and the basis points for the margin, calculate the absolute
+// values in KBs.
+fn total_mem_bps_to_kb(total_mem_kb: u64, margin_bps: u64) -> u64 {
     // A basis point is 1/100th of a percent, so we need to convert to whole digit percent and then
     // convert into a fraction of 1, so we divide by 100 twice, ie. 4000bps -> 40% -> .4.
     let total_mem_kb = total_mem_kb as f64;
-    let critical_bps = critical_bps as f64;
-    let moderate_bps = moderate_bps as f64;
-    (
-        (total_mem_kb * (critical_bps / 100.0) / 100.0) as u64,
-        (total_mem_kb * (moderate_bps / 100.0) / 100.0) as u64,
-    )
+    let bps = margin_bps as f64;
+    (total_mem_kb * (bps / 100.0) / 100.0) as u64
 }
 
-fn get_memory_margins_kb_from_bps(critical_bps: u64, moderate_bps: u64) -> MemoryMarginsKb {
+fn get_memory_margins_kb_from_bps(margins_bps: MemoryMarginsBps) -> MemoryMarginsKb {
     let total_memory_kb = match MemInfo::load() {
         Ok(meminfo) => meminfo.total,
         Err(e) => {
@@ -429,40 +419,30 @@ fn get_memory_margins_kb_from_bps(critical_bps: u64, moderate_bps: u64) -> Memor
         }
     };
 
-    let (critical, moderate) =
-        total_mem_to_margins_bps(total_memory_kb, critical_bps, moderate_bps);
-    MemoryMarginsKb { critical, moderate }
+    MemoryMarginsKb {
+        moderate: total_mem_bps_to_kb(total_memory_kb, margins_bps.moderate),
+        critical: total_mem_bps_to_kb(total_memory_kb, margins_bps.critical),
+        critical_protected: total_mem_bps_to_kb(total_memory_kb, margins_bps.critical_protected),
+    }
 }
 
 fn get_default_memory_margins_kb_impl() -> MemoryMarginsKb {
-    let margin_path = Path::new("/")
-        .join(RESOURCED_CONFIG_DIR)
-        .join(MARGINS_FILENAME);
-    match File::open(&margin_path).map(BufReader::new) {
-        Ok(reader) => match parse_margins(reader) {
-            Ok(margins) => {
-                return MemoryMarginsKb {
-                    critical: margins[0],
-                    moderate: margins[1],
-                }
-            }
-            Err(e) => error!("Couldn't parse {}: {:#}", &margin_path.display(), e),
-        },
-        Err(e) => error!("Couldn't read {}: {:#}", &margin_path.display(), e),
-    }
-
-    get_memory_margins_kb_from_bps(DEFAULT_CRITICAL_MARGIN_BPS, DEFAULT_MODERATE_MARGIN_BPS)
+    let margins_bps = MemoryMarginsBps {
+        moderate: DEFAULT_MODERATE_MARGIN_BPS,
+        critical: DEFAULT_CRITICAL_MARGIN_BPS,
+        critical_protected: DEFAULT_CRITICAL_PROTECTED_MARGIN_BPS,
+    };
+    get_memory_margins_kb_from_bps(margins_bps)
 }
 
-pub fn get_memory_margins_kb() -> (u64, u64) {
+pub fn get_memory_margins_kb() -> MemoryMarginsKb {
     let data = MEMORY_MARGINS.do_lock();
-    (data.critical, data.moderate)
+    *data
 }
 
-pub fn set_memory_margins_bps(critical: u32, moderate: u32) {
+pub fn set_memory_margins_bps(margins_bps: MemoryMarginsBps) {
     let mut data = MEMORY_MARGINS.do_lock();
-    let margins = get_memory_margins_kb_from_bps(critical.into(), moderate.into());
-    *data = margins;
+    *data = get_memory_margins_kb_from_bps(margins_bps);
 }
 
 pub struct ArcMarginsKb {
@@ -472,8 +452,9 @@ pub struct ArcMarginsKb {
 }
 
 pub struct ComponentMarginsKb {
-    pub chrome_critical: u64,
     pub chrome_moderate: u64,
+    pub chrome_critical: u64,
+    pub chrome_critical_protected: u64,
     pub arcvm: ArcMarginsKb,
     pub arc_container: ArcMarginsKb,
 }
@@ -497,30 +478,32 @@ impl ComponentMarginsKb {
 }
 
 pub fn get_component_margins_kb() -> ComponentMarginsKb {
-    let (critical, moderate) = get_memory_margins_kb();
+    let margins_kb = get_memory_margins_kb();
     ComponentMarginsKb {
-        chrome_critical: critical,
+        chrome_moderate: margins_kb.moderate,
 
-        chrome_moderate: moderate,
+        chrome_critical: margins_kb.critical,
+
+        chrome_critical_protected: margins_kb.critical_protected,
 
         arcvm: ArcMarginsKb {
             // 75 % of critical.
-            foreground: critical * 3 / 4,
+            foreground: margins_kb.critical * 3 / 4,
 
             // 100 % of critical.
-            perceptible: critical,
+            perceptible: margins_kb.critical,
 
-            cached: 2 * critical,
+            cached: 2 * margins_kb.critical,
         },
 
         arc_container: ArcMarginsKb {
             // Don't kill ARC container foreground process. It might be supported in the future.
             foreground: 0,
 
-            perceptible: critical,
+            perceptible: margins_kb.critical,
 
             // Minimal of moderate and 200 % of critical.
-            cached: std::cmp::min(moderate, 2 * critical),
+            cached: std::cmp::min(margins_kb.moderate, 2 * margins_kb.critical),
         },
     }
 }
@@ -534,6 +517,14 @@ pub enum PressureLevelChrome {
     Moderate = 1,
     // Chrome is advised to free all possible memory.
     Critical = 2,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum DiscardType {
+    // Only unprotected pages can be discarded.
+    Unprotected = 0,
+    // Both unprotected and protected pages can be discarded.
+    Protected = 1,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -552,6 +543,7 @@ pub enum PressureLevelArcContainer {
 pub struct PressureStatus {
     pub chrome_level: PressureLevelChrome,
     pub chrome_reclaim_target_kb: u64,
+    pub discard_type: DiscardType,
     pub arc_container_level: PressureLevelArcContainer,
     pub arc_container_reclaim_target_kb: u64,
 }
@@ -631,6 +623,7 @@ async fn try_vmms_reclaim_memory_critical(
     mut reclaim_target: u64,
     chrome_background_memory: u64,
     game_mode: common::GameMode,
+    discard_type: DiscardType,
 ) -> u64 {
     // Tell VM Memory Management Service to reclaim memory from guests to
     // try to save the background tabs.
@@ -653,6 +646,11 @@ async fn try_vmms_reclaim_memory_critical(
     // Don't try to reclaim memory at higher than cached priority when in ARC
     // game mode, to make sure we don't kill the game or something it depends upon.
     if game_mode == common::GameMode::Arc {
+        return cached_actual;
+    }
+    // Don't try to reclaim memory at higher than cached priority when the discard type is
+    // unprotected tabs only.
+    if discard_type == DiscardType::Unprotected {
         return cached_actual;
     }
 
@@ -690,6 +688,7 @@ async fn try_vmms_reclaim_memory(
     chrome_background_memory: u64,
     game_mode: common::GameMode,
     discard_stale_at_moderate: bool,
+    discard_type: DiscardType,
 ) -> u64 {
     let now = Instant::now();
 
@@ -720,6 +719,7 @@ async fn try_vmms_reclaim_memory(
                 reclaim_target,
                 chrome_background_memory,
                 game_mode,
+                discard_type,
             )
             .await
         }
@@ -831,6 +831,11 @@ pub async fn get_memory_pressure_status(
 
     let (raw_chrome_level, raw_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available);
+    let discard_type = if available < margins.chrome_critical_protected {
+        DiscardType::Protected
+    } else {
+        DiscardType::Unprotected
+    };
 
     // We cap ARC pressure levels at cached if reclaiming Chrome background memory will
     // be sufficient to push us back over the ARC perceptible margin. Compute the
@@ -851,6 +856,7 @@ pub async fn get_memory_pressure_status(
         background_memory_kb,
         game_mode,
         discard_stale_at_moderate,
+        discard_type,
     )
     .await;
 
@@ -877,6 +883,7 @@ pub async fn get_memory_pressure_status(
     Ok(PressureStatus {
         chrome_level: final_chrome_level,
         chrome_reclaim_target_kb: final_chrome_reclaim_target_kb,
+        discard_type,
         arc_container_level,
         arc_container_reclaim_target_kb,
     })
@@ -900,25 +907,6 @@ fn init_memory_configs_impl(root: &Path) -> Result<()> {
         bail!(
             "The config directory {} is not a directory.",
             config_path.display()
-        );
-    }
-
-    // Creates the memory margins config file.
-    let margins_path = config_path.join(MARGINS_FILENAME);
-    if !margins_path.exists() {
-        let mut margins_file = File::create(margins_path)?;
-
-        let default_margins = get_memory_margins_kb_from_bps(
-            DEFAULT_CRITICAL_MARGIN_BPS,
-            DEFAULT_MODERATE_MARGIN_BPS,
-        );
-        margins_file.write_all(
-            format!("{} {}", default_margins.critical, default_margins.moderate).as_bytes(),
-        )?;
-    } else if !margins_path.is_file() {
-        bail!(
-            "The margins path {} is not a regular file.",
-            margins_path.display()
         );
     }
 
@@ -1279,35 +1267,18 @@ Node 0, zone   Normal
     }
 
     #[test]
-    fn test_parse_margins() {
-        assert!(parse_margins("".to_string().as_bytes()).is_err());
-        assert!(parse_margins("123 4a6".to_string().as_bytes()).is_err());
-        assert!(parse_margins("123.2 412.3".to_string().as_bytes()).is_err());
-        assert!(parse_margins("123".to_string().as_bytes()).is_err());
+    fn test_total_mem_bps_to_kb() {
+        let margin1 = total_mem_bps_to_kb(100000 /* 100mb */, 1200 /* 12% */);
+        assert_eq!(margin1, 12000 /* 12mb */);
 
-        let margins = parse_margins("123 456".to_string().as_bytes()).unwrap();
-        assert_eq!(margins.len(), 2);
-        assert_eq!(margins[0], 123);
-        assert_eq!(margins[1], 456);
-    }
+        let margin2 = total_mem_bps_to_kb(100000 /* 100mb */, 3600 /* 36% */);
+        assert_eq!(margin2, 36000 /* 36mb */);
 
-    #[test]
-    fn test_bps_to_margins_bps() {
-        let (critical, moderate) = total_mem_to_margins_bps(
-            100000, /* 100mb */
-            1200,   /* 12% */
-            3600,   /* 36% */
-        );
-        assert_eq!(critical, 12000 /* 12mb */);
-        assert_eq!(moderate, 36000 /* 36mb */);
+        let margin3 = total_mem_bps_to_kb(1000000 /* 1000mb */, 1250 /* 12.50% */);
+        assert_eq!(margin3, 125000 /* 125mb */);
 
-        let (critical, moderate) = total_mem_to_margins_bps(
-            1000000, /* 1000mb */
-            1250,    /* 12.50% */
-            7340,    /* 73.4% */
-        );
-        assert_eq!(critical, 125000 /* 125mb */);
-        assert_eq!(moderate, 734000 /* 734mb */);
+        let margin4 = total_mem_bps_to_kb(1000000 /* 1000mb */, 7340 /* 73.4% */);
+        assert_eq!(margin4, 734000 /* 734mb */);
     }
 
     #[test]
@@ -1331,32 +1302,6 @@ Node 0, zone   Normal
         std::fs::create_dir_all(root.path().join(RESOURCED_CONFIG_DIR)).unwrap();
         // Checks that config dir already exists. Creates the margins file.
         assert!(init_memory_configs_impl(root.path()).is_ok());
-    }
-
-    #[test]
-    fn test_init_memory_configs_margins_exist() {
-        let root = tempdir().unwrap();
-        std::fs::create_dir_all(root.path().join(RESOURCED_CONFIG_DIR)).unwrap();
-        let mut margins_file = File::create(
-            root.path()
-                .join(RESOURCED_CONFIG_DIR)
-                .join(MARGINS_FILENAME),
-        )
-        .unwrap();
-        margins_file.write_all("100 1000".as_bytes()).unwrap();
-        assert!(init_memory_configs_impl(root.path()).is_ok());
-    }
-
-    #[test]
-    fn test_init_memory_configs_margins_is_dir() {
-        let root = tempdir().unwrap();
-        std::fs::create_dir_all(
-            root.path()
-                .join(RESOURCED_CONFIG_DIR)
-                .join(MARGINS_FILENAME),
-        )
-        .unwrap();
-        assert!(init_memory_configs_impl(root.path()).is_err());
     }
 
     #[test]
@@ -1423,8 +1368,9 @@ Node 0, zone   Normal
     #[test]
     fn test_get_stale_tab_age_cutoff() {
         let margins = ComponentMarginsKb {
-            chrome_critical: 1000,
             chrome_moderate: 5000,
+            chrome_critical: 1000,
+            chrome_critical_protected: 1000,
             arc_container: ArcMarginsKb {
                 foreground: 0,
                 perceptible: 0,
