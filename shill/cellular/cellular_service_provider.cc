@@ -413,7 +413,7 @@ bool CellularServiceProvider::VariantSupportsTethering(
   }
   static constexpr auto blocklist = base::MakeFixedFlatSet<std::string_view>(
       {// trogdor variants
-       "kingoftown", "lazor", "limozeen", "pazquel", "pazquel360",
+       "kingoftown", "lazor", "limozeen", "pazquel", "pazquel360", "pompom",
        // strongbad variants
        "coachz", "quackingstick",
        // Temporarily disabled on pujjoteen5 b/321064759
