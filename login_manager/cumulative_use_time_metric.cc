@@ -198,9 +198,7 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::WriteMetricsFile() {
     return false;
   }
 
-  int data_size = data_json.size();
-  if (base::WriteFile(metrics_file_, data_json.data(), data_size) !=
-      data_size) {
+  if (!base::WriteFile(metrics_file_, data_json)) {
     LOG(ERROR) << "Failed to write metric data to " << metrics_file_.value();
     return false;
   }

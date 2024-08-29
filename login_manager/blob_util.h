@@ -11,10 +11,6 @@
 #include <string_view>
 #include <vector>
 
-namespace base {
-class FilePath;
-}
-
 namespace google {
 namespace protobuf {
 class MessageLite;
@@ -33,11 +29,6 @@ std::vector<uint8_t> StringToBlob(std::string_view str);
 
 // Returns string containing the same value of the given |blob|.
 std::string BlobToString(const std::vector<uint8_t>& blob);
-
-// Thin wrapper of base::WriteFile to adapt blob interface.
-// Returns true on success.
-bool WriteBlobToFile(const base::FilePath& filename,
-                     const std::vector<uint8_t>& blob);
 
 }  // namespace login_manager
 

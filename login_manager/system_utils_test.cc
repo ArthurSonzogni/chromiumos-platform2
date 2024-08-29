@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <login_manager/system_utils_impl.h>
-
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
+
+#include "login_manager/system_utils_impl.h"
 
 namespace login_manager {
 
@@ -21,8 +21,7 @@ TEST(SystemUtilsTest, CorrectFileWrite) {
   std::string old_data("what");
   std::string new_data("ho, neighbor");
 
-  ASSERT_EQ(old_data.length(),
-            base::WriteFile(scratch, old_data.c_str(), old_data.length()));
+  ASSERT_TRUE(base::WriteFile(scratch, old_data));
 
   SystemUtilsImpl utils;
   ASSERT_TRUE(utils.AtomicFileWrite(scratch, new_data));

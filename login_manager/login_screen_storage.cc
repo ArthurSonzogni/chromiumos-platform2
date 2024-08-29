@@ -65,9 +65,7 @@ bool LoginScreenStorage::Store(brillo::ErrorPtr* error,
     return false;
   }
 
-  if (base::WriteFile(GetPersistentStoragePathForKey(key),
-                      reinterpret_cast<char*>(value.data()),
-                      value.size()) != value.size()) {
+  if (!base::WriteFile(GetPersistentStoragePathForKey(key), value)) {
     *error = CreateError(DBUS_ERROR_IO_ERROR,
                          "couldn't write key/value pair to the disk.");
     return false;
@@ -154,7 +152,7 @@ bool LoginScreenStorage::WriteIndexToFile(
   const std::string index_blob = index.SerializeAsString();
   return base::WriteFile(
       persistent_storage_path_.Append(kLoginScreenStorageIndexFilename),
-      index_blob.data(), index_blob.size());
+      index_blob);
 }
 
 bool LoginScreenStorage::CreateSharedMemoryWithData(

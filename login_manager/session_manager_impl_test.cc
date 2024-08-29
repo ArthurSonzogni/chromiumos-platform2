@@ -1685,7 +1685,7 @@ TEST_F(SessionManagerImplTest, RetrieveDeviceLocalAccountPolicySuccess) {
   base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
   SetupDeviceLocalAccount(kSaneEmail);
   ASSERT_TRUE(base::CreateDirectory(policy_path.DirName()));
-  ASSERT_TRUE(WriteBlobToFile(policy_path, policy_blob));
+  ASSERT_TRUE(base::WriteFile(policy_path, policy_blob));
 
   std::vector<uint8_t> out_blob;
   brillo::ErrorPtr error;
@@ -2108,7 +2108,7 @@ TEST_F(SessionManagerImplTest, DisconnectLogFile) {
   // Write a log file and create a relative symlink pointing at it.
   constexpr char kData[] = "fake log data";
   const base::FilePath kLogFile = log_dir_.GetPath().Append("ui.real");
-  ASSERT_EQ(strlen(kData), base::WriteFile(kLogFile, kData, strlen(kData)));
+  ASSERT_TRUE(base::WriteFile(kLogFile, kData));
   ASSERT_TRUE(base::CreateSymbolicLink(kLogFile.BaseName(), log_symlink_));
 
   struct stat st;
@@ -2140,7 +2140,7 @@ TEST_F(SessionManagerImplTest, DontDisconnectLogFileInOtherDir) {
   const base::FilePath kSubdir = log_dir_.GetPath().Append("subdir");
   ASSERT_TRUE(base::CreateDirectory(kSubdir));
   const base::FilePath kLogFile = kSubdir.Append("ui.real");
-  ASSERT_EQ(strlen(kData), base::WriteFile(kLogFile, kData, strlen(kData)));
+  ASSERT_TRUE(base::WriteFile(kLogFile, kData));
   ASSERT_TRUE(base::CreateSymbolicLink(kLogFile, log_symlink_));
 
   struct stat st;

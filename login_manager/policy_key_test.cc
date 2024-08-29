@@ -39,7 +39,7 @@ class PolicyKeyTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &tmpfile_));
-    ASSERT_EQ(2, base::WriteFile(tmpfile_, "a", 2));
+    ASSERT_TRUE(base::WriteFile(tmpfile_, std::string_view("a", 2)));
   }
 
   void TearDown() override {}
@@ -111,7 +111,7 @@ TEST_F(PolicyKeyTest, NoKeyToLoad) {
 }
 
 TEST_F(PolicyKeyTest, EmptyKeyToLoad) {
-  ASSERT_EQ(0, base::WriteFile(tmpfile_, "", 0));
+  ASSERT_TRUE(base::WriteFile(tmpfile_, ""));
   ASSERT_TRUE(base::PathExists(tmpfile_));
   CheckPublicKeyUtil bad_key_util(false);
 

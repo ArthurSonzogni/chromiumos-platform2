@@ -400,10 +400,8 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   bool DeleteTestDir() { return temp_dir_.Delete(); }
 
   bool WriteGarbageToMetricsFile(const std::string& data) {
-    int written =
-        base::WriteFile(cumulative_use_time_metric_->GetMetricsFileForTest(),
-                        data.data(), data.size());
-    return written == static_cast<int>(data.size());
+    return base::WriteFile(cumulative_use_time_metric_->GetMetricsFileForTest(),
+                           data);
   }
 
  protected:

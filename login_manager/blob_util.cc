@@ -5,8 +5,6 @@
 #include "login_manager/blob_util.h"
 
 #include <base/check.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <google/protobuf/message_lite.h>
 
@@ -27,13 +25,6 @@ std::vector<uint8_t> StringToBlob(std::string_view str) {
 
 std::string BlobToString(const std::vector<uint8_t>& blob) {
   return std::string(reinterpret_cast<const char*>(blob.data()), blob.size());
-}
-
-bool WriteBlobToFile(const base::FilePath& filename,
-                     const std::vector<uint8_t>& blob) {
-  int result = base::WriteFile(
-      filename, reinterpret_cast<const char*>(blob.data()), blob.size());
-  return result >= 0 && static_cast<size_t>(result) == blob.size();
 }
 
 }  // namespace login_manager

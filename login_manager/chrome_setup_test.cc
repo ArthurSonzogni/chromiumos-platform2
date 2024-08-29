@@ -26,10 +26,10 @@
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
-#include <libsegmentation/feature_management.h>
-#include <libsegmentation/feature_management_fake.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libsegmentation/feature_management.h>
+#include <libsegmentation/feature_management_fake.h>
 
 using chromeos::ui::ChromiumCommandBuilder;
 using ::testing::Contains;
@@ -380,9 +380,7 @@ void InitWithUseFlag(std::optional<std::string> flag,
   if (flag) {
     flag_file_contents = *flag + "\n";
   }
-  if (base::WriteFile(use_flags_path, flag_file_contents.c_str(),
-                      flag_file_contents.length()) !=
-      flag_file_contents.length()) {
+  if (!base::WriteFile(use_flags_path, flag_file_contents)) {
     PLOG(FATAL) << "Could not write to " << use_flags_path.value() << ": ";
   }
 
@@ -390,7 +388,7 @@ void InitWithUseFlag(std::optional<std::string> flag,
   base::FilePath lsb_path = chromeos::ui::util::GetReparentedPath(
       ChromiumCommandBuilder::kLsbReleasePath, test_dir);
   CHECK(base::CreateDirectoryAndGetError(lsb_path.DirName(), &error)) << error;
-  if (base::WriteFile(lsb_path, "", 0) != 0) {
+  if (!base::WriteFile(lsb_path, "")) {
     PLOG(FATAL) << "Could not write to " << lsb_path.value() << ": ";
   }
   CHECK(builder->Init());

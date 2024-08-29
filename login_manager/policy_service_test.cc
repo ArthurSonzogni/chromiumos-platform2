@@ -542,7 +542,7 @@ class PolicyServiceNamespaceTest : public testing::Test {
   // Saves a policy value to disk embedded in a PolicyFetchResponse.
   void SavePolicyToFile(const base::FilePath& policy_path,
                         const std::string& policy_value) {
-    EXPECT_TRUE(WriteBlobToFile(policy_path, PolicyValueToBlob(policy_value)));
+    EXPECT_TRUE(base::WriteFile(policy_path, PolicyValueToBlob(policy_value)));
   }
 
   brillo::FakeMessageLoop fake_loop_{nullptr};

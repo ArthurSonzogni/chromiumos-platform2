@@ -120,7 +120,7 @@ TEST_F(DeviceLocalAccountManagerTest, PurgeStaleAccounts) {
   SetupKey();
 
   ASSERT_TRUE(base::CreateDirectory(fake_account_policy_path_.DirName()));
-  ASSERT_TRUE(WriteBlobToFile(fake_account_policy_path_, GetTestPolicyBlob()));
+  ASSERT_TRUE(base::WriteFile(fake_account_policy_path_, GetTestPolicyBlob()));
 
   em::ChromeDeviceSettingsProto device_settings;
   manager_->UpdateDeviceSettings(device_settings);

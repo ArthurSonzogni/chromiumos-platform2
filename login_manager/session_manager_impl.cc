@@ -1499,7 +1499,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       break;
     default:
       NOTREACHED_IN_MIGRATION() << "Unhandled play store auto-update mode: "
-                   << request.play_store_auto_update() << ".";
+                                << request.play_store_auto_update() << ".";
   }
 
   switch (request.dalvik_memory_profile()) {
@@ -1517,7 +1517,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       break;
     default:
       NOTREACHED_IN_MIGRATION() << "Unhandled dalvik_memory_profle: "
-                   << request.dalvik_memory_profile() << ".";
+                                << request.dalvik_memory_profile() << ".";
   }
 
   switch (request.host_ureadahead_mode()) {
@@ -1532,7 +1532,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       break;
     default:
       NOTREACHED_IN_MIGRATION() << "Unhandled host_ureadahead_mode: "
-                   << request.host_ureadahead_mode() << ".";
+                                << request.host_ureadahead_mode() << ".";
   }
 
   if (!StartArcContainer(env_vars, error)) {
@@ -1678,8 +1678,7 @@ bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
                                     "Invalid CPU restriction state specified.");
       return false;
   }
-  if (base::WriteFile(base::FilePath(kCpuSharesFile), shares_out.c_str(),
-                      shares_out.length()) != shares_out.length()) {
+  if (!base::WriteFile(base::FilePath(kCpuSharesFile), shares_out)) {
     *error =
         CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
                              "Error updating Android container's cgroups.");
@@ -2074,8 +2073,9 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
       env_vars.emplace_back("COPY_PACKAGES_CACHE=0");
       break;
     default:
-      NOTREACHED_IN_MIGRATION() << "Wrong packages cache mode: "
-                   << request.packages_cache_mode() << ".";
+      NOTREACHED_IN_MIGRATION()
+          << "Wrong packages cache mode: " << request.packages_cache_mode()
+          << ".";
   }
 
   if (request.skip_gms_core_cache()) {
