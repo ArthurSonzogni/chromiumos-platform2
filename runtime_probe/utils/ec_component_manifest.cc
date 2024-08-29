@@ -98,8 +98,9 @@ EcComponentManifest::Component::I2c::Expect::Create(
     LOG(ERROR) << "Invalid or missing field: reg";
     return std::nullopt;
   }
-  if (!SetHexValue(dv.FindString("value"), ret.value)) {
-    LOG(ERROR) << "Invalid or missing field: value";
+  auto value = dv.FindString("value");
+  if (value && !SetHexValue(value, ret.value)) {
+    LOG(ERROR) << "Invalid field: value";
     return std::nullopt;
   }
   return ret;

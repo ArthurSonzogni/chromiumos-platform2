@@ -81,7 +81,7 @@ bool EcComponentFunction::IsValidComponent(
     if (cmd &&
         cmd->RunWithMultipleAttempts(ec_dev_fd.get(), kEcCmdNumAttempts) &&
         !cmd->I2cStatus()) {
-      if (expect.value == cmd->Data()) {
+      if (!expect.value || expect.value == cmd->Data()) {
         return true;
       }
     }

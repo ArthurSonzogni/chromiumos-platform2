@@ -28,7 +28,7 @@ struct EcComponentManifest {
     struct I2c {
       struct Expect {
         uint32_t reg;
-        uint32_t value;
+        std::optional<uint32_t> value;
         static std::optional<Expect> Create(const base::Value::Dict&);
       };
       uint8_t port;

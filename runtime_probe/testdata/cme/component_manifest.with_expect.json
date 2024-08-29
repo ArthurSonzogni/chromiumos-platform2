@@ -30,9 +30,7 @@
         "addr": "0x01",
         "expect": [
           {
-            "reg": "0x02",
-            "mask": "0xff",
-            "value": "0x02"
+            "reg": "0x02"
           }
         ]
       }

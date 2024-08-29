@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/ec_component.h"
+
 #include <memory>
 #include <utility>
 
@@ -13,7 +15,6 @@
 #include <libec/get_version_command.h>
 #include <libec/i2c_read_command.h>
 
-#include "runtime_probe/functions/ec_component.h"
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/utils/ec_component_manifest.h"
 #include "runtime_probe/utils/function_test_utils.h"
@@ -295,6 +296,31 @@ TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cValueMismatch) {
                                  kMismatchValue);
   ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
                            CreateProbeResultFromJson("[]"));
+}
+
+TEST_F(EcComponentFunctionTestWithExpect, ProbeI2cOptionalValue) {
+  constexpr auto kMismatchValue = 0xff;
+  auto arguments = base::JSONReader::Read(R"JSON(
+    {
+      "type": "base_sensor",
+      "name": "base_sensor_2"
+    }
+  )JSON");
+  auto probe_function =
+      CreateProbeFunction<MockEcComponentFunction>(arguments->GetDict());
+
+  // base_sensor_2
+  ExpectI2cReadSuccessWithResult(probe_function.get(), 3, 0x02, 0x02, 1,
+                                 kMismatchValue);
+  ExpectUnorderedListEqual(EvalProbeFunction(probe_function.get()),
+                           CreateProbeResultFromJson(R"JSON(
+    [
+      {
+        "component_type": "base_sensor",
+        "component_name": "base_sensor_2"
+      }
+    ]
+  )JSON"));
 }
 
 class EcComponentFunctionTestECVersion : public EcComponentFunctionTest {
