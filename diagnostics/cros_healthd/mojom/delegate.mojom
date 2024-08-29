@@ -180,10 +180,8 @@ interface Delegate {
   //
   // The response:
   // * |thermal_sensors| - An array containing the information for each thermal
-  //                       sensor.
-  // * |err| - Error message if existed.
-  GetEcThermalSensors()
-      => (array<ThermalSensorInfo> thermal_sensors, string? err);
+  //                       sensor. Return null if error occurs.
+  GetEcThermalSensors() => (array<ThermalSensorInfo>? thermal_sensors);
 
   // Get internal touchpad devices.
   //

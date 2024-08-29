@@ -4,7 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/thermal_fetcher.h"
 
-#include <string>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -61,12 +61,13 @@ std::vector<mojom::ThermalSensorInfoPtr> GetSysfsThermalSensors(
 void HandleGetEcThermalSensors(
     std::vector<mojom::ThermalSensorInfoPtr> result,
     FetchThermalInfoCallback callback,
-    std::vector<mojom::ThermalSensorInfoPtr> ec_sensors,
-    const std::optional<std::string>& error) {
+    std::optional<std::vector<mojom::ThermalSensorInfoPtr>> ec_sensors) {
   // As an attempt to get perform best-effort telemetry, we append ec_sensor
   // information even if error is encountered.
-  for (auto& ec_sensor : ec_sensors) {
-    result.emplace_back(std::move(ec_sensor));
+  if (ec_sensors.has_value()) {
+    for (auto& ec_sensor : ec_sensors.value()) {
+      result.emplace_back(std::move(ec_sensor));
+    }
   }
   std::move(callback).Run(mojom::ThermalResult::NewThermalInfo(
       mojom::ThermalInfo::New(std::move(result))));

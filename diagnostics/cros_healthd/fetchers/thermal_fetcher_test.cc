@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,8 +40,6 @@ constexpr char kSecondThermalZoneType[] = "type_2";
 constexpr char kSecondThermalZoneTemp[] = "40000";
 constexpr char kFirstEcSensorName[] = "ec_sensor_1";
 constexpr double kFirstEcSensorTemp = 30.1;
-
-constexpr char kEcFailureMessage[] = "Failed to read thermal value from fan EC";
 
 MATCHER_P(MatchesThermalSensorInfo, ptr, "") {
   return arg->name == ptr.get()->name &&
@@ -77,8 +76,8 @@ class ThermalFetcherTest : public BaseFileTest {
         kFirstEcSensorName, kFirstEcSensorTemp,
         mojom::ThermalSensorInfo::ThermalSensorSource::kEc));
     EXPECT_CALL(*mock_executor(), GetEcThermalSensors(_))
-        .WillOnce(base::test::RunOnceCallback<0>(std::move(ec_thermal_response),
-                                                 std::nullopt));
+        .WillOnce(
+            base::test::RunOnceCallback<0>(std::move(ec_thermal_response)));
   }
 
   double TemperatureMillicelsiusToDoubleCelsius(std::string temperature) {
@@ -176,8 +175,7 @@ TEST_F(ThermalFetcherTest, TestInvalidSysfsFetchSuccess) {
 // Test that fetcher works with no ec info.
 TEST_F(ThermalFetcherTest, TestNoEcFetchSuccess) {
   EXPECT_CALL(*mock_executor(), GetEcThermalSensors(_))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          std::vector<mojom::ThermalSensorInfoPtr>{}, std::nullopt));
+      .WillOnce(base::test::RunOnceCallback<0>(std::nullopt));
 
   auto result = FetchThermalInfoSync();
   ASSERT_TRUE(result->is_thermal_info());
@@ -202,8 +200,7 @@ TEST_F(ThermalFetcherTest, TestNoEcFetchSuccess) {
 // Test that fetcher succeeds when EC fetch fails with error.
 TEST_F(ThermalFetcherTest, TestEcErrorFetchFailure) {
   EXPECT_CALL(*mock_executor(), GetEcThermalSensors(_))
-      .WillOnce(base::test::RunOnceCallback<0>(
-          std::vector<mojom::ThermalSensorInfoPtr>{}, kEcFailureMessage));
+      .WillOnce(base::test::RunOnceCallback<0>(std::nullopt));
 
   auto result = FetchThermalInfoSync();
   ASSERT_TRUE(result->is_thermal_info());

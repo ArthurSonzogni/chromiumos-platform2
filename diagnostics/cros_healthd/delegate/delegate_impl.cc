@@ -658,14 +658,7 @@ void DelegateImpl::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
 }
 
 void DelegateImpl::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
-  std::optional<std::vector<mojom::ThermalSensorInfoPtr>> thermal_sensors =
-      FetchEcThermalSensors();
-
-  if (!thermal_sensors.has_value()) {
-    std::move(callback).Run({}, "Failed to read thermal sensor version");
-    return;
-  }
-  std::move(callback).Run(std::move(thermal_sensors.value()), std::nullopt);
+  std::move(callback).Run(FetchEcThermalSensors());
 }
 
 void DelegateImpl::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {

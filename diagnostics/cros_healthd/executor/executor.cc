@@ -1121,8 +1121,7 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetEcThermalSensors(CreateOnceDelegateCallback(
-      std::move(delegate), std::move(callback),
-      std::vector<mojom::ThermalSensorInfoPtr>{}, DELEGATE_LAUNCH_ERROR));
+      std::move(delegate), std::move(callback), std::nullopt));
   delegate_ptr->StartAsync();
 }
 
