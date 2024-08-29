@@ -25,7 +25,6 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/system/sys_info.h>
 #include <base/time/time.h>
 #include <dbus/cros-disks/dbus-constants.h>
 
@@ -208,21 +207,6 @@ DiskManager::Options DiskManager::ShouldUseKernelDrivers() {
   Options opts;
   DCHECK(!opts.in_kernel_exfat);
   DCHECK(!opts.in_kernel_ntfs);
-
-  // Get the ChromeOS release channel.
-  std::string channel;
-  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK", &channel)) {
-    LOG(ERROR) << "Cannot get ChromeOS release channel";
-    return opts;
-  }
-
-  VLOG(1) << "ChromeOS release channel " << quote(channel);
-
-  // Check the ChromeOS release channel.
-  if (channel != "testimage-channel" && channel != "canary-channel" &&
-      channel != "dev-channel") {
-    return opts;
-  }
 
   // Check the minimum kernel version to use the kernel drivers.
   const KernelVersion v = GetKernelVersion();
