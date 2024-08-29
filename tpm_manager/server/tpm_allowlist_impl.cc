@@ -92,6 +92,7 @@ constexpr DeviceName kTpm2DeviceNameAllowlist[] = {
     DeviceName{"HP", "HP EliteBook 840 G8 Notebook PC", kVendorIdIfx},
     DeviceName{"HP", "HP ProDesk 600 G3 SFF", kVendorIdIfx},
     DeviceName{"Dell Inc.", "Latitude 3420", kVendorIdStm},
+    DeviceName{"Dell Inc.", "Latitude 3400", kVendorIdStm},
 };
 
 std::optional<bool> IsTpmFileEnabled() {
