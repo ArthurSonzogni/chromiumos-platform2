@@ -491,8 +491,7 @@ bool CrosvmDiskResize(const std::string& socket_path,
 
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
   const std::string cpu_shares_str = std::to_string(cpu_shares);
-  if (base::WriteFile(cpu_cgroup.Append("cpu.shares"), cpu_shares_str.c_str(),
-                      cpu_shares_str.size()) != cpu_shares_str.size()) {
+  if (!base::WriteFile(cpu_cgroup.Append("cpu.shares"), cpu_shares_str)) {
     PLOG(ERROR) << "Failed to update " << cpu_cgroup.value() << " to "
                 << cpu_shares;
     return false;
@@ -509,8 +508,7 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
   // Set period to 100000us and quota to percent * 1000us.
   const std::string cpu_period_str = std::to_string(100000);
   const base::FilePath cfs_period_us = cpu_cgroup.Append("cpu.cfs_period_us");
-  if (base::WriteFile(cfs_period_us, cpu_period_str.c_str(),
-                      cpu_period_str.size()) != cpu_period_str.size()) {
+  if (!base::WriteFile(cfs_period_us, cpu_period_str)) {
     PLOG(ERROR) << "Failed to update " << cfs_period_us.value() << " to "
                 << cpu_period_str;
     return false;
@@ -524,8 +522,7 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
 
   const std::string cpu_quota_str = std::to_string(quota_int);
   const base::FilePath cfs_quota_us = cpu_cgroup.Append("cpu.cfs_quota_us");
-  if (base::WriteFile(cfs_quota_us, cpu_quota_str.c_str(),
-                      cpu_quota_str.size()) != cpu_quota_str.size()) {
+  if (!base::WriteFile(cfs_quota_us, cpu_quota_str)) {
     PLOG(ERROR) << "Failed to update " << cfs_quota_us.value() << " to "
                 << cpu_quota_str;
     return false;
@@ -537,8 +534,7 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
 bool UpdateCpuLatencySensitive(const base::FilePath& cpu_cgroup, bool enable) {
   std::string enable_str = std::to_string(static_cast<int>(enable));
   auto latency_sensitive = cpu_cgroup.Append("cpu.uclamp.latency_sensitive");
-  if (base::WriteFile(latency_sensitive, enable_str.c_str(),
-                      enable_str.size()) != enable_str.size()) {
+  if (!base::WriteFile(latency_sensitive, enable_str)) {
     PLOG(ERROR) << "Failed to update " << latency_sensitive.value() << " to "
                 << enable_str;
     return false;
@@ -551,8 +547,7 @@ bool UpdateCpuUclampMin(const base::FilePath& cpu_cgroup, double percent) {
 
   std::string uclamp_min_str = std::to_string(percent);
   auto uclamp_min = cpu_cgroup.Append("cpu.uclamp.min");
-  if (base::WriteFile(uclamp_min, uclamp_min_str.c_str(),
-                      uclamp_min_str.size()) != uclamp_min_str.size()) {
+  if (!base::WriteFile(uclamp_min, uclamp_min_str)) {
     PLOG(ERROR) << "Failed to update " << uclamp_min.value() << " to "
                 << uclamp_min_str;
     return false;

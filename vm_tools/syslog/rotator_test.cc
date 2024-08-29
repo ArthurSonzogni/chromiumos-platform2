@@ -1,6 +1,8 @@
 // Copyright 2020 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include "vm_tools/syslog/rotator.h"
+
 #include <string>
 #include <vector>
 
@@ -14,10 +16,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-
-#include "vm_tools/syslog/rotator.h"
+#include <gtest/gtest.h>
 
 namespace vm_tools {
 namespace syslog {
@@ -47,9 +47,12 @@ class RotatorTest : public ::testing::Test {
       if (i > 0) {
         file_path = file_path.AddExtension(base::NumberToString(i));
       }
-      int size = base::WriteFile(file_path, file_path.value().c_str(),
-                                 file_path.value().size());
-      VLOG(1) << "Wrote " << size << " bytes to " << file_path;
+      if (base::WriteFile(file_path, file_path.value())) {
+        VLOG(1) << "Wrote " << file_path.value().size() << " bytes to "
+                << file_path;
+      } else {
+        VLOG(1) << "Unable to write to " << file_path;
+      }
     }
   }
 

@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
-#include <vector>
-
 #include <stddef.h>
 #include <stdint.h>
 
+#include <string>
+#include <vector>
+
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -40,7 +41,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // The filename has no impact on this function's execution.
   base::FilePath file_path(env.temp_dir_.GetPath().Append("mime_types"));
-  base::WriteFile(file_path, reinterpret_cast<const char*>(data), size);
+  base::WriteFile(file_path, base::make_span(data, size));
 
   vm_tools::garcon::MimeTypeMap map;
   vm_tools::garcon::ParseMimeTypes(file_path.value(), &map);

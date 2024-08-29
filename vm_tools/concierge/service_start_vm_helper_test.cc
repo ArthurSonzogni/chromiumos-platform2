@@ -78,9 +78,7 @@ TEST(StartVMHelperTest, TestGetVmCpuArgs) {
 
     std::string test_cpu_id =
         i < cpu_nums / 2 ? std::to_string(0) : std::to_string(1);
-    int ret =
-        base::WriteFile(cpu_id_path, test_cpu_id.c_str(), test_cpu_id.length());
-    EXPECT_EQ(ret, test_cpu_id.length());
+    EXPECT_TRUE(base::WriteFile(cpu_id_path, test_cpu_id));
   }
 
   // Create package_id file and write id
@@ -89,9 +87,7 @@ TEST(StartVMHelperTest, TestGetVmCpuArgs) {
         base::StringPrintf("cpu%d/cpu_capacity", i));
     std::string test_cpu_capacity =
         i < cpu_nums / 2 ? std::to_string(741) : std::to_string(1024);
-    int ret = base::WriteFile(cpu_capacity_path, test_cpu_capacity.c_str(),
-                              test_cpu_capacity.length());
-    EXPECT_EQ(ret, test_cpu_capacity.length());
+    EXPECT_TRUE(base::WriteFile(cpu_capacity_path, test_cpu_capacity));
   }
 
   // Run GetVmCpuArgs on test files

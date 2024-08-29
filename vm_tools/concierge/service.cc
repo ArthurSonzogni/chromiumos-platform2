@@ -4288,7 +4288,7 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     if (enable_foz_db_list) {
       // Initiate foz db file, if it already exists, continue using it
       if (!file_exists) {
-        if (base::WriteFile(foz_db_list_file, "", 0) != 0) {
+        if (!base::WriteFile(foz_db_list_file, "")) {
           LOG(WARNING) << "Failed to create foz db list file";
           return VMGpuCacheSpec{};
         }

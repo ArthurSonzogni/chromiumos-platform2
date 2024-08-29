@@ -42,17 +42,13 @@ class UntrustedVMUtilsTest : public ::testing::Test {
   // Checks if |l1tf_status| yields |expected_status| when
   // |CheckUntrustedVMMitigationStatus| is called.
   void SetL1TFStatus(const std::string& l1tf_status) {
-    ASSERT_EQ(base::WriteFile(l1tf_status_path_, l1tf_status.c_str(),
-                              l1tf_status.size()),
-              l1tf_status.size());
+    ASSERT_TRUE(base::WriteFile(l1tf_status_path_, l1tf_status));
   }
 
   // Checks if |mds_status| yields |expected_status| when
   // |CheckUntrustedVMMitigationStatus| is called.
   void SetMDSStatus(const std::string& mds_status) {
-    ASSERT_EQ(base::WriteFile(mds_status_path_, mds_status.c_str(),
-                              mds_status.size()),
-              mds_status.size());
+    ASSERT_TRUE(base::WriteFile(mds_status_path_, mds_status));
   }
 
   class FakeUntrustedVMUtils : public UntrustedVMUtils {

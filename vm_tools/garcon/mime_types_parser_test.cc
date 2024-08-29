@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/mime_types_parser.h"
+
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/base64.h>
 #include <base/check.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-
-#include "vm_tools/garcon/mime_types_parser.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -63,9 +63,7 @@ class MimeTypesParserTest : public ::testing::Test {
   ~MimeTypesParserTest() override = default;
 
   void WriteContents(const std::string& file_contents) {
-    EXPECT_EQ(file_contents.size(),
-              base::WriteFile(mime_types_path_, file_contents.c_str(),
-                              file_contents.size()));
+    EXPECT_TRUE(base::WriteFile(mime_types_path_, file_contents));
   }
 
   // Ensures that parsing fails when mime.cache file is modified such that
@@ -99,9 +97,8 @@ TEST_F(MimeTypesParserTest, ValidResult) {
   WriteContents(buf);
   EXPECT_TRUE(ParseMimeTypes(TempFilePath(), &map));
   MimeTypeMap expected = {
-      {"pdf", "application/pdf"}, {"txt", "text/plain"},
-      {"doc", "text/plain"},      {"foo", "x/foo"},
-      {"🙂🤩", "x/smile"},
+      {"pdf", "application/pdf"}, {"txt", "text/plain"}, {"doc", "text/plain"},
+      {"foo", "x/foo"},           {"🙂🤩", "x/smile"},
   };
   EXPECT_EQ(map, expected);
 }

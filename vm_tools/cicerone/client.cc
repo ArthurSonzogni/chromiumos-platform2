@@ -468,9 +468,7 @@ int LaunchApplication(dbus::ObjectProxy* proxy,
 }
 
 void Write(const std::string& output_filepath, const std::string& content) {
-  int content_size = content.size();
-  if (content_size != base::WriteFile(base::FilePath(output_filepath),
-                                      content.c_str(), content_size)) {
+  if (!base::WriteFile(base::FilePath(output_filepath), content)) {
     LOG(ERROR) << "Failed to write to file " << output_filepath;
   }
 }

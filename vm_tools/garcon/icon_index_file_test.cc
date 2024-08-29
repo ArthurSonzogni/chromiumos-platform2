@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/icon_index_file.h"
+
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-
-#include "vm_tools/garcon/icon_index_file.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -32,8 +32,7 @@ class IconIndexFileTest : public ::testing::Test {
 
   base::FilePath WriteIndexThemeFile(const std::string& contents) {
     base::FilePath file_path = icon_theme_dir_.Append("index.theme");
-    EXPECT_EQ(contents.size(),
-              base::WriteFile(file_path, contents.c_str(), contents.size()));
+    EXPECT_TRUE(base::WriteFile(file_path, contents));
     return file_path;
   }
 

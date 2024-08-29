@@ -13,7 +13,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "net-base/ipv4_address.h"
-
 #include "vm_tools/concierge/fake_crosvm_control.h"
 
 using testing::Exactly;
@@ -710,7 +709,7 @@ TEST(VMUtilTest, GetCpuPackageIdAndCapacity) {
 
   // Test on valid cpu id
   constexpr char test_cpu_id[] = "1";
-  base::WriteFile(cpu_id_path, test_cpu_id, strlen(test_cpu_id));
+  base::WriteFile(cpu_id_path, test_cpu_id);
   auto validID = GetCpuPackageId(0, cpu_info_dir.GetPath());
   EXPECT_TRUE(validID);
   EXPECT_EQ(*validID, 1);
@@ -728,8 +727,7 @@ TEST(VMUtilTest, GetCpuPackageIdAndCapacity) {
 
   // Test on valid cpu capacity
   constexpr char test_cpu_capacity[] = "741";
-  base::WriteFile(cpu_capacity_path, test_cpu_capacity,
-                  strlen(test_cpu_capacity));
+  base::WriteFile(cpu_capacity_path, test_cpu_capacity);
   auto valid_capacity = GetCpuCapacity(0, cpu_info_dir.GetPath());
   EXPECT_TRUE(valid_capacity);
   EXPECT_EQ(*valid_capacity, 741);

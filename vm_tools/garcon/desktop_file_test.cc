@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/desktop_file.h"
+
 #include <map>
 #include <memory>
 #include <string>
@@ -10,12 +12,10 @@
 
 #include <base/check.h>
 #include <base/environment.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-
-#include "vm_tools/garcon/desktop_file.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -73,9 +73,7 @@ class DesktopFileTest : public ::testing::Test {
     base::FilePath desktop_file_path = apps_dir_.Append(relative_path);
     // If there's a relative path, create any directories in it.
     CHECK(base::CreateDirectory(desktop_file_path.DirName()));
-    EXPECT_EQ(file_contents.size(),
-              base::WriteFile(desktop_file_path, file_contents.c_str(),
-                              file_contents.size()));
+    EXPECT_TRUE(base::WriteFile(desktop_file_path, file_contents));
     return desktop_file_path;
   }
 

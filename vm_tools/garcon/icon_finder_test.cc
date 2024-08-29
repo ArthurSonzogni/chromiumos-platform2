@@ -2,19 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/garcon/icon_finder.cc"
+
 #include <algorithm>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
 #include <base/environment.h>
-
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-
-#include "vm_tools/garcon/icon_finder.cc"
 
 namespace vm_tools {
 namespace garcon {
@@ -41,15 +40,13 @@ class IconFinderTest : public ::testing::Test {
 
   void WriteIndexThemeFile(const std::string& contents) {
     base::FilePath file_path = icon_theme_dir_.Append("index.theme");
-    EXPECT_EQ(contents.size(),
-              base::WriteFile(file_path, contents.c_str(), contents.size()));
+    EXPECT_TRUE(base::WriteFile(file_path, contents));
   }
 
   void WriteDesktopFile(const std::string& desktop_file_name,
                         const std::string& contents) {
     base::FilePath file_path = desktop_file_dir_.Append(desktop_file_name);
-    EXPECT_EQ(contents.size(),
-              base::WriteFile(file_path, contents.c_str(), contents.size()));
+    EXPECT_TRUE(base::WriteFile(file_path, contents));
   }
 
   const base::FilePath& icon_theme_dir() { return icon_theme_dir_; }
@@ -153,7 +150,7 @@ TEST_F(IconFinderTest, HappyCase) {
       "Context=Applications\n"
       "Type=Threshold\n\n");
   base::FilePath icon_file_path = icon_dir().Append("gimp.png");
-  base::WriteFile(icon_file_path, "", 0);
+  base::WriteFile(icon_file_path, "");
   EXPECT_TRUE(LocateIconFile("gimp", 48, 1) == icon_file_path);
 }
 
@@ -178,7 +175,7 @@ TEST_F(IconFinderTest, HappyScalableCase) {
       "Context=Applications\n"
       "Type=Threshold\n\n");
   base::FilePath icon_file_path = scalable_icon_dir().Append("gimp.svg");
-  base::WriteFile(icon_file_path, "", 0);
+  base::WriteFile(icon_file_path, "");
   EXPECT_TRUE(LocateIconFile("gimp", 48, 1) == icon_file_path);
 }
 

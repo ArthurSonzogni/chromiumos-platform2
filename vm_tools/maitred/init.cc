@@ -1468,7 +1468,7 @@ bool Init::Setup() {
     base::FilePath use_hierarchy = base::FilePath(kCgroupRootDir)
                                        .Append("memory")
                                        .Append("memory.use_hierarchy");
-    if (base::WriteFile(use_hierarchy, "1", 1) != 1) {
+    if (!base::WriteFile(use_hierarchy, "1")) {
       PLOG(ERROR) << "Failed to set use_hierarchy to 1 on memory cgroup";
       return false;
     }

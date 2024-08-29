@@ -181,9 +181,8 @@ StartVmResponse Service::StartPluginVmInternal(StartPluginVmRequest request,
   // Generate the token used by cicerone to identify the VM and write it to
   // a VM specific directory that gets mounted into the VM.
   std::string vm_token = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  if (base::WriteFile(runtime_dir.GetPath().Append("cicerone.token"),
-                      vm_token.c_str(),
-                      vm_token.length()) != vm_token.length()) {
+  if (!base::WriteFile(runtime_dir.GetPath().Append("cicerone.token"),
+                       vm_token)) {
     PLOG(ERROR) << "Failure writing out cicerone token to file";
 
     response.set_failure_reason("Unable to set cicerone token");

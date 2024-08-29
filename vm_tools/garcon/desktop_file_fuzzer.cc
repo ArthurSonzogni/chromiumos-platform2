@@ -37,8 +37,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // We handle up to 10MB files in the code, but 16KB should be plenty for fuzz
   // testing.
   std::string file_contents = data_provider.ConsumeRandomLengthString(16384);
-  base::WriteFile(desktop_file_path, file_contents.c_str(),
-                  file_contents.size());
+  base::WriteFile(desktop_file_path, file_contents);
 
   std::unique_ptr<vm_tools::garcon::DesktopFile> desktop_file =
       vm_tools::garcon::DesktopFile::ParseDesktopFile(desktop_file_path);
