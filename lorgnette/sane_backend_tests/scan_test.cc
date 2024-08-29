@@ -5,7 +5,9 @@
 #include <png.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -122,19 +124,6 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   }
 }
 
-// copied from lorgnette/cli/file_pattern.cc
-static std::string escape_scanner_name(const std::string& scanner_name) {
-  std::string escaped;
-  for (char c : scanner_name) {
-    if (isalnum(c)) {
-      escaped += c;
-    } else {
-      escaped += '_';
-    }
-  }
-  return escaped;
-}
-
 static void verify_png_info(const char* filename,
                             uint32_t expected_dpi,
                             const std::string& color_mode) {
@@ -230,7 +219,8 @@ INSTANTIATE_TEST_SUITE_P(
 // Runs lorgnette_cli advanced_scan with args; returns exit code.
 static int _run_advanced_scan(const std::string& testReportDir,
                               const ScanTestParameter& scanParam,
-                              const std::string& scanner) {
+                              const std::string& scanner,
+                              std::vector<std::string>& out_image_paths) {
   brillo::ProcessImpl lorgnette_cmd;
 
   lorgnette_cmd.AddArg("/usr/local/bin/lorgnette_cli");
@@ -244,29 +234,36 @@ static int _run_advanced_scan(const std::string& testReportDir,
   // %s is the scanner name, %n is the page number
   lorgnette_cmd.AddArg("--output=" + testReportDir + "/%s-page%n.png");
 
-  return lorgnette_cmd.Run();
+  int ret = lorgnette_cmd.Run();
+
+  for (const auto& entry :
+       std::filesystem::directory_iterator(_get_test_output_path())) {
+    out_image_paths.push_back(entry.path());
+  }
+
+  return ret;
 }
 
 TEST_P(ScanTest, SinglePage) {
   const ScanTestParameter parameter = GetParam();
-  std::cout << "Press enter when a page suitable for " << parameter.source
-            << " is available for scanning..." << "\n";
+  std::cout << "Press enter when a single page suitable for "
+            << parameter.source << " is available for scanning..." << "\n";
   std::string ignored;
   std::getline(std::cin, ignored);
 
-  std::string output_path = _get_test_output_path();
+  const std::string output_path = _get_test_output_path();
+  std::vector<std::string> image_paths;
+  ASSERT_EQ(
+      _run_advanced_scan(output_path, parameter,
+                         *sane_backend_tests::scanner_under_test, image_paths),
+      0);
+  const std::string source = base::ToLowerASCII(parameter.source);
+  const uint8_t expected_images =
+      (source.find("duplex") == std::string::npos) ? 1 : 2;
+  ASSERT_EQ(image_paths.size(), expected_images);
 
-  std::cout << "Scan resolution: " << parameter.resolution << " dpi\n";
-  std::cout << "Color mode: " << parameter.color_mode << "\n";
-  ASSERT_EQ(_run_advanced_scan(output_path, parameter,
-                               *sane_backend_tests::scanner_under_test),
-            0);
-
-  std::string image_path =
-      output_path + "/" +
-      escape_scanner_name(*sane_backend_tests::scanner_under_test) +
-      "-page1.png";
-  std::cout << "Output path: " << image_path << "\n";
-  verify_png_info(image_path.c_str(), parameter.resolution,
-                  parameter.color_mode);
+  for (auto image_path : image_paths) {
+    verify_png_info(image_path.c_str(), parameter.resolution,
+                    parameter.color_mode);
+  }
 }
