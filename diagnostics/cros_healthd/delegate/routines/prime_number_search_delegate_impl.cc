@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
 
 #include <cmath>
 
@@ -10,7 +10,7 @@
 
 namespace diagnostics {
 
-PrimeNumberSearchDelegate::PrimeNumberSearchDelegate(uint64_t max_num)
+PrimeNumberSearchDelegateImpl::PrimeNumberSearchDelegateImpl(uint64_t max_num)
     : max_num_(max_num) {
   // Create a Sieve of Eratosthenes. This creates a bitfield of prime numbers
   // from 0 - |max_number|.
@@ -25,7 +25,9 @@ PrimeNumberSearchDelegate::PrimeNumberSearchDelegate(uint64_t max_num)
   }
 }
 
-bool PrimeNumberSearchDelegate::Run() {
+PrimeNumberSearchDelegateImpl::~PrimeNumberSearchDelegateImpl() = default;
+
+bool PrimeNumberSearchDelegateImpl::Run() {
   for (uint64_t num = 2; num <= max_num_; ++num) {
     bool sieve_prime = prime_sieve_[num];
     bool func_prime = IsPrime(num);
@@ -40,7 +42,7 @@ bool PrimeNumberSearchDelegate::Run() {
   return true;
 }
 
-bool PrimeNumberSearchDelegate::IsPrime(uint64_t num) const {
+bool PrimeNumberSearchDelegateImpl::IsPrime(uint64_t num) const {
   if (num == 0 || num == 1)
     return false;
 

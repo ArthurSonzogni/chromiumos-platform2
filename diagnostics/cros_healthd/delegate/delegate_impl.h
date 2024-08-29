@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,6 +25,7 @@ class MkbpEvent;
 }  // namespace ec
 
 namespace diagnostics {
+class PrimeNumberSearchDelegate;
 
 class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
  public:
@@ -101,6 +103,10 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   // Mark as virtual to be overridden in tests.
   virtual std::unique_ptr<ec::MkbpEvent> CreateMkbpEvent(
       int fd, enum ec_mkbp_event event_type);
+
+  // Mark as virtual to be overridden in tests.
+  virtual std::unique_ptr<PrimeNumberSearchDelegate>
+  CreatePrimeNumberSearchDelegate(uint64_t max_num);
 
  private:
   ec::EcCommandFactoryInterface* const ec_command_factory_;

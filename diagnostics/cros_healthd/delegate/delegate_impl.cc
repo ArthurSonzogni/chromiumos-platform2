@@ -57,7 +57,8 @@
 #include "diagnostics/cros_healthd/delegate/fetchers/thermal_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/delegate/utils/ndt_client.h"
@@ -535,10 +536,11 @@ void DelegateImpl::RunPrimeSearch(base::TimeDelta exec_duration,
                                   RunPrimeSearchCallback callback) {
   base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
   max_num = std::clamp(max_num, static_cast<uint64_t>(2),
-                       PrimeNumberSearchDelegate::kMaxPrimeNumber);
+                       PrimeNumberSearchDelegateImpl::kMaxPrimeNumber);
 
-  auto prime_number_search =
-      std::make_unique<diagnostics::PrimeNumberSearchDelegate>(max_num);
+  std::unique_ptr<PrimeNumberSearchDelegate> prime_number_search =
+      CreatePrimeNumberSearchDelegate(max_num);
+  CHECK(prime_number_search);
 
   while (base::TimeTicks::Now() < end_time) {
     if (!prime_number_search->Run()) {
@@ -754,6 +756,11 @@ void DelegateImpl::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
 std::unique_ptr<ec::MkbpEvent> DelegateImpl::CreateMkbpEvent(
     int fd, enum ec_mkbp_event event_type) {
   return std::make_unique<ec::MkbpEvent>(fd, event_type);
+}
+
+std::unique_ptr<PrimeNumberSearchDelegate>
+DelegateImpl::CreatePrimeNumberSearchDelegate(uint64_t max_num) {
+  return std::make_unique<PrimeNumberSearchDelegateImpl>(max_num);
 }
 
 }  // namespace diagnostics

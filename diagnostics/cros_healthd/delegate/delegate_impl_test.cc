@@ -11,7 +11,9 @@
 #include <string>
 #include <utility>
 
+#include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <base/time/time.h>
 #include <chromeos/ec/ec_commands.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -21,6 +23,7 @@
 #include <libec/mock_ec_command_factory.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -258,6 +261,11 @@ class FakeMotionSenseCommandLidAngle : public ec::MotionSenseCommandLidAngle {
   uint16_t fake_lid_angle_ = 0;
 };
 
+class MockPrimeNumberSearchDelegate : public PrimeNumberSearchDelegate {
+ public:
+  MOCK_METHOD(bool, Run, (), (override));
+};
+
 class MockDelegateImpl : public DelegateImpl {
  public:
   explicit MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory)
@@ -269,6 +277,11 @@ class MockDelegateImpl : public DelegateImpl {
   MOCK_METHOD(std::unique_ptr<ec::MkbpEvent>,
               CreateMkbpEvent,
               (int fd, enum ec_mkbp_event event_type),
+              (override));
+
+  MOCK_METHOD(std::unique_ptr<PrimeNumberSearchDelegate>,
+              CreatePrimeNumberSearchDelegate,
+              (uint64_t max_num),
               (override));
 };
 
@@ -331,6 +344,18 @@ class DelegateImplTest : public BaseFileTest {
     return future.Get();
   }
 
+  bool RunPrimeSearchSync(base::TimeDelta exec_duration, uint64_t max_num) {
+    base::test::TestFuture<bool> future;
+    delegate_.RunPrimeSearch(exec_duration, max_num, future.GetCallback());
+    return future.Get();
+  }
+
+  void FastForwardBy(base::TimeDelta time) {
+    task_environment_.FastForwardBy(time);
+  }
+
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   ec::MockEcCommandFactory mock_ec_command_factory_;
   MockDelegateImpl delegate_{&mock_ec_command_factory_};
 };
@@ -815,6 +840,32 @@ TEST_F(DelegateImplTest, GetLidAngleUnreliableResult) {
 
   auto output = GetLidAngleSync();
   EXPECT_EQ(output, LID_ANGLE_UNRELIABLE);
+}
+
+TEST_F(DelegateImplTest, RunPrimeSearchPassed) {
+  base::TimeDelta exec_duration = base::Milliseconds(500);
+
+  auto prime_number_search = std::make_unique<MockPrimeNumberSearchDelegate>();
+  EXPECT_CALL(*prime_number_search, Run())
+      .WillOnce(DoAll([this, exec_duration]() { FastForwardBy(exec_duration); },
+                      Return(true)));
+  EXPECT_CALL(delegate_, CreatePrimeNumberSearchDelegate(_))
+      .WillOnce(Return(std::move(prime_number_search)));
+
+  EXPECT_TRUE(RunPrimeSearchSync(exec_duration, 100));
+}
+
+TEST_F(DelegateImplTest, RunPrimeSearchFailed) {
+  base::TimeDelta exec_duration = base::Milliseconds(500);
+
+  auto prime_number_search = std::make_unique<MockPrimeNumberSearchDelegate>();
+  EXPECT_CALL(*prime_number_search, Run())
+      .WillOnce(DoAll([this, exec_duration]() { FastForwardBy(exec_duration); },
+                      Return(false)));
+  EXPECT_CALL(delegate_, CreatePrimeNumberSearchDelegate(_))
+      .WillOnce(Return(std::move(prime_number_search)));
+
+  EXPECT_FALSE(RunPrimeSearchSync(exec_duration, 100));
 }
 
 }  // namespace
