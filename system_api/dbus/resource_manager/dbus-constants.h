@@ -74,6 +74,8 @@ const char kGetComponentMemoryMarginsKBMethod[] = "GetComponentMemoryMarginsKB";
 const char kGetGameModeMethod[] = "GetGameMode";
 const char kSetGameModeMethod[] = "SetGameMode";
 const char kSetGameModeWithTimeoutMethod[] = "SetGameModeWithTimeout";
+const char kSetMemoryMarginsMethod[] = "SetMemoryMargins";
+// TODO(vovoy): remove method SetMemoryMarginsBps.
 const char kSetMemoryMarginsBps[] = "SetMemoryMarginsBps";
 const char kSetFullscreenVideoWithTimeout[] = "SetFullscreenVideoWithTimeout";
 const char kSetVmBootModeWithTimeoutMethod[] = "SetVmBootModeWithTimeout";
