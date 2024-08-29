@@ -4,9 +4,8 @@
 
 #include "patchpanel/ndproxy.h"
 
-#include <stdlib.h>
-
 #include <net/ethernet.h>
+#include <stdlib.h>
 
 #include <memory>
 #include <optional>
@@ -120,6 +119,18 @@ const uint8_t ra_frame_option_reordered_translated[] = {
     0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x01,
     0x00, 0x00, 0x00, 0x00, 0x05, 0xdc, 0x01, 0x01, 0xd2, 0x47, 0xf7, 0xc5,
     0x9e, 0x53, 0x03, 0x04, 0x40, 0xc0, 0x00, 0x27, 0x8d, 0x00, 0x00, 0x09,
+    0x3a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x24, 0x01, 0xfa, 0x00, 0x00, 0x04,
+    0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+const uint8_t ra_frame_translated_cur_hop_limit_increased[] = {
+    0x33, 0x33, 0x00, 0x00, 0x00, 0x01, 0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53,
+    0x86, 0xdd, 0x6e, 0x00, 0x00, 0x00, 0x00, 0x40, 0x3a, 0xff, 0xfe, 0x80,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc6, 0x71, 0xfe, 0xff, 0xfe, 0xf1,
+    0xf6, 0x7f, 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x86, 0x00, 0xdb, 0x53, 0x41, 0x04,
+    0x07, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+    0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x05, 0xdc, 0x03, 0x04, 0x40, 0xc0, 0x00, 0x27, 0x8d, 0x00, 0x00, 0x09,
     0x3a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x24, 0x01, 0xfa, 0x00, 0x00, 0x04,
     0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -346,6 +357,7 @@ TEST(NDProxyTest, TranslateFrame) {
     net_base::MacAddress local_mac;
     std::optional<net_base::IPv6Address> src_ip;
     std::optional<net_base::IPv6Address> dst_ip;
+    int8_t cur_hop_limit_diff;
     ssize_t expected_error;
     const uint8_t* expected_output_frame;
     size_t expected_output_frame_len;
@@ -357,6 +369,7 @@ TEST(NDProxyTest, TranslateFrame) {
           physical_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           NDProxy::kTranslateErrorNotICMPv6Packet,
       },
       {
@@ -366,6 +379,7 @@ TEST(NDProxyTest, TranslateFrame) {
           physical_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           NDProxy::kTranslateErrorNotNDPacket,
       },
       {
@@ -375,6 +389,7 @@ TEST(NDProxyTest, TranslateFrame) {
           physical_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -384,6 +399,7 @@ TEST(NDProxyTest, TranslateFrame) {
           physical_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -393,6 +409,7 @@ TEST(NDProxyTest, TranslateFrame) {
           physical_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           0,  // no error
           rs_frame_translated,
           sizeof(rs_frame_translated),
@@ -404,6 +421,7 @@ TEST(NDProxyTest, TranslateFrame) {
           guest_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           0,  // no error
           ra_frame_translated,
           sizeof(ra_frame_translated),
@@ -415,9 +433,22 @@ TEST(NDProxyTest, TranslateFrame) {
           guest_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           0,  // no error
           ra_frame_option_reordered_translated,
           sizeof(ra_frame_option_reordered_translated),
+      },
+      {
+          "ra_frame_cur_hop_limit_increased",
+          ra_frame,
+          sizeof(ra_frame),
+          guest_if_mac,
+          std::nullopt,
+          std::nullopt,
+          1,
+          0,  // no error
+          ra_frame_translated_cur_hop_limit_increased,
+          sizeof(ra_frame_translated_cur_hop_limit_increased),
       },
       {
           "ns_frame",
@@ -426,6 +457,7 @@ TEST(NDProxyTest, TranslateFrame) {
           physical_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           0,  // no error
           ns_frame_translated,
           sizeof(ns_frame_translated),
@@ -437,6 +469,7 @@ TEST(NDProxyTest, TranslateFrame) {
           guest_if_mac,
           std::nullopt,
           std::nullopt,
+          0,
           0,  // no error
           na_frame_translated,
           sizeof(na_frame_translated),
@@ -453,7 +486,7 @@ TEST(NDProxyTest, TranslateFrame) {
     memcpy(in_buffer, test_case.input_frame + ETHER_HDR_LEN, packet_len);
     result = NDProxyUnderTest::TranslateNDPacket(
         in_buffer, packet_len, test_case.local_mac, test_case.src_ip,
-        test_case.dst_ip, out_buffer);
+        test_case.dst_ip, test_case.cur_hop_limit_diff, out_buffer);
 
     if (test_case.expected_error != 0) {
       EXPECT_EQ(test_case.expected_error, result);

@@ -5,13 +5,12 @@
 #ifndef PATCHPANEL_NDPROXY_H_
 #define PATCHPANEL_NDPROXY_H_
 
-#include <stdint.h>
-
 #include <linux/if_ether.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
+#include <stdint.h>
 
 #include <map>
 #include <memory>
@@ -38,6 +37,8 @@ namespace patchpanel {
 // NS/NA will be proxied.
 class NDProxy {
  public:
+  static constexpr bool kIncreaseCurHopLimit = true;
+
   static constexpr ssize_t kTranslateErrorNotICMPv6Packet = -1;
   static constexpr ssize_t kTranslateErrorNotNDPacket = -2;
   static constexpr ssize_t kTranslateErrorInsufficientLength = -3;
@@ -128,6 +129,7 @@ class NDProxy {
       net_base::MacAddress local_mac_addr,
       const std::optional<net_base::IPv6Address>& new_src_ip,
       const std::optional<net_base::IPv6Address>& new_dst_ip,
+      int8_t cur_hop_limit_diff,
       uint8_t* out_packet);
 
   // Given the ICMPv6 segment |icmp6| with header and options (payload) of total

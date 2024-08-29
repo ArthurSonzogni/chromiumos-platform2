@@ -4,14 +4,8 @@
 
 #include "patchpanel/ndproxy.h"
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sysexits.h>
-#include <unistd.h>
-
 #include <arpa/inet.h>
+#include <errno.h>
 #include <linux/filter.h>
 #include <linux/if_packet.h>
 #include <linux/in6.h>
@@ -20,8 +14,13 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <netinet/icmp6.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sysexits.h>
+#include <unistd.h>
 
 #include <fstream>
 #include <memory>
@@ -236,6 +235,7 @@ ssize_t NDProxy::TranslateNDPacket(
     net_base::MacAddress local_mac_addr,
     const std::optional<net_base::IPv6Address>& new_src_ip,
     const std::optional<net_base::IPv6Address>& new_dst_ip,
+    int8_t cur_hop_limit_diff,
     uint8_t* out_packet) {
   if (packet_len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return kTranslateErrorInsufficientLength;
@@ -270,6 +270,7 @@ ssize_t NDProxy::TranslateNDPacket(
         // proxy in only one direction so there should be no loop.
       }
       ra->nd_ra_flags_reserved |= 0x04;
+      ra->nd_ra_curhoplimit += cur_hop_limit_diff;
 
       ReplaceMacInIcmpOption(reinterpret_cast<uint8_t*>(icmp6), icmp6_len,
                              sizeof(nd_router_advert), ND_OPT_SOURCE_LINKADDR,
@@ -421,8 +422,9 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       new_dst_ip = kAllNodesMulticastAddress;
     }
 
-    const ssize_t result = TranslateNDPacket(
-        in_packet, len, *local_mac, new_src_ip, new_dst_ip, out_packet);
+    const ssize_t result =
+        TranslateNDPacket(in_packet, len, *local_mac, new_src_ip, new_dst_ip,
+                          (kIncreaseCurHopLimit ? 1 : 0), out_packet);
     if (result < 0) {
       switch (result) {
         case kTranslateErrorNotICMPv6Packet:

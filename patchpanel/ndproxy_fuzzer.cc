@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "patchpanel/ndproxy.h"
-
 #include <base/logging.h>
 #include <chromeos/net-base/mac_address.h>
 #include <fuzzer/FuzzedDataProvider.h>
+
+#include "patchpanel/ndproxy.h"
 
 namespace patchpanel {
 
@@ -22,7 +22,7 @@ class NDProxyForFuzzer : public NDProxy {
     uint8_t opt_type = provider.ConsumeIntegral<uint8_t>();
     uint8_t* buffer = new uint8_t[size];
 
-    TranslateNDPacket(data, size, guest_if_mac, std::nullopt, std::nullopt,
+    TranslateNDPacket(data, size, guest_if_mac, std::nullopt, std::nullopt, 0,
                       buffer);
 
     memcpy(buffer, data, size);
