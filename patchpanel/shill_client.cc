@@ -714,8 +714,7 @@ void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
   LOG(INFO) << "[" << device_path.value()
             << "]: IPConfig changed: " << new_ip_config;
   NotifyIPConfigChangeHandlers(device_it->second);
-  NotifyIPv6NetworkChangeHandlers(device_it->second,
-                                  old_ip_config.ipv6_addresses);
+  NotifyIPv6NetworkChangeHandlers(device_it->second, old_ip_config);
 }
 
 void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
@@ -725,10 +724,21 @@ void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
 }
 
 void ShillClient::NotifyIPv6NetworkChangeHandlers(
-    const Device& device, const std::vector<net_base::IPv6CIDR>& old_cidr) {
+    const Device& device, const net_base::NetworkConfig& old_config) {
+  // Always trigger the callback if PD prefix changed.
+  if (old_config.ipv6_delegated_prefixes !=
+      device.network_config.ipv6_delegated_prefixes) {
+    LOG(INFO) << __func__ << ": ipv6_delegated_prefixes changes: from "
+              << old_config << " to " << device.network_config;
+    for (const auto& handler : ipv6_network_handlers_) {
+      handler.Run(device);
+    }
+    return;
+  }
   // Compares if the new IPv6 network is the same as the old one by checking its
   // prefix. Note that we are currently only assuming all addresses are of a
   // same prefix, and only comparing the first address.
+  const auto& old_cidr = old_config.ipv6_addresses;
   const auto& new_cidr = device.network_config.ipv6_addresses;
   if (old_cidr.empty() && new_cidr.empty()) {
     return;
@@ -737,6 +747,8 @@ void ShillClient::NotifyIPv6NetworkChangeHandlers(
       old_cidr[0].GetPrefixCIDR() == new_cidr[0].GetPrefixCIDR()) {
     return;
   }
+  LOG(INFO) << __func__ << ": ipv6_addresses subnet changes: from "
+            << old_config << " to " << device.network_config;
   for (const auto& handler : ipv6_network_handlers_) {
     handler.Run(device);
   }

@@ -549,6 +549,70 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
   target_.StopForwarding(up1_dev, "down1");
 }
 
+TEST_F(GuestIPv6ServiceTest, HasDelegatedPrefix) {
+  auto up1_dev = MakeFakeShillDevice("up1", 1);
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:300::2/128")};
+  up1_dev.network_config.ipv6_delegated_prefixes = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:300::/64")};
+  const std::optional<int> mtu = 1450;
+  const std::optional<int> hop_limit = 63;
+  ON_CALL(system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(system_, IfNametoindex("down1")).WillByDefault(Return(101));
+
+  EXPECT_CALL(target_,
+              StartRAServer("down1",
+                            *net_base::IPv6CIDR::CreateFromCIDRString(
+                                "2001:db8:0:300::/64"),
+                            std::vector<std::string>{}, mtu, hop_limit))
+      .WillOnce(Return(true));
+  EXPECT_CALL(target_,
+              SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
+                                 101, _));
+  target_.StartForwarding(up1_dev, "down1", mtu, hop_limit);
+
+  EXPECT_CALL(target_, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(
+      target_,
+      SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR, 101, _));
+  target_.StopForwarding(up1_dev, "down1");
+}
+
+TEST_F(GuestIPv6ServiceTest, HasDelegatedPrefixAftertartForwarding) {
+  auto up1_dev = MakeFakeShillDevice("up1", 1);
+  const std::optional<int> mtu = 1450;
+  const std::optional<int> hop_limit = 63;
+  ON_CALL(system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(system_, IfNametoindex("down1")).WillByDefault(Return(101));
+
+  EXPECT_CALL(target_, SendNDProxyControl(
+                           NDProxyControlMessage::START_NS_NA_RS_RA, 1, 101));
+  target_.StartForwarding(up1_dev, "down1", mtu, hop_limit);
+
+  EXPECT_CALL(target_,
+              SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
+  EXPECT_CALL(target_,
+              StartRAServer("down1",
+                            *net_base::IPv6CIDR::CreateFromCIDRString(
+                                "2001:db8:0:300::/64"),
+                            std::vector<std::string>{}, mtu, hop_limit))
+      .WillOnce(Return(true));
+  EXPECT_CALL(target_,
+              SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
+                                 101, _));
+  up1_dev.network_config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:300::2/128")};
+  up1_dev.network_config.ipv6_delegated_prefixes = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:300::/64")};
+  target_.OnUplinkIPv6Changed(up1_dev);
+
+  EXPECT_CALL(target_, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(
+      target_,
+      SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR, 101, _));
+  target_.StopForwarding(up1_dev, "down1");
+}
+
 constexpr char kExpectedConfigFile[] = R"(interface eth0 {
   AdvSendAdvert on;
   prefix fd00::/64 {

@@ -376,6 +376,23 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
   if (current_record == forward_record_.end()) {
     return;
   }
+
+  const auto new_method = GetForwardMethod(upstream_shill_device);
+  if (current_record->second.method != new_method) {
+    // Need a copy here since StopUplink() will modify the record.
+    auto downlinks = current_record->second.downstream_ifnames;
+    auto mtu = current_record->second.mtu;
+    auto hop_limit = current_record->second.hop_limit;
+
+    // StopUplink and StartForwarding will modify |method| so don't need to set
+    // it explicitly.
+    StopUplink(upstream_shill_device);
+    for (const auto& downlink : downlinks) {
+      StartForwarding(upstream_shill_device, downlink, mtu, hop_limit);
+    }
+    return;
+  }
+
   // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
   // certain so the `ip neigh proxy` and /128 route changes need to be handled
   // in both code paths. When an uplink is newly connected to,
@@ -583,6 +600,9 @@ GuestIPv6Service::ForwardMethod GuestIPv6Service::GetForwardMethod(
   if (forward_method_override_.find(ifname_uplink) !=
       forward_method_override_.end()) {
     return forward_method_override_.at(ifname_uplink);
+  }
+  if (!upstream_device.network_config.ipv6_delegated_prefixes.empty()) {
+    return GuestIPv6Service::ForwardMethod::kMethodRAServer;
   }
   std::optional<net_base::Technology> type = upstream_device.technology;
   if (!type.has_value()) {

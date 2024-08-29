@@ -208,7 +208,7 @@ class ShillClient {
   virtual void OnDeviceNetworkConfigChange(int ifindex);
   void NotifyIPConfigChangeHandlers(const Device& device);
   void NotifyIPv6NetworkChangeHandlers(
-      const Device& device, const std::vector<net_base::IPv6CIDR>& old_cidr);
+      const Device& device, const net_base::NetworkConfig& old_config);
 
   // Fetches Device dbus properties via dbus for the shill Device identified
   // by |device_path|. Returns std::nullopt if an error occurs. Note that this

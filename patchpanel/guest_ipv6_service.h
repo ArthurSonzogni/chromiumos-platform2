@@ -142,8 +142,8 @@ class GuestIPv6Service {
       const std::string& ifname) const;
 
   // Get the supposed-to-be forward method of a certain |upstream_device|, based
-  // on its technology, existence of IA_PD, and the override set by
-  // SetForwardMethod().
+  // on the override set by SetForwardMethod(), existence of IA_PD, and the
+  // upstream technology (in this order).
   GuestIPv6Service::ForwardMethod GetForwardMethod(
       const ShillClient::Device& upstream_device) const;
 
