@@ -129,6 +129,14 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               GetProtocolInfoCommand,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetFeaturesCommand>,
+              GetFeaturesCommand,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::PwmGetFanTargetRpmCommand>,
+              PwmGetFanTargetRpmCommand,
+              (uint8_t fan_idx),
+              (override));
 };
 
 }  // namespace ec

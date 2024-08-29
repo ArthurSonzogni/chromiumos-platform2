@@ -150,4 +150,13 @@ EcCommandFactory::GetProtocolInfoCommand() {
   return std::make_unique<ec::GetProtocolInfoCommand>();
 }
 
+std::unique_ptr<ec::GetFeaturesCommand> EcCommandFactory::GetFeaturesCommand() {
+  return std::make_unique<ec::GetFeaturesCommand>();
+}
+
+std::unique_ptr<ec::PwmGetFanTargetRpmCommand>
+EcCommandFactory::PwmGetFanTargetRpmCommand(uint8_t fan_idx) {
+  return std::make_unique<ec::PwmGetFanTargetRpmCommand>(fan_idx);
+}
+
 }  // namespace ec
