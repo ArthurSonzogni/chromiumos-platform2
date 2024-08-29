@@ -59,6 +59,7 @@ use crate::qos::SchedQosContext;
 use crate::qos::MAX_QOS_ERROR_TYPE;
 use crate::qos::UMA_NAME_QOS_SET_PROCESS_STATE_ERROR;
 use crate::qos::UMA_NAME_QOS_SET_THREAD_STATE_ERROR;
+use crate::realtime;
 use crate::swappiness_config::new_swappiness_config;
 use crate::swappiness_config::SwappinessConfig;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
@@ -837,6 +838,8 @@ pub async fn service_main() -> Result<()> {
 
     arch::init();
 
+    realtime::register_features();
+
     let (swappiness_config, mut swappiness_proxy) = new_swappiness_config();
     let swappiness_config = Arc::new(swappiness_config);
     memory::register_features(swappiness_config.clone());
@@ -998,7 +1001,8 @@ pub async fn service_main() -> Result<()> {
                     }
                     Err(e) => error!("Failed to gather memory stats {:?}", e),
                 }
-            }).await;
+            })
+            .await;
             if let Err(e) = res {
                 error!("Error gathering memory stats {:?}", e);
             };

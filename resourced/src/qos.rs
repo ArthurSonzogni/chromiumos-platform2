@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::fmt::Display;
-use std::fs;
 use std::io;
 use std::os::fd::FromRawFd;
 use std::os::fd::OwnedFd;
@@ -26,13 +25,12 @@ use tokio::io::unix::AsyncFd;
 use tokio::io::Interest;
 use tokio::task::JoinHandle;
 
-use glob::glob;
-
 use crate::config::ConfigProvider;
 use crate::cpu_utils::Cpuset;
 use crate::feature;
 use crate::proc::is_alive;
 use crate::proc::load_ruid;
+use crate::realtime::is_dlserver_available;
 use crate::sync::NoPoison;
 
 pub type SchedQosContext = schedqos::RestorableSchedQosContext;
@@ -45,14 +43,6 @@ pub const MAX_QOS_ERROR_TYPE: i32 = 13;
 
 const SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME: &str = "CrOSLateBootSetRtForDisplayThreads";
 const SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE: bool = false;
-
-const INIT_DL_SERVER_FEATURE_NAME: &str = "CrOSLateBootInitDLServer";
-const INIT_DL_SERVER_FEATURE_DEFAULT_VALUE: bool = false;
-const FAIR_SERVER_DIR: &str = "/sys/kernel/debug/sched/fair_server/";
-const DL_SERVER_RUNTIME: &str          = "20000000";
-const DL_SERVER_PERIOD: &str           = "25000000";
-const DL_SERVER_DEFAULT_RUNTIME: &str  = "50000000";
-const DL_SERVER_DEFAULT_PERIOD: &str = "1000000000";
 
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
@@ -157,77 +147,11 @@ impl Display for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-fn config_dlserver_params(runtime: &str, period: &str) {
-    if !Path::new(FAIR_SERVER_DIR).exists() {
-        return;
-    }
-
-    if let Ok(entries) = glob(&format!("{}cpu*", FAIR_SERVER_DIR)) {
-        for entry in entries {
-            match entry {
-                Ok(path) => {
-                    // Set bandwidth to 100% first to avoid -EBUSY.
-                    let current_runtime = fs::read_to_string(path.join("runtime")).unwrap();
-                    if let Err(e) = fs::write(path.join("period"), current_runtime) {
-                        info!("Could not write to to period, {:?}, {:?}", path, e);
-                    }
-
-                    // Write the new runtime
-                    if let Err(e) = fs::write(path.join("runtime"), runtime) {
-                        info!("Could not write to to runtime, {:?}, {:?}", path, e);
-                    }
-
-                    // Then change the bandwidth by changing to the new period.
-                    // This approach avoids the DL server constraints getting violated
-                    // and fixes the issue where it gives -EBUSY.
-                    if let Err(e) = fs::write(path.join("period"), period) {
-                        info!("Could not write to to period, {:?}, {:?}", path, e);
-                    }
-
-                    // Runtime doesn't get written the first time if new runtime is
-                    // greater than old period. Write new runtime again after new
-                    // period is written. This issue can be repro by disabling the
-                    // enabled feature.
-                    if let Err(e) = fs::write(path.join("runtime"), runtime) {
-                        info!("Could not write to to runtime, {:?}, {:?}", path, e);
-                    }
-                }
-
-                Err(e) => {
-                    error!("Error while processing a glob entry: {:?}", e);
-                }
-            }
-        }
-    } else {
-        error!("Failed to read glob pattern: {}", FAIR_SERVER_DIR);
-    }
-}
-
-fn init_dlserver_params() {
-    if !Path::new(FAIR_SERVER_DIR).exists() {
-        return;
-    }
-
-    // If the default feature value is True and if feature is not available
-    // yet because we have not called feature_init, we end up setting the
-    // non-default parameters. This will be useful when we want to always
-    // default to enabling the DL server feature.
-    if feature::is_feature_enabled(INIT_DL_SERVER_FEATURE_NAME)
-    .unwrap_or(INIT_DL_SERVER_FEATURE_DEFAULT_VALUE)
-    {
-        // Set 20ms/25ms if default feature value is True and feature is not
-        // disabled.
-        config_dlserver_params(DL_SERVER_RUNTIME, DL_SERVER_PERIOD);
-    } else {
-        config_dlserver_params(DL_SERVER_DEFAULT_RUNTIME, DL_SERVER_DEFAULT_PERIOD);
-    }
-}
-
 pub fn register_features(root: &Path, sched_ctx: Arc<Mutex<SchedQosContext>>) {
     // If DL Server is unavailable, don't register any RT features
     // as we don't want data from devices without it available. RT
     // is dangerous and requires proper throttling.
-    if !Path::new(FAIR_SERVER_DIR).exists() {
+    if !is_dlserver_available() {
         return;
     }
 
@@ -252,17 +176,6 @@ pub fn register_features(root: &Path, sched_ctx: Arc<Mutex<SchedQosContext>>) {
             }
         })),
     );
-
-    // The DL Server feature throttles RT if it is starving
-    // CFS while also not wasting cycles on idle CPUs.
-    feature::register_feature(INIT_DL_SERVER_FEATURE_NAME,
-        INIT_DL_SERVER_FEATURE_DEFAULT_VALUE,
-        Some(Box::new(move |_| {
-            init_dlserver_params();
-        })),
-    );
-
-    init_dlserver_params();
 }
 
 fn load_config(root: &Path) -> anyhow::Result<Config> {
@@ -288,8 +201,9 @@ fn load_config(root: &Path) -> anyhow::Result<Config> {
         }
     }
 
-    if feature::is_feature_enabled(SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME)
-        .unwrap_or(SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE)
+    if is_dlserver_available()
+        && feature::is_feature_enabled(SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME)
+            .unwrap_or(SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE)
     {
         // With SetRtForDisplayThreads, threads in ThreadState::Urgent states uses RT with priority
         // 6 while the process is foreground.
