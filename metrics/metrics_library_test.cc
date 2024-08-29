@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/metrics_library.h"
+
 #include <unistd.h>
 
 #include <cstring>
@@ -16,7 +18,6 @@
 #include <policy/mock_device_policy.h>
 
 #include "metrics/c_metrics_library.h"
-#include "metrics/metrics_library.h"
 #include "metrics/metrics_library_mock.h"
 #include "metrics/metrics_writer_mock.h"
 #include "metrics/serialization/metric_sample.h"
@@ -57,7 +58,7 @@ class MetricsLibraryTest : public testing::Test {
 
     test_uma_events_file_ = test_dir_.Append(kTestUMAEventsFile);
     lib_->SetOutputFile(test_uma_events_file_.value());
-    EXPECT_EQ(0, WriteFile(test_uma_events_file_, "", 0));
+    EXPECT_TRUE(WriteFile(test_uma_events_file_, ""));
     device_policy_ = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
@@ -87,19 +88,17 @@ class MetricsLibraryTest : public testing::Test {
 
   void SetPerUserConsent(bool value) {
     if (value) {
-      EXPECT_EQ(1, WriteFile(test_dir_.Append("hash/consent-enabled"), "1", 1));
+      EXPECT_TRUE(WriteFile(test_dir_.Append("hash/consent-enabled"), "1"));
     } else {
-      EXPECT_EQ(1, WriteFile(test_dir_.Append("hash/consent-enabled"), "0", 1));
+      EXPECT_TRUE(WriteFile(test_dir_.Append("hash/consent-enabled"), "0"));
     }
   }
 
   void SetPerUserAppSyncOptin(bool value) {
     if (value) {
-      EXPECT_EQ(1,
-                WriteFile(appsync_test_dir_.Append("hash/opted-in"), "1", 1));
+      EXPECT_TRUE(WriteFile(appsync_test_dir_.Append("hash/opted-in"), "1"));
     } else {
-      EXPECT_EQ(1,
-                WriteFile(appsync_test_dir_.Append("hash/opted-in"), "0", 1));
+      EXPECT_TRUE(WriteFile(appsync_test_dir_.Append("hash/opted-in"), "0"));
     }
   }
 
@@ -135,22 +134,23 @@ TEST_F(MetricsLibraryTest, ConsentIdInvalidContent) {
   std::string id;
   base::DeleteFile(test_consent_id_file_);
 
-  ASSERT_EQ(base::WriteFile(test_consent_id_file_, "", 0), 0);
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_, ""));
   ASSERT_FALSE(lib_->ConsentId(&id));
 
-  ASSERT_EQ(base::WriteFile(test_consent_id_file_, "asdf", 4), 4);
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_, "asdf"));
   ASSERT_FALSE(lib_->ConsentId(&id));
 
   char buf[100];
   memset(buf, '0', sizeof(buf));
 
   // Reject too long UUIDs that lack dashes.
-  ASSERT_EQ(base::WriteFile(test_consent_id_file_, buf, 36), 36);
+  ASSERT_TRUE(
+      base::WriteFile(test_consent_id_file_, std::string_view(buf, 36)));
   ASSERT_FALSE(lib_->ConsentId(&id));
 
   // Reject very long UUIDs.
-  ASSERT_EQ(base::WriteFile(test_consent_id_file_, buf, sizeof(buf)),
-            sizeof(buf));
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_,
+                              std::string_view(buf, sizeof(buf))));
   ASSERT_FALSE(lib_->ConsentId(&id));
 }
 
@@ -158,9 +158,7 @@ TEST_F(MetricsLibraryTest, ConsentIdInvalidContent) {
 TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
   std::string id;
   base::DeleteFile(test_consent_id_file_);
-  ASSERT_GT(base::WriteFile(test_consent_id_file_, kValidGuidOld,
-                            strlen(kValidGuidOld)),
-            0);
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_, kValidGuidOld));
   ASSERT_TRUE(lib_->ConsentId(&id));
   ASSERT_EQ(id, kValidGuidOld);
 }
@@ -169,9 +167,7 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentOld) {
 TEST_F(MetricsLibraryTest, ConsentIdValidContent) {
   std::string id;
   base::DeleteFile(test_consent_id_file_);
-  ASSERT_GT(
-      base::WriteFile(test_consent_id_file_, kValidGuid, strlen(kValidGuid)),
-      0);
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_, kValidGuid));
   ASSERT_TRUE(lib_->ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
 }
@@ -181,8 +177,7 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
   std::string id;
   std::string outid = std::string(kValidGuid) + "\n";
   base::DeleteFile(test_consent_id_file_);
-  ASSERT_GT(base::WriteFile(test_consent_id_file_, outid.c_str(), outid.size()),
-            0);
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_, outid));
   ASSERT_TRUE(lib_->ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
 }
@@ -246,9 +241,7 @@ TEST_F(MetricsLibraryTest,
   EXPECT_FALSE(lib_->AreMetricsEnabled());
 
   // Place a valid consent file.
-  ASSERT_GT(
-      base::WriteFile(test_consent_id_file_, kValidGuid, strlen(kValidGuid)),
-      0);
+  ASSERT_TRUE(base::WriteFile(test_consent_id_file_, kValidGuid));
   std::string id;
   ASSERT_TRUE(lib_->ConsentId(&id));
   ASSERT_EQ(id, kValidGuid);
@@ -534,7 +527,7 @@ class CMetricsLibraryTest : public testing::Test {
 
     test_uma_events_file_ = test_dir_.Append(kTestUMAEventsFile);
     ml.SetOutputFile(test_uma_events_file_.value());
-    EXPECT_EQ(0, WriteFile(test_uma_events_file_, "", 0));
+    EXPECT_TRUE(WriteFile(test_uma_events_file_, ""));
     device_policy_ = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())

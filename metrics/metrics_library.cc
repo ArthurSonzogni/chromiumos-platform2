@@ -4,6 +4,7 @@
 
 #include "metrics/metrics_library.h"
 
+#include <errno.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 
@@ -17,7 +18,7 @@
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
-#include "base/files/file_path.h"
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -27,7 +28,6 @@
 #include <base/time/time.h>
 #include <base/uuid.h>
 #include <brillo/files/safe_fd.h>
-#include <errno.h>
 #include <policy/device_policy.h>
 #include <session_manager/dbus-proxies.h>
 
@@ -324,11 +324,10 @@ bool MetricsLibrary::EnableMetrics() {
 
   // http://crbug.com/383003 says we must be world readable.
   mode_t mask = umask(0022);
-  int write_len = base::WriteFile(base::FilePath(consent_file_), guid.c_str(),
-                                  guid.length());
+  bool write_status = base::WriteFile(base::FilePath(consent_file_), guid);
   umask(mask);
 
-  return write_len == static_cast<int>(guid.length());
+  return write_status;
 }
 
 bool MetricsLibrary::DisableMetrics() {

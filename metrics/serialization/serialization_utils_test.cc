@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/serialization/serialization_utils.h"
+
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -29,7 +31,6 @@
 #include <gtest/gtest.h>
 
 #include "metrics/serialization/metric_sample.h"
-#include "metrics/serialization/serialization_utils.h"
 
 namespace metrics {
 namespace {
@@ -392,8 +393,7 @@ TEST_F(SerializationUtilsTest, NegativeLengthTest) {
       0xff,
       0xff,
   };
-  CHECK(base::WriteFile(filepath_, reinterpret_cast<const char*>(kInput),
-                        sizeof(kInput)));
+  CHECK(base::WriteFile(filepath_, base::make_span(kInput, sizeof(kInput))));
 
   std::vector<MetricSample> samples;
   size_t bytes_read;

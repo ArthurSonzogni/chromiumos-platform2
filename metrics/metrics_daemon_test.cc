@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/metrics_daemon.h"
+
 #include <inttypes.h>
 #include <utime.h>
 
@@ -23,7 +25,6 @@
 #include <gtest/gtest.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
-#include "metrics/metrics_daemon.h"
 #include "metrics/metrics_library_mock.h"
 #include "metrics/persistent_integer_mock.h"
 
@@ -220,8 +221,7 @@ class MetricsDaemonTest : public testing::Test {
   void CreateUint64ValueFile(const base::FilePath& path, uint64_t value) {
     base::DeleteFile(path);
     std::string value_string = base::NumberToString(value) + "\n";
-    ASSERT_EQ(value_string.length(), base::WriteFile(path, value_string.c_str(),
-                                                     value_string.length()));
+    ASSERT_TRUE(base::WriteFile(path, value_string));
   }
 
   // The MetricsDaemon under test.
@@ -257,7 +257,7 @@ TEST_F(MetricsDaemonTest, CheckSystemCrash) {
       backing_dir_path_.Append(kKernelCrashDetected);
   EXPECT_FALSE(daemon_.CheckSystemCrash(kernel_crash_detected.value()));
 
-  base::WriteFile(kernel_crash_detected, "", 0);
+  base::WriteFile(kernel_crash_detected, "");
   EXPECT_TRUE(base::PathExists(kernel_crash_detected));
   EXPECT_TRUE(daemon_.CheckSystemCrash(kernel_crash_detected.value()));
   EXPECT_FALSE(base::PathExists(kernel_crash_detected));
@@ -525,11 +525,9 @@ TEST_F(MetricsDaemonTest, GetDetachableBaseTimes) {
   EXPECT_FALSE(daemon_.GetDetachableBaseTimes(hammer_sysfs_path, &active_time,
                                               &suspended_time));
 
-  EXPECT_TRUE(base::WriteFile(hammer_sysfs_path, temp_dir.value().c_str(),
-                              temp_dir.value().length()));
-  EXPECT_TRUE(
-      base::WriteFile(level_path, MetricsDaemon::kDetachableBaseSysfsLevelValue,
-                      strlen(MetricsDaemon::kDetachableBaseSysfsLevelValue)));
+  EXPECT_TRUE(base::WriteFile(hammer_sysfs_path, temp_dir.value()));
+  EXPECT_TRUE(base::WriteFile(level_path,
+                              MetricsDaemon::kDetachableBaseSysfsLevelValue));
 
   EXPECT_FALSE(daemon_.GetDetachableBaseTimes(hammer_sysfs_path, &active_time,
                                               &suspended_time));

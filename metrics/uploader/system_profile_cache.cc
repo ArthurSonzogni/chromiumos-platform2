@@ -7,18 +7,18 @@
 #include <string>
 #include <vector>
 
-#include "base/files/file_util.h"
-#include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/system/sys_info.h"
-#include "base/uuid.h"
+#include <base/check.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <base/system/sys_info.h>
+#include <base/uuid.h>
+#include <vboot/crossystem.h>
+
 #include "metrics/persistent_integer.h"
 #include "metrics/uploader/metrics_log_base.h"
 #include "metrics/uploader/proto/chrome_user_metrics_extension.pb.h"
-#include "vboot/crossystem.h"
-
-#include <base/check.h>
 
 namespace {
 
@@ -141,7 +141,7 @@ std::string SystemProfileCache::GetPersistentGUID(const std::string& filename) {
     guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
     // If we can't read or write the file, the guid will not be preserved during
     // the next reboot. Crash.
-    CHECK(base::WriteFile(filepath, guid.c_str(), guid.size()));
+    CHECK(base::WriteFile(filepath, guid));
   }
   return guid;
 }
