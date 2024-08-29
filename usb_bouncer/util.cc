@@ -1154,7 +1154,8 @@ bool IsExternalDevice(base::FilePath normalized_devpath) {
       return true;
   }
 
-  if (GetDevicePropString(dev, kPanelPath) != "unknown")
+  std::string panel = GetDevicePropString(dev, kPanelPath);
+  if (!panel.empty() && panel != "unknown")
     return true;
 
   return false;
