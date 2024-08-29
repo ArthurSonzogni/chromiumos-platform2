@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <base/files/scoped_temp_dir.h>
+#include <base/files/scoped_temp_file.h>
 #include <base/memory/raw_ref.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
@@ -72,24 +72,26 @@ class FakeFile {
  public:
   explicit FakeFile(const std::string& content) {
     base::ScopedAllowBlockingForTesting allow_blocking;
-    CHECK(temp_dir_.CreateUniqueTempDir());
-    base::File file(temp_dir_.GetPath().Append("file"),
-                    base::File::FLAG_OPEN | base::File::FLAG_CREATE |
-                        base::File::FLAG_WRITE | base::File::FLAG_READ);
+    CHECK(temp_file_.Create());
+    base::File file(temp_file_.path(), base::File::FLAG_OPEN |
+                                           base::File::FLAG_WRITE |
+                                           base::File::FLAG_READ);
     CHECK(file.IsValid());
     file.WriteAtCurrentPos(base::as_byte_span(content));
   }
-  ~FakeFile() = default;
+  ~FakeFile() { CHECK(temp_file_.Delete()); }
 
   base::File Open() {
     base::ScopedAllowBlockingForTesting allow_blocking;
-    return base::File(
-        temp_dir_.GetPath().Append("file"),
-        base::File::FLAG_OPEN | base::File::FLAG_WRITE | base::File::FLAG_READ);
+    return base::File(temp_file_.path(), base::File::FLAG_OPEN |
+                                             base::File::FLAG_WRITE |
+                                             base::File::FLAG_READ);
   }
 
+  base::FilePath Path() { return temp_file_.path(); }
+
  private:
-  base::ScopedTempDir temp_dir_;
+  base::ScopedTempFile temp_file_;
 };
 
 class OnDeviceModelServiceTest : public testing::Test {
