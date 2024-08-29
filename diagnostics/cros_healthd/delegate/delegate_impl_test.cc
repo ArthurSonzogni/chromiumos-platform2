@@ -32,8 +32,11 @@ namespace {
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::ElementsAreArray;
+using ::testing::IsEmpty;
 using ::testing::Return;
 using ::testing::SaveArg;
+using ::testing::StrictMock;
 using ::testing::WithArg;
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -221,6 +224,65 @@ class FakeLedControlSetCommand : public ec::LedControlSetCommand {
   bool fake_run_result_ = false;
 };
 
+class FakeGetFeaturesCommand : public ec::GetFeaturesCommand {
+ public:
+  FakeGetFeaturesCommand() = default;
+
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+  const struct ec_response_get_features* Resp() const override {
+    return &fake_response_;
+  }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+  void SetFeatureSupported(enum ec_feature_code code) {
+    if (code < 32) {
+      fake_response_.flags[0] |= EC_FEATURE_MASK_0(code);
+    } else {
+      fake_response_.flags[1] |= EC_FEATURE_MASK_1(code);
+    }
+  }
+
+  void SetFeatureUnsupported(enum ec_feature_code code) {
+    if (code < 32) {
+      fake_response_.flags[0] &= ~EC_FEATURE_MASK_0(code);
+    } else {
+      fake_response_.flags[1] &= ~EC_FEATURE_MASK_1(code);
+    }
+  }
+
+ private:
+  bool fake_run_result_ = false;
+  struct ec_response_get_features fake_response_ = {.flags[0] = 0,
+                                                    .flags[1] = 0};
+};
+
+class FakePwmGetFanTargetRpmCommand : public ec::PwmGetFanTargetRpmCommand {
+ public:
+  FakePwmGetFanTargetRpmCommand()
+      : ec::PwmGetFanTargetRpmCommand(/*fan_idx=*/0) {}
+
+  // ec::EcCommand overrides.
+  const uint16_t* Resp() const override { return &fake_response_; }
+
+  // ec::ReadMemmapCommand overrides.
+  int IoctlReadmem(int fd,
+                   uint32_t request,
+                   cros_ec_readmem_v2* data) override {
+    return -1;
+  }
+  bool EcCommandRun(int fd) override { return fake_run_result_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+  void SetRpm(uint16_t rpm) { fake_response_ = rpm; }
+
+ private:
+  bool fake_run_result_ = false;
+  uint16_t fake_response_ = 0;
+};
+
 class FakeI2cReadCommand : public ec::I2cReadCommand {
  public:
   FakeI2cReadCommand() = default;
@@ -326,6 +388,15 @@ class DelegateImplTest : public BaseFileTest {
     return err_future.Take();
   }
 
+  std::pair<std::vector<uint16_t>, std::optional<std::string>>
+  GetAllFanSpeedSync() {
+    base::test::TestFuture<const std::vector<uint16_t>&,
+                           const std::optional<std::string>&>
+        future;
+    delegate_.GetAllFanSpeed(future.GetCallback());
+    return future.Get();
+  }
+
   std::optional<uint32_t> GetSmartBatteryManufactureDateSync(uint8_t i2c_port) {
     base::test::TestFuture<std::optional<uint32_t>> future;
     delegate_.GetSmartBatteryManufactureDate(i2c_port, future.GetCallback());
@@ -356,7 +427,7 @@ class DelegateImplTest : public BaseFileTest {
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  ec::MockEcCommandFactory mock_ec_command_factory_;
+  StrictMock<ec::MockEcCommandFactory> mock_ec_command_factory_;
   MockDelegateImpl delegate_{&mock_ec_command_factory_};
 };
 
@@ -744,6 +815,135 @@ TEST_F(DelegateImplTest, ResetLedColorSuccess) {
       .WillOnce(Return(std::move(cmd)));
 
   auto err = ResetLedColorSync(kArbitraryValidLedName);
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetAllFanSpeedGetFeaturesCommandFailed) {
+  auto cmd = std::make_unique<FakeGetFeaturesCommand>();
+  cmd->SetRunResult(false);
+
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto [unused_fan_rpms, err] = GetAllFanSpeedSync();
+  EXPECT_EQ(err, "Failed to get number of fans");
+}
+
+TEST_F(DelegateImplTest, GetAllFanSpeedFanNotSupported) {
+  auto cmd = std::make_unique<FakeGetFeaturesCommand>();
+  cmd->SetRunResult(true);
+  cmd->SetFeatureUnsupported(EC_FEATURE_PWM_FAN);
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto [fan_rpms, err] = GetAllFanSpeedSync();
+  EXPECT_THAT(fan_rpms, IsEmpty());
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetAllFanSpeedPwmGetFanTargetRpmCommandFailed) {
+  auto features_cmd = std::make_unique<FakeGetFeaturesCommand>();
+  features_cmd->SetRunResult(true);
+  features_cmd->SetFeatureSupported(EC_FEATURE_PWM_FAN);
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand())
+      .WillOnce(Return(std::move(features_cmd)));
+
+  auto get_fan_rpm_cmd = std::make_unique<FakePwmGetFanTargetRpmCommand>();
+  get_fan_rpm_cmd->SetRunResult(false);
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
+      .WillOnce(Return(std::move(get_fan_rpm_cmd)));
+
+  auto [unused_fan_rpms, err] = GetAllFanSpeedSync();
+  EXPECT_EQ(err, "Failed to get number of fans");
+}
+
+TEST_F(DelegateImplTest, GetAllFanSpeedNoFan) {
+  auto features_cmd = std::make_unique<FakeGetFeaturesCommand>();
+  features_cmd->SetRunResult(true);
+  features_cmd->SetFeatureSupported(EC_FEATURE_PWM_FAN);
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand())
+      .WillOnce(Return(std::move(features_cmd)));
+
+  auto get_fan_rpm_cmd = std::make_unique<FakePwmGetFanTargetRpmCommand>();
+  get_fan_rpm_cmd->SetRunResult(true);
+  get_fan_rpm_cmd->SetRpm(EC_FAN_SPEED_NOT_PRESENT);
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
+      .WillOnce(Return(std::move(get_fan_rpm_cmd)));
+
+  auto [fan_rpms, err] = GetAllFanSpeedSync();
+  EXPECT_THAT(fan_rpms, IsEmpty());
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetAllFanSpeedMultipleFans) {
+  auto features_cmd = std::make_unique<FakeGetFeaturesCommand>();
+  features_cmd->SetRunResult(true);
+  features_cmd->SetFeatureSupported(EC_FEATURE_PWM_FAN);
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand())
+      .WillOnce(Return(std::move(features_cmd)));
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
+      .Times(2)
+      .WillRepeatedly([]() {
+        auto get_fan_rpm_cmd =
+            std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        get_fan_rpm_cmd->SetRunResult(true);
+        get_fan_rpm_cmd->SetRpm(2000);
+        return get_fan_rpm_cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(1))
+      .Times(2)
+      .WillRepeatedly([]() {
+        auto get_fan_rpm_cmd =
+            std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        get_fan_rpm_cmd->SetRunResult(true);
+        get_fan_rpm_cmd->SetRpm(3000);
+        return get_fan_rpm_cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(2))
+      .WillOnce([]() {
+        auto get_fan_rpm_cmd =
+            std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        get_fan_rpm_cmd->SetRunResult(true);
+        get_fan_rpm_cmd->SetRpm(EC_FAN_SPEED_NOT_PRESENT);
+        return get_fan_rpm_cmd;
+      });
+
+  auto [fan_rpms, err] = GetAllFanSpeedSync();
+  EXPECT_THAT(fan_rpms, ElementsAreArray({2000, 3000}));
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetAllFanSpeedStalledConsideredZeroRpm) {
+  auto features_cmd = std::make_unique<FakeGetFeaturesCommand>();
+  features_cmd->SetRunResult(true);
+  features_cmd->SetFeatureSupported(EC_FEATURE_PWM_FAN);
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand())
+      .WillOnce(Return(std::move(features_cmd)));
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
+      .Times(2)
+      .WillRepeatedly([]() {
+        auto get_fan_rpm_cmd =
+            std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        get_fan_rpm_cmd->SetRunResult(true);
+        get_fan_rpm_cmd->SetRpm(EC_FAN_SPEED_STALLED_DEPRECATED);
+        return get_fan_rpm_cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(1))
+      .WillOnce([]() {
+        auto get_fan_rpm_cmd =
+            std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        get_fan_rpm_cmd->SetRunResult(true);
+        get_fan_rpm_cmd->SetRpm(EC_FAN_SPEED_NOT_PRESENT);
+        return get_fan_rpm_cmd;
+      });
+
+  auto [fan_rpms, err] = GetAllFanSpeedSync();
+  EXPECT_THAT(fan_rpms, ElementsAreArray({0}));
   EXPECT_EQ(err, std::nullopt);
 }
 
