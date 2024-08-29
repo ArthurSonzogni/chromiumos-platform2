@@ -141,6 +141,12 @@ class GuestIPv6Service {
   const std::optional<net_base::IPv6Address> GetUplinkIp(
       const std::string& ifname) const;
 
+  // Get the supposed-to-be forward method of a certain |upstream_device|, based
+  // on its technology, existence of IA_PD, and the override set by
+  // SetForwardMethod().
+  GuestIPv6Service::ForwardMethod GetForwardMethod(
+      const ShillClient::Device& upstream_device) const;
+
   // IPv6 neighbor discovery forwarder process handler. Owned by Manager.
   SubprocessControllerInterface* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.

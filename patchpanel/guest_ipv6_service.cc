@@ -53,24 +53,6 @@ constexpr base::TimeDelta kTimeoutForSIGKILL = base::Seconds(1);
 constexpr int kDefaultDownstreamHopLimit =
     NDProxy::kIncreaseCurHopLimit ? 65 : 64;
 
-GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
-    std::optional<net_base::Technology> type) {
-  if (!type.has_value()) {
-    return GuestIPv6Service::ForwardMethod::kMethodUnknown;
-  }
-  switch (*type) {
-    case net_base::Technology::kEthernet:
-    case net_base::Technology::kWiFi:
-      return GuestIPv6Service::ForwardMethod::kMethodNDProxy;
-
-    case net_base::Technology::kCellular:
-      return GuestIPv6Service::ForwardMethod::kMethodRAServer;
-
-    case net_base::Technology::kWiFiDirect:
-    case net_base::Technology::kVPN:
-      return GuestIPv6Service::ForwardMethod::kMethodUnknown;
-  }
-}
 // Helper struct local to this file for logging an uplink / downlink interface
 // pair.
 struct LinkPair {
@@ -136,15 +118,8 @@ void GuestIPv6Service::StartForwarding(
   if (forward_record_.find(ifname_uplink) != forward_record_.end()) {
     forward_method = forward_record_[ifname_uplink].method;
     forward_record_[ifname_uplink].downstream_ifnames.insert(ifname_downlink);
-  } else if (forward_method_override_.find(ifname_uplink) !=
-             forward_method_override_.end()) {
-    forward_method = forward_method_override_[ifname_uplink];
-    forward_record_[ifname_uplink] = {
-        forward_method, {ifname_downlink}, std::nullopt, std::nullopt};
   } else {
-    forward_method =
-        GetForwardMethodByDeviceType(upstream_shill_device.technology);
-
+    forward_method = GetForwardMethod(upstream_shill_device);
     if (forward_method == ForwardMethod::kMethodUnknown) {
       LOG(INFO) << __func__ << ": " << pair
                 << ", IPv6 forwarding not supported on device type";
@@ -600,6 +575,31 @@ void GuestIPv6Service::SetForwardMethod(
     for (const auto& downlink : downlinks) {
       StartForwarding(upstream_shill_device, downlink, mtu, hop_limit);
     }
+  }
+}
+
+GuestIPv6Service::ForwardMethod GuestIPv6Service::GetForwardMethod(
+    const ShillClient::Device& upstream_device) const {
+  const auto ifname_uplink = upstream_device.ifname;
+  if (forward_method_override_.find(ifname_uplink) !=
+      forward_method_override_.end()) {
+    return forward_method_override_.at(ifname_uplink);
+  }
+  std::optional<net_base::Technology> type = upstream_device.technology;
+  if (!type.has_value()) {
+    return GuestIPv6Service::ForwardMethod::kMethodUnknown;
+  }
+  switch (*type) {
+    case net_base::Technology::kEthernet:
+    case net_base::Technology::kWiFi:
+      return GuestIPv6Service::ForwardMethod::kMethodNDProxy;
+
+    case net_base::Technology::kCellular:
+      return GuestIPv6Service::ForwardMethod::kMethodRAServer;
+
+    case net_base::Technology::kWiFiDirect:
+    case net_base::Technology::kVPN:
+      return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
 }
 
