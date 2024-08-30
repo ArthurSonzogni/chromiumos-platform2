@@ -1225,7 +1225,7 @@ static inline __attribute__((always_inline)) int populate_rb(
  *
  * return_value: Return value of the filp_close system call.
  */
-CROS_IF_FUNCTION_HOOK("fentry/filp_close", "tp_btf/cros_filp_close_exit")
+CROS_IF_FUNCTION_HOOK("fexit/filp_close", "tp_btf/cros_filp_close_exit")
 int BPF_PROG(fexit__filp_close,
              struct file* file,
              fl_owner_t owner_id,
