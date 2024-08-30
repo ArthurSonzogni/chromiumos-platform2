@@ -691,6 +691,16 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
     return;
   }
 
+  // Check if the modem is in flash mode (fastboot or download mode).
+  //  -> If yes, proceed directly to force flash.
+  // For modems that don't support flash mode check (e.g., FM350)
+  // or are not detected on the bus:
+  //  -> Attempt to recover by rebooting the modem using modem-helper.
+  //  -> If the reboot is successful:
+  //     -> Wait for a minute for the modem to appear on the bus.
+  //     -> Then, force-flash the modem.
+  // If the helper-based reboot fails:
+  //  -> Try force-flashing the modem.
   if (!helper->FlashModeCheck()) {
     LOG(WARNING) << "Modem not found, trying to reset it...";
     if (helper->Reboot()) {
@@ -699,18 +709,17 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
           base::BindOnce(&Daemon::ForceFlashIfNeverAppeared,
                          weak_ptr_factory_.GetWeakPtr(), device_id),
           kRebootCheckDelay);
-    } else {
-      EVLOG(1) << "Couldn't reboot modem with device ID [" << device_id
-               << "], it may not be present";
-      // |kFailedToRebootModem| will be sent only on devices with a modem
-      // firmware-variant, since devices without a modem will always fail to
-      // reboot the non existing modem and will pollute the metrics.
-      if (!variant_.empty()) {
-        metrics_->SendCheckForWedgedModemResult(
-            metrics::CheckForWedgedModemResult::kFailedToRebootModem);
-      }
+      return;
     }
-    return;
+    EVLOG(1) << "Couldn't reboot modem with device ID [" << device_id
+             << "], it may not be present";
+    // |kFailedToRebootModem| will be sent only on devices with a modem
+    // firmware-variant, since devices without a modem will always fail to
+    // reboot the non existing modem and will pollute the metrics.
+    if (!variant_.empty()) {
+      metrics_->SendCheckForWedgedModemResult(
+          metrics::CheckForWedgedModemResult::kFailedToRebootModem);
+    }
   }
 
   metrics_->SendCheckForWedgedModemResult(
