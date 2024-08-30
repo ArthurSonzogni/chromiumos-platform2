@@ -414,10 +414,8 @@ DownstreamNetworkService::StartTetheringUpstreamNetwork(
     ipv6_svc_->OnUplinkIPv6Changed(upstream_network);
     ipv6_svc_->UpdateUplinkIPv6DNS(upstream_network);
     datapath_->StartSourceIPv6PrefixEnforcement(upstream_network);
-    // TODO(b/279871350): Support prefix shorter than /64.
-    const auto ipv6_prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
-        upstream_network.network_config.ipv6_addresses[0].address());
-    datapath_->UpdateSourceEnforcementIPv6Prefix(upstream_network, ipv6_prefix);
+    datapath_->UpdateSourceEnforcementIPv6Prefix(
+        upstream_network, upstream_network.network_config.ipv6_addresses);
   }
 
   return upstream_network;

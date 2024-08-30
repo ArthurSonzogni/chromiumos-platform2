@@ -16,6 +16,7 @@
 
 #include <iostream>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -1595,7 +1596,7 @@ void Datapath::StartSourceIPv6PrefixEnforcement(
   }
   // By default, immediately start jumping to "enforce_ipv6_src_prefix" to drop
   // traffic until the prefix RETURN rule is installed.
-  UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
+  UpdateSourceEnforcementIPv6Prefix(shill_device, {});
 }
 
 void Datapath::StopSourceIPv6PrefixEnforcement(
@@ -1617,15 +1618,26 @@ void Datapath::StopSourceIPv6PrefixEnforcement(
 
 void Datapath::UpdateSourceEnforcementIPv6Prefix(
     const ShillClient::Device& shill_device,
-    const std::optional<net_base::IPv6CIDR>& prefix) {
-  VLOG(2) << __func__ << ": " << shill_device << ", {"
-          << (prefix ? prefix->ToString() : "") << "}";
+    const std::vector<net_base::IPv6CIDR>& ipv6_addresses) {
+  std::set<std::string> prefix_strs;
+  for (const auto& addr : ipv6_addresses) {
+    // TODO(b/279871350): Support prefix shorter than /64.
+    const auto ipv6_prefix =
+        net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr.address(), 64)
+            ->GetPrefixCIDR();
+    prefix_strs.insert(ipv6_prefix.ToString());
+  }
+  LOG(INFO) << __func__ << ": " << shill_device.ifname << ", {"
+            << base::JoinString(std::vector<std::string>(prefix_strs.begin(),
+                                                         prefix_strs.end()),
+                                ",")
+            << "}";
+
   std::string subchain = EgressSubChainName(shill_device.ifname);
   if (!FlushChain(IpFamily::kIPv6, Iptables::Table::kFilter, subchain)) {
     LOG(ERROR) << __func__ << ": Failed to flush " << subchain;
   }
-  if (prefix) {
-    std::string prefix_str = prefix->ToString();
+  for (const auto& prefix_str : prefix_strs) {
     if (!ModifyIptables(IpFamily::kIPv6, Iptables::Table::kFilter,
                         Iptables::Command::kA, subchain,
                         {"-s", prefix_str, "-j", "RETURN", "-w"})) {

@@ -381,10 +381,8 @@ void Manager::OnShillDevicesChanged(
 
     datapath_.StartSourceIPv6PrefixEnforcement(device);
     if (!device.network_config.ipv6_addresses.empty()) {
-      // TODO(b/279871350): Support prefix shorter than /64.
-      const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
-          device.network_config.ipv6_addresses[0].address());
-      datapath_.UpdateSourceEnforcementIPv6Prefix(device, prefix);
+      datapath_.UpdateSourceEnforcementIPv6Prefix(
+          device, device.network_config.ipv6_addresses);
     }
   }
 
@@ -440,7 +438,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   ipv6_svc_.OnUplinkIPv6Changed(shill_device);
 
   if (shill_device.network_config.ipv6_addresses.empty()) {
-    datapath_.UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
+    datapath_.UpdateSourceEnforcementIPv6Prefix(shill_device, {});
     return;
   }
 
@@ -457,10 +455,8 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
     RestartIPv6(nsinfo.netns_name);
   }
 
-  // TODO(b/279871350): Support prefix shorter than /64.
-  const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
-      shill_device.network_config.ipv6_addresses[0].address());
-  datapath_.UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
+  datapath_.UpdateSourceEnforcementIPv6Prefix(
+      shill_device, shill_device.network_config.ipv6_addresses);
 }
 
 void Manager::OnDoHProvidersChanged(

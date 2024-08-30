@@ -224,7 +224,7 @@ class MockDatapath : public Datapath {
   MOCK_METHOD(void,
               UpdateSourceEnforcementIPv6Prefix,
               (const ShillClient::Device&,
-               const std::optional<net_base::IPv6CIDR>&),
+               const std::vector<net_base::IPv6CIDR>&),
               (override));
   MOCK_METHOD(bool,
               StartDownstreamNetwork,

@@ -309,7 +309,7 @@ class Datapath {
       const ShillClient::Device& shill_device);
   virtual void UpdateSourceEnforcementIPv6Prefix(
       const ShillClient::Device& shill_device,
-      const std::optional<net_base::IPv6CIDR>& prefix);
+      const std::vector<net_base::IPv6CIDR>& ipv6_addresses);
 
   // Configures IPv4 interface parameters, IP forwarding rules, and traffic
   // marking for the downstream network interface specified in |info|. Exact

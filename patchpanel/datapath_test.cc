@@ -1638,12 +1638,12 @@ TEST_F(DatapathTest, PrefixEnforcement) {
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath_->UpdateSourceEnforcementIPv6Prefix(
       cell_device,
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:1::/64"));
+      {*net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:1::1/64")});
 
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
-  datapath_->UpdateSourceEnforcementIPv6Prefix(cell_device, std::nullopt);
+  datapath_->UpdateSourceEnforcementIPv6Prefix(cell_device, {});
 
   runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
   runner_.ExpectCallIptables(
@@ -1653,7 +1653,22 @@ TEST_F(DatapathTest, PrefixEnforcement) {
       IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
   datapath_->UpdateSourceEnforcementIPv6Prefix(
       cell_device,
-      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::/64"));
+      {*net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::1/64"),
+       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::2/64")});
+
+  runner_.ExpectCallIptables(IpFamily::kIPv6, "filter -F egress_wwan0 -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "filter -A egress_wwan0 -s 2001:db8:1:2::/64 -j RETURN -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "filter -A egress_wwan0 -s 2001:db8:1:3::/64 -j RETURN -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6, "filter -A egress_wwan0 -j enforce_ipv6_src_prefix -w");
+  datapath_->UpdateSourceEnforcementIPv6Prefix(
+      cell_device,
+      {*net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:2::1/64"),
+       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1:3::1/64")});
 
   runner_.ExpectCallIptables(IpFamily::kIPv6,
                              "filter -D OUTPUT -o wwan0 -j egress_wwan0 -w");
