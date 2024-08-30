@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTILS_H_
-#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTILS_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTIL_IMPL_H_
+#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTIL_IMPL_H_
 
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -19,15 +19,15 @@
 
 namespace diagnostics {
 
-class DisplayUtil {
+class DisplayUtilImpl {
  public:
-  // Creates and returns a DisplayUtil with valid drm resources.
+  // Creates and returns a DisplayUtilImpl with valid drm resources.
   // Returns a null value if no valid device is found.
-  static std::unique_ptr<DisplayUtil> Create();
+  static std::unique_ptr<DisplayUtilImpl> Create();
 
-  DisplayUtil(const DisplayUtil&) = delete;
-  DisplayUtil(DisplayUtil&&) = delete;
-  ~DisplayUtil();
+  DisplayUtilImpl(const DisplayUtilImpl&) = delete;
+  DisplayUtilImpl(DisplayUtilImpl&&) = delete;
+  ~DisplayUtilImpl();
 
   struct DrmModeResDeleter {
     void operator()(drmModeRes* resources) { drmModeFreeResources(resources); }
@@ -88,7 +88,7 @@ class DisplayUtil {
 
  protected:
   // Used only by the factory function.
-  explicit DisplayUtil(base::File device_file);
+  explicit DisplayUtilImpl(base::File device_file);
 
  private:
   // This function iterates all the properties in |connector| and find the
@@ -98,8 +98,8 @@ class DisplayUtil {
                      const std::string& name,
                      ScopedDrmPropertyPtr* prop);
   std::string GetEnumName(const ScopedDrmPropertyPtr& prop, uint32_t value);
-  DisplayUtil::ScopedDrmModeCrtcPtr GetDrmCrtc(const uint32_t connector_id);
-  DisplayUtil::ScopedDrmPropertyBlobPtr GetDrmPropertyBlob(
+  DisplayUtilImpl::ScopedDrmModeCrtcPtr GetDrmCrtc(const uint32_t connector_id);
+  DisplayUtilImpl::ScopedDrmPropertyBlobPtr GetDrmPropertyBlob(
       const uint32_t connector_id, const std::string& name);
 
   base::File device_file_;
@@ -107,4 +107,4 @@ class DisplayUtil {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTILS_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_DISPLAY_UTIL_IMPL_H_

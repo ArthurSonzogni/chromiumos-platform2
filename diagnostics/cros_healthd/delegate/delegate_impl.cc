@@ -59,7 +59,7 @@
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
-#include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util_impl.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/delegate/utils/ndt_client.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -208,7 +208,7 @@ void GetConnectedExternalDisplayConnectorsHelper(
     std::optional<std::vector<uint32_t>> last_known_connectors,
     DelegateImpl::GetConnectedExternalDisplayConnectorsCallback callback,
     int times) {
-  std::unique_ptr<DisplayUtil> display_util = DisplayUtil::Create();
+  std::unique_ptr<DisplayUtilImpl> display_util = DisplayUtilImpl::Create();
   if (!display_util) {
     std::move(callback).Run(
         base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},
@@ -502,7 +502,7 @@ void DelegateImpl::GetConnectedExternalDisplayConnectors(
 }
 
 void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
-  std::unique_ptr<DisplayUtil> display_util = DisplayUtil::Create();
+  std::unique_ptr<DisplayUtilImpl> display_util = DisplayUtilImpl::Create();
   if (!display_util) {
     std::move(callback).Run(mojom::GetPrivacyScreenInfoResult::NewError(
         "Failed to create DisplayUtil"));

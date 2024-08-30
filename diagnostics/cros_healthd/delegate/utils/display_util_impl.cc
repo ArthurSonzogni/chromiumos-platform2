@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util_impl.h"
 
 #include <xf86drm.h>
 #include <xf86drmMode.h>
@@ -27,7 +27,7 @@ constexpr uint32_t INVALID_ENCODER_ID = 0;
 
 }  // namespace
 
-std::unique_ptr<DisplayUtil> DisplayUtil::Create() {
+std::unique_ptr<DisplayUtilImpl> DisplayUtilImpl::Create() {
   ScopedDrmModeResPtr resource;
   // Find valid device.
   base::FileEnumerator lister(base::FilePath("/dev/dri"), false,
@@ -47,18 +47,18 @@ std::unique_ptr<DisplayUtil> DisplayUtil::Create() {
       if (drmIsMaster(file.GetPlatformFile())) {
         drmDropMaster(file.GetPlatformFile());
       }
-      return base::WrapUnique(new DisplayUtil(std::move(file)));
+      return base::WrapUnique(new DisplayUtilImpl(std::move(file)));
     }
   }
   return nullptr;
 }
 
-DisplayUtil::DisplayUtil(base::File device_file)
+DisplayUtilImpl::DisplayUtilImpl(base::File device_file)
     : device_file_(std::move(device_file)) {}
 
-DisplayUtil::~DisplayUtil() = default;
+DisplayUtilImpl::~DisplayUtilImpl() = default;
 
-std::optional<uint32_t> DisplayUtil::GetEmbeddedDisplayConnectorID() {
+std::optional<uint32_t> DisplayUtilImpl::GetEmbeddedDisplayConnectorID() {
   ScopedDrmModeResPtr resource;
   resource.reset(drmModeGetResources(device_file_.GetPlatformFile()));
 
@@ -86,7 +86,7 @@ std::optional<uint32_t> DisplayUtil::GetEmbeddedDisplayConnectorID() {
   return std::nullopt;
 }
 
-std::vector<uint32_t> DisplayUtil::GetExternalDisplayConnectorIDs() {
+std::vector<uint32_t> DisplayUtilImpl::GetExternalDisplayConnectorIDs() {
   std::vector<uint32_t> external_display_connector_ids;
   ScopedDrmModeResPtr resource;
   resource.reset(drmModeGetResources(device_file_.GetPlatformFile()));
@@ -115,9 +115,9 @@ std::vector<uint32_t> DisplayUtil::GetExternalDisplayConnectorIDs() {
   return external_display_connector_ids;
 }
 
-void DisplayUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
-                                        bool* privacy_screen_supported,
-                                        bool* privacy_screen_enabled) {
+void DisplayUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
+                                            bool* privacy_screen_supported,
+                                            bool* privacy_screen_enabled) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
   if (!connector)
@@ -154,8 +154,8 @@ void DisplayUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
   }
 }
 
-std::string DisplayUtil::GetEnumName(const ScopedDrmPropertyPtr& prop,
-                                     uint32_t value) {
+std::string DisplayUtilImpl::GetEnumName(const ScopedDrmPropertyPtr& prop,
+                                         uint32_t value) {
   if (!prop)
     return std::string();
 
@@ -166,9 +166,9 @@ std::string DisplayUtil::GetEnumName(const ScopedDrmPropertyPtr& prop,
   return std::string();
 }
 
-int DisplayUtil::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
-                                const std::string& name,
-                                ScopedDrmPropertyPtr* prop) {
+int DisplayUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
+                                    const std::string& name,
+                                    ScopedDrmPropertyPtr* prop) {
   if (!connector)
     return -1;
 
@@ -187,7 +187,7 @@ int DisplayUtil::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
   return -1;
 }
 
-DisplayUtil::ScopedDrmModeCrtcPtr DisplayUtil::GetDrmCrtc(
+DisplayUtilImpl::ScopedDrmModeCrtcPtr DisplayUtilImpl::GetDrmCrtc(
     const uint32_t connector_id) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
@@ -206,9 +206,9 @@ DisplayUtil::ScopedDrmModeCrtcPtr DisplayUtil::GetDrmCrtc(
       drmModeGetCrtc(device_file_.GetPlatformFile(), encoder->crtc_id));
 }
 
-bool DisplayUtil::FillDisplaySize(const uint32_t connector_id,
-                                  uint32_t* width,
-                                  uint32_t* height) {
+bool DisplayUtilImpl::FillDisplaySize(const uint32_t connector_id,
+                                      uint32_t* width,
+                                      uint32_t* height) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
   if (!connector)
@@ -219,9 +219,9 @@ bool DisplayUtil::FillDisplaySize(const uint32_t connector_id,
   return true;
 }
 
-bool DisplayUtil::FillDisplayResolution(const uint32_t connector_id,
-                                        uint32_t* horizontal,
-                                        uint32_t* vertical) {
+bool DisplayUtilImpl::FillDisplayResolution(const uint32_t connector_id,
+                                            uint32_t* horizontal,
+                                            uint32_t* vertical) {
   auto crtc = GetDrmCrtc(connector_id);
   if (crtc) {
     *horizontal = crtc->mode.hdisplay;
@@ -245,8 +245,8 @@ bool DisplayUtil::FillDisplayResolution(const uint32_t connector_id,
   return false;
 }
 
-bool DisplayUtil::FillDisplayRefreshRate(const uint32_t connector_id,
-                                         double* refresh_rate) {
+bool DisplayUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
+                                             double* refresh_rate) {
   auto crtc = GetDrmCrtc(connector_id);
   if (crtc && crtc->mode.htotal && crtc->mode.vtotal) {
     // |crtc->mode.vrefresh| indicates the refresh rate, however, it stores in
@@ -277,7 +277,7 @@ bool DisplayUtil::FillDisplayRefreshRate(const uint32_t connector_id,
   return false;
 }
 
-DisplayUtil::ScopedDrmPropertyBlobPtr DisplayUtil::GetDrmPropertyBlob(
+DisplayUtilImpl::ScopedDrmPropertyBlobPtr DisplayUtilImpl::GetDrmPropertyBlob(
     const uint32_t connector_id, const std::string& name) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
@@ -293,7 +293,8 @@ DisplayUtil::ScopedDrmPropertyBlobPtr DisplayUtil::GetDrmPropertyBlob(
   return nullptr;
 }
 
-bool DisplayUtil::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
+bool DisplayUtilImpl::FillEdidInfo(const uint32_t connector_id,
+                                   EdidInfo* info) {
   auto blob = GetDrmPropertyBlob(connector_id, "EDID");
   if (!blob || !blob->length)
     return false;
@@ -310,7 +311,7 @@ bool DisplayUtil::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
   return false;
 }
 
-mojom::EmbeddedDisplayInfoPtr DisplayUtil::GetEmbeddedDisplayInfo() {
+mojom::EmbeddedDisplayInfoPtr DisplayUtilImpl::GetEmbeddedDisplayInfo() {
   auto info = mojom::EmbeddedDisplayInfo::New();
 
   auto connector_id_opt = GetEmbeddedDisplayConnectorID();
@@ -369,7 +370,7 @@ mojom::EmbeddedDisplayInfoPtr DisplayUtil::GetEmbeddedDisplayInfo() {
   return info;
 }
 
-mojom::ExternalDisplayInfoPtr DisplayUtil::GetExternalDisplayInfo(
+mojom::ExternalDisplayInfoPtr DisplayUtilImpl::GetExternalDisplayInfo(
     const uint32_t connector_id) {
   auto info = mojom::ExternalDisplayInfo::New();
 
