@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         error!("Failed to initialize syslog: {:?}", e);
     }
 
-    let _reclaim_client: VmmmsClient = VmmmsClient::new(VmmmsSocket::new(
+    let mut reclaim_client: VmmmsClient = VmmmsClient::new(VmmmsSocket::new(
         VMADDR_CID_HOST,
         VM_MEMORY_MANAGEMENT_RECLAIM_SERVER_PORT,
         Some(Duration::from_secs(5)),
@@ -31,5 +31,8 @@ fn main() -> Result<()> {
 
     info!("VmMemoryManagementClient connection established");
 
-    Ok(())
+    loop {
+        reclaim_client.handle_reclaim_socket_readable()?;
+        info!("Successfully handled MGLRU request");
+    }
 }

@@ -4,7 +4,9 @@
 
 use anyhow::bail;
 use anyhow::Result;
+use protobuf::MessageField;
 use system_api::vm_memory_management::ConnectionType;
+use system_api::vm_memory_management::MglruStats;
 use system_api::vm_memory_management::PacketType;
 use system_api::vm_memory_management::VmMemoryManagementPacket;
 
@@ -31,5 +33,22 @@ impl VmmmsClient {
         Ok(Self {
             vmmms_socket: vmmms_socket,
         })
+    }
+
+    pub fn handle_reclaim_socket_readable(self: &mut Self) -> Result<()> {
+        let mglru_request = self.vmmms_socket.read_packet()?;
+
+        if mglru_request.type_ != PacketType::PACKET_TYPE_MGLRU_REQUEST.into() {
+            bail!("Received unsupported command on MGLRU request.");
+        };
+
+        let mut mglru_packet = VmMemoryManagementPacket::new();
+        mglru_packet.type_ = PacketType::PACKET_TYPE_MGLRU_RESPONSE.into();
+        let stats: MessageField<MglruStats> = Default::default();
+        mglru_packet.mut_mglru_response().stats = stats;
+
+        self.vmmms_socket.write_packet(mglru_packet)?;
+
+        Ok(())
     }
 }
