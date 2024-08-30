@@ -63,21 +63,9 @@ union EntityKey {
   string app_id;
 };
 
-// Used to control thresholds of each safety class, for applying safety checks
-// on requests and responses.
-struct SafetyThresholds {
-  // The key is the integer id of safety classes.
-  // The safety class that each id corresponds to can be found at
-  // google3/chrome/intelligence/ondevice/data/example_text_safety.txtpb
-  map<uint32, float> thresholds;
-};
-
 // Configurable options of the embedding engine.
-struct EmbeddingOptions {
-  // Safety thresholds to apply on input entities. Entities that do not pass
-  // safety check will be dropped from the request.
-  SafetyThresholds request_safety_thresholds;
-};
+[Stable]
+struct EmbeddingOptions {};
 
 // Configurable options of the clustering engine.
 // TODO(b/358531135): Decide the cluster algorithm we want to use and add
@@ -96,19 +84,11 @@ struct ClusteringOptions {
 };
 
 // Configurable options of the title generation engine.
+[Stable]
 struct TitleGenerationOptions {
   // Max characters allowed in the generated title. 0 is a special value
   // meaning there is no limitation of maximum number of characters.
   uint32 max_characters;
-  // Safety thresholds to apply on the output title.
-  SafetyThresholds response_safety_thresholds;
-  // OnDeviceModel execution params.
-  // The maximum of top_k and 1 will be used as the actual top K param.
-  uint32 top_k = 1;
-  // Note that temperature=0.0 will be treated as special case in the backend
-  // code and has the same effect as temperature=1.0.
-  // If you want greedy sampling, you should set top_k to 1.
-  float temperature = 1.0;
   // Target language of the generated title using ISO 639-2 language code
   // definition. If not set, EN is assumed.
   string? language_code;
@@ -127,6 +107,7 @@ struct Group {
   array<EntityKey> entities;
 };
 
+[Stable]
 struct GroupRequest {
   array<Entity> entities;
   EmbeddingOptions embedding_options;
@@ -148,6 +129,7 @@ union GroupResult {
   GroupResponse response;
 };
 
+[Stable]
 struct CacheEmbeddingsRequest {
   array<Entity> entities;
   EmbeddingOptions embedding_options;
@@ -168,6 +150,7 @@ union CacheEmbeddingsResult {
 // The ChromeOS odml daemon implements this service interface, utilizing the on
 // device models for backend logic. Ash Chrome is the client, implementing
 // UI features using this coral service.
+[Stable]
 interface CoralService {
   // Group the request entities into suitable groups with titles.
   Group@0(GroupRequest request) => (GroupResult result);

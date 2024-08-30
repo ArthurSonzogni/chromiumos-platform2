@@ -96,16 +96,10 @@ inline TitleGenerationResponse GetFakeTitleGenerationResponse() {
 }
 
 inline mojom::GroupRequestPtr GetFakeGroupRequest() {
-  auto embedding_options = mojom::EmbeddingOptions::New();
-  embedding_options->request_safety_thresholds = mojom::SafetyThresholds::New();
-  auto clustering_options = mojom::ClusteringOptions::New();
-  auto title_generation_options = mojom::TitleGenerationOptions::New();
-  title_generation_options->response_safety_thresholds =
-      mojom::SafetyThresholds::New();
   auto request = mojom::GroupRequest::New();
-  request->embedding_options = std::move(embedding_options);
-  request->clustering_options = std::move(clustering_options);
-  request->title_generation_options = std::move(title_generation_options);
+  request->embedding_options = mojom::EmbeddingOptions::New();
+  request->clustering_options = mojom::ClusteringOptions::New();
+  request->title_generation_options = mojom::TitleGenerationOptions::New();
   request->entities = GetFakeEntities();
   return request;
 }

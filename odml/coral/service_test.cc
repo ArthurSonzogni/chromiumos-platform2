@@ -197,26 +197,22 @@ TEST_F(CoralServiceTest, TitleGenerationFailed) {
 }
 
 TEST_F(CoralServiceTest, CacheEmbeddingsSuccess) {
-  auto embedding_options = mojom::EmbeddingOptions::New();
-  embedding_options->request_safety_thresholds = mojom::SafetyThresholds::New();
-  auto request = mojom::CacheEmbeddingsRequest::New(GetFakeEntities(),
-                                                    embedding_options.Clone());
+  auto request = mojom::CacheEmbeddingsRequest::New(
+      GetFakeEntities(), mojom::EmbeddingOptions::New());
   auto expected_group_request = mojom::GroupRequest::New();
   expected_group_request->entities = GetFakeEntities();
-  expected_group_request->embedding_options = std::move(embedding_options);
+  expected_group_request->embedding_options = mojom::EmbeddingOptions::New();
   embedding_engine_->Expect(*expected_group_request,
                             GetFakeEmbeddingResponse());
   ExpectCacheEmbeddingsOk(std::move(request));
 }
 
 TEST_F(CoralServiceTest, CacheEmbeddingsFailed) {
-  auto embedding_options = mojom::EmbeddingOptions::New();
-  embedding_options->request_safety_thresholds = mojom::SafetyThresholds::New();
-  auto request = mojom::CacheEmbeddingsRequest::New(GetFakeEntities(),
-                                                    embedding_options.Clone());
+  auto request = mojom::CacheEmbeddingsRequest::New(
+      GetFakeEntities(), mojom::EmbeddingOptions::New());
   auto expected_group_request = mojom::GroupRequest::New();
   expected_group_request->entities = GetFakeEntities();
-  expected_group_request->embedding_options = std::move(embedding_options);
+  expected_group_request->embedding_options = mojom::EmbeddingOptions::New();
   embedding_engine_->Expect(*expected_group_request,
                             base::unexpected(mojom::CoralError::kUnknownError));
   ExpectCacheEmbeddingsError(std::move(request),
