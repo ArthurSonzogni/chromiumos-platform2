@@ -59,7 +59,8 @@
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
-#include "diagnostics/cros_healthd/delegate/utils/display_util_impl.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util_factory.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/delegate/utils/ndt_client.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -205,10 +206,11 @@ void MonitorEvdevEvents(std::unique_ptr<EvdevMonitor::Delegate> delegate,
 }
 
 void GetConnectedExternalDisplayConnectorsHelper(
+    DisplayUtilFactory* display_util_factory,
     std::optional<std::vector<uint32_t>> last_known_connectors,
     DelegateImpl::GetConnectedExternalDisplayConnectorsCallback callback,
     int times) {
-  std::unique_ptr<DisplayUtilImpl> display_util = DisplayUtilImpl::Create();
+  std::unique_ptr<DisplayUtil> display_util = display_util_factory->Create();
   if (!display_util) {
     std::move(callback).Run(
         base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},
@@ -232,7 +234,8 @@ void GetConnectedExternalDisplayConnectorsHelper(
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&GetConnectedExternalDisplayConnectorsHelper,
-                         last_known_connectors, std::move(callback), times + 1),
+                         display_util_factory, last_known_connectors,
+                         std::move(callback), times + 1),
           kGetExternalDisplayInfoRetryPeriod);
       return;
     }
@@ -249,7 +252,8 @@ void GetConnectedExternalDisplayConnectorsHelper(
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&GetConnectedExternalDisplayConnectorsHelper,
-                         last_known_connectors, std::move(callback), times + 1),
+                         display_util_factory, last_known_connectors,
+                         std::move(callback), times + 1),
           kGetExternalDisplayInfoRetryPeriod);
       return;
     }
@@ -260,8 +264,10 @@ void GetConnectedExternalDisplayConnectorsHelper(
 
 }  // namespace
 
-DelegateImpl::DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory)
-    : ec_command_factory_(ec_command_factory) {}
+DelegateImpl::DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
+                           DisplayUtilFactory* display_util_factory)
+    : ec_command_factory_(ec_command_factory),
+      display_util_factory_(display_util_factory) {}
 
 DelegateImpl::~DelegateImpl() = default;
 
@@ -487,8 +493,8 @@ void DelegateImpl::GetConnectedExternalDisplayConnectors(
     const std::optional<std::vector<uint32_t>>& last_known_connectors_const,
     GetConnectedExternalDisplayConnectorsCallback callback) {
   if (!last_known_connectors_const.has_value()) {
-    GetConnectedExternalDisplayConnectorsHelper(std::nullopt,
-                                                std::move(callback), 0);
+    GetConnectedExternalDisplayConnectorsHelper(
+        display_util_factory_, std::nullopt, std::move(callback), 0);
     return;
   }
 
@@ -497,12 +503,12 @@ void DelegateImpl::GetConnectedExternalDisplayConnectors(
     last_known_connectors.push_back(element);
   }
   std::sort(last_known_connectors.begin(), last_known_connectors.end());
-  GetConnectedExternalDisplayConnectorsHelper(last_known_connectors,
-                                              std::move(callback), 0);
+  GetConnectedExternalDisplayConnectorsHelper(
+      display_util_factory_, last_known_connectors, std::move(callback), 0);
 }
 
 void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
-  std::unique_ptr<DisplayUtilImpl> display_util = DisplayUtilImpl::Create();
+  std::unique_ptr<DisplayUtil> display_util = display_util_factory_->Create();
   if (!display_util) {
     std::move(callback).Run(mojom::GetPrivacyScreenInfoResult::NewError(
         "Failed to create DisplayUtil"));
@@ -526,7 +532,7 @@ void DelegateImpl::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
 }
 
 void DelegateImpl::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
-  std::move(callback).Run(GetDisplayInfo());
+  std::move(callback).Run(GetDisplayInfo(display_util_factory_));
 }
 
 void DelegateImpl::MonitorPowerButton(

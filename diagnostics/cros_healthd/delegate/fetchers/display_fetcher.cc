@@ -8,7 +8,8 @@
 #include <utility>
 #include <vector>
 
-#include "diagnostics/cros_healthd/delegate/utils/display_util_impl.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util_factory.h"
 
 namespace diagnostics {
 
@@ -18,8 +19,9 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-mojom::DisplayResultPtr GetDisplayInfo() {
-  std::unique_ptr<DisplayUtilImpl> display_util = DisplayUtilImpl::Create();
+mojom::DisplayResultPtr GetDisplayInfo(
+    DisplayUtilFactory* display_util_factory) {
+  std::unique_ptr<DisplayUtil> display_util = display_util_factory->Create();
   if (!display_util) {
     return mojom::DisplayResult::NewError(
         mojom::ProbeError::New(mojom::ErrorType::kSystemUtilityError,

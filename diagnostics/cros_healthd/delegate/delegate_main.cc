@@ -17,6 +17,7 @@
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/delegate_impl.h"
+#include "diagnostics/cros_healthd/delegate/utils/display_util_factory_impl.h"
 
 namespace diagnostics {
 
@@ -49,7 +50,8 @@ class DelegateDaemon : public brillo::Daemon {
  private:
   mojo::core::ScopedIPCSupport scoped_ipc_support_;
   ec::EcCommandFactory ec_command_factory_;
-  DelegateImpl delegate_{&ec_command_factory_};
+  DisplayUtilFactoryImpl display_util_factory_;
+  DelegateImpl delegate_{&ec_command_factory_, &display_util_factory_};
   mojo::Receiver<mojom::Delegate> receiver_{&delegate_};
 };
 

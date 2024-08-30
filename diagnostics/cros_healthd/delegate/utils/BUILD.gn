@@ -4,6 +4,7 @@
 
 source_set("utils") {
   sources = [
+    "display_util_factory_impl.cc",
     "display_util_impl.cc",
     "edid.cc",
     "evdev_monitor.cc",

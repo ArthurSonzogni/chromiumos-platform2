@@ -25,11 +25,13 @@ class MkbpEvent;
 }  // namespace ec
 
 namespace diagnostics {
+class DisplayUtilFactory;
 class PrimeNumberSearchDelegate;
 
 class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
  public:
-  explicit DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory);
+  explicit DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
+                        DisplayUtilFactory* display_util_factory);
   DelegateImpl(const DelegateImpl&) = delete;
   DelegateImpl& operator=(const DelegateImpl&) = delete;
   ~DelegateImpl() override;
@@ -110,6 +112,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
 
  private:
   ec::EcCommandFactoryInterface* const ec_command_factory_;
+  DisplayUtilFactory* const display_util_factory_;
 };
 
 }  // namespace diagnostics

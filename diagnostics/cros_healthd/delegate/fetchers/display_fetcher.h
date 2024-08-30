@@ -8,10 +8,12 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+class DisplayUtilFactory;
 
 // Returns a structure with either the device's display info or the
 // error that occurred fetching the information.
-ash::cros_healthd::mojom::DisplayResultPtr GetDisplayInfo();
+ash::cros_healthd::mojom::DisplayResultPtr GetDisplayInfo(
+    DisplayUtilFactory* display_util_factory);
 
 }  // namespace diagnostics
 

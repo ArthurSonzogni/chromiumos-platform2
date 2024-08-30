@@ -45,7 +45,10 @@ executable("delegate") {
     "//diagnostics/cros_healthd/welco_ec/*",
   ]
   install_path = "/usr/libexec/diagnostics"
-  deps = [ ":libexecutor_delegate" ]
+  deps = [
+    ":libexecutor_delegate",
+    "//diagnostics/cros_healthd/delegate/utils",
+  ]
 }
 
 if (use.test) {

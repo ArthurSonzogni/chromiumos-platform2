@@ -24,6 +24,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
+#include "diagnostics/cros_healthd/delegate/utils/mock_display_util_factory.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -330,8 +331,9 @@ class MockPrimeNumberSearchDelegate : public PrimeNumberSearchDelegate {
 
 class MockDelegateImpl : public DelegateImpl {
  public:
-  explicit MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory)
-      : DelegateImpl(ec_command_factory) {}
+  MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
+                   DisplayUtilFactory* display_util_factory)
+      : DelegateImpl(ec_command_factory, display_util_factory) {}
   MockDelegateImpl(const MockDelegateImpl&) = delete;
   MockDelegateImpl& operator=(const MockDelegateImpl&) = delete;
   ~MockDelegateImpl() = default;
@@ -428,7 +430,9 @@ class DelegateImplTest : public BaseFileTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   StrictMock<ec::MockEcCommandFactory> mock_ec_command_factory_;
-  MockDelegateImpl delegate_{&mock_ec_command_factory_};
+  MockDisplayUtilFactory mock_display_util_factory_;
+  MockDelegateImpl delegate_{&mock_ec_command_factory_,
+                             &mock_display_util_factory_};
 };
 
 TEST_F(DelegateImplTest, GetFingerprintFrameFpInfoCommandFailed) {
