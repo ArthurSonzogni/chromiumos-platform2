@@ -795,10 +795,6 @@ void TetheringManager::StartTetheringSession(WiFiPhy::Priority priority) {
 }
 
 void TetheringManager::OnDeviceCreated(HotspotDeviceRefPtr hotspot_dev) {
-  if (!result_callback_) {
-    LOG(ERROR) << "HotspotDevice was created with no pending callback.";
-    return;
-  }
   if (!hotspot_dev) {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
