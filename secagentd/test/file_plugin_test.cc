@@ -170,7 +170,6 @@ class FilePluginTestFixture : public ::testing::Test {
 
     // Set up the expectation for Sys_statx
     EXPECT_CALL(*platform_, Sys_statx(_, _, _, _, _))
-        .Times(8)
         .WillRepeatedly([&](int dir_fd, const std::string& path, int flags,
                             unsigned int mask, struct statx* statxbuf) -> int {
           // Modify the statxbuf as needed

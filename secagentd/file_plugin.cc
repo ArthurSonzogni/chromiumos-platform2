@@ -490,6 +490,8 @@ absl::Status PopulatePathsMapByCategory(
               },
               base::Unretained(pathInfoMap)),
           false, true);
+      pathInfo.fullResolvedPath = kDeviceSettingsBasePath;
+      (*pathInfoMap)[pathName].push_back(pathInfo);
     } else if (category == FilePathCategory::USER_PATH) {
       pathInfo.fullResolvedPath = pathInfo.pathPrefix +
                                   optionalUserHash.value() +
