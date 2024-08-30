@@ -134,7 +134,6 @@ class FilePluginTestFixture : public ::testing::Test {
     EXPECT_CALL(*batch_sender_, Start()).Times(0);
     EXPECT_CALL(*platform_, BpfMapFdByName(_, _)).WillRepeatedly(Return(42));
     EXPECT_CALL(*platform_, BpfMapUpdateElementByFd(_, _, _, _))
-        .Times(10)
         .WillRepeatedly(Return(0));
 
     // Define the expected return value (successful case)
@@ -171,7 +170,7 @@ class FilePluginTestFixture : public ::testing::Test {
 
     // Set up the expectation for Sys_statx
     EXPECT_CALL(*platform_, Sys_statx(_, _, _, _, _))
-        .Times(6)
+        .Times(8)
         .WillRepeatedly([&](int dir_fd, const std::string& path, int flags,
                             unsigned int mask, struct statx* statxbuf) -> int {
           // Modify the statxbuf as needed

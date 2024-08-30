@@ -509,6 +509,8 @@ class FilePlugin : public PluginInterface {
 
   void OnUserLogout(const std::string& userHash);
 
+  absl::Status PopulateProcessBlocklistMap();
+
   void OnMountEvent(const secagentd::bpf::mount_data& data);
 
   absl::Status UpdateBPFMapForPathInodes(

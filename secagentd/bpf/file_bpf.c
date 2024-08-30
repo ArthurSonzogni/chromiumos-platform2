@@ -91,6 +91,14 @@ struct {
   __uint(pinning, LIBBPF_PIN_BY_NAME);  // map will be shared across bpf objs.
 } shared_process_info SEC(".maps");
 
+// block listed pid map
+struct {
+  __uint(type, BPF_MAP_TYPE_HASH);
+  __uint(max_entries, 4);
+  __type(key, struct inode_dev_map_key);
+  __type(value, uint32_t);  // Value not used
+} blocklisted_binary_inode_map SEC(".maps");
+
 // Allowlist Maps
 
 /**
@@ -382,6 +390,27 @@ static __always_inline int bpf_map_update_allowlisted_hardlink_inodes(
   key.dev_id = dev_id;
   return bpf_map_update_elem(&allowlisted_hardlink_inodes, &key,
                              &file_monitoring_settings, 0);
+}
+
+static inline __attribute__((always_inline)) bool isProcessBlocklisted() {
+  struct inode_dev_map_key key;
+  __builtin_memset(&key, 0, sizeof(key));
+
+  // Get current task
+  struct task_struct* task = (struct task_struct*)bpf_get_current_task();
+  if (!task)
+    return 0;
+
+  struct inode* inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
+  key.inode_id = BPF_CORE_READ(inode, i_ino);
+  key.dev_id = BPF_CORE_READ(inode, i_sb, s_dev);
+
+  uint32_t* is_process_blocklisted =
+      bpf_map_lookup_elem(&blocklisted_binary_inode_map, &key);
+  if (!is_process_blocklisted) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -1242,6 +1271,10 @@ int BPF_PROG(fexit__filp_close,
   // Filter out kernel threads
   struct task_struct* t = (struct task_struct*)bpf_get_current_task();
   if (is_kthread(t)) {
+    return 0;
+  }
+
+  if (isProcessBlocklisted()) {
     return 0;
   }
 

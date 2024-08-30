@@ -47,6 +47,8 @@ namespace {
 
 using secagentd::FilePlugin;
 const char kDeviceSettingsBasePath[] = "/var/lib/devicesettings/";
+static const std::map<std::string, std::string> kBlocklistBinariesPathMap = {
+    {"dlp", "/usr/sbin/dlp"}, {"secagentd", "/usr/sbin/secagentd"}};
 
 const std::vector<secagentd::FilePathName> kDeviceSettingMatchOptions{
     secagentd::FilePathName::DEVICE_SETTINGS_OWNER_KEY,
@@ -557,6 +559,59 @@ absl::Status PopulateFlagsMap(int fd) {
   return absl::OkStatus();
 }
 
+absl::Status FilePlugin::PopulateProcessBlocklistMap() {
+  // Retrieve the BPF map file descriptor for the blocklisted binary inode map
+  auto fd_result =
+      bpf_skeleton_helper_->FindBpfMapByName("blocklisted_binary_inode_map");
+  if (!fd_result.ok()) {
+    return fd_result.status();
+  }
+  auto fd = fd_result.value();
+
+  // Weak pointer to platform interface for updating BPF map
+  base::WeakPtr<PlatformInterface> platform = GetPlatform();
+
+  int root_fd = platform->OpenDirectory("/");
+  if (root_fd == -1) {
+    return absl::InternalError(strerror(errno));
+  }
+
+  // Iterate over the blocklisted process map, which contains the binary paths
+  for (const auto& [_, binary_path] : kBlocklistBinariesPathMap) {
+    // Retrieve file information for the current path using fstatat
+    absl::StatusOr<const struct statx> file_statx_result =
+        GetFStat(root_fd, binary_path.c_str());
+    if (!file_statx_result.ok()) {
+      // We always expect to find dlp/secagentd binary in stored location
+      NOTREACHED() << "FilePlugin::PopulateProcessBlocklistMap Failed to "
+                      "retrieve file stat for "
+                   << binary_path << ": " << file_statx_result.status();
+    }
+    const struct statx& fileStatx = file_statx_result.value();
+
+    // Prepare the BPF map key with inode ID and device ID
+    struct bpf::inode_dev_map_key key = {
+        .inode_id = fileStatx.stx_ino,
+        .dev_id = UserspaceToKernelDeviceId(fileStatx)};
+
+    // Update the BPF map with inode_device_key as the key, and dummy value (1)
+    // as the value
+    uint32_t dummy_value = 1;
+    if (platform->BpfMapUpdateElementByFd(fd, &key, &dummy_value, BPF_ANY) !=
+        0) {
+      return absl::InternalError(
+          absl::StrFormat("Failed to update BPF map with inode %lu and "
+                          "device %u for binary: %s",
+                          key.inode_id, key.dev_id, binary_path));
+    }
+  }
+  // TODO(princya): Handle close file descriptor more gracefully
+  platform->CloseDirectory(
+      root_fd);  // Close the root directory file descriptor
+
+  return absl::OkStatus();
+}
+
 absl::Status FilePlugin::UpdateBPFMapForPathInodes(
     int bpfMapFd,
     const std::map<FilePathName, std::vector<PathInfo>>& pathsMap,
@@ -767,6 +822,12 @@ absl::Status FilePlugin::InitializeFileBpfMaps(const std::string& userhash) {
   absl::Status status = PopulateFlagsMap(fd);
   if (!status.ok()) {
     return status;
+  }
+
+  status = PopulateProcessBlocklistMap();
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to add blocklisted process inodes "
+               << status.message();
   }
 
   // TODO(b/360058671): Add hardlinks processing.
