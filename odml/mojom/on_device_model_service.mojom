@@ -10,15 +10,27 @@
 module on_device_model.mojom;
 
 import "odml/mojom/file.mojom";
+import "odml/mojom/file_path.mojom";
 import "odml/mojom/on_device_model.mojom";
 import "odml/mojom/read_only_file.mojom";
 import "odml/mojom/uuid.mojom";
 
 // Opened file resources needed to define the model.
 struct ModelAssets {
+  // Model weights could be passed as an opened file or a file path.
+  // The backend type will decide which one should be used, or
+  // which one is preferred if both are passed. If both are unset,
+  // usually the operation should fail.
+  // APU backend: weights_path should be used.
+  // GPU backend: weights should be used.
   // TODO(b/313919363): This should also be a ReadOnlyFile.
   mojo_base.mojom.File? weights;
+  mojo_base.mojom.FilePath? weights_path;
 
+  // Currently the only usage of sp model will be passed by file path.
+  mojo_base.mojom.FilePath? sp_model_path;
+
+  // Currently the usage of models below will only be passed by opened file.
   mojo_base.mojom.ReadOnlyFile? ts_data;
   mojo_base.mojom.ReadOnlyFile? ts_sp_model;
 
@@ -26,8 +38,20 @@ struct ModelAssets {
   mojo_base.mojom.ReadOnlyFile? language_detection_model;
 };
 
+// Type of the backend to run the model.
+enum ModelBackendType {
+  // The default WebGPU backend.
+  kGpu,
+  // The APU accelerator backend. Only available on devices with APU, and need
+  // special APU model files.
+  kApu,
+};
+
 // Params to describe the model to load.
 struct LoadModelParams {
+  // Backend type of the model.
+  ModelBackendType backend_type;
+
   // Assets for the model.
   ModelAssets assets;
 

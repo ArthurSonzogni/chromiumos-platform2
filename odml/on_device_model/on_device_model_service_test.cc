@@ -36,6 +36,7 @@ namespace {
 
 constexpr char kFakeModelName1[] = "5f30b8ca-2447-445e-9716-a6da073fae51";
 constexpr char kFakeModelName2[] = "90eeb7f8-9491-452d-9ec9-5b6edd6c93fa";
+constexpr char kFakeApuModelName[] = "e0b11b2d-cd05-43e2-ac9e-4cf608727128";
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -130,20 +131,33 @@ class OnDeviceModelServiceTest : public testing::Test {
     return remote;
   }
 
-  mojo::Remote<mojom::OnDeviceModel> LoadAdaptation(
-      mojom::OnDeviceModel& model, base::File adaptation_data) {
+  mojo::Remote<mojom::OnDeviceModel> LoadAdaptationWithParams(
+      mojom::OnDeviceModel& model,
+      mojom::LoadAdaptationParamsPtr adaptation_params) {
     base::RunLoop run_loop;
     mojo::Remote<mojom::OnDeviceModel> remote;
-    auto params = mojom::LoadAdaptationParams::New();
-    params->assets.weights = std::move(adaptation_data);
     model.LoadAdaptation(
-        std::move(params), remote.BindNewPipeAndPassReceiver(),
+        std::move(adaptation_params), remote.BindNewPipeAndPassReceiver(),
         base::BindLambdaForTesting([&](mojom::LoadModelResult result) {
           EXPECT_EQ(mojom::LoadModelResult::kSuccess, result);
           run_loop.Quit();
         }));
     run_loop.Run();
     return remote;
+  }
+
+  mojo::Remote<mojom::OnDeviceModel> LoadAdaptation(
+      mojom::OnDeviceModel& model, base::File adaptation_data) {
+    auto params = mojom::LoadAdaptationParams::New();
+    params->assets.weights = std::move(adaptation_data);
+    return LoadAdaptationWithParams(model, std::move(params));
+  }
+
+  mojo::Remote<mojom::OnDeviceModel> LoadAdaptation(
+      mojom::OnDeviceModel& model, base::FilePath adaptation_path) {
+    auto params = mojom::LoadAdaptationParams::New();
+    params->assets.weights_path = std::move(adaptation_path);
+    return LoadAdaptationWithParams(model, std::move(params));
   }
 
   mojom::InputOptionsPtr MakeInput(const std::string& input) {
@@ -426,6 +440,23 @@ TEST_F(OnDeviceModelServiceTest, LoadsAdaptation) {
               ElementsAre("Adaptation: Adapt1\n", "Input: foo\n"));
 
   auto adaptation2 = LoadAdaptation(*model, weights2.Open());
+  EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Input: foo\n"));
+  EXPECT_THAT(GetResponses(*adaptation1, "foo"),
+              ElementsAre("Adaptation: Adapt1\n", "Input: foo\n"));
+  EXPECT_THAT(GetResponses(*adaptation2, "foo"),
+              ElementsAre("Adaptation: Adapt2\n", "Input: foo\n"));
+}
+
+TEST_F(OnDeviceModelServiceTest, LoadsAdaptationWithPath) {
+  FakeFile weights1("Adapt1");
+  FakeFile weights2("Adapt2");
+  auto model = LoadModel(kFakeApuModelName);
+  auto adaptation1 = LoadAdaptation(*model, weights1.Path());
+  EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Input: foo\n"));
+  EXPECT_THAT(GetResponses(*adaptation1, "foo"),
+              ElementsAre("Adaptation: Adapt1\n", "Input: foo\n"));
+
+  auto adaptation2 = LoadAdaptation(*model, weights2.Path());
   EXPECT_THAT(GetResponses(*model, "foo"), ElementsAre("Input: foo\n"));
   EXPECT_THAT(GetResponses(*adaptation1, "foo"),
               ElementsAre("Adaptation: Adapt1\n", "Input: foo\n"));

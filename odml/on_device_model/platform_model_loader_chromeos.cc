@@ -76,6 +76,8 @@ constexpr char kTsDataPathKey[] = "ts_data_path";
 constexpr char kTsSpModelPathKey[] = "ts_sp_model_path";
 constexpr char kTsDimensionKey[] = "ts_dimension";
 constexpr char kVersionKey[] = "version";
+constexpr char kBackendTypeKey[] = "backend_type";
+constexpr char kSpModelPathKey[] = "sp_model_path";
 constexpr int kDefaultMaxTokens = 1024;
 constexpr char kLoadStatusHistogramName[] =
     "OnDeviceModel.LoadPlatformModelStatus";
@@ -130,6 +132,17 @@ class BaseModelProgressObserver
       receiver_{this};
   base::RepeatingCallback<void(double progress)> callback_;
 };
+
+std::optional<on_device_model::mojom::ModelBackendType> BackendTypeFromString(
+    const std::string& backend) {
+  if (backend == "gpu") {
+    return on_device_model::mojom::ModelBackendType::kGpu;
+  }
+  if (backend == "apu") {
+    return on_device_model::mojom::ModelBackendType::kApu;
+  }
+  return std::nullopt;
+}
 
 }  // namespace
 
@@ -365,6 +378,24 @@ void ChromeosPlatformModelLoader::OnInstallDlcComplete(
     return;
   }
 
+  // Default to GPU as that was the only existing backend.
+  on_device_model::mojom::ModelBackendType backend_type =
+      on_device_model::mojom::ModelBackendType::kGpu;
+  const std::string* backend_type_str = model_dict->FindString(kBackendTypeKey);
+  if (backend_type_str) {
+    std::optional<on_device_model::mojom::ModelBackendType>
+        parsed_backend_type = BackendTypeFromString(*backend_type_str);
+    if (!parsed_backend_type.has_value()) {
+      LOG(ERROR) << "Failed to recognize model backend type: "
+                 << *backend_type_str;
+      metrics_->SendEnumToUMA(kLoadStatusHistogramName,
+                              LoadStatus::kReadModelDescriptorFail);
+      ReplyError(uuid, mojom::LoadModelResult::kFailedToLoadLibrary);
+      return;
+    }
+    backend_type = *parsed_backend_type;
+  }
+
   const std::string* weight_path = model_dict->FindString(kWeightPathKey);
   const std::string* version = model_dict->FindString(kVersionKey);
 
@@ -426,21 +457,37 @@ void ChromeosPlatformModelLoader::OnInstallDlcComplete(
     }
   }
 
+  const std::string* sp_model_path = model_dict->FindString(kSpModelPathKey);
+
   const std::string* ts_data = model_dict->FindString(kTsDataPathKey);
   const std::string* ts_sp_model = model_dict->FindString(kTsSpModelPathKey);
   std::optional<int> ts_dimension = model_dict->FindInt(kTsDimensionKey);
 
   on_device_model::ModelAssetPaths model_paths;
-  model_paths.weights = dlc_root.Append(*weight_path);
+  // GPU backend sends the opened weight file to ML APIs directly. Other
+  // backends send the weight file path, optionally with the sentence piece
+  // model path.
+  if (backend_type == on_device_model::mojom::ModelBackendType::kGpu) {
+    model_paths.weights = dlc_root.Append(*weight_path);
+  }
   if (ts_data) {
     model_paths.ts_data = dlc_root.Append(*ts_data);
   }
   if (ts_sp_model) {
     model_paths.ts_sp_model = dlc_root.Append(*ts_sp_model);
   }
+  on_device_model::ModelAssets model_assets =
+      on_device_model::LoadModelAssets(model_paths);
+  if (backend_type != on_device_model::mojom::ModelBackendType::kGpu) {
+    model_assets.weights_path = dlc_root.Append(*weight_path);
+    if (sp_model_path) {
+      model_assets.sp_model_path = dlc_root.Append(*sp_model_path);
+    }
+  }
 
   auto params = on_device_model::mojom::LoadModelParams::New();
-  params->assets = on_device_model::LoadModelAssets(model_paths);
+  params->backend_type = backend_type;
+  params->assets = std::move(model_assets);
   params->max_tokens = max_tokens.value_or(kDefaultMaxTokens);
   params->adaptation_ranks = adaptation_ranks;
   params->support_multiple_sessions = true;

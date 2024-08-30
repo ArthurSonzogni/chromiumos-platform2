@@ -1,0 +1,7 @@
+{
+  "name": "APU base model",
+  "backend_type": "apu",
+  "version": "1.0.0.0",
+  "max_tokens": 2048,
+  "weight_path": "weights.bin"
+}

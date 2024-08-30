@@ -22,6 +22,7 @@ struct ModelAssetPaths {
   }
 
   base::FilePath weights;
+  base::FilePath sp_model;
   base::FilePath ts_data;
   base::FilePath ts_sp_model;
   base::FilePath language_detection_model;
@@ -36,6 +37,8 @@ struct ModelAssets {
   ~ModelAssets();
 
   base::File weights;
+  base::FilePath weights_path;
+  base::FilePath sp_model_path;
   base::File ts_data;
   base::File ts_sp_model;
   base::File language_detection_model;
@@ -62,6 +65,7 @@ struct AdaptationAssets {
   ~AdaptationAssets();
 
   base::File weights;
+  base::FilePath weights_path;
 };
 
 // Helper to open files for AdaptationAssets given their containing paths.
