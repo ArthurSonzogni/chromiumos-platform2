@@ -857,7 +857,7 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
   // Prepare.
-  fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 10);
+  fake_cros_system_->VbSetSystemPropertyInt("cros_debug", -1);
 
   // Execute.
   std::string result = ContextTestPeer::DeriveBootloaderStateForTest(context_);

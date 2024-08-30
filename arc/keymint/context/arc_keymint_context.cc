@@ -806,13 +806,18 @@ std::string ArcKeyMintContext::DeriveVerifiedBootState() const {
         << "cros_system_ is null and verified boot state cannot be derived";
     return default_unverified_state;
   }
+
   // Convert main firmware type to VerifiedBootState enum.
-  const std::string mainfw_type =
-      cros_system_->VbGetSystemPropertyString("mainfw_type")
-          .value_or("property not set");
-  auto boot_state_enum_iter = kMainfwTypeToBootStateMap.find(mainfw_type);
+  std::optional<std::string> mainfw_type =
+      cros_system_->VbGetSystemPropertyString("mainfw_type");
+  if (!mainfw_type.has_value()) {
+    LOG(ERROR) << "mainfw_type was not set";
+    return default_unverified_state;
+  }
+  auto boot_state_enum_iter =
+      kMainfwTypeToBootStateMap.find(mainfw_type.value());
   if (boot_state_enum_iter == kMainfwTypeToBootStateMap.end()) {
-    LOG(ERROR) << "Unexpected mainfw_type: " << mainfw_type;
+    LOG(ERROR) << "Unexpected mainfw_type: " << mainfw_type.value();
     return default_unverified_state;
   }
 
@@ -841,11 +846,21 @@ std::string ArcKeyMintContext::DeriveBootloaderState() const {
     LOG(ERROR) << "cros_system_ is null and bootloader state cannot be derived";
     return default_unlocked_device_state;
   }
-  const VerifiedBootDeviceState device_state_enum =
-      cros_system_->VbGetSystemPropertyInt("cros_debug") == 0
-          ? VerifiedBootDeviceState::kLockedDevice
-          : VerifiedBootDeviceState::kUnlockedDevice;
 
+  // Convert cros_debug to VerifiedBootDeviceState enum.
+  std::optional<int> cros_debug =
+      cros_system_->VbGetSystemPropertyInt("cros_debug");
+  VerifiedBootDeviceState device_state_enum;
+  if (!cros_debug.has_value() || cros_debug < 0) {
+    LOG(ERROR) << "Error while trying to read cros_debug";
+    device_state_enum = VerifiedBootDeviceState::kUnlockedDevice;
+  } else if (cros_debug == 1) {
+    device_state_enum = VerifiedBootDeviceState::kUnlockedDevice;
+  } else {
+    device_state_enum = VerifiedBootDeviceState::kLockedDevice;
+  }
+
+  // Convert VerifiedBootDeviceState to device state ("locked" or "unlocked").
   auto device_state_string_iter =
       kDeviceStateToStringMap.find(device_state_enum);
   if (device_state_string_iter == kDeviceStateToStringMap.end()) {
