@@ -54,6 +54,8 @@ sendmsg: 1
 sendto: 1
 set_robust_list: 1
 sigaltstack: 1
+# Required for libsoda with this arg0.
+socket: arg0 == AF_UNIX
 socketpair: arg0 == AF_UNIX
 uname: 1
 write: 1
