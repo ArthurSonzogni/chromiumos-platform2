@@ -397,7 +397,19 @@ TEST(AuthFactorPropertiesFromProtoTest,
   EXPECT_THAT(AuthFactorPropertiesFromProto(auth_factor_proto, features.async,
                                             auth_factor_type, auth_factor_label,
                                             auth_factor_metadata),
-              IsFalse());
+
+              IsTrue());
+
+  // Verify
+  EXPECT_THAT(auth_factor_metadata.common.chromeos_version_last_updated,
+              Eq(kChromeosVersion));
+  EXPECT_THAT(auth_factor_metadata.common.chrome_version_last_updated,
+              Eq(kChromeVersion));
+  EXPECT_THAT(auth_factor_metadata.common.lockout_policy,
+              Optional(SerializedLockoutPolicy::TIME_LIMITED));
+  EXPECT_THAT(auth_factor_metadata.metadata, VariantWith<PinMetadata>(_));
+  EXPECT_THAT(auth_factor_type, Eq(AuthFactorType::kPin));
+  EXPECT_THAT(auth_factor_label, Eq(kLabel));
 }
 
 }  // namespace

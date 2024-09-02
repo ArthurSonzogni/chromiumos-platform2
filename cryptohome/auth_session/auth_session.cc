@@ -323,6 +323,22 @@ WrapCallbackWithMetricsReporting(
                         auth_factor_type, std::move(bucket_name));
 }
 
+// Removes the backup VaultKeysets.
+AuthFactorMetadata CreateAuthFactorMetadataForMigration(
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthFactorType auth_factor_type,
+    const AsyncInitFeatures* features) {
+  AuthFactorMetadata migration_auth_factor_metadata = auth_factor_metadata;
+
+  if (features->IsFeatureEnabled(Features::kModernPin) &&
+      auth_factor_type == AuthFactorType::kPin) {
+    // Since the feature is enabled, we will set new pin as modern pin.
+    migration_auth_factor_metadata.common.lockout_policy =
+        SerializedLockoutPolicy::TIME_LIMITED;
+  }
+  return migration_auth_factor_metadata;
+}
+
 }  // namespace
 
 SerializedUserAuthFactorTypePolicy GetEmptyAuthFactorTypePolicy(
@@ -1033,18 +1049,22 @@ void AuthSession::OnMigrationUssCreated(
     return;
   }
 
+  AuthFactorMetadata migrated_auth_factor_metadata =
+      CreateAuthFactorMetadataForMigration(auth_factor_metadata,
+                                           auth_factor_type, features_);
+
   // If |vault_keyset_| has an empty label legacy label from GetLabel() is
   // passed for the USS wrapped block.
   auto create_callback = base::BindOnce(
       &AuthSession::PersistAuthFactorToUserSecretStashOnMigration,
       weak_factory_.GetWeakPtr(), auth_factor_type, vault_keyset_->GetLabel(),
-      auth_factor_metadata, migration_auth_input_status.value(),
+      migrated_auth_factor_metadata, migration_auth_input_status.value(),
       std::move(migration_performance_timer), std::move(on_done),
       std::move(pre_migration_status));
 
   CreateAuthBlockStateAndKeyBlobs(
       auth_factor_type, auth_block_type, migration_auth_input_status.value(),
-      auth_factor_metadata, std::move(create_callback));
+      migrated_auth_factor_metadata, std::move(create_callback));
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
