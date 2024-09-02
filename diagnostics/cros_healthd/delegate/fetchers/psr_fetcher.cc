@@ -64,16 +64,24 @@ mojom::PsrEvent::EventType ConvertPsrEventTypeToMojo(
 
 }  // namespace internal
 
-mojom::GetPsrResultPtr FetchPsrInfo() {
+PsrFetcher::PsrFetcher() = default;
+
+PsrFetcher::~PsrFetcher() = default;
+
+mojom::GetPsrResultPtr PsrFetcher::FetchPsrInfo() {
   auto result = mojom::PsrInfo::New();
 
   // Treat a device that doesn't have /dev/mei0 as not supporting PSR.
   if (!base::PathExists(paths::dev::kMei0.ToFull())) {
     return mojom::GetPsrResult::NewInfo(std::move(result));
   }
-  auto psr_cmd = psr::PsrCmd(paths::dev::kMei0.ToFull());
+  std::unique_ptr<psr::PsrCmdVirt> psr_cmd = CreatePsrCmd();
+  if (!psr_cmd) {
+    return mojom::GetPsrResult::NewError("Failed to create PsrCmd.");
+  }
+
   if (std::optional<bool> check_psr_result =
-          psr_cmd.CheckPlatformServiceRecord();
+          psr_cmd->CheckPlatformServiceRecord();
       !check_psr_result.has_value()) {
     return mojom::GetPsrResult::NewError("Check PSR is not working.");
   } else if (!check_psr_result.value()) {
@@ -83,7 +91,7 @@ mojom::GetPsrResultPtr FetchPsrInfo() {
 
   psr::PsrHeciResp psr_res;
   result->is_supported = true;
-  if (!psr_cmd.GetPlatformServiceRecord(psr_res)) {
+  if (!psr_cmd->GetPlatformServiceRecord(psr_res)) {
     return mojom::GetPsrResult::NewError("Get PSR is not working.");
   }
 
@@ -94,9 +102,9 @@ mojom::GetPsrResultPtr FetchPsrInfo() {
 
   result->log_state = internal::ConvertLogStateToMojo(psr_res.log_state);
   result->uuid =
-      psr_cmd.IdToHexString(psr_res.psr_record.uuid, psr::kUuidLength);
+      psr_cmd->IdToHexString(psr_res.psr_record.uuid, psr::kUuidLength);
   result->upid =
-      psr_cmd.IdToHexString(psr_res.psr_record.upid, psr::kUpidLength);
+      psr_cmd->IdToHexString(psr_res.psr_record.upid, psr::kUpidLength);
   result->log_start_date = psr_res.psr_record.genesis_info.genesis_date;
   result->oem_name =
       reinterpret_cast<char*>(psr_res.psr_record.genesis_info.oem_info);
@@ -132,6 +140,10 @@ mojom::GetPsrResultPtr FetchPsrInfo() {
   }
 
   return mojom::GetPsrResult::NewInfo(std::move(result));
+}
+
+std::unique_ptr<psr::PsrCmdVirt> PsrFetcher::CreatePsrCmd() {
+  return std::make_unique<psr::PsrCmd>(paths::dev::kMei0.ToFull());
 }
 
 }  // namespace diagnostics

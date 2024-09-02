@@ -230,6 +230,7 @@ class PsrCmdVirt {
   virtual CmdStatus Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
     return kInvalidState;
   }
+  virtual bool GetPlatformServiceRecord(PsrHeciResp& psr_blob) = 0;
   // Checks PSR is supported or not. Returns std::nullopt if any error occurs.
   virtual std::optional<bool> CheckPlatformServiceRecord() {
     return std::nullopt;
@@ -245,7 +246,7 @@ class PsrCmd : public PsrCmdVirt {
   PsrCmd& operator=(const PsrCmd&) = delete;
   virtual ~PsrCmd() = default;
 
-  bool GetPlatformServiceRecord(PsrHeciResp& psr_blob);
+  bool GetPlatformServiceRecord(PsrHeciResp& psr_blob) override;
   std::optional<bool> CheckPlatformServiceRecord() override;
   std::string IdToHexString(uint8_t id[], int id_len) override;
 

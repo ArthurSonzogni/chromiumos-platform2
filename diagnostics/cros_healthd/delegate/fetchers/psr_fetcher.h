@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_FETCHERS_PSR_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_FETCHERS_PSR_FETCHER_H_
 
+#include <memory>
+
 #include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
@@ -21,9 +23,21 @@ namespace internal {
 
 }  // namespace internal
 
-// Returns a structure with either the PSR info or the error that occurred
-// fetching the information.
-::ash::cros_healthd::mojom::GetPsrResultPtr FetchPsrInfo();
+class PsrFetcher {
+ public:
+  PsrFetcher();
+  PsrFetcher(const PsrFetcher&) = delete;
+  PsrFetcher& operator=(const PsrFetcher&) = delete;
+  ~PsrFetcher();
+
+  // Returns a structure with either the PSR info or the error that occurred
+  // fetching the information.
+  ::ash::cros_healthd::mojom::GetPsrResultPtr FetchPsrInfo();
+
+ protected:
+  // Mark as virtual to be overridden in unit tests.
+  virtual std::unique_ptr<psr::PsrCmdVirt> CreatePsrCmd();
+};
 
 }  // namespace diagnostics
 

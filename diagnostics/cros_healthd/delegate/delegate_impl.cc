@@ -479,7 +479,8 @@ void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
 }
 
 void DelegateImpl::GetPsr(GetPsrCallback callback) {
-  std::move(callback).Run(FetchPsrInfo());
+  PsrFetcher psr_fetcher;
+  std::move(callback).Run(psr_fetcher.FetchPsrInfo());
 }
 
 void DelegateImpl::GetConnectedExternalDisplayConnectors(
