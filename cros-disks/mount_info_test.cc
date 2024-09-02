@@ -24,8 +24,7 @@ class MountInfoTest : public ::testing::Test {
 
     base::FilePath mount_file;
     ASSERT_TRUE(base::CreateTemporaryFile(&mount_file));
-    ASSERT_EQ(content.size(),
-              base::WriteFile(mount_file, content.c_str(), content.size()));
+    ASSERT_TRUE(base::WriteFile(mount_file, content));
     mount_file_ = mount_file.value();
   }
 

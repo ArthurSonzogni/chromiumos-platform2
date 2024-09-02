@@ -153,7 +153,7 @@ TEST_F(FUSESandboxedProcessFactoryTest, DISABLED_SeccompPolicy) {
   ASSERT_TRUE(tmp.CreateUniqueTempDir());
   base::FilePath seccomp = tmp.GetPath().Append("exe.policy");
   std::string policy = "close: 1\n";
-  base::WriteFile(seccomp, policy.c_str(), policy.length());
+  base::WriteFile(seccomp, policy);
   EXPECT_CALL(platform_, PathExists(seccomp.value())).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(kCgroup)).WillOnce(Return(true));
   EXPECT_CALL(platform_, PathExists(exe_.value())).WillOnce(Return(true));

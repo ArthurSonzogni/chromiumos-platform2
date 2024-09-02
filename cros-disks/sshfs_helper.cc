@@ -61,8 +61,7 @@ MountError WriteConfigurationFile(const Platform* platform,
     return MountError::kInvalidMountOptions;
   }
 
-  if (platform->WriteFile(path.value(), data.c_str(), data.size()) !=
-      static_cast<int>(data.size())) {
+  if (!platform->WriteFile(path.value(), data)) {
     PLOG(ERROR) << "Cannot write file " << quote(path);
     return MountError::kInsufficientPermissions;
   }

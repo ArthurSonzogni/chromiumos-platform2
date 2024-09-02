@@ -203,10 +203,8 @@ bool Platform::CreateTemporaryDirInDir(const std::string& dir,
   return true;
 }
 
-int Platform::WriteFile(const std::string& file,
-                        const char* data,
-                        int size) const {
-  return base::WriteFile(base::FilePath(file), data, size);
+bool Platform::WriteFile(const std::string& file, std::string_view data) const {
+  return base::WriteFile(base::FilePath(file), data);
 }
 
 int Platform::ReadFile(const std::string& file, char* data, int size) const {

@@ -5,12 +5,13 @@
 #ifndef CROS_DISKS_PLATFORM_H_
 #define CROS_DISKS_PLATFORM_H_
 
-#include <string>
-#include <unordered_set>
-
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <string>
+#include <string_view>
+#include <unordered_set>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -70,11 +71,8 @@ class Platform {
                                        const std::string& prefix,
                                        std::string* path) const;
 
-  // Writes contents of the |data| to a file. Returns the number of bytes
-  // written, or -1 on error.
-  virtual int WriteFile(const std::string& file,
-                        const char* data,
-                        int size) const;
+  // Writes contents of the |data| to a file. Returns true on success.
+  virtual bool WriteFile(const std::string& file, std::string_view data) const;
 
   // Reads at most |size| bytes from the |file| to a buffer |data| and returns
   // number of bytes actually read, or -1 on error.

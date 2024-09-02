@@ -64,14 +64,12 @@ TEST_F(FileReaderTest, ReadLine) {
   ASSERT_TRUE(base::CreateTemporaryFileInDir(temp_dir.GetPath(), &path));
 
   // Test a file not ending with a new-line character
-  ASSERT_EQ(content.size(),
-            base::WriteFile(path, content.c_str(), content.size()));
+  ASSERT_TRUE(base::WriteFile(path, content));
   VerifyReadLines(path, lines);
 
   // Test a file ending with a new-line character
   content.push_back('\n');
-  ASSERT_EQ(content.size(),
-            base::WriteFile(path, content.c_str(), content.size()));
+  ASSERT_TRUE(base::WriteFile(path, content));
   VerifyReadLines(path, lines);
 }
 
