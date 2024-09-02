@@ -5,6 +5,7 @@
 #include "tpm_manager/server/tpm_manager_service.h"
 
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include <memory>
 #include <string>
@@ -20,15 +21,14 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
-#include <base/task/single_thread_task_runner.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
-#include <inttypes.h>
 #include <libhwsec-foundation/tpm/tpm_clear.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
@@ -85,7 +85,7 @@ int GetFingerprint(uint32_t family,
 void StoreTpmAllowState(bool allowed) {
   base::FilePath allowed_file = base::FilePath(kAllowedStateFile);
   std::string data = base::NumberToString(static_cast<int>(allowed));
-  if (base::WriteFile(allowed_file, data.c_str(), data.length()) < 0) {
+  if (!base::WriteFile(allowed_file, data)) {
     LOG(WARNING) << __func__ << ": Unable to create " << allowed_file.value();
   }
   if (!base::SetPosixFilePermissions(allowed_file,
@@ -1333,7 +1333,7 @@ void TpmManagerService::CheckPowerWashResult(
   bool report_file_exist = base::PathExists(report_file);
 
   if (complete_file_exist && !report_file_exist) {
-    if (base::WriteFile(report_file, "", 0) < 0) {
+    if (!base::WriteFile(report_file, "")) {
       LOG(WARNING) << __func__ << ": Unable to create " << report_file.value();
     }
     TPM_SELECT_BEGIN;

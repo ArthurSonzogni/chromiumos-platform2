@@ -18,8 +18,8 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <crypto/sha2.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 
@@ -141,16 +141,6 @@ NVRAM Index Reference:
   0x800000 and following - Reserved for Software
   0xC00000 and following - Endorsement Certificates
 )";
-
-bool ReadFileToString(const std::string& filename, std::string* data) {
-  return base::ReadFileToString(base::FilePath(filename), data);
-}
-
-bool WriteStringToFile(const std::string& data, const std::string& filename) {
-  int result =
-      base::WriteFile(base::FilePath(filename), data.data(), data.size());
-  return (result != -1 && static_cast<size_t>(result) == data.size());
-}
 
 uint32_t StringToUint32(const std::string& s) {
   return strtoul(s.c_str(), nullptr, 0);
@@ -588,7 +578,7 @@ class ClientLoop : public ClientLoopBase {
     WriteSpaceRequest request;
     request.set_index(index);
     std::string data;
-    if (!ReadFileToString(input_file, &data)) {
+    if (!base::ReadFileToString(base::FilePath(input_file), &data)) {
       LOG(ERROR) << "Failed to read input file.";
       Quit();
       return;
@@ -607,7 +597,7 @@ class ClientLoop : public ClientLoopBase {
 
   void HandleReadSpaceReply(const std::string& output_file,
                             const ReadSpaceReply& reply) {
-    if (!WriteStringToFile(reply.data(), output_file)) {
+    if (!base::WriteFile(base::FilePath(output_file), reply.data())) {
       LOG(ERROR) << "Failed to write output file.";
     }
     printf("Message Reply: %s\n", GetProtoDebugString(reply).c_str());
