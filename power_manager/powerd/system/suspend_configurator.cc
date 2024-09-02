@@ -7,12 +7,12 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/files/file_util.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/strings/string_number_conversions.h>
 #include <brillo/cpuinfo.h>
 #include <brillo/file_utils.h>
 #include <re2/re2.h>
@@ -144,9 +144,8 @@ uint64_t SuspendConfigurator::PrepareForSuspend(
   if (!base::PathExists(GetPrefixedFilePath(suspend_mode_path))) {
     LOG(INFO) << "File " << kSuspendModePath
               << " does not exist. Not configuring suspend mode";
-  } else if (base::WriteFile(GetPrefixedFilePath(suspend_mode_path),
-                             suspend_mode_.c_str(),
-                             suspend_mode_.size()) != suspend_mode_.size()) {
+  } else if (!base::WriteFile(GetPrefixedFilePath(suspend_mode_path),
+                              suspend_mode_)) {
     PLOG(ERROR) << "Failed to write " << suspend_mode_ << " to "
                 << kSuspendModePath;
   } else {
@@ -220,10 +219,10 @@ void SuspendConfigurator::ConfigureConsoleForSuspend() {
   if (prefs_->GetBool(kEnableConsoleDuringSuspendPref, &pref_val))
     enable_console = pref_val;
 
-  const char console_suspend_val = enable_console ? 'N' : 'Y';
+  const char* console_suspend_val = enable_console ? "N" : "Y";
   base::FilePath console_suspend_path =
       GetPrefixedFilePath(SuspendConfigurator::kConsoleSuspendPath);
-  if (base::WriteFile(console_suspend_path, &console_suspend_val, 1) != 1) {
+  if (!base::WriteFile(console_suspend_path, console_suspend_val)) {
     PLOG(ERROR) << "Failed to write " << console_suspend_val << " to "
                 << console_suspend_path.value();
   }

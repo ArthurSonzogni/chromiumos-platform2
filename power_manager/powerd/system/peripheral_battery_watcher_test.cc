@@ -4,8 +4,9 @@
 
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 
-#include <string>
 #include <sys/resource.h>
+
+#include <string>
 
 #include <base/check.h>
 #include <base/compiler_specific.h>
@@ -129,11 +130,12 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
         temp_dir_.GetPath().Append(kPeripheralBatterySysname);
     CHECK(base::CreateDirectory(device_dir));
     scope_file_ = device_dir.Append(PeripheralBatteryWatcher::kScopeFile);
-    WriteFile(scope_file_, PeripheralBatteryWatcher::kScopeValueDevice);
+    ASSERT_TRUE(base::WriteFile(scope_file_,
+                                PeripheralBatteryWatcher::kScopeValueDevice));
     status_file_ = device_dir.Append(PeripheralBatteryWatcher::kStatusFile);
     model_name_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kModelNameFile);
-    WriteFile(model_name_file_, kDeviceModelName);
+    ASSERT_TRUE(base::WriteFile(model_name_file_, kDeviceModelName));
     peripheral_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
     peripheral_sn_file_ =
@@ -142,28 +144,33 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
     // Create a fake Bluetooth directory (distinguished by the name)
     device_dir = temp_dir_.GetPath().Append(kBluetoothBatterySysname);
     CHECK(base::CreateDirectory(device_dir));
-    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kScopeFile),
-              PeripheralBatteryWatcher::kScopeValueDevice);
-    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
-              kDeviceModelName);
+    ASSERT_TRUE(
+        base::WriteFile(device_dir.Append(PeripheralBatteryWatcher::kScopeFile),
+                        PeripheralBatteryWatcher::kScopeValueDevice));
+    ASSERT_TRUE(base::WriteFile(
+        device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
+        kDeviceModelName));
     bluetooth_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
     // Create a fake wacom directory.
     device_dir = temp_dir_.GetPath().Append(kWacomBatterySysname);
     CHECK(base::CreateDirectory(device_dir.Append("powers")));
-    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kScopeFile),
-              PeripheralBatteryWatcher::kScopeValueDevice);
-    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
-              kDeviceModelName);
+    ASSERT_TRUE(
+        base::WriteFile(device_dir.Append(PeripheralBatteryWatcher::kScopeFile),
+                        PeripheralBatteryWatcher::kScopeValueDevice));
+    ASSERT_TRUE(base::WriteFile(
+        device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
+        kDeviceModelName));
     wacom_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
     // Create a fake non-peripheral directory (there is no "scope" file.)
     device_dir = temp_dir_.GetPath().Append(kNonPeripheralBatterySysname);
     CHECK(base::CreateDirectory(device_dir));
-    WriteFile(device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
-              kDeviceModelName);
+    ASSERT_TRUE(base::WriteFile(
+        device_dir.Append(PeripheralBatteryWatcher::kModelNameFile),
+        kDeviceModelName));
     non_peripheral_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
 
@@ -180,10 +187,6 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
   }
 
  protected:
-  void WriteFile(const base::FilePath& path, const string& str) {
-    ASSERT_EQ(str.size(), base::WriteFile(path, str.data(), str.size()));
-  }
-
   // TODO(b/215381232): Temporarily support both 'PCHG' name and 'peripheral'
   // name till upstream kernel driver is merged.
   void SetupPeripheralChargerDirectory(bool use_pchg = false) {
@@ -193,7 +196,8 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
                  : kPeripheralChargerBatterySysname);
     CHECK(base::CreateDirectory(device_dir));
     scope_file_ = device_dir.Append(PeripheralBatteryWatcher::kScopeFile);
-    WriteFile(scope_file_, PeripheralBatteryWatcher::kScopeValueDevice);
+    ASSERT_TRUE(base::WriteFile(scope_file_,
+                                PeripheralBatteryWatcher::kScopeValueDevice));
 
     peripheral_charger_capacity_file_ =
         device_dir.Append(PeripheralBatteryWatcher::kCapacityFile);
@@ -238,7 +242,7 @@ class PeripheralBatteryWatcherTest : public TestEnvironment {
 
 TEST_F(PeripheralBatteryWatcherTest, Basic) {
   std::string level = base::NumberToString(80);
-  WriteFile(peripheral_capacity_file_, level);
+  ASSERT_TRUE(base::WriteFile(peripheral_capacity_file_, level));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -257,7 +261,7 @@ TEST_F(PeripheralBatteryWatcherTest, Basic) {
 
 TEST_F(PeripheralBatteryWatcherTest, Bluetooth) {
   std::string level = base::NumberToString(80);
-  WriteFile(bluetooth_capacity_file_, level);
+  ASSERT_TRUE(base::WriteFile(bluetooth_capacity_file_, level));
 
   // Bluetooth battery update should not sent any signal, but update to BlueZ.
   EXPECT_CALL(*bluez_battery_provider_,
@@ -275,7 +279,7 @@ TEST_F(PeripheralBatteryWatcherTest, Bluetooth) {
 TEST_F(PeripheralBatteryWatcherTest, Wacom) {
   // Wacom not detected as a Bluetooth device, treat it as a generic peripheral.
   std::string level = base::NumberToString(80);
-  WriteFile(wacom_capacity_file_, level);
+  ASSERT_TRUE(base::WriteFile(wacom_capacity_file_, level));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -288,10 +292,11 @@ TEST_F(PeripheralBatteryWatcherTest, Wacom) {
 TEST_F(PeripheralBatteryWatcherTest, WacomWithBluetooth) {
   // Wacom detected as a Bluetooth device (having HID_UNIQ= in powers/uevent).
   base::FilePath device_dir = temp_dir_.GetPath().Append(kWacomBatterySysname);
-  WriteFile(device_dir.Append(PeripheralBatteryWatcher::kPowersUeventFile),
-            kWacomUevent);
+  ASSERT_TRUE(base::WriteFile(
+      device_dir.Append(PeripheralBatteryWatcher::kPowersUeventFile),
+      kWacomUevent));
   std::string level = base::NumberToString(70);
-  WriteFile(wacom_capacity_file_, level);
+  ASSERT_TRUE(base::WriteFile(wacom_capacity_file_, level));
 
   // Bluetooth battery update should not sent any signal, but update to BlueZ.
   EXPECT_CALL(*bluez_battery_provider_,
@@ -315,16 +320,20 @@ TEST_F(PeripheralBatteryWatcherTest, NoLevelReading) {
 
 TEST_F(PeripheralBatteryWatcherTest, SkipUnknownStatus) {
   // Batteries with unknown statuses should be skipped: http://b/64397082
-  WriteFile(peripheral_capacity_file_, base::NumberToString(0));
-  WriteFile(status_file_, PeripheralBatteryWatcher::kStatusValueUnknown);
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(0)));
+  ASSERT_TRUE(base::WriteFile(status_file_,
+                              PeripheralBatteryWatcher::kStatusValueUnknown));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
 }
 
 TEST_F(PeripheralBatteryWatcherTest, AllowOtherStatus) {
   // Batteries with other statuses should be reported.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(20));
-  WriteFile(status_file_, PeripheralBatteryWatcher::kStatusValueDischarging);
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(20)));
+  ASSERT_TRUE(base::WriteFile(
+      status_file_, PeripheralBatteryWatcher::kStatusValueDischarging));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -340,7 +349,8 @@ TEST_F(PeripheralBatteryWatcherTest, AllowOtherStatus) {
 
 TEST_F(PeripheralBatteryWatcherTest, UdevEvents) {
   // Initial reading of battery statuses.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(80));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(80)));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -354,7 +364,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEvents) {
   EXPECT_FALSE(proto.active_update());
 
   // An udev ADD event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(70));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(70)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::ADD});
@@ -369,7 +380,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEvents) {
   EXPECT_TRUE(proto.active_update());
 
   // An udev CHANGE event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(60)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::CHANGE});
@@ -384,7 +396,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEvents) {
   EXPECT_TRUE(proto.active_update());
 
   // An udev REMOVE event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(60)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::REMOVE});
@@ -394,7 +407,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEvents) {
 
 TEST_F(PeripheralBatteryWatcherTest, NonPeripheralUdevEvents) {
   // Initial reading of battery statuses.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(80));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(80)));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -406,7 +420,8 @@ TEST_F(PeripheralBatteryWatcherTest, NonPeripheralUdevEvents) {
   EXPECT_EQ(kDeviceModelName, proto.name());
 
   // An udev event appear for a non-peripheral device. Check that it is ignored.
-  WriteFile(non_peripheral_capacity_file_, base::NumberToString(50));
+  ASSERT_TRUE(
+      base::WriteFile(non_peripheral_capacity_file_, base::NumberToString(50)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kNonPeripheralBatterySysname, ""},
                                   UdevEvent::Action::CHANGE});
@@ -415,7 +430,7 @@ TEST_F(PeripheralBatteryWatcherTest, NonPeripheralUdevEvents) {
 
 TEST_F(PeripheralBatteryWatcherTest, RefreshAllBatteries) {
   std::string level = base::NumberToString(80);
-  WriteFile(peripheral_capacity_file_, level);
+  ASSERT_TRUE(base::WriteFile(peripheral_capacity_file_, level));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -457,11 +472,12 @@ TEST_F(PeripheralBatteryWatcherTest, RefreshAllBatteries) {
 TEST_F(PeripheralBatteryWatcherTest, Charger) {
   SetupPeripheralChargerDirectory();
   // Chargers should be reported.
-  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(60));
-  WriteFile(peripheral_charger_status_file_,
-            PeripheralBatteryWatcher::kStatusValueCharging);
-  WriteFile(peripheral_charger_health_file_,
-            PeripheralBatteryWatcher::kHealthValueGood);
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_capacity_file_,
+                              base::NumberToString(60)));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_status_file_,
+                              PeripheralBatteryWatcher::kStatusValueCharging));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_health_file_,
+                              PeripheralBatteryWatcher::kHealthValueGood));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -477,11 +493,12 @@ TEST_F(PeripheralBatteryWatcherTest, Charger) {
 TEST_F(PeripheralBatteryWatcherTest, ChargerFull) {
   SetupPeripheralChargerDirectory();
   // Chargers should be reported.
-  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(100));
-  WriteFile(peripheral_charger_status_file_,
-            PeripheralBatteryWatcher::kStatusValueFull);
-  WriteFile(peripheral_charger_health_file_,
-            PeripheralBatteryWatcher::kHealthValueGood);
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_capacity_file_,
+                              base::NumberToString(100)));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_status_file_,
+                              PeripheralBatteryWatcher::kStatusValueFull));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_health_file_,
+                              PeripheralBatteryWatcher::kHealthValueGood));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -498,9 +515,10 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerFull) {
 TEST_F(PeripheralBatteryWatcherTest, ChargerDetached) {
   SetupPeripheralChargerDirectory();
   // Chargers should be reported.
-  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(0));
-  WriteFile(peripheral_charger_status_file_,
-            PeripheralBatteryWatcher::kStatusValueUnknown);
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_capacity_file_,
+                              base::NumberToString(0)));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_status_file_,
+                              PeripheralBatteryWatcher::kStatusValueUnknown));
   // Leave health missing
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
@@ -518,10 +536,11 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerDetached) {
 TEST_F(PeripheralBatteryWatcherTest, ChargerError) {
   SetupPeripheralChargerDirectory();
   // Chargers health error should be reported.
-  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(50));
-  WriteFile(peripheral_charger_status_file_,
-            PeripheralBatteryWatcher::kStatusValueCharging);
-  WriteFile(peripheral_charger_health_file_, "Hot");
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_capacity_file_,
+                              base::NumberToString(50)));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_status_file_,
+                              PeripheralBatteryWatcher::kStatusValueCharging));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_health_file_, "Hot"));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -542,11 +561,12 @@ TEST_F(PeripheralBatteryWatcherTest, Charger_PCHG) {
   SetupPeripheralChargerDirectory(/*use_pchg=*/true);
 
   // Chargers should be reported.
-  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(60));
-  WriteFile(peripheral_charger_status_file_,
-            PeripheralBatteryWatcher::kStatusValueCharging);
-  WriteFile(peripheral_charger_health_file_,
-            PeripheralBatteryWatcher::kHealthValueGood);
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_capacity_file_,
+                              base::NumberToString(60)));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_status_file_,
+                              PeripheralBatteryWatcher::kStatusValueCharging));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_health_file_,
+                              PeripheralBatteryWatcher::kHealthValueGood));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -566,11 +586,12 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerFull_PCHG) {
   SetupPeripheralChargerDirectory(/*use_pchg=*/true);
 
   // Chargers should be reported.
-  WriteFile(peripheral_charger_capacity_file_, base::NumberToString(100));
-  WriteFile(peripheral_charger_status_file_,
-            PeripheralBatteryWatcher::kStatusValueFull);
-  WriteFile(peripheral_charger_health_file_,
-            PeripheralBatteryWatcher::kHealthValueGood);
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_capacity_file_,
+                              base::NumberToString(100)));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_status_file_,
+                              PeripheralBatteryWatcher::kStatusValueFull));
+  ASSERT_TRUE(base::WriteFile(peripheral_charger_health_file_,
+                              PeripheralBatteryWatcher::kHealthValueGood));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -587,7 +608,8 @@ TEST_F(PeripheralBatteryWatcherTest, ChargerFull_PCHG) {
 TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithoutSerial) {
   // TODO(kenalba): trim this down
   // Initial reading of battery statuses.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(80));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(80)));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -602,7 +624,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithoutSerial) {
   EXPECT_FALSE(proto.has_serial_number());
 
   // An udev ADD event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(70));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(70)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::ADD});
@@ -618,7 +641,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithoutSerial) {
   EXPECT_FALSE(proto.has_serial_number());
 
   // An udev CHANGE event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(60)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::CHANGE});
@@ -633,7 +657,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithoutSerial) {
   EXPECT_TRUE(proto.active_update());
   EXPECT_FALSE(proto.has_serial_number());
   // An udev REMOVE event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(60)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::REMOVE});
@@ -644,7 +669,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithoutSerial) {
 TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
   // TODO(kenalba): trim this down
   // Initial reading of battery statuses.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(80));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(80)));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -659,8 +685,10 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
   EXPECT_FALSE(proto.has_serial_number());
 
   // An udev ADD event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(70));
-  WriteFile(peripheral_sn_file_, kPeripheralBatterySerialNumber1);
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(70)));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_sn_file_, kPeripheralBatterySerialNumber1));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::ADD});
@@ -678,8 +706,10 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
   EXPECT_EQ(kPeripheralBatterySerialNumber1, proto.serial_number());
 
   // An udev CHANGE event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
-  WriteFile(peripheral_sn_file_, kPeripheralBatterySerialNumber2);
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(60)));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_sn_file_, kPeripheralBatterySerialNumber2));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::CHANGE});
@@ -696,7 +726,8 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
   EXPECT_EQ(kPeripheralBatterySerialNumber2, proto.serial_number());
 
   // An udev REMOVE event appear for a peripheral device.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(60));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(60)));
   udev_.NotifySubsystemObservers({{PeripheralBatteryWatcher::kUdevSubsystem, "",
                                    kPeripheralBatterySysname, ""},
                                   UdevEvent::Action::REMOVE});
@@ -708,7 +739,8 @@ TEST_F(PeripheralBatteryWatcherTest, SpammyUdevEvents) {
   // This is a regression test to make sure we don't keep opening new file
   // descriptors in response to the same udev device being reconnected many
   // times.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(50));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(50)));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 
@@ -730,7 +762,8 @@ TEST_F(PeripheralBatteryWatcherTest, SpammyUdevEvents) {
   }
 
   // Make sure we didn't leak file descriptors and can still open a file.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(40));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(40)));
 
   // Restore the original file count limit.
   setrlimit(RLIMIT_NOFILE, &rlim_orig);
@@ -748,7 +781,8 @@ TEST_F(PeripheralBatteryWatcherTest, ReadLatencyMetrics) {
       .WillOnce(Return(true))
       .RetiresOnSaturation();
 
-  WriteFile(peripheral_capacity_file_, base::NumberToString(50));
+  ASSERT_TRUE(
+      base::WriteFile(peripheral_capacity_file_, base::NumberToString(50)));
   battery_.Init(&test_wrapper_, &udev_);
   ASSERT_TRUE(test_wrapper_.RunUntilSignalSent(kUpdateTimeout));
 }

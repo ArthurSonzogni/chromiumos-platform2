@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/input_watcher.h"
 
+#include <linux/input.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -12,10 +14,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/notreached.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
-#include <linux/input.h>
 
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/fake_prefs.h"
@@ -76,7 +77,8 @@ const char* GetPowerButtonAction(ButtonState state) {
     case ButtonState::REPEAT:
       return kPowerButtonRepeatAction;
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid power button state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Invalid power button state " << static_cast<int>(state);
   return "power-invalid";
 }
 
@@ -160,7 +162,7 @@ class InputWatcherTest : public TestEnvironment {
                  std::shared_ptr<EventDeviceStub> device,
                  const std::string& syspath) {
     const base::FilePath path = dev_input_path_.Append(name);
-    ASSERT_EQ(0, base::WriteFile(path, "", 0));
+    ASSERT_TRUE(base::WriteFile(path, ""));
     UdevDeviceInfo input_device_info;
     input_device_info.sysname = name;
     input_device_info.syspath = syspath;

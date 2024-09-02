@@ -58,7 +58,7 @@ class LockfileCheckerTest : public TestEnvironment {
   base::FilePath CreateLockfile(const std::string& filename,
                                 const std::string& data) {
     const base::FilePath path = lock_dir_.Append(filename);
-    EXPECT_TRUE(util::WriteFileFully(path, data.c_str(), data.size()));
+    EXPECT_TRUE(base::WriteFile(path, data));
     return path;
   }
 
@@ -85,7 +85,7 @@ TEST_F(LockfileCheckerTest, DirLockfile) {
 TEST_F(LockfileCheckerTest, HardcodedLockfile) {
   const base::FilePath path = temp_dir_.GetPath().Append("valid.lock");
   const std::string kPid = "5";
-  ASSERT_TRUE(util::WriteFileFully(path, kPid.c_str(), kPid.size()));
+  ASSERT_TRUE(base::WriteFile(path, kPid));
   CreateProcDir(kPid);
 
   auto checker =

@@ -4,15 +4,15 @@
 
 #include "power_manager/powerd/system/power_supply.h"
 
+#include <dirent.h>
+#include <fcntl.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <memory>
 #include <optional>
 #include <utility>
-
-#include <dirent.h>
-#include <fcntl.h>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -1559,7 +1559,7 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
       break;
     default:
       NOTREACHED_IN_MIGRATION() << "Unhandled battery state "
-                   << static_cast<int>(status->battery_state);
+                                << static_cast<int>(status->battery_state);
   }
 
   return true;
@@ -1764,7 +1764,7 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
   const base::FilePath limit_path =
       device_path.Append(kChargeControlLimitMaxFile);
   const std::string value = id.empty() ? "-1" : "0";
-  if (!util::WriteFileFully(limit_path, value.c_str(), value.size())) {
+  if (!base::WriteFile(limit_path, value)) {
     LOG(ERROR) << "Failed to write " << value << " to " << limit_path.value();
     return false;
   }

@@ -27,7 +27,7 @@ namespace {
 void CreateDirectoryAndWriteFile(const base::FilePath& sys_path,
                                  const std::string& val) {
   ASSERT_TRUE(base::CreateDirectory(sys_path.DirName()));
-  CHECK_EQ(base::WriteFile(sys_path, val.c_str(), val.length()), val.length());
+  CHECK(base::WriteFile(sys_path, val));
 }
 
 }  // namespace

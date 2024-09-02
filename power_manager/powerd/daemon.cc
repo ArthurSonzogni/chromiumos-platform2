@@ -29,14 +29,14 @@
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <chromeos/mojo/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
+#include <chromeos/mojo/service_constants.h>
 #include <cros_config/cros_config.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
-#include <libec/ec_command.h>
 #include <libec/charge_control_set_command.h>
 #include <libec/charge_current_limit_set_command.h>
+#include <libec/ec_command.h>
 
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/battery_percentage_converter.h"
@@ -208,8 +208,8 @@ std::string PrivacyScreenStateToString(
     case privacy_screen::PrivacyScreenSetting_PrivacyScreenState_NOT_SUPPORTED:
       return "not supported";
     default:
-      NOTREACHED_IN_MIGRATION() << "Unhandled privacy screen state "
-                   << static_cast<int>(state);
+      NOTREACHED_IN_MIGRATION()
+          << "Unhandled privacy screen state " << static_cast<int>(state);
       return base::StringPrintf("unknown (%d)", static_cast<int>(state));
   }
 }
@@ -381,7 +381,7 @@ void Daemon::Init() {
   // Check if this is the first run of powerd after boot.
   first_run_after_boot_ = !base::PathExists(already_ran_path_);
   if (first_run_after_boot_) {
-    if (base::WriteFile(already_ran_path_, "", 0) != 0)
+    if (!base::WriteFile(already_ran_path_, ""))
       PLOG(ERROR) << "Couldn't create " << already_ran_path_.value();
   }
 
@@ -841,7 +841,7 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
 
 void Daemon::SetSuspendAnnounced(bool announced) {
   if (announced) {
-    if (base::WriteFile(suspend_announced_path_, nullptr, 0) < 0)
+    if (!base::WriteFile(suspend_announced_path_, std::string_view()))
       PLOG(ERROR) << "Couldn't create " << suspend_announced_path_.value();
   } else {
     if (!brillo::DeleteFile(suspend_announced_path_))
@@ -900,7 +900,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   created_suspended_state_file_ = false;
   if (!base::PathExists(suspended_state_path)) {
-    if (base::WriteFile(suspended_state_path, nullptr, 0) == 0)
+    if (base::WriteFile(suspended_state_path, std::string_view()))
       created_suspended_state_file_ = true;
     else
       PLOG(ERROR) << "Unable to create " << suspended_state_path.value();
@@ -1865,7 +1865,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 
   if (!base::PathExists(shutdown_announced_path_)) {
-    if (base::WriteFile(shutdown_announced_path_, nullptr, 0) < 0)
+    if (!base::WriteFile(shutdown_announced_path_, std::string_view()))
       PLOG(ERROR) << "Couldn't create " << shutdown_announced_path_.value();
   }
 

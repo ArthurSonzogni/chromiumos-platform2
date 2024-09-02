@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/internal_backlight.h"
 
+#include <linux/fb.h>
+
 #include <string>
 
 #include <base/check.h>
@@ -15,7 +17,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
-#include <linux/fb.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/util.h"
@@ -245,7 +246,7 @@ TEST_F(InternalBacklightTest, BlPower) {
 
   const base::FilePath kPowerFile =
       kDir.Append(InternalBacklight::kBlPowerFilename);
-  ASSERT_EQ(0, base::WriteFile(kPowerFile, "", 0));
+  ASSERT_TRUE(base::WriteFile(kPowerFile, ""));
 
   // The bl_power file shouldn't be touched initially.
   InternalBacklight backlight;
@@ -272,13 +273,11 @@ TEST_F(InternalBacklightTest, BlPower) {
   // Clear the file and check that it doesn't get rewritten when moving between
   // two nonzero levels.
   const std::string kUnblankValue = base::StringPrintf("%d", FB_BLANK_UNBLANK);
-  ASSERT_EQ(0, base::WriteFile(kPowerFile, "", 0));
+  ASSERT_TRUE(base::WriteFile(kPowerFile, ""));
   backlight.SetBrightnessLevel(kMaxBrightness, base::TimeDelta());
   ASSERT_TRUE(base::ReadFileToString(kPowerFile, &data));
   EXPECT_EQ("", data);
-  ASSERT_EQ(
-      base::WriteFile(kPowerFile, kUnblankValue.c_str(), kUnblankValue.size()),
-      1);
+  ASSERT_TRUE(base::WriteFile(kPowerFile, kUnblankValue));
 
   // Now do an animated transition. bl_power should remain at FB_BLANK_UNBLANK
   // until the backlight level reaches 0.

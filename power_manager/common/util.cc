@@ -72,15 +72,9 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
   return output;
 }
 
-bool WriteFileFully(const base::FilePath& filename,
-                    const char* data,
-                    int size) {
-  return base::WriteFile(filename, data, size) == size;
-}
-
 bool WriteInt64File(const base::FilePath& path, int64_t value) {
   std::string buf = base::NumberToString(value);
-  if (!WriteFileFully(path, buf.data(), buf.size())) {
+  if (!base::WriteFile(path, buf)) {
     PLOG(ERROR) << "Unable to write \"" << buf << "\" to " << path.value();
     return false;
   }

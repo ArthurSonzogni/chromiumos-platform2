@@ -1337,7 +1337,7 @@ TEST_F(IdleResidencyTrackerTest, SingleValueResidencyReaderValidValue) {
   CHECK(base::CreateDirectory(path.DirName()));
   // Create a file for SingleValueResidencyReader to pick up.
   std::string buf = base::NumberToString(exp_value.InMicroseconds());
-  ASSERT_EQ(base::WriteFile(path, buf.data(), buf.size()), buf.size());
+  ASSERT_TRUE(base::WriteFile(path, buf));
   SingleValueResidencyReader reader(path);
   ASSERT_EQ(reader.ReadResidency(), exp_value);
   // Clean up.
@@ -1354,7 +1354,7 @@ TEST_F(IdleResidencyTrackerTest, SingleValueResidencyReaderInvalidValue) {
   CHECK(base::CreateDirectory(path.DirName()));
   // Create a file for SingleValueResidencyReader to pick up.
   std::string buf = "this_is_not_a_number";
-  ASSERT_EQ(base::WriteFile(path, buf.data(), buf.size()), buf.size());
+  ASSERT_TRUE(base::WriteFile(path, buf));
   SingleValueResidencyReader reader(path);
   ASSERT_EQ(reader.ReadResidency(), ResidencyReader::InvalidValue);
   // Clean up.
@@ -1482,7 +1482,7 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
         // Create all required parent directories.
         CHECK(base::CreateDirectory(residency.path_.DirName()));
         // Create empty file.
-        CHECK_EQ(base::WriteFile(residency.path_, "", 0), 0);
+        CHECK(base::WriteFile(residency.path_, ""));
       }
     }
 
@@ -1539,8 +1539,7 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
                       const base::TimeDelta& value) {
     std::string buf = base::NumberToString(
         static_cast<uint64_t>(llabs(value.InMicroseconds())));
-    ASSERT_EQ(base::WriteFile(residency.path_, buf.data(), buf.size()),
-              buf.size());
+    ASSERT_TRUE(base::WriteFile(residency.path_, buf));
   }
 
   Residency residencies_[IdleState::COUNT] = {

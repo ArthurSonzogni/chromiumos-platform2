@@ -30,9 +30,7 @@ class AcpiWakeupFile : public AcpiWakeupFileInterface {
   }
 
   bool Write(const std::string& contents) override {
-    int bytes_written =
-        base::WriteFile(kAcpiWakeupPath, contents.data(), contents.size());
-    return bytes_written == static_cast<int>(contents.size());
+    return base::WriteFile(kAcpiWakeupPath, contents);
   }
 };
 }  // namespace

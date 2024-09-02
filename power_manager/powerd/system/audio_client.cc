@@ -99,7 +99,7 @@ void AudioClient::SetSuspended(bool suspended) {
   writer.AppendBool(suspended);
   dbus_wrapper_->CallMethodSync(cras_proxy_, &method_call, kCrasDBusTimeout);
   if (suspended) {
-    if (base::WriteFile(audio_suspended_path_, nullptr, 0) < 0)
+    if (!base::WriteFile(audio_suspended_path_, std::string_view()))
       PLOG(ERROR) << "Couldn't create " << audio_suspended_path_.value();
   } else {
     if (!base::DeleteFile(audio_suspended_path_))
@@ -175,8 +175,8 @@ void AudioClient::HandleGetNodesResponse(dbus::Response* response) {
   if (headphone_jack_plugged_ != old_headphone_jack_plugged ||
       hdmi_active_ != old_hdmi_active) {
     LOG(INFO) << "Updated audio devices: headphones "
-              << (headphone_jack_plugged_ ? "" : "un") << "plugged, "
-              << "HDMI " << (hdmi_active_ ? "" : "in") << "active";
+              << (headphone_jack_plugged_ ? "" : "un") << "plugged, " << "HDMI "
+              << (hdmi_active_ ? "" : "in") << "active";
   }
 }
 

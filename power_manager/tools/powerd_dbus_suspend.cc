@@ -25,8 +25,8 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
-#include <brillo/flag_helper.h>
 #include <brillo/file_utils.h>
+#include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -190,11 +190,8 @@ int main(int argc, char* argv[]) {
   if (FLAGS_wakeup_timeout > 0) {
     std::string alarm_string = "+" + base::NumberToString(FLAGS_wakeup_timeout);
     // Write 0 first to clear any existing RTC alarm.
-    CHECK(power_manager::util::WriteFileFully(base::FilePath(kRtcWakeAlarmPath),
-                                              "0", 1));
-    CHECK(power_manager::util::WriteFileFully(base::FilePath(kRtcWakeAlarmPath),
-                                              alarm_string.c_str(),
-                                              alarm_string.length()));
+    CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath), "0"));
+    CHECK(base::WriteFile(base::FilePath(kRtcWakeAlarmPath), alarm_string));
   }
 
   // Enables/Disables dark resume for this script run based on

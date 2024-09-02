@@ -10,8 +10,8 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"
@@ -28,7 +28,7 @@ const char kTestSysPath[] = "sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/";
 // Creates |file_path|. Also creates all necessary parent directories.
 void CreateFile(const base::FilePath& file_path) {
   ASSERT_TRUE(base::CreateDirectory(file_path.DirName()));
-  CHECK_EQ(base::WriteFile(file_path, "", 0), 0);
+  CHECK(base::WriteFile(file_path, ""));
 }
 
 void CreatePowerWakeupAttrInDir(const base::FilePath& dir_path) {

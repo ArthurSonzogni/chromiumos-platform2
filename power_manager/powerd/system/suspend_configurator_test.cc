@@ -4,16 +4,17 @@
 
 #include "power_manager/powerd/system/suspend_configurator.h"
 
+#include <stdint.h>
+
 #include <cstring>
 #include <optional>
-#include <stdint.h>
 #include <string>
 
-#include <base/logging.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/cpuinfo.h>
@@ -240,7 +241,7 @@ void CreateFileInTempRootDir(const base::FilePath& temp_root_dir,
   CHECK(base::StartsWith(file_path, "/"));
   base::FilePath path = temp_root_dir.Append(file_path.substr(1));
   ASSERT_TRUE(base::CreateDirectory(path.DirName()));
-  CHECK_EQ(base::WriteFile(path, "", 0), 0);
+  CHECK(base::WriteFile(path, ""));
 }
 
 }  // namespace
@@ -288,8 +289,7 @@ class SuspendConfiguratorTest : public TestEnvironment {
   void WriteCpuInfoFile(const char cpuinfo_data[]) {
     base::FilePath cpuinfo_path =
         GetPath(base::FilePath(brillo::CpuInfo::DefaultPath()));
-    size_t len = std::strlen(cpuinfo_data);
-    CHECK_EQ(base::WriteFile(cpuinfo_path, cpuinfo_data, len), len);
+    CHECK(base::WriteFile(cpuinfo_path, cpuinfo_data));
   }
 
   base::ScopedTempDir temp_root_dir_;
@@ -542,19 +542,15 @@ TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
   // Write a value that indicates hang to |kECLastResumeResultPath| and test
   // UndoPrepareForSuspend() returns false.
   std::string last_resume_result_string = kECResumeResultHang;
-  ASSERT_EQ(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
-                            last_resume_result_string.c_str(),
-                            last_resume_result_string.length()),
-            last_resume_result_string.length());
+  ASSERT_TRUE(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
+                              last_resume_result_string));
   EXPECT_FALSE(suspend_configurator_.UndoPrepareForSuspend());
 
   // Write a value that does not indicate hang to |kECLastResumeResultPath| and
   // test UndoPrepareForSuspend() returns true.
   last_resume_result_string = kECResumeResultNoHang;
-  ASSERT_EQ(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
-                            last_resume_result_string.c_str(),
-                            last_resume_result_string.length()),
-            last_resume_result_string.length());
+  ASSERT_TRUE(base::WriteFile(GetPath(base::FilePath(kECLastResumeResultPath)),
+                              last_resume_result_string));
   EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
 }
 

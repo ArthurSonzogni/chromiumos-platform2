@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/common/fake_prefs.h"
-#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/suspend_freezer.h"
-#include "power_manager/powerd/testing/test_environment.h"
 
 #include <algorithm>
 #include <cstring>
@@ -18,6 +15,10 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
+
+#include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -41,17 +42,15 @@ class MockSystemUtils : public SuspendFreezer::SystemUtilsInterface {
     *contents = file_contents_[path];
     return true;
   }
-  int WriteFile(const base::FilePath& path,
-                const char* data,
-                int size) override {
+  bool WriteFile(const base::FilePath& path, std::string_view data) override {
     if (file_contents_.find(path) == file_contents_.end() || permission_fail_)
-      return -1;
+      return false;
     if (set_write_) {
       file_contents_[path] = data;
-      if (strcmp(data, kFreezerStateFrozen) == 0)
+      if (data == kFreezerStateFrozen)
         freeze_order_.push_back(path);
     }
-    return size;
+    return true;
   }
   void GetSubDirs(const base::FilePath& root_path,
                   std::vector<base::FilePath>* dirs) override {

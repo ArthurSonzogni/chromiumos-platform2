@@ -66,7 +66,7 @@ bool CrosEcHelper::AllowWakeupAsTablet(bool enabled) {
     VLOG(1) << "EC wake angle is already set to " << str;
     return true;
   }
-  if (base::WriteFile(wake_angle_sysfs_node_, str.c_str(), str.size()) < 0) {
+  if (!base::WriteFile(wake_angle_sysfs_node_, str)) {
     PLOG(ERROR) << "Failed to set EC wake angle to " << str;
     return false;
   }

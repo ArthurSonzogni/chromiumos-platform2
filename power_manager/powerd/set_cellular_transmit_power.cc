@@ -60,8 +60,7 @@ class Gpio {
     }
 
     std::string export_value = base::NumberToString(gpio_number_);
-    if (!base::WriteFile(export_file, export_value.data(),
-                         export_value.size())) {
+    if (!base::WriteFile(export_file, export_value)) {
       PLOG(ERROR) << "Could not write to " << export_file.value();
       return false;
     }
@@ -82,8 +81,7 @@ class Gpio {
 
     base::FilePath direction_file = GetSysfsGpioPath().Append("direction");
     std::string direction_value = value_high ? "high" : "low";
-    if (!base::WriteFile(direction_file, direction_value.data(),
-                         direction_value.size())) {
+    if (!base::WriteFile(direction_file, direction_value)) {
       PLOG(ERROR) << "Could not write to " << direction_file.value();
       return false;
     }

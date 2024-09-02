@@ -135,7 +135,7 @@ class PowerSupplyTest : public TestEnvironment {
 
     // Create the CrOS EC file.
     cros_ec_path_ = temp_dir_.GetPath().Append("cros_ec");
-    EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
+    EXPECT_TRUE(base::WriteFile(cros_ec_path_, ""));
 
     // Leave support for fetching the Display state of charge from the EC off by
     // default.
@@ -183,7 +183,7 @@ class PowerSupplyTest : public TestEnvironment {
   void WriteValue(const base::FilePath& dir,
                   const std::string& filename,
                   const std::string& value) {
-    CHECK(base::WriteFile(dir.Append(filename), value.c_str(), value.length()));
+    CHECK(base::WriteFile(dir.Append(filename), value));
   }
 
   // Converts |value| to the format used by sysfs and passes it to WriteValue().

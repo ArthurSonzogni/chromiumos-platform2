@@ -61,7 +61,7 @@ base::FilePath GetDelayPathFromWakeupDevicePath(
 }
 
 bool SetPathValue(const base::FilePath& path, const std::string& contents) {
-  bool success = base::WriteFile(path, contents.data(), contents.size());
+  bool success = base::WriteFile(path, contents);
   LOG(INFO) << "Writing \"" << contents << "\" to " << path << " "
             << (success ? "succeeded" : "failed");
   return success;

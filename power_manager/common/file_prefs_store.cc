@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/common/file_prefs_store.h"
+
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "power_manager/common/file_prefs_store.h"
-#include "power_manager/common/tracing.h"
-#include "power_manager/common/util.h"
-
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+
+#include "power_manager/common/tracing.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 
@@ -43,7 +44,7 @@ bool FilePrefsStore::ReadExternalString(const std::string& path,
 bool FilePrefsStore::WritePrefString(const std::string& name,
                                      const std::string& value) {
   base::FilePath path = pref_path_.Append(name);
-  return base::WriteFile(path, value.data(), value.size()) != -1;
+  return base::WriteFile(path, value);
 }
 
 bool FilePrefsStore::Watch(

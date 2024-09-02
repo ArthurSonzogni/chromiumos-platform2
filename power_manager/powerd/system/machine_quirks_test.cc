@@ -86,8 +86,7 @@ class MachineQuirksTest : public TestEnvironment {
   void CreateDmiFile(std::string name, std::string data) {
     base::FilePath file_name = base::FilePath(name);
     base::CreateTemporaryFileInDir(dmi_id_dir_, &file_name);
-    ASSERT_TRUE(util::WriteFileFully(dmi_id_dir_.Append(name), data.c_str(),
-                                     data.size()));
+    ASSERT_TRUE(base::WriteFile(dmi_id_dir_.Append(name), data));
   }
 
   void CreateDirAndWriteFile(const base::FilePath& path,

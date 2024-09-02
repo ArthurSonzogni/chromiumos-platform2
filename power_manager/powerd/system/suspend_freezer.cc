@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/suspend_freezer.h"
+
 #include <list>
 #include <vector>
-
-#include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/suspend_freezer.h"
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
@@ -19,6 +18,8 @@
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+
+#include "power_manager/common/power_constants.h"
 
 namespace power_manager::system {
 
@@ -75,8 +76,7 @@ bool SuspendFreezer::SetCgroupState(const base::FilePath& cgroup_path,
     return false;
   }
 
-  if (sys_utils_->WriteFile(state_path, state.c_str(), state.size()) !=
-      state.size()) {
+  if (!sys_utils_->WriteFile(state_path, state)) {
     LOG(ERROR) << "Failed to set " << state_path.value() << " to " << state
                << ".  Suspend may not succeed as a result";
     return false;
@@ -343,10 +343,9 @@ bool SuspendFreezer::SystemUtilsInterface::ReadFileToString(
   return base::ReadFileToString(path, contents);
 }
 
-int SuspendFreezer::SystemUtilsInterface::WriteFile(const base::FilePath& path,
-                                                    const char* data,
-                                                    int size) {
-  return base::WriteFile(path, data, size);
+bool SuspendFreezer::SystemUtilsInterface::WriteFile(const base::FilePath& path,
+                                                     std::string_view data) {
+  return base::WriteFile(path, data);
 }
 
 void SuspendFreezer::SystemUtilsInterface::GetSubDirs(

@@ -265,7 +265,7 @@ TEST_F(AudioClientTest, PowerdCrashAfterAudioSuspended) {
   // previous run of powerd crashed after suspending audio.
   auto audio_suspended_path =
       run_dir_.GetPath().Append(AudioClient::kAudioSuspendedFile);
-  ASSERT_EQ(base::WriteFile(audio_suspended_path, nullptr, 0), 0);
+  ASSERT_TRUE(base::WriteFile(audio_suspended_path, std::string_view()));
   audio_suspended_ = true;
   // audio_client_ Init() should un-suspend audio if it is suspended.
   Init();

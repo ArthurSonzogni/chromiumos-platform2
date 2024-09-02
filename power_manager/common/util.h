@@ -19,10 +19,6 @@ double ClampPercent(double percent);
 // Returns |delta| as a string of the format "4h3m45s".
 std::string TimeDeltaToString(base::TimeDelta delta);
 
-// Writes the given buffer into the file, overwriting any data that was
-// previously there. Returns true if all bytes are written or false otherwise.
-bool WriteFileFully(const base::FilePath& filename, const char* data, int size);
-
 // Writes the base-10 representation of |value| to |path| without a trailing
 // newline. Logs an error and returns false on failure.
 bool WriteInt64File(const base::FilePath& path, int64_t value);

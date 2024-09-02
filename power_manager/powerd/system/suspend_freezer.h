@@ -13,12 +13,12 @@
 #include <utility>
 #include <vector>
 
-#include "power_manager/common/clock.h"
-#include "power_manager/common/prefs.h"
-
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
+
+#include "power_manager/common/clock.h"
+#include "power_manager/common/prefs.h"
 
 namespace power_manager::system {
 
@@ -64,10 +64,8 @@ class SuspendFreezer : public SuspendFreezerInterface {
     // Returns true on success and false on error.
     virtual bool ReadFileToString(const base::FilePath& path,
                                   std::string* contents);
-    // Returns the number of bytes written, or -1 on error.
-    virtual int WriteFile(const base::FilePath& path,
-                          const char* data,
-                          int size);
+    // Returns true on success and false on error.
+    virtual bool WriteFile(const base::FilePath& path, std::string_view data);
     // Wrapper around base::FileEnumerator for testing purposes. Populates
     // |dirs| with the directories in |root_path|.
     virtual void GetSubDirs(const base::FilePath& root_path,

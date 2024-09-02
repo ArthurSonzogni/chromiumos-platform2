@@ -1060,7 +1060,7 @@ TEST_F(DaemonTest, FirstRunAfterBootWhenFalse) {
   const base::FilePath already_ran_path =
       run_dir_.GetPath().Append(Daemon::kAlreadyRanFileName);
 
-  ASSERT_EQ(base::WriteFile(already_ran_path, nullptr, 0), 0);
+  ASSERT_TRUE(base::WriteFile(already_ran_path, std::string_view()));
   Init();
   EXPECT_FALSE(daemon_->first_run_after_boot_for_testing());
   EXPECT_TRUE(base::PathExists(already_ran_path));
@@ -1158,7 +1158,7 @@ TEST_F(DaemonTest, SetBatterySustain) {
   Init();
 
   // `Daemon::SetBatterySustain` expects `cros_ec_path_` to already exist.
-  EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
+  EXPECT_TRUE(base::WriteFile(cros_ec_path_, ""));
   // Verify that the ChargeControlSetCommand is Run once and check the Req.
   EXPECT_CALL(*ec_command_factory_, ChargeControlSetCommand)
       .WillOnce([](uint32_t mode, uint8_t lower, uint8_t upper) {
@@ -1178,7 +1178,7 @@ TEST_F(DaemonTest, SetBatterySlowCharging) {
 
   // `Daemon::SetBatterySlowCharging` expects `cros_ec_path_` to already
   // exist.
-  EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
+  EXPECT_TRUE(base::WriteFile(cros_ec_path_, ""));
 
   // Verify that the ChargeCurrentLimitSetCommand is Run once and check the Req.
   EXPECT_CALL(*ec_command_factory_, ChargeCurrentLimitSetCommand)
