@@ -4,27 +4,29 @@
  * found in the LICENSE file.
  */
 
+#include "cros-camera/jpeg_encode_accelerator.h"
+
+#include <libyuv.h>
+
 #include <vector>
 
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
-#include <base/memory/writable_shared_memory_region.h>
 #include <base/memory/unsafe_shared_memory_region.h>
+#include <base/memory/writable_shared_memory_region.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/threading/thread.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
-#include <libyuv.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/exif_utils.h"
 #include "cros-camera/future.h"
 #include "cros-camera/jpeg_compressor.h"
-#include "cros-camera/jpeg_encode_accelerator.h"
 #include "hardware/gralloc.h"
 
 namespace cros::tests {
@@ -362,8 +364,9 @@ void JpegEncodeAcceleratorTest::EncodeTest(Frame* frame) {
       base::FilePath encoded_file = frame->yuv_file.ReplaceExtension(".jpg");
       LOG_ASSERT(buffer_manager_->Lock(frame->output_handle, 0, 0, 0, 0, 0,
                                        &addr) == 0);
-      base::WriteFile(encoded_file, static_cast<const char*>(addr),
-                      frame->hw_out_size);
+      base::WriteFile(encoded_file,
+                      base::make_span(static_cast<const uint8_t*>(addr),
+                                      frame->hw_out_size));
       LOG_ASSERT(buffer_manager_->Unlock(frame->output_handle) == 0);
     }
 

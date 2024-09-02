@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_test/camera3_frame_fixture.h"
-
+#include <libyuv.h>
 #include <linux/videodev2.h>
 #include <semaphore.h>
 #include <stdio.h>
+// clang-format off
+#include <jpeglib.h>  // Must come after <stdio.h>.
+// clang-format on
 
 #include <cstdint>
 #include <iterator>
@@ -20,9 +22,8 @@
 #include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
-#include <jpeglib.h>
-#include <libyuv.h>
 
+#include "camera3_test/camera3_frame_fixture.h"
 #include "camera3_test/camera3_perf_log.h"
 #include "cros-camera/common.h"
 #include "cros-camera/device_config.h"
@@ -126,8 +127,7 @@ int Camera3FrameFixture::Image::SaveToFile(const std::string filename) const {
   const char* suffix =
       (format == ImageFormat::IMAGE_FORMAT_ARGB) ? ".argb" : ".i420";
   base::FilePath file_path(filename + suffix);
-  if (base::WriteFile(file_path, reinterpret_cast<const char*>(data.data()),
-                      size) != size) {
+  if (!base::WriteFile(file_path, data)) {
     LOGF(ERROR) << "Failed to write file " << filename << suffix;
     return -EINVAL;
   }

@@ -34,7 +34,7 @@ Camera3PerfLog::~Camera3PerfLog() {
   base::FilePath file_path(
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           "output_log"));
-  if (base::WriteFile(file_path, NULL, 0) < 0) {
+  if (!base::WriteFile(file_path, std::string_view())) {
     LOGF(ERROR) << "Error writing to file " << file_path.value();
     return;
   }

@@ -12,9 +12,9 @@
 #include <utility>
 
 #include <base/check_op.h>
+#include <base/files/file_util.h>
 #include <base/timer/elapsed_timer.h>
 #include <hardware/camera3.h>
-#include <base/files/file_util.h>
 
 #include "cros-camera/camera_face_detection.h"
 #include "cros-camera/common.h"
@@ -279,11 +279,10 @@ void CachedFrame::DumpBuffer(FrameBuffer& frame, const std::string suffix) {
   }
 
   VLOGF(2) << "DumpBuffer filepath " << file_path;
-  uint32_t write_size =
-      base::WriteFile(file_path, reinterpret_cast<const char*>(frame.GetData()),
-                      static_cast<uint64_t>(frame.GetBufferSize()));
+  bool success = base::WriteFile(
+      file_path, base::make_span(frame.GetData(), frame.GetBufferSize()));
 
-  if (write_size != frame.GetBufferSize()) {
+  if (!success) {
     LOGF(ERROR) << "Failed to write file " << filepath;
     frame.Unmap();
     frame_buffer_idx++;

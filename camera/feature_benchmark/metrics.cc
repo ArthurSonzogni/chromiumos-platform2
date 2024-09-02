@@ -4,14 +4,14 @@
 
 #include "feature_benchmark/metrics.h"
 
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
-#include <base/json/json_writer.h>
-
 #include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <utility>
+
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/json/json_writer.h>
 
 #include "cros-camera/common.h"
 
@@ -103,8 +103,7 @@ void Metrics::OutputMetricsToJsonFile(const base::FilePath& output_file_path) {
   std::string json_string;
   base::JSONWriter::WriteWithOptions(
       json_output, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string);
-  if (base::WriteFile(output_file_path, json_string.data(),
-                      json_string.size()) < 0) {
+  if (!base::WriteFile(output_file_path, json_string)) {
     LOGF(FATAL) << "Failed to write metrics JSON to path: " << output_file_path;
   }
 }

@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_test/camera3_preview_fixture.h"
-#include "camera3_test/camera3_still_capture_fixture.h"
-
+#include <libyuv.h>
 #include <unistd.h>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
-#include <libyuv.h>
+
+#include "camera3_test/camera3_preview_fixture.h"
+#include "camera3_test/camera3_still_capture_fixture.h"
 
 namespace camera3_test {
 
@@ -305,8 +305,7 @@ Camera3FaceAutoExposureTest::ImageI420::ImageI420(uint32_t w, uint32_t h)
 
 int Camera3FaceAutoExposureTest::ImageI420::SaveToFile(
     base::FilePath file_path) const {
-  if (base::WriteFile(file_path, reinterpret_cast<const char*>(data.data()),
-                      size) != size) {
+  if (!base::WriteFile(file_path, data)) {
     LOGF(ERROR) << "Failed to write file " << file_path;
     return -EINVAL;
   }

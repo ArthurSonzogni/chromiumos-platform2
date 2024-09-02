@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <libyuv.h>
 #include <linux/uvcvideo.h>
 #include <linux/v4l2-controls.h>
+#include <linux/videodev2.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -21,13 +23,11 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
-#include <base/timer/elapsed_timer.h>
 #include <base/time/time.h>
+#include <base/timer/elapsed_timer.h>
 #include <brillo/flag_helper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libyuv.h>
-#include <linux/videodev2.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/device_config.h"
@@ -1255,8 +1255,9 @@ TEST_F(V4L2Test, FirstFrameAfterStreamOn) {
                                  yuv_buffer.data() + width * height * 5 / 4,
                                  width / 2, width, height, width, height);
     if (res != 0) {
-      base::WriteFile(base::FilePath("FirstFrame.jpg"),
-                      static_cast<char*>(buffer.start), data_size);
+      base::WriteFile(
+          base::FilePath("FirstFrame.jpg"),
+          base::make_span(static_cast<uint8_t*>(buffer.start), data_size));
       FAIL() << "First frame is not a valid mjpeg image.";
     }
 

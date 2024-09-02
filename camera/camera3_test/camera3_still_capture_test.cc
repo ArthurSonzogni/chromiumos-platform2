@@ -2,18 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "camera3_test/camera3_still_capture_fixture.h"
-
 #include <algorithm>
 #include <iterator>
-
-#include <camera/camera_metadata.h>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <camera/camera_metadata.h>
 
+#include "camera3_test/camera3_still_capture_fixture.h"
 #include "cros-camera/common.h"
 
 namespace camera3_test {
@@ -313,9 +311,9 @@ void Camera3DumpSimpleStillCaptureTest::ProcessStillCaptureResult(
     ASSERT_EQ(CAMERA3_JPEG_BLOB_ID, jpeg_blob->jpeg_blob_id);
 
     auto jpeg_size = jpeg_blob->jpeg_size;
-    ASSERT_EQ(jpeg_size,
-              base::WriteFile(dump_path_, static_cast<const char*>(buf_addr),
-                              jpeg_size));
+    ASSERT_TRUE(base::WriteFile(
+        dump_path_,
+        base::make_span(static_cast<const uint8_t*>(buf_addr), jpeg_size)));
   }
 }
 
