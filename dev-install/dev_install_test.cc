@@ -227,17 +227,17 @@ TEST_F(DeletePathTest, Works) {
   struct stat st;
   EXPECT_EQ(0, stat(test_dir_.value().c_str(), &st));
 
-  EXPECT_EQ(3, base::WriteFile(test_dir_.Append("file"), "123", 3));
+  EXPECT_TRUE(base::WriteFile(test_dir_.Append("file"), "123"));
   EXPECT_EQ(0, symlink("x", test_dir_.Append("broken-sym").value().c_str()));
   EXPECT_EQ(0, symlink("file", test_dir_.Append("file-sym").value().c_str()));
   EXPECT_EQ(0, symlink(".", test_dir_.Append("dir-sym").value().c_str()));
   EXPECT_EQ(0, symlink("subdir", test_dir_.Append("dir-sym2").value().c_str()));
   const base::FilePath subdir = test_dir_.Append("subdir");
   EXPECT_TRUE(base::CreateDirectory(subdir));
-  EXPECT_EQ(3, base::WriteFile(subdir.Append("file"), "123", 3));
+  EXPECT_TRUE(base::WriteFile(subdir.Append("file"), "123"));
   const base::FilePath subsubdir = test_dir_.Append("subdir");
   EXPECT_TRUE(base::CreateDirectory(subsubdir));
-  EXPECT_EQ(3, base::WriteFile(subsubdir.Append("file"), "123", 3));
+  EXPECT_TRUE(base::WriteFile(subsubdir.Append("file"), "123"));
 
   EXPECT_TRUE(dev_install_.DeletePath(st, test_dir_));
   EXPECT_TRUE(base::PathExists(test_dir_));
@@ -407,8 +407,7 @@ TEST_F(LoadRuntimeSettingsTest, Works) {
       "CHROMEOS_RELEASE_BOARD=betty\n"
       "CHROMEOS_RELEASE_CHROME_MILESTONE=79\n"
       "CHROMEOS_RELEASE_VERSION=100.10.1\n"};
-  ASSERT_EQ(base::WriteFile(lsb_release, data.c_str(), data.size()),
-            data.size());
+  ASSERT_TRUE(base::WriteFile(lsb_release, data));
   ASSERT_TRUE(dev_install_.LoadRuntimeSettings(lsb_release));
   ASSERT_EQ(dev_install_.GetDevserverUrlForTest(), "https://foo");
   ASSERT_EQ(dev_install_.GetBoardForTest(), "betty");
@@ -419,8 +418,7 @@ TEST_F(LoadRuntimeSettingsTest, Works) {
 TEST_F(LoadRuntimeSettingsTest, Empty) {
   const base::FilePath lsb_release = test_dir_.Append("lsb-release");
   std::string data{""};
-  ASSERT_EQ(base::WriteFile(lsb_release, data.c_str(), data.size()),
-            data.size());
+  ASSERT_TRUE(base::WriteFile(lsb_release, data));
   ASSERT_TRUE(dev_install_.LoadRuntimeSettings(lsb_release));
 }
 
@@ -465,7 +463,7 @@ TEST_F(BootstrapPackagesTest, Works) {
   std::string data{
       "foo/bar-123\n"
       "cat/pkg-1.0\n"};
-  ASSERT_EQ(base::WriteFile(listing, data.c_str(), data.size()), data.size());
+  ASSERT_TRUE(base::WriteFile(listing, data));
 
   ON_CALL(dev_install_, DownloadAndInstallBootstrapPackage(_))
       .WillByDefault(Return(false));
@@ -494,7 +492,7 @@ TEST_F(BootstrapPackagesTest, Missing) {
 // Check empty bootstrap list fails.
 TEST_F(BootstrapPackagesTest, Empty) {
   const base::FilePath listing = test_dir_.Append("bootstrap.packages");
-  ASSERT_EQ(base::WriteFile(listing, "", 0), 0);
+  ASSERT_TRUE(base::WriteFile(listing, ""));
   ASSERT_FALSE(dev_install_.DownloadAndInstallBootstrapPackages(listing));
 }
 
@@ -502,7 +500,7 @@ TEST_F(BootstrapPackagesTest, Empty) {
 TEST_F(BootstrapPackagesTest, PackageFailed) {
   const base::FilePath listing = test_dir_.Append("bootstrap.packages");
   std::string data{"cat/pkg-3"};
-  ASSERT_EQ(base::WriteFile(listing, data.c_str(), data.size()), data.size());
+  ASSERT_TRUE(base::WriteFile(listing, data));
 
   EXPECT_CALL(dev_install_, DownloadAndInstallBootstrapPackage("cat/pkg-3"))
       .WillOnce(Return(false));
@@ -542,7 +540,7 @@ TEST_F(ConfigurePortageTest, Works) {
       portage_internal_dir.Append("special_env_vars.py");
   ASSERT_TRUE(base::CreateDirectory(portage_internal_dir));
   data = "foo\nenviron_whitelist = []\n\nbar\n";
-  ASSERT_TRUE(base::WriteFile(portage_internal_file, data.data(), data.size()));
+  ASSERT_TRUE(base::WriteFile(portage_internal_file, data));
 
   // Create a symlink to mimic real devices to detect recursive search issues.
   ASSERT_EQ(0, symlink(".", test_dir_.Append("usr").value().c_str()));
