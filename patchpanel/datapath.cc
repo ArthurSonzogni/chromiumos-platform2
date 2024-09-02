@@ -1621,11 +1621,7 @@ void Datapath::UpdateSourceEnforcementIPv6Prefix(
     const std::vector<net_base::IPv6CIDR>& ipv6_addresses) {
   std::set<std::string> prefix_strs;
   for (const auto& addr : ipv6_addresses) {
-    // TODO(b/279871350): Support prefix shorter than /64.
-    const auto ipv6_prefix =
-        net_base::IPv6CIDR::CreateFromAddressAndPrefix(addr.address(), 64)
-            ->GetPrefixCIDR();
-    prefix_strs.insert(ipv6_prefix.ToString());
+    prefix_strs.insert(addr.GetPrefixCIDR().ToString());
   }
   LOG(INFO) << __func__ << ": " << shill_device.ifname << ", {"
             << base::JoinString(std::vector<std::string>(prefix_strs.begin(),
