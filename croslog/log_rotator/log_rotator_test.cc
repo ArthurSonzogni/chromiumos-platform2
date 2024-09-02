@@ -177,7 +177,7 @@ TEST_F(LogRotatorTest, CleanUpFiles) {
     base::FilePath base_file_path = temp_dir.GetPath().Append(files[0]);
 
     for (int i = 0; i < std::size(files); ++i)
-      base::WriteFile(temp_dir.GetPath().Append(files[i]), "x", 1);
+      base::WriteFile(temp_dir.GetPath().Append(files[i]), "x");
 
     LogRotator rotator(base_file_path);
     rotator.CleanUpFiles(1);
@@ -197,12 +197,11 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
     base::FilePath base_file_path = temp_dir.GetPath().Append("test");
-    base::WriteFile(base_file_path, "0", 1);
+    base::WriteFile(base_file_path, "0");
 
     for (int i = 1; i < 5; ++i) {
       std::string number = base::NumberToString(i);
-      base::WriteFile(temp_dir.GetPath().Append("test." + number),
-                      number.c_str(), 1);
+      base::WriteFile(temp_dir.GetPath().Append("test." + number), number);
     }
 
     EXPECT_EQ("0", ReadFile(temp_dir.GetPath().Append("test")));
@@ -232,12 +231,11 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
     base::FilePath base_file_path = temp_dir.GetPath().Append("test");
-    base::WriteFile(base_file_path, "0", 1);
+    base::WriteFile(base_file_path, "0");
 
     for (int i = 1; i < 5; ++i) {
       std::string number = base::NumberToString(i);
-      base::WriteFile(temp_dir.GetPath().Append("test." + number),
-                      number.c_str(), 1);
+      base::WriteFile(temp_dir.GetPath().Append("test." + number), number);
     }
 
     EXPECT_EQ("0", ReadFile(temp_dir.GetPath().Append("test")));
@@ -267,14 +265,13 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
     base::FilePath base_file_path = temp_dir.GetPath().Append("test");
-    base::WriteFile(base_file_path, "0", 1);
+    base::WriteFile(base_file_path, "0");
 
     for (int i = 1; i < 5; ++i) {
       if (i == 3)
         continue;
       std::string number = base::NumberToString(i);
-      base::WriteFile(temp_dir.GetPath().Append("test." + number),
-                      number.c_str(), 1);
+      base::WriteFile(temp_dir.GetPath().Append("test." + number), number);
     }
 
     EXPECT_EQ("0", ReadFile(temp_dir.GetPath().Append("test")));
@@ -307,7 +304,7 @@ TEST_F(LogRotatorTest, RotateLogFileWithInheritingPermission) {
     constexpr int FILE_MODE = S_IRUSR | S_IXOTH;
 
     base::FilePath base_file_path = temp_dir.GetPath().Append("test");
-    base::WriteFile(base_file_path, "0", 1);
+    base::WriteFile(base_file_path, "0");
     base::SetPosixFilePermissions(base_file_path, FILE_MODE);
 
     int mode;
