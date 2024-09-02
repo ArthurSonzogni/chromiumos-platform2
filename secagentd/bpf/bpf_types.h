@@ -323,28 +323,10 @@ struct cros_network_event {
   } data;
 } __attribute__((aligned(8)));
 
-// Structure to hold file path segment information.
-// TODO(b/359261397): Convert this to a flat array.
-struct file_path_info {
-  char segment_names[MAX_PATH_DEPTH]
-                    [MAX_PATH_SEGMENT_SIZE];  // Array of path segments, each up
-                                              // to MAX_PATH_SEGMENT_SIZE in
-                                              // length.
-  uint32_t segment_lengths[MAX_PATH_DEPTH];  // Array storing the length of each
-                                             // segment; segment_lengths[i]
-                                             // corresponds to the length of
-                                             // segment_names[i].
-  uint32_t num_segments;  // Total number of segments collected.
-} __attribute__((aligned(8)));
-
 // Structure to hold mount/umount data information.
 struct mount_data {
   uint32_t src_device_length;           // Length of the source device path.
   char src_device_path[MAX_PATH_SIZE];  // Source device path.
-  // TODO(princya): Remove this struct
-  struct file_path_info
-      dest_path_info;  // Destination path segment information.
-
   uint64_t mount_flags;  // Flags associated with the mount operation.
   char mount_type[256];  // Type of mount (e.g., filesystem type).
   char dest_device_path[MAX_PATH_SIZE];
