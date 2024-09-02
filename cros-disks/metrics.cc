@@ -102,17 +102,14 @@ Metrics::FilesystemType Metrics::GetFilesystemType(
 }
 
 void Metrics::RecordArchiveType(const base::FilePath& path) {
-  if (!metrics_library_.SendEnumToUMA("CrosDisks.ArchiveType",
-                                      GetArchiveType(path.value()),
-                                      kArchiveMaxValue))
-    LOG(ERROR) << "Cannot send archive type to UMA";
+  metrics_library_.SendEnumToUMA(
+      "CrosDisks.ArchiveType", GetArchiveType(path.value()), kArchiveMaxValue);
 }
 
 void Metrics::RecordFilesystemType(const std::string_view fs_type) {
-  if (!metrics_library_.SendEnumToUMA("CrosDisks.FilesystemType",
-                                      GetFilesystemType(fs_type),
-                                      kFilesystemMaxValue))
-    LOG(ERROR) << "Cannot send filesystem type to UMA";
+  metrics_library_.SendEnumToUMA("CrosDisks.FilesystemType",
+                                 GetFilesystemType(fs_type),
+                                 kFilesystemMaxValue);
 }
 
 void Metrics::RecordSysCall(const std::string_view syscall,
@@ -135,33 +132,21 @@ void Metrics::RecordAction(std::string_view action,
                 std::move(elapsed_time));
 }
 
-void Metrics::RecordDaemonError(const std::string_view program_name,
-                                const int error) {
-  std::string name(program_name);
-  std::replace(name.begin(), name.end(), '.', '-');
-  if (!metrics_library_.SendSparseToUMA(
-          base::StrCat({"CrosDisks.PrematureTermination.", name}), error))
-    LOG(ERROR) << "Cannot send FUSE daemon error to UMA";
-}
-
 void Metrics::RecordReadOnlyFileSystem(const std::string_view fs_type) {
-  if (!metrics_library_.SendEnumToUMA("CrosDisks.ReadOnlyFileSystemAfterError",
-                                      GetFilesystemType(fs_type),
-                                      kFilesystemMaxValue))
-    LOG(ERROR) << "Cannot send filesystem type to UMA";
+  metrics_library_.SendEnumToUMA("CrosDisks.ReadOnlyFileSystemAfterError",
+                                 GetFilesystemType(fs_type),
+                                 kFilesystemMaxValue);
 }
 
 void Metrics::RecordDeviceMediaType(const DeviceType device_media_type) {
-  if (!metrics_library_.SendEnumToUMA("CrosDisks.DeviceMediaType",
-                                      device_media_type))
-    LOG(ERROR) << "Cannot send device media type to UMA";
+  metrics_library_.SendEnumToUMA("CrosDisks.DeviceMediaType",
+                                 device_media_type);
 }
 
 void Metrics::RecordFuseMounterErrorCode(const std::string_view mounter_name,
                                          const int error_code) {
-  if (!metrics_library_.SendSparseToUMA(
-          base::StrCat({"CrosDisks.Fuse.", mounter_name}), error_code))
-    LOG(ERROR) << "Cannot send FUSE mounter error code to UMA";
+  metrics_library_.SendSparseToUMA(
+      base::StrCat({"CrosDisks.Fuse.", mounter_name}), error_code);
 }
 
 }  // namespace cros_disks

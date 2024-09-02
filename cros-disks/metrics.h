@@ -46,10 +46,6 @@ class Metrics {
                     Process::ExitCode exit_code,
                     base::TimeDelta elapsed_time);
 
-  // Records the error returned by a FUSE daemon when it unexpectedly
-  // terminates.
-  void RecordDaemonError(std::string_view program_name, int error);
-
   // Records a filesystem type that cros-disks had to mount in read-only mode
   // because of an error when trying to mount it in read-write mode.
   void RecordReadOnlyFileSystem(std::string_view fs_type);

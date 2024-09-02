@@ -18,6 +18,7 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
+#include <base/timer/elapsed_timer.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
@@ -205,6 +206,7 @@ class MountManager {
                               const base::FilePath& mount_path,
                               const std::string& filesystem_type,
                               const base::WeakPtr<MountPoint> mount_point,
+                              base::ElapsedTimer timer,
                               const siginfo_t& info);
 
   // The root directory under which mount directories are created.

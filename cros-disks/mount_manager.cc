@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process_reaper.h>
+#include <chromeos/libminijail.h>
 
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
@@ -49,10 +50,8 @@ MountManager::MountManager(const std::string& mount_root,
       platform_(platform),
       metrics_(metrics),
       process_reaper_(process_reaper) {
-  CHECK(!mount_root_.empty()) << "Invalid mount root directory";
-  CHECK(mount_root_.IsAbsolute()) << "Mount root not absolute path";
-  CHECK(platform_) << "Invalid platform object";
-  CHECK(metrics_) << "Invalid metrics object";
+  CHECK(mount_root_.IsAbsolute()) << " for " << quote(mount_root_);
+  DCHECK(platform_);
 }
 
 MountManager::~MountManager() {
@@ -219,7 +218,7 @@ void MountManager::MountNewSource(const std::string& source,
         base::BindOnce(&MountManager::OnSandboxedProcessExit,
                        base::Unretained(this), process->GetProgramName(),
                        mount_path, mount_point->fstype(),
-                       mount_point->GetWeakPtr()));
+                       mount_point->GetWeakPtr(), base::ElapsedTimer()));
 
     DCHECK(mount_callback);
     mount_point->SetLauncherExitCallback(base::BindOnce(
@@ -317,29 +316,36 @@ void MountManager::OnSandboxedProcessExit(
     const base::FilePath& mount_path,
     const std::string& filesystem_type,
     const base::WeakPtr<MountPoint> mount_point,
+    const base::ElapsedTimer timer,
     const siginfo_t& info) {
   DCHECK_EQ(SIGCHLD, info.si_signo);
   if (info.si_code != CLD_EXITED) {
     LOG(ERROR) << "Sandbox of FUSE program " << quote(program_name) << " for "
                << filesystem_type << " " << redact(mount_path)
-               << " was killed by signal " << info.si_status << ": "
-               << strsignal(info.si_status);
+               << " was killed by "
+               << Process::ExitCode(MINIJAIL_ERR_SIG_BASE + info.si_status)
+               << " after " << timer.Elapsed();
   } else if (mount_point) {
     LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
                << filesystem_type << " " << redact(mount_path)
                << " finished unexpectedly with "
-               << Process::ExitCode(info.si_status);
+               << Process::ExitCode(info.si_status) << " after "
+               << timer.Elapsed();
 
-    if (metrics_)
-      metrics_->RecordDaemonError(program_name, info.si_status);
+    if (metrics_) {
+      metrics_->RecordAction("Fuse.PrematureTermination", filesystem_type,
+                             Process::ExitCode(info.si_status),
+                             timer.Elapsed());
+    }
   } else if (info.si_status) {
     LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
                << filesystem_type << " " << redact(mount_path)
-               << " finished with " << Process::ExitCode(info.si_status);
+               << " finished with " << Process::ExitCode(info.si_status)
+               << " after " << timer.Elapsed();
   } else {
     LOG(INFO) << "FUSE program " << quote(program_name) << " for "
               << filesystem_type << " " << redact(mount_path)
-              << " finished normally";
+              << " finished normally after " << timer.Elapsed();
   }
 
   if (!mount_point) {
