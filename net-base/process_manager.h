@@ -5,6 +5,7 @@
 #ifndef NET_BASE_PROCESS_MANAGER_H_
 #define NET_BASE_PROCESS_MANAGER_H_
 
+#include <libminijail.h>
 #include <sys/types.h>  // for rlim_t
 
 #include <map>
@@ -27,7 +28,6 @@
 #include <brillo/minijail/minijail.h>
 #include <brillo/process/process.h>
 #include <brillo/process/process_reaper.h>
-#include <libminijail.h>
 
 namespace net_base {
 
@@ -162,6 +162,13 @@ class BRILLO_EXPORT ProcessManager {
   // Stop the given |pid| in a synchronous manner.
   virtual bool StopProcessAndBlock(pid_t pid);
 
+  // Kill process |pid| using signal |signal|.
+  // The |killed| will be set true when the process was already dead.
+  // It returns true when it sent the |signal| successfully or the
+  // process was already dead.
+  // It returns false when the system failed to send |signal|.
+  virtual bool KillProcess(pid_t pid, int signal, bool* killed);
+
   // Replace the current exit callback for |pid| with |new_callback|.
   virtual bool UpdateExitCallback(pid_t pid, ExitCallback new_callback);
 
@@ -239,13 +246,6 @@ class BRILLO_EXPORT ProcessManager {
   // It returns false when the process failed to exit within the timeout
   // or the system failed to send kill singal.
   bool KillProcessWithTimeout(pid_t pid, bool kill_signal);
-
-  // Kill process |pid| using signal |signal|.
-  // The |killed| will be set true when the process was already dead.
-  // It returns true when it sent the |signal| successfully or the
-  // process was already dead.
-  // It returns false when the system failed to send |signal|.
-  bool KillProcess(pid_t pid, int signal, bool* killed);
 
   // Wait for process |pid| to exit. This function will check it for at most
   // |tries| times. The interval of waiting time grows exponentially from

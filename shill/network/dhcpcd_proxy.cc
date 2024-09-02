@@ -4,6 +4,8 @@
 
 #include "shill/network/dhcpcd_proxy.h"
 
+#include <signal.h>
+
 #include <memory>
 #include <string>
 #include <string_view>
@@ -397,11 +399,26 @@ void DHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
                                        int pid) {
   const auto iter = pids_need_to_stop_.find(pid);
   if (iter != pids_need_to_stop_.end()) {
-    // Pass the termination responsibility to net_base::ProcessManager.
-    // net_base::ProcessManager will try to terminate the process using SIGTERM,
-    // then SIGKill signals.  It will log an error message if it is not able to
-    // terminate the process in a timely manner.
-    process_manager_->StopProcessAndBlock(pid);
+    // Terminate the dhcpcd process first with SIGALRM, then SIGTERM (with
+    // timeout), finally SIGKILL (with timeout) signals.
+    // To stop dhcpcd, SIGALRM is better than SIGTERM, for upon receiving
+    // SIGALRM, dhcpcd will try to release the lease first, then exits, but for
+    // SIGTERM, dhcpcd will not send the RELEASE message.
+    // Although in net_base::ProcessManager::KillProcess() we still send SIGTERM
+    // before sending SIGKILL, this SIGTERM actually will have no effect on
+    // dhcpcd. When dhcpcd receives SIGALRM at the beginning, it sets its
+    // internal static variable |dhcpcd_exiting| to true. This variable prevents
+    // dhcpcd from handling all subsequent SIGTERM signals. We use KillProcess()
+    // here only for waiting the dhcpcd to exit, and if the process doesn't
+    // exit for within a certain time, KillProcess() kills it by force with
+    // SIGKILL.
+    bool killed = false;
+    if (!process_manager_->KillProcess(pid, SIGALRM, &killed)) {
+      LOG(WARNING) << "Failed to send SIGALRM to pid: " << pid;
+    }
+    if (!killed) {
+      process_manager_->StopProcessAndBlock(pid);
+    }
     pids_need_to_stop_.erase(iter);
   }
 

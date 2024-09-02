@@ -4,6 +4,8 @@
 
 #include "shill/network/dhcpcd_proxy.h"
 
+#include <signal.h>
+
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -30,9 +32,11 @@ namespace shill {
 namespace {
 
 using testing::_;
+using testing::DoAll;
 using testing::ElementsAre;
 using testing::Field;
 using testing::Return;
+using testing::SetArgPointee;
 
 // The mock client of the DHCPCDProxy.
 class MockClient : public DHCPClientProxy::EventHandler {
@@ -174,6 +178,8 @@ TEST_F(DHCPCDProxyFactoryTest, CreateAndDestroyProxy) {
   std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid);
 
   // The dhcpcd process should be terminated when the proxy is destroyed.
+  EXPECT_CALL(mock_process_manager_, KillProcess(kPid, SIGALRM, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid));
   proxy.reset();
 }
@@ -184,7 +190,21 @@ TEST_F(DHCPCDProxyFactoryTest, KillProcessWithPendingRequest) {
   std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid);
 
   // The dhcpcd process should be killed when the factory is destroyed.
+  EXPECT_CALL(mock_process_manager_, KillProcess(kPid, SIGALRM, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid));
+  proxy_factory_.reset();
+}
+
+TEST_F(DHCPCDProxyFactoryTest, KillProcessAlreadyDead) {
+  constexpr int kPid = 4;
+
+  std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid);
+
+  // The dhcpcd process is already dead when killed.
+  EXPECT_CALL(mock_process_manager_, KillProcess(kPid, SIGALRM, _))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+  EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid)).Times(0);
   proxy_factory_.reset();
 }
 
@@ -196,7 +216,11 @@ TEST_F(DHCPCDProxyFactoryTest, CreateMultipleProxies) {
   std::unique_ptr<DHCPClientProxy> proxy2 = CreateProxySync(kPid2);
 
   // The dhcpcd process should be terminated when the proxy is destroyed.
+  EXPECT_CALL(mock_process_manager_, KillProcess(kPid1, SIGALRM, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid1));
+  EXPECT_CALL(mock_process_manager_, KillProcess(kPid2, SIGALRM, _))
+      .WillOnce(Return(true));
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid2));
   proxy_factory_.reset();
 }
@@ -219,6 +243,7 @@ TEST_F(DHCPCDProxyFactoryTest, ProcessExited) {
   // notify the client by EventHandler::OnProcessExited().
   EXPECT_CALL(client_, OnProcessExited(kPid, kExitStatus));
   // The process is already exited, we should not stop it again.
+  EXPECT_CALL(mock_process_manager_, KillProcess(kPid, SIGALRM, _)).Times(0);
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid)).Times(0);
 
   std::move(process_exit_cb_).Run(kExitStatus);

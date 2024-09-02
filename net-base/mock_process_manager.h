@@ -5,8 +5,6 @@
 #ifndef NET_BASE_MOCK_PROCESS_MANAGER_H_
 #define NET_BASE_MOCK_PROCESS_MANAGER_H_
 
-#include "net-base/process_manager.h"
-
 #include <map>
 #include <string>
 #include <utility>
@@ -14,6 +12,8 @@
 
 #include <base/location.h>
 #include <gmock/gmock.h>
+
+#include "net-base/process_manager.h"
 
 namespace net_base {
 
@@ -67,6 +67,7 @@ class BRILLO_EXPORT MockProcessManager : public ProcessManager {
               (override));
   MOCK_METHOD(bool, StopProcess, (pid_t), (override));
   MOCK_METHOD(bool, StopProcessAndBlock, (pid_t), (override));
+  MOCK_METHOD(bool, KillProcess, (pid_t, int, bool*), (override));
   MOCK_METHOD(std::optional<bool>,
               IsTerminating,
               (const base::FilePath& pid_path),
