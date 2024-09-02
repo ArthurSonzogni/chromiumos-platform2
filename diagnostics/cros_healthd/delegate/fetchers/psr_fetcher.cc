@@ -21,7 +21,11 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-mojom::PsrInfo::LogState LogStateToMojo(psr::LogState log_state) {
+}  // namespace
+
+namespace internal {
+
+mojom::PsrInfo::LogState ConvertLogStateToMojo(psr::LogState log_state) {
   switch (log_state) {
     case psr::LogState::kNotStarted:
       return mojom::PsrInfo::LogState::kNotStarted;
@@ -32,7 +36,33 @@ mojom::PsrInfo::LogState LogStateToMojo(psr::LogState log_state) {
   }
 }
 
-}  // namespace
+mojom::PsrEvent::EventType ConvertPsrEventTypeToMojo(
+    psr::EventType event_type) {
+  switch (event_type) {
+    case psr::EventType::kLogStart:
+      return mojom::PsrEvent::EventType::kLogStart;
+    case psr::EventType::kLogEnd:
+      return mojom::PsrEvent::EventType::kLogEnd;
+    case psr::EventType::kMissing:
+      return mojom::PsrEvent::EventType::kMissing;
+    case psr::EventType::kInvalid:
+      return mojom::PsrEvent::EventType::kInvalid;
+    case psr::EventType::kPrtcFailure:
+      return mojom::PsrEvent::EventType::kPrtcFailure;
+    case psr::EventType::kCsmeRecovery:
+      return mojom::PsrEvent::EventType::kCsmeRecovery;
+    case psr::EventType::kCsmeDamState:
+      return mojom::PsrEvent::EventType::kCsmeDamState;
+    case psr::EventType::kCsmeUnlockState:
+      return mojom::PsrEvent::EventType::kCsmeUnlockState;
+    case psr::EventType::kSvnIncrease:
+      return mojom::PsrEvent::EventType::kSvnIncrease;
+    case psr::EventType::kFwVersionChanged:
+      return mojom::PsrEvent::EventType::kFwVersionChanged;
+  }
+}
+
+}  // namespace internal
 
 mojom::GetPsrResultPtr FetchPsrInfo() {
   auto result = mojom::PsrInfo::New();
@@ -62,7 +92,7 @@ mojom::GetPsrResultPtr FetchPsrInfo() {
     return mojom::GetPsrResult::NewError("Requires PSR 2.0 version.");
   }
 
-  result->log_state = LogStateToMojo(psr_res.log_state);
+  result->log_state = internal::ConvertLogStateToMojo(psr_res.log_state);
   result->uuid =
       psr_cmd.IdToHexString(psr_res.psr_record.uuid, psr::kUuidLength);
   result->upid =
@@ -95,39 +125,7 @@ mojom::GetPsrResultPtr FetchPsrInfo() {
     auto event = psr_res.psr_record.events_info[i];
     auto tmp_event = mojom::PsrEvent::New();
 
-    switch (event.event_type) {
-      case psr::EventType::kLogStart:
-        tmp_event->type = mojom::PsrEvent::EventType::kLogStart;
-        break;
-      case psr::EventType::kLogEnd:
-        tmp_event->type = mojom::PsrEvent::EventType::kLogEnd;
-        break;
-      case psr::EventType::kMissing:
-        tmp_event->type = mojom::PsrEvent::EventType::kMissing;
-        break;
-      case psr::EventType::kInvalid:
-        tmp_event->type = mojom::PsrEvent::EventType::kInvalid;
-        break;
-      case psr::EventType::kPrtcFailure:
-        tmp_event->type = mojom::PsrEvent::EventType::kPrtcFailure;
-        break;
-      case psr::EventType::kCsmeRecovery:
-        tmp_event->type = mojom::PsrEvent::EventType::kCsmeRecovery;
-        break;
-      case psr::EventType::kCsmeDamState:
-        tmp_event->type = mojom::PsrEvent::EventType::kCsmeDamState;
-        break;
-      case psr::EventType::kCsmeUnlockState:
-        tmp_event->type = mojom::PsrEvent::EventType::kCsmeUnlockState;
-        break;
-      case psr::EventType::kSvnIncrease:
-        tmp_event->type = mojom::PsrEvent::EventType::kSvnIncrease;
-        break;
-      case psr::EventType::kFwVersionChanged:
-        tmp_event->type = mojom::PsrEvent::EventType::kFwVersionChanged;
-        break;
-    }
-
+    tmp_event->type = internal::ConvertPsrEventTypeToMojo(event.event_type);
     tmp_event->time = event.timestamp;
     tmp_event->data = event.data;
     result->events.push_back(std::move(tmp_event));
