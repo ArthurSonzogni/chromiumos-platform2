@@ -40,6 +40,10 @@ if [ -e /sys/firmware/vpd/ro/panel_backlight_max_nits ]; then
 fi
 
 # Change ownership of files used by powerd.
+# clear $@ and store each file into it.
+set --
+
+# Test for existence to skip over wildcards that didn't match anything.
 for FILE in \
     /sys/power/pm_test \
     /proc/acpi/wakeup \
@@ -49,13 +53,20 @@ for FILE in \
     /sys/module/printk/parameters/console_suspend \
     /sys/power/mem_sleep \
     /sys/power/sync_on_suspend \
-    /dev/snapshot \
-    $(find /sys/devices/ -path "*/power/wakeup"); do
-  # Test for existence to skip over wildcards that didn't match anything.
+    /dev/snapshot; do
   if [ -e "${FILE}" ]; then
-    chown power:power "${FILE}" || true
+    set -- "$@" "${FILE}"
   fi
 done
+
+# NOTE: beware of byte size and argument limit for $@ in case
+# the size of iteration above grows too big.
+chown power:power "$@" || true
+
+# wakeup files that are used by powerd lives in nested directory,
+# use find to find all files and pass it to chown.
+find /sys/devices/ -path "*/power/wakeup" -print0 | \
+  xargs -0 chown power:power || true
 
 if [ -e "/sys/power/pm_print_times" ]; then
   echo 1 > /sys/power/pm_print_times
