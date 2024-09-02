@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crosdns/hosts_modifier.h"
-
-#include <fuzzer/FuzzedDataProvider.h>
 #include <string>
 
 #include <base/check.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <fuzzer/FuzzedDataProvider.h>
+
+#include "crosdns/hosts_modifier.h"
 
 constexpr char kBaseFileContents[] =
     "# Example /etc/hosts file\n"
@@ -23,7 +23,7 @@ struct Environment {
   Environment() {
     CHECK(temp_dir.CreateUniqueTempDir());
     base::FilePath hosts_file = temp_dir.GetPath().Append("hosts");
-    base::WriteFile(hosts_file, kBaseFileContents, strlen(kBaseFileContents));
+    base::WriteFile(hosts_file, kBaseFileContents);
     hosts_modifier.Init(hosts_file);
   }
 

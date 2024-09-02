@@ -7,9 +7,9 @@
 #include <string>
 
 #include <base/check.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 namespace crosdns {
@@ -35,9 +35,7 @@ class HostsModifierTest : public ::testing::Test {
   ~HostsModifierTest() override = default;
 
   void WriteHostsContents(const std::string& file_contents) {
-    EXPECT_EQ(file_contents.size(),
-              base::WriteFile(hosts_file_, file_contents.c_str(),
-                              file_contents.size()));
+    EXPECT_TRUE(base::WriteFile(hosts_file_, file_contents));
   }
 
   std::string ReadHostsContents() const {
