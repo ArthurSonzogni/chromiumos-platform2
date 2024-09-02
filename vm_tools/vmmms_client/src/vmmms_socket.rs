@@ -8,6 +8,8 @@ use anyhow::Result;
 use protobuf::Message;
 use std::io::Read;
 use std::io::Write;
+use std::os::fd::AsFd;
+use std::os::fd::BorrowedFd;
 use std::time::Duration;
 use system_api::vm_memory_management::VmMemoryManagementPacket;
 use vsock::VsockStream;
@@ -69,5 +71,11 @@ impl VmmmsSocket {
                 .context("Failed to deserialize the packet")?;
 
         Ok(received_packet)
+    }
+}
+
+impl AsFd for VmmmsSocket {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        return self.socket.as_fd();
     }
 }

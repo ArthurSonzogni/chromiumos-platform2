@@ -7,7 +7,8 @@ edition = "2021"
 [dependencies]
 log = "0.4"
 protobuf = "3.2"
-vsock = "0.3"
+vsock = "0.5"
 system_api = { path = "../../system_api" } # provided by ebuild
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 anyhow = "1.0.69"
+nix = { version = "0.28.0", features = ["poll"] }

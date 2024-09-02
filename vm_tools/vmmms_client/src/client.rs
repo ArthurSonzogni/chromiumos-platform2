@@ -4,20 +4,23 @@
 
 use anyhow::bail;
 use anyhow::Result;
-use protobuf::MessageField;
+use std::fs::File;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom::Start;
 use system_api::vm_memory_management::ConnectionType;
-use system_api::vm_memory_management::MglruStats;
 use system_api::vm_memory_management::PacketType;
 use system_api::vm_memory_management::VmMemoryManagementPacket;
 
 use crate::vmmms_socket::VmmmsSocket;
 
 pub struct VmmmsClient {
-    vmmms_socket: VmmmsSocket,
+    pub vmmms_socket: VmmmsSocket,
+    pub mglru_file: File,
 }
 
 impl VmmmsClient {
-    pub fn new(mut vmmms_socket: VmmmsSocket) -> Result<Self> {
+    pub fn new(mut vmmms_socket: VmmmsSocket, mglru_file_path: &str) -> Result<Self> {
         let mut handshake_packet = VmMemoryManagementPacket::new();
         handshake_packet.type_ = PacketType::PACKET_TYPE_HANDSHAKE.into();
         handshake_packet.mut_handshake().type_ = ConnectionType::CONNECTION_TYPE_STATS.into();
@@ -30,9 +33,26 @@ impl VmmmsClient {
             bail!("VmMemoryManagement Server did not ack");
         }
 
+        let mglru_file = File::open(mglru_file_path)?;
+
         Ok(Self {
             vmmms_socket: vmmms_socket,
+            mglru_file: mglru_file,
         })
+    }
+
+    pub fn generate_mglru_stats_packet(self: &mut Self) -> Result<VmMemoryManagementPacket> {
+        // Reads the MGLRU file to clear POLLPRI signal
+        let file_size = self.mglru_file.metadata()?.len();
+        let mut mglru_file_buffer = vec![0_u8; file_size as usize];
+        self.mglru_file.seek(Start(0))?;
+        self.mglru_file.read(&mut mglru_file_buffer)?;
+
+        let mut mglru_packet = VmMemoryManagementPacket::new();
+        mglru_packet.type_ = PacketType::PACKET_TYPE_MGLRU_RESPONSE.into();
+        mglru_packet.mut_mglru_response().stats = Default::default();
+
+        Ok(mglru_packet)
     }
 
     pub fn handle_reclaim_socket_readable(self: &mut Self) -> Result<()> {
@@ -42,13 +62,14 @@ impl VmmmsClient {
             bail!("Received unsupported command on MGLRU request.");
         };
 
-        let mut mglru_packet = VmMemoryManagementPacket::new();
-        mglru_packet.type_ = PacketType::PACKET_TYPE_MGLRU_RESPONSE.into();
-        let stats: MessageField<MglruStats> = Default::default();
-        mglru_packet.mut_mglru_response().stats = stats;
+        let mglru_response = self.generate_mglru_stats_packet()?;
+        self.vmmms_socket.write_packet(mglru_response)?;
+        Ok(())
+    }
 
-        self.vmmms_socket.write_packet(mglru_packet)?;
-
+    pub fn handle_mglru_notification(self: &mut Self) -> Result<()> {
+        let mglru_response = self.generate_mglru_stats_packet()?;
+        self.vmmms_socket.write_packet(mglru_response)?;
         Ok(())
     }
 }
