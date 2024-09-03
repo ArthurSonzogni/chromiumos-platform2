@@ -124,7 +124,7 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           cros_xdr::reporting::SensitiveFileType::DEVICE_POLICY_PUBLIC_KEY,
           secagentd::FilePathCategory::SYSTEM_PATH}},
         {secagentd::FilePathName::SESSION_MANAGER_POLICY_DIR,
-         {"/run/daemon-store/session_manager/", "/policy/policy",
+         {"/run/daemon-store/session_manager/", "/policy",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::USER_POLICY,
           secagentd::FilePathCategory::USER_PATH}},
@@ -469,27 +469,7 @@ absl::Status PopulatePathsMapByCategory(
               base::Unretained(pathInfoMap), base::Unretained(&pathInfo),
               pathName),
           true, false);
-    } else if (pathName == FilePathName::DEVICE_SETTINGS_OWNER_KEY ||
-               pathName == FilePathName::DEVICE_SETTINGS_POLICY_DIR) {
-      if (pathName == FilePathName::DEVICE_SETTINGS_OWNER_KEY) {
-        continue;  // Process in the policy
-      }
-
-      TraverseDirectories(
-          kDeviceSettingsBasePath,
-          base::BindRepeating(
-              [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
-                 const std::string& path) {
-                auto pair = MatchPathToFilePathPrefixName(
-                    path, kDeviceSettingMatchOptions);
-                if (pair.has_value()) {
-                  pair.value().second.fullResolvedPath = path;
-                  (*pathInfoMap)[pair.value().first].push_back(
-                      pair.value().second);
-                }
-              },
-              base::Unretained(pathInfoMap)),
-          false, true);
+    } else if (pathName == FilePathName::DEVICE_SETTINGS_POLICY_DIR) {
       pathInfo.fullResolvedPath = kDeviceSettingsBasePath;
       (*pathInfoMap)[pathName].push_back(pathInfo);
     } else if (category == FilePathCategory::USER_PATH) {
