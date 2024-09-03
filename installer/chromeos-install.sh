@@ -5,6 +5,17 @@
 #
 # A script to install from removable media to hard disk.
 
+# Warn folks who try to run the script directly.
+#
+# We don't pass args to this script, everything is communicated through the env.
+# If an arg is provided (if "$*", a string of the args, is non-zero in length)
+# or if one of our FLAGS_* variables is unset (`${FLAGS_debug:-} is zero length)
+# print a message to point people at the right script.
+if [ -n "$*" ] || [ -z "${FLAGS_debug:-}" ]; then
+  echo "chromeos-install.sh shouldn't be called directly. Use chromeos-install."
+  exit 1
+fi
+
 # These will be set as environment variables by the calling rust binary:
 # FLAGS_dst
 # FLAGS_skip_dst_removable
