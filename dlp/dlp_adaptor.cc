@@ -4,10 +4,12 @@
 
 #include "dlp/dlp_adaptor.h"
 
+#include <sqlite3.h>
+#include <sys/types.h>
+
 #include <cstdint>
 #include <set>
 #include <string>
-#include <sys/types.h>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -32,7 +34,6 @@
 #include <featured/feature_library.h>
 #include <google/protobuf/message_lite.h>
 #include <session_manager/dbus-proxies.h>
-#include <sqlite3.h>
 
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
@@ -542,7 +543,7 @@ void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
   const base::FilePath database_file = database_path.Append("database");
   if (!base::PathExists(database_file)) {
     LOG(INFO) << "Creating database file";
-    base::WriteFile(database_path, "\0", 1);
+    base::WriteFile(database_path, std::string_view("", 1));
   }
   std::unique_ptr<DlpDatabase> db =
       std::make_unique<DlpDatabase>(database_file, this);
