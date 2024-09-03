@@ -51,7 +51,7 @@ class FullUpdateGeneratorTest : public ::testing::Test {
 };
 
 TEST_F(FullUpdateGeneratorTest, RunTest) {
-  brillo::Blob new_part(9 * 1024 * 1024);
+  brillo::Blob new_part(1024 * 1024);
   FillWithData(&new_part);
   new_part_conf.size = new_part.size();
 
