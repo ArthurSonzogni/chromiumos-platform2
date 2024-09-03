@@ -74,6 +74,8 @@ const QuirksMap& GetQuirksMap() {
       {{"30c9", "00f1"}, kQuirkPreferLargePreviewResolution},
       // Chicony CKAO519-1
       {{"04f2", "b843"}, kQuirkPreferLargePreviewResolution},
+      // Foxlink FO10FF-863H-5 (b/359087839)
+      {{"05c8", "0b10"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }
