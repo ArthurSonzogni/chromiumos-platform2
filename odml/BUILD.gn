@@ -96,6 +96,7 @@ source_set("mojo_bindings_lib") {
 
 source_set("coral") {
   sources = [
+    "coral/clustering/agglomerative_clustering.cc",
     "coral/clustering/engine.cc",
     "coral/embedding/engine.cc",
     "coral/service.cc",
@@ -197,7 +198,10 @@ if (use.test) {
   }
 
   executable("coral_testrunner") {
-    sources = [ "coral/service_test.cc" ]
+    sources = [
+      "coral/clustering/agglomerative_clustering_test.cc",
+      "coral/service_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
