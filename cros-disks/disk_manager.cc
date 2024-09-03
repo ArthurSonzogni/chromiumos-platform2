@@ -22,6 +22,7 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
@@ -267,14 +268,15 @@ bool DiskManager::Initialize() {
   // exFAT (Extensible File Allocation Table) is a file system optimized for
   // flash memory such as USB flash drives and SD cards.
   if (in_kernel_exfat_) {
-    VLOG(1) << "Using exFAT kernel driver";
-    mounters_["exfat"] = std::make_unique<SystemMounter>(
+    VLOG(1) << "Providing exFAT kernel driver";
+    mounters_["kernel-exfat"] = std::make_unique<SystemMounter>(
         platform(), "exfat", read_write,
         Options{"dmask=0022", "fmask=0133", "iocharset=utf8", uid, gid});
-  } else if (OwnerUser user; platform()->GetUserAndGroupId(
-                 "fuse-exfat", &user.uid, &user.gid)) {
-    VLOG(1) << "Using exFAT FUSE mounter";
-    mounters_["exfat"] = std::make_unique<DiskFUSEMounter>(
+  }
+
+  if (OwnerUser user;
+      platform()->GetUserAndGroupId("fuse-exfat", &user.uid, &user.gid)) {
+    mounters_["fuse-exfat"] = std::make_unique<DiskFUSEMounter>(
         platform(), process_reaper(), "exfat", test_sandbox_factory_,
         SandboxedExecutable{base::FilePath("/usr/sbin/mount.exfat-fuse")}, user,
         Options{kFUSEOptionDirSync, kFUSEOptionDmask, kFUSEOptionFmask, uid,
@@ -285,15 +287,17 @@ bool DiskManager::Initialize() {
 
   // External drives and some big USB sticks would likely have NTFS.
   if (in_kernel_ntfs_) {
-    VLOG(1) << "Using NTFS kernel driver";
-    mounters_["ntfs"] = std::make_unique<SystemMounter>(
+    VLOG(1) << "Providing NTFS kernel driver";
+    mounters_["kernel-ntfs"] = std::make_unique<SystemMounter>(
         platform(), "ntfs3", read_write,
         Options{"dmask=0022", "fmask=0133", "force", "iocharset=utf8", uid,
                 gid});
-  } else if (OwnerUser user;
-             platform()->GetUserAndGroupId("ntfs-3g", &user.uid, &user.gid)) {
+  }
+
+  if (OwnerUser user;
+      platform()->GetUserAndGroupId("ntfs-3g", &user.uid, &user.gid)) {
     VLOG(1) << "Using NTFS FUSE mounter";
-    mounters_["ntfs"] = std::make_unique<DiskFUSEMounter>(
+    mounters_["fuse-ntfs"] = std::make_unique<DiskFUSEMounter>(
         platform(), process_reaper(), "ntfs", test_sandbox_factory_,
         SandboxedExecutable{base::FilePath("/usr/bin/ntfs-3g")}, user,
         Options{kFUSEOptionDirSync, kFUSEOptionDmask, kFUSEOptionFmask, uid,
@@ -378,13 +382,24 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   metrics()->RecordDeviceMediaType(disk.media_type);
   metrics()->RecordFilesystemType(fstype);
   if (fstype.empty()) {
-    LOG(ERROR) << "Cannot determine filesystem type of device "
-               << quote(source_path);
+    LOG(ERROR) << "Cannot determine filesystem of " << quote(source_path);
     *error = MountError::kUnknownFilesystem;
     return nullptr;
   }
 
-  const auto it = mounters_.find(fstype);
+  auto it = mounters_.end();
+  if (std::string driver; GetParamValue(options, "prefer-driver", &driver)) {
+    it = mounters_.find(base::StrCat({driver, "-", fstype}));
+  }
+
+  if (it == mounters_.end()) {
+    it = mounters_.find(fstype);
+  }
+
+  if (it == mounters_.end()) {
+    it = mounters_.find(base::StrCat({"fuse-", fstype}));
+  }
+
   if (it == mounters_.end()) {
     LOG(ERROR) << "Cannot handle filesystem type " << quote(fstype)
                << " of device " << quote(source_path);
