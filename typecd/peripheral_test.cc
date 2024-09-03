@@ -37,21 +37,21 @@ TEST_F(PeripheralTest, CheckPDRevision) {
 
   // Gibberish PD revision values should be rejected.
   auto pd_rev = base::StringPrintf("a.f");
-  ASSERT_TRUE(base::WriteFile(path.Append("usb_power_delivery_revision"),
-                              pd_rev.c_str(), pd_rev.length()));
+  ASSERT_TRUE(
+      base::WriteFile(path.Append("usb_power_delivery_revision"), pd_rev));
   p.UpdatePDRevision();
   EXPECT_EQ(p.GetPDRevision(), PDRevision::kNone);
 
   pd_rev = base::StringPrintf("!*(&#@$>SC(&(*)(#@>C>");
-  ASSERT_TRUE(base::WriteFile(path.Append("usb_power_delivery_revision"),
-                              pd_rev.c_str(), pd_rev.length()));
+  ASSERT_TRUE(
+      base::WriteFile(path.Append("usb_power_delivery_revision"), pd_rev));
   p.UpdatePDRevision();
   EXPECT_EQ(p.GetPDRevision(), PDRevision::kNone);
 
   // Legitimate PD revision values should be parsed correctly.
   pd_rev = base::StringPrintf("3.0");
-  ASSERT_TRUE(base::WriteFile(path.Append("usb_power_delivery_revision"),
-                              pd_rev.c_str(), pd_rev.length()));
+  ASSERT_TRUE(
+      base::WriteFile(path.Append("usb_power_delivery_revision"), pd_rev));
   p.UpdatePDRevision();
   EXPECT_EQ(p.GetPDRevision(), PDRevision::k30);
 }
@@ -65,8 +65,8 @@ TEST_F(PeripheralTest, CheckPDMinorRevision) {
 
   // Legitimate PD revision minor version values should be parsed correctly.
   auto pd_rev = base::StringPrintf("3.1");
-  ASSERT_TRUE(base::WriteFile(path.Append("usb_power_delivery_revision"),
-                              pd_rev.c_str(), pd_rev.length()));
+  ASSERT_TRUE(
+      base::WriteFile(path.Append("usb_power_delivery_revision"), pd_rev));
   p.UpdatePDRevision();
   EXPECT_EQ(p.GetPDRevision(), PDRevision::k31);
 }

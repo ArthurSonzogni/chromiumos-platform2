@@ -54,8 +54,8 @@ TEST_F(PowerProfileTest, ParseDirs) {
   ASSERT_TRUE(base::CreateDirectory(source_dir.Append(std::string("foo"))));
   // Files should be ignored.
   std::string foo2_file("foo2");
-  ASSERT_TRUE(base::WriteFile(source_dir.Append(std::string("foo2")),
-                              foo2_file.c_str(), foo2_file.length()));
+  ASSERT_TRUE(
+      base::WriteFile(source_dir.Append(std::string("foo2")), foo2_file));
 
   PowerProfileWrapper pp(temp_dir_);
   pp.ParseSourceCaps();

@@ -55,7 +55,7 @@ TEST_F(PartnerTest, AltModeManualAddition) {
   // call it manually).
   std::string num_altmodes("2");
   ASSERT_TRUE(base::WriteFile(partner_path.Append("number_of_alternate_modes"),
-                              num_altmodes.c_str(), num_altmodes.length()));
+                              num_altmodes));
   p.UpdatePDInfoFromSysfs();
 
   // Add the 1st alt mode sysfs directory.
@@ -79,8 +79,7 @@ TEST_F(PartnerTest, AltModeManualAddition) {
   // Add extra white spaces to ensure malformed strings can be parsed. We can do
   // this by overwriting whatever the pre-existing SVID syspath file is.
   auto mode1_svid = base::StringPrintf("%x    ", kTBTAltModeVID);
-  ASSERT_TRUE(base::WriteFile(mode1_path.Append("svid"), mode1_svid.c_str(),
-                              mode1_svid.length()));
+  ASSERT_TRUE(base::WriteFile(mode1_path.Append("svid"), mode1_svid));
   EXPECT_TRUE(p.AddAltMode(mode1_path));
 
   // Discovery can now be considered complete.
@@ -107,39 +106,34 @@ TEST_F(PartnerTest, PDIdentityScan) {
 
   // First fill the identity with 0 values.
   auto cert_stat_vdo = base::StringPrintf("0x0");
-  ASSERT_TRUE(base::WriteFile(identity_path.Append("cert_stat"),
-                              cert_stat_vdo.c_str(), cert_stat_vdo.length()));
+  ASSERT_TRUE(
+      base::WriteFile(identity_path.Append("cert_stat"), cert_stat_vdo));
   auto id_header_vdo = base::StringPrintf("0x0");
   ASSERT_TRUE(base::WriteFile(identity_path.Append("id_header"),
-                              id_header_vdo.c_str(), id_header_vdo.length()));
+                              id_header_vdo.c_str()));
   auto product_vdo = base::StringPrintf("0x0");
-  ASSERT_TRUE(base::WriteFile(identity_path.Append("product"),
-                              product_vdo.c_str(), product_vdo.length()));
+  ASSERT_TRUE(base::WriteFile(identity_path.Append("product"), product_vdo));
   auto product_type_vdo1 = base::StringPrintf("0x0");
   ASSERT_TRUE(base::WriteFile(identity_path.Append("product_type_vdo1"),
-                              product_type_vdo1.c_str(),
-                              product_type_vdo1.length()));
+                              product_type_vdo1));
   auto product_type_vdo2 = base::StringPrintf("0x0");
   ASSERT_TRUE(base::WriteFile(identity_path.Append("product_type_vdo2"),
-                              product_type_vdo2.c_str(),
-                              product_type_vdo2.length()));
+                              product_type_vdo2));
   auto product_type_vdo3 = base::StringPrintf("0x0");
   ASSERT_TRUE(base::WriteFile(identity_path.Append("product_type_vdo3"),
-                              product_type_vdo3.c_str(),
-                              product_type_vdo3.length()));
+                              product_type_vdo3));
 
   Partner p(partner_path);
 
   // Update the VDOs with some values
   cert_stat_vdo = base::StringPrintf("%#x", kPartnerPDCertStatVDO);
-  ASSERT_TRUE(base::WriteFile(identity_path.Append("cert_stat"),
-                              cert_stat_vdo.c_str(), cert_stat_vdo.length()));
+  ASSERT_TRUE(
+      base::WriteFile(identity_path.Append("cert_stat"), cert_stat_vdo));
   id_header_vdo = base::StringPrintf("%#x", kPartnerPDIdHeaderVDO);
-  ASSERT_TRUE(base::WriteFile(identity_path.Append("id_header"),
-                              id_header_vdo.c_str(), id_header_vdo.length()));
+  ASSERT_TRUE(
+      base::WriteFile(identity_path.Append("id_header"), id_header_vdo));
   product_vdo = base::StringPrintf("%#x", kPartnerPDProductVDO);
-  ASSERT_TRUE(base::WriteFile(identity_path.Append("product"),
-                              product_vdo.c_str(), product_vdo.length()));
+  ASSERT_TRUE(base::WriteFile(identity_path.Append("product"), product_vdo));
 
   // Since we don't have a UdevMonitor, trigger the PD VDO update manually.
   p.UpdatePDIdentityVDOs();
@@ -149,8 +143,7 @@ TEST_F(PartnerTest, PDIdentityScan) {
 
   // Fake an update to the Product VDO, then ensure it doesn't get accepted.
   product_vdo = base::StringPrintf("%#x", kPartnerPDProductVDO2);
-  ASSERT_TRUE(base::WriteFile(identity_path.Append("product"),
-                              product_vdo.c_str(), product_vdo.length()));
+  ASSERT_TRUE(base::WriteFile(identity_path.Append("product"), product_vdo));
   p.UpdatePDIdentityVDOs();
 
   EXPECT_NE(kPartnerPDProductVDO2, p.GetProductVDO());
@@ -163,7 +156,7 @@ TEST_F(PartnerTest, PDIdentityScan) {
   // call it manually).
   auto num_altmodes = base::StringPrintf("0");
   ASSERT_TRUE(base::WriteFile(partner_path.Append("number_of_alternate_modes"),
-                              num_altmodes.c_str(), num_altmodes.length()));
+                              num_altmodes));
   p.UpdatePDInfoFromSysfs();
 
   EXPECT_EQ(0, p.GetNumAltModes());
@@ -178,18 +171,18 @@ TEST_F(PartnerTest, SupportsPD) {
 
   auto val = std::string("0xasdfads0");
   auto pd_path = partner_path.Append("supports_usb_power_delivery");
-  ASSERT_TRUE(base::WriteFile(pd_path, val.c_str(), val.length()));
+  ASSERT_TRUE(base::WriteFile(pd_path, val));
 
   Partner p(partner_path);
   EXPECT_FALSE(p.GetSupportsPD());
 
   val = std::string("yes");
-  ASSERT_TRUE(base::WriteFile(pd_path, val.c_str(), val.length()));
+  ASSERT_TRUE(base::WriteFile(pd_path, val));
   p.UpdateSupportsPD();
   EXPECT_TRUE(p.GetSupportsPD());
 
   val = std::string("yesno");
-  ASSERT_TRUE(base::WriteFile(pd_path, val.c_str(), val.length()));
+  ASSERT_TRUE(base::WriteFile(pd_path, val));
   p.UpdateSupportsPD();
   EXPECT_FALSE(p.GetSupportsPD());
 }
@@ -211,7 +204,7 @@ TEST_F(PartnerTest, PowerProfile) {
 
   auto val = std::string("yes");
   auto supports_path = partner_path.Append("supports_usb_power_delivery");
-  ASSERT_TRUE(base::WriteFile(supports_path, val.c_str(), val.length()));
+  ASSERT_TRUE(base::WriteFile(supports_path, val));
 
   partner = std::make_unique<Partner>(partner_path);
   partner->AddPowerProfile();

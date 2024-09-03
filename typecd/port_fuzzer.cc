@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "typecd/port.h"
-
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 
 #include "fuzzer/FuzzedDataProvider.h"
+#include "typecd/port.h"
 
 class Environment {
  public:
@@ -28,13 +27,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Add data role and power role sysfs.
   auto val = data_provider.ConsumeRandomLengthString(20);
-  CHECK_GE(
-      base::WriteFile(port_path.Append("data_role"), val.c_str(), val.length()),
-      0);
+  CHECK(base::WriteFile(port_path.Append("data_role"), val));
   val = data_provider.ConsumeRandomLengthString(20);
-  CHECK_GE(base::WriteFile(port_path.Append("power_role"), val.c_str(),
-                           val.length()),
-           0);
+  CHECK(base::WriteFile(port_path.Append("power_role"), val));
 
   typecd::Port port(base::FilePath(port_path), 0);
 

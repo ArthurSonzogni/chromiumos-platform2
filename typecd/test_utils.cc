@@ -4,12 +4,13 @@
 
 #include "typecd/test_utils.h"
 
+#include <memory>
+#include <string>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <memory>
-#include <string>
 
 #include "typecd/test_constants.h"
 
@@ -25,22 +26,19 @@ bool CreateFakeAltMode(const base::FilePath& mode_path,
   }
 
   auto mode_svid = base::StringPrintf("%x", svid);
-  if (!base::WriteFile(mode_path.Append("svid"), mode_svid.c_str(),
-                       mode_svid.length())) {
+  if (!base::WriteFile(mode_path.Append("svid"), mode_svid)) {
     PLOG(ERROR) << "Failed to create SVID in directory " << mode_path;
     return false;
   }
 
   auto mode_vdo = base::StringPrintf("%#x", vdo);
-  if (!base::WriteFile(mode_path.Append("vdo"), mode_vdo.c_str(),
-                       mode_vdo.length())) {
+  if (!base::WriteFile(mode_path.Append("vdo"), mode_vdo)) {
     PLOG(ERROR) << "Failed to create VDO in directory " << mode_path;
     return false;
   }
 
   auto mode_vdo_index = base::StringPrintf("%x", vdo_index);
-  if (!base::WriteFile(mode_path.Append("mode"), mode_vdo_index.c_str(),
-                       mode_vdo_index.length())) {
+  if (!base::WriteFile(mode_path.Append("mode"), mode_vdo_index)) {
     PLOG(ERROR) << "Failed to create VDO mode index in directory " << mode_path;
     return false;
   }

@@ -66,8 +66,7 @@ TEST_F(PortTest, GetDataRole) {
   ASSERT_TRUE(base::CreateDirectory(port_path));
 
   auto data_role_path = port_path.Append("data_role");
-  ASSERT_TRUE(base::WriteFile(data_role_path, kValidDataRole1,
-                              strlen(kValidDataRole1)));
+  ASSERT_TRUE(base::WriteFile(data_role_path, kValidDataRole1));
 
   // Create a port.
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
@@ -75,26 +74,24 @@ TEST_F(PortTest, GetDataRole) {
 
   EXPECT_EQ(DataRole::kDevice, port->GetDataRole());
 
-  ASSERT_TRUE(base::WriteFile(data_role_path, kValidDataRole2,
-                              strlen(kValidDataRole2)));
+  ASSERT_TRUE(base::WriteFile(data_role_path, kValidDataRole2));
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ(DataRole::kHost, port->GetDataRole());
 
-  ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kValidDataRole3,
-                              strlen(kValidDataRole3)));
+  ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kValidDataRole3));
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ(DataRole::kDevice, port->GetDataRole());
 
-  ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kInvalidDataRole1,
-                              strlen(kInvalidDataRole1)));
+  ASSERT_TRUE(
+      base::WriteFile(port_path.Append("data_role"), kInvalidDataRole1));
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ(DataRole::kNone, port->GetDataRole());
 
-  ASSERT_TRUE(base::WriteFile(port_path.Append("data_role"), kInvalidDataRole2,
-                              strlen(kInvalidDataRole2)));
+  ASSERT_TRUE(
+      base::WriteFile(port_path.Append("data_role"), kInvalidDataRole2));
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ(DataRole::kNone, port->GetDataRole());
@@ -107,8 +104,7 @@ TEST_F(PortTest, GetPowerRole) {
   ASSERT_TRUE(base::CreateDirectory(port_path));
 
   auto data_role_path = port_path.Append("power_role");
-  ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole1,
-                              strlen(kValidPowerRole1)));
+  ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole1));
 
   // Create a port.
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
@@ -116,14 +112,12 @@ TEST_F(PortTest, GetPowerRole) {
 
   EXPECT_EQ(PowerRole::kSource, port->GetPowerRole());
 
-  ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole2,
-                              strlen(kValidPowerRole2)));
+  ASSERT_TRUE(base::WriteFile(data_role_path, kValidPowerRole2));
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ(PowerRole::kSink, port->GetPowerRole());
 
-  ASSERT_TRUE(base::WriteFile(data_role_path, kInvalidPowerRole1,
-                              strlen(kInvalidPowerRole1)));
+  ASSERT_TRUE(base::WriteFile(data_role_path, kInvalidPowerRole1));
   // Fake a port changed event.
   port->PortChanged();
   EXPECT_EQ(PowerRole::kNone, port->GetPowerRole());
@@ -719,18 +713,15 @@ TEST_F(PortTest, GetPhysicalLocationValid) {
   ASSERT_TRUE(base::CreateDirectory(port_physical_location_path));
 
   auto port_panel_path = port_physical_location_path.Append("panel");
-  ASSERT_TRUE(
-      base::WriteFile(port_panel_path, kValidPanel, strlen(kValidPanel)));
+  ASSERT_TRUE(base::WriteFile(port_panel_path, kValidPanel));
   auto port_horizontal_position_path =
       port_physical_location_path.Append("horizontal_position");
-  ASSERT_TRUE(base::WriteFile(port_horizontal_position_path,
-                              kValidHorizontalPosition,
-                              strlen(kValidHorizontalPosition)));
+  ASSERT_TRUE(
+      base::WriteFile(port_horizontal_position_path, kValidHorizontalPosition));
   auto port_vertical_position_path =
       port_physical_location_path.Append("vertical_position");
-  ASSERT_TRUE(base::WriteFile(port_vertical_position_path,
-                              kValidVerticalPosition,
-                              strlen(kValidVerticalPosition)));
+  ASSERT_TRUE(
+      base::WriteFile(port_vertical_position_path, kValidVerticalPosition));
 
   // Create ports.
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
@@ -752,18 +743,15 @@ TEST_F(PortTest, GetPhysicalLocationInvalid) {
   ASSERT_TRUE(base::CreateDirectory(port_physical_location_path));
 
   auto port_panel_path = port_physical_location_path.Append("panel");
-  ASSERT_TRUE(
-      base::WriteFile(port_panel_path, kInvalidPanel, strlen(kInvalidPanel)));
+  ASSERT_TRUE(base::WriteFile(port_panel_path, kInvalidPanel));
   auto port_horizontal_position_path =
       port_physical_location_path.Append("horizontal_position");
   ASSERT_TRUE(base::WriteFile(port_horizontal_position_path,
-                              kInvalidHorizontalPosition,
-                              strlen(kInvalidHorizontalPosition)));
+                              kInvalidHorizontalPosition));
   auto port_vertical_position_path =
       port_physical_location_path.Append("vertical_position");
-  ASSERT_TRUE(base::WriteFile(port_vertical_position_path,
-                              kInvalidVerticalPosition,
-                              strlen(kInvalidVerticalPosition)));
+  ASSERT_TRUE(
+      base::WriteFile(port_vertical_position_path, kInvalidVerticalPosition));
 
   // Create ports.
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
