@@ -219,7 +219,12 @@ message ArcShellExecutionRequest {
   // additional arguments are accepted.
   repeated string command = 1;
 
-  // Next ID to use: 2
+  // User id of the requesting user.
+  // Only request from the primary user is received in ArcCroshServiceProvider
+  // since ARC is tied to the primary user.
+  optional string user_id = 2;
+
+  // Next ID to use: 3
 }
 
 // It contains the execution result of ArcShellExecutionRequest.
