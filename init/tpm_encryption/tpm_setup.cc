@@ -7,6 +7,8 @@
  *
  */
 
+#include "init/tpm_encryption/tpm_setup.h"
+
 #include <fcntl.h>
 #include <sys/time.h>
 
@@ -31,7 +33,6 @@
 #include "init/metrics/metrics.h"
 #include "init/tpm_encryption/encryption_key.h"
 #include "init/tpm_encryption/tpm.h"
-#include "init/tpm_encryption/tpm_setup.h"
 
 using encryption::paths::cryptohome::kTpmOwned;
 
@@ -270,13 +271,13 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
     return true;
   }
 
-  if (HasChromeFw()) {
-    return true;
-  }
-
   /* Don't use tpm for system key if we are using runtime TPM selection. */
   if (USE_TPM_DYNAMIC) {
     return false;
+  }
+
+  if (HasChromeFw()) {
+    return true;
   }
 
   /* Assume we have tpm for system_key when we are using vtpm tpm2 simulator. */
