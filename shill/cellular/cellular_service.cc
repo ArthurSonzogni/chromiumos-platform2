@@ -25,6 +25,7 @@
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_consts.h"
+#include "shill/cellular/cellular_helpers.h"
 #include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
@@ -1001,6 +1002,13 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
 
   if (custom_apn_list_.has_value() &&
       custom_apn_list_.value() == new_apn_info_list) {
+    // Log when the new list is the same as the current list, since this is not
+    // expected behavior.
+    std::string log_string = ": New CustomApnList same as old one: ";
+    for (const auto& it : value) {
+      log_string += " " + GetPrintableApnStringmap(it);
+    }
+    LOG(WARNING) << __func__ << log_string;
     return true;
   }
   custom_apn_list_.emplace(new_apn_info_list);
