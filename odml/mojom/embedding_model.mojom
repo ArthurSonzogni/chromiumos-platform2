@@ -1,0 +1,48 @@
+// Copyright 2024 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module embedding_model.mojom;
+
+import "odml/mojom/on_device_model.mojom";
+import "odml/mojom/on_device_model_service.mojom";
+import "odml/mojom/uuid.mojom";
+
+enum OnDeviceEmbeddingModelInferenceError {
+  // No error is encountered.
+  kSuccess,
+
+  // The input exceeded the model's input token limit.
+  kTooLong,
+};
+
+struct OnDeviceEmbeddingModelInferenceOptions {
+  // If set to true, truncate the input if it's larger than what the model can
+  // handle instead of returning an error.
+  bool truncate_input;
+};
+
+interface OnDeviceEmbeddingModelService {
+  LoadEmbeddingModel(
+      mojo_base.mojom.Uuid uuid,
+      pending_receiver<OnDeviceEmbeddingModel> model,
+      pending_remote<on_device_model.mojom.PlatformModelProgressObserver>?
+          progress_observer)
+      => (on_device_model.mojom.LoadModelResult result);
+
+  // And other methods OnDeviceModelPlatformService has.
+};
+
+interface OnDeviceEmbeddingModel {
+  // Generate one embedding from one string input.
+  GenerateEmbedding(
+      string input, OnDeviceEmbeddingModelInferenceOptions options)
+      => (OnDeviceEmbeddingModelInferenceError error,
+          array<float> embeddings);
+
+  // This indicates the version of the embedding model. Embedding result
+  // (vector) from different embedding model is different, and as such if the
+  // version of the embedding model changes then previous results should be
+  // discarded.
+  Version() => (string version);
+};
