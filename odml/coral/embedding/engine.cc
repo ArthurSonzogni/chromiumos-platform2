@@ -19,9 +19,10 @@ using mojom::CoralError;
 
 EmbeddingEngine::EmbeddingEngine() = default;
 
-void EmbeddingEngine::Process(const mojom::GroupRequest& request,
+void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
                               EmbeddingCallback callback) {
-  std::move(callback).Run(base::unexpected(CoralError::kUnknownError));
+  std::move(callback).Run(std::move(request),
+                          base::unexpected(CoralError::kUnknownError));
 }
 
 }  // namespace coral

@@ -31,10 +31,10 @@ class ClusteringEngineInterface {
  public:
   virtual ~ClusteringEngineInterface() = default;
 
-  using ClusteringCallback =
-      base::OnceCallback<void(CoralResult<ClusteringResponse>)>;
-  virtual void Process(const mojom::GroupRequest& request,
-                       const EmbeddingResponse& embedding_response,
+  using ClusteringCallback = base::OnceCallback<void(
+      mojom::GroupRequestPtr, CoralResult<ClusteringResponse>)>;
+  virtual void Process(mojom::GroupRequestPtr request,
+                       EmbeddingResponse embedding_response,
                        ClusteringCallback callback) = 0;
 };
 
@@ -43,10 +43,8 @@ class ClusteringEngine : public ClusteringEngineInterface {
   ClusteringEngine();
   ~ClusteringEngine() = default;
 
-  using ClusteringCallback =
-      base::OnceCallback<void(CoralResult<ClusteringResponse>)>;
-  void Process(const mojom::GroupRequest& request,
-               const EmbeddingResponse& embedding_response,
+  void Process(mojom::GroupRequestPtr request,
+               EmbeddingResponse embedding_response,
                ClusteringCallback callback) override;
 };
 

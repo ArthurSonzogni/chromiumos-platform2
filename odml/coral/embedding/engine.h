@@ -26,9 +26,9 @@ class EmbeddingEngineInterface {
  public:
   virtual ~EmbeddingEngineInterface() = default;
 
-  using EmbeddingCallback =
-      base::OnceCallback<void(CoralResult<EmbeddingResponse>)>;
-  virtual void Process(const mojom::GroupRequest& request,
+  using EmbeddingCallback = base::OnceCallback<void(
+      mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>)>;
+  virtual void Process(mojom::GroupRequestPtr request,
                        EmbeddingCallback callback) = 0;
 };
 
@@ -38,7 +38,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface {
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
-  void Process(const mojom::GroupRequest& request,
+  void Process(mojom::GroupRequestPtr request,
                EmbeddingCallback callback) override;
 };
 

@@ -20,10 +20,11 @@ using mojom::CoralError;
 
 ClusteringEngine::ClusteringEngine() = default;
 
-void ClusteringEngine::Process(const mojom::GroupRequest& request,
-                               const EmbeddingResponse& embedding_response,
+void ClusteringEngine::Process(mojom::GroupRequestPtr request,
+                               EmbeddingResponse embedding_response,
                                ClusteringCallback callback) {
-  std::move(callback).Run(base::unexpected(CoralError::kUnknownError));
+  std::move(callback).Run(std::move(request),
+                          base::unexpected(CoralError::kUnknownError));
 }
 
 }  // namespace coral

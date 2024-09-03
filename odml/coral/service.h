@@ -53,14 +53,14 @@ class CoralService : public mojom::CoralService {
  private:
   // These callbacks are used for asynchronous Engine::Process calls, performs
   // error handling then calls the next step.
-  void OnEmbeddingResult(mojom::GroupRequestPtr request,
-                         GroupCallback callback,
+  void OnEmbeddingResult(GroupCallback callback,
+                         mojom::GroupRequestPtr request,
                          CoralResult<EmbeddingResponse> result);
-  void OnClusteringResult(mojom::GroupRequestPtr request,
-                          GroupCallback callback,
+  void OnClusteringResult(GroupCallback callback,
+                          mojom::GroupRequestPtr request,
                           CoralResult<ClusteringResponse> result);
-  void OnTitleGenerationResult(mojom::GroupRequestPtr request,
-                               GroupCallback callback,
+  void OnTitleGenerationResult(GroupCallback callback,
+                               mojom::GroupRequestPtr request,
                                CoralResult<TitleGenerationResponse> result);
 
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>

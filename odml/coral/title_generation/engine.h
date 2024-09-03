@@ -25,10 +25,10 @@ class TitleGenerationEngineInterface {
  public:
   virtual ~TitleGenerationEngineInterface() = default;
 
-  using TitleGenerationCallback =
-      base::OnceCallback<void(CoralResult<TitleGenerationResponse>)>;
-  virtual void Process(const mojom::GroupRequest& request,
-                       const ClusteringResponse& clustering_response,
+  using TitleGenerationCallback = base::OnceCallback<void(
+      mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>)>;
+  virtual void Process(mojom::GroupRequestPtr request,
+                       ClusteringResponse clustering_response,
                        TitleGenerationCallback callback) = 0;
 };
 
@@ -38,8 +38,8 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
   ~TitleGenerationEngine() = default;
 
   // TitleGenerationEngineInterface overrides.
-  void Process(const mojom::GroupRequest& request,
-               const ClusteringResponse& clustering_response,
+  void Process(mojom::GroupRequestPtr request,
+               ClusteringResponse clustering_response,
                TitleGenerationCallback callback) override;
 };
 

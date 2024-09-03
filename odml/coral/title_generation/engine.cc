@@ -20,11 +20,11 @@ using mojom::CoralError;
 
 TitleGenerationEngine::TitleGenerationEngine() = default;
 
-void TitleGenerationEngine::Process(
-    const mojom::GroupRequest& request,
-    const ClusteringResponse& clustering_response,
-    TitleGenerationCallback callback) {
-  std::move(callback).Run(base::unexpected(CoralError::kUnknownError));
+void TitleGenerationEngine::Process(mojom::GroupRequestPtr request,
+                                    ClusteringResponse clustering_response,
+                                    TitleGenerationCallback callback) {
+  std::move(callback).Run(std::move(request),
+                          base::unexpected(CoralError::kUnknownError));
 }
 
 }  // namespace coral
