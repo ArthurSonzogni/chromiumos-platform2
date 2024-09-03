@@ -21,6 +21,7 @@ enum TaskType {
 };
 
 struct GenerateEmbeddingRequest {
+  // The content to be converted into embeddings.
   string content;
   // The task which the embedding will be used for.
   TaskType task_type;
@@ -30,6 +31,11 @@ struct GenerateEmbeddingRequest {
 };
 
 interface OnDeviceEmbeddingModelService {
+  // Load the model corresponding to the given |uuid|.
+  // Note that in the event of failure, the pending receiver for |model| may not
+  // be bound and therefore it is advised that the clients should ensure
+  // LoadEmbeddingModel() finishes successfully before sending any API call over
+  // |model| message pipe.
   LoadEmbeddingModel(
       mojo_base.mojom.Uuid uuid,
       pending_receiver<OnDeviceEmbeddingModel> model,
