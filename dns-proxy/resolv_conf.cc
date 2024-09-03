@@ -57,7 +57,7 @@ bool ResolvConf::Emit() {
       !dns_proxy_addrs_.empty() ? dns_proxy_addrs_ : name_servers_;
   if (name_servers.empty()) {
     LOG(WARNING) << "Setting resolv.conf to []";
-    base::WriteFile(path_, /*data=*/"", /*size=*/0);
+    base::WriteFile(path_, "");
     return true;
   }
   LOG(INFO) << "Setting resolv.conf to [" << base::JoinString(name_servers, ",")
@@ -105,9 +105,7 @@ bool ResolvConf::Emit() {
 
   const auto contents = base::JoinString(lines, "\n");
 
-  int count = base::WriteFile(path_, contents.c_str(), contents.size());
-
-  return count == static_cast<int>(contents.size());
+  return base::WriteFile(path_, contents);
 }
 
 bool ResolvConf::SetDNSProxyAddresses(
