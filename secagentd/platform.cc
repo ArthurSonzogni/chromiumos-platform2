@@ -108,6 +108,10 @@ int Platform::BpfMapUpdateElementByFd(int fd,
   return bpf_map_update_elem(fd, key, value, flags);
 }
 
+int Platform::BpfMapLookupElementByFd(int fd, const void* key, void* value) {
+  return bpf_map_lookup_elem(fd, key, value);
+}
+
 int Platform::BpfMapDeleteElementByFd(int fd, const void* key) {
   return bpf_map_delete_elem(fd, key);
 }

@@ -57,6 +57,7 @@ class PlatformInterface {
                                       const void* key,
                                       const void* value,
                                       __u64 flags) = 0;
+  virtual int BpfMapLookupElementByFd(int fd, const void* key, void* value) = 0;
   virtual int BpfMapDeleteElementByFd(int fd, const void* key) = 0;
   virtual struct ring_buffer* RingBufferNew(
       int map_fd,
@@ -120,6 +121,7 @@ class Platform : public PlatformInterface {
                               const void* key,
                               const void* value,
                               __u64 flags) override;
+  int BpfMapLookupElementByFd(int fd, const void* key, void* value) override;
   int BpfMapDeleteElementByFd(int fd, const void* key) override;
   struct ring_buffer* RingBufferNew(
       int map_fd,

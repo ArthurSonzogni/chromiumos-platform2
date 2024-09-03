@@ -108,6 +108,11 @@ class MockPlatform : public PlatformInterface {
               (int fd, const void* key),
               (override));
   MOCK_METHOD(int,
+              BpfMapLookupElementByFd,
+              (int fd, const void* key, void* value),
+              (override));
+
+  MOCK_METHOD(int,
               Sys_statx,
               (int dir_fd,
                const std::string& path,

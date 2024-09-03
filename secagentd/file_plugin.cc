@@ -99,7 +99,7 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
           cros_xdr::reporting::SensitiveFileType::USER_FILE,
           secagentd::FilePathCategory::REMOVABLE_PATH}},
         {secagentd::FilePathName::GOOGLE_DRIVE_FS,
-         {"/media/fuse/", std::nullopt,
+         {"/media/fuse/", "drivefs",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE,
           secagentd::FilePathCategory::REMOVABLE_PATH}},
@@ -463,6 +463,13 @@ absl::Status PopulatePathsMapByCategory(
               [](std::map<FilePathName, std::vector<PathInfo>>* pathInfoMap,
                  PathInfo* pathInfo, FilePathName pathName,
                  const std::string& path) {
+                if (pathInfo->pathSuffix.has_value() &&
+                    !pathInfo->pathSuffix->empty()) {
+                  if (!path.starts_with(pathInfo->pathPrefix +
+                                        pathInfo->pathSuffix.value())) {
+                    return;
+                  }
+                }
                 pathInfo->fullResolvedPath = path;
                 (*pathInfoMap)[pathName].push_back(*pathInfo);
               },
@@ -697,6 +704,21 @@ absl::Status AddDeviceIdsToBPFMap(
                                            // MONITOR_ALL_FILES is selected
       };
 
+      // Choose Read-write over write only for same device, if same device used
+      // for multiple filepaths
+      struct bpf::device_file_monitoring_settings bpfSettingsOld;
+      if (platform->BpfMapLookupElementByFd(bpfMapFd, &deviceId,
+                                            &bpfSettingsOld) == 0) {
+        if (bpfSettingsOld.file_monitoring_mode ==
+            bpf::READ_AND_READ_WRITE_BOTH) {
+          bpfSettings.file_monitoring_mode = bpf::READ_AND_READ_WRITE_BOTH;
+        }
+
+        if (bpfSettingsOld.device_monitoring_type == bpf::MONITOR_ALL_FILES) {
+          bpfSettings.device_monitoring_type = bpf::MONITOR_ALL_FILES;
+        }
+      }
+
       // Update BPF map with the device ID and settings
 
       if (platform->BpfMapUpdateElementByFd(bpfMapFd, &deviceId, &bpfSettings,
@@ -707,9 +729,9 @@ absl::Status AddDeviceIdsToBPFMap(
       }
 
       LOG(INFO) << "Added device ID " << deviceId << " with monitoring mode "
-                << static_cast<int>(pathInfo.monitoringMode)
+                << static_cast<int>(bpfSettings.file_monitoring_mode)
                 << " with device monitoring type "
-                << static_cast<int>(pathInfo.deviceMonitoringType)
+                << static_cast<int>(bpfSettings.device_monitoring_type)
                 << " to BPF map.";
     }
   }

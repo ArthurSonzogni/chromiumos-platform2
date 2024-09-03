@@ -133,6 +133,8 @@ class FilePluginTestFixture : public ::testing::Test {
     EXPECT_CALL(*platform_, CloseDirectory(_)).WillRepeatedly(Return(10));
     EXPECT_CALL(*batch_sender_, Start()).Times(0);
     EXPECT_CALL(*platform_, BpfMapFdByName(_, _)).WillRepeatedly(Return(42));
+    EXPECT_CALL(*platform_, BpfMapLookupElementByFd(_, _, _))
+        .WillRepeatedly(Return(145));
     EXPECT_CALL(*platform_, BpfMapUpdateElementByFd(_, _, _, _))
         .WillRepeatedly(Return(0));
 
