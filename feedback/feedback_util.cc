@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <brillo/process/process.h>
+
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include <brillo/process/process.h>
 
 namespace {
 
@@ -30,8 +31,7 @@ bool ZipString(const base::FilePath& filename,
   // another temporary file to receive the zip file in.
   if (!base::CreateNewTempDirectory(std::string(), &temp_path))
     return false;
-  if (base::WriteFile(temp_path.Append(filename), data.c_str(), data.size()) ==
-      -1)
+  if (!base::WriteFile(temp_path.Append(filename), data))
     return false;
 
   brillo::ProcessImpl zipprocess;
