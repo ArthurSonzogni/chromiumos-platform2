@@ -56,12 +56,11 @@ bool IsInvalidTag(uint64_t tag) {
   return tag == WiFiService::kSessionTagInvalid;
 }
 
-int64_t GetMicroSecondsMonotonic() {
-  // base::TimeTicks doesn't provide a method to convert to the internal value.
-  // So we get the base::TimeDelta by subtracting epoch first, then convert it
-  // to the microseconds.
-  return (base::TimeTicks::Now() - base::TimeTicks::UnixEpoch())
-      .InMicroseconds();
+// GetElapsedTime returns the elapsed time for events in the same boot session.
+// It is guaranteed not to decrease but may not increment if the system is
+// suspended.
+base::TimeDelta GetElapsedTime() {
+  return base::TimeTicks::Now() - base::TimeTicks();
 }
 
 Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
@@ -1096,7 +1095,7 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
                                : Metrics::kWiFiStructuredMetricsErrorValue;
   metrics::structured::events::wi_fi::WiFiAdapterStateChanged()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(GetMicroSecondsMonotonic())
+      .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetAdapterState(enabled)
       .SetVendorId(v_id)
@@ -1120,7 +1119,7 @@ void Metrics::NotifyWiFiConnectionAttempt(const WiFiConnectionAttemptInfo& info,
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
   metrics::structured::events::wi_fi::WiFiConnectionAttempt()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(GetMicroSecondsMonotonic())
+      .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetAttemptType(info.type)
@@ -1161,7 +1160,7 @@ void Metrics::NotifyWiFiConnectionAttemptResult(
   SLOG(2) << __func__ << ": ResultCode " << result_code;
   metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(GetMicroSecondsMonotonic())
+      .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetResultCode(result_code)
@@ -1178,7 +1177,7 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
   SLOG(2) << __func__ << ": Type " << type << " Reason " << reason;
   metrics::structured::events::wi_fi::WiFiConnectionEnd()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(GetMicroSecondsMonotonic())
+      .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetDisconnectionType(type)
@@ -1195,7 +1194,7 @@ void Metrics::NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
   SLOG(2) << __func__ << ": Trigger " << trigger;
   metrics::structured::events::wi_fi::WiFiLinkQualityTrigger()
       .SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(GetMicroSecondsMonotonic())
+      .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetType(trigger)
@@ -1214,7 +1213,7 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
   metrics::structured::events::wi_fi::WiFiLinkQualityReport sm_report =
       metrics::structured::events::wi_fi::WiFiLinkQualityReport();
   sm_report.SetBootId(WiFiMetricsUtils::GetBootId())
-      .SetSystemTime(GetMicroSecondsMonotonic())
+      .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetRXPackets(report.rx.packets)
