@@ -18,6 +18,7 @@
 struct DawnProcTable {};
 
 namespace {
+using ::testing::AnyNumber;
 using ::testing::Return;
 
 using DawnNativeProcsGetter = const DawnProcTable* (*)();
@@ -34,6 +35,8 @@ namespace on_device_model {
 std::unique_ptr<const ml::OnDeviceModelInternalImpl> GetOnDeviceModelFakeImpl(
     raw_ref<MetricsLibraryInterface> metrics,
     raw_ref<odml::OdmlShimLoaderMock> shim_loader) {
+  // A catch-all such that ON_CALL default actions can be set on shim_loader.
+  EXPECT_CALL(*shim_loader, GetFunctionPointer).Times(AnyNumber());
   EXPECT_CALL(*shim_loader, GetFunctionPointer("GetChromeMLAPI"))
       .WillRepeatedly(Return(reinterpret_cast<void*>(ChromeMLAPIGetter(
           []() -> const ChromeMLAPI* { return fake_ml::GetFakeMlApi(); }))));

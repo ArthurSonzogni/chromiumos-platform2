@@ -102,6 +102,7 @@ source_set("coral") {
     "coral/embedding/engine.cc",
     "coral/service.cc",
     "coral/title_generation/engine.cc",
+    "coral/title_generation/simple_session.cc",
   ]
   public_deps = [ ":mojo_bindings_lib" ]
   configs += [ ":target_defaults" ]
@@ -204,6 +205,9 @@ if (use.test) {
     sources = [
       "coral/clustering/agglomerative_clustering_test.cc",
       "coral/service_test.cc",
+      "coral/title_generation/engine_test.cc",
+      "on_device_model/fake/fake_chrome_ml_api.cc",
+      "on_device_model/on_device_model_fake.cc",
     ]
     configs += [
       "//common-mk:test",

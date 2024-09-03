@@ -5,13 +5,19 @@
 #ifndef ODML_CORAL_TITLE_GENERATION_ENGINE_H_
 #define ODML_CORAL_TITLE_GENERATION_ENGINE_H_
 
+#include <string>
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/timer/wall_clock_timer.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
+#include "odml/coral/title_generation/simple_session.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/mojom/on_device_model.mojom.h"
+#include "odml/mojom/on_device_model_service.mojom.h"
 
 namespace coral {
 
@@ -34,13 +40,49 @@ class TitleGenerationEngineInterface {
 
 class TitleGenerationEngine : public TitleGenerationEngineInterface {
  public:
-  TitleGenerationEngine();
+  explicit TitleGenerationEngine(
+      raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+          on_device_model_service);
   ~TitleGenerationEngine() = default;
 
   // TitleGenerationEngineInterface overrides.
   void Process(mojom::GroupRequestPtr request,
                ClusteringResponse clustering_response,
                TitleGenerationCallback callback) override;
+
+ private:
+  void EnsureModelLoaded(base::OnceClosure callback);
+  void OnModelLoadResult(base::OnceClosure callback,
+                         on_device_model::mojom::LoadModelResult result);
+  void UnloadModel();
+
+  void DoProcess(mojom::GroupRequestPtr request,
+                 ClusteringResponse clustering_response,
+                 TitleGenerationCallback callback);
+  // One-by-one, send the next entry in `prompts` to the on device model session
+  // to generate the title (using `OnModelOutput` as callback), then form the
+  // corresponding group and push to `response`.
+  void ProcessEachPrompt(mojom::GroupRequestPtr request,
+                         SimpleSession::Ptr session,
+                         std::vector<Cluster> clusters,
+                         std::vector<std::string> prompts,
+                         TitleGenerationResponse response,
+                         TitleGenerationCallback callback);
+  void OnModelOutput(mojom::GroupRequestPtr request,
+                     SimpleSession::Ptr session,
+                     std::vector<Cluster> clusters,
+                     std::vector<std::string> prompts,
+                     TitleGenerationResponse response,
+                     TitleGenerationCallback callback,
+                     std::string title);
+
+  const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+      on_device_model_service_;
+  mojo::Remote<on_device_model::mojom::OnDeviceModel> model_;
+
+  base::WallClockTimer unload_model_timer_;
+
+  base::WeakPtrFactory<TitleGenerationEngine> weak_ptr_factory_{this};
 };
 
 }  // namespace coral
