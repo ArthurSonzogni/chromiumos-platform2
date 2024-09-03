@@ -16,9 +16,9 @@
 #include <base/strings/string_util.h>
 #include <chromeos/constants/vm_tools.h>
 #include <dbus/vm_concierge/dbus-constants.h>
+#include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
 #include <metrics/metrics_library.h>
-#include <vboot/crossystem.h>
 
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
@@ -494,13 +494,13 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   vm_builder.SetCpus(topology.NumCPUs())
+      .AppendKernelParam(base::JoinString(params, " "))
+      .AppendCustomParam("--vcpu-cgroup-path",
+                         base::FilePath(kArcvmVcpuCpuCgroup).value())
       .AppendCustomParam(
           "--pstore",
           base::StringPrintf("path=%s,size=%" PRId64,
                              pstore_path.value().c_str(), kArcVmRamoopsSize))
-      .AppendKernelParam(base::JoinString(params, " "))
-      .AppendCustomParam("--vcpu-cgroup-path",
-                         base::FilePath(kArcvmVcpuCpuCgroup).value())
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
       .AppendSharedDir(shared_stub)
