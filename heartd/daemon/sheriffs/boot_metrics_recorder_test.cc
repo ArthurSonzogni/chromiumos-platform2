@@ -4,6 +4,8 @@
 
 #include "heartd/daemon/sheriffs/boot_metrics_recorder.h"
 
+#include <sqlite3.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -16,7 +18,6 @@
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <sqlite3.h>
 
 #include "heartd/daemon/database.h"
 
@@ -61,8 +62,7 @@ class BootMetricsRecorderTest : public testing::Test {
 
   void CreateFakeBootIDFile(const std::string& content) {
     auto boot_id_path = GetRoot().Append(kBootIDPath);
-    EXPECT_EQ(base::WriteFile(boot_id_path, content.c_str(), content.size()),
-              content.size());
+    EXPECT_TRUE(base::WriteFile(boot_id_path, content));
   }
 
   base::FilePath GetRoot() { return temp_dir_.GetPath(); }
