@@ -16,13 +16,13 @@
 
 #include "cros-disks/fuse_mounter.h"
 #include "cros-disks/mock_platform.h"
-#include "cros-disks/mount_options.h"
-#include "cros-disks/platform.h"
 #include "cros-disks/uri.h"
 
 namespace cros_disks {
 
 namespace {
+
+using testing::ElementsAre;
 
 const base::FilePath kMountDir("/mount-dir");
 const Uri kFuseBoxSource("fusebox", "source");
@@ -38,19 +38,13 @@ class FuseBoxHelperTest : public ::testing::Test {
   FuseBoxHelperTest() : helper_(&platform_, &process_reaper_) {}
 
  protected:
-  MountError ConfigureSandbox(const std::string& source,
-                              std::vector<std::string> options,
-                              std::string* arguments) {
+  std::vector<std::string> ConfigureSandbox(const std::string& source,
+                                            std::vector<std::string> options) {
     FakeSandboxedProcess sandbox;
     MountError error = helper_.ConfigureSandbox(source, kMountDir,
                                                 std::move(options), &sandbox);
-    if (error == MountError::kSuccess)
-      *arguments = JoinArguments(sandbox);
-    return error;
-  }
-
-  static std::string JoinArguments(const SandboxedProcess& sandbox) {
-    return base::JoinString(sandbox.arguments(), " ");
+    EXPECT_EQ(error, MountError::kSuccess);
+    return sandbox.arguments();
   }
 
   class MockPlatformForTesting : public MockPlatform {
@@ -80,44 +74,25 @@ TEST_F(FuseBoxHelperTest, SourceUri) {
 }
 
 TEST_F(FuseBoxHelperTest, CreateMounter) {
-  std::string arguments;
-  auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MountError::kSuccess, ConfigureSandbox(source, {}, &arguments));
-  EXPECT_EQ("-o uid=1000,gid=1001", arguments);
+  EXPECT_THAT(ConfigureSandbox(kFuseBoxSource.value(), {}),
+              ElementsAre("-o", "uid=1000,gid=1001"));
 }
 
 TEST_F(FuseBoxHelperTest, CreateMounterWithOptions) {
-  std::vector<std::string> options;
-  options.push_back("--test --ll=max_read=131072,max_background=3");
-
-  std::string arguments;
-  auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MountError::kSuccess,
-            ConfigureSandbox(source, options, &arguments));
-  auto expected = options[0].append(" -o uid=1000,gid=1001");
-  EXPECT_EQ(expected, arguments);
+  EXPECT_THAT(
+      ConfigureSandbox(kFuseBoxSource.value(),
+                       {"--test", "--ll=max_read=131072,max_background=3"}),
+      ElementsAre("-o", "uid=1000,gid=1001"));
 }
 
 TEST_F(FuseBoxHelperTest, CreateMounterWithReadOnlyMountOption) {
-  std::vector<std::string> options = {{"--test"}, {"ro"}};
-
-  std::string arguments;
-  auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MountError::kSuccess,
-            ConfigureSandbox(source, options, &arguments));
-  auto expected = options[0].append(" -o ro -o uid=1000,gid=1001");
-  EXPECT_EQ(expected, arguments);
+  EXPECT_THAT(ConfigureSandbox(kFuseBoxSource.value(), {"--test", "ro"}),
+              ElementsAre("-o", "ro", "-o", "uid=1000,gid=1001"));
 }
 
 TEST_F(FuseBoxHelperTest, CreateMounterWithReadWriteMountOption) {
-  std::vector<std::string> options = {{"--test"}, {"rw"}};
-
-  std::string arguments;
-  auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MountError::kSuccess,
-            ConfigureSandbox(source, options, &arguments));
-  auto expected = options[0].append(" -o rw -o uid=1000,gid=1001");
-  EXPECT_EQ(expected, arguments);
+  EXPECT_THAT(ConfigureSandbox(kFuseBoxSource.value(), {"--test", "rw"}),
+              ElementsAre("-o", "rw", "-o", "uid=1000,gid=1001"));
 }
 
 TEST_F(FuseBoxHelperTest, CanMount) {

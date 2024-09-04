@@ -50,7 +50,7 @@ OwnerUser FuseBoxHelper::ResolveFuseBoxOwnerUser(
 }
 
 bool FuseBoxHelper::CanMount(const std::string& source,
-                             const std::vector<std::string>& params,
+                             const std::vector<std::string>& /*params*/,
                              base::FilePath* suggested_name) const {
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType)
@@ -86,10 +86,14 @@ MountError FuseBoxHelper::ConfigureSandbox(const std::string& source,
     return MountError::kInternalError;
   }
 
-  for (const auto& parameter : params) {
-    if (parameter == "rw" || parameter == "ro")
+  for (const auto& param : params) {
+    if (param == "rw" || param == "ro") {
       sandbox->AddArgument("-o");
-    sandbox->AddArgument(parameter);
+      sandbox->AddArgument(param);
+      continue;
+    }
+
+    LOG(WARNING) << "Ignored fusebox parameter " << quote(param);
   }
 
   if (logging::ShouldCreateLogMessage(-2)) {
