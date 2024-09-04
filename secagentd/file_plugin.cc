@@ -196,15 +196,12 @@ const std::optional<std::string> ConstructOptionalUserhash(
   return userhash;
 }
 
-static dev_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
+static uint64_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
   // Combine the major and minor numbers to form the kernel-space device ID
-  dev_t kernel_dev = static_cast<dev_t>((fileStatx.stx_dev_major << 20) |
-                                        fileStatx.stx_dev_minor);
-
-  return kernel_dev;
+  return ((fileStatx.stx_dev_major << 20) | fileStatx.stx_dev_minor);
 }
 
-static uint64_t KernelToUserspaceDeviceId(dev_t kernel_dev) {
+static uint64_t KernelToUserspaceDeviceId(uint64_t kernel_dev) {
   // Extract major and minor numbers from the kernel-space device ID
   uint32_t major = (kernel_dev >> 20) & 0xfff;  // Major number (12 bits)
   uint32_t minor = kernel_dev & 0xfffff;        // Minor number (20 bits)
@@ -694,7 +691,7 @@ absl::Status AddDeviceIdsToBPFMap(
       const struct statx& fileStatx = file_statx_result.value();
 
       // Convert userspace device ID to kernel device ID
-      dev_t deviceId = UserspaceToKernelDeviceId(fileStatx);
+      uint64_t deviceId = UserspaceToKernelDeviceId(fileStatx);
 
       struct bpf::device_file_monitoring_settings bpfSettings = {
           .device_monitoring_type = pathInfo.deviceMonitoringType,

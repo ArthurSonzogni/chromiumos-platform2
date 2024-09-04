@@ -256,8 +256,8 @@ struct cros_network_5_tuple {
  * file_monitoring_mode`) for allowlisted files and directories.
  */
 struct inode_dev_map_key {
-  ino_t inode_id;  // Inode ID of the file or directory.
-  dev_t dev_id;    // Device ID where the file or directory resides.
+  uint64_t inode_id;  // Inode ID of the file or directory.
+  uint64_t dev_id;    // Device ID where the file or directory resides.
 } __attribute__((aligned(8)));
 
 /* The design idea behind the flow_map is that the BPF will be responsible for
@@ -352,10 +352,10 @@ struct mount_data {
 
 // Define the structure to hold inode attribute information
 struct inode_attr {
-  mode_t mode;                 // File mode
-  uid_t uid;                   // User ID of the file owner.
-  gid_t gid;                   // Group ID of the file owner.
-  loff_t size;                 // Size of the file in bytes.
+  uint32_t mode;               // File mode
+  uint32_t uid;                // User ID of the file owner.
+  uint32_t gid;                // Group ID of the file owner.
+  uint64_t size;               // Size of the file in bytes.
   struct cros_timespec atime;  // Last access time.
   struct cros_timespec mtime;  // Last modification time.
   struct cros_timespec ctime;  // Last status change time.
@@ -371,8 +371,8 @@ struct cros_file_image {
   char path[MAX_PATH_SIZE];  // Path including mount information. This must be
                              // null terminated.
   uint64_t mnt_ns;           // The mount namespace of the inode
-  dev_t device_id;           // The device ID both major and minor.
-  ino_t inode;               // The inode of the file.
+  uint64_t device_id;        // The device ID both major and minor.
+  uint64_t inode;            // The inode of the file.
   uint32_t flags;            // Open Flags
   uint8_t sensitive_file_type;    // sensitive_file_type
   struct inode_attr before_attr;  // Attributes of the file before the change.

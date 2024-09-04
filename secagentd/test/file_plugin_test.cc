@@ -5,6 +5,7 @@
 #include <fcntl.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 
@@ -771,7 +772,7 @@ TEST_F(FilePluginTestFixture, TestOnDeviceMountMedia) {
       });
 
   //   Expected value from UserspaceToKernelDeviceId().
-  dev_t expected_kernel_dev = static_cast<dev_t>((10 << 20) | 20);
+  uint32_t expected_kernel_dev = static_cast<uint32_t>((10 << 20) | 20);
   struct bpf::inode_dev_map_key expected_bpfMapKey = {
       .inode_id = expected_statx.stx_ino, .dev_id = expected_kernel_dev};
 
@@ -816,7 +817,7 @@ TEST_F(FilePluginTestFixture, TestOnDeviceMountMedia) {
       BpfMapUpdateElementByFd(
           expected_result_device.value(),
           ::testing::Truly([&expected_bpfMapKey](const void* arg) -> bool {
-            const auto* dev_id_arg = static_cast<const dev_t*>(arg);
+            const auto* dev_id_arg = static_cast<const uint32_t*>(arg);
             return *dev_id_arg == expected_bpfMapKey.dev_id;
           }),
           ::testing::Truly([&expected_bpfSettings](const void* arg) -> bool {
