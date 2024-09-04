@@ -47,7 +47,7 @@ constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
   else
     return 2;
 }
-constexpr int kProcAnomalySampleFrequency = 10000000;  // 10 million
+constexpr int kProcAnomalySampleFrequency = 500000;  // Five hundred thousand.
 
 constexpr base::TimeDelta kScanInterval = base::Seconds(30);
 // Used to limit the total number of UMA reports.
