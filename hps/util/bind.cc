@@ -33,9 +33,7 @@ int BindControl(std::unique_ptr<hps::HPS> hps,
   ctrl_path = ctrl_path.Append(args[0]);
   base::File ctrl_file(ctrl_path,
                        base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-  int ret =
-      base::WriteFile(ctrl_path, kHpsI2cDeviceId, strlen(kHpsI2cDeviceId));
-  if (ret < 0) {
+  if (!base::WriteFile(ctrl_path, kHpsI2cDeviceId)) {
     PLOG(ERROR) << "Failed to write to " << ctrl_path;
     return 1;
   }
