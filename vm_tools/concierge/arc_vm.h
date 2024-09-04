@@ -69,6 +69,16 @@ struct ArcVmFeatures {
 // Obtain virtiofs shared dir command-line parameter string for oem directory.
 SharedDataParam GetOemEtcSharedDataParam(uid_t euid, gid_t egid);
 
+enum class VerifiedBootState {
+  kUnverifiedBoot,
+  kVerifiedBoot,
+};
+
+enum class VerifiedBootDeviceState {
+  kUnlockedDevice,
+  kLockedDevice,
+};
+
 // Represents a single instance of a running termina VM.
 class ArcVm final : public VmBaseImpl {
  public:
@@ -201,6 +211,19 @@ class ArcVm final : public VmBaseImpl {
   base::expected<SwapStatus, std::string> FetchVmmSwapStatus();
 
   const patchpanel::Client::ArcVMAllocation& GetNetworkAllocation() const;
+
+  // Derive values for verified boot parameters.
+  static std::string DeriveVerifiedBootState(
+      const crossystem::Crossystem& cros_system);
+  static std::string DeriveBootloaderState(
+      const crossystem::Crossystem& cros_system);
+
+  // Read and return ARCVM verified boot meta digest from
+  // arcvm_vbmeta_digest.sha256. The digest is the hash of the combined
+  // hash values of the system and vendor images, calculated when the
+  // image was built or signed.
+  static std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFile(
+      const base::FilePath& vbmeta_digest_file_dir);
 
   // Path to the virtio-blk disk image for /data.
   // An empty path is set if /data is not backed by virtio-blk.
