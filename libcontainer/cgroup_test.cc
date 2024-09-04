@@ -3,8 +3,9 @@
  * found in the LICENSE file.
  */
 
-#include <errno.h>
+#include "libcontainer/cgroup.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -17,8 +18,6 @@
 #include <base/strings/string_split.h>
 #include <gtest/gtest.h>
 
-#include "libcontainer/cgroup.h"
-
 namespace libcontainer {
 
 namespace {
@@ -27,7 +26,7 @@ constexpr char kCgroupName[] = "testcg";
 constexpr char kCgroupParentName[] = "testparentcg";
 
 bool CreateFile(const base::FilePath& path) {
-  return base::WriteFile(path, "", 0) == 0;
+  return base::WriteFile(path, "");
 }
 
 bool FileHasString(const base::FilePath& path, const std::string& expected) {
@@ -68,10 +67,10 @@ TEST(CgroupTest, CgroupNewWithParent) {
 
   ASSERT_TRUE(base::WriteFile(
       cgroup_root.Append("cpuset").Append(kCgroupParentName).Append("cpus"),
-      "0-3", 3));
+      "0-3"));
   ASSERT_TRUE(base::WriteFile(
       cgroup_root.Append("cpuset").Append(kCgroupParentName).Append("mems"),
-      "0", 1));
+      "0"));
 
   std::unique_ptr<libcontainer::Cgroup> ccg = libcontainer::Cgroup::Create(
       kCgroupName, cgroup_root, base::FilePath(kCgroupParentName), getuid(),
@@ -114,8 +113,8 @@ class BasicCgroupManipulationTest : public ::testing::Test {
       ASSERT_EQ(0, mkdir(path.value().c_str(), S_IRWXU | S_IRWXG));
     }
 
-    ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/cpus"), "0-3", 3));
-    ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/mems"), "0", 1));
+    ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/cpus"), "0-3"));
+    ASSERT_TRUE(base::WriteFile(cgroup_root.Append("cpuset/mems"), "0"));
 
     ccg_ = libcontainer::Cgroup::Create(kCgroupName, cgroup_root,
                                         base::FilePath(), 0, 0);
