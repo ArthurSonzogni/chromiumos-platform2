@@ -40,7 +40,10 @@
 #   0xc0206440 == DRM_IOCTL_AMDGPU_GEM_CREATE
 #   0xc02064cc == DRM_IOCTL_SYNCOBJ_TRANSFER
 #   0xc0286448 == DRM_IOCTL_V3D_PERFMON_CREATE
-ioctl: arg1 == 0x5401 || arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x40086478 || arg1 == 0x4010647b || arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc00864bf || arg1 == 0xc00864c0 || arg1 == 0xc010640c || arg1 == 0xc0106446 || arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc010646c || arg1 == 0xc010646d || arg1 == 0xc0106471 || arg1 == 0xc0106479 || arg1 == 0xc010647a || arg1 == 0xc01064c4 || arg1 == 0xc0186472 || arg1 == 0xc0186473 || arg1 == 0xc0186474 || arg1 == 0xc0186475 || arg1 == 0xc018647c || arg1 == 0xc0206464 || arg1 == 0xc02864c3 || arg1 == 0xc0406400 || arg1 == 0x40206445 || arg1 == 0xc0086441 || arg1 == 0xc0106442 || arg1 == 0xc0186444 || arg1 == 0xc0186451 || arg1 == 0xc0206440 || arg1 == 0xc02064cc || arg1 == 0xc0286448
+#   0xc01864cb == DRM_IOCTL_SYNCOBJ_QUERY
+#   0xc01864cd == DRM_IOCTL_SYNCOBJ_TIMELINE_SIGNAL
+#   0xc03064ca == _IOC(_IOC_READ|_IOC_WRITE, 0x64, 0xca, 0x30)
+ioctl: arg1 == 0x5401 || arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x40086478 || arg1 == 0x4010647b || arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc00864bf || arg1 == 0xc00864c0 || arg1 == 0xc010640c || arg1 == 0xc0106446 || arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc010646c || arg1 == 0xc010646d || arg1 == 0xc0106471 || arg1 == 0xc0106479 || arg1 == 0xc010647a || arg1 == 0xc01064c4 || arg1 == 0xc0186472 || arg1 == 0xc0186473 || arg1 == 0xc0186474 || arg1 == 0xc0186475 || arg1 == 0xc018647c || arg1 == 0xc0206464 || arg1 == 0xc02864c3 || arg1 == 0xc0406400 || arg1 == 0x40206445 || arg1 == 0xc0086441 || arg1 == 0xc0106442 || arg1 == 0xc0186444 || arg1 == 0xc0186451 || arg1 == 0xc0206440 || arg1 == 0xc02064cc || arg1 == 0xc0286448 || arg1 == 0xc01864cb || arg1 == 0xc01864cd || arg1 == 0xc03064ca
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 futex: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
