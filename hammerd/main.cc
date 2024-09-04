@@ -202,9 +202,9 @@ int main(int argc, const char* argv[]) {
     std::string delay_ms = base::StringPrintf("%d", FLAGS_autosuspend_delay_ms);
 
     base::WriteFile(base_path.Append(base::FilePath(kPowerLevelPath)),
-                    kPowerLevel, sizeof(kPowerLevel) - 1);
+                    kPowerLevel);
     base::WriteFile(base_path.Append(base::FilePath(kAutosuspendDelayMsPath)),
-                    delay_ms.data(), delay_ms.size());
+                    delay_ms);
   }
   switch (ret) {
     case hammerd::HammerUpdater::RunStatus::kNoUpdate:
