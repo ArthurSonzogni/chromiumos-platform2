@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "imageloader/imageloader_impl.h"
-
 #include <stdint.h>
 
 #include <list>
@@ -19,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "imageloader/component.h"
+#include "imageloader/imageloader_impl.h"
 #include "imageloader/mock_global_context.h"
 #include "imageloader/mock_helper_process_proxy.h"
 #include "imageloader/test_utilities.h"
@@ -113,9 +112,7 @@ TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
   const base::FilePath junk_path =
       temp_dir_.Append(kTestComponentName).Append(kTestDataVersion);
   ASSERT_TRUE(base::CreateDirectory(junk_path));
-  ASSERT_EQ(static_cast<int>(junk_contents.size()),
-            base::WriteFile(junk_path.Append("junkfile"), junk_contents.data(),
-                            junk_contents.size()));
+  ASSERT_TRUE(base::WriteFile(junk_path.Append("junkfile"), junk_contents));
   ImageLoaderImpl loader(GetConfig(temp_dir_.value().c_str()));
   ASSERT_TRUE(loader.RegisterComponent(kTestComponentName, kTestDataVersion,
                                        GetTestComponentPath().value()));
@@ -355,8 +352,7 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
                              .Append(kTestDataVersion)
                              .Append("table");
   std::string contents = "corrupt";
-  ASSERT_EQ(static_cast<int>(contents.size()),
-            base::WriteFile(table, contents.data(), contents.size()));
+  ASSERT_TRUE(base::WriteFile(table, contents));
   ASSERT_EQ("", loader.LoadComponent(kTestComponentName, helper_mock.get()));
 }
 

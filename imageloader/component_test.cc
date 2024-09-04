@@ -102,7 +102,7 @@ class ComponentTest : public testing::Test {
     file_contents[file_contents.size() - 1] =
         ~file_contents[file_contents.size() - 1];
 
-    if (!base::WriteFile(file, file_contents.data(), file_contents.size())) {
+    if (!base::WriteFile(file, file_contents)) {
       return false;
     }
 
@@ -313,10 +313,9 @@ TEST_F(ComponentTest, CopyValidImage) {
   const int image_size = 4096 * 4;
 
   base::FilePath image_path = temp_dir_.Append("image");
-  std::vector<char> image(image_size,
-                          0xBB);  // large enough to test streaming read.
-  ASSERT_EQ(image_size,
-            base::WriteFile(image_path, image.data(), image.size()));
+  std::vector<uint8_t> image(image_size,
+                             0xBB);  // large enough to test streaming read.
+  ASSERT_TRUE(base::WriteFile(image_path, image));
 
   std::vector<uint8_t> hash(crypto::kSHA256Length);
 
