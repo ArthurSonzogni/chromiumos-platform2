@@ -23,8 +23,7 @@ bool WriteFileAndCreateParentDirs(const base::FilePath& file_path,
   if (!base::CreateDirectory(file_path.DirName())) {
     return false;
   }
-  return base::WriteFile(file_path, file_contents.c_str(),
-                         file_contents.size()) == file_contents.size();
+  return base::WriteFile(file_path, file_contents);
 }
 
 bool WriteFileAndCreateSymbolicLink(const base::FilePath& file_path,
