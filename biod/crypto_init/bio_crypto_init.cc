@@ -30,9 +30,7 @@ bool BioCryptoInit::NukeFile(const base::FilePath& filepath) {
   // Write all zeros to the FD.
   bool ret = true;
   std::vector<uint8_t> zero_vec(FpSeedCommand::kTpmSeedSize, 0);
-  if (base::WriteFile(filepath, reinterpret_cast<const char*>(zero_vec.data()),
-                      FpSeedCommand::kTpmSeedSize) !=
-      FpSeedCommand::kTpmSeedSize) {
+  if (!base::WriteFile(filepath, zero_vec)) {
     PLOG(ERROR) << "Failed to write all-zero to tmpfs file.";
     ret = false;
   }
