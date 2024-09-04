@@ -89,12 +89,14 @@ exit_group: 1
 rt_sigreturn: 1
 shutdown: 1
 dup: 1
+tgkill: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD
 
 # For mediapipe threads
 prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME
+sched_setaffinity: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX

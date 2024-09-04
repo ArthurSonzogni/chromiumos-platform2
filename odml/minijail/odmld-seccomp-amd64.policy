@@ -29,7 +29,18 @@
 #   0xc0206464 == DRM_IOCTL_I915_GEM_MMAP_OFFSET
 #   0xc02864c3 == DRM_IOCTL_SYNCOBJ_WAIT (size increased)
 #   0xc0406400 == DRM_IOCTL_VERSION
-ioctl: arg1 == 0x5401 || arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x40086478 || arg1 == 0x4010647b || arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc00864bf || arg1 == 0xc00864c0 || arg1 == 0xc010640c || arg1 == 0xc0106446 || arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc010646c || arg1 == 0xc010646d || arg1 == 0xc0106471 || arg1 == 0xc0106479 || arg1 == 0xc010647a || arg1 == 0xc01064c4 || arg1 == 0xc0186472 || arg1 == 0xc0186473 || arg1 == 0xc0186474 || arg1 == 0xc0186475 || arg1 == 0xc018647c || arg1 == 0xc0206464 || arg1 == 0xc02864c3 || arg1 == 0xc0406400
+#   0x40206445 == DRM_IOCTL_AMDGPU_INFO
+#   0xc0086441 == DRM_IOCTL_AMDGPU_GEM_MMAP
+#   0xc0106442 == DRM_IOCTL_AMDGPU_CTX || DRM_IOCTL_ETNAVIV_GEM_NEW ||
+#                 DRM_IOCTL_LIMA_GEM_INFO || DRM_IOCTL_MSM_GEM_NEW ||
+#                 DRM_IOCTL_QAIC_MMAP_BO || DRM_IOCTL_V3D_CREATE_BO ||
+#                 DRM_IOCTL_VC4_WAIT_BO
+#   0xc0186444 == DRM_IOCTL_AMDGPU_CS
+#   0xc0186451 == DRM_IOCTL_AMDGPU_GEM_USERPTR
+#   0xc0206440 == DRM_IOCTL_AMDGPU_GEM_CREATE
+#   0xc02064cc == DRM_IOCTL_SYNCOBJ_TRANSFER
+#   0xc0286448 == DRM_IOCTL_V3D_PERFMON_CREATE
+ioctl: arg1 == 0x5401 || arg1 == 0x40086409 || arg1 == 0x4008646e || arg1 == 0x40086478 || arg1 == 0x4010647b || arg1 == 0x40406469 || arg1 == 0x80106463 || arg1 == 0xc00864bf || arg1 == 0xc00864c0 || arg1 == 0xc010640c || arg1 == 0xc0106446 || arg1 == 0xc010645b || arg1 == 0xc0106461 || arg1 == 0xc010646c || arg1 == 0xc010646d || arg1 == 0xc0106471 || arg1 == 0xc0106479 || arg1 == 0xc010647a || arg1 == 0xc01064c4 || arg1 == 0xc0186472 || arg1 == 0xc0186473 || arg1 == 0xc0186474 || arg1 == 0xc0186475 || arg1 == 0xc018647c || arg1 == 0xc0206464 || arg1 == 0xc02864c3 || arg1 == 0xc0406400 || arg1 == 0x40206445 || arg1 == 0xc0086441 || arg1 == 0xc0106442 || arg1 == 0xc0186444 || arg1 == 0xc0186451 || arg1 == 0xc0206440 || arg1 == 0xc02064cc || arg1 == 0xc0286448
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 futex: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
@@ -97,12 +108,14 @@ restart_syscall: 1
 exit_group: 1
 rt_sigreturn: 1
 shutdown: 1
+tgkill: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD
 
 # For mediapipe threads
 prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME
+sched_setaffinity: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
