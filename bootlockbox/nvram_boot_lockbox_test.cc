@@ -66,7 +66,7 @@ TEST_F(NVRamBootLockboxTest, LoadFailDigestMisMatch) {
   EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
   // modify the proto file.
   std::string invalid_proto = "aaa";
-  base::WriteFile(file_path_, invalid_proto.c_str(), invalid_proto.size());
+  base::WriteFile(file_path_, invalid_proto);
   EXPECT_FALSE(nvram_boot_lockbox_->Load());
 }
 
