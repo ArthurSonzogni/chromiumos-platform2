@@ -13,3 +13,15 @@ buganizer {
   # ChromeOS > Platform > Technologies > Machine Learning > On-Device ML
   component_id: 1445284
 }
+
+chromeos {
+  cq {
+    source_test_plans {
+      test_plan_starlark_files {
+        host: "chrome-internal.googlesource.com"
+        project: "chromeos/config-internal"
+        path: "test/plans/v2/ctpv1_compatible/odml_cq.star"
+      }
+    }
+  }
+}
