@@ -16,7 +16,6 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 use std::time::Instant;
@@ -103,7 +102,7 @@ const MGLRU_SPLIT_GENERATIONS_SWAPPINESS: &str = "Swappiness";
 
 fn update_mglru_split_settings(
     enable_split_gens: bool,
-    swappiness_config: &Arc<SwappinessConfig>,
+    swappiness_config: &SwappinessConfig,
 ) -> Result<()> {
     let swappiness_val = if enable_split_gens {
         feature::get_feature_param_as::<u32>(
@@ -145,7 +144,7 @@ fn update_mglru_split_settings(
     Ok(())
 }
 
-pub fn register_features(swappiness: Arc<SwappinessConfig>) {
+pub fn register_features(swappiness: SwappinessConfig) {
     feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, false, None);
 
     feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);

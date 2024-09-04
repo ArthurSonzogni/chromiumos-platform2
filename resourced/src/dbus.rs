@@ -135,7 +135,7 @@ fn send_pressure_signal(
 fn set_game_mode_and_tune_swappiness(
     power_preferences_manager: &dyn power::PowerPreferencesManager,
     mode: common::GameMode,
-    swappiness_config: Arc<SwappinessConfig>,
+    swappiness_config: SwappinessConfig,
 ) -> Result<()> {
     let tuning = common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"));
     swappiness_config.update_tuning(tuning);
@@ -167,7 +167,7 @@ async fn get_sender_euid(conn: Arc<SyncConnection>, bus_name: Option<String>) ->
 fn register_interface(
     cr: &mut Crossroads,
     conn: Arc<SyncConnection>,
-    swappiness_config: Arc<SwappinessConfig>,
+    swappiness_config: SwappinessConfig,
 ) -> IfaceToken<DbusContext> {
     cr.register(INTERFACE_NAME, |b: &mut IfaceBuilder<DbusContext>| {
         b.method(
@@ -885,12 +885,13 @@ pub async fn service_main() -> Result<()> {
     realtime::register_features();
 
     let (swappiness_config, mut swappiness_proxy) = new_swappiness_config();
-    let swappiness_config = Arc::new(swappiness_config);
     memory::register_features(swappiness_config.clone());
 
     let conn_clone = conn.clone();
     tokio::spawn(async move {
-        swappiness_proxy.run_proxy(conn_clone).await;
+        if let Err(err) = swappiness_proxy.run_proxy(conn_clone).await {
+            error!("Error with swappiness proxy {:?}", err);
+        }
     });
 
     let psi_memory_policy_notify = Arc::new(Notify::new());
