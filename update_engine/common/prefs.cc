@@ -188,8 +188,7 @@ bool Prefs::FileStorage::SetKey(const string& key, const string& value) {
     // to parent directories where we might not have permission to write to.
     TEST_AND_RETURN_FALSE(base::CreateDirectory(filename.DirName()));
   }
-  TEST_AND_RETURN_FALSE(base::WriteFile(filename, value.data(), value.size()) ==
-                        static_cast<int>(value.size()));
+  TEST_AND_RETURN_FALSE(base::WriteFile(filename, value));
   return true;
 }
 

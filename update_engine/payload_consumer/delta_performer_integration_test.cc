@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "update_engine/payload_consumer/delta_performer.h"
-
 #include <inttypes.h>
 #include <sys/mount.h>
 
@@ -31,6 +29,7 @@
 #include "update_engine/common/mock_prefs.h"
 #include "update_engine/common/test_utils.h"
 #include "update_engine/common/utils.h"
+#include "update_engine/payload_consumer/delta_performer.h"
 #include "update_engine/payload_consumer/install_plan.h"
 #include "update_engine/payload_consumer/payload_constants.h"
 #include "update_engine/payload_consumer/payload_metadata.h"
@@ -391,11 +390,9 @@ static void GenerateDeltaFile(bool full_kernel,
         hardtocompress.data(), hardtocompress.size()));
 
     brillo::Blob zeros(16 * 1024, 0);
-    EXPECT_EQ(static_cast<int>(zeros.size()),
-              base::WriteFile(base::FilePath(base::StringPrintf(
-                                  "%s/move-to-sparse", a_mnt.c_str())),
-                              reinterpret_cast<const char*>(zeros.data()),
-                              zeros.size()));
+    EXPECT_TRUE(base::WriteFile(
+        base::FilePath(base::StringPrintf("%s/move-to-sparse", a_mnt.c_str())),
+        zeros));
 
     EXPECT_TRUE(WriteSparseFile(
         base::StringPrintf("%s/move-from-sparse", a_mnt.c_str()), 16 * 1024));
@@ -438,7 +435,7 @@ static void GenerateDeltaFile(bool full_kernel,
                            mnt_path.Append("regular-small")));
     EXPECT_TRUE(
         test_utils::WriteFileString(mnt_path.Append("foo").value(), "foo"));
-    EXPECT_EQ(0, base::WriteFile(mnt_path.Append("emptyfile"), "", 0));
+    EXPECT_TRUE(base::WriteFile(mnt_path.Append("emptyfile"), ""));
 
     EXPECT_TRUE(
         WriteSparseFile(mnt_path.Append("fullsparse").value(), 1024 * 1024));
@@ -446,10 +443,7 @@ static void GenerateDeltaFile(bool full_kernel,
         WriteSparseFile(mnt_path.Append("move-to-sparse").value(), 16 * 1024));
 
     brillo::Blob zeros(16 * 1024, 0);
-    EXPECT_EQ(static_cast<int>(zeros.size()),
-              base::WriteFile(mnt_path.Append("move-from-sparse"),
-                              reinterpret_cast<const char*>(zeros.data()),
-                              zeros.size()));
+    EXPECT_TRUE(base::WriteFile(mnt_path.Append("move-from-sparse"), zeros));
 
     EXPECT_TRUE(
         WriteByteAtOffset(mnt_path.Append("move-semi-sparse").value(), 4096));

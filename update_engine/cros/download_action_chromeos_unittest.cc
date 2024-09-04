@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include "update_engine/cros/download_action_chromeos.h"
 
 #include <memory>
 #include <string>
@@ -18,6 +17,8 @@
 #include <base/test/simple_test_clock.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <brillo/message_loops/message_loop.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "update_engine/common/action_pipe.h"
 #include "update_engine/common/hash_calculator.h"
@@ -25,7 +26,6 @@
 #include "update_engine/common/mock_http_fetcher.h"
 #include "update_engine/common/test_utils.h"
 #include "update_engine/common/utils.h"
-#include "update_engine/cros/download_action_chromeos.h"
 #include "update_engine/cros/fake_p2p_manager_configuration.h"
 #include "update_engine/cros/fake_system_state.h"
 #include "update_engine/payload_consumer/install_plan.h"
@@ -627,9 +627,7 @@ TEST_F(P2PDownloadActionTest, CanAppend) {
   string existing_data;
   for (unsigned int i = 0; i < 1000; i++)
     existing_data += '0' + (i % 10);
-  ASSERT_EQ(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data.c_str(),
-                      1000),
-            1000);
+  ASSERT_TRUE(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data));
 
   StartDownload(true);  // use_p2p_to_share
 
@@ -663,9 +661,7 @@ TEST_F(P2PDownloadActionTest, DeletePartialP2PFileIfResumingWithoutP2P) {
   string existing_data;
   for (unsigned int i = 0; i < 1000; i++)
     existing_data += '0' + (i % 10);
-  ASSERT_EQ(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data.c_str(),
-                      1000),
-            1000);
+  ASSERT_TRUE(WriteFile(p2p_manager_->FileGetPath(file_id), existing_data));
 
   // Check that the file is there.
   EXPECT_EQ(1000, p2p_manager_->FileGetSize(file_id));

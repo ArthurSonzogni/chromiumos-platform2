@@ -137,8 +137,7 @@ class PrefsTest : public BasePrefsTest {
   }
 
   bool SetValue(const string& key, const string& value) {
-    return base::WriteFile(prefs_dir_.Append(key), value.data(),
-                           value.length()) == static_cast<int>(value.length());
+    return base::WriteFile(prefs_dir_.Append(key), value);
   }
 
   base::ScopedTempDir temp_dir_;

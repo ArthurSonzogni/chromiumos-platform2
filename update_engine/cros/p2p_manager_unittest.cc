@@ -161,12 +161,12 @@ TEST_F(P2PManagerTest, HousekeepingCountLimit) {
     base::FilePath path = test_conf_->GetP2PDir().Append(
         base::StringPrintf("file_%d.cros_au.p2p", n));
     base::Time file_time = start_time + base::Minutes(n);
-    EXPECT_EQ(0, base::WriteFile(path, nullptr, 0));
+    EXPECT_TRUE(base::WriteFile(path, std::string_view()));
     EXPECT_TRUE(base::TouchFile(path, file_time, file_time));
 
     path = test_conf_->GetP2PDir().Append(
         base::StringPrintf("file_%d.OTHER.p2p", n));
-    EXPECT_EQ(0, base::WriteFile(path, nullptr, 0));
+    EXPECT_TRUE(base::WriteFile(path, std::string_view()));
     EXPECT_TRUE(base::TouchFile(path, file_time, file_time));
   }
   // CountSharedFiles() only counts 'cros_au' files.
@@ -232,12 +232,12 @@ TEST_F(P2PManagerTest, HousekeepingAgeLimit) {
     base::Time file_date =
         cutoff_time + (n - 2) * base::Days(1) + base::Hours(12);
 
-    EXPECT_EQ(0, base::WriteFile(path, nullptr, 0));
+    EXPECT_TRUE(base::WriteFile(path, std::string_view()));
     EXPECT_TRUE(base::TouchFile(path, file_date, file_date));
 
     path = test_conf_->GetP2PDir().Append(
         base::StringPrintf("file_%d.OTHER.p2p", n));
-    EXPECT_EQ(0, base::WriteFile(path, nullptr, 0));
+    EXPECT_TRUE(base::WriteFile(path, std::string_view()));
     EXPECT_TRUE(base::TouchFile(path, file_date, file_date));
   }
   // CountSharedFiles() only counts 'cros_au' files.
