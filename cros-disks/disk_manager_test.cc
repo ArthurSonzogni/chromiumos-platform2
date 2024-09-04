@@ -330,8 +330,7 @@ TEST_F(DiskManagerTest, MountKernelExfat) {
   EXPECT_CALL(platform_,
               Mount("/dev/sda1", _, "exfat", HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MountError::kSuccess)));
-  manager_->Mount("/dev/sda1", "", {"prefer-driver=kernel"},
-                  GetMountCallback());
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MountError::kSuccess, mount_error_);
   EXPECT_FALSE(read_only_);
@@ -408,8 +407,7 @@ TEST_F(DiskManagerTest, MountKernelNtfs) {
   EXPECT_CALL(platform_,
               Mount("/dev/sda1", _, "ntfs3", HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MountError::kSuccess)));
-  manager_->Mount("/dev/sda1", "", {"prefer-driver=kernel"},
-                  GetMountCallback());
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MountError::kSuccess, mount_error_);
   EXPECT_FALSE(read_only_);

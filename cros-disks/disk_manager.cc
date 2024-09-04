@@ -387,17 +387,17 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     return nullptr;
   }
 
+  // TODO(b/364409158) Remove this block when the prefer-driver option is not
+  // passed anymore.
   auto it = mounters_.end();
   if (std::string driver; GetParamValue(options, "prefer-driver", &driver)) {
     it = mounters_.find(base::StrCat({driver, "-", fstype}));
   }
 
-  if (it == mounters_.end()) {
-    it = mounters_.find(fstype);
-  }
-
-  if (it == mounters_.end()) {
-    it = mounters_.find(base::StrCat({"fuse-", fstype}));
+  for (const std::string_view prefix : {"", "kernel-", "fuse-"}) {
+    if (it != mounters_.end())
+      break;
+    it = mounters_.find(base::StrCat({prefix, fstype}));
   }
 
   if (it == mounters_.end()) {
