@@ -38,9 +38,7 @@ class BurnReaderTest : public ::testing::Test {
 
  protected:
   bool SetTestFileContent(const std::string& content) {
-    const int written =
-        base::WriteFile(test_file_path_, content.data(), content.size());
-    return written >= 0 && static_cast<size_t>(written) == content.size();
+    return base::WriteFile(test_file_path_, content);
   }
 
   BurnReader file_reader_;
