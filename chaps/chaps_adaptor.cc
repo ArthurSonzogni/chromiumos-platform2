@@ -275,9 +275,8 @@ void ChapsAdaptor::GetTokenPath(const brillo::SecureVector& isolate_credential,
 void ChapsAdaptor::SetLogLevel(const int32_t& level) {
   logging::SetMinLogLevel(level);
   string level_str = base::NumberToString(level);
-  int writeResult = base::WriteFile(FilePath(kPersistentLogLevelPath),
-                                    level_str.data(), level_str.length());
-  VLOG_IF(2, writeResult < 0) << "Failed to save loglevel to file.";
+  bool written = base::WriteFile(FilePath(kPersistentLogLevelPath), level_str);
+  VLOG_IF(2, !written) << "Failed to save loglevel to file.";
 }
 
 void ChapsAdaptor::GetSlotList(const brillo::SecureVector& isolate_credential,

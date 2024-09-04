@@ -23,8 +23,8 @@
 #include <base/logging.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec/frontend/chaps/frontend.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
+#include <libhwsec/frontend/chaps/frontend.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
@@ -180,9 +180,7 @@ bool CheckAuthDataValid(const string& auth_data_hash,
 // |LogTokenReinitializedFromFlagFile|.
 void CreateTokenReinitializedFlagFile(const FilePath& token_path) {
   const FilePath flag_file_path(kTokenReinitializedFlagFilePath);
-  const std::string& token_path_value = token_path.value();
-  base::WriteFile(flag_file_path, token_path_value.c_str(),
-                  static_cast<int>(token_path_value.length()));
+  base::WriteFile(flag_file_path, token_path.value());
 }
 
 // TODO(https://crbug.com/844537): Remove when the root cause of disappearing
