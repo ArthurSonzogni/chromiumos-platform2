@@ -27,7 +27,7 @@ TEST(UtilTest, EnsureDirectoryExists) {
 
   // Verify that it doesn't fail even if a file already exists at the path.
   base::FilePath path_b = temp_dir.GetPath().Append("b");
-  EXPECT_EQ(0, base::WriteFile(path_b, nullptr, 0));
+  EXPECT_TRUE(base::WriteFile(path_b, std::string_view()));
   EXPECT_TRUE(EnsureDirectoryExists(path_b, getuid(), getgid(), 0755));
   EXPECT_TRUE(base::DirectoryExists(path_b));
 }

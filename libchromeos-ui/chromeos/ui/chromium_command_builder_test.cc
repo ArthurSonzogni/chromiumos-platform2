@@ -57,8 +57,7 @@ class ChromiumCommandBuilderTest : public testing::Test {
     base::FilePath reparented_path(util::GetReparentedPath(path, base_path_));
     if (!base::DirectoryExists(reparented_path.DirName()))
       PCHECK(base::CreateDirectory(reparented_path.DirName()));
-    PCHECK(base::WriteFile(reparented_path, data.data(), data.size()) ==
-           static_cast<int>(data.size()));
+    PCHECK(base::WriteFile(reparented_path, data));
   }
 
   // Looks up |name| in |builder_|'s list of environment variables, returning
@@ -236,7 +235,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfig) {
       "--bar=3\n"
       "!--blah\n";
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
-  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig));
   std::set<std::string> disallowed_prefixes;
 
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
@@ -263,7 +262,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigWithDisallowedPrefixes) {
       "--allowed-prefix=foo";
 
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
-  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig));
   std::set<std::string> disallowed_prefixes;
 
   disallowed_prefixes.insert("--disallowed-prefix");
@@ -287,7 +286,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   // vmodule flag.
   const char kConfig[] = "!--foo\n!--bar";
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
-  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig));
   std::set<std::string> disallowed_prefixes;
 
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
@@ -296,8 +295,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
 
   // Delete the --vmodule flag.
   const char kConfig2[] = "!--vmodule=";
-  ASSERT_EQ(strlen(kConfig2),
-            base::WriteFile(path, kConfig2, strlen(kConfig2)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig2));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   EXPECT_TRUE(builder_.arguments().empty());
 
@@ -307,8 +305,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
 
   // Check that vmodule directives in config files are handled.
   const char kConfig3[] = "vmodule=a=1\nvmodule=b=2";
-  ASSERT_EQ(strlen(kConfig3),
-            base::WriteFile(path, kConfig3, strlen(kConfig3)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig3));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ("--vmodule=b=2,a=1,c=1", GetFirstArgWithPrefix(kPrefix));
 
@@ -320,8 +317,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigVmodule) {
   // pattern that it sees; we want patterns specified via the developer's config
   // file to override hardcoded patterns.
   const char kConfig4[] = "--vmodule=d=1,e=2";
-  ASSERT_EQ(strlen(kConfig4),
-            base::WriteFile(path, kConfig4, strlen(kConfig4)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig4));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ("--vmodule=e=2,d=1,b=2,a=1,c=1", GetFirstArgWithPrefix(kPrefix));
 }
@@ -340,15 +336,14 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
   std::set<std::string> disallowed_prefixes;
 
   base::FilePath path(util::GetReparentedPath("/config.txt", base_path_));
-  ASSERT_EQ(strlen(kConfig), base::WriteFile(path, kConfig, strlen(kConfig)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   builder_.AddFeatureEnableOverride("b");
   ASSERT_EQ("--enable-features=a,b", GetFirstArgWithPrefix(kPrefix));
 
   // Delete the --enable-features flag.
   const char kConfig2[] = "!--enable-features=";
-  ASSERT_EQ(strlen(kConfig2),
-            base::WriteFile(path, kConfig2, strlen(kConfig2)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig2));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   EXPECT_TRUE(builder_.arguments().empty());
 
@@ -358,8 +353,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
 
   // Check that enable-features directives in config files are handled.
   const char kConfig3[] = "enable-features=d\nenable-features=e";
-  ASSERT_EQ(strlen(kConfig3),
-            base::WriteFile(path, kConfig3, strlen(kConfig3)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig3));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ("--enable-features=c,d,e", GetFirstArgWithPrefix(kPrefix));
 
@@ -368,8 +362,7 @@ TEST_F(ChromiumCommandBuilderTest, UserConfigEnableFeatures) {
 
   // "--enable-features=" lines in config files should be permitted too.
   const char kConfig4[] = "--enable-features=f,g";
-  ASSERT_EQ(strlen(kConfig4),
-            base::WriteFile(path, kConfig4, strlen(kConfig4)));
+  ASSERT_TRUE(base::WriteFile(path, kConfig4));
   ASSERT_TRUE(builder_.ApplyUserConfig(path, disallowed_prefixes));
   ASSERT_EQ("--enable-features=c,d,e,f,g", GetFirstArgWithPrefix(kPrefix));
 }
@@ -381,22 +374,18 @@ TEST_F(ChromiumCommandBuilderTest, PepperPlugins) {
       "VERSION=2.0.0\n"
       "DESCRIPTION=Helper for the Netflix application\n"
       "MIME_TYPES=\"application/netflix\"\n";
-  ASSERT_EQ(strlen(kNetflix),
-            base::WriteFile(pepper_dir_.Append("netflix.info"), kNetflix,
-                            strlen(kNetflix)));
+  ASSERT_TRUE(base::WriteFile(pepper_dir_.Append("netflix.info"), kNetflix));
 
   const char kOther[] =
       "PLUGIN_NAME=Some other plugin\n"
       "FILE_NAME=/opt/google/chrome/pepper/other.so\n";
-  ASSERT_EQ(strlen(kOther), base::WriteFile(pepper_dir_.Append("other.info"),
-                                            kOther, strlen(kOther)));
+  ASSERT_TRUE(base::WriteFile(pepper_dir_.Append("other.info"), kOther));
 
   const char kMissingFileName[] =
       "PLUGIN_NAME=Foo\n"
       "VERSION=2.3\n";
-  ASSERT_EQ(strlen(kMissingFileName),
-            base::WriteFile(pepper_dir_.Append("broken.info"), kMissingFileName,
-                            strlen(kMissingFileName)));
+  ASSERT_TRUE(
+      base::WriteFile(pepper_dir_.Append("broken.info"), kMissingFileName));
 
   ASSERT_TRUE(Init());
   ASSERT_TRUE(builder_.SetUpChromium());
