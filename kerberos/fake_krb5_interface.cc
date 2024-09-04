@@ -4,10 +4,11 @@
 
 #include "kerberos/fake_krb5_interface.h"
 
+#include <krb5.h>
+
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <krb5.h>
 
 namespace kerberos {
 namespace {
@@ -16,8 +17,7 @@ namespace {
 constexpr char kFakeKrb5cc[] = "I'm authenticated, trust me!";
 
 void WriteFakeTgt(const base::FilePath& krb5cc_path) {
-  const int size = strlen(kFakeKrb5cc);
-  CHECK(base::WriteFile(krb5cc_path, kFakeKrb5cc, strlen(kFakeKrb5cc)) == size);
+  CHECK(base::WriteFile(krb5cc_path, kFakeKrb5cc));
 }
 
 }  // namespace

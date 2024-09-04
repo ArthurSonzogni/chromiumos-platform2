@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/clock.h>
+
 #include "base/time/default_clock.h"
 
 namespace kerberos {
@@ -110,7 +111,7 @@ bool KerberosMetrics::ShouldReportDailyUsageStats() {
     // Create the file. Don't skew stats if something goes wrong. Note that
     // base::TouchFile bails if the file doesn't exist!
     const bool res =
-        base::WriteFile(daily_report_time_path_, nullptr, 0) == 0 &&
+        base::WriteFile(daily_report_time_path_, std::string_view()) &&
         base::TouchFile(daily_report_time_path_, now, now);
     if (!res)
       LOG(WARNING) << "Failed to touch " << daily_report_time_path_.value();

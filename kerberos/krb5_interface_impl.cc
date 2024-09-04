@@ -4,6 +4,9 @@
 
 #include "kerberos/krb5_interface_impl.h"
 
+#include <krb5.h>
+#include <profile.h>
+
 #include <algorithm>
 #include <utility>
 
@@ -12,8 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <krb5.h>
-#include <profile.h>
 
 #include "kerberos/error_strings.h"
 
@@ -327,8 +328,7 @@ ErrorType ValidateConfigViaKrb5(const std::string& krb5conf) {
     return ERROR_LOCAL_IO;
   }
 
-  const int size = static_cast<int>(krb5conf.size());
-  if (base::WriteFile(krb5conf_path, krb5conf.data(), size) != size) {
+  if (!base::WriteFile(krb5conf_path, krb5conf)) {
     LOG(ERROR) << "Failed to write config to disk at " << krb5conf_path.value()
                << " for validating config";
     return ERROR_LOCAL_IO;

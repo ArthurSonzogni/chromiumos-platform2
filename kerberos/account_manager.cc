@@ -68,8 +68,7 @@ std::string GetSafeFilename(const std::string& principal_name) {
 // could not be written.
 [[nodiscard]] ErrorType SaveFile(const base::FilePath& path,
                                  const std::string& data) {
-  const int data_size = static_cast<int>(data.size());
-  if (base::WriteFile(path, data.data(), data_size) != data_size) {
+  if (!base::WriteFile(path, data)) {
     LOG(ERROR) << "Failed to write '" << path.value() << "'";
     return ERROR_LOCAL_IO;
   }
