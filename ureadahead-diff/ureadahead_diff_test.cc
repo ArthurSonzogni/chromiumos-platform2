@@ -2,16 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ureadahead-diff/ureadahead_diff.h"
+
 #include <utility>
 
-#include <gtest/gtest.h>
-
 #include <base/check_op.h>
-#include <base/files/scoped_temp_dir.h>
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
-
-#include "ureadahead-diff/ureadahead_diff.h"
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <gtest/gtest.h>
 
 namespace ureadahead_diff {
 
@@ -226,29 +225,25 @@ TEST(Pack, InvalidFile) {
   // Corrupt signature.
   content_broken = content;
   content_broken[0] = 'x';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 
   // Fill reserved field.
   content_broken = content;
   content_broken[header_size - 1] = 'x';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 
   // Groups are not supported
   content_broken = content;
   content_broken[num_groups_offset] = '\1';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 
   // Path number mismatch
   content_broken = content;
   content_broken[num_paths_offset] = '\2';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 
   // Path is not 0 terminated string.
@@ -257,23 +252,20 @@ TEST(Pack, InvalidFile) {
       (reinterpret_cast<PackPath*>(&content_broken[0] + paths_offset))->path;
   for (size_t i = 0; i <= PACK_PATH_MAX; ++i)
     path[i] = 'a';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 
   // Block number mismatch
   content_broken = content;
   content_broken[num_blocks_offset] = '\2';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 
   // Block's pathidx invalid
   content_broken = content;
   // pathidx is the first element in struct.
   content_broken[blocks_offset] = '\2';
-  EXPECT_TRUE(
-      base::WriteFile(pack_path, &content_broken[0], content_broken.length()));
+  EXPECT_TRUE(base::WriteFile(pack_path, content_broken));
   EXPECT_FALSE(pack.Read(pack_name));
 }
 
