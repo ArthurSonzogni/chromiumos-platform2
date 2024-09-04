@@ -33,12 +33,6 @@ constexpr char kTpmTcgOpPath[] = "/sys/class/tpm/tpm0/ppi/tcg_operations";
 constexpr int kTpmPpiNothingId = 0;
 constexpr int kTpmPpiClearId = 22;
 
-bool WriteStringToFile(const base::FilePath& filename,
-                       const std::string& data) {
-  int result = base::WriteFile(filename, data.data(), data.size());
-  return (result != -1 && static_cast<size_t>(result) == data.size());
-}
-
 std::map<int, int> GetTpmTcgOpMap() {
   std::string data;
   if (!base::ReadFileToString(base::FilePath(kTpmTcgOpPath), &data)) {
@@ -118,12 +112,7 @@ bool SetClearTpmRequest(bool value) {
 bool SetClearTpmRequestAllowPrompt(bool value) {
   std::string ppi_id =
       value ? std::to_string(kTpmPpiClearId) : std::to_string(kTpmPpiNothingId);
-
-  if (!WriteStringToFile(base::FilePath(kTpmPpiPath), ppi_id)) {
-    return false;
-  }
-
-  return true;
+  return base::WriteFile(base::FilePath(kTpmPpiPath), ppi_id);
 }
 
 std::optional<bool> GetClearTpmRequest() {
