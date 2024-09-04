@@ -3,7 +3,7 @@
 Files in this folder will be compiled by `chromeos-base/chromeos-installer`
 package into few programs, including:
 
-- `chromeos-install`: A shell script for manual installation from USB.
+- `chromeos-install`: A rust binary for manual installation from USB.
 - `chromeos-install-kernel`: A script which installs kernel and kernel modules
   from USB.  This script is used by ChromeOS kernel developers to recover
   from bad kernel updates.
