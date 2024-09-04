@@ -10,9 +10,9 @@
 #include <string>
 #include <variant>
 
+#include <attestation-client/attestation/dbus-proxies.h>
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
-#include <attestation-client/attestation/dbus-proxies.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -23,9 +23,9 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/attestation/frontend.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/print_interface_proto.h"
@@ -673,8 +673,7 @@ class ClientLoop : public ClientLoopBase {
   void WriteOutput(const std::string& output) {
     base::FilePath filename(
         base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("output"));
-    if (base::WriteFile(filename, output.data(), output.size()) !=
-        static_cast<int>(output.size())) {
+    if (!base::WriteFile(filename, output)) {
       LOG(ERROR) << "Failed to write file: " << filename.value();
       QuitWithExitCode(EX_IOERR);
     }

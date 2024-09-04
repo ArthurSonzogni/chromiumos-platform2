@@ -102,9 +102,7 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Unexpected empty response";
       return EX_SOFTWARE;
     }
-    if (base::WriteFile(base::FilePath(output_filename),
-                        reply.response().data(), reply.response().size()) !=
-        static_cast<int>(reply.response().size())) {
+    if (!base::WriteFile(base::FilePath(output_filename), reply.response())) {
       LOG(ERROR) << "Failed to write file: " << output_filename;
       return EX_IOERR;
     }
@@ -143,9 +141,7 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Unexpected empty response";
       return EX_SOFTWARE;
     }
-    if (base::WriteFile(base::FilePath(output_filename),
-                        reply.response().data(), reply.response().size()) !=
-        static_cast<int>(reply.response().size())) {
+    if (!base::WriteFile(base::FilePath(output_filename), reply.response())) {
       LOG(ERROR) << "Failed to write file: " << output_filename;
       return EX_IOERR;
     }
