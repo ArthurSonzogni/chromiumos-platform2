@@ -101,12 +101,6 @@ void FlashTask::OnShouldFlashCompleted(Modem* modem,
     return;
   }
 
-  // Clear the attach APN if needed for a specific modem/carrier combination.
-  std::string carrier_id = modem->GetCarrierId();
-  if (!carrier_id.empty() && !modem->ClearAttachAPN(carrier_id)) {
-    ELOG(INFO) << "Clear attach APN failed for current carrier.";
-  }
-
   modem_flasher_->BuildFlashConfig(
       modem, options.carrier_override_uuid,
       base::BindOnce(&FlashTask::OnBuildFlashConfigCompleted,

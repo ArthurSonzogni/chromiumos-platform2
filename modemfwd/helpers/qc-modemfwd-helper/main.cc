@@ -25,14 +25,11 @@ int main(int argc, char** argv) {
   DEFINE_bool(flash_mode_check, false, "Check if the modem is in flash mode");
   DEFINE_string(power_enable_gpio, "", "Modem power enable GPIO number");
   DEFINE_string(fw_version, "", "Version number of the firmware to flash");
-  DEFINE_string(clear_attach_apn, "",
-                "Clear attach APN according to carrier uuid");
 
   brillo::FlagHelper::Init(argc, argv, " herobrine helper for modemfwd");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   int num_opts = FLAGS_prepare_to_flash + !FLAGS_flash_fw.empty() +
-                 FLAGS_get_fw_info + FLAGS_reboot + FLAGS_flash_mode_check +
-                 !FLAGS_clear_attach_apn.empty();
+                 FLAGS_get_fw_info + FLAGS_reboot + FLAGS_flash_mode_check;
   if (num_opts != 1) {
     LOG(ERROR) << "Must supply exactly one supported action";
     return EXIT_FAILURE;
@@ -58,10 +55,6 @@ int main(int argc, char** argv) {
   if (FLAGS_flash_mode_check) {
     // not supported, return failure
     return EXIT_FAILURE;
-  }
-
-  if (!FLAGS_clear_attach_apn.empty()) {
-    return EXIT_SUCCESS;
   }
 
   if (FLAGS_reboot)

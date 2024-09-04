@@ -291,15 +291,6 @@ class ModemImpl : public Modem {
     return helper_->FlashFirmwares(configs);
   }
 
-  bool ClearAttachAPN(const std::string& carrier_uuid) override {
-    // TODO(b/298680267): Revert this as part of Attach APN cleanup
-    // We only need to clear attach apn on L850.
-    if (base::Contains(device_id_, "usb:2cb7:0007")) {
-      return helper_->ClearAttachAPN(carrier_uuid);
-    }
-    return true;
-  }
-
   bool SupportsHealthCheck() const override { return !!health_checker_; }
 
   bool CheckHealth() override {
@@ -501,15 +492,6 @@ class StubModem : public Modem {
 
   bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
     return helper_->FlashFirmwares(configs);
-  }
-
-  bool ClearAttachAPN(const std::string& carrier_uuid) override {
-    // TODO(b/298680267): Revert this as part of Attach APN cleanup
-    // We only need to clear attach apn on L850.
-    if (base::Contains(device_id_, "usb:2cb7:0007")) {
-      return helper_->ClearAttachAPN(carrier_uuid);
-    }
-    return true;
   }
 
   bool SupportsHealthCheck() const override { return false; }

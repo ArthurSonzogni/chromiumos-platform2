@@ -70,7 +70,6 @@ class Modem {
   virtual bool SetInhibited(bool inhibited) = 0;
 
   virtual bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) = 0;
-  virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
 
   // Run health checks on this modem
   virtual bool SupportsHealthCheck() const = 0;

@@ -80,7 +80,6 @@ class ModemHelper {
 
   virtual bool Reboot() = 0;
   virtual bool FlashModeCheck() = 0;
-  virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
 
   virtual std::optional<HeartbeatConfig> GetHeartbeatConfig() = 0;
 

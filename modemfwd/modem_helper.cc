@@ -231,13 +231,6 @@ class ModemHelperImpl : public ModemHelper {
     return RunHelperProcess(helper_info_, {kReboot}, nullptr);
   }
 
-  bool ClearAttachAPN(const std::string& carrier_uuid) override {
-    return RunHelperProcess(
-        helper_info_,
-        {base::StringPrintf("%s=%s", kClearAttachAPN, carrier_uuid.c_str())},
-        nullptr);
-  }
-
   std::optional<HeartbeatConfig> GetHeartbeatConfig() override {
     std::string output;
     if (!RunHelperProcess(helper_info_, {kGetHeartbeatConfig}, &output))

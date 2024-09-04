@@ -18,8 +18,6 @@ flags are declared in the [system API] repo.
 * `--flash_fw=<type>:<file>[,<type2>:<file2>[,<type3>:<file3>]`
 * `--flash_mode_check`: see if the modem is present in firmware download mode
 * `--reboot`
-* `--clear_attach_apn=<carrier_id>`: clear the attach APN in the modem NVM if
-  the carrier ID is matching the one provided
 * `--get_heartbeat_config`: retrieve the preferred heartbeat configuration for
   ths modem type
 * `--fw_version`: can be optionally passed along with `--flash_fw` to signify

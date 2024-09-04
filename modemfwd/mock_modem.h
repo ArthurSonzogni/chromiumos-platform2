@@ -40,10 +40,6 @@ class MockModem : public Modem {
               FlashFirmwares,
               (const std::vector<FirmwareConfig>&),
               (override));
-  MOCK_METHOD(bool,
-              ClearAttachAPN,
-              (const std::string& carrier_uuid),
-              (override));
 
   MOCK_METHOD(bool, SupportsHealthCheck, (), (const, override));
   MOCK_METHOD(bool, CheckHealth, (), (override));
