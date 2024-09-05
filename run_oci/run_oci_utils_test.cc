@@ -31,8 +31,7 @@ TEST(RunOciUtilsTest, TestOpenOciConfigSafely) {
   // Create the file on a filesystem with exec. Verify OpenOciConfigSafely
   // works.
   const std::string content = "{}";
-  ASSERT_EQ(content.size(),
-            base::WriteFile(config_file, content.data(), content.size()));
+  ASSERT_TRUE(base::WriteFile(config_file, content));
   {
     // TODO(crbug/1090237): QEMU emulated boards seem to produce weird f_flag
     // for fstatvfs. Skip check ST_NOEXEC on ARM family unittest.

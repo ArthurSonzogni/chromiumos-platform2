@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "run_oci/container_config_parser.h"
-
 #include <sys/mount.h>
 
 #include <vector>
@@ -13,6 +11,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "run_oci/container_config_parser.h"
 #include "run_oci/run_oci_utils.h"
 
 namespace {
@@ -37,9 +36,7 @@ tmpfs /run/containers/android-master-33lymv/rootfs/root/dev )"
 debugfs /run/sync_export debugfs rw 0 0
   )";
   base::FilePath mounts = temp_dir.GetPath().Append("mounts");
-  EXPECT_EQ(
-      base::WriteFile(mounts, kSelfProcMountsData, sizeof(kSelfProcMountsData)),
-      sizeof(kSelfProcMountsData));
+  EXPECT_TRUE(base::WriteFile(mounts, kSelfProcMountsData));
 
   std::vector<run_oci::Mountpoint> mountpoints = run_oci::GetMountpointsUnder(
       base::FilePath("/run/containers/android-master-33lymv"), mounts);

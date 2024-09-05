@@ -35,12 +35,11 @@
 #include <brillo/daemons/daemon.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/syslog_logging.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
-
 #include <libcontainer/config.h>
 #include <libcontainer/container.h>
 #include <libcontainer/libcontainer.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
 
 #include "run_oci/container_config_parser.h"
 #include "run_oci/container_options.h"
@@ -588,7 +587,7 @@ int RunOci(const base::FilePath& bundle_dir,
   // Create an empty file, just to tag this container as being
   // run_oci-managed.
   const base::FilePath tag_file = container_dir.Append(kRunOciFilename);
-  if (base::WriteFile(tag_file, "", 0) != 0) {
+  if (!base::WriteFile(tag_file, "")) {
     LOG(ERROR) << "Failed to create tag file: " << tag_file.value();
     return -1;
   }
@@ -781,8 +780,7 @@ int RunOci(const base::FilePath& bundle_dir,
   const base::FilePath container_pid_path =
       container_dir.Append(kContainerPidFilename);
   std::string child_pid_str = base::StringPrintf("%d\n", child_pid);
-  if (base::WriteFile(container_pid_path, child_pid_str.c_str(),
-                      child_pid_str.size()) != child_pid_str.size()) {
+  if (!base::WriteFile(container_pid_path, child_pid_str)) {
     PLOG(ERROR) << "Failed to write the container PID to "
                 << container_pid_path.value();
     return -1;
