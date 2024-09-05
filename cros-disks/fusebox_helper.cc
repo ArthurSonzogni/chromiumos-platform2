@@ -93,7 +93,7 @@ MountError FuseBoxHelper::ConfigureSandbox(const std::string& source,
       continue;
     }
 
-    LOG(WARNING) << "Ignored fusebox parameter " << quote(param);
+    VLOG(1) << "Ignored fusebox parameter " << quote(param);
   }
 
   if (logging::ShouldCreateLogMessage(-2)) {
