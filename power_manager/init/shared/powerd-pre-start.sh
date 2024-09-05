@@ -3,6 +3,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Declare vars that we know are set before the script is run.
+: "${UPSTART_RUN:=}"
+: "${LOG_DIR:=}"
+: "${POWER_RUN_DIR:=}"
+: "${PREFS_DIR:=}"
+: "${ROOT_RUN_DIR:=}"
+: "${ROOT_SPOOL_DIR:=}"
+: "${VPD_CACHE_FILE:=}"
+: "${MAX_NITS_PREF:=}"
+
 # This script is shared by Upstart and systemd. All variables used by this
 # script must be defined either in powerd.conf file for Upstart or
 # powerd.service file for systemd.
@@ -11,12 +21,12 @@
 # For systemd, systemd-tmpfiles handles this using powerd_directories.conf.
 # We use the "UPSTART_RUN" variable, that is only defined by the Upstart conf
 # to distinguish between these situations.
-if [ -n "${UPSTART_RUN:=}" ]; then
-  mkdir -p ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
-  chown -R power:power ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
-  chmod 755 ${LOG_DIR} ${POWER_RUN_DIR} ${PREFS_DIR}
+if [ -n "${UPSTART_RUN}" ]; then
+  mkdir -p "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
+  chown -R power:power "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
+  chmod 755 "${LOG_DIR}" "${POWER_RUN_DIR}" "${PREFS_DIR}"
 
-  mkdir -p ${ROOT_RUN_DIR} ${ROOT_SPOOL_DIR}
+  mkdir -p "${ROOT_RUN_DIR}" "${ROOT_SPOOL_DIR}"
 fi
 
 # Read the real maximum backlight luminance (i.e. not the value reported by
