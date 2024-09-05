@@ -38,6 +38,7 @@ constexpr char kVideoCaptureDeviceInfoMonitor[] =
     "VideoCaptureDeviceInfoMonitor";
 constexpr char kCrosOdmlService[] = "CrosOdmlService";
 constexpr char kCrosCoralService[] = "CrosCoralService";
+constexpr char kCrosEmbeddingModelService[] = "CrosEmbeddingModelService";
 
 }  // namespace chromeos::mojo_services
 

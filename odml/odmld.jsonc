@@ -4,7 +4,8 @@
     "identity": "u:r:cros_odml_service:s0",
     "own": [
       "CrosOdmlService",
-      "CrosCoralService"
+      "CrosCoralService",
+      "CrosEmbeddingModelService"
     ]
   },
   {
@@ -18,7 +19,8 @@
     "identity": "u:r:cros_ssh_session:s0",
     "request": [
       "CrosOdmlService",
-      "CrosCoralService"
+      "CrosCoralService",
+      "CrosEmbeddingModelService"
     ]
   }
 ]

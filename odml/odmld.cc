@@ -26,6 +26,7 @@
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "odml/coral/service.h"
+#include "odml/embedding_model/embedding_model_service.h"
 #include "odml/on_device_model/ml/on_device_model_internal.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
@@ -74,6 +75,38 @@ class OnDeviceModelServiceProviderImpl
       receiver_;
   // The implementation of on_device_model::mojom::OnDeviceModelPlatformService.
   on_device_model::OnDeviceModelService service_impl_;
+};
+
+class EmbeddingModelServiceProviderImpl
+    : public chromeos::mojo_service_manager::mojom::ServiceProvider {
+ public:
+  explicit EmbeddingModelServiceProviderImpl(
+      raw_ref<MetricsLibrary> metrics,
+      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
+          service_manager)
+      : receiver_(this), service_impl_(metrics) {
+    service_manager->Register(
+        chromeos::mojo_services::kCrosEmbeddingModelService,
+        receiver_.BindNewPipeAndPassRemote());
+  }
+
+ private:
+  // overrides ServiceProvider.
+  void Request(
+      chromeos::mojo_service_manager::mojom::ProcessIdentityPtr identity,
+      mojo::ScopedMessagePipeHandle receiver) override {
+    service_impl_.AddReceiver(
+        mojo::PendingReceiver<
+            embedding_model::mojom::OnDeviceEmbeddingModelService>(
+            std::move(receiver)));
+  }
+
+  // The receiver of ServiceProvider.
+  mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
+      receiver_;
+  // The implementation of
+  // embedding_model::mojom::OnDeviceEmbeddingModelService.
+  embedding_model::EmbeddingModelService service_impl_;
 };
 
 class CoralServiceProviderImpl
@@ -144,6 +177,9 @@ class Daemon : public brillo::Daemon {
     on_device_model_service_provider_impl_ =
         std::make_unique<OnDeviceModelServiceProviderImpl>(raw_ref(metrics_),
                                                            service_manager_);
+    embedding_model_service_provider_impl_ =
+        std::make_unique<EmbeddingModelServiceProviderImpl>(raw_ref(metrics_),
+                                                            service_manager_);
     coral_service_provider_impl_ = std::make_unique<CoralServiceProviderImpl>(
         raw_ref(metrics_), service_manager_,
         on_device_model_service_provider_impl_->service());
@@ -161,6 +197,9 @@ class Daemon : public brillo::Daemon {
 
   std::unique_ptr<OnDeviceModelServiceProviderImpl>
       on_device_model_service_provider_impl_;
+
+  std::unique_ptr<EmbeddingModelServiceProviderImpl>
+      embedding_model_service_provider_impl_;
 
   std::unique_ptr<CoralServiceProviderImpl> coral_service_provider_impl_;
 
