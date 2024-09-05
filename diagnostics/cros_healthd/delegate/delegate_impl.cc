@@ -58,7 +58,7 @@
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/urandom_delegate.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_util.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_util_factory.h"
@@ -745,7 +745,7 @@ std::unique_ptr<ec::MkbpEvent> DelegateImpl::CreateMkbpEvent(
 
 std::unique_ptr<CpuRoutineTaskDelegate>
 DelegateImpl::CreatePrimeNumberSearchDelegate(uint64_t max_num) {
-  return std::make_unique<PrimeNumberSearchDelegateImpl>(max_num);
+  return std::make_unique<PrimeNumberSearchDelegate>(max_num);
 }
 
 std::unique_ptr<CpuRoutineTaskDelegate>

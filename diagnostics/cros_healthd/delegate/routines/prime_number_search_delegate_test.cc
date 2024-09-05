@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 
 #include <cstdint>
 
@@ -14,10 +14,10 @@ namespace {
 
 using ::testing::Return;
 
-class MockPrimeNumberSearchTest : public PrimeNumberSearchDelegateImpl {
+class MockPrimeNumberSearchTest : public PrimeNumberSearchDelegate {
  public:
   explicit MockPrimeNumberSearchTest(uint64_t max_num)
-      : PrimeNumberSearchDelegateImpl(max_num) {}
+      : PrimeNumberSearchDelegate(max_num) {}
   MockPrimeNumberSearchTest(const MockPrimeNumberSearchTest&) = delete;
   MockPrimeNumberSearchTest& operator=(const MockPrimeNumberSearchTest&) =
       delete;
@@ -28,7 +28,7 @@ class MockPrimeNumberSearchTest : public PrimeNumberSearchDelegateImpl {
 
 // Tests if different numbers are prime by using the IsPrime() calculation.
 TEST(PrimeNumberSearchTest, IsPrime) {
-  PrimeNumberSearchDelegateImpl prime_search(4);
+  PrimeNumberSearchDelegate prime_search(4);
 
   EXPECT_FALSE(prime_search.IsPrime(0));
   EXPECT_FALSE(prime_search.IsPrime(1));
@@ -50,8 +50,8 @@ TEST(PrimeNumberSearchTest, IsPrime) {
 
 // Test that all values under kMaxPrimeNumber are calculated correctly.
 TEST(PrimeNumbersSearchTest, RunFull) {
-  PrimeNumberSearchDelegateImpl prime_search(
-      PrimeNumberSearchDelegateImpl::kMaxPrimeNumber);
+  PrimeNumberSearchDelegate prime_search(
+      PrimeNumberSearchDelegate::kMaxPrimeNumber);
   EXPECT_TRUE(prime_search.Run());
 }
 

@@ -5,7 +5,7 @@
 source_set("routines") {
   sources = [
     "floating_point_accuracy.cc",
-    "prime_number_search_delegate_impl.cc",
+    "prime_number_search_delegate.cc",
     "urandom_delegate.cc",
   ]
   pkg_deps = [ "libchrome" ]
@@ -16,7 +16,7 @@ if (use.test) {
   source_set("test") {
     sources = [
       "floating_point_accuracy_test.cc",
-      "prime_number_search_delegate_impl_test.cc",
+      "prime_number_search_delegate_test.cc",
       "urandom_delegate_test.cc",
     ]
     deps = [

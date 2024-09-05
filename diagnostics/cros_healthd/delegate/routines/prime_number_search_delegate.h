@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_PRIME_NUMBER_SEARCH_DELEGATE_IMPL_H_
-#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_PRIME_NUMBER_SEARCH_DELEGATE_IMPL_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_PRIME_NUMBER_SEARCH_DELEGATE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_PRIME_NUMBER_SEARCH_DELEGATE_H_
 
 #include <bitset>
 #include <cstdint>
@@ -12,13 +12,13 @@
 
 namespace diagnostics {
 
-class PrimeNumberSearchDelegateImpl : public CpuRoutineTaskDelegate {
+class PrimeNumberSearchDelegate : public CpuRoutineTaskDelegate {
  public:
-  explicit PrimeNumberSearchDelegateImpl(uint64_t max_num);
-  PrimeNumberSearchDelegateImpl(const PrimeNumberSearchDelegateImpl&) = delete;
-  PrimeNumberSearchDelegateImpl& operator=(
-      const PrimeNumberSearchDelegateImpl&) = delete;
-  ~PrimeNumberSearchDelegateImpl() override;
+  explicit PrimeNumberSearchDelegate(uint64_t max_num);
+  PrimeNumberSearchDelegate(const PrimeNumberSearchDelegate&) = delete;
+  PrimeNumberSearchDelegate& operator=(const PrimeNumberSearchDelegate&) =
+      delete;
+  ~PrimeNumberSearchDelegate() override;
 
   virtual bool IsPrime(uint64_t num) const;
 
@@ -36,4 +36,4 @@ class PrimeNumberSearchDelegateImpl : public CpuRoutineTaskDelegate {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_PRIME_NUMBER_SEARCH_DELEGATE_IMPL_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_ROUTINES_PRIME_NUMBER_SEARCH_DELEGATE_H_
