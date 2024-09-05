@@ -4,18 +4,19 @@
 
 #include "libstorage/platform/dircrypto_util.h"
 
-#include <string>
-
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
+#include <string>
 
 #include <base/check_op.h>
 #include <base/logging.h>
 
 extern "C" {
-#include <ext2fs/ext2_fs.h>
 #include <keyutils.h>
+
+#include <ext2fs/ext2_fs.h>
 }
 
 #include <base/files/file_path.h>
@@ -185,9 +186,7 @@ static bool InvalidateSessionKey(const KeyReference& key_reference) {
     // Use drop_caches to drop all clear cache. Otherwise, cached decrypted data
     // will stay visible. This should invalidate the key provided no one touches
     // the encrypted directories while this function is running.
-    constexpr char kData = '3';
-    if (base::WriteFile(base::FilePath("/proc/sys/vm/drop_caches"), &kData,
-                        sizeof(kData)) != sizeof(kData)) {
+    if (!base::WriteFile(base::FilePath("/proc/sys/vm/drop_caches"), "3")) {
       LOG(ERROR) << "Failed to drop all caches.";
       return false;
     }
@@ -457,8 +456,8 @@ bool RemoveDirectoryKey(const KeyReference& key_reference,
         ref.policy_version = FSCRYPT_POLICY_V2;
         break;
       default:
-        NOTREACHED_IN_MIGRATION() << "Invalid encryption policy version: "
-                     << arg.policy.version;
+        NOTREACHED_IN_MIGRATION()
+            << "Invalid encryption policy version: " << arg.policy.version;
         return false;
     }
   } else {
