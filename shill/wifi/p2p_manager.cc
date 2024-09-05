@@ -89,7 +89,8 @@ Integers P2PManager::SupportedChannels() {
     return Integers();
   }
   // TODO(b/353995150): Add multiple WiFi phy support.
-  return wifi_phys.front()->GetFrequencies();
+  auto freqs = wifi_phys.front()->GetFrequencies();
+  return std::vector<int>(freqs.begin(), freqs.end());
 }
 
 Integers P2PManager::PreferredChannels() {
@@ -98,7 +99,16 @@ Integers P2PManager::PreferredChannels() {
     return Integers();
   }
   // TODO(b/353995150): Add multiple WiFi phy support.
-  return wifi_phys.front()->GetActiveFrequencies();
+  auto active_freqs = wifi_phys.front()->GetActiveFrequencies();
+  auto supported_freqs = wifi_phys.front()->GetFrequencies();
+  std::set<int> freqs;
+  // Intersect active frequencies with supported frequencies so that only active
+  // frequencies which are also supported by P2P operation are considered as
+  // preferred frequencies.
+  set_intersection(active_freqs.begin(), active_freqs.end(),
+                   supported_freqs.begin(), supported_freqs.end(),
+                   inserter(freqs, freqs.begin()));
+  return std::vector<int>(freqs.begin(), freqs.end());
 }
 
 KeyValueStore P2PManager::GetCapabilities(Error* /* error */) {

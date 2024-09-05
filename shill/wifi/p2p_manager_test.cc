@@ -305,10 +305,12 @@ TEST_F(P2PManagerTest, GetP2PCapabilities) {
   std::unique_ptr<NiceMock<MockWiFiPhy>> phy(
       new NiceMock<MockWiFiPhy>(kPhyIndex));
   const std::vector<const WiFiPhy*> phys = {phy.get()};
-  const std::vector<int> freqs = {2412, 5180};
+  const std::set<int> supported_freqs = {2412, 5180};
+  const std::set<int> active_freqs = {2412, 5260};
+  const std::vector<int> preferred_freqs = {2412};
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
-  ON_CALL(*phy, GetFrequencies()).WillByDefault(Return(freqs));
-  ON_CALL(*phy, GetActiveFrequencies()).WillByDefault(Return(freqs));
+  ON_CALL(*phy, GetFrequencies()).WillByDefault(Return(supported_freqs));
+  ON_CALL(*phy, GetActiveFrequencies()).WillByDefault(Return(active_freqs));
 
   // P2P not supported
   ON_CALL(*phy, SupportP2PMode()).WillByDefault(Return(false));
@@ -352,11 +354,11 @@ TEST_F(P2PManagerTest, GetP2PCapabilities) {
   EXPECT_TRUE(
       caps.Contains<Integers>(kP2PCapabilitiesSupportedChannelsProperty));
   EXPECT_EQ(caps.Get<Integers>(kP2PCapabilitiesSupportedChannelsProperty),
-            freqs);
+            std::vector<int>(supported_freqs.begin(), supported_freqs.end()));
   EXPECT_TRUE(
       caps.Contains<Integers>(kP2PCapabilitiesPreferredChannelsProperty));
   EXPECT_EQ(caps.Get<Integers>(kP2PCapabilitiesPreferredChannelsProperty),
-            freqs);
+            preferred_freqs);
 }
 
 TEST_F(P2PManagerTest, GetP2PGroupInfos) {

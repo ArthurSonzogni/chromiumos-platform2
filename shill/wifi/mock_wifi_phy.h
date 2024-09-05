@@ -36,8 +36,8 @@ class MockWiFiPhy : public WiFiPhy {
               RequestNewIface,
               (nl80211_iftype desired_type, Priority priority),
               (const, override));
-  MOCK_METHOD(std::vector<int>, GetFrequencies, (), (const, override));
-  MOCK_METHOD(std::vector<int>, GetActiveFrequencies, (), (const, override));
+  MOCK_METHOD(std::set<int>, GetFrequencies, (), (const, override));
+  MOCK_METHOD(std::set<int>, GetActiveFrequencies, (), (const, override));
   MOCK_METHOD(ConcurrencyCombinationSet,
               ConcurrencyCombinations,
               (),

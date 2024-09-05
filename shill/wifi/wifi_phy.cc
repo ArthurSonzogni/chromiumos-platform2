@@ -466,8 +466,8 @@ std::optional<int> WiFiPhy::SelectFrequency(WiFiBand band) const {
   return selected;
 }
 
-std::vector<int> WiFiPhy::GetFrequencies() const {
-  std::vector<int> freqs;
+std::set<int> WiFiPhy::GetFrequencies() const {
+  std::set<int> freqs;
   for (auto band : frequencies_) {
     for (auto& freq : band.second) {
       if (freq.flags & (1 << NL80211_FREQUENCY_ATTR_DISABLED |
@@ -477,13 +477,13 @@ std::vector<int> WiFiPhy::GetFrequencies() const {
         SLOG(3) << "Skipping freq: " << freq.value;
         continue;
       }
-      freqs.push_back(freq.value);
+      freqs.insert(freq.value);
     }
   }
   return freqs;
 }
 
-std::vector<int> WiFiPhy::GetActiveFrequencies() const {
+std::set<int> WiFiPhy::GetActiveFrequencies() const {
   std::set<int> freqs;
   for (auto wifi_dev : wifi_devices_) {
     auto endpoint = wifi_dev->GetCurrentEndpoint();
@@ -498,7 +498,7 @@ std::vector<int> WiFiPhy::GetActiveFrequencies() const {
     }
   }
 
-  return std::vector<int>(freqs.begin(), freqs.end());
+  return freqs;
 }
 
 // Operators to facilitate interface combination logging.

@@ -174,9 +174,9 @@ class WiFiPhy {
   // |band| preference. Returns frequency or std::nullopt on error.
   std::optional<int> SelectFrequency(WiFiBand band) const;
   // Utility function to get the frequencies supported.
-  mockable std::vector<int> GetFrequencies() const;
+  mockable std::set<int> GetFrequencies() const;
   // Utility function to get the active frequencies used by interfaces.
-  mockable std::vector<int> GetActiveFrequencies() const;
+  mockable std::set<int> GetActiveFrequencies() const;
 
  private:
   friend class WiFiPhyTest;
