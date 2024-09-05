@@ -129,9 +129,8 @@ bool CreateSmbConfFile() {
     return false;
   }
 
-  const int data_size = strlen(kSmbConfData);
   return base::WriteFile(base::FilePath(smb_conf_directory + kSmbConfFile),
-                         kSmbConfData, data_size) == data_size;
+                         kSmbConfData);
 }
 
 std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
