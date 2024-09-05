@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/files/scoped_temp_dir.h>
-#include <memory>
-#include <gmock/gmock.h>
-
 #include "pciguard/sysfs_utils.h"
+
+#include <memory>
+
+#include <base/files/scoped_temp_dir.h>
+#include <gmock/gmock.h>
 
 using base::CreateDirectory;
 using base::CreateSymbolicLink;
@@ -64,7 +65,7 @@ class SysfsUtilsTest : public ::testing::Test {
     ASSERT_TRUE(WriteFile(dev.Append("removable"), "removable"));
     ASSERT_TRUE(WriteFile(dev.Append("remove"), "0"));
 
-    ASSERT_TRUE(base::WriteFile(utils_->pci_lockdown_path_, "1"));
+    ASSERT_TRUE(WriteFile(utils_->pci_lockdown_path_, "1"));
   }
 
   std::string root_;
@@ -101,8 +102,8 @@ TEST_F(SysfsUtilsTest, CheckAuthorizeThunderboltDev) {
 }
 
 TEST_F(SysfsUtilsTest, CheckDenyNewDevices) {
-  // Intialize lockdown with "0"
-  ASSERT_TRUE(base::WriteFile(utils_->pci_lockdown_path_, "0"));
+  // Initialize lockdown with "0"
+  ASSERT_TRUE(WriteFile(utils_->pci_lockdown_path_, "0"));
 
   // This should set it to "1"
   utils_->DenyNewDevices();
@@ -114,10 +115,10 @@ TEST_F(SysfsUtilsTest, CheckDenyNewDevices) {
 }
 
 TEST_F(SysfsUtilsTest, CheckAuthorizeAllDevices) {
-  // Intialize lockdown with "1""
+  // Initialize lockdown with "1""
   ASSERT_TRUE(WriteFile(utils_->pci_lockdown_path_, "1"));
 
-  // Intialize rescan with "1""
+  // Initialize rescan with "1""
   ASSERT_TRUE(WriteFile(utils_->pci_rescan_path_, "0"));
 
   // Set authorized to 0 for device 1
@@ -152,11 +153,11 @@ TEST_F(SysfsUtilsTest, CheckAuthorizeAllDevices) {
 }
 
 TEST_F(SysfsUtilsTest, CheckDeauthorizeAllDevices) {
-  // Intialize lockdown with "0"
-  ASSERT_TRUE(base::WriteFile(utils_->pci_lockdown_path_, "0"));
+  // Initialize lockdown with "0"
+  ASSERT_TRUE(WriteFile(utils_->pci_lockdown_path_, "0"));
 
   auto remove = FilePath(root_ + kMockPciDevice + "/remove");
-  ASSERT_TRUE(base::WriteFile(remove, "0"));
+  ASSERT_TRUE(WriteFile(remove, "0"));
 
   // Set authorized to 1 for device 1
   auto file1 = FilePath(root_ + kMockTestDevice1 + "/authorized");

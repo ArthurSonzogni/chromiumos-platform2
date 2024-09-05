@@ -4,16 +4,17 @@
 
 #include "pciguard/sysfs_utils.h"
 
+#include <sysexits.h>
+
+#include <set>
+#include <string>
+
 #include <base/command_line.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/syslog_logging.h>
-
-#include <set>
-#include <string>
-#include <sysexits.h>
 
 namespace pciguard {
 
@@ -77,7 +78,7 @@ int SysfsUtils::SetAuthorizedAttribute(base::FilePath devpath, bool enable) {
     LOG(INFO) << "Deauthorizing:" << devpath;
   }
 
-  if (base::WriteFile(authorized_path, val, 1) != 1) {
+  if (!base::WriteFile(authorized_path, val)) {
     PLOG(ERROR) << "Couldn't write " << val << " to " << authorized_path;
     return EXIT_FAILURE;
   }
@@ -96,14 +97,13 @@ int SysfsUtils::OnInit(void) {
     return EX_OSFILE;
   }
 
-  if (base::WriteFile(pci_lockdown_path_, "1", 1) != 1) {
+  if (!base::WriteFile(pci_lockdown_path_, "1")) {
     PLOG(ERROR) << "Couldn't write 1 to " << pci_lockdown_path_;
     return EX_IOERR;
   }
 
   for (const char* drvr_name : kAllowlist) {
-    auto len = strlen(drvr_name);
-    if (base::WriteFile(allowlist_path_, drvr_name, len) == len)
+    if (base::WriteFile(allowlist_path_, drvr_name))
       LOG(INFO) << "Allowed " << drvr_name;
     else
       PLOG(ERROR) << "Couldn't allow " << drvr_name;
@@ -121,7 +121,7 @@ int SysfsUtils::AuthorizeAllDevices(void) {
   // Allow drivers to bind to PCI devices. This also binds any PCI devices
   // that may have been hotplugged "into" external peripherals, while the
   // screen was locked.
-  if (base::WriteFile(pci_lockdown_path_, "0", 1) != 1) {
+  if (!base::WriteFile(pci_lockdown_path_, "0")) {
     PLOG(ERROR) << "Couldn't write 0 to " << pci_lockdown_path_;
     return EXIT_FAILURE;
   }
@@ -129,7 +129,7 @@ int SysfsUtils::AuthorizeAllDevices(void) {
   int ret = EXIT_SUCCESS;
 
   // Add any PCI devices that we removed when the user had logged off.
-  if (base::WriteFile(pci_rescan_path_, "1", 1) != 1) {
+  if (!base::WriteFile(pci_rescan_path_, "1")) {
     PLOG(ERROR) << "Couldn't write 1 to " << pci_rescan_path_;
     ret = EXIT_FAILURE;
   }
@@ -163,7 +163,7 @@ int SysfsUtils::DenyNewDevices(void) {
   LOG(INFO) << "Will deny all new external PCI devices";
 
   // Deny drivers to bind to any *new* external PCI devices.
-  if (base::WriteFile(pci_lockdown_path_, "1", 1) != 1) {
+  if (!base::WriteFile(pci_lockdown_path_, "1")) {
     PLOG(ERROR) << "Couldn't write 1 to " << pci_lockdown_path_;
     return EXIT_FAILURE;
   }
@@ -194,7 +194,7 @@ int SysfsUtils::DeauthorizeAllDevices(void) {
       continue;
 
     // Remove device.
-    if (base::WriteFile(devpath.Append("remove"), "1", 1) != 1) {
+    if (!base::WriteFile(devpath.Append("remove"), "1")) {
       PLOG(ERROR) << "Couldn't remove untrusted device " << devpath;
       ret = EXIT_FAILURE;
     }
