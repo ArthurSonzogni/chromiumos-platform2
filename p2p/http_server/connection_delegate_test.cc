@@ -420,7 +420,7 @@ TEST_F(ConnectionDelegateTest, GetExistentFile) {
   SetupDelegate();
 
   const string content = "Hello World!";
-  WriteFile(testdir_path_.Append("hello.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("hello.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -455,7 +455,7 @@ TEST_F(ConnectionDelegateTest, PostExistentFile) {
 
   string content;
   GeneratePrintableData(9 * 1000 * 1000 - 1, &content);
-  WriteFile(testdir_path_.Append("a.foo.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("a.foo.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -490,7 +490,7 @@ TEST_F(ConnectionDelegateTest, PostExistentFile) {
 TEST_F(ConnectionDelegateTest, GetEmptyFile) {
   SetupDelegate();
 
-  WriteFile(testdir_path_.Append("empty.p2p"), "", 0);
+  WriteFile(testdir_path_.Append("empty.p2p"), "");
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -524,7 +524,7 @@ TEST_F(ConnectionDelegateTest, GetRangeOfFile) {
 
   string content;
   GeneratePrintableData(60 * 1000, &content);
-  WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("data.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -562,7 +562,7 @@ TEST_F(ConnectionDelegateTest, GetInvalidRangeOfFile) {
 
   string content;
   GeneratePrintableData(64 * 1000, &content);
-  WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("data.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -590,7 +590,7 @@ TEST_F(ConnectionDelegateTest, GetLastPartOfFile) {
 
   string content;
   GeneratePrintableData(5 * 1000, &content);
-  WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("data.p2p"), content);
 
   EXPECT_CALL(mock_server_,
               ReportServerMessage(p2p::util::kP2PServerRequestResult,
@@ -637,7 +637,7 @@ TEST_F(ConnectionDelegateTest, GetIncompleteFile) {
 
   string content;
   GeneratePrintableData(50 * 1000, &content);
-  WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("data.p2p"), content);
   ASSERT_TRUE(
       SetExpectedFileSize(testdir_path_.Append("data.p2p"), 100 * 1000));
 
@@ -684,7 +684,7 @@ TEST_F(ConnectionDelegateTest, GetPartOfIncompleteFile) {
 
   string content;
   GeneratePrintableData(5 * 1000, &content);
-  WriteFile(testdir_path_.Append("data.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("data.p2p"), content);
   ASSERT_TRUE(SetExpectedFileSize(testdir_path_.Append("data.p2p"), 10 * 1000));
 
   EXPECT_CALL(mock_server_,
@@ -827,7 +827,8 @@ TEST_F(ConnectionDelegateTest, Waiting) {
   // file is then extended to 75kB and finally to 100kB.
   string content;
   GeneratePrintableData(100 * 1000, &content);
-  WriteFile(testdir_path_.Append("wait.p2p"), content.c_str(), 50 * 1000);
+  WriteFile(testdir_path_.Append("wait.p2p"),
+            std::string_view(content).substr(0, 50 * 1000));
   ASSERT_TRUE(
       SetExpectedFileSize(testdir_path_.Append("wait.p2p"), 100 * 1000));
 
@@ -895,7 +896,7 @@ TEST_F(ConnectionDelegateTest, LimitDownloadSpeed) {
 
   string content;
   GeneratePrintableData(50 * 1000 * 1000, &content);
-  WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("50mb.p2p"), content);
   ASSERT_TRUE(
       SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), content.size()));
 
@@ -942,7 +943,7 @@ TEST_F(ConnectionDelegateTest, DisregardTimeWaitingFromTransferBudget) {
 
   string content;
   GeneratePrintableData(25 * 1000 * 1000, &content);
-  WriteFile(testdir_path_.Append("50mb.p2p"), content.c_str(), content.size());
+  WriteFile(testdir_path_.Append("50mb.p2p"), content);
   ASSERT_TRUE(
       SetExpectedFileSize(testdir_path_.Append("50mb.p2p"), 50 * 1000 * 1000));
 

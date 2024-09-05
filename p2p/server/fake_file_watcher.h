@@ -98,7 +98,7 @@ class FakeFileWatcher : public FileWatcher {
   static gboolean OnFileChanged(gpointer user_data) {
     FakeFileWatcher* watcher = reinterpret_cast<FakeFileWatcher*>(user_data);
     const FileEvent& event = watcher->pending_actions_.front();
-    char* buf = NULL;
+    uint8_t* buf = NULL;
 
     switch (event.event_type) {
       case kFileAdded:
@@ -107,8 +107,8 @@ class FakeFileWatcher : public FileWatcher {
         [[fallthrough]];
       case kFileChanged:
         // Both kFileAdded and kFileChanged execute this part:
-        buf = static_cast<char*>(malloc(event.file_size));
-        base::WriteFile(event.filename, buf, event.file_size);
+        buf = static_cast<uint8_t*>(malloc(event.file_size));
+        base::WriteFile(event.filename, base::span(buf, event.file_size));
         free(buf);
         break;
       case kFileRemoved:
