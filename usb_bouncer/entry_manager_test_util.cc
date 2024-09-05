@@ -58,10 +58,8 @@ EntryManagerTestUtil::EntryManagerTestUtil() {
 
   base::FilePath temp_etc_usbguard =
       CreateTestDir(kUsbguardPolicyDir, true /*force_empty*/);
-  CHECK_NE(base::WriteFile(
-               temp_etc_usbguard.Append(kUsbguardTestConfigFilename),
-               kUsbguardTestConfigFooter, sizeof(kUsbguardTestConfigFooter)),
-           -1);
+  CHECK(base::WriteFile(temp_etc_usbguard.Append(kUsbguardTestConfigFilename),
+                        kUsbguardTestConfigFooter));
 
   CreateTestDir(std::string("sys") + kDefaultDevpath, true /*force_empty*/);
   CreateTestDir(kUserDbBaseDir, true /*force_empty*/);

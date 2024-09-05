@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "usb_bouncer/util.h"
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/test/bind.h>
 #include <gtest/gtest.h>
 
-#include "usb_bouncer/util.h"
 #include "usb_bouncer/util_internal.h"
 
 using brillo::SafeFD;
@@ -25,7 +26,7 @@ constexpr char kSysFSEnabled[] = "1";
 constexpr char kSysFSDisabled[] = "0";
 
 bool CreateDisabledFlag(const base::FilePath& flag) {
-  if (!base::WriteFile(flag, kSysFSDisabled, sizeof(kSysFSDisabled) - 1)) {
+  if (!base::WriteFile(flag, kSysFSDisabled)) {
     LOG(ERROR) << "WriteFile('" << flag.value() << "', ...) failed.";
     return false;
   }
