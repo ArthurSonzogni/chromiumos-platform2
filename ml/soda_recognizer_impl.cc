@@ -187,6 +187,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
              SpeakerDiarizationMode::kSpeakerLabelDetection) {
     cfg_msg.set_speaker_diarization_mode(
         ExtendedSodaConfigMsg::SPEAKER_LABEL_DETECTION);
+    cfg_msg.set_max_speaker_count(spec->max_speaker_count);
   }
 
   if (spec->multi_lang_config) {
