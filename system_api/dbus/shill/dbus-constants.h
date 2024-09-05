@@ -106,6 +106,7 @@ constexpr char kDefaultServiceProperty[] = "DefaultService";
 constexpr char kDefaultTechnologyProperty[] = "DefaultTechnology";
 constexpr char kDevicesProperty[] = "Devices";
 constexpr char kDhcpPropertyHostnameProperty[] = "DHCPProperty.Hostname";
+constexpr char kDisableLegacyDHCPCDProperty[] = "DisableLegacyDHCPCD";
 constexpr char kDisableWiFiVHTProperty[] = "DisableWiFiVHT";
 constexpr char kDisconnectWiFiOnEthernetProperty[] = "DisconnectWiFiOnEthernet";
 constexpr char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";

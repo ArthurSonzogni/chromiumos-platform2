@@ -66,6 +66,7 @@ class DefaultProfile : public Profile {
   static const char kStorageProhibitedTechnologies[];
   static const char kStorageDhcpHostname[];
   static const char kStorageWifiGlobalFTEnabled[];
+  static constexpr char kStorageDisableLegacyDHCPCD[] = "DisableLegacyDHCPCD";
   static constexpr char kStorageDisableWiFiOnEthernet[] =
       "DisableWiFiOnEthernet";
   static constexpr char kStorageDisableWiFiOnEthernetConnected[] = "connected";

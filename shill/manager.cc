@@ -234,6 +234,8 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kArpGatewayProperty, &props_.arp_gateway);
   store_.RegisterBool(kEnableDHCPQoSProperty, &props_.enable_dhcp_qos);
   store_.RegisterBool(kEnableRFC8925Property, &props_.enable_rfc_8925);
+  store_.RegisterBool(kDisableLegacyDHCPCDProperty,
+                      &props_.disable_legacy_dhcpcd);
   HelpRegisterConstDerivedStrings(kAvailableTechnologiesProperty,
                                   &Manager::AvailableTechnologies);
   HelpRegisterDerivedString(kCheckPortalListProperty,

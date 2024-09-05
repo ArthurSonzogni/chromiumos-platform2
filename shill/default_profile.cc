@@ -91,6 +91,8 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
                      &manager_props->arp_gateway);
   storage()->GetBool(kStorageId, kStorageEnableRFC8925,
                      &manager_props->enable_rfc_8925);
+  storage()->GetBool(kStorageId, kStorageDisableLegacyDHCPCD,
+                     &manager_props->disable_legacy_dhcpcd);
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
@@ -169,6 +171,8 @@ bool DefaultProfile::Save() {
 
   storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetBool(kStorageId, kStorageEnableRFC8925, props_.enable_rfc_8925);
+  storage()->SetBool(kStorageId, kStorageDisableLegacyDHCPCD,
+                     props_.disable_legacy_dhcpcd);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetString(kStorageId, kStorageCheckPortalList,
                        props_.check_portal_list);
