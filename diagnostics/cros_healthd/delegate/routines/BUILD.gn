@@ -6,8 +6,10 @@ source_set("routines") {
   sources = [
     "floating_point_accuracy.cc",
     "prime_number_search_delegate_impl.cc",
+    "urandom_delegate.cc",
   ]
   pkg_deps = [ "libchrome" ]
+  deps = [ "//diagnostics/base" ]
 }
 
 if (use.test) {
@@ -15,10 +17,13 @@ if (use.test) {
     sources = [
       "floating_point_accuracy_test.cc",
       "prime_number_search_delegate_impl_test.cc",
+      "urandom_delegate_test.cc",
     ]
     deps = [
       ":routines",
       "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/base:test_support",
     ]
+    pkg_deps = [ "libchrome" ]
   }
 }

@@ -41,3 +41,4 @@ close: 1
 openat: 1
 pread64: 1
 futex: 1
+munmap: 1

@@ -59,6 +59,7 @@
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
+#include "diagnostics/cros_healthd/delegate/routines/urandom_delegate.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_util.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_util_factory.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
@@ -723,18 +724,15 @@ void DelegateImpl::GetSmartBatteryTemperature(
 
 void DelegateImpl::RunUrandom(base::TimeDelta exec_duration,
                               RunUrandomCallback callback) {
-  base::File urandom_file(base::FilePath(path::kUrandomPath),
-                          base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!urandom_file.IsValid()) {
+  std::unique_ptr<UrandomDelegate> urandom_delegate = UrandomDelegate::Create();
+  if (!urandom_delegate) {
     std::move(callback).Run(false);
     return;
   }
 
-  constexpr int kNumBytesRead = 1024 * 1024;
-  char urandom_data[kNumBytesRead];
   base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
   while (base::TimeTicks::Now() < end_time) {
-    if (kNumBytesRead != urandom_file.Read(0, urandom_data, kNumBytesRead)) {
+    if (!urandom_delegate->Run()) {
       std::move(callback).Run(false);
       return;
     }
