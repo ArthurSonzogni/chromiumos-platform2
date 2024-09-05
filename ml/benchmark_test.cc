@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/benchmark.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -14,7 +16,6 @@
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 
-#include "ml/benchmark.h"
 #include "ml/benchmark.pb.h"
 #include "ml/mojom/model.mojom.h"
 #include "proto/benchmark_config.pb.h"
@@ -103,9 +104,7 @@ class MlBenchmarkTest : public ::testing::Test {
     CHECK(TextFormat::ParseFromString(kModelProtoText, &model_proto));
     base::ReadFileToString(base::FilePath(kSmartDim20181115ModelFile),
                            model_proto.mutable_model_string());
-    const std::string model_content = model_proto.SerializeAsString();
-    base::WriteFile(tflite_model_filepath, model_content.data(),
-                    model_content.size());
+    base::WriteFile(tflite_model_filepath, model_proto.SerializeAsString());
 
     // Set ExpectedInputOutput.
     SetExpectedValue(0.75f);
@@ -122,9 +121,7 @@ class MlBenchmarkTest : public ::testing::Test {
             ->mutable_feature())["z"]
           .mutable_float_list()
           ->mutable_value())[0] = val;
-    const std::string input_content = input_output.SerializeAsString();
-    base::WriteFile(input_output_filepath_, input_content.data(),
-                    input_content.size());
+    base::WriteFile(input_output_filepath_, input_output.SerializeAsString());
   }
 
  protected:
