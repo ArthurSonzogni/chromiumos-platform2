@@ -23,7 +23,7 @@
 #include <libec/mock_ec_command_factory.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
+#include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
 #include "diagnostics/cros_healthd/delegate/utils/mock_display_util_factory.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -324,7 +324,7 @@ class FakeMotionSenseCommandLidAngle : public ec::MotionSenseCommandLidAngle {
   uint16_t fake_lid_angle_ = 0;
 };
 
-class MockPrimeNumberSearchDelegate : public PrimeNumberSearchDelegate {
+class MockCpuRoutineTaskDelegate : public CpuRoutineTaskDelegate {
  public:
   MOCK_METHOD(bool, Run, (), (override));
 };
@@ -343,9 +343,19 @@ class MockDelegateImpl : public DelegateImpl {
               (int fd, enum ec_mkbp_event event_type),
               (override));
 
-  MOCK_METHOD(std::unique_ptr<PrimeNumberSearchDelegate>,
+  MOCK_METHOD(std::unique_ptr<CpuRoutineTaskDelegate>,
               CreatePrimeNumberSearchDelegate,
               (uint64_t max_num),
+              (override));
+
+  MOCK_METHOD(std::unique_ptr<CpuRoutineTaskDelegate>,
+              CreateFloatingPointDelegate,
+              (),
+              (override));
+
+  MOCK_METHOD(std::unique_ptr<CpuRoutineTaskDelegate>,
+              CreateUrandomDelegate,
+              (),
               (override));
 };
 
@@ -420,6 +430,18 @@ class DelegateImplTest : public BaseFileTest {
   bool RunPrimeSearchSync(base::TimeDelta exec_duration, uint64_t max_num) {
     base::test::TestFuture<bool> future;
     delegate_.RunPrimeSearch(exec_duration, max_num, future.GetCallback());
+    return future.Get();
+  }
+
+  bool RunFloatingPointSync(base::TimeDelta exec_duration) {
+    base::test::TestFuture<bool> future;
+    delegate_.RunFloatingPoint(exec_duration, future.GetCallback());
+    return future.Get();
+  }
+
+  bool RunUrandomSync(base::TimeDelta exec_duration) {
+    base::test::TestFuture<bool> future;
+    delegate_.RunUrandom(exec_duration, future.GetCallback());
     return future.Get();
   }
 
@@ -1049,7 +1071,7 @@ TEST_F(DelegateImplTest, GetLidAngleUnreliableResult) {
 TEST_F(DelegateImplTest, RunPrimeSearchPassed) {
   base::TimeDelta exec_duration = base::Milliseconds(500);
 
-  auto prime_number_search = std::make_unique<MockPrimeNumberSearchDelegate>();
+  auto prime_number_search = std::make_unique<MockCpuRoutineTaskDelegate>();
   EXPECT_CALL(*prime_number_search, Run())
       .WillOnce(DoAll([this, exec_duration]() { FastForwardBy(exec_duration); },
                       Return(true)));
@@ -1060,16 +1082,56 @@ TEST_F(DelegateImplTest, RunPrimeSearchPassed) {
 }
 
 TEST_F(DelegateImplTest, RunPrimeSearchFailed) {
-  base::TimeDelta exec_duration = base::Milliseconds(500);
-
-  auto prime_number_search = std::make_unique<MockPrimeNumberSearchDelegate>();
-  EXPECT_CALL(*prime_number_search, Run())
-      .WillOnce(DoAll([this, exec_duration]() { FastForwardBy(exec_duration); },
-                      Return(false)));
+  auto prime_number_search = std::make_unique<MockCpuRoutineTaskDelegate>();
+  EXPECT_CALL(*prime_number_search, Run()).WillOnce(Return(false));
   EXPECT_CALL(delegate_, CreatePrimeNumberSearchDelegate(_))
       .WillOnce(Return(std::move(prime_number_search)));
 
-  EXPECT_FALSE(RunPrimeSearchSync(exec_duration, 100));
+  EXPECT_FALSE(RunPrimeSearchSync(base::Milliseconds(500), 100));
+}
+
+TEST_F(DelegateImplTest, RunFloatingPointPassed) {
+  base::TimeDelta exec_duration = base::Milliseconds(500);
+
+  auto floating_point = std::make_unique<MockCpuRoutineTaskDelegate>();
+  EXPECT_CALL(*floating_point, Run())
+      .WillOnce(DoAll([this, exec_duration]() { FastForwardBy(exec_duration); },
+                      Return(true)));
+  EXPECT_CALL(delegate_, CreateFloatingPointDelegate())
+      .WillOnce(Return(std::move(floating_point)));
+
+  EXPECT_TRUE(RunFloatingPointSync(exec_duration));
+}
+
+TEST_F(DelegateImplTest, RunFloatingPointFailed) {
+  auto floating_point = std::make_unique<MockCpuRoutineTaskDelegate>();
+  EXPECT_CALL(*floating_point, Run()).WillOnce(Return(false));
+  EXPECT_CALL(delegate_, CreateFloatingPointDelegate())
+      .WillOnce(Return(std::move(floating_point)));
+
+  EXPECT_FALSE(RunFloatingPointSync(base::Milliseconds(500)));
+}
+
+TEST_F(DelegateImplTest, RunUrandomPassed) {
+  base::TimeDelta exec_duration = base::Milliseconds(500);
+
+  auto urandom = std::make_unique<MockCpuRoutineTaskDelegate>();
+  EXPECT_CALL(*urandom, Run())
+      .WillOnce(DoAll([this, exec_duration]() { FastForwardBy(exec_duration); },
+                      Return(true)));
+  EXPECT_CALL(delegate_, CreateUrandomDelegate())
+      .WillOnce(Return(std::move(urandom)));
+
+  EXPECT_TRUE(RunUrandomSync(exec_duration));
+}
+
+TEST_F(DelegateImplTest, RunUrandomFailed) {
+  auto urandom = std::make_unique<MockCpuRoutineTaskDelegate>();
+  EXPECT_CALL(*urandom, Run()).WillOnce(Return(false));
+  EXPECT_CALL(delegate_, CreateUrandomDelegate())
+      .WillOnce(Return(std::move(urandom)));
+
+  EXPECT_FALSE(RunUrandomSync(base::Milliseconds(500)));
 }
 
 }  // namespace

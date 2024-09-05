@@ -4,14 +4,16 @@
 
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 #include <base/logging.h>
 
 namespace diagnostics {
 
 PrimeNumberSearchDelegateImpl::PrimeNumberSearchDelegateImpl(uint64_t max_num)
-    : max_num_(max_num) {
+    : max_num_(std::clamp(max_num, static_cast<uint64_t>(2), kMaxPrimeNumber)) {
   // Create a Sieve of Eratosthenes. This creates a bitfield of prime numbers
   // from 0 - |max_number|.
   // https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes

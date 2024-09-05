@@ -26,7 +26,7 @@ class MkbpEvent;
 
 namespace diagnostics {
 class DisplayUtilFactory;
-class PrimeNumberSearchDelegate;
+class CpuRoutineTaskDelegate;
 
 class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
  public:
@@ -107,8 +107,14 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       int fd, enum ec_mkbp_event event_type);
 
   // Mark as virtual to be overridden in tests.
-  virtual std::unique_ptr<PrimeNumberSearchDelegate>
+  virtual std::unique_ptr<CpuRoutineTaskDelegate>
   CreatePrimeNumberSearchDelegate(uint64_t max_num);
+
+  // Mark as virtual to be overridden in tests.
+  virtual std::unique_ptr<CpuRoutineTaskDelegate> CreateFloatingPointDelegate();
+
+  // Mark as virtual to be overridden in tests.
+  virtual std::unique_ptr<CpuRoutineTaskDelegate> CreateUrandomDelegate();
 
  private:
   ec::EcCommandFactoryInterface* const ec_command_factory_;

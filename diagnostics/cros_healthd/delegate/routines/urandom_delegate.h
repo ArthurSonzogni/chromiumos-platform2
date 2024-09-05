@@ -9,9 +9,11 @@
 
 #include <base/files/file.h>
 
+#include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
+
 namespace diagnostics {
 
-class UrandomDelegate {
+class UrandomDelegate : public CpuRoutineTaskDelegate {
  public:
   // Number of bytes to read from urandom.
   static constexpr int kNumBytesRead = 1024 * 1024;
@@ -26,7 +28,7 @@ class UrandomDelegate {
 
   // Executes urandom task. Returns true if task is completed without any error,
   // false otherwise.
-  bool Run();
+  bool Run() override;
 
  protected:
   // Used only by the factory function.

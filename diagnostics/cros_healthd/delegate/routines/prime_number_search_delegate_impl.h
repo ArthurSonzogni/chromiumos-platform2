@@ -8,11 +8,11 @@
 #include <bitset>
 #include <cstdint>
 
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
+#include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
 
 namespace diagnostics {
 
-class PrimeNumberSearchDelegateImpl : public PrimeNumberSearchDelegate {
+class PrimeNumberSearchDelegateImpl : public CpuRoutineTaskDelegate {
  public:
   explicit PrimeNumberSearchDelegateImpl(uint64_t max_num);
   PrimeNumberSearchDelegateImpl(const PrimeNumberSearchDelegateImpl&) = delete;
@@ -22,7 +22,7 @@ class PrimeNumberSearchDelegateImpl : public PrimeNumberSearchDelegate {
 
   virtual bool IsPrime(uint64_t num) const;
 
-  // PrimeNumberSearchDelegate overrides.
+  // CpuRoutineTaskDelegate overrides.
   bool Run() override;
 
   // Largest number that routine will calculate prime numbers up to.

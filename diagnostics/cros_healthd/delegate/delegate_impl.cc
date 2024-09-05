@@ -56,8 +56,8 @@
 #include "diagnostics/cros_healthd/delegate/fetchers/psr_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/thermal_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
-#include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate.h"
 #include "diagnostics/cros_healthd/delegate/routines/prime_number_search_delegate_impl.h"
 #include "diagnostics/cros_healthd/delegate/routines/urandom_delegate.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_util.h"
@@ -204,6 +204,21 @@ void MonitorEvdevEvents(std::unique_ptr<EvdevMonitor::Delegate> delegate,
   // terminates.
   EvdevMonitor* evdev_monitor = new EvdevMonitor(std::move(delegate));
   evdev_monitor->StartMonitoring(allow_multiple_devices);
+}
+
+bool RunCpuTaskRoutine(std::unique_ptr<CpuRoutineTaskDelegate> task_delegate,
+                       base::TimeDelta exec_duration) {
+  if (!task_delegate) {
+    return false;
+  }
+
+  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
+  while (base::TimeTicks::Now() < end_time) {
+    if (!task_delegate->Run()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void GetConnectedExternalDisplayConnectorsHelper(
@@ -546,22 +561,8 @@ void DelegateImpl::MonitorPowerButton(
 void DelegateImpl::RunPrimeSearch(base::TimeDelta exec_duration,
                                   uint64_t max_num,
                                   RunPrimeSearchCallback callback) {
-  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
-  max_num = std::clamp(max_num, static_cast<uint64_t>(2),
-                       PrimeNumberSearchDelegateImpl::kMaxPrimeNumber);
-
-  std::unique_ptr<PrimeNumberSearchDelegate> prime_number_search =
-      CreatePrimeNumberSearchDelegate(max_num);
-  CHECK(prime_number_search);
-
-  while (base::TimeTicks::Now() < end_time) {
-    if (!prime_number_search->Run()) {
-      std::move(callback).Run(false);
-      return;
-    }
-  }
-
-  std::move(callback).Run(true);
+  std::move(callback).Run(RunCpuTaskRoutine(
+      CreatePrimeNumberSearchDelegate(max_num), exec_duration));
 }
 
 void DelegateImpl::MonitorVolumeButton(
@@ -573,18 +574,8 @@ void DelegateImpl::MonitorVolumeButton(
 
 void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
                                     RunFloatingPointCallback callback) {
-  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
-
-  auto floating_point_accuracy =
-      std::make_unique<diagnostics::FloatingPointAccuracyDelegate>();
-
-  while (base::TimeTicks::Now() < end_time) {
-    if (!floating_point_accuracy->Run()) {
-      std::move(callback).Run(false);
-      return;
-    }
-  }
-  std::move(callback).Run(true);
+  std::move(callback).Run(
+      RunCpuTaskRoutine(CreateFloatingPointDelegate(), exec_duration));
 }
 
 void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
@@ -724,21 +715,8 @@ void DelegateImpl::GetSmartBatteryTemperature(
 
 void DelegateImpl::RunUrandom(base::TimeDelta exec_duration,
                               RunUrandomCallback callback) {
-  std::unique_ptr<UrandomDelegate> urandom_delegate = UrandomDelegate::Create();
-  if (!urandom_delegate) {
-    std::move(callback).Run(false);
-    return;
-  }
-
-  base::TimeTicks end_time = base::TimeTicks::Now() + exec_duration;
-  while (base::TimeTicks::Now() < end_time) {
-    if (!urandom_delegate->Run()) {
-      std::move(callback).Run(false);
-      return;
-    }
-  }
-
-  std::move(callback).Run(true);
+  std::move(callback).Run(
+      RunCpuTaskRoutine(CreateUrandomDelegate(), exec_duration));
 }
 
 void DelegateImpl::RunNetworkBandwidthTest(
@@ -765,9 +743,18 @@ std::unique_ptr<ec::MkbpEvent> DelegateImpl::CreateMkbpEvent(
   return std::make_unique<ec::MkbpEvent>(fd, event_type);
 }
 
-std::unique_ptr<PrimeNumberSearchDelegate>
+std::unique_ptr<CpuRoutineTaskDelegate>
 DelegateImpl::CreatePrimeNumberSearchDelegate(uint64_t max_num) {
   return std::make_unique<PrimeNumberSearchDelegateImpl>(max_num);
+}
+
+std::unique_ptr<CpuRoutineTaskDelegate>
+DelegateImpl::CreateFloatingPointDelegate() {
+  return std::make_unique<FloatingPointAccuracyDelegate>();
+}
+
+std::unique_ptr<CpuRoutineTaskDelegate> DelegateImpl::CreateUrandomDelegate() {
+  return UrandomDelegate::Create();
 }
 
 }  // namespace diagnostics
