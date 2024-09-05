@@ -146,9 +146,9 @@ TEST_F(RotatorTest, RotateTimestampedNamedSequence) {
     if (i > 0) {
       file_path = file_path.AddExtension(base::NumberToString(i));
     }
-    int size = base::WriteFile(file_path, file_path.value().c_str(),
-                               file_path.value().size());
-    VLOG(1) << "Wrote " << size << " bytes to " << file_path;
+    ASSERT_TRUE(base::WriteFile(file_path, file_path.value()));
+    VLOG(1) << "Wrote " << file_path.value().size() << " bytes to "
+            << file_path;
   }
 
   Rotator rotator;
