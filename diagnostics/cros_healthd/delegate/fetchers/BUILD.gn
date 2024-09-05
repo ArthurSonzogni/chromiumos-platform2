@@ -38,6 +38,7 @@ if (use.test) {
   source_set("test") {
     sources = [
       "boot_performance_test.cc",
+      "display_fetcher_test.cc",
       "graphics_fetcher_test.cc",
       "psr_fetcher_test.cc",
       "touchpad_fetcher_test.cc",
@@ -51,6 +52,7 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test_support",
+      "//diagnostics/cros_healthd/delegate/utils:test_support",
       "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }
