@@ -44,7 +44,7 @@ class HeartbeatTask : public Task {
   void Configure();
   void DoHealthCheck();
 
-  void OnModemStateChanged(Modem* modem);
+  void OnModemStateChanged();
 
   Modem* modem_;
   Metrics* metrics_;

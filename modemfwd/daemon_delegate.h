@@ -37,9 +37,9 @@ class Delegate {
       const std::string& equipment_id, base::OnceClosure callback) = 0;
 
   virtual void RegisterOnModemStateChangedCallback(
-      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) = 0;
+      const std::string& device_id, base::RepeatingClosure callback) = 0;
   virtual void RegisterOnModemPowerStateChangedCallback(
-      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) = 0;
+      const std::string& device_id, base::RepeatingClosure callback) = 0;
 };
 
 }  // namespace modemfwd

@@ -40,11 +40,11 @@ class MockDelegate : public Delegate {
               (override));
   MOCK_METHOD(void,
               RegisterOnModemStateChangedCallback,
-              (Modem*, base::RepeatingCallback<void(Modem*)>),
+              (const std::string&, base::RepeatingClosure),
               (override));
   MOCK_METHOD(void,
               RegisterOnModemPowerStateChangedCallback,
-              (Modem*, base::RepeatingCallback<void(Modem*)>),
+              (const std::string&, base::RepeatingClosure),
               (override));
 };
 

@@ -87,9 +87,9 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   void RegisterOnModemReappearanceCallback(const std::string& equipment_id,
                                            base::OnceClosure callback) override;
   void RegisterOnModemStateChangedCallback(
-      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) override;
+      const std::string& device_id, base::RepeatingClosure callback) override;
   void RegisterOnModemPowerStateChangedCallback(
-      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) override;
+      const std::string& device_id, base::RepeatingClosure callback) override;
 
  protected:
   // brillo::Daemon overrides.
@@ -182,12 +182,13 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   std::map<std::string, std::vector<base::OnceClosure>>
       start_flashing_callbacks_;
   std::map<std::string, base::OnceClosure> modem_reappear_callbacks_;
-  std::set<std::string> device_ids_seen_;
 
-  std::map<Modem*, std::vector<base::RepeatingCallback<void(Modem*)>>>
+  std::map<std::string, std::vector<base::RepeatingClosure>>
       state_change_callbacks_;
-  std::map<Modem*, std::vector<base::RepeatingCallback<void(Modem*)>>>
+  std::map<std::string, std::vector<base::RepeatingClosure>>
       power_state_change_callbacks_;
+
+  std::set<std::string> device_ids_seen_;
 
   std::unique_ptr<DBusAdaptor> dbus_adaptor_;
 

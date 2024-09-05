@@ -179,7 +179,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatStopOnLowPowerStateUpdate) {
   EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
   EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(true));
 
-  base::RepeatingCallback<void(Modem*)> power_state_cb;
+  base::RepeatingClosure power_state_cb;
   EXPECT_CALL(delegate_, RegisterOnModemPowerStateChangedCallback(_, _))
       .WillOnce(SaveArg<1>(&power_state_cb));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
@@ -193,7 +193,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatStopOnLowPowerStateUpdate) {
   EXPECT_CALL(modem_, CheckHealth()).Times(0);
   EXPECT_CALL(modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::LOW));
-  power_state_cb.Run(&modem_);
+  power_state_cb.Run();
   RunFor((kChecks + 0.5) * kInterval);
 
   EXPECT_CALL(modem_, CheckHealth())
@@ -201,7 +201,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatStopOnLowPowerStateUpdate) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(modem_, GetPowerState())
       .WillRepeatedly(Return(Modem::PowerState::ON));
-  power_state_cb.Run(&modem_);
+  power_state_cb.Run();
   RunFor((kChecks + 0.5) * kInterval);
 }
 
@@ -215,7 +215,7 @@ TEST_F(HeartbeatTaskTest, HeartbeatIdleStateUpdate) {
   EXPECT_CALL(modem_, SupportsHealthCheck()).WillRepeatedly(Return(true));
   EXPECT_CALL(modem_, CheckHealth()).WillRepeatedly(Return(true));
 
-  base::RepeatingCallback<void(Modem*)> state_cb;
+  base::RepeatingClosure state_cb;
   EXPECT_CALL(delegate_, RegisterOnModemStateChangedCallback(_, _))
       .WillOnce(SaveArg<1>(&state_cb));
   EXPECT_CALL(delegate_, ResetModem(kModemDeviceId)).Times(0);
@@ -228,12 +228,12 @@ TEST_F(HeartbeatTaskTest, HeartbeatIdleStateUpdate) {
 
   EXPECT_CALL(modem_, GetState())
       .WillRepeatedly(Return(Modem::State::REGISTERED));
-  state_cb.Run(&modem_);
+  state_cb.Run();
   RunFor((kChecks + 0.5) * kIntervalModemIdle);
 
   EXPECT_CALL(modem_, GetState())
       .WillRepeatedly(Return(Modem::State::CONNECTED));
-  state_cb.Run(&modem_);
+  state_cb.Run();
   RunFor((kChecks + 0.5) * kInterval);
 }
 

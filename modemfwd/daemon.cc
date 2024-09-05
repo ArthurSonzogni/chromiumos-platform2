@@ -5,6 +5,7 @@
 #include "modemfwd/daemon.h"
 
 #include <signal.h>
+#include <sys/wait.h>
 #include <sysexits.h>
 
 #include <cstdint>
@@ -26,9 +27,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
-#include <cros_config/cros_config.h>
 #include <chromeos/dbus/service_constants.h>
-#include <sys/wait.h>
+#include <cros_config/cros_config.h>
 
 #include "modemfwd/dlc_manager.h"
 #include "modemfwd/error.h"
@@ -373,17 +373,16 @@ void Daemon::RunModemReappearanceCallback(const std::string& equipment_id) {
 }
 
 void Daemon::RegisterOnModemStateChangedCallback(
-    Modem* modem, base::RepeatingCallback<void(Modem*)> callback) {
-  state_change_callbacks_[modem].push_back(std::move(callback));
+    const std::string& device_id, base::RepeatingClosure callback) {
+  state_change_callbacks_[device_id].push_back(std::move(callback));
 }
 
 void Daemon::RegisterOnModemPowerStateChangedCallback(
-    Modem* modem, base::RepeatingCallback<void(Modem*)> callback) {
-  power_state_change_callbacks_[modem].push_back(std::move(callback));
+    const std::string& device_id, base::RepeatingClosure callback) {
+  power_state_change_callbacks_[device_id].push_back(std::move(callback));
 }
 
-void Daemon::OnModemStateChange(const std::string device_id,
-                                Modem::State new_state) {
+void Daemon::OnModemStateChange(std::string device_id, Modem::State new_state) {
   if (modems_.count(device_id) == 0) {
     return;
   }
@@ -395,12 +394,12 @@ void Daemon::OnModemStateChange(const std::string device_id,
   if (!modems_[device_id]->UpdateState(new_state)) {
     return;
   }
-  for (const auto& cb : state_change_callbacks_[modems_[device_id].get()]) {
-    cb.Run(modems_[device_id].get());
+  for (const auto& cb : state_change_callbacks_[device_id]) {
+    cb.Run();
   }
 }
 
-void Daemon::OnModemPowerStateChange(const std::string device_id,
+void Daemon::OnModemPowerStateChange(std::string device_id,
                                      Modem::PowerState new_power_state) {
   if (modems_.count(device_id) == 0) {
     return;
@@ -410,9 +409,8 @@ void Daemon::OnModemPowerStateChange(const std::string device_id,
   if (!modems_[device_id]->UpdatePowerState(new_power_state)) {
     return;
   }
-  for (const auto& cb :
-       power_state_change_callbacks_[modems_[device_id].get()]) {
-    cb.Run(modems_[device_id].get());
+  for (const auto& cb : power_state_change_callbacks_[device_id]) {
+    cb.Run();
   }
 }
 
@@ -443,13 +441,8 @@ void Daemon::OnModemCarrierIdReady(
   std::string device_id = modem->GetDeviceId();
   std::string equipment_id = modem->GetEquipmentId();
 
-  auto is_stale_modem = [&device_id, &equipment_id](const auto& item) {
-    Modem* modem = item.first;
-    return modem->GetDeviceId() == device_id ||
-           modem->GetEquipmentId() == equipment_id;
-  };
-  std::erase_if(state_change_callbacks_, is_stale_modem);
-  std::erase_if(power_state_change_callbacks_, is_stale_modem);
+  state_change_callbacks_.erase(device_id);
+  power_state_change_callbacks_.erase(device_id);
 
   auto heartbeat_task = HeartbeatTask::Create(
       this, modem.get(), helper_directory_.get(), metrics_.get());

@@ -52,11 +52,13 @@ void HeartbeatTask::Start() {
       modem_->GetEquipmentId(),
       BindOnce(&HeartbeatTask::Stop, weak_ptr_factory_.GetWeakPtr()));
   delegate()->RegisterOnModemStateChangedCallback(
-      modem_, base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
-                                  weak_ptr_factory_.GetWeakPtr()));
+      modem_->GetDeviceId(),
+      base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
   delegate()->RegisterOnModemPowerStateChangedCallback(
-      modem_, base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
-                                  weak_ptr_factory_.GetWeakPtr()));
+      modem_->GetDeviceId(),
+      base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
   // TODO(b/341753271): restart the task when there is a request to exit power
   // LOW state, even if it does not complete. In that case, there is no power
   // state change on the modem object. Current power state would still be LOW
@@ -141,7 +143,7 @@ void HeartbeatTask::DoHealthCheck() {
   Finish();
 }
 
-void HeartbeatTask::OnModemStateChanged(Modem* modem) {
+void HeartbeatTask::OnModemStateChanged() {
   Stop();
   Configure();
 }
