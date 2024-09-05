@@ -545,17 +545,15 @@ void Network::OnDHCPDrop(bool is_voluntary) {
   }
 
   if (is_voluntary) {
-    if (state_ == State::kConfiguring) {
-      // DHCPv4 reports to prefer v6 only. Continue to wait for SLAAC.
-      return;
-    } else {
-      LOG(ERROR) << *this
+    // DHCPv4 reports to prefer v6 only. Continue to wait for SLAAC. Note that
+    // if SLAAC is not available (usually a network configuration error) the
+    // Network could stay in Connecting state forever.
+    LOG(WARNING) << *this
                  << ": DHCP option 108 received but no valid IPv6 network is "
-                    "usable. Likely a network configuration error.";
-    }
+                    "usable yet. Continue to wait for SLAAC.";
+  } else {
+    StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);
   }
-
-  StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);
 }
 
 bool Network::RenewDHCPLease() {
