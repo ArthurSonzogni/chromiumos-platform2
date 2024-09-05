@@ -108,7 +108,7 @@ void KerberosArtifactSynchronizer::OnKerberosFilesChangedSignalConnected(
 
 bool KerberosArtifactSynchronizer::WriteFile(const base::FilePath& path,
                                              const std::string& blob) {
-  if (base::WriteFile(path, blob.c_str(), blob.size()) != blob.size()) {
+  if (!base::WriteFile(path, blob)) {
     LOG(ERROR) << "Failed to write file " << path.value();
     return false;
   }

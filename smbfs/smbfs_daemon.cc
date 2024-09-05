@@ -17,8 +17,8 @@
 #include <base/no_destructor.h>
 #include <base/notreached.h>
 #include <base/task/single_thread_task_runner.h>
-#include <brillo/message_loops/message_loop.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -158,8 +158,8 @@ bool SmbFsDaemon::SetupSmbConf() {
   // TODO(amistry): Replace with smbc_setOptionProtocols() when Samba is
   // updated.
   return base::WriteFile(
-             temp_dir_.GetPath().Append(kSmbConfDir).Append(kSmbConfFile),
-             kSmbConfData, sizeof(kSmbConfData)) == sizeof(kSmbConfData);
+      temp_dir_.GetPath().Append(kSmbConfDir).Append(kSmbConfFile),
+      std::string_view(kSmbConfData, sizeof(kSmbConfData)));
 }
 
 bool SmbFsDaemon::InitMojo() {
