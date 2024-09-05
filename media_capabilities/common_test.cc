@@ -16,7 +16,7 @@
 namespace {
 bool CreateSampleFile(const base::FilePath& path) {
   const char* text = "abcdefg";
-  return base::WriteFile(path, text, sizeof(text)) == sizeof(text);
+  return base::WriteFile(path, text);
 }
 }  // namespace
 
