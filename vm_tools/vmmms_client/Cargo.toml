@@ -12,3 +12,5 @@ system_api = { path = "../../system_api" } # provided by ebuild
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 anyhow = "1.0.69"
 nix = { version = "0.28.0", features = ["poll"] }
+once_cell = "1.7"
+libc = "0.2"

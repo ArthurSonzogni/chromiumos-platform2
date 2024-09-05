@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 mod client;
+mod mglru;
 mod vmmms_socket;
 
 use anyhow::Result;

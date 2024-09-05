@@ -4,6 +4,7 @@
 
 use anyhow::bail;
 use anyhow::Result;
+use once_cell::sync::Lazy;
 use std::fs::File;
 use std::io::Read;
 use std::io::Seek;
@@ -12,7 +13,17 @@ use system_api::vm_memory_management::ConnectionType;
 use system_api::vm_memory_management::PacketType;
 use system_api::vm_memory_management::VmMemoryManagementPacket;
 
+use crate::mglru::parse_mglru_stats;
 use crate::vmmms_socket::VmmmsSocket;
+
+static PAGE_SIZE: Lazy<usize> = Lazy::new(|| {
+    // SAFETY: sysconf is memory safe.
+    unsafe { libc::sysconf(libc::_SC_PAGE_SIZE) as usize }
+});
+
+pub fn get_page_size() -> usize {
+    *PAGE_SIZE
+}
 
 pub struct VmmmsClient {
     pub vmmms_socket: VmmmsSocket,
@@ -42,15 +53,15 @@ impl VmmmsClient {
     }
 
     pub fn generate_mglru_stats_packet(self: &mut Self) -> Result<VmMemoryManagementPacket> {
-        // Reads the MGLRU file to clear POLLPRI signal
-        let file_size = self.mglru_file.metadata()?.len();
-        let mut mglru_file_buffer = vec![0_u8; file_size as usize];
+        let mut mglru_file_buffer = Vec::new();
         self.mglru_file.seek(Start(0))?;
-        self.mglru_file.read(&mut mglru_file_buffer)?;
+        self.mglru_file.read_to_end(&mut mglru_file_buffer)?;
+        let raw_stats = String::from_utf8(mglru_file_buffer)?;
 
         let mut mglru_packet = VmMemoryManagementPacket::new();
         mglru_packet.type_ = PacketType::PACKET_TYPE_MGLRU_RESPONSE.into();
-        mglru_packet.mut_mglru_response().stats = Default::default();
+        mglru_packet.mut_mglru_response().stats =
+            Some(parse_mglru_stats(&raw_stats, get_page_size())?).into();
 
         Ok(mglru_packet)
     }
