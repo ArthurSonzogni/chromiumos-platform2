@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
+#include "timberslide/timberslide.h"
+
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sysexits.h>
+
+#include <algorithm>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#include <sysexits.h>
-#include <sys/types.h>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -22,8 +24,8 @@
 #include <brillo/daemons/daemon.h>
 #include <libec/ec_command.h>
 #include <libec/get_features_command.h>
+
 #include "timberslide/log_listener_factory.h"
-#include "timberslide/timberslide.h"
 
 namespace timberslide {
 namespace {
@@ -246,7 +248,7 @@ void TimberSlide::RotateLogs(const base::FilePath& previous_log,
   if (base::PathExists(current_log))
     CHECK(base::Move(current_log, previous_log));
 
-  base::WriteFile(current_log, "", 0);
+  base::WriteFile(current_log, "");
 }
 
 }  // namespace timberslide
