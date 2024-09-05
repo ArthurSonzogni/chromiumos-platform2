@@ -28,13 +28,14 @@ execve: 1
 exit: 1
 exit_group: 1
 fcntl64: 1
+fstat: 1
 fstat64: 1
 fstatat64: 1
-fstat: 1
 fstatfs: 1
 fstatfs64: 1
 futex: 1
 futex_time64: 1
+getcwd: 1
 getdents64: 1
 getegid32: 1
 geteuid32: 1
@@ -61,6 +62,7 @@ pipe2: 1
 poll: 1
 prctl: arg0 == PR_SET_NAME
 pread64: 1
+process_vm_readv: 1
 read: 1
 readlink: 1
 recvmsg: 1

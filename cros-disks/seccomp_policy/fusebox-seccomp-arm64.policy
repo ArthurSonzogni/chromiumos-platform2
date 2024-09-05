@@ -27,6 +27,7 @@ fcntl: 1
 fstat: 1
 fstatfs: 1
 futex: 1
+getcwd: 1
 getdents64: 1
 getegid: 1
 geteuid: 1
@@ -52,9 +53,10 @@ newfstatat: 1
 openat: 1
 pipe2: 1
 ppoll: 1
-pread64: 1
 prctl: arg0 == PR_SET_NAME
+pread64: 1
 prlimit64: 1
+process_vm_readv: 1
 read: 1
 readlinkat: 1
 recvmsg: 1
@@ -80,4 +82,3 @@ uname: 1
 wait4: 1
 write: 1
 writev: 1
-process_vm_readv: 1
