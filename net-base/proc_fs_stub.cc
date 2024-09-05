@@ -39,9 +39,7 @@ bool ProcFsStub::SetIPFlag(IPFamily family,
     // interface is already removed. Returning silently without an ERROR log.
     return false;
   }
-  if (base::WriteFile(flag_file, value.c_str(),
-                      static_cast<int>(value.length())) !=
-      static_cast<int>(value.length())) {
+  if (!base::WriteFile(flag_file, value)) {
     LOG(ERROR) << "IP flag write failed: " << value << " to "
                << flag_file.value();
     return false;
