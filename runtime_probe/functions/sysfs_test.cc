@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/sysfs.h"
+
 #include <cstring>
 
 #include <base/check.h>
-#include <base/json/json_reader.h>
-#include <base/values.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_reader.h>
+#include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/functions/sysfs.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
@@ -29,16 +30,16 @@ TEST(SysfsFunctionTest, TestRead) {
 
   auto dir_a = temp_dir.GetPath().Append("Da");
   base::CreateDirectory(dir_a);
-  base::WriteFile(dir_a.Append("1"), "a1", strlen("a1"));
+  base::WriteFile(dir_a.Append("1"), "a1");
 
   auto dir_b = temp_dir.GetPath().Append("Db");
   base::CreateDirectory(dir_b);
-  base::WriteFile(dir_b.Append("1"), "b1", strlen("b1"));
-  base::WriteFile(dir_b.Append("2"), "b2", strlen("b2"));
+  base::WriteFile(dir_b.Append("1"), "b1");
+  base::WriteFile(dir_b.Append("2"), "b2");
 
   auto dir_c = temp_dir.GetPath().Append("Dc");
   base::CreateDirectory(dir_c);
-  base::WriteFile(dir_c.Append("2"), "c2", strlen("c2"));
+  base::WriteFile(dir_c.Append("2"), "c2");
 
   auto json_val = base::JSONReader::Read(R"({
       "keys": ["1"],
