@@ -11,6 +11,7 @@
 
 #include "odml/coral/common.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/mojom/embedding_model.mojom.h"
 
 namespace coral {
 
@@ -34,12 +35,18 @@ class EmbeddingEngineInterface {
 
 class EmbeddingEngine : public EmbeddingEngineInterface {
  public:
-  EmbeddingEngine();
+  explicit EmbeddingEngine(
+      raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+          embedding_service);
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
   void Process(mojom::GroupRequestPtr request,
                EmbeddingCallback callback) override;
+
+ private:
+  const raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+      embedding_service_;
 };
 
 }  // namespace coral

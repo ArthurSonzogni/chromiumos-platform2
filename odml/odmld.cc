@@ -40,12 +40,11 @@ class OnDeviceModelServiceProviderImpl
       raw_ref<MetricsLibrary> metrics,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : metrics_(metrics),
-        receiver_(this),
+      : receiver_(this),
         service_impl_(
-            metrics_,
+            metrics,
             raw_ref(shim_loader_),
-            ml::GetOnDeviceModelInternalImpl(metrics_, raw_ref(shim_loader_))) {
+            ml::GetOnDeviceModelInternalImpl(metrics, raw_ref(shim_loader_))) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
@@ -66,8 +65,6 @@ class OnDeviceModelServiceProviderImpl
             std::move(receiver)));
   }
 
-  // The metrics lib.
-  raw_ref<MetricsLibrary> metrics_;
   // The odml_shim loader.
   odml::OdmlShimLoaderImpl shim_loader_;
   // The receiver of ServiceProvider.
@@ -88,6 +85,10 @@ class EmbeddingModelServiceProviderImpl
     service_manager->Register(
         chromeos::mojo_services::kCrosEmbeddingModelService,
         receiver_.BindNewPipeAndPassRemote());
+  }
+
+  raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService> service() {
+    return raw_ref(service_impl_);
   }
 
  private:
@@ -117,10 +118,11 @@ class CoralServiceProviderImpl
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager,
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
-          on_device_model_service)
-      : metrics_(metrics),
-        receiver_(this),
-        service_impl_(on_device_model_service) {
+          on_device_model_service,
+      raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+          embedding_model_service)
+      : receiver_(this),
+        service_impl_(on_device_model_service, embedding_model_service) {
     service_manager->Register(chromeos::mojo_services::kCrosCoralService,
                               receiver_.BindNewPipeAndPassRemote());
   }
@@ -134,12 +136,10 @@ class CoralServiceProviderImpl
         mojo::PendingReceiver<coral::mojom::CoralService>(std::move(receiver)));
   }
 
-  // The metrics lib.
-  raw_ref<MetricsLibrary> metrics_;
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
       receiver_;
-  // The implementation of on_device_model::mojom::CoralService.
+  // The implementation of coral::mojom::CoralService.
   coral::CoralService service_impl_;
 };
 
@@ -182,7 +182,8 @@ class Daemon : public brillo::Daemon {
                                                             service_manager_);
     coral_service_provider_impl_ = std::make_unique<CoralServiceProviderImpl>(
         raw_ref(metrics_), service_manager_,
-        on_device_model_service_provider_impl_->service());
+        on_device_model_service_provider_impl_->service(),
+        embedding_model_service_provider_impl_->service());
     return 0;
   }
 

@@ -4,16 +4,17 @@
 
 #include "odml/coral/service.h"
 
+#include <base/test/test_future.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
-#include "base/test/test_future.h"
-#include "base/types/expected.h"
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/embedding/engine.h"
 #include "odml/coral/test_util.h"
 #include "odml/coral/title_generation/engine.h"
-#include "odml/mojom/coral_service.mojom-forward.h"
+#include "odml/embedding_model/embedding_model_service.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/on_device_model/mock_on_device_model_service.h"
 
@@ -116,8 +117,8 @@ class CoralServiceTest : public testing::Test {
     title_generation_engine_ = title_generation_engine.get();
 
     service_ = std::make_unique<CoralService>(
-        raw_ref(model_service_), std::move(embedding_engine),
-        std::move(clustering_engine), std::move(title_generation_engine));
+        std::move(embedding_engine), std::move(clustering_engine),
+        std::move(title_generation_engine));
   }
 
  protected:
@@ -143,8 +144,6 @@ class CoralServiceTest : public testing::Test {
     EXPECT_EQ(result->get_error(), error);
   }
 
-  on_device_model::MockOnDeviceModelService model_service_;
-
   MockEmbeddingEngine* embedding_engine_;
   MockClusteringEngine* clustering_engine_;
   MockTitleGenerationEngine* title_generation_engine_;
@@ -152,6 +151,14 @@ class CoralServiceTest : public testing::Test {
  private:
   std::unique_ptr<CoralService> service_;
 };
+
+// Test that we can construct CoralService with the real constructor.
+TEST(CoralServiceConstructTest, Construct) {
+  MetricsLibraryMock metrics;
+  on_device_model::MockOnDeviceModelService model_service;
+  embedding_model::EmbeddingModelService embedding_service((raw_ref(metrics)));
+  CoralService service((raw_ref(model_service)), raw_ref(embedding_service));
+}
 
 TEST_F(CoralServiceTest, GroupSuccess) {
   auto request = GetFakeGroupRequest();

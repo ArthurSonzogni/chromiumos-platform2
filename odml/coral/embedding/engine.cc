@@ -10,6 +10,7 @@
 #include <base/types/expected.h>
 
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/mojom/embedding_model.mojom.h"
 
 namespace coral {
 
@@ -17,7 +18,10 @@ namespace {
 using mojom::CoralError;
 }
 
-EmbeddingEngine::EmbeddingEngine() = default;
+EmbeddingEngine::EmbeddingEngine(
+    raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+        embedding_service)
+    : embedding_service_(embedding_service) {}
 
 void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
                               EmbeddingCallback callback) {

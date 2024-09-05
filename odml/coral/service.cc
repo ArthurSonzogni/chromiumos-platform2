@@ -22,21 +22,19 @@ using mojom::GroupResult;
 
 CoralService::CoralService(
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
-        on_device_model_service)
+        on_device_model_service,
+    raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+        embedding_model_service)
     : CoralService(
-          on_device_model_service,
-          std::make_unique<EmbeddingEngine>(),
+          std::make_unique<EmbeddingEngine>(embedding_model_service),
           std::make_unique<ClusteringEngine>(),
           std::make_unique<TitleGenerationEngine>(on_device_model_service)) {}
 
 CoralService::CoralService(
-    raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
-        on_device_model_service,
     std::unique_ptr<EmbeddingEngineInterface> embedding_engine,
     std::unique_ptr<ClusteringEngineInterface> clustering_engine,
     std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine)
-    : on_device_model_service_(on_device_model_service),
-      embedding_engine_(std::move(embedding_engine)),
+    : embedding_engine_(std::move(embedding_engine)),
       clustering_engine_(std::move(clustering_engine)),
       title_generation_engine_(std::move(title_generation_engine)) {}
 
