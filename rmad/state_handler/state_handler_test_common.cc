@@ -19,8 +19,7 @@ constexpr char kTestEmptyJsonStore[] = "{}";
 
 scoped_refptr<JsonStore> CreateTestEmptyJsonStore(
     const base::FilePath& file_path) {
-  base::WriteFile(file_path, kTestEmptyJsonStore,
-                  std::size(kTestEmptyJsonStore) - 1);
+  base::WriteFile(file_path, kTestEmptyJsonStore);
   return base::MakeRefCounted<JsonStore>(file_path, false);
 }
 

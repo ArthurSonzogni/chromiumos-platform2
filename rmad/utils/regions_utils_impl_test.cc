@@ -43,10 +43,9 @@ class RegionsUtilsImplTest : public testing::Test {
   RegionsUtilsImplTest() {}
 
   base::FilePath CreateInputFile(const std::string& filename,
-                                 const char* str,
-                                 int size) {
+                                 std::string_view str) {
     base::FilePath file_path = temp_dir_.GetPath().AppendASCII(filename);
-    base::WriteFile(file_path, str, size);
+    base::WriteFile(file_path, str);
     return file_path;
   }
 
@@ -62,8 +61,7 @@ class RegionsUtilsImplTest : public testing::Test {
 };
 
 TEST_F(RegionsUtilsImplTest, GetRegionList_Success) {
-  auto file_path = CreateInputFile(kRegionsFileName, kCrosRegionsJson,
-                                   std::size(kCrosRegionsJson) - 1);
+  auto file_path = CreateInputFile(kRegionsFileName, kCrosRegionsJson);
   auto regions_utils = CreateRegionsUtils(file_path);
 
   std::vector<std::string> region_list;
@@ -72,8 +70,7 @@ TEST_F(RegionsUtilsImplTest, GetRegionList_Success) {
 }
 
 TEST_F(RegionsUtilsImplTest, GetRegionList_WrongFileNameFailed) {
-  auto file_path = CreateInputFile(kRegionsFileName, kCrosRegionsJson,
-                                   std::size(kCrosRegionsJson) - 1);
+  auto file_path = CreateInputFile(kRegionsFileName, kCrosRegionsJson);
   auto regions_utils = CreateRegionsUtils(
       temp_dir_.GetPath().AppendASCII(kWrongRegionsFileName));
 
@@ -85,8 +82,9 @@ TEST_F(RegionsUtilsImplTest, GetRegionList_WrongFileNameFailed) {
 }
 
 TEST_F(RegionsUtilsImplTest, GetRegionList_WrongContentFailed) {
-  auto file_path = CreateInputFile(kRegionsFileName, kCrosRegionsJson,
-                                   std::size(kCrosRegionsJson) - 100);
+  auto file_path = CreateInputFile(
+      kRegionsFileName,
+      std::string_view(kCrosRegionsJson, std::size(kCrosRegionsJson) - 100));
   auto regions_utils = CreateRegionsUtils(file_path);
 
   std::vector<std::string> region_list;

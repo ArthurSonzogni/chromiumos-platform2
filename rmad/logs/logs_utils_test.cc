@@ -190,8 +190,8 @@ class LogsUtilsTest : public testing::Test {
     file_path_ = temp_dir_.GetPath().AppendASCII(kTestJsonStoreFilename);
   }
 
-  bool CreateInputFile(const char* str, int size) {
-    if (base::WriteFile(file_path_, str, size) == size) {
+  bool CreateInputFile(const char* str) {
+    if (base::WriteFile(file_path_, str)) {
       json_store_ = base::MakeRefCounted<JsonStore>(file_path_, false);
       return true;
     }
@@ -209,7 +209,7 @@ TEST_F(LogsUtilsTest, RecordStateTransition) {
   const RmadState::StateCase state2 = RmadState::kRestock;
   const RmadState::StateCase state3 = RmadState::kRunCalibration;
 
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   EXPECT_TRUE(RecordStateTransitionToLogs(json_store_, state1, state2));
   base::Value logs(base::Value::Type::DICT);
@@ -237,7 +237,7 @@ TEST_F(LogsUtilsTest, RecordStateTransition) {
 
 // Simulates adding the repair start to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordRepairStart) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   EXPECT_TRUE(RecordRepairStartToLogs(json_store_));
   base::Value logs(base::Value::Type::DICT);
@@ -255,7 +255,7 @@ TEST_F(LogsUtilsTest, RecordRepairStart) {
 
 // Simulates adding unqualified components to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordUnqualifiedComponents) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const bool is_compliant = true;
   const std::string battery = RmadComponent_Name(RMAD_COMPONENT_BATTERY);
@@ -279,7 +279,7 @@ TEST_F(LogsUtilsTest, RecordUnqualifiedComponents) {
 
 // Simulates adding replaced components to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordSelectedComponents) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const bool rework_selected_expected_value = true;
   const std::string audio_codec =
@@ -309,7 +309,7 @@ TEST_F(LogsUtilsTest, RecordSelectedComponents) {
 
 // Simulates adding the device destination to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordDeviceDestination) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const std::string device_destination =
       ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER);
@@ -330,7 +330,7 @@ TEST_F(LogsUtilsTest, RecordDeviceDestination) {
 
 // Simulates adding the wipe device decision to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordWipeDevice) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const bool wipe_device = true;
 
@@ -349,7 +349,7 @@ TEST_F(LogsUtilsTest, RecordWipeDevice) {
 
 // Simulates adding the wp disable method to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordWpDisableMethod) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const std::string wp_disable_method =
       WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU);
@@ -370,7 +370,7 @@ TEST_F(LogsUtilsTest, RecordWpDisableMethod) {
 
 // Simulates adding the RSU challenge code to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordRsuChallengeCode) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const std::string challenge_code = "H65SFQL111PBRSB6PDIRTMFO0KHG3QZW0YSF04PW";
   const std::string hwid = "BOOK_C4B-A3F-B4U-E2U-B4E-A6T";
@@ -392,7 +392,7 @@ TEST_F(LogsUtilsTest, RecordRsuChallengeCode) {
 
 // Simulates adding the restock option to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordRestockOption) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   EXPECT_TRUE(RecordRestockOptionToLogs(json_store_, /*restock=*/false));
   base::Value logs(base::Value::Type::DICT);
@@ -408,7 +408,7 @@ TEST_F(LogsUtilsTest, RecordRestockOption) {
 
 // Simulates adding an error to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordError) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const RmadState::StateCase current_state = RmadState::kComponentsRepair;
   const RmadErrorCode error = RmadErrorCode::RMAD_ERROR_CANNOT_CANCEL_RMA;
@@ -428,7 +428,7 @@ TEST_F(LogsUtilsTest, RecordError) {
 
 // Simulates adding component calibration statuses to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordComponentCalibrationStatus) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const std::string component1 =
       RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER);
@@ -473,7 +473,7 @@ TEST_F(LogsUtilsTest, RecordComponentCalibrationStatus) {
 // Simulates adding component calibration setup instruction to an empty `logs`
 // json.
 TEST_F(LogsUtilsTest, RecordComponentCalibrationSetupInstruction) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const CalibrationSetupInstruction calibration_instruction =
       RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE;
@@ -496,7 +496,7 @@ TEST_F(LogsUtilsTest, RecordComponentCalibrationSetupInstruction) {
 
 // Simulates adding the firmware update status updates to an empty `logs` json.
 TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
-  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultJson));
 
   const FirmwareUpdateStatus status1 = FirmwareUpdateStatus::kFirmwareUpdated;
   const FirmwareUpdateStatus status2 = FirmwareUpdateStatus::kFirmwareComplete;
@@ -520,13 +520,13 @@ TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
 
 // Simulates generating a text log.
 TEST_F(LogsUtilsTest, GenerateTextLog) {
-  EXPECT_TRUE(CreateInputFile(kSampleLogsJson, std::size(kSampleLogsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kSampleLogsJson));
   EXPECT_EQ(kExpectedLogText, GenerateLogsText(json_store_));
 }
 
 // Simulates generating the logs JSON.
 TEST_F(LogsUtilsTest, GenerateLogsJson) {
-  EXPECT_TRUE(CreateInputFile(kSampleLogsJson, std::size(kSampleLogsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kSampleLogsJson));
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 

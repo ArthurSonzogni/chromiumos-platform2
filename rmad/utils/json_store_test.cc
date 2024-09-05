@@ -44,11 +44,9 @@ class JsonStoreTest : public testing::Test {
  public:
   JsonStoreTest() {}
 
-  base::FilePath CreateInputFile(std::string file_name,
-                                 const char* str,
-                                 int size) {
+  base::FilePath CreateInputFile(std::string file_name, const char* str) {
     base::FilePath file_path = temp_dir_.GetPath().AppendASCII(file_name);
-    base::WriteFile(file_path, str, size);
+    base::WriteFile(file_path, str);
     return file_path;
   }
 
@@ -59,8 +57,7 @@ class JsonStoreTest : public testing::Test {
 };
 
 TEST_F(JsonStoreTest, InitializeNormal) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   EXPECT_EQ(json_store->GetReadError(), JsonStore::READ_ERROR_NONE);
   EXPECT_TRUE(json_store->Initialized());
@@ -75,8 +72,8 @@ TEST_F(JsonStoreTest, InitializeNormal) {
 }
 
 TEST_F(JsonStoreTest, InitializeInvalidString) {
-  base::FilePath input_file = CreateInputFile(
-      kTestFileName, kInvalidFormatJson, std::size(kInvalidFormatJson) - 1);
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kInvalidFormatJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   EXPECT_EQ(json_store->GetReadError(), JsonStore::READ_ERROR_JSON_PARSE);
   EXPECT_FALSE(json_store->Initialized());
@@ -85,8 +82,7 @@ TEST_F(JsonStoreTest, InitializeInvalidString) {
 }
 
 TEST_F(JsonStoreTest, InitializeInvalidType) {
-  base::FilePath input_file = CreateInputFile(kTestFileName, kWrongTypeJson,
-                                              std::size(kWrongTypeJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kWrongTypeJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   EXPECT_EQ(json_store->GetReadError(), JsonStore::READ_ERROR_JSON_TYPE);
   EXPECT_FALSE(json_store->Initialized());
@@ -104,8 +100,7 @@ TEST_F(JsonStoreTest, InitializeNoFile) {
 }
 
 TEST_F(JsonStoreTest, GetValue) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   // Get by const pointer.
   const base::Value* value_ptr;
@@ -120,8 +115,7 @@ TEST_F(JsonStoreTest, GetValue) {
 }
 
 TEST_F(JsonStoreTest, SetValue) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   base::Value value;
   // Add new key.
@@ -139,8 +133,7 @@ TEST_F(JsonStoreTest, SetValue) {
 }
 
 TEST_F(JsonStoreTest, StoreValue) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   base::Value value;
   // Add new key.
@@ -153,8 +146,7 @@ TEST_F(JsonStoreTest, StoreValue) {
 }
 
 TEST_F(JsonStoreTest, SetValue_Template) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   int value = kNewValue - 1;
   // Add new key.
@@ -177,8 +169,7 @@ TEST_F(JsonStoreTest, SetValue_Template) {
 }
 
 TEST_F(JsonStoreTest, GetValue_TemplateWrongType) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   std::string value = "hello";
   EXPECT_FALSE(json_store->GetValue(kExistingKey, &value));
@@ -186,8 +177,7 @@ TEST_F(JsonStoreTest, GetValue_TemplateWrongType) {
 }
 
 TEST_F(JsonStoreTest, GetValue_TemplateChangeType) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   bool bool_value = !kExistingValue;
   std::string string_value = kNotStringValue;
@@ -204,8 +194,7 @@ TEST_F(JsonStoreTest, GetValue_TemplateChangeType) {
 }
 
 TEST_F(JsonStoreTest, SetValue_TemplateList) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   std::vector<double> values = {0.12, 34.5, 678.9};
   // Add new key.
@@ -247,8 +236,7 @@ TEST_F(JsonStoreTest, SetValue_TemplateList) {
 }
 
 TEST_F(JsonStoreTest, SetValue_TemplateNestedMapList) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   std::map<std::string, std::vector<int>> values = {{"a", {1, 2}},
                                                     {"b", {3, 4}}};
@@ -306,8 +294,7 @@ TEST_F(JsonStoreTest, SetValue_TemplateNestedMapList) {
 }
 
 TEST_F(JsonStoreTest, RemoveValue) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
   bool value;
   EXPECT_TRUE(json_store->GetValue(kExistingKey, &value));
@@ -320,8 +307,7 @@ TEST_F(JsonStoreTest, RemoveValue) {
 }
 
 TEST_F(JsonStoreTest, Clear) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
 
   base::Value value;
@@ -333,8 +319,7 @@ TEST_F(JsonStoreTest, Clear) {
 }
 
 TEST_F(JsonStoreTest, ClearAndDeleteFile) {
-  base::FilePath input_file =
-      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  base::FilePath input_file = CreateInputFile(kTestFileName, kValidJson);
   auto json_store = base::MakeRefCounted<JsonStore>(input_file, false);
 
   base::Value value;

@@ -164,8 +164,8 @@ class MetricsUtilsTest : public testing::Test {
     file_path_ = temp_dir_.GetPath().AppendASCII(kTestJsonStoreFilename);
   }
 
-  bool CreateInputFile(const char* str, int size) {
-    if (base::WriteFile(file_path_, str, size) == size) {
+  bool CreateInputFile(const char* str) {
+    if (base::WriteFile(file_path_, str)) {
       json_store_ = base::MakeRefCounted<JsonStore>(file_path_, false);
       return true;
     }
@@ -178,8 +178,7 @@ class MetricsUtilsTest : public testing::Test {
 };
 
 TEST_F(MetricsUtilsTest, GetValue) {
-  EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultMetricsJson));
 
   double first_setup_ts;
   EXPECT_TRUE(MetricsUtils::GetMetricsValue(
@@ -218,8 +217,7 @@ TEST_F(MetricsUtilsTest, GetValue) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_FirstSetupTimestamp) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
       json_store_, kMetricsFirstSetupTimestamp, kTestFirstSetupTimestamp));
@@ -231,8 +229,7 @@ TEST_F(MetricsUtilsTest, SetValue_FirstSetupTimestamp) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_SetupTimestamp) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
                                             kTestSetupTimestamp));
@@ -244,8 +241,7 @@ TEST_F(MetricsUtilsTest, SetValue_SetupTimestamp) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_RunningTime) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kMetricsRunningTime,
                                             kTestRunningTime));
@@ -257,8 +253,7 @@ TEST_F(MetricsUtilsTest, SetValue_RunningTime) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_RoFirmwareVerified) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
       json_store_, kMetricsRoFirmwareVerified, kTestRoFirmwareVerified));
@@ -270,8 +265,7 @@ TEST_F(MetricsUtilsTest, SetValue_RoFirmwareVerified) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_OccurredErrors) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kMetricsOccurredErrors,
                                             kTestOccurredErrors));
@@ -283,8 +277,7 @@ TEST_F(MetricsUtilsTest, SetValue_OccurredErrors) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_AddtionalActivities) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(
       json_store_, kMetricsAdditionalActivities, kTestAdditionalActivities));
@@ -296,8 +289,7 @@ TEST_F(MetricsUtilsTest, SetValue_AddtionalActivities) {
 }
 
 TEST_F(MetricsUtilsTest, SetValue_StateMetrics) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_TRUE(MetricsUtils::SetMetricsValue(json_store_, kStateMetrics,
                                             kDefaultStateMetrics));
@@ -309,8 +301,7 @@ TEST_F(MetricsUtilsTest, SetValue_StateMetrics) {
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
   EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
@@ -338,8 +329,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition) {
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_StateNotFound) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_FALSE(MetricsUtils::UpdateStateMetricsOnStateTransition(
       json_store_, RmadState::StateCase::kWelcome,
@@ -347,9 +337,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_StateNotFound) {
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_InvalidTimestamp) {
-  EXPECT_TRUE(
-      CreateInputFile(kInvalidStateMetricsTimestampJson,
-                      std::size(kInvalidStateMetricsTimestampJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kInvalidStateMetricsTimestampJson));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
   EXPECT_FALSE(MetricsUtils::UpdateStateMetricsOnStateTransition(
@@ -359,8 +347,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnStateTransition_InvalidTimestamp) {
 
 TEST_F(MetricsUtilsTest,
        UpdateStateMetricsOnStateTransition_NotIncreasedTimestamp) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
   EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
@@ -382,8 +369,7 @@ TEST_F(MetricsUtilsTest,
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnAbort) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
   EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
@@ -411,8 +397,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnAbort) {
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnGetLog) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
   EXPECT_TRUE(
@@ -436,8 +421,7 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnGetLog) {
 }
 
 TEST_F(MetricsUtilsTest, UpdateStateMetricsOnSaveLog) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   RmadState::StateCase state_case = RmadState::StateCase::kRestock;
   EXPECT_TRUE(
@@ -461,16 +445,14 @@ TEST_F(MetricsUtilsTest, UpdateStateMetricsOnSaveLog) {
 }
 
 TEST_F(MetricsUtilsTest, GetMetricsSummaryAsString) {
-  EXPECT_TRUE(
-      CreateInputFile(kDefaultMetricsJson, std::size(kDefaultMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kDefaultMetricsJson));
 
   EXPECT_EQ(MetricsUtils::GetMetricsSummaryAsString(json_store_),
             kDefaultMetricsSummaryJson);
 }
 
 TEST_F(MetricsUtilsTest, GetMetricsSummaryAsString_NoData) {
-  EXPECT_TRUE(
-      CreateInputFile(kEmptyMetricsJson, std::size(kEmptyMetricsJson) - 1));
+  EXPECT_TRUE(CreateInputFile(kEmptyMetricsJson));
 
   EXPECT_EQ(MetricsUtils::GetMetricsSummaryAsString(json_store_), "");
 }
