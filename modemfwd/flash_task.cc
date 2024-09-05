@@ -177,6 +177,8 @@ void FlashTask::OnBuildFlashConfigCompleted(
   }
   jobs.push_back(std::move(modemfwd_helpers));
 
+  delegate()->NotifyFlashStarting(modem->GetEquipmentId());
+
   modem_flasher_->RunFlash(modem, std::move(flash_cfg),
                            base::BindOnce(&FlashTask::OnRunFlashCompleted,
                                           weak_ptr_factory_.GetWeakPtr(), modem,

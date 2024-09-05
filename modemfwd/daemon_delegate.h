@@ -31,6 +31,8 @@ class Delegate {
 
   virtual bool ResetModem(const std::string& device_id) = 0;
 
+  virtual void NotifyFlashStarting(const std::string& equipment_id) = 0;
+
   virtual void RegisterOnStartFlashingCallback(const std::string& equipment_id,
                                                base::OnceClosure callback) = 0;
   virtual void RegisterOnModemReappearanceCallback(

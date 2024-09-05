@@ -198,6 +198,7 @@ TEST_F(FlashTaskTest, ModemIsBlocked) {
         *error = Error::Create(FROM_HERE, "foo", "foo");
         return false;
       }));
+  EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(0);
 
   auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
   EXPECT_NE(error, nullptr);
@@ -212,6 +213,7 @@ TEST_F(FlashTaskTest, NothingToFlash) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(kCarrier1, {})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
+  EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(0);
 
   auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
   EXPECT_EQ(error, nullptr);
@@ -229,6 +231,7 @@ TEST_F(FlashTaskTest, BuildConfigReturnedError) {
         return nullptr;
       }));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
+  EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(0);
 
   auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
   EXPECT_NE(error, nullptr);
@@ -250,6 +253,8 @@ TEST_F(FlashTaskTest, FlashFailure) {
         return false;
       }));
 
+  EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(1);
+
   auto error = RunTask(task.get(), modem.get(), FlashTask::Options{});
   EXPECT_NE(error, nullptr);
 }
@@ -266,6 +271,8 @@ TEST_F(FlashTaskTest, FlashSuccess) {
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
+
+  EXPECT_CALL(*delegate_, NotifyFlashStarting(_)).Times(1);
   EXPECT_CALL(*metrics_, SendFwFlashTime(_)).Times(1);
 
   // The cleanup callback marks the end of flashing the firmware. The delegate

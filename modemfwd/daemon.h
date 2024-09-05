@@ -82,6 +82,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
       bool use_modems_fw_info,
       base::OnceCallback<void(const brillo::ErrorPtr&)> callback) override;
   bool ResetModem(const std::string& device_id) override;
+  void NotifyFlashStarting(const std::string& device_id) override;
   void RegisterOnStartFlashingCallback(const std::string& equipment_id,
                                        base::OnceClosure callback) override;
   void RegisterOnModemReappearanceCallback(const std::string& equipment_id,

@@ -30,6 +30,7 @@ class MockDelegate : public Delegate {
                base::OnceCallback<void(const brillo::ErrorPtr&)>),
               (override));
   MOCK_METHOD(bool, ResetModem, (const std::string&), (override));
+  MOCK_METHOD(void, NotifyFlashStarting, (const std::string&), (override));
   MOCK_METHOD(void,
               RegisterOnStartFlashingCallback,
               (const std::string&, base::OnceClosure),

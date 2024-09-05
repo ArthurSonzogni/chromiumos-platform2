@@ -472,13 +472,6 @@ void Daemon::OnModemCarrierIdReady(
 
 void Daemon::DoFlash(const std::string& device_id,
                      const std::string& equipment_id) {
-  if (start_flashing_callbacks_.count(equipment_id) > 0) {
-    for (auto& cb : start_flashing_callbacks_[equipment_id]) {
-      std::move(cb).Run();
-    }
-    start_flashing_callbacks_.erase(equipment_id);
-  }
-
   brillo::ErrorPtr err;
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
@@ -563,6 +556,15 @@ bool Daemon::ResetModem(const std::string& device_id) {
     return false;
 
   return helper->Reboot();
+}
+
+void Daemon::NotifyFlashStarting(const std::string& equipment_id) {
+  if (start_flashing_callbacks_.count(equipment_id) > 0) {
+    for (auto& cb : start_flashing_callbacks_[equipment_id]) {
+      std::move(cb).Run();
+    }
+    start_flashing_callbacks_.erase(equipment_id);
+  }
 }
 
 void Daemon::ForceFlashIfInFlashMode(const std::string& device_id,
