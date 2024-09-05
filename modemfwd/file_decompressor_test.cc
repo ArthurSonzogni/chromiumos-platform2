@@ -44,8 +44,7 @@ TEST_F(FileDecompressorTest, DecompressEmptyFile) {
 
 TEST_F(FileDecompressorTest, DecompressMalformedFile) {
   std::string content = "foo";
-  ASSERT_EQ(base::WriteFile(in_file_->path(), content.data(), content.size()),
-            content.size());
+  ASSERT_TRUE(base::WriteFile(in_file_->path(), content));
   EXPECT_FALSE(DecompressXzFile(in_file_->path(), out_file_->path()));
 }
 
@@ -78,10 +77,7 @@ TEST_F(FileDecompressorTest, Decompress1MOfZeroes) {
       0x02, 0x00, 0x00, 0x00, 0x00, 0x04, 0x59, 0x5a,
   };
 
-  ASSERT_EQ(base::WriteFile(in_file_->path(),
-                            reinterpret_cast<const char*>(kCompressedContent),
-                            std::size(kCompressedContent)),
-            std::size(kCompressedContent));
+  ASSERT_TRUE(base::WriteFile(in_file_->path(), kCompressedContent));
   EXPECT_TRUE(DecompressXzFile(in_file_->path(), out_file_->path()));
 
   std::string content;

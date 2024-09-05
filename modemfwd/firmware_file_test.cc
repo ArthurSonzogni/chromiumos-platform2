@@ -53,10 +53,7 @@ TEST_F(FirmwareFileTest, PrepareFromCompressedFileDecompressFailed) {
 
   base::FilePath compressed_file_path = temp_file_.AddExtension(".xz");
 
-  ASSERT_EQ(base::WriteFile(compressed_file_path,
-                            reinterpret_cast<const char*>(kInvalidContent),
-                            std::size(kInvalidContent)),
-            std::size(kInvalidContent));
+  ASSERT_TRUE(base::WriteFile(compressed_file_path, kInvalidContent));
   FirmwareFileInfo file_info(compressed_file_path.BaseName().value(),
                              kFirmwareVersion,
                              FirmwareFileInfo::Compression::XZ);
@@ -78,10 +75,7 @@ TEST_F(FirmwareFileTest, PrepareFromCompressedFileDecompressSucceeded) {
   };
 
   base::FilePath compressed_file_path = temp_file_.AddExtension(".xz");
-  ASSERT_EQ(base::WriteFile(compressed_file_path,
-                            reinterpret_cast<const char*>(kCompressedContent),
-                            std::size(kCompressedContent)),
-            std::size(kCompressedContent));
+  ASSERT_TRUE(base::WriteFile(compressed_file_path, kCompressedContent));
 
   FirmwareFileInfo file_info(compressed_file_path.BaseName().value(),
                              kFirmwareVersion,

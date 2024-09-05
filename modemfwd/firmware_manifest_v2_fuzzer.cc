@@ -34,7 +34,7 @@ void FuzzParseFirmwareManifestV2(const modemfwd::FirmwareManifestV2& input) {
   const char kManifestName[] = "firmware_manifest.prototxt";
   base::FilePath file_path = temp_dir_.GetPath().Append(kManifestName);
 
-  base::WriteFile(file_path, text.data(), text.size());
+  base::WriteFile(file_path, text);
 
   std::map<std::string, Dlc> dlc_per_variant;
   std::unique_ptr<FirmwareIndex> index =

@@ -63,9 +63,7 @@ class JournalTest : public ::testing::Test {
 
  protected:
   void SetUpJournal(const std::string& journal_text) {
-    CHECK_EQ(base::WriteFile(journal_file_->path(), journal_text.data(),
-                             journal_text.size()),
-             journal_text.size());
+    CHECK(base::WriteFile(journal_file_->path(), journal_text));
   }
 
   std::unique_ptr<Journal> GetJournal() {
