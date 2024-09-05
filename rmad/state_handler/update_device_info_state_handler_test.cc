@@ -14,6 +14,7 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
+#include <brillo/file_utils.h>
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
@@ -710,6 +711,36 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
       std::equal(state.update_device_info().sku_description_list().begin(),
                  state.update_device_info().sku_description_list().end(),
                  kSkuDescriptionList.begin(), kSkuDescriptionList.end()));
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_SkuFilterInTestMode_Success) {
+  constexpr char textproto[] = R"(
+sku_list {
+  sku: 1234567891
+  description: "abc"
+}
+  )";
+  const std::vector<uint32_t> expected_sku_list = {1234567890, 1234567891};
+  const std::vector<std::string> expected_sku_description_list = {"", "abc"};
+
+  auto handler = CreateStateHandler({.sku_filter_textproto = textproto});
+  json_store_->SetValue(kMlbRepair, false);
+
+  // Populate SKUs not in OEMs' list in testing mode.
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().AppendASCII(kTestDirPath)));
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         expected_sku_list.begin(), expected_sku_list.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 expected_sku_description_list.begin(),
+                 expected_sku_description_list.end()));
 }
 
 // Successful |GetNextStateCase|.

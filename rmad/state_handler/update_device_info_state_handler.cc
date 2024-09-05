@@ -357,6 +357,11 @@ void UpdateDeviceInfoStateHandler::GenerateSkuListsFromDesignConfigList(
       // descriptions.
       sku_id_list->push_back(sku_id);
       sku_description_list->push_back(it->second);
+    } else if (base::PathExists(GetTestDirPath())) {
+      // Populate excluded SKUs in testing mode since DUTs in lab may not be in
+      // OEMs' list.
+      sku_id_list->push_back(sku_id);
+      sku_description_list->push_back("");
     }
   }
 
