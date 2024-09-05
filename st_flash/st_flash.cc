@@ -4,12 +4,6 @@
 //
 // This is a implementation of IAP firmware updater for STM32-based touchpads.
 
-#include <cstdio>
-#include <iomanip>
-#include <map>
-#include <string>
-#include <vector>
-
 #include <fcntl.h>
 #include <linux/i2c-dev.h>
 #include <stdint.h>
@@ -17,11 +11,17 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <cstdio>
+#include <iomanip>
+#include <map>
+#include <string>
+#include <vector>
+
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/logging.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 
@@ -411,8 +411,7 @@ uint8_t IAPFirmwareUpdater::ReadOneByte() {
 }
 
 bool IAPFirmwareUpdater::WriteToFile(std::string path, std::string value) {
-  return (base::WriteFile(base::FilePath(path), value.c_str(), value.size()) ==
-          value.size());
+  return base::WriteFile(base::FilePath(path), value);
 }
 
 int main(int argc, const char* argv[]) {
