@@ -35,7 +35,7 @@ bool ReadFileToBlob(const base::FilePath& path, brillo::Blob* blob) {
 }
 
 bool TouchFileDurable(const base::FilePath& path) {
-  return base::WriteFile(path, "", 0) == 0;
+  return base::WriteFile(path, "");
 }
 
 }  // namespace

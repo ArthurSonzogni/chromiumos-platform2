@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 // Functional tests for PinWeaverManager + SignInHashTree.
+#include "libhwsec/frontend/pinweaver_manager/frontend_impl.h"
+
 #include <iterator>  // For std::begin()/std::end().
 #include <map>
 #include <memory>
@@ -10,22 +12,21 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/files/file_util.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
-#include <brillo/secure_blob.h>
 #include <brillo/files/file_util.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
-#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 #include "libhwsec/error/tpm_retry_action.h"
-#include "libhwsec/frontend/pinweaver_manager/frontend_impl.h"
 #include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
 
 using ::hwsec_foundation::GetSecureRandom;
@@ -165,9 +166,7 @@ class PinWeaverManagerImplTest : public ::testing::Test {
     ASSERT_TRUE(base::GetFileSize(path, &file_size));
     std::vector<uint8_t> random_data(file_size);
     GetSecureRandom(random_data.data(), file_size);
-    ASSERT_EQ(file_size,
-              base::WriteFile(path, reinterpret_cast<char*>(random_data.data()),
-                              file_size));
+    ASSERT_TRUE(base::WriteFile(path, random_data));
   }
 
   void CorruptLeafCache() {
