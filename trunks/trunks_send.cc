@@ -824,7 +824,7 @@ static int VcU2fCert(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   base::FilePath crt(cl->GetSwitchValuePath("crt"));
   if (!crt.empty()) {
     printf("Certificate file: %s\n", crt.value().c_str());
-    base::WriteFile(crt, cert.data(), cert.size());
+    base::WriteFile(crt, cert);
   }
 
   return 0;
