@@ -63,8 +63,7 @@ bool WritePolicyToFile(const base::Value::Dict& policy,
   base::JSONWriter::Write(policy, &json_string);
 
   base::FilePath file_path = dir_path.Append(file_name);
-  return base::WriteFile(file_path, json_string.data(), json_string.length()) ==
-         json_string.length();
+  return base::WriteFile(file_path, json_string);
 }
 
 // Deletes the policy file <dir_path>/<file_name> if it exists. Returns whether
