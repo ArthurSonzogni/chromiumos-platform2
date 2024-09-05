@@ -677,7 +677,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
     return -EIO;
   }
 
-  if (device_info_.quirks & kQuirkRestartOnTimeout) {
+  if (device_info_.quirks & (kQuirkRestartOnTimeout | kQuirkExpectTimeout)) {
     pollfd device_pfd = {};
     device_pfd.fd = device_fd_.get();
     device_pfd.events = POLLIN;

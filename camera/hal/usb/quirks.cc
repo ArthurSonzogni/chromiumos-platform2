@@ -76,6 +76,10 @@ const QuirksMap& GetQuirksMap() {
       {{"04f2", "b843"}, kQuirkPreferLargePreviewResolution},
       // Foxlink FO10FF-863H-5 (b/359087839)
       {{"05c8", "0b10"}, kQuirkUserSpaceTimestamp},
+      // Google Inc. Lattice USB 3.0 Video Bridge (b/354766714)
+      {{"18d1", "800a"}, kQuirkExpectTimeout},
+      // Google Inc. Plankton Captured HDMI Video (b/354766714)
+      {{"18d1", "501e"}, kQuirkExpectTimeout},
   });
   return *kQuirksMap;
 }
