@@ -4,13 +4,6 @@
 
 #include "shill/device_info.h"
 
-#include <array>
-#include <memory>
-#include <optional>
-#include <set>
-#include <string>
-#include <vector>
-
 #include <linux/ethtool.h>
 #include <linux/if.h>
 #include <linux/if_link.h>
@@ -20,6 +13,13 @@
 #include <linux/sockios.h>
 #include <net/if_arp.h>
 #include <sys/socket.h>
+
+#include <array>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
@@ -160,9 +160,7 @@ class DeviceInfoTest : public Test {
     base::FilePath info_path = GetInfoPath(name);
     LOG(INFO) << "Path " << info_path;
     EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
-    std::string contents_newline(contents + "\n");
-    EXPECT_TRUE(base::WriteFile(info_path, contents_newline.c_str(),
-                                contents_newline.size()));
+    EXPECT_TRUE(base::WriteFile(info_path, contents + "\n"));
   }
 
   base::FilePath GetInfoPath(const std::string& name) {
