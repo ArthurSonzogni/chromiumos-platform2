@@ -1142,8 +1142,7 @@ TEST_F(ProcessCacheTestFixture, TestScrapeFromProcFsRedaction) {
   process.cmdline = "\tusername@email.com\t !username@email.com!";
   auto file_path = base::FilePath(fake_root_.GetPath().value() + "/proc/" +
                                   std::to_string(kPidChildOfInit));
-  ASSERT_TRUE(base::WriteFile(file_path.Append("cmdline"),
-                              process.cmdline.c_str(), process.cmdline.size()));
+  ASSERT_TRUE(base::WriteFile(file_path.Append("cmdline"), process.cmdline));
 
   auto actual = process_cache_->GetProcessHierarchy(kPidChildOfInit,
                                                     process.starttime_ns, 1);

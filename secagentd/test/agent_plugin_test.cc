@@ -91,9 +91,8 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
         fake_root_.GetPath().Append(AgentPlugin::kBootDataFilepath);
 
     boot_params boot = {};
-    ASSERT_NE(-1,
-              base::WriteFile(boot_params_filepath_,
-                              reinterpret_cast<char*>(&boot), sizeof(boot)));
+    ASSERT_TRUE(base::WriteFile(boot_params_filepath_,
+                                base::as_bytes(base::span_from_ref(boot))));
 #endif
   }
   void TearDown() override { task_environment_.RunUntilIdle(); }
@@ -463,8 +462,8 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsEnabled) {
   boot_params boot;
   static constexpr int kEfiSecurebootModeEnabled = 3;
   boot.secure_boot = kEfiSecurebootModeEnabled;
-  base::WriteFile(boot_params_filepath_, reinterpret_cast<char*>(&boot),
-                  sizeof(boot));
+  base::WriteFile(boot_params_filepath_,
+                  base::as_bytes(base::span_from_ref(boot)));
 
   CreateAgentPlugin(base::OnceCallback<void()>(), kDefaultHeartbeatTimer);
   CallGetUefiSecureBootInformation(boot_params_filepath_);
@@ -477,8 +476,8 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsEnabled) {
 TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsNotEnabled) {
   boot_params boot;
   boot.secure_boot = -1;
-  base::WriteFile(boot_params_filepath_, reinterpret_cast<char*>(&boot),
-                  sizeof(boot));
+  base::WriteFile(boot_params_filepath_,
+                  base::as_bytes(base::span_from_ref(boot)));
 
   CreateAgentPlugin(base::OnceCallback<void()>(), kDefaultHeartbeatTimer);
   CallGetUefiSecureBootInformation(boot_params_filepath_);
@@ -489,7 +488,7 @@ TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsNotEnabled) {
 
 TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileInvalidSize) {
   std::string content = "invalid file size";
-  base::WriteFile(boot_params_filepath_, content.c_str(), content.size());
+  base::WriteFile(boot_params_filepath_, content);
 
   CreateAgentPlugin(base::OnceCallback<void()>(), kDefaultHeartbeatTimer);
   CallGetUefiSecureBootInformation(boot_params_filepath_);
