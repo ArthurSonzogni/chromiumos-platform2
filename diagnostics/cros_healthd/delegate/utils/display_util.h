@@ -12,7 +12,6 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
-struct EdidInfo;
 
 class DisplayUtil {
  public:
@@ -23,15 +22,6 @@ class DisplayUtil {
   virtual void FillPrivacyScreenInfo(const uint32_t connector_id,
                                      bool* privacy_screen_supported,
                                      bool* privacy_screen_enabled) = 0;
-  virtual bool FillDisplaySize(const uint32_t connector_id,
-                               uint32_t* width,
-                               uint32_t* height) = 0;
-  virtual bool FillDisplayResolution(const uint32_t connector_id,
-                                     uint32_t* horizontal,
-                                     uint32_t* vertical) = 0;
-  virtual bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) = 0;
-  virtual bool FillDisplayRefreshRate(const uint32_t connector_id,
-                                      double* refresh_rate) = 0;
   virtual ::ash::cros_healthd::mojom::ExternalDisplayInfoPtr
   GetExternalDisplayInfo(const uint32_t connector_id) = 0;
   virtual ::ash::cros_healthd::mojom::EmbeddedDisplayInfoPtr
