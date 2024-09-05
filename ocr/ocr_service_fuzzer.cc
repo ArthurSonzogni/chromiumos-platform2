@@ -19,10 +19,10 @@
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <mojo/core/embedder/embedder.h>
-#include <mojo/public/cpp/system/handle.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
-#include <mojo/public/cpp/system/platform_handle.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 #include "ocr/mojo/ocr_service.mojom.h"
 #include "ocr/ocr_service_impl.h"
@@ -77,7 +77,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   base::ScopedTempDir temp_dir_;
   CHECK(temp_dir_.CreateUniqueTempDir());
   base::FilePath file_path = temp_dir_.GetPath().Append(kTestImageRelativePath);
-  base::WriteFile(file_path, (const char*)data, size);
+  base::WriteFile(file_path, base::span(data, size));
 
   // Construct request.
   const std::string input_image_filename = file_path.value();
