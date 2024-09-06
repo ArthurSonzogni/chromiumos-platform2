@@ -50,7 +50,8 @@ std::unique_ptr<HeartbeatTask> HeartbeatTask::Create(
 void HeartbeatTask::Start() {
   delegate()->RegisterOnStartFlashingCallback(
       modem_->GetEquipmentId(),
-      BindOnce(&HeartbeatTask::Stop, weak_ptr_factory_.GetWeakPtr()));
+      BindOnce(&HeartbeatTask::Finish, weak_ptr_factory_.GetWeakPtr(),
+               nullptr));
   delegate()->RegisterOnModemStateChangedCallback(
       modem_->GetDeviceId(),
       base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
