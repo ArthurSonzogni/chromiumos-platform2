@@ -91,10 +91,6 @@ class QoSService {
   void SetConnmarkUpdaterForTesting(std::unique_ptr<ConnmarkUpdater> updater);
 
  private:
-  // Handles conntrack events from ConntrackMonitor and updates connmark
-  // for UDP connections in |pending_connections_| if applies.
-  void HandleConntrackEvent(const ConntrackMonitor::Event& event);
-
   // Dependencies.
   Datapath* datapath_;
   std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
