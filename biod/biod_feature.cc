@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biod_feature.h"
+
 #include <memory>
 #include <utility>
-
-#include "biod/biod_feature.h"
 
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -35,8 +35,6 @@ BiodFeature::BiodFeature(
   feature_lib_->ListenForRefetchNeeded(
       base::BindRepeating(&BiodFeature::CheckFeatures, base::Unretained(this)),
       base::BindOnce(&OnHandlerRegistrationFinish));
-
-  CheckFeatures();
 }
 
 void BiodFeature::CheckFeatures() {
@@ -46,11 +44,12 @@ void BiodFeature::CheckFeatures() {
 }
 
 void BiodFeature::AllowBetaFirmware(bool enable) {
+  LOG(INFO) << "Beta firmware switch status: " << std::boolalpha << enable;
+
   if (selector_->IsBetaFirmwareAllowed() == enable) {
     return;
   }
 
-  LOG(INFO) << "Beta firmware switch status: " << std::boolalpha << enable;
   selector_->AllowBetaFirmware(enable);
 
   LOG(INFO) << "Ask powerd to reboot";

@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biod_feature.h"
+
 #include <memory>
 #include <string>
 #include <utility>
-
-#include "biod/biod_feature.h"
 
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
@@ -84,6 +84,7 @@ TEST_F(BiodFeatureTest, TestFirmwareDefaultProductionFirmwareSelected) {
       .Times(0);
 
   BiodFeature biod_feature(bus_, &features, std::move(selector));
+  features.TriggerRefetchSignal();
   base::RunLoop().RunUntilIdle();
 }
 
@@ -101,6 +102,7 @@ TEST_F(BiodFeatureTest, TestBetaFirmwareDisabledProductionFirmwareSelected) {
       .Times(0);
 
   BiodFeature biod_feature(bus_, &features, std::move(selector));
+  features.TriggerRefetchSignal();
   base::RunLoop().RunUntilIdle();
 }
 
@@ -118,6 +120,7 @@ TEST_F(BiodFeatureTest, TestBetaFirmwareEnabledBetaFirmwareSelected) {
       .Times(0);
 
   BiodFeature biod_feature(bus_, &features, std::move(selector));
+  features.TriggerRefetchSignal();
   base::RunLoop().RunUntilIdle();
 }
 
@@ -146,6 +149,7 @@ TEST_F(BiodFeatureTest, TestTransitionToBetaFirmware) {
           });
 
   BiodFeature biod_feature(bus_, &features, std::move(selector));
+  features.TriggerRefetchSignal();
   base::RunLoop().RunUntilIdle();
 }
 
@@ -174,60 +178,6 @@ TEST_F(BiodFeatureTest, TestTransitionToProductionFirmware) {
           });
 
   BiodFeature biod_feature(bus_, &features, std::move(selector));
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(BiodFeatureTest, TestListenForChangesNoChanges) {
-  feature::FakePlatformFeatures features(bus_);
-  auto selector = std::make_unique<MockFirmwareSelector>();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", false);
-  EXPECT_CALL(*selector, IsBetaFirmwareAllowed).WillRepeatedly(Return(false));
-
-  BiodFeature biod_feature(bus_, &features, std::move(selector));
-  base::RunLoop().RunUntilIdle();
-
-  // Make sure reboot was not requested.
-  EXPECT_CALL(*proxy_,
-              CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
-                                 A<int>()))
-      .Times(0);
-
-  features.TriggerRefetchSignal();
-  base::RunLoop().RunUntilIdle();
-}
-
-TEST_F(BiodFeatureTest, TestListenForChangesStateChanged) {
-  feature::FakePlatformFeatures features(bus_);
-  auto selector = std::make_unique<MockFirmwareSelector>();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", false);
-  EXPECT_CALL(*selector, IsBetaFirmwareAllowed).WillRepeatedly(Return(false));
-
-  // AllowBetaFirmware will be called after refetching flags state.
-  EXPECT_CALL(*selector, AllowBetaFirmware(true)).Times(1);
-
-  BiodFeature biod_feature(bus_, &features, std::move(selector));
-  base::RunLoop().RunUntilIdle();
-
-  features.SetEnabled("CrOSLateBootAllowFpmcuBetaFirmware", true);
-
-  // Make sure reboot was requested.
-  EXPECT_CALL(*proxy_,
-              CallMethodAndBlock(IsMember(power_manager::kRequestRestartMethod),
-                                 A<int>()))
-      .WillOnce(
-          [](dbus::MethodCall* method_call, int timeout_ms)
-              -> base::expected<std::unique_ptr<dbus::Response>, dbus::Error> {
-            dbus::MessageReader request_reader(method_call);
-            int32_t reason;
-            request_reader.PopInt32(&reason);
-            EXPECT_THAT(
-                reason,
-                power_manager::RequestRestartReason::REQUEST_RESTART_OTHER);
-            return base::ok(dbus::Response::CreateEmpty());
-          });
-
   features.TriggerRefetchSignal();
   base::RunLoop().RunUntilIdle();
 }
