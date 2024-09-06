@@ -630,8 +630,9 @@ void DelegateImpl::SetFanSpeed(
       LOG(ERROR) << "Attempting to set fan speed on invalid fan id";
       continue;
     }
-    ec::PwmSetFanTargetRpmCommand set_fan_rpm{rpm, id};
-    if (!set_fan_rpm.Run(cros_fd.get())) {
+    std::unique_ptr<ec::PwmSetFanTargetRpmCommand> set_fan_rpm =
+        ec_command_factory_->PwmSetFanTargetRpmCommand(rpm, id);
+    if (!set_fan_rpm || !set_fan_rpm->Run(cros_fd.get())) {
       LOG(ERROR) << "Failed to set fan speed: " << static_cast<int>(rpm)
                  << " for fan idx: " << static_cast<int>(id);
       std::move(callback).Run("Failed to set fan speed");

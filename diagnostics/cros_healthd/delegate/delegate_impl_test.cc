@@ -285,6 +285,20 @@ class FakePwmGetFanTargetRpmCommand : public ec::PwmGetFanTargetRpmCommand {
   uint16_t fake_response_ = 0;
 };
 
+class FakePwmSetFanTargetRpmCommand : public ec::PwmSetFanTargetRpmCommand {
+ public:
+  FakePwmSetFanTargetRpmCommand()
+      : ec::PwmSetFanTargetRpmCommand(/*rpm=*/0, /*fan_idx=*/0) {}
+
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+
+  void SetRunResult(bool result) { fake_run_result_ = result; }
+
+ private:
+  bool fake_run_result_ = false;
+};
+
 class FakeThermalAutoFanCtrlCommand : public ec::ThermalAutoFanCtrlCommand {
  public:
   FakeThermalAutoFanCtrlCommand()
@@ -422,6 +436,13 @@ class DelegateImplTest : public BaseFileTest {
         future;
     delegate_.GetAllFanSpeed(future.GetCallback());
     return future.Get();
+  }
+
+  std::optional<std::string> SetFanSpeedSync(
+      const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm) {
+    base::test::TestFuture<const std::optional<std::string>&> err_future;
+    delegate_.SetFanSpeed(fan_id_to_rpm, err_future.GetCallback());
+    return err_future.Take();
   }
 
   std::optional<std::string> SetAllFanAutoControlSync() {
@@ -997,6 +1018,88 @@ TEST_F(DelegateImplTest, GetAllFanSpeedStalledConsideredZeroRpm) {
 
   auto [fan_rpms, err] = GetAllFanSpeedSync();
   EXPECT_THAT(fan_rpms, ElementsAreArray({0}));
+  EXPECT_EQ(err, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, SetFanSpeedGetNumFansFailed) {
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand()).WillOnce([]() {
+    auto cmd = std::make_unique<FakeGetFeaturesCommand>();
+    cmd->SetRunResult(false);
+    return cmd;
+  });
+
+  auto err = SetFanSpeedSync(/*fan_id_to_rpm=*/{});
+  EXPECT_EQ(err, "Failed to get number of fans");
+}
+
+TEST_F(DelegateImplTest, SetFanSpeedOneFanFailed) {
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand()).WillOnce([]() {
+    auto cmd = std::make_unique<FakeGetFeaturesCommand>();
+    cmd->SetRunResult(true);
+    cmd->SetFeatureSupported(EC_FEATURE_PWM_FAN);
+    return cmd;
+  });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
+      .WillOnce([]() {
+        auto cmd = std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        cmd->SetRunResult(true);
+        cmd->SetRpm(100);
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(1))
+      .WillOnce([]() {
+        auto cmd = std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        cmd->SetRunResult(true);
+        cmd->SetRpm(EC_FAN_SPEED_NOT_PRESENT);
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmSetFanTargetRpmCommand(100, 0))
+      .WillOnce([]() {
+        auto cmd = std::make_unique<FakePwmSetFanTargetRpmCommand>();
+        cmd->SetRunResult(false);
+        return cmd;
+      });
+
+  auto err = SetFanSpeedSync(/*fan_id_to_rpm=*/{{0, 100}});
+  EXPECT_EQ(err, "Failed to set fan speed");
+}
+
+TEST_F(DelegateImplTest, SetFanSpeedSuccessWithUnknownFanId) {
+  EXPECT_CALL(mock_ec_command_factory_, GetFeaturesCommand()).WillOnce([]() {
+    auto cmd = std::make_unique<FakeGetFeaturesCommand>();
+    cmd->SetRunResult(true);
+    cmd->SetFeatureSupported(EC_FEATURE_PWM_FAN);
+    return cmd;
+  });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
+      .WillOnce([]() {
+        auto cmd = std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        cmd->SetRunResult(true);
+        cmd->SetRpm(100);
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(1))
+      .WillOnce([]() {
+        auto cmd = std::make_unique<FakePwmGetFanTargetRpmCommand>();
+        cmd->SetRunResult(true);
+        cmd->SetRpm(EC_FAN_SPEED_NOT_PRESENT);
+        return cmd;
+      });
+
+  EXPECT_CALL(mock_ec_command_factory_, PwmSetFanTargetRpmCommand(100, 0))
+      .WillOnce([]() {
+        auto cmd = std::make_unique<FakePwmSetFanTargetRpmCommand>();
+        cmd->SetRunResult(true);
+        return cmd;
+      });
+
+  // Fan idx=2 should be ignore and doesn't result in a failure.
+  auto err = SetFanSpeedSync(/*fan_id_to_rpm=*/{{0, 100}, {2, 300}});
   EXPECT_EQ(err, std::nullopt);
 }
 
