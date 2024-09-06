@@ -10,4 +10,4 @@ libc = "0.2"
 libchromeos = { path = "../../libchromeos-rs" } # provided by ebuild
 p9 = "0.2.3"
 log = "0.4"
-vsock = "0.3"
+vsock = "0.5"
