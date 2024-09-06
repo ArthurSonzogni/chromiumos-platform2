@@ -36,7 +36,7 @@ namespace {
 // devices.
 constexpr base::TimeDelta kRetryInterval = base::Milliseconds(1);
 // The retry timeout of connecting to the service manager.
-constexpr base::TimeDelta kRetryTimeout = base::Seconds(5);
+constexpr base::TimeDelta kRetryTimeout = base::Seconds(10);
 
 base::ScopedFD ConnectToServiceManagerUnixSocket(
     const base::FilePath& socket_path) {
