@@ -466,7 +466,6 @@ constexpr char kSelectedNetworkProperty[] = "Cellular.SelectedNetwork";
 constexpr char kSIMPresentProperty[] = "Cellular.SIMPresent";
 constexpr char kSIMSlotInfoProperty[] = "Cellular.SIMSlotInfo";
 constexpr char kSupportNetworkScanProperty[] = "Cellular.SupportNetworkScan";
-constexpr char kUseAttachAPNProperty[] = "Cellular.UseAttachAPN";
 constexpr char kPrimaryMultiplexedInterfaceProperty[] =
     "Cellular.PrimaryMultiplexedInterface";
 constexpr char kFlashingProperty[] = "Cellular.Flashing";

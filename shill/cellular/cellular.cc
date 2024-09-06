@@ -233,7 +233,6 @@ Metrics::CellularDeviceId DeviceIdToMetrics(const DeviceId* device_id) {
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
 const char Cellular::kPolicyAllowRoaming[] = "PolicyAllowRoaming";
-const char Cellular::kUseAttachApn[] = "UseAttachAPN";
 const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
 const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
 const char Cellular::kQ6V5SysfsBasePath[] = "/sys/class/remoteproc";
@@ -3026,15 +3025,6 @@ bool Cellular::SetPolicyAllowRoaming(const bool& value, Error* error) {
   return true;
 }
 
-bool Cellular::SetUseAttachApn(const bool& value, Error* error) {
-  LOG(INFO) << __func__;
-  // |use_attach_apn_ | is deprecated. its default value should be true.
-  if (!value)
-    return false;
-
-  return true;
-}
-
 bool Cellular::GetInhibited(Error* error) {
   return inhibited_;
 }
@@ -3596,9 +3586,6 @@ void Cellular::RegisterProperties() {
   HelpRegisterDerivedBool(kCellularPolicyAllowRoamingProperty,
                           &Cellular::GetPolicyAllowRoaming,
                           &Cellular::SetPolicyAllowRoaming);
-  // TODO(b/277792069): Remove when Chrome removes the attach APN code.
-  HelpRegisterDerivedBool(kUseAttachAPNProperty, &Cellular::GetUseAttachApn,
-                          &Cellular::SetUseAttachApn);
   HelpRegisterDerivedBool(kInhibitedProperty, &Cellular::GetInhibited,
                           &Cellular::SetInhibited);
 

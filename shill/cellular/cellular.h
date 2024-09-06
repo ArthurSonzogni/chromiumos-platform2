@@ -631,7 +631,6 @@ class Cellular : public Device,
   // Names of properties in storage
   static const char kAllowRoaming[];
   static const char kPolicyAllowRoaming[];
-  static const char kUseAttachApn[];
 
   // Modem Manufacturer Name
   static const char kQ6V5ModemManufacturerName[];
@@ -762,11 +761,6 @@ class Cellular : public Device,
   bool SetInhibited(const bool& inhibited, Error* error);
   KeyValueStore GetSimLockStatus(Error* error);
   void SetSimPresent(bool sim_present);
-
-  // TODO(b/277792069): Remove when Chrome removes the attach APN code.
-  // DBUS accessors to read/modify the use of an Attach APN
-  bool GetUseAttachApn(Error* /*error*/) { return true; }
-  bool SetUseAttachApn(const bool& value, Error* error);
 
   // When shill terminates or ChromeOS suspends, this function is called to
   // disconnect from the cellular network.
