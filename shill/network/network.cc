@@ -204,10 +204,13 @@ void Network::Start(const Network::StartOptions& opts) {
     // started but not succeeded/failed yet.
     ipconfig_ = std::make_unique<IPConfig>(control_interface_, interface_name_,
                                            kTypeDHCP);
-    dhcp_controller_ = legacy_dhcp_controller_factory_->Create(
-        interface_name_, technology_, dhcp_opts,
-        base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-        base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
+    dhcp_controller_ =
+        (dhcp_opts.use_legacy_dhcpcd ? legacy_dhcp_controller_factory_
+                                     : dhcp_controller_factory_)
+            ->Create(interface_name_, technology_, dhcp_opts,
+                     base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP,
+                                         AsWeakPtr()),
+                     base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
     dhcp_started = dhcp_controller_->RenewIP();
     if (!dhcp_started) {
       LOG(ERROR) << "Failed to request DHCP IP";

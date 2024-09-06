@@ -215,8 +215,10 @@ class NetworkTest : public ::testing::Test {
   void ExpectCreateDHCPController(
       bool request_ip_result,
       const DHCPController::Options& options = kDHCPOptions) {
-    EXPECT_CALL(*legacy_dhcp_controller_factory_,
-                Create(kTestIfname, kTestTechnology, options, _, _, _))
+    EXPECT_CALL(options.use_legacy_dhcpcd ? *legacy_dhcp_controller_factory_
+                                          : *dhcp_controller_factory_,
+                Create(kTestIfname, kTestTechnology, options, _, _,
+                       net_base::IPFamily::kIPv4))
         .WillOnce([request_ip_result, this](
                       std::string_view device_name, Technology technology,
                       const DHCPController::Options& options,
@@ -235,7 +237,8 @@ class NetworkTest : public ::testing::Test {
 
   void ExpectCreateDHCPPDController(bool request_ip_result) {
     EXPECT_CALL(*dhcp_controller_factory_,
-                Create(kTestIfname, kTestTechnology, _, _, _, _))
+                Create(kTestIfname, kTestTechnology, _, _, _,
+                       net_base::IPFamily::kIPv6))
         .WillOnce([request_ip_result, this](
                       std::string_view device_name, Technology technology,
                       const DHCPController::Options& options,
@@ -474,6 +477,33 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:abcd::1234"));
   network_->set_link_protocol_network_config(std::move(network_config));
   network_->Start(Network::StartOptions{});
+}
+
+TEST_F(NetworkTest, UseLegacyDHCPCD) {
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  // If the legacy dhcpcd is used, legacy_dhcp_controller_factory_ should be
+  // used to create the DHCP controller.
+  const DHCPController::Options options_use_legacy_dhcpcd = {
+      .use_legacy_dhcpcd = true,
+      .hostname = kHostname,
+  };
+  ExpectCreateDHCPController(/*request_ip_result=*/true,
+                             /*options=*/options_use_legacy_dhcpcd);
+  network_->Start(Network::StartOptions{.dhcp = options_use_legacy_dhcpcd});
+
+  // If the legacy dhcpcd is not used, dhcp_controller_factory_ should be used
+  // to create the DHCP controller.
+  const DHCPController::Options options_disuse_legacy_dhcpcd = {
+      .use_legacy_dhcpcd = false,
+      .hostname = kHostname,
+  };
+  ExpectCreateDHCPController(/*request_ip_result=*/true,
+                             /*options=*/options_disuse_legacy_dhcpcd);
+  network_->Start(Network::StartOptions{.dhcp = options_disuse_legacy_dhcpcd});
 }
 
 // Verifies that the DHCP options in Network::Start() is properly used when

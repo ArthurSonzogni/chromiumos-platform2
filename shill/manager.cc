@@ -1180,6 +1180,7 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
 
 DHCPController::Options Manager::CreateDefaultDHCPOption() const {
   return DHCPController::Options{
+      .use_legacy_dhcpcd = props_.use_legacy_dhcpcd,
       .use_arp_gateway = props_.arp_gateway,
       .use_rfc_8925 = props_.enable_rfc_8925,
       .apply_dscp = props_.enable_dhcp_qos,
