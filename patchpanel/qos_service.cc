@@ -18,7 +18,6 @@
 
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
@@ -176,20 +175,15 @@ class QoSService::DoHUpdater {
 };
 
 QoSService::QoSService(Datapath* datapath, ConntrackMonitor* monitor)
-    : datapath_(datapath),
-      process_runner_(MinijailedProcessRunner::GetInstance()),
-      conntrack_monitor_(monitor) {
+    : datapath_(datapath), conntrack_monitor_(monitor) {
   dns_client_factory_ = std::make_unique<net_base::DNSClientFactory>();
 }
 
 QoSService::QoSService(
     Datapath* datapath,
     std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-    MinijailedProcessRunner* process_runner,
     ConntrackMonitor* monitor)
-    : datapath_(datapath),
-      process_runner_(process_runner),
-      conntrack_monitor_(monitor) {
+    : datapath_(datapath), conntrack_monitor_(monitor) {
   dns_client_factory_ = std::move(dns_client_factory);
 }
 

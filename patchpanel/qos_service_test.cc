@@ -152,10 +152,8 @@ class QoSServiceTest : public testing::Test {
   QoSServiceTest()
       : datapath_(&process_runner_, &system_),
         dns_factory_(new FakeDNSClientFactory()),
-        qos_svc_(&datapath_,
-                 base::WrapUnique(dns_factory_),
-                 &process_runner_,
-                 &conntrack_monitor_) {}
+        qos_svc_(
+            &datapath_, base::WrapUnique(dns_factory_), &conntrack_monitor_) {}
 
   MockProcessRunner process_runner_;
   NoopSystem system_;
