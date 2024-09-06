@@ -12,11 +12,10 @@ ACTION=="add|bind|change", TEST=="power/wakeup", \
 # available when the device is added.
 ACTION!="add", GOTO="powerd_permissions_end"
 
-SUBSYSTEM=="bluetooth", TEST=="power/control", \
+TEST=="power/control", \
   RUN+="/bin/chown power:power \"$sys$devpath/power/control\""
-SUBSYSTEM=="bluetooth", TEST=="power/autosuspend_delay_ms", \
+TEST=="power/autosuspend_delay_ms", \
   RUN+="/bin/chown power:power \"$sys$devpath/power/autosuspend_delay_ms\""
-
 TEST=="inhibited", \
   RUN+="/bin/chown power:power \"$sys$devpath/inhibited\""
 
