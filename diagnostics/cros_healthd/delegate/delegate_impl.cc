@@ -653,8 +653,9 @@ void DelegateImpl::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
   }
 
   for (uint8_t fan_idx = 0; fan_idx < num_fans.value(); ++fan_idx) {
-    ec::ThermalAutoFanCtrlCommand set_auto_fan_ctrl{fan_idx};
-    if (!set_auto_fan_ctrl.Run(cros_fd.get())) {
+    std::unique_ptr<ec::ThermalAutoFanCtrlCommand> set_auto_fan_ctrl =
+        ec_command_factory_->ThermalAutoFanCtrlCommand(fan_idx);
+    if (!set_auto_fan_ctrl || !set_auto_fan_ctrl->Run(cros_fd.get())) {
       LOG(ERROR) << "Failed to set fan speed to auto control for fan idx: "
                  << static_cast<int>(fan_idx);
       // We should attempt to set all the fan to autocontrol, so even if one of
