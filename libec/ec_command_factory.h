@@ -36,6 +36,8 @@
 #include "libec/led_control_command.h"
 #include "libec/motion_sense_command_lid_angle.h"
 #include "libec/pwm/pwm_get_fan_target_rpm_command.h"
+#include "libec/pwm/pwm_set_fan_target_rpm_command.h"
+#include "libec/thermal/thermal_auto_fan_ctrl_command.h"
 
 namespace ec {
 
@@ -228,6 +230,20 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::PwmSetFanTargetRpmCommand>
+  PwmSetFanTargetRpmCommand(uint32_t rpm, uint8_t fan_idx) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::PwmSetFanTargetRpmCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::ThermalAutoFanCtrlCommand>
+  ThermalAutoFanCtrlCommand(uint8_t fan_idx) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::ThermalAutoFanCtrlCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   // TODO(b/144956297): Add factory methods for all of the EC
   // commands we use so that we can easily mock them for testing.
 };
@@ -324,6 +340,12 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
   std::unique_ptr<ec::GetFeaturesCommand> GetFeaturesCommand() override;
 
   std::unique_ptr<ec::PwmGetFanTargetRpmCommand> PwmGetFanTargetRpmCommand(
+      uint8_t fan_idx) override;
+
+  std::unique_ptr<ec::PwmSetFanTargetRpmCommand> PwmSetFanTargetRpmCommand(
+      uint32_t rpm, uint8_t fan_idx) override;
+
+  std::unique_ptr<ec::ThermalAutoFanCtrlCommand> ThermalAutoFanCtrlCommand(
       uint8_t fan_idx) override;
 };
 

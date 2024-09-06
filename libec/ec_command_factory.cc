@@ -159,4 +159,14 @@ EcCommandFactory::PwmGetFanTargetRpmCommand(uint8_t fan_idx) {
   return std::make_unique<ec::PwmGetFanTargetRpmCommand>(fan_idx);
 }
 
+std::unique_ptr<ec::PwmSetFanTargetRpmCommand>
+EcCommandFactory::PwmSetFanTargetRpmCommand(uint32_t rpm, uint8_t fan_idx) {
+  return std::make_unique<ec::PwmSetFanTargetRpmCommand>(rpm, fan_idx);
+}
+
+std::unique_ptr<ec::ThermalAutoFanCtrlCommand>
+EcCommandFactory::ThermalAutoFanCtrlCommand(uint8_t fan_idx) {
+  return std::make_unique<ec::ThermalAutoFanCtrlCommand>(fan_idx);
+}
+
 }  // namespace ec

@@ -137,6 +137,14 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               PwmGetFanTargetRpmCommand,
               (uint8_t fan_idx),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::PwmSetFanTargetRpmCommand>,
+              PwmSetFanTargetRpmCommand,
+              (uint32_t rpm, uint8_t fan_idx),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::ThermalAutoFanCtrlCommand>,
+              ThermalAutoFanCtrlCommand,
+              (uint8_t fan_idx),
+              (override));
 };
 
 }  // namespace ec
