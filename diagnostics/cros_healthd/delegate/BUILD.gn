@@ -62,6 +62,7 @@ if (use.test) {
       ":libexecutor_delegate",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test_support",
+      "//diagnostics/cros_healthd/delegate/utils:test_support",
       "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }

@@ -24,6 +24,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
+#include "diagnostics/cros_healthd/delegate/utils/fake_display_util.h"
 #include "diagnostics/cros_healthd/delegate/utils/mock_display_util_factory.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -425,6 +426,12 @@ class DelegateImplTest : public BaseFileTest {
     base::test::TestFuture<std::optional<uint16_t>> future;
     delegate_.GetLidAngle(future.GetCallback());
     return future.Get();
+  }
+
+  mojom::GetPrivacyScreenInfoResultPtr GetPrivacyScreenInfoSync() {
+    base::test::TestFuture<mojom::GetPrivacyScreenInfoResultPtr> future;
+    delegate_.GetPrivacyScreenInfo(future.GetCallback());
+    return future.Take();
   }
 
   bool RunPrimeSearchSync(base::TimeDelta exec_duration, uint64_t max_num) {
@@ -1066,6 +1073,43 @@ TEST_F(DelegateImplTest, GetLidAngleUnreliableResult) {
 
   auto output = GetLidAngleSync();
   EXPECT_EQ(output, LID_ANGLE_UNRELIABLE);
+}
+
+TEST_F(DelegateImplTest, GetPrivacyScreenInfoErrorFailedToCreateDisplayUtil) {
+  EXPECT_CALL(mock_display_util_factory_, Create()).WillOnce(Return(nullptr));
+
+  auto output = GetPrivacyScreenInfoSync();
+  ASSERT_TRUE(output);
+  ASSERT_TRUE(output->is_error());
+  EXPECT_EQ(output->get_error(), "Failed to create DisplayUtil");
+}
+
+TEST_F(DelegateImplTest, GetPrivacyScreenInfoErrorFailedToFindValidDisplay) {
+  auto display_util = std::make_unique<FakeDisplayUtil>();
+  display_util->SetEmbeddedDisplayConnectorID(std::nullopt);
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .WillOnce(Return(std::move(display_util)));
+
+  auto output = GetPrivacyScreenInfoSync();
+  ASSERT_TRUE(output);
+  ASSERT_TRUE(output->is_error());
+  EXPECT_EQ(output->get_error(), "Failed to find valid display");
+}
+
+TEST_F(DelegateImplTest, GetPrivacyScreenInfoSuccess) {
+  auto display_util = std::make_unique<FakeDisplayUtil>();
+  display_util->SetEmbeddedDisplayConnectorID(42);
+  display_util->SetPrivacyScreenInfo(42, {.supported = true, .enabled = false});
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .WillOnce(Return(std::move(display_util)));
+
+  auto output = GetPrivacyScreenInfoSync();
+  ASSERT_TRUE(output);
+  ASSERT_TRUE(output->is_info());
+  const auto& info = output->get_info();
+  ASSERT_TRUE(info);
+  EXPECT_EQ(info->privacy_screen_supported, true);
+  EXPECT_EQ(info->privacy_screen_enabled, false);
 }
 
 TEST_F(DelegateImplTest, RunPrimeSearchPassed) {
