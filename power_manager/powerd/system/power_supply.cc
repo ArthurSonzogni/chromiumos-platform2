@@ -324,6 +324,17 @@ PowerSupplyProperties::PowerSource::Type GetPowerSourceTypeFromString(
   return PowerSupplyProperties_PowerSource_Type_OTHER;
 }
 
+// Returns the maximum voltage for supply at |path|.
+double ReadMaxVoltage(const base::FilePath& path) {
+  if (base::PathExists(path.Append("voltage_max"))) {
+    return ReadScaledDouble(path, "voltage_max");
+  } else if (base::PathExists(path.Append("voltage_max_design"))) {
+    return ReadScaledDouble(path, "voltage_max_design");
+  }
+
+  return 0.0;
+}
+
 // Dump the set of file descriptors opened by the process for debugging fd
 // leaks. Implemented directly with the POSIX APIs to avoid accidentally opening
 // any extra fds.
@@ -1135,7 +1146,9 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   ReadAndTrimString(path, "manufacturer", &port->manufacturer_id);
   ReadAndTrimString(path, "model_name", &port->model_id);
 
-  const double max_voltage = ReadScaledDouble(path, "voltage_max_design");
+  // Max voltage can be in voltage_max or voltage_max_design depending on the
+  // power supply driver. Use helper to check for both files.
+  const double max_voltage = ReadMaxVoltage(path);
   const double max_current = ReadScaledDouble(path, "current_max");
   port->max_power = max_voltage * max_current;  // watts
 
@@ -1182,9 +1195,9 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
     status->line_power_current = ReadScaledDouble(path, "current_now");
     status->has_line_power_current = true;
   }
-  if (base::PathExists(path.Append("voltage_max_design"))) {
-    status->line_power_max_voltage =
-        ReadScaledDouble(path, "voltage_max_design");
+  if (base::PathExists(path.Append("voltage_max")) ||
+      base::PathExists(path.Append("voltage_max_design"))) {
+    status->line_power_max_voltage = ReadMaxVoltage(path);
     status->has_line_power_max_voltage = true;
   }
   if (base::PathExists(path.Append("current_max"))) {

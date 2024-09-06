@@ -2647,4 +2647,73 @@ TEST_F(PowerSupplyTest, BarreljackAndUSBPresent) {
   proto.Clear();
 }
 
+// Test that power supply properties are correctly read when registered by the
+// CROS_USBPD_CHARGER power supply driver.
+TEST_F(PowerSupplyTest, ReadMaxVoltageCrosUsbPdCharger) {
+  const char kCrosUsbPdChargerSupply[] = "CROS_USBPD_CHARGER1";
+  const base::FilePath cros_supply_dir =
+      temp_dir_.GetPath().Append(kCrosUsbPdChargerSupply);
+
+  // Define voltage and current max for a typical 65W charger.
+  const double kCurrentMax = 3.25;
+  const double kVoltageMax = 20.0;
+
+  // Write to the sysfs properties used by the CROS_USBPD_CHARGER power supply
+  // driver.
+  ASSERT_TRUE(base::CreateDirectory(cros_supply_dir));
+  WriteValue(cros_supply_dir, "type", kUsbPdType);
+  WriteValue(cros_supply_dir, "online", "1");
+  WriteValue(cros_supply_dir, "status", kCharging);
+  WriteDoubleValue(cros_supply_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(cros_supply_dir, "voltage_max_design", kVoltageMax);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // Check that the power status reflects sysfs properties exposed by the
+  // CROS_USBPD_CHARGER power supply driver.
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_TRUE(status.has_line_power_max_voltage);
+  ASSERT_EQ(1u, status.ports.size());
+  EXPECT_EQ(kCrosUsbPdChargerSupply, status.ports[0].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdType, status.ports[0].type);
+  EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
+}
+
+// Test that power supply properties are correctly read when registered by the
+// UCSI power supply driver.
+TEST_F(PowerSupplyTest, ReadMaxVoltageUcsi) {
+  const char kUcsiSupply[] = "ucsi-source-psy-cros_ec_ucsi.4.auto1";
+  const base::FilePath ucsi_supply_dir =
+      temp_dir_.GetPath().Append(kUcsiSupply);
+
+  // Define voltage and current max for a typical 65W charger.
+  const double kCurrentMax = 3.25;
+  const double kVoltageMax = 20.0;
+
+  // Write to the sysfs properties used by the UCSI power supply driver.
+  ASSERT_TRUE(base::CreateDirectory(ucsi_supply_dir));
+  WriteValue(ucsi_supply_dir, "type", kUsbPdType);
+  WriteValue(ucsi_supply_dir, "online", "1");
+  WriteValue(ucsi_supply_dir, "status", kCharging);
+  WriteDoubleValue(ucsi_supply_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(ucsi_supply_dir, "voltage_max", kVoltageMax);
+
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // Check that the power status reflects sysfs properties exposed by the UCSI
+  // power supply driver.
+  EXPECT_TRUE(status.line_power_on);
+  EXPECT_TRUE(status.has_line_power_max_voltage);
+  ASSERT_EQ(1u, status.ports.size());
+  EXPECT_EQ(kUcsiSupply, status.ports[0].id);
+  EXPECT_EQ(Role::DEDICATED_SOURCE, status.ports[0].role);
+  EXPECT_EQ(kUsbPdType, status.ports[0].type);
+  EXPECT_EQ(kCurrentMax * kVoltageMax, status.ports[0].max_power);
+}
+
 }  // namespace power_manager::system
