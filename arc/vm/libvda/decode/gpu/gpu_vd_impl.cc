@@ -4,6 +4,8 @@
 
 #include "arc/vm/libvda/decode/gpu/gpu_vd_impl.h"
 
+#include <sys/eventfd.h>
+
 #include <memory>
 #include <set>
 #include <string>
@@ -31,7 +33,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/platform_handle.h>
-#include <sys/eventfd.h>
 
 #include "arc/vm/libvda/decode/gpu/decode_helpers.h"
 #include "arc/vm/libvda/gbm_util.h"
@@ -95,10 +96,6 @@ class GpuVdContext : public VdaContext,
   void OnError(arc::mojom::DecoderStatus status) override;
 
   // arc::mojom::VideoFramePoolClient implementation.
-  void DEPRECATED_RequestVideoFrames(mojom::VideoPixelFormat format,
-                                     arc::mojom::SizePtr coded_size,
-                                     arc::mojom::RectPtr visible_rect_ptr,
-                                     uint32_t num_frames) override;
   void RequestVideoFrames(mojom::VideoPixelFormat format,
                           arc::mojom::SizePtr coded_size,
                           arc::mojom::RectPtr visible_rect_ptr,
@@ -473,16 +470,6 @@ void GpuVdContext::OnVideoFrameDecoded(int32_t video_frame_id,
 }
 
 // VideoFramePoolClient implementation function.
-void GpuVdContext::DEPRECATED_RequestVideoFrames(
-    mojom::VideoPixelFormat format,
-    arc::mojom::SizePtr coded_size,
-    arc::mojom::RectPtr visible_rect,
-    uint32_t num_frames) {
-  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
-  RequestVideoFrames(format, std::move(coded_size), std::move(visible_rect),
-                     num_frames, base::DoNothing());
-}
-
 void GpuVdContext::RequestVideoFrames(mojom::VideoPixelFormat format,
                                       arc::mojom::SizePtr coded_size,
                                       arc::mojom::RectPtr visible_rect,
