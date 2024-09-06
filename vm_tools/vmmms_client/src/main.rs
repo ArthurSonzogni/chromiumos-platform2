@@ -28,6 +28,7 @@ const VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT: u32 = 7783;
 const IDENT: &str = "vmmms_client";
 const READ_TIMEOUT: Option<Duration> = Some(Duration::from_secs(5));
 const MGLRU_ADMIN_FILE_PATH: &str = "/sys/kernel/mm/lru_gen/admin";
+const PSI_FILE_PATH: &str = "/proc/pressure/memory";
 
 fn main() -> Result<()> {
     if let Err(e) = syslog::init(IDENT.to_string(), true /* log_to_stderr */) {
@@ -43,11 +44,14 @@ fn main() -> Result<()> {
         MGLRU_ADMIN_FILE_PATH,
     )?;
 
-    let _kills_client: KillsClient = KillsClient::new(VmmmsSocket::new(
-        VMADDR_CID_HOST,
-        VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT,
-        READ_TIMEOUT,
-    )?)?;
+    let kills_client: KillsClient = KillsClient::new(
+        VmmmsSocket::new(
+            VMADDR_CID_HOST,
+            VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT,
+            READ_TIMEOUT,
+        )?,
+        PSI_FILE_PATH,
+    )?;
 
     info!("VmMemoryManagementClient connection established");
 
@@ -55,6 +59,7 @@ fn main() -> Result<()> {
         let mut fds = [
             PollFd::new(reclaim_client.vmmms_socket.as_fd(), PollFlags::POLLIN),
             PollFd::new(reclaim_client.mglru_file.as_fd(), PollFlags::POLLPRI),
+            PollFd::new(kills_client.psi_file.as_fd(), PollFlags::POLLPRI),
         ];
         poll(&mut fds, PollTimeout::NONE)?;
 
@@ -66,6 +71,10 @@ fn main() -> Result<()> {
             .revents()
             .expect("kernel must not set bits except PollFlags")
             .intersects(PollFlags::POLLPRI);
+        let received_psi_notification = fds[2]
+            .revents()
+            .expect("kernel must not set bits except PollFlags::POLLPRI")
+            .intersects(PollFlags::POLLPRI);
 
         if is_reclaim_socket_readable {
             reclaim_client.handle_reclaim_socket_readable()?;
@@ -74,6 +83,9 @@ fn main() -> Result<()> {
         if is_mglru_file_readable {
             info!("Received mglru notification");
             reclaim_client.handle_mglru_notification()?;
+        }
+        if received_psi_notification {
+            info!("Received PSI notification");
         }
     }
 }
