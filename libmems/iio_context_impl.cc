@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libmems/iio_context_impl.h"
+
 #include <memory>
 #include <set>
 #include <string>
@@ -9,12 +11,11 @@
 
 #include <base/check.h>
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
-#include "libmems/iio_context_impl.h"
 #include "libmems/iio_device_impl.h"
 #include "libmems/iio_device_trigger_impl.h"
 
@@ -118,12 +119,9 @@ std::vector<IioDevice*> IioContextImpl::GetByName(
     return devices;
 
   iio_context* ctx = GetCurrentContext();
-  uint32_t dev_count = iio_context_get_devices_count(ctx);
-
-  for (uint32_t i = 0; i < dev_count; ++i) {
+  for (uint32_t i = 0; i < iio_context_get_devices_count(ctx); ++i) {
     iio_device* dev = iio_context_get_device(ctx, i);
     if (!dev) {
-      LOG(WARNING) << "Unable to get " << i << "th device";
       continue;
     }
 
@@ -151,12 +149,9 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
     return devices;
 
   iio_context* ctx = GetCurrentContext();
-  uint32_t dev_count = iio_context_get_devices_count(ctx);
-
-  for (uint32_t i = 0; i < dev_count; ++i) {
+  for (uint32_t i = 0; i < iio_context_get_devices_count(ctx); ++i) {
     iio_device* dev = iio_context_get_device(ctx, i);
     if (!dev || !base::DirectoryExists(T::GetPathById(i))) {
-      LOG(WARNING) << "Unable to get " << i << "th device";
       continue;
     }
 
