@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+mod dserver;
+
 use anyhow::bail;
+use anyhow::Ok;
 use anyhow::Result;
 use libchromeos::syslog;
 use log::info;
@@ -18,9 +21,9 @@ fn main() -> Result<()> {
 
     info!("Starting vhost_user_starter");
 
-    let ten_seconds = std::time::Duration::from_secs(10);
-    loop {
-        info!("vhost_user_starter runs in backend");
-        std::thread::sleep(ten_seconds);
+    if let Err(e) = dserver::service_main() {
+        bail!("Server error: {:#}", e);
     }
+
+    Ok(())
 }
