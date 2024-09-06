@@ -168,7 +168,7 @@ bool DevInstall::CreateMissingDirectory(const base::FilePath& dir) {
 
 bool DevInstall::WriteFile(const base::FilePath& file,
                            const std::string& data) {
-  if (base::WriteFile(file, data.c_str(), data.size()) != data.size()) {
+  if (!base::WriteFile(file, data)) {
     PLOG(ERROR) << "Could not write " << file.value();
     return false;
   }
@@ -511,7 +511,7 @@ bool DevInstall::ConfigurePortage() {
 
       // Write it back out.
       data = base::JoinString(lines, "\n");
-      if (!base::WriteFile(current, data.data(), data.size())) {
+      if (!base::WriteFile(current, data)) {
         LOG(ERROR) << "Unable to write " << current.value();
         return false;
       }
