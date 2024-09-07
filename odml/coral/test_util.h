@@ -63,18 +63,18 @@ inline EmbeddingResponse GetFakeEmbeddingResponse() {
 
 inline ClusteringResponse GetFakeClusteringResponse() {
   std::vector<mojom::EntityPtr> entities = GetFakeEntities();
-  std::vector<mojom::EntityPtr> cluster1, cluster2, cluster3;
+  Cluster cluster1, cluster2, cluster3;
   for (size_t i = 0; i < 3; i++) {
-    cluster1.push_back(std::move(entities[i]));
+    cluster1.entities.push_back(std::move(entities[i]));
   }
   for (size_t i = 3; i < 5; i++) {
-    cluster2.push_back(std::move(entities[i]));
+    cluster2.entities.push_back(std::move(entities[i]));
   }
-  cluster3.push_back(std::move(entities[5]));
+  cluster3.entities.push_back(std::move(entities[5]));
   ClusteringResponse response;
-  response.clusters.emplace_back(std::move(cluster1));
-  response.clusters.emplace_back(std::move(cluster2));
-  response.clusters.emplace_back(std::move(cluster3));
+  response.clusters.push_back(std::move(cluster1));
+  response.clusters.push_back(std::move(cluster2));
+  response.clusters.push_back(std::move(cluster3));
   return response;
 }
 

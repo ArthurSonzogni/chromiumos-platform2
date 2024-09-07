@@ -24,16 +24,13 @@ using Groups = std::vector<std::vector<int>>;
 // nodes with the minimum distances are merged into a new node.
 // The definition of distance is determined by the linkage type.
 // https://en.wikipedia.org/wiki/Hierarchical_clustering
-class AgglomerativeClustering {
+class AgglomerativeClusteringInterface {
  public:
   enum class LinkageType {
     // Support other linkage like Single, Complete, Ward when needed.
     kAverage = 0,
   };
-
-  // The input should be a N * N matrix, Crashes if the dimensions don't match.
-  explicit AgglomerativeClustering(Matrix distances);
-  ~AgglomerativeClustering() = default;
+  virtual ~AgglomerativeClusteringInterface() = default;
 
   // Exactly one of |n_clusters| or |threshold| should have value.
   //
@@ -43,9 +40,21 @@ class AgglomerativeClustering {
   // In the case,the number of final groups is determined solely by |threshold|.
   //
   // When error happens (e.g., wrong input parameter), it returns std::nullopt.
+  virtual std::optional<Groups> Run(
+      LinkageType linkage_type,
+      std::optional<int> n_clusters,
+      std::optional<Distance> threshold) const = 0;
+};
+
+class AgglomerativeClustering : public AgglomerativeClusteringInterface {
+ public:
+  // The input should be a N * N matrix, Crashes if the dimensions don't match.
+  explicit AgglomerativeClustering(Matrix distances);
+  virtual ~AgglomerativeClustering() = default;
+
   std::optional<Groups> Run(LinkageType linkage_type,
                             std::optional<int> n_clusters,
-                            std::optional<Distance> threshold) const;
+                            std::optional<Distance> threshold) const override;
 
  private:
   const Matrix distances_;

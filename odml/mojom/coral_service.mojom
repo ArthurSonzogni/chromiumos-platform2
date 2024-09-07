@@ -101,6 +101,7 @@ enum CoralError {
   [MinVersion=1] kLoadModelFailed,
   [MinVersion=2] kInvalidArgs,
   [MinVersion=2] kModelExecutionFailed,
+  [MinVersion=3] kClusteringError,
 };
 
 [Stable]

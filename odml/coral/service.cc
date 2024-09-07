@@ -4,6 +4,7 @@
 
 #include "odml/coral/service.h"
 
+#include "odml/coral/clustering/agglomerative_clustering.h"
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/engine.h"
@@ -27,7 +28,8 @@ CoralService::CoralService(
         embedding_model_service)
     : CoralService(
           std::make_unique<EmbeddingEngine>(embedding_model_service),
-          std::make_unique<ClusteringEngine>(),
+          std::make_unique<ClusteringEngine>(
+              std::make_unique<clustering::ClusteringFactory>()),
           std::make_unique<TitleGenerationEngine>(on_device_model_service)) {}
 
 CoralService::CoralService(
