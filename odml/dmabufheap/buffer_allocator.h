@@ -35,17 +35,12 @@ class BufferAllocator {
   /* *
    * Returns a dmabuf fd if the allocation in one of the specified heaps is
    * successful and an error code otherwise. If dmabuf heaps are supported,
-   * tries to allocate in the specified dmabuf heap. If allocation fails in the
-   * specified dmabuf heap and ion_fd is a valid fd, goes through saved heap
-   * data to find a heap ID/mask to match the specified heap names and allocates
-   * memory as per the specified parameters. For vendor defined heaps with a
-   * legacy ION interface(no heap query support), MapNameToIonMask() must be
-   * called prior to invocation of Alloc() to map a heap name to an equivalent
-   * heap mask and heap flag configuration.
+   * tries to allocate in the specified dmabuf heap.
    * @heap_name: name of the heap to allocate in.
    * @len: size of the allocation.
    * @heap_flags: flags passed to heap.
-   * @legacy_align: alignment value used only by legacy ION
+   * @legacy_align: alignment value used only by legacy ION. Not supported in
+   * this implementation.
    */
   int Alloc(const std::string& heap_name,
             size_t len,
