@@ -513,9 +513,7 @@ TEST_F(ShillClientTest, DoHProviderHandler) {
   // Helper class to register the callback.
   class FakeHandler {
    public:
-    MOCK_METHOD(void,
-                OnDoHProvidersChanged,
-                (const ShillClient::DoHProviders&));
+    MOCK_METHOD(void, OnDoHProvidersChanged, ());
   } handler;
 
   // Constants used in this test.
@@ -528,21 +526,23 @@ TEST_F(ShillClientTest, DoHProviderHandler) {
   trigger_doh_change({{doh1, ips1}});
 
   // Register the callback should trigger it immediately.
-  EXPECT_CALL(handler, OnDoHProvidersChanged(ShillClient::DoHProviders{doh1}));
+  EXPECT_CALL(handler, OnDoHProvidersChanged);
   client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
       &FakeHandler::OnDoHProvidersChanged, base::Unretained(&handler)));
+  EXPECT_EQ(client_->doh_providers(), ShillClient::DoHProviders{doh1});
 
   // The value change (i.e., the IP address list) won't trigger the callback.
   trigger_doh_change({{doh1, ips2}});
 
   // New DoH provider.
-  EXPECT_CALL(handler,
-              OnDoHProvidersChanged(ShillClient::DoHProviders{doh1, doh2}));
+  EXPECT_CALL(handler, OnDoHProvidersChanged);
   trigger_doh_change({{doh1, ips1}, {doh2, ips2}});
+  EXPECT_EQ(client_->doh_providers(), ShillClient::DoHProviders({doh1, doh2}));
 
   // Removal of an existing DoH provider.
-  EXPECT_CALL(handler, OnDoHProvidersChanged(ShillClient::DoHProviders{doh2}));
+  EXPECT_CALL(handler, OnDoHProvidersChanged);
   trigger_doh_change({{doh2, ips2}});
+  EXPECT_EQ(client_->doh_providers(), ShillClient::DoHProviders{doh2});
 }
 
 }  // namespace

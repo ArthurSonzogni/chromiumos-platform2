@@ -20,10 +20,10 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/connmark_updater.h"
+#include "patchpanel/fake_process_runner.h"
 #include "patchpanel/mock_connmark_updater.h"
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
-#include "patchpanel/mock_process_runner.h"
 #include "patchpanel/noop_system.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
@@ -45,6 +45,11 @@ constexpr char kIPAddress1[] = "8.8.8.8";
 constexpr char kIPAddress2[] = "8.8.8.4";
 constexpr int kPort1 = 10000;
 constexpr int kPort2 = 20000;
+
+const net_base::IPAddress kIPv4DNS =
+    net_base::IPAddress::CreateFromString("8.8.8.8").value();
+const net_base::IPAddress kIPv6DNS =
+    net_base::IPAddress::CreateFromString("fd00::53").value();
 
 std::unique_ptr<patchpanel::SocketConnectionEvent>
 CreateOpenSocketConnectionEvent() {
@@ -147,18 +152,69 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
   std::vector<base::WeakPtr<FakeDNSClient>> clients_;
 };
 
+// Notes:
+// - ShillClient is only used for accessing states in QoSService so fake is
+//   better than mock in this test;
+// - The FakeShillClient in fake_shill_client.h is too complicated to use so
+//   create our own one here. Add a suffix in the name to avoid conflicts in any
+//   case.
+class FakeShillClientForQoS : public ShillClient {
+ public:
+  FakeShillClientForQoS() : ShillClient(nullptr, nullptr) {}
+  ~FakeShillClientForQoS() = default;
+
+  const Device* GetDeviceByShillDeviceName(
+      const std::string& shill_device_interface_property) const override {
+    for (const auto& device : devices_) {
+      if (device.ifname == shill_device_interface_property) {
+        return &device;
+      }
+    }
+    return nullptr;
+  }
+
+  void set_devices(const std::vector<Device>& devices) { devices_ = devices; }
+
+  void set_doh_providers(const DoHProviders& value) {
+    set_doh_providers_for_testing(value);
+  }
+
+ private:
+  std::vector<Device> devices_;
+};
+
+ShillClient::Device CreateShillDevice(
+    std::string_view ifname,
+    bool is_connected,
+    const std::vector<net_base::IPAddress> dns_servers) {
+  ShillClient::Device device;
+  device.ifname = ifname;
+  device.technology = net_base::Technology::kWiFi;
+  device.network_config.dns_servers = dns_servers;
+  if (is_connected) {
+    // The value does not matter, just to make sure Device::IsConnected()
+    // returns true.
+    device.network_config.ipv4_address =
+        net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/32").value();
+  }
+  return device;
+}
+
 class QoSServiceTest : public testing::Test {
  protected:
   QoSServiceTest()
       : datapath_(&process_runner_, &system_),
         dns_factory_(new FakeDNSClientFactory()),
-        qos_svc_(
-            &datapath_, base::WrapUnique(dns_factory_), &conntrack_monitor_) {}
+        qos_svc_(&datapath_,
+                 &conntrack_monitor_,
+                 &shill_client_,
+                 base::WrapUnique(dns_factory_)) {}
 
-  MockProcessRunner process_runner_;
+  FakeProcessRunner process_runner_;
   NoopSystem system_;
   MockDatapath datapath_;
   FakeDNSClientFactory* dns_factory_;  // Owned by |qos_svc_|.
+  FakeShillClientForQoS shill_client_;
   MockConntrackMonitor conntrack_monitor_;
   QoSService qos_svc_;
 };
@@ -281,6 +337,11 @@ TEST_F(QoSServiceTest, ProcessSocketConnectionEvent) {
 // QoSService should start DNS queries for each valid hostname in DoHProviders,
 // and Datapath will be notified when all DNS queries finished.
 TEST_F(QoSServiceTest, UpdateDoHProviders) {
+  const auto wlan0_device =
+      CreateShillDevice("wlan0", /*is_connected=*/true, {kIPv4DNS});
+  shill_client_.set_devices({wlan0_device});
+  qos_svc_.OnPhysicalDeviceAdded(wlan0_device);
+
   // Update DoH list with 2 valid entries. There should be 4 DNS requests in
   // total.
   const ShillClient::DoHProviders doh_list = {
@@ -300,7 +361,8 @@ TEST_F(QoSServiceTest, UpdateDoHProviders) {
   EXPECT_CALL(*dns_factory_,
               Resolve(net_base::IPFamily::kIPv6, "url-b", _, _, _));
 
-  qos_svc_.UpdateDoHProviders(doh_list);
+  shill_client_.set_doh_providers(doh_list);
+  qos_svc_.OnDoHProvidersChanged();
 
   ASSERT_EQ(2, dns_factory_->ipv4_callbacks().size());
   ASSERT_EQ(2, dns_factory_->ipv6_callbacks().size());
@@ -331,6 +393,11 @@ TEST_F(QoSServiceTest, UpdateDoHProviders) {
 
 // Datapath should be notified when DoH provider list is empty.
 TEST_F(QoSServiceTest, UpdateDoHProvidersEmptyInput) {
+  const auto wlan0_device =
+      CreateShillDevice("wlan0", /*is_connected=*/true, {kIPv4DNS});
+  shill_client_.set_devices({wlan0_device});
+  qos_svc_.OnPhysicalDeviceAdded(wlan0_device);
+
   EXPECT_CALL(datapath_,
               UpdateDoHProvidersForQoS(IpFamily::kIPv4,
                                        std::vector<net_base::IPAddress>{}));
@@ -338,12 +405,19 @@ TEST_F(QoSServiceTest, UpdateDoHProvidersEmptyInput) {
               UpdateDoHProvidersForQoS(IpFamily::kIPv6,
                                        std::vector<net_base::IPAddress>{}));
 
-  qos_svc_.UpdateDoHProviders({});
+  shill_client_.set_doh_providers({});
+  qos_svc_.OnDoHProvidersChanged();
 }
 
 // Datapath should be notified when the resolved result is empty.
 TEST_F(QoSServiceTest, UpdateDoHProvidersEmptyResolveResult) {
-  qos_svc_.UpdateDoHProviders({"https://url-a", "https://url-b"});
+  const auto wlan0_device =
+      CreateShillDevice("wlan0", /*is_connected=*/true, {kIPv4DNS});
+  shill_client_.set_devices({wlan0_device});
+  qos_svc_.OnPhysicalDeviceAdded(wlan0_device);
+
+  shill_client_.set_doh_providers({"https://url-a", "https://url-b"});
+  qos_svc_.OnDoHProvidersChanged();
 
   EXPECT_CALL(datapath_,
               UpdateDoHProvidersForQoS(IpFamily::kIPv4,
@@ -364,15 +438,72 @@ TEST_F(QoSServiceTest, UpdateDoHProvidersEmptyResolveResult) {
 // If the DoH provider list is updated again when we are still processing the
 // previous update, all the ongoing DNS requests should be cancelled.
 TEST_F(QoSServiceTest, UpdateDoHProvidersInvalidateOngoingQueries) {
-  qos_svc_.UpdateDoHProviders({"https://url-a", "https://url-b"});
+  const auto wlan0_device =
+      CreateShillDevice("wlan0", /*is_connected=*/true, {kIPv4DNS});
+  shill_client_.set_devices({wlan0_device});
+  qos_svc_.OnPhysicalDeviceAdded(wlan0_device);
+
+  shill_client_.set_doh_providers({"https://url-a", "https://url-b"});
+  qos_svc_.OnDoHProvidersChanged();
 
   auto client_ptrs = dns_factory_->GetWeakPtrsToExistingClients();
   ASSERT_EQ(client_ptrs.size(), 4);
 
-  qos_svc_.UpdateDoHProviders({"https://url-d", "https://url-e"});
+  // Nothing will happen if the DoH providers are not changed.
+  qos_svc_.OnDoHProvidersChanged();
+  for (const auto ptr : client_ptrs) {
+    EXPECT_FALSE(ptr.WasInvalidated());
+  }
+
+  // Ongoing tasks should be cancelled if DoH providers are changed.
+  shill_client_.set_doh_providers({"https://url-d", "https://url-e"});
+  qos_svc_.OnDoHProvidersChanged();
   for (const auto ptr : client_ptrs) {
     EXPECT_TRUE(ptr.WasInvalidated());
   }
+}
+
+// Verify that DNS clients are started properly on IPConfig change events. The
+// interaction with Datapath is verified in the above tests and thus skipped in
+// this test.
+TEST_F(QoSServiceTest, UpdateDoHProvidersIPConfigChanged) {
+  shill_client_.set_doh_providers({"https://url-a"});
+  qos_svc_.OnDoHProvidersChanged();
+
+  const auto wlan0_connected_dns_v4 =
+      CreateShillDevice("wlan0", /*is_connected=*/true, {kIPv4DNS});
+  const auto wlan0_not_connected_dns_v4 =
+      CreateShillDevice("wlan0", /*is_connected=*/false, {kIPv4DNS});
+  const auto wlan0_connected_dns_dual =
+      CreateShillDevice("wlan0", /*is_connected=*/true, {kIPv4DNS, kIPv6DNS});
+
+  // Connected but the device is not tracked.
+  EXPECT_CALL(*dns_factory_, Resolve).Times(0);
+  qos_svc_.OnIPConfigChanged(wlan0_connected_dns_v4);
+  Mock::VerifyAndClearExpectations(dns_factory_);
+
+  // Device is tracked but not connected.
+  EXPECT_CALL(*dns_factory_, Resolve).Times(0);
+  qos_svc_.OnPhysicalDeviceAdded(wlan0_not_connected_dns_v4);
+  qos_svc_.OnIPConfigChanged(wlan0_not_connected_dns_v4);
+  Mock::VerifyAndClearExpectations(dns_factory_);
+
+  // Device is tracked and connected, DNS clients should be created (1 DoH
+  // provider x 2 IP family).
+  EXPECT_CALL(*dns_factory_, Resolve).Times(2);
+  qos_svc_.OnIPConfigChanged(wlan0_connected_dns_v4);
+  Mock::VerifyAndClearExpectations(dns_factory_);
+
+  // DNS servers changed, DNS clients should be created again (1 DoH provider x
+  // 2 IP family x 2 dns servers)
+  EXPECT_CALL(*dns_factory_, Resolve).Times(4);
+  qos_svc_.OnIPConfigChanged(wlan0_connected_dns_dual);
+  Mock::VerifyAndClearExpectations(dns_factory_);
+
+  // DNS servers not changed, DNS clients should no be created.
+  EXPECT_CALL(*dns_factory_, Resolve).Times(0);
+  qos_svc_.OnIPConfigChanged(wlan0_connected_dns_dual);
+  Mock::VerifyAndClearExpectations(dns_factory_);
 }
 
 TEST_F(QoSServiceTest, OnBorealisVMStarted) {

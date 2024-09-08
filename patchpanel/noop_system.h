@@ -17,6 +17,12 @@ class NoopSystem : public System {
   NoopSystem& operator=(const NoopSystem&) = delete;
   ~NoopSystem() override = default;
 
+  bool SysNetSet(SysNet target,
+                 std::string_view content,
+                 std::string_view iface) override {
+    return true;
+  }
+
   int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
     return 0;
   }

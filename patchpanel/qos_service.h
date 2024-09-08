@@ -50,11 +50,14 @@ class SocketConnectionEvent;
 //
 class QoSService {
  public:
-  explicit QoSService(Datapath* datapath, ConntrackMonitor* monitor);
+  explicit QoSService(Datapath* datapath,
+                      ConntrackMonitor* monitor,
+                      ShillClient* shill_client);
   // Provided for testing.
   QoSService(Datapath* datapath,
-             std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-             ConntrackMonitor* monitor);
+             ConntrackMonitor* monitor,
+             ShillClient* shill_client,
+             std::unique_ptr<net_base::DNSClientFactory> dns_client_factory);
 
   ~QoSService();
 
@@ -81,7 +84,8 @@ class QoSService {
       const patchpanel::SocketConnectionEvent& msg);
 
   // Update iptables rules (done by Datapath) for DoH.
-  void UpdateDoHProviders(const ShillClient::DoHProviders& doh_providers);
+  void OnDoHProvidersChanged();
+  void OnIPConfigChanged(const ShillClient::Device& shill_device);
 
   // Listening to Borealis VM start and stop event for application of QoS marks.
   void OnBorealisVMStarted(const std::string_view ifname);
@@ -91,10 +95,16 @@ class QoSService {
   void SetConnmarkUpdaterForTesting(std::unique_ptr<ConnmarkUpdater> updater);
 
  private:
+  // Resolves names of DoH providers and update iptables with the resolved
+  // result over |device|. The |device| should be connected, otherwise the name
+  // resolving will just fail.
+  void MaybeRefreshDoHRules(const ShillClient::Device& device);
+
   // Dependencies.
   Datapath* datapath_;
   std::unique_ptr<net_base::DNSClientFactory> dns_client_factory_;
   ConntrackMonitor* conntrack_monitor_;
+  ShillClient* shill_client_;
 
   // QoS feature is disabled by default. This value can be changed in `Enable()`
   // and `Disable()`.
@@ -106,6 +116,11 @@ class QoSService {
   // support the case that QoS feature is enabled after the WiFi interface
   // appeared.
   base::flat_set<std::string> interfaces_;
+
+  // The DNS servers and the DoH providers used for the last update (the last
+  // update can be still ongoing or already finished).
+  std::vector<net_base::IPAddress> dns_servers_for_doh_;
+  ShillClient::DoHProviders doh_providers_;
 
   // Defined in the qos_service.cc file. |doh_updator_| is responding for doing
   // the async DNS queries and call the corresponding function in Datapath to

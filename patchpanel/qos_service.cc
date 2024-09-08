@@ -63,6 +63,17 @@ std::vector<std::string_view> GetHostnamesFromDoHProviders(
   }
   return hostnames;
 }
+
+std::string IPAddressesToString(
+    const std::vector<net_base::IPAddress>& name_servers) {
+  std::vector<std::string> strs;
+  strs.reserve(name_servers.size());
+  for (const auto& ip : name_servers) {
+    strs.push_back(ip.ToString());
+  }
+  return base::StrCat({"{", base::JoinString(strs, ","), "}"});
+}
+
 }  // namespace
 
 class QoSService::DoHUpdater {
@@ -72,17 +83,21 @@ class QoSService::DoHUpdater {
 
   DoHUpdater(Datapath* datapath,
              DNSClientFactory* dns_client_factory,
-             const ShillClient::DoHProviders& doh_providers)
+             const ShillClient::DoHProviders& doh_providers,
+             std::string_view interface,
+             const std::vector<net_base::IPAddress>& name_servers)
       : datapath_(datapath) {
     std::vector<std::string_view> hostnames =
         GetHostnamesFromDoHProviders(doh_providers);
 
     LOG(INFO) << __func__ << " called with " << hostnames.size()
-              << " valid hostnames";
+              << " valid hostnames, interface="
+              << interface << ", name_servers="
+              << IPAddressesToString(name_servers);
 
     // Empty list can be intentional (no DoH providers) or all the input are
     // invalid. We only need to flush the rules here.
-    if (hostnames.empty()) {
+    if (hostnames.empty() || name_servers.empty()) {
       UpdateDatapath();
       return;
     }
@@ -90,20 +105,24 @@ class QoSService::DoHUpdater {
     // Used for identifying the DNSClient objects.
     int id = 0;
 
-    // Start a DNSClient for each hostname x {IPv4, IPv6}.
+    // Start a DNSClient for each hostname x each name server x {IPv4, IPv6}.
     for (const std::string_view name : hostnames) {
-      for (const auto family :
-           {net_base::IPFamily::kIPv4, net_base::IPFamily::kIPv6}) {
-        // Unretained() is safe here since DNSClient is owned by |this| and
-        // callback won't be invoked after DNSClient is destroyed.
-        auto client = dns_client_factory->Resolve(
-            family, name,
-            base::BindOnce(&DoHUpdater::OnAddressesResolved,
-                           base::Unretained(this), id, family,
-                           std::string(name)),
-            /*options=*/{});
-        dns_clients_.emplace(id, std::move(client));
-        id++;
+      for (const auto& name_server : name_servers) {
+        for (const auto family :
+             {net_base::IPFamily::kIPv4, net_base::IPFamily::kIPv6}) {
+          DNSClient::Options options = {.interface = std::string(interface),
+                                        .name_server = name_server};
+          // Unretained() is safe here since DNSClient is owned by |this| and
+          // callback won't be invoked after DNSClient is destroyed.
+          auto client = dns_client_factory->Resolve(
+              family, name,
+              base::BindOnce(&DoHUpdater::OnAddressesResolved,
+                             base::Unretained(this), id, family,
+                             std::string(name)),
+              options);
+          dns_clients_.emplace(id, std::move(client));
+          id++;
+        }
       }
     }
   }
@@ -174,16 +193,23 @@ class QoSService::DoHUpdater {
   Datapath* datapath_;
 };
 
-QoSService::QoSService(Datapath* datapath, ConntrackMonitor* monitor)
-    : datapath_(datapath), conntrack_monitor_(monitor) {
+QoSService::QoSService(Datapath* datapath,
+                       ConntrackMonitor* monitor,
+                       ShillClient* shill_client)
+    : datapath_(datapath),
+      conntrack_monitor_(monitor),
+      shill_client_(shill_client) {
   dns_client_factory_ = std::make_unique<net_base::DNSClientFactory>();
 }
 
 QoSService::QoSService(
     Datapath* datapath,
-    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory,
-    ConntrackMonitor* monitor)
-    : datapath_(datapath), conntrack_monitor_(monitor) {
+    ConntrackMonitor* monitor,
+    ShillClient* shill_client,
+    std::unique_ptr<net_base::DNSClientFactory> dns_client_factory)
+    : datapath_(datapath),
+      conntrack_monitor_(monitor),
+      shill_client_(shill_client) {
   dns_client_factory_ = std::move(dns_client_factory);
 }
 
@@ -299,15 +325,29 @@ void QoSService::ProcessSocketConnectionEvent(
       *conn, Fwmark::FromQoSCategory(qos_category), kFwmarkQoSCategoryMask);
 }
 
-void QoSService::UpdateDoHProviders(
-    const ShillClient::DoHProviders& doh_providers) {
-  // Notes:
-  // - We don't check if QoS is enabled here to simplify the logic. The iptables
-  //   rules for DoH won't have any effect when the service is not enabled.
-  // - If the current |doh_updater_| is still running, this reset() will cancel
-  //   it.
-  doh_updater_.reset(
-      new DoHUpdater(datapath_, dns_client_factory_.get(), doh_providers));
+void QoSService::OnDoHProvidersChanged() {
+  // Find the first connected Device if it exists, and resolve DoH providers
+  // with this device.
+  for (const auto& ifname : interfaces_) {
+    const ShillClient::Device* device =
+        shill_client_->GetDeviceByShillDeviceName(ifname);
+    if (device && device->IsConnected()) {
+      MaybeRefreshDoHRules(*device);
+      break;
+    }
+  }
+}
+
+void QoSService::OnIPConfigChanged(const ShillClient::Device& shill_device) {
+  if (!base::Contains(interfaces_, shill_device.ifname)) {
+    // Event from uninterested interface.
+    return;
+  }
+  if (!shill_device.IsConnected()) {
+    // DNS query won't succeed on a non-connected Device.
+    return;
+  }
+  MaybeRefreshDoHRules(shill_device);
 }
 
 void QoSService::OnBorealisVMStarted(const std::string_view ifname) {
@@ -323,6 +363,28 @@ void QoSService::OnBorealisVMStopped(const std::string_view ifname) {
 void QoSService::SetConnmarkUpdaterForTesting(
     std::unique_ptr<ConnmarkUpdater> updater) {
   connmark_updater_ = std::move(updater);
+}
+
+void QoSService::MaybeRefreshDoHRules(const ShillClient::Device& device) {
+  const auto& current_doh_providers = shill_client_->doh_providers();
+  const auto& current_dns_servers = device.network_config.dns_servers;
+
+  // If name server and DoH provider list didn't change, we don't need to
+  // resolve again.
+  if (dns_servers_for_doh_ == current_dns_servers &&
+      doh_providers_ == current_doh_providers) {
+    return;
+  }
+  dns_servers_for_doh_ = device.network_config.dns_servers;
+  doh_providers_ = current_doh_providers;
+
+  // Start DNS query with specifying the interface and name servers instead of
+  // relying of resolv.conf, since resolv.conf may not be updated by dnsproxy
+  // when this function is called and as a result the query may fail.
+  // Note that the reset here will cancel the ongoing updater if there is any.
+  doh_updater_.reset(new DoHUpdater(datapath_, dns_client_factory_.get(),
+                                    doh_providers_, device.ifname,
+                                    dns_servers_for_doh_));
 }
 
 }  // namespace patchpanel

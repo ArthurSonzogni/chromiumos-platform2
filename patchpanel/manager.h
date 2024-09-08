@@ -207,7 +207,7 @@ class Manager : public ForwardingService {
                              const std::vector<ShillClient::Device>& removed);
   void OnIPConfigsChanged(const ShillClient::Device& shill_device);
   void OnIPv6NetworkChanged(const ShillClient::Device& shill_device);
-  void OnDoHProvidersChanged(const ShillClient::DoHProviders& doh_providers);
+  void OnDoHProvidersChanged();
 
   // Callback from |network_monitor_svc_|.
   void OnNeighborReachabilityEvent(

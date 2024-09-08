@@ -86,7 +86,7 @@ Manager::Manager(const base::FilePath& cmd_path,
       multicast_counters_svc_(&datapath_),
       multicast_metrics_(&multicast_counters_svc_, metrics),
       ipv6_svc_(&nd_proxy_, &datapath_, system),
-      qos_svc_(&datapath_, &conntrack_monitor_),
+      qos_svc_(&datapath_, &conntrack_monitor_, shill_client_.get()),
       downstream_network_svc_(DownstreamNetworkService(metrics_,
                                                        system_,
                                                        &datapath_,
@@ -432,6 +432,7 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   }
 
   network_monitor_svc_.OnIPConfigsChanged(shill_device);
+  qos_svc_.OnIPConfigChanged(shill_device);
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
@@ -459,9 +460,8 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
       shill_device, shill_device.network_config.ipv6_addresses);
 }
 
-void Manager::OnDoHProvidersChanged(
-    const ShillClient::DoHProviders& doh_providers) {
-  qos_svc_.UpdateDoHProviders(doh_providers);
+void Manager::OnDoHProvidersChanged() {
+  qos_svc_.OnDoHProvidersChanged();
 }
 
 bool Manager::ArcStartup(pid_t pid) {

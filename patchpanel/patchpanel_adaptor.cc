@@ -45,14 +45,13 @@ PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
     : org::chromium::PatchPanelAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kPatchPanelServicePath)),
       metrics_(metrics),
-      manager_(
-          std::make_unique<Manager>(cmd_path,
-                                    system,
-                                    process_manager,
-                                    metrics_,
-                                    this,
-                                    std::make_unique<ShillClient>(bus, system),
-                                    std::move(rtnl_client))) {}
+      manager_(std::make_unique<Manager>(cmd_path,
+                                         system,
+                                         process_manager,
+                                         metrics_,
+                                         this,
+                                         ShillClient::New(bus, system),
+                                         std::move(rtnl_client))) {}
 
 PatchpanelAdaptor::~PatchpanelAdaptor() = default;
 

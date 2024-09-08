@@ -13,6 +13,7 @@
 #include <base/containers/fixed_flat_map.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
@@ -79,8 +80,19 @@ bool ShillClient::Device::IsIPv6Only() const {
          !network_config.ipv6_addresses.empty();
 }
 
+std::unique_ptr<ShillClient> ShillClient::New(
+    const scoped_refptr<dbus::Bus>& bus, System* system) {
+  auto client = base::WrapUnique(new ShillClient(bus, system));
+  client->Initialize();
+  return client;
+}
+
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
-    : bus_(bus), system_(system) {
+    : bus_(bus), system_(system) {}
+
+ShillClient::~ShillClient() = default;
+
+void ShillClient::Initialize() {
   manager_proxy_ =
       std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
   manager_proxy_->RegisterPropertyChangedSignalHandler(
@@ -106,8 +118,6 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
                << shill::kDNSProxyDOHProvidersProperty;
   }
 }
-
-ShillClient::~ShillClient() = default;
 
 const ShillClient::Device* ShillClient::default_logical_device() const {
   if (!default_logical_device_) {
@@ -735,7 +745,7 @@ void ShillClient::NotifyIPv6NetworkChangeHandlers(
 void ShillClient::RegisterDoHProvidersChangedHandler(
     const DoHProvidersChangeHandler& handler) {
   doh_provider_handlers_.push_back(handler);
-  handler.Run(doh_providers_);
+  handler.Run();
 }
 
 void ShillClient::UpdateDoHProviders(const brillo::Any& property_value) {
@@ -751,8 +761,12 @@ void ShillClient::UpdateDoHProviders(const brillo::Any& property_value) {
 
   doh_providers_.swap(new_doh_providers);
   for (const auto& h : doh_provider_handlers_) {
-    h.Run(doh_providers_);
+    h.Run();
   }
+}
+
+void ShillClient::set_doh_providers_for_testing(const DoHProviders& value) {
+  doh_providers_ = value;
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {

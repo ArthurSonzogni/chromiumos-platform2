@@ -113,10 +113,11 @@ class ShillClient {
   using DoHProviders = base::flat_set<std::string>;
   // Client callback for listening to DoH providers change events on the Manager
   // object of shill.
-  using DoHProvidersChangeHandler =
-      base::RepeatingCallback<void(const DoHProviders& doh_providers)>;
+  using DoHProvidersChangeHandler = base::RepeatingCallback<void()>;
 
-  ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system);
+  static std::unique_ptr<ShillClient> New(const scoped_refptr<dbus::Bus>& bus,
+                                          System* system);
+
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
 
@@ -173,10 +174,20 @@ class ShillClient {
   virtual const Device* default_physical_device() const;
   // Returns interface names of all known shill physical Devices.
   virtual const std::vector<Device> GetDevices() const;
+  // Returns the current DoH providers tracked in shill.
+  const DoHProviders& doh_providers() const { return doh_providers_; }
 
   base::WeakPtr<ShillClient> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
  protected:
+  ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system);
+
+  // Called by New(). This is isolated from the constructor so that the
+  // ShillClient object used in unit test can avoid calling this. Ideally we
+  // should have an interface class as the base class to avoid having the real
+  // dependencies in the fake class.
+  void Initialize();
+
   void OnManagerPropertyChangeRegistration(const std::string& interface,
                                            const std::string& signal_name,
                                            bool success);
@@ -224,6 +235,8 @@ class ShillClient {
   const std::map<int, net_base::NetworkConfig>& network_config_cache() const {
     return network_config_cache_;
   }
+
+  void set_doh_providers_for_testing(const DoHProviders& value);
 
  private:
   // Updates the list of currently known shill Devices, adding or removing
