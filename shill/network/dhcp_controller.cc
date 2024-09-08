@@ -151,6 +151,14 @@ void DHCPController::UpdateConfiguration(
     const net_base::NetworkConfig& network_config,
     const DHCPv4Config::Data& dhcp_data,
     bool is_gateway_arp) {
+  // b/298696921#17: a race between GATEWAY-ARP response and DHCPACK can cause a
+  // GATEWAY-ARP event incoming with no DHCP lease information. This empty lease
+  // should be ignored.
+  if (is_gateway_arp && !network_config.ipv4_address) {
+    LOG(WARNING) << "Get GATEWAY-ARP reply before DHCP state change, ignored.";
+    return;
+  }
+
   // This needs to be set before calling OnIPConfigUpdated() below since
   // those functions may indirectly call other methods like ReleaseIP that
   // depend on or change this value.
@@ -160,14 +168,6 @@ void DHCPController::UpdateConfiguration(
   // has already stopped.
   if (last_provision_timer_) {
     last_provision_timer_->Stop();
-  }
-
-  // b/298696921#17: a race between GATEWAY-ARP response and DHCPACK can cause a
-  // GATEWAY-ARP event incoming with no DHCP lease information. This empty lease
-  // should be ignored.
-  if (is_gateway_arp && !network_config.ipv4_address) {
-    LOG(WARNING) << "Get GATEWAY-ARP reply after DHCP state change, ignored.";
-    return;
   }
 
   // This is a non-authoritative confirmation that we or on the same
