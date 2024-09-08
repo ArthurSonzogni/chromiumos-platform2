@@ -259,6 +259,7 @@ void DHCPController::OnProcessExited(int pid, int exit_status) {
 
 void DHCPController::StartAcquisitionTimeout() {
   CHECK(lease_expiration_callback_.IsCancelled());
+  is_gateway_arp_active_ = false;
   lease_acquisition_timeout_callback_.Reset(
       base::BindOnce(&DHCPController::ProcessAcquisitionTimeout,
                      weak_ptr_factory_.GetWeakPtr()));
