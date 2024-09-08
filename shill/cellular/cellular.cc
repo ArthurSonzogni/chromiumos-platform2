@@ -721,6 +721,7 @@ void Cellular::StopModemCallback(EnabledStateChangedCallback callback,
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": "
             << GetStateString(state_) << " Error: " << error_result;
   stop_step_ = StopSteps::kModemStopped;
+  adaptor()->EmitBoolChanged(kPoweredProperty, enabled());
   StopStep(std::move(callback), error_result);
 }
 
@@ -2955,6 +2956,10 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       // the Modem is started.
       if (state_ == State::kEnabled)
         StartModem(base::DoNothing());
+      // Modem powers up and reports modem is disabled. If cellular is also
+      // disabled, call Stop() to put modem in low power mode.
+      if (state_ == State::kDisabled && old_modem_state == kModemStateUnknown)
+        Stop(base::DoNothing());
       break;
     case kModemStateDisabling:
     case kModemStateEnabling:

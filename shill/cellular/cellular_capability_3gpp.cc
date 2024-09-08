@@ -501,6 +501,7 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
 
 void CellularCapability3gpp::StopModem(ResultCallback callback) {
   SLOG(this, 1) << __func__;
+  InitProxies();
   CHECK(!callback.is_null());
   // If there is an outstanding registration change, simply ignore it since
   // the service will be destroyed anyway.
