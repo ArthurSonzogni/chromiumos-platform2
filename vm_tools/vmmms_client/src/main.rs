@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+mod kills_client;
 mod mglru;
 mod reclaim_client;
 mod vmmms_socket;
@@ -18,10 +19,12 @@ use std::os::fd::AsFd;
 use std::time::Duration;
 use vsock::VMADDR_CID_HOST;
 
+use kills_client::KillsClient;
 use reclaim_client::ReclaimClient;
 use vmmms_socket::VmmmsSocket;
 
 const VM_MEMORY_MANAGEMENT_RECLAIM_SERVER_PORT: u32 = 7782;
+const VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT: u32 = 7783;
 const IDENT: &str = "vmmms_client";
 const READ_TIMEOUT: Option<Duration> = Some(Duration::from_secs(5));
 const MGLRU_ADMIN_FILE_PATH: &str = "/sys/kernel/mm/lru_gen/admin";
@@ -39,6 +42,12 @@ fn main() -> Result<()> {
         )?,
         MGLRU_ADMIN_FILE_PATH,
     )?;
+
+    let _kills_client: KillsClient = KillsClient::new(VmmmsSocket::new(
+        VMADDR_CID_HOST,
+        VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT,
+        READ_TIMEOUT,
+    )?)?;
 
     info!("VmMemoryManagementClient connection established");
 
