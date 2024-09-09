@@ -271,7 +271,7 @@ bool ReadLine(base::File* file,
   }
 }
 
-bool IsDeviceStillMounted(uint32_t kernel_dev) {
+bool IsDeviceStillMounted(uint64_t kernel_dev) {
   uint64_t user_dev = KernelToUserspaceDeviceId(kernel_dev);
   uint32_t dev_major = major(user_dev), dev_minor = minor(user_dev);
   base::File mountinfo(base::FilePath("/proc/self/mountinfo"),
@@ -868,7 +868,7 @@ absl::Status FilePlugin::UpdateBPFMapForPathMaps(
 }
 
 absl::Status FilePlugin::RemoveKeysFromBPFMapOnUnmount(int bpfMapFd,
-                                                       const uint32_t dev) {
+                                                       uint64_t dev) {
   base::WeakPtr<PlatformInterface> platform = GetPlatform();
   if (platform->BpfMapDeleteElementByFd(bpfMapFd, &dev) != 0) {
     return absl::InternalError(

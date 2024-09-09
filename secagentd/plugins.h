@@ -525,7 +525,7 @@ class FilePlugin : public PluginInterface {
 
   void StageEventsForAsyncProcessing();
 
-  absl::Status RemoveKeysFromBPFMapOnUnmount(int bpfMapFd, const uint32_t dev);
+  absl::Status RemoveKeysFromBPFMapOnUnmount(int bpfMapFd, uint64_t dev);
   base::WeakPtrFactory<FilePlugin> weak_ptr_factory_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<ImageCacheInterface> image_cache_;
