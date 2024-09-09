@@ -25,12 +25,12 @@ pub fn get_page_size() -> usize {
     *PAGE_SIZE
 }
 
-pub struct VmmmsClient {
+pub struct ReclaimClient {
     pub vmmms_socket: VmmmsSocket,
     pub mglru_file: File,
 }
 
-impl VmmmsClient {
+impl ReclaimClient {
     pub fn new(mut vmmms_socket: VmmmsSocket, mglru_file_path: &str) -> Result<Self> {
         let mut handshake_packet = VmMemoryManagementPacket::new();
         handshake_packet.type_ = PacketType::PACKET_TYPE_HANDSHAKE.into();

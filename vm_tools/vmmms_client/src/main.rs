@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod client;
 mod mglru;
+mod reclaim_client;
 mod vmmms_socket;
 
 use anyhow::Result;
@@ -18,7 +18,7 @@ use std::os::fd::AsFd;
 use std::time::Duration;
 use vsock::VMADDR_CID_HOST;
 
-use client::VmmmsClient;
+use reclaim_client::ReclaimClient;
 use vmmms_socket::VmmmsSocket;
 
 const VM_MEMORY_MANAGEMENT_RECLAIM_SERVER_PORT: u32 = 7782;
@@ -31,7 +31,7 @@ fn main() -> Result<()> {
         error!("Failed to initialize syslog: {:?}", e);
     }
 
-    let mut reclaim_client: VmmmsClient = VmmmsClient::new(
+    let mut reclaim_client: ReclaimClient = ReclaimClient::new(
         VmmmsSocket::new(
             VMADDR_CID_HOST,
             VM_MEMORY_MANAGEMENT_RECLAIM_SERVER_PORT,
