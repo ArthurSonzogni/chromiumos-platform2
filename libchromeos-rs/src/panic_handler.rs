@@ -6,7 +6,6 @@
 
 use nix::sys::memfd::memfd_create;
 use nix::sys::memfd::MemFdCreateFlag;
-use std::borrow::Cow;
 use std::ffi::CString;
 use std::fs::File;
 use std::io::Result;
@@ -27,13 +26,7 @@ fn create_panic_memfd() -> nix::Result<File> {
     Ok(unsafe { File::from_raw_fd(fd) })
 }
 
-#[rustversion::since(1.81)]
-type PanicHookInfo<'a> = panic::PanicHookInfo<'a>;
-
-#[rustversion::before(1.81)]
-type PanicHookInfo<'a> = panic::PanicInfo<'a>;
-
-fn panic_info_payload_str_common<'a>(panic_info: &'a PanicHookInfo<'_>) -> Option<&'a str> {
+fn panic_info_payload_str<'a>(panic_info: &'a panic::PanicHookInfo<'_>) -> Option<&'a str> {
     let payload = panic_info.payload();
     payload
         .downcast_ref::<&str>()
@@ -41,23 +34,9 @@ fn panic_info_payload_str_common<'a>(panic_info: &'a PanicHookInfo<'_>) -> Optio
         .or_else(|| payload.downcast_ref::<String>().map(|x| x.as_str()))
 }
 
-#[rustversion::since(1.81)]
-fn panic_info_payload_str<'a>(panic_info: &'a PanicHookInfo<'_>) -> Option<&'a str> {
-    panic_info_payload_str_common(panic_info)
-}
-
-#[rustversion::before(1.81)]
-fn panic_info_payload_str<'a>(panic_info: &'a PanicHookInfo<'_>) -> Option<Cow<'a, str>> {
-    if let Some(message) = panic_info.message() {
-        Some(Cow::Owned(format!("{}", message)))
-    } else {
-        panic_info_payload_str_common(panic_info).map(Cow::Borrowed)
-    }
-}
-
 // TODO(b/309651697): This was written to be compatible with existing PanicHookInfo formatting, but
 // it should probably be made more stable.
-fn format_panic_info<W: Write>(w: &mut W, panic_info: &PanicHookInfo<'_>) -> Result<()> {
+fn format_panic_info<W: Write>(w: &mut W, panic_info: &panic::PanicHookInfo<'_>) -> Result<()> {
     write!(w, "panicked at '")?;
 
     if let Some(message) = panic_info_payload_str(panic_info) {
