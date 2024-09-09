@@ -670,14 +670,7 @@ void DelegateImpl::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
 }
 
 void DelegateImpl::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
-  std::unique_ptr<brillo::Udev> udev = brillo::Udev::Create();
-
-  if (udev == nullptr) {
-    std::move(callback).Run({}, "Error initializing udev");
-    return;
-  }
-
-  auto result = PopulateTouchpadDevices(std::move(udev), "/");
+  auto result = PopulateTouchpadDevices(brillo::Udev::Create(), "/");
   if (!result.has_value()) {
     std::move(callback).Run({}, result.error());
     return;
