@@ -2,13 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
+#include "libmems/iio_device_impl.h"
+
 #include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
 #include <utility>
 #include <vector>
 
@@ -16,13 +19,12 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
 #include "libmems/iio_context_impl.h"
-#include "libmems/iio_device_impl.h"
 #include "libmems/iio_device_trigger_impl.h"
 #include "libmems/iio_event_impl.h"
 
@@ -94,11 +96,6 @@ IioDeviceImpl::IioDeviceImpl(IioContextImpl* ctx, iio_device* dev)
     if (iio_event)
       events_.push_back(std::move(iio_event));
   }
-
-  // To read events and samples at the same time, the event fd must be created
-  // first, to avoid opening /dev/iio:deviceX twice.
-  if (!GetAllEvents().empty() && !GetAllChannels().empty())
-    GetEventFd();
 }
 
 IioContext* IioDeviceImpl::GetContext() const {

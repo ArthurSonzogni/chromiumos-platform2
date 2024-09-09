@@ -82,6 +82,12 @@ void SensorDeviceImpl::OnDeviceAdded(
     const std::set<cros::mojom::DeviceType>& types) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
+  // To read events and samples at the same time, the event fd must be created
+  // first, to avoid opening /dev/iio:deviceX twice.
+  if (!iio_device->GetAllEvents().empty() &&
+      !iio_device->GetAllChannels().empty())
+    iio_device->GetEventFd();
+
   devices_.emplace(iio_device->GetId(), DeviceData(iio_device, types));
 }
 
