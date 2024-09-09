@@ -29,15 +29,25 @@ void OnHandlerRegistrationFinish(bool success) {
 
 BiodFeature::BiodFeature(
     const scoped_refptr<dbus::Bus>& bus,
+    const SessionStateManagerInterface* session_state_manager,
     feature::PlatformFeaturesInterface* feature_lib,
     std::unique_ptr<updater::FirmwareSelectorInterface> selector)
-    : bus_(bus), feature_lib_(feature_lib), selector_(std::move(selector)) {
+    : bus_(bus),
+      session_state_manager_(session_state_manager),
+      feature_lib_(feature_lib),
+      selector_(std::move(selector)) {
   feature_lib_->ListenForRefetchNeeded(
       base::BindRepeating(&BiodFeature::CheckFeatures, base::Unretained(this)),
       base::BindOnce(&OnHandlerRegistrationFinish));
 }
 
 void BiodFeature::CheckFeatures() {
+  if (session_state_manager_->GetPrimaryUser().empty()) {
+    LOG(WARNING) << "Ignore RefetchFeatureState signal because primary "
+                 << "user is not set";
+    return;
+  }
+
   feature_lib_->IsEnabled(
       kCrOSLateBootAllowFpmcuBetaFirmware,
       base::BindOnce(&BiodFeature::AllowBetaFirmware, base::Unretained(this)));

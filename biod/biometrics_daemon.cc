@@ -57,12 +57,6 @@ BiometricsDaemon::BiometricsDaemon() {
   CHECK(board_name.has_value() && !board_name->empty())
       << "Fingerprint board name unavailable.";
 
-  auto selector = std::make_unique<updater::FirmwareSelector>(
-      base::FilePath(kBioFwUpdaterLibPath), base::FilePath(kFirmwareDir));
-  CHECK(feature::PlatformFeatures::Initialize(bus_));
-  biod_feature_ = std::make_unique<BiodFeature>(
-      bus_, feature::PlatformFeatures::Get(), std::move(selector));
-
   biod_metrics_ = std::make_unique<BiodMetrics>();
   auto cros_fp_device = CrosFpDevice::Create(
       biod_metrics_.get(), std::make_unique<ec::EcCommandFactory>());
@@ -72,6 +66,13 @@ BiometricsDaemon::BiometricsDaemon() {
 
   session_state_manager_ =
       std::make_unique<SessionStateManager>(bus_.get(), biod_metrics_.get());
+
+  auto selector = std::make_unique<updater::FirmwareSelector>(
+      base::FilePath(kBioFwUpdaterLibPath), base::FilePath(kFirmwareDir));
+  CHECK(feature::PlatformFeatures::Initialize(bus_));
+  biod_feature_ = std::make_unique<BiodFeature>(
+      bus_, session_state_manager_.get(), feature::PlatformFeatures::Get(),
+      std::move(selector));
 
   bool instantiate_auth_stack_manager =
       base::PathExists(base::FilePath(kForceFpLoginFile));

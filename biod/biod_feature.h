@@ -10,6 +10,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
 
+#include "biod/session_state_manager.h"
 #include "biod/updater/firmware_selector.h"
 #include "featured/feature_library.h"
 
@@ -19,6 +20,7 @@ class BiodFeature {
  public:
   explicit BiodFeature(
       const scoped_refptr<dbus::Bus>& bus,
+      const SessionStateManagerInterface* session_state_manager,
       feature::PlatformFeaturesInterface* feature_lib,
       std::unique_ptr<updater::FirmwareSelectorInterface> selector);
   BiodFeature(const BiodFeature&) = delete;
@@ -29,6 +31,7 @@ class BiodFeature {
   void AllowBetaFirmware(bool enabled);
 
   scoped_refptr<dbus::Bus> bus_;
+  const SessionStateManagerInterface* session_state_manager_ = nullptr;
   feature::PlatformFeaturesInterface* feature_lib_ = nullptr;
   std::unique_ptr<updater::FirmwareSelectorInterface> selector_;
 };
