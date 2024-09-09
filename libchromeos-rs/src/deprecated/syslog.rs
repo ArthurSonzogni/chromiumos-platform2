@@ -552,7 +552,7 @@ mod tests {
         }
 
         syslogger
-            .write_all(&[b'\n'])
+            .write_all(b"\n")
             .expect("error writing newline char");
     }
 
