@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         MGLRU_ADMIN_FILE_PATH,
     )?;
 
-    let kills_client: KillsClient = KillsClient::new(
+    let mut kills_client: KillsClient = KillsClient::new(
         VmmmsSocket::new(
             VMADDR_CID_HOST,
             VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT,
@@ -78,14 +78,12 @@ fn main() -> Result<()> {
 
         if is_reclaim_socket_readable {
             reclaim_client.handle_reclaim_socket_readable()?;
-            info!("Successfully handled MGLRU request");
         }
         if is_mglru_file_readable {
-            info!("Received mglru notification");
             reclaim_client.handle_mglru_notification()?;
         }
         if received_psi_notification {
-            info!("Received PSI notification");
+            kills_client.handle_psi_notification()?;
         }
     }
 }
