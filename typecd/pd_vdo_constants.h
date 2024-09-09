@@ -52,6 +52,8 @@ constexpr uint32_t kUSBSpeed20 = 0x0;
 constexpr uint32_t kUSBSuperSpeed32Gen1 = 0x1;
 constexpr uint32_t kUSBSuperSpeed32Or40Gen2 = 0x2;
 constexpr uint32_t kUSB40SuperSpeedGen3 = 0x3;
+constexpr uint32_t kUSB40SuperSpeedGen4 = 0x4;
+
 // Speed values for PD rev 2.0
 constexpr uint32_t kUSBSuperSpeed31Gen1 = 0x1;
 constexpr uint32_t kUSBSuperSpeed31Gen2 = 0x2;

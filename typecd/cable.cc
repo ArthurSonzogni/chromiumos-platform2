@@ -208,7 +208,8 @@ bool Cable::TBT3PDIdentityCheck() {
       pd_revision == PDRevision::k32) {
     return usb_speed == kUSBSuperSpeed32Gen1 ||
            usb_speed == kUSBSuperSpeed32Or40Gen2 ||
-           usb_speed == kUSB40SuperSpeedGen3;
+           usb_speed == kUSB40SuperSpeedGen3 ||
+	   usb_speed == kUSB40SuperSpeedGen4;
   }
 
   // For PD 2.0 the check is similar, but let's make it explicit.
