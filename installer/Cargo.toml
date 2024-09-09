@@ -2,6 +2,7 @@
 name = "chromeos-installer"
 version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
+description = "Install ChromeOS"
 edition = "2021"
 include = [
     "src/*.rs",
