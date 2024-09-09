@@ -134,8 +134,8 @@ static_library("libconcierge") {
     "vm_protos",
   ]
   defines = [
-    # TODO(b/295256641): Re-enable pvclock support for aarch64.
-    "ALLOW_VIRTIO_PVCLOCK=${use.amd64}",
+    # TODO(b/365027228): Cleanup this define once pvclock is confirmed stable.
+    "ALLOW_VIRTIO_PVCLOCK=1",
   ]
 
   cflags_cc = [
