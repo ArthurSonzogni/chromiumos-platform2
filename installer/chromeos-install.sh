@@ -186,7 +186,7 @@ check_payload_image() {
   local root_block
   local state_block
 
-  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_skip_rootfs:?}" -eq "${FLAGS_TRUE}" ]; then
     # Usually this is used for partition setup.
     SRC=""
     ROOT=""
@@ -277,7 +277,7 @@ umount_from_loop_dev() {
 cleanup_on_failure() {
   set +e
 
-  if [ "${FLAGS_storage_diags}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_storage_diags:?}" -eq "${FLAGS_TRUE}" ]; then
     # Generate the diagnostics log that can be used by a caller.
     echo "Running a hw diagnostics test -- this might take a couple minutes."
     badblocks -e 100 -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
@@ -337,7 +337,7 @@ cleanup() {
 }
 
 check_removable() {
-  if [ "${FLAGS_skip_dst_removable}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_skip_dst_removable:?}" -eq "${FLAGS_TRUE}" ]; then
     return
   fi
 
@@ -397,7 +397,7 @@ wipe_stateful() {
   # mkfs/pvcreate don't get confused by existing state.
   dd if=/dev/zero of="${DEV}" bs="${DST_BLKSIZE}" count=1 >/dev/null 2>&1
 
-  if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     # Now we recreate the logical volume set up.
     # Create physical volume on the partition.
     echo "Creating physical volumes"
@@ -438,7 +438,7 @@ wipe_stateful() {
 
   # Need to synchronize before releasing device.
   sync
-  if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     deactivate_volume_group "${vg_name}"
   fi
 
@@ -487,7 +487,7 @@ install_stateful() {
   local vg_name
 
   echo "Installing the stateful partition..."
-  if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     dst_stateful_partition="$(make_partition_dev "${DST}" \
       "${PARTITION_NUM_STATE}")"
     vg_name="$(get_volume_group "${dst_stateful_partition}")"
@@ -600,7 +600,7 @@ install_stateful() {
 
   umount_from_loop_dev
   sync
-  if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     deactivate_volume_group "${vg_name}"
   fi
 }
@@ -792,7 +792,7 @@ do_post_install() {
   # we're passing the new destination partition number as an arg, the postinst
   # script had better not try to access it, for the reasons we just gave.
   # We can't run this if the target arch isn't the same as the host arch
-  if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
+  if [ "${FLAGS_skip_postinstall:?}" -eq "${FLAGS_FALSE}" ]; then
     if [ -n "${FLAGS_payload_image}" ]; then
       LOOP_DEV="${dst_rootfs}"
       mount_on_loop_dev
@@ -814,7 +814,7 @@ ufs_init() {
 main() {
   # Be aggressive.
   set -eu
-  if [ "${FLAGS_debug}" = "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_debug:?}" = "${FLAGS_TRUE}" ]; then
     set -x
   fi
 
@@ -861,7 +861,7 @@ main() {
   echo "This will install from '${SRC}' to '${DST}'."
   echo "This will erase all data at this destination: ${DST}"
   local sure
-  if [ "${FLAGS_yes}" -eq "${FLAGS_FALSE}" ]; then
+  if [ "${FLAGS_yes:?}" -eq "${FLAGS_FALSE}" ]; then
     printf "Are you sure (y/N)? "
     read -r sure
     if [ "${sure}" != "y" ]; then
@@ -874,7 +874,7 @@ main() {
 
   # For LVM partitions, the logical volumes/volume groups on the stateful
   # partition may be active. Deactivate the partitions.
-  if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_lvm_stateful:?}" -eq "${FLAGS_TRUE}" ]; then
     local dst_stateful
     dst_stateful="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")"
     local vg_name
@@ -885,12 +885,12 @@ main() {
   fi
 
   # Write the GPT using the board specific script.
-  if [ "${FLAGS_skip_gpt_creation}" -eq "${FLAGS_FALSE}" ]; then
+  if [ "${FLAGS_skip_gpt_creation:?}" -eq "${FLAGS_FALSE}" ]; then
     write_base_table "${DST}" "$(get_pmbr_code)"
     reload_partitions
   fi
 
-  if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_skip_rootfs:?}" -eq "${FLAGS_TRUE}" ]; then
     echo "Clearing and reinstalling the stateful partition."
     wipe_stateful
     install_stateful
@@ -900,7 +900,7 @@ main() {
     exit 0
   fi
 
-  if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ] && \
+  if [ "${FLAGS_preserve_stateful:?}" -eq "${FLAGS_FALSE}" ] && \
       [ -z "${FLAGS_lab_preserve_logs}" ]; then
     wipe_stateful
   fi
@@ -932,7 +932,7 @@ main() {
   copy_partition "${PARTITION_NUM_KERN_C:?}" "${SRC}" "${DST}" 1 1 false     # 6
   # Cache the first read of KERN so the second is read from RAM.
   # This is okay as they read from the same source.
-  if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_minimal_copy:?}" -eq "${FLAGS_TRUE}" ]; then
     echo "Skipping copy of B kernel partition."
   else
     copy_partition "${PARTITION_NUM_KERN_B}" "${SRC}" "${DST}" 1 1 true    # 4
@@ -947,7 +947,7 @@ main() {
   # prevents this.
   local chunk_num
   for chunk_num in $(seq "${NUM_ROOTFS_CHUNKS}"); do
-    if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
+    if [ "${FLAGS_minimal_copy:?}" -eq "${FLAGS_TRUE}" ]; then
       echo "Skipping copy of B root partition."
     else
       copy_partition "${PARTITION_NUM_ROOT_B}" "${SRC}" "${DST}" \
@@ -968,7 +968,7 @@ main() {
     copy_partition "${PARTITION_NUM_MINIOS_A}" "${SRC}" "${DST}" 1 1 true  # 9
   fi
 
-  if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
+  if [ "${FLAGS_minimal_copy:?}" -eq "${FLAGS_TRUE}" ]; then
     echo "Skipping copy of B miniOS partition."
   elif [ -n "${PARTITION_NUM_MINIOS_B}" ]; then
     copy_partition "${PARTITION_NUM_MINIOS_B}" "${SRC}" "${DST}" 1 1 false # 10
