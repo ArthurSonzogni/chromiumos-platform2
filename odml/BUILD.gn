@@ -207,6 +207,7 @@ if (use.test) {
   executable("coral_testrunner") {
     sources = [
       "coral/clustering/agglomerative_clustering_test.cc",
+      "coral/embedding/engine_test.cc",
       "coral/service_test.cc",
       "coral/title_generation/engine_test.cc",
       "on_device_model/fake/fake_chrome_ml_api.cc",

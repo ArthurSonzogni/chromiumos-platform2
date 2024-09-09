@@ -99,6 +99,8 @@ enum CoralError {
   // TODO(b/358531135): Add more error types and avoid using kUnknownError.
   [Default] kUnknownError,
   [MinVersion=1] kLoadModelFailed,
+  [MinVersion=2] kInvalidArgs,
+  [MinVersion=2] kModelExecutionFailed,
 };
 
 [Stable]
