@@ -201,26 +201,30 @@ void GuestIPv6Service::StartForwarding(
     }
   }
 
-  const auto uplink_ip = GetUplinkIp(ifname_uplink);
-  if (!uplink_ip) {
+  if (upstream_shill_device.network_config.ipv6_addresses.empty()) {
+    uplink_ips_.erase(ifname_uplink);
     return;
   }
+  // GuestIPv6Service only uses the first IPv6 address on uplink currently.
+  const auto uplink_ip =
+      upstream_shill_device.network_config.ipv6_addresses[0].address();
+  uplink_ips_[ifname_uplink] = uplink_ip;
 
   // Allow IPv6 address on uplink to be resolvable on the downlink
-  if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, *uplink_ip)) {
+  if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, uplink_ip)) {
     LOG(WARNING) << __func__ << ": " << pair
-                 << ", Failed to setup the IPv6 neighbor {" << *uplink_ip
+                 << ", Failed to setup the IPv6 neighbor {" << uplink_ip
                  << "} proxy on dev " << ifname_downlink;
   }
 
   if (forward_method == ForwardMethod::kMethodRAServer) {
-    if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(*uplink_ip),
+    if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(uplink_ip),
                        uplink_dns_[ifname_uplink],
                        forward_record_[ifname_uplink].mtu,
                        forward_record_[ifname_uplink].hop_limit)) {
       LOG(WARNING) << __func__ << ": " << pair
                    << ", Failed to start RA server on downlink with uplink IP {"
-                   << *uplink_ip << "}";
+                   << uplink_ip << "}";
     }
   }
 }
@@ -382,6 +386,7 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
     return;
   }
 
+  // GuestIPv6Service only uses the first IPv6 address on uplink currently.
   const auto new_uplink_ip =
       upstream_shill_device.network_config.ipv6_addresses[0].address();
   LOG(INFO) << __func__ << ": uplink: " << ifname << ", {"
