@@ -15,11 +15,10 @@ mod handle_purge_test;
 mod handle_uninstall_test;
 mod handle_unmount_test;
 mod handle_vm_stopped_test;
+mod log_init;
 mod periodic_dlc_handler_test;
 
 #[ctor]
 fn global_init() {
-    if stderrlog::new().verbosity(log::Level::Debug).init().is_ok() {
-        debug!("Successfully initialized stderr logger for testing");
-    }
+    log_init::init();
 }
