@@ -421,4 +421,20 @@ TEST_F(ChromeSetupTest, TestGkiDisabled) {
                         base::SPLIT_WANT_ALL);
   EXPECT_THAT(result, testing::Not(testing::Contains("ArcVmGki")));
 }
+
+TEST_F(ChromeSetupTest, TestArcVmDlcEnabled) {
+  base::ScopedTempDir temp_dir;
+  std::set<std::string> disallowed_params;
+  InitWithUseFlag("arcvm_dlc", &temp_dir, &builder_);
+  login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+  auto argv = builder_.arguments();
+  EXPECT_EQ("", GetFlag(argv, "--enable-arcvm-dlc"));
+}
+
+TEST_F(ChromeSetupTest, TestArcVmDlcDisabled) {
+  std::set<std::string> disallowed_params;
+  login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+  auto argv = builder_.arguments();
+  EXPECT_EQ(kNotPresent, GetFlag(argv, "--enable-arcvm-dlc"));
+}
 }  // namespace login_manager
