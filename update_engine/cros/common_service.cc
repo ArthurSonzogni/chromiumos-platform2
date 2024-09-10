@@ -103,7 +103,12 @@ bool UpdateEngineService::Install(
 }
 
 bool UpdateEngineService::Migrate(brillo::ErrorPtr* error) {
-  // Stub migrate action.
+  if (!SystemState::Get()->update_attempter()->CheckForInstall(
+          {}, /*omaha_url=*/"", /*scaled=*/true, /*force_ota=*/false,
+          /*migration=*/true)) {
+    LogAndSetError(error, FROM_HERE, "Could not schedule migration install.");
+    return false;
+  }
   return true;
 }
 

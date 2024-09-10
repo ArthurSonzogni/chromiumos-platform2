@@ -19,9 +19,11 @@
 #include <libimageloader/manifest.h>
 
 #include "update_engine/common/boot_control.h"
+#include "update_engine/common/boot_control_interface.h"
 #include "update_engine/common/dlcservice_interface.h"
 #include "update_engine/common/system_state.h"
 #include "update_engine/common/utils.h"
+#include "update_engine/cros/boot_control_chromeos.h"
 #include "update_engine/cros/image_properties.h"
 
 namespace chromeos_update_engine {
@@ -51,8 +53,9 @@ const char kForceOTASlotting[] = "dlc";
 InstallAction::InstallAction(std::unique_ptr<HttpFetcher> http_fetcher,
                              const std::string& id,
                              const std::string& slotting,
+                             const InstallTarget& target,
                              const std::string& manifest_dir)
-    : http_fetcher_(std::move(http_fetcher)), id_(id) {
+    : http_fetcher_(std::move(http_fetcher)), id_(id), target_(target) {
   slotting_ = slotting.empty() ? kDefaultSlotting : slotting;
   manifest_dir_ =
       manifest_dir.empty() ? imageloader::kDlcManifestRootpath : manifest_dir;
@@ -77,14 +80,31 @@ void InstallAction::PerformAction() {
     http_fetcher_->set_payload_info_visible(false);
 
   // Get the DLC device partition.
-  auto partition_name =
-      base::FilePath("dlc").Append(id_).Append(kDefaultPackage).value();
   auto* boot_control = SystemState::Get()->boot_control();
+  std::string partition_name;
+  BootControlInterface::Slot target_slot;
+  switch (target_) {
+    case kRoot:
+      if (manifest_->fs_type() != imageloader::FileSystem::kBlob) {
+        LOG(ERROR) << "Root installation only support blob DLC.";
+        processor_->ActionComplete(this, ErrorCode::kScaledInstallationError);
+        return;
+      }
+      partition_name = "root";
+      target_slot = boot_control->GetFirstInactiveSlot();
+      break;
+
+    case kStateful:
+      partition_name =
+          base::FilePath("dlc").Append(id_).Append(kDefaultPackage).value();
+      target_slot = boot_control->GetCurrentSlot();
+      break;
+  }
 
   std::string partition;
   const auto& sanitized_id = manifest_->sanitized_id();
-  if (!boot_control->GetPartitionDevice(
-          partition_name, boot_control->GetCurrentSlot(), &partition)) {
+  if (!boot_control->GetPartitionDevice(partition_name, target_slot,
+                                        &partition)) {
     LOG(ERROR) << "Could not retrieve device partition for " << sanitized_id;
     processor_->ActionComplete(this, ErrorCode::kScaledInstallationError);
     return;

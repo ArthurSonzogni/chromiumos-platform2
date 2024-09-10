@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "update_engine/cros/update_attempter.h"
-
 #include <gmock/gmock.h>
+
+#include "update_engine/cros/update_attempter.h"
 
 namespace chromeos_update_engine {
 
@@ -43,7 +43,8 @@ class MockUpdateAttempter : public UpdateAttempter {
               (const std::vector<std::string>& dlc_ids,
                const std::string& omaha_url,
                bool scaled,
-               bool force_ota),
+               bool force_ota,
+               bool migration),
               (override));
 
   MOCK_METHOD2(SetDlcActiveValue, bool(bool, const std::string&));

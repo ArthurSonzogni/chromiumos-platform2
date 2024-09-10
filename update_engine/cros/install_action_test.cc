@@ -154,6 +154,7 @@ class InstallActionTest : public ::testing::Test {
     install_action_ = std::make_unique<InstallAction>(
         std::move(mock_http_fetcher), "foobar-dlc",
         /*slotting=*/"",
+        /*target=*/InstallAction::kStateful,
         /*manifest_dir=*/tempdir_.GetPath().Append("dlc").value());
     FakeSystemState::Get()->set_dlc_utils(&mock_dlc_utils_);
   }

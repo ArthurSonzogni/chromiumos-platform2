@@ -52,6 +52,7 @@ enum class ProcessMode {
   INSTALL,
   SCALED_INSTALL,
   FORCE_OTA_INSTALL,
+  MIGRATE,
 };
 
 class UpdateAttempter : public ActionProcessorDelegate,
@@ -160,7 +161,8 @@ class UpdateAttempter : public ActionProcessorDelegate,
   virtual bool CheckForInstall(const std::vector<std::string>& dlc_ids,
                                const std::string& omaha_url,
                                bool scaled = false,
-                               bool force_ota = false);
+                               bool force_ota = false,
+                               bool migration = false);
 
   // This is the internal entry point for going through a rollback. This will
   // attempt to run the postinstall on the non-active partition and set it as
@@ -415,6 +417,7 @@ class UpdateAttempter : public ActionProcessorDelegate,
   void ProcessingDoneInternal(const ActionProcessor* processor, ErrorCode code);
   void ProcessingDoneUpdate(const ActionProcessor* processor, ErrorCode code);
   void ProcessingDoneInstall(const ActionProcessor* processor, ErrorCode code);
+  void ProcessingDoneMigrate(const ActionProcessor* processor, ErrorCode code);
 
   // CertificateChecker::Observer method.
   // Report metrics about the certificate being checked.
@@ -592,6 +595,9 @@ class UpdateAttempter : public ActionProcessorDelegate,
   // `EnterpriseUpdateDisabledPolicyImpl` policy.
   void OnEnterpriseUpdateInvalidationCheck(
       chromeos_update_manager::EvalStatus status);
+
+  // Returns true if a completed update is a migration.
+  bool IsMigration() const;
 
   // Last status notification timestamp used for throttling. Use monotonic
   // TimeTicks to ensure that notifications are sent even if the system clock is

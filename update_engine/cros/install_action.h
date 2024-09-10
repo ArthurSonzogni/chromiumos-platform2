@@ -21,6 +21,7 @@
 #include "update_engine/common/action.h"
 #include "update_engine/common/http_fetcher.h"
 #include "update_engine/cros/image_properties.h"
+#include "update_engine/cros/payload_state.h"
 
 // The Installation action flow for scaled DLC(s).
 
@@ -53,6 +54,11 @@ class InstallActionDelegate {
 
 class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
  public:
+  enum InstallTarget {
+    kStateful,  // Install DLC to stateful partition.
+    kRoot       // Install blob DLC to inactive root.
+  };
+
   // Args:
   //  http_fetcher: An HttpFetcher to take ownership of. Injected for testing.
   //  id: The DLC ID to install.
@@ -60,6 +66,7 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
   InstallAction(std::unique_ptr<HttpFetcher> http_fetcher,
                 const std::string& id,
                 const std::string& slotting = "",
+                const InstallTarget& target = kStateful,
                 const std::string& manifest_dir = "");
   InstallAction(const InstallAction&) = delete;
   InstallAction& operator=(const InstallAction&) = delete;
@@ -123,6 +130,8 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
   // The DLC manifest accessor.
   std::shared_ptr<imageloader::Manifest> manifest_;
   std::string manifest_dir_;
+
+  InstallTarget target_ = kStateful;
 };
 
 }  // namespace chromeos_update_engine

@@ -82,6 +82,7 @@ const char kPrefsTotalBytesDownloaded[] = "total-bytes-downloaded";
 const char kPrefsUpdateCheckCount[] = "update-check-count";
 const char kPrefsUpdateCheckResponseHash[] = "update-check-response-hash";
 const char kPrefsUpdateCompletedBootTime[] = "update-completed-boot-time";
+const char kPrefsUpdateCompletedIsMigration[] = "update-completed-is-migration";
 const char kPrefsUpdateCompletedOnBootId[] = "update-completed-on-boot-id";
 const char kPrefsUpdateDurationUptime[] = "update-duration-uptime";
 const char kPrefsUpdateFirstSeenAt[] = "update-first-seen-at";

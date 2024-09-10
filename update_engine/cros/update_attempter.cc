@@ -99,6 +99,8 @@ constexpr TimeDelta kBroadcastThreshold = base::Seconds(10);
 const char kAUTestURLRequest[] = "autest";
 const char kScheduledAUTestURLRequest[] = "autest-scheduled";
 
+const char kMigrationDlcId[] = "migration-dlc";
+
 string ConvertToString(ProcessMode op) {
   switch (op) {
     case ProcessMode::UPDATE:
@@ -109,6 +111,8 @@ string ConvertToString(ProcessMode op) {
       return "scaled install";
     case ProcessMode::FORCE_OTA_INSTALL:
       return "force OTA install";
+    case ProcessMode::MIGRATE:
+      return "migration install";
   }
 }
 
@@ -194,6 +198,10 @@ bool UpdateAttempter::ScheduleEnterpriseUpdateInvalidationCheck() {
   if (enterprise_update_invalidation_check_scheduled_) {
     LOG(WARNING)
         << "Enterprise update invalidation check is already scheduled.";
+    return false;
+  }
+  if (IsMigration()) {
+    LOG(WARNING) << "Skip enterprise update invalidation check for migration.";
     return false;
   }
   enterprise_update_invalidation_check_scheduled_ = true;
@@ -433,7 +441,9 @@ void UpdateAttempter::Install() {
   auto install_action = std::make_unique<InstallAction>(
       std::move(http_fetcher), dlc_id,
       /*slotting=*/pm_ == ProcessMode::FORCE_OTA_INSTALL ? kForceOTASlotting
-                                                         : kDefaultSlotting);
+                                                         : kDefaultSlotting,
+      /*target=*/pm_ == ProcessMode::MIGRATE ? InstallAction::kRoot
+                                             : InstallAction::kStateful);
   install_action->set_delegate(this);
   SetOutPipe(install_action.get());
   processor_->EnqueueAction(std::move(install_action));
@@ -1180,7 +1190,8 @@ bool UpdateAttempter::ApplyDeferredUpdate(bool shutdown) {
 bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
                                       const string& omaha_url,
                                       bool scaled,
-                                      bool force_ota) {
+                                      bool force_ota,
+                                      bool migration) {
   if (status_ != UpdateStatus::IDLE) {
     LOG(INFO) << "Refusing to do an install as there is an "
               << ConvertToString(pm_) << " already in progress.";
@@ -1189,7 +1200,10 @@ bool UpdateAttempter::CheckForInstall(const vector<string>& dlc_ids,
 
   dlc_ids_ = dlc_ids;
   pm_ = ProcessMode::INSTALL;
-  if (scaled) {
+  if (migration) {
+    pm_ = ProcessMode::MIGRATE;
+    dlc_ids_ = {kMigrationDlcId};
+  } else if (scaled) {
     pm_ = ProcessMode::SCALED_INSTALL;
     // `force_ota` lower precedence than `scaled`.
   } else if (force_ota) {
@@ -1300,6 +1314,7 @@ void UpdateAttempter::OnUpdateScheduled(EvalStatus status) {
         break;
       case ProcessMode::SCALED_INSTALL:
       case ProcessMode::FORCE_OTA_INSTALL:
+      case ProcessMode::MIGRATE:
         Install();
         break;
     }
@@ -1409,6 +1424,9 @@ void UpdateAttempter::ProcessingDoneInternal(const ActionProcessor* processor,
     case ProcessMode::FORCE_OTA_INSTALL:
       ProcessingDoneInstall(processor, code);
       break;
+    case ProcessMode::MIGRATE:
+      ProcessingDoneMigrate(processor, code);
+      break;
   }
 }
 
@@ -1428,6 +1446,16 @@ void UpdateAttempter::ProcessingDoneInstall(const ActionProcessor* processor,
   SetStatusAndNotify(UpdateStatus::IDLE);
   ScheduleUpdates();
   LOG(INFO) << "DLC successfully installed, no reboot needed.";
+}
+
+void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
+                                            ErrorCode code) {
+  // TODO(b/356338530): Partition migration after the install and change the
+  // boot slot.
+  WriteUpdateCompletedMarker();
+  prefs_->SetString(kPrefsUpdateCompletedIsMigration, "");
+  SetStatusAndNotify(UpdateStatus::UPDATED_NEED_REBOOT);
+  LOG(INFO) << "Migration installed.";
 }
 
 void UpdateAttempter::ProcessingDoneUpdate(const ActionProcessor* processor,
@@ -1753,6 +1781,7 @@ bool UpdateAttempter::ResetUpdatePrefs() {
   ret_value = prefs->Delete(kPrefsLastFp, {kDlcPrefsSubDir}) && ret_value;
   ret_value = prefs->Delete(kPrefsPreviousVersion) && ret_value;
   ret_value = prefs->Delete(kPrefsDeferredUpdateCompleted) && ret_value;
+  ret_value = prefs->Delete(kPrefsUpdateCompletedIsMigration) && ret_value;
   return ret_value;
 }
 
@@ -1915,7 +1944,7 @@ bool UpdateAttempter::GetStatus(UpdateEngineStatus* out_status) {
       install_plan_ && install_plan_->is_rollback;
   out_status->is_install =
       (pm_ == ProcessMode::INSTALL || pm_ == ProcessMode::SCALED_INSTALL ||
-       pm_ == ProcessMode::FORCE_OTA_INSTALL);
+       pm_ == ProcessMode::FORCE_OTA_INSTALL || pm_ == ProcessMode::MIGRATE);
   out_status->update_urgency_internal =
       install_plan_ ? install_plan_->update_urgency
                     : update_engine::UpdateUrgencyInternal::REGULAR;
@@ -2367,7 +2396,7 @@ bool UpdateAttempter::GetBootTimeAtUpdate(Time* out_boot_time) {
 bool UpdateAttempter::IsBusyOrUpdateScheduled() {
   return ((status_ != UpdateStatus::IDLE &&
            status_ != UpdateStatus::UPDATED_NEED_REBOOT) ||
-          waiting_for_scheduled_check_);
+          waiting_for_scheduled_check_ || IsMigration());
 }
 
 bool UpdateAttempter::IsAnyUpdateSourceAllowed() const {
@@ -2498,6 +2527,11 @@ void UpdateAttempter::OnRootfsIntegrityCheck(int ret_code,
                << kErrorCounterZeroValue;
     return;
   }
+}
+
+bool UpdateAttempter::IsMigration() const {
+  return status_ == UpdateStatus::UPDATED_NEED_REBOOT &&
+         prefs_->Exists(kPrefsUpdateCompletedIsMigration);
 }
 
 }  // namespace chromeos_update_engine
