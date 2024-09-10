@@ -226,29 +226,9 @@ fn get_reserved_memory_kb() -> Result<u64> {
         - read_from_file(&"/proc/sys/vm/extra_free_kbytes").unwrap_or(0))
 }
 
-static LAST_CRITICAL_PRESSURE_AT: Mutex<Option<Instant>> = Mutex::new(None);
-
 /// Adjusts the memory component according to PSI memory some. When PSI memory some is higher,
 /// returns lower memory component in KiB.
 fn psi_adjust_memory_kb(memory_component_kb: u64) -> u64 {
-    if let Some(last_critical_at) = *LAST_CRITICAL_PRESSURE_AT.do_lock() {
-        let cooldown_duration = match feature::get_feature_param_as::<u64>(
-            PSI_ADJUST_AVAILABLE_FEATURE_NAME,
-            PSI_ADJUST_AVAILABLE_COOLDOWN_MILLIS_PARAM,
-        ) {
-            Ok(Some(millis)) => Duration::from_millis(millis),
-            _ => PSI_ADJUST_AVAILABLE_COOLDOWN_DEFAULT,
-        };
-        // Skip considering adjusting swap memory component based on PSI just after sending critical
-        // pressure signal to avoid discarding too many tabs because:
-        // * There can be a delay between the critical signal is sent and the tabs are actually
-        //   discarded.
-        // * 10 second average of PSI can contain high value which is before discarding.
-        if Instant::now().duration_since(last_critical_at) <= cooldown_duration {
-            return memory_component_kb;
-        }
-    }
-
     let psi = match procfs::MemoryPressure::new() {
         Ok(psi) => psi,
         Err(e) => {
@@ -305,6 +285,7 @@ fn calculate_available_memory_kb(
     reserved_free: u64,
     min_filelist: u64,
     ram_swap_weight: u64,
+    do_thrashing_discount: bool,
 ) -> u64 {
     let free = info.free;
     let anon = info.active_anon.saturating_add(info.inactive_anon);
@@ -319,15 +300,13 @@ fn calculate_available_memory_kb(
         0
     };
     let reclaimable_component = cache_component.saturating_add(swap_component);
-    let reclaimable_adjusted = match feature::is_feature_enabled(PSI_ADJUST_AVAILABLE_FEATURE_NAME)
-    {
-        Ok(true) => {
-            // When PSI memory some is high, the cost of reclaim memory is high, discount the
-            // reclaimable component of available memory. Do not adjust the free component according
-            // to PSI to avoid making free too high.
-            psi_adjust_memory_kb(reclaimable_component)
-        }
-        _ => reclaimable_component,
+    let reclaimable_adjusted = if do_thrashing_discount {
+        // When PSI memory some is high, the cost of reclaim memory is high, discount the
+        // reclaimable component of available memory. Do not adjust the free component according
+        // to PSI to avoid making free too high.
+        psi_adjust_memory_kb(reclaimable_component)
+    } else {
+        reclaimable_component
     };
     free_component.saturating_add(reclaimable_adjusted)
 }
@@ -362,20 +341,30 @@ fn get_memory_parameters() -> MemoryParameters {
     }
 }
 
-fn get_available_memory_kb(meminfo: &MemInfo) -> u64 {
+fn get_available_memory_kb(meminfo: &MemInfo, do_thrashing_discount: bool) -> u64 {
     let p = get_memory_parameters();
-    calculate_available_memory_kb(meminfo, p.reserved_free, p.min_filelist, p.ram_swap_weight)
+    calculate_available_memory_kb(
+        meminfo,
+        p.reserved_free,
+        p.min_filelist,
+        p.ram_swap_weight,
+        do_thrashing_discount,
+    )
 }
 
 pub fn get_foreground_available_memory_kb(meminfo: &MemInfo) -> u64 {
-    get_available_memory_kb(meminfo)
+    get_available_memory_kb(meminfo, false)
 }
 
 // |game_mode| is passed rather than implicitly queried. This saves us a query
 // (hence a lock) in the case where the caller needs the game mode state for a
 // separate purpose (see |get_memory_pressure_status|).
-pub fn get_background_available_memory_kb(meminfo: &MemInfo, game_mode: common::GameMode) -> u64 {
-    let available = get_available_memory_kb(meminfo);
+pub fn get_background_available_memory_kb(
+    meminfo: &MemInfo,
+    game_mode: common::GameMode,
+    do_thrashing_discount: bool,
+) -> u64 {
+    let available = get_available_memory_kb(meminfo, do_thrashing_discount);
     if game_mode != common::GameMode::Off {
         available.saturating_sub(GAME_MODE_OFFSET_KB)
     } else {
@@ -829,18 +818,60 @@ fn try_discard_stale_at_moderate(
     }
 }
 
+static LAST_THRASHING_DISCOUNT_CRITICAL_PRESSURE_AT: Mutex<Option<Instant>> = Mutex::new(None);
+
+fn should_do_thrashing_discount() -> bool {
+    if !feature::is_feature_enabled(PSI_ADJUST_AVAILABLE_FEATURE_NAME).unwrap_or(false) {
+        return false;
+    }
+    if let Some(last_critical_at) = *LAST_THRASHING_DISCOUNT_CRITICAL_PRESSURE_AT.do_lock() {
+        let cooldown_duration = match feature::get_feature_param_as::<u64>(
+            PSI_ADJUST_AVAILABLE_FEATURE_NAME,
+            PSI_ADJUST_AVAILABLE_COOLDOWN_MILLIS_PARAM,
+        ) {
+            Ok(Some(millis)) => Duration::from_millis(millis),
+            _ => PSI_ADJUST_AVAILABLE_COOLDOWN_DEFAULT,
+        };
+        // Skip considering adjusting swap memory component based on PSI just after sending critical
+        // pressure signal to avoid discarding too many tabs because:
+        // * There can be a delay between the critical signal is sent and the tabs are actually
+        //   discarded.
+        // * 10 second average of PSI can contain high value which is before discarding.
+        if Instant::now().duration_since(last_critical_at) <= cooldown_duration {
+            return false;
+        }
+    }
+    // If there is protected processes only, we need to use PressureLevelChrome::Critical to discard
+    // protected tabs. However PressureLevelChrome::Critical need to be judged by conservative
+    // available memory size.
+    background_tabs_exist()
+}
+
 pub async fn get_memory_pressure_status(
     vmms_client: &VmMemoryManagementClient,
 ) -> Result<PressureStatus> {
     let game_mode = common::get_game_mode();
     let meminfo = MemInfo::load().context("load meminfo")?;
-    let available = get_background_available_memory_kb(&meminfo, game_mode);
     let margins = get_component_margins_kb();
     let discard_stale_at_moderate =
         feature::is_feature_enabled(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME)?;
 
-    let (raw_chrome_level, raw_chrome_reclaim_target_kb) =
+    let do_thrashing_discount = should_do_thrashing_discount();
+    let available = get_background_available_memory_kb(&meminfo, game_mode, do_thrashing_discount);
+    let (mut raw_chrome_level, raw_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available);
+
+    if do_thrashing_discount && raw_chrome_level > PressureLevelChrome::DiscardUnprotected {
+        // Avoid discarding protected tabs based on non-conservative available memory size.
+        //
+        // Even if the actual memory pressure is critical enough without thrashing discount to
+        // discard protected tabs, PressureLevelChrome::DiscardUnprotected can discard some tabs
+        // because should_do_thrashing_discount() checks there is at least 1 background tabs.
+        // The background tabs may not be enough to satisfy reclaiming target. But protected tabs
+        // will be discarded in the next round of get_memory_pressure_status() which is called by
+        // margin_memory_handler_loop() every 1 second under high memory pressure anyway.
+        raw_chrome_level = PressureLevelChrome::DiscardUnprotected;
+    }
 
     // We cap ARC pressure levels at cached if reclaiming Chrome background memory will
     // be sufficient to push us back over the ARC perceptible margin. Compute the
@@ -866,6 +897,10 @@ pub async fn get_memory_pressure_status(
 
     let (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available + vmms_reclaim_kb);
+    // Ensure that new chrome_level is lower than or equals to the original chrome level. The
+    // inversion can happen if raw_chrome_level is adjusted due to non-conservative available
+    // memory.
+    let after_vmms_chrome_level = std::cmp::min(after_vmms_chrome_level, raw_chrome_level);
 
     let (arc_container_level, arc_container_reclaim_target_kb) =
         get_arc_container_level(&margins.arc_container, available, background_memory_kb);
@@ -880,8 +915,8 @@ pub async fn get_memory_pressure_status(
         (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb)
     };
 
-    if final_chrome_level > PressureLevelChrome::Moderate {
-        *LAST_CRITICAL_PRESSURE_AT.do_lock() = Some(Instant::now());
+    if do_thrashing_discount && final_chrome_level > PressureLevelChrome::Moderate {
+        *LAST_THRASHING_DISCOUNT_CRITICAL_PRESSURE_AT.do_lock() = Some(Instant::now());
     }
 
     Ok(PressureStatus {
@@ -996,6 +1031,20 @@ fn get_chrome_tab_processes(
             .collect()),
         None => Ok(filtered_process_list.clone()),
     };
+}
+
+fn background_tabs_exist() -> bool {
+    let all_tab_processes = CHROME_TAB_PROCESSES.do_lock();
+    all_tab_processes
+        .iter()
+        .map(|((_, process_type), processes)| {
+            if process_type == &ChromeProcessType::Background {
+                !processes.is_empty()
+            } else {
+                false
+            }
+        })
+        .any(|v| v)
 }
 
 pub fn set_browser_tab_processes(
@@ -1232,8 +1281,13 @@ Node 0, zone   Normal
         info.inactive_file = 500 * 1024;
         info.dirty = 10 * 1024;
         let file = info.active_file + info.inactive_file;
-        let available =
-            calculate_available_memory_kb(&info, reserved_free, min_filelist, ram_swap_weight);
+        let available = calculate_available_memory_kb(
+            &info,
+            reserved_free,
+            min_filelist,
+            ram_swap_weight,
+            false,
+        );
         assert_eq!(available, file - min_filelist - info.dirty);
 
         // Available determined by swap free.
@@ -1243,8 +1297,13 @@ Node 0, zone   Normal
         info.active_file = 0;
         info.inactive_file = 0;
         info.dirty = 0;
-        let available =
-            calculate_available_memory_kb(&info, reserved_free, min_filelist, ram_swap_weight);
+        let available = calculate_available_memory_kb(
+            &info,
+            reserved_free,
+            min_filelist,
+            ram_swap_weight,
+            false,
+        );
         assert_eq!(available, info.swap_free / ram_swap_weight);
 
         // Available determined by anonymous.
@@ -1252,8 +1311,13 @@ Node 0, zone   Normal
         info.active_anon = 500 * 1024;
         info.inactive_anon = 500 * 1024;
         let anon = info.active_anon + info.inactive_anon;
-        let available =
-            calculate_available_memory_kb(&info, reserved_free, min_filelist, ram_swap_weight);
+        let available = calculate_available_memory_kb(
+            &info,
+            reserved_free,
+            min_filelist,
+            ram_swap_weight,
+            false,
+        );
         assert_eq!(available, anon / ram_swap_weight);
 
         // When ram_swap_weight is 0, swap is ignored in available.
@@ -1264,8 +1328,13 @@ Node 0, zone   Normal
         info.inactive_file = 500 * 1024;
         let file = info.active_file + info.inactive_file;
         let ram_swap_weight = 0;
-        let available =
-            calculate_available_memory_kb(&info, reserved_free, min_filelist, ram_swap_weight);
+        let available = calculate_available_memory_kb(
+            &info,
+            reserved_free,
+            min_filelist,
+            ram_swap_weight,
+            false,
+        );
         assert_eq!(available, file - min_filelist);
     }
 
@@ -1341,15 +1410,15 @@ Node 0, zone   Normal
             ..Default::default()
         };
         assert_eq!(
-            get_background_available_memory_kb(&meminfo, common::GameMode::Off),
+            get_background_available_memory_kb(&meminfo, common::GameMode::Off, false),
             400 * 1024
         );
         assert_eq!(
-            get_background_available_memory_kb(&meminfo, common::GameMode::Arc),
+            get_background_available_memory_kb(&meminfo, common::GameMode::Arc, false),
             400 * 1024 - GAME_MODE_OFFSET_KB
         );
         assert_eq!(
-            get_background_available_memory_kb(&meminfo, common::GameMode::Borealis),
+            get_background_available_memory_kb(&meminfo, common::GameMode::Borealis, false),
             400 * 1024 - GAME_MODE_OFFSET_KB
         );
 
@@ -1359,11 +1428,11 @@ Node 0, zone   Normal
             ..Default::default()
         };
         assert_eq!(
-            get_background_available_memory_kb(&meminfo, common::GameMode::Off),
+            get_background_available_memory_kb(&meminfo, common::GameMode::Off, false),
             200 * 1024
         );
         assert_eq!(
-            get_background_available_memory_kb(&meminfo, common::GameMode::Arc),
+            get_background_available_memory_kb(&meminfo, common::GameMode::Arc, false),
             0
         );
     }

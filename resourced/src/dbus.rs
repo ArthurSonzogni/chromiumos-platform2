@@ -178,7 +178,7 @@ fn register_interface(
                 let game_mode = common::get_game_mode();
                 match MemInfo::load() {
                     Ok(meminfo) => Ok((memory::get_background_available_memory_kb(
-                        &meminfo, game_mode,
+                        &meminfo, game_mode, false,
                     ),)),
                     Err(_) => Err(MethodErr::failed("Couldn't get available memory")),
                 }

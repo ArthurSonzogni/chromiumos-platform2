@@ -23,7 +23,7 @@ impl ReclaimCalculator for MarginCondition {
         _config: &Config,
         args: &CalculationArgs,
     ) -> Option<(MemoryReclaim, MemoryReclaimReason)> {
-        let available = get_background_available_memory_kb(args.meminfo, args.game_mode);
+        let available = get_background_available_memory_kb(args.meminfo, args.game_mode, false);
         let reclaim = args.margins.compute_chrome_pressure(available).into();
         if reclaim > MemoryReclaim::None {
             Some((reclaim, MemoryReclaimReason::Margin))
