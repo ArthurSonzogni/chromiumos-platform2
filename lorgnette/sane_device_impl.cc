@@ -12,8 +12,8 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
-#include <sane/saneopts.h>
 #include <sane-airscan/airscan.h>
+#include <sane/saneopts.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
@@ -51,6 +51,8 @@ ColorMode ColorModeFromSaneString(const std::string& mode) {
 SaneDeviceImpl::~SaneDeviceImpl() {
   if (handle_) {
     // If a scan is running, this will call sane_cancel() first.
+    // We also invoke sane_close() since some backend's sane_exit() may not
+    // internally sane_close() their open devices.
     libsane_->sane_close(handle_);
   }
   base::AutoLock auto_lock(open_devices_->first);

@@ -141,6 +141,26 @@ TEST_F(SANETest, TwoDeviceOpen) {
   sane_close(handle_2);
 }
 
+TEST_F(SANETest, OpenExitStress) {
+  if (base::StartsWith(
+          base::ToLowerASCII(*sane_backend_tests::scanner_under_test),
+          "pfufs")) {
+    GTEST_SKIP() << "TODO(b/365771471): Fix pfufs backend failure of "
+                    "SANETest.OpenExitStress";
+  }
+
+  SANE_Handle handle_;
+
+  for (int i = 0; i < 100; i++) {
+    ASSERT_EQ(sane_init(nullptr, nullptr), SANE_STATUS_GOOD);
+    ASSERT_EQ(
+        sane_open(sane_backend_tests::scanner_under_test->c_str(), &handle_),
+        SANE_STATUS_GOOD)
+        << "Failed to open scanner on iteration " << i;
+    sane_exit();
+  }
+}
+
 TEST_F(SANETest, OpenCloseStress) {
   SANE_Handle handle_;
 
