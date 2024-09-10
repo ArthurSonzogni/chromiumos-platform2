@@ -67,6 +67,9 @@ constexpr char kBoardProp[] = "ro.product.board";
 constexpr char kSocManufacturerProp[] = "ro.soc.manufacturer";
 constexpr char kSocModelProp[] = "ro.soc.model";
 
+// Path to the properties resolved by arcvm
+constexpr char kModifiedPropPath[] = "/run/arcvm/host_generated/modified.prop";
+
 // A feature name for enabling jemalloc multi-arena settings
 // in low memory devices.
 constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
@@ -165,21 +168,45 @@ bool CreateMetadataImageIfNotExist(const base::FilePath& disk_path) {
   return true;
 }
 
-bool CreateRuntimeSystemPropertiesDisk(const base::FilePath& disk_path) {
-  base::ScopedFD fd(open(disk_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
+base::ScopedFD CreateRuntimeSystemPropertiesDisk(
+    const base::FilePath& disk_path) {
+  base::ScopedFD fd(open(disk_path.value().c_str(),
+                         O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0600));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to open disk for runtime system properties at "
                 << disk_path.value();
+    return base::ScopedFD();
+  }
+  LOG(INFO) << "Successfully created runtime system properties disk at "
+            << disk_path.value();
+  return fd;
+}
+
+bool WriteRuntimeSystemPropertiesToDisk(const base::FilePath& disk_path,
+                                        base::ScopedFD disk_fd,
+                                        const std::string& runtime_properties) {
+  size_t num_blocks =
+      (runtime_properties.size() + kDefaultBlockSize - 1) / kDefaultBlockSize;
+
+  if (!disk_fd.is_valid()) {
+    PLOG(ERROR) << "Unable to open system property disk for writing.";
     return false;
   }
-  if (truncate(disk_path.value().c_str(), 0) != 0) {
-    PLOG(ERROR) << "Failed to clear runtime system properties disk at "
+
+  // Allocate the disk
+  if (fallocate(disk_fd.get(), 0, 0, num_blocks * kDefaultBlockSize) != 0) {
+    PLOG(ERROR) << "Failed to allocate disk for runtime system properties at "
                 << disk_path.value();
     unlink(disk_path.value().c_str());
     return false;
   }
-  LOG(INFO) << "Successfully created runtime system properties disk at "
-            << disk_path.value();
+
+  if (!base::WriteFileDescriptor(disk_fd.get(), runtime_properties)) {
+    PLOG(ERROR) << "Failed to write runtime system properties to disk";
+    unlink(disk_path.value().c_str());
+    return false;
+  }
+
   return true;
 }
 
@@ -263,20 +290,27 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     }
   }
 
-  // Create the disk to hold system properties generated at before boot. We do
-  // not create this disk in the vm's runtime directory because we need to write
-  // to this file and crosvm needs to access it before concierge takes ownership
-  // of the runtime directory.
+  // Create the disk to hold system properties generated before boot.
   base::FilePath sysprop_disk_path;
+  base::ScopedFD sysprop_disk_fd;
   if (request.disks().size() > kPropertiesDiskIndex) {
     sysprop_disk_path =
         base::FilePath::FromASCII(request.disks()[kPropertiesDiskIndex].path());
-    if (!CreateRuntimeSystemPropertiesDisk(sysprop_disk_path)) {
+    sysprop_disk_fd = CreateRuntimeSystemPropertiesDisk(sysprop_disk_path);
+    if (!sysprop_disk_fd.is_valid()) {
+      LOG(ERROR) << "Failed to create disk to hold runtime system properties";
       response.set_failure_reason(
-          "Failed to create disk to hold runtime system properties");
+          "Failed to create runtime system properties disk");
       return response;
     }
+  } else {
+    LOG(ERROR)
+        << "No disk requested to share runtime system properties with ARCVM";
+    response.set_failure_reason(
+        "Request missing runtime system properties disk");
+    return response;
   }
+
   VmBuilder vm_builder;
   // Exists just to keep FDs around for crosvm to inherit
   std::vector<brillo::SafeFD> owned_fds;
@@ -643,6 +677,30 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     // need for VM exits when reading the PCI config space. This substantially
     // reduces how long it takes to exit s2idle.
     vm_builder.AppendCustomParam("--break-linux-pci-config-io", "");
+  }
+
+  // Write runtime properties to the file backing the properties block device.
+  // We do not use kModifiedPropPath to back the device directly because
+  // concierge only has read access to that file, and here we need the ability
+  // to append additional properties and resize the file to be block-aligned.
+  static base::FilePath modified_prop_path(kModifiedPropPath);
+  std::string props;
+  if (!base::ReadFileToString(modified_prop_path, &props)) {
+    PLOG(ERROR) << "Failed to read " << modified_prop_path << " to string";
+
+    response.set_failure_reason("Unable to read modified.prop");
+    return response;
+  }
+  // TODO(ynaffit): Relocate androidboot properties to this file once
+  // ARCVM can mount this block device during first_stage_init
+
+  if (!WriteRuntimeSystemPropertiesToDisk(sysprop_disk_path,
+                                          std::move(sysprop_disk_fd), props)) {
+    PLOG(ERROR) << "Failed to write runtime system properties to "
+                << sysprop_disk_path.value();
+    response.set_failure_reason(
+        "Unable to write runtime system properties to disk");
+    return response;
   }
 
   base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback =

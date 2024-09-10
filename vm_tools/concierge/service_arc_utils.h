@@ -11,6 +11,8 @@
 #include <vm_concierge/concierge_service.pb.h>
 
 namespace vm_tools::concierge {
+// Default block size for crosvm disk
+constexpr size_t kDefaultBlockSize = 512;
 
 // Disk index of the /data disk. It is the 4th disk in request.disks().
 constexpr unsigned int kDataDiskIndex = 3;
