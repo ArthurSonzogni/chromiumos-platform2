@@ -38,3 +38,4 @@ newfstatat: 1
 uname: 1
 getrandom: arg2 in ~GRND_RANDOM
 flock: 1
+eventfd2: 1
