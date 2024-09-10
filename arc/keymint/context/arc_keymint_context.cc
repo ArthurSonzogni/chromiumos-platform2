@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <crypto/sha2.h>
 #include <keymaster/android_keymaster_utils.h>
+#include <keymaster/attestation_context.h>
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/software_keyblobs.h>
 #include <libarc-attestation/lib/interface.h>
@@ -983,6 +984,51 @@ keymaster_error_t ArcKeyMintContext::SetVerifiedBootParams(
   arc_remote_provisioning_context->SetVerifiedBootInfo(
       boot_state, bootloader_state, vbmeta_digest);
   return KM_ERROR_OK;
+}
+
+const ::keymaster::AttestationContext::VerifiedBootParams*
+ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
+  static VerifiedBootParams params;
+  if (!vbmeta_digest_.has_value()) {
+    LOG(ERROR) << "Unable to get verified boot parameters because "
+                  "VB meta digest is not set";
+    *error = KM_ERROR_INVALID_ARGUMENT;
+    return &params;
+  }
+  if (!boot_key_.has_value()) {
+    LOG(ERROR) << "Unable to get verified boot parameters because "
+                  "boot key is not set";
+    *error = KM_ERROR_INVALID_ARGUMENT;
+    return &params;
+  }
+  if (!bootloader_state_.has_value()) {
+    LOG(ERROR) << "Unable to get verified boot parameters because "
+                  "bootloader state is not set";
+    *error = KM_ERROR_INVALID_ARGUMENT;
+    return &params;
+  }
+  if (!verified_boot_state_.has_value()) {
+    LOG(ERROR) << "Unable to get verified boot parameters because "
+                  "verified boot state is not set";
+    *error = KM_ERROR_INVALID_ARGUMENT;
+    return &params;
+  }
+  const std::string locked_device =
+      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
+  params.device_locked = (bootloader_state_.value() == locked_device);
+
+  const std::string verified_state =
+      kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
+  params.verified_boot_state = verified_boot_state_.value() == verified_state
+                                   ? KM_VERIFIED_BOOT_VERIFIED
+                                   : KM_VERIFIED_BOOT_UNVERIFIED;
+
+  params.verified_boot_hash = {vbmeta_digest_.value().data(),
+                               vbmeta_digest_.value().size()};
+  params.verified_boot_key = {boot_key_.value().data(),
+                              boot_key_.value().size()};
+  *error = KM_ERROR_OK;
+  return &params;
 }
 
 }  // namespace arc::keymint::context

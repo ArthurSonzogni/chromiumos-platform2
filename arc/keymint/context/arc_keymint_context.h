@@ -103,6 +103,9 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
                                      bool reset_since_rotation,
                                      keymaster_error_t* error) const override;
 
+  const VerifiedBootParams* GetVerifiedBootParams(
+      keymaster_error_t* error) const override;
+
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|
   // and auth sets. Otherwise it is a CrOS owned key, deserialized into |key|.

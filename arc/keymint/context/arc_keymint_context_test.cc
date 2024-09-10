@@ -23,6 +23,7 @@
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <hardware/keymaster_defs.h>
 #include <keymaster/android_keymaster.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/keymaster_tags.h>
@@ -254,6 +255,12 @@ keymaster_error_t generateTestKey(
       response.key_blob.key_material + response.key_blob.key_material_size,
       generated_key->writable_data());
   return response.error;
+}
+
+std::string keymasterBlobToString(keymaster_blob_t& blob) {
+  std::string result(reinterpret_cast<const char*>(blob.data),
+                     blob.data_length);
+  return result;
 }
 
 }  // anonymous namespace
@@ -1076,6 +1083,46 @@ TEST_F(ArcKeyMintContextTest, SetVerifiedBootParams_EmptyVbMetaDigest) {
   // Test.
   ASSERT_EQ(KM_ERROR_OK, error);
   ASSERT_FALSE(ContextTestPeer::vbmeta_digest(context_).has_value());
+}
+
+TEST_F(ArcKeyMintContextTest, GetVerifiedBootParams_Success) {
+  // Prepare
+  SetUpDBus();
+  ContextTestPeer::set_dbus_for_tests(context_, bus_);
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_);
+  std::vector<uint8_t> vbmeta_digest =
+      brillo::BlobFromString(kSampleVbMetaDigest);
+  context_->SetVerifiedBootParams(kVerifiedBootState, kLockedBootloaderState,
+                                  vbmeta_digest);
+
+  // Execute.
+  keymaster_error_t get_params_error;
+  auto result = context_->GetVerifiedBootParams(&get_params_error);
+
+  // Test.
+  ASSERT_TRUE(result);
+  EXPECT_EQ(KM_ERROR_OK, get_params_error);
+  EXPECT_TRUE(result->device_locked);
+  EXPECT_EQ(KM_VERIFIED_BOOT_VERIFIED, result->verified_boot_state);
+
+  keymaster_blob_t boot_hash_blob = result->verified_boot_hash;
+  EXPECT_EQ(kSampleVbMetaDigest, keymasterBlobToString(boot_hash_blob));
+
+  keymaster_blob_t boot_key_blob = result->verified_boot_key;
+  EXPECT_EQ(kSampleBootKey, keymasterBlobToString(boot_key_blob));
+
+  // Cleanup.
+  TearDownDBus();
+}
+
+TEST_F(ArcKeyMintContextTest, GetVerifiedBootParams_Failure) {
+  // Execute.
+  keymaster_error_t get_params_error;
+  auto result = context_->GetVerifiedBootParams(&get_params_error);
+
+  // Test.
+  ASSERT_TRUE(result);
+  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, get_params_error);
 }
 
 }  // namespace arc::keymint::context
