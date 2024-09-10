@@ -856,19 +856,24 @@ void WiFi::DisconnectFrom(WiFiService* service,
                  << service->log_name() << " which is not the current service.";
     return;
   }
+
+  bool disconnect_expected = true;
   if (service) {
     service->set_disconnect_type(type);
+    disconnect_expected = service->expecting_disconnect();
+  } else {
+    LOG(ERROR) << __func__ << ": service is null";
   }
+
   if (pending_service_) {
     // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
     // on this to drive the service state back to idle.  Do that here.
     // Update service state for pending service.
     disconnect_signal_dbm_ = pending_service_->SignalLevel();
-    // |expecting_disconnect()| implies that it wasn't a failure to connect.
+    // |disconnect_expected| implies that it wasn't a failure to connect.
     // For example we're cancelling pending_service_ before we actually
-    // attempted to connect.
-    bool is_attempt_failure = !pending_service_->expecting_disconnect();
-    ServiceDisconnected(pending_service_, is_attempt_failure);
+    // connected.
+    ServiceDisconnected(pending_service_, !disconnect_expected);
   } else if (service) {
     disconnect_signal_dbm_ = service->SignalLevel();
   }
@@ -881,6 +886,21 @@ void WiFi::DisconnectFrom(WiFiService* service,
     LOG(ERROR) << "In " << __func__
                << "(): wpa_supplicant is not present; silently resetting "
                << "current_service_.";
+    // |service| is either pending or current and pending service is already
+    // marked as disconnected above.
+    if (service && service == current_service_) {
+      // The logic for the determination of "attempt failure" is:
+      // - if this disconnect is expected then it is not a failure
+      // - otherwise we need to check if this is a connection attempt or
+      //   a disconnect for a later state of connection.
+      // For the second point - since here we have no connection to supplicant
+      // - we should not rely on |supplicant_state_| (so no call to
+      // IsWPAStateConnectionInProgress() or IsConnectionAttemptFailure() and
+      // should rely only on the |service| state.
+      bool is_attempt_failure = !disconnect_expected &&
+                                service->state() == Service::kStateAssociating;
+      ServiceDisconnected(service, is_attempt_failure);
+    }
     if (current_service_ == selected_service()) {
       DropConnection();
     }
@@ -900,6 +920,15 @@ void WiFi::DisconnectFrom(WiFiService* service,
     // Can't depend on getting a notification of CurrentBSS change.
     // So effect changes immediately.  For instance, this can happen when
     // a disconnect is triggered by a BSS going away.
+    if (service && service == current_service_) {
+      // The logic for the determination of "attempt failure" is:
+      // - if this disconnect is expected then it is not a failure
+      // - otherwise we need to check if this is a connection attempt or
+      //   a disconnect for a later state of connection.
+      bool is_attempt_failure =
+          !disconnect_expected && IsConnectionAttemptFailure(*service);
+      ServiceDisconnected(service, is_attempt_failure);
+    }
     Error unused_error;
     RemoveNetworkForService(service, &unused_error);
     if (service == selected_service()) {
@@ -1338,14 +1367,6 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
                                               : Metrics::kDisconnectedByAp;
   metrics()->Notify80211Disconnect(by_whom, new_reason);
 
-  // Generate firmware dump for unexpected disconnections. Here we rule out one
-  // condition that mostly consists of expected disconnections -- locally
-  // generated reason code 3 (|-IEEE_80211::kReasonCodeSenderHasLeft|). Examples
-  // include suspend/resume, user-triggered disconnections, etc.
-  if (!(new_reason == IEEE_80211::kReasonCodeSenderHasLeft && new_value < 0)) {
-    GenerateFirmwareDump();
-  }
-
   WiFiService* affected_service =
       current_service_.get() ? current_service_.get() : pending_service_.get();
 
@@ -1580,6 +1601,7 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
     }
     if (!affected_service->ShouldIgnoreFailure()) {
       affected_service->SetFailure(failure);
+      GenerateFirmwareDump();
     }
     if (is_attempt_failure) {
       // We attempted to connect to a service but the attempt failed. Report

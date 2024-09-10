@@ -2224,6 +2224,8 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
   EXPECT_EQ(GetPendingService(), service);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
@@ -2237,6 +2239,8 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithFailure) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypePendingTimeout);
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
@@ -2255,6 +2259,8 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
   EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-90));
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
   ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypePendingTimeout);
   EXPECT_EQ(service->state(), Service::kStateIdle);
@@ -2279,6 +2285,10 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
   EXPECT_EQ(service0, GetCurrentService());
   EXPECT_EQ(service1, GetPendingService());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  // Disconnect initiated by shill is expected - no firmware dump should be
+  // requested.
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service1, Metrics::kWiFiDisconnectTypeShill);
   EXPECT_EQ(service1->state(), Service::kStateIdle);
 
@@ -2295,6 +2305,10 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  // We are simulating shill triggered disconnection so no firmware dump should
+  // be generated.
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 
   // |current_service_| should not change until supplicant reports
@@ -2321,6 +2335,8 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeIPConfigFailure);
 
   // |current_service_| should not change until supplicant reports
@@ -2363,6 +2379,8 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   // shill disconnects WiFi when the current service has no endpoint left
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-90));
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeNoEndpointLeft);
 
   // |current_service_| should not change until supplicant reports
@@ -2430,6 +2448,11 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithErrors) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect())
       .WillOnce(Return(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(1);
+  // The disconnection simulated below is one triggered by shill so no firmware
+  // dump should be generated even though the supplicant proxy returned false
+  // for Disconnect() call (above).
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 
   // We may sometimes fail to disconnect via supplicant, and we patch up some
@@ -2447,6 +2470,9 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
   EXPECT_EQ(service0, GetCurrentService());
   EXPECT_EQ(service1, GetPendingService());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
+  // During normal network switch there should be no firmware dump generated.
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service0, Metrics::kWiFiDisconnectTypeShill);
 
   EXPECT_EQ(service0, GetCurrentService());
@@ -2469,6 +2495,9 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWhileRoaming) {
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath));
+  // No firmware dump should be generated for roaming scenario.
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 
   // Because the interface was not connected, we should have immediately
@@ -2614,6 +2643,8 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
       .WillRepeatedly(WithArg<0>([&service](auto failure) {
         service->WiFiService::SetFailure(failure);
       }));
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
   // Timeout the connection attempt.
   TimeoutPendingConnection(service);
   // Service state should be idle, so it is connectable again.
@@ -2652,6 +2683,8 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
       .WillRepeatedly(WithArg<0>([&service](auto failure) {
         service->WiFiService::SetFailure(failure);
       }));
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
   pending_timeout.callback().Run();
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
@@ -2712,6 +2745,8 @@ TEST_F(WiFiMainTest, TimeoutHandshake) {
   // mocked service is not full-fledged to call |DisconnectFrom|. This is
   // covered in |WiFiServiceTest.DisconnectWithWiFi|.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeHandshakeTimeout);
   EXPECT_NE(nullptr, GetCurrentService());
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
@@ -2739,7 +2774,28 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath));
+  // The disconnection simulated below is one generated by shill - meaning that
+  // this is an expected disconnect (not a failure).  In this case
+  // firmware dump should not be generated (also in the case of communication
+  // problems with the supplicant - Disconnect() returning false above).
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(0);
   InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
+  EXPECT_EQ(nullptr, GetCurrentService());
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentServiceFailureNoSupplicant) {
+  StartWiFi();
+  RpcIdentifier kPath("/fake/path");
+  WiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
+  // The disconnection simulated below is a "system" one - meaning that this is
+  // not any of the cases that are expected/triggered by shill.  In this case
+  // firmware dump should be generated (also in the case of missing WPA
+  // supplicant).
+  EXPECT_CALL(*manager(), GenerateFirmwareDumpForTechnology(Technology::kWiFi))
+      .Times(1);
+  OnSupplicantVanish();
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeSystem);
   EXPECT_EQ(nullptr, GetCurrentService());
 }
 
@@ -3644,31 +3700,6 @@ TEST_F(WiFiMainTest, DisconnectReasonCleared) {
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
   EXPECT_EQ(wifi().get()->supplicant_disconnect_reason_,
             IEEE_80211::kReasonCodeInvalid);
-}
-
-TEST_F(WiFiMainTest, DisconnectReasonGenerateWiFiFirmwareDump) {
-  constexpr auto kExpectedDisconnection =
-      base::MakeFixedFlatSet<int32_t>({-IEEE_80211::kReasonCodeSenderHasLeft});
-  StartWiFi();
-  MockWiFiServiceRefPtr service =
-      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
-  MockFunction<void(std::string)> check;
-  {
-    InSequence s;
-    for (int32_t reason = -IEEE_80211::kReasonCodeMax + 1;
-         reason < IEEE_80211::kReasonCodeMax; reason++) {
-      EXPECT_CALL(*manager(),
-                  GenerateFirmwareDumpForTechnology(Technology::kWiFi))
-          .Times(base::Contains(kExpectedDisconnection, reason) ? 0 : 1);
-      EXPECT_CALL(
-          check, Call("Check point for reason code:" + std::to_string(reason)));
-    }
-  }
-  for (int32_t reason = -IEEE_80211::kReasonCodeMax + 1;
-       reason < IEEE_80211::kReasonCodeMax; reason++) {
-    ReportDisconnectReasonChanged(reason);
-    check.Call("Check point for reason code:" + std::to_string(reason));
-  }
 }
 
 TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUserDisconnection) {

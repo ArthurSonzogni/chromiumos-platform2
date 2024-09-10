@@ -2306,6 +2306,7 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
 void Manager::GenerateFirmwareDumpForTechnology(Technology technology) {
   switch (technology) {
     case Technology::kWiFi:
+      LOG(INFO) << "Requesting WiFi FW dump";
       debugd_proxy_->GenerateFirmwareDump(debugd::FirmwareDumpType::WIFI);
       break;
     default:
