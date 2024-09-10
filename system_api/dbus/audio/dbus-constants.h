@@ -85,9 +85,11 @@ const char kDeviceLastOpenResultProperty[] = "DeviceLastOpenResult";
 const char kNumberOfUnderrunsProperty[] = "NumberOfUnderruns";
 const char kNumberOfSevereUnderrunsProperty[] = "NumberOfSevereUnderruns";
 enum AudioEffectType {
+  EFFECT_TYPE_NONE = 0,
   EFFECT_TYPE_NOISE_CANCELLATION = 1 << 0,
   EFFECT_TYPE_HFP_MIC_SR = 1 << 1,
   EFFECT_TYPE_STYLE_TRANSFER = 1 << 2,
+  EFFECT_TYPE_BEAMFORMING = 1 << 3,
 };
 // Screen Rotation in clock-wise degrees.
 // This enum corresponds to enum Rotation in chromium ui/display/display.h
