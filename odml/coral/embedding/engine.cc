@@ -115,12 +115,13 @@ void EmbeddingEngine::ProcessEachPrompt(mojom::GroupRequestPtr request,
       &EmbeddingEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
       std::move(request), std::move(prompts), std::move(response),
       std::move(callback));
-  auto options =
-      embedding_model::mojom::OnDeviceEmbeddingModelInferenceOptions::New();
-  options->truncate_input = true;
+  auto embed_request = embedding_model::mojom::GenerateEmbeddingRequest::New();
+  embed_request->content = std::move(prompt);
+  embed_request->task_type = embedding_model::mojom::TaskType::kClustering;
+  embed_request->truncate_input = true;
   // TODO(b/361429567): The input should be formatted according to the embedding
   // model.
-  model_->GenerateEmbedding(std::move(prompt), std::move(options),
+  model_->GenerateEmbedding(std::move(embed_request),
                             std::move(on_model_output));
 }
 

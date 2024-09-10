@@ -40,8 +40,7 @@ class FakeEmbeddingModel : public OnDeviceEmbeddingModel {
         receiver_(this, std::move(receiver)) {}
 
   void GenerateEmbedding(
-      const std::string& input,
-      embedding_model::mojom::OnDeviceEmbeddingModelInferenceOptionsPtr options,
+      embedding_model::mojom::GenerateEmbeddingRequestPtr request,
       base::OnceCallback<void(OnDeviceEmbeddingModelInferenceError,
                               const std::vector<float>&)> callback) override {
     if (*should_error_ || times_called_ >= embeddings_to_return_.size()) {
