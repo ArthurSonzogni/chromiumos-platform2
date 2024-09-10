@@ -23,6 +23,15 @@ struct MoveOnly {
   bool operator==(const MoveOnly&) const = default;
 };
 
+enum class ModelLoadState {
+  // Model hasn't been loaded.
+  kNew,
+  // The model is currently being loaded.
+  kPending,
+  // Model is loaded successfully.
+  kLoaded,
+};
+
 }  // namespace coral
 
 #endif  // ODML_CORAL_COMMON_H_

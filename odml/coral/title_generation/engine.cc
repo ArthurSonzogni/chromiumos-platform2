@@ -92,26 +92,42 @@ void TitleGenerationEngine::Process(mojom::GroupRequestPtr request,
 }
 
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
-  if (model_) {
-    OnModelLoadResult(std::move(callback), LoadModelResult::kSuccess);
-    return;
+  switch (state_) {
+    case ModelLoadState::kLoaded:
+      std::move(callback).Run();
+      return;
+    case ModelLoadState::kPending:
+      pending_callbacks_.push_back(std::move(callback));
+      return;
+    case ModelLoadState::kNew:
+      state_ = ModelLoadState::kPending;
+      pending_callbacks_.push_back(std::move(callback));
+      on_device_model_service_->LoadPlatformModel(
+          base::Uuid::ParseLowercase(kModelUuid),
+          model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+          base::BindOnce(&TitleGenerationEngine::OnModelLoadResult,
+                         weak_ptr_factory_.GetWeakPtr()));
+      return;
   }
-  on_device_model_service_->LoadPlatformModel(
-      base::Uuid::ParseLowercase(kModelUuid),
-      model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
-      base::BindOnce(&TitleGenerationEngine::OnModelLoadResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
-                                              LoadModelResult result) {
+void TitleGenerationEngine::OnModelLoadResult(LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
-    // Unbind the model so we can use `model_.is_bound()` to check whether the
-    // model is loaded.
+    // Unbind the model because when load model fails we shouldn't be using the
+    // model. And set state to New so that the next request can attempt to load
+    // the model again.
     model_.reset();
+    state_ = ModelLoadState::kNew;
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
+  } else {
+    state_ = ModelLoadState::kLoaded;
   }
-  std::move(callback).Run();
+  std::vector<base::OnceClosure> pending_callbacks =
+      std::move(pending_callbacks_);
+  pending_callbacks_.clear();
+  for (base::OnceClosure& callback : pending_callbacks) {
+    std::move(callback).Run();
+  }
   if (result == LoadModelResult::kSuccess) {
     base::Time unload_time = base::Time::Now() + kUnloadModelInterval;
     // This resets any existing scheduled `UnloadModel` which is expected (as
@@ -125,6 +141,7 @@ void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
 
 void TitleGenerationEngine::UnloadModel() {
   model_.reset();
+  state_ = ModelLoadState::kNew;
 }
 
 void TitleGenerationEngine::DoProcess(mojom::GroupRequestPtr request,
@@ -135,6 +152,8 @@ void TitleGenerationEngine::DoProcess(mojom::GroupRequestPtr request,
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
+  CHECK_EQ(state_, ModelLoadState::kLoaded);
+
   auto session = SimpleSession::New();
   model_->StartSession(session->BindReceiver());
   if (!session->is_bound()) {

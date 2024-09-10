@@ -49,8 +49,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface {
 
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
-  void OnModelLoadResult(base::OnceClosure callback,
-                         on_device_model::mojom::LoadModelResult result);
+  void OnModelLoadResult(on_device_model::mojom::LoadModelResult result);
   void DoProcess(mojom::GroupRequestPtr request, EmbeddingCallback callback);
   void ProcessEachPrompt(mojom::GroupRequestPtr request,
                          std::vector<std::string> prompts,
@@ -66,7 +65,13 @@ class EmbeddingEngine : public EmbeddingEngineInterface {
 
   const raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
       embedding_service_;
+  // model_ should only be used when state_ is kLoaded because the remote model
+  // service only binds the model receiver when model loading succeeds.
   mojo::Remote<embedding_model::mojom::OnDeviceEmbeddingModel> model_;
+  ModelLoadState state_ = ModelLoadState::kNew;
+
+  // Callbacks that are queued and waiting for the model to be loaded.
+  std::vector<base::OnceClosure> pending_callbacks_;
 
   base::WeakPtrFactory<EmbeddingEngine> weak_ptr_factory_{this};
 };

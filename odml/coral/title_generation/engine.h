@@ -52,8 +52,7 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
 
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
-  void OnModelLoadResult(base::OnceClosure callback,
-                         on_device_model::mojom::LoadModelResult result);
+  void OnModelLoadResult(on_device_model::mojom::LoadModelResult result);
   void UnloadModel();
 
   void DoProcess(mojom::GroupRequestPtr request,
@@ -78,7 +77,13 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
 
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
       on_device_model_service_;
+  // model_ should only be used when state_ is kLoaded because the remote model
+  // service only binds the model receiver when model loading succeeds.
   mojo::Remote<on_device_model::mojom::OnDeviceModel> model_;
+  ModelLoadState state_ = ModelLoadState::kNew;
+
+  // Callbacks that are queued and waiting for the model to be loaded.
+  std::vector<base::OnceClosure> pending_callbacks_;
 
   base::WallClockTimer unload_model_timer_;
 

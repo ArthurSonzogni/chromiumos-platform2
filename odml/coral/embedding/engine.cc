@@ -11,6 +11,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
 
+#include "odml/coral/common.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -54,26 +55,42 @@ void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
 }
 
 void EmbeddingEngine::EnsureModelLoaded(base::OnceClosure callback) {
-  if (model_) {
-    std::move(callback).Run();
-    return;
+  switch (state_) {
+    case ModelLoadState::kLoaded:
+      std::move(callback).Run();
+      return;
+    case ModelLoadState::kPending:
+      pending_callbacks_.push_back(std::move(callback));
+      return;
+    case ModelLoadState::kNew:
+      state_ = ModelLoadState::kPending;
+      pending_callbacks_.push_back(std::move(callback));
+      embedding_service_->LoadEmbeddingModel(
+          base::Uuid::ParseLowercase(kModelUuid),
+          model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+          base::BindOnce(&EmbeddingEngine::OnModelLoadResult,
+                         weak_ptr_factory_.GetWeakPtr()));
+      return;
   }
-  embedding_service_->LoadEmbeddingModel(
-      base::Uuid::ParseLowercase(kModelUuid),
-      model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
-      base::BindOnce(&EmbeddingEngine::OnModelLoadResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void EmbeddingEngine::OnModelLoadResult(base::OnceClosure callback,
-                                        LoadModelResult result) {
+void EmbeddingEngine::OnModelLoadResult(LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
-    // Unbind the model so we can use `model_.is_bound()` to check whether the
-    // model is loaded.
+    // Unbind the model because when load model fails we shouldn't be using the
+    // model. And set state to New so that the next request can attempt to load
+    // the model again.
     model_.reset();
+    state_ = ModelLoadState::kNew;
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
+  } else {
+    state_ = ModelLoadState::kLoaded;
   }
-  std::move(callback).Run();
+  std::vector<base::OnceClosure> pending_callbacks =
+      std::move(pending_callbacks_);
+  pending_callbacks_.clear();
+  for (base::OnceClosure& callback : pending_callbacks) {
+    std::move(callback).Run();
+  }
 }
 
 void EmbeddingEngine::DoProcess(mojom::GroupRequestPtr request,
@@ -83,6 +100,8 @@ void EmbeddingEngine::DoProcess(mojom::GroupRequestPtr request,
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
+  CHECK_EQ(state_, ModelLoadState::kLoaded);
+
   std::vector<std::string> prompts;
   for (const mojom::EntityPtr& entity : request->entities) {
     std::string prompt = EntityToEmbeddingPrompt(*entity);
@@ -119,8 +138,6 @@ void EmbeddingEngine::ProcessEachPrompt(mojom::GroupRequestPtr request,
   embed_request->content = std::move(prompt);
   embed_request->task_type = embedding_model::mojom::TaskType::kClustering;
   embed_request->truncate_input = true;
-  // TODO(b/361429567): The input should be formatted according to the embedding
-  // model.
   model_->GenerateEmbedding(std::move(embed_request),
                             std::move(on_model_output));
 }

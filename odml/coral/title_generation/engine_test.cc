@@ -121,4 +121,52 @@ TEST_F(TitleGenerationEngineTest, LoadModelFailed) {
   EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
 }
 
+// Test that multiple Process at the same time, without the previous call
+// returning, will still have only loaded the model once, and both calls will
+// have received the correct model load result.
+TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadFailed) {
+  auto request = GetFakeGroupRequest();
+
+  // Override DLC path to a non-existent path.
+  auto dlc_path = base::FilePath("not_exist");
+  cros::DlcClient::SetDlcPathForTest(&dlc_path);
+
+  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
+      title_future1, title_future2;
+  engine_->Process(request.Clone(), GetFakeClusteringResponse(),
+                   title_future1.GetCallback());
+  engine_->Process(std::move(request), GetFakeClusteringResponse(),
+                   title_future2.GetCallback());
+
+  auto fake_response = GetFakeTitleGenerationResponse();
+  auto [_, result] = title_future1.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
+
+  std::tie(_, result) = title_future2.Take();
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
+}
+
+TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadSuccess) {
+  auto request = GetFakeGroupRequest();
+
+  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
+      title_future1, title_future2;
+  engine_->Process(request.Clone(), GetFakeClusteringResponse(),
+                   title_future1.GetCallback());
+  engine_->Process(std::move(request), GetFakeClusteringResponse(),
+                   title_future2.GetCallback());
+
+  auto fake_response = GetFakeTitleGenerationResponse();
+  auto [_, result] = title_future1.Take();
+  ASSERT_TRUE(result.has_value());
+  TitleGenerationResponse response = std::move(*result);
+  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+
+  std::tie(_, result) = title_future2.Take();
+  response = std::move(*result);
+  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+}
+
 }  // namespace coral
