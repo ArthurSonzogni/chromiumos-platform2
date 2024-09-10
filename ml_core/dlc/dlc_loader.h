@@ -6,6 +6,7 @@
 #define ML_CORE_DLC_DLC_LOADER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <brillo/daemons/daemon.h>
@@ -21,7 +22,9 @@ namespace cros {
 // root directory of the installed DLC.
 class DlcLoader : public brillo::Daemon {
  public:
-  explicit DlcLoader(const std::string& dlc_id);
+  explicit DlcLoader(
+      const std::string& dlc_id,
+      std::optional<std::string> metrics_base_name = std::nullopt);
   ~DlcLoader() override = default;
 
   bool DlcLoaded();
@@ -29,6 +32,7 @@ class DlcLoader : public brillo::Daemon {
 
  private:
   const std::string dlc_id_;
+  const std::optional<std::string> metrics_base_name_;
   int OnEventLoopStarted() override;
   base::FilePath dlc_root_path_;
   std::unique_ptr<cros::DlcClient> dlc_client_;

@@ -60,7 +60,7 @@ class DlcClientImpl : public cros::DlcClient {
     dlc_root_path_cb_ = std::move(dlc_root_path_cb);
     progress_cb_ = std::move(progress_cb);
     error_cb_ = std::move(error_cb);
-    LOG(INFO) << "Setting up DlcClient";
+    LOG(INFO) << "Setting up DlcClient for DLC=" << dlc_id_;
 
     dbus::Bus::Options opts;
     opts.bus_type = dbus::Bus::SYSTEM;
@@ -79,7 +79,7 @@ class DlcClientImpl : public cros::DlcClient {
         base::BindRepeating(&DlcClientImpl::OnDlcStateChanged, weak_this),
         base::BindOnce(&DlcClientImpl::OnDlcStateChangedConnect, weak_this));
 
-    LOG(INFO) << "DlcClient setup complete";
+    LOG(INFO) << "DlcClient setup complete for DLC=" << dlc_id_;
     return true;
   }
 
@@ -369,8 +369,8 @@ std::unique_ptr<DlcClient> DlcClient::Create(
     base::OnceCallback<void(const std::string&)> error_cb,
     base::RepeatingCallback<void(double)> progress_cb) {
   if (!path_for_test.empty()) {
-    LOG(INFO) << "Using predefined path " << path_for_test << " for DLC "
-              << dlc_id;
+    LOG(INFO) << "Using predefined path " << path_for_test
+              << " for DLC=" << dlc_id;
     auto client = std::make_unique<DlcClientForTest>(
         std::move(dlc_root_path_cb), std::move(error_cb),
         std::move(progress_cb), path_for_test);

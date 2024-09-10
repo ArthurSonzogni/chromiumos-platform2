@@ -89,7 +89,8 @@ int main(int argc, char* argv[]) {
     return EX_OK;
   }
 
-  cros::DlcLoader dlc_loader(cros::dlc_client::kMlCoreDlcId);
+  cros::DlcLoader dlc_loader(cros::dlc_client::kMlCoreDlcId,
+                             "ChromeOS.MlCoreCacher.MlCore");
   dlc_loader.Run();
   if (!dlc_loader.DlcLoaded()) {
     LOG(ERROR) << "Couldn't install DLC. Exiting.";

@@ -70,6 +70,8 @@ void CameraDiagnosticsProcessor::InstallBlurDetectorDlcOnIpcThread() {
     OnBlurDetectorDlcFailure("error creating DlcClient");
     return;
   }
+  blur_detector_dlc_client_->SetMetricsBaseName(
+      "ChromeOS.CameraDiag.BlurDetector");
   blur_detector_dlc_client_->InstallDlc();
 }
 

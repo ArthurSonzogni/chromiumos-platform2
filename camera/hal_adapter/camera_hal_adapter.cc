@@ -154,6 +154,7 @@ bool CameraHalAdapter::Start() {
     if (!effects_dlc_client_) {
       LOGF(ERROR) << "Failed to create DLC client for effects library.";
     } else {
+      effects_dlc_client_->SetMetricsBaseName("ChromeOS.Camera.MlCore");
       effects_dlc_client_->InstallDlc();
     }
   } else {
@@ -177,6 +178,7 @@ bool CameraHalAdapter::Start() {
   if (!super_res_dlc_client_) {
     LOGF(ERROR) << "Failed to create DLC client for super resolution.";
   } else {
+    super_res_dlc_client_->SetMetricsBaseName("ChromeOS.Camera.SuperRes");
     super_res_dlc_client_->InstallDlc();
   }
 #else

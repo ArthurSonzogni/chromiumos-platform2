@@ -5,13 +5,16 @@
 #include "ml_core/dlc/dlc_loader.h"
 
 #include <sysexits.h>
+
 #include <string>
 
 #include <base/logging.h>
 
 namespace cros {
 
-DlcLoader::DlcLoader(const std::string& dlc_id) : dlc_id_(dlc_id) {}
+DlcLoader::DlcLoader(const std::string& dlc_id,
+                     std::optional<std::string> metrics_base_name)
+    : dlc_id_(dlc_id), metrics_base_name_(metrics_base_name) {}
 
 int DlcLoader::OnEventLoopStarted() {
   dlc_client_ = cros::DlcClient::Create(
@@ -29,6 +32,9 @@ int DlcLoader::OnEventLoopStarted() {
             loader->Quit();
           },
           base::Unretained(this)));
+  if (metrics_base_name_.has_value()) {
+    dlc_client_->SetMetricsBaseName(metrics_base_name_.value());
+  }
   dlc_client_->InstallDlc();
   return EX_OK;
 }
