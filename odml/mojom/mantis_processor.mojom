@@ -1,0 +1,26 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module mantis.mojom;
+
+[Stable, Extensible]
+enum MantisError {
+  [Default] kUnknownError,
+};
+
+[Stable]
+union MantisResult {
+  MantisError error;
+  array<uint8> result_image;
+};
+
+[Stable]
+interface MantisProcessor {
+  Inpainting@0(array<uint8> image, array<uint8> mask, uint32 seed)
+      => (MantisResult result);
+
+  GenerativeFill@1(
+      array<uint8> image, array<uint8> mask, uint32 seed, string prompt)
+      => (MantisResult result);
+};

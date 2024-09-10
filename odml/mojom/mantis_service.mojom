@@ -1,0 +1,20 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module mantis.mojom;
+
+import "odml/mojom/mantis_processor.mojom";
+import "odml/mojom/on_device_model.mojom";
+import "odml/mojom/on_device_model_service.mojom";
+
+[Stable]
+interface MantisService {
+  // Load the assets from DLC, the progress can be monitored using
+  // ProgressObserver, and then initialize GenAIProcessor and Segmenter.
+  Initialize@0(
+      pending_remote<on_device_model.mojom.PlatformModelProgressObserver>?
+          progress_observer,
+      pending_receiver<MantisProcessor> processor)
+      => (on_device_model.mojom.LoadModelResult result);
+};

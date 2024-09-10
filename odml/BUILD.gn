@@ -65,6 +65,8 @@ generate_mojom_bindings("mojo_bindings") {
     "mojom/embedding_model.mojom",
     "mojom/file.mojom",
     "mojom/file_path.mojom",
+    "mojom/mantis_processor.mojom",
+    "mojom/mantis_service.mojom",
     "mojom/on_device_model.mojom",
     "mojom/on_device_model_service.mojom",
     "mojom/read_only_file.mojom",
@@ -106,6 +108,15 @@ source_set("coral") {
     "coral/service.cc",
     "coral/title_generation/engine.cc",
     "coral/title_generation/simple_session.cc",
+  ]
+  public_deps = [ ":mojo_bindings_lib" ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("mantis") {
+  sources = [
+    "mantis/processor.cc",
+    "mantis/service.cc",
   ]
   public_deps = [ ":mojo_bindings_lib" ]
   configs += [ ":target_defaults" ]
