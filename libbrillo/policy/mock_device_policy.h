@@ -123,7 +123,7 @@ class MockDevicePolicy : public DevicePolicy {
               (),
               (const, override));
   MOCK_METHOD(bool, GetCustomerId, (std::string*), (const, override));
-  MOCK_METHOD(bool, VerifyPolicySignature, (), (override));
+  MOCK_METHOD(bool, VerifyPolicySignature, (const std::string&), (override));
   MOCK_METHOD(bool, GetChannelDowngradeBehavior, (int*), (const, override));
   MOCK_METHOD(bool,
               GetHighestDeviceMinimumVersion,

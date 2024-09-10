@@ -127,17 +127,21 @@ class DevicePolicyImpl : public DevicePolicy {
   void set_verify_policy_for_testing(bool value);
 
  private:
-  // Verifies that both the policy file and the signature file exist and are
-  // owned by the root. Does nothing when |verify_root_ownership_| is set to
-  // false.
+  // Verifies that the policy file exists and is owned by the root.
+  // Does nothing when |verify_root_ownership_| is set to false.
   bool VerifyPolicyFile(const base::FilePath& policy_path);
 
+  // Verifies that the policy key file exists and is owned by the root.
+  // Does nothing when |verify_root_ownership_| is set to false.
+  bool VerifyPolicyKeyFile();
+
   // Verifies that the policy signature is correct.
-  bool VerifyPolicySignature() override;
+  bool VerifyPolicySignature(const std::string& public_key) override;
 
   // Loads policy off of disk from |policy_path| into |policy_|. Returns true if
   // the |policy_path| is present on disk and loading it is successful.
-  bool LoadPolicyFromFile(const base::FilePath& policy_path);
+  bool LoadPolicyFromFile(const base::FilePath& policy_path,
+                          const std::string& public_key);
 
   // Path of the default policy file, e.g. /path/to/policy. In order to make
   // device policy more resilient against broken files, this class also tries to

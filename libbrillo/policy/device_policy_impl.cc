@@ -228,6 +228,17 @@ DevicePolicyImpl::DevicePolicyImpl()
 DevicePolicyImpl::~DevicePolicyImpl() {}
 
 bool DevicePolicyImpl::LoadPolicy(bool delete_invalid_files) {
+  // First we need to check that the policy key exists and is readable.
+  if (verify_policy_ && !VerifyPolicyKeyFile()) {
+    return false;
+  }
+  std::string public_key;
+  if (verify_policy_ &&
+      !ReadPublicKeyFromFile(base::FilePath(keyfile_path_), &public_key)) {
+    LOG(ERROR) << "Could not read owner key off disk";
+    return false;
+  }
+
   std::map<int, base::FilePath> sorted_policy_file_paths =
       policy::GetSortedResilientPolicyFilePaths(policy_path_);
   number_of_policy_files_ = sorted_policy_file_paths.size();
@@ -242,7 +253,7 @@ bool DevicePolicyImpl::LoadPolicy(bool delete_invalid_files) {
   bool policy_loaded = false;
   for (const auto& map_pair : base::Reversed(sorted_policy_file_paths)) {
     const base::FilePath& policy_path = map_pair.second;
-    if (LoadPolicyFromFile(policy_path)) {
+    if (LoadPolicyFromFile(policy_path, public_key)) {
       policy_loaded = true;
       break;
     }
@@ -903,40 +914,48 @@ std::optional<bool> DevicePolicyImpl::GetDeviceReportXDREvents() const {
   return proto.enabled();
 }
 
+bool DevicePolicyImpl::VerifyPolicyKeyFile() {
+  if (!verify_root_ownership_) {
+    return true;
+  }
+  // The policy key file has to exist.
+  if (!base::PathExists(keyfile_path_)) {
+    return false;
+  }
+  // Check if the policy and signature file is owned by root.
+  struct stat file_stat;
+  stat(keyfile_path_.value().c_str(), &file_stat);
+  if (file_stat.st_uid != 0) {
+    LOG(ERROR) << "Policy key file is not owned by root!";
+    return false;
+  }
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;
   }
 
-  // Both the policy and its signature have to exist.
-  if (!base::PathExists(policy_path) || !base::PathExists(keyfile_path_)) {
+  // The policy file has to exist.
+  if (!base::PathExists(policy_path)) {
     return false;
   }
 
-  // Check if the policy and signature file is owned by root.
+  // Check if the policy file is owned by root.
   struct stat file_stat;
   stat(policy_path.value().c_str(), &file_stat);
   if (file_stat.st_uid != 0) {
     LOG(ERROR) << "Policy file is not owned by root!";
     return false;
   }
-  stat(keyfile_path_.value().c_str(), &file_stat);
-  if (file_stat.st_uid != 0) {
-    LOG(ERROR) << "Policy signature file is not owned by root!";
-    return false;
-  }
   return true;
 }
 
-bool DevicePolicyImpl::VerifyPolicySignature() {
+bool DevicePolicyImpl::VerifyPolicySignature(const std::string& public_key) {
   if (policy_->has_policy_data_signature()) {
     std::string policy_data = policy_->policy_data();
     std::string policy_data_signature = policy_->policy_data_signature();
-    std::string public_key;
-    if (!ReadPublicKeyFromFile(base::FilePath(keyfile_path_), &public_key)) {
-      LOG(ERROR) << "Could not read owner key off disk";
-      return false;
-    }
 
     em::PolicyFetchRequest::SignatureType signature_type =
         em::PolicyFetchRequest::SHA1_RSA;
@@ -962,7 +981,8 @@ bool DevicePolicyImpl::VerifyPolicySignature() {
   return false;
 }
 
-bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
+bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path,
+                                          const std::string& public_key) {
   std::string policy_data_str;
   if (policy::LoadPolicyFromPath(policy_path, &policy_data_str,
                                  policy_.get()) != LoadPolicyResult::kSuccess) {
@@ -987,7 +1007,7 @@ bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
   }
 
   // Make sure the signature is still valid.
-  if (verify_policy_ && !VerifyPolicySignature()) {
+  if (verify_policy_ && !VerifyPolicySignature(public_key)) {
     LOG(ERROR) << "Policy signature verification failed!";
     return false;
   }

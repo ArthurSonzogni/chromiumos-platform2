@@ -272,7 +272,7 @@ class DevicePolicy {
 
  private:
   // Verifies that the policy signature is correct.
-  virtual bool VerifyPolicySignature() = 0;
+  virtual bool VerifyPolicySignature(const std::string& public_key) = 0;
 };
 }  // namespace policy
 

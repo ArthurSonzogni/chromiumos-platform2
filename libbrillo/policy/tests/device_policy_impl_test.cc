@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "policy/device_policy_impl.h"
+
 #include <optional>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "policy/device_policy_impl.h"
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 #include "install_attributes/libinstallattributes.h"
 #include "install_attributes/mock_install_attributes_reader.h"
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 
 namespace em = enterprise_management;
 
@@ -612,6 +612,24 @@ TEST_F(DevicePolicyImplTest, MetricsEnabledDefaultsIsUnsetIfNotManaged) {
   InitializePolicyForConsumer();
 
   EXPECT_EQ(device_policy_.GetMetricsEnabled(), std::nullopt);
+}
+
+// Test that the policy files are not deleted when the owner key is missing.
+TEST_F(DevicePolicyImplTest, LoadPolicyNoOwnerKey) {
+  InitializePolicyForEnterprise();
+  device_policy_.set_verify_policy_for_testing(true);
+
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  base::FilePath file_path(temp_dir.GetPath().Append("policy"));
+  device_policy_.set_policy_path_for_testing(file_path);
+  base::File file(file_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+
+  ASSERT_FALSE(device_policy_.LoadPolicy(/*delete_invalid_files=*/true));
+
+  // Check that the policy file still exists.
+  ASSERT_TRUE(base::PathExists(file_path));
 }
 
 }  // namespace policy
