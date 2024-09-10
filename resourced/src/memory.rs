@@ -460,9 +460,17 @@ pub struct ComponentMarginsKb {
 
 impl ComponentMarginsKb {
     fn compute_chrome_pressure(&self, available: u64) -> (PressureLevelChrome, u64) {
-        if available < self.chrome_critical {
+        if available < self.chrome_critical_protected {
             (
                 PressureLevelChrome::Critical,
+                // Computing the amount to free with the critical margin may discard protected tabs
+                // between the critical protected and critical margins, but we need to get the
+                // device back into a better state.
+                self.chrome_critical - available,
+            )
+        } else if available < self.chrome_critical {
+            (
+                PressureLevelChrome::DiscardUnprotected,
                 self.chrome_critical - available,
             )
         } else if available < self.chrome_moderate {
@@ -507,23 +515,28 @@ pub fn get_component_margins_kb() -> ComponentMarginsKb {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PressureLevelChrome {
     // There is enough memory to use.
-    None = 0,
+    None,
     // Chrome is advised to free buffers that are cheap to re-allocate and not
     // immediately needed.
-    Moderate = 1,
+    Moderate,
+    // Chrome is advised to discard unprotected tabs to free memory.
+    DiscardUnprotected,
     // Chrome is advised to free all possible memory.
-    Critical = 2,
+    Critical,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum DiscardType {
-    // Only unprotected pages can be discarded.
-    Unprotected = 0,
-    // Both unprotected and protected pages can be discarded.
-    Protected = 1,
+impl PressureLevelChrome {
+    pub fn to_dbus_params(&self) -> (u8, bool) {
+        match self {
+            PressureLevelChrome::None => (0, false),
+            PressureLevelChrome::Moderate => (1, false),
+            PressureLevelChrome::DiscardUnprotected => (2, false),
+            PressureLevelChrome::Critical => (2, true),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -542,7 +555,6 @@ pub enum PressureLevelArcContainer {
 pub struct PressureStatus {
     pub chrome_level: PressureLevelChrome,
     pub chrome_reclaim_target_kb: u64,
-    pub discard_type: DiscardType,
     pub arc_container_level: PressureLevelArcContainer,
     pub arc_container_reclaim_target_kb: u64,
 }
@@ -619,10 +631,10 @@ async fn try_vmms_reclaim_memory_moderate(
 // Returns the total amount of memory reclaimed by VMMS.
 async fn try_vmms_reclaim_memory_critical(
     vmms_client: &VmMemoryManagementClient,
+    chrome_level: PressureLevelChrome,
     mut reclaim_target: u64,
     chrome_background_memory: u64,
     game_mode: common::GameMode,
-    discard_type: DiscardType,
 ) -> u64 {
     // Tell VM Memory Management Service to reclaim memory from guests to
     // try to save the background tabs.
@@ -649,7 +661,7 @@ async fn try_vmms_reclaim_memory_critical(
     }
     // Don't try to reclaim memory at higher than cached priority when the discard type is
     // unprotected tabs only.
-    if discard_type == DiscardType::Unprotected {
+    if chrome_level < PressureLevelChrome::Critical {
         return cached_actual;
     }
 
@@ -687,7 +699,6 @@ async fn try_vmms_reclaim_memory(
     chrome_background_memory: u64,
     game_mode: common::GameMode,
     discard_stale_at_moderate: bool,
-    discard_type: DiscardType,
 ) -> u64 {
     let now = Instant::now();
 
@@ -712,13 +723,13 @@ async fn try_vmms_reclaim_memory(
             try_vmms_reclaim_memory_moderate(vmms_client, reclaim_target).await
         }
 
-        PressureLevelChrome::Critical => {
+        PressureLevelChrome::DiscardUnprotected | PressureLevelChrome::Critical => {
             try_vmms_reclaim_memory_critical(
                 vmms_client,
+                chrome_level,
                 reclaim_target,
                 chrome_background_memory,
                 game_mode,
-                discard_type,
             )
             .await
         }
@@ -749,7 +760,7 @@ fn report_vmms_reclaim_memory_duration(
                     return Ok(());
                 }
                 PressureLevelChrome::Moderate => MODERATE,
-                PressureLevelChrome::Critical => CRITICAL,
+                PressureLevelChrome::DiscardUnprotected | PressureLevelChrome::Critical => CRITICAL,
             }
         ), // Metric name
         duration.as_millis() as i32, // Sample
@@ -807,7 +818,7 @@ fn try_discard_stale_at_moderate(
         );
         *last_discard_time = Some(Instant::now());
         (
-            PressureLevelChrome::Critical,
+            PressureLevelChrome::DiscardUnprotected,
             // Regardless of what the reclaim target is Chrome will kill at least one tab.
             // Since this isn't critical memory pressure and memory doesn't need to be
             // freed quickly, just send '1' so that a single stale tab will be discarded.
@@ -830,11 +841,6 @@ pub async fn get_memory_pressure_status(
 
     let (raw_chrome_level, raw_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available);
-    let discard_type = if available < margins.chrome_critical_protected {
-        DiscardType::Protected
-    } else {
-        DiscardType::Unprotected
-    };
 
     // We cap ARC pressure levels at cached if reclaiming Chrome background memory will
     // be sufficient to push us back over the ARC perceptible margin. Compute the
@@ -855,7 +861,6 @@ pub async fn get_memory_pressure_status(
         background_memory_kb,
         game_mode,
         discard_stale_at_moderate,
-        discard_type,
     )
     .await;
 
@@ -875,14 +880,13 @@ pub async fn get_memory_pressure_status(
         (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb)
     };
 
-    if final_chrome_level == PressureLevelChrome::Critical {
+    if final_chrome_level > PressureLevelChrome::Moderate {
         *LAST_CRITICAL_PRESSURE_AT.do_lock() = Some(Instant::now());
     }
 
     Ok(PressureStatus {
         chrome_level: final_chrome_level,
         chrome_reclaim_target_kb: final_chrome_reclaim_target_kb,
-        discard_type,
         arc_container_level,
         arc_container_reclaim_target_kb,
     })

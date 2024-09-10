@@ -100,7 +100,7 @@ fn send_pressure_signal(
     signal_name: &str,
     level: u8,
     reclaim_target_kb: u64,
-    discard_type_option: Option<u8>,
+    discard_type_option: Option<bool>,
 ) {
     let signal_origin_timestamp_ms = match get_monotonic_timestamp_ms() {
         Ok(timestamp) => timestamp,
@@ -700,7 +700,8 @@ async fn memory_checker_wait(
         Ok(pressure_status) => match pressure_status.chrome_level {
             memory::PressureLevelChrome::None => MAX_WAITING_NO_PRESSURE,
             memory::PressureLevelChrome::Moderate => MAX_WAITING_MODERATE_PRESSURE,
-            memory::PressureLevelChrome::Critical => MAX_WAITING_CRITICAL_PRESSURE,
+            memory::PressureLevelChrome::DiscardUnprotected
+            | memory::PressureLevelChrome::Critical => MAX_WAITING_CRITICAL_PRESSURE,
         },
         Err(e) => {
             error!("get_memory_pressure_status() failed: {}", e);
@@ -829,12 +830,13 @@ async fn margin_memory_handler_loop(
 }
 
 fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::PressureStatus) {
+    let (chrome_level, discard_type) = pressure_status.chrome_level.to_dbus_params();
     send_pressure_signal(
         conn,
         "MemoryPressureChrome",
-        pressure_status.chrome_level as u8,
+        chrome_level,
         pressure_status.chrome_reclaim_target_kb,
-        Some(pressure_status.discard_type as u8),
+        Some(discard_type),
     );
     if pressure_status.arc_container_level != memory::PressureLevelArcContainer::None {
         send_pressure_signal(

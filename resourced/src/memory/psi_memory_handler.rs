@@ -31,7 +31,6 @@ use crate::memory::try_vmms_reclaim_memory;
 use crate::memory::vmstat::Vmstat;
 use crate::memory::ChromeProcessType;
 use crate::memory::ComponentMarginsKb;
-use crate::memory::DiscardType;
 use crate::memory::PressureLevelArcContainer;
 use crate::memory::PressureLevelChrome;
 use crate::memory::PressureStatus;
@@ -119,14 +118,15 @@ async fn distribute_memory_reclaim(
             background_memory_kb,
             game_mode,
             discard_stale_at_moderate,
-            DiscardType::Protected,
         )
         .await;
         let chrome_reclaim_target_kb = reclaim_target_kb.saturating_sub(balloon_reclaim_kb);
         if chrome_reclaim_target_kb == 0 {
             // Downgrade pressure level.
             chrome_level = match chrome_level {
-                PressureLevelChrome::Critical => PressureLevelChrome::Moderate,
+                PressureLevelChrome::DiscardUnprotected | PressureLevelChrome::Critical => {
+                    PressureLevelChrome::Moderate
+                }
                 PressureLevelChrome::Moderate => PressureLevelChrome::None,
                 PressureLevelChrome::None => PressureLevelChrome::None,
             }
@@ -135,7 +135,6 @@ async fn distribute_memory_reclaim(
         PressureStatus {
             chrome_level,
             chrome_reclaim_target_kb,
-            discard_type: DiscardType::Protected,
             arc_container_level: PressureLevelArcContainer::None,
             arc_container_reclaim_target_kb: 0,
         }
@@ -164,7 +163,6 @@ async fn distribute_memory_reclaim(
         PressureStatus {
             chrome_level,
             chrome_reclaim_target_kb: reclaim_target_kb,
-            discard_type: DiscardType::Protected,
             arc_container_level,
             arc_container_reclaim_target_kb: reclaim_target_kb,
         }

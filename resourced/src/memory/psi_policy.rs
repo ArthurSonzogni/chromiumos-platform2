@@ -50,7 +50,9 @@ impl From<(PressureLevelChrome, u64)> for MemoryReclaim {
         match level {
             PressureLevelChrome::None => MemoryReclaim::None,
             PressureLevelChrome::Moderate => MemoryReclaim::Moderate(size),
-            PressureLevelChrome::Critical => MemoryReclaim::Critical(size),
+            PressureLevelChrome::DiscardUnprotected | PressureLevelChrome::Critical => {
+                MemoryReclaim::Critical(size)
+            }
         }
     }
 }
