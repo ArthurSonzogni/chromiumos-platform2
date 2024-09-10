@@ -639,6 +639,9 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
           std::numeric_limits<uint64_t>::max());
     }
 
+    // TOOD(b:365070033): temporary logging: to monitor irregular lockout delay.
+    LOG(INFO) << "AuthFactorStatusUpdate:" << " factor: " << auth_factor.label()
+              << " available_in (millseconds): " << delay->InMilliseconds();
     signalling_->SendAuthFactorStatusUpdate(status_update);
 
     // If both delays are zero, then don't schedule another update.
