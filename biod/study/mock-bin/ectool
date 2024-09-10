@@ -67,7 +67,11 @@ def get_parser() -> argparse.ArgumentParser:
     parser_fpframe = parser_subparsers.add_parser("fpframe")
     parser_fpframe.description = cmd_fpframe.__doc__
     parser_fpframe.set_defaults(func=cmd_fpframe)
-    parser_fpframe.add_argument("option", choices=["raw"])
+    parser_fpframe.add_argument(
+        "option",
+        nargs="?",
+        choices=["raw"],
+    )
 
     # version
     parser_version = parser_subparsers.add_parser("version")
