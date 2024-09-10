@@ -609,22 +609,6 @@ void Service::SetState(ConnectState state) {
   manager_->NotifyServiceStateChanged(this);
   UpdateStateTransitionMetrics(state);
 
-  if (technology_ == Technology::kCellular) {
-    if (!last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero()) {
-      manager_->power_opt()->UpdateManualConnectTime(
-          last_manual_connect_attempt_);
-    }
-    // Update after current connection attempt has concluded
-    if (state == kStateOnline || state == kStateFailure ||
-        state == kStateNoConnectivity) {
-      if (last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
-        manager_->power_opt()->UpdateDurationSinceLastOnline(start_time_);
-      } else {
-        manager_->power_opt()->UpdateDurationSinceLastOnline(last_online_);
-      }
-    }
-  }
-
   if (IsConnectedState(previous_state_) != IsConnectedState(state_)) {
     adaptor_->EmitBoolChanged(kIsConnectedProperty, IsConnected());
   }
@@ -2456,6 +2440,10 @@ void Service::SetLastManualConnectAttemptProperty(const base::Time& value) {
   if (last_manual_connect_attempt_ == value)
     return;
   last_manual_connect_attempt_ = value;
+  if (technology_ == Technology::kCellular) {
+    manager_->power_opt()->UpdateManualConnectTime(
+        last_manual_connect_attempt_);
+  }
   adaptor_->EmitUint64Changed(kLastManualConnectAttemptProperty,
                               GetLastManualConnectAttemptProperty(nullptr));
 }

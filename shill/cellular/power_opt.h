@@ -8,6 +8,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <base/timer/timer.h>
+
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/manager.h"
@@ -42,10 +44,13 @@ class PowerOpt {
   base::Time GetLastOnlineTime(const std::string& iccid);
   base::TimeDelta GetInvalidApnDuration(const std::string& iccid);
   PowerState GetPowerState(const std::string& iccid);
+  void Start();
+  void Stop();
 
  private:
   FRIEND_TEST(PowerOptTest, LowPowerLongNotOnline);
   FRIEND_TEST(PowerOptTest, LowPowerInvalidApn);
+  FRIEND_TEST(PowerOptTest, RunPowerOptTask);
 
   enum class PowerEvent {
     kUnkown,
@@ -66,6 +71,8 @@ class PowerOpt {
   static constexpr base::TimeDelta kLastUserRequestThreshold = base::Days(1);
   static constexpr base::TimeDelta kLastOnlineLongThreshold = base::Days(30);
 
+  static constexpr base::TimeDelta kPowerStateCheckInterval = base::Minutes(60);
+
   struct PowerOptimizationInfo {
     base::Time last_online_time;
     base::Time last_connect_fail_invalid_apn_time;
@@ -73,14 +80,23 @@ class PowerOpt {
     PowerState power_state;
   };
 
+  PowerOpt::PowerState PerformPowerOptimization(PowerEvent event);
+  bool RequestPowerStateChange(PowerOpt::PowerState);
+  void PowerOptTask();
+  void CheckLastOnline();
+
   Manager* manager_;
+
+  // Repeating timer for periodically collecting inputs to perform modem
+  // power optimization.
+  base::RepeatingTimer power_opt_timer_;
+
   std::unordered_map<std::string, PowerOptimizationInfo> opt_info_;
   PowerOptimizationInfo* current_opt_info_;
   base::Time device_last_online_time_;
   base::Time user_connect_request_time_;
 
-  PowerOpt::PowerState PerformPowerOptimization(PowerEvent event);
-  bool RequestPowerStateChange(PowerOpt::PowerState);
+  base::WeakPtrFactory<PowerOpt> weak_factory_{this};
 };
 }  // namespace shill
 

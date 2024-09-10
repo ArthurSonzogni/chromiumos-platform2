@@ -24,10 +24,14 @@ MockManager::MockManager(ControlInterface* control_interface,
     : Manager(control_interface, dispatcher, metrics, "", "", ""),
       mock_ethernet_provider_(new MockEthernetProvider()) {
   mock_device_info_ = std::make_unique<NiceMock<MockDeviceInfo>>(this);
+  mock_cellular_service_provider_ =
+      std::make_unique<NiceMock<MockCellularServiceProvider>>(this);
 
   ON_CALL(*this, ethernet_provider())
       .WillByDefault(Return(mock_ethernet_provider_.get()));
   ON_CALL(*this, device_info()).WillByDefault(Return(mock_device_info_.get()));
+  ON_CALL(*this, cellular_service_provider())
+      .WillByDefault(Return(mock_cellular_service_provider_.get()));
 }
 
 MockManager::MockManager(ControlInterface* control_interface,

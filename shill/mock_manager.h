@@ -12,6 +12,7 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/cellular/mock_cellular_service_provider.h"
 #include "shill/manager.h"
 #include "shill/mock_device_info.h"
 #include "shill/network/dhcp_controller.h"
@@ -152,6 +153,7 @@ class MockManager : public Manager {
  private:
   std::unique_ptr<MockDeviceInfo> mock_device_info_;
   std::unique_ptr<MockEthernetProvider> mock_ethernet_provider_;
+  std::unique_ptr<MockCellularServiceProvider> mock_cellular_service_provider_;
 };
 
 }  // namespace shill

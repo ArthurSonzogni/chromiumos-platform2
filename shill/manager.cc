@@ -375,6 +375,7 @@ void Manager::Start() {
   running_ = true;
   device_info_.Start();
   modem_info_->Start();
+  power_opt_->Start();
   for (const auto& provider_mapping : providers_) {
     provider_mapping.second->Start();
   }
@@ -422,6 +423,7 @@ void Manager::Stop() {
     provider_mapping.second->Stop();
   }
   modem_info_.reset();
+  power_opt_->Stop();
   device_info_.Stop();
   device_status_check_task_.Cancel();
   sort_services_task_.Cancel();

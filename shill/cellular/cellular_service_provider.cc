@@ -585,4 +585,20 @@ std::optional<std::string> CellularServiceProvider::GetOperatorCountryCode() {
   return country.empty() ? std::nullopt : std::optional<std::string>(country);
 }
 
+base::Time CellularServiceProvider::FindLastOnline() {
+  uint64_t latest = 0;
+  for (const CellularServiceRefPtr& service : services_) {
+    uint64_t curr = service->GetLastOnlineProperty(nullptr);
+    latest = curr > latest ? curr : latest;
+  }
+  // Use |start_time_| if service(s) is never online.
+  if (latest == 0) {
+    for (const CellularServiceRefPtr& service : services_) {
+      uint64_t curr = service->GetStartTimeProperty(nullptr);
+      latest = curr > latest ? curr : latest;
+    }
+  }
+  return base::Time::FromDeltaSinceWindowsEpoch(base::Milliseconds(latest));
+}
+
 }  // namespace shill

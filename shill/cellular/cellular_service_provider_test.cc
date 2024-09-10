@@ -330,6 +330,52 @@ TEST_F(CellularServiceProviderTest, SwitchSimSlot) {
   cellular = nullptr;
 }
 
+TEST_F(CellularServiceProviderTest, FindLastOnline) {
+  CellularRefPtr device = CreateDeviceWithEid("imsi1", "iccid1", kEid1);
+  std::string identifier = device->GetStorageIdentifier();
+
+  SetupCellularStore("cellular1", "imsi1", "iccid1", kEid1);
+  SetupCellularStore("cellular2", "imsi2", "iccid2", kEid1);
+
+  // Neither service has been online.
+  storage_.SetUint64("cellular1", Service::kStorageStartTime, 1);
+  storage_.SetUint64("cellular2", Service::kStorageStartTime, 2);
+  provider()->LoadServicesForDevice(device.get());
+  provider()->LoadServicesForSecondarySim(kEid1, "iccid2", "imsi2",
+                                          device.get());
+  ASSERT_EQ(2u, GetProviderServices().size());
+  // Return the latest |StartTime|.
+  ASSERT_EQ(
+      2,
+      provider()->FindLastOnline().ToDeltaSinceWindowsEpoch().InMilliseconds());
+  provider()->RemoveServices();
+  EXPECT_EQ(0u, GetProviderServices().size());
+
+  // Only one service has been online.
+  storage_.SetUint64("cellular1", Service::kStorageLastOnline, 11);
+  provider()->LoadServicesForDevice(device.get());
+  provider()->LoadServicesForSecondarySim(kEid1, "iccid2", "imsi2",
+                                          device.get());
+  ASSERT_EQ(2u, GetProviderServices().size());
+  // Return the only |LastOnline|.
+  ASSERT_EQ(
+      11,
+      provider()->FindLastOnline().ToDeltaSinceWindowsEpoch().InMilliseconds());
+  provider()->RemoveServices();
+  EXPECT_EQ(0u, GetProviderServices().size());
+
+  // Both services have been online.
+  storage_.SetUint64("cellular2", Service::kStorageLastOnline, 12);
+  provider()->LoadServicesForDevice(device.get());
+  provider()->LoadServicesForSecondarySim(kEid1, "iccid2", "imsi2",
+                                          device.get());
+  ASSERT_EQ(2u, GetProviderServices().size());
+  // Return the latest |LastOnline|.
+  ASSERT_EQ(
+      12,
+      provider()->FindLastOnline().ToDeltaSinceWindowsEpoch().InMilliseconds());
+}
+
 TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
   CellularRefPtr device = CreateDevice("imsi1", "iccid1");
   std::string identifier = device->GetStorageIdentifier();

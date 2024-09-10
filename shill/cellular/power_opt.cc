@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
+#include "shill/cellular/cellular_service_provider.h"
 #include "shill/logging.h"
 namespace shill {
 
@@ -16,6 +17,18 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 
 PowerOpt::PowerOpt(Manager* manager) : manager_(manager) {
   current_opt_info_ = nullptr;
+}
+
+void PowerOpt::Start() {
+  SLOG(3) << __func__;
+  power_opt_timer_.Start(
+      FROM_HERE, kPowerStateCheckInterval,
+      base::BindRepeating(&PowerOpt::PowerOptTask, weak_factory_.GetWeakPtr()));
+}
+
+void PowerOpt::Stop() {
+  SLOG(3) << __func__;
+  power_opt_timer_.Stop();
 }
 
 void PowerOpt::NotifyConnectionFailInvalidApn(const std::string& iccid) {
@@ -172,6 +185,23 @@ PowerOpt::PowerState PowerOpt::PerformPowerOptimization(
     }
   }
   return current_opt_info_->power_state;
+}
+
+void PowerOpt::PowerOptTask() {
+  SLOG(3) << __func__;
+  CheckLastOnline();
+}
+
+void PowerOpt::CheckLastOnline() {
+  SLOG(3) << __func__;
+  if (!manager_->cellular_service_provider()) {
+    return;
+  }
+  base::Time last_online =
+      manager_->cellular_service_provider()->FindLastOnline();
+  if (!last_online.ToDeltaSinceWindowsEpoch().is_zero()) {
+    UpdateDurationSinceLastOnline(last_online);
+  }
 }
 
 }  // namespace shill

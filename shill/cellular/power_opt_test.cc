@@ -18,6 +18,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/test_event_dispatcher.h"
 
+using testing::AtLeast;
 using testing::NiceMock;
 using testing::Test;
 
@@ -84,6 +85,17 @@ TEST_F(PowerOptTest, LowPowerInvalidApn) {
   obj.NotifyConnectionFailInvalidApn("123");
   // met invalid apn duration, set to low power state
   EXPECT_EQ(obj.GetPowerState("123"), PowerOpt::PowerState::kLow);
+}
+
+TEST_F(PowerOptTest, RunPowerOptTask) {
+  PowerOpt obj(&manager_);
+  obj.AddOptInfoForNewService("123");
+  obj.UpdatePowerState("123", PowerOpt::PowerState::kOn);
+  obj.Start();
+  EXPECT_CALL(manager_, cellular_service_provider()).Times(AtLeast(3));
+  constexpr base::TimeDelta kTestTimeout =
+      3 * PowerOpt::kPowerStateCheckInterval + base::Seconds(10);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
 }
 
 }  // namespace shill

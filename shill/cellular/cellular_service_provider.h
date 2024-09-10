@@ -13,6 +13,7 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
 #include "shill/cellular/cellular_service.h"
@@ -110,6 +111,11 @@ class CellularServiceProvider : public ProviderInterface {
   // Return current service operator two-letter country code defined in ISO
   // 3166-1.
   std::optional<std::string> GetOperatorCountryCode();
+
+  // Find the latest |last_online_| value among all the cellular services.
+  // If cellular has never been online, use the latest |start_time_|.
+  // It is invalid if <return value>.ToDeltaSinceWindowsEpoch().is_zero().
+  base::Time FindLastOnline();
 
  private:
   friend class CellularServiceProviderTest;
