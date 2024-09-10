@@ -541,10 +541,6 @@ void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
                               base::OnceClosure init_callback) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   const base::FilePath database_file = database_path.Append("database");
-  if (!base::PathExists(database_file)) {
-    LOG(INFO) << "Creating database file";
-    base::WriteFile(database_path, std::string_view("", 1));
-  }
   std::unique_ptr<DlpDatabase> db =
       std::make_unique<DlpDatabase>(database_file, this);
   DlpDatabase* db_ptr = db.get();
