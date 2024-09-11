@@ -94,7 +94,11 @@ class IntelPMTCollectorTest : public testing::Test {
     auto pmt_dir = GetRoot().Append("var/lib/heartd/intel_pmt/");
     ASSERT_TRUE(base::CreateDirectory(pmt_dir));
   }
-  void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
+  void TearDown() override {
+    ASSERT_TRUE(temp_dir_.Delete());
+    if (fake_snapshot_)
+      delete fake_snapshot_;
+  }
 
  protected:
   base::test::TaskEnvironment task_environment_{
