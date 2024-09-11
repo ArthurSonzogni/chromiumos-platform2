@@ -1328,6 +1328,10 @@ void Cellular::OnModemDestroyed() {
   // Reset interface index and link name to default
   set_interface_index(Modem::kCellularDefaultInterfaceIndex);
   set_link_name(Modem::kCellularDefaultInterfaceName);
+
+  // When underlying modem is not available, device should be reported as
+  // disabled.
+  SetEnabledState(false);
 }
 
 void Cellular::CreateCapability() {
