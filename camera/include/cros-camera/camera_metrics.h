@@ -346,6 +346,10 @@ class CROS_CAMERA_EXPORT CameraMetrics {
   // taken in a session.
   virtual void SendEffectsNumStillShotsTaken(int num_shots) = 0;
 
+  // Records the number of frames dropped before effects pipeline was
+  // initialized in EffectsStreamManipulator.
+  virtual void SendEffectsNumFramesDroppedAtStart(int count) = 0;
+
   // *** Portrait Mode metrics ***
 
   // Records the number of still capture shots taken in Portrait Mode per

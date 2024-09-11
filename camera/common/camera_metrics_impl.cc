@@ -205,6 +205,12 @@ constexpr int kMinEffectsFrameIntervalUs = 0;
 constexpr int kMaxEffectsFrameIntervalUs = 250'000;
 constexpr int kEffectsFrameIntervalBuckets = 100;
 
+constexpr char kCameraEffectsNumFramesDroppedAtStart[] =
+    "ChromeOS.Camera.Effects.NumFramesDroppedAtStart";
+constexpr int kMinEffectsDroppedFrames = 1;
+constexpr int kMaxEffectsDroppedFrames = 60;
+constexpr int kNumEffectsDroppedFramesBuckets = 60;
+
 // *** Portrait Mode metrics ***
 constexpr char kCameraPortraitModeNumStillShotsTaken[] =
     "ChromeOS.Camera.PortraitMode.NumStillShotsTaken";
@@ -579,6 +585,12 @@ void CameraMetricsImpl::SendEffectsNumStillShotsTaken(int num_shots) {
   metrics_lib_->SendToUMA(kCameraEffectsNumStillShotsTaken, num_shots,
                           kMinNumShotsTaken, kMaxNumShotsTaken,
                           kNumShotsTakenBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsNumFramesDroppedAtStart(int count) {
+  metrics_lib_->SendToUMA(kCameraEffectsNumFramesDroppedAtStart, count,
+                          kMinEffectsDroppedFrames, kMaxEffectsDroppedFrames,
+                          kNumEffectsDroppedFramesBuckets);
 }
 
 void CameraMetricsImpl::SendPortraitModeNumStillShotsTaken(int num_shots) {

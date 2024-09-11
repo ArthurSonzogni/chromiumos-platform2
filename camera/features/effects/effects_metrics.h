@@ -43,6 +43,7 @@ class EffectsMetricsData {
       size_t num_concurrent_processed_streams);
   void RecordStillShotTaken();
   void RecordError(CameraEffectError error);
+  void RecordNumDroppedFramesAtStart(size_t count);
 
   bool EffectSelected(CameraEffect effect) const;
   base::TimeDelta AverageFrameProcessingLatency(
@@ -56,6 +57,7 @@ class EffectsMetricsData {
   size_t max_num_concurrent_streams_ = 0u;
   size_t max_num_concurrent_processed_streams_ = 0u;
   size_t num_still_shots_taken_ = 0;
+  size_t max_num_frames_dropped_at_startup_ = 0;
   CameraEffectError error_ = CameraEffectError::kNoError;
   base::flat_set<CameraEffect> selected_effects_;
   // A vector of time durations for each effect and stream type combination.

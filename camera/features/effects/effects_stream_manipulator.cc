@@ -325,6 +325,7 @@ class EffectsPipelineTracker {
   void TrackProcessedFrame() {
     if (!first_frame_received_) {
       first_frame_received_ = true;
+      metrics_.RecordNumDroppedFramesAtStart(dropped_frame_count_);
       LOGF(INFO) << "Dropped frames count at effects pipeline startup: "
                  << dropped_frame_count_;
     }

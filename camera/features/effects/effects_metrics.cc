@@ -91,6 +91,11 @@ void EffectsMetricsData::RecordError(CameraEffectError error) {
   }
 }
 
+void EffectsMetricsData::RecordNumDroppedFramesAtStart(size_t count) {
+  max_num_frames_dropped_at_startup_ =
+      std::max(count, max_num_frames_dropped_at_startup_);
+}
+
 bool EffectsMetricsData::EffectSelected(CameraEffect effect) const {
   return selected_effects_.contains(effect);
 }
@@ -150,6 +155,8 @@ void EffectsMetricsUploader::UploadMetricsDataOnThread(
   metrics_helper_->SendEffectsError(metrics.error_);
   metrics_helper_->SendEffectsNumStillShotsTaken(
       metrics.num_still_shots_taken_);
+  metrics_helper_->SendEffectsNumFramesDroppedAtStart(
+      metrics.max_num_frames_dropped_at_startup_);
 
   // Post per-effect metrics
   for (int i = 0; i <= static_cast<int>(CameraEffect::kMaxValue); i++) {
