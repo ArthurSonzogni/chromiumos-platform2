@@ -13,6 +13,7 @@ anyhow = "1.0"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 nix = { version = "0.28.0", features = ["user"] }
 clap = { version = "4.5.4", features = ["derive"] }
+log = { version = "0.4", features = ["std"] }
 
 [features]
 lvm_stateful_partition = []

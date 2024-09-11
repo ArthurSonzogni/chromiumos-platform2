@@ -7,9 +7,11 @@
 //! https://github.com/google/deshell/blob/main/playbook.md
 
 mod command_line;
+mod logger;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
+use log::{debug, info};
 use nix::unistd;
 use std::process::Command;
 
@@ -18,16 +20,20 @@ use command_line::Args;
 fn main() -> Result<()> {
     libchromeos::panic_handler::install_memfd_handler();
 
+    let args = Args::parse();
+
+    logger::init(args.debug)?;
+
     // Fail if not running as root.
     if !unistd::Uid::effective().is_root() {
         bail!("chromeos-install must be run as root");
     }
 
-    let args = Args::parse();
     let mut install_cmd = Command::new("/usr/sbin/chromeos-install.sh");
     install_cmd.envs(args.to_env());
 
-    println!("Running: {:?}", &install_cmd);
+    info!("Running: {:?}", &install_cmd);
+    debug!("with env: {:?}", install_cmd.get_envs());
 
     let status = install_cmd
         .status()
