@@ -71,7 +71,7 @@ async function sleep(duration) {
  * @param {{timeout?: number, interval?: number}=} opts Options in milliseconds.
  * @return {!Promise<Awaited<T>>} The return value of the given function.
  */
-async function poll(fn, {timeout = 5000, interval = 10} = {}) {
+async function poll(fn, {timeout = 10000, interval = 10} = {}) {
   let lastError = null;
   const deadline = Date.now() + timeout;
 
