@@ -1,0 +1,23 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package coral;
+
+message EmbeddingRecord {
+  // The vector of embedding.
+  repeated float values = 1;
+
+  // The update timestamp of this embedding.
+  // It is the milliseconds since the epoch time .
+  int64 updated_time_ms = 2;
+}
+
+message EmbeddingRecords {
+  // The records are used like a cache, so the key should capture anything
+  // which could possibly affect the result embedding. From the entity content
+  // to the embedding prompt, also embedding model versions, etc.
+  map<string, EmbeddingRecord> records = 1;
+}
