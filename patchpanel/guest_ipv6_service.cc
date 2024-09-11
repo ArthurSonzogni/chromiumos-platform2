@@ -672,9 +672,22 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
           ifname_downlink,
           *net_base::IPv6CIDR::CreateFromAddressAndPrefix(ip, 128),
           uplink_ip)) {
+    // AddIPv6HostRoute with |uplink_ip| could fail because of uplink address
+    // missing on the uplink interface (racing between patchpanel and kernel).
+    // When that happens fall back to a route without |uplink_ip| to secure
+    // critical connectivity for guest. (The `src` specifier part only affects
+    // direct communication between guest and the host.)
     LOG(WARNING) << __func__ << ": " << pair
                  << ", Failed to setup the IPv6 route: " << ip << " dev "
-                 << ifname_downlink << " src {" << uplink_ip_str << "}";
+                 << ifname_downlink << " src " << uplink_ip_str;
+    if (uplink_ip &&
+        !datapath_->AddIPv6HostRoute(
+            ifname_downlink,
+            *net_base::IPv6CIDR::CreateFromAddressAndPrefix(ip, 128))) {
+      LOG(WARNING) << __func__ << ": " << pair
+                   << ", Failed to setup the IPv6 route: " << ip << " dev "
+                   << ifname_downlink;
+    }
   }
 }
 

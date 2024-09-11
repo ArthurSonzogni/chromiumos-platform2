@@ -211,7 +211,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
       AddIPv6HostRoute(
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::abcd/128"),
-          net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")));
+          net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")))
+      .WillOnce(Return(true));
   target_.FakeNDProxyNeighborDetectionSignal(
       101, *net_base::IPv6Address::CreateFromString("2001:db8:0:100::abcd"));
 
@@ -244,7 +245,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
       AddIPv6HostRoute(
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::abcd/128"),
-          net_base::IPv6Address::CreateFromString("2001:db8:0:200::1234")));
+          net_base::IPv6Address::CreateFromString("2001:db8:0:200::1234")))
+      .WillOnce(Return(true));
   target_.FakeNDProxyNeighborDetectionSignal(
       101, *net_base::IPv6Address::CreateFromString("2001:db8:0:200::abcd"));
 
@@ -253,7 +255,8 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
       AddIPv6HostRoute(
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:200::9876/128"),
-          net_base::IPv6Address::CreateFromString("2001:db8:0:200::1234")));
+          net_base::IPv6Address::CreateFromString("2001:db8:0:200::1234")))
+      .WillOnce(Return(true));
   target_.FakeNDProxyNeighborDetectionSignal(
       101, *net_base::IPv6Address::CreateFromString("2001:db8:0:200::9876"));
 
@@ -427,7 +430,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
       AddIPv6HostRoute(
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::9999/128"),
-          net_base::IPv6Address::CreateFromString("2001:db8:0:100::abcd")));
+          net_base::IPv6Address::CreateFromString("2001:db8:0:100::abcd")))
+      .WillOnce(Return(true));
   target_.FakeNDProxyNeighborDetectionSignal(
       101, *net_base::IPv6Address::CreateFromString("2001:db8:0:100::9999"));
 
@@ -436,7 +440,8 @@ TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
       AddIPv6HostRoute(
           "down1",
           *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::9999/128"),
-          net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")));
+          net_base::IPv6Address::CreateFromString("2001:db8:0:100::1234")))
+      .WillOnce(Return(true));
   up1_dev.network_config.ipv6_addresses = {
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:0:100::1234/64")};
   target_.OnUplinkIPv6Changed(up1_dev);
