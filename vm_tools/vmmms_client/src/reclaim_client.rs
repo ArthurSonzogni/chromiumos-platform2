@@ -32,17 +32,7 @@ pub struct ReclaimClient {
 
 impl ReclaimClient {
     pub fn new(mut vmmms_socket: VmmmsSocket, mglru_file_path: &str) -> Result<Self> {
-        let mut handshake_packet = VmMemoryManagementPacket::new();
-        handshake_packet.type_ = PacketType::PACKET_TYPE_HANDSHAKE.into();
-        handshake_packet.mut_handshake().type_ = ConnectionType::CONNECTION_TYPE_STATS.into();
-
-        vmmms_socket.write_packet(handshake_packet)?;
-
-        let handshake_response = vmmms_socket.read_packet()?;
-
-        if handshake_response.type_ != PacketType::PACKET_TYPE_CONNECTION_ACK.into() {
-            bail!("VmMemoryManagement Server did not ack");
-        }
+        vmmms_socket.handshake(ConnectionType::CONNECTION_TYPE_STATS)?;
 
         let mglru_file = File::open(mglru_file_path)?;
 

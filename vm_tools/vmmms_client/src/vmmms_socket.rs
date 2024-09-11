@@ -11,6 +11,8 @@ use std::io::Write;
 use std::os::fd::AsFd;
 use std::os::fd::BorrowedFd;
 use std::time::Duration;
+use system_api::vm_memory_management::ConnectionType;
+use system_api::vm_memory_management::PacketType;
 use system_api::vm_memory_management::VmMemoryManagementPacket;
 use vsock::VsockStream;
 
@@ -71,6 +73,21 @@ impl VmmmsSocket {
                 .context("Failed to deserialize the packet")?;
 
         Ok(received_packet)
+    }
+
+    pub fn handshake(&mut self, connection_type: ConnectionType) -> Result<()> {
+        let mut handshake_packet = VmMemoryManagementPacket::new();
+        handshake_packet.type_ = PacketType::PACKET_TYPE_HANDSHAKE.into();
+        handshake_packet.mut_handshake().type_ = connection_type.into();
+
+        self.write_packet(handshake_packet)?;
+
+        let handshake_response = self.read_packet()?;
+
+        if handshake_response.type_ != PacketType::PACKET_TYPE_CONNECTION_ACK.into() {
+            bail!("VmMemoryManagement Server did not ack");
+        }
+        Ok(())
     }
 }
 
