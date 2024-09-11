@@ -548,7 +548,7 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
-void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log,
+void RmadInterfaceImpl::SaveLog(const std::string& unused_diagnostics_log,
                                 SaveLogCallback callback) {
   const std::string text_log = GenerateLogsText(json_store_);
   const std::string json_log = GenerateLogsJson(json_store_);
@@ -565,7 +565,7 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log,
       std::move(callback),
       base::BindRepeating(&RmadInterfaceImpl::SaveLogRpc,
                           base::Unretained(this), text_log, json_log,
-                          system_log, diagnostics_log),
+                          system_log),
       base::BindRepeating(&HasOptionalValue<std::string>),
       base::BindOnce(&RmadInterfaceImpl::SaveLogSuccessHandler,
                      base::Unretained(this)),
@@ -577,12 +577,11 @@ void RmadInterfaceImpl::SaveLogRpc(
     const std::string& text_log,
     const std::string& json_log,
     const std::string& system_log,
-    const std::string& diagnostics_log,
     uint8_t device_id,
     RpcCallbackType<const std::optional<std::string>&> callback) {
   daemon_callback_->GetExecuteMountAndWriteLogCallback().Run(
       static_cast<uint8_t>(device_id), text_log, json_log, system_log,
-      diagnostics_log, std::move(callback));
+      std::move(callback));
 }
 
 void RmadInterfaceImpl::SaveLogSuccessHandler(

@@ -324,7 +324,6 @@ class RmadInterfaceImplTest : public testing::Test {
       const std::string& text_log,
       const std::string& json_log,
       const std::string& system_log,
-      const std::string& diagnostics_log,
       base::OnceCallback<void(const std::optional<std::string>&)> callback) {
     if (device_id == kMountSuccessDeviceId) {
       std::move(callback).Run("rma.log");

@@ -58,7 +58,7 @@ class RmadInterface {
 
   using SaveLogCallback = base::OnceCallback<void(const SaveLogReply&, bool)>;
   // Save the RMA logs.
-  virtual void SaveLog(const std::string& diagnostics_log_text,
+  virtual void SaveLog(const std::string& unused_diagnostics_log,
                        SaveLogCallback callback) = 0;
 
   using RecordBrowserActionMetricCallback =

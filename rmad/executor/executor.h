@@ -34,7 +34,6 @@ class Executor final : public chromeos::rmad::mojom::Executor {
                         const std::string& text_log,
                         const std::string& json_log,
                         const std::string& system_log,
-                        const std::string& diagnostics_log,
                         MountAndWriteLogCallback callback) override;
   void CopyRootfsFirmwareUpdater(
       CopyRootfsFirmwareUpdaterCallback callback) override;

@@ -499,7 +499,7 @@ TEST_F(DBusServiceTest, GetLog) {
 
 TEST_F(DBusServiceTest, SaveLog) {
   EXPECT_CALL(mock_rmad_service_, SaveLog(_, _))
-      .WillOnce(Invoke([](const std::string& diagnostics_log_text,
+      .WillOnce(Invoke([](const std::string& unused_diagnostics_log,
                           RmadInterface::SaveLogCallback callback) {
         SaveLogReply reply;
         reply.set_error(RMAD_ERROR_OK);

@@ -42,7 +42,6 @@ using ExecuteMountAndWriteLogCallback = base::RepeatingCallback<void(
     const std::string&,
     const std::string&,
     const std::string&,
-    const std::string&,
     base::OnceCallback<void(const std::optional<std::string>&)>)>;
 using ExecuteCopyRootfsFirmwareUpdaterCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;

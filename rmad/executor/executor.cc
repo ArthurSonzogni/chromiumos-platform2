@@ -62,7 +62,6 @@ constexpr char kDirectoryNameFormat[] = "rma-logs-%s";
 constexpr char kTextLogFilename[] = "text-log.txt";
 constexpr char kJsonLogFilename[] = "json-log.json";
 constexpr char kSystemLogFilename[] = "system-log.txt";
-constexpr char kDiagnosticsLogFilename[] = "diagnostics-log.txt";
 // Supported file systems for stateful partition.
 const std::vector<std::string> kStatefulFileSystems = {"vfat", "ext4", "ext3",
                                                        "ext2"};
@@ -146,7 +145,6 @@ void Executor::MountAndWriteLog(uint8_t device_id,
                                 const std::string& text_log,
                                 const std::string& json_log,
                                 const std::string& system_log,
-                                const std::string& diagnostics_log,
                                 MountAndWriteLogCallback callback) {
   // Input argument check.
   if (!islower(device_id)) {
@@ -191,13 +189,6 @@ void Executor::MountAndWriteLog(uint8_t device_id,
     const base::FilePath text_log_path =
         directory_filepath.Append(kTextLogFilename);
     if (!WriteStringToFileAtomic(text_log_path, text_log.c_str())) {
-      std::move(callback).Run(std::nullopt);
-      return;
-    }
-
-    const base::FilePath diagnostics_log_path =
-        directory_filepath.Append(kDiagnosticsLogFilename);
-    if (!WriteStringToFileAtomic(diagnostics_log_path, diagnostics_log)) {
       std::move(callback).Run(std::nullopt);
       return;
     }

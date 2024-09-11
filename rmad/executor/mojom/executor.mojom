@@ -32,16 +32,13 @@ interface Executor {
   // * |text_log| - a string containing the formatted logs to save.
   // * |json_log| - a string containing the JSON formatted logs.
   // * |system_log| - a string containing the raw system logs.
-  // * |diagnostics_log| - a string containing the Diagnostics app logs.
   //
   // Response:
   // * |file_name| - the file name of the saved log if successfully writes the
   //                 log, or null if failed to save the log.
-  MountAndWriteLog(uint8 device_id,
-                   string text_log,
-                   string json_log,
-                   string system_log,
-                   string diagnostics_log) => (string? file_name);
+  MountAndWriteLog(
+      uint8 device_id, string text_log, string json_log, string system_log)
+      => (string? file_name);
 
   // Copy the firmware updater from rootfs to a fixed path
   // /usr/lib/rmad/chromeos-firmwareupdate.
