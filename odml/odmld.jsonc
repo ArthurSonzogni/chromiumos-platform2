@@ -5,14 +5,16 @@
     "own": [
       "CrosOdmlService",
       "CrosCoralService",
-      "CrosEmbeddingModelService"
+      "CrosEmbeddingModelService",
+      "CrosMantisService"
     ]
   },
   {
     "identity": "u:r:cros_browser:s0",
     "request": [
       "CrosOdmlService",
-      "CrosCoralService"
+      "CrosCoralService",
+      "CrosMantisService"
     ]
   },
   {
@@ -20,7 +22,8 @@
     "request": [
       "CrosOdmlService",
       "CrosCoralService",
-      "CrosEmbeddingModelService"
+      "CrosEmbeddingModelService",
+      "CrosMantisService"
     ]
   }
 ]

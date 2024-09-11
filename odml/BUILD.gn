@@ -159,6 +159,7 @@ executable("odmld") {
   configs += [ ":target_defaults" ]
   deps = [
     ":coral",
+    ":mantis",
     ":odml",
   ]
 }

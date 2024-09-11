@@ -28,6 +28,7 @@ constexpr char kCrosHealthdEvent[] = "CrosHealthdEvent";
 constexpr char kCrosHealthdProbe[] = "CrosHealthdProbe";
 constexpr char kCrosHealthdRoutines[] = "CrosHealthdRoutines";
 constexpr char kCrosJpegAccelerator[] = "CrosJpegAccelerator";
+constexpr char kCrosMantisService[] = "CrosMantisService";
 constexpr char kCrosPasspointService[] = "CrosPasspointService";
 constexpr char kCrosPortalService[] = "CrosPortalService";
 constexpr char kCrosSystemEventMonitor[] = "CrosSystemEventMonitor";

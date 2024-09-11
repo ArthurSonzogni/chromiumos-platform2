@@ -27,6 +27,7 @@
 
 #include "odml/coral/service.h"
 #include "odml/embedding_model/embedding_model_service.h"
+#include "odml/mantis/service.h"
 #include "odml/on_device_model/ml/on_device_model_internal.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
@@ -143,6 +144,44 @@ class CoralServiceProviderImpl
   coral::CoralService service_impl_;
 };
 
+class MantisServiceProviderImpl
+    : public chromeos::mojo_service_manager::mojom::ServiceProvider {
+ public:
+  MantisServiceProviderImpl(
+      raw_ref<MetricsLibrary> metrics,
+      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
+          service_manager)
+      : metrics_(metrics),
+        receiver_(this),
+        service_impl_(raw_ref(shim_loader_)) {
+    service_manager->Register(
+        /*service_name=*/chromeos::mojo_services::kCrosMantisService,
+        receiver_.BindNewPipeAndPassRemote());
+  }
+
+  raw_ref<mantis::MantisService> service() { return raw_ref(service_impl_); }
+
+ private:
+  // overrides ServiceProvider.
+  void Request(
+      chromeos::mojo_service_manager::mojom::ProcessIdentityPtr identity,
+      mojo::ScopedMessagePipeHandle receiver) override {
+    service_impl_.AddReceiver(
+        mojo::PendingReceiver<mantis::mojom::MantisService>(
+            std::move(receiver)));
+  }
+
+  // The metrics lib.
+  raw_ref<MetricsLibrary> metrics_;
+  // The odml_shim loader.
+  odml::OdmlShimLoaderImpl shim_loader_;
+  // The receiver of ServiceProvider.
+  mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
+      receiver_;
+  // The implementation of mantis::mojom::MantisService.
+  mantis::MantisService service_impl_;
+};
+
 class Daemon : public brillo::Daemon {
  public:
   Daemon() = default;
@@ -184,6 +223,9 @@ class Daemon : public brillo::Daemon {
         raw_ref(metrics_), service_manager_,
         on_device_model_service_provider_impl_->service(),
         embedding_model_service_provider_impl_->service());
+
+    mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
+        raw_ref(metrics_), service_manager_);
     return 0;
   }
 
@@ -203,6 +245,8 @@ class Daemon : public brillo::Daemon {
       embedding_model_service_provider_impl_;
 
   std::unique_ptr<CoralServiceProviderImpl> coral_service_provider_impl_;
+
+  std::unique_ptr<MantisServiceProviderImpl> mantis_service_provider_impl_;
 
   // Must be last class member.
   base::WeakPtrFactory<Daemon> weak_factory_{this};

@@ -13,18 +13,18 @@ using mojom::MantisError;
 using mojom::MantisResult;
 }  // namespace
 
-void MantisProcessor::Inpainting(std::vector<uint8> image,
-                                 std::vector<unit8> mask,
-                                 int seed,
+void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
+                                 const std::vector<uint8_t>& mask,
+                                 uint32_t seed,
                                  InpaintingCallback callback) {
   auto result = MantisResult::NewError(MantisError::kUnknownError);
   std::move(callback).Run(std::move(result));
 }
 
-void MantisProcessor::GenerativeFill(std::vector<uint8> image,
-                                     std::vector<unit8> mask,
-                                     int seed,
-                                     std::string prompt,
+void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
+                                     const std::vector<uint8_t>& mask,
+                                     uint32_t seed,
+                                     const std::string& prompt,
                                      GenerativeFillCallback callback) {
   auto result = MantisResult::NewError(MantisError::kUnknownError);
   std::move(callback).Run(std::move(result));

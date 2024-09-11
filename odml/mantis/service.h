@@ -16,12 +16,13 @@
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/utils/odml_shim_loader.h"
 
 namespace mantis {
 
 class MantisService : public mojom::MantisService {
  public:
-  MantisService() = default;
+  explicit MantisService(raw_ref<odml::OdmlShimLoader> shim_loader);
   ~MantisService() = default;
 
   MantisService(const MantisService&) = delete;
@@ -33,12 +34,15 @@ class MantisService : public mojom::MantisService {
   }
 
   // mojom::MantisService:
-  void Initialize(mojo::PendingRemote<mojom::PlatformModelProgressObserver>
-                      progress_observer,
-                  mojo::PendingReceiver<mojom::MantisProcessor> processor,
-                  InitializeCallback callback);
+  void Initialize(
+      mojo::PendingRemote<on_device_model::mojom::PlatformModelProgressObserver>
+          progress_observer,
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      InitializeCallback callback);
 
  private:
+  const raw_ref<odml::OdmlShimLoader> shim_loader_;
+
   mojo::ReceiverSet<mojom::MantisService> receiver_set_;
 
   base::WeakPtrFactory<MantisService> weak_ptr_factory_{this};

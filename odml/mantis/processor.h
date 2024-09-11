@@ -15,7 +15,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
-#include "odml/mojom/mantis_service.mojom.h"
+#include "odml/mojom/mantis_processor.mojom.h"
 
 namespace mantis {
 
@@ -32,15 +32,15 @@ class MantisProcessor : public mojom::MantisProcessor {
                       base::SequencedTaskRunner::GetCurrentDefault());
   }
 
-  void Inpainting(std::vector<uint8> image,
-                  std::vector<unit8> mask,
-                  int seed,
+  void Inpainting(const std::vector<uint8_t>& image,
+                  const std::vector<uint8_t>& mask,
+                  uint32_t seed,
                   InpaintingCallback callback) override;
 
-  void GenerativeFill(std::vector<uint8> image,
-                      std::vector<unit8> mask,
-                      int seed,
-                      std::string prompt,
+  void GenerativeFill(const std::vector<uint8_t>& image,
+                      const std::vector<uint8_t>& mask,
+                      uint32_t seed,
+                      const std::string& prompt,
                       GenerativeFillCallback callback) override;
 
  private:
