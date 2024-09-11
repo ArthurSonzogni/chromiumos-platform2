@@ -8,19 +8,19 @@
 
 mod command_line;
 
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use nix::unistd;
-use std::process::{Command, ExitCode};
+use std::process::Command;
 
 use command_line::Args;
 
-fn main() -> ExitCode {
+fn main() -> Result<()> {
     libchromeos::panic_handler::install_memfd_handler();
 
     // Fail if not running as root.
     if !unistd::Uid::effective().is_root() {
-        eprintln!("chromeos-install must be run as root");
-        return ExitCode::FAILURE;
+        bail!("chromeos-install must be run as root");
     }
 
     let args = Args::parse();
@@ -29,14 +29,13 @@ fn main() -> ExitCode {
 
     println!("Running: {:?}", &install_cmd);
 
-    if let Ok(status) = install_cmd.status() {
-        if status.success() {
-            ExitCode::SUCCESS
-        } else {
-            ExitCode::FAILURE
-        }
-    } else {
-        eprintln!("Couldn't launch chromeos-install.sh");
-        ExitCode::FAILURE
+    let status = install_cmd
+        .status()
+        .context("Couldn't launch chromeos-install.sh")?;
+
+    if !status.success() {
+        bail!("chromeos-install failed with code: {:?}", status.code());
     }
+
+    Ok(())
 }
