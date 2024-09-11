@@ -4,8 +4,9 @@
 
 #include "dlp/fanotify_watcher.h"
 
-#include <memory>
 #include <sys/fanotify.h>
+
+#include <memory>
 #include <utility>
 
 #include "base/files/file.h"
@@ -14,6 +15,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/callback.h"
 #include "base/test/task_environment.h"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace dlp {
@@ -22,6 +24,16 @@ namespace {
 constexpr int kInode = 1;
 constexpr time_t kCrtime = 2;
 constexpr int kPid = 3;
+
+class MockWatchdog : public FanotifyReaderThread::FanotifyReplyWatchdog {
+ public:
+  MockWatchdog() = default;
+  ~MockWatchdog() override = default;
+
+  MOCK_METHOD(void, Arm, (), (override));
+  MOCK_METHOD(void, Disarm, (), (override));
+};
+
 }  // namespace
 
 class FanotifyWatcherTest : public ::testing::Test,
@@ -63,9 +75,10 @@ class FanotifyWatcherTest : public ::testing::Test,
     base::ScopedFD file_fd = base::CreateAndOpenFdForTemporaryFileInDir(
         temp_dir_.GetPath(), &temp_file);
     const int fd = file_fd.get();
-    watcher_->OnFileOpenRequested(
-        kInode, kCrtime, kPid, std::move(file_fd),
-        std::make_unique<FanotifyReaderThread::FanotifyReplyWatchdog>());
+    auto watchdog = std::make_unique<MockWatchdog>();
+    EXPECT_CALL(*watchdog.get(), Disarm());
+    watcher_->OnFileOpenRequested(kInode, kCrtime, kPid, std::move(file_fd),
+                                  std::move(watchdog));
     EXPECT_EQ(counter_, expected_counter);
 
     struct fanotify_response response = {};
@@ -75,7 +88,7 @@ class FanotifyWatcherTest : public ::testing::Test,
   }
 
  protected:
-  base::test::TaskEnvironment task_environment_;
+  base::test::SingleThreadTaskEnvironment task_environment_;
   bool file_open_allowed_ = true;
   std::unique_ptr<FanotifyWatcher> watcher_;
 

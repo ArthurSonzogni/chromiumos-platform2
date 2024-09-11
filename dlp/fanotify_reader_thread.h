@@ -11,7 +11,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/threading/platform_thread.h"
-#include <base/threading/watchdog.h>
+#include "base/threading/watchdog.h"
 #include "dlp/dlp_metrics.h"
 
 namespace dlp {
@@ -29,8 +29,8 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
     ~FanotifyReplyWatchdog() override;
 
     // Enables and disables the watchdog.
-    void Arm();
-    void Disarm();
+    virtual void Arm();
+    virtual void Disarm();
 
    private:
     // base::Watchdog::Delegate overrides:
