@@ -32,6 +32,13 @@ class EvdevMonitorDelegate;
 
 class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
  public:
+  // The maximum number of times we will retry getting external display info.
+  static constexpr int kMaximumGetExternalDisplayInfoRetry = 10;
+
+  // The interval to wait between retrying to get external display info.
+  static constexpr base::TimeDelta kGetExternalDisplayInfoRetryPeriod =
+      base::Milliseconds(500);
+
   explicit DelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
                         DisplayUtilFactory* display_util_factory);
   DelegateImpl(const DelegateImpl&) = delete;

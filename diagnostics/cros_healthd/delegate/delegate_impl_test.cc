@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/flat_map.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/time/time.h>
@@ -38,6 +39,7 @@
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -49,6 +51,7 @@ using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
 using ::testing::Return;
 using ::testing::SaveArg;
+using ::testing::SizeIs;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
@@ -420,6 +423,20 @@ class MockDelegateImpl : public DelegateImpl {
               (override));
 };
 
+// A helper function to create an object that `HasMissingDrmField()` in
+// delegate_impl.cc will return false.
+mojom::ExternalDisplayInfoPtr
+CreateExternalDisplayInfoWithoutMissingDrmField() {
+  mojom::ExternalDisplayInfoPtr info = mojom::ExternalDisplayInfo::New();
+  info->display_width = mojom::NullableUint32::New(10);
+  info->display_height = mojom::NullableUint32::New(20);
+  info->resolution_horizontal = mojom::NullableUint32::New(30);
+  info->resolution_vertical = mojom::NullableUint32::New(30);
+  info->refresh_rate = mojom::NullableDouble::New(40);
+  info->edid_version = "42";
+  return info;
+}
+
 class DelegateImplTest : public BaseFileTest {
  public:
   DelegateImplTest(const DelegateImplTest&) = delete;
@@ -499,6 +516,19 @@ class DelegateImplTest : public BaseFileTest {
     base::test::TestFuture<std::optional<uint16_t>> future;
     delegate_.GetLidAngle(future.GetCallback());
     return future.Get();
+  }
+
+  std::pair<base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>,
+            std::optional<std::string>>
+  GetConnectedExternalDisplayConnectorsSync(
+      const std::optional<std::vector<uint32_t>>& last_known_connectors) {
+    base::test::TestFuture<
+        base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>,
+        const std::optional<std::string>&>
+        future;
+    delegate_.GetConnectedExternalDisplayConnectors(last_known_connectors,
+                                                    future.GetCallback());
+    return future.Take();
   }
 
   mojom::GetPrivacyScreenInfoResultPtr GetPrivacyScreenInfoSync() {
@@ -1289,6 +1319,106 @@ TEST_F(DelegateImplTest, GetLidAngleUnreliableResult) {
 
   auto output = GetLidAngleSync();
   EXPECT_EQ(output, LID_ANGLE_UNRELIABLE);
+}
+
+TEST_F(DelegateImplTest,
+       GetConnectedExternalDisplayConnectorsErrorFailedToCreateDisplayUtil) {
+  EXPECT_CALL(mock_display_util_factory_, Create()).WillOnce(Return(nullptr));
+
+  auto [unused_connectors, err] =
+      GetConnectedExternalDisplayConnectorsSync(std::nullopt);
+  EXPECT_EQ(err, "Failed to create DisplayUtil");
+}
+
+TEST_F(DelegateImplTest,
+       GetConnectedExternalDisplayConnectorsSuccessWithOneConnector) {
+  std::vector<uint32_t> last_known_connectors = {10};
+  constexpr int kFakeConnectorId = 12;
+  auto info = CreateExternalDisplayInfoWithoutMissingDrmField();
+  auto display_util = std::make_unique<FakeDisplayUtil>();
+  display_util->SetExternalDisplayConnectorIDs({kFakeConnectorId});
+  display_util->SetExternalDisplayInfo(kFakeConnectorId, info.Clone());
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .WillOnce(Return(std::move(display_util)));
+
+  auto [connectors, err] =
+      GetConnectedExternalDisplayConnectorsSync(last_known_connectors);
+  EXPECT_EQ(err, std::nullopt);
+  ASSERT_THAT(connectors, SizeIs(1));
+  ASSERT_TRUE(connectors.contains(kFakeConnectorId));
+  EXPECT_EQ(connectors[kFakeConnectorId], info);
+}
+
+TEST_F(
+    DelegateImplTest,
+    GetConnectedExternalDisplayConnectorsFetchRepeatedlyWithMissingDrmField) {
+  constexpr int kFakeConnectorId = 12;
+  auto info = CreateExternalDisplayInfoWithoutMissingDrmField();
+  auto display_util = std::make_unique<FakeDisplayUtil>();
+  display_util->SetExternalDisplayConnectorIDs({kFakeConnectorId});
+  display_util->SetExternalDisplayInfo(kFakeConnectorId, info.Clone());
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .WillOnce(Return(std::move(display_util)));
+
+  // Returns an object with at least one missing drm field.
+  // Call `RetiresOnSaturation()` to not matching any function calls after it
+  // has been called `DelegateImpl::kMaximumGetExternalDisplayInfoRetry` times.
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .Times(DelegateImpl::kMaximumGetExternalDisplayInfoRetry)
+      .WillRepeatedly([this]() {
+        // Ideally, `FastForwardBy()` should be called after the delayed task is
+        // posted. Call `FastForwardBy()` here as a workaround because there is
+        // no other suitable hooks.
+        FastForwardBy(DelegateImpl::kGetExternalDisplayInfoRetryPeriod);
+        auto display_util = std::make_unique<FakeDisplayUtil>();
+        display_util->SetExternalDisplayConnectorIDs({kFakeConnectorId});
+        display_util->SetExternalDisplayInfo(kFakeConnectorId,
+                                             mojom::ExternalDisplayInfo::New());
+        return display_util;
+      })
+      .RetiresOnSaturation();
+
+  auto [connectors, err] =
+      GetConnectedExternalDisplayConnectorsSync(std::nullopt);
+  EXPECT_EQ(err, std::nullopt);
+  ASSERT_THAT(connectors, SizeIs(1));
+  ASSERT_TRUE(connectors.contains(kFakeConnectorId));
+  EXPECT_EQ(connectors[kFakeConnectorId], info);
+}
+
+TEST_F(DelegateImplTest,
+       GetConnectedExternalDisplayConnectorsFetchRepeatedlyForNewConnector) {
+  std::vector<uint32_t> last_known_connectors = {10};
+  constexpr int kFakeConnectorId = 12;
+  auto info = CreateExternalDisplayInfoWithoutMissingDrmField();
+  auto display_util = std::make_unique<FakeDisplayUtil>();
+  display_util->SetExternalDisplayConnectorIDs({kFakeConnectorId});
+  display_util->SetExternalDisplayInfo(kFakeConnectorId, info.Clone());
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .WillOnce(Return(std::move(display_util)));
+
+  // Returns an object with no external connectors.
+  // Call `RetiresOnSaturation()` to not matching any function calls after it
+  // has been called `DelegateImpl::kMaximumGetExternalDisplayInfoRetry` times.
+  EXPECT_CALL(mock_display_util_factory_, Create())
+      .Times(DelegateImpl::kMaximumGetExternalDisplayInfoRetry)
+      .WillRepeatedly([this, last_known_connectors]() {
+        // Ideally, `FastForwardBy()` should be called after the delayed task is
+        // posted. Call `FastForwardBy()` here as a workaround because there is
+        // no other suitable hooks.
+        FastForwardBy(DelegateImpl::kGetExternalDisplayInfoRetryPeriod);
+        auto display_util = std::make_unique<FakeDisplayUtil>();
+        display_util->SetExternalDisplayConnectorIDs(last_known_connectors);
+        return display_util;
+      })
+      .RetiresOnSaturation();
+
+  auto [connectors, err] =
+      GetConnectedExternalDisplayConnectorsSync(last_known_connectors);
+  EXPECT_EQ(err, std::nullopt);
+  ASSERT_THAT(connectors, SizeIs(1));
+  ASSERT_TRUE(connectors.contains(kFakeConnectorId));
+  EXPECT_EQ(connectors[kFakeConnectorId], info);
 }
 
 TEST_F(DelegateImplTest, GetPrivacyScreenInfoErrorFailedToCreateDisplayUtil) {

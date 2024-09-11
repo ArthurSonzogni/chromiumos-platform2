@@ -71,13 +71,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-// The maximum number of times we will retry getting external display info.
-constexpr int kMaximumGetExternalDisplayInfoRetry = 10;
-
-// The interval to wait between retrying to get external display info.
-constexpr base::TimeDelta kGetExternalDisplayInfoRetryPeriod =
-    base::Milliseconds(500);
-
 // The i2c address defined at platform/ec/include/battery_smart.h is 7-bit i2c
 // address, which is 0x0B (BATTERY_ADDR_FLAGS). We should pass the 8-bit i2c
 // address, which is 0x16, to libec.
@@ -181,29 +174,12 @@ std::optional<uint8_t> GetNumFans(
 
 bool HasMissingDrmField(
     const mojom::ExternalDisplayInfoPtr& external_display_info) {
-  // Check for display size.
-  if (external_display_info->display_width.is_null() ||
-      external_display_info->display_height.is_null()) {
-    return true;
-  }
-
-  // Check for resolution.
-  if (external_display_info->resolution_horizontal.is_null() ||
-      external_display_info->resolution_vertical.is_null()) {
-    return true;
-  }
-
-  // Check for refresh rate.
-  if (external_display_info->refresh_rate.is_null()) {
-    return true;
-  }
-
-  // Check for EDID information.
-  if (!external_display_info->edid_version.has_value()) {
-    return true;
-  }
-
-  return false;
+  return external_display_info->display_width.is_null() ||
+         external_display_info->display_height.is_null() ||
+         external_display_info->resolution_horizontal.is_null() ||
+         external_display_info->resolution_vertical.is_null() ||
+         external_display_info->refresh_rate.is_null() ||
+         !external_display_info->edid_version.has_value();
 }
 
 }  // namespace
@@ -251,13 +227,13 @@ void GetConnectedExternalDisplayConnectorsHelper(
     // possible that DRM have not detected the new display yet. Retry to ensure
     // that all DRM changes are detected.
     if (last_known_connectors == connector_ids &&
-        times < kMaximumGetExternalDisplayInfoRetry) {
+        times < DelegateImpl::kMaximumGetExternalDisplayInfoRetry) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&GetConnectedExternalDisplayConnectorsHelper,
                          display_util_factory, last_known_connectors,
                          std::move(callback), times + 1),
-          kGetExternalDisplayInfoRetryPeriod);
+          DelegateImpl::kGetExternalDisplayInfoRetryPeriod);
       return;
     }
   }
@@ -268,14 +244,14 @@ void GetConnectedExternalDisplayConnectorsHelper(
     // If the connector info has missing fields, it is possible that DRM have
     // not fully detected all information yet. Retry to ensure that all DRM
     // changes are detected.
-    if (times < kMaximumGetExternalDisplayInfoRetry &&
+    if (times < DelegateImpl::kMaximumGetExternalDisplayInfoRetry &&
         HasMissingDrmField(external_display_connectors[connector_id])) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&GetConnectedExternalDisplayConnectorsHelper,
                          display_util_factory, last_known_connectors,
                          std::move(callback), times + 1),
-          kGetExternalDisplayInfoRetryPeriod);
+          DelegateImpl::kGetExternalDisplayInfoRetryPeriod);
       return;
     }
   }
