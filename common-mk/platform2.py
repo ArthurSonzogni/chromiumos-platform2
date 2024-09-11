@@ -130,6 +130,7 @@ _IUSE = [
     "input_devices_elan_i2chid",
     "input_devices_emright",
     "input_devices_eps2pstiap",
+    "input_devices_focaltech",
     "input_devices_g2touch",
     "input_devices_goodix",
     "input_devices_himax",
