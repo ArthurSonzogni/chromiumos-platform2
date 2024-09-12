@@ -39,7 +39,14 @@ class FlexOobeConfig : public LoadOobeConfigInterface {
   // is initially written) to encrypted stateful partition on startup.
   bool MoveFlexOobeConfigToEncryptedStateful();
 
+  // Fake whether the OS is running from a USB installer or not for testing.
+  void SetIsRunningFromInstallerForTesting(bool is_running_from_installer);
+
  private:
+  // Whether the OS is running from a USB installer or not.
+  bool IsRunningFromInstaller();
+
+  std::optional<bool> is_running_from_installer_for_testing_;
   std::unique_ptr<FileHandler> file_handler_;
 };
 

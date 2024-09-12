@@ -24,6 +24,7 @@ class FlexOobeConfigTest : public ::testing::Test {
     file_handler_ = tmp_file_handler_ptr.get();
     flex_oobe_config_ =
         std::make_unique<FlexOobeConfig>(std::move(tmp_file_handler_ptr));
+    flex_oobe_config_->SetIsRunningFromInstallerForTesting(false);
   }
 
   FileHandlerForTesting* file_handler_;
@@ -142,6 +143,19 @@ TEST_F(FlexOobeConfigTest,
 
   ASSERT_FALSE(file_handler_->HasUnencryptedFlexOobeConfigFile());
   ASSERT_TRUE(file_handler_->HasEncryptedFlexOobeConfigFile());
+}
+
+TEST_F(FlexOobeConfigTest,
+       MoveFlexOobeConfigToEncryptedStatefulRunningFromInstallerNoMove) {
+  flex_oobe_config_->SetIsRunningFromInstallerForTesting(true);
+  file_handler_->CreateUnencryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToUnencryptedStateful(kFlexConfig);
+  file_handler_->CreateRestorePath();
+
+  ASSERT_TRUE(flex_oobe_config_->MoveFlexOobeConfigToEncryptedStateful());
+
+  ASSERT_TRUE(file_handler_->HasUnencryptedFlexOobeConfigFile());
+  ASSERT_FALSE(file_handler_->HasEncryptedFlexOobeConfigFile());
 }
 
 #endif  // USE_REVEN_OOBE_CONFIG

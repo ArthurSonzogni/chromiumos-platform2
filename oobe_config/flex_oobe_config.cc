@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "oobe_config/flex_oobe_config.h"
+
 #include <string>
 #include <utility>
 
-#include "base/location.h"
-#include "oobe_config/filesystem/file_handler.h"
-#include "oobe_config/flex_oobe_config.h"
-
+#include <base/logging.h>
 #include <brillo/errors/error_codes.h>
 #include <dbus/dbus-protocol.h>
-#include <base/logging.h>
 #include <oobe_config/proto_bindings/oobe_config.pb.h>
+
+#include "base/location.h"
+#include "base/process/launch.h"
+#include "oobe_config/filesystem/file_handler.h"
 
 namespace oobe_config {
 
@@ -76,6 +78,12 @@ bool FlexOobeConfig::MoveFlexOobeConfigToEncryptedStateful() {
   if (!file_handler_->HasUnencryptedFlexOobeConfigFile()) {
     return true;
   }
+  // Don't move flex config yet if we're running from a USB installer, as
+  // contents in encrypted stateful partition aren't copied over to disk during
+  // chromeos-install.
+  if (IsRunningFromInstaller()) {
+    return true;
+  }
   if (file_handler_->HasEncryptedFlexOobeConfigFile()) {
     // The config file in unencrypted stateful partition wasn't deleted for some
     // reason, even though it has already been copied to encrypted stateful
@@ -105,6 +113,26 @@ bool FlexOobeConfig::MoveFlexOobeConfigToEncryptedStateful() {
 
   file_handler_->RemoveUnencryptedFlexOobeConfig();
   return true;
+}
+
+void FlexOobeConfig::SetIsRunningFromInstallerForTesting(
+    bool is_running_from_installer) {
+  is_running_from_installer_for_testing_ = is_running_from_installer;
+}
+
+bool FlexOobeConfig::IsRunningFromInstaller() {
+  if (is_running_from_installer_for_testing_) {
+    return is_running_from_installer_for_testing_.value();
+  }
+  std::string output;
+  if (!base::GetAppOutput({"is_running_from_installer"}, &output)) {
+    LOG(ERROR) << "Failed to run is_running_from_installer: " << output;
+    // Tread on the side of caution, and return true when it's unknown whether
+    // we're running from an installer or not, so that flex_config isn't
+    // migrated when it shouldn't be.
+    return true;
+  }
+  return output == "yes\n";
 }
 
 }  // namespace oobe_config

@@ -41,7 +41,8 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
-ioctl: arg1 == TCGETS
+# FIONBIO and TIOCGWINSZ are used when running is_running_from_installer
+ioctl: arg1 == TCGETS || arg1 == FIONBIO || arg1 == TIOCGWINSZ
 lchown: 1
 lseek: 1
 madvise: 1
@@ -89,3 +90,15 @@ sendfile: 1
 rename: 1
 chmod: 1
 fdatasync: 1
+
+# For running is_running_from_installer binary (which in turn runs rootdev
+# and lsblk).
+execve: 1
+# Also need clone (and all the syscalls below) for the same reason.
+clone: 1
+dup: 1
+dup2: 1
+wait4: 1
+sigaltstack: 1
+sched_getaffinity: 1
+statfs: 1
