@@ -37,6 +37,8 @@ class DBusUpdateEngineClient : public UpdateEngineClient {
 
   bool Install(const update_engine::InstallParams& install_params) override;
 
+  bool Migrate() override;
+
   bool SetDlcActiveValue(bool is_active, const std::string& dlc_id) override;
 
   bool GetStatus(UpdateEngineStatus* out_status) const override;

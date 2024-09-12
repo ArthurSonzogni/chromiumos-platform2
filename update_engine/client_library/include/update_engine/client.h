@@ -110,6 +110,9 @@ class UpdateEngineClient {
   virtual bool IsFeatureEnabled(const std::string& feature,
                                 bool* out_enabled) = 0;
 
+  // Request the update_engine to do a migration install.
+  virtual bool Migrate() = 0;
+
  protected:
   // Use CreateInstance().
   UpdateEngineClient() = default;

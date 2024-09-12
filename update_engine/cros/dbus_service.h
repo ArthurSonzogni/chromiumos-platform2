@@ -15,11 +15,10 @@
 #include <brillo/errors/error.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
+#include "dbus_bindings/org.chromium.UpdateEngineInterface.h"
 #include "update_engine/common/service_observer_interface.h"
 #include "update_engine/cros/common_service.h"
 #include "update_engine/cros/update_attempter.h"
-
-#include "dbus_bindings/org.chromium.UpdateEngineInterface.h"
 
 namespace chromeos_update_engine {
 
@@ -45,6 +44,8 @@ class DBusUpdateEngineService
 
   bool Install(brillo::ErrorPtr* err,
                const update_engine::InstallParams& install_params) override;
+
+  bool Migrate(brillo::ErrorPtr* err) override;
 
   bool AttemptRollback(brillo::ErrorPtr* error, bool in_powerwash) override;
 

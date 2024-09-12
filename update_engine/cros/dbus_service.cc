@@ -85,6 +85,10 @@ bool DBusUpdateEngineService::Install(
   return common_->Install(error, install_params);
 }
 
+bool DBusUpdateEngineService::Migrate(ErrorPtr* error) {
+  return common_->Migrate(error);
+}
+
 bool DBusUpdateEngineService::AttemptRollback(ErrorPtr* error,
                                               bool in_powerwash) {
   return common_->AttemptRollback(error, in_powerwash);

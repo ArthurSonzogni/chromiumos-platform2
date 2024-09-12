@@ -102,6 +102,11 @@ bool UpdateEngineService::Install(
   return true;
 }
 
+bool UpdateEngineService::Migrate(brillo::ErrorPtr* error) {
+  // Stub migrate action.
+  return true;
+}
+
 bool UpdateEngineService::AttemptRollback(ErrorPtr* error, bool in_powerwash) {
   LOG(INFO) << "Attempting rollback to non-active partitions.";
 

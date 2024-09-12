@@ -50,6 +50,8 @@
                     value="update_engine::InstallParams"/>
       </arg>
     </method>
+    <method name="Migrate">
+    </method>
     <method name="AttemptRollback">
       <arg type="b" name="powerwash" direction="in" />
     </method>

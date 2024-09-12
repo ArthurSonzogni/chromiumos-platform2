@@ -4,11 +4,10 @@
 
 #include "update_engine/client_library/client_dbus.h"
 
-#include <base/logging.h>
-#include <base/task/current_thread.h>
-
 #include <memory>
 
+#include <base/logging.h>
+#include <base/task/current_thread.h>
 #include <dbus/bus.h>
 #include <update_engine/dbus-constants.h>
 
@@ -84,6 +83,10 @@ bool DBusUpdateEngineClient::AttemptInstall(const string& omaha_url,
 bool DBusUpdateEngineClient::Install(
     const update_engine::InstallParams& install_params) {
   return proxy_->Install(install_params, nullptr);
+}
+
+bool DBusUpdateEngineClient::Migrate() {
+  return proxy_->Migrate(nullptr);
 }
 
 bool DBusUpdateEngineClient::SetDlcActiveValue(bool is_active,

@@ -310,6 +310,7 @@ int UpdateEngineClient::ProcessFlags() {
                "Operation of update_engine.proto. Used for testing.");
   DEFINE_bool(force_fw_update, false,
               "Forces a fw update with the OS update check.");
+  DEFINE_bool(migrate, false, "Set to perform a migration.");
 
   // Boilerplate init commands.
   base::CommandLine::Init(argc_, argv_);
@@ -522,6 +523,14 @@ int UpdateEngineClient::ProcessFlags() {
     handlers_.emplace_back(handler);
     client_->RegisterStatusUpdateHandler(handler);
     return kContinueRunning;
+  }
+
+  if (FLAGS_migrate) {
+    if (!client_->Migrate()) {
+      LOG(ERROR) << "Failed to perform the migration";
+      return 1;
+    }
+    return 0;
   }
 
   bool do_update_request = FLAGS_check_for_update || FLAGS_update ||

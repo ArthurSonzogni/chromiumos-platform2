@@ -45,6 +45,8 @@ class UpdateEngineService {
   bool Install(brillo::ErrorPtr* error,
                const update_engine::InstallParams& install_params);
 
+  bool Migrate(brillo::ErrorPtr* error);
+
   bool AttemptRollback(brillo::ErrorPtr* error, bool in_powerwash);
 
   // Checks if the system rollback is available by verifying if the secondary
