@@ -4,6 +4,12 @@
 
 #include "odml/mantis/processor.h"
 
+#include <fstream>
+#include <vector>
+
+#include <base/check.h>
+
+#include "odml/mantis/lib_api.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 
 namespace mantis {
@@ -12,6 +18,22 @@ namespace {
 using mojom::MantisError;
 using mojom::MantisResult;
 }  // namespace
+
+MantisProcessor::MantisProcessor(
+    MantisComponent component,
+    const MantisAPI* api,
+    mojo::PendingReceiver<mojom::MantisProcessor> receiver)
+    : component_(component), api_(api) {
+  CHECK(api_);
+  if (!component_.processor) {
+    LOG(ERROR) << "Processor is missing";
+  }
+  receiver_set_.Add(this, std::move(receiver));
+}
+
+MantisProcessor::~MantisProcessor() {
+  api_->DestroyMantisComponent(component_);
+}
 
 void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
                                  const std::vector<uint8_t>& mask,

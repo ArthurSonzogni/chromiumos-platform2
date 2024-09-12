@@ -5,6 +5,7 @@
 #ifndef ODML_MANTIS_SERVICE_H_
 #define ODML_MANTIS_SERVICE_H_
 
+#include <memory>
 #include <utility>
 
 #include <base/memory/weak_ptr.h>
@@ -41,7 +42,20 @@ class MantisService : public mojom::MantisService {
       InitializeCallback callback);
 
  private:
+  // Duplicate from on_device_model_service.h
+  // TODO(b/368261193): Move this function to a common place and reuse it here.
+  template <typename FuncType,
+            typename CallbackType,
+            typename FailureType,
+            typename... Args>
+  bool RetryIfShimIsNotReady(FuncType func,
+                             CallbackType& callback,
+                             FailureType failure_result,
+                             Args&... args);
+
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
+
+  std::unique_ptr<mojom::MantisProcessor> processor_;
 
   mojo::ReceiverSet<mojom::MantisService> receiver_set_;
 

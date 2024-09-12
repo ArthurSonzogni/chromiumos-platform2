@@ -5,6 +5,7 @@
 #ifndef ODML_MANTIS_PROCESSOR_H_
 #define ODML_MANTIS_PROCESSOR_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,14 +16,19 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "odml/mantis/lib_api.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 
 namespace mantis {
 
 class MantisProcessor : public mojom::MantisProcessor {
  public:
-  MantisProcessor() = default;
-  ~MantisProcessor() = default;
+  explicit MantisProcessor(
+      MantisComponent component,
+      const MantisAPI* api,
+      mojo::PendingReceiver<mojom::MantisProcessor> receiver);
+
+  ~MantisProcessor();
 
   MantisProcessor(const MantisProcessor&) = delete;
   MantisProcessor& operator=(const MantisProcessor&) = delete;
@@ -44,6 +50,10 @@ class MantisProcessor : public mojom::MantisProcessor {
                       GenerativeFillCallback callback) override;
 
  private:
+  MantisComponent component_;
+
+  const raw_ptr<const MantisAPI> api_;
+
   mojo::ReceiverSet<mojom::MantisProcessor> receiver_set_;
 
   base::WeakPtrFactory<MantisProcessor> weak_ptr_factory_{this};

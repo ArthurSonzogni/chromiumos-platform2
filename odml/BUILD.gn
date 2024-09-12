@@ -21,6 +21,7 @@ group("all") {
     if (use.test) {
       deps += [
         ":coral_testrunner",
+        ":mantis_testrunner",
         ":odml_testrunner",
       ]
     }
@@ -237,6 +238,24 @@ if (use.test) {
     run_test = true
     deps = [
       ":coral",
+      ":odml",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("mantis_testrunner") {
+    sources = [
+      "mantis/fake/fake_mantis_api.cc",
+      "mantis/service_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    run_test = true
+    deps = [
+      ":mantis",
       ":odml",
       "//common-mk/testrunner",
     ]
