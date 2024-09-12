@@ -17,6 +17,8 @@ use nix::poll::PollFlags;
 use nix::poll::PollTimeout;
 use std::os::fd::AsFd;
 use std::time::Duration;
+use std::time::Instant;
+use system_api::vm_memory_management::ResizePriority;
 use vsock::VMADDR_CID_HOST;
 
 use kills_client::KillsClient;
@@ -59,7 +61,9 @@ fn main() -> Result<()> {
         let mut fds = [
             PollFd::new(reclaim_client.vmmms_socket.as_fd(), PollFlags::POLLIN),
             PollFd::new(reclaim_client.mglru_file.as_fd(), PollFlags::POLLPRI),
-            PollFd::new(kills_client.psi_file.as_fd(), PollFlags::POLLPRI),
+            PollFd::new(kills_client.low_psi_monitor.as_fd(), PollFlags::POLLPRI),
+            PollFd::new(kills_client.medium_psi_monitor.as_fd(), PollFlags::POLLPRI),
+            PollFd::new(kills_client.high_psi_monitor.as_fd(), PollFlags::POLLPRI),
         ];
         poll(&mut fds, PollTimeout::NONE)?;
 
@@ -71,9 +75,17 @@ fn main() -> Result<()> {
             .revents()
             .expect("kernel must not set bits except PollFlags")
             .intersects(PollFlags::POLLPRI);
-        let received_psi_notification = fds[2]
+        let received_low_psi_notification = fds[2]
             .revents()
-            .expect("kernel must not set bits except PollFlags::POLLPRI")
+            .expect("kernel must not set bits except PollFlags")
+            .intersects(PollFlags::POLLPRI);
+        let received_medium_psi_notification = fds[3]
+            .revents()
+            .expect("kernel must not set bits except PollFlags")
+            .intersects(PollFlags::POLLPRI);
+        let received_high_psi_notification = fds[4]
+            .revents()
+            .expect("kernel must not set bits except PollFlags")
             .intersects(PollFlags::POLLPRI);
 
         if is_reclaim_socket_readable {
@@ -82,8 +94,23 @@ fn main() -> Result<()> {
         if is_mglru_file_readable {
             reclaim_client.handle_mglru_notification()?;
         }
-        if received_psi_notification {
-            kills_client.handle_psi_notification()?;
+        if received_low_psi_notification {
+            kills_client.handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_CACHED_APP,
+                Instant::now(),
+            )?;
+        }
+        if received_medium_psi_notification {
+            kills_client.handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP,
+                Instant::now(),
+            )?;
+        }
+        if received_high_psi_notification {
+            kills_client.handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_FOCUSED_APP,
+                Instant::now(),
+            )?;
         }
     }
 }
