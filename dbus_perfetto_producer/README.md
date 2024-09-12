@@ -42,20 +42,25 @@ It should be only used in test images.
 
 ## Visualisation
 ### D-Bus Signal
-![Signal 1](doc/images/signal1.png)
-![Signal 2](doc/images/signal2.png)
-
 There is an instant on the sender.
 If the message has a destination, there is another instant on the destination,
 connected by a flow.
 
+![Signal without a destination](doc/images/signal1.png)
+![Signal with a destination](doc/images/signal2.png)
+
 
 ### D-Bus Method Call
-![Method](doc/images/method.png)
-
-There is an instant on the sender, and a slice begins on the destination.
+There is an instant on the sender/caller, and a slice begins on the
+destination/callee.
 There is a flow from the instant to the slice.
 
 
 ### D-Bus Method Return and Error
-The slice on the sender ends.
+The slice on the callee ends.
+If the sender is not the callee, there is another instant on the sender,
+connected by a flow.
+There is an instant on the caller at last, also connected by a flow.
+
+![Method which a sender of the return is the callee](doc/images/method3.png)
+![Method which a sender of the return is not the callee](doc/images/method4.png)

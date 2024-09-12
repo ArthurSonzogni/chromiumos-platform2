@@ -5,18 +5,34 @@
 #ifndef DBUS_PERFETTO_PRODUCER_DBUS_REQUEST_H_
 #define DBUS_PERFETTO_PRODUCER_DBUS_REQUEST_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
 #include <dbus/dbus.h>
 
-struct ProcessInfo {
-  uint32_t uuid;
-  std::string name;
-};
+struct ProcessInfo;
 
+// Map from D-Bus well-known name to D-Bus unique name
+using DBusNameMap = std::unordered_map<std::string, std::string>;
+
+// Map from D-Bus unique name to ProcessInfo
 using ProcessMap = std::unordered_map<std::string, ProcessInfo>;
 
-bool StoreProcessesNames(DBusConnection*, DBusError*, ProcessMap*);
+// Map from message serial to process name of destination of the message
+using MethodMap = std::unordered_map<uint64_t, std::string>;
+
+struct ProcessInfo {
+  uint32_t id;
+  std::string name;
+  std::unique_ptr<MethodMap> methods;
+};
+
+struct Maps {
+  DBusNameMap names;
+  ProcessMap processes;
+};
+
+bool StoreProcessesNames(DBusConnection*, DBusError*, Maps&);
 
 #endif  // DBUS_PERFETTO_PRODUCER_DBUS_REQUEST_H_

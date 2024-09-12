@@ -13,17 +13,19 @@ int main(int argc, char** argv) {
   DBusConnection* connection;
   DBusError error;
   DBusBusType type = DBUS_BUS_SYSTEM;
-  ProcessMap processes = {};
+
+  // user data to be passed to a filter function
+  Maps maps;
 
   dbus_error_init(&error);
-  connection = dbus_bus_get_private(type, &error);
+  connection = dbus_bus_get(type, &error);
   if (!connection) {
     LOG(ERROR) << "Failed to open a connection";
     dbus_error_free(&error);
     exit(1);
   }
 
-  if (!StoreProcessesNames(connection, &error, &processes)) {
+  if (!StoreProcessesNames(connection, &error, maps)) {
     exit(1);
   }
 
@@ -32,7 +34,7 @@ int main(int argc, char** argv) {
   perfetto::Tracing::Initialize(args);
   perfetto::TrackEvent::Register();
 
-  if (!DbusTracer(connection, &error, &processes)) {
+  if (!DbusTracer(connection, &error, maps)) {
     exit(1);
   }
   return 0;

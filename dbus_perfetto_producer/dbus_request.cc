@@ -5,8 +5,9 @@
 #include "dbus_perfetto_producer/dbus_request.h"
 
 #include <fstream>
-#include <string>
+#include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <dbus/dbus.h>
 
@@ -19,9 +20,8 @@ DBusMessage* SendMessage(DBusConnection* connection,
   reply =
       dbus_connection_send_with_reply_and_block(connection, message, -1, error);
   if (dbus_error_is_set(error)) {
-    LOG(ERROR) << "Failed to get a reply: " +
-                      static_cast<std::string>(error->name) + " " +
-                      static_cast<std::string>(error->message);
+    LOG(ERROR) << "Failed to get a reply: " << error->name << " "
+               << error->message;
     dbus_error_free(error);
     return nullptr;
   }
@@ -117,7 +117,7 @@ static std::string GetProcessName(uint32_t pid) {
 
 bool StoreProcessesNames(DBusConnection* connection,
                          DBusError* error,
-                         ProcessMap* processes) {
+                         Maps& maps) {
   DBusMessage* message;
   message = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
                                          DBUS_INTERFACE_DBUS, "ListNames");
@@ -139,28 +139,22 @@ bool StoreProcessesNames(DBusConnection* connection,
     dbus_message_iter_get_basic(&array_iter, &dbus_name);
 
     std::string unique_name = dbus_name;
-    bool has_well_known_name = false;
+    DCHECK(dbus_name);
     if (dbus_name[0] != ':') {
-      // dbus_name is well-known name
-      has_well_known_name = true;
+      // dbus_name is a well-known name
       unique_name = GetUniqueName(connection, error, dbus_name);
+      maps.names[dbus_name] = unique_name;
     }
 
     uint32_t pid = GetPid(connection, error, dbus_name);
     std::string process_name = GetProcessName(pid);
-    uint64_t uuid = std::hash<std::string>{}(process_name);
+    uint64_t id = std::hash<std::string>{}(process_name);
 
     ProcessInfo process_info;
-    process_info.uuid = uuid;
+    process_info.id = id;
     process_info.name = process_name;
-
-    // Store processes[unique_name] = ProcessInfo
-    processes->insert({unique_name, process_info});
-
-    if (has_well_known_name) {
-      // Store processes[well_known_name] = process_info
-      processes->insert({dbus_name, process_info});
-    }
+    process_info.methods = std::make_unique<MethodMap>();
+    maps.processes[unique_name] = std::move(process_info);
 
     dbus_message_iter_next(&array_iter);
   }

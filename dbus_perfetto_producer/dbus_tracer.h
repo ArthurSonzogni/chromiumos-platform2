@@ -16,6 +16,6 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category(DBUS_PERFETTO_PRODUCER_PERFETTO_CATEGORY)
         .SetDescription("D-Bus Event"));
 
-bool DbusTracer(DBusConnection*, DBusError*, ProcessMap*);
+bool DbusTracer(DBusConnection*, DBusError*, Maps&);
 
 #endif  // DBUS_PERFETTO_PRODUCER_DBUS_TRACER_H_
