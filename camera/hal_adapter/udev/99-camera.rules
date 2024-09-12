@@ -29,3 +29,8 @@ SUBSYSTEM=="media", ENV{MEDIA_DEVICE_TYPE}!="decoder", GROUP="camera"
 # Limit access to /dev/mtk_hcp to the camera HAL for mtkisp7 (geralt).
 # This should be removed once MTK migrate it to SCP.
 SUBSYSTEM=="mtk_hcp_driver", ENV{DEVNAME}=="/dev/mtk_hcp", GROUP="camera"
+
+# Limit access to /dev/dma_heap/scp-isp-cma-region to the camera HAL.
+# This will allow us to allocate dma-heap cma buffer used by MTK scp.
+SUBSYSTEM=="dma_heap", ENV{DEVNAME}=="/dev/dma_heap/scp-isp-cma-region", \
+  GROUP="camera"
