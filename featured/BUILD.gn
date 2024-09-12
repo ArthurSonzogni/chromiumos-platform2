@@ -137,7 +137,10 @@ generate_pkg_config("libfake_platform_features_pkg_config") {
 
 shared_library("libc_fake_feature_library") {
   sources = [ "c_fake_feature_library.cc" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
   deps = [ ":libfake_platform_features" ]
 }
 
