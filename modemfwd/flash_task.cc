@@ -178,6 +178,7 @@ void FlashTask::OnBuildFlashConfigCompleted(
   jobs.push_back(std::move(modemfwd_helpers));
 
   delegate()->NotifyFlashStarting(modem->GetEquipmentId());
+  SetProp(kFlashTaskFlashOngoing, true);
 
   modem_flasher_->RunFlash(modem, std::move(flash_cfg),
                            base::BindOnce(&FlashTask::OnRunFlashCompleted,
