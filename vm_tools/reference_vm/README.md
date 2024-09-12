@@ -83,7 +83,7 @@ sudo apt install brotli
 Run the uprev script and commit the result.
 
 ```
-repo start src/platform/tast-tests
+repo start refvm-uprev-xxxx src/platform/tast-tests
 cd src/platform2/vm_tools/reference_vm/
 ./uprev.sh
 cd -
