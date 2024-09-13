@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicI32;
@@ -30,6 +31,7 @@ use dbus_crossroads::MethodErr;
 use dbus_tokio::connection;
 use log::error;
 use log::info;
+use log::warn;
 use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
 use tokio::sync::Notify;
@@ -164,6 +166,35 @@ async fn get_sender_euid(conn: Arc<SyncConnection>, bus_name: Option<String>) ->
     load_euid(sender_pid).context("load euid")
 }
 
+fn override_critical_if_necessary(original_critical_margin: u32) -> u32 {
+    // TODO(b:365580055) Remove this override when a long-term solution is found
+    // for the xol performance issues.
+    let critical_offset = match fs::read_to_string(Path::new("/run/chromeos-config/v1/name")) {
+        Ok(device_name) => match device_name.as_str() {
+            "xol" => 700,
+            _ => 0,
+        },
+        _ => 0,
+    };
+
+    if critical_offset == 0 {
+        return original_critical_margin;
+    }
+
+    // Never override a critical margin above 1500.
+    let overridden_critical_margin =
+        std::cmp::min(1500, original_critical_margin + critical_offset);
+
+    if overridden_critical_margin != original_critical_margin {
+        warn!(
+            "Overriding critical margin by: Original: {} Overridden to: {}",
+            original_critical_margin, overridden_critical_margin
+        );
+    }
+
+    overridden_critical_margin
+}
+
 fn register_interface(
     cr: &mut Crossroads,
     conn: Arc<SyncConnection>,
@@ -240,7 +271,7 @@ fn register_interface(
                         }
                     };
                 let margins_bps = MemoryMarginsBps {
-                    critical: memory_margins.critical_bps.into(),
+                    critical: (override_critical_if_necessary(memory_margins.critical_bps)).into(),
                     moderate: memory_margins.moderate_bps.into(),
                     critical_protected: memory_margins.critical_protected_bps.into(),
                 };
@@ -256,7 +287,7 @@ fn register_interface(
             move |_, _, (critical_bps, moderate_bps): (u32, u32)| {
                 // Set critical protected margin the same as critical margin for the old API.
                 let margins_bps = MemoryMarginsBps {
-                    critical: critical_bps.into(),
+                    critical: (override_critical_if_necessary(critical_bps)).into(),
                     moderate: moderate_bps.into(),
                     critical_protected: critical_bps.into(),
                 };
