@@ -1693,9 +1693,9 @@ int BPF_PROG(fexit__path_umount, struct path* path, int flags, int ret) {
     return 0;
   }
 
-  struct task_struct* task = bpf_get_current_task_btf();
   char* ptr = NULL;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+  struct task_struct* task = bpf_get_current_task_btf();
   ptr = bpf_task_storage_get(&before_umount_path_map, task, NULL, 0);
 
 #else
