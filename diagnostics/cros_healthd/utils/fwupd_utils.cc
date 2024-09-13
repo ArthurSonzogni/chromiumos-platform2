@@ -129,9 +129,7 @@ mojom::FwupdVersionFormat ConvertFwupdVersionFormatToMojo(
       return mojom::FwupdVersionFormat::kDellBios;
     case FWUPD_VERSION_FORMAT_HEX:
       return mojom::FwupdVersionFormat::kHex;
-    case FWUPD_VERSION_FORMAT_LAST:
-      return mojom::FwupdVersionFormat::kUnknown;
-    default:
+    default:  // Includes `FWUPD_VERSION_FORMAT_LAST`.
       LOG(WARNING) << "Unsupported fwupd version format: " << version_format;
       return mojom::FwupdVersionFormat::kUnknown;
   }
