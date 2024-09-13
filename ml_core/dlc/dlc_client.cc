@@ -127,7 +127,11 @@ class DlcClientImpl : public cros::DlcClient {
       LOG(ERROR) << "Error code: " << error->GetCode()
                  << " msg: " << error->GetMessage();
 
-      if (error->GetCode() == dlcservice::kErrorBusy) {
+      // TODO(b/362655491): |dlcservice::kErrorInternal| can happen due to
+      // network issues right after signing in to a user session. We can retry
+      // until we have a better solution.
+      if (error->GetCode() == dlcservice::kErrorBusy ||
+          error->GetCode() == dlcservice::kErrorInternal) {
         attempt++;
         if (attempt > kMaxInstallAttempts) {
           metrics_.RecordBeginInstallResult(
