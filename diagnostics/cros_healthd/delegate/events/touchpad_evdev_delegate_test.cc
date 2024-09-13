@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/delegate/events/test/mock_touchpad_observer.h"
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -32,21 +33,10 @@ using ::testing::SetArgPointee;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
-class MockTouchpadObserver : public mojom::TouchpadObserver {
- public:
-  // ash::cros_healthd::mojom::TouchpadObserver overrides:
-  MOCK_METHOD(void,
-              OnConnected,
-              (mojom::TouchpadConnectedEventPtr),
-              (override));
-  MOCK_METHOD(void, OnTouch, (mojom::TouchpadTouchEventPtr), (override));
-  MOCK_METHOD(void, OnButton, (mojom::TouchpadButtonEventPtr), (override));
-};
-
 class TouchpadEvdevDelegateTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockTouchpadObserver mock_observer_;
+  test::MockTouchpadObserver mock_observer_;
   mojo::Receiver<mojom::TouchpadObserver> receiver_{&mock_observer_};
   TouchpadEvdevDelegate delegate_{receiver_.BindNewPipeAndPassRemote()};
 };

@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/delegate/events/test/mock_stylus_observer.h"
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -32,17 +33,10 @@ using ::testing::SetArgPointee;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
-class MockStylusObserver : public mojom::StylusObserver {
- public:
-  // ash::cros_healthd::mojom::StylusObserver overrides:
-  MOCK_METHOD(void, OnConnected, (mojom::StylusConnectedEventPtr), (override));
-  MOCK_METHOD(void, OnTouch, (mojom::StylusTouchEventPtr), (override));
-};
-
 class StylusEvdevDelegateTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockStylusObserver mock_observer_;
+  test::MockStylusObserver mock_observer_;
   mojo::Receiver<mojom::StylusObserver> receiver_{&mock_observer_};
   StylusEvdevDelegate delegate_{receiver_.BindNewPipeAndPassRemote()};
 };

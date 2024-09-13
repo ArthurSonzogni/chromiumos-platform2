@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/delegate/events/test/mock_stylus_garage_observer.h"
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -26,17 +27,10 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::Return;
 
-class MockStylusGarageObserver : public mojom::StylusGarageObserver {
- public:
-  // ash::cros_healthd::mojom::StylusGarageObserver overrides:
-  MOCK_METHOD(void, OnInsert, (), (override));
-  MOCK_METHOD(void, OnRemove, (), (override));
-};
-
 class StylusGarageEvdevDelegateTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockStylusGarageObserver mock_observer_;
+  test::MockStylusGarageObserver mock_observer_;
   mojo::Receiver<mojom::StylusGarageObserver> receiver_{&mock_observer_};
   StylusGarageEvdevDelegate delegate_{receiver_.BindNewPipeAndPassRemote()};
 };

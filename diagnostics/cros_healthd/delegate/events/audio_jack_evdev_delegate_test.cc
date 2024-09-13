@@ -4,8 +4,8 @@
 
 #include "diagnostics/cros_healthd/delegate/events/audio_jack_evdev_delegate.h"
 
-#include <linux/input.h>
 #include <linux/input-event-codes.h>
+#include <linux/input.h>
 
 #include <string>
 
@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/delegate/events/test/mock_audio_jack_observer.h"
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -28,23 +29,10 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
 
-class MockAudioJackObserver : public mojom::AudioJackObserver {
- public:
-  // ash::cros_healthd::mojom::AudioJackObserver overrides:
-  MOCK_METHOD(void,
-              OnAdd,
-              (mojom::AudioJackEventInfo::DeviceType device_type),
-              (override));
-  MOCK_METHOD(void,
-              OnRemove,
-              (mojom::AudioJackEventInfo::DeviceType device_type),
-              (override));
-};
-
 class AudioJackEvdevDelegateTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockAudioJackObserver mock_observer_;
+  test::MockAudioJackObserver mock_observer_;
   mojo::Receiver<mojom::AudioJackObserver> receiver_{&mock_observer_};
   AudioJackEvdevDelegate delegate_{receiver_.BindNewPipeAndPassRemote()};
 };

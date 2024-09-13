@@ -4,8 +4,8 @@
 
 #include "diagnostics/cros_healthd/delegate/events/power_button_evdev_delegate.h"
 
-#include <linux/input.h>
 #include <linux/input-event-codes.h>
+#include <linux/input.h>
 
 #include <string>
 
@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/delegate/events/test/mock_power_button_observer.h"
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -29,20 +30,10 @@ using ::testing::Assign;
 using ::testing::Return;
 using ::testing::SaveArg;
 
-class MockPowerButtonObserver : public mojom::PowerButtonObserver {
- public:
-  // ash::cros_healthd::mojom::PowerButtonObserver overrides:
-  MOCK_METHOD(void,
-              OnEvent,
-              (mojom::PowerButtonObserver::ButtonState button_state),
-              (override));
-  MOCK_METHOD(void, OnConnectedToEventNode, (), (override));
-};
-
 class PowerButtonEvdevDelegateTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockPowerButtonObserver mock_observer_;
+  test::MockPowerButtonObserver mock_observer_;
   mojo::Receiver<mojom::PowerButtonObserver> receiver_{&mock_observer_};
   PowerButtonEvdevDelegate delegate_{receiver_.BindNewPipeAndPassRemote()};
 };

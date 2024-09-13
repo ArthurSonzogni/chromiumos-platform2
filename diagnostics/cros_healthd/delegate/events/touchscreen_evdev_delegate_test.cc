@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/delegate/events/test/mock_touchscreen_observer.h"
 #include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -32,20 +33,10 @@ using ::testing::SetArgPointee;
 using ::testing::SizeIs;
 using ::testing::UnorderedElementsAre;
 
-class MockTouchscreenObserver : public mojom::TouchscreenObserver {
- public:
-  // ash::cros_healthd::mojom::TouchscreenObserver overrides:
-  MOCK_METHOD(void,
-              OnConnected,
-              (mojom::TouchscreenConnectedEventPtr),
-              (override));
-  MOCK_METHOD(void, OnTouch, (mojom::TouchscreenTouchEventPtr), (override));
-};
-
 class TouchscreenEvdevDelegateTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_;
-  MockTouchscreenObserver mock_observer_;
+  test::MockTouchscreenObserver mock_observer_;
   mojo::Receiver<mojom::TouchscreenObserver> receiver_{&mock_observer_};
   TouchscreenEvdevDelegate delegate_{receiver_.BindNewPipeAndPassRemote()};
 };
