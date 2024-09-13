@@ -147,57 +147,6 @@ std::string DBusAdaptor::SwapStatus() {
   return swap_tool_->SwapStatus();
 }
 
-bool DBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
-                                          uint32_t size_mb) {
-  absl::Status status = swap_tool_->SwapZramEnableWriteback(size_mb);
-  if (!status.ok()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain,
-        "org.chromium.SwapManagement.error.SwapZramEnableWriteback",
-        status.ToString());
-    return false;
-  }
-  return true;
-}
-
-bool DBusAdaptor::SwapZramMarkIdle(brillo::ErrorPtr* error, uint32_t age) {
-  absl::Status status = swap_tool_->SwapZramMarkIdle(age);
-  if (!status.ok()) {
-    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         "org.chromium.SwapManagement.error.SwapZramMarkIdle",
-                         status.ToString());
-    return false;
-  }
-  return true;
-}
-
-bool DBusAdaptor::SwapZramSetWritebackLimit(brillo::ErrorPtr* error,
-                                            uint32_t limit) {
-  absl::Status status = swap_tool_->SwapZramSetWritebackLimit(limit);
-  if (!status.ok()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain,
-        "org.chromium.SwapManagement.error.SwapZramSetWritebackLimit",
-        status.ToString());
-    return false;
-  }
-  return true;
-}
-
-bool DBusAdaptor::InitiateSwapZramWriteback(brillo::ErrorPtr* error,
-                                            uint32_t mode) {
-  absl::Status status = swap_tool_->InitiateSwapZramWriteback(
-      static_cast<ZramWritebackMode>(mode));
-  if (!status.ok()) {
-    brillo::Error::AddTo(
-        error, FROM_HERE, brillo::errors::dbus::kDomain,
-        "org.chromium.SwapManagement.error.InitiateSwapZramWriteback",
-        status.ToString());
-    return false;
-  }
-  return true;
-}
-
 bool DBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error, uint8_t value) {
   absl::Status status = swap_tool_->MGLRUSetEnable(value);
   if (!status.ok()) {

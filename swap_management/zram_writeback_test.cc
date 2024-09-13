@@ -35,6 +35,10 @@ class MockZramWriteback : public swap_management::ZramWriteback {
     ZramWriteback::PeriodicWriteback();
   }
 
+  absl::Status EnableWriteback(uint32_t size_mb) {
+    return ZramWriteback::EnableWriteback(size_mb);
+  }
+
   absl::Status SetZramWritebackConfigIfOverriden(const std::string& key,
                                                  const std::string& value) {
     return ZramWriteback::SetZramWritebackConfigIfOverriden(key, value);

@@ -36,13 +36,6 @@ class DBusAdaptor : public org::chromium::SwapManagementAdaptor,
   bool SwapSetSize(brillo::ErrorPtr* error, int32_t size) override;
   bool SwapSetSwappiness(brillo::ErrorPtr* error, uint32_t swappiness) override;
   std::string SwapStatus() override;
-  bool SwapZramEnableWriteback(brillo::ErrorPtr* error,
-                               uint32_t size_mb) override;
-  bool SwapZramMarkIdle(brillo::ErrorPtr* error, uint32_t age) override;
-  bool SwapZramSetWritebackLimit(brillo::ErrorPtr* error,
-                                 uint32_t limit) override;
-  bool InitiateSwapZramWriteback(brillo::ErrorPtr* error,
-                                 uint32_t mode) override;
   bool MGLRUSetEnable(brillo::ErrorPtr* error, uint8_t value) override;
   bool ReclaimAllProcesses(brillo::ErrorPtr* error,
                            uint8_t memory_types) override;

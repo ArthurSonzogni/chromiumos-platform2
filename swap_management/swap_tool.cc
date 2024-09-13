@@ -421,19 +421,6 @@ std::string SwapTool::SwapStatus() {
   return output.str();
 }
 
-absl::Status SwapTool::SwapZramEnableWriteback(uint32_t size_mb) {
-  return ZramWriteback::Get()->EnableWriteback(size_mb);
-}
-absl::Status SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) {
-  return ZramWriteback::Get()->SetWritebackLimit(num_pages);
-}
-absl::Status SwapTool::SwapZramMarkIdle(uint32_t age_seconds) {
-  return MarkIdle(age_seconds);
-}
-absl::Status SwapTool::InitiateSwapZramWriteback(ZramWritebackMode mode) {
-  return ZramWriteback::Get()->InitiateWriteback(mode);
-}
-
 absl::Status SwapTool::MGLRUSetEnable(uint8_t value) {
   return Utils::Get()->WriteFile(
       base::FilePath("/sys/kernel/mm/lru_gen/enabled"), std::to_string(value));

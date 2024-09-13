@@ -75,12 +75,6 @@ class ZramWriteback {
   absl::Status Start();
   void Stop();
 
-  // TODO(ctshao): Move to private once the finch experiment is done:
-  // cl/459290244
-  absl::Status EnableWriteback(uint32_t size_mb);
-  absl::Status SetWritebackLimit(uint32_t num_pages);
-  absl::Status InitiateWriteback(ZramWritebackMode mode);
-
   void OnSuspendImminent();
   void OnSuspendDone(base::TimeDelta suspend_duration);
 
@@ -92,6 +86,10 @@ class ZramWriteback {
 
   // There are only one zram writeback instance in current setup.
   friend ZramWriteback** GetSingleton<ZramWriteback>();
+
+  absl::Status EnableWriteback(uint32_t size_mb);
+  absl::Status SetWritebackLimit(uint32_t num_pages);
+  absl::Status InitiateWriteback(ZramWritebackMode mode);
 
   void Cleanup();
   absl::Status PrerequisiteCheck(uint32_t size);

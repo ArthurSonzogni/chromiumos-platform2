@@ -5,8 +5,6 @@
 #ifndef SWAP_MANAGEMENT_SWAP_TOOL_H_
 #define SWAP_MANAGEMENT_SWAP_TOOL_H_
 
-#include "featured/feature_library.h"
-
 #include <cstdint>
 #include <map>
 #include <string>
@@ -16,6 +14,8 @@
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
+
+#include "featured/feature_library.h"
 
 namespace swap_management {
 
@@ -34,13 +34,6 @@ class SwapTool {
   absl::Status SwapSetSwappiness(uint32_t swappiness);
   std::string SwapStatus();
 
-  // Zram writeback configuration, used by writeback logic in Chromium.
-  // TODO(ctshao): Cleanup once the finch experiment is done: cl/459290244
-  absl::Status SwapZramEnableWriteback(uint32_t size_mb);
-  absl::Status SwapZramSetWritebackLimit(uint32_t num_pages);
-  absl::Status SwapZramMarkIdle(uint32_t age_seconds);
-  absl::Status InitiateSwapZramWriteback(ZramWritebackMode mode);
-
   // MGLRU configuration.
   absl::Status MGLRUSetEnable(uint8_t value);
 
@@ -57,6 +50,7 @@ class SwapTool {
       const VariationsFeature& vf);
   std::optional<std::string> GetFeatureParamValue(const VariationsFeature& vf,
                                                   const std::string& key);
+
   absl::Status EnableZramRecompression();
   absl::Status EnableZramWriteback();
 
