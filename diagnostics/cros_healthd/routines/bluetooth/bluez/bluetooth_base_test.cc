@@ -14,9 +14,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/system/mock_floss_controller.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
 namespace diagnostics::bluez {
@@ -57,6 +60,7 @@ class BluezBluetoothRoutineBaseTest : public testing::Test {
 
   MockContext mock_context_;
   StrictMock<org::bluez::Adapter1ProxyMock> mock_adapter_proxy_;
+  StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 
  private:
   base::test::TaskEnvironment task_environment_;
@@ -219,6 +223,65 @@ TEST_F(BluezBluetoothRoutineBaseTest, ResetPoweredOffDeconstructed) {
   EXPECT_CALL(mock_adapter_proxy_, powered()).WillOnce(Return(true));
   EXPECT_CALL(mock_adapter_proxy_, set_powered(false, _));
   routine_base.reset();
+}
+
+// Test that the BluetoothRoutineBase can get default HCI config.
+TEST_F(BluezBluetoothRoutineBaseTest, GetDefaultHciConfig) {
+  InSequence s;
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(*mock_context_.mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<0>(/*hci_interface=*/1));
+  EXPECT_CALL(*mock_context_.mock_executor(), GetHciDeviceConfig(1, _))
+      .WillOnce(
+          base::test::RunOnceCallback<1>(mojom::ExecutedProcessResult::New(
+              EXIT_SUCCESS, /*out=*/"", /*err=*/"")));
+
+  base::test::TestFuture<mojom::ExecutedProcessResultPtr> future;
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
+  routine_base->GetDefaultHciConfig(future.GetCallback());
+
+  const auto result = future.Take();
+  ASSERT_TRUE(result);
+  EXPECT_EQ(result->return_code, EXIT_SUCCESS);
+}
+
+// Test that the BluetoothRoutineBase handle the error for missing Bluetooth
+// manager when getting default HCI config.
+TEST_F(BluezBluetoothRoutineBaseTest, HciConfigMissingBluetoothManager) {
+  InSequence s;
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(*mock_context_.mock_floss_controller(), GetManager())
+      .WillOnce(Return(nullptr));
+
+  base::test::TestFuture<mojom::ExecutedProcessResultPtr> future;
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
+  routine_base->GetDefaultHciConfig(future.GetCallback());
+
+  const auto result = future.Take();
+  ASSERT_TRUE(result);
+  EXPECT_EQ(result->return_code, EXIT_FAILURE);
+}
+
+// Test that the BluetoothRoutineBase handle the error for getting default
+// adapter when getting default HCI config.
+TEST_F(BluezBluetoothRoutineBaseTest, HciConfigGetDefaultAdapterError) {
+  InSequence s;
+  SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
+  EXPECT_CALL(*mock_context_.mock_floss_controller(), GetManager())
+      .WillOnce(Return(&mock_manager_proxy_));
+  const auto error = brillo::Error::Create(FROM_HERE, "", "", "");
+  EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>(error.get()));
+
+  base::test::TestFuture<mojom::ExecutedProcessResultPtr> future;
+  auto routine_base = std::make_unique<BluetoothRoutineBase>(&mock_context_);
+  routine_base->GetDefaultHciConfig(future.GetCallback());
+
+  const auto result = future.Take();
+  ASSERT_TRUE(result);
+  EXPECT_EQ(result->return_code, EXIT_FAILURE);
 }
 
 }  // namespace

@@ -15,15 +15,20 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_bluez_event_hub.h"
 #include "diagnostics/cros_healthd/system/mock_bluez_controller.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/system/mock_floss_controller.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxy-mocks.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxy-mocks.h"
 
 namespace diagnostics::bluez {
 namespace {
+
+constexpr int32_t kDefaultHciInterface = 0;
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
@@ -44,6 +49,11 @@ class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
   BluezBluetoothDiscoveryRoutineTest() = default;
 
   void SetUp() override {
+    EXPECT_CALL(*mock_context_.mock_floss_controller(), GetManager())
+        .WillRepeatedly(Return(&mock_manager_proxy_));
+    EXPECT_CALL(mock_manager_proxy_, GetDefaultAdapterAsync(_, _, _))
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<0>(kDefaultHciInterface));
     SetUpGetAdaptersCall(/*adapters=*/{&mock_adapter_proxy_});
     routine_ = std::make_unique<BluetoothDiscoveryRoutine>(&mock_context_);
   }
@@ -162,6 +172,7 @@ class BluezBluetoothDiscoveryRoutineTest : public testing::Test {
   MockContext mock_context_;
   mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
                                mojom::RoutineUpdateUnionPtr()};
+  StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
 };
 
 // Test that the BluetoothDiscoveryRoutine can be run successfully when the

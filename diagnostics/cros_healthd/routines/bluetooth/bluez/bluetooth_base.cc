@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 
+#include <cstdint>
 #include <string>
 #include <utility>
 
@@ -13,6 +14,9 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluez_controller.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/floss_controller.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
+#include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 
 namespace diagnostics::bluez {
 namespace {
@@ -29,6 +33,21 @@ void ResetPoweredState(BluezController* bluez_controller,
     return;
   }
   adapters[0]->set_powered(initial_powered, base::DoNothing());
+}
+
+void HandleDefaultHciInterfaceResponse(
+    mojom::Executor* const executor,
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr result)> on_finish,
+    brillo::Error* error,
+    int32_t hci_interface) {
+  CHECK(executor);
+  if (error) {
+    LOG(ERROR) << "Failed to get default HCI interface.";
+    std::move(on_finish).Run(mojom::ExecutedProcessResult::New(
+        EXIT_FAILURE, /*out=*/"", /*err=*/error->GetMessage()));
+    return;
+  }
+  executor->GetHciDeviceConfig(hci_interface, std::move(on_finish));
 }
 
 }  // namespace
@@ -85,6 +104,22 @@ void BluetoothRoutineBase::RunPreCheck(
       &ResetPoweredState, context_->bluez_controller(), initial_powered));
 
   std::move(on_passed).Run();
+}
+
+void BluetoothRoutineBase::GetDefaultHciConfig(
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr result)>
+        on_finish) {
+  const auto manager = context_->floss_controller()->GetManager();
+  if (!manager) {
+    LOG(ERROR) << "Failed to access Bluetooth manager proxy.";
+    std::move(on_finish).Run(mojom::ExecutedProcessResult::New(
+        EXIT_FAILURE, /*out=*/"", /*err=*/"Bluetooth manager not found."));
+    return;
+  }
+  auto [on_success, on_error] = SplitDbusCallback(
+      base::BindOnce(&HandleDefaultHciInterfaceResponse, context_->executor(),
+                     std::move(on_finish)));
+  manager->GetDefaultAdapterAsync(std::move(on_success), std::move(on_error));
 }
 
 }  // namespace diagnostics::bluez

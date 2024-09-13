@@ -112,8 +112,7 @@ void BluetoothPowerRoutine::RunNextStep() {
       // Create another flow to skip event observation.
       if (!GetAdapter()->powered()) {
         // Validate the powered status in HCI level directly.
-        context_->executor()->GetHciDeviceConfig(
-            /*hci_interface=*/0,
+        GetDefaultHciConfig(
             base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
                            weak_ptr_factory_.GetWeakPtr()));
         return;
@@ -154,8 +153,7 @@ void BluetoothPowerRoutine::OnAdapterPropertyChanged(
     return;
 
   // Validate the powered status in HCI level first.
-  context_->executor()->GetHciDeviceConfig(
-      /*hci_interface=*/0,
+  GetDefaultHciConfig(
       base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
                      weak_ptr_factory_.GetWeakPtr()));
 }

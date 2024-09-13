@@ -11,6 +11,7 @@
 #include <base/callback_list.h>
 #include <base/time/tick_clock.h>
 
+#include "diagnostics/cros_healthd/mojom/executor.mojom-forward.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom-forward.h"
 
@@ -40,6 +41,11 @@ class BluetoothRoutineBase {
       base::OnceCallback<
           void(ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
                const std::string& error_message)> on_failed);
+
+  // Get the HCI config from the default adapter.
+  void GetDefaultHciConfig(
+      base::OnceCallback<void(ash::cros_healthd::mojom::ExecutedProcessResultPtr
+                                  result)> on_finish);
 
  protected:
   // Unowned pointer that should outlive this instance.
