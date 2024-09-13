@@ -113,7 +113,7 @@ base::CallbackListSubscription FlossEventHub::SubscribeManagerRemoved(
 
 void FlossEventHub::OnAdapterAdded(
     org::chromium::bluetooth::BluetoothProxyInterface* adapter) {
-  DLOG(INFO) << "Get Bluetooth adapter added event";
+  LOG(INFO) << "Get Bluetooth adapter added event";
   if (adapter) {
     const auto adapter_path = adapter->GetObjectPath();
     auto exported_path = GetNextBluetoothCallbackPath();
@@ -135,14 +135,14 @@ void FlossEventHub::OnAdapterAdded(
 }
 
 void FlossEventHub::OnAdapterRemoved(const dbus::ObjectPath& adapter_path) {
-  DLOG(INFO) << "Get Bluetooth adapter removed event";
+  LOG(INFO) << "Get Bluetooth adapter removed event";
   adapter_callbacks_[adapter_path].reset();
   adapter_removed_observers_.Notify(adapter_path);
 }
 
 void FlossEventHub::OnManagerAdded(
     org::chromium::bluetooth::ManagerProxyInterface* manager) {
-  DLOG(INFO) << "Get Bluetooth manager added event";
+  LOG(INFO) << "Get Bluetooth manager added event";
   if (manager) {
     auto exported_path =
         dbus::ObjectPath(kExportedBluetoothManagerCallbackPath);
@@ -168,8 +168,8 @@ void FlossEventHub::OnAdapterPropertyChanged(
 
 void FlossEventHub::OnAdapterPoweredChanged(int32_t hci_interface,
                                             bool powered) {
-  DLOG(INFO) << "Get adapter powered changed event for hci" << hci_interface
-             << ", powered: " << powered;
+  LOG(INFO) << "Get adapter powered changed event for hci" << hci_interface
+            << ", powered: " << powered;
   adapter_powered_changed_observers_.Notify(hci_interface, powered);
 }
 
