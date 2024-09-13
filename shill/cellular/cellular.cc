@@ -1710,36 +1710,21 @@ void Cellular::Connect(CellularService* service, Error* error) {
       return;
     }
 
-    if (auto_connect_disabled) {
-      // This solution is not ideal, but a compromise, because shill is
-      // switching SIM slots, but there won't be an auto connect after that.
-      // The user should be able to manually connect again as soon as the modem
-      // registers to the network with the new SIM.
-      Error::PopulateAndLog(
-          FROM_HERE, error, Error::kOperationFailed,
-          "Connect Failed: Incorrect ICCID. Switching services");
-      NotifyCellularConnectionResult(*error, service->iccid(),
-                                     service->is_in_user_connect(), apn_type);
-      return;
-    }
-
     SetPendingConnect(service->iccid());
+    if (auto_connect_disabled)
+      service_->SetForceAutoConnect(true);
+
     return;
   }
 
   if (scanning_) {
-    if (auto_connect_disabled) {
-      Error::PopulateAndLog(
-          FROM_HERE, error, Error::kOperationFailed,
-          "Connect Failed: Cellular is scanning and auto connect is disabled");
-      NotifyCellularConnectionResult(*error, service->iccid(),
-                                     service->is_in_user_connect(), apn_type);
-    } else {
-      LOG(INFO) << LoggingTag() << ": "
-                << "Cellular is scanning. Pending connect to: "
-                << service->log_name();
-      SetPendingConnect(service->iccid());
-    }
+    LOG(INFO) << LoggingTag() << ": "
+              << "Cellular is scanning. Pending connect to: "
+              << service->log_name();
+    SetPendingConnect(service->iccid());
+    if (auto_connect_disabled)
+      service_->SetForceAutoConnect(true);
+
     return;
   }
 
@@ -1761,16 +1746,12 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
   if (ModemIsEnabledButNotRegistered() ||
       capability_->IsSetInitialEpsBearerSettingsInProgress()) {
-    if (auto_connect_disabled) {
-      LOG(WARNING)
-          << LoggingTag() << ": " << __func__
-          << ": Waiting for Modem registration and auto connect is disabled";
-      return;
-    }
-
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Waiting for Modem registration.";
     SetPendingConnect(service->iccid());
+    if (auto_connect_disabled)
+      service_->SetForceAutoConnect(true);
+
     return;
   }
 
