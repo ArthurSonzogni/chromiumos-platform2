@@ -1,14 +1,14 @@
 ## How to use the image?
 
-Note: This instruction is subject to change. Currently v0-1 images are tested on redrix/brya & lazor/trogdor, v2 image is only tested on lazor/trogdor.
+Note: This instruction is subject to change. v4 image is tested on Lazor/Trogdor, but it should also work on x86 devices. Starting with v4 images, btrfs is used for rootfs.
 
-Prerequisites: A DUT running at least 127 with crostini is installed (for the DLC), borealis is not installed.
+Prerequisites: A DUT running at least 130 with crostini is installed (for the DLC).
 
 On DUT:
 `vmc create --size 15G baguette` minimum size is 2G, the files in the image currently takes almost 1GB, and I added a few hundred MBs of empty space when making the image.
 
 On workstation:
-`scp /path/to/baugette_rootfs.image.zst root@<DUT IP>:/home/chronos/`
+`scp /path/to/baguette_rootfs.image.zst root@<DUT IP>:/home/chronos/`
 
 On DUT As root:
 `zstd -d -c /home/chronos/baguette_rootfs.img.zst | dd of=/run/daemon-store/crosvm/<USER HOME ID>/YmFndWV0dGU=.img conv=notrunc status=progress`

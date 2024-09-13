@@ -18,6 +18,7 @@ CROS_PACKAGES=(
 PACKAGES=(
   # base packages
   bash-completion
+  btrfs-progs
   curl
   gpg
   gsettings-desktop-schemas
@@ -89,7 +90,7 @@ main() {
   apt-get -y install "${CROS_PACKAGES[@]}"
 
   # test user for debugging
-  useradd -m -s /bin/bash -G audio,sudo,tss,video,dialout,netdev chronos
+  useradd -m -s /bin/bash -G audio,sudo,tss,video,dialout,netdev,floppy,cdrom chronos
   chpasswd <<< chronos:test0000
   mkdir -p /var/lib/systemd/linger
   touch /var/lib/systemd/linger/chronos

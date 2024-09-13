@@ -16,7 +16,7 @@ sudo mount -t tmpfs tmpfs target/run
 cp -r "${SCRIPT_DIR}/data" "target/tmp/"
 
 cp "${SCRIPT_DIR}/setup_in_guest.sh" target/tmp/
-sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/128\//g' target/tmp/setup_in_guest.sh
+sudo sed -i 's/CROS_PACKAGES_URL/https:\/\/storage.googleapis.com\/cros-packages-staging\/130\//g' target/tmp/setup_in_guest.sh
 sudo sed -i 's/CROS_RELEASE/trixie/g' target/tmp/setup_in_guest.sh
 
 sudo chroot target /tmp/setup_in_guest.sh
@@ -29,6 +29,7 @@ sudo umount target/dev
 sudo umount -R target/sys
 sudo umount -R target/proc
 
-sudo virt-make-fs -t ext4 --size=+200M target "baguette_rootfs_${BAGUETTE_ARCH}.img"
+sudo virt-make-fs -t btrfs --size=+200M target "baguette_rootfs_${BAGUETTE_ARCH}.img"
 sudo chown "${USER}" "baguette_rootfs_${BAGUETTE_ARCH}.img"
+python3 "${SCRIPT_DIR}/btrfs_subvol_root.py" "baguette_rootfs_${BAGUETTE_ARCH}.img"
 zstd -10 -T0 "baguette_rootfs_${BAGUETTE_ARCH}.img"
