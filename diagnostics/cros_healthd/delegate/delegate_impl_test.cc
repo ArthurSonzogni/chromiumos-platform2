@@ -21,11 +21,21 @@
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 #include <libec/mock_ec_command_factory.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_audio_jack_observer.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_power_button_observer.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_stylus_garage_observer.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_stylus_observer.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_touchpad_observer.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_touchscreen_observer.h"
+#include "diagnostics/cros_healthd/delegate/events/test/mock_volume_button_observer.h"
 #include "diagnostics/cros_healthd/delegate/routines/cpu_routine_task_delegate.h"
+#include "diagnostics/cros_healthd/delegate/utils/evdev_monitor.h"
 #include "diagnostics/cros_healthd/delegate/utils/fake_display_util.h"
 #include "diagnostics/cros_healthd/delegate/utils/mock_display_util_factory.h"
+#include "diagnostics/cros_healthd/delegate/utils/test/mock_libevdev_wrapper.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -33,6 +43,7 @@ namespace diagnostics {
 namespace {
 
 using ::testing::_;
+using ::testing::Assign;
 using ::testing::DoAll;
 using ::testing::ElementsAreArray;
 using ::testing::IsEmpty;
@@ -358,6 +369,22 @@ class MockCpuRoutineTaskDelegate : public CpuRoutineTaskDelegate {
   MOCK_METHOD(bool, Run, (), (override));
 };
 
+class MockEvdevMonitor : public EvdevMonitor {
+ public:
+  using EvdevMonitor::EvdevMonitor;
+  MockEvdevMonitor(const MockEvdevMonitor&) = delete;
+  MockEvdevMonitor(MockEvdevMonitor&&) = delete;
+  ~MockEvdevMonitor() = default;
+
+  Delegate* delegate() {
+    CHECK(delegate_);
+    return delegate_.get();
+  }
+
+  // EvdevMonitor overrides:
+  MOCK_METHOD(void, StartMonitoring, (bool), (override));
+};
+
 class MockDelegateImpl : public DelegateImpl {
  public:
   MockDelegateImpl(ec::EcCommandFactoryInterface* ec_command_factory,
@@ -366,6 +393,11 @@ class MockDelegateImpl : public DelegateImpl {
   MockDelegateImpl(const MockDelegateImpl&) = delete;
   MockDelegateImpl& operator=(const MockDelegateImpl&) = delete;
   ~MockDelegateImpl() = default;
+
+  MOCK_METHOD(EvdevMonitor*,
+              CreateEvdevMonitor,
+              (std::unique_ptr<EvdevMonitor::Delegate> delegate),
+              (override));
 
   MOCK_METHOD(std::unique_ptr<ec::MkbpEvent>,
               CreateMkbpEvent,
@@ -1363,6 +1395,147 @@ TEST_F(DelegateImplTest, RunUrandomFailed) {
       .WillOnce(Return(std::move(urandom)));
 
   EXPECT_FALSE(RunUrandomSync(base::Milliseconds(500)));
+}
+
+// DelegateImplEvdevTest is used to verify the observers can receive events.
+// The details of specific observer should be covered by unit tests of the
+// corresponding evdev_delegate (for example, stylus_evdev_delegate_test.cc).
+class DelegateImplEvdevTest : public DelegateImplTest {
+ protected:
+  void SetUp() override {
+    DelegateImplTest::SetUp();
+    EXPECT_CALL(delegate_, CreateEvdevMonitor(_))
+        .WillOnce([this](std::unique_ptr<EvdevMonitor::Delegate> delegate) {
+          // Use a std::unique_ptr to avoid memory leak at the end of a test.
+          this->evdev_monitor_ =
+              std::make_unique<MockEvdevMonitor>(std::move(delegate));
+          EXPECT_CALL(*this->evdev_monitor_, StartMonitoring(_));
+          return this->evdev_monitor_.get();
+        });
+  }
+
+  std::unique_ptr<MockEvdevMonitor> evdev_monitor_;
+  test::MockLibevdevWrapper dev_;
+};
+
+TEST_F(DelegateImplEvdevTest, MonitorAudioJack) {
+  test::MockAudioJackObserver mock_observer_;
+  mojo::Receiver<mojom::AudioJackObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorAudioJack(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnAdd(_)).WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->FireEvent(
+      {.type = EV_SW, .code = SW_HEADPHONE_INSERT, .value = 1}, &dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
+}
+
+TEST_F(DelegateImplEvdevTest, MonitorTouchpad) {
+  test::MockTouchpadObserver mock_observer_;
+  mojo::Receiver<mojom::TouchpadObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorTouchpad(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnConnected(_))
+      .WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->ReportProperties(&dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
+}
+
+TEST_F(DelegateImplEvdevTest, MonitorTouchscreen) {
+  test::MockTouchscreenObserver mock_observer_;
+  mojo::Receiver<mojom::TouchscreenObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorTouchscreen(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnConnected(_))
+      .WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->ReportProperties(&dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
+}
+
+TEST_F(DelegateImplEvdevTest, MonitorStylusGarage) {
+  test::MockStylusGarageObserver mock_observer_;
+  mojo::Receiver<mojom::StylusGarageObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorStylusGarage(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnInsert()).WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->FireEvent(
+      {.type = EV_SW, .code = SW_PEN_INSERTED, .value = 1}, &dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
+}
+
+TEST_F(DelegateImplEvdevTest, MonitorStylus) {
+  test::MockStylusObserver mock_observer_;
+  mojo::Receiver<mojom::StylusObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorStylus(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnConnected(_))
+      .WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->ReportProperties(&dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
+}
+
+TEST_F(DelegateImplEvdevTest, MonitorPowerButton) {
+  test::MockPowerButtonObserver mock_observer_;
+  mojo::Receiver<mojom::PowerButtonObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorPowerButton(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnConnectedToEventNode())
+      .WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->ReportProperties(&dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
+}
+
+TEST_F(DelegateImplEvdevTest, MonitorVolumeButton) {
+  test::MockVolumeButtonObserver mock_observer_;
+  mojo::Receiver<mojom::VolumeButtonObserver> receiver_{&mock_observer_};
+
+  delegate_.MonitorVolumeButton(receiver_.BindNewPipeAndPassRemote());
+
+  bool event_fired = false;
+  EXPECT_CALL(mock_observer_, OnEvent(_, _))
+      .WillOnce(Assign(&event_fired, true));
+
+  ASSERT_TRUE(evdev_monitor_);
+  evdev_monitor_->delegate()->FireEvent(
+      {.type = EV_KEY, .code = KEY_VOLUMEUP, .value = 1}, &dev_);
+  receiver_.FlushForTesting();
+
+  EXPECT_TRUE(event_fired);
 }
 
 }  // namespace

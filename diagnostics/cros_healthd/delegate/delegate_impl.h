@@ -27,6 +27,8 @@ class MkbpEvent;
 namespace diagnostics {
 class DisplayUtilFactory;
 class CpuRoutineTaskDelegate;
+class EvdevMonitor;
+class EvdevMonitorDelegate;
 
 class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
  public:
@@ -102,6 +104,11 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void FetchGraphicsInfo(FetchGraphicsInfoCallback callback) override;
 
  protected:
+  // Creates an unowned `EvdevMonitor`. The caller is responsible for
+  // maintaining its lifetime.
+  [[nodiscard]] virtual EvdevMonitor* CreateEvdevMonitor(
+      std::unique_ptr<EvdevMonitorDelegate> delegate);
+
   // Mark as virtual to be overridden in tests.
   virtual std::unique_ptr<ec::MkbpEvent> CreateMkbpEvent(
       int fd, enum ec_mkbp_event event_type);
@@ -117,6 +124,12 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   virtual std::unique_ptr<CpuRoutineTaskDelegate> CreateUrandomDelegate();
 
  private:
+  // Starts monitor evdev events with the given `EvdevMonitorDelegate`. See
+  // `EvdevMonitor::StartMonitoring()` for the meaning of
+  // `allow_multiple_devices`.
+  void MonitorEvdevEvents(std::unique_ptr<EvdevMonitorDelegate> delegate,
+                          bool allow_multiple_devices);
+
   ec::EcCommandFactoryInterface* const ec_command_factory_;
   DisplayUtilFactory* const display_util_factory_;
 };

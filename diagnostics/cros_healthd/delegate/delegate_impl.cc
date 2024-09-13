@@ -198,14 +198,6 @@ bool HasMissingDrmField(
 namespace diagnostics {
 namespace {
 
-void MonitorEvdevEvents(std::unique_ptr<EvdevMonitor::Delegate> delegate,
-                        bool allow_multiple_devices = false) {
-  // Long-run method. The following object keeps alive until the process
-  // terminates.
-  EvdevMonitor* evdev_monitor = new EvdevMonitor(std::move(delegate));
-  evdev_monitor->StartMonitoring(allow_multiple_devices);
-}
-
 bool RunCpuTaskRoutine(std::unique_ptr<CpuRoutineTaskDelegate> task_delegate,
                        base::TimeDelta exec_duration) {
   if (!task_delegate) {
@@ -456,7 +448,8 @@ void DelegateImpl::MonitorAudioJack(
 void DelegateImpl::MonitorTouchpad(
     mojo::PendingRemote<mojom::TouchpadObserver> observer) {
   MonitorEvdevEvents(
-      std::make_unique<TouchpadEvdevDelegate>(std::move(observer)));
+      std::make_unique<TouchpadEvdevDelegate>(std::move(observer)),
+      /*allow_multiple_devices=*/false);
 }
 
 void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
@@ -466,19 +459,21 @@ void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
 void DelegateImpl::MonitorTouchscreen(
     mojo::PendingRemote<mojom::TouchscreenObserver> observer) {
   MonitorEvdevEvents(
-      std::make_unique<TouchscreenEvdevDelegate>(std::move(observer)));
+      std::make_unique<TouchscreenEvdevDelegate>(std::move(observer)),
+      /*allow_multiple_devices=*/false);
 }
 
 void DelegateImpl::MonitorStylusGarage(
     mojo::PendingRemote<mojom::StylusGarageObserver> observer) {
   MonitorEvdevEvents(
-      std::make_unique<StylusGarageEvdevDelegate>(std::move(observer)));
+      std::make_unique<StylusGarageEvdevDelegate>(std::move(observer)),
+      /*allow_multiple_devices=*/false);
 }
 
 void DelegateImpl::MonitorStylus(
     mojo::PendingRemote<mojom::StylusObserver> observer) {
-  MonitorEvdevEvents(
-      std::make_unique<StylusEvdevDelegate>(std::move(observer)));
+  MonitorEvdevEvents(std::make_unique<StylusEvdevDelegate>(std::move(observer)),
+                     /*allow_multiple_devices=*/false);
 }
 
 void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
@@ -733,6 +728,11 @@ void DelegateImpl::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
   std::move(callback).Run(GetGraphicsInfo());
 }
 
+EvdevMonitor* DelegateImpl::CreateEvdevMonitor(
+    std::unique_ptr<EvdevMonitor::Delegate> delegate) {
+  return new EvdevMonitor(std::move(delegate));
+}
+
 std::unique_ptr<ec::MkbpEvent> DelegateImpl::CreateMkbpEvent(
     int fd, enum ec_mkbp_event event_type) {
   return std::make_unique<ec::MkbpEvent>(fd, event_type);
@@ -750,6 +750,15 @@ DelegateImpl::CreateFloatingPointDelegate() {
 
 std::unique_ptr<CpuRoutineTaskDelegate> DelegateImpl::CreateUrandomDelegate() {
   return UrandomDelegate::Create();
+}
+
+void DelegateImpl::MonitorEvdevEvents(
+    std::unique_ptr<EvdevMonitor::Delegate> delegate,
+    bool allow_multiple_devices) {
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  EvdevMonitor* evdev_monitor = CreateEvdevMonitor(std::move(delegate));
+  evdev_monitor->StartMonitoring(allow_multiple_devices);
 }
 
 }  // namespace diagnostics

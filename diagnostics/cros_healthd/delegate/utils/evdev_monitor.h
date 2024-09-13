@@ -20,21 +20,24 @@
 
 namespace diagnostics {
 
+// Used in `EvdevMonitor`.
+class EvdevMonitorDelegate {
+ public:
+  virtual ~EvdevMonitorDelegate() = default;
+  // Check if |dev| is the target device.
+  virtual bool IsTarget(LibevdevWrapper* dev) = 0;
+  // Deal with the events and report to the caller through observer.
+  virtual void FireEvent(const input_event& event, LibevdevWrapper* dev) = 0;
+  // Initialization fail. Delegate should reset the observer.
+  virtual void InitializationFail(uint32_t custom_reason,
+                                  const std::string& description) = 0;
+  // Collect properties here and report to the caller through observer.
+  virtual void ReportProperties(LibevdevWrapper* dev) = 0;
+};
+
 class EvdevMonitor {
  public:
-  class Delegate {
-   public:
-    virtual ~Delegate() = default;
-    // Check if |dev| is the target device.
-    virtual bool IsTarget(LibevdevWrapper* dev) = 0;
-    // Deal with the events and report to the caller through observer.
-    virtual void FireEvent(const input_event& event, LibevdevWrapper* dev) = 0;
-    // Initialization fail. Delegate should reset the observer.
-    virtual void InitializationFail(uint32_t custom_reason,
-                                    const std::string& description) = 0;
-    // Collect properties here and report to the caller through observer.
-    virtual void ReportProperties(LibevdevWrapper* dev) = 0;
-  };
+  using Delegate = EvdevMonitorDelegate;
 
   // This class manages the life cycle of an opened evdev node.
   class EvdevDevice {
@@ -69,12 +72,15 @@ class EvdevMonitor {
   // If `allow_multiple_devices` is true, all evdev nodes for which
   // `Delegate::IsTarget` returns true will be monitored. Otherwise, at most one
   // evdev node will be monitored.
-  void StartMonitoring(bool allow_multiple_devices);
+  virtual void StartMonitoring(bool allow_multiple_devices);
 
  protected:
   // Creates a libevdev device object from `fd`.
   // Declared as virtual to be overridden for testing.
   virtual std::unique_ptr<LibevdevWrapper> CreateLibevdev(int fd);
+
+  // Delegate to implement dedicated behaviors for different evdev devices.
+  std::unique_ptr<Delegate> delegate_;
 
  private:
   // Monitors the evdev device created from `path` and returns whether the
@@ -87,8 +93,6 @@ class EvdevMonitor {
 
   // The evdev devices to monitor.
   std::vector<std::unique_ptr<EvdevDevice>> devs_;
-  // Delegate to implement dedicated behaviors for different evdev devices.
-  std::unique_ptr<Delegate> delegate_;
 };
 
 }  // namespace diagnostics
