@@ -18,8 +18,8 @@
 #include <base/types/cxx23_to_underlying.h>
 #include <gtest/gtest.h>
 
-#include "patchpanel/fake_system.h"
 #include "patchpanel/mock_lifeline_fd_service.h"
+#include "patchpanel/mock_system.h"
 #include "patchpanel/system.h"
 
 using testing::Return;
@@ -114,7 +114,7 @@ class RoutingServiceTest : public testing::Test {
             }));
   }
 
-  FakeSystem system_;
+  MockSystem system_;
   MockLifelineFDService lifeline_fd_svc_;
 };
 

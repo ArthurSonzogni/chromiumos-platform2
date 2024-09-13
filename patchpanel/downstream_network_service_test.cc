@@ -23,7 +23,6 @@
 
 #include "patchpanel/fake_process_runner.h"
 #include "patchpanel/fake_shill_client.h"
-#include "patchpanel/fake_system.h"
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_counters_service.h"
 #include "patchpanel/mock_datapath.h"
@@ -32,6 +31,7 @@
 #include "patchpanel/mock_lifeline_fd_service.h"
 #include "patchpanel/mock_routing_service.h"
 #include "patchpanel/mock_rtnl_client.h"
+#include "patchpanel/mock_system.h"
 #include "patchpanel/noop_subprocess_controller.h"
 
 using testing::_;
@@ -83,7 +83,7 @@ class DownstreamNetworkServiceTest : public testing::Test {
 
   MetricsLibraryMock metrics_;
   FakeProcessRunner process_runner_;
-  FakeSystem system_;
+  MockSystem system_;
   MockDatapath datapath_;
   MockRoutingService routing_svc_;
   MockForwardingService forwarding_svc_;
@@ -343,7 +343,7 @@ TEST_F(DownstreamNetworkServiceTest, GetDownstreamNetworkInfo) {
 }
 
 TEST_F(DownstreamNetworkServiceTest, CalculateDownstreamCurHopLimit) {
-  FakeSystem system;
+  MockSystem system;
 
   // Successful case.
   EXPECT_CALL(system, SysNetGet(System::SysNet::kIPv6HopLimit, "wwan0"))

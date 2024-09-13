@@ -26,10 +26,10 @@
 #include <gtest/gtest.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
-#include "patchpanel/fake_system.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_process_runner.h"
+#include "patchpanel/mock_system.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/shill_client.h"
@@ -185,7 +185,7 @@ class DatapathTest : public testing::Test {
     testing::Mock::VerifyAndClearExpectations(firewall_);
   }
 
-  FakeSystem system_;
+  MockSystem system_;
   MockProcessRunnerForIptablesTest runner_;
   MockFirewall* firewall_;
 

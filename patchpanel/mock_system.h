@@ -1,9 +1,9 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PATCHPANEL_FAKE_SYSTEM_H_
-#define PATCHPANEL_FAKE_SYSTEM_H_
+#ifndef PATCHPANEL_MOCK_SYSTEM_H_
+#define PATCHPANEL_MOCK_SYSTEM_H_
 
 #include <fcntl.h>
 #include <linux/if_tun.h>
@@ -22,10 +22,11 @@
 #include "patchpanel/system.h"
 
 namespace patchpanel {
-class FakeSystem : public System {
+
+class MockSystem : public System {
  public:
-  FakeSystem() = default;
-  ~FakeSystem() override = default;
+  MockSystem();
+  ~MockSystem() override;
 
   // Capture Ioctls operations and arguments. Always succeeds.
   int Ioctl(int fd, ioctl_req_t request, const char* argp) override {
@@ -115,4 +116,4 @@ class FakeSystem : public System {
 
 }  // namespace patchpanel
 
-#endif  // PATCHPANEL_FAKE_SYSTEM_H_
+#endif  // PATCHPANEL_MOCK_SYSTEM_H_

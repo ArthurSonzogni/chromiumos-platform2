@@ -19,9 +19,9 @@
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_process_runner.h"
-#include "patchpanel/fake_system.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/mock_system.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/system.h"
 
@@ -129,7 +129,7 @@ class ClatServiceTest : public ::testing::Test {
         target_(&datapath_, &process_manager_, &system_) {}
 
   FakeProcessRunner process_runner_;
-  FakeSystem system_;
+  MockSystem system_;
   MockDatapath datapath_;
   net_base::MockProcessManager process_manager_;
   ClatServiceUnderTest target_;

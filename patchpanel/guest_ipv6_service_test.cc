@@ -14,8 +14,8 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/fake_process_runner.h"
-#include "patchpanel/fake_system.h"
 #include "patchpanel/mock_datapath.h"
+#include "patchpanel/mock_system.h"
 #include "patchpanel/noop_subprocess_controller.h"
 #include "patchpanel/shill_client.h"
 
@@ -89,7 +89,7 @@ class GuestIPv6ServiceTest : public ::testing::Test {
   }
 
   FakeProcessRunner process_runner_;
-  FakeSystem system_;
+  MockSystem system_;
   MockDatapath datapath_;
   NoopSubprocessController nd_proxy_;
   GuestIPv6ServiceUnderTest target_;

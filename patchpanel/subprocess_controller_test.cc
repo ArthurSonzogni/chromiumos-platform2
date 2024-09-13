@@ -17,7 +17,7 @@
 #include <chromeos/net-base/mock_process_manager.h>
 #include <gtest/gtest.h>
 
-#include "patchpanel/fake_system.h"
+#include "patchpanel/mock_system.h"
 
 using testing::_;
 using testing::Return;
@@ -46,7 +46,7 @@ class SubprocessControllerTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  FakeSystem system_;
+  MockSystem system_;
   net_base::MockProcessManager process_manager_;
 };
 
