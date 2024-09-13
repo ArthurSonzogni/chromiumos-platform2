@@ -43,6 +43,7 @@ using testing::DoAll;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Mock;
+using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
 using testing::StrEq;
@@ -53,28 +54,6 @@ namespace {
 
 // TODO(hugobenichi) Centralize this constant definition
 constexpr pid_t kTestPID = -2;
-
-// This class fakes the implementation for iptables() and ip6tables() based on a
-// MockProcessRunner. For these two functions:
-// - This class will record the calls to these two functions;
-// - The test can call `AddIptablesExpectation()` to add an expectation (similar
-//   to EXPECT_CALL).
-// - The test can call `VerifyAndClearIptablesExpectations()` to verify the
-//   expectations. It will also be called automatically in the destructor so we
-//   won't miss any iptables calls.
-//
-// The main reason we need to do this instead of using EXPECT_CALL() is that
-// when there are a large number of calls to the mocked function, the error
-// message is hard to read when there is an error, while the error messages from
-// `ElementsAreArray()` are much better.
-class MockProcessRunnerForIptablesTest : public MockProcessRunner {
- public:
-  MockProcessRunnerForIptablesTest() = default;
-
-  ~MockProcessRunnerForIptablesTest() = default;
-
-  void UseIptablesSeccompFilter(minijail* jail) override {}
-};
 
 class MockFirewall : public Firewall {
  public:
@@ -129,7 +108,7 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 
 class DatapathTest : public testing::Test {
  protected:
-  DatapathTest() : firewall_(new MockFirewall()) {
+  DatapathTest() : firewall_(new NiceMock<MockFirewall>()) {
     ExpectForConstructor();
     datapath_ = std::make_unique<Datapath>(&runner_, firewall_, &system_);
 
@@ -144,11 +123,15 @@ class DatapathTest : public testing::Test {
     VerifyAndClearExpectations();  // Verify the expectations of the dtor.
   }
 
-  // Sets the expectataion for Datapath's constructor.
+  // Sets the expectation for Datapath's constructor.
   void ExpectForConstructor() {
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "1", ""));
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "1", ""));
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6ProxyNDP, "1", ""));
+
+    EXPECT_CALL(runner_, iptables_restore("/etc/patchpanel/iptables.start", _));
+    EXPECT_CALL(runner_,
+                ip6tables_restore("/etc/patchpanel/ip6tables.start", _));
 
     static struct {
       IpFamily family;
@@ -172,7 +155,7 @@ class DatapathTest : public testing::Test {
     }
   }
 
-  // Sets the expectataion for Datapath's destructor.
+  // Sets the expectation for Datapath's destructor.
   void ExpectForDestructor() {
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "0", ""));
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "0", ""));
@@ -185,8 +168,8 @@ class DatapathTest : public testing::Test {
     testing::Mock::VerifyAndClearExpectations(firewall_);
   }
 
-  MockSystem system_;
-  MockProcessRunnerForIptablesTest runner_;
+  NiceMock<MockSystem> system_;
+  NiceMock<MockProcessRunner> runner_;
   MockFirewall* firewall_;
 
   std::unique_ptr<Datapath> datapath_;

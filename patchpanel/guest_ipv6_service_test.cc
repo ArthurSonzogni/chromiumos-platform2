@@ -21,6 +21,7 @@
 
 using testing::_;
 using testing::Args;
+using testing::NiceMock;
 using testing::Return;
 
 namespace patchpanel {
@@ -89,8 +90,8 @@ class GuestIPv6ServiceTest : public ::testing::Test {
   }
 
   FakeProcessRunner process_runner_;
-  MockSystem system_;
-  MockDatapath datapath_;
+  NiceMock<MockSystem> system_;
+  NiceMock<MockDatapath> datapath_;
   NoopSubprocessController nd_proxy_;
   GuestIPv6ServiceUnderTest target_;
 };

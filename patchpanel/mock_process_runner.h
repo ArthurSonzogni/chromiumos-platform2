@@ -5,8 +5,6 @@
 #ifndef PATCHPANEL_MOCK_PROCESS_RUNNER_H_
 #define PATCHPANEL_MOCK_PROCESS_RUNNER_H_
 
-#include "patchpanel/minijailed_process_runner.h"
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -14,6 +12,7 @@
 #include <gmock/gmock.h>
 
 #include "patchpanel/datapath.h"
+#include "patchpanel/minijailed_process_runner.h"
 
 using testing::_;
 using testing::ElementsAreArray;
@@ -89,6 +88,14 @@ class MockProcessRunner : public MinijailedProcessRunner {
               (std::string_view command,
                base::span<const std::string> argv,
                bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              iptables_restore,
+              (std::string_view script_file, bool log_failures),
+              (override));
+  MOCK_METHOD(int,
+              ip6tables_restore,
+              (std::string_view script_file, bool log_failures),
               (override));
 };
 

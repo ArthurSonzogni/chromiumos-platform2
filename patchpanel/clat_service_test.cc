@@ -30,6 +30,7 @@ using testing::Eq;
 using testing::Exactly;
 using testing::Invoke;
 using testing::IsEmpty;
+using testing::NiceMock;
 using testing::Return;
 using testing::StrEq;
 
@@ -129,9 +130,9 @@ class ClatServiceTest : public ::testing::Test {
         target_(&datapath_, &process_manager_, &system_) {}
 
   FakeProcessRunner process_runner_;
-  MockSystem system_;
-  MockDatapath datapath_;
-  net_base::MockProcessManager process_manager_;
+  NiceMock<MockSystem> system_;
+  NiceMock<MockDatapath> datapath_;
+  NiceMock<net_base::MockProcessManager> process_manager_;
   ClatServiceUnderTest target_;
 };
 

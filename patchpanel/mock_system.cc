@@ -4,9 +4,18 @@
 
 #include "patchpanel/mock_system.h"
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 namespace patchpanel {
 
-MockSystem::MockSystem() = default;
+using ::testing::Return;
+
+MockSystem::MockSystem() {
+  ON_CALL(*this, SysNetSet).WillByDefault(Return(true));
+  ON_CALL(*this, WriteConfigFile).WillByDefault(Return(true));
+}
+
 MockSystem::~MockSystem() = default;
 
 }  // namespace patchpanel

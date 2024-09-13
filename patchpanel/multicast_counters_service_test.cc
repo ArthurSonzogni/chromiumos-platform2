@@ -22,6 +22,7 @@ namespace patchpanel {
 
 using ::testing::_;
 using ::testing::ElementsAreArray;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrEq;
 
@@ -512,7 +513,7 @@ class MulticastCountersServiceTest : public testing::Test {
 
   FakeProcessRunner process_runner_;
   NoopSystem system_;
-  MockDatapath datapath_;
+  NiceMock<MockDatapath> datapath_;
   std::unique_ptr<MulticastCountersService> multicast_counters_svc_;
 };
 

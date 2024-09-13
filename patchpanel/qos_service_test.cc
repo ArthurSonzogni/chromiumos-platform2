@@ -35,9 +35,9 @@ using ::testing::_;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Mock;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrEq;
-using ::testing::StrictMock;
 using DNSClient = net_base::DNSClient;
 using IPAddress = net_base::IPAddress;
 
@@ -212,10 +212,10 @@ class QoSServiceTest : public testing::Test {
 
   FakeProcessRunner process_runner_;
   NoopSystem system_;
-  MockDatapath datapath_;
+  NiceMock<MockDatapath> datapath_;
   FakeDNSClientFactory* dns_factory_;  // Owned by |qos_svc_|.
   FakeShillClientForQoS shill_client_;
-  MockConntrackMonitor conntrack_monitor_;
+  NiceMock<MockConntrackMonitor> conntrack_monitor_;
   QoSService qos_svc_;
 };
 

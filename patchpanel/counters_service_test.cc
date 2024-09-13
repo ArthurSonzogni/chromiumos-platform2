@@ -33,6 +33,7 @@ using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Lt;
 using ::testing::Mock;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SizeIs;
 using ::testing::StrEq;
@@ -294,7 +295,7 @@ class CountersServiceTest : public testing::Test {
 
   FakeProcessRunner process_runner_;
   NoopSystem system_;
-  MockDatapath datapath_;
+  NiceMock<MockDatapath> datapath_;
   MockConntrackMonitor conntrack_monitor_;
   CountersService counters_svc_;
 };

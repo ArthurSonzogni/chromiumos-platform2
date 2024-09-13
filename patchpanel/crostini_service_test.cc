@@ -31,6 +31,7 @@ using testing::AnyNumber;
 using testing::Eq;
 using testing::Invoke;
 using testing::Mock;
+using testing::NiceMock;
 using testing::Pair;
 using testing::Pointee;
 using testing::Return;
@@ -49,9 +50,10 @@ class CrostiniServiceTest : public testing::Test,
                             public patchpanel::DbusClientNotifier {
  protected:
   void SetUp() override {
-    datapath_ = std::make_unique<MockDatapath>(&process_runner_, &system_);
+    datapath_ =
+        std::make_unique<NiceMock<MockDatapath>>(&process_runner_, &system_);
     addr_mgr_ = std::make_unique<AddressManager>();
-    forwarding_service_ = std::make_unique<MockForwardingService>();
+    forwarding_service_ = std::make_unique<NiceMock<MockForwardingService>>();
     network_device_signals_.clear();
   }
 

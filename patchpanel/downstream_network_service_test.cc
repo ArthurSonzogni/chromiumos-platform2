@@ -36,6 +36,7 @@
 
 using testing::_;
 using testing::Mock;
+using testing::NiceMock;
 using testing::Return;
 using testing::WithArgs;
 
@@ -81,20 +82,20 @@ class DownstreamNetworkServiceTest : public testing::Test {
                                 &ipv6_svc_,
                                 &counters_svc_) {}
 
-  MetricsLibraryMock metrics_;
+  NiceMock<MetricsLibraryMock> metrics_;
   FakeProcessRunner process_runner_;
-  MockSystem system_;
-  MockDatapath datapath_;
-  MockRoutingService routing_svc_;
-  MockForwardingService forwarding_svc_;
-  MockRTNLClient rtnl_client_;
-  MockLifelineFDService lifeline_fd_svc_;
+  NiceMock<MockSystem> system_;
+  NiceMock<MockDatapath> datapath_;
+  NiceMock<MockRoutingService> routing_svc_;
+  NiceMock<MockForwardingService> forwarding_svc_;
+  NiceMock<MockRTNLClient> rtnl_client_;
+  NiceMock<MockLifelineFDService> lifeline_fd_svc_;
   FakeShillClientHelper shill_client_helper_;
   std::unique_ptr<FakeShillClient> shill_client_;
   NoopSubprocessController nd_proxy_;
-  MockGuestIPv6Service ipv6_svc_;
-  MockConntrackMonitor conntrack_monitor_;
-  MockCountersService counters_svc_;
+  NiceMock<MockGuestIPv6Service> ipv6_svc_;
+  NiceMock<MockConntrackMonitor> conntrack_monitor_;
+  NiceMock<MockCountersService> counters_svc_;
   DownstreamNetworkService downstream_network_svc_;
 };
 

@@ -4,7 +4,6 @@
 
 #include "patchpanel/minijailed_process_runner.h"
 
-#include <brillo/minijail/minijail.h>
 #include <linux/capability.h>
 #include <sys/types.h>
 
@@ -15,6 +14,7 @@
 
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
+#include <brillo/minijail/minijail.h>
 #include <brillo/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -27,6 +27,7 @@ using testing::DoAll;
 using testing::ElementsAre;
 using testing::ElementsAreArray;
 using testing::Eq;
+using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrEq;
@@ -59,7 +60,7 @@ class ProcessRunnerForTesting : public MinijailedProcessRunner {
 class MinijailProcessRunnerTest : public ::testing::Test {
  protected:
   MinijailProcessRunnerTest() {
-    system_ = new MockSystem();
+    system_ = new NiceMock<MockSystem>();
     runner_ = std::make_unique<ProcessRunnerForTesting>(
         &mj_, base::WrapUnique(system_));
 
@@ -75,7 +76,7 @@ class MinijailProcessRunnerTest : public ::testing::Test {
 
   ~MinijailProcessRunnerTest() { minijail_destroy(jail_); }
 
-  brillo::MockMinijail mj_;
+  NiceMock<brillo::MockMinijail> mj_;
   std::unique_ptr<MinijailedProcessRunner> runner_;
   minijail* jail_;
   MockSystem* system_;  // Owned by |runner_|.
