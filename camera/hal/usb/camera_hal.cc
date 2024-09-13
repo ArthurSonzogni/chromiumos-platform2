@@ -812,7 +812,8 @@ void CameraHal::OnDeviceRemoved(ScopedUdevDevicePtr dev) {
 
   // TODO(shik): Handle this more gracefully, sometimes it even trigger a kernel
   // panic.
-  if (cameras_.find(id) != cameras_.end()) {
+  if ((cameras_.find(id) != cameras_.end()) &&
+      !(device_infos_[id].quirks & kQuirkExpectHotplugWhileOpen)) {
     LOGF(WARNING)
         << "Unplug an opening camera, exit the camera service to cleanup";
     // Upstart will start the service again.

@@ -79,7 +79,9 @@ const QuirksMap& GetQuirksMap() {
       // Google Inc. Lattice USB 3.0 Video Bridge (b/354766714)
       {{"18d1", "800a"}, kQuirkExpectTimeout},
       // Google Inc. Plankton Captured HDMI Video (b/354766714)
-      {{"18d1", "501e"}, kQuirkExpectTimeout},
+      {{"18d1", "501e"}, kQuirkExpectTimeout | kQuirkExpectHotplugWhileOpen},
+      // Series One Video Input (Endeavour) (b/354766714)
+      {{"18d1", "8006"}, kQuirkExpectHotplugWhileOpen},
   });
   return *kQuirksMap;
 }
