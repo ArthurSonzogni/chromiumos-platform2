@@ -187,6 +187,14 @@ On non-developer builds, some of its features can be accessed via `crosh`.
 
 See [vmc/README.md](vmc/README.md) for more details.
 
+## vhost_user_starter
+
+`vhost_user_starter` is a daemon used for `vm_concierge` to delegate the creation
+of vhost-user virtio-devices. After it receives dbus request from `vm_concierge`,
+it will spawn virtio-devices as its subprocess.
+
+See [vhost_user_starter/README.md](vhost_user_starter/README.md) for more details.
+
 ## Testing
 
 We have a project called `reference_vm` (or `refvm`) which is a Debian-based
