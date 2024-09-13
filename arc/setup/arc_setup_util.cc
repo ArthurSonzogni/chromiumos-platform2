@@ -4,8 +4,6 @@
 
 #include "arc/setup/arc_setup_util.h"
 
-#include <arc-setup/arc-setup-rs.h>
-
 #include <fcntl.h>
 #include <limits.h>
 #include <linux/loop.h>
@@ -14,10 +12,7 @@
 #include <mntent.h>
 #include <net/if.h>
 #include <net/if_arp.h>
-#include <openssl/sha.h>
 #include <pwd.h>
-#include <selinux/restorecon.h>
-#include <selinux/selinux.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -38,6 +33,7 @@
 #include <set>
 #include <utility>
 
+#include <arc-setup/arc-setup-rs.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
@@ -60,6 +56,9 @@
 #include <brillo/files/safe_fd.h>
 #include <crypto/sha2.h>
 #include <libsegmentation/feature_management.h>
+#include <openssl/sha.h>
+#include <selinux/restorecon.h>
+#include <selinux/selinux.h>
 #include <vboot/crossystem.h>
 
 #include "arc/setup/xml/android_xml_util.h"
@@ -1083,8 +1082,7 @@ bool GetArcImageType(const base::FilePath& image_path,
   return false;
 }
 
-bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
-                             const base::FilePath& fstab_path,
+bool GenerateFirstStageFstab(const base::FilePath& fstab_path,
                              const base::FilePath& vendor_image_path,
                              const std::string& cache_partition) {
   std::string vendor_image_type;
@@ -1094,11 +1092,7 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
 
   // The file is exposed to the guest by crosvm via /sys/firmware/devicetree,
   // which in turn allows the guest's init process to mount /vendor very early,
-  // in its first stage (device) initialization step. crosvm also special-cases
-  // #dt-vendor line and expose |combined_property_file_name| via the device
-  // tree file system too. This also allow the init process to load the expanded
-  // properties very early even before all file systems are mounted.
-  //
+  // in its first stage (device) initialization step.
   // The device name for /vendor has to match what arc_vm_client_adapter.cc
   // configures.
   std::string firstStageFstabTemplate = base::StringPrintf(
@@ -1123,9 +1117,13 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
         cache_partition.c_str());
   }
 
+  // This fstab entry makes the runtime properties disk available during Android
+  // first-stage init, allowing the expanded properties to be loaded even before
+  // all file systems are mounted. See go/arcvm-prop-blk-device for details.
+  // Similarly to /vendor, the device name for the runtime properties disk also
+  // must match what arc_vm_client_adapter.cc configures.
   firstStageFstabTemplate +=
-      base::StringPrintf("#dt-vendor build.prop %s default default\n",
-                         combined_property_file_name.value().c_str());
+      "/dev/block/vdg /runtime.prop none ro,bind wait,first_stage_mount\n";
 
   return WriteToFile(fstab_path, 0644, firstStageFstabTemplate);
 }

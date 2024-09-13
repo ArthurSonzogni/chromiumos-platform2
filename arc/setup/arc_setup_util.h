@@ -311,8 +311,7 @@ bool GetArcImageType(const base::FilePath& image_path,
 // |cache_partition| indicates the device number of the disk for the cache
 // partition to reside on. An empty string indicates that no disk is specified
 // for cache partition (i.e. cache does not have a dedicated partition).
-bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
-                             const base::FilePath& fstab_path,
+bool GenerateFirstStageFstab(const base::FilePath& fstab_path,
                              const base::FilePath& vendor_image_path,
                              const std::string& cache_partition);
 

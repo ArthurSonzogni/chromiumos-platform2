@@ -2790,7 +2790,6 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 
   // For ARCVM, the first stage fstab file needs to be generated.
   EXIT_IF(!GenerateFirstStageFstab(
-      modified_properties_dest_path,
       base::FilePath(kGeneratedPropertyFilesPathVm).Append("fstab"),
       base::FilePath(kArcVmVendorImagePath), cache_partition));
 }

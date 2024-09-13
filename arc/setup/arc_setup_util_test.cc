@@ -1209,10 +1209,6 @@ TEST(ArcSetupUtil, SafeCopyFile) {
 }
 
 TEST(ArcSetupUtil, GenerateFirstStageFstab) {
-  static constexpr const char kFakeCombinedBuildPropPath[] =
-      "/path/to/build.prop";
-  static constexpr const char kAnotherFakeCombinedBuildPropPath[] =
-      "/foo/bar/baz.prop";
   static constexpr const char kCachePartition[] = "/cache";
 
   std::string content;
@@ -1232,28 +1228,15 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab) {
   ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), erofs_magic_number));
 
   // Generate the fstab and verify the content.
-  EXPECT_TRUE(
-      GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_img_path, cache_partition));
+  EXPECT_TRUE(GenerateFirstStageFstab(fstab, vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_EQ(0, content.find("/dev/block/vdb /vendor erofs "));
-  EXPECT_NE(std::string::npos, content.find(kFakeCombinedBuildPropPath));
   EXPECT_EQ(std::string::npos, content.find(kCachePartition));
-
-  // Generate the fstab again with the other prop file and verify the content.
-  EXPECT_TRUE(
-      GenerateFirstStageFstab(base::FilePath(kAnotherFakeCombinedBuildPropPath),
-                              fstab, vendor_img_path, cache_partition));
-  EXPECT_TRUE(base::ReadFileToString(fstab, &content));
-  EXPECT_EQ(0, content.find("/dev/block/vdb /vendor erofs "));
-  EXPECT_EQ(std::string::npos, content.find(kFakeCombinedBuildPropPath));
-  EXPECT_NE(std::string::npos, content.find(kAnotherFakeCombinedBuildPropPath));
-  EXPECT_EQ(std::string::npos, content.find(kCachePartition));
+  EXPECT_NE(std::string::npos,
+            content.find("/dev/block/vdg /runtime.prop none "));
 }
 
 TEST(ArcSetupUtil, GenerateFirstStageFstab_WithCachePartition) {
-  constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
-
   std::string content;
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
@@ -1271,24 +1254,20 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_WithCachePartition) {
 
   const std::string cache_partition = "vdc";
   // Generate the fstab and verify if the disk number for cache is correctly set
-  EXPECT_TRUE(
-      GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_img_path, cache_partition));
+  EXPECT_TRUE(GenerateFirstStageFstab(fstab, vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_NE(std::string::npos, content.find(cache_partition));
 
   const std::string cache_partition_with_demo = "vdd";
   // Generate the fstab again with another disk number and verify the disk
   // number
-  EXPECT_TRUE(
-      GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_img_path, cache_partition_with_demo));
+  EXPECT_TRUE(GenerateFirstStageFstab(fstab, vendor_img_path,
+                                      cache_partition_with_demo));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_NE(std::string::npos, content.find(cache_partition_with_demo));
 }
 
 TEST(ArcSetupUtil, GenerateFirstStageFstab_SquashfsVendorImage) {
-  constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
   std::string content;
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
@@ -1306,15 +1285,12 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_SquashfsVendorImage) {
             kSquashfsMagicOffset);
   ASSERT_TRUE(base::WriteFileDescriptor(fd.get(), squashfs_magic_number));
 
-  EXPECT_TRUE(
-      GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_img_path, cache_partition));
+  EXPECT_TRUE(GenerateFirstStageFstab(fstab, vendor_img_path, cache_partition));
   EXPECT_TRUE(base::ReadFileToString(fstab, &content));
   EXPECT_EQ(0, content.find("/dev/block/vdb /vendor squashfs "));
 }
 
 TEST(ArcSetupUtil, GenerateFirstStageFstab_InvalidVendorImage) {
-  constexpr const char kFakeCombinedBuildPropPath[] = "/path/to/build.prop";
   std::string content;
   base::ScopedTempDir dir;
   ASSERT_TRUE(dir.CreateUniqueTempDir());
@@ -1327,8 +1303,7 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_InvalidVendorImage) {
       open(vendor_img_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
 
   EXPECT_FALSE(
-      GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
-                              vendor_img_path, cache_partition));
+      GenerateFirstStageFstab(fstab, vendor_img_path, cache_partition));
 }
 
 TEST(ArcSetupUtil, GetArcVmDataDevicePath) {
