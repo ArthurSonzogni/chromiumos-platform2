@@ -1204,28 +1204,8 @@ static inline __attribute__((always_inline)) int populate_rb(
   return 0;
 }
 
-/**
- * BPF program attached to the fexit of the filp_close() kernel function.
- *
- * return_value: Return value of the filp_close system call.
- */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
-CROS_IF_FUNCTION_HOOK("fexit/filp_close", "tp_btf/cros_filp_close_exit")
-int BPF_PROG(fexit__filp_close,
-             struct file* file,
-             fl_owner_t owner_id,
-             int return_value) {
-  // Check for successful file close operation
-  if (return_value != 0) {
-    return 0;
-  }
-#else
-SEC("fexit/close_fd_get_file")
-int BPF_PROG(fexit__close_fd_get_file, unsigned int fd, struct file* file) {
-  if (!file) {
-    return 0;
-  }
-#endif
+static inline __attribute__((always_inline)) int close_file_handler(
+    struct file* file) {
   struct dentry* file_dentry;
   struct inode* file_inode;
   struct path file_path;
@@ -1282,6 +1262,32 @@ int BPF_PROG(fexit__close_fd_get_file, unsigned int fd, struct file* file) {
               kFileCloseEvent, file, file_dentry, &file_path, NULL);
 
   return 0;
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+SEC("fexit/close_fd_get_file")
+int BPF_PROG(fexit__close_fd_get_file, unsigned int fd, struct file* file) {
+  if (!file) {
+    return 0;
+  }
+  return close_file_handler(file);
+}
+#endif
+
+/**
+ * BPF program attached to the fexit of the filp_close() kernel function.
+ */
+CROS_IF_FUNCTION_HOOK("fexit/filp_close", "tp_btf/cros_filp_close_exit")
+int BPF_PROG(fexit__filp_close,
+             struct file* file,
+             fl_owner_t owner_id,
+             int return_value) {
+  // Check for successful file close operation
+  if (return_value != 0) {
+    return 0;
+  }
+
+  return close_file_handler(file);
 }
 
 // Helper function to handle fentry for attribute change methods
