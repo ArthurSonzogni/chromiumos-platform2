@@ -34,8 +34,14 @@ class CROS_CAMERA_EXPORT CancellationRelay {
   /* Removes a FutureLock from the observer set. */
   void RemoveObserver(internal::FutureLock* future_lock);
 
-  /* Cancells all the futures currently in the observer set. */
+  /* Cancels all the FutureLocks currently in the observer set.
+   * After this call, any attempt to register a FutureLock with this
+   * relay will fail, and the FutureLock will be marked as cancelled. */
   void CancelAllFutures();
+
+  /* Resets the cancellation state, allowing new FutureLocks to be
+   * added and waited on. */
+  void Reset();
 
  private:
   /* Used to serialize all member access. */
@@ -76,9 +82,7 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
   /* Default timeout is set to 5 seconds.  Setting the timeout to a value less
    * than or equal to 0 will wait indefinitely until the value is set.
    */
-  bool Wait(int timeout_ms = 5000) {
-    return lock_.Wait(timeout_ms);
-  }
+  bool Wait(int timeout_ms = 5000) { return lock_.Wait(timeout_ms); }
 
  private:
   friend class base::RefCountedThreadSafe<Future<T>>;
@@ -103,16 +107,12 @@ class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
   }
 
   /* Wakes up the waiter. */
-  void Set() {
-    lock_.Signal();
-  }
+  void Set() { lock_.Signal(); }
 
   /* Default timeout is set to 5 seconds.  Setting the timeout to a value less
    * than or equal to 0 will wait indefinitely until the value is set.
    */
-  bool Wait(int timeout_ms = 5000) {
-    return lock_.Wait(timeout_ms);
-  }
+  bool Wait(int timeout_ms = 5000) { return lock_.Wait(timeout_ms); }
 
  private:
   friend class base::RefCountedThreadSafe<Future<void>>;

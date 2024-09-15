@@ -105,4 +105,9 @@ void CancellationRelay::CancelAllFutures() {
   observers_.clear();
 }
 
+void CancellationRelay::Reset() {
+  base::AutoLock l(lock_);
+  cancelled_ = false;
+}
+
 }  // namespace cros

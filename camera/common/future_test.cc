@@ -123,6 +123,18 @@ TEST_F(FutureTest, CancelTest) {
       base::BindOnce(&FutureTest::SignalCallback, base::Unretained(this),
                      cros::GetFutureCallback(future)));
   ASSERT_FALSE(future->Wait());
+
+  // When Reset() is invoked, CancellationRelay resets the cancellation state
+  // and allows new FutureLocks to be added and waited on.
+  // In this case, relay_ has a chance to be signaled even when the
+  // relay_.CancelAllFutures() has been called before.
+  relay_.Reset();
+  future = Future<void>::Create(&relay_);
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&FutureTest::SignalCallback, base::Unretained(this),
+                     cros::GetFutureCallback(future)));
+  ASSERT_TRUE(future->Wait());
 }
 
 TEST_F(FutureTest, DelayedCancelTest) {

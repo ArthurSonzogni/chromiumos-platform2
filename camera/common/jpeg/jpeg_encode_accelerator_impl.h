@@ -8,6 +8,7 @@
 #define CAMERA_COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_
 
 #include <stdint.h>
+
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -71,7 +72,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
   class IPCBridge {
    public:
     IPCBridge(CameraMojoChannelManager* mojo_manager,
-              CancellationRelay* cancellation_relay);
+              std::unique_ptr<CancellationRelay> cancellation_relay);
 
     // It should only be triggered on IPC thread to ensure thread-safety.
     ~IPCBridge();
@@ -79,8 +80,8 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
     // Initialize Mojo channel to GPU pcorss in chrome.
     void Start(base::OnceCallback<void(bool)> callback);
 
-    // Destroy the instance.
-    void Destroy();
+    // Reset the mojo channel to GPU process.
+    void Reset();
 
     // Process encode request in IPC thread.
     // Either |input_fd| or |input_buffer| has to be filled up.
@@ -153,7 +154,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
     CameraMojoChannelManager* mojo_manager_;
 
     // Used to cancel pending futures when error occurs.
-    CancellationRelay* cancellation_relay_;
+    std::unique_ptr<CancellationRelay> cancellation_relay_;
 
     // The Mojo IPC task runner.
     const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
@@ -183,7 +184,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
   CameraMojoChannelManager* mojo_manager_;
 
   // Used to cancel pending futures when error occurs.
-  std::unique_ptr<CancellationRelay> cancellation_relay_;
+  CancellationRelay* cancellation_relay_;
 
   // The instance which deals with the IPC-related calls. It should always run
   // and be deleted on IPC thread.

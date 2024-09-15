@@ -8,9 +8,9 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <utility>
 
 #include <algorithm>
+#include <utility>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
@@ -53,11 +53,12 @@ std::unique_ptr<JpegEncodeAccelerator> JpegEncodeAccelerator::CreateInstance(
 
 JpegEncodeAcceleratorImpl::JpegEncodeAcceleratorImpl(
     CameraMojoChannelManager* mojo_manager)
-    : task_id_(0),
-      mojo_manager_(mojo_manager),
-      cancellation_relay_(new CancellationRelay),
-      ipc_bridge_(new IPCBridge(mojo_manager, cancellation_relay_.get())) {
+    : task_id_(0), mojo_manager_(mojo_manager) {
   TRACE_JPEG_DEBUG();
+  auto cancellation_relay = std::make_unique<CancellationRelay>();
+  cancellation_relay_ = cancellation_relay.get();
+  ipc_bridge_ =
+      std::make_unique<IPCBridge>(mojo_manager, std::move(cancellation_relay));
 }
 
 JpegEncodeAcceleratorImpl::~JpegEncodeAcceleratorImpl() {
@@ -66,13 +67,12 @@ JpegEncodeAcceleratorImpl::~JpegEncodeAcceleratorImpl() {
   bool result = mojo_manager_->GetIpcTaskRunner()->DeleteSoon(
       FROM_HERE, std::move(ipc_bridge_));
   DCHECK(result);
-  cancellation_relay_ = nullptr;
 }
 
 bool JpegEncodeAcceleratorImpl::Start() {
   TRACE_JPEG();
 
-  auto is_initialized = Future<bool>::Create(cancellation_relay_.get());
+  auto is_initialized = Future<bool>::Create(cancellation_relay_);
 
   mojo_manager_->GetIpcTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::Start,
@@ -101,7 +101,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
   task_id_ = (task_id_ + 1) & 0x3FFFFFFF;
 
-  auto future = Future<int>::Create(cancellation_relay_.get());
+  auto future = Future<int>::Create(cancellation_relay_);
   auto callback =
       base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback,
                      ipc_bridge_->GetWeakPtr(), GetFutureCallback(future),
@@ -144,7 +144,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
   task_id_ = (task_id_ + 1) & 0x3FFFFFFF;
 
-  auto future = Future<int>::Create(cancellation_relay_.get());
+  auto future = Future<int>::Create(cancellation_relay_);
   auto callback =
       base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::EncodeSyncCallback,
                      ipc_bridge_->GetWeakPtr(), GetFutureCallback(future),
@@ -173,9 +173,9 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
 
 JpegEncodeAcceleratorImpl::IPCBridge::IPCBridge(
     CameraMojoChannelManager* mojo_manager,
-    CancellationRelay* cancellation_relay)
+    std::unique_ptr<CancellationRelay> cancellation_relay)
     : mojo_manager_(mojo_manager),
-      cancellation_relay_(cancellation_relay),
+      cancellation_relay_(std::move(cancellation_relay)),
       ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()) {
   TRACE_JPEG_DEBUG();
 }
@@ -184,7 +184,7 @@ JpegEncodeAcceleratorImpl::IPCBridge::~IPCBridge() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   TRACE_JPEG_DEBUG();
 
-  Destroy();
+  Reset();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::
@@ -227,12 +227,14 @@ void JpegEncodeAcceleratorImpl::IPCBridge::TryGetAndInitializeAccelerator(
   Initialize(std::move(callback));
 }
 
-void JpegEncodeAcceleratorImpl::IPCBridge::Destroy() {
+void JpegEncodeAcceleratorImpl::IPCBridge::Reset() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   TRACE_JPEG_DEBUG();
 
+  cancellation_relay_->CancelAllFutures();
   jea_.reset();
   accelerator_provider_.reset();
+  cancellation_relay_->Reset();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
@@ -436,8 +438,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError() {
   TRACE_JPEG();
 
   LOGF(ERROR) << "There is a mojo error for JpegEncodeAccelerator";
-  cancellation_relay_->CancelAllFutures();
-  Destroy();
+  Reset();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeAck(
