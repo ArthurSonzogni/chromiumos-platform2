@@ -230,7 +230,7 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     ctrl_fd_.reset();
   }
 
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 pid_t SandboxedInit::StartLauncher() {
@@ -249,7 +249,7 @@ pid_t SandboxedInit::StartLauncher() {
 
   // Run the launcher function.
   _exit(std::move(launcher_).Run());
-  NOTREACHED_IN_MIGRATION();
+  NOTREACHED();
 }
 
 int SandboxedInit::PollLauncher(const base::ScopedFD& ctrl_fd) {

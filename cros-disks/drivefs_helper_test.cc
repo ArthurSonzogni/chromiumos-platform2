@@ -80,18 +80,15 @@ class PlatformForTest : public MockPlatform {
   bool GetUserAndGroupId(const std::string& user,
                          uid_t* user_id,
                          gid_t* group_id) const override {
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 
   bool GetGroupId(const std::string& group, gid_t* group_id) const override {
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 
   bool SetOwnership(const std::string&, uid_t, gid_t) const override {
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 };
 

@@ -109,8 +109,7 @@ class FUSEMounterForTesting : public FUSEMounter {
   bool CanMount(const std::string& source,
                 const std::vector<std::string>& params,
                 base::FilePath* suggested_dir_name) const override {
-    NOTREACHED_IN_MIGRATION();
-    return true;
+    NOTREACHED();
   }
 };
 

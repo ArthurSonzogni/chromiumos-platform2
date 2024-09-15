@@ -108,8 +108,7 @@ class MockPlatform : public Platform {
       out->st_mode = S_IFBLK | 0640;
       return true;
     }
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 
   bool SetOwnership(const std::string& path,
@@ -135,8 +134,7 @@ class MockPlatform : public Platform {
       *group_id = 444;
       return true;
     }
-    NOTREACHED_IN_MIGRATION();
-    return false;
+    NOTREACHED();
   }
 };
 
