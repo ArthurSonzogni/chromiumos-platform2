@@ -131,6 +131,7 @@ source_set("mantis") {
 source_set("odml") {
   sources = [
     "embedding_model/embedding_model_service.cc",
+    "embedding_model/model_factory.cc",
     "embedding_model/model_holder.cc",
     "embedding_model/tflite_model_runner.cc",
     "on_device_model/ml/chrome_ml.cc",
