@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <metrics/metrics_library_mock.h>
 #include <mojo/core/embedder/embedder.h>
@@ -17,13 +18,24 @@
 #include <testing/gtest/include/gtest/gtest.h>
 
 #include "odml/embedding_model/model_factory_mock.h"
+#include "odml/embedding_model/model_runner_mock.h"
 #include "odml/mojom/embedding_model.mojom.h"
 
 namespace embedding_model {
 namespace {
 
+constexpr char kFakeModelUuid1[] = "961e0724-020b-4e97-aa83-735cc894da6e";
+constexpr char kFakeModelVersion1[] = "FakeModelVersion1";
+constexpr char kTestContent1[] = "Some content 1";
+constexpr char kTestContent2[] = "Some content 2";
+constexpr float kFakeEmbedding1[] = {0.1, 0.2, 0.3, 0.4};
+constexpr float kFakeEmbedding2[] = {0.7, 0.8, 0.9, 0.1};
+
+using ::on_device_model::mojom::LoadModelResult;
+using ::testing::AtLeast;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Return;
 
 class EmbeddingModelServiceTest : public testing::Test {
  public:
@@ -60,6 +72,25 @@ class EmbeddingModelServiceTest : public testing::Test {
             }));
   }
 
+  mojo::Remote<mojom::OnDeviceEmbeddingModel> LoadModel(
+      const std::string& model_uuid,
+      std::unique_ptr<NiceMock<ModelRunnerMock>> runner_mock) {
+    base::Uuid uuid = base::Uuid::ParseLowercase(model_uuid);
+    base::RunLoop run_loop;
+    mojo::Remote<mojom::OnDeviceEmbeddingModel> remote;
+
+    pending_runner_build_.push_back(
+        std::make_pair(uuid, std::move(runner_mock)));
+    service_impl_.LoadEmbeddingModel(
+        uuid, remote.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+        base::BindLambdaForTesting([&](LoadModelResult result) {
+          EXPECT_EQ(LoadModelResult::kSuccess, result);
+          run_loop.Quit();
+        }));
+    run_loop.Run();
+    return remote;
+  }
+
  protected:
   // A task environment so we can create run loops during test.
   base::test::TaskEnvironment task_environment_;
@@ -88,7 +119,181 @@ class EmbeddingModelServiceTest : public testing::Test {
   NiceMock<ModelFactoryMock> model_factory_;
 };
 
-TEST_F(EmbeddingModelServiceTest, LoadModel) {}
+TEST_F(EmbeddingModelServiceTest, LoadModelAndGetVersion) {
+  mojo::Remote<mojom::OnDeviceEmbeddingModel> remote;
+  std::unique_ptr<NiceMock<ModelRunnerMock>> owned_runner_mock =
+      std::make_unique<NiceMock<ModelRunnerMock>>();
+  NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
+  EXPECT_CALL(*runner_mock, Load)
+      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+        std::move(callback).Run(true);
+      }));
+  remote = LoadModel(kFakeModelUuid1, std::move(owned_runner_mock));
+  EXPECT_CALL(*runner_mock, GetModelVersion)
+      .WillOnce(Return(kFakeModelVersion1));
+
+  base::RunLoop run_loop;
+  remote->Version(
+      base::BindLambdaForTesting([&](const std::string& model_version) {
+        EXPECT_EQ(kFakeModelVersion1, model_version);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(EmbeddingModelServiceTest, OverlappingLoadModelAndGetVersion) {
+  mojo::Remote<mojom::OnDeviceEmbeddingModel> remote1, remote2;
+  base::Uuid uuid = base::Uuid::ParseLowercase(kFakeModelUuid1);
+  defer_runner_build_.push_back(uuid);
+
+  int loaded_count = 0;
+  base::RunLoop run_loop;
+  service_impl_.LoadEmbeddingModel(
+      uuid, remote1.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        EXPECT_EQ(LoadModelResult::kSuccess, result);
+        loaded_count++;
+      }));
+  run_loop.RunUntilIdle();
+
+  EXPECT_EQ(1, deferred_runner_build_.size());
+  EXPECT_EQ(uuid, deferred_runner_build_[0].first);
+
+  // Queue a second LoadModel request and it should work as well.
+  service_impl_.LoadEmbeddingModel(
+      uuid, remote2.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        EXPECT_EQ(LoadModelResult::kSuccess, result);
+        loaded_count++;
+      }));
+  run_loop.RunUntilIdle();
+
+  // No duplicate calls to load the same model.
+  EXPECT_EQ(1, deferred_runner_build_.size());
+
+  // Fulfill the load request.
+  NiceMock<ModelRunnerMock>* runner_mock;
+  std::unique_ptr<NiceMock<ModelRunnerMock>> owned_runner_mock =
+      std::make_unique<NiceMock<ModelRunnerMock>>();
+  runner_mock = owned_runner_mock.get();
+  EXPECT_CALL(*runner_mock, Load)
+      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+        std::move(callback).Run(true);
+      }));
+
+  std::move(deferred_runner_build_[0].second).Run(std::move(owned_runner_mock));
+  run_loop.RunUntilIdle();
+
+  // Everything should be loaded now.
+  EXPECT_EQ(2, loaded_count);
+
+  // Both remote should work.
+  int get_version_count = 0;
+  EXPECT_CALL(*runner_mock, GetModelVersion)
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(kFakeModelVersion1));
+  remote1->Version(
+      base::BindLambdaForTesting([&](const std::string& model_version) {
+        EXPECT_EQ(kFakeModelVersion1, model_version);
+        get_version_count++;
+      }));
+  remote2->Version(
+      base::BindLambdaForTesting([&](const std::string& model_version) {
+        EXPECT_EQ(kFakeModelVersion1, model_version);
+        get_version_count++;
+      }));
+  run_loop.RunUntilIdle();
+  EXPECT_EQ(2, get_version_count);
+}
+
+TEST_F(EmbeddingModelServiceTest, SerializedRun) {
+  // Setup Load()
+  std::unique_ptr<NiceMock<ModelRunnerMock>> owned_runner_mock =
+      std::make_unique<NiceMock<ModelRunnerMock>>();
+  NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
+  bool runner_busy = false;
+  EXPECT_CALL(*runner_mock, Load)
+      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+        ASSERT_FALSE(runner_busy);
+        std::move(callback).Run(true);
+      }));
+
+  // Stall the Run() call as well.
+  mojom::GenerateEmbeddingRequest mojo_request1;
+  mojo_request1.content = kTestContent1;
+  mojo_request1.task_type = mojom::TaskType::kClustering;
+  mojo_request1.truncate_input = false;
+  mojom::GenerateEmbeddingRequest mojo_request2;
+  mojo_request2.content = kTestContent2;
+  mojo_request2.task_type = mojom::TaskType::kClustering;
+  mojo_request2.truncate_input = false;
+  std::optional<ModelRunner::RunCallback> run_callback1, run_callback2;
+  EXPECT_CALL(*runner_mock, Run)
+      .WillRepeatedly(Invoke([&](mojom::GenerateEmbeddingRequestPtr request,
+                                 ModelRunner::RunCallback callback) {
+        ASSERT_FALSE(runner_busy);
+        runner_busy = true;
+        if (*request == mojo_request1) {
+          run_callback1 = std::move(callback);
+        } else if (*request == mojo_request2) {
+          run_callback2 = std::move(callback);
+        } else {
+          // Invalid call, should not be here.
+          FAIL();
+        }
+      }));
+
+  // Load the model.
+  mojo::Remote<mojom::OnDeviceEmbeddingModel> remote;
+  remote = LoadModel(kFakeModelUuid1, std::move(owned_runner_mock));
+  base::RunLoop run_loop;
+
+  // Run 2 concurrent request to make sure they're properly serialized.
+  int run_finished = 0;
+  std::vector<float> fake_embedding1(std::begin(kFakeEmbedding1),
+                                     std::end(kFakeEmbedding1));
+  std::vector<float> fake_embedding2(std::begin(kFakeEmbedding2),
+                                     std::end(kFakeEmbedding2));
+  remote->GenerateEmbedding(
+      mojo_request1.Clone(),
+      base::BindLambdaForTesting(
+          [&](mojom::OnDeviceEmbeddingModelInferenceError error,
+              const std::vector<float>& embeddings) {
+            EXPECT_EQ(mojom::OnDeviceEmbeddingModelInferenceError::kSuccess,
+                      error);
+            EXPECT_EQ(fake_embedding1, embeddings);
+            run_finished++;
+          }));
+  remote->GenerateEmbedding(
+      mojo_request2.Clone(),
+      base::BindLambdaForTesting(
+          [&](mojom::OnDeviceEmbeddingModelInferenceError error,
+              const std::vector<float>& embeddings) {
+            EXPECT_EQ(mojom::OnDeviceEmbeddingModelInferenceError::kSuccess,
+                      error);
+            EXPECT_EQ(fake_embedding2, embeddings);
+            run_finished++;
+          }));
+  run_loop.RunUntilIdle();
+
+  // After Load(), Run() should be called.
+  ASSERT_TRUE(run_callback1.has_value());
+  runner_busy = false;
+  std::move(run_callback1.value())
+      .Run(mojom::OnDeviceEmbeddingModelInferenceError::kSuccess,
+           fake_embedding1);
+  run_loop.RunUntilIdle();
+  EXPECT_EQ(1, run_finished);
+
+  // Another Run() should be called.
+  ASSERT_TRUE(run_callback2.has_value());
+  runner_busy = false;
+  std::move(run_callback2.value())
+      .Run(mojom::OnDeviceEmbeddingModelInferenceError::kSuccess,
+           fake_embedding2);
+  run_loop.RunUntilIdle();
+  EXPECT_EQ(2, run_finished);
+}
 
 }  // namespace
 }  // namespace embedding_model
