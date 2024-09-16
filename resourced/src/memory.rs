@@ -517,13 +517,45 @@ pub enum PressureLevelChrome {
     Critical,
 }
 
+// The pressure level parameter for the D-Bus Chrome memory pressure signal.
+enum PressureLevelChromeDbus {
+    // There is enough memory to use.
+    None = 0,
+    // Chrome is advised to free buffers that are cheap to re-allocate and not
+    // immediately needed.
+    Moderate = 1,
+    // Chrome is advised to free all possible memory.
+    Critical = 2,
+}
+
+// The discard type parameter for the D-Bus Chrome memory pressure signal.
+enum DiscardTypeDbus {
+    // Only unprotected pages can be discarded.
+    Unprotected = 0,
+    // Both unprotected and protected pages can be discarded.
+    Protected = 1,
+}
+
 impl PressureLevelChrome {
-    pub fn to_dbus_params(&self) -> (u8, bool) {
+    // Returns the pressure level and the discard type for the Chrome memory pressure signal.
+    pub fn to_dbus_params(&self) -> (u8, u8) {
         match self {
-            PressureLevelChrome::None => (0, false),
-            PressureLevelChrome::Moderate => (1, false),
-            PressureLevelChrome::DiscardUnprotected => (2, false),
-            PressureLevelChrome::Critical => (2, true),
+            PressureLevelChrome::None => (
+                PressureLevelChromeDbus::None as u8,
+                DiscardTypeDbus::Unprotected as u8,
+            ),
+            PressureLevelChrome::Moderate => (
+                PressureLevelChromeDbus::Moderate as u8,
+                DiscardTypeDbus::Unprotected as u8,
+            ),
+            PressureLevelChrome::DiscardUnprotected => (
+                PressureLevelChromeDbus::Critical as u8,
+                DiscardTypeDbus::Unprotected as u8,
+            ),
+            PressureLevelChrome::Critical => (
+                PressureLevelChromeDbus::Critical as u8,
+                DiscardTypeDbus::Protected as u8,
+            ),
         }
     }
 }

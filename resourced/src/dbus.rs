@@ -102,7 +102,7 @@ fn send_pressure_signal(
     signal_name: &str,
     level: u8,
     reclaim_target_kb: u64,
-    discard_type_option: Option<bool>,
+    discard_type_option: Option<u8>,
 ) {
     let signal_origin_timestamp_ms = match get_monotonic_timestamp_ms() {
         Ok(timestamp) => timestamp,
