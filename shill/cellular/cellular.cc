@@ -427,6 +427,7 @@ void Cellular::ProcessModemfwdInProgressTasks(const InProgressTasks& tasks) {
     task_type = task.Get<std::string>(modemfwd::kTaskType);
 
     if (task_type == modemfwd::kTaskTypeFlash &&
+        task.Contains<bool>(modemfwd::kFlashTaskFlashOngoing) &&
         task.Contains<std::string>(modemfwd::kFlashTaskDeviceId)) {
       std::string device_id =
           task.Get<std::string>(modemfwd::kFlashTaskDeviceId);
