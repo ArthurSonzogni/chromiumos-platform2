@@ -148,6 +148,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
                           ObfuscatedUsername(kObfuscatedUsername),
                           reset_secret};
   features_.SetDefaultForFeature(Features::kMigratePin, false);
+  features_.SetDefaultForFeature(Features::kModernPin, false);
   CreateTestFuture result;
   auth_block_->Create(user_input, {}, result.GetCallback());
   ASSERT_TRUE(result.IsReady());

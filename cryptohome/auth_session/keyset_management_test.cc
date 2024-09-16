@@ -724,6 +724,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   key_data.set_label(kPasswordLabel);
   KeysetSetupWithAuthInput(
       /*is_migrated=*/false, /*is_backup=*/false, auth_input, key_data, "0");
+  features_.SetDefaultForFeature(Features::kModernPin, false);
 
   // Test authenticate migrates to UserSecretStash.
 

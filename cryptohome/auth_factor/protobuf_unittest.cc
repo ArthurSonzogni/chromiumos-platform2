@@ -253,6 +253,7 @@ TEST(AuthFactorPropertiesFromProtoTest, AuthFactorMetaDataCheckPin) {
   std::string auth_factor_label;
   AuthFactorMetadata auth_factor_metadata;
   FakeFeaturesForTesting features;
+  features.SetDefaultForFeature(Features::kModernPin, false);
   EXPECT_THAT(AuthFactorPropertiesFromProto(auth_factor_proto, features.async,
                                             auth_factor_type, auth_factor_label,
                                             auth_factor_metadata),
