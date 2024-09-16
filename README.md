@@ -201,6 +201,7 @@ copies.
 | [u2fd](./u2fd/) | U2FHID emulation daemon for systems with secure elements (not TPMs) |
 | [update_engine](./update_engine/) | System updater daemon |
 | [ureadahead-diff](./ureadahead-diff/) | Tool to calculate difference between 2 ureadahead packs |
+| [usb-debug-utils](./usb-debug-utils/) | Extra tools for debugging USB |
 | [usb_bouncer](./usb_bouncer/) | Tools for managing USBGuard white-lists and configuration on ChromeOS |
 | [userfeedback](./userfeedback/) | Various utilities to gather extended data for user feedback reports |
 | [uwbd](./uwbd/) | Daemon for the UWB on ChromeOS |
