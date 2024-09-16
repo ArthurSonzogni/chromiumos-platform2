@@ -7,8 +7,8 @@
 namespace embedding_model {
 
 EmbeddingModelService::EmbeddingModelService(
-    raw_ref<MetricsLibraryInterface> metrics)
-    : metrics_(metrics) {}
+    raw_ref<MetricsLibraryInterface> metrics, raw_ref<ModelFactory> factory)
+    : metrics_(metrics), factory_(factory) {}
 
 EmbeddingModelService::~EmbeddingModelService() = default;
 

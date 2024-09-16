@@ -15,6 +15,7 @@
 #include "odml/coral/test_util.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/embedding_model/embedding_model_service.h"
+#include "odml/embedding_model/model_factory_mock.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/on_device_model/mock_on_device_model_service.h"
 
@@ -155,9 +156,11 @@ class CoralServiceTest : public testing::Test {
 // Test that we can construct CoralService with the real constructor.
 TEST(CoralServiceConstructTest, Construct) {
   MetricsLibraryMock metrics;
+  embedding_model::ModelFactoryMock embedding_model_factory;
   on_device_model::MockOnDeviceModelService model_service;
-  embedding_model::EmbeddingModelService embedding_service((raw_ref(metrics)));
-  CoralService service((raw_ref(model_service)), raw_ref(embedding_service));
+  embedding_model::EmbeddingModelService embedding_service(
+      (raw_ref(metrics)), raw_ref(embedding_model_factory));
+  CoralService service((raw_ref(model_service)), (raw_ref(embedding_service)));
 }
 
 TEST_F(CoralServiceTest, GroupSuccess) {

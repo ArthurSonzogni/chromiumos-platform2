@@ -11,6 +11,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "odml/embedding_model/model_factory.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 
@@ -21,7 +22,8 @@ namespace embedding_model {
 // representation.
 class EmbeddingModelService : public mojom::OnDeviceEmbeddingModelService {
  public:
-  explicit EmbeddingModelService(raw_ref<MetricsLibraryInterface> metrics);
+  EmbeddingModelService(raw_ref<MetricsLibraryInterface> metrics,
+                        raw_ref<ModelFactory> factory);
   ~EmbeddingModelService() override;
 
   EmbeddingModelService(const EmbeddingModelService&) = delete;
@@ -42,6 +44,7 @@ class EmbeddingModelService : public mojom::OnDeviceEmbeddingModelService {
 
  private:
   const raw_ref<MetricsLibraryInterface> metrics_;
+  const raw_ref<ModelFactory> factory_;
 
   mojo::ReceiverSet<mojom::OnDeviceEmbeddingModelService> receiver_set_;
 

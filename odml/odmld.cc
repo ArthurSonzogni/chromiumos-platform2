@@ -27,6 +27,7 @@
 
 #include "odml/coral/service.h"
 #include "odml/embedding_model/embedding_model_service.h"
+#include "odml/embedding_model/model_factory.h"
 #include "odml/mantis/service.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
@@ -77,7 +78,8 @@ class EmbeddingModelServiceProviderImpl
       raw_ref<MetricsLibrary> metrics,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this), service_impl_(metrics) {
+      : receiver_(this),
+        service_impl_(metrics, raw_ref(embedding_model_factory_)) {
     service_manager->Register(
         chromeos::mojo_services::kCrosEmbeddingModelService,
         receiver_.BindNewPipeAndPassRemote());
@@ -97,6 +99,8 @@ class EmbeddingModelServiceProviderImpl
             embedding_model::mojom::OnDeviceEmbeddingModelService>(
             std::move(receiver)));
   }
+
+  embedding_model::ModelFactory embedding_model_factory_;
 
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
