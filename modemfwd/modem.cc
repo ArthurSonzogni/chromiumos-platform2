@@ -32,7 +32,7 @@
 
 namespace {
 
-constexpr base::TimeDelta kCmdKillDelay = base::Seconds(1);
+constexpr base::TimeDelta kCmdKillDelay = base::Seconds(5);
 
 class Inhibitor {
  public:
