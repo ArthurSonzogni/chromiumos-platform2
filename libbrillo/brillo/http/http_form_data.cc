@@ -2,17 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/http/http_form_data.h>
-
 #include <limits>
 #include <utility>
 
 #include <base/format_macros.h>
 #include <base/rand_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
-
+#include <base/strings/stringprintf.h>
 #include <brillo/errors/error_codes.h>
+#include <brillo/http/http_form_data.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/mime_utils.h>
 #include <brillo/streams/file_stream.h>
@@ -146,9 +144,11 @@ std::string MultiPartFormField::GetContentType() const {
       break;
     }
   }
-  return base::StringPrintf(
-      use_quotes ? "%s; boundary=\"%s\"" : "%s; boundary=%s",
-      content_type_.c_str(), boundary_.c_str());
+  return use_quotes
+             ? base::StringPrintf("%s; boundary=\"%s\"", content_type_.c_str(),
+                                  boundary_.c_str())
+             : base::StringPrintf("%s; boundary=%s", content_type_.c_str(),
+                                  boundary_.c_str());
 }
 
 void MultiPartFormField::AddCustomField(std::unique_ptr<FormField> field) {
