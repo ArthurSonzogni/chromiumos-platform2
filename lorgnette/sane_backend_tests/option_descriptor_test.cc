@@ -2,13 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <iostream>
+#include <set>
 #include <string>
 
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 #include <sane/sane.h>
 #include <sane/saneopts.h>
+
+#include "lorgnette/sane_option.h"
 
 namespace sane_backend_tests {
 // Declared by GoogleTest main wrapper.
@@ -101,4 +105,54 @@ TEST_F(OptionDescriptorTest, ScanSource) {
   if (source_required) {
     EXPECT_TRUE(source_found) << "Required option missing for name: source";
   }
+}
+
+TEST_F(OptionDescriptorTest, Resolution) {
+  bool resolution_found = false;
+
+  // Index 0 is the well-known option 0, which we skip here.
+  SANE_Int i = 1;
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, i);
+  while (descriptor) {
+    if (!descriptor->name ||
+        strcmp(descriptor->name, SANE_NAME_SCAN_RESOLUTION) != 0) {
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+      continue;
+    }
+
+    EXPECT_EQ(descriptor->unit, SANE_UNIT_DPI)
+        << "Resolution option does not have unit: DPI";
+
+    EXPECT_TRUE(descriptor->type == SANE_TYPE_INT ||
+                descriptor->type == SANE_TYPE_FIXED)
+        << "Resolution option has invalid type: " << descriptor->type;
+
+    EXPECT_TRUE(descriptor->constraint_type == SANE_CONSTRAINT_RANGE ||
+                descriptor->constraint_type == SANE_CONSTRAINT_WORD_LIST)
+        << "Resolution option has invalid constraint type: "
+        << descriptor->constraint_type;
+
+    bool supported_resolution_found = false;
+    const std::set<uint32_t> supported_resolutions = {100, 150, 200, 300, 600};
+    lorgnette::SaneOption option(*descriptor, i);
+    auto maybe_values = option.GetValidIntValues();
+    ASSERT_TRUE(maybe_values) << "Unable to parse resolution option";
+
+    for (auto resolution : maybe_values.value()) {
+      if (supported_resolutions.contains(resolution)) {
+        supported_resolution_found = true;
+        break;
+      }
+    }
+
+    EXPECT_TRUE(supported_resolution_found) << "No supported resolutions found";
+
+    resolution_found = true;
+    break;
+  }
+
+  EXPECT_TRUE(resolution_found)
+      << "Required option missing for name: resolution";
 }
