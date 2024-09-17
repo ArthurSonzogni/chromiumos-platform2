@@ -19,6 +19,15 @@ developing this crate.
 (chroot)$ cargo build
 ```
 
+## Testing
+
+Testing the package can be done by emerging for a board of your choice with `FEATURES=test` set.
+
+```shell
+# Test
+(chroot)$ FEATURES="test" emerge-${BOARD} dev-rust/featured
+```
+
 ## Generated bindings
 
 The build script, `build_buildings.sh`, generates bindings to `../c_feature_library.h`.

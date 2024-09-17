@@ -14,6 +14,14 @@
 mod bindings;
 use crate::bindings::*;
 
+/// Mock implementation and tests for featured rust client.
+///
+/// This module will provide a mock featured client that mimics
+/// the communication using fake C library, and includes tests to
+/// validate the bindings between C and Rust.
+#[cfg(feature = "fake_backend")]
+pub mod fake;
+
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus::nonblock::SyncConnection;
@@ -212,6 +220,9 @@ impl GetParamsAndEnabledResponse {
 /// us with a way to safely call FFI functions.
 struct SafeHandle {
     handle: CFeatureLibrary,
+    /// Indicates whether this safe handle holds handle to a fake backend.
+    /// This field may not be read outside of the tests.
+    #[cfg_attr(not(feature = "fake_backend"), allow(dead_code))]
     fake: bool,
 }
 
@@ -224,22 +235,6 @@ unsafe impl Send for SafeHandle {}
 unsafe impl Sync for SafeHandle {}
 
 impl SafeHandle {
-    /// Creates a new client handle for faking requests to featured.
-    ///
-    /// # Errors
-    ///
-    /// If the underlying C calls do not return a proper handle to
-    /// the featured client, an error will be returned.
-    fn fake() -> Result<Self, PlatformError> {
-        // SAFETY: The C library can return either a valid object pointer or a null pointer.
-        // A subsequent check is made to ensure that the pointer is valid.
-        let handle = unsafe { FakeCFeatureLibraryNew() };
-        if handle.is_null() {
-            return Err(PlatformError::NullHandle);
-        };
-        Ok(SafeHandle { handle, fake: true })
-    }
-
     fn is_feature_enabled_blocking(&self, feature: &Feature) -> bool {
         // SAFETY: The C call is guaranteed to return a valid value and does not modify
         // the underlying handle or feature.
@@ -324,16 +319,6 @@ impl SafeHandle {
     }
 }
 
-impl Drop for SafeHandle {
-    fn drop(&mut self) {
-        // SAFETY: The C call frees the memory associated with handle, which is okay since the
-        // pointer is dropped immediately afterwards.
-        if self.fake {
-            unsafe { FakeCFeatureLibraryDelete(self.handle) }
-        }
-    }
-}
-
 /// Register a callback to run whenever it is required to refetch feature
 /// state (that is, whenever chrome restarts).
 pub async fn listen_for_refetch_needed<T: FnMut() + Send + 'static>(
@@ -393,116 +378,11 @@ impl PlatformFeatures {
 
                 Ok(lib)
             })
-            .map(Arc::clone)
+            .cloned()
     }
 }
 
 impl CheckFeature for PlatformFeatures {
-    fn is_feature_enabled_blocking(&self, feature: &Feature) -> bool {
-        self.handle.is_feature_enabled_blocking(feature)
-    }
-
-    fn get_params_and_enabled(
-        &self,
-        features: &[&Feature],
-    ) -> Result<GetParamsAndEnabledResponse, PlatformError> {
-        self.handle.get_params_and_enabled_blocking(features)
-    }
-}
-
-/// A fake featured client, used to mock communications to featured via the
-/// wrapped fake C library.
-///
-/// This client never makes actual requests to featured,
-/// instead it uses an in-memory store to mock out responses.
-pub struct FakePlatformFeatures {
-    handle: SafeHandle,
-    // Since there are references to these `CString`s stored in an
-    // in-memory map managed by the C library, it is important that
-    // they are not dropped until the C library is cleaned up and the
-    // handle to the library is released, or the feature is specifically
-    // cleared. By storing them in a `Vec` in this struct, we guarantee
-    // that they always live long enough. By storing those `Vec`s in a
-    // `HashMap` under the feature's name as a key, we are able to properly
-    // track and remove them when a feature is explicitly cleared.
-    c_strings: HashMap<String, Vec<(std::ffi::CString, std::ffi::CString)>>,
-}
-
-impl FakePlatformFeatures {
-    /// Creates a new client for faking requests to featured.
-    ///
-    /// # Errors
-    ///
-    /// If the underlying C calls do not return a proper handle to
-    /// the fake featured client, an error string will be returned.
-    pub fn new() -> Result<Self, PlatformError> {
-        Ok(FakePlatformFeatures {
-            handle: SafeHandle::fake()?,
-            c_strings: HashMap::default(),
-        })
-    }
-
-    /// Sets the specified feature's enablement status in the in-memory store
-    /// managed by the underlying fake C client.
-    ///
-    /// The in-memory store uses referential equality to save enablement state,
-    /// so it is important to use the same feature for setting and checking the state.
-    pub fn set_feature_enabled<'a>(&'a mut self, feature: &'a Feature, is_enabled: bool) {
-        // SAFETY: The C call will never invalidate the handle or feature pointers.
-        unsafe {
-            FakeCFeatureLibrarySetEnabled(
-                self.handle.handle,
-                feature.c_feature.name,
-                is_enabled.into(),
-            );
-        };
-    }
-
-    /// Clears the specified feature's enablement status in the in-memory store
-    /// managed by the underlying fake C client.
-    pub fn clear_feature_enabled(&mut self, feature: &Feature) {
-        // SAFETY: The C call will never invalidate the handle or feature pointers.
-        unsafe { FakeCFeatureLibraryClearEnabled(self.handle.handle, feature.c_feature.name) };
-    }
-
-    /// Adds or updates value associated with the provided key for the specified feature.
-    ///
-    /// The in-memory store uses referential equality to save parameter values,
-    /// so it is important to use the same feature for setting and checking the state.
-    pub fn set_param(&mut self, feature: &Feature, key: &str, value: &str) {
-        let c_key = std::ffi::CString::new(key).expect("Unable to convert key");
-        let c_value = std::ffi::CString::new(value).expect("Unable to convert value");
-
-        // SAFETY: The C call will never invalidate the handle or feature pointers.
-        unsafe {
-            FakeCFeatureLibrarySetParam(
-                self.handle.handle,
-                feature.c_feature.name,
-                c_key.as_ptr(),
-                c_value.as_ptr(),
-            );
-        };
-
-        // The key/value `CString`s must be stored to prevent them from being dropped at
-        // the end of this function.
-        self.c_strings
-            .entry(feature.name().to_string())
-            .or_insert_with(Vec::default)
-            .push((c_key, c_value));
-    }
-
-    /// Clears all parameters associated with the specified feature in the in-memory store
-    /// managed by the underlying fake C client.
-    pub fn clear_params(&mut self, feature: &Feature) {
-        // SAFETY: The C call will never invalidate the handle or feature pointers.
-        unsafe { FakeCFeatureLibraryClearParams(self.handle.handle, feature.c_feature.name) };
-        // Clear the stored c_strings. This should be done after the call to the C library
-        // since the underlying C structure contains a reference to these items.
-        self.c_strings.remove(feature.name());
-    }
-}
-
-impl CheckFeature for FakePlatformFeatures {
     fn is_feature_enabled_blocking(&self, feature: &Feature) -> bool {
         self.handle.is_feature_enabled_blocking(feature)
     }
@@ -551,6 +431,7 @@ unsafe fn parse_cstr(ptr: *const std::os::raw::c_char) -> Option<String> {
         .ok()
         .map(str::to_string)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -573,76 +454,5 @@ mod tests {
         assert!(first_init.is_ok());
         let second_init = PlatformFeatures::get();
         assert!(second_init.is_ok())
-    }
-
-    #[test]
-    fn it_properly_fakes_the_feature_library_for_is_enabled() {
-        let mut subject = FakePlatformFeatures::new().unwrap();
-        let feature_one = Feature::new("some-valid-feature", false).unwrap();
-        let feature_two = Feature::new("other-valid-feature", true).unwrap();
-
-        assert!(!subject.is_feature_enabled_blocking(&feature_one));
-        assert!(subject.is_feature_enabled_blocking(&feature_two));
-
-        subject.set_feature_enabled(&feature_one, true);
-        subject.set_feature_enabled(&feature_two, false);
-
-        assert!(subject.is_feature_enabled_blocking(&feature_one));
-        assert!(!subject.is_feature_enabled_blocking(&feature_two));
-
-        subject.clear_feature_enabled(&feature_one);
-        subject.clear_feature_enabled(&feature_two);
-
-        assert!(!subject.is_feature_enabled_blocking(&feature_one));
-        assert!(subject.is_feature_enabled_blocking(&feature_two));
-    }
-
-    #[test]
-    fn it_properly_fakes_the_feature_library_for_parameters() {
-        let mut subject = FakePlatformFeatures::new().unwrap();
-
-        let feature_one = Feature::new("some-valid-feature", false).unwrap();
-        let feature_two = Feature::new("other-valid-feature", false).unwrap();
-        let feature_three = Feature::new("another-valid-feature", false).unwrap();
-
-        let param_one_key = "some-param".to_string();
-        let param_one_value = "some-value".to_string();
-        let param_two_key = "other-param".to_string();
-        let param_two_value = "other-value".to_string();
-
-        subject.set_param(&feature_one, &param_one_key, &param_one_value);
-        subject.set_param(&feature_one, &param_two_key, &param_two_value);
-        subject.set_feature_enabled(&feature_one, true);
-        subject.set_feature_enabled(&feature_two, true);
-
-        let actual = subject
-            .get_params_and_enabled(&[&feature_one, &feature_two])
-            .unwrap();
-
-        assert!(actual.is_enabled(&feature_one));
-        assert!(actual.is_enabled(&feature_two));
-        assert!(!actual.is_enabled(&feature_three));
-        assert!(actual.get_params(&feature_one).is_some());
-        assert!(actual.get_params(&feature_two).is_some());
-        assert!(actual.get_params(&feature_three).is_none());
-
-        let actual_params = actual.get_params(&feature_one).unwrap();
-        assert_eq!(actual_params.len(), 2);
-        assert_eq!(actual_params.get(&param_one_key), Some(&param_one_value));
-        assert_eq!(actual_params.get(&param_two_key), Some(&param_two_value));
-
-        assert_eq!(
-            actual.get_param(&feature_one, &param_one_key),
-            Some(&param_one_value)
-        );
-        assert_eq!(
-            actual.get_param(&feature_one, &param_two_key),
-            Some(&param_two_value)
-        );
-
-        let actual_params = actual.get_params(&feature_two).unwrap();
-        assert_eq!(actual_params.len(), 0);
-        assert_eq!(actual.get_param(&feature_two, &param_one_key), None);
-        assert_eq!(actual.get_param(&feature_two, &param_two_key), None);
     }
 }
