@@ -168,11 +168,6 @@ write_partition() {
   dd if="${dst}" ${dd_cache_arg} count=0 status=none
 }
 
-# Find root partition of the block device that we are installing from
-get_root_device() {
-  rootdev -s
-}
-
 # Check for optional payload image
 check_payload_image() {
   local partition_num_root_a
@@ -185,8 +180,8 @@ check_payload_image() {
     SRC=""
     ROOT=""
   elif [ -z "${FLAGS_payload_image}" ]; then
-    # Find root partition of the root block device
-    SRC=$(get_block_dev_from_partition_dev "$(get_root_device)")
+    # Find the root block device
+    SRC=$(rootdev -s -d)
     ROOT=""
   else
     if [ ! -e "${FLAGS_payload_image}" ]; then
