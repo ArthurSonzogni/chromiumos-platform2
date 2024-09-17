@@ -8,6 +8,7 @@
 
 mod command_line;
 mod logger;
+mod process_util;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
