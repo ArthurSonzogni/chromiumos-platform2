@@ -35,7 +35,7 @@ class ChromeosStartup {
   // Process the included USE flags.
   static void ParseFlags(Flags* flags);
   // Process the included USE flags and command line arguments.
-  static void ParseFlags(Flags* flags, int argc, char* argv[]);
+  static bool ParseFlags(Flags* flags, int argc, const char* argv[]);
 
   // Constructor for the class
   ChromeosStartup(std::unique_ptr<vpd::Vpd> vpd,

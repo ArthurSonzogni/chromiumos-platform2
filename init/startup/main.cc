@@ -39,7 +39,7 @@ constexpr char kChromeosStartupMetricsPath[] =
 
 }  // namespace
 
-int main(int argc, char* argv[]) {
+int main(int argc, const char* argv[]) {
   // Set up logging to a file to record any unexpected but non-fatal
   // behavior.
   logging::LoggingSettings settings;
@@ -72,7 +72,9 @@ int main(int argc, char* argv[]) {
   }
 
   startup::Flags flags;
-  startup::ChromeosStartup::ParseFlags(&flags, argc, argv);
+  if (!startup::ChromeosStartup::ParseFlags(&flags, argc, argv)) {
+    LOG(ERROR) << "Invalid usage, see --help.";
+  }
   // A decreasing number is more verbose and numbers below zero are OK.
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
 

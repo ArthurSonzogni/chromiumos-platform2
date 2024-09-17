@@ -14,12 +14,14 @@
 #include <utility>
 #include <vector>
 
+#include <base/command_line.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
 #include <libhwsec-foundation/tlcl_wrapper/mock_tlcl_wrapper.h>
@@ -635,6 +637,48 @@ TEST_F(TpmCleanupTest, TpmCleanupSuccess) {
   brillo::ProcessMock* process = platform_->mock_process();
   EXPECT_CALL(*process, Run()).Times(1);
   startup_->CleanupTpm();
+}
+
+class ParseFlagsTest : public ::testing::Test {
+ protected:
+  void SetArgsUp(int argc, const char* argv[]) {
+    // The base::CommandLine is initialized at the start of each test. So ensure
+    // we get a clean start since ParseCommandLineAndInitLogging() uses both
+    // brillo::FlagHelper and the underlying base::CommandLine.
+    if (base::CommandLine::InitializedForCurrentProcess())
+      base::CommandLine::Reset();
+    brillo::FlagHelper::ResetForTesting();
+    bool cl_initialized = base::CommandLine::Init(argc, argv);
+    ASSERT_TRUE(cl_initialized);
+    brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+        base::CommandLine::ForCurrentProcess());
+  }
+};
+
+TEST_F(ParseFlagsTest, Verbosity_0) {
+  startup::Flags flags;
+  const char* args[] = {"chromeos-startup"};
+  SetArgsUp(std::size(args), args);
+  EXPECT_TRUE(
+      startup::ChromeosStartup::ParseFlags(&flags, std::size(args), args));
+  EXPECT_EQ(flags.verbosity, 0);
+}
+
+TEST_F(ParseFlagsTest, Verbosity_1) {
+  startup::Flags flags;
+  const char* args_v[] = {"chromeos-startup", "--verbosity=1"};
+  SetArgsUp(std::size(args_v), args_v);
+  EXPECT_TRUE(
+      startup::ChromeosStartup::ParseFlags(&flags, std::size(args_v), args_v));
+  EXPECT_EQ(flags.verbosity, 1);
+}
+
+TEST_F(ParseFlagsTest, Verbosity_n) {
+  startup::Flags flags;
+  const char* args_v[] = {"chromeos-startup", "--verbosity=3"};
+  SetArgsUp(std::size(args_v), args_v);
+  EXPECT_FALSE(
+      startup::ChromeosStartup::ParseFlags(&flags, std::size(args_v), args_v));
 }
 
 class ConfigTest : public ::testing::Test {

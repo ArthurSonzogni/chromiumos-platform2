@@ -164,15 +164,23 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
 }
 
 // Process the arguments from included USE flags and command line arguments.
-void ChromeosStartup::ParseFlags(Flags* flags, int argc, char* argv[]) {
+bool ChromeosStartup::ParseFlags(Flags* flags, int argc, const char* argv[]) {
   ParseFlags(flags);
 
-  DEFINE_bool(v, false, "increase logging verbosity");
-  DEFINE_bool(vv, false, "increase logging verbosity by two levels");
-  brillo::FlagHelper::Init(argc, argv, "Tool run early during ChromeOS boot.");
+  DEFINE_uint32(verbosity, 0,
+                "logging verbosity: 0: warning, 1: info, 2: verbose");
+  bool result = brillo::FlagHelper::Init(
+      argc, argv, "Tool run early during ChromeOS boot.");
 
-  // It is ok that -v and -vv can be combined.
-  flags->verbosity = (FLAGS_v ? 1 : 0) + (FLAGS_vv ? 2 : 0);
+  // Exit early if parsing failed.
+  if (!result)
+    return result;
+
+  if (FLAGS_verbosity > 2) {
+    return false;
+  }
+  flags->verbosity = FLAGS_verbosity;
+  return true;
 }
 
 // We manage this base timestamp by hand. It isolates us from bad clocks on
