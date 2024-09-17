@@ -17,3 +17,6 @@ log = { version = "0.4", features = ["std"] }
 
 [features]
 lvm_stateful_partition = []
+
+[workspace]
+members = ["xtask"]
