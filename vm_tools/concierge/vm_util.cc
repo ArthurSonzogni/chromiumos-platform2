@@ -703,30 +703,15 @@ std::unique_ptr<CustomParametersForDev> MaybeLoadCustomParametersForDev(
   return std::make_unique<CustomParametersForDev>(data);
 }
 
-std::string SharedDataParam::to_string() const {
-  // We can relax this condition later if we want to serve users which do not
-  // set uid_map and gid_map, but today there is none.
-  CHECK_NE(uid_map, "");
-  CHECK_NE(gid_map, "");
-
-  struct CacheParameters {
-    std::string_view cache;
-    std::string_view timeout;
-    std::string_view writeback;
-    std::string_view negative_timeout;
-  };
-
+SharedDataParam::CacheParameters SharedDataParam::create_cache_parameters(
+    SharedDataParam::Cache enable_caches, bool ascii_casefold) const {
   static constexpr auto params_map =
       base::MakeFixedFlatMap<SharedDataParam::Cache, CacheParameters>(
-          {{SharedDataParam::Cache::kAuto,
-            {.cache = "auto", "1", "false", "1"}},
+          {{SharedDataParam::Cache::kAuto, {.cache = "auto", 1, false, 1}},
            {SharedDataParam::Cache::kAlways,
-            {.cache = "always", "3600", "true", "3600"}},
-           {SharedDataParam::Cache::kNever,
-            {.cache = "never", "1", "false", "1"}}});
-
+            {.cache = "always", 3600, true, 3600}},
+           {SharedDataParam::Cache::kNever, {.cache = "never", 1, false, 1}}});
   CacheParameters params = params_map.at(enable_caches);
-
   // Disable negative dentry cache when ascii_casefold is enabled because it
   // won't work for scenarios like the following:
   // 1. Lookup "foo", an non-existing file. Negative dentry is cached on the
@@ -735,8 +720,19 @@ std::string SharedDataParam::to_string() const {
   // 3. Lookup "foo". This needs to be successful on the casefold directory,
   //    but the lookup can fail due the negative cache created at 1.
   if (ascii_casefold) {
-    params.negative_timeout = "0";
+    params.negative_timeout = 0;
   }
+  return params;
+}
+
+std::string SharedDataParam::to_string() const {
+  // We can relax this condition later if we want to serve users which do not
+  // set uid_map and gid_map, but today there is none.
+  CHECK_NE(uid_map, "");
+  CHECK_NE(gid_map, "");
+
+  CacheParameters params =
+      create_cache_parameters(enable_caches, ascii_casefold);
 
   std::string result = base::StrCat({
       data_dir.value(),  //
@@ -750,15 +746,15 @@ std::string SharedDataParam::to_string() const {
       ":gidmap=",
       gid_map,  //
       ":timeout=",
-      params.timeout,                                //
+      base::NumberToString(params.timeout),          //
       ":rewrite-security-xattrs=",                   //
       rewrite_security_xattrs ? "true" : "false",    //
       ascii_casefold ? ":ascii_casefold=true" : "",  //
       ":writeback=",
-      params.writeback,                     //
+      params.writeback ? "true" : "false",  //
       posix_acl ? "" : ":posix_acl=false",  //
       ":negative_timeout=",
-      params.negative_timeout,  //
+      base::NumberToString(params.negative_timeout),  //
   });
 
   if (!privileged_quota_uids.empty()) {

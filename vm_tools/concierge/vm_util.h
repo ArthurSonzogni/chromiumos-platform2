@@ -260,6 +260,12 @@ struct SharedDataParam {
     kAlways,
     kNever,
   };
+  struct CacheParameters {
+    std::string cache;
+    uint32_t timeout;
+    bool writeback;
+    uint32_t negative_timeout;
+  };
   std::string to_string() const;
 
   base::FilePath data_dir;
@@ -271,6 +277,10 @@ struct SharedDataParam {
   bool ascii_casefold;
   bool posix_acl;
   std::vector<uid_t> privileged_quota_uids;
+
+ private:
+  CacheParameters create_cache_parameters(SharedDataParam::Cache enable_caches,
+                                          bool ascii_casefold) const;
 };
 
 // Creates the font-specific shared data parameter for crosvm.
