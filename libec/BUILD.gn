@@ -25,6 +25,7 @@ group("all") {
 
 default_pkg_deps = [
   "absl",
+  "fmap",
   "libbrillo",
   "libchrome",
   "libusb-1.0",
@@ -43,6 +44,7 @@ source_set("libec_common") {
     "device_event_command.cc",
     "display_soc_command.cc",
     "ec_command_factory.cc",
+    "ec_firmware.cc",
     "ec_panicinfo.cc",
     "ec_usb_endpoint.cc",
     "fingerprint/fp_context_command.cc",
@@ -117,6 +119,7 @@ install_config("install_libec_headers") {
     "ec_command.h",
     "ec_command_async.h",
     "ec_command_factory.h",
+    "ec_firmware.h",
     "ec_panicinfo.h",
     "ec_usb_endpoint.h",
     "flash_erase_command.h",
@@ -227,6 +230,7 @@ if (use.test) {
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
       "ec_command_test.cc",
+      "ec_firmware_test.cc",
       "ec_panicinfo_test.cc",
       "ec_usb_endpoint_test.cc",
       "fingerprint/fp_context_command_factory_test.cc",
