@@ -906,6 +906,7 @@ pub async fn service_main() -> Result<()> {
     };
 
     let (io_resource, conn) = connection::new_system_sync()?;
+    conn.set_signal_match_mode(true);
 
     // io_resource must be awaited to start receiving D-Bus message.
     let _handle = tokio::spawn(async {
