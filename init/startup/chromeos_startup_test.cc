@@ -681,6 +681,30 @@ TEST_F(ParseFlagsTest, Verbosity_n) {
       startup::ChromeosStartup::ParseFlags(&flags, std::size(args_v), args_v));
 }
 
+TEST_F(ParseFlagsTest, EncryptedStateful) {
+  startup::Flags flags;
+  const char* args_v[] = {
+      "chromeos-startup",
+      "--encrypted_stateful",
+  };
+  SetArgsUp(std::size(args_v), args_v);
+  EXPECT_TRUE(
+      startup::ChromeosStartup::ParseFlags(&flags, std::size(args_v), args_v));
+  EXPECT_EQ(flags.encstateful, USE_ENCRYPTED_STATEFUL);
+}
+
+TEST_F(ParseFlagsTest, NoEncryptedStateful) {
+  startup::Flags flags;
+  const char* args_v[] = {
+      "chromeos-startup",
+      "--noencrypted_stateful",
+  };
+  SetArgsUp(std::size(args_v), args_v);
+  EXPECT_TRUE(
+      startup::ChromeosStartup::ParseFlags(&flags, std::size(args_v), args_v));
+  EXPECT_FALSE(flags.encstateful);
+}
+
 class ConfigTest : public ::testing::Test {
  protected:
   void SetUp() override {

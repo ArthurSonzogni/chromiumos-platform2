@@ -169,6 +169,8 @@ bool ChromeosStartup::ParseFlags(Flags* flags, int argc, const char* argv[]) {
 
   DEFINE_uint32(verbosity, 0,
                 "logging verbosity: 0: warning, 1: info, 2: verbose");
+  DEFINE_bool(encrypted_stateful, true,
+              "--no-encrypted-stateful disable encrypted stateful");
   bool result = brillo::FlagHelper::Init(
       argc, argv, "Tool run early during ChromeOS boot.");
 
@@ -180,6 +182,7 @@ bool ChromeosStartup::ParseFlags(Flags* flags, int argc, const char* argv[]) {
     return false;
   }
   flags->verbosity = FLAGS_verbosity;
+  flags->encstateful &= FLAGS_encrypted_stateful;
   return true;
 }
 
