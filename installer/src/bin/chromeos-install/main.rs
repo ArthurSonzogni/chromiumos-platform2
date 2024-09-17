@@ -7,6 +7,7 @@
 //! https://github.com/google/deshell/blob/main/playbook.md
 
 mod command_line;
+mod disk_util;
 mod logger;
 mod process_util;
 
