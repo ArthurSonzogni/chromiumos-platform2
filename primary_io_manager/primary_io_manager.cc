@@ -4,6 +4,8 @@
 
 #include "primary_io_manager/primary_io_manager.h"
 
+#include <libudev.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -11,7 +13,6 @@
 
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
-#include <libudev.h>
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"

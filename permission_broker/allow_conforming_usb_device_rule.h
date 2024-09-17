@@ -5,15 +5,17 @@
 #ifndef PERMISSION_BROKER_ALLOW_CONFORMING_USB_DEVICE_RULE_H_
 #define PERMISSION_BROKER_ALLOW_CONFORMING_USB_DEVICE_RULE_H_
 
+#include <libudev.h>
+
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <libudev.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
+#include "featured/feature_library.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/usb_subsystem_udev_rule.h"
@@ -61,6 +63,10 @@ class AllowConformingUsbDeviceRule : public UsbSubsystemUdevRule {
  protected:
   // Devices that have been allowed via device policy.
   std::vector<policy::DevicePolicy::UsbDeviceId> usb_allow_list_;
+
+  // Pointer to the platform features interface, by default will be the global
+  // instance but may be overridden for testing.
+  feature::PlatformFeaturesInterface* platform_features_;
 
   org::chromium::PrimaryIoManagerProxyInterface* GetHandle();
 

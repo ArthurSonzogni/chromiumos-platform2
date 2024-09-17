@@ -16,13 +16,14 @@
 
 #include "base/check.h"
 #include "base/logging.h"
-#include "base/memory/scoped_refptr.h"
+#include "featured/feature_library.h"
 #include "permission_broker/allow_lists.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/udev_scopers.h"
 #include "permission_broker/usb_subsystem_udev_rule.h"
 #include "primary_io_manager/dbus-proxies.h"
+#include "primary_io_manager/featured_flag.h"
 
 namespace {
 
@@ -347,6 +348,7 @@ AllowConformingUsbDeviceRule::GetHandle() {
 AllowConformingUsbDeviceRule::AllowConformingUsbDeviceRule(
     std::unique_ptr<org::chromium::PrimaryIoManagerProxyInterface> handle)
     : UsbSubsystemUdevRule("AllowConformingUsbDeviceRule"),
+      platform_features_(feature::PlatformFeatures::Get()),
       policy_loaded_(false),
       running_on_chromebox_(GetFormFactor() == FormFactor::kChromebox ||
                             GetFormFactor() == FormFactor::kUnknown),
@@ -361,6 +363,17 @@ bool AllowConformingUsbDeviceRule::CheckIfDeviceIsPrimary(
 
   CHECK(primary_io_manager_handle_)
       << "No connection to primary_io_manager available";
+
+  if (!platform_features_) {
+    LOG(ERROR) << "Unable to get PlatformFeatures library, will not be able to "
+                  "disable via chrome flag.";
+  }
+  if (!platform_features_->IsEnabledBlocking(
+          primary_io_manager::kChromeboxUsbPassthroughRestrictions)) {
+    LOG(INFO) << "PrimaryIoManager is being disabled by "
+                 "chromebox-usb-passthrough-restrictions flag, exiting";
+    return is_primary;
+  }
 
   if (!primary_io_manager_handle_->IsPrimaryIoDevice(device_path, &is_primary,
                                                      &error)) {

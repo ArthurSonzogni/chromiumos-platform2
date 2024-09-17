@@ -13,6 +13,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "chromeos-config/libcros_config/cros_config.h"
+#include "featured/feature_library.h"
+#include "primary_io_manager/featured_flag.h"
 #include "primary_io_manager/primary_io_manager.h"
 
 namespace primary_io_manager {
@@ -31,7 +33,42 @@ class Daemon : public brillo::DBusServiceDaemon {
     manager_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
+  int OnInit() override {
+    // Parent method initializes the bus_ object.
+    int ret = brillo::DBusServiceDaemon::OnInit();
+
+    if (DisabledByFeatureFlag()) {
+      LOG(INFO) << "PrimaryIoManager is being disabled by "
+                   "chromebox-usb-passthrough-limit flag, exiting";
+      // Return an 'unexpected' code, that the upstart services considers
+      // non-restartable and doesn't mask other real errors. This value must be
+      // kept in sync with the normal exit value in the primary_io_manager.conf
+      // upstart file.
+      return 126;
+    }
+    return ret;
+  }
+
  private:
+  bool DisabledByFeatureFlag() {
+    if (!feature::PlatformFeatures::Initialize(bus_)) {
+      LOG(WARNING)
+          << "Unable to initialize PlatformFeatures frmaework, will not "
+             "be able to check for system flags";
+      return false;
+    }
+
+    auto features_lib = feature::PlatformFeatures::Get();
+    if (!features_lib) {
+      LOG(ERROR)
+          << "Unable to get PlatformFeatures library, will not be able to "
+             "disable via chrome flag.";
+      return false;
+    }
+
+    return !features_lib->IsEnabledBlocking(
+        primary_io_manager::kChromeboxUsbPassthroughRestrictions);
+  }
   std::unique_ptr<PrimaryIoManager> manager_;
   base::TimeDelta poll_interval_;
 };

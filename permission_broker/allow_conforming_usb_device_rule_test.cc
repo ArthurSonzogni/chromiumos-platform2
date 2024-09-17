@@ -4,9 +4,6 @@
 
 #include "permission_broker/allow_conforming_usb_device_rule.h"
 
-#include <base/logging.h>
-#include <brillo/errors/error.h>
-#include <gtest/gtest.h>
 #include <libudev.h>
 
 #include <cstring>
@@ -14,17 +11,24 @@
 #include <set>
 #include <string>
 
-#include "base/containers/contains.h"
-#include "base/strings/string_number_conversions.h"
-#include "gmock/gmock.h"
-#include "primary_io_manager/dbus-proxy-mocks.h"
+#include <base/logging.h>
+#include <brillo/errors/error.h>
+#include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
-#include <dbus/login_manager/dbus-constants.h>
+#include <featured/fake_platform_features.h>
+#include <gtest/gtest.h>
 #include <permission_broker/rule.h>
 #include <permission_broker/rule_test.h>
 #include <permission_broker/rule_utils.h>
 #include <permission_broker/udev_scopers.h>
+
+#include "base/containers/contains.h"
+#include "base/memory/scoped_refptr.h"
+#include "base/strings/string_number_conversions.h"
+#include "featured/feature_library.h"
+#include "gmock/gmock.h"
+#include "primary_io_manager/dbus-proxy-mocks.h"
 
 using testing::_;
 using testing::Invoke;
@@ -32,6 +36,9 @@ using testing::Return;
 
 using std::set;
 using std::string;
+
+constexpr char kChromeboxPermissiveRestrictionsFlag[] =
+    "CrOSLateBootChromeboxUsbPassthroughRestrictions";
 
 namespace permission_broker {
 
@@ -55,6 +62,16 @@ class AllowConformingUsbDeviceRuleMockPolicy
     usb_allow_list_ = allowed;
   }
 
+  void SetPlatformFeaturesForTesting(
+      feature::PlatformFeaturesInterface* platform_features) {
+    platform_features_ = platform_features;
+  }
+
+  void SetPlatformFeature(const std::string& feature, bool enabled) {
+    dynamic_cast<feature::FakePlatformFeatures*>(platform_features_)
+        ->SetEnabled(feature, enabled);
+  }
+
   MockHandlePtr GetMockHandle() {
     return static_cast<MockHandlePtr>(
         AllowConformingUsbDeviceRule::GetHandle());
@@ -76,6 +93,11 @@ class AllowConformingUsbDeviceRuleTest : public RuleTest {
 
  protected:
   void SetUp() override {
+    auto bus = base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options{});
+    platform_features_ = std::make_unique<feature::FakePlatformFeatures>(bus);
+    rule_.SetPlatformFeaturesForTesting(platform_features_.get());
+    rule_.SetPlatformFeature(kChromeboxPermissiveRestrictionsFlag, false);
+
     ScopedUdevPtr udev(udev_new());
     ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev.get()));
     udev_enumerate_add_match_subsystem(enumerate.get(), "usb");
@@ -174,6 +196,7 @@ class AllowConformingUsbDeviceRuleTest : public RuleTest {
   }
 
   AllowConformingUsbDeviceRuleMockPolicy rule_;
+  std::unique_ptr<feature::FakePlatformFeatures> platform_features_;
   set<string> external_devices_;
   set<string> internal_devices_;
   set<string> unknown_devices_;
