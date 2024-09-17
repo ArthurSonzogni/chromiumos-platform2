@@ -19,7 +19,7 @@
 #include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "swap_management/metrics.h"
-#include "swap_management/zram_writeback.h"
+#include "swap_management/suspend_history.h"
 
 namespace {
 feature::PlatformFeatures* GetPlatformFeatures() {
@@ -54,7 +54,7 @@ void HandleSignalConnected(const std::string& interface,
 }
 
 void OnSuspendImminent(const std::vector<uint8_t>& data) {
-  ZramWriteback::Get()->OnSuspendImminent();
+  SuspendHistory::Get()->OnSuspendImminent();
 }
 
 void OnSuspendDone(const std::vector<uint8_t>& data) {
@@ -62,7 +62,7 @@ void OnSuspendDone(const std::vector<uint8_t>& data) {
   if (!proto.ParseFromArray(data.data(), data.size())) {
     LOG(ERROR) << "Failed to parse suspend done signal";
   }
-  ZramWriteback::Get()->OnSuspendDone(
+  SuspendHistory::Get()->OnSuspendDone(
       base::Microseconds(proto.suspend_duration()));
 }
 

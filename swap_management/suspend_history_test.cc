@@ -8,6 +8,14 @@
 #include <gtest/gtest.h>
 
 namespace swap_management {
+class MockSuspendHistory : public swap_management::SuspendHistory {
+ public:
+  MockSuspendHistory() = default;
+  MockSuspendHistory& operator=(const MockSuspendHistory&) = delete;
+  MockSuspendHistory(const MockSuspendHistory&) = delete;
+
+  int GetBufferSize() { return suspend_history_.size(); }
+};
 
 class SuspendHistoryTest : public ::testing::Test {
  public:
@@ -21,16 +29,12 @@ class SuspendHistoryTest : public ::testing::Test {
     UpdateBoottimeForTesting(now_);
   }
 
-  int GetBufferSize(SuspendHistory& history) {
-    return history.suspend_history_.size();
-  }
-
  private:
   base::TimeTicks now_ = base::TimeTicks::Now();
 };
 
 TEST_F(SuspendHistoryTest, IsSuspend) {
-  SuspendHistory history;
+  MockSuspendHistory history;
   EXPECT_FALSE(history.IsSuspended());
   history.OnSuspendImminent();
   EXPECT_TRUE(history.IsSuspended());
@@ -39,7 +43,7 @@ TEST_F(SuspendHistoryTest, IsSuspend) {
 }
 
 TEST_F(SuspendHistoryTest, CalculateTotalSuspendedDuration) {
-  SuspendHistory history;
+  MockSuspendHistory history;
   history.SetMaxIdleDuration(base::Hours(25));
 
   history.OnSuspendImminent();
@@ -64,9 +68,9 @@ TEST_F(SuspendHistoryTest, CalculateTotalSuspendedDuration) {
 }
 
 TEST_F(SuspendHistoryTest, GCEntries) {
-  SuspendHistory history;
+  MockSuspendHistory history;
   history.SetMaxIdleDuration(base::Hours(25));
-  ASSERT_EQ(GetBufferSize(history), 1);
+  ASSERT_EQ(history.GetBufferSize(), 1);
 
   // awake for 26 hours.
   FastForwardBy(base::Hours(26));
@@ -74,7 +78,7 @@ TEST_F(SuspendHistoryTest, GCEntries) {
   FastForwardBy(base::Hours(1));
   history.OnSuspendDone(base::Hours(1));
   // Does not pop entry if there was only 1 entry.
-  EXPECT_EQ(GetBufferSize(history), 2);
+  EXPECT_EQ(history.GetBufferSize(), 2);
 
   // awake for 1 hour.
   FastForwardBy(base::Hours(1));
@@ -82,21 +86,21 @@ TEST_F(SuspendHistoryTest, GCEntries) {
   FastForwardBy(base::Hours(1));
   history.OnSuspendDone(base::Hours(1));
   // The first entry is GC-ed.
-  EXPECT_EQ(GetBufferSize(history), 2);
+  EXPECT_EQ(history.GetBufferSize(), 2);
 
   // awake for 2 hours.
   FastForwardBy(base::Hours(2));
   history.OnSuspendImminent();
   FastForwardBy(base::Hours(1));
   history.OnSuspendDone(base::Hours(1));
-  EXPECT_EQ(GetBufferSize(history), 3);
+  EXPECT_EQ(history.GetBufferSize(), 3);
 
   // awake for 10 hours.
   FastForwardBy(base::Hours(10));
   history.OnSuspendImminent();
   FastForwardBy(base::Hours(11));
   history.OnSuspendDone(base::Hours(11));
-  EXPECT_EQ(GetBufferSize(history), 4);
+  EXPECT_EQ(history.GetBufferSize(), 4);
 
   // awake for 20 hours.
   FastForwardBy(base::Hours(20));
@@ -104,7 +108,7 @@ TEST_F(SuspendHistoryTest, GCEntries) {
   FastForwardBy(base::Hours(12));
   history.OnSuspendDone(base::Hours(12));
   // The entries except last 2 entries are GC-ed.
-  EXPECT_EQ(GetBufferSize(history), 2);
+  EXPECT_EQ(history.GetBufferSize(), 2);
   EXPECT_EQ(history.CalculateTotalSuspendedDuration(base::Hours(25)),
             base::Hours(23));
 }

@@ -14,11 +14,9 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <base/memory/weak_ptr.h>
-#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 
-#include "swap_management/suspend_history.h"
 #include "swap_management/utils.h"
 
 namespace swap_management {
@@ -74,9 +72,6 @@ class ZramWriteback {
                                                  const std::string& value);
   absl::Status Start();
   void Stop();
-
-  void OnSuspendImminent();
-  void OnSuspendDone(base::TimeDelta suspend_duration);
 
  private:
   ZramWriteback();
@@ -148,9 +143,6 @@ class ZramWriteback {
   uint64_t zram_nr_pages_ = 0;
   bool is_currently_writing_back_ = false;
   base::Time last_writeback_ = base::Time::Min();
-  SuspendHistory suspend_history_ GUARDED_BY_CONTEXT(sequence_checker_);
-
-  SEQUENCE_CHECKER(sequence_checker_);
 
   base::WeakPtrFactory<ZramWriteback> weak_factory_{this};
 };

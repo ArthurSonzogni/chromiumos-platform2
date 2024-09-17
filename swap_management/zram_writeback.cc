@@ -21,6 +21,7 @@
 
 #include "base/time/time.h"
 #include "swap_management/metrics.h"
+#include "swap_management/suspend_history.h"
 #include "swap_management/zram_idle.h"
 #include "swap_management/zram_stats.h"
 
@@ -417,18 +418,8 @@ absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
   return Utils::Get()->WriteFile(filepath, *mode_str);
 }
 
-void ZramWriteback::OnSuspendImminent() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  suspend_history_.OnSuspendImminent();
-}
-
-void ZramWriteback::OnSuspendDone(base::TimeDelta suspend_duration) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  suspend_history_.OnSuspendDone(suspend_duration);
-}
-
 ZramWriteback::ZramWriteback() {
-  suspend_history_.SetMaxIdleDuration(params_.idle_max_time);
+  SuspendHistory::Get()->SetMaxIdleDuration(params_.idle_max_time);
 }
 
 ZramWriteback::~ZramWriteback() {
@@ -488,7 +479,7 @@ absl::Status ZramWriteback::SetZramWritebackConfigIfOverriden(
     if (!buf.ok())
       return buf.status();
     params_.idle_max_time = base::Seconds(*buf);
-    suspend_history_.SetMaxIdleDuration(params_.idle_max_time);
+    SuspendHistory::Get()->SetMaxIdleDuration(params_.idle_max_time);
   } else if (key == "max_pages_per_day") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
     if (!buf.ok())
@@ -562,8 +553,7 @@ absl::StatusOr<uint64_t> ZramWriteback::GetWritebackLimit() {
 }
 
 void ZramWriteback::PeriodicWriteback() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (params_.suspend_aware && suspend_history_.IsSuspended()) {
+  if (params_.suspend_aware && SuspendHistory::Get()->IsSuspended()) {
     // Disable writeback if device is suspended.
     return;
   }
@@ -620,7 +610,7 @@ void ZramWriteback::PeriodicWriteback() {
         base::TimeDelta idle_age = base::Seconds(*idle_age_sec);
         if (params_.suspend_aware) {
           base::TimeDelta suspend_adjustment =
-              suspend_history_.CalculateTotalSuspendedDuration(idle_age);
+              SuspendHistory::Get()->CalculateTotalSuspendedDuration(idle_age);
           idle_age += suspend_adjustment;
         }
         status = MarkIdle(idle_age.InSeconds());

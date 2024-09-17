@@ -61,7 +61,12 @@ void UpdateBoottimeForTesting(std::optional<base::TimeTicks> value) {
   g_current_boottime_for_testing_ = value;
 }
 
+SuspendHistory* SuspendHistory::Get() {
+  return *GetSingleton<SuspendHistory>();
+}
+
 SuspendHistory::SuspendHistory() {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
   base::TimeTicks now = GetCurrentBootTime();
   suspend_history_.push_front(Entry{
       now,
@@ -70,14 +75,17 @@ SuspendHistory::SuspendHistory() {
 }
 
 void SuspendHistory::SetMaxIdleDuration(base::TimeDelta max) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   max_idle_duration_ = max;
 }
 
 void SuspendHistory::OnSuspendImminent() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   is_suspended_ = true;
 }
 
 void SuspendHistory::OnSuspendDone(base::TimeDelta suspend_duration) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::TimeTicks now = GetCurrentBootTime();
   base::TimeDelta awake_duration =
       now - suspend_duration - suspend_history_.front().wake_up_at_;
@@ -102,11 +110,13 @@ void SuspendHistory::OnSuspendDone(base::TimeDelta suspend_duration) {
 }
 
 bool SuspendHistory::IsSuspended() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return is_suspended_;
 }
 
 base::TimeDelta SuspendHistory::CalculateTotalSuspendedDuration(
     base::TimeDelta target_idle_duration) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   base::TimeTicks now = GetCurrentBootTime();
   base::TimeTicks target_time = now - target_idle_duration;
   base::TimeDelta total_suspended_duration = base::TimeDelta();

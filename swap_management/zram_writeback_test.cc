@@ -13,6 +13,7 @@
 
 #include "base/time/time.h"
 #include "swap_management/mock_utils.h"
+#include "swap_management/suspend_history.h"
 
 using testing::_;
 using testing::DoAll;
@@ -365,7 +366,7 @@ TEST_F(ZramWritebackTest, DisabledWhileSuspended) {
               WriteFile(base::FilePath("/sys/block/zram0/writeback"), _))
       .Times(0);
 
-  mock_zram_writeback_->OnSuspendImminent();
+  SuspendHistory::Get()->OnSuspendImminent();
   mock_zram_writeback_->PeriodicWriteback();
 }
 
@@ -412,8 +413,8 @@ TEST_F(ZramWritebackTest, AdjustThresholdBySuspendTime) {
               WriteFile(base::FilePath("/sys/block/zram0/idle"), "75750"))
       .WillOnce(Return(absl::CancelledError()));
 
-  mock_zram_writeback_->OnSuspendImminent();
-  mock_zram_writeback_->OnSuspendDone(base::Hours(1));
+  SuspendHistory::Get()->OnSuspendImminent();
+  SuspendHistory::Get()->OnSuspendDone(base::Hours(1));
   mock_zram_writeback_->PeriodicWriteback();
 }
 

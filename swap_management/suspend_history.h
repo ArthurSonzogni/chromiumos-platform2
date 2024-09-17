@@ -9,7 +9,10 @@
 #include <optional>
 
 #include <base/containers/circular_deque.h>
+#include <base/sequence_checker.h>
 #include <base/time/time.h>
+
+#include "swap_management/utils.h"
 
 namespace swap_management {
 
@@ -51,12 +54,12 @@ void UpdateBoottimeForTesting(std::optional<base::TimeTicks>);
 // hour. Traversing 1.5MB every hour is an acceptable cost.
 //
 // This is not thread safe.
-class SuspendHistory final {
+class SuspendHistory {
  public:
-  SuspendHistory();
   SuspendHistory(const SuspendHistory&) = delete;
   SuspendHistory& operator=(const SuspendHistory&) = delete;
-  ~SuspendHistory() = default;
+
+  static SuspendHistory* Get();
 
   void SetMaxIdleDuration(base::TimeDelta max);
 
@@ -70,7 +73,12 @@ class SuspendHistory final {
       base::TimeDelta target_idle_duration);
 
  private:
-  friend class SuspendHistoryTest;
+  SuspendHistory();
+  ~SuspendHistory() = default;
+
+  friend class MockSuspendHistory;
+
+  friend SuspendHistory** GetSingleton<SuspendHistory>();
 
   struct Entry {
     base::TimeTicks wake_up_at_;
@@ -80,6 +88,8 @@ class SuspendHistory final {
   bool is_suspended_ = false;
   base::TimeDelta total_awake_duration_;
   base::TimeDelta max_idle_duration_;
+
+  SEQUENCE_CHECKER(sequence_checker_);
 };
 
 }  // namespace swap_management
