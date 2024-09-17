@@ -127,22 +127,32 @@ void ModemTracker::UpdateModemProxySingleDevice(dbus::ObjectPath device_path) {
       base::BindRepeating(&ModemTracker::OnModemPropertyChanged,
                           weak_ptr_factory_.GetWeakPtr(), device_path));
 
-  std::string device_id;
-  if (properties[shill::kDeviceIdProperty].GetValue(&device_id)) {
-    // Get current power state of the new modem object
-    if (modem_proxy_ptr->GetProperties()->power_state.GetAndBlock()) {
-      on_modem_power_state_change_callback_.Run(
-          device_id,
-          static_cast<Modem::PowerState>(modem_proxy_ptr->power_state()));
-    }
-    // Get current modem state of the new modem object
-    if (modem_proxy_ptr->GetProperties()->state.GetAndBlock()) {
-      on_modem_state_change_callback_.Run(
-          device_id, static_cast<Modem::State>(modem_proxy_ptr->state()));
-    }
-  }
   // Save the updated modem proxy
   modem_proxys_[device_path] = std::move(modem_proxy_ptr);
+
+  std::string device_id;
+  std::string equipment_id;
+  if (!properties[shill::kDeviceIdProperty].GetValue(&device_id) ||
+      !properties[shill::kEquipmentIdProperty].GetValue(&equipment_id)) {
+    LOG(ERROR) << "Modem " << device_path.value()
+               << " has no device ID or no equipment ID";
+    return;
+  }
+
+  on_modem_device_seen_callback_.Run(device_id, equipment_id);
+
+  // Get current power state of the new modem object
+  if (modem_proxys_[device_path]->GetProperties()->power_state.GetAndBlock()) {
+    on_modem_power_state_change_callback_.Run(
+        device_id, static_cast<Modem::PowerState>(
+                       modem_proxys_[device_path]->power_state()));
+  }
+  // Get current modem state of the new modem object
+  if (modem_proxys_[device_path]->GetProperties()->state.GetAndBlock()) {
+    on_modem_state_change_callback_.Run(
+        device_id,
+        static_cast<Modem::State>(modem_proxys_[device_path]->state()));
+  }
 }
 
 void ModemTracker::UpdateModemProxyMultiDevice(
