@@ -156,3 +156,55 @@ TEST_F(OptionDescriptorTest, Resolution) {
   EXPECT_TRUE(resolution_found)
       << "Required option missing for name: resolution";
 }
+
+TEST_F(OptionDescriptorTest, ColorMode) {
+  bool color_mode_found = false;
+
+  // Index 0 is the well-known option 0, which we skip here.
+  SANE_Int i = 1;
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, i);
+  while (descriptor) {
+    if (!descriptor->name ||
+        strcmp(descriptor->name, SANE_NAME_SCAN_MODE) != 0) {
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+      continue;
+    }
+
+    EXPECT_EQ(descriptor->type, SANE_TYPE_STRING)
+        << "Color mode option does not have type: string";
+
+    EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_STRING_LIST)
+        << "Color mode option does not have constraint type: string list";
+
+    bool supported_color_mode_found = false;
+    const std::set<std::string> supported_color_modes = {"Lineart", "Gray",
+                                                         "Color"};
+    lorgnette::SaneOption option(*descriptor, i);
+    auto maybe_values = option.GetValidStringValues();
+    ASSERT_TRUE(maybe_values) << "Unable to parse color mode option";
+
+    auto modes = maybe_values.value();
+    std::cout << "Do the reported color modes (";
+    for (int i = 0; i < modes.size(); i++) {
+      if (supported_color_modes.contains(modes[i])) {
+        supported_color_mode_found = true;
+      }
+
+      if (i != 0) {
+        std::cout << ", ";
+      }
+      std::cout << modes[i];
+    }
+    std::cout << ") look correct (y/n):" << std::endl;
+    EXPECT_TRUE(_y_or_no());
+
+    EXPECT_TRUE(supported_color_mode_found) << "No supported color modes found";
+
+    color_mode_found = true;
+    break;
+  }
+
+  EXPECT_TRUE(color_mode_found) << "Required option missing for name: mode";
+}
