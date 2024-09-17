@@ -208,3 +208,41 @@ TEST_F(OptionDescriptorTest, ColorMode) {
 
   EXPECT_TRUE(color_mode_found) << "Required option missing for name: mode";
 }
+
+TEST_F(OptionDescriptorTest, ColorDepth) {
+  std::cout << "Does the scanner advertise multiple depths for a given color "
+               "mode? (y/n):"
+            << std::endl;
+  if (!_y_or_no()) {
+    GTEST_SKIP();
+  }
+
+  bool color_depth_found = false;
+
+  // Index 0 is the well-known option 0, which we skip here.
+  SANE_Int i = 1;
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, i);
+  while (descriptor) {
+    if (!descriptor->name ||
+        strcmp(descriptor->name, SANE_NAME_BIT_DEPTH) != 0) {
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+      continue;
+    }
+
+    EXPECT_EQ(descriptor->unit, SANE_UNIT_BIT)
+        << "Color depth option does not have unit: bit";
+
+    EXPECT_EQ(descriptor->type, SANE_TYPE_INT)
+        << "Color depth option does not have type: int";
+
+    EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_WORD_LIST)
+        << "Color depth option does not have constraint type: word list";
+
+    color_depth_found = true;
+    break;
+  }
+
+  EXPECT_TRUE(color_depth_found) << "Required option missing for name: depth";
+}
