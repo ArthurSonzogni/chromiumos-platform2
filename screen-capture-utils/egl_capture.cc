@@ -5,23 +5,22 @@
 #include "screen-capture-utils/egl_capture.h"
 
 #include <sys/mman.h>
-
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <EGL/eglplatform.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-
-#include <base/check.h>
-#include <base/check_op.h>
-#include <base/files/scoped_file.h>
-#include <base/logging.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <base/check.h>
+#include <base/check_op.h>
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <EGL/eglplatform.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
 #include "base/strings/string_split.h"
 #include "screen-capture-utils/crtc.h"

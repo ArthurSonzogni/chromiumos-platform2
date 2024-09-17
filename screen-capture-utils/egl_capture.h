@@ -5,12 +5,11 @@
 #ifndef SCREEN_CAPTURE_UTILS_EGL_CAPTURE_H_
 #define SCREEN_CAPTURE_UTILS_EGL_CAPTURE_H_
 
+#include <gbm.h>
 #include <stdint.h>
 
 #include <memory>
 #include <vector>
-
-#include <gbm.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>

@@ -5,13 +5,14 @@
 #ifndef SCREEN_CAPTURE_UTILS_CRTC_H_
 #define SCREEN_CAPTURE_UTILS_CRTC_H_
 
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/files/file.h>
-#include <xf86drm.h>
-#include <xf86drmMode.h>
 
 #include "screen-capture-utils/ptr_util.h"
 
