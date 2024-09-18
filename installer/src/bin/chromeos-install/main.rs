@@ -13,6 +13,7 @@ use anyhow::{bail, Context, Result};
 use clap::Parser;
 use log::{debug, info};
 use nix::unistd;
+use std::path::Path;
 use std::process::Command;
 
 use command_line::Args;
@@ -27,6 +28,13 @@ fn main() -> Result<()> {
     // Fail if not running as root.
     if !unistd::Uid::effective().is_root() {
         bail!("chromeos-install must be run as root");
+    }
+
+    // If using a payload image, make sure it exists.
+    if let Some(payload_image) = &args.payload_image {
+        if !Path::new(&payload_image).exists() {
+            bail!("No payload image found at {}", payload_image);
+        }
     }
 
     let mut install_cmd = Command::new("/usr/sbin/chromeos-install.sh");

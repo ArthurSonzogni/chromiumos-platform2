@@ -182,10 +182,6 @@ check_payload_image() {
     SRC=$(rootdev -s -d)
     ROOT=""
   else
-    if [ ! -e "${FLAGS_payload_image}" ]; then
-      die "Error: No payload image found at ${FLAGS_payload_image}"
-    fi
-
     # Set a loop device for the payload image and one for each of its
     # partitions.
     SRC="$("${LOSETUP_PATH}" -f "${FLAGS_payload_image}" --show --partscan)"
