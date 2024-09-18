@@ -595,6 +595,11 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("enable_dsp_hotword"))
     builder->AddFeatureEnableOverride("EnableDspHotword");
 
+  // TODO(http://b/367799751): Remove when the issue gets fixed.
+  if (builder->UseFlagIsSet("ignore_holdback_experiments")) {
+    builder->AddFeatureEnableOverride("IgnoreM129Holdback");
+  }
+
   SetUpDelayOnActiveCameraClientChangeForNotificationFlag(builder, cros_config);
   SetUpPowerButtonPositionFlag(builder, cros_config);
   SetUpSideVolumeButtonPositionFlag(builder, cros_config);
