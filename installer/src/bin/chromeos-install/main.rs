@@ -8,6 +8,7 @@
 
 mod command_line;
 mod disk_util;
+mod install_source;
 mod logger;
 mod process_util;
 
@@ -17,6 +18,7 @@ use nix::unistd;
 use std::process::Command;
 
 use command_line::Args;
+use install_source::InstallSource;
 use process_util::log_and_run_command;
 
 fn main() -> Result<()> {
@@ -38,8 +40,13 @@ fn main() -> Result<()> {
         }
     }
 
+    let source = InstallSource::from_args(args.skip_rootfs, args.payload_image.clone())?;
+
     let mut install_cmd = Command::new("/usr/sbin/chromeos-install.sh");
+    // Convert most of our args into environment variables.
     install_cmd.envs(args.to_env());
+    // The source supplies some env vars like SRC and ROOT.
+    install_cmd.envs(source.to_env());
 
     log_and_run_command(install_cmd).map_err(Error::msg)
 }

@@ -33,6 +33,9 @@ fi
 # FLAGS_lvm_stateful
 # FLAGS_minimal_copy
 # FLAGS_skip_gpt_creation
+# SRC: The block device we're installing from, e.g. '/dev/sda' or '/dev/loop1'
+# ROOT: Location of the root filesystem (i.e. ROOT-A). If installing the
+#       currently-running rootfs, this is set to an empty string.
 
 # To keep changes minimal, temporarily define these boolean constants which were
 # previously supplied by shflags.
@@ -174,15 +177,7 @@ check_payload_image() {
   local root_block
   local state_block
 
-  if [ "${FLAGS_skip_rootfs:?}" -eq "${FLAGS_TRUE}" ]; then
-    # Usually this is used for partition setup.
-    SRC=""
-    ROOT=""
-  elif [ -z "${FLAGS_payload_image}" ]; then
-    # Find the root block device
-    SRC=$(rootdev -s -d)
-    ROOT=""
-  else
+  if [ -n "${FLAGS_payload_image}" ]; then
     # Set a loop device for the payload image and one for each of its
     # partitions.
     SRC="$("${LOSETUP_PATH}" -f "${FLAGS_payload_image}" --show --partscan)"
