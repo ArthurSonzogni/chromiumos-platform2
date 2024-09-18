@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/strings/string_util.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <sane/sane.h>
 #include <sane/saneopts.h>
@@ -245,4 +246,46 @@ TEST_F(OptionDescriptorTest, ColorDepth) {
   }
 
   EXPECT_TRUE(color_depth_found) << "Required option missing for name: depth";
+}
+
+TEST_F(OptionDescriptorTest, ADFJustification) {
+  std::cout << "Does the scanner have an ADF? (y/n):" << std::endl;
+  if (!_y_or_no()) {
+    GTEST_SKIP();
+  }
+
+  bool adf_justification_found = false;
+
+  // Index 0 is the well-known option 0, which we skip here.
+  SANE_Int i = 1;
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, i);
+  while (descriptor) {
+    if (!descriptor->name ||
+        strcmp(descriptor->name, "adf-justification-x") != 0) {
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+      continue;
+    }
+
+    EXPECT_EQ(descriptor->type, SANE_TYPE_STRING)
+        << "ADF justification option does not have type: string";
+
+    EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_STRING_LIST)
+        << "ADF justification option does not have constraint type: string "
+           "list";
+
+    lorgnette::SaneOption option(*descriptor, i);
+    auto maybe_values = option.GetValidStringValues();
+    ASSERT_TRUE(maybe_values) << "Unable to parse ADF justification option";
+    EXPECT_THAT(maybe_values.value(), ::testing::UnorderedElementsAreArray(
+                                          {"left", "center", "right"}));
+
+    adf_justification_found = true;
+    break;
+  }
+
+  if (!adf_justification_found) {
+    GTEST_SKIP();
+  }
 }
