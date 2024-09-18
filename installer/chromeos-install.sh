@@ -56,8 +56,6 @@ RECOVERY_KEY_VERSION=
 # Helpful constants.
 HARDWARE_DIAGNOSTICS_PATH=/tmp/hardware_diagnostics.log
 TMPMNT=/tmp/install-mount-point
-# Partition numbers that have assumptions about them. This list should be kept
-# to a minimal. Check copy_partition for most special casing.
 
 die() {
   echo "$*" >&2
