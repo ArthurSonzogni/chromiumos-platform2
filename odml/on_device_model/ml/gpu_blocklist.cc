@@ -6,7 +6,7 @@
 
 namespace ml {
 
-bool GpuBlocklist::IsGpuBlocked(const ChromeMLAPI& api) const {
+bool IsGpuBlocked(const ChromeMLAPI& api) {
   // We wouldn't block GPU on ChromeOS devices.
   return false;
 }

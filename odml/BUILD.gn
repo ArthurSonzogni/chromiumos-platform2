@@ -96,6 +96,8 @@ source_set("mojo_bindings_lib") {
     "mojom/read_only_file_mojom_traits.h",
     "mojom/uuid_mojom_traits.cc",
     "mojom/uuid_mojom_traits.h",
+    "on_device_model/ml/chrome_ml_types_traits.cc",
+    "on_device_model/ml/chrome_ml_types_traits.h",
   ]
   public_deps = [ ":mojo_bindings" ]
   configs += [ ":target_defaults" ]
@@ -132,10 +134,9 @@ source_set("odml") {
     "on_device_model/ml/chrome_ml.cc",
     "on_device_model/ml/gpu_blocklist.cc",
     "on_device_model/ml/on_device_model_executor.cc",
-    "on_device_model/ml/on_device_model_internal.cc",
+    "on_device_model/ml/performance_class.cc",
     "on_device_model/ml/session_accessor.cc",
     "on_device_model/ml/ts_model.cc",
-    "on_device_model/ml/utils.cc",
     "on_device_model/on_device_model_service.cc",
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
@@ -204,7 +205,7 @@ if (use.test) {
     sources = [
       "embedding_model/embedding_model_service_test.cc",
       "on_device_model/fake/fake_chrome_ml_api.cc",
-      "on_device_model/on_device_model_fake.cc",
+      "on_device_model/fake/on_device_model_fake.cc",
       "on_device_model/on_device_model_service_test.cc",
       "on_device_model/public/cpp/test_support/test_response_holder.cc",
     ]
@@ -228,7 +229,7 @@ if (use.test) {
       "coral/service_test.cc",
       "coral/title_generation/engine_test.cc",
       "on_device_model/fake/fake_chrome_ml_api.cc",
-      "on_device_model/on_device_model_fake.cc",
+      "on_device_model/fake/on_device_model_fake.cc",
     ]
     configs += [
       "//common-mk:test",

@@ -9,6 +9,7 @@
 #include <functional>
 #include <string>
 
+#include "odml/on_device_model/ml/chrome_ml_types.h"
 #include "odml/on_device_model/ml/forward_declare.h"
 
 // This header defines the public interface to the ChromeML shared library.
@@ -192,6 +193,9 @@ struct ChromeMLExecuteOptions {
   uint32_t* adaptation_id;
   uint32_t top_k;
   float temperature;
+
+  const ml::InputPiece* input;
+  size_t input_size;
 };
 
 // Performance data filled out by GetEstimatedPerformance().
@@ -321,6 +325,11 @@ struct ChromeMLAPI {
   void (*SessionSizeInTokens)(ChromeMLSession session,
                               const std::string& text,
                               const ChromeMLSizeInTokensFn& fn);
+  void (*SessionSizeInTokensInputPiece)(ChromeMLSession session,
+                                        ChromeMLModel model,
+                                        const ml::InputPiece* input,
+                                        size_t input_size,
+                                        const ChromeMLSizeInTokensFn& fn);
 
   // Scores the first token of the given text.
   void (*SessionScore)(ChromeMLSession session,
@@ -345,11 +354,10 @@ struct ChromeMLAPI {
   // `model_blob` should contain a binary blob of a TFLite model (read from
   // .tflite file). `model_blob_size` is the size in bytes of `model_blob`. On
   // failure, will return `0`.
-  ChromeMLInferenceEngine (*CreateInferenceEngine)(
-      WGPUAdapterProperties adapter_properties,
-      WGPUDevice device,
-      const char* model_blob,
-      size_t model_blob_size);
+  ChromeMLInferenceEngine (*CreateInferenceEngine)(WGPUAdapterInfo adapter_info,
+                                                   WGPUDevice device,
+                                                   const char* model_blob,
+                                                   size_t model_blob_size);
 
   // Runs inference on `source`, producing results into `destination`. `engine`
   // must have been obtained from `CreateInferenceEngine()` call.

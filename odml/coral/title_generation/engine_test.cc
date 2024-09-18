@@ -20,8 +20,8 @@
 #include "odml/coral/test_util.h"
 #include "odml/mojom/coral_service.mojom-shared.h"
 #include "odml/mojom/coral_service.mojom.h"
+#include "odml/on_device_model/fake/on_device_model_fake.h"
 #include "odml/on_device_model/features.h"
-#include "odml/on_device_model/on_device_model_fake.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
@@ -37,11 +37,9 @@ constexpr char kFakeModelName[] = "5f30b8ca-2447-445e-9716-a6da073fae51";
 class TitleGenerationEngineTest : public testing::Test {
  public:
   TitleGenerationEngineTest()
-      : model_service_(raw_ref(metrics_),
-                       raw_ref(shim_loader_),
-                       on_device_model::GetOnDeviceModelFakeImpl(
-                           raw_ref(metrics_), raw_ref(shim_loader_))) {}
+      : model_service_(raw_ref(metrics_), raw_ref(shim_loader_)) {}
   void SetUp() override {
+    fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
     // Set DlcClient to return paths from /build.
     auto dlc_path = base::FilePath("testdata").Append(kFakeModelName);

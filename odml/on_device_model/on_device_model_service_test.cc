@@ -26,8 +26,9 @@
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/on_device_model/fake/on_device_model_fake.h"
 #include "odml/on_device_model/features.h"
-#include "odml/on_device_model/on_device_model_fake.h"
+#include "odml/on_device_model/ml/chrome_ml_types.h"
 #include "odml/on_device_model/public/cpp/test_support/test_response_holder.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
@@ -98,10 +99,8 @@ class FakeFile {
 class OnDeviceModelServiceTest : public testing::Test {
  public:
   OnDeviceModelServiceTest()
-      : service_impl_(raw_ref(metrics_),
-                      raw_ref(shim_loader_),
-                      GetOnDeviceModelFakeImpl(raw_ref(metrics_),
-                                               raw_ref(shim_loader_))) {
+      : service_impl_(raw_ref(metrics_), raw_ref(shim_loader_)) {
+    fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
     service_impl_.AddReceiver(service_.BindNewPipeAndPassReceiver());
   }
@@ -161,9 +160,15 @@ class OnDeviceModelServiceTest : public testing::Test {
   }
 
   mojom::InputOptionsPtr MakeInput(const std::string& input) {
-    return mojom::InputOptions::New(input, std::nullopt, std::nullopt, false,
-                                    std::nullopt, std::nullopt, std::nullopt,
-                                    std::nullopt);
+    auto options = mojom::InputOptions::New();
+    options->text = input;
+    return options;
+  }
+
+  mojom::InputOptionsPtr MakeInput(std::vector<ml::InputPiece> input) {
+    auto options = mojom::InputOptions::New();
+    options->input = mojom::Input::New(std::move(input));
+    return options;
   }
 
   std::vector<std::string> GetResponses(mojom::OnDeviceModel& model,
@@ -631,6 +636,39 @@ TEST_F(OnDeviceModelServiceTest, ValidateSafetyResultNoFunction) {
                                     run_loop.Quit();
                                   }));
   run_loop.Run();
+}
+
+TEST_F(OnDeviceModelServiceTest, AddContextWithTokens) {
+  auto model = LoadModel();
+
+  TestResponseHolder response;
+  mojo::Remote<mojom::Session> session;
+  model->StartSession(session.BindNewPipeAndPassReceiver());
+  {
+    std::vector<ml::InputPiece> pieces;
+    pieces.push_back(ml::Token::kSystem);
+    pieces.push_back("hi");
+    pieces.push_back(ml::Token::kEnd);
+    session->AddContext(MakeInput(std::move(pieces)), {});
+  }
+  {
+    std::vector<ml::InputPiece> pieces;
+    pieces.push_back(ml::Token::kModel);
+    pieces.push_back("hello");
+    pieces.push_back(ml::Token::kEnd);
+    session->AddContext(MakeInput(std::move(pieces)), {});
+  }
+  {
+    std::vector<ml::InputPiece> pieces;
+    pieces.push_back(ml::Token::kUser);
+    pieces.push_back("bye");
+    session->Execute(MakeInput(std::move(pieces)), response.BindRemote());
+  }
+  response.WaitForCompletion();
+
+  EXPECT_THAT(response.responses(), ElementsAre("Context: System: hi End.\n",
+                                                "Context: Model: hello End.\n",
+                                                "Input: User: bye\n"));
 }
 
 }  // namespace

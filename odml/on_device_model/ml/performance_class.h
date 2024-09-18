@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ODML_ON_DEVICE_MODEL_ML_UTILS_H_
-#define ODML_ON_DEVICE_MODEL_ML_UTILS_H_
+#ifndef ODML_ON_DEVICE_MODEL_ML_PERFORMANCE_CLASS_H_
+#define ODML_ON_DEVICE_MODEL_ML_PERFORMANCE_CLASS_H_
 
 #include <base/memory/raw_ref.h>
 #include <metrics/metrics_library.h>
@@ -20,4 +20,4 @@ on_device_model::mojom::PerformanceClass GetEstimatedPerformanceClass(
 
 }  // namespace ml
 
-#endif  // ODML_ON_DEVICE_MODEL_ML_UTILS_H_
+#endif  // ODML_ON_DEVICE_MODEL_ML_PERFORMANCE_CLASS_H_

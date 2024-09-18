@@ -14,6 +14,23 @@
 #include "odml/on_device_model/ml/chrome_ml_api.h"
 
 namespace fake_ml {
+namespace {
+std::string PieceToString(const ml::InputPiece& piece) {
+  if (std::holds_alternative<std::string>(piece)) {
+    return std::get<std::string>(piece);
+  }
+  switch (std::get<ml::Token>(piece)) {
+    case ml::Token::kSystem:
+      return "System: ";
+    case ml::Token::kModel:
+      return "Model: ";
+    case ml::Token::kUser:
+      return "User: ";
+    case ml::Token::kEnd:
+      return " End.";
+  }
+}
+}  // namespace
 
 void InitDawnProcs(const DawnProcTable& procs) {}
 
@@ -122,6 +139,10 @@ bool SessionExecuteModel(ChromeMLSession session,
   if (options->max_tokens && options->max_tokens < text.size()) {
     text.resize(options->max_tokens);
   }
+  for (size_t i = 0; i < options->input_size; i++) {
+    // SAFETY: `options->input_size` describes how big `options->input` is.
+    text += UNSAFE_BUFFERS(PieceToString(options->input[i]));
+  }
   if (!text.empty()) {
     instance->context_.push_back(text);
   }
@@ -161,9 +182,16 @@ bool SessionExecuteModel(ChromeMLSession session,
   return true;
 }
 
-void SessionSizeInTokens(ChromeMLSession session,
-                         const std::string& text,
-                         const ChromeMLSizeInTokensFn& fn) {
+void SessionSizeInTokensInputPiece(ChromeMLSession session,
+                                   ChromeMLModel model,
+                                   const ml::InputPiece* input,
+                                   size_t input_size,
+                                   const ChromeMLSizeInTokensFn& fn) {
+  std::string text;
+  for (size_t i = 0; i < input_size; i++) {
+    // SAFETY: `input_size` describes how big `input` is.
+    text += UNSAFE_BUFFERS(PieceToString(input[i]));
+  }
   fn(text.size());
 }
 
@@ -215,7 +243,7 @@ const ChromeMLAPI g_api = {
 
     .SessionCreateModel = &SessionCreateModel,
     .SessionExecuteModel = &SessionExecuteModel,
-    .SessionSizeInTokens = &SessionSizeInTokens,
+    .SessionSizeInTokensInputPiece = &SessionSizeInTokensInputPiece,
     .SessionScore = &SessionScore,
     .CreateSession = &CreateSession,
     .CloneSession = &CloneSession,

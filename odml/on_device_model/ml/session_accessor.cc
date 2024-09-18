@@ -5,6 +5,7 @@
 #include "odml/on_device_model/ml/session_accessor.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/compiler_specific.h>
 
@@ -96,12 +97,12 @@ void SessionAccessor::Score(const std::string& text, ChromeMLScoreFn score_fn) {
                      text, std::move(score_fn)));
 }
 
-void SessionAccessor::SizeInTokens(const std::string& text,
+void SessionAccessor::SizeInTokens(on_device_model::mojom::InputPtr input,
                                    ChromeMLSizeInTokensFn size_in_tokens_fn) {
-  task_runner_->PostTask(FROM_HERE,
-                         base::BindOnce(&SessionAccessor::SizeInTokensInternal,
-                                        base::Unretained(this), text,
-                                        std::move(size_in_tokens_fn)));
+  task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&SessionAccessor::SizeInTokensInternal,
+                                base::Unretained(this), std::move(input),
+                                std::move(size_in_tokens_fn)));
 }
 
 DISABLE_CFI_DLSYM
@@ -148,6 +149,10 @@ void SessionAccessor::ExecuteInternal(
       .top_k = input->top_k.value_or(1),
       .temperature = input->temperature.value_or(0),
   };
+  if (input->input) {
+    options.input = input->input->pieces.data();
+    options.input_size = input->input->pieces.size();
+  }
   if (context_saved_fn) {
     options.context_saved_fn = &context_saved_fn;
   }
@@ -167,9 +172,12 @@ void SessionAccessor::ScoreInternal(const std::string& text,
 
 DISABLE_CFI_DLSYM
 void SessionAccessor::SizeInTokensInternal(
-    const std::string& text, ChromeMLSizeInTokensFn size_in_tokens_fn) {
+    on_device_model::mojom::InputPtr input,
+    ChromeMLSizeInTokensFn size_in_tokens_fn) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
-  chrome_ml_->api().SessionSizeInTokens(session_, text, size_in_tokens_fn);
+  chrome_ml_->api().SessionSizeInTokensInputPiece(
+      session_, model_, input->pieces.data(), input->pieces.size(),
+      size_in_tokens_fn);
 }
 
 }  // namespace ml

@@ -25,21 +25,16 @@
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/on_device_model/ml/chrome_ml.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/utils/odml_shim_loader.h"
-
-namespace ml {
-class OnDeviceModelInternalImpl;
-}
 
 namespace on_device_model {
 
 class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
  public:
-  OnDeviceModelService(
-      raw_ref<MetricsLibraryInterface> metrics,
-      raw_ref<odml::OdmlShimLoader> shim_loader,
-      std::unique_ptr<const ml::OnDeviceModelInternalImpl> impl);
+  OnDeviceModelService(raw_ref<MetricsLibraryInterface> metrics,
+                       raw_ref<odml::OdmlShimLoader> shim_loader);
   ~OnDeviceModelService() override;
 
   OnDeviceModelService(const OnDeviceModelService&) = delete;
@@ -99,7 +94,6 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
 
   const raw_ref<MetricsLibraryInterface> metrics_;
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
-  std::unique_ptr<const ml::OnDeviceModelInternalImpl> impl_;
   mojo::ReceiverSet<mojom::OnDeviceModelPlatformService> receiver_set_;
   std::set<std::unique_ptr<mojom::OnDeviceModel>, base::UniquePtrComparator>
       models_;

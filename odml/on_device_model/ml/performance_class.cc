@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "odml/on_device_model/ml/utils.h"
+#include "odml/on_device_model/ml/performance_class.h"
 
 #include <algorithm>
 #include <string>

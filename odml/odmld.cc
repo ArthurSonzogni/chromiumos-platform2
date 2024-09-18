@@ -28,7 +28,6 @@
 #include "odml/coral/service.h"
 #include "odml/embedding_model/embedding_model_service.h"
 #include "odml/mantis/service.h"
-#include "odml/on_device_model/ml/on_device_model_internal.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
 
@@ -41,11 +40,7 @@ class OnDeviceModelServiceProviderImpl
       raw_ref<MetricsLibrary> metrics,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this),
-        service_impl_(
-            metrics,
-            raw_ref(shim_loader_),
-            ml::GetOnDeviceModelInternalImpl(metrics, raw_ref(shim_loader_))) {
+      : receiver_(this), service_impl_(metrics, raw_ref(shim_loader_)) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());

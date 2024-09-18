@@ -9,13 +9,8 @@
 
 namespace ml {
 
-// A policy controlling what kinds of GPUs are allowed to run the service.
-struct GpuBlocklist final {
-  bool skip_for_testing = false;
-
-  // Checks if the GPU is on the blocklist.
-  bool IsGpuBlocked(const ChromeMLAPI& api) const;
-};
+// Checks if the GPU is on the blocklist.
+bool IsGpuBlocked(const ChromeMLAPI& api);
 
 }  // namespace ml
 

@@ -11,7 +11,7 @@ struct DawnProcTable;
 struct WGPUAdapterImpl;
 struct WGPUDeviceImpl;
 struct WGPUTextureImpl;
-struct WGPUAdapterProperties;
+struct WGPUAdapterInfo;
 typedef struct WGPUAdapterImpl* WGPUAdapter;
 typedef struct WGPUDeviceImpl* WGPUDevice;
 typedef struct WGPUTextureImpl* WGPUTexture;

@@ -21,7 +21,8 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "odml/on_device_model/features.h"
-#include "odml/on_device_model/ml/on_device_model_internal.h"
+#include "odml/on_device_model/ml/on_device_model_executor.h"
+#include "odml/on_device_model/ml/performance_class.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
 
@@ -56,8 +57,10 @@ class SessionWrapper final : public mojom::Session {
   void Execute(
       mojom::InputOptionsPtr input,
       mojo::PendingRemote<mojom::StreamingResponder> response) override;
-  void GetSizeInTokens(const std::string& text,
+  void GetSizeInTokens(mojom::InputPtr input,
                        GetSizeInTokensCallback callback) override;
+  void GetSizeInTokensDeprecated(const std::string& text,
+                                 GetSizeInTokensCallback callback) override;
   void Score(const std::string& text, ScoreCallback callback) override;
   void Clone(mojo::PendingReceiver<mojom::Session> session) override;
 
@@ -82,10 +85,10 @@ class SessionWrapper final : public mojom::Session {
                       std::move(on_complete));
   }
 
-  void GetSizeInTokensInternal(const std::string& text,
+  void GetSizeInTokensInternal(mojom::InputPtr input,
                                GetSizeInTokensCallback callback,
                                base::OnceClosure on_complete) {
-    session_->SizeInTokens(text,
+    session_->SizeInTokens(std::move(input),
                            std::move(callback).Then(std::move(on_complete)));
   }
 
@@ -331,18 +334,25 @@ void SessionWrapper::Execute(
                                weak_ptr_factory_.GetWeakPtr());
 }
 
-void SessionWrapper::GetSizeInTokens(const std::string& text,
+void SessionWrapper::GetSizeInTokens(mojom::InputPtr input,
                                      GetSizeInTokensCallback callback) {
   if (!model_) {
     return;
   }
 
-  auto size_in_tokens_internal =
-      base::BindOnce(&SessionWrapper::GetSizeInTokensInternal,
-                     weak_ptr_factory_.GetWeakPtr(), text, std::move(callback));
+  auto size_in_tokens_internal = base::BindOnce(
+      &SessionWrapper::GetSizeInTokensInternal, weak_ptr_factory_.GetWeakPtr(),
+      std::move(input), std::move(callback));
 
   model_->AddAndRunPendingTask(std::move(size_in_tokens_internal),
                                weak_ptr_factory_.GetWeakPtr());
+}
+
+void SessionWrapper::GetSizeInTokensDeprecated(
+    const std::string& text, GetSizeInTokensCallback callback) {
+  auto input = mojom::Input::New();
+  input->pieces.push_back(text);
+  GetSizeInTokens(std::move(input), std::move(callback));
 }
 
 void SessionWrapper::Score(const std::string& text, ScoreCallback callback) {
@@ -381,11 +391,9 @@ void SessionWrapper::CloneInternal(
 
 OnDeviceModelService::OnDeviceModelService(
     raw_ref<MetricsLibraryInterface> metrics,
-    raw_ref<odml::OdmlShimLoader> shim_loader,
-    std::unique_ptr<const ml::OnDeviceModelInternalImpl> impl)
+    raw_ref<odml::OdmlShimLoader> shim_loader)
     : metrics_(metrics),
       shim_loader_(shim_loader),
-      impl_(std::move(impl)),
       platform_model_loader_(std::make_unique<ChromeosPlatformModelLoader>(
           metrics_, raw_ref(*this))) {}
 
@@ -397,8 +405,14 @@ void OnDeviceModelService::LoadModel(
     LoadPlatformModelCallback callback) {
   auto start = base::TimeTicks::Now();
   bool support_multiple_sessions = params->support_multiple_sessions;
-  auto model_impl = impl_->CreateModel(
-      std::move(params),
+  const ml::ChromeML* chrome_ml = ml::ChromeML::Get(metrics_, shim_loader_);
+  if (!chrome_ml) {
+    std::move(callback).Run(mojom::LoadModelResult::kFailedToLoadLibrary);
+    return;
+  }
+
+  auto model_impl = ml::OnDeviceModelExecutor::CreateWithResult(
+      metrics_, *chrome_ml, std::move(params),
       base::BindPostTask(base::SequencedTaskRunner::GetCurrentDefault(),
                          base::BindOnce(
                              [](base::WeakPtr<OnDeviceModelService> self,
@@ -496,7 +510,20 @@ void OnDeviceModelService::GetEstimatedPerformanceClass(
     return;
   }
 
-  std::move(callback).Run(impl_->GetEstimatedPerformanceClass());
+  auto is_apu_available = shim_loader_->Get<bool (*)()>("IsApuAvailable");
+  if (is_apu_available && is_apu_available()) {
+    std::move(callback).Run(on_device_model::mojom::PerformanceClass::kHigh);
+    return;
+  }
+
+  const ml::ChromeML* chrome_ml = ml::ChromeML::Get(metrics_, shim_loader_);
+  if (!chrome_ml) {
+    std::move(callback).Run(mojom::PerformanceClass::kFailedToLoadLibrary);
+    return;
+  }
+
+  std::move(callback).Run(
+      ml::GetEstimatedPerformanceClass(metrics_, *chrome_ml));
 }
 
 void OnDeviceModelService::FormatInput(
