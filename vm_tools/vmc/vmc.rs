@@ -1010,43 +1010,47 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 }
 
-const USAGE: &str = "
-   [ start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-big-gl] \
-           [--enable-virtgpu-native-context] [--enable-audio-capture] [--extra-disk PATH] \
-           [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] \
-           [--bios PATH] [--timeout PARAM] [--oem-string STRING] <name> |
-     stop <name> |
-     launch <name> |
-     create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] \
-            [-- additional parameters] |
-     create-extra-disk --size SIZE <file name> [<removable storage name>] |
-     adjust <name> <operation> [additional parameters] |
-     destroy [-y] <name> |
-     disk-op-status <command UUID> |
-     export [-d] [-f] <vm name> <file name> [<removable storage name>] |
-     import [-p] <vm name> <file name> [<removable storage name>] |
-     resize <vm name> <size> |
-     list |
-     logs <vm name> |
-     share <vm name> <path> |
-     unshare <vm name> <path> |
-     container <vm name> <container name> [ (<image server> <image alias>) | \
+const USAGE: &str = " [
+     start [--enable-gpu] [--enable-dgpu-passthrough] [--enable-big-gl] \
+           [--enable-virtgpu-native-context] [--vtpm-proxy] \
+           [--enable-audio-capture] [--extra-disk PATH] [--dlc ID] \
+           [--tools-dlc ID] [--kernel PATH] [--initrd PATH] [--rootfs PATH] \
+           [--vm-type <TERMINA | ARC_VM | PLUGIN_VM | BOREALIS | BRUSCHETTA | BAGUETTE>] \
+           [--no-start-lxd] [--writable-rootfs] [--kernel-param PARAM]... \
+           [--oem-string STRING]... [--bios PATH] [--pflash PATH] [--bios-dlc ID] \
+           [--timeout PARAM] [--no-shell] [--help-start] <vm name>
+  |  stop <vm name>
+  |  launch <vm name>
+  |  create [-p] [--size SIZE] <vm name> [<source media> [<removable storage name>]] \
+            [-- additional parameters]
+  |  create-extra-disk --size SIZE <file name> [<removable storage name>]
+  |  adjust <vm name> <operation> [additional parameters]
+  |  destroy [-y] <vm name>
+  |  disk-op-status <command UUID>
+  |  export [-d] [-f] <vm name> <file name> [<removable storage name>]
+  |  import [-p] <vm name> <file name> [<removable storage name>]
+  |  resize <vm name> <size>
+  |  list
+  |  logs <vm name>
+  |  share <vm name> <path>
+  |  unshare <vm name> <path>
+  |  container <vm name> <container name> [ (<image server> <image alias>) | \
                                             (<rootfs path> <metadata path>) ] \
-                                          [--privileged <true/false>] [--timeout PARAM] |
-     update-container-devices <vm_name> <container_name> (<vm device>:<enable/disable>)... |
-     usb-attach <vm name> <bus>:<device> [<container name>] |
-     usb-detach <vm name> <port> |
-     usb-list <vm name> |
-     key-attach <vm name> <hidraw path> |
-     pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |";
+                                          [--privileged <true/false>] [--timeout PARAM]
+  |  update-container-devices <vm name> <container name> (<vm device>:<enable/disable>)...
+  |  usb-attach <vm name> <bus>:<device> [<container name>]
+  |  usb-detach <vm name> <port>
+  |  usb-list <vm name>
+  |  key-attach <vm name> <hidraw path>
+  |  pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem>";
 const USAGE_ON_CHROMEBOX: &str = "
-     allow-all-io-devices [on chromeboxes, allow all keyboards/mice to connect] |
-     list-primary-io-devices |
-     unset-primary-keyboard |
-     unset-primary-mouse |";
+  |  allow-all-io-devices [on chromeboxes, allow all keyboards/mice to connect]
+  |  list-primary-io-devices
+  |  unset-primary-keyboard
+  |  unset-primary-mouse";
 const USAGE_END: &str = "
-     --help | -h ]
-";
+  |  --help | -h
+]";
 
 /// `vmc` (Virtual Machine Controller) command line interface.
 /// This is the interface accessible from crosh (Ctrl-Alt-T in the browser to access).
