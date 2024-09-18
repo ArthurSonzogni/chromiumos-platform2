@@ -197,8 +197,12 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
     return;
   }
 
-  auto clat_ipv6_cidr = AddressManager::GetRandomizedIPv6Address(
-      shill_device.network_config.ipv6_addresses[0].GetPrefixCIDR());
+  auto current_subnet =
+      shill_device.network_config.ipv6_delegated_prefixes.empty()
+          ? shill_device.network_config.ipv6_addresses[0].GetPrefixCIDR()
+          : shill_device.network_config.ipv6_delegated_prefixes[0];
+  auto clat_ipv6_cidr =
+      AddressManager::GetRandomizedIPv6Address(current_subnet);
   if (!clat_ipv6_cidr) {
     LOG(ERROR) << "Failed to get randomized IPv6 address from " << shill_device;
     return;
