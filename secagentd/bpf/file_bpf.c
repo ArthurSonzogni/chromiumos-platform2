@@ -1153,8 +1153,11 @@ static inline __attribute__((always_inline)) int populate_rb(
     const struct path* path,
     struct inode_attr* before_attr) {
   // Get the current task
-  struct task_struct* current_task =
+  const struct task_struct* current_task =
       (struct task_struct*)bpf_get_current_task();
+
+  struct task_struct* last_exec_task =
+      cros_normalize_to_last_exec(current_task);
 
   // Reserve space in the ring buffer for the event
   struct cros_event* event =
@@ -1173,10 +1176,10 @@ static inline __attribute__((always_inline)) int populate_rb(
   struct cros_file_detailed_event* file_detailed_event =
       &(event->data.file_event.data.file_detailed_event);
   file_detailed_event->has_full_process_info =
-      fill_process_start(&file_detailed_event->process_info, current_task);
-  fill_ns_info(&file_detailed_event->spawn_namespace, current_task);
+      fill_process_start(&file_detailed_event->process_info, last_exec_task);
+  fill_ns_info(&file_detailed_event->spawn_namespace, last_exec_task);
   fill_file_image_info(&file_detailed_event->image_info, file, dentry, path,
-                       before_attr, sensitive_file_type, current_task);
+                       before_attr, sensitive_file_type, last_exec_task);
 
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
