@@ -132,8 +132,8 @@ enum ec_led_colors ToEcLedColor(mojom::LedColor color) {
   }
 }
 
-// A common util function to read the number of fans in the device.
-std::optional<uint8_t> GetNumFans(
+// Reads the target rpm from all fans, excluding fans that are not present.
+std::optional<std::vector<uint16_t>> GetAllFanTargetRpms(
     ec::EcCommandFactoryInterface* ec_command_factory, const int cros_fd) {
   std::unique_ptr<ec::GetFeaturesCommand> get_features =
       ec_command_factory->GetFeaturesCommand();
@@ -143,14 +143,14 @@ std::optional<uint8_t> GetNumFans(
   }
 
   if (!get_features->IsFeatureSupported(EC_FEATURE_PWM_FAN)) {
-    return 0;
+    return std::vector<uint16_t>{};
   }
 
   static_assert(EC_FAN_SPEED_ENTRIES < std::numeric_limits<uint8_t>::max(),
                 "Value of EC_FAN_SPEED_ENTRIES exceeds maximum value of uint8");
 
-  uint8_t fan_idx;
-  for (fan_idx = 0; fan_idx < EC_FAN_SPEED_ENTRIES; ++fan_idx) {
+  std::vector<uint16_t> fan_rpms;
+  for (uint8_t fan_idx = 0; fan_idx < EC_FAN_SPEED_ENTRIES; ++fan_idx) {
     std::unique_ptr<ec::PwmGetFanTargetRpmCommand> get_fan_rpm =
         ec_command_factory->PwmGetFanTargetRpmCommand(fan_idx);
     if (!get_fan_rpm || !get_fan_rpm->Run(cros_fd) ||
@@ -160,10 +160,23 @@ std::optional<uint8_t> GetNumFans(
       return std::nullopt;
     }
 
-    if (get_fan_rpm->Rpm().value() == EC_FAN_SPEED_NOT_PRESENT)
-      return fan_idx;
+    if (get_fan_rpm->Rpm().value() == EC_FAN_SPEED_NOT_PRESENT) {
+      break;
+    }
+    fan_rpms.push_back(get_fan_rpm->Rpm().value());
   }
-  return fan_idx;
+  return fan_rpms;
+}
+
+// A common util function to read the number of fans in the device.
+std::optional<uint8_t> GetNumFans(
+    ec::EcCommandFactoryInterface* ec_command_factory, const int cros_fd) {
+  std::optional<std::vector<uint16_t>> fan_rpms =
+      GetAllFanTargetRpms(ec_command_factory, cros_fd);
+  if (!fan_rpms.has_value()) {
+    return std::nullopt;
+  }
+  return fan_rpms.value().size();
 }
 
 bool HasMissingDrmField(
@@ -575,34 +588,22 @@ void DelegateImpl::RunFloatingPoint(base::TimeDelta exec_duration,
 
 void DelegateImpl::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
-  std::vector<uint16_t> fan_rpms;
-  std::optional<uint8_t> num_fans =
-      GetNumFans(ec_command_factory_, cros_fd.get());
+  std::optional<std::vector<uint16_t>> target_fan_rpms =
+      GetAllFanTargetRpms(ec_command_factory_, cros_fd.get());
 
-  if (!num_fans.has_value()) {
-    std::move(callback).Run({}, "Failed to get number of fans");
+  if (!target_fan_rpms.has_value()) {
+    std::move(callback).Run({}, "Failed to read fan speed");
     return;
   }
 
-  for (uint8_t fan_idx = 0; fan_idx < num_fans.value(); ++fan_idx) {
-    std::unique_ptr<ec::PwmGetFanTargetRpmCommand> get_fan_rpm =
-        ec_command_factory_->PwmGetFanTargetRpmCommand(fan_idx);
-    if (!get_fan_rpm || !get_fan_rpm->Run(cros_fd.get()) ||
-        !get_fan_rpm->Rpm().has_value() ||
-        get_fan_rpm->Rpm().value() == EC_FAN_SPEED_NOT_PRESENT) {
-      LOG(ERROR) << "Failed to read fan speed for fan idx: "
-                 << static_cast<int>(fan_idx);
-      std::move(callback).Run({}, "Failed to read fan speed");
-      return;
-    }
-
-    if (get_fan_rpm->Rpm().value() == EC_FAN_SPEED_STALLED_DEPRECATED) {
+  std::vector<uint16_t> fan_rpms;
+  for (uint16_t rpm : target_fan_rpms.value()) {
+    if (rpm == EC_FAN_SPEED_STALLED_DEPRECATED) {
       // For a stalled fan, we will output the fan speed as 0.
       fan_rpms.push_back(0);
-      continue;
+    } else {
+      fan_rpms.push_back(rpm);
     }
-
-    fan_rpms.push_back(get_fan_rpm->Rpm().value());
   }
 
   std::move(callback).Run(fan_rpms, std::nullopt);

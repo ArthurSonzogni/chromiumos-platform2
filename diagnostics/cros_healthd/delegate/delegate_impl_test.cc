@@ -932,7 +932,7 @@ TEST_F(DelegateImplTest, GetAllFanSpeedGetFeaturesCommandFailed) {
       .WillOnce(Return(std::move(cmd)));
 
   auto [unused_fan_rpms, err] = GetAllFanSpeedSync();
-  EXPECT_EQ(err, "Failed to get number of fans");
+  EXPECT_EQ(err, "Failed to read fan speed");
 }
 
 TEST_F(DelegateImplTest, GetAllFanSpeedFanNotSupported) {
@@ -960,7 +960,7 @@ TEST_F(DelegateImplTest, GetAllFanSpeedPwmGetFanTargetRpmCommandFailed) {
       .WillOnce(Return(std::move(get_fan_rpm_cmd)));
 
   auto [unused_fan_rpms, err] = GetAllFanSpeedSync();
-  EXPECT_EQ(err, "Failed to get number of fans");
+  EXPECT_EQ(err, "Failed to read fan speed");
 }
 
 TEST_F(DelegateImplTest, GetAllFanSpeedNoFan) {
@@ -989,8 +989,7 @@ TEST_F(DelegateImplTest, GetAllFanSpeedMultipleFans) {
       .WillOnce(Return(std::move(features_cmd)));
 
   EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
-      .Times(2)
-      .WillRepeatedly([]() {
+      .WillOnce([]() {
         auto get_fan_rpm_cmd =
             std::make_unique<FakePwmGetFanTargetRpmCommand>();
         get_fan_rpm_cmd->SetRunResult(true);
@@ -999,8 +998,7 @@ TEST_F(DelegateImplTest, GetAllFanSpeedMultipleFans) {
       });
 
   EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(1))
-      .Times(2)
-      .WillRepeatedly([]() {
+      .WillOnce([]() {
         auto get_fan_rpm_cmd =
             std::make_unique<FakePwmGetFanTargetRpmCommand>();
         get_fan_rpm_cmd->SetRunResult(true);
@@ -1030,8 +1028,7 @@ TEST_F(DelegateImplTest, GetAllFanSpeedStalledConsideredZeroRpm) {
       .WillOnce(Return(std::move(features_cmd)));
 
   EXPECT_CALL(mock_ec_command_factory_, PwmGetFanTargetRpmCommand(0))
-      .Times(2)
-      .WillRepeatedly([]() {
+      .WillOnce([]() {
         auto get_fan_rpm_cmd =
             std::make_unique<FakePwmGetFanTargetRpmCommand>();
         get_fan_rpm_cmd->SetRunResult(true);
