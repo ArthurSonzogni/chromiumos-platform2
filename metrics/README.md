@@ -168,11 +168,6 @@ device.  These "backing files" are typically placed in
 `/var/lib/<daemon-name>/metrics`.  (The metrics daemon is an exception, with its
 backing files being in `/var/lib/metrics`.)
 
-## Memory Daemon
-
-The [memd](./memd/) subdirectory contains a daemon that collects data at high
-frequency during episodes of heavy memory pressure.
-
 ## vmlog
 
 [vmlog_writer](./vmlog_writer.cc) writes `/var/log/vmlog` files. It is a
