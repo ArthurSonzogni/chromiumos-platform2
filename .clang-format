@@ -20,6 +20,9 @@ AllowAllParametersOfDeclarationOnNextLine: true
 # NOLINT(reason) is used heavily by existing code.
 CommentPragmas: 'NOLINT:.*'
 
+# From upstream: crrev/c/4097043.
+InsertBraces: true
+
 # Group includes into four distinct groups and sort them case insensitively.
 IncludeBlocks: Regroup
 IncludeIsMainRegex: '([-_](test|unittest))?$'
