@@ -151,7 +151,7 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
   iio_context* ctx = GetCurrentContext();
   for (uint32_t i = 0; i < iio_context_get_devices_count(ctx); ++i) {
     iio_device* dev = iio_context_get_device(ctx, i);
-    if (!dev || !base::DirectoryExists(T::GetPathById(i))) {
+    if (!dev) {
       continue;
     }
 
@@ -159,9 +159,15 @@ std::vector<IioDevice*> IioContextImpl::GetAll(
     if (!id_str)
       continue;
 
-    auto id = T::GetIdFromString(id_str);
+    std::optional<int> id = T::GetIdFromString(id_str);
     if (!id.has_value())
       continue;
+
+    // libiio does not support removal, make sure the device has not been removed
+    // by checking if its directory in sysfs still exists.
+    if (!base::DirectoryExists(T::GetPathById(id.value()))) {
+      continue;
+    }
 
     devices.push_back(GetById(id.value(), devices_map));
   }
