@@ -514,6 +514,10 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
     device_info_map->add(cppbor::Tstr("system_patch_level"),
                          cppbor::Uint(os_patchlevel_.value()));
   }
+  if (vendor_patchlevel_.has_value()) {
+    device_info_map->add(cppbor::Tstr("vendor_patch_level"),
+                         cppbor::Uint(vendor_patchlevel_.value()));
+  }
   device_info_map->add(cppbor::Tstr("version"),
                        cppbor::Uint(kDeviceInfoMapVersion));
   device_info_map->add(cppbor::Tstr("fused"),
@@ -528,4 +532,10 @@ std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
   device_info_map->canonicalize();
   return device_info_map;
 }
+
+void ArcRemoteProvisioningContext::SetVendorPatchlevel(
+    uint32_t vendor_patchlevel) {
+  vendor_patchlevel_ = vendor_patchlevel;
+}
+
 }  // namespace arc::keymint::context

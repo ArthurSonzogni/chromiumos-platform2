@@ -83,6 +83,7 @@ class ArcRemoteProvisioningContext
       const std::vector<uint8_t>& additional_auth_data) const override;
 
   void SetSystemVersion(uint32_t os_version, uint32_t os_patchlevel);
+  void SetVendorPatchlevel(uint32_t vendor_patchlevel);
 
   // TODO(b/353381387): override from ChromeOS context.
   void SetVerifiedBootInfo(std::string_view boot_state,
@@ -102,6 +103,7 @@ class ArcRemoteProvisioningContext
   std::optional<uint32_t> os_patchlevel_;
   std::optional<std::string> verified_boot_state_;
   std::optional<std::string> bootloader_state_;
+  std::optional<uint32_t> vendor_patchlevel_;
   std::optional<std::vector<uint8_t>> vbmeta_digest_;
   std::optional<std::vector<uint8_t>> certificate_challenge_;
 
