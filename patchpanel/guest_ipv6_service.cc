@@ -370,82 +370,81 @@ void GuestIPv6Service::OnUplinkIPv6Changed(
   if (old_uplink_ip == new_uplink_ip) {
     return;
   }
+  uplink_ips_[ifname] = new_uplink_ip;
 
-  if (forward_record_.find(ifname) != forward_record_.end()) {
-    // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
-    // certain so the `ip neigh proxy` and /128 route changes need to be handled
-    // in both code paths. When an uplink is newly connected to,
-    // StartForwarding() get called first and then we received
-    // OnUplinkIPv6Changed() when uplink get an IPv6 address. When default
-    // network switches to an existing uplink, StartForwarding() is after
-    // OnUplinkIPv6Changed() (which was already called when it was not default
-    // yet).
-    for (const auto& ifname_downlink :
-         forward_record_[ifname].downstream_ifnames) {
-      const LinkPair pair = {.uplink = ifname, .downlink = ifname_downlink};
-      // Update ip neigh proxy entries
-      if (old_uplink_ip) {
-        datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
+  const auto current_record = forward_record_.find(ifname);
+  if (current_record == forward_record_.end()) {
+    return;
+  }
+  // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
+  // certain so the `ip neigh proxy` and /128 route changes need to be handled
+  // in both code paths. When an uplink is newly connected to,
+  // StartForwarding() get called first and then we received
+  // OnUplinkIPv6Changed() when uplink get an IPv6 address. When default
+  // network switches to an existing uplink, StartForwarding() is after
+  // OnUplinkIPv6Changed() (which was already called when it was not default
+  // yet).
+  for (const auto& ifname_downlink :
+       current_record->second.downstream_ifnames) {
+    const LinkPair pair = {.uplink = ifname, .downlink = ifname_downlink};
+    // Update ip neigh proxy entries
+    if (old_uplink_ip) {
+      datapath_->RemoveIPv6NeighborProxy(ifname_downlink, *old_uplink_ip);
+    }
+    if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, new_uplink_ip)) {
+      LOG(WARNING) << __func__ << ": " << pair
+                   << ", Failed to setup the IPv6 neighbor {" << new_uplink_ip
+                   << "} proxy on dev " << ifname_downlink;
+    }
+
+    // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
+    // route replace` so we don't need to remove the old one first.
+    auto& neighbor_ips = downstream_neighbors_[ifname_downlink];
+    for (auto iter = neighbor_ips.begin(); iter != neighbor_ips.end();) {
+      // Skip and remove downstream neighbor IP cache if it is not in the same
+      // prefix with the new uplink IP.
+      if (!upstream_shill_device.network_config.ipv6_addresses[0]
+               .InSameSubnetWith(*iter)) {
+        LOG(INFO) << __func__ << ": " << pair
+                  << ", removing cached downstream neighbor IP {" << *iter
+                  << "} because it's not in the subnet of new uplink IP {"
+                  << new_uplink_ip << "}";
+        iter = neighbor_ips.erase(iter);
+        continue;
       }
-      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, new_uplink_ip)) {
+      LOG(INFO) << __func__ << ": " << pair
+                << ", update /128 downlink route for existing neighbor IP {"
+                << *iter << "} because of new uplink IP {" << new_uplink_ip
+                << "}";
+      if (!datapath_->AddIPv6HostRoute(
+              ifname_downlink,
+              *net_base::IPv6CIDR::CreateFromAddressAndPrefix(*iter, 128),
+              new_uplink_ip)) {
         LOG(WARNING) << __func__ << ": " << pair
-                     << ", Failed to setup the IPv6 neighbor {" << new_uplink_ip
-                     << "} proxy on dev " << ifname_downlink;
+                     << ": Failed to setup the IPv6 route {" << *iter
+                     << "} dev " << ifname << " src {" << new_uplink_ip << "}";
       }
+      ++iter;
+    }
 
-      // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
-      // route replace` so we don't need to remove the old one first.
-      auto& neighbor_ips = downstream_neighbors_[ifname_downlink];
-      for (auto iter = neighbor_ips.begin(); iter != neighbor_ips.end();) {
-        // Skip and remove downstream neighbor IP cache if it is not in the same
-        // prefix with the new uplink IP.
-        if (!upstream_shill_device.network_config.ipv6_addresses[0]
-                 .InSameSubnetWith(*iter)) {
-          LOG(INFO) << __func__ << ": " << pair
-                    << ", removing cached downstream neighbor IP {" << *iter
-                    << "} because it's not in the subnet of new uplink IP {"
-                    << new_uplink_ip << "}";
-          iter = neighbor_ips.erase(iter);
+    if (current_record->second.method == ForwardMethod::kMethodRAServer) {
+      const auto new_prefix = IPAddressTo64BitPrefix(new_uplink_ip);
+      if (old_uplink_ip) {
+        if (IPAddressTo64BitPrefix(*old_uplink_ip) == new_prefix) {
           continue;
         }
-        LOG(INFO) << __func__ << ": " << pair
-                  << ", update /128 downlink route for existing neighbor IP {"
-                  << *iter << "} because of new uplink IP {" << new_uplink_ip
-                  << "}";
-        if (!datapath_->AddIPv6HostRoute(
-                ifname_downlink,
-                *net_base::IPv6CIDR::CreateFromAddressAndPrefix(*iter, 128),
-                new_uplink_ip)) {
-          LOG(WARNING) << __func__ << ": " << pair
-                       << ": Failed to setup the IPv6 route {" << *iter
-                       << "} dev " << ifname << " src {" << new_uplink_ip
-                       << "}";
-        }
-        ++iter;
+        StopRAServer(ifname_downlink);
       }
-
-      if (forward_record_[ifname].method == ForwardMethod::kMethodRAServer) {
-        const auto new_prefix = IPAddressTo64BitPrefix(new_uplink_ip);
-        if (old_uplink_ip) {
-          if (IPAddressTo64BitPrefix(*old_uplink_ip) == new_prefix) {
-            continue;
-          }
-          StopRAServer(ifname_downlink);
-        }
-
-        if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
-                           forward_record_[ifname].mtu,
-                           forward_record_[ifname].hop_limit)) {
-          LOG(WARNING)
-              << __func__ << ": " << pair
-              << ", Failed to start RA server on downlink with uplink IP {"
-              << new_uplink_ip << "}";
-        }
+      if (!StartRAServer(ifname_downlink, new_prefix, uplink_dns_[ifname],
+                         current_record->second.mtu,
+                         current_record->second.hop_limit)) {
+        LOG(WARNING)
+            << __func__ << ": " << pair
+            << ", Failed to start RA server on downlink with uplink IP {"
+            << new_uplink_ip << "}";
       }
     }
   }
-
-  uplink_ips_[ifname] = new_uplink_ip;
 }
 
 void GuestIPv6Service::UpdateUplinkIPv6DNS(
