@@ -302,6 +302,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
 
   // create the expected coalesced modify.
   pb::FileEventAtomicVariant expected_modify;
+  expected_modify.mutable_common()->set_create_timestamp_us(1726708200);
   pb::FileModifyEvent* file_modify_event =
       expected_modify.mutable_sensitive_modify();
   file_modify_event->mutable_process()->set_process_uuid(process_uuid);
@@ -324,6 +325,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
 
   // expected coalesced read (based off the expected modify).
   pb::FileEventAtomicVariant expected_read;
+  expected_read.mutable_common()->set_create_timestamp_us(1726708500);
   pb::FileReadEvent* file_read_event = expected_read.mutable_sensitive_read();
   file_read_event->mutable_process()->CopyFrom(file_modify_event->process());
   auto* mutable_read_image =
@@ -335,6 +337,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
   // a write event with differing attributes on the after image.
   std::unique_ptr<pb::FileEventAtomicVariant> event =
       std::make_unique<pb::FileEventAtomicVariant>(expected_modify);
+  event->mutable_common()->set_create_timestamp_us(1726708200);
   file_modify = event->mutable_sensitive_modify()->mutable_file_modify();
   file_modify->set_modify_type(pb::FileModify_ModifyType_WRITE);
   file_modify->clear_attributes_before();
@@ -348,6 +351,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
   // a change attribute event with differing before attributes and differing
   // attributes on the after image.
   event = std::make_unique<pb::FileEventAtomicVariant>(expected_modify);
+  event->mutable_common()->set_create_timestamp_us(1726708300);
   event->mutable_sensitive_modify()->mutable_file_modify()->set_modify_type(
       pb::FileModify_ModifyType_MODIFY_ATTRIBUTE);
   file_image = event->mutable_sensitive_modify()
@@ -363,6 +367,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
   // a change attribute event with matching before attributes and matching
   // attributes on the after image.
   event = std::make_unique<pb::FileEventAtomicVariant>(expected_modify);
+  event->mutable_common()->set_create_timestamp_us(1726708400);
   event->mutable_sensitive_modify()->mutable_file_modify()->set_modify_type(
       pb::FileModify_ModifyType_MODIFY_ATTRIBUTE);
   auto fev = CreateFileEventValue(std::move(event), "modify3", 3, true);
@@ -376,6 +381,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
   FilePluginCollectEvent(std::move(fev));
   // read event with differing attributes on the image.
   event = std::make_unique<pb::FileEventAtomicVariant>(expected_read);
+  event->mutable_common()->set_create_timestamp_us(1726708500);
   file_image =
       event->mutable_sensitive_read()->mutable_file_read()->mutable_image();
   file_image->set_mode(456);
@@ -386,6 +392,7 @@ TEST_F(FilePluginTestFixture, TestReadWriteCoalescing) {
 
   // read event with expected attributes.
   event = std::make_unique<pb::FileEventAtomicVariant>(expected_read);
+  event->mutable_common()->set_create_timestamp_us(1726708600);
   fev = CreateFileEventValue(std::move(event), "read2", 2, true);
   image_key = DeriveImageCacheKeyType(*fev);
   EXPECT_CALL(*image_cache_,
@@ -511,6 +518,7 @@ TEST_F(FilePluginTestFixture, TestNoCoalescing) {
 
 TEST_F(FilePluginTestFixture, TestMultipleBatches) {
   pb::FileEventAtomicVariant expected_modify1;
+  expected_modify1.mutable_common()->set_create_timestamp_us(1726708500);
   pb::FileModifyEvent* file_modify_event =
       expected_modify1.mutable_sensitive_modify();
   file_modify_event->mutable_process()->set_process_uuid("process1");
@@ -521,16 +529,22 @@ TEST_F(FilePluginTestFixture, TestMultipleBatches) {
   file_image->set_pathname("filename1");
   file_image->set_sha256("test");
 
+  EXPECT_CALL(*batch_sender_,
+              Enqueue(::testing::Pointee(EqualsProto(expected_modify1))))
+      .Times(1);
   auto event = std::make_unique<pb::FileEventAtomicVariant>(expected_modify1);
   FilePluginCollectEvent(
       CreateFileEventValue(std::move(event), "modify1", 1, true));
-  EXPECT_CALL(*batch_sender_,
-              Enqueue(::testing::Pointee(EqualsProto(expected_modify1))))
-      .Times(2);
   task_environment_.FastForwardBy(
       base::Seconds(kBatchIntervalS + kAsyncTimeoutS));
 
-  event = std::make_unique<pb::FileEventAtomicVariant>(expected_modify1);
+  pb::FileEventAtomicVariant expected_modify2(expected_modify1);
+  expected_modify2.mutable_common()->set_create_timestamp_us(1726709500);
+  EXPECT_CALL(*batch_sender_,
+              Enqueue(::testing::Pointee(EqualsProto(expected_modify2))))
+      .Times(1);
+
+  event = std::make_unique<pb::FileEventAtomicVariant>(expected_modify2);
   FilePluginCollectEvent(
       CreateFileEventValue(std::move(event), "modify1", 1, true));
   task_environment_.FastForwardBy(

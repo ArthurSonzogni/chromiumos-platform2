@@ -97,9 +97,14 @@ class BatchSender
   }
 
   void Enqueue(std::unique_ptr<AtomicVariantMessage> atomic_event) override {
-    atomic_event->mutable_common()->set_create_timestamp_us(
-        base::Time::Now().InMillisecondsSinceUnixEpoch() *
-        base::Time::kMicrosecondsPerMillisecond);
+    // The plugin may have set this timestamp already to better reflect when the
+    // event actually occurred in the past. If so, do not override with
+    // timestamp for when the event was queued.
+    if (!atomic_event->mutable_common()->has_create_timestamp_us()) {
+      atomic_event->mutable_common()->set_create_timestamp_us(
+          base::Time::Now().InMillisecondsSinceUnixEpoch() *
+          base::Time::kMicrosecondsPerMillisecond);
+    }
     base::AutoLock lock(events_lock_);
     size_t event_byte_size = atomic_event->ByteSizeLong();
     // Reserve ~10% for overhead of packing these events into the larger

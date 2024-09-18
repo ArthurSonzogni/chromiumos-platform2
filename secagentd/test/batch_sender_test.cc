@@ -287,4 +287,29 @@ TEST_F(BatchSenderTestFixture, TestVisitMostRecent) {
   EXPECT_EQ(6, proc_exec_2_ptr->process_exec().terminate_timestamp_us());
 }
 
+TEST_F(BatchSenderTestFixture, TestCreatedTimeStampCreateOrUseExisting) {
+  // Event that has predefined created_time stamp, use the value provided
+  auto proc_exec_1 = std::make_unique<BatchSenderTestFixture::AVM>();
+  auto proc_exec_1_ptr = proc_exec_1.get();
+  proc_exec_1->CopyFrom(expected_process_exec_1_);
+  proc_exec_1->mutable_process_exec()->set_terminate_timestamp_us(1);
+  auto predefined_time = 500;
+  proc_exec_1->mutable_common()->set_create_timestamp_us(predefined_time);
+  task_environment_.AdvanceClock(base::Seconds(kBatchInterval));
+  batch_sender_->Enqueue(std::move(proc_exec_1));
+
+  EXPECT_EQ(predefined_time, proc_exec_1_ptr->common().create_timestamp_us());
+
+  // Event that doesn't have predefined created_time stamp, use the current time
+  // mocked through task_evrironment
+  auto current_time = base::Time::Now().InMillisecondsSinceUnixEpoch();
+  auto proc_exec_2 = std::make_unique<BatchSenderTestFixture::AVM>();
+  auto proc_exec_2_ptr = proc_exec_2.get();
+  proc_exec_2->CopyFrom(expected_process_exec_1_);
+  proc_exec_2->mutable_process_exec()->set_terminate_timestamp_us(5);
+  batch_sender_->Enqueue(std::move(proc_exec_2));
+  EXPECT_EQ(current_time * base::Time::kMicrosecondsPerMillisecond,
+            proc_exec_2_ptr->common().create_timestamp_us());
+}
+
 }  // namespace secagentd::testing

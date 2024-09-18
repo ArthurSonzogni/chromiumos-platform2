@@ -1110,16 +1110,16 @@ std::string FilePlugin::GetName() const {
 }
 
 void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
-  auto atomic_event = std::make_unique<pb::FileEventAtomicVariant>();
   if (bpf_event.type != bpf::kFileEvent) {
     LOG(ERROR) << "Unexpected BPF event type.";
     return;
   }
 
-  // TODO(princya): convert to proto, if the BPF event structure contains
-  // a flag to determine whether a partial or full SHA256 needs to occur then
-  // we should definitely set the partial_sha256 field within the message.
-  // Later processing depends on this field being set correctly.
+  auto atomic_event = std::make_unique<pb::FileEventAtomicVariant>();
+  atomic_event->mutable_common()->set_create_timestamp_us(
+      base::Time::Now().InMillisecondsSinceUnixEpoch() *
+      base::Time::kMicrosecondsPerMillisecond);
+
   const bpf::cros_file_event& fe = bpf_event.data.file_event;
   if (fe.type == bpf::kFileCloseEvent) {
     if (fe.mod_type == secagentd::bpf::FMOD_READ_ONLY_OPEN) {
@@ -1185,6 +1185,7 @@ void FilePlugin::CollectEvent(std::unique_ptr<FileEventValue> fev) {
     LOG(ERROR) << "Unexpected empty ordered events";
     return;
   }
+
   if (event.has_sensitive_modify() &&
       it->second->event->has_sensitive_modify()) {
     auto received_modify =
