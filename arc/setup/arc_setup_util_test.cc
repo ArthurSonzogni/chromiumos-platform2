@@ -1162,6 +1162,11 @@ TEST(ArcSetupUtil, TestShouldDeleteAndroidData) {
       ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_VANILLA_ICE_CREAM,
                               AndroidSdkVersion::ANDROID_P));
 
+  // Explicitly delete data when ARC++ is upgraded from R to VANILLA_ICE_CREAM.
+  EXPECT_TRUE(
+      ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_VANILLA_ICE_CREAM,
+                              AndroidSdkVersion::ANDROID_R));
+
   // Delete data for upgrades from a release version to a development version.
   EXPECT_TRUE(ShouldDeleteAndroidData(AndroidSdkVersion::ANDROID_DEVELOPMENT,
                                       AndroidSdkVersion::ANDROID_R));
