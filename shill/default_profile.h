@@ -66,12 +66,12 @@ class DefaultProfile : public Profile {
   static const char kStorageProhibitedTechnologies[];
   static const char kStorageDhcpHostname[];
   static const char kStorageWifiGlobalFTEnabled[];
-  static constexpr char kStorageDisableLegacyDHCPCD[] = "DisableLegacyDHCPCD";
   static constexpr char kStorageDisableWiFiOnEthernet[] =
       "DisableWiFiOnEthernet";
   static constexpr char kStorageDisableWiFiOnEthernetConnected[] = "connected";
   static constexpr char kStorageDisableWiFiOnEthernetOnline[] = "online";
   static constexpr char kStorageEnableRFC8925[] = "RFC8925";
+  static constexpr char kStorageUseLegacyDHCPCD[] = "UseLegacyDHCPCD";
 
   void HelpRegisterConstDerivedBool(std::string_view name,
                                     bool (DefaultProfile::*get)(Error* error));

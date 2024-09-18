@@ -703,14 +703,6 @@ Properties	object ActiveProfile [readonly]
 			not report a hostname.  When this property is set it will be
 			persisted in the default profile.
 
-		boolean DisableLegacyDHCPCD [readwrite]
-
-			If set, shill will use the latest dhcpcd for IPv4 provisioning. Otherwise
-			for IPv4, the legacy dhcpcd7 will still be used. Note that currently
-			shill uses both the latest dhcpcd and the legacy dhcpcd7 as DHCP clients.
-			For IPv6 (DHCPv6-PD), no matter whether this flag is set, the latest
-			dhcpcd will always be used.
-
 		bool DisableVHT [readwrite]
 
 			Disables 802.11ac Very High Throughput (VHT) connections, reverting
@@ -1164,6 +1156,14 @@ Properties	object ActiveProfile [readonly]
 			is a technology that has at least one Device that is not initialized
 			yet (i.e.  the Device object is not created yet). The strings are
 			the same as the ones from the service types.
+
+		boolean UseLegacyDHCPCD [readwrite]
+
+			If set, shill will use the legacy dhcpcd7 for IPv4 provisioning.
+			Otherwise for IPv4, the latest dhcpcd will be used. Note that currently
+			shill uses both the latest dhcpcd and the legacy dhcpcd7 as DHCP clients.
+			For IPv6 (DHCPv6-PD), no matter whether this flag is set, the latest
+			dhcpcd will always be used.
 
 		bool WakeOnLanEnabled [readwrite]
 

@@ -97,9 +97,9 @@ struct ManagerProperties {
   bool arp_gateway = true;
   // Whether DHCP client should request for IPv6-only mode on a capable network.
   bool enable_rfc_8925 = false;
-  // Whether to disable the legacy dhcpcd and to enable the latest dhcpcd for
+  // Whether to use the legacy dhcpcd7 or to enable the latest dhcpcd for
   // IPv4 provisioning.
-  bool disable_legacy_dhcpcd = false;
+  bool use_legacy_dhcpcd = true;
   // Comma-separated list of technologies for which auto-connect is disabled.
   std::string no_auto_connect_technologies;
   // Comma-separated list of technologies that should never be enabled.

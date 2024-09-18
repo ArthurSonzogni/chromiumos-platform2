@@ -99,11 +99,11 @@ TEST_F(DefaultProfileTest, Save) {
   EXPECT_TRUE(storage->GetBool(DefaultProfile::kStorageId,
                                DefaultProfile::kStorageArpGateway, &gateway));
   EXPECT_TRUE(gateway);
-  bool disable_legacy_dhcpcd;
+  bool use_legacy_dhcpcd;
   EXPECT_TRUE(storage->GetBool(DefaultProfile::kStorageId,
-                               DefaultProfile::kStorageDisableLegacyDHCPCD,
-                               &disable_legacy_dhcpcd));
-  EXPECT_FALSE(disable_legacy_dhcpcd);
+                               DefaultProfile::kStorageUseLegacyDHCPCD,
+                               &use_legacy_dhcpcd));
+  EXPECT_TRUE(use_legacy_dhcpcd);
   std::string name;
   EXPECT_TRUE(storage->GetString(DefaultProfile::kStorageId,
                                  DefaultProfile::kStorageName, &name));
@@ -117,7 +117,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 
   profile_->LoadManagerProperties(&manager_props);
   EXPECT_TRUE(manager_props.arp_gateway);
-  EXPECT_FALSE(manager_props.disable_legacy_dhcpcd);
+  EXPECT_TRUE(manager_props.use_legacy_dhcpcd);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager_props.check_portal_list);
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);
@@ -138,7 +138,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageArpGateway, false);
   storage->SetBool(DefaultProfile::kStorageId,
-                   DefaultProfile::kStorageDisableLegacyDHCPCD, true);
+                   DefaultProfile::kStorageUseLegacyDHCPCD, false);
   const std::string portal_list("technology1,technology2");
   storage->SetString(DefaultProfile::kStorageId,
                      DefaultProfile::kStorageCheckPortalList, portal_list);
@@ -163,7 +163,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
 
   profile_->LoadManagerProperties(&manager_props);
   EXPECT_FALSE(manager_props.arp_gateway);
-  EXPECT_TRUE(manager_props.disable_legacy_dhcpcd);
+  EXPECT_FALSE(manager_props.use_legacy_dhcpcd);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
