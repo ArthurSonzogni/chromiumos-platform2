@@ -10,6 +10,7 @@ close: 1
 exit: 1
 exit_group: 1
 faccessat: 1
+fstat: 1
 fstatfs: 1
 gettid: 1
 # ioctl: arg1 == 0xc014ec00 /* CROS_EC_DEV_IOCXCMD */ ||

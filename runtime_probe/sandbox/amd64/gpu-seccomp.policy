@@ -13,6 +13,7 @@ clock_gettime: 1
 close: 1
 exit: 1
 exit_group: 1
+fstat: 1
 fstatfs: 1
 getdents64: 1
 gettid: 1

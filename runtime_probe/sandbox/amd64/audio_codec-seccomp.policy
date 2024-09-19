@@ -8,6 +8,7 @@ newfstatat: 1
 read: 1
 close: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+fstat: 1
 fstatfs: 1
 readlink: 1
 gettid: 1
