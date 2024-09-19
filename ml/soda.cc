@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "ml/soda.h"
+
+#include <malloc.h>
+
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "ml/soda.h"
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -14,10 +16,6 @@
 #include <base/native_library.h>
 
 namespace ml {
-
-namespace {
-
-}  // namespace
 
 SodaLibrary::SodaLibrary(const base::FilePath& library_path)
     : status_(Status::kUninitialized) {
@@ -90,13 +88,20 @@ void SodaLibrary::DeleteExtendedSodaAsync(
 }
 
 void SodaLibrary::ExtendedAddAudio(void* extended_soda_async_handle,
-                                   const std::vector<uint8_t>& audio) const {
+                                   const std::vector<uint8_t>& audio) {
   DCHECK(status_ == Status::kOk);
   // audio.data() returns const unsigned char* which is not quite the
   // same. reinterpret_cast for convenience.
   (*extended_add_audio_)(extended_soda_async_handle,
                          reinterpret_cast<const char*>(audio.data()),
                          audio.size());
+
+  // Regularly tell malloc to return unused heap to the OS. Reduces ongoing RSS.
+  audio_bytes_since_malloc_trim_ += audio.size();
+  if (audio_bytes_since_malloc_trim_ >= kAudioBytesPerMallocTrim) {
+    audio_bytes_since_malloc_trim_ = 0;
+    malloc_trim(0);
+  }
 }
 
 void SodaLibrary::ExtendedSodaStop(void* extended_soda_async_handle) const {
