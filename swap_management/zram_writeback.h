@@ -74,7 +74,7 @@ class ZramWriteback {
   void Stop();
 
  private:
-  ZramWriteback();
+  ZramWriteback() = default;
   ~ZramWriteback();
 
   friend class MockZramWriteback;
@@ -141,7 +141,7 @@ class ZramWriteback {
   uint64_t stateful_block_size_ = 0;
 
   uint64_t zram_nr_pages_ = 0;
-  bool is_currently_writing_back_ = false;
+  std::atomic<bool> is_currently_writing_back_ = false;
   base::Time last_writeback_ = base::Time::Min();
 
   base::WeakPtrFactory<ZramWriteback> weak_factory_{this};

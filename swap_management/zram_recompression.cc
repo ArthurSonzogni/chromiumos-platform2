@@ -2,12 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "swap_management/zram_idle.h"
 #include "swap_management/zram_recompression.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/status/status.h>
+#include <absl/status/statusor.h>
 #include <base/logging.h>
+
+#include "swap_management/power_manager_proxy.h"
+#include "swap_management/suspend_history.h"
+#include "swap_management/zram_idle.h"
 
 namespace swap_management {
 
@@ -94,6 +98,9 @@ absl::Status ZramRecompression::EnableRecompression() {
       !params_.recompression_huge_idle)
     return absl::InvalidArgumentError("No setup for recompression page type.");
 
+  // Register for suspend signal from power manager.
+  PowerManagerProxy::Get()->RegisterSuspendSignal();
+
   // Program recomp_algorithm for enabling recompression.
   // We only support single recompression algorithm at this point. No need to
   // program priority.
@@ -123,9 +130,21 @@ absl::Status ZramRecompression::InitiateRecompression(
 }
 
 void ZramRecompression::PeriodicRecompress() {
-  // Is recompression ongoing?
-  if (is_currently_recompressing_)
+  // If device is suspended and not on AC, recompression should be skipped
+  // to save battery power.
+  if (SuspendHistory::Get()->IsSuspended()) {
+    absl::StatusOr<bool> on = PowerManagerProxy::Get()->IsACConnected();
+    if (!on.ok()) {
+      LOG(WARNING) << on.status();
+    } else if (!*on) {
+      return;
+    }
+  }
+
+  // Is recompression ongoing? If not then set the flag.
+  if (is_currently_recompressing_.exchange(true))
     return;
+
   absl::Cleanup cleanup = [&] { is_currently_recompressing_ = false; };
   absl::Status status = absl::OkStatus();
 

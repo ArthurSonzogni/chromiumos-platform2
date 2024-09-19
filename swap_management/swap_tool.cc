@@ -24,7 +24,6 @@
 #include "featured/c_feature_library.h"
 #include "swap_management/metrics.h"
 #include "swap_management/utils.h"
-#include "swap_management/zram_idle.h"
 #include "swap_management/zram_recompression.h"
 #include "swap_management/zram_writeback.h"
 

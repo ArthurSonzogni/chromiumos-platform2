@@ -5,14 +5,14 @@
 #ifndef SWAP_MANAGEMENT_ZRAM_RECOMPRESSION_H_
 #define SWAP_MANAGEMENT_ZRAM_RECOMPRESSION_H_
 
-#include "swap_management/utils.h"
-
 #include <string>
 
 #include <absl/status/status.h>
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
+
+#include "swap_management/utils.h"
 
 namespace swap_management {
 
@@ -71,7 +71,7 @@ class ZramRecompression {
     }
   } params_;
 
-  bool is_currently_recompressing_ = false;
+  std::atomic<bool> is_currently_recompressing_ = false;
   base::Time last_recompression_ = base::Time::Min();
   base::WeakPtrFactory<ZramRecompression> weak_factory_{this};
 };

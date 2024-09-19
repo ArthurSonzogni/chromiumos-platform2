@@ -21,6 +21,7 @@
 
 #include "base/time/time.h"
 #include "swap_management/metrics.h"
+#include "swap_management/power_manager_proxy.h"
 #include "swap_management/suspend_history.h"
 #include "swap_management/zram_idle.h"
 #include "swap_management/zram_stats.h"
@@ -418,10 +419,6 @@ absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
   return Utils::Get()->WriteFile(filepath, *mode_str);
 }
 
-ZramWriteback::ZramWriteback() {
-  SuspendHistory::Get()->SetMaxIdleDuration(params_.idle_max_time);
-}
-
 ZramWriteback::~ZramWriteback() {
   writeback_timer_.Stop();
   Cleanup();
@@ -557,9 +554,11 @@ void ZramWriteback::PeriodicWriteback() {
     // Disable writeback if device is suspended.
     return;
   }
-  // Is writeback ongoing?
-  if (is_currently_writing_back_)
+
+  // Is writeback ongoing? If not then set the flag.
+  if (is_currently_writing_back_.exchange(true))
     return;
+
   absl::Cleanup cleanup = [&] { is_currently_writing_back_ = false; };
 
   // Did we writeback too recently?
@@ -698,6 +697,10 @@ absl::Status ZramWriteback::Start() {
   if (!zram_disksize_byte.ok())
     return zram_disksize_byte.status();
   zram_nr_pages_ = *zram_disksize_byte / kPageSize;
+
+  // Setup for suspend history.
+  SuspendHistory::Get()->SetMaxIdleDuration(params_.idle_max_time);
+  PowerManagerProxy::Get()->RegisterSuspendSignal();
 
   // Start periodic writeback.
   writeback_timer_.Start(FROM_HERE, params_.periodic_time,

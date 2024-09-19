@@ -36,6 +36,7 @@ static_library("libswapmanagement") {
   sources = [
     "dbus_adaptor.cc",
     "metrics.cc",
+    "power_manager_proxy.cc",
     "status.cc",
     "suspend_history.cc",
     "swap_tool.cc",

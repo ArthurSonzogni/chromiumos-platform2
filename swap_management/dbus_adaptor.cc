@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <utility>
-#include <vector>
 
 #include <absl/status/status.h>
 #include <base/logging.h>
@@ -15,11 +14,8 @@
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <featured/feature_library.h>
-#include <power_manager/dbus-proxies.h>
-#include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "swap_management/metrics.h"
-#include "swap_management/suspend_history.h"
 
 namespace {
 feature::PlatformFeatures* GetPlatformFeatures() {
@@ -38,45 +34,6 @@ feature::PlatformFeatures* GetPlatformFeatures() {
 }  // namespace
 
 namespace swap_management {
-
-namespace {
-
-// Handles the result of an attempt to connect to a D-Bus signal.
-void HandleSignalConnected(const std::string& interface,
-                           const std::string& signal,
-                           bool success) {
-  if (!success) {
-    LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
-    return;
-  }
-  VLOG(2) << "Successfully connected to D-Bus signal " << interface << "."
-          << signal;
-}
-
-void OnSuspendImminent(const std::vector<uint8_t>& data) {
-  SuspendHistory::Get()->OnSuspendImminent();
-}
-
-void OnSuspendDone(const std::vector<uint8_t>& data) {
-  power_manager::SuspendDone proto;
-  if (!proto.ParseFromArray(data.data(), data.size())) {
-    LOG(ERROR) << "Failed to parse suspend done signal";
-  }
-  SuspendHistory::Get()->OnSuspendDone(
-      base::Microseconds(proto.suspend_duration()));
-}
-
-}  // namespace
-
-void RegisterPowerManagerProxyHandlers(
-    org::chromium::PowerManagerProxyInterface* power_manager_proxy) {
-  power_manager_proxy->RegisterSuspendImminentSignalHandler(
-      base::BindRepeating(&OnSuspendImminent),
-      base::BindOnce(&HandleSignalConnected));
-  power_manager_proxy->RegisterSuspendDoneSignalHandler(
-      base::BindRepeating(&OnSuspendDone),
-      base::BindOnce(&HandleSignalConnected));
-}
 
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::SwapManagementAdaptor(this),

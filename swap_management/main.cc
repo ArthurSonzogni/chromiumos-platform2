@@ -38,16 +38,10 @@ class Daemon : public brillo::DBusServiceDaemon {
     adaptor_ = std::make_unique<swap_management::DBusAdaptor>(bus_);
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
-    power_manager_proxy_ =
-        std::make_unique<org::chromium::PowerManagerProxy>(bus_);
-    swap_management::RegisterPowerManagerProxyHandlers(
-        power_manager_proxy_.get());
   }
 
  private:
   std::unique_ptr<swap_management::DBusAdaptor> adaptor_;
-  std::unique_ptr<org::chromium::PowerManagerProxyInterface>
-      power_manager_proxy_;
 };
 
 }  // namespace
