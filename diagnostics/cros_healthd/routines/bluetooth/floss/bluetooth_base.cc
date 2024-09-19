@@ -274,6 +274,11 @@ void BluetoothRoutineBase::HandleSetPoweredResponse(bool powered,
 
 void BluetoothRoutineBase::OnAdapterEnabledEventTimeout() {
   if (!on_adapter_powered_changed_cb_.is_null()) {
+    bool is_adapter_present = default_adapter_ != nullptr;
+    if (current_powered_ != is_adapter_present) {
+      std::move(on_adapter_powered_changed_cb_).Run(std::nullopt);
+      return;
+    }
     std::move(on_adapter_powered_changed_cb_).Run(current_powered_);
   }
 }
@@ -301,17 +306,22 @@ void BluetoothRoutineBase::OnAdapterPoweredChanged(int32_t hci_interface,
   current_powered_ = powered;
 
   // Bluetooth routines should be able to access adapter instance directly after
-  // powering on successfully. Add a safeguard to ensure that `default_adapter_`
-  // is not null . If so, report null as error.
-  std::optional<bool> got_powered = powered;
+  // powering on successfully. To ensure that `default_adapter_` is not null,
+  // check the adapter presence state regularly until timeout.
   if (powered && default_adapter_ == nullptr) {
-    LOG(ERROR) << "Failed to get non-null default adapter after powering on";
-    got_powered = std::nullopt;
+    LOG(WARNING) << "Failed to get non-null default adapter after receiving "
+                    "adapter powered changed event.";
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&BluetoothRoutineBase::OnAdapterPoweredChanged,
+                       weak_ptr_factory_.GetWeakPtr(), hci_interface, powered),
+        kAdapterPresencePollInterval);
+    return;
   }
 
   timeout_cb_.Cancel();
   if (!on_adapter_powered_changed_cb_.is_null()) {
-    std::move(on_adapter_powered_changed_cb_).Run(got_powered);
+    std::move(on_adapter_powered_changed_cb_).Run(powered);
   }
 }
 

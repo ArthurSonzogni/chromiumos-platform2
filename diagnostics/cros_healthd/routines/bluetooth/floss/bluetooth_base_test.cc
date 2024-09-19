@@ -403,6 +403,34 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnSuccess) {
   EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), true);
 }
 
+// Test that the BluetoothRoutineBase can ensure the adapter is powered on
+// when the powered is off at first. And handle the case that the adapter added
+// event is delayed.
+TEST_F(BluetoothRoutineBaseTest,
+       EnsureAdapterPoweredOnSuccessWithDelayedAddedEvent) {
+  InSequence s;
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  EXPECT_EQ(InitializeSync(), true);
+
+  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(WithArg<1>([&](base::OnceCallback<void()> on_success) {
+        std::move(on_success).Run();
+        fake_floss_event_hub()->SendAdapterPoweredChanged(kDefaultHciInterface,
+                                                          /*powered=*/true);
+        fake_floss_event_hub()->SendAdapterAdded(&mock_adapter_proxy_);
+      }));
+
+  // Call on adapter added in Floss event hub.
+  EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
+      .WillOnce(ReturnRef(kDefaultAdapterPath));
+  EXPECT_CALL(mock_adapter_proxy_, RegisterCallbackAsync);
+  EXPECT_CALL(mock_adapter_proxy_, RegisterConnectionCallbackAsync);
+
+  EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
+      .WillOnce(ReturnRef(kDefaultAdapterPath));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), true);
+}
+
 // Test that the BluetoothRoutineBase can handle the error when powering on
 // the adapter.
 TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnError) {
@@ -428,6 +456,26 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnMissingEnabledEvent) {
 
   task_environment_.FastForwardBy(kAdapterPoweredChangedTimeout);
   EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), false);
+}
+
+// Test that the BluetoothRoutineBase can handle the wrong adapter presence when
+// powering on the adapter.
+TEST_F(BluetoothRoutineBaseTest,
+       EnsureAdapterPoweredOnErrorInconsistentAdapterPresence) {
+  InSequence s;
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  EXPECT_EQ(InitializeSync(), true);
+
+  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(WithArg<1>([&](base::OnceCallback<void()> on_success) {
+        std::move(on_success).Run();
+        // Get the adapter powered on event but the adapter is missing.
+        fake_floss_event_hub()->SendAdapterPoweredChanged(kDefaultHciInterface,
+                                                          /*powered=*/true);
+      }));
+
+  task_environment_.FastForwardBy(kAdapterPoweredChangedTimeout);
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), std::nullopt);
 }
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered off
