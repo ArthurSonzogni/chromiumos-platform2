@@ -41,6 +41,8 @@ class MantisService : public mojom::MantisService {
       mojo::PendingReceiver<mojom::MantisProcessor> processor,
       InitializeCallback callback);
 
+  void GetMantisFeatureStatus(GetMantisFeatureStatusCallback callback);
+
  private:
   // Duplicate from on_device_model_service.h
   // TODO(b/368261193): Move this function to a common place and reuse it here.

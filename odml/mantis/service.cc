@@ -16,6 +16,7 @@
 namespace mantis {
 
 namespace {
+using mojom::MantisFeatureStatus;
 using on_device_model::mojom::LoadModelResult;
 using on_device_model::mojom::PlatformModelProgressObserver;
 using MantisAPIGetter = const MantisAPI* (*)();
@@ -92,6 +93,12 @@ void MantisService::Initialize(
 
   LoadModelResult result = LoadModelResult::kSuccess;
   std::move(callback).Run(std::move(result));
+}
+
+void MantisService::GetMantisFeatureStatus(
+    GetMantisFeatureStatusCallback callback) {
+  MantisFeatureStatus status = MantisFeatureStatus::kDeviceNotSupported;
+  std::move(callback).Run(std::move(status));
 }
 
 }  // namespace mantis

@@ -49,6 +49,10 @@ class MantisProcessor : public mojom::MantisProcessor {
                       const std::string& prompt,
                       GenerativeFillCallback callback) override;
 
+  void Segmentation(const std::vector<uint8_t>& image,
+                    const std::vector<uint8_t>& prior,
+                    SegmentationCallback callback) override;
+
  private:
   MantisComponent component_;
 

@@ -52,4 +52,11 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
   std::move(callback).Run(std::move(result));
 }
 
+void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
+                                   const std::vector<uint8_t>& prior,
+                                   SegmentationCallback callback) {
+  auto result = MantisResult::NewError(MantisError::kUnknownError);
+  std::move(callback).Run(std::move(result));
+}
+
 }  // namespace mantis

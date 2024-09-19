@@ -8,6 +8,13 @@ import "odml/mojom/mantis_processor.mojom";
 import "odml/mojom/on_device_model.mojom";
 import "odml/mojom/on_device_model_service.mojom";
 
+[Stable, Extensible]
+enum MantisFeatureStatus {
+  [Default] kDeviceNotSupported,
+  kARCVMDisabled,
+  kAvailable,
+};
+
 [Stable]
 interface MantisService {
   // Load the assets from DLC, the progress can be monitored using
@@ -17,4 +24,8 @@ interface MantisService {
           progress_observer,
       pending_receiver<MantisProcessor> processor)
       => (on_device_model.mojom.LoadModelResult result);
+
+  // This will be used to restrict Mantis functionality.
+  [MinVersion=1]
+  GetMantisFeatureStatus@1() => (MantisFeatureStatus status);
 };

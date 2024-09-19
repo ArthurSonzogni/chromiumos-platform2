@@ -23,4 +23,8 @@ interface MantisProcessor {
   GenerativeFill@1(
       array<uint8> image, array<uint8> mask, uint32 seed, string prompt)
       => (MantisResult result);
+
+  [MinVersion=1]
+  Segmentation@2(array<uint8> image, array<uint8> prior)
+      => (MantisResult result);
 };
