@@ -195,6 +195,20 @@ TEST(ServiceArcUtilsTest, IsValidMetadataImagePath) {
       "/run/daemon-store/crosvm/deadbeaf/invalid.metadata.img")));
 }
 
+TEST(ServiceArcUtilsTest, IsValidPropertiesFileDiskPath) {
+  // Valid metadata image path.
+  EXPECT_TRUE(IsValidPropertiesFileDiskPath(base::FilePath(
+      "/run/daemon-store/crosvm/deadbeaf/YXJjdm0=.runtime.prop")));
+
+  // Invalid user hash.
+  EXPECT_FALSE(IsValidPropertiesFileDiskPath(base::FilePath(
+      "/run/daemon-store/crosvm/invalid/YXJjdm0=.runtime.prop")));
+
+  // Invalid file name.
+  EXPECT_FALSE(IsValidPropertiesFileDiskPath(base::FilePath(
+      "/run/daemon-store/crosvm/deadbeaf/invalid.runtime.prop")));
+}
+
 TEST(ServiceArcUtilsTest, ValidateStartArcVmRequest) {
   constexpr char kValidDemoImagePath[] =
       "/run/imageloader/demo-mode-resources/0.12.34.56/"
@@ -203,6 +217,8 @@ TEST(ServiceArcUtilsTest, ValidateStartArcVmRequest) {
       "/run/daemon-store/crosvm/deadbeaf/YXJjdm0=.img";
   constexpr char kValidMetadataImagePath[] =
       "/run/daemon-store/crosvm/deadbeaf/YXJjdm0=.metadata.img";
+  constexpr char kValidRuntimePropertiesFilePath[] =
+      "/run/daemon-store/crosvm/deadbeaf/YXJjdm0=.runtime.prop";
   constexpr char kInvalidImagePath[] = "/opt/google/vms/android/invalid";
 
   // No disks.
@@ -269,15 +285,31 @@ TEST(ServiceArcUtilsTest, ValidateStartArcVmRequest) {
       CreateRequest({kVendorImagePath, kEmptyDiskPath, kEmptyDiskPath,
                      kEmptyDiskPath, kEmptyDiskPath})));
 
-  // With 5 valid image paths.
+  // With valid system properties disk.
   EXPECT_TRUE(ValidateStartArcVmRequest(CreateRequest(
-      {kVendorImagePath, kValidDemoImagePath, kApexPayloadImagePath,
-       kValidDataImagePath, kValidMetadataImagePath})));
+      {kVendorImagePath, kEmptyDiskPath, kEmptyDiskPath, kEmptyDiskPath,
+       kEmptyDiskPath, kValidRuntimePropertiesFilePath})));
 
-  // Too many disks.
+  // With invalid system properties disk.
+  EXPECT_FALSE(ValidateStartArcVmRequest(
+      CreateRequest({kVendorImagePath, kEmptyDiskPath, kEmptyDiskPath,
+                     kEmptyDiskPath, kEmptyDiskPath, kInvalidImagePath})));
+
+  // With empty system properties disk (not allowed).
   EXPECT_FALSE(ValidateStartArcVmRequest(
       CreateRequest({kVendorImagePath, kEmptyDiskPath, kEmptyDiskPath,
                      kEmptyDiskPath, kEmptyDiskPath, kEmptyDiskPath})));
+
+  // With 6 valid image paths.
+  EXPECT_TRUE(ValidateStartArcVmRequest(CreateRequest(
+      {kVendorImagePath, kValidDemoImagePath, kApexPayloadImagePath,
+       kValidDataImagePath, kValidMetadataImagePath,
+       kValidRuntimePropertiesFilePath})));
+
+  // Too many disks.
+  EXPECT_FALSE(ValidateStartArcVmRequest(CreateRequest(
+      {kVendorImagePath, kEmptyDiskPath, kEmptyDiskPath, kEmptyDiskPath,
+       kEmptyDiskPath, kValidRuntimePropertiesFilePath, kEmptyDiskPath})));
 }
 
 }  // namespace concierge

@@ -98,13 +98,20 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
          !base::StartsWith(c[4], ".") && c[5] == "android_demo_apps.squash";
 }
 
+bool IsValidConciergeImagePath(const base::FilePath& path,
+                               const char* disk_extension) {
+  const std::vector<std::string> c = path.GetComponents();
+  return c.size() == 6 && c[0] == "/" && c[1] == "run" &&
+         c[2] == "daemon-store" && c[3] == "crosvm" &&
+         base::ContainsOnlyChars(c[4], "0123456789abcdef") &&
+         c[5] == vm_tools::GetEncodedName(kArcVmName) + disk_extension;
+}
+
 bool IsValidDataImagePath(const base::FilePath& path) {
   const std::vector<std::string> c = path.GetComponents();
   // A disk image created by concierge:
   // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
-  if (c.size() == 6 && c[0] == "/" && c[1] == "run" && c[2] == "daemon-store" &&
-      c[3] == "crosvm" && base::ContainsOnlyChars(c[4], "0123456789abcdef") &&
-      c[5] == vm_tools::GetEncodedName(kArcVmName) + ".img")
+  if (IsValidConciergeImagePath(path, ".img"))
     return true;
   // An LVM block device:
   // /dev/mapper/vm/dmcrypt-<hash>-arcvm
@@ -118,16 +125,18 @@ bool IsValidDataImagePath(const base::FilePath& path) {
 bool IsValidMetadataImagePath(const base::FilePath& path) {
   // A valid metadata image path looks like:
   //   /run/daemon-store/crosvm/<hash>/YXJjdm0=.metadata.img
-  const std::vector<std::string> c = path.GetComponents();
-  return c.size() == 6 && c[0] == "/" && c[1] == "run" &&
-         c[2] == "daemon-store" && c[3] == "crosvm" &&
-         base::ContainsOnlyChars(c[4], "0123456789abcdef") &&
-         c[5] == vm_tools::GetEncodedName(kArcVmName) + ".metadata.img";
+  return IsValidConciergeImagePath(path, ".metadata.img");
+}
+
+bool IsValidPropertiesFileDiskPath(const base::FilePath& path) {
+  // A valid metadata image path looks like:
+  //   /run/daemon-store/crosvm/<hash>/YXJjdm0=.runtime.prop
+  return IsValidConciergeImagePath(path, ".runtime.prop");
 }
 
 bool ValidateStartArcVmRequest(const StartArcVmRequest& request) {
   const auto& disks = request.disks();
-  if (disks.size() < 1 || disks.size() > 5) {
+  if (disks.size() < 1 || disks.size() > kMaxArcVmDisks) {
     LOG(ERROR) << "Invalid number of disks: " << disks.size();
     return false;
   }
@@ -168,6 +177,15 @@ bool ValidateStartArcVmRequest(const StartArcVmRequest& request) {
       return false;
     }
     LOG(INFO) << "Android /metadata disk path: " << disk_path;
+  }
+  // Disk #5 must be a valid runtime properties path.
+  if (disks.size() >= kPropertiesDiskIndex + 1) {
+    const std::string& disk_path = disks[kPropertiesDiskIndex].path();
+    if (!IsValidPropertiesFileDiskPath(base::FilePath(disk_path))) {
+      LOG(ERROR) << "Disk #5 has invalid path: " << disk_path;
+      return false;
+    }
+    LOG(INFO) << "Android runtime properties file path: " << disk_path;
   }
   return true;
 }

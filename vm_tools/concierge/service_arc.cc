@@ -16,9 +16,9 @@
 #include <base/strings/string_util.h>
 #include <chromeos/constants/vm_tools.h>
 #include <dbus/vm_concierge/dbus-constants.h>
-#include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
 #include <metrics/metrics_library.h>
+#include <vboot/crossystem.h>
 
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/pstore.h"
@@ -165,6 +165,24 @@ bool CreateMetadataImageIfNotExist(const base::FilePath& disk_path) {
   return true;
 }
 
+bool CreateRuntimeSystemPropertiesDisk(const base::FilePath& disk_path) {
+  base::ScopedFD fd(open(disk_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open disk for runtime system properties at "
+                << disk_path.value();
+    return false;
+  }
+  if (truncate(disk_path.value().c_str(), 0) != 0) {
+    PLOG(ERROR) << "Failed to clear runtime system properties disk at "
+                << disk_path.value();
+    unlink(disk_path.value().c_str());
+    return false;
+  }
+  LOG(INFO) << "Successfully created runtime system properties disk at "
+            << disk_path.value();
+  return true;
+}
+
 // This function boosts the arcvm and arcvm-vcpus cgroups, by applying the
 // cpu.uclamp.min boost for all the vcpus and crosvm services and enabling the
 // latency_sensitive attribute.
@@ -237,7 +255,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   // Create the /metadata disk if it is requested but does not yet exist.
   // (go/arcvm-metadata)
-  if (request.disks().size() >= kMetadataDiskIndex + 1) {
+  if (request.disks().size() > kMetadataDiskIndex) {
     const base::FilePath disk_path(request.disks()[kMetadataDiskIndex].path());
     if (!CreateMetadataImageIfNotExist(disk_path)) {
       response.set_failure_reason("Failed to create /metadata disk");
@@ -245,6 +263,20 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     }
   }
 
+  // Create the disk to hold system properties generated at before boot. We do
+  // not create this disk in the vm's runtime directory because we need to write
+  // to this file and crosvm needs to access it before concierge takes ownership
+  // of the runtime directory.
+  base::FilePath sysprop_disk_path;
+  if (request.disks().size() > kPropertiesDiskIndex) {
+    sysprop_disk_path =
+        base::FilePath::FromASCII(request.disks()[kPropertiesDiskIndex].path());
+    if (!CreateRuntimeSystemPropertiesDisk(sysprop_disk_path)) {
+      response.set_failure_reason(
+          "Failed to create disk to hold runtime system properties");
+      return response;
+    }
+  }
   VmBuilder vm_builder;
   // Exists just to keep FDs around for crosvm to inherit
   std::vector<brillo::SafeFD> owned_fds;

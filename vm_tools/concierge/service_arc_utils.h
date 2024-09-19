@@ -21,6 +21,13 @@ constexpr unsigned int kMetadataDiskIndex = 4;
 // Size of the /metadata disk, used when creating the disk at first boot.
 constexpr size_t kMetadataDiskSize = 64 * 1024 * 1024;  // 64 MB
 
+// Disk index of the runtime properties file.
+// It is the 6th disk in request.disks().
+constexpr unsigned int kPropertiesDiskIndex = 5;
+
+// Maximum number of disks that should be in the StartArcvmRequest
+constexpr size_t kMaxArcVmDisks = 6;
+
 // Placeholder disk path value used to indicate that there is no disk.
 constexpr char kEmptyDiskPath[] = "/dev/null";
 
@@ -66,6 +73,9 @@ bool IsValidDataImagePath(const base::FilePath& path);
 
 // Returns true if the path is a valid metadata image path.
 bool IsValidMetadataImagePath(const base::FilePath& path);
+
+// Returns true if the path is a valid properties file path.
+bool IsValidPropertiesFileDiskPath(const base::FilePath& path);
 
 // Returns true if the StartArcVmRequest contains valid ARCVM config values.
 bool ValidateStartArcVmRequest(const StartArcVmRequest& request);
