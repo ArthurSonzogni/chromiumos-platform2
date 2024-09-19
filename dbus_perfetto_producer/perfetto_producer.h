@@ -2,14 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DBUS_PERFETTO_PRODUCER_DBUS_REQUEST_H_
-#define DBUS_PERFETTO_PRODUCER_DBUS_REQUEST_H_
+#ifndef DBUS_PERFETTO_PRODUCER_PERFETTO_PRODUCER_H_
+#define DBUS_PERFETTO_PRODUCER_PERFETTO_PRODUCER_H_
 
 #include <memory>
 #include <string>
 #include <unordered_map>
 
 #include <dbus/dbus.h>
+#include <perfetto/perfetto.h>
+
+#define DBUS_PERFETTO_PRODUCER_PERFETTO_CATEGORY "dbus_perfetto_producer"
+
+PERFETTO_DEFINE_CATEGORIES(
+    perfetto::Category(DBUS_PERFETTO_PRODUCER_PERFETTO_CATEGORY)
+        .SetDescription("D-Bus Event"));
 
 struct ProcessInfo;
 
@@ -34,5 +41,17 @@ struct Maps {
 };
 
 bool StoreProcessesNames(DBusConnection*, DBusError*, Maps&);
+void PerfettoProducer(DBusConnection*, DBusError*, Maps&, int);
 
-#endif  // DBUS_PERFETTO_PRODUCER_DBUS_REQUEST_H_
+struct MessageInfo {
+  uint64_t message_type;
+  std::string member;
+  std::string interface;
+  std::string sender;
+  std::string destination;
+  uint64_t serial;
+  uint64_t reply_serial;
+  uint64_t timestamp;
+};
+
+#endif  // DBUS_PERFETTO_PRODUCER_PERFETTO_PRODUCER_H_

@@ -36,7 +36,9 @@ It should be only used in test images.
     EOF
     ```
 
-4.  Collect the trace at the output file location specified in 3.
+4.  Stop the dbus producer. i.e. Ctrl + C
+
+5.  Collect the trace at the output file location specified in 3.
     It can be uploaded to the [Perfetto UI website](https://ui.perfetto.dev).
 
 

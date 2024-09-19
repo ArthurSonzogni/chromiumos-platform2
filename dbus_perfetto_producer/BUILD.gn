@@ -23,8 +23,8 @@ config("target_defaults") {
 
 static_library("libdbus_perfetto_producer") {
   sources = [
-    "dbus_request.cc",
-    "dbus_tracer.cc",
+    "dbus_monitor.cc",
+    "perfetto_producer.cc",
   ]
   configs += [ ":target_defaults" ]
 }
