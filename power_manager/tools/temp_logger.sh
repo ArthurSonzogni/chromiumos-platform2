@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
@@ -7,6 +7,26 @@
 # Logger wrapper.
 log_message() {
   logger -t temp_logger "$@"
+}
+
+get_fans_speed() {
+  local cmd="/usr/sbin/ectool pwmgetfanrpm all"
+  local fanspeed
+  fanspeed=$(${cmd})
+  local res=$?
+  local logstr=""
+
+  if [ "${res}" -ne 0 ]; then
+    return
+  fi
+
+  while read -r entry; do
+    local entry_stripped
+    entry_stripped=$(echo "${entry}" | tr --delete " ")
+    logstr="${logstr} ${entry_stripped}"
+  done <<< "${fanspeed}"
+
+  echo "${logstr}"
 }
 
 # Output xx:yyC where xx is temp sensor id and yy is the actual temperature.
@@ -66,7 +86,7 @@ main() {
   fi
 
   while true; do
-    log_message "$(get_all_sensor_temps)" "$(get_pl1)"
+    log_message "$(get_all_sensor_temps)" "$(get_pl1)" "$(get_fans_speed)"
     sleep 60
   done
 }
