@@ -289,11 +289,13 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       InvokeVhostUserFsBackend(
           SharedDataParam{.data_dir = base::FilePath(kStubVolumeSharedDir),
                           .tag = "stub",
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
+                          .uid_map = kStubUidMap,
+                          .gid_map = kStubGidMap,
                           .enable_caches = SharedDataParam::Cache::kAuto,
                           .ascii_casefold = true,
                           .posix_acl = false,
+                          .max_dynamic_perm = 2,
+                          .max_dynamic_xattr = 2,
                           .privileged_quota_uids = privileged_quota_uids});
   if (!shared_stub_vhost_user_front_param.has_value()) {
     response.set_failure_reason(

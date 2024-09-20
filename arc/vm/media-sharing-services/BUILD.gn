@@ -7,10 +7,6 @@ group("all") {
 }
 
 install_config("install_init_scripts") {
-  sources = [
-    "init/arcvm-media-sharing-services.conf",
-    "init/arcvm-mount-myfiles.conf",
-    "init/arcvm-mount-removable-media.conf",
-  ]
+  sources = [ "init/arcvm-media-sharing-services.conf" ]
   install_path = "upstart"
 }

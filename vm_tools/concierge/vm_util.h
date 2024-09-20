@@ -256,6 +256,13 @@ constexpr char kAndroidGidMap[] =
     "0 655360 1065,1065 20119 1,1066 656426 3934,5000 600 50,5050 660410 "
     "1994950";
 
+// Uid and gid mappings for the android data media directory(/run/arcvm/media/).
+// The android root user(0) is mapped to chromeOS's chronos(1000), android
+// root group(0) is mapped to chromeOS's chronos-access(1001). The android
+// system group(1000) is mapped to android-root(656360).
+constexpr char kStubUidMap[] = "0 1000 1";
+constexpr char kStubGidMap[] = "0 1001 1,1000 656360 1";
+
 // Shared data parameter for crosvm.
 struct SharedDataParam {
   enum class Cache {
