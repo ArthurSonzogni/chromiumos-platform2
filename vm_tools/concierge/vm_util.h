@@ -284,6 +284,8 @@ struct SharedDataParam {
   bool rewrite_security_xattrs{true};
   bool ascii_casefold;
   bool posix_acl;
+  int32_t max_dynamic_perm{0};
+  int32_t max_dynamic_xattr{0};
   std::vector<uid_t> privileged_quota_uids;
 
  private:

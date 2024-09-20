@@ -602,6 +602,8 @@ TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
                         .enable_caches = SharedDataParam::Cache::kAuto,
                         .ascii_casefold = false,
                         .posix_acl = true,
+                        .max_dynamic_perm = 3,
+                        .max_dynamic_xattr = 5,
                         .privileged_quota_uids = {0}};
 
   auto request = param.get_start_vhost_user_virtio_fs_request();
@@ -637,6 +639,8 @@ TEST(VMUtilTest, SharedDataParamSetVhostUserVirtioFsConfig) {
   ASSERT_EQ(request.cfg().ascii_casefold(), false);
   ASSERT_EQ(request.cfg().posix_acl(), true);
   ASSERT_EQ(request.cfg().rewrite_security_xattrs(), true);
+  ASSERT_EQ(request.cfg().max_dynamic_perm(), 3);
+  ASSERT_EQ(request.cfg().max_dynamic_xattr(), 5);
   ASSERT_EQ(request.cfg().privileged_quota_uids().size(), 1);
   ASSERT_EQ(request.cfg().privileged_quota_uids().Get(0), 0);
 }

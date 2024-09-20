@@ -73,14 +73,21 @@ fn parse_vhost_user_fs_cfg_to_string(fs_cfg: &VhostUserVirtioFsConfig) -> String
         format!("posix_acl={}", fs_cfg.posix_acl),
     ];
 
+    if fs_cfg.max_dynamic_perm != 0 {
+        v.push(format!("max_dynamic_perm={}", fs_cfg.max_dynamic_perm))
+    }
+    if fs_cfg.max_dynamic_xattr != 0 {
+        v.push(format!("max_dynamic_xattr={}", fs_cfg.max_dynamic_xattr))
+    }
+
     if !fs_cfg.privileged_quota_uids.is_empty() {
-        let mut quota_uids = "privileged_quota_uids=".to_string();
-        quota_uids += &fs_cfg
-            .privileged_quota_uids
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<String>>()
-            .join(" ");
+        let quota_uids = "privileged_quota_uids=".to_string()
+            + &fs_cfg
+                .privileged_quota_uids
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<String>>()
+                .join(" ");
         v.push(quota_uids);
     }
     v.join(",")
@@ -393,12 +400,33 @@ mod tests {
         cfg.ascii_casefold = false;
         cfg.posix_acl = true;
 
-        let expect_str = String::from(
+        let str = parse_vhost_user_fs_cfg_to_string(&cfg);
+        assert_eq!(
+            str,
             "cache=auto,timeout=1,rewrite-security-xattrs=true,writeback=false,negative_timeout=1,\
             ascii_casefold=false,posix_acl=true",
         );
+    }
+
+    #[test]
+    fn test_parse_vhost_user_fs_cfg_to_string_with_dynamic_permission_and_xattr() {
+        let mut cfg = VhostUserVirtioFsConfig::new();
+        cfg.cache = String::from("auto");
+        cfg.timeout = 1;
+        cfg.rewrite_security_xattrs = true;
+        cfg.writeback = false;
+        cfg.negative_timeout = 1;
+        cfg.ascii_casefold = false;
+        cfg.posix_acl = true;
+        cfg.max_dynamic_perm = 2;
+        cfg.max_dynamic_xattr = 2;
+
         let str = parse_vhost_user_fs_cfg_to_string(&cfg);
-        assert_eq!(str, expect_str);
+        assert_eq!(
+            str,
+            "cache=auto,timeout=1,rewrite-security-xattrs=true,writeback=false,negative_timeout=1,\
+            ascii_casefold=false,posix_acl=true,max_dynamic_perm=2,max_dynamic_xattr=2",
+        );
     }
 
     #[test]

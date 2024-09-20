@@ -772,6 +772,11 @@ std::string SharedDataParam::to_string() const {
   // set uid_map and gid_map, but today there is none.
   CHECK_NE(uid_map, "");
   CHECK_NE(gid_map, "");
+  // We expect normal fs devices(non vhost-user) not to use dynamic
+  // permission/xattr feature, which means max_dynamic_perm and
+  // max_dynamic_xattr option should be 0.
+  CHECK_EQ(max_dynamic_perm, 0);
+  CHECK_EQ(max_dynamic_xattr, 0);
 
   CacheParameters params =
       create_cache_parameters(enable_caches, ascii_casefold);
@@ -815,6 +820,8 @@ vhost_user_starter::StartVhostUserFsRequest
 SharedDataParam::get_start_vhost_user_virtio_fs_request() const {
   CHECK_NE(uid_map, "");
   CHECK_NE(gid_map, "");
+  DCHECK_GE(max_dynamic_perm, 0);
+  DCHECK_GE(max_dynamic_xattr, 0);
 
   vm_tools::vhost_user_starter::StartVhostUserFsRequest request;
   request.set_tag(tag);
@@ -847,6 +854,8 @@ SharedDataParam::get_start_vhost_user_virtio_fs_request() const {
   SET_FIELD(rewrite_security_xattrs);
   SET_FIELD(ascii_casefold);
   SET_FIELD(posix_acl);
+  SET_FIELD(max_dynamic_perm);
+  SET_FIELD(max_dynamic_xattr);
 #undef SET_FIELD
 
   for (uid_t uid : privileged_quota_uids) {
