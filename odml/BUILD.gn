@@ -35,6 +35,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libdlcservice-client",
     "libmetrics",
+    "libsession_manager-client",
     "mojo_service_manager",
     "protobuf-lite",
     "system_api",
@@ -144,6 +145,7 @@ source_set("odml") {
     "on_device_model/platform_model_loader_chromeos.cc",
     "on_device_model/public/cpp/model_assets.cc",
     "on_device_model/public/cpp/text_safety_assets.cc",
+    "session_state_manager/session_state_manager.cc",
     "utils/dlc_client_helper.cc",
     "utils/odml_shim_loader_impl.cc",
   ]
@@ -209,7 +211,10 @@ proto_library("coral_proto") {
 
 if (use.test) {
   pkg_config("test_config") {
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libsession_manager-client-test",
+    ]
   }
 
   executable("odml_testrunner") {
@@ -219,6 +224,7 @@ if (use.test) {
       "on_device_model/fake/on_device_model_fake.cc",
       "on_device_model/on_device_model_service_test.cc",
       "on_device_model/public/cpp/test_support/test_response_holder.cc",
+      "session_state_manager/session_state_manager_test.cc",
     ]
     configs += [
       "//common-mk:test",

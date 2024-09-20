@@ -129,3 +129,6 @@ getcwd: 1
 readlinkat: 1
 setitimer: 1
 mlock: 1
+
+# For DBusDaemon
+signalfd4: 1

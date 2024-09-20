@@ -15,6 +15,7 @@
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
+#include "odml/session_state_manager/session_state_manager.h"
 
 namespace coral {
 
@@ -36,16 +37,22 @@ class EmbeddingEngineInterface {
                        EmbeddingCallback callback) = 0;
 };
 
-class EmbeddingEngine : public EmbeddingEngineInterface {
+class EmbeddingEngine : public EmbeddingEngineInterface,
+                        public odml::SessionStateManagerInterface::Observer {
  public:
-  explicit EmbeddingEngine(
-      raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
-          embedding_service);
+  EmbeddingEngine(raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+                      embedding_service,
+                  odml::SessionStateManagerInterface* session_state_manager);
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
   void Process(mojom::GroupRequestPtr request,
                EmbeddingCallback callback) override;
+
+  // SessionStateManagerInterface overrides.
+  void OnUserLoggedIn(
+      const odml::SessionStateManagerInterface::User& user) override;
+  void OnUserLoggedOut() override;
 
  private:
   void EnsureModelLoaded(base::OnceClosure callback);

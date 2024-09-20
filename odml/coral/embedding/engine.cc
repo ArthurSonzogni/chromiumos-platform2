@@ -44,14 +44,28 @@ std::string EntityToEmbeddingPrompt(const mojom::Entity& entity) {
 
 EmbeddingEngine::EmbeddingEngine(
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
-        embedding_service)
-    : embedding_service_(embedding_service) {}
+        embedding_service,
+    odml::SessionStateManagerInterface* session_state_manager)
+    : embedding_service_(embedding_service) {
+  if (session_state_manager) {
+    session_state_manager->AddObserver(this);
+  }
+}
 
 void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
                               EmbeddingCallback callback) {
   EnsureModelLoaded(base::BindOnce(&EmbeddingEngine::DoProcess,
                                    weak_ptr_factory_.GetWeakPtr(),
                                    std::move(request), std::move(callback)));
+}
+
+void EmbeddingEngine::OnUserLoggedIn(
+    const odml::SessionStateManagerInterface::User& user) {
+  LOG(INFO) << "EmbeddingEngine::OnUserLoggedIn";
+}
+
+void EmbeddingEngine::OnUserLoggedOut() {
+  LOG(INFO) << "EmbeddingEngine::OnUserLoggedOut";
 }
 
 void EmbeddingEngine::EnsureModelLoaded(base::OnceClosure callback) {

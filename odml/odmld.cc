@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <sys/types.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <memory>
@@ -10,10 +11,11 @@
 #include <base/logging.h>
 #include <base/memory/raw_ref.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
-#include <brillo/daemons/daemon.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/mojo/service_constants.h>
+#include <dbus/bus.h>
 #include <metrics/metrics_library.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
@@ -31,6 +33,7 @@
 #include "odml/mantis/service.h"
 #include "odml/on_device_model/on_device_model_service.h"
 #include "odml/utils/odml_shim_loader_impl.h"
+#include "session_state_manager/session_state_manager.h"
 
 namespace {
 
@@ -120,9 +123,12 @@ class CoralServiceProviderImpl
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
           on_device_model_service,
       raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
-          embedding_model_service)
+          embedding_model_service,
+      odml::SessionStateManagerInterface* session_state_manager)
       : receiver_(this),
-        service_impl_(on_device_model_service, embedding_model_service) {
+        service_impl_(on_device_model_service,
+                      embedding_model_service,
+                      session_state_manager) {
     service_manager->Register(chromeos::mojo_services::kCrosCoralService,
                               receiver_.BindNewPipeAndPassRemote());
   }
@@ -181,15 +187,23 @@ class MantisServiceProviderImpl
   mantis::MantisService service_impl_;
 };
 
-class Daemon : public brillo::Daemon {
+class Daemon : public brillo::DBusDaemon {
  public:
-  Daemon() = default;
-  ~Daemon() = default;
+  ~Daemon() override = default;
 
  protected:
   // brillo::DBusDaemon:
   int OnInit() override {
+    int exit_code = brillo::DBusDaemon::OnInit();
+    if (exit_code != EX_OK) {
+      LOG(ERROR) << "DBusDaemon::OnInit() failed";
+      return exit_code;
+    }
+
     mojo::core::Init();
+
+    session_state_manager_ =
+        std::make_unique<odml::SessionStateManager>(bus_.get());
 
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
         base::SingleThreadTaskRunner::GetCurrentDefault(),
@@ -221,10 +235,14 @@ class Daemon : public brillo::Daemon {
     coral_service_provider_impl_ = std::make_unique<CoralServiceProviderImpl>(
         raw_ref(metrics_), service_manager_,
         on_device_model_service_provider_impl_->service(),
-        embedding_model_service_provider_impl_->service());
+        embedding_model_service_provider_impl_->service(),
+        session_state_manager_.get());
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
         raw_ref(metrics_), service_manager_);
+
+    session_state_manager_->RefreshPrimaryUser();
+
     return 0;
   }
 
@@ -233,6 +251,8 @@ class Daemon : public brillo::Daemon {
 
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;
+
+  std::unique_ptr<odml::SessionStateManager> session_state_manager_;
 
   // The metrics lib. Should be destructed after both service providers.
   MetricsLibrary metrics_;

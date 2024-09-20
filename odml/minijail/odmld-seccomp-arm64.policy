@@ -101,3 +101,6 @@ sched_setaffinity: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
+
+# For DBusDaemon
+signalfd4: 1

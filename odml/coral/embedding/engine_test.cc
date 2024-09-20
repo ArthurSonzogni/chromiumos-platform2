@@ -100,9 +100,11 @@ class FakeEmbeddingModelService : public OnDeviceEmbeddingModelService {
 
 class EmbeddingEngineTest : public testing::Test {
  public:
+  // TODO(361429567): pass in a mock object instead of nullptr.
   EmbeddingEngineTest()
       : model_service_(raw_ref(should_error_)),
-        engine_(std::make_unique<EmbeddingEngine>(raw_ref(model_service_))) {
+        engine_(std::make_unique<EmbeddingEngine>(raw_ref(model_service_),
+                                                  nullptr)) {
     mojo::core::Init();
   }
 

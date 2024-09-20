@@ -11,6 +11,7 @@
 #include "odml/coral/title_generation/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/session_state_manager/session_state_manager.h"
 
 namespace coral {
 
@@ -25,9 +26,11 @@ CoralService::CoralService(
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service,
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
-        embedding_model_service)
+        embedding_model_service,
+    odml::SessionStateManagerInterface* session_state_manager)
     : CoralService(
-          std::make_unique<EmbeddingEngine>(embedding_model_service),
+          std::make_unique<EmbeddingEngine>(embedding_model_service,
+                                            session_state_manager),
           std::make_unique<ClusteringEngine>(
               std::make_unique<clustering::ClusteringFactory>()),
           std::make_unique<TitleGenerationEngine>(on_device_model_service)) {}

@@ -160,7 +160,8 @@ TEST(CoralServiceConstructTest, Construct) {
   on_device_model::MockOnDeviceModelService model_service;
   embedding_model::EmbeddingModelService embedding_service(
       (raw_ref(metrics)), raw_ref(embedding_model_factory));
-  CoralService service((raw_ref(model_service)), (raw_ref(embedding_service)));
+  CoralService service((raw_ref(model_service)), (raw_ref(embedding_service)),
+                       nullptr);
 }
 
 TEST_F(CoralServiceTest, GroupSuccess) {
