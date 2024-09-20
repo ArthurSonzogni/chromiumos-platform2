@@ -321,6 +321,30 @@ message GetAvailableSpaceResponse {
   uint64 available_space = 1;
 }
 
+message SetUpUserRequest {
+  // Username for the user.
+  string username = 1;
+
+  // Optional UID for the user; defaults to 1000.
+  optional uint32 uid = 2;
+
+  // Optional group names to which the user will be added.
+  repeated string group_names = 3;
+}
+
+message SetUpUserResponse {
+  // If true, the user was setup successfully.
+  bool success = 1;
+
+  // The failure_reason if the user was not set up successfully.
+  string failure_reason = 2;
+
+  // If the uid specified in SetUpUserRequest already exists,
+  // this is the corresponding username. Otherwise, this is the
+  // username specified in SetUpUserRequest.
+  string username = 3;
+}
+
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
@@ -392,4 +416,7 @@ service Maitred {
   // (e.g /proc/sys/dirty_ratio).
   rpc UpdateStorageBalloon(UpdateStorageBalloonRequest)
       returns (UpdateStorageBalloonResponse);
+
+  // Set up a new user, creating it if it doesn't exist.
+  rpc SetUpUser(SetUpUserRequest) returns (SetUpUserResponse);
 }

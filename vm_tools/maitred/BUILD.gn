@@ -10,6 +10,7 @@ if (use.kvm_host) {
     pkg_deps = [
       "grpc++",
       "protobuf",
+      "re2",
       "vm_protos",
     ]
   }
@@ -27,6 +28,7 @@ if (use.kvm_guest) {
       "grpc++",
       "libbrillo",
       "protobuf",
+      "re2",
       "vm_protos",
     ]
   }

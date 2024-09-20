@@ -132,6 +132,10 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
       const vm_tools::UpdateStorageBalloonRequest* request,
       vm_tools::UpdateStorageBalloonResponse* response) override;
 
+  grpc::Status SetUpUser(grpc::ServerContext* ctx,
+                         const vm_tools::SetUpUserRequest* request,
+                         vm_tools::SetUpUserResponse* response) override;
+
  private:
   bool maitred_is_pid1_;
 

@@ -7,12 +7,16 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <linux/ethtool.h>
+#include <linux/fs.h>
 #include <linux/limits.h>
 #include <linux/sockios.h>
+#include <linux/vm_sockets.h>
 #include <net/if.h>
 #include <net/route.h>
 #include <netinet/in.h>
+#include <pwd.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -24,16 +28,16 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
-#include <linux/fs.h>
-#include <linux/vm_sockets.h>
-
 #include <algorithm>
 #include <csignal>
+#include <iterator>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <absl/algorithm/container.h>
+#include <absl/strings/str_join.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -53,6 +57,7 @@
 #include <brillo/files/file_util.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
+#include <re2/re2.h>
 
 #include "vm_tools/common/paths.h"
 
@@ -82,6 +87,11 @@ constexpr int64_t kGiB = 1024 * 1024 * 1024;
 constexpr char kLogindManagerInterface[] = "org.freedesktop.login1.Manager";
 constexpr char kLogindServicePath[] = "/org/freedesktop/login1";
 constexpr char kLogindServiceName[] = "org.freedesktop.login1";
+
+// https://manpages.debian.org/testing/adduser/adduser.conf.5.en.html#NAME_REGEX
+constexpr LazyRE2 kUsernameRegexp = {R"([a-z][-a-z0-9_]*\$?)"};
+
+constexpr char kSystemdLingerDirPath[] = "/var/lib/systemd/linger";
 
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
@@ -1117,6 +1127,120 @@ grpc::Status ServiceImpl::UpdateStorageBalloon(
         vm_tools::UpdateStorageBalloonResult::BALLOON_INFLATE_FAILED);
   }
 
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::SetUpUser(grpc::ServerContext* ctx,
+                                    const vm_tools::SetUpUserRequest* request,
+                                    vm_tools::SetUpUserResponse* response) {
+  LOG(INFO) << "Received request to setup a new user.";
+
+  if (request->username().empty()) {
+    LOG(ERROR) << "Cannot setup a user with <empty> username";
+    return grpc::Status(grpc::INVALID_ARGUMENT, "username is empty");
+  }
+  if (!RE2::FullMatch(request->username(), *kUsernameRegexp)) {
+    LOG(ERROR) << "Invalid username specified: " << request->username();
+    return grpc::Status(grpc::INVALID_ARGUMENT, "username is invalid");
+  }
+  response->set_username(request->username());
+  response->set_success(false);
+
+  uid_t uid = request->uid();
+  if (!request->has_uid()) {
+    LOG(WARNING) << "Unspecified uid for new user; defaulting to 1000";
+    uid = 1000;
+  } else if (uid == 0) {
+    LOG(ERROR) << "Cannot setup a new user with root uid: 0";
+    return grpc::Status(grpc::INVALID_ARGUMENT, "new uid cannot be 0");
+  }
+
+  struct passwd* pwd = getpwuid(uid);
+  if ((pwd != NULL) && (request->username() != pwd->pw_name)) {
+    response->set_failure_reason("Another user with uid " +
+                                 std::to_string(uid) + " already exists");
+    response->set_username(pwd->pw_name);
+    LOG(ERROR) << response->failure_reason() << ": " << pwd->pw_name;
+    return grpc::Status::OK;
+  }
+
+  bool user_exists = false;
+  if ((pwd = getpwnam(request->username().c_str())) != NULL) {
+    user_exists = true;
+    if (pwd->pw_uid != uid) {
+      response->set_failure_reason("User exists, but with a different uid: " +
+                                   std::to_string(pwd->pw_uid));
+      LOG(ERROR) << response->failure_reason();
+      return grpc::Status::OK;
+    } else {
+      LOG(INFO) << "User " << response->username() << " already exists";
+    }
+  }
+
+  // Although the useradd/usermod invocation below will check for existence of
+  // groups, our `getgrnam` check below also serves as a sanitization step to
+  // avoid passing unsafe strings as part of the command line.
+  std::vector<std::string> nonexistent_group_names;
+  absl::c_copy_if(
+      request->group_names(), std::back_inserter(nonexistent_group_names),
+      [](const std::string& gname) { return getgrnam(gname.c_str()) == NULL; });
+  if (!nonexistent_group_names.empty()) {
+    LOG(ERROR) << "Nonexistent group names specified: "
+               << absl::StrJoin(nonexistent_group_names, ",");
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "one or more specified groups do not exist");
+  }
+
+  // All of the user-specified strings (the username and the group names) have
+  // been sanitized at this point.
+  std::vector<string> argv;
+  if (!user_exists) {
+    argv = {"/usr/sbin/useradd", "--uid",   std::to_string(uid),
+            "--create-home",     "--shell", "/bin/bash"};
+    if (!request->group_names().empty()) {
+      argv.push_back("--groups");
+      argv.push_back(absl::StrJoin(request->group_names(), ","));
+    }
+    argv.push_back(request->username());
+  } else if (!request->group_names().empty()) {
+    argv = {"/usr/sbin/usermod", "--append", "--groups",
+            absl::StrJoin(request->group_names(), ","), request->username()};
+  }
+
+  // If the user already exists and we have no more groups to append,
+  // then there's nothing to do.
+  if (!argv.empty()) {
+    Init::ProcessLaunchInfo launch_info;
+    auto res = init_->Spawn(argv, {}, /*respawn=*/false, /*use_console=*/false,
+                            /*wait_for_exit=*/true, &launch_info);
+    if (!res || launch_info.status != Init::ProcessStatus::EXITED) {
+      LOG(ERROR) << "Failed to invoke " << argv[0] << ": "
+                 << launch_info.output;
+      return grpc::Status(grpc::INTERNAL, argv[0] + " invocation failed");
+    } else if (launch_info.code != 0) {
+      response->set_failure_reason("Could not create new user");
+      LOG(ERROR) << response->failure_reason();
+      return grpc::Status::OK;
+    }
+  }
+
+  // Create a linger file to keep systemd user services running even after the
+  // user's session has terminated.
+  auto linger_dir = base::FilePath(kSystemdLingerDirPath);
+  if (!base::DirectoryExists(linger_dir)) {
+    if (!base::CreateDirectory(linger_dir)) {
+      response->set_failure_reason("Could not create " + linger_dir.value());
+      LOG(ERROR) << response->failure_reason();
+      return grpc::Status::OK;
+    }
+  }
+  if (base::WriteFile(linger_dir.Append(request->username()), NULL, 0) < 0) {
+    response->set_failure_reason("Could not create linger file");
+    LOG(ERROR) << response->failure_reason();
+    return grpc::Status::OK;
+  }
+
+  response->set_success(true);
   return grpc::Status::OK;
 }
 
