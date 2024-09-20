@@ -31,6 +31,8 @@ struct PlaneConfiguration {
   uint32_t h;
 };
 
+enum class PanelRotation { k0, k90, k180, k270 };
+
 class Crtc {
  public:
   using PlaneInfo = std::pair<ScopedDrmModeFB2Ptr, PlaneConfiguration>;
@@ -40,7 +42,8 @@ class Crtc {
        ScopedDrmModeEncoderPtr encoder,
        ScopedDrmModeCrtcPtr crtc,
        ScopedDrmModeFB2Ptr fb2,
-       ScopedDrmPlaneResPtr plane_res);
+       ScopedDrmPlaneResPtr plane_res,
+       PanelRotation panel_orientation);
 
   Crtc(const Crtc&) = delete;
   Crtc& operator=(const Crtc&) = delete;
@@ -55,6 +58,8 @@ class Crtc {
   uint32_t width() const { return crtc_->width; }
   uint32_t height() const { return crtc_->height; }
 
+  PanelRotation panel_orientation() const { return panel_orientation_; }
+
   bool IsInternalDisplay() const;
   std::vector<Crtc::PlaneInfo> GetConnectedPlanes() const;
 
@@ -66,6 +71,7 @@ class Crtc {
   ScopedDrmModeCrtcPtr crtc_;
   ScopedDrmModeFB2Ptr fb2_;
   ScopedDrmPlaneResPtr plane_res_;
+  const PanelRotation panel_orientation_;
 };
 
 class CrtcFinder final {

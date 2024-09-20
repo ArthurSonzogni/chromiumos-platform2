@@ -68,8 +68,12 @@ Development was done typically with rammus.
 
 Tablets can be rotated, you can pass --rotate to `screenshot` and `kmsvnc`
 to rotate the captured screeen 90 degrees clockwise. This works correctly
-with `kukui` devices. Other orientations are not supported at this moment
-in the sprit of YAGNI.
+with `kukui` devices.
+
+Passing --panel-orientation-rotation to `screenshot` will make it read the
+DRM "panel orientation" property and rotate the captured image so that the
+screenshot matches what the user would see if they were looking at the
+device in its natural position.
 
 ### Keyboard handling
 

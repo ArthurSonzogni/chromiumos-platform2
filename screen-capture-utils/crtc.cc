@@ -72,6 +72,53 @@ bool PopulatePlaneConfiguration(int fd,
   return true;
 }
 
+PanelRotation GetPanelOrientation(int fd, uint32_t connector_id) {
+  ScopedDrmObjectPropertiesPtr props(
+      drmModeObjectGetProperties(fd, connector_id, DRM_MODE_OBJECT_CONNECTOR));
+  if (!props) {
+    return PanelRotation::k0;
+  }
+
+  for (uint32_t p = 0; p < props->count_props; p++) {
+    ScopedDrmPropertyPtr prop(drmModeGetProperty(fd, props->props[p]));
+    if (!prop) {
+      continue;
+    }
+
+    if (strcmp("panel orientation", prop->name) == 0) {
+      /* enum is internal to the kernel and not exposed.
+      enum drm_panel_orientation {
+        DRM_MODE_PANEL_ORIENTATION_UNKNOWN = -1,
+        DRM_MODE_PANEL_ORIENTATION_NORMAL = 0,
+        DRM_MODE_PANEL_ORIENTATION_BOTTOM_UP,
+        DRM_MODE_PANEL_ORIENTATION_LEFT_UP,
+        DRM_MODE_PANEL_ORIENTATION_RIGHT_UP,
+      };
+      */
+
+      switch (props->prop_values[p]) {
+        case 0:
+          VLOG(1) << "panel orientation 0 degrees.";
+          return PanelRotation::k0;
+        case 1:
+          VLOG(1) << "panel orientation 180 degrees.";
+          return PanelRotation::k180;
+        case 2:
+          VLOG(1) << "panel orientation 270 degrees.";
+          return PanelRotation::k270;
+        case 3:
+          VLOG(1) << "panel orientation 90 degrees.";
+          return PanelRotation::k90;
+        default:
+          VLOG(1) << "unable to detect panel orientation, using 0 degrees.";
+          return PanelRotation::k0;
+      }
+    }
+  }
+
+  return PanelRotation::k0;
+}
+
 std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
   std::vector<std::unique_ptr<Crtc>> crtcs;
 
@@ -127,6 +174,9 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
         continue;
       }
 
+      const PanelRotation panel_orientation = GetPanelOrientation(
+          file.GetPlatformFile(), resources->connectors[index_connector]);
+
       std::unique_ptr<Crtc> res_crtc;
 
       // Keep around a file for next display if needed.
@@ -142,11 +192,12 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
         CHECK(plane_res) << " Failed to get plane resources";
         res_crtc = std::make_unique<Crtc>(std::move(file), std::move(connector),
                                           std::move(encoder), std::move(crtc),
-                                          std::move(fb2), std::move(plane_res));
+                                          std::move(fb2), std::move(plane_res),
+                                          panel_orientation);
       } else {
-        res_crtc = std::make_unique<Crtc>(std::move(file), std::move(connector),
-                                          std::move(encoder), std::move(crtc),
-                                          std::move(fb2), nullptr);
+        res_crtc = std::make_unique<Crtc>(
+            std::move(file), std::move(connector), std::move(encoder),
+            std::move(crtc), std::move(fb2), nullptr, panel_orientation);
       }
 
       file = std::move(file_dup);
@@ -164,13 +215,15 @@ Crtc::Crtc(base::File file,
            ScopedDrmModeEncoderPtr encoder,
            ScopedDrmModeCrtcPtr crtc,
            ScopedDrmModeFB2Ptr fb2,
-           ScopedDrmPlaneResPtr plane_res)
+           ScopedDrmPlaneResPtr plane_res,
+           PanelRotation panel_orientation)
     : file_(std::move(file)),
       connector_(std::move(connector)),
       encoder_(std::move(encoder)),
       crtc_(std::move(crtc)),
       fb2_(std::move(fb2)),
-      plane_res_(std::move(plane_res)) {}
+      plane_res_(std::move(plane_res)),
+      panel_orientation_(panel_orientation) {}
 
 bool Crtc::IsInternalDisplay() const {
   switch (connector_->connector_type) {

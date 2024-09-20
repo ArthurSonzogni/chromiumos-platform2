@@ -34,7 +34,8 @@ class EglDisplayBuffer : public DisplayBuffer {
                    uint32_t x,
                    uint32_t y,
                    uint32_t width,
-                   uint32_t height);
+                   uint32_t height,
+                   bool rotate_to_panel_orientation);
   EglDisplayBuffer(const EglDisplayBuffer&) = delete;
   EglDisplayBuffer& operator=(const EglDisplayBuffer&) = delete;
   ~EglDisplayBuffer() override;
@@ -63,6 +64,7 @@ class EglDisplayBuffer : public DisplayBuffer {
   const uint32_t height_;
   const ScopedGbmDevicePtr device_;
   const EGLDisplay display_;
+  const bool rotate_to_panel_orientation_;
 
   GLint uvs_uniform_location_;
   GLuint input_texture_;

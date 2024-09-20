@@ -156,8 +156,12 @@ void WaitVBlank(int fd) {
 
 }  // namespace
 
-EglDisplayBuffer::EglDisplayBuffer(
-    const Crtc* crtc, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+EglDisplayBuffer::EglDisplayBuffer(const Crtc* crtc,
+                                   uint32_t x,
+                                   uint32_t y,
+                                   uint32_t width,
+                                   uint32_t height,
+                                   bool rotate_to_panel_orientation)
     : crtc_(*crtc),
       x_(x),
       y_(y),
@@ -165,6 +169,7 @@ EglDisplayBuffer::EglDisplayBuffer(
       height_(height),
       device_(gbm_create_device(crtc_.file().GetPlatformFile())),
       display_(eglGetDisplay(EGL_DEFAULT_DISPLAY)),
+      rotate_to_panel_orientation_(rotate_to_panel_orientation),
       buffer_(width_ * height_) {
   CHECK(device_) << "gbm_create_device failed";
 
@@ -347,6 +352,28 @@ DisplayBuffer::Result EglDisplayBuffer::Capture(bool rotate) {
   if (rotate) {
     Rotate(result, rotated_);
   }
+
+  if (rotate_to_panel_orientation_) {
+    const PanelRotation rotation = crtc_.panel_orientation();
+    // The panel native rotation is |rotation| degrees counterclockwise.
+    // Therefore, the image in |result| is a rotated version (|rotation| degrees
+    // clockwise) of what the user sees when holding the device in its "natural"
+    // position. Hence, to make that image reflect what the user sees, we need
+    // to rotate it |rotation| degrees counterclockwise or, equivalently,
+    // (360 - |rotation|) degrees clockwise. We use Rotate() for that: each call
+    // to Rotate() rotates the image 90 degrees clockwise.
+    if (rotation == PanelRotation::k90) {
+      Rotate(result, rotated_);
+      Rotate(result, rotated_);
+      Rotate(result, rotated_);
+    } else if (rotation == PanelRotation::k180) {
+      Rotate(result, rotated_);
+      Rotate(result, rotated_);
+    } else if (rotation == PanelRotation::k270) {
+      Rotate(result, rotated_);
+    }
+  }
+
   return result;
 }
 

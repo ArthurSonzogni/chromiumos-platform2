@@ -27,6 +27,7 @@ constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
 constexpr const char kCropSwitch[] = "crop";
 constexpr const char kRotateSwitch[] = "rotate";
+constexpr const char kPanelOrientationRotation[] = "panel-orientation-rotation";
 
 constexpr const char kHelp[] =
     "Usage: screenshot [options...] path/to/output.png\n"
@@ -39,7 +40,9 @@ constexpr const char kHelp[] =
     "  --external: Capture from external display.\n"
     "  --crtc-id=ID: Capture from the specified display.\n"
     "  --crop=WxH+X+Y: Specify a subregion to capture.\n"
-    "  --rotate: Rotate captured screenshot 90 degrees clockwise.\n";
+    "  --rotate: Rotate captured screenshot 90 degrees clockwise.\n"
+    "  --panel-orientation-rotation: Use DRM's understanding of screen "
+    "orientation and rotate to match if needed.\n";
 
 void PrintHelp() {
   std::cerr << kHelp;
@@ -125,8 +128,9 @@ int Main() {
 
   std::unique_ptr<screenshot::DisplayBuffer> display_buffer;
 
-  display_buffer.reset(
-      new screenshot::EglDisplayBuffer(crtc.get(), x, y, width, height));
+  display_buffer.reset(new screenshot::EglDisplayBuffer(
+      crtc.get(), x, y, width, height,
+      cmdline->HasSwitch(kPanelOrientationRotation)));
 
   screenshot::DisplayBuffer::Result result = display_buffer->Capture(rotate);
   screenshot::SaveAsPng(cmdline->GetArgs()[0].c_str(), result.buffer,

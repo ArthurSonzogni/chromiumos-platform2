@@ -206,7 +206,7 @@ int VncMain() {
   std::unique_ptr<screenshot::DisplayBuffer> display_buffer;
 
   display_buffer.reset(new screenshot::EglDisplayBuffer(
-      crtc.get(), 0, 0, crtc_width, crtc_height));
+      crtc.get(), 0, 0, crtc_width, crtc_height, false));
 
   std::vector<uint32_t> buffer(vnc_width * vnc_height);
 
