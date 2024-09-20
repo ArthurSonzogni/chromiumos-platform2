@@ -40,6 +40,7 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/mock_hotspot_device.h"
 #include "shill/wifi/mock_local_device.h"
+#include "shill/wifi/mock_p2p_device.h"
 #include "shill/wifi/mock_p2p_manager.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
@@ -718,6 +719,16 @@ class WiFiProviderTest : public testing::Test {
       WiFiPhy::Priority priority) {
     scoped_refptr<MockLocalDevice> dev = new NiceMock<MockLocalDevice>(
         &manager_, type, link_name, 0, priority, cb.Get());
+    return dev;
+  }
+
+  scoped_refptr<MockP2PDevice> CreateP2PDeviceWithPriority(
+      LocalDevice::IfaceType type,
+      const std::string& link_name,
+      int32_t shill_id,
+      WiFiPhy::Priority priority) {
+    scoped_refptr<MockP2PDevice> dev = new NiceMock<MockP2PDevice>(
+        &manager_, type, link_name, 0, shill_id, priority, cb.Get());
     return dev;
   }
 
@@ -3149,22 +3160,22 @@ TEST_F(WiFiProviderTest, GetLowestPriorityEnabledWiFiDevice) {
 TEST_F(WiFiProviderTest, BringDownDevicesByType) {
   MockWiFiPhy* phy0 = AddMockPhy(0);
   scoped_refptr<MockLocalDevice> ap0 = CreateLocalDeviceWithPriority(
-      LocalDevice::IfaceType::kAP, "ao0", WiFiPhy::Priority(0));
+      LocalDevice::IfaceType::kAP, "ap0", WiFiPhy::Priority(0));
   phy0->AddWiFiLocalDevice(ap0);
   scoped_refptr<MockLocalDevice> ap1 = CreateLocalDeviceWithPriority(
       LocalDevice::IfaceType::kAP, "ap1", WiFiPhy::Priority(1));
   phy0->AddWiFiLocalDevice(ap1);
-  scoped_refptr<MockLocalDevice> go0 = CreateLocalDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PGO, "go0", WiFiPhy::Priority(0));
+  scoped_refptr<MockP2PDevice> go0 = CreateP2PDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "go0", 0, WiFiPhy::Priority(0));
   phy0->AddWiFiLocalDevice(go0);
-  scoped_refptr<MockLocalDevice> go1 = CreateLocalDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PGO, "go1", WiFiPhy::Priority(1));
+  scoped_refptr<MockP2PDevice> go1 = CreateP2PDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "go1", 1, WiFiPhy::Priority(1));
   phy0->AddWiFiLocalDevice(go1);
-  scoped_refptr<MockLocalDevice> client0 = CreateLocalDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PClient, "client0", WiFiPhy::Priority(0));
+  scoped_refptr<MockP2PDevice> client0 = CreateP2PDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PClient, "client0", 2, WiFiPhy::Priority(0));
   phy0->AddWiFiLocalDevice(client0);
-  scoped_refptr<MockLocalDevice> client1 = CreateLocalDeviceWithPriority(
-      LocalDevice::IfaceType::kP2PClient, "client1", WiFiPhy::Priority(1));
+  scoped_refptr<MockP2PDevice> client1 = CreateP2PDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PClient, "client1", 3, WiFiPhy::Priority(1));
   phy0->AddWiFiLocalDevice(client1);
 
   EXPECT_CALL(manager_, device_info()).Times(2);
