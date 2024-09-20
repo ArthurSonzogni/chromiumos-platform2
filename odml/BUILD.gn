@@ -258,6 +258,7 @@ if (use.test) {
   executable("mantis_testrunner") {
     sources = [
       "mantis/fake/fake_mantis_api.cc",
+      "mantis/processor_test.cc",
       "mantis/service_test.cc",
     ]
     configs += [

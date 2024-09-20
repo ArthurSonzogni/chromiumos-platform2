@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/fixed_flat_map.h>
 
 #include "odml/mantis/lib_api.h"
 #include "odml/mojom/mantis_processor.mojom.h"
@@ -17,6 +18,14 @@ namespace mantis {
 namespace {
 using mojom::MantisError;
 using mojom::MantisResult;
+
+constexpr auto kMapStatusToError =
+    base::MakeFixedFlatMap<MantisStatus, MantisError>({
+        {MantisStatus::kProcessorNotInitialized,
+         MantisError::kProcessorNotInitialized},
+        {MantisStatus::kInputError, MantisError::kInputError},
+        {MantisStatus::kProcessFailed, MantisError::kProcessFailed},
+    });
 }  // namespace
 
 MantisProcessor::MantisProcessor(
@@ -39,8 +48,21 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
                                  const std::vector<uint8_t>& mask,
                                  uint32_t seed,
                                  InpaintingCallback callback) {
-  auto result = MantisResult::NewError(MantisError::kUnknownError);
-  std::move(callback).Run(std::move(result));
+  if (!component_.processor) {
+    LOG(ERROR) << "Processor is missing";
+    std::move(callback).Run(
+        MantisResult::NewError(MantisError::kProcessorNotInitialized));
+    return;
+  }
+  InpaintingResult lib_result =
+      api_->Inpainting(component_.processor, image, mask, seed);
+  if (lib_result.status != MantisStatus::kOk) {
+    std::move(callback).Run(
+        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
+    return;
+  }
+
+  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
 }
 
 void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,

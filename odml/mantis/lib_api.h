@@ -6,6 +6,7 @@
 #define ODML_MANTIS_LIB_API_H_
 
 #include <string>
+#include <vector>
 
 namespace mantis {
 
@@ -19,10 +20,28 @@ struct MantisComponent {
   SegmenterPtr segmenter;
 };
 
+enum class MantisStatus : int {
+  kOk,
+  kProcessorNotInitialized,
+  kInputError,
+  kProcessFailed,
+};
+
+struct InpaintingResult {
+  MantisStatus status;
+  std::vector<uint8_t> image;
+};
+
 // Table of C API functions defined within the library.
 struct MantisAPI {
   // Initializes the Processor and Segmenter.
   MantisComponent (*Initialize)(std::string assets_path_dir);
+
+  // Runs inpainting on the given image and mask.
+  InpaintingResult (*Inpainting)(ProcessorPtr processor_ptr,
+                                 const std::vector<uint8_t>& image,
+                                 const std::vector<uint8_t>& mask,
+                                 int seed);
 
   void (*DestroyMantisComponent)(MantisComponent component);
 };

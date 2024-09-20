@@ -7,6 +7,9 @@ module mantis.mojom;
 [Stable, Extensible]
 enum MantisError {
   [Default] kUnknownError,
+  [MinVersion=1] kProcessorNotInitialized,
+  [MinVersion=1] kInputError,
+  [MinVersion=1] kProcessFailed,
 };
 
 [Stable]
