@@ -368,8 +368,8 @@ class WiFiProvider : public ProviderInterface {
   // before lower priorities.
   struct ComparePendingDeviceRequests {
    public:
-    bool operator()(const std::shared_ptr<PendingDeviceRequest> lhs,
-                    const std::shared_ptr<PendingDeviceRequest> rhs) const {
+    bool operator()(const std::shared_ptr<PendingDeviceRequest>& lhs,
+                    const std::shared_ptr<PendingDeviceRequest>& rhs) const {
       return lhs->priority > rhs->priority;
     }
   };
@@ -439,7 +439,7 @@ class WiFiProvider : public ProviderInterface {
   void HandleNetlinkBroadcast(const net_base::NetlinkMessage& message);
 
   // Set regulatory domain to |country|
-  mockable void SetRegDomain(std::string country);
+  mockable void SetRegDomain(const std::string& country);
   // Utility function handling timeout for setting of regulatory domain.
   void PhyUpdateTimeout();
   // Utility function used to detect the end of PHY info dump and responsible
@@ -462,17 +462,18 @@ class WiFiProvider : public ProviderInterface {
   void EnableDevice(WiFiRefPtr device, bool persist, ResultCallback callback);
 
   static LocalDeviceConstRefPtr GetLowestPriorityLocalDeviceOfType(
-      std::set<LocalDeviceConstRefPtr> devices, LocalDevice::IfaceType type);
+      const std::set<LocalDeviceConstRefPtr>& devices,
+      LocalDevice::IfaceType type);
 
   static WiFiConstRefPtr GetLowestPriorityEnabledWiFiDevice(
-      std::set<WiFiConstRefPtr> devices);
+      const std::set<WiFiConstRefPtr>& devices);
 
   // Trigger deletion of the lowest priority interface of each type in |types|.
   // If a type appears multiple times in |types|, then additional devices of
   // that type will be brought down in order of priority.
   // Uses device-type specific teardown logic to bring down each device. E.g.
   // WiFi devices are queued to be re-enabled when possible.
-  bool BringDownDevicesByType(std::multiset<nl80211_iftype> types);
+  bool BringDownDevicesByType(const std::multiset<nl80211_iftype>& types);
 
   Manager* manager_;
   net_base::NetlinkManager* netlink_manager_;

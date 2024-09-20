@@ -36,8 +36,8 @@ struct ConcurrencyCombination {
 
 // Compare two ConcurrencyCombinations by number of channels.
 struct ConcurrencyCombinationComparator {
-  bool operator()(ConcurrencyCombination lhs,
-                  ConcurrencyCombination rhs) const {
+  bool operator()(const ConcurrencyCombination& lhs,
+                  const ConcurrencyCombination& rhs) const {
     return lhs.num_channels > rhs.num_channels;
   }
 };

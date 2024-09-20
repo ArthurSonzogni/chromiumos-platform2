@@ -1561,7 +1561,7 @@ void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
   DeregisterLocalDevice(device);
 }
 
-void WiFiProvider::SetRegDomain(std::string country) {
+void WiFiProvider::SetRegDomain(const std::string& country) {
   CHECK(!country.empty()) << "Missing alpha2";
 
   ReqSetRegMessage set_reg;
@@ -1688,9 +1688,10 @@ void WiFiProvider::ProcessDeviceRequests() {
 }
 
 LocalDeviceConstRefPtr WiFiProvider::GetLowestPriorityLocalDeviceOfType(
-    std::set<LocalDeviceConstRefPtr> devices, LocalDevice::IfaceType type) {
+    const std::set<LocalDeviceConstRefPtr>& devices,
+    LocalDevice::IfaceType type) {
   LocalDeviceConstRefPtr candidate_dev;
-  for (auto dev : devices) {
+  for (const auto& dev : devices) {
     if (dev->iface_type() == type &&
         (!candidate_dev || candidate_dev->priority() > dev->priority())) {
       candidate_dev = dev;
@@ -1700,9 +1701,9 @@ LocalDeviceConstRefPtr WiFiProvider::GetLowestPriorityLocalDeviceOfType(
 }
 
 WiFiConstRefPtr WiFiProvider::GetLowestPriorityEnabledWiFiDevice(
-    std::set<WiFiConstRefPtr> devices) {
+    const std::set<WiFiConstRefPtr>& devices) {
   WiFiConstRefPtr candidate_dev;
-  for (auto dev : devices) {
+  for (const auto& dev : devices) {
     if (dev->supplicant_state() !=
             WPASupplicant::kInterfaceStateInterfaceDisabled &&
         (!candidate_dev || candidate_dev->priority() > dev->priority())) {
@@ -1712,7 +1713,8 @@ WiFiConstRefPtr WiFiProvider::GetLowestPriorityEnabledWiFiDevice(
   return candidate_dev;
 }
 
-bool WiFiProvider::BringDownDevicesByType(std::multiset<nl80211_iftype> types) {
+bool WiFiProvider::BringDownDevicesByType(
+    const std::multiset<nl80211_iftype>& types) {
   if (wifi_phys_.empty()) {
     return false;
   }
@@ -1755,7 +1757,7 @@ bool WiFiProvider::BringDownDevicesByType(std::multiset<nl80211_iftype> types) {
         wifi_devices.erase(dev);
         // Get a mutable reference to dev.
         DeviceRefPtr mutable_dev;
-        for (auto wifi_device :
+        for (const auto& wifi_device :
              manager_->FilterByTechnology(Technology::kWiFi)) {
           if (wifi_device->interface_index() == dev->interface_index()) {
             mutable_dev = wifi_device;

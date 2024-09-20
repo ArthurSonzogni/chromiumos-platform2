@@ -134,7 +134,7 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));
   MOCK_METHOD(void, UpdateRegAndPhyInfo, (base::OnceClosure), (override));
   MOCK_METHOD(void, UpdatePhyInfo, (base::OnceClosure), (override));
-  MOCK_METHOD(void, SetRegDomain, (std::string), (override));
+  MOCK_METHOD(void, SetRegDomain, (const std::string&), (override));
   MOCK_METHOD(void, ResetRegDomain, (), (override));
   MOCK_METHOD(void, RegionChanged, (const std::string&), (override));
   MOCK_METHOD(bool, has_passpoint_credentials, (), (const));
