@@ -17,7 +17,7 @@
 namespace sane_backend_tests {
 // Declared by GoogleTest main wrapper.
 extern const std::string* scanner_under_test;
-}  // namespace sane_backend_tests
+namespace {
 
 class SANETest : public testing::Test {
   void SetUp() override {
@@ -45,3 +45,6 @@ TEST_F(SANETest, OpenCloseStress) {
     sane_close(handle_);
   }
 }
+
+}  // namespace
+}  // namespace sane_backend_tests

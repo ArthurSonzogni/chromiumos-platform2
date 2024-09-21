@@ -18,10 +18,10 @@
 namespace sane_backend_tests {
 // Declared by GoogleTest main wrapper.
 extern const std::string* scanner_under_test;
-}  // namespace sane_backend_tests
+namespace {
 
 // Returns true for "y" and false for "n".
-static bool _y_or_no() {
+bool _y_or_no() {
   do {
     std::string answer;
     std::getline(std::cin, answer);
@@ -289,3 +289,5 @@ TEST_F(OptionDescriptorTest, ADFJustification) {
     GTEST_SKIP();
   }
 }
+}  // namespace
+}  // namespace sane_backend_tests

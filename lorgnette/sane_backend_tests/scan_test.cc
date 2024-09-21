@@ -22,14 +22,14 @@
 #include "lorgnette/sane_client.h"
 #include "lorgnette/sane_client_impl.h"
 
-// TODO(b/347749519): Make test artifacts to accessible to guest user.
-static const base::FilePath scan_test_images_dir(
-    "sane_backend_wwcb_tests_scan_test_images.d");
-
 namespace sane_backend_tests {
 // Declared by GoogleTest main wrapper.
 extern const std::string* scanner_under_test;
-}  // namespace sane_backend_tests
+namespace {
+
+// TODO(b/347749519): Make test artifacts to accessible to guest user.
+const base::FilePath scan_test_images_dir(
+    "sane_backend_wwcb_tests_scan_test_images.d");
 
 struct ScanTestParameter {
   const std::string source;
@@ -45,7 +45,7 @@ void operator<<(std::ostream& stream, const ScanTestParameter& param) {
 
 // Returns string that represents where outputs for this specific test goes to.
 // Usually this is where scanned images are. This is consistent per test.
-static std::string _get_test_output_path() {
+std::string _get_test_output_path() {
   return base::StringPrintf(
       // There current_test_suite()->name() has an embedded "/"
       "%s/%s%s", scan_test_images_dir.value().c_str(),
@@ -64,7 +64,7 @@ class ScanTest : public testing::TestWithParam<ScanTestParameter> {
 };
 
 // We need a void function so we can call ASSERT functions.
-static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
+void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   std::unique_ptr<lorgnette::LibsaneWrapper> libsane_ =
       lorgnette::LibsaneWrapperImpl::Create();
   std::unique_ptr<lorgnette::SaneClient> sane_client_ =
@@ -126,9 +126,9 @@ static void _scan_test_generator(std::vector<ScanTestParameter>& out) {
   }
 }
 
-static void verify_png_info(const char* filename,
-                            uint32_t expected_dpi,
-                            const std::string& color_mode) {
+void verify_png_info(const char* filename,
+                     uint32_t expected_dpi,
+                     const std::string& color_mode) {
   png_structp png_ptr =
       png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
   ASSERT_TRUE(png_ptr);
@@ -194,7 +194,7 @@ static void verify_png_info(const char* filename,
   }
 }
 
-static std::vector<ScanTestParameter> scan_test_generator() {
+std::vector<ScanTestParameter> scan_test_generator() {
   std::vector<ScanTestParameter> out;
   // Call a void function so we can use ASSERTs in them.
   _scan_test_generator(out);
@@ -219,10 +219,10 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 // Runs lorgnette_cli advanced_scan with args; returns exit code.
-static int _run_advanced_scan(const std::string& testReportDir,
-                              const ScanTestParameter& scanParam,
-                              const std::string& scanner,
-                              std::vector<std::string>& out_image_paths) {
+int _run_advanced_scan(const std::string& testReportDir,
+                       const ScanTestParameter& scanParam,
+                       const std::string& scanner,
+                       std::vector<std::string>& out_image_paths) {
   brillo::ProcessImpl lorgnette_cmd;
 
   lorgnette_cmd.AddArg("/usr/local/bin/lorgnette_cli");
@@ -302,3 +302,6 @@ TEST_P(ScanTest, TwoPage) {
                     parameter.color_mode);
   }
 }
+
+}  // namespace
+}  // namespace sane_backend_tests
