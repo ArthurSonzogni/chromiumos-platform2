@@ -32,16 +32,28 @@ struct InpaintingResult {
   std::vector<uint8_t> image;
 };
 
+struct GenerativeFillResult {
+  MantisStatus status;
+  std::vector<uint8_t> image;
+};
+
 // Table of C API functions defined within the library.
 struct MantisAPI {
   // Initializes the Processor and Segmenter.
-  MantisComponent (*Initialize)(std::string assets_path_dir);
+  MantisComponent (*Initialize)(const std::string& assets_path_dir);
 
   // Runs inpainting on the given image and mask.
   InpaintingResult (*Inpainting)(ProcessorPtr processor_ptr,
                                  const std::vector<uint8_t>& image,
                                  const std::vector<uint8_t>& mask,
                                  int seed);
+
+  // Runs generative fill on the given image and mask.
+  GenerativeFillResult (*GenerativeFill)(ProcessorPtr processor_ptr,
+                                         const std::vector<uint8_t>& image,
+                                         const std::vector<uint8_t>& mask,
+                                         int seed,
+                                         const std::string& text_prompt);
 
   void (*DestroyMantisComponent)(MantisComponent component);
 };

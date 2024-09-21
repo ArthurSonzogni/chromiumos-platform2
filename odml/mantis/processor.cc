@@ -70,8 +70,21 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                                      uint32_t seed,
                                      const std::string& prompt,
                                      GenerativeFillCallback callback) {
-  auto result = MantisResult::NewError(MantisError::kUnknownError);
-  std::move(callback).Run(std::move(result));
+  if (!component_.processor) {
+    LOG(ERROR) << "Processor is missing";
+    std::move(callback).Run(
+        MantisResult::NewError(MantisError::kProcessorNotInitialized));
+    return;
+  }
+  GenerativeFillResult lib_result =
+      api_->GenerativeFill(component_.processor, image, mask, seed, prompt);
+  if (lib_result.status != MantisStatus::kOk) {
+    std::move(callback).Run(
+        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
+    return;
+  }
+
+  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
 }
 
 void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,

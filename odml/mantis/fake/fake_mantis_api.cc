@@ -8,7 +8,14 @@
 #include <vector>
 
 namespace mantis::fake {
-MantisComponent Initialize(std::string assets_path_dir) {
+namespace {
+
+std::vector<uint8_t> GetFakeImageData() {
+  // Create a fake grayscale image (3x3 pixels)
+  return {0x00, 0x7F, 0xFF, 0x10, 0x50, 0x90, 0x20, 0x60, 0xA0};
+}
+
+MantisComponent Initialize(const std::string& assets_path_dir) {
   return {};
 }
 
@@ -16,12 +23,20 @@ InpaintingResult Inpainting(ProcessorPtr processor_ptr,
                             const std::vector<uint8_t>& image,
                             const std::vector<uint8_t>& mask,
                             int seed) {
-  // Create a fake grayscale image (3x3 pixels)
-  std::vector<uint8_t> imageData = {0x00, 0x7F, 0xFF, 0x10, 0x50,
-                                    0x90, 0x20, 0x60, 0xA0};
   return {
       .status = MantisStatus::kOk,
-      .image = imageData,
+      .image = GetFakeImageData(),
+  };
+}
+
+GenerativeFillResult GenerativeFill(ProcessorPtr processor_ptr,
+                                    const std::vector<uint8_t>& image,
+                                    const std::vector<uint8_t>& mask,
+                                    int seed,
+                                    const std::string& prompt) {
+  return {
+      .status = MantisStatus::kOk,
+      .image = GetFakeImageData(),
   };
 }
 
@@ -30,8 +45,11 @@ void DestroyMantisComponent(MantisComponent component) {}
 const MantisAPI api = {
     .Initialize = &Initialize,
     .Inpainting = &Inpainting,
+    .GenerativeFill = &GenerativeFill,
     .DestroyMantisComponent = &DestroyMantisComponent,
 };
+
+}  // namespace
 
 const MantisAPI* GetMantisApi() {
   return &api;

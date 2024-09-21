@@ -21,6 +21,8 @@ using mojom::MantisError;
 using mojom::MantisResult;
 using testing::IsEmpty;
 
+constexpr ProcessorPtr kFakeProcessorPtr = 0xDEADBEEF;
+
 class MantisProcessorTest : public testing::Test {
  public:
   MantisProcessorTest() { mojo::core::Init(); }
@@ -71,7 +73,7 @@ TEST_F(MantisProcessorTest, InpaintingReturnError) {
   mojo::Remote<mojom::MantisProcessor> processor_remote;
   MantisProcessor processor(
       {
-          .processor = 0xDEADBEEF,
+          .processor = kFakeProcessorPtr,
           .segmenter = 0,
       },
       &api, processor_remote.BindNewPipeAndPassReceiver());
@@ -90,7 +92,7 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
   mojo::Remote<mojom::MantisProcessor> processor_remote;
   MantisProcessor processor(
       {
-          .processor = 0xDEADBEEF,
+          .processor = kFakeProcessorPtr,
           .segmenter = 0,
       },
       fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
@@ -98,6 +100,74 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
                        result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillMissingProcessor) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = 0,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kProcessorNotInitialized);
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillReturnError) {
+  auto generative_fill = [](ProcessorPtr processor_ptr,
+                            const std::vector<uint8_t>& image,
+                            const std::vector<uint8_t>& mask, int seed,
+                            const std::string& text_prompt) {
+    return GenerativeFillResult{.status = MantisStatus::kProcessFailed};
+  };
+  auto destroy_mantis_component = [](MantisComponent) {};
+
+  const MantisAPI api = {
+      .GenerativeFill = +generative_fill,
+      .DestroyMantisComponent = +destroy_mantis_component,
+  };
+
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      &api, processor_remote.BindNewPipeAndPassReceiver());
+
+  std::vector<uint8_t> image;
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
+                           result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kProcessFailed);
+}
+
+TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = kFakeProcessorPtr,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
+                           result_future.GetCallback());
 
   auto result = result_future.Take();
   ASSERT_TRUE(result->is_result_image());
