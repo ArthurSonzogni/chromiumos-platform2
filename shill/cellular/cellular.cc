@@ -4492,8 +4492,11 @@ void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback,
   }
 
   if (!mobile_operator_info_->tethering_allowed(experimental_tethering)) {
-    LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix
-               << "tethering is not allowed by database settings";
+    // Make sure this logging doesn't contain the signature in
+    // |kEntitlementCheckAnomalyDetectorPrefix| to exclude it from the
+    // anomaly detector.
+    LOG(ERROR) << "Entitlement check: tethering is not allowed by "
+                  "database settings";
     metrics()->NotifyCellularEntitlementCheckResult(
         Metrics::kCellularEntitlementCheckNotAllowedByModb);
     dispatcher()->PostTask(
