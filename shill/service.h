@@ -81,7 +81,6 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageSaveCredentials[];
   static const char kStorageType[];
   static const char kStorageUIData[];
-  static const char kStorageLinkMonitorDisabled[];
   static const char kStorageManagedCredentials[];
   static const char kStorageMeteredOverride[];
   // The prefix for traffic counter storage key for the current
@@ -362,8 +361,6 @@ class Service : public base::RefCounted<Service> {
   mockable bool IsFailed() const;
   mockable bool IsInFailState() const;
   mockable bool IsOnline() const;
-
-  mockable bool link_monitor_disabled() const { return link_monitor_disabled_; }
 
   mockable ConnectFailure failure() const { return failure_; }
   // Sets the |previous_error_| property based on the current |failure_|, and
@@ -1211,9 +1208,6 @@ class Service : public base::RefCounted<Service> {
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;
 
-  // When set to true, will not start link monitor when the connection to this
-  // service is established.
-  bool link_monitor_disabled_;
   // When set to true, the credentials for this service will be considered
   // valid, and will not require an initial connection to rank it highly for
   // auto-connect.

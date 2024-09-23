@@ -73,6 +73,8 @@ const char kServiceSortSerialNumber[] = "SerialNumber";
 const char kServiceSortTechnology[] = "Technology";
 const char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 
+constexpr char kStorageDeprecatedLinkMonitorDisabled[] = "LinkMonitorDisabled";
+
 // This is property is only supposed to be used in tast tests to order Ethernet
 // services. Can be removed once we support multiple Ethernet profiles properly
 // (b/159725895).
@@ -151,7 +153,6 @@ const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 const char Service::kStorageONCSource[] = "ONCSource";
-const char Service::kStorageLinkMonitorDisabled[] = "LinkMonitorDisabled";
 const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
 const char Service::kStorageMeteredOverride[] = "MeteredOverride";
 const char Service::kStorageCurrentTrafficCounterPrefix[] =
@@ -246,7 +247,6 @@ Service::Service(Manager* manager, Technology technology)
       network_event_handler_(std::make_unique<NetworkEventHandler>(this)),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
-      link_monitor_disabled_(false),
       managed_credentials_(false),
       unreliable_(false),
       source_(ONCSource::kONCSourceUnknown),
@@ -320,7 +320,6 @@ Service::Service(Manager* manager, Technology technology)
                                   &Service::GetDisconnectsProperty);
   HelpRegisterConstDerivedStrings(kDiagnosticsMisconnectsProperty,
                                   &Service::GetMisconnectsProperty);
-  store_.RegisterBool(kLinkMonitorDisableProperty, &link_monitor_disabled_);
   store_.RegisterBool(kManagedCredentialsProperty, &managed_credentials_);
   HelpRegisterDerivedBool(kMeteredProperty, &Service::GetMeteredProperty,
                           &Service::SetMeteredProperty,
@@ -823,7 +822,6 @@ bool Service::Load(const StoreInterface* storage) {
   }
   SLOG(this, 2) << " Service source = " << static_cast<size_t>(source_);
 
-  storage->GetBool(id, kStorageLinkMonitorDisabled, &link_monitor_disabled_);
   if (!storage->GetBool(id, kStorageManagedCredentials,
                         &managed_credentials_)) {
     managed_credentials_ = false;
@@ -911,6 +909,9 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
     storage->SetInt(id, kStorageONCSource, toUnderlying(source_));
   }
 
+  // TODO(b/357355410): Remove this in the next stepping milestone after M131.
+  storage->DeleteKey(id, kStorageDeprecatedLinkMonitorDisabled);
+
   // TODO(b/309607419): Remove code deleting traffic counter storage keys made
   // obsolete by crrev/c/5014643 and crrev/c/4535677.
   constexpr static std::array<std::string_view, 2>
@@ -938,7 +939,6 @@ bool Service::Unload() {
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
-  link_monitor_disabled_ = false;
   managed_credentials_ = false;
   source_ = ONCSource::kONCSourceUnknown;
   if (mutable_eap()) {
@@ -986,7 +986,6 @@ bool Service::Save(StoreInterface* storage) {
   storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
   SaveStringOrClear(storage, id, kStorageUIData, ui_data_);
   storage->SetInt(id, kStorageONCSource, static_cast<int>(source_));
-  storage->SetBool(id, kStorageLinkMonitorDisabled, link_monitor_disabled_);
   storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
   storage->SetBool(id, kEnableRFC8925Property, enable_rfc_8925_);
 

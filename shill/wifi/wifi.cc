@@ -643,7 +643,8 @@ void WiFi::InterworkingSelectDone() {
     } else if (type_str == WPASupplicant::kCredentialsMatchTypeUnknown) {
       type = WiFiProvider::MatchPriority::kUnknown;
     } else {
-      NOTREACHED_IN_MIGRATION() << __func__ << " unknown match type: " << type_str;
+      NOTREACHED_IN_MIGRATION()
+          << __func__ << " unknown match type: " << type_str;
     }
 
     matches.emplace_back(creds, endpoint, type);
@@ -2729,7 +2730,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       const Network::StartOptions opts = {
           .dhcp = dhcp_opts,
           .accept_ra = true,
-          .ignore_link_monitoring = affected_service->link_monitor_disabled(),
+          .ignore_link_monitoring = false,
           .probing_configuration =
               manager()->GetPortalDetectorProbingConfiguration(),
           .validation_mode = affected_service->GetNetworkValidationMode(),

@@ -983,13 +983,6 @@ Properties	boolean AutoConnect [readwrite]
 			The timestamp's value equals the number of milliseconds since the
 			Windows epoch (1601-01-01 00:00:00 UTC).
 
-
-		boolean LinkMonitorDisable [readwrite]
-
-			Specifies whether to disable or enable link monitoring
-			for this service. When link monitor is enabled, periodic
-			ARP to the gateway IP address will be performed.
-
 		boolean ManagedCredentials [readwrite]
 
 			Specifies whether the credentials for this service

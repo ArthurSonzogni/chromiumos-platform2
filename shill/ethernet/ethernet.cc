@@ -258,7 +258,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
   Network::StartOptions opts = {
       .dhcp = dhcp_opts,
       .accept_ra = true,
-      .ignore_link_monitoring = service->link_monitor_disabled(),
+      .ignore_link_monitoring = false,
       .probing_configuration =
           manager()->GetPortalDetectorProbingConfiguration(),
       .validation_mode = service->GetNetworkValidationMode(),

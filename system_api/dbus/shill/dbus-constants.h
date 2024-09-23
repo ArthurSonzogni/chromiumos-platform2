@@ -168,7 +168,6 @@ constexpr char kErrorProperty[] = "Error";
 constexpr char kGuidProperty[] = "GUID";
 constexpr char kIPConfigProperty[] = "IPConfig";
 constexpr char kIsConnectedProperty[] = "IsConnected";
-constexpr char kLinkMonitorDisableProperty[] = "LinkMonitorDisable";
 constexpr char kManagedCredentialsProperty[] = "ManagedCredentials";
 constexpr char kMeteredProperty[] = "Metered";
 constexpr char kNameProperty[] = "Name";  // Also used for Device and Profile.
