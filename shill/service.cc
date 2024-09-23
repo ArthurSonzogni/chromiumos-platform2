@@ -56,23 +56,23 @@
 namespace shill {
 
 namespace {
-const char kServiceSortAutoConnect[] = "AutoConnect";
-const char kServiceSortConnectable[] = "Connectable";
-const char kServiceSortHasEverConnected[] = "HasEverConnected";
-const char kServiceSortManagedCredentials[] = "ManagedCredentials";
-const char kServiceSortIsConnected[] = "IsConnected";
-const char kServiceSortIsConnecting[] = "IsConnecting";
-const char kServiceSortIsFailed[] = "IsFailed";
-const char kServiceSortIsOnline[] = "IsOnline";
-const char kServiceSortIsPortalled[] = "IsPortal";
-const char kServiceSortPriority[] = "Priority";
-const char kServiceSortSecurity[] = "Security";
-const char kServiceSortSource[] = "Source";
-const char kServiceSortProfileOrder[] = "ProfileOrder";
-const char kServiceSortEtc[] = "Etc";
-const char kServiceSortSerialNumber[] = "SerialNumber";
-const char kServiceSortTechnology[] = "Technology";
-const char kServiceSortTechnologySpecific[] = "TechnologySpecific";
+constexpr char kServiceSortAutoConnect[] = "AutoConnect";
+constexpr char kServiceSortConnectable[] = "Connectable";
+constexpr char kServiceSortHasEverConnected[] = "HasEverConnected";
+constexpr char kServiceSortManagedCredentials[] = "ManagedCredentials";
+constexpr char kServiceSortIsConnected[] = "IsConnected";
+constexpr char kServiceSortIsConnecting[] = "IsConnecting";
+constexpr char kServiceSortIsFailed[] = "IsFailed";
+constexpr char kServiceSortIsOnline[] = "IsOnline";
+constexpr char kServiceSortIsPortalled[] = "IsPortal";
+constexpr char kServiceSortPriority[] = "Priority";
+constexpr char kServiceSortSecurity[] = "Security";
+constexpr char kServiceSortSource[] = "Source";
+constexpr char kServiceSortProfileOrder[] = "ProfileOrder";
+constexpr char kServiceSortEtc[] = "Etc";
+constexpr char kServiceSortSerialNumber[] = "SerialNumber";
+constexpr char kServiceSortTechnology[] = "Technology";
+constexpr char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 
 constexpr char kStorageDeprecatedLinkMonitorDisabled[] = "LinkMonitorDisabled";
 
