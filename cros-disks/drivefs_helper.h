@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "cros-disks/fuse_mounter.h"
+#include "cros-disks/metrics.h"
 
 namespace cros_disks {
 
@@ -27,7 +28,8 @@ class Platform;
 class DrivefsHelper : public FUSEMounterHelper {
  public:
   DrivefsHelper(const Platform* platform,
-                brillo::ProcessReaper* process_reaper);
+                brillo::ProcessReaper* process_reaper,
+                Metrics* metrics = nullptr);
   DrivefsHelper(const DrivefsHelper&) = delete;
   DrivefsHelper& operator=(const DrivefsHelper&) = delete;
 

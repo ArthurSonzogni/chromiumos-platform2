@@ -34,7 +34,6 @@ RarMounter::RarMounter(const Platform* platform,
                      "rar",
                      "rar",
                      metrics,
-                     "Rar2fs",
                      {12,   // ERAR_BAD_DATA
                       22,   // ERAR_MISSING_PASSWORD
                       24},  // ERAR_BAD_PASSWORD

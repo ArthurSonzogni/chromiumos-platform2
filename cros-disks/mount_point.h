@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
+#include "base/timer/elapsed_timer.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/process.h"
 
@@ -76,7 +77,6 @@ class MountPoint final {
   // Associates a Process object to this MountPoint.
   void SetProcess(std::unique_ptr<Process> process,
                   Metrics* const metrics,
-                  std::string metrics_name,
                   std::vector<int> password_needed_exit_codes);
 
   // Sets the eject action, that will be called when this mount point is
@@ -153,9 +153,11 @@ class MountPoint final {
   // Eject action called after successfully unmounting this mount point.
   base::OnceClosure eject_;
 
-  // Metrics object and name used to record the FUSE launcher exit code.
+  // Timer used to measure how long it takes to mount the mount point.
+  const base::ElapsedTimer timer_;
+
+  // Metrics object used to record the FUSE launcher exit code.
   Metrics* metrics_ = nullptr;
-  std::string metrics_name_;
 
   // Set of FUSE launcher exit codes that are interpreted as
   // MountError::kNeedPassword.

@@ -55,13 +55,15 @@ constexpr char kFUSEOptionFmask[] = "fmask=0027";  // file permissions 0750
 class DiskFUSEMounter : public FUSEMounter {
  public:
   DiskFUSEMounter(const Platform* platform,
+                  Metrics* metrics,
                   brillo::ProcessReaper* reaper,
                   std::string filesystem_type,
                   const SandboxedProcessFactory* upstream_factory,
                   SandboxedExecutable executable,
                   OwnerUser run_as,
                   std::vector<std::string> options)
-      : FUSEMounter(platform, reaper, std::move(filesystem_type), {}),
+      : FUSEMounter(
+            platform, reaper, std::move(filesystem_type), {.metrics = metrics}),
         upstream_factory_(upstream_factory),
         sandbox_factory_(platform, std::move(executable), run_as),
         options_(std::move(options)) {}
@@ -261,7 +263,7 @@ bool DiskManager::Initialize() {
   if (OwnerUser user;
       platform()->GetUserAndGroupId("fuse-exfat", &user.uid, &user.gid)) {
     mounters_["fuse-exfat"] = std::make_unique<DiskFUSEMounter>(
-        platform(), process_reaper(), "exfat", test_sandbox_factory_,
+        platform(), metrics(), process_reaper(), "exfat", test_sandbox_factory_,
         SandboxedExecutable{base::FilePath("/usr/sbin/mount.exfat-fuse")}, user,
         Options{kFUSEOptionDirSync, kFUSEOptionDmask, kFUSEOptionFmask, uid,
                 gid});
@@ -282,7 +284,7 @@ bool DiskManager::Initialize() {
       platform()->GetUserAndGroupId("ntfs-3g", &user.uid, &user.gid)) {
     VLOG(1) << "Using NTFS FUSE mounter";
     mounters_["fuse-ntfs"] = std::make_unique<DiskFUSEMounter>(
-        platform(), process_reaper(), "ntfs", test_sandbox_factory_,
+        platform(), metrics(), process_reaper(), "ntfs", test_sandbox_factory_,
         SandboxedExecutable{base::FilePath("/usr/bin/ntfs-3g")}, user,
         Options{kFUSEOptionDirSync, kFUSEOptionDmask, kFUSEOptionFmask, uid,
                 gid});

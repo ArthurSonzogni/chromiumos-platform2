@@ -87,7 +87,6 @@ class FUSEMounter : public Mounter {
   struct Config {
     // Metrics object and name used to record the FUSE launcher exit code.
     Metrics* const metrics = nullptr;
-    std::string metrics_name;
 
     // Set of FUSE launcher exit codes that are interpreted as
     // MountError::kNeedPassword.
@@ -157,7 +156,8 @@ class FUSEMounterHelper : public FUSEMounter {
                     brillo::ProcessReaper* process_reaper,
                     std::string filesystem_type,
                     bool nosymfollow,
-                    const SandboxedProcessFactory* sandbox_factory);
+                    const SandboxedProcessFactory* sandbox_factory,
+                    Metrics* metrics = nullptr);
   FUSEMounterHelper(const FUSEMounterHelper&) = delete;
   FUSEMounterHelper& operator=(const FUSEMounterHelper&) = delete;
   ~FUSEMounterHelper() override;

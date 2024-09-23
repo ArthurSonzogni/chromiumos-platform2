@@ -32,7 +32,6 @@ ArchiveMounter::ArchiveMounter(
     std::string filesystem_type,
     std::string archive_type,
     Metrics* metrics,
-    std::string metrics_name,
     std::vector<int> password_needed_exit_codes,
     std::unique_ptr<SandboxedProcessFactory> sandbox_factory,
     std::vector<std::string> extra_command_line_options)
@@ -41,7 +40,6 @@ ArchiveMounter::ArchiveMounter(
           process_reaper,
           std::move(filesystem_type),
           {.metrics = metrics,
-           .metrics_name = std::move(metrics_name),
            .password_needed_exit_codes = std::move(password_needed_exit_codes),
            .read_only = true}),
       extension_("." + archive_type),

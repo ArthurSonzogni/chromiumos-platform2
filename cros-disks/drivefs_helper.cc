@@ -187,12 +187,14 @@ bool ValidateDirectory(const Platform* platform,
 }  // namespace
 
 DrivefsHelper::DrivefsHelper(const Platform* platform,
-                             brillo::ProcessReaper* process_reaper)
+                             brillo::ProcessReaper* process_reaper,
+                             Metrics* metrics)
     : FUSEMounterHelper(platform,
                         process_reaper,
                         kType,
                         /* nosymfollow= */ false,
-                        &sandbox_factory_),
+                        &sandbox_factory_,
+                        metrics),
       sandbox_factory_(
           platform,
           SandboxedExecutable{

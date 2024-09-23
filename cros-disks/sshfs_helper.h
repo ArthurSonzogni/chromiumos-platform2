@@ -24,7 +24,8 @@ class SshfsHelper : public FUSEMounterHelper {
  public:
   SshfsHelper(const Platform* platform,
               brillo::ProcessReaper* process_reaper,
-              base::FilePath working_dir);
+              base::FilePath working_dir,
+              Metrics* metrics = nullptr);
   SshfsHelper(const SshfsHelper&) = delete;
   SshfsHelper& operator=(const SshfsHelper&) = delete;
 

@@ -111,8 +111,10 @@ MountError MountPoint::ConvertLauncherExitCodeToMountError(
 
 void MountPoint::OnLauncherExit(const int exit_code) {
   // Record the FUSE launcher's exit code in Metrics.
-  if (metrics_ && !metrics_name_.empty())
-    metrics_->RecordFuseMounterErrorCode(metrics_name_, exit_code);
+  if (metrics_) {
+    metrics_->RecordAction("Fuse.Start", data_.filesystem_type,
+                           Process::ExitCode(exit_code), timer_.Elapsed());
+  }
 
   DCHECK_EQ(MountError::kInProgress, data_.error);
   data_.error = ConvertLauncherExitCodeToMountError(exit_code);
@@ -160,7 +162,6 @@ void MountPoint::OnProgress(const std::string_view message) {
 
 void MountPoint::SetProcess(std::unique_ptr<Process> process,
                             Metrics* const metrics,
-                            std::string metrics_name,
                             std::vector<int> password_needed_exit_codes) {
   DCHECK(!process_);
   process_ = std::move(process);
@@ -168,8 +169,6 @@ void MountPoint::SetProcess(std::unique_ptr<Process> process,
 
   DCHECK(!metrics_);
   metrics_ = metrics;
-  DCHECK(metrics_name_.empty());
-  metrics_name_ = std::move(metrics_name);
 
   password_needed_exit_codes_ = std::move(password_needed_exit_codes);
 

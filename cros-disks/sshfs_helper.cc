@@ -17,6 +17,7 @@
 #include <base/strings/string_util.h>
 
 #include "cros-disks/fuse_mounter.h"
+#include "cros-disks/metrics.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"
@@ -83,12 +84,14 @@ bool IsSupportedScheme(const std::string& scheme) {
 
 SshfsHelper::SshfsHelper(const Platform* platform,
                          brillo::ProcessReaper* process_reaper,
-                         base::FilePath working_dir)
+                         base::FilePath working_dir,
+                         Metrics* metrics)
     : FUSEMounterHelper(platform,
                         process_reaper,
                         kType,
                         /* nosymfollow= */ true,
-                        &sandbox_factory_),
+                        &sandbox_factory_,
+                        metrics),
       sandbox_factory_(platform,
                        SandboxedExecutable{base::FilePath(kHelperTool)},
                        ResolveSshfsUser(platform),

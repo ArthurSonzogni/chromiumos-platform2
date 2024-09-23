@@ -5,10 +5,11 @@
 #ifndef CROS_DISKS_FUSEBOX_HELPER_H_
 #define CROS_DISKS_FUSEBOX_HELPER_H_
 
-#include "cros-disks/fuse_mounter.h"
-
 #include <string>
 #include <vector>
+
+#include "cros-disks/fuse_mounter.h"
+#include "cros-disks/metrics.h"
 
 namespace cros_disks {
 
@@ -17,7 +18,9 @@ struct OwnerUser;
 // FuseBox "fusebox://" URI mounter.
 class FuseBoxHelper : public FUSEMounterHelper {
  public:
-  FuseBoxHelper(const Platform* platform, brillo::ProcessReaper* reaper);
+  FuseBoxHelper(const Platform* platform,
+                brillo::ProcessReaper* reaper,
+                Metrics* metrics = nullptr);
 
   FuseBoxHelper(const FuseBoxHelper&) = delete;
   FuseBoxHelper& operator=(const FuseBoxHelper&) = delete;

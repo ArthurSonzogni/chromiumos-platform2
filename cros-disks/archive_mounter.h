@@ -26,7 +26,6 @@ class ArchiveMounter : public FUSEMounter {
                  std::string filesystem_type,
                  std::string archive_type,
                  Metrics* metrics,
-                 std::string metrics_name,
                  std::vector<int> password_needed_exit_codes,
                  std::unique_ptr<SandboxedProcessFactory> sandbox_factory,
                  std::vector<std::string> extra_command_line_options = {});

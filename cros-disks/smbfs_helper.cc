@@ -41,12 +41,14 @@ OwnerUser ResolveSmbFsUser(const Platform* platform) {
 }  // namespace
 
 SmbfsHelper::SmbfsHelper(const Platform* platform,
-                         brillo::ProcessReaper* process_reaper)
+                         brillo::ProcessReaper* process_reaper,
+                         Metrics* metrics)
     : FUSEMounterHelper(platform,
                         process_reaper,
                         kType,
                         /* nosymfollow= */ true,
-                        &sandbox_factory_),
+                        &sandbox_factory_,
+                        metrics),
       sandbox_factory_(platform,
                        SandboxedExecutable{base::FilePath(kHelperTool),
                                            base::FilePath(kSeccompPolicyFile)},

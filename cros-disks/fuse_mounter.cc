@@ -299,7 +299,6 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   }
 
   mount_point->SetProcess(std::move(process), config_.metrics,
-                          config_.metrics_name,
                           config_.password_needed_exit_codes);
 
   *error = MountError::kSuccess;
@@ -341,11 +340,12 @@ FUSEMounterHelper::FUSEMounterHelper(
     brillo::ProcessReaper* process_reaper,
     std::string filesystem_type,
     bool nosymfollow,
-    const SandboxedProcessFactory* sandbox_factory)
+    const SandboxedProcessFactory* sandbox_factory,
+    Metrics* metrics)
     : FUSEMounter(platform,
                   process_reaper,
                   std::move(filesystem_type),
-                  {.nosymfollow = nosymfollow}),
+                  {.metrics = metrics, .nosymfollow = nosymfollow}),
       sandbox_factory_(sandbox_factory) {}
 
 FUSEMounterHelper::~FUSEMounterHelper() = default;

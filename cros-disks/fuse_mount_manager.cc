@@ -53,11 +53,15 @@ bool FUSEMountManager::Initialize() {
   }
 
   // Register specific FUSE mount helpers here.
-  RegisterHelper(std::make_unique<DrivefsHelper>(platform(), process_reaper()));
-  RegisterHelper(std::make_unique<FuseBoxHelper>(platform(), process_reaper()));
+  RegisterHelper(
+      std::make_unique<DrivefsHelper>(platform(), process_reaper(), metrics()));
+  RegisterHelper(
+      std::make_unique<FuseBoxHelper>(platform(), process_reaper(), metrics()));
   RegisterHelper(std::make_unique<SshfsHelper>(
-      platform(), process_reaper(), base::FilePath(working_dirs_root_)));
-  RegisterHelper(std::make_unique<SmbfsHelper>(platform(), process_reaper()));
+      platform(), process_reaper(), base::FilePath(working_dirs_root_),
+      metrics()));
+  RegisterHelper(
+      std::make_unique<SmbfsHelper>(platform(), process_reaper(), metrics()));
 
   return true;
 }

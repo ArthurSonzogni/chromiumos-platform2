@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "cros-disks/fuse_mounter.h"
+#include "cros-disks/metrics.h"
 
 namespace cros_disks {
 
@@ -25,7 +26,9 @@ class Platform;
 // It is used to bootstrap a Mojo IPC connection to Chrome.
 class SmbfsHelper : public FUSEMounterHelper {
  public:
-  SmbfsHelper(const Platform* platform, brillo::ProcessReaper* process_reaper);
+  SmbfsHelper(const Platform* platform,
+              brillo::ProcessReaper* process_reaper,
+              Metrics* metrics = nullptr);
   SmbfsHelper(const SmbfsHelper&) = delete;
   SmbfsHelper& operator=(const SmbfsHelper&) = delete;
 
