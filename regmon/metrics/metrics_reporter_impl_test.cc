@@ -36,8 +36,8 @@ TEST_F(MetricsReporterImplTest, ReportAnnotationViolationCallsUma) {
   metrics_reporter_->ReportAnnotationViolation(11111);
   metrics_reporter_->ReportAnnotationViolation(22222);
 
-  EXPECT_EQ(lib().NumCalls("NetworkAnnotationMonitor.PolicyViolation"), 2);
-  EXPECT_THAT(lib().GetCalls("NetworkAnnotationMonitor.PolicyViolation"),
+  EXPECT_EQ(lib().NumCalls(kPolicyViolationMetric), 2);
+  EXPECT_THAT(lib().GetCalls(kPolicyViolationMetric),
               ElementsAre(11111, 22222));
 }
 
@@ -45,11 +45,11 @@ TEST_F(MetricsReporterImplTest, ReportAnnotationViolationOrder) {
   metrics_reporter_->ReportAnnotationViolation(11111);
   metrics_reporter_->ReportAnnotationViolation(22222);
 
-  EXPECT_EQ(lib().GetLast("NetworkAnnotationMonitor.PolicyViolation"), 22222);
+  EXPECT_EQ(lib().GetLast(kPolicyViolationMetric), 22222);
 }
 
 TEST_F(MetricsReporterImplTest, ReportAnnotationViolationNotCalled) {
-  EXPECT_EQ(lib().GetLast("NetworkAnnotationMonitor.PolicyViolation"),
+  EXPECT_EQ(lib().GetLast(kPolicyViolationMetric),
             FakeMetricsLibrary::kInvalid);
 }
 

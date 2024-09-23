@@ -13,6 +13,8 @@
 
 namespace regmon::metrics {
 
+constexpr char kPolicyViolationMetric[] = "ChromeOS.Regmon.PolicyViolation";
+
 class MetricsReporterImpl : public MetricsReporter {
  public:
   explicit MetricsReporterImpl(MetricsLibraryInterface& metrics_lib);

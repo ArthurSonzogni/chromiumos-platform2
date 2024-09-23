@@ -12,8 +12,7 @@ MetricsReporterImpl::MetricsReporterImpl(MetricsLibraryInterface& metrics_lib)
     : metrics_lib_(&metrics_lib) {}
 
 bool MetricsReporterImpl::ReportAnnotationViolation(int unique_id) {
-  return metrics_lib_->SendSparseToUMA(
-      "NetworkAnnotationMonitor.PolicyViolation", unique_id);
+  return metrics_lib_->SendSparseToUMA(kPolicyViolationMetric, unique_id);
 }
 
 }  // namespace regmon::metrics
