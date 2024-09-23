@@ -91,6 +91,7 @@ enum ChromeOSError {
         String,
     ),
     FailedSendProblemReport(String, i32),
+    FailedSetUpVmUser(String),
     FailedSetupContainerUser(
         EnumOrUnknown<set_up_lxd_container_user_response::Status>,
         String,
@@ -182,6 +183,9 @@ impl fmt::Display for ChromeOSError {
             }
             FailedSendProblemReport(msg, error_code) => {
                 write!(f, "failed to send problem report: {} ({})", msg, error_code)
+            }
+            FailedSetUpVmUser(reason) => {
+                write!(f, "failed to set up VM user: {}", reason)
             }
             FailedSetupContainerUser(s, reason) => {
                 write!(f, "failed to setup container user: `{:?}`: {}", s, reason)
@@ -574,6 +578,13 @@ fn open_user_path(
         .map_err(|e| OpenUserFile(path.clone(), e))?;
 
     Ok((file, path))
+}
+
+#[derive(Default)]
+pub struct UserInfo {
+    pub username: String,
+    pub uid: Option<u32>,
+    pub group_names: Vec<String>,
 }
 
 #[derive(Default)]
@@ -1858,6 +1869,34 @@ impl Methods {
         }
     }
 
+    fn setup_vm_user(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+        user_info: UserInfo,
+    ) -> Result<(), Box<dyn Error>> {
+        let mut request = SetUpVmUserRequest::new();
+        request.vm_name = vm_name.to_owned();
+        request.owner_id = user_id_hash.to_owned();
+        request.username = user_info.username;
+        request.uid = user_info.uid;
+        for gname in user_info.group_names {
+            request.group_names.push(gname);
+        }
+
+        let response: SetUpVmUserResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .set_up_vm_user(request.write_to_bytes()?)?,
+        )?;
+
+        if response.success {
+            Ok(())
+        } else {
+            Err(FailedSetUpVmUser(response.failure_reason).into())
+        }
+    }
+
     fn setup_container_user(
         &mut self,
         vm_name: &str,
@@ -2255,6 +2294,7 @@ impl Methods {
         features: VmFeatures,
         user_disks: UserDisks,
         start_lxd: bool,
+        user_info: Option<UserInfo>,
     ) -> Result<(), Box<dyn Error>> {
         if self.is_plugin_vm(name, user_id_hash)? {
             self.ensure_plugin_vm_available(user_id_hash)?;
@@ -2276,6 +2316,9 @@ impl Methods {
             )?;
             if start_lxd {
                 self.start_lxd(name, user_id_hash)?;
+            }
+            if let Some(info) = user_info {
+                self.setup_vm_user(name, user_id_hash, info)?;
             }
             Ok(())
         }

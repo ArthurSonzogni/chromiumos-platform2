@@ -17,7 +17,7 @@ use std::io::{stdin, stdout, BufRead, Write};
 use getopts::Options;
 
 use crate::disk::{DiskOpType, VmState};
-use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
+use crate::methods::{ContainerSource, Methods, UserDisks, UserInfo, VmFeatures};
 use system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
 use system_api::cicerone_service::VmDeviceAction;
 
@@ -271,6 +271,24 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         );
         opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
+        opts.optopt(
+            "",
+            "user",
+            "Sets up a non-root user in the VM.",
+            "NAME"
+        );
+        opts.optopt(
+            "",
+            "user-uid",
+            "UID for the non-root user to be set up.",
+            "PARAM"
+        );
+        opts.optmulti(
+            "",
+            "user-group",
+            "Additional groups for the non-root user to be set up.",
+            "NAME"
+        );
         opts.optflag("", "help-start", "print this help menu");
 
         let matches = opts.parse(self.args)?;
@@ -323,6 +341,15 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             pflash: matches.opt_str("pflash"),
         };
 
+        let user_info = match matches.opt_str("user") {
+            Some(username) => Some(UserInfo {
+                username: username,
+                uid: matches.opt_str("user-uid").map(|x| x.parse()).transpose()?,
+                group_names: matches.opt_strs("user-group"),
+            }),
+            None => None,
+        };
+
         self.metrics_send_sample("Vm.VmcStart");
         try_command!(self.methods.vm_start(
             vm_name,
@@ -331,6 +358,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             features,
             user_disks,
             !matches.opt_present("no-start-lxd"),
+            user_info,
         ));
         self.metrics_send_sample("Vm.VmcStartSuccess");
 
@@ -1018,7 +1046,8 @@ const USAGE: &str = " [
            [--vm-type <TERMINA | ARC_VM | PLUGIN_VM | BOREALIS | BRUSCHETTA | BAGUETTE>] \
            [--no-start-lxd] [--writable-rootfs] [--kernel-param PARAM]... \
            [--oem-string STRING]... [--bios PATH] [--pflash PATH] [--bios-dlc ID] \
-           [--timeout PARAM] [--no-shell] [--help-start] <vm name>
+           [--timeout PARAM] [--no-shell] [--user NAME] [--user-uid PARAM] \
+           [--user-group PARAM]... [--help-start] <vm name>
   |  stop <vm name>
   |  launch <vm name>
   |  create [-p] [--size SIZE] <vm name> [<source media> [<removable storage name>]] \
