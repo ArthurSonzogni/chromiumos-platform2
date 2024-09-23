@@ -1141,10 +1141,14 @@ void WiFiService::EmitConnectionAttemptResultEvent(
 
 void WiFiService::EmitDisconnectionEvent(
     Metrics::WiFiDisconnectionType type,
-    IEEE_80211::WiFiReasonCode disconnect_reason) {
+    Metrics::WiFiDisconnectReasonCode disconnect_reason) {
   ValidateTagState(kSessionTagExpectedValid,
                    Metrics::kWiFiSessionTagDisconnectionSuffix);
-
+  LOG(INFO) << __func__
+            << (expecting_disconnect() ? ": expected" : ": unexpected")
+            << " disconnection for WiFi service " << log_name()
+            << " disconnect type " << type << " reason code "
+            << static_cast<int>(disconnect_reason);
   metrics()->NotifyWiFiDisconnection(type, disconnect_reason, session_tag_);
   // No more events in the session now that we've disconnected, reset the tag.
   session_tag_ = kSessionTagInvalid;

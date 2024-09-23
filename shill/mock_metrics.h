@@ -56,7 +56,7 @@ class MockMetrics : public Metrics {
               (override));
   MOCK_METHOD(void,
               NotifyWiFiDisconnection,
-              (WiFiDisconnectionType, IEEE_80211::WiFiReasonCode, uint64_t),
+              (WiFiDisconnectionType, WiFiDisconnectReasonCode, uint64_t),
               (override));
   MOCK_METHOD(void,
               NotifyWiFiLinkQualityTrigger,

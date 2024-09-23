@@ -288,7 +288,7 @@ class WiFiService : public Service {
   // session. It also resets the session tag.
   mockable void EmitDisconnectionEvent(
       Metrics::WiFiDisconnectionType type,
-      IEEE_80211::WiFiReasonCode disconnect_reason);
+      Metrics::WiFiDisconnectReasonCode disconnect_reason);
 
   // Emits the |WiFiLinkQualityTrigger| structured event.
   mockable void EmitLinkQualityTriggerEvent(

@@ -3679,10 +3679,14 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUserDisconnection) {
   // If the disconnection is user-initiated, we report that the disconnection
   // is expected.
   Error error;
-  service->UserInitiatedDisconnect("", &error);
+  EXPECT_CALL(
+      *service,
+      Disconnect(_, HasSubstr(Service::Service::kDisconnectReasonDbus)));
   EXPECT_CALL(*service, EmitDisconnectionEvent(
                             Metrics::kWiFiDisconnectionTypeExpectedUserAction,
-                            IEEE_80211::kReasonCodeNonAssociated));
+                            Metrics::WiFiDisconnectReasonCode::
+                                kReasonCodeClass3FrameFromNonAssocSTA));
+  service->UserInitiatedDisconnect("", &error);
   ReportDisconnectReasonChanged(reason);
 }
 
@@ -3695,9 +3699,11 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnExpectedSTA) {
   // If supplicant reports a < 0 disconnection reason it means the station
   // decided to disconnect. If the service was expecting a disconnection, we
   // report that the disconnection is expected.
-  EXPECT_CALL(*service, EmitDisconnectionEvent(
-                            Metrics::kWiFiDisconnectionTypeExpectedUserAction,
-                            IEEE_80211::kReasonCodeSenderHasLeft));
+  EXPECT_CALL(
+      *service,
+      EmitDisconnectionEvent(
+          Metrics::kWiFiDisconnectionTypeExpectedUserAction,
+          Metrics::WiFiDisconnectReasonCode::kReasonCodeDisconnectGeneral));
   ReportDisconnectReasonChanged(reason);
 }
 
@@ -3714,7 +3720,8 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnSSIDSwitch) {
   // expected.
   EXPECT_CALL(*service0, EmitDisconnectionEvent(
                              Metrics::kWiFiDisconnectionTypeExpectedUserAction,
-                             IEEE_80211::kReasonCodeSenderHasLeft));
+                             Metrics::WiFiDisconnectReasonCode::
+                                 kReasonCodeDisconnectNewConnectionUser));
   InitiateConnect(service1);
   ReportDisconnectReasonChanged(reason);
 }
@@ -3730,7 +3737,8 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedSTA) {
   EXPECT_CALL(*service,
               EmitDisconnectionEvent(
                   Metrics::kWiFiDisconnectionTypeUnexpectedSTADisconnect,
-                  IEEE_80211::kReasonCodeInactivity));
+                  Metrics::WiFiDisconnectReasonCode::
+                      kReasonCodeDisassocDueToInactivity));
   ReportDisconnectReasonChanged(reason);
 }
 
@@ -3744,7 +3752,8 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedAP) {
   EXPECT_CALL(*service,
               EmitDisconnectionEvent(
                   Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-                  IEEE_80211::kReasonCodeInactivity));
+                  Metrics::WiFiDisconnectReasonCode::
+                      kReasonCodeDisassocDueToInactivity));
   ReportDisconnectReasonChanged(reason);
 }
 
@@ -3762,7 +3771,8 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnAttemptFailureInAssoc) {
   EXPECT_CALL(*service,
               EmitDisconnectionEvent(
                   Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-                  IEEE_80211::kReasonCodeNonAssociated))
+                  Metrics::WiFiDisconnectReasonCode::
+                      kReasonCodeClass3FrameFromNonAssocSTA))
       .Times(0);
   ReportDisconnectReasonChanged(reason);
 }
@@ -3801,9 +3811,48 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnDisconnectionInRekey) {
   EXPECT_CALL(*service,
               EmitDisconnectionEvent(
                   Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-                  IEEE_80211::kReasonCode4WayTimeout))
+                  Metrics::WiFiDisconnectReasonCode::
+                      kReasonCodeFourwayHandshakeTimeout))
       .Times(1);
   ReportDisconnectReasonChanged(reason);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnIPConfigFailure) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  EXPECT_EQ(nullptr, GetPendingService());
+  int32_t reason = -IEEE_80211::kReasonCodeSenderHasLeft;
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedSTADisconnect,
+                  Metrics::WiFiDisconnectReasonCode::
+                      kReasonCodeDisconnectIPProvisioningFailure));
+  ON_CALL(*service, DisconnectWithFailure(_, _, _)).WillByDefault([&]() {
+    service->set_disconnect_type(Metrics::kWiFiDisconnectTypeIPConfigFailure);
+  });
+  ReportIPConfigFailure();
+  ReportDisconnectReasonChanged(reason);
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonEmitEventReconnectTimeout) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  EXPECT_EQ(nullptr, GetPendingService());
+  int32_t reason = -IEEE_80211::kReasonCodeSenderHasLeft;
+  EXPECT_CALL(*service,
+              EmitDisconnectionEvent(
+                  Metrics::kWiFiDisconnectionTypeUnexpectedSTADisconnect,
+                  Metrics::WiFiDisconnectReasonCode::
+                      kReasonCodeConnectingWatchdogTimer));
+  StartReconnectTimer();
+  GetReconnectTimeoutCallback().callback().Run();
+  EXPECT_EQ(service->disconnect_type(),
+            Metrics::kWiFiDisconnectTypeReconnectTimeout);
+  ReportDisconnectReasonChanged(reason);
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
 }
 
 TEST_F(WiFiMainTest, GetSuffixFromAuthMode) {

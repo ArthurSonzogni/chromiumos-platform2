@@ -2244,9 +2244,137 @@ class Metrics {
     kWiFiDisconnectionTypeUnexpectedSTADisconnect = 4
   };
 
+  // Reuse Android framework proto WifiDisconnectReported.FailureCode in:
+  // frameworks/proto_logging/stats/atoms.proto
+  enum class WiFiDisconnectReasonCode {
+    kReasonCodeUnknown = 0,
+
+    // WiFi supplicant failure reason codes (IEEE Std 802.11-2020, 9.4.1.7,
+    // Table 9-49 and IEEE Std 802.11ax-2021, 9.4.1.7, Table 9-49).
+    kReasonCodeUnspecified = 1,
+    kReasonCodePrevAuthNotValid = 2,
+    kReasonCodeDeauthLeaving = 3,
+    kReasonCodeDisassocDueToInactivity = 4,
+    kReasonCodeDisassocAPBusy = 5,
+    kReasonCodeClass2FrameFromNonAuthSTA = 6,
+    kReasonCodeClass3FrameFromNonAssocSTA = 7,
+    kReasonCodeDisassocSTAHasLeft = 8,
+    kReasonCodeSTAReqAssocWithoutAuth = 9,
+    kReasonCodePwrCapabilityNotValid = 10,
+    kReasonCodeSupportedChannelNotValid = 11,
+    kReasonCodeBssTransitionDisassoc = 12,
+    kReasonCodeInvalidIE = 13,
+    kReasonCodeMichaelMICFailure = 14,
+    kReasonCodeFourwayHandshakeTimeout = 15,
+    kReasonCodeGroupKeyUpdateTimeout = 16,
+    kReasonCodeIEIn4wayDiffers = 17,
+    kReasonCodeGroupCipherNotValid = 18,
+    kReasonCodePairwiseCipherNotValid = 19,
+    kReasonCodeAKMPNotValid = 20,
+    kReasonCodeUnsupportedRSNIEVersion = 21,
+    kReasonCodeInvalidRSNIECapab = 22,
+    kReasonCodeIEEE8021XAuthFailed = 23,
+    kReasonCodeCipherSuiteRejected = 24,
+    kReasonCodeTDLSTeardownUnreachable = 25,
+    kReasonCodeTDLSTeardownUnspecified = 26,
+    kReasonCodeSSPRequestedDisassoc = 27,
+    kReasonCodeNoSSPRoamingAgreement = 28,
+    kReasonCodeBadCipherOrAKM = 29,
+    kReasonCodeNotAuthorizedThisLocation = 30,
+    kReasonCodeServiceChangePrecludesTS = 31,
+    kReasonCodeUnspecifiedQoSReason = 32,
+    kReasonCodeNotEnoughBandwidth = 33,
+    kReasonCodeDisassocLowACK = 34,
+    kReasonCodeExceededTXOP = 35,
+    kReasonCodeSTALeaving = 36,
+    kReasonCodeEndTSBADLS = 37,
+    kReasonCodeUnknownTSBA = 38,
+    kReasonCodeTimeout = 39,
+    kReasonCodePeerkeyMismatch = 45,
+    kReasonCodeAuthorizedAccessLimitReached = 46,
+    kReasonCodeExternalServiceRequirements = 47,
+    kReasonCodeInvalidFTActionFrameCount = 48,
+    kReasonCodeInvalidPMKID = 49,
+    kReasonCodeInvalidMDE = 50,
+    kReasonCodeInvalidFTE = 51,
+    kReasonCodeMeshPeeringCancelled = 52,
+    kReasonCodeMeshMaxPeers = 53,
+    kReasonCodeMeshConfigPolicyViolation = 54,
+    kReasonCodeMeshCloseRCVD = 55,
+    kReasonCodeMeshMaxRetries = 56,
+    kReasonCodeMeshConfirmTimeout = 57,
+    kReasonCodeMeshInvalidGTK = 58,
+    kReasonCodeMeshInconsistentParams = 59,
+    kReasonCodeMeshInvalidSecurityCap = 60,
+    kReasonCodeMeshPathErrorNoProxyInfo = 61,
+    kReasonCodeMeshPathErrorNoForwardingInfo = 62,
+    kReasonCodeMeshPathErrorDestUnreachable = 63,
+    kReasonCodeMACAddressAlreadyExistsInMbss = 64,
+    kReasonCodeMeshChannelSwitchRegulatoryReq = 65,
+    kReasonCodeMeshChannelSwitchUnspecified = 66,
+    kReasonCodeTransmissionLinkEstablishmentFailed = 67,
+    kReasonCodeAlternativeChannelOccupied = 68,
+    kReasonCodePoorRSSIConditions = 71,
+
+    // Android ClientModeImpl error codes defined in
+    // packages/modules/Wifi/service/java/com/android/server/wifi/
+    // WifiMetrics.java
+    kReasonCodeIfaceDestroyed = 10000,
+    kReasonCodeWiFiDisabled = 10001,
+    kReasonCodeSupplicantDisconnected = 10002,
+    kReasonCodeConnectingWatchdogTimer = 10003,
+    kReasonCodeRoamWatchdogTimer = 10004,
+
+    // New reasons tracking disconnections initiated by Android wifi framework
+    // Framework disconnect, generic reason
+    kReasonCodeDisconnectGeneral = 10005,
+    // Disconnecting due to unspecified IP reachability lost.
+    kReasonCodeDisconnectNUDFailureGeneric = 10006,
+    // Disconnecting due to IP reachability lost from roaming
+    kReasonCodeDisconnectNUDFailureRoam = 10007,
+    // Disconnecting due to IP reachability lost from the CONFIRM command
+    kReasonCodeDisconnectNUDFailureConfirm = 10008,
+    // Disconnecting due to IP reachability lost from kernel check
+    kReasonCodeDisconnectNUDFailureOrganic = 10009,
+    // Connectivity no longer wants this network
+    kReasonCodeDisconnectUnwantedByConnectivity = 10010,
+    // Timeout creating the IP client
+    kReasonCodeDisconnectCreateIPClientTimeout = 10011,
+    // IP provisioning failure
+    kReasonCodeDisconnectIPProvisioningFailure = 10012,
+    // Disconnect by P2P
+    kReasonCodeDisconnectP2PRequestedDisconnect = 10013,
+    // Network is removed from the WifiConfigManager
+    kReasonCodeDisconnectNetworkRemoved = 10014,
+    // Network is marked as untrusted
+    kReasonCodeDisconnectNetworkUntrusted = 10015,
+    // Network is marked as metered
+    kReasonCodeDisconnectNetworkMetered = 10016,
+    // Network is temporarily disabled
+    kReasonCodeDisconnectTempDisabled = 10017,
+    // Network is permanently disabled
+    kReasonCodeDisconnectPermDisabled = 10018,
+    kReasonCodeDisconnectCarrierOffloadDisabled = 10019,
+    // Disconnecting due to Passpoint terms and conditions page
+    kReasonCodeDisconnectPasspointTAC = 10020,
+    // Disconnecting due to issues with terms and conditions URL
+    kReasonCodeDisconnectVNCRequest = 10021,
+    // Connected to a network that is already removed
+    kReasonCodeDisconnectUnknownNetwork = 10022,
+    // User initiated a new connection
+    kReasonCodeDisconnectNewConnectionUser = 10023,
+    // New connection triggered by non-user
+    kReasonCodeDisconnectNewConnectionOthers = 10024,
+    // Wi-Fi 7 is enabled or disabled for this network
+    kReasonCodeDisconnectNetworkWiFi7Toggled = 10025,
+  };
+
+  static WiFiDisconnectReasonCode GetWiFiDisconnectReasonCode(
+      WiFiDisconnectType type, IEEE_80211::WiFiReasonCode code);
+
   // Emits the |WiFiConnectionEnd| structured event.
   virtual void NotifyWiFiDisconnection(WiFiDisconnectionType type,
-                                       IEEE_80211::WiFiReasonCode reason,
+                                       WiFiDisconnectReasonCode reason,
                                        uint64_t session_tag);
 
   enum WiFiLinkQualityTrigger {

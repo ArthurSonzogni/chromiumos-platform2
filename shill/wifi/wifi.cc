@@ -1369,19 +1369,25 @@ void WiFi::DisconnectReasonChanged(const int32_t new_value) {
   }
   // The case where the device is roaming is handled separately in
   // |HandleRoam()|.
-  Metrics::WiFiDisconnectionType disconnect_type =
+  Metrics::WiFiDisconnectionType disconnection_type =
       Metrics::kWiFiDisconnectionTypeUnknown;
   if (affected_service->explicitly_disconnected() ||
       affected_service->expecting_disconnect()) {
-    disconnect_type = Metrics::kWiFiDisconnectionTypeExpectedUserAction;
+    disconnection_type = Metrics::kWiFiDisconnectionTypeExpectedUserAction;
   } else {
-    disconnect_type =
+    disconnection_type =
         by_whom == Metrics::kDisconnectedNotByAp
             ? Metrics::kWiFiDisconnectionTypeUnexpectedSTADisconnect
             : Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect;
   }
-  affected_service->EmitDisconnectionEvent(disconnect_type,
+  // WiFi disconnection initiated by shill have disconnect reason code
+  // IEEE_80211::kReasonCodeDisassociatedHasLeft, categorize these
+  // disconnections based on the WiFi disconnect type
+  Metrics::WiFiDisconnectReasonCode disconnect_reason =
+      Metrics::GetWiFiDisconnectReasonCode(affected_service->disconnect_type(),
                                            supplicant_disconnect_reason_);
+  affected_service->EmitDisconnectionEvent(disconnection_type,
+                                           disconnect_reason);
 }
 
 void WiFi::CurrentAuthModeChanged(const std::string& auth_mode) {
@@ -1786,7 +1792,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
       // "real" roam.
       service->EmitDisconnectionEvent(
           Metrics::kWiFiDisconnectionTypeExpectedRoaming,
-          IEEE_80211::kReasonCodeReserved0);
+          Metrics::WiFiDisconnectReasonCode::kReasonCodeUnknown);
       service->EmitConnectionAttemptEvent();
     }
   }

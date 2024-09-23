@@ -2819,7 +2819,7 @@ TEST_F(WiFiServiceTest, SessionTagInvalidAfterDisconnection) {
   EXPECT_NE(GetSessionTag(service), WiFiService::kSessionTagInvalid);
   service->EmitDisconnectionEvent(
       Metrics::kWiFiDisconnectionTypeExpectedUserAction,
-      IEEE_80211::kReasonCodeTooManySTAs);
+      Metrics::WiFiDisconnectReasonCode::kReasonCodeDisassocAPBusy);
   // After disconnection the session has ended, expect the session tag to be
   // reset to default.
   EXPECT_EQ(GetSessionTag(service), WiFiService::kSessionTagInvalid);
@@ -2871,7 +2871,8 @@ TEST_F(WiFiServiceTest, DisconnectionEmitsStructuredMetricWithTagOnSuccess) {
   uint64_t session_tag;
   Metrics::WiFiDisconnectionType disconnection_type =
       Metrics::kWiFiDisconnectionTypeExpectedUserAction;
-  IEEE_80211::WiFiReasonCode error_code = IEEE_80211::kReasonCodeReserved0;
+  Metrics::WiFiDisconnectReasonCode error_code =
+      Metrics::WiFiDisconnectReasonCode::kReasonCodeUnknown;
 
   service->EmitConnectionAttemptEvent();
   session_tag = GetSessionTag(service);
@@ -2888,7 +2889,8 @@ TEST_F(WiFiServiceTest, DisconnectionEmitsStructuredMetricWithTagOnFailure) {
   uint64_t session_tag;
   Metrics::WiFiDisconnectionType disconnection_type =
       Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect;
-  IEEE_80211::WiFiReasonCode error_code = IEEE_80211::kReasonCodeTooManySTAs;
+  Metrics::WiFiDisconnectReasonCode error_code =
+      Metrics::WiFiDisconnectReasonCode::kReasonCodeDisassocAPBusy;
 
   service->EmitConnectionAttemptEvent();
   session_tag = GetSessionTag(service);
@@ -2979,7 +2981,7 @@ TEST_F(WiFiServiceTest, DisconnectionValidTagUMA) {
   // expected.
   service->EmitDisconnectionEvent(
       Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-      IEEE_80211::kReasonCodeTooManySTAs);
+      Metrics::WiFiDisconnectReasonCode::kReasonCodeDisassocAPBusy);
 }
 
 TEST_F(WiFiServiceTest, DisconnectionInvalidTagUMA) {
@@ -2996,7 +2998,7 @@ TEST_F(WiFiServiceTest, DisconnectionInvalidTagUMA) {
   // the state of the session tag should be unexpected.
   service->EmitDisconnectionEvent(
       Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-      IEEE_80211::kReasonCodeTooManySTAs);
+      Metrics::WiFiDisconnectReasonCode::kReasonCodeDisassocAPBusy);
 }
 
 TEST_F(WiFiServiceTest, QualityLinkTriggerEmitsStructuredMetricWithTag) {

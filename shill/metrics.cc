@@ -1189,21 +1189,56 @@ void Metrics::NotifyWiFiConnectionAttemptResult(
       .Record();
 }
 
+// static
+Metrics::WiFiDisconnectReasonCode Metrics::GetWiFiDisconnectReasonCode(
+    WiFiDisconnectType type, IEEE_80211::WiFiReasonCode code) {
+  if (code != IEEE_80211::kReasonCodeSenderHasLeft) {
+    return static_cast<Metrics::WiFiDisconnectReasonCode>(code);
+  }
+  switch (type) {
+    case kWiFiDisconnectTypeDisable:
+      return WiFiDisconnectReasonCode::kReasonCodeWiFiDisabled;
+    case kWiFiDisconnectTypeSelectNetwork:
+      return WiFiDisconnectReasonCode::kReasonCodeDisconnectNewConnectionUser;
+    case kWiFiDisconnectTypeUnload:
+    case kWiFiDisconnectTypeClearCredential:
+      return WiFiDisconnectReasonCode::kReasonCodeDisconnectNetworkRemoved;
+    case kWiFiDisconnectTypeIPConfigFailure:
+      return WiFiDisconnectReasonCode::
+          kReasonCodeDisconnectIPProvisioningFailure;
+    case kWiFiDisconnectTypePendingTimeout:
+    case kWiFiDisconnectTypeHandshakeTimeout:
+    case kWiFiDisconnectTypeReconnectTimeout:
+      return WiFiDisconnectReasonCode::kReasonCodeConnectingWatchdogTimer;
+    case kWiFiDisconnectTypeUser:
+    case kWiFiDisconnectTypeSuspend:
+    case kWiFiDisconnectTypeEthernet:
+    case kWiFiDisconnectTypeNoEndpointLeft:
+    case kWiFiDisconnectTypeNewWiFi:
+    case kWiFiDisconnectTypeRoamingIncorrectBSSID:
+    case kWiFiDisconnectTypeShill:
+      return WiFiDisconnectReasonCode::kReasonCodeDisconnectGeneral;
+    default:
+      return WiFiDisconnectReasonCode::kReasonCodeDeauthLeaving;
+  }
+}
+
 void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
-                                      IEEE_80211::WiFiReasonCode reason,
+                                      WiFiDisconnectReasonCode reason,
                                       uint64_t session_tag) {
+  int64_t reason_code = static_cast<int64_t>(reason);
   // Do NOT modify the verbosity of the Session Tag log without a privacy
   // review.
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
-  SLOG(2) << __func__ << ": Type " << type << " Reason " << reason;
+  SLOG(2) << __func__ << ": Type " << type << " Reason " << reason_code;
   metrics::structured::events::wi_fi::WiFiConnectionEnd()
       .SetBootId(WiFiMetricsUtils::GetBootId())
       .SetSystemTime(GetElapsedTime().InMicroseconds())
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
       .SetDisconnectionType(type)
-      .SetDisconnectionReasonCode(reason)
+      .SetDisconnectionReasonCode(reason_code)
       .Record();
 }
 

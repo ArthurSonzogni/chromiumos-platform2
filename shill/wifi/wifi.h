@@ -437,6 +437,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB);
   FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB);
   FRIEND_TEST(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef);
+  FRIEND_TEST(WiFiServiceTest, DisconnectionIPConfigFailure);
 
   using EndpointMap = std::map<const RpcIdentifier, WiFiEndpointRefPtr>;
   using ReverseServiceMap = std::map<const WiFiService*, RpcIdentifier>;

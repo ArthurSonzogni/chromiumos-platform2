@@ -79,7 +79,8 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD(int16_t, SignalLevel, (), (const, override));
   MOCK_METHOD(void,
               EmitDisconnectionEvent,
-              (Metrics::WiFiDisconnectionType, IEEE_80211::WiFiReasonCode),
+              (Metrics::WiFiDisconnectionType,
+               Metrics::WiFiDisconnectReasonCode),
               (override));
   MOCK_METHOD(void,
               EmitLinkQualityTriggerEvent,

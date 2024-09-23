@@ -891,7 +891,7 @@ TEST_F(MetricsTest, NotifyWiFiConnectionDisconnectionEmitsConnectionEndEvent) {
   constexpr uint64_t tag = 0x123456789;
   metrics_.NotifyWiFiDisconnection(
       Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-      IEEE_80211::kReasonCodeTooManySTAs, tag);
+      Metrics::WiFiDisconnectReasonCode::kReasonCodeDisassocAPBusy, tag);
 }
 
 TEST_F(MetricsTest, NotifyWiFiLinkQualityTriggerEmitsTriggerEvent) {
