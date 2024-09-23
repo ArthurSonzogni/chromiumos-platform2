@@ -1,9 +1,11 @@
-// Copyright 2024 The Chromium Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef MOJOM_MODEL_ASSETS_MOJOM_TRAITS_H_
-#define MOJOM_MODEL_ASSETS_MOJOM_TRAITS_H_
+#ifndef ODML_MOJOM_MODEL_ASSETS_MOJOM_TRAITS_H_
+#define ODML_MOJOM_MODEL_ASSETS_MOJOM_TRAITS_H_
+
+#include <utility>
 
 #include <base/files/file.h>
 
@@ -30,31 +32,14 @@ struct StructTraits<on_device_model::mojom::ModelAssetsDataView,
     return std::move(assets.sp_model_path);
   }
 
-  static base::File ts_data(on_device_model::ModelAssets& assets) {
-    return std::move(assets.ts_data);
-  }
-
-  static base::File ts_sp_model(on_device_model::ModelAssets& assets) {
-    return std::move(assets.ts_sp_model);
-  }
-
-  static base::File language_detection_model(
-      on_device_model::ModelAssets& assets) {
-    return std::move(assets.language_detection_model);
-  }
-
   static bool Read(on_device_model::mojom::ModelAssetsDataView data,
                    on_device_model::ModelAssets* assets) {
     // base::FilePath doesn't have nullable StructTraits, so we need to use
     // optional.
     std::optional<base::FilePath> weights_path, sp_model_path;
-    bool ok =
-        data.ReadWeights(&assets->weights) &&
-        data.ReadWeightsPath(&weights_path) &&
-        data.ReadSpModelPath(&sp_model_path) &&
-        data.ReadTsData(&assets->ts_data) &&
-        data.ReadTsSpModel(&assets->ts_sp_model) &&
-        data.ReadLanguageDetectionModel(&assets->language_detection_model);
+    bool ok = data.ReadWeights(&assets->weights) &&
+              data.ReadWeightsPath(&weights_path) &&
+              data.ReadSpModelPath(&sp_model_path);
     if (!ok) {
       return false;
     }
@@ -70,4 +55,4 @@ struct StructTraits<on_device_model::mojom::ModelAssetsDataView,
 
 }  // namespace mojo
 
-#endif  // MOJOM_MODEL_ASSETS_MOJOM_TRAITS_H_
+#endif  // ODML_MOJOM_MODEL_ASSETS_MOJOM_TRAITS_H_

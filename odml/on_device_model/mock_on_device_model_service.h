@@ -55,6 +55,15 @@ class MockOnDeviceModelService : public mojom::OnDeviceModelPlatformService {
                mojom::SafetyInfoPtr safety_info,
                ValidateSafetyResultCallback callback),
               (override));
+
+  MOCK_METHOD(void,
+              LoadPlatformTextSafetyModel,
+              (const base::Uuid& uuid,
+               mojo::PendingReceiver<mojom::TextSafetyModel> model,
+               mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+                   progress_observer,
+               LoadPlatformModelCallback callback),
+              (override));
 };
 
 }  // namespace on_device_model

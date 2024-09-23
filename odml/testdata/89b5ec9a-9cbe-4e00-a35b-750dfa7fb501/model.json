@@ -1,0 +1,6 @@
+{
+  "name": "My TS moodel",
+  "ts_data_path": "ts.bin",
+  "ts_sp_model_path": "ts_spm.model",
+  "version": "0.0.1"
+}

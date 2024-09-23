@@ -24,6 +24,10 @@ class ChromeML {
   // Use Get() to acquire a global instance.
   ChromeML(raw_ref<MetricsLibraryInterface> metrics, const ChromeMLAPI* api);
   ~ChromeML();
+  ChromeML(const ChromeML& other) = delete;
+  ChromeML& operator=(const ChromeML& other) = delete;
+  ChromeML(ChromeML&& other) = delete;
+  ChromeML& operator=(ChromeML&& other) = delete;
 
   // Gets a lazily initialized global instance of ChromeML. May return null
   // if the underlying library could not be loaded.

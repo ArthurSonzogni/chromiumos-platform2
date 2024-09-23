@@ -9,7 +9,7 @@
       "move_only": true,
       "non_copyable_non_movable": false,
       "non_const_ref": false,
-      "nullable_is_same_type": true,
+      "nullable_is_same_type": false,
       "public_headers": [
         "base/files/file.h"
       ],
@@ -20,14 +20,14 @@
     },
     "mojo_base.mojom.ReadOnlyFile": {
       "copyable_pass_by_value": false,
-      "default_constructible": false,
+      "default_constructible": true,
       "force_serialize": false,
       "forward_declaration": null,
       "hashable": false,
       "move_only": true,
       "non_copyable_non_movable": false,
       "non_const_ref": false,
-      "nullable_is_same_type": true,
+      "nullable_is_same_type": false,
       "public_headers": [
         "base/files/file.h"
       ],

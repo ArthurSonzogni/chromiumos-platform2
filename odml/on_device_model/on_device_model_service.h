@@ -16,18 +16,25 @@
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
+#include <base/threading/sequence_bound.h>
 #include <base/types/expected.h>
 #include <base/uuid.h>
 #include <build/build_config.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/on_device_model/ml/chrome_ml.h"
+#include "odml/on_device_model/ml/ts_model.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/utils/odml_shim_loader.h"
+
+namespace ml {
+class TsHolder;
+}
 
 namespace on_device_model {
 
@@ -70,9 +77,24 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
                             mojom::SafetyInfoPtr safety_info,
                             ValidateSafetyResultCallback callback) override;
 
+  void LoadPlatformTextSafetyModel(
+      const base::Uuid& uuid,
+      mojo::PendingReceiver<mojom::TextSafetyModel> model,
+      mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+          progress_observer,
+      LoadPlatformModelCallback callback) override;
+
   void LoadModel(mojom::LoadModelParamsPtr params,
                  mojo::PendingReceiver<mojom::OnDeviceModel> model,
                  LoadPlatformModelCallback callback);
+
+  void LoadModel(mojom::LoadModelParamsPtr params,
+                 mojo::PendingReceiver<mojom::OnDeviceModel> model,
+                 LoadPlatformModelCallback callback,
+                 mojom::TextSafetyModel* ts_model);
+
+  void LoadTextSafetyModel(mojom::TextSafetyModelParamsPtr params,
+                           mojo::PendingReceiver<mojom::TextSafetyModel> model);
 
   size_t NumModelsForTesting() const { return models_.size(); }
 
@@ -98,6 +120,7 @@ class OnDeviceModelService : public mojom::OnDeviceModelPlatformService {
   std::set<std::unique_ptr<mojom::OnDeviceModel>, base::UniquePtrComparator>
       models_;
   std::unique_ptr<PlatformModelLoader> platform_model_loader_;
+  base::SequenceBound<ml::TsHolder> ts_holder_;
 
   base::WeakPtrFactory<OnDeviceModelService> weak_ptr_factory_{this};
 };

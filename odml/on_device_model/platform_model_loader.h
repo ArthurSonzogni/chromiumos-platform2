@@ -32,6 +32,13 @@ class PlatformModelLoader {
           progress_observer,
       LoadModelCallback callback) = 0;
 
+  virtual void LoadTextSafetyModelWithUuid(
+      const base::Uuid& uuid,
+      mojo::PendingReceiver<mojom::TextSafetyModel> model,
+      mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+          progress_observer,
+      LoadModelCallback callback) = 0;
+
   virtual void GetModelState(const base::Uuid& uuid,
                              GetModelStateCallback callback) = 0;
 };

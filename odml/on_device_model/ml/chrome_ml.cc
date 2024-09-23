@@ -39,7 +39,8 @@ enum class GpuErrorReason {
   kOther = 0,
   kDxgiErrorDeviceHung = 1,
   kDxgiErrorDeviceRemoved = 2,
-  kMaxValue = kDxgiErrorDeviceRemoved,
+  kDeviceCreationFailed = 3,
+  kMaxValue = kDeviceCreationFailed,
 };
 
 // The fatal error & histogram recording functions may run on different threads,
@@ -56,6 +57,8 @@ void FatalGpuErrorFn(const char* msg) {
     error_reason = GpuErrorReason::kDxgiErrorDeviceHung;
   } else if (msg_str.find("DXGI_ERROR_DEVICE_REMOVED") != std::string::npos) {
     error_reason = GpuErrorReason::kDxgiErrorDeviceRemoved;
+  } else if (msg_str.find("Failed to create device.") != std::string::npos) {
+    error_reason = GpuErrorReason::kDeviceCreationFailed;
   }
   {
     base::AutoLock lock(*g_metrics_lock);

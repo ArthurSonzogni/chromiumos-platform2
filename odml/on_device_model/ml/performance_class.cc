@@ -21,16 +21,16 @@ constexpr uint64_t kBytesPerMb = 1024 * 1024;
 // The threshold for GPU RAM below which the device is considered VeryLow.
 constexpr int kLowRAMThreshold = 3000;
 // RAM threshold necessary to be considered High or better.
-constexpr int kHighRAMThreshold = 7600;
+constexpr int kHighRAMThreshold = 5500;
 
 // Output threshold to be considered Low or better.
 constexpr int kLowOutputThreshold = 5;
 
-// Input speed thresholds or each device class.
+// Input speed min thresholds or each device class.
 constexpr int kLowThreshold = 50;
-constexpr int kMediumThreshold = 100;
-constexpr int kHighThreshold = 250;
-constexpr int kVeryHighThreshold = 750;
+constexpr int kMediumThreshold = 75;
+constexpr int kHighThreshold = 150;
+constexpr int kVeryHighThreshold = 500;
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.

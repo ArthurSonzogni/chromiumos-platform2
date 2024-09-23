@@ -5,6 +5,7 @@
 #include "odml/on_device_model/on_device_model_service.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <queue>
@@ -15,7 +16,10 @@
 #include <base/functional/callback.h>
 #include <base/memory/raw_ref.h>
 #include <base/memory/weak_ptr.h>
+#include <base/notreached.h>
 #include <base/task/bind_post_task.h>
+#include <base/task/task_traits.h>
+#include <base/task/thread_pool.h>
 #include <base/timer/elapsed_timer.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -23,6 +27,7 @@
 #include "odml/on_device_model/features.h"
 #include "odml/on_device_model/ml/on_device_model_executor.h"
 #include "odml/on_device_model/ml/performance_class.h"
+#include "odml/on_device_model/ml/ts_model.h"
 #include "odml/on_device_model/platform_model_loader.h"
 #include "odml/on_device_model/platform_model_loader_chromeos.h"
 
@@ -114,11 +119,13 @@ class ModelWrapper final : public mojom::OnDeviceModel {
       bool support_multiple_sessions,
       std::unique_ptr<ml::OnDeviceModelExecutor> model,
       mojo::PendingReceiver<mojom::OnDeviceModel> receiver,
-      base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete)
+      base::OnceCallback<void(base::WeakPtr<mojom::OnDeviceModel>)> on_delete,
+      mojom::TextSafetyModel* ts_model)
       : metrics_(metrics),
         support_multiple_sessions_(support_multiple_sessions),
         model_(std::move(model)),
-        on_delete_(std::move(on_delete)) {
+        on_delete_(std::move(on_delete)),
+        ts_model_(ts_model) {
     receivers_.Add(this, std::move(receiver), std::nullopt);
     receivers_.set_disconnect_handler(base::BindRepeating(
         &ModelWrapper::ModelDisconnected, weak_ptr_factory_.GetWeakPtr()));
@@ -156,12 +163,20 @@ class ModelWrapper final : public mojom::OnDeviceModel {
 
   void ClassifyTextSafety(const std::string& text,
                           ClassifyTextSafetyCallback callback) override {
-    model_->ClassifyTextSafety(text, std::move(callback));
+    if (!ts_model_) {
+      std::move(callback).Run(nullptr);
+      return;
+    }
+    ts_model_->ClassifyTextSafety(text, std::move(callback));
   }
 
   void DetectLanguage(const std::string& text,
                       DetectLanguageCallback callback) override {
-    model_->DetectLanguage(text, std::move(callback));
+    if (!ts_model_) {
+      std::move(callback).Run(nullptr);
+      return;
+    }
+    ts_model_->DetectLanguage(text, std::move(callback));
   }
 
   void LoadAdaptation(mojom::LoadAdaptationParamsPtr params,
@@ -286,6 +301,7 @@ class ModelWrapper final : public mojom::OnDeviceModel {
   base::WeakPtr<SessionWrapper> running_session_;
   // Last session a task was executed in.
   base::WeakPtr<SessionWrapper> last_session_;
+  mojom::TextSafetyModel* ts_model_;
   base::WeakPtrFactory<ModelWrapper> weak_ptr_factory_{this};
 };
 
@@ -403,6 +419,14 @@ void OnDeviceModelService::LoadModel(
     mojom::LoadModelParamsPtr params,
     mojo::PendingReceiver<mojom::OnDeviceModel> model,
     LoadPlatformModelCallback callback) {
+  LoadModel(std::move(params), std::move(model), std::move(callback), nullptr);
+}
+
+void OnDeviceModelService::LoadModel(
+    mojom::LoadModelParamsPtr params,
+    mojo::PendingReceiver<mojom::OnDeviceModel> model,
+    LoadPlatformModelCallback callback,
+    mojom::TextSafetyModel* ts_model) {
   auto start = base::TimeTicks::Now();
   bool support_multiple_sessions = params->support_multiple_sessions;
   const ml::ChromeML* chrome_ml = ml::ChromeML::Get(metrics_, shim_loader_);
@@ -435,7 +459,8 @@ void OnDeviceModelService::LoadModel(
       metrics_, support_multiple_sessions, std::move(model_impl.value()),
       std::move(model),
       base::BindOnce(&OnDeviceModelService::DeleteModel,
-                     base::Unretained(this))));
+                     base::Unretained(this)),
+      ts_model));
   std::move(callback).Run(mojom::LoadModelResult::kSuccess);
 }
 
@@ -524,6 +549,40 @@ void OnDeviceModelService::GetEstimatedPerformanceClass(
 
   std::move(callback).Run(
       ml::GetEstimatedPerformanceClass(metrics_, *chrome_ml));
+}
+
+void OnDeviceModelService::LoadTextSafetyModel(
+    on_device_model::mojom::TextSafetyModelParamsPtr params,
+    mojo::PendingReceiver<mojom::TextSafetyModel> model) {
+  if (ts_holder_.is_null()) {
+    const ml::ChromeML* chrome_ml = ml::ChromeML::Get(metrics_, shim_loader_);
+    if (!chrome_ml) {
+      return;
+    }
+
+    ts_holder_ = ml::TsHolder::Create(raw_ref(*chrome_ml));
+  }
+
+  ts_holder_.AsyncCall(&ml::TsHolder::Reset)
+      .WithArgs(std::move(params), std::move(model));
+}
+
+void OnDeviceModelService::LoadPlatformTextSafetyModel(
+    const base::Uuid& uuid,
+    mojo::PendingReceiver<mojom::TextSafetyModel> model,
+    mojo::PendingRemote<mojom::PlatformModelProgressObserver> progress_observer,
+    LoadPlatformModelCallback callback) {
+  if (RetryIfShimIsNotReady(&OnDeviceModelService::LoadPlatformTextSafetyModel,
+                            callback,
+                            mojom::LoadModelResult::kFailedToLoadLibrary, uuid,
+                            model, progress_observer)) {
+    return;
+  }
+
+  platform_model_loader_->LoadTextSafetyModelWithUuid(
+      uuid, std::move(model), std::move(progress_observer),
+      std::move(callback));
+  return;
 }
 
 void OnDeviceModelService::FormatInput(

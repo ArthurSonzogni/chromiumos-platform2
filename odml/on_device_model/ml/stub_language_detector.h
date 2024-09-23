@@ -23,6 +23,8 @@ struct Prediction {
   bool operator<(const Prediction& other) const { return score < other.score; }
 };
 
+LanguageDetectionModel& GetLanguageDetectionModel();
+
 }  // namespace language_detection
 
 namespace translate {

@@ -29,13 +29,6 @@ struct ModelAssets {
 
   // Currently the only usage of sp model will be passed by file path.
   mojo_base.mojom.FilePath? sp_model_path;
-
-  // Currently the usage of models below will only be passed by opened file.
-  mojo_base.mojom.ReadOnlyFile? ts_data;
-  mojo_base.mojom.ReadOnlyFile? ts_sp_model;
-
-  // The language detection model file, if output language detection is desired.
-  mojo_base.mojom.ReadOnlyFile? language_detection_model;
 };
 
 // Type of the backend to run the model.
@@ -59,10 +52,6 @@ struct LoadModelParams {
   // needed when initializing the model.
   uint32 max_tokens;
 
-  // The number of scores output by the TS model, an implementation defined
-  // default if unspecified.
-  uint32? ts_dimension;
-
   // List of adaptation ranks the model should support.
   array<uint32> adaptation_ranks;
 
@@ -70,6 +59,20 @@ struct LoadModelParams {
   // The previous session will not be canceled when starting new session if
   // this feature is enabled.
   bool support_multiple_sessions;
+};
+
+struct TextSafetyModelAssets {
+  mojo_base.mojom.ReadOnlyFile data;
+  mojo_base.mojom.ReadOnlyFile sp_model;
+};
+
+struct LanguageModelAssets {
+  mojo_base.mojom.ReadOnlyFile model;
+};
+
+struct TextSafetyModelParams {
+  TextSafetyModelAssets? ts_assets;
+  LanguageModelAssets? language_assets;
 };
 
 // An observer to report the current platform model loading progress.
@@ -156,4 +159,13 @@ interface OnDeviceModelPlatformService {
   ValidateSafetyResult@4(
       SafetyFeature safety_feature, string text, SafetyInfo safety_info)
       => (bool result);
+
+  // Initializes a new TextSafetyModel with the provided params.
+  // The model is disconnected on any errors with it.
+  [MinVersion=5]
+  LoadPlatformTextSafetyModel@5(
+      mojo_base.mojom.Uuid uuid,
+      pending_receiver<TextSafetyModel> model,
+      pending_remote<PlatformModelProgressObserver>? progress_observer)
+      => (LoadModelResult result);
 };
