@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/adbd/dbc.h"
-
 #include <fcntl.h>
-#include <sys/eventfd.h>
 #include <sysexits.h>
 #include <termios.h>
 
@@ -14,9 +11,12 @@
 #include <base/posix/eintr_wrapper.h>
 
 #include "arc/adbd/adbd.h"
+#include "arc/adbd/arcvm_sock_to_usb.h"
+#include "arc/adbd/arcvm_usb_to_sock.h"
+#include "arc/adbd/dbc.h"
 
 namespace adbd {
-Dbc::Dbc(uint32_t cid) : cid_(cid), dbc_bridge_started_(false) {}
+Dbc::Dbc(uint32_t cid) : cid_(cid) {}
 
 int Dbc::OnInit() {
   int exit_code = brillo::Daemon::OnInit();
@@ -47,6 +47,7 @@ int Dbc::OnInit() {
     VLOG(1) << "dbc device " << kDbcAdbPath
             << " exists, starting arcvm adb bridge.";
     StartArcVmAdbBridgeDbc();
+    LOG(FATAL) << "ArcVM ADB bridge stopped unexpectedly.";
   }
 
   VLOG(1) << "dbc init successful";
@@ -55,24 +56,17 @@ int Dbc::OnInit() {
 
 // Callback on dbc device node change.
 void Dbc::OnDbcDevChange(const base::FilePath& dbc_path, bool error) {
+  // When connecting using a USB-C to USB-A cable, the PD negotiation
+  // attempts fail triggering multiple hard resets. As a workaround,
+  // sleep for a few secs to allow usb enumeration settle down.
+  // TODO(ssradjacoumar) Remove workaround after (b/308471879) is fixed.
+  base::PlatformThread::Sleep(base::Seconds(4));
+
   if (base::PathExists(dbc_path)) {
-    // When connecting using a USB-C to USB-A cable, the PD negotiation
-    // attempts fail triggering multiple hard resets. As a workaround,
-    // sleep for a few secs to allow usb enumeration settle down.
-    // TODO(ssradjacoumar) Remove workaround after (b/308471879) is fixed.
-    base::PlatformThread::Sleep(base::Seconds(4));
-    if (base::PathExists(dbc_path) && !dbc_bridge_started_) {
-      VLOG(1) << "dbc device " << dbc_path.value().c_str()
-              << " exists on file watcher event, starting arcvm adb bridge";
-      StartArcVmAdbBridgeDbc();
-    }
-  } else {
-    if (dbc_bridge_started_) {
-      VLOG(1)
-          << "dbc device " << dbc_path.value().c_str()
-          << " does not exist on file watcher event, stopping arcvm adb bridge";
-      StopArcVmAdbBridgeDbc();
-    }
+    VLOG(1) << "dbc device " << dbc_path.value().c_str()
+            << " exists on file watcher event, starting arcvm adb bridge";
+    StartArcVmAdbBridgeDbc();
+    LOG(FATAL) << "ArcVM ADB bridge stopped unexpectedly.";
   }
 }
 
@@ -90,8 +84,8 @@ void Dbc::StartArcVmAdbBridgeDbc() {
     return;
   }
 
-  vsock_sock_ = InitializeVSockConnection(cid_);
-  while (!vsock_sock_.is_valid()) {
+  auto vsock_sock = InitializeVSockConnection(cid_);
+  while (!vsock_sock.is_valid()) {
     if (--retries < 0) {
       LOG(ERROR) << "Too many retries to initialize dbc vsock; giving up";
       _exit(EXIT_FAILURE);
@@ -101,19 +95,19 @@ void Dbc::StartArcVmAdbBridgeDbc() {
     // a short sleep.
     // TODO(crbug.com/1126289): Remove the retry hack.
     base::PlatformThread::Sleep(kConnectInterval);
-    vsock_sock_ = InitializeVSockConnection(cid_);
+    vsock_sock = InitializeVSockConnection(cid_);
   }
 
-  dbc_bulk_usb_fd_ =
-      base::ScopedFD(HANDLE_EINTR(open(dbc_adb_path.value().c_str(), O_RDWR)));
-  if (!dbc_bulk_usb_fd_.is_valid()) {
+  base::ScopedFD dbc_bulk_usb_fd(
+      HANDLE_EINTR(open(dbc_adb_path.value().c_str(), O_RDWR)));
+  if (!dbc_bulk_usb_fd.is_valid()) {
     PLOG(ERROR) << "Failed to open dbc adb path "
                 << dbc_adb_path.value().c_str();
     _exit(EXIT_FAILURE);
   }
 
   // Configure serial port in raw mode - see termio(7I) for modes.
-  tcgetattr(dbc_bulk_usb_fd_.get(), &SerialPortSettings);
+  tcgetattr(dbc_bulk_usb_fd.get(), &SerialPortSettings);
 
   cfsetispeed(&SerialPortSettings, B9600);
   cfsetospeed(&SerialPortSettings, B9600);
@@ -130,61 +124,26 @@ void Dbc::StartArcVmAdbBridgeDbc() {
   SerialPortSettings.c_cc[VMIN] = 10;
   SerialPortSettings.c_cc[VTIME] = 10;
 
-  tcsetattr(dbc_bulk_usb_fd_.get(), TCSANOW, &SerialPortSettings);
+  tcsetattr(dbc_bulk_usb_fd.get(), TCSANOW, &SerialPortSettings);
 
-  stop_fd_ = base::ScopedFD(eventfd(0, 0));
-  if (!stop_fd_.is_valid()) {
-    PLOG(ERROR) << "Unable to create eventfd";
-    _exit(EXIT_FAILURE);
-  }
-
-  auto sock_fd = vsock_sock_.get();
-  ch_in_ = std::make_unique<ArcVmUsbToSock>(sock_fd, dbc_bulk_usb_fd_.get(),
-                                            stop_fd_.get());
-  if (!ch_in_->Start()) {
+  auto sock_fd = vsock_sock.get();
+  std::unique_ptr<ArcVmUsbToSock> ch_in =
+      std::make_unique<ArcVmUsbToSock>(sock_fd, dbc_bulk_usb_fd.get());
+  if (!ch_in->Start()) {
     LOG(ERROR) << "dbc vsock IN Channel failed to start";
     _exit(EXIT_FAILURE);
   }
 
-  ch_out_ = std::make_unique<ArcVmSockToUsb>(sock_fd, dbc_bulk_usb_fd_.get(),
-                                             stop_fd_.get());
-  if (!ch_out_->Start()) {
+  std::unique_ptr<ArcVmSockToUsb> ch_out =
+      std::make_unique<ArcVmSockToUsb>(sock_fd, dbc_bulk_usb_fd.get());
+  if (!ch_out->Start()) {
     LOG(ERROR) << "dbc vsock OUT Channel failed to start";
     _exit(EXIT_FAILURE);
   }
 
-  // Update the bridge status.
-  dbc_bridge_started_ = true;
-
   LOG(WARNING) << "arcvm adb bridge for dbc started";
-}
-
-// Tear down ARCVM ADB bridge.
-void Dbc::StopArcVmAdbBridgeDbc() {
-  uint64_t counter = 1; /* Any non-zero counter value */
-
-  // Send stop event to threads.
-  if (!base::WriteFileDescriptor(
-          stop_fd_.get(),
-          std::string_view((const char*)&counter, sizeof(counter)))) {
-    PLOG(ERROR) << "Unable to write to stop_fd; failed to stop threads";
-  }
-
-  // Wait for threads to complete.
-  ch_in_->Stop();
-  ch_out_->Stop();
-
-  // Release memory.
-  ch_in_.reset();
-  ch_out_.reset();
-  stop_fd_.reset();
-  vsock_sock_.reset();
-  dbc_bulk_usb_fd_.reset();
-
-  // Update the ADB bridge status.
-  dbc_bridge_started_ = false;
-
-  LOG(WARNING) << "arcvm adb bridge for dbc stopped";
+  // The function will not return here because the execution is waiting
+  // for threads to join but that won't happen in normal cases.
 }
 
 }  // namespace adbd
