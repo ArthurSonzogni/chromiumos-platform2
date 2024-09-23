@@ -86,6 +86,11 @@ constexpr char kEphemeralPriorityProperty[] = "EphemeralPriority";
 constexpr char kServiceProxyConfigMode[] = "mode";
 constexpr char kServiceProxyConfigModeDirect[] = "direct";
 
+constexpr int kPriorityNone = 0;
+
+constexpr base::TimeDelta kMinAutoConnectCooldownTime = base::Seconds(1);
+constexpr base::TimeDelta kMaxAutoConnectCooldownTime = base::Minutes(1);
+
 // Extracts enum value but with enum's underlying type.
 // This is a part of c++23, but it's quite useful even now.
 template <typename T>
@@ -121,61 +126,6 @@ static std::string ObjectID(const Service* s) {
   return s->log_name();
 }
 }  // namespace Logging
-
-const char Service::kAutoConnBusy[] = "busy";
-const char Service::kAutoConnConnected[] = "connected";
-const char Service::kAutoConnConnecting[] = "connecting";
-const char Service::kAutoConnDisconnecting[] = "disconnecting";
-const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
-const char Service::kAutoConnNotConnectable[] = "not connectable";
-const char Service::kAutoConnOffline[] = "offline";
-const char Service::kAutoConnTechnologyNotAutoConnectable[] =
-    "technology not auto connectable";
-const char Service::kAutoConnThrottled[] = "throttled";
-const char Service::kAutoConnMediumUnavailable[] =
-    "connection medium unavailable";
-const char Service::kAutoConnRecentBadPassphraseFailure[] =
-    "recent bad passphrase failure";
-
-const size_t Service::kEAPMaxCertificationElements = 10;
-
-const int Service::kPriorityNone = 0;
-
-const char Service::kStorageAutoConnect[] = "AutoConnect";
-const char Service::kStorageCheckPortal[] = "CheckPortal";
-const char Service::kStorageError[] = "Error";
-const char Service::kStorageGUID[] = "GUID";
-const char Service::kStorageHasEverConnected[] = "HasEverConnected";
-const char Service::kStorageName[] = "Name";
-const char Service::kStoragePriority[] = "Priority";
-const char Service::kStorageProxyConfig[] = "ProxyConfig";
-const char Service::kStorageSaveCredentials[] = "SaveCredentials";
-const char Service::kStorageType[] = "Type";
-const char Service::kStorageUIData[] = "UIData";
-const char Service::kStorageONCSource[] = "ONCSource";
-const char Service::kStorageManagedCredentials[] = "ManagedCredentials";
-const char Service::kStorageMeteredOverride[] = "MeteredOverride";
-const char Service::kStorageCurrentTrafficCounterPrefix[] =
-    "TrafficCounterCurrent";
-const char Service::kStorageTrafficCounterRxBytesSuffix[] = "RxBytes";
-const char Service::kStorageTrafficCounterTxBytesSuffix[] = "TxBytes";
-const char Service::kStorageTrafficCounterRxPacketsSuffix[] = "RxPackets";
-const char Service::kStorageTrafficCounterTxPacketsSuffix[] = "TxPackets";
-const char Service::kStorageTrafficCounterResetTime[] =
-    "TrafficCounterResetTime";
-const char Service::kStorageLastManualConnectAttempt[] =
-    "LastManualConnectAttempt";
-const char Service::kStorageLastConnected[] = "LastConnected";
-const char Service::kStorageLastOnline[] = "LastOnline";
-const char Service::kStorageStartTime[] = "StartTime";
-const char Service::kStorageEnableRFC8925[] = "EnableRFC8925";
-
-const uint8_t Service::kStrengthMax = 100;
-const uint8_t Service::kStrengthMin = 0;
-
-const base::TimeDelta Service::kMinAutoConnectCooldownTime = base::Seconds(1);
-const base::TimeDelta Service::kMaxAutoConnectCooldownTime = base::Minutes(1);
-const uint64_t Service::kAutoConnectCooldownBackoffFactor = 2;
 
 // TODO(b/184036481): convert all of these to base::TimeDelta
 const int Service::kDisconnectsMonitorSeconds = 5 * 60;

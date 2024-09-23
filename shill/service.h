@@ -68,44 +68,60 @@ class Service : public base::RefCounted<Service> {
 
   // TODO(pstew): Storage constants shouldn't need to be public
   // crbug.com/208736
-  static const char kStorageAutoConnect[];
-  static const char kStorageCheckPortal[];
-  static const char kStorageDNSAutoFallback[];
-  static const char kStorageError[];
-  static const char kStorageGUID[];
-  static const char kStorageHasEverConnected[];
-  static const char kStorageName[];
-  static const char kStorageONCSource[];
-  static const char kStoragePriority[];
-  static const char kStorageProxyConfig[];
-  static const char kStorageSaveCredentials[];
-  static const char kStorageType[];
-  static const char kStorageUIData[];
-  static const char kStorageManagedCredentials[];
-  static const char kStorageMeteredOverride[];
+  static constexpr char kStorageAutoConnect[] = "AutoConnect";
+  static constexpr char kStorageCheckPortal[] = "CheckPortal";
+  static constexpr char kStorageError[] = "Error";
+  static constexpr char kStorageGUID[] = "GUID";
+  static constexpr char kStorageHasEverConnected[] = "HasEverConnected";
+  static constexpr char kStorageName[] = "Name";
+  static constexpr char kStoragePriority[] = "Priority";
+  static constexpr char kStorageProxyConfig[] = "ProxyConfig";
+  static constexpr char kStorageSaveCredentials[] = "SaveCredentials";
+  static constexpr char kStorageType[] = "Type";
+  static constexpr char kStorageUIData[] = "UIData";
+  static constexpr char kStorageONCSource[] = "ONCSource";
+  static constexpr char kStorageManagedCredentials[] = "ManagedCredentials";
+  static constexpr char kStorageMeteredOverride[] = "MeteredOverride";
   // The prefix for traffic counter storage key for the current
   // billing cycles, appended by the source being counted (e.g. CHROME, USER,
   // ARC, etc.)
-  static const char kStorageCurrentTrafficCounterPrefix[];
+  static constexpr char kStorageCurrentTrafficCounterPrefix[] =
+      "TrafficCounterCurrent";
   // The suffixes for traffic counter storage keys.
-  static const char kStorageTrafficCounterRxBytesSuffix[];
-  static const char kStorageTrafficCounterTxBytesSuffix[];
-  static const char kStorageTrafficCounterRxPacketsSuffix[];
-  static const char kStorageTrafficCounterTxPacketsSuffix[];
-  // An array of the traffic counter storage suffixes in the order that we
-  // expect them to be read from patchpanel and stored in the profile.
-  static const char* const kStorageTrafficCounterSuffixes[];
-  static const char kStorageTrafficCounterResetTime[];
-  // The datetime of the last connection attempt.
-  static const char kStorageLastManualConnectAttempt[];
-  static const char kStorageLastConnected[];
-  static const char kStorageLastOnline[];
-  static const char kStorageStartTime[];
-  // See the comment for `enable_rfc_8925()` below.
-  static const char kStorageEnableRFC8925[];
+  static constexpr char kStorageTrafficCounterRxBytesSuffix[] = "RxBytes";
+  static constexpr char kStorageTrafficCounterTxBytesSuffix[] = "TxBytes";
+  static constexpr char kStorageTrafficCounterRxPacketsSuffix[] = "RxPackets";
+  static constexpr char kStorageTrafficCounterTxPacketsSuffix[] = "TxPackets";
 
-  static const uint8_t kStrengthMax;
-  static const uint8_t kStrengthMin;
+  static constexpr char kStorageTrafficCounterResetTime[] =
+      "TrafficCounterResetTime";
+  // The datetime of the last connection attempt.
+  static constexpr char kStorageLastManualConnectAttempt[] =
+      "LastManualConnectAttempt";
+  static constexpr char kStorageLastConnected[] = "LastConnected";
+  static constexpr char kStorageLastOnline[] = "LastOnline";
+  static constexpr char kStorageStartTime[] = "StartTime";
+  // See the comment for `enable_rfc_8925()` below.
+  static constexpr char kStorageEnableRFC8925[] = "EnableRFC8925";
+
+  static constexpr uint8_t kStrengthMax = 100;
+  static constexpr uint8_t kStrengthMin = 0;
+
+  static constexpr char kAutoConnBusy[] = "busy";
+  static constexpr char kAutoConnConnected[] = "connected";
+  static constexpr char kAutoConnConnecting[] = "connecting";
+  static constexpr char kAutoConnDisconnecting[] = "disconnecting";
+  static constexpr char kAutoConnExplicitDisconnect[] =
+      "explicitly disconnected";
+  static constexpr char kAutoConnNotConnectable[] = "not connectable";
+  static constexpr char kAutoConnOffline[] = "offline";
+  static constexpr char kAutoConnTechnologyNotAutoConnectable[] =
+      "technology not auto connectable";
+  static constexpr char kAutoConnThrottled[] = "throttled";
+  static constexpr char kAutoConnMediumUnavailable[] =
+      "connection medium unavailable";
+  static constexpr char kAutoConnRecentBadPassphraseFailure[] =
+      "recent bad passphrase failure";
 
   enum ConnectFailure {
     kFailureNone,
@@ -268,8 +284,6 @@ class Service : public base::RefCounted<Service> {
    protected:
     Service* service_;
   };
-
-  static const int kPriorityNone;
 
   // Helper types and struct used for recording transition times between certain
   // Connection states of a Service.
@@ -942,18 +956,6 @@ class Service : public base::RefCounted<Service> {
   // non PII identifiers.
   std::string log_name_;
 
-  static const char kAutoConnBusy[];
-  static const char kAutoConnConnected[];
-  static const char kAutoConnConnecting[];
-  static const char kAutoConnDisconnecting[];
-  static const char kAutoConnExplicitDisconnect[];
-  static const char kAutoConnNotConnectable[];
-  static const char kAutoConnOffline[];
-  static const char kAutoConnTechnologyNotAutoConnectable[];
-  static const char kAutoConnThrottled[];
-  static const char kAutoConnMediumUnavailable[];
-  static const char kAutoConnRecentBadPassphraseFailure[];
-
  private:
   friend class DevicePortalDetectorTest;
   friend class EthernetEapServiceTest;
@@ -1021,15 +1023,11 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
 
-  static const size_t kEAPMaxCertificationElements;
-  static const base::TimeDelta kMinAutoConnectCooldownTime;
-  static const base::TimeDelta kMaxAutoConnectCooldownTime;
-  static const uint64_t kAutoConnectCooldownBackoffFactor;
+  static constexpr size_t kEAPMaxCertificationElements = 10;
+  static constexpr uint64_t kAutoConnectCooldownBackoffFactor = 2;
 
   static const int kDisconnectsMonitorSeconds;
   static const int kMisconnectsMonitorSeconds;
-  static const int kReportDisconnectsThreshold;
-  static const int kReportMisconnectsThreshold;
   static const int kMaxDisconnectEventHistory;
   static const int kMaxMisconnectEventHistory;
 
