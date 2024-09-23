@@ -157,7 +157,7 @@ const Log kPgmem =
 // * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
 //
-// Send an email to cros-feedback-app@ should you have questions.
+// Send an email to cros-device-enablement@ should you have questions.
 // clang-format off
 const std::array kCommandLogs {
   // We need to enter init's mount namespace because it has /home/chronos
@@ -446,7 +446,7 @@ const std::array kCommandLogs {
 // * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
 //
-// Send an email to cros-feedback-app@ should you have questions.
+// Send an email to cros-device-enablement@ should you have questions.
 // clang-format off
 const std::array kCommandLogsVerbose{
     // PCI config space accesses are limited without CAP_SYS_ADMIN.
@@ -486,7 +486,7 @@ const std::array kExtraLogs {
 // * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
 //
-// Send an email to cros-feedback-app@ should you have questions.
+// Send an email to cros-device-enablement@ should you have questions.
 // clang-format off
 const std::array kFeedbackLogs {
   Log{kFile, "amd_pmc_idlemask", "/sys/kernel/debug/amd_pmc/amd_pmc_idlemask",
@@ -580,7 +580,7 @@ const std::array kFeedbackLogs {
 // * add a row to http://go/cros-feedback-audit and fill it out.
 // (Eventually we'll have a better process, but for now please do this.)
 //
-// Send an email to cros-feedback-app@ should you have questions.
+// Send an email to cros-device-enablement@ should you have questions.
 // clang-format off
 const std::array kVarLogFileLogs {
   Log{kFile, "atrus_logs", "/var/log/atrus.log"},
