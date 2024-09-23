@@ -1,9 +1,20 @@
-# foomatic_shell: simple shell used by foomatic-rip
+# foomatic_shell: mini-shell used by foomatic-rip
 
-This is a simple shell that is used by foomatic-rip to execute small scripts
-included in some PPD files. This shell is supposed to be used instead of
-the default shell for security reason.
-This project is not completed yet.
+This is a simple mini-shell that is used by `foomatic-rip` to execute small
+scripts included in some PPD files.
+
+Some PPD files from foomatic provides small shell scripts that must be run in
+order to process documents sent to a printer. The script is often customized in
+runtime. This approach is quite flexible but also introduces security
+vulnerability. Originally, `foomatic-rip` uses default OS shell to execute the
+script. In ChromeOS, `foomatic-rip` calls `foomatic_shell` instead (from this
+package).
+
+`foomatic_shell` executes given shell script in controlled environment to
+mitigate the security risk. It supports pipes and backticks operator
+(generating command by a subshell). Only very limited set of commands is
+allowed, `foomatic_shell` enforces also some restrictions on command line
+parameters.
 
 ## Appendix: FOOMATIC_VERIFY_MODE
 
