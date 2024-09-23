@@ -874,7 +874,7 @@ TEST(AnomalyDetectorTest, CellularFailureBlocked) {
 
 TEST(AnomalyDetectorTest, CellularFailureEntitlementCheck) {
   ParserRun entitlement_failure = {
-      .expected_substr = "EntitlementCheckFailure",
+      .expected_substr = "EntitlementCheckFailure-00101",
       .expected_flags = {
           {"--modem_failure", base::StringPrintf("--weight=%d", 1)}}};
   ShillParser parser(/*testonly_send_all=*/true);

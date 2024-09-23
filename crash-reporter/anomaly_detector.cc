@@ -18,11 +18,11 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dbus/cryptohome/dbus-constants.h>
-#include <dbus/modemfwd/dbus-constants.h>
 #include <dbus/bus.h>
+#include <dbus/cryptohome/dbus-constants.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <dbus/modemfwd/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <re2/re2.h>
 
@@ -770,7 +770,8 @@ constexpr LazyRE2 connect_failure = {
 constexpr LazyRE2 sim_not_inserted_failure = {
     R"(dbus.*org.freedesktop.ModemManager1.Error.Core.WrongState.*)"};
 // logged by shill/cellular.cc after an entitlement check fails
-constexpr LazyRE2 entitlement_check_failure = {R"(Entitlement check failed:)"};
+constexpr LazyRE2 entitlement_check_failure = {
+    R"(Entitlement check failed: mccmnc=(\S+):)"};
 // logged by shill/tethering_manager.cc after an unexpected tethering stop
 constexpr LazyRE2 tethering_failure = {
     R"(Tethering stopped unexpectly due to reason:)"};
@@ -796,8 +797,8 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   } else if (RE2::PartialMatch(line, *mm_failure, &error_code,
                                &error_message)) {
     weight = 50;
-  } else if (RE2::PartialMatch(line, *entitlement_check_failure)) {
-    error_code = "EntitlementCheckFailure";
+  } else if (RE2::PartialMatch(line, *entitlement_check_failure, &carrier)) {
+    error_code = std::format("EntitlementCheckFailure-{}", carrier);
     // No weight. Send all.
   } else if (RE2::PartialMatch(line, *tethering_failure)) {
     error_code = "TetheringFailure";

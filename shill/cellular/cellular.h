@@ -820,6 +820,7 @@ class Cellular : public Device,
   void OnEntitlementCheckUpdated(CarrierEntitlement::Result result);
   void TriggerEntitlementCheckCallbacks(
       TetheringManager::EntitlementStatus result);
+  std::string BuildEntitlementCheckAnomalyDetectorPrefix();
 
   void UpdateFirmwareSupportsTethering();
   // Single tethering operation context, whenever any connection setup is

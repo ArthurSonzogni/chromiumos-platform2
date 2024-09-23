@@ -1,1 +1,1 @@
-2023-05-10T18:18:28.461321Z ERR shill[1204]: ERROR shill: [cellular.cc(3052)] Entitlement check failed: tethering is not allowed by database settings
+2024-09-23T17:32:42.835995Z ERR shill[1223]: ERROR shill: [cellular.cc(4546)] Entitlement check failed: mccmnc=00101:Generic error
