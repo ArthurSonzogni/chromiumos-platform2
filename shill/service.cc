@@ -28,6 +28,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -91,18 +92,12 @@ constexpr int kPriorityNone = 0;
 constexpr base::TimeDelta kMinAutoConnectCooldownTime = base::Seconds(1);
 constexpr base::TimeDelta kMaxAutoConnectCooldownTime = base::Minutes(1);
 
-// Extracts enum value but with enum's underlying type.
-// This is a part of c++23, but it's quite useful even now.
-template <typename T>
-static constexpr auto toUnderlying(T val) {
-  return static_cast<std::underlying_type_t<T>>(val);
-}
-
 // This is the mapping of ONC enum values and their textual representation.
-static constexpr std::array<const char*,
-                            toUnderlying(Service::ONCSource::kONCSourcesNum)>
-    ONCSourceMapping = {kONCSourceUnknown, kONCSourceNone, kONCSourceUserImport,
-                        kONCSourceDevicePolicy, kONCSourceUserPolicy};
+static constexpr std::
+    array<const char*, base::to_underlying(Service::ONCSource::kONCSourcesNum)>
+        kONCSourceMapping = {kONCSourceUnknown, kONCSourceNone,
+                             kONCSourceUserImport, kONCSourceDevicePolicy,
+                             kONCSourceUserPolicy};
 
 // Get JSON value from |json| dictionary keyed by |key|.
 std::optional<std::string> GetJSONDictValue(std::string_view json,
@@ -2542,35 +2537,38 @@ void Service::ClearMeteredProperty(Error* /*error*/) {
 }
 
 std::string Service::GetONCSource(Error* error) {
-  if (toUnderlying(source_) >= ONCSourceMapping.size()) {
-    LOG(WARNING) << "Bad source value: " << toUnderlying(source_);
+  if (base::to_underlying(source_) >= kONCSourceMapping.size()) {
+    LOG(WARNING) << "Bad source value: " << base::to_underlying(source_);
     return kONCSourceUnknown;
   }
 
-  return ONCSourceMapping[toUnderlying(source_)];
+  return kONCSourceMapping[base::to_underlying(source_)];
 }
 
 bool Service::SetONCSource(const std::string& source, Error* error) {
-  if (ONCSourceMapping[toUnderlying(source_)] == source) {
+  if (kONCSourceMapping[base::to_underlying(source_)] == source) {
     return false;
   }
-  auto it = std::find(ONCSourceMapping.begin(), ONCSourceMapping.end(), source);
-  if (it == ONCSourceMapping.end()) {
+  auto it =
+      std::find(kONCSourceMapping.begin(), kONCSourceMapping.end(), source);
+  if (it == kONCSourceMapping.end()) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments,
         base::StringPrintf("Service %s: Source property value %s invalid.",
                            log_name_.c_str(), source.c_str()));
     return false;
   }
-  source_ = static_cast<ONCSource>(std::distance(ONCSourceMapping.begin(), it));
+  source_ =
+      static_cast<ONCSource>(std::distance(kONCSourceMapping.begin(), it));
   adaptor_->EmitStringChanged(kONCSourceProperty,
-                              ONCSourceMapping[toUnderlying(source_)]);
+                              kONCSourceMapping[base::to_underlying(source_)]);
   return true;
 }
 
 int Service::SourcePriority() {
   static constexpr std::array<Service::ONCSource,
-                              toUnderlying(Service::ONCSource::kONCSourcesNum)>
+                              base::to_underlying(
+                                  Service::ONCSource::kONCSourcesNum)>
       priorities = {Service::ONCSource::kONCSourceUnknown,
                     Service::ONCSource::kONCSourceNone,
                     Service::ONCSource::kONCSourceUserImport,
