@@ -121,7 +121,7 @@ void Metrics::RecordSysCall(const std::string_view syscall,
       base::StrCat({"CrosDisks.Error.", syscall, ".", fs_type}), error);
   metrics_library_.SendTimeToUMA(
       base::StrCat({"CrosDisks.Time.", syscall, ".", fs_type}),
-      std::move(elapsed_time), base::Milliseconds(1), base::Seconds(10), 50);
+      std::move(elapsed_time), base::Milliseconds(1), base::Days(1), 200);
 }
 
 void Metrics::RecordAction(std::string_view action,
