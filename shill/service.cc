@@ -902,13 +902,6 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
 
-  // Prior to M91, Chrome did not tell us the source directly. We derive it
-  // from UIData for old services. Remove this migration code in M97+.
-  if (source_ == ONCSource::kONCSourceUnknown) {
-    source_ = ParseONCSourceFromUIData();
-    storage->SetInt(id, kStorageONCSource, toUnderlying(source_));
-  }
-
   // TODO(b/357355410): Remove this in the next stepping milestone after M131.
   storage->DeleteKey(id, kStorageDeprecatedLinkMonitorDisabled);
 
