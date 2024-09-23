@@ -122,12 +122,6 @@ static std::string ObjectID(const Service* s) {
 }
 }  // namespace Logging
 
-// TODO(b/184036481): convert all of these to base::TimeDelta
-const int Service::kDisconnectsMonitorSeconds = 5 * 60;
-const int Service::kMisconnectsMonitorSeconds = 5 * 60;
-const int Service::kMaxDisconnectEventHistory = 20;
-const int Service::kMaxMisconnectEventHistory = 20;
-
 // static
 unsigned int Service::next_serial_number_ = 0;
 
@@ -1610,12 +1604,12 @@ void Service::NoteFailureEvent() {
   if (IsConnectedState(state)) {
     LOG(INFO) << "Noting an unexpected connection drop for " << log_name()
               << ".";
-    period = kDisconnectsMonitorSeconds;
+    period = kDisconnectsMonitorDuration.InSeconds();
     events = &disconnects_;
   } else if (IsConnectingState(state)) {
     LOG(INFO) << "Noting an unexpected failure to connect for " << log_name()
               << ".";
-    period = kMisconnectsMonitorSeconds;
+    period = kMisconnectsMonitorDuration.InSeconds();
     events = &misconnects_;
   } else {
     SLOG(this, 2) << "Not connected or connecting, state transition ignored.";
@@ -1656,9 +1650,9 @@ void Service::ReportUserInitiatedConnectionResult(ConnectState state) {
 }
 
 bool Service::HasRecentConnectionIssues() {
-  disconnects_.ExpireEventsBefore(kDisconnectsMonitorSeconds,
+  disconnects_.ExpireEventsBefore(kDisconnectsMonitorDuration.InSeconds(),
                                   EventHistory::kClockTypeMonotonic);
-  misconnects_.ExpireEventsBefore(kMisconnectsMonitorSeconds,
+  misconnects_.ExpireEventsBefore(kMisconnectsMonitorDuration.InSeconds(),
                                   EventHistory::kClockTypeMonotonic);
   return !disconnects_.Empty() || !misconnects_.Empty();
 }

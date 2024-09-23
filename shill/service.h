@@ -1026,10 +1026,12 @@ class Service : public base::RefCounted<Service> {
   static constexpr size_t kEAPMaxCertificationElements = 10;
   static constexpr uint64_t kAutoConnectCooldownBackoffFactor = 2;
 
-  static const int kDisconnectsMonitorSeconds;
-  static const int kMisconnectsMonitorSeconds;
-  static const int kMaxDisconnectEventHistory;
-  static const int kMaxMisconnectEventHistory;
+  static constexpr base::TimeDelta kDisconnectsMonitorDuration =
+      base::Minutes(5);
+  static constexpr base::TimeDelta kMisconnectsMonitorDuration =
+      base::Minutes(5);
+  static constexpr int kMaxDisconnectEventHistory = 20;
+  static constexpr int kMaxMisconnectEventHistory = 20;
 
   bool GetAutoConnect(Error* error);
 

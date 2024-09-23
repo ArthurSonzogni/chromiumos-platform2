@@ -165,11 +165,11 @@ class ServiceTest : public PropertyStoreTest {
   }
 
   int GetDisconnectsMonitorSeconds() {
-    return Service::kDisconnectsMonitorSeconds;
+    return Service::kDisconnectsMonitorDuration.InSeconds();
   }
 
   int GetMisconnectsMonitorSeconds() {
-    return Service::kMisconnectsMonitorSeconds;
+    return Service::kMisconnectsMonitorDuration.InSeconds();
   }
 
   int GetMaxDisconnectEventHistory() {
