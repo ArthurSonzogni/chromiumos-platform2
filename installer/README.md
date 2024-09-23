@@ -64,3 +64,12 @@ and then:
 In summary, if you want to add some board specific task:
 - To run on every boot, do it in `/usr/sbin/board-setgoodfirmware`.
 - To run only after each AU or recovery, do it in `/usr/sbin/board-postinst`.
+
+## Development
+
+`chromeos-install` is being de-shelled to a rust binary.
+
+There are some common testing tasks that can be tedious to run manually. These can be implemented in the rust 'xtask' project ([background on xtask]. Currently it supports:
+* Running a basic install with a supplied test image: `cargo xtask test-install chromiumos_test_image.bin`
+
+[background on xtask]: https://github.com/matklad/cargo-xtask
