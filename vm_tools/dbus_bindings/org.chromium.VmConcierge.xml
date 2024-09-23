@@ -711,6 +711,23 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SetUpVmUser">
+      <tp:docstring>
+        Sets up a new user within a VM, creating it if it doesn't exist.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetUpVmUserRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::SetUpVmUserResponse"/>
+        <tp:docstring>
+          Returns success==true when successful, failure_reason is set on failure.
+        </tp:docstring>
+      </arg>
+    </method>
 
     <signal name="DiskImageProgress">
       <tp:docstring>

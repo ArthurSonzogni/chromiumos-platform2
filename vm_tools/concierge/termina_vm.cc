@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <linux/capability.h>
 #include <signal.h>
+#include <sys/epoll.h>
 #include <sys/mount.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -33,11 +34,10 @@
 #include <base/system/sys_info.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
-#include <google/protobuf/repeated_field.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/net-base/ipv4_address.h>
+#include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
-#include <sys/epoll.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -1127,6 +1127,47 @@ void TerminaVm::StopMaitredForTesting(base::OnceClosure stop_callback) {
         std::move(stop_callback).Run();
       },
       maitred, std::move(stop_callback)));
+}
+
+bool TerminaVm::SetUpUser(std::optional<uid_t> uid,
+                          const std::string& username,
+                          const std::vector<std::string>& group_names,
+                          std::string* out_username,
+                          std::string* out_error) {
+  DCHECK(out_error);
+  DCHECK(out_username);
+
+  if (!stub_) {
+    *out_error = "maitred stub not initialized";
+    LOG(ERROR) << "SetUpUser RPC failed: " << *out_error;
+    return false;
+  }
+
+  vm_tools::SetUpUserRequest request;
+  if (uid.has_value())
+    request.set_uid(uid.value());
+  request.set_username(username);
+  request.mutable_group_names()->Assign(group_names.begin(), group_names.end());
+
+  vm_tools::SetUpUserResponse response;
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+  auto result = stub_->SetUpUser(&ctx, request, &response);
+  if (!result.ok()) {
+    *out_error = result.error_message();
+    LOG(ERROR) << "SetUpUser RPC failed: " << *out_error;
+    return false;
+  }
+
+  *out_username = response.username();
+  if (response.success())
+    return true;
+
+  *out_error = response.failure_reason();
+  LOG(ERROR) << "SetUpUser RPC returned an error: " << *out_error;
+  return false;
 }
 
 }  // namespace vm_tools::concierge

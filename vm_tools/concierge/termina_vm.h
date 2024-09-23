@@ -6,10 +6,12 @@
 #define VM_TOOLS_CONCIERGE_TERMINA_VM_H_
 
 #include <stdint.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,8 +21,8 @@
 #include <base/notreached.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
-#include <brillo/process/process.h>
 #include <brillo/grpc/async_grpc_client.h>
+#include <brillo/process/process.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <spaced/proto_bindings/spaced.pb.h>
@@ -240,6 +242,13 @@ class TerminaVm final : public VmBaseImpl {
   // In production, maitred shutdown happens ~whenever. In tests we need to
   // force the shutdown to happen before cleanup.
   void StopMaitredForTesting(base::OnceClosure stop_callback);
+
+  // Sets up a new non-root user in the VM.
+  bool SetUpUser(std::optional<uid_t> uid,
+                 const std::string& username,
+                 const std::vector<std::string>& group_names,
+                 std::string* out_username,
+                 std::string* out_error) override;
 
  private:
   // Helper class for asynchronously cleaning up the GRPC client.

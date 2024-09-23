@@ -4653,4 +4653,43 @@ void Service::RejectRequestDuringShutdown(
                            DBUS_ERROR_FAILED, "Shutdown in progress");
 }
 
+void Service::SetUpVmUser(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<SetUpVmUserResponse>>
+        response_cb,
+    const SetUpVmUserRequest& request) {
+  ASYNC_SERVICE_METHOD();
+
+  SetUpVmUserResponse response;
+  response.set_success(false);
+
+  VmId vm_id(request.owner_id(), request.vm_name());
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    response.set_failure_reason("Requested VM " + vm_id.name() +
+                                " does not exist");
+    LOG(ERROR) << response.failure_reason();
+    response_cb->Return(response);
+    return;
+  }
+  auto& vm = iter->second;
+
+  std::vector<std::string> group_names(request.group_names().begin(),
+                                       request.group_names().end());
+  std::optional<uid_t> uid;
+  if (request.has_uid())
+    uid = request.uid();
+
+  auto success = vm->SetUpUser(uid, request.username(), group_names,
+                               response.mutable_username(),
+                               response.mutable_failure_reason());
+
+  response.set_success(success);
+  response_cb->Return(response);
+}
+
 }  // namespace vm_tools::concierge

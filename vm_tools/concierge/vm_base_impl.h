@@ -214,6 +214,13 @@ class VmBaseImpl {
   // Gets the guest's memory size in bytes, if it is known to concierge.
   const std::optional<int64_t> GetGuestMemorySize() const;
 
+  // Sets up a new non-root user in the VM.
+  virtual bool SetUpUser(std::optional<uid_t> uid,
+                         const std::string& username,
+                         const std::vector<std::string>& group_names,
+                         std::string* out_username,
+                         std::string* out_error);
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,

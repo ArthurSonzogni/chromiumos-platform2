@@ -412,6 +412,10 @@ class Service final : public org::chromium::VmConciergeInterface,
           GetVmMemoryManagementKillsConnectionResponse,
           std::vector<base::ScopedFD>>>;
 
+  void SetUpVmUser(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                       SetUpVmUserResponse>> response_cb,
+                   const SetUpVmUserRequest& request) override;
+
   // Returns an opened FD to the VM memory management kills server.
   void GetVmMemoryManagementKillsConnection(
       GetVmmmsKillsConnectionResponseSender response_sender,
