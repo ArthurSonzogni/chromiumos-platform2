@@ -538,4 +538,7 @@ void ArcRemoteProvisioningContext::SetVendorPatchlevel(
   vendor_patchlevel_ = vendor_patchlevel;
 }
 
+void ArcRemoteProvisioningContext::SetBootPatchlevel(uint32_t boot_patchlevel) {
+  boot_patchlevel_ = boot_patchlevel;
+}
 }  // namespace arc::keymint::context

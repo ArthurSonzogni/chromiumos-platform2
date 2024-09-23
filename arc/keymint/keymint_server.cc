@@ -106,6 +106,10 @@ void KeyMintServer::SetVendorPatchLevel(uint32_t android_vendor_patchlevel) {
     // by |backend_|, which outlives the |backend_thread_|
     // this runs on.
     context->SetVendorPatchlevel(android_vendor_patchlevel);
+    // Since ARCVM does not publish boot patch level, but it is required
+    // for implementation, we also set the boot patch level to be equal to
+    // vendor patch level.
+    context->SetBootPatchlevel(android_vendor_patchlevel);
   };
   backend_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(task_lambda, backend_.context(),

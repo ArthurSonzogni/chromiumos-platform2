@@ -1061,4 +1061,35 @@ keymaster_error_t ArcKeyMintContext::SetVendorPatchlevel(
   return KM_ERROR_OK;
 }
 
+keymaster_error_t ArcKeyMintContext::SetBootPatchlevel(
+    uint32_t boot_patchlevel) {
+  if (boot_patchlevel_.has_value() &&
+      boot_patchlevel != boot_patchlevel_.value()) {
+    // Can't set patchlevel to a different value.
+    LOG(ERROR) << "Boot Patch level was already set. Can't set it to a "
+                  "different value.";
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+  boot_patchlevel_ = boot_patchlevel;
+
+  // We also need to set the fields in Arc Remote Provisioning Context.
+  // Hence, dynamic casting a base class pointer to derived class.
+  if (pure_soft_remote_provisioning_context_ == nullptr) {
+    LOG(ERROR) << "pure_soft_remote_provisioning_context_ is null. Cannot set "
+                  "boot patch level.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  ArcRemoteProvisioningContext* arc_remote_provisioning_context =
+      dynamic_cast<ArcRemoteProvisioningContext*>(
+          pure_soft_remote_provisioning_context_.get());
+
+  if (arc_remote_provisioning_context == nullptr) {
+    LOG(ERROR) << "arc_remote_provisioning_context is null. Cannot set "
+                  "boot patch level.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  arc_remote_provisioning_context->SetBootPatchlevel(boot_patchlevel);
+  return KM_ERROR_OK;
+}
+
 }  // namespace arc::keymint::context
