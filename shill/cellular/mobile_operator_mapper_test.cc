@@ -91,6 +91,11 @@ class MobileOperatorMapperInitTest : public Test {
     shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
   }
 
+  void TearDown() override {
+    shill::ScopeLogger::GetInstance()->set_verbose_level(0);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName("");
+  }
+
   void AssertDatabaseEmpty() {
     EXPECT_EQ(0, operator_info_->databases()[0]->mno_size());
     EXPECT_EQ(0, operator_info_->databases()[0]->mvno_size());

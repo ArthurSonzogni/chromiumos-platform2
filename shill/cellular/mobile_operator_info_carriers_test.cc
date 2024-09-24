@@ -119,6 +119,11 @@ class MobileOperatorInfoCarriersTest : public Test {
     operator_info_->Init();
   }
 
+  void TearDown() override {
+    shill::ScopeLogger::GetInstance()->set_verbose_level(0);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName("");
+  }
+
  protected:
   MobileAPN PrepareModbApnForComparison(MobileAPN apn) {
     // Ignore operator name list

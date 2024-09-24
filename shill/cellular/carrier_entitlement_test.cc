@@ -143,6 +143,8 @@ class CarrierEntitlementTest : public testing::Test {
     VerifyAllExpectations();
     brillo_connection_.reset();
     transport_.reset();
+    shill::ScopeLogger::GetInstance()->set_verbose_level(0);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName("");
   }
 
  protected:

@@ -213,6 +213,9 @@ class CellularTest : public testing::Test {
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
     device_ = nullptr;
+
+    shill::ScopeLogger::GetInstance()->set_verbose_level(0);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName("");
   }
 
   void CreatePropertiesProxy() {
