@@ -325,10 +325,7 @@ executable("anomaly_detector") {
     "crash_reporter_parser.cc",
   ]
   configs += [ ":anomaly_detector_config" ]
-  libs = [
-    "system_api-metrics_event-protos",
-    "system_api-anomaly_detector-protos",
-  ]
+  libs = [ "system_api-anomaly_detector-protos" ]
   deps = [ ":libcrash" ]
 }
 

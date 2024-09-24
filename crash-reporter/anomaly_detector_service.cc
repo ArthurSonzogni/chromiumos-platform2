@@ -15,8 +15,6 @@
 #include <base/time/default_clock.h>
 #include <brillo/process/process.h>
 #include <chromeos/dbus/service_constants.h>
-#include <metrics/metrics_library.h>
-#include <metrics_event/proto_bindings/metrics_event.pb.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>
 
 #include "crash-reporter/anomaly_detector.h"
@@ -52,19 +50,6 @@ void RunCrashReporter(const std::vector<std::string>& flags,
   if (wait_result != 0) {
     LOG(ERROR) << "crash_reporter returned failure code " << wait_result;
   }
-}
-
-std::unique_ptr<dbus::Signal> MakeOomSignal(const int64_t oom_timestamp_ms) {
-  auto signal = std::make_unique<dbus::Signal>(
-      anomaly_detector::kAnomalyEventServiceInterface,
-      anomaly_detector::kAnomalyEventSignalName);
-  dbus::MessageWriter writer(signal.get());
-  metrics_event::Event payload;
-  payload.set_type(metrics_event::Event_Type_OOM_KILL_KERNEL);
-  payload.set_timestamp(oom_timestamp_ms);
-  writer.AppendProtoAsArrayOfBytes(payload);
-
-  return signal;
 }
 
 }  // namespace
@@ -191,16 +176,6 @@ void Service::ReadLogs() {
       if (crash_report) {
         RunCrashReporter(crash_report->flags, crash_report->text);
       }
-
-      // Handle OOM messages.
-      if (entry.tag == "kernel" &&
-          entry.message.find("Out of memory: Kill process") !=
-              std::string::npos)
-        exported_object_->SendSignal(
-            MakeOomSignal(
-                static_cast<int>(entry.timestamp.InSecondsFSinceUnixEpoch() *
-                                 1000))
-                .get());
     }
   }
 }

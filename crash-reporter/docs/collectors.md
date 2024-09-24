@@ -467,14 +467,6 @@ The program name is `selinux-violation`.
     used to create the magic signature.
 
 
-## Out-Of-Memory kill signal (OOM kill)
-
-On detection of OOM-kill attempts in the kernel, [anomaly_detector] sends a
-D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
-[memd] to collect a number of memory-manager related stats and events.
-
-[anomaly_detector] does not try to confirm that the kill is successful.
-
 [ARC++]: ../../arc/
 [ARCVM]: ../../arc/vm/
 [BERT]: https://www.uefi.org/sites/default/files/resources/ACPI%206_2_A_Sept29.pdf
