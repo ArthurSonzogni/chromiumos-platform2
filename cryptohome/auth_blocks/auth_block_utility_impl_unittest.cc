@@ -207,7 +207,8 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
              std::unique_ptr<AuthBlockState>>
       create_result;
   auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kPinWeaver, auth_input, {}, create_result.GetCallback());
+      AuthBlockType::kPinWeaver, auth_input, {.metadata = PinMetadata()},
+      create_result.GetCallback());
 
   // Verify
   ASSERT_THAT(create_result.Get<2>(), NotNull());

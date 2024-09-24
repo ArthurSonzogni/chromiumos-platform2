@@ -294,11 +294,13 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                        const std::string& file_indice) {
     VaultKeyset vk;
     AuthBlockType auth_block_type = AuthBlockType::kTpmEcc;
+    AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
     if (key_data.has_policy() && key_data.policy().low_entropy_credential()) {
       auth_block_type = AuthBlockType::kPinWeaver;
+      metadata = {.metadata = PinMetadata()};
     }
     auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-        auth_block_type, auth_input, {},
+        auth_block_type, auth_input, metadata,
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {

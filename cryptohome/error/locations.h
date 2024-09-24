@@ -1573,6 +1573,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthSessionNotAuthInCreateVaultKeyset = 2183,
   /* =Obsolete= */
   kLocUserDataAuthSessionNotAuthInRestoreDeviceKey = 2184,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockFactorIsNotSupportedType = 2185,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInStartAuthSession = 2190,
   /* ./user_secret_stash/manager.cc */

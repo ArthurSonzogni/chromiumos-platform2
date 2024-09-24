@@ -601,7 +601,8 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
                           /*reset_secret*/ std::nullopt,
                           vk_status->get()->GetResetSeed()};
   CreateTestFuture result;
-  auth_block->Create(auth_input, {}, result.GetCallback());
+  auth_block->Create(auth_input, {.metadata = PinMetadata()},
+                     result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 

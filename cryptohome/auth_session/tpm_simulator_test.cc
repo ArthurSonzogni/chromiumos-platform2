@@ -426,7 +426,8 @@ class AuthSessionWithTpmSimulatorUssMigrationTest
     };
 
     auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-        AuthBlockType::kTpmEcc, password_auth_input, {},
+        AuthBlockType::kTpmEcc, password_auth_input,
+        {.metadata = PasswordMetadata()},
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {
@@ -438,7 +439,7 @@ class AuthSessionWithTpmSimulatorUssMigrationTest
                                                .AddExtension("0")));
             }));
     auth_block_utility_.CreateKeyBlobsWithAuthBlock(
-        AuthBlockType::kPinWeaver, pin_auth_input, {},
+        AuthBlockType::kPinWeaver, pin_auth_input, {.metadata = PinMetadata()},
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {

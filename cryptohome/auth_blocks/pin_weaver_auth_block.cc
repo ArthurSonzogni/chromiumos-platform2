@@ -15,9 +15,11 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/overloaded.h>
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -37,6 +39,7 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;
@@ -69,12 +72,26 @@ constexpr char kHESecretHmacData[] = "vkk_seed";
 constexpr uint32_t kLockoutAttemptLimit = 5;
 constexpr uint32_t kInfiniteDelay = std::numeric_limits<uint32_t>::max();
 
-// Select the delay schedule to use.
-const DelaySchedule& SelectDelaySchedule(AsyncInitFeatures& features) {
-  if (features.IsFeatureEnabled(Features::kModernPin)) {
-    return PinDelaySchedule();
+// The type of schedule to select.
+enum class DelayScheduleType {
+  kPin,
+  kPassword,
+};
+
+// Select the delay schedule to use for newly created factors.
+const DelaySchedule& SelectDelayScheduleForNewFactor(
+    AsyncInitFeatures& features, DelayScheduleType type) {
+  switch (type) {
+    case DelayScheduleType::kPin:
+      // For PIN, select delay or lockout based depending on the feature flags.
+      if (features.IsFeatureEnabled(Features::kModernPin)) {
+        return PinDelaySchedule();
+      }
+      return LockoutDelaySchedule();
+    case DelayScheduleType::kPassword:
+      // For password, always use a delay schedule.
+      return PasswordDelaySchedule();
   }
-  return LockoutDelaySchedule();
 }
 
 }  // namespace
@@ -87,7 +104,21 @@ const DelaySchedule& LockoutDelaySchedule() {
 }
 
 const DelaySchedule& PinDelaySchedule() {
-  // TODO(b/272566923): finalize the policy.
+  static base::NoDestructor<DelaySchedule> kValue(DelaySchedule{
+      {4, 30},
+      {6, 1 * base::Time::kSecondsPerMinute},
+      {9, 10 * base::Time::kSecondsPerMinute},
+      {12, 30 * base::Time::kSecondsPerMinute},
+      {14, 1 * base::Time::kSecondsPerHour},
+      {16, 2 * base::Time::kSecondsPerHour},
+      {18, 5 * base::Time::kSecondsPerHour},
+      {20, 12 * base::Time::kSecondsPerHour},
+  });
+  return *kValue;
+}
+
+const DelaySchedule& PasswordDelaySchedule() {
+  // TODO(b/172221456): finalize the policy.
   static base::NoDestructor<DelaySchedule> kValue(DelaySchedule{
       {4, 30},
       {6, 1 * base::Time::kSecondsPerMinute},
@@ -188,6 +219,25 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     return;
   }
 
+  // Determine if the input is a password or PIN, or fail otherwise.
+  auto schedule_type = std::visit<std::optional<DelayScheduleType>>(
+      base::Overloaded{
+          [](const PasswordMetadata&) { return DelayScheduleType::kPassword; },
+          [](const PinMetadata&) { return DelayScheduleType::kPin; },
+          [](const KioskMetadata&) { return DelayScheduleType::kPassword; },
+          [](const auto&) { return std::nullopt; }},
+      auth_factor_metadata.metadata);
+  if (!schedule_type) {
+    LOG(ERROR) << "Pinweaver only supports PIN and password factors";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockFactorIsNotSupportedType),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        nullptr, nullptr);
+    return;
+  }
+
   PinWeaverAuthBlockState pin_auth_state;
   pin_auth_state.reset_salt = auth_input.reset_salt.has_value()
                                   ? auth_input.reset_salt.value()
@@ -251,8 +301,9 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   // store the Low Entropy and High Entropy credential in the
   // LECredentialManager.
 
-  // Select the appropriate delay schedule to use for new factors.
-  const auto& delay_sched = SelectDelaySchedule(*features_);
+  // Select the appropriate delay schedule to use.
+  const auto& delay_sched =
+      SelectDelayScheduleForNewFactor(*features_, *schedule_type);
 
   std::vector<hwsec::OperationPolicySetting> policies = {
       hwsec::OperationPolicySetting{

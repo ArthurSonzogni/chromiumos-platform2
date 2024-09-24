@@ -1151,7 +1151,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   base::test::TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
                          std::unique_ptr<AuthBlockState>>
       result;
-  auth_block->Create(auth_input, {}, result.GetCallback());
+  auth_block->Create(auth_input, {.metadata = PinMetadata()},
+                     result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -1191,7 +1192,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
   base::test::TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
                          std::unique_ptr<AuthBlockState>>
       result;
-  auth_block->Create(auth_input, {}, result.GetCallback());
+  auth_block->Create(auth_input, {.metadata = PinMetadata()},
+                     result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -1216,7 +1218,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
   base::test::TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
                          std::unique_ptr<AuthBlockState>>
       result;
-  auth_block->Create(auth_input, {}, result.GetCallback());
+  auth_block->Create(auth_input, {.metadata = PinMetadata()},
+                     result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, NotOk());

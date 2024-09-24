@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
@@ -89,7 +90,7 @@ class PinWeaverAuthBlockTest : public ::testing::Test {
   std::unique_ptr<PinWeaverAuthBlock> auth_block_;
 };
 
-TEST_F(PinWeaverAuthBlockTest, CreateTest) {
+TEST_F(PinWeaverAuthBlockTest, CreateTestPin) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob reset_secret(32, 'S');
@@ -100,7 +101,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
-                      ReturnValue(/* ret_label */ 0)));
+                      ReturnValue(0)));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -112,7 +113,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
   features_.SetDefaultForFeature(Features::kModernPin, true);
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, {}, result.GetCallback());
+  auth_block_->Create(user_input, {.metadata = PinMetadata()},
+                      result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -129,6 +131,84 @@ TEST_F(PinWeaverAuthBlockTest, CreateTest) {
   EXPECT_EQ(delay_sched, PinDelaySchedule());
 }
 
+TEST_F(PinWeaverAuthBlockTest, CreateTestPassword) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  // Set up the mock expectations.
+  brillo::SecureBlob le_secret;
+  DelaySchedule delay_sched;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
+                      ReturnValue(0)));
+
+  // Call the Create() method.
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
+                          reset_secret};
+  KeyBlobs vkk_data;
+
+  CreateTestFuture result;
+  auth_block_->Create(user_input, {.metadata = PasswordMetadata()},
+                      result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, IsOk());
+  EXPECT_TRUE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+
+  auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(pin_state.salt.has_value());
+  const brillo::Blob& salt = pin_state.salt.value();
+  brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
+  EXPECT_EQ(le_secret, le_secret_result);
+  EXPECT_EQ(delay_sched, PasswordDelaySchedule());
+}
+
+TEST_F(PinWeaverAuthBlockTest, CreateTestKiosk) {
+  // Set up inputs to the test.
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+
+  // Set up the mock expectations.
+  brillo::SecureBlob le_secret;
+  DelaySchedule delay_sched;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
+                      ReturnValue(0)));
+
+  // Call the Create() method.
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
+                          reset_secret};
+  KeyBlobs vkk_data;
+
+  CreateTestFuture result;
+  auth_block_->Create(user_input, {.metadata = KioskMetadata()},
+                      result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+  ASSERT_THAT(status, IsOk());
+  EXPECT_TRUE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state->state));
+
+  auto& pin_state = std::get<PinWeaverAuthBlockState>(auth_state->state);
+
+  EXPECT_TRUE(pin_state.salt.has_value());
+  const brillo::Blob& salt = pin_state.salt.value();
+  brillo::SecureBlob le_secret_result(kDefaultAesKeySize);
+  EXPECT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret_result}));
+  EXPECT_EQ(le_secret, le_secret_result);
+  EXPECT_EQ(delay_sched, PasswordDelaySchedule());
+}
+
 TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
   // Set up inputs to the test.
   brillo::SecureBlob vault_key(20, 'C');
@@ -140,7 +220,7 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   EXPECT_CALL(hwsec_pw_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret), SaveArg<4>(&delay_sched),
-                      ReturnValue(/* ret_label */ 0)));
+                      ReturnValue(0)));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -150,7 +230,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateTestWithoutMigratePin) {
   features_.SetDefaultForFeature(Features::kMigratePin, false);
   features_.SetDefaultForFeature(Features::kModernPin, false);
   CreateTestFuture result;
-  auth_block_->Create(user_input, {}, result.GetCallback());
+  auth_block_->Create(user_input, {.metadata = PinMetadata()},
+                      result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -189,7 +270,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailurePinWeaverManager) {
                           reset_secret};
 
   CreateTestFuture result;
-  auth_block_->Create(user_input, {}, result.GetCallback());
+  auth_block_->Create(user_input, {.metadata = PinMetadata()},
+                      result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -206,7 +288,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
       .reset_secret = reset_secret};
   CreateTestFuture result;
-  auth_block_->Create(auth_input, {}, result.GetCallback());
+  auth_block_->Create(auth_input, {.metadata = PinMetadata()},
+                      result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -224,7 +307,8 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
   AuthInput auth_input = {.user_input = user_input,
                           .reset_secret = reset_secret};
   CreateTestFuture result;
-  auth_block_->Create(auth_input, {}, result.GetCallback());
+  auth_block_->Create(auth_input, {.metadata = PinMetadata()},
+                      result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
@@ -241,12 +325,32 @@ TEST_F(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
       .user_input = user_input,
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)};
   CreateTestFuture result;
-  auth_block_->Create(auth_input, {}, result.GetCallback());
+  auth_block_->Create(auth_input, {.metadata = PinMetadata()},
+                      result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, auth_state] = result.Take();
 
   ASSERT_THAT(status, NotOk());
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
+            status->local_legacy_error());
+}
+
+TEST_F(PinWeaverAuthBlockTest, CreateFailureUnsupportedType) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob reset_secret(32, 'S');
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
+                          reset_secret};
+
+  CreateTestFuture result;
+  auth_block_->Create(user_input, {.metadata = CryptohomeRecoveryMetadata()},
+                      result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, auth_state] = result.Take();
+
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
             status->local_legacy_error());
 }
 

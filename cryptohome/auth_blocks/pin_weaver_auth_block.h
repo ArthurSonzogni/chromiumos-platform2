@@ -26,9 +26,10 @@ using DelaySchedule = hwsec::PinWeaverManagerFrontend::DelaySchedule;
 // credential is reset.
 const DelaySchedule& LockoutDelaySchedule();
 
-// Define the PIN delay policy. This applies a gradually increasing delay after
-// more and more attempts are made.
+// Define the (non-lockout) delay policies for PINs and passwords. These apply a
+// gradually increasing delay after more and more attempts are made.
 const DelaySchedule& PinDelaySchedule();
+const DelaySchedule& PasswordDelaySchedule();
 
 class PinWeaverAuthBlock : public AuthBlock {
  public:

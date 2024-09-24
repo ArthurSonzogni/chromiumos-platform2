@@ -148,13 +148,16 @@ void CreateVaultKeysetRpcImpl::CreateVaultKeyset(
   switch (*type) {
     case AuthFactorType::kPassword:
       key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+      auth_factor_metadata.metadata = PasswordMetadata();
       break;
     case AuthFactorType::kPin:
       key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
       key_data.mutable_policy()->set_low_entropy_credential(true);
+      auth_factor_metadata.metadata = PinMetadata();
       break;
     case AuthFactorType::kKiosk:
       key_data.set_type(KeyData::KEY_TYPE_KIOSK);
+      auth_factor_metadata.metadata = KioskMetadata();
       break;
     case AuthFactorType::kSmartCard: {
       key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
