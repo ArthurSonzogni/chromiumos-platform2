@@ -532,7 +532,8 @@ Status StorageQueue::EnumerateDataFiles(
   const auto enum_error = dir_enum.GetError();
   if (enum_error != base::File::Error::FILE_OK) {
     // This is a transient error, return status for Storage to back off and
-    // retry.
+    // retry. Reset `generation_id_` to avoid a partially initialized state.
+    generation_id_ = 0;
     analytics::Metrics::SendEnumToUMA(
         kUmaDataLossErrorReason,
         DataLossErrorReason::FAILED_TO_ENUMERATE_STORAGE_QUEUE_DIRECTORY,
