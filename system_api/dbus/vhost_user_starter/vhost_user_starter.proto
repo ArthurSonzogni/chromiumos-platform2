@@ -63,11 +63,4 @@ message StartVhostUserFsRequest {
   VhostUserVirtioFsConfig cfg = 7;
 }
 
-message StartVhostUserFsResponse {
-  // If true, the vhost-user virtio-fs device started successfully.
-  bool success = 1;
-
-  // If the vhost-user virtio-fs device failed to start, the reason for the
-  // failure. This field is valid only when success == false.
-  string failure_reason = 2;
-}
+message StartVhostUserFsResponse {}
