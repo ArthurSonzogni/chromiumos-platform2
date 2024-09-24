@@ -299,84 +299,6 @@ send_suspend_resume_time() {
   /bin/rm -f "${power_status_on_suspend}"
 }
 
-# Find the number of bitfixed chunks
-# Arguments:
-#   $1 - Path to messages for most recent suspend onward.
-get_bitfix_chunks() {
-  [ -n "$1" ] || return
-  grep -c 'bitfix_recover_chunk: Attempting recovery' "$1"
-}
-
-# Find the total number of actual fixes
-# Arguments:
-#   $1 - Path to messages for most recent suspend onward.
-get_bitfix_fixes() {
-  [ -n "$1" ] || return
-  grep -c '\.\.\.fixed 0x[0-9a-f]* from 0x[0-9a-f]* to 0x[0-9a-f]*' "$1"
-}
-
-# Sends to UMA stats about bitfixes on the most recent suspend/resume:
-#   Power.BitfixChunks - Number of 8K chunks fixed
-#   Power.BitfixFixes - Number of words fixed
-# Arguments:
-#   $1 - Path to messages for most recent suspend onward.
-send_bitfix_metrics() {
-  [ -n "$1" ] || return
-  local recent_messages="$1"
-  local enable_file="/sys/module/bitfix_snow/parameters/bitfix_enabled"
-
-  # Get information about bitfix and send it on.
-  if [ "$(cat "${enable_file}" 2>/dev/null)" = "Y" ]; then
-    local bitfix_chunks
-    bitfix_chunks=$(get_bitfix_chunks "${recent_messages}")
-    local bitfix_fixes
-    bitfix_fixes=$(get_bitfix_fixes "${recent_messages}")
-    /usr/bin/metrics_client -e Power.BitfixChunks "${bitfix_chunks}" 100 &
-    /usr/bin/metrics_client -e Power.BitfixFixes "${bitfix_fixes}" 500 &
-  fi
-}
-
-# Sends to UMA stats about tps65090 retries
-#   Platform.Tps65090Retries.FetN - Number of retries for Fet N.  N may be
-#       between 1 and 7.
-# As current code is structured you'll see between 1 and 5 tries, but we'll
-# claim 6 as the max just in case.
-#
-# We want to run this at bootup and after suspend/resume.  On bootup we'll run
-# against dmesg and after suspend/resume we'll work on the recent messages.
-#
-# Messages in the log look like this (register is in hex):
-#   regulator regulator.46: reg 0xf enable ok after 2 tries
-#
-# Arguments:
-#   $1 - Path to messages for most recent suspend onward; if "" we'll use dmesg
-send_tpschrome_retries() {
-  local recent_messages="$1"
-
-  # shellcheck disable=SC2016
-  local retries_script='
-    /regulator\.[0-9]+: reg 0x[0-9a-f]+ enable ok after [0-9]+ tries/ {
-      sub(".*regulator\.[0-9]+: reg ", "");
-      if ($1 == "0xf")
-        fet_num = 1;                       # 0xf is FET1
-      else
-        fet_num = substr($1, 3) - 10 + 2;  # 0x10 - 0x15 are FET2 - FET7
-      printf("Platform.Tps65090Retries.Fet%d_%d\n", fet_num, $5);
-    }
-  '
-  local result results
-  if [ -n "${recent_messages}" ]; then
-    results=$(awk -- "${retries_script}" "${recent_messages}")
-  else
-    results=$(dmesg | awk -- "${retries_script}")
-  fi
-  for result in ${results}; do
-    metric=$(echo "${result}" | cut -d'_' -f1)
-    value=$(echo "${result}" | cut -d'_' -f2)
-    /usr/bin/metrics_client "${metric}" "${value}" 1 6 7 &
-  done
-}
-
 main() {
   local event="Resume"
   [ "$1" = "-b" ] && event="Boot"
@@ -386,12 +308,8 @@ main() {
     local recent_messages
     recent_messages=$(split_recent_messages)
     send_suspend_resume_time "${recent_messages}"
-    send_bitfix_metrics "${recent_messages}"
-    send_tpschrome_retries "${recent_messages}"
 
     cleanup_recent_messages "${recent_messages}"
-  else
-    send_tpschrome_retries
   fi
 }
 
