@@ -154,13 +154,14 @@ void P2PManager::Stop() {
     LOG(WARNING) << "P2PManager has been stopped while some of P2P devices "
                     "are still active";
     for (auto& it : p2p_group_owners_) {
-      DeleteP2PDevice(it.second);
+      manager_->wifi_provider()->DeleteLocalDevice(it.second);
+    }
+    for (auto& it : p2p_clients_) {
+      manager_->wifi_provider()->DeleteLocalDevice(it.second);
     }
     p2p_group_owners_.clear();
-    for (auto& it : p2p_clients_) {
-      DeleteP2PDevice(it.second);
-    }
     p2p_clients_.clear();
+    DisconnectFromSupplicantPrimaryP2PDeviceProxy();
   }
 }
 
