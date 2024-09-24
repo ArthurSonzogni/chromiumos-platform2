@@ -93,6 +93,11 @@ install_config("install_seccomp_policy") {
   outputs = [ "dns-proxy-seccomp.policy" ]
 }
 
+install_config("install_config_cros_startup") {
+  sources = [ "setuid_restrictions/dnsproxyd_uid_allowlist.txt" ]
+  install_path = "/usr/share/cros/startup/process_management_policies"
+}
+
 if (use.fuzzer) {
   pkg_config("dns-proxy_fuzz_config") {
     pkg_deps = [ "libchrome-test" ]

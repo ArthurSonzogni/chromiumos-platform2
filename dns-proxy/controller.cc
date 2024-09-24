@@ -37,6 +37,8 @@ constexpr base::TimeDelta kSubprocessWaitSleepTime = base::Milliseconds(100);
 constexpr char kSeccompPolicyPath[] =
     "/usr/share/policy/dns-proxy-seccomp.policy";
 constexpr char kResolvConfRunPath[] = "/run/dns-proxy/resolv.conf";
+constexpr char kDnsProxySystem[] = "dns-proxy-system";
+constexpr char kDnsProxyUser[] = "dns-proxy-user";
 
 // Loops until all child processes are stopped or there is an error. This
 // function is safe to call even if |pids| contains an already stopped children
@@ -102,6 +104,12 @@ int Controller::OnInit() {
     metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
                                 Metrics::ProcessEvent::kCapNetBindServiceError);
     LOG(ERROR) << "Failed to add CAP_NET_BIND_SERVICE to the ambient set";
+  }
+
+  // Preserve CAP_SETUID so the child process have the capability to change to
+  // either "dns-proxy-user" or "dns-proxy-system".
+  if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETUID, 0, 0) != 0) {
+    LOG(ERROR) << "Failed to add CAP_SETUID to the ambient set";
   }
 
   // Handle subprocess lifecycle.
@@ -284,7 +292,6 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   }
 
   ScopedMinijail jail(minijail_new());
-  minijail_namespace_net(jail.get());
   minijail_no_new_privs(jail.get());
   minijail_use_seccomp_filter(jail.get());
   minijail_parse_seccomp_filters(jail.get(), kSeccompPolicyPath);
@@ -292,6 +299,21 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   minijail_reset_signal_mask(jail.get());
   minijail_reset_signal_handlers(jail.get());
   minijail_run_as_init(jail.get());
+
+  if (root_ns_enabled_.value()) {
+    // DNS proxy uses SO_BINDTODEVICE to bind to a specific interface for
+    // sending DNS queries. Switch users to honor always-on VPN related routing
+    // and setup.
+    if (type == Proxy::Type::kDefault) {
+      minijail_change_user(jail.get(), kDnsProxyUser);
+    } else {
+      minijail_change_user(jail.get(), kDnsProxySystem);
+    }
+    // Required since we don't have the caps to wipe supplementary groups.
+    minijail_keep_supplementary_gids(jail.get());
+  } else {
+    minijail_namespace_net(jail.get());
+  }
 
   // Create FDs to communicate to the proxy.
   base::ScopedFD controller_fd, proxy_fd;

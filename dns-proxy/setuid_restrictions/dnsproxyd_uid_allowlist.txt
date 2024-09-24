@@ -1,0 +1,9 @@
+# The SafeSetID LSM uses this list to record which UID’s/GID’s to restrict, look here for more information:
+# https://www.kernel.org/doc/html/latest/admin-guide/LSM/SafeSetID.html
+
+# The 'dns-proxy' user may switch to 'dns-proxy-system' or 'dns-proxy-user' to proxy system traffic and user traffic respectively.
+20167:20221
+20167:20222
+# The 'dns-proxy-system' or 'dns-proxy-user' user may not switch back to 'dns-proxy' or anywhere else.
+20221:20221
+20222:20222

@@ -95,3 +95,4 @@ clock_nanosleep: 1
 setsid: 1
 process_vm_readv: 1
 eventfd2: 1
+setresuid: 1
