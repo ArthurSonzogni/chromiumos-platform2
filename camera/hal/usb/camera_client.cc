@@ -489,16 +489,12 @@ CameraClient::BuildStreamOnParameters(
     }
 
     // Skip BLOB format to avoid to use too large resolution as preview size,
-    // unless we prefer large preview for the camera and JDA is capable of the
-    // resolution.
-    const bool try_blob =
-        device_info_.quirks & kQuirkPreferLargePreviewResolution;
+    // unless JDA is capable of the resolution.
     const bool is_jda_capable =
         stream_config->streams[i]->width <= jda_resolution_cap_.width &&
         stream_config->streams[i]->height <= jda_resolution_cap_.height;
-    LOGF(INFO) << "Try using blob resolution: " << try_blob
-               << ", jda capable: " << is_jda_capable;
-    if (!(try_blob && is_jda_capable) &&
+    LOGF(INFO) << "jda capable: " << is_jda_capable;
+    if (!is_jda_capable &&
         skipped_stream_count + 1 < stream_config->num_streams) {
       if (stream_config->streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
         skipped_stream_count += 1;

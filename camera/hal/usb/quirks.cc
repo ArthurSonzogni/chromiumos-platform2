@@ -44,36 +44,12 @@ const QuirksMap& GetQuirksMap() {
       {{"1904", "0001"}, kQuirkReportLeastFpsRanges},
       // Chicony/CNFKH7521003210LH (b/185993364)
       {{"04f2", "b72f"}, kQuirkReportLeastFpsRanges},
-      // AZWAVE AM-ABA5521-A (b/194751857)
-      {{"13d3", "5521"}, kQuirkPreferLargePreviewResolution},
-      // FO50AF-810H-1 (b/196305314)
-      {{"05c8", "0609"}, kQuirkPreferLargePreviewResolution},
       // Chicony Integrated IR Camera (b/223587315)
       {{"04f2", "b615"}, kQuirkInfrared},
-      // Rapoo C260 Webcam (b/245461023)
-      {{"0c45", "636b"}, kQuirkPreferLargePreviewResolution},
       // Sunplus Innovation Technology Inc. USB2.0 UVC HD Webcam (b/269094788)
       {{"1bcf", "2cb5"}, kQuirkRestartOnTimeout},
-      // Chicony CKFM517-1 (b/289006377)
-      {{"04f2", "b7da"}, kQuirkPreferLargePreviewResolution},
-      // Quanta(TF) YHVU-1 (b/293388961)
-      {{"0408", "4047"}, kQuirkPreferLargePreviewResolution},
-      // KINGCOME KBFD1004
-      {{"2b7e", "1004"}, kQuirkPreferLargePreviewResolution},
-      // KINGCOME KBAD1005
-      {{"2b7e", "1005"}, kQuirkPreferLargePreviewResolution},
-      // LCE-Optics LSN059BF
-      {{"5959", "59bf"}, kQuirkPreferLargePreviewResolution},
-      // LCE-Optics LSN060BF
-      {{"5959", "60bf"}, kQuirkPreferLargePreviewResolution},
       // Kingcome KPNB752 (b/326004301)
       {{"2b7e", "b752"}, kQuirkUserSpaceTimestamp},
-      // Chicony CKAO51521005590LH (b/343586796)
-      {{"04f2", "b82f"}, kQuirkPreferLargePreviewResolution},
-      // LuxVisions BBA503N3 (b/343586796)
-      {{"30c9", "00f1"}, kQuirkPreferLargePreviewResolution},
-      // Chicony CKAO519-1
-      {{"04f2", "b843"}, kQuirkPreferLargePreviewResolution},
       // Foxlink FO10FF-863H-5 (b/359087839)
       {{"05c8", "0b10"}, kQuirkUserSpaceTimestamp},
       // Google Inc. Lattice USB 3.0 Video Bridge (b/354766714)

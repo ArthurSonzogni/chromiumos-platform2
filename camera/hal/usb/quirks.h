@@ -23,11 +23,10 @@ enum : uint32_t {
   kQuirkV1Device = 1 << 4,
   kQuirkUserSpaceTimestamp = 1 << 5,
   kQuirkAndroidExternal = 1 << 6,
-  kQuirkPreferLargePreviewResolution = 1 << 7,
-  kQuirkInfrared = 1 << 8,
-  kQuirkAndroidLegacy = 1 << 9,
-  kQuirkExpectTimeout = 1 << 10,
-  kQuirkExpectHotplugWhileOpen = 1 << 11,
+  kQuirkInfrared = 1 << 7,
+  kQuirkAndroidLegacy = 1 << 8,
+  kQuirkExpectTimeout = 1 << 9,
+  kQuirkExpectHotplugWhileOpen = 1 << 10,
 };
 
 uint32_t GetQuirks(const std::string& vid, const std::string& pid);
