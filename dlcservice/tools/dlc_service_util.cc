@@ -14,8 +14,8 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
-#include <base/logging.h>
 #include <base/json/json_writer.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -587,6 +587,9 @@ class DlcServiceUtil : public brillo::Daemon {
           break;
         case imageloader::FileSystem::kSquashFS:
           dlc_info.Set("fs-type", "squashfs");
+          break;
+        case imageloader::FileSystem::kBlob:
+          dlc_info.Set("fs-type", "blob");
           break;
       }
       dlc_info.Set("root_mount", dlc_state.root_path());

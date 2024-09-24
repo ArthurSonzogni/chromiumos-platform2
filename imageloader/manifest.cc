@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "imageloader/manifest.h"
+
 #include <optional>
 #include <utility>
 
@@ -10,8 +12,6 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-
-#include "imageloader/manifest.h"
 
 namespace imageloader {
 
@@ -219,6 +219,8 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
       fs_type_ = FileSystem::kExt4;
     } else if (*fs_type == "squashfs") {
       fs_type_ = FileSystem::kSquashFS;
+    } else if (*fs_type == "blob") {
+      fs_type_ = FileSystem::kBlob;
     } else {
       LOG(ERROR) << "Unsupported file system type: " << *fs_type;
       return false;
