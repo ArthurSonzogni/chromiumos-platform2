@@ -50,11 +50,7 @@ executable("virtual-file-provider") {
 }
 
 install_config("install_virtual-file-provider-jailed") {
-  if (use.arcvm) {
-    sources = [ "virtual-file-provider-jailed-arcvm.sh" ]
-  } else {
-    sources = [ "virtual-file-provider-jailed.sh" ]
-  }
+  sources = [ "virtual-file-provider-jailed.sh" ]
   outputs = [ "virtual-file-provider-jailed" ]
   install_path = "bin"
   type = "executable"
