@@ -10,6 +10,7 @@ enum MantisError {
   [MinVersion=1] kProcessorNotInitialized,
   [MinVersion=1] kInputError,
   [MinVersion=1] kProcessFailed,
+  [MinVersion=2] kMissingSegmenter,
 };
 
 [Stable]

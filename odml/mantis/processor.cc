@@ -25,6 +25,7 @@ constexpr auto kMapStatusToError =
          MantisError::kProcessorNotInitialized},
         {MantisStatus::kInputError, MantisError::kInputError},
         {MantisStatus::kProcessFailed, MantisError::kProcessFailed},
+        {MantisStatus::kMissingSegmenter, MantisError::kMissingSegmenter},
     });
 }  // namespace
 
@@ -90,8 +91,21 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
 void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
                                    const std::vector<uint8_t>& prior,
                                    SegmentationCallback callback) {
-  auto result = MantisResult::NewError(MantisError::kUnknownError);
-  std::move(callback).Run(std::move(result));
+  if (!component_.segmenter) {
+    std::move(callback).Run(
+        MantisResult::NewError(MantisError::kMissingSegmenter));
+    return;
+  }
+
+  SegmentationResult lib_result =
+      api_->Segmentation(component_.segmenter, image, prior);
+  if (lib_result.status != MantisStatus::kOk) {
+    std::move(callback).Run(
+        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
+    return;
+  }
+
+  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
 }
 
 }  // namespace mantis

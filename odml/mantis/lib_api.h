@@ -25,6 +25,7 @@ enum class MantisStatus : int {
   kProcessorNotInitialized,
   kInputError,
   kProcessFailed,
+  kMissingSegmenter,
 };
 
 struct InpaintingResult {
@@ -33,6 +34,11 @@ struct InpaintingResult {
 };
 
 struct GenerativeFillResult {
+  MantisStatus status;
+  std::vector<uint8_t> image;
+};
+
+struct SegmentationResult {
   MantisStatus status;
   std::vector<uint8_t> image;
 };
@@ -54,6 +60,11 @@ struct MantisAPI {
                                          const std::vector<uint8_t>& mask,
                                          int seed,
                                          const std::string& text_prompt);
+
+  // Runs segmentation on the given image and prior.
+  SegmentationResult (*Segmentation)(SegmenterPtr segmenter_ptr,
+                                     const std::vector<uint8_t>& image,
+                                     const std::vector<uint8_t>& prior);
 
   void (*DestroyMantisComponent)(MantisComponent component);
 };

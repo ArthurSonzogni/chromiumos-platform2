@@ -40,12 +40,22 @@ GenerativeFillResult GenerativeFill(ProcessorPtr processor_ptr,
   };
 }
 
+SegmentationResult Segmentation(SegmenterPtr segmenter_ptr,
+                                const std::vector<uint8_t>& image,
+                                const std::vector<uint8_t>& prior) {
+  return {
+      .status = MantisStatus::kOk,
+      .image = GetFakeImageData(),
+  };
+}
+
 void DestroyMantisComponent(MantisComponent component) {}
 
 const MantisAPI api = {
     .Initialize = &Initialize,
     .Inpainting = &Inpainting,
     .GenerativeFill = &GenerativeFill,
+    .Segmentation = &Segmentation,
     .DestroyMantisComponent = &DestroyMantisComponent,
 };
 

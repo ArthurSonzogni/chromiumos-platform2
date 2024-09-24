@@ -22,6 +22,7 @@ using mojom::MantisResult;
 using testing::IsEmpty;
 
 constexpr ProcessorPtr kFakeProcessorPtr = 0xDEADBEEF;
+constexpr SegmenterPtr kFakeSegmenterPtr = 0xCAFEBABE;
 
 class MantisProcessorTest : public testing::Test {
  public:
@@ -168,6 +169,73 @@ TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
                            result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_result_image());
+  EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, SegmentationMissingSegmenter) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = 0,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Segmentation(GetFakeImage(), GetFakeMask(),
+                         result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kMissingSegmenter);
+}
+
+TEST_F(MantisProcessorTest, SegmentationReturnError) {
+  auto segmentation = [](ProcessorPtr processor_ptr,
+                         const std::vector<uint8_t>& image,
+                         const std::vector<uint8_t>& prior) {
+    return SegmentationResult{.status = MantisStatus::kProcessFailed};
+  };
+  auto destroy_mantis_component = [](MantisComponent) {};
+
+  const MantisAPI api = {
+      .Segmentation = +segmentation,
+      .DestroyMantisComponent = +destroy_mantis_component,
+  };
+
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = 0,
+          .segmenter = kFakeSegmenterPtr,
+      },
+      &api, processor_remote.BindNewPipeAndPassReceiver());
+
+  std::vector<uint8_t> image;
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Segmentation(GetFakeImage(), GetFakeMask(),
+                         result_future.GetCallback());
+
+  auto result = result_future.Take();
+  ASSERT_TRUE(result->is_error());
+  EXPECT_EQ(result->get_error(), MantisError::kProcessFailed);
+}
+
+TEST_F(MantisProcessorTest, SegmentationSucceeds) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = 0,
+          .segmenter = kFakeSegmenterPtr,
+      },
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
+
+  TestFuture<mojom::MantisResultPtr> result_future;
+  processor.Segmentation(GetFakeImage(), GetFakeMask(),
+                         result_future.GetCallback());
 
   auto result = result_future.Take();
   ASSERT_TRUE(result->is_result_image());
