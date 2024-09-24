@@ -880,7 +880,11 @@ void TetheringManager::StopTetheringSession(StopReason reason,
   }
 
   if (reason == StopReason::kError ||
-      reason == StopReason::kDownstreamLinkDisconnect) {
+      reason == StopReason::kDownstreamLinkDisconnect ||
+      reason == StopReason::kDownstreamNetDisconnect ||
+      reason == StopReason::kUpstreamDisconnect ||
+      reason == StopReason::kUpstreamNoInternet ||
+      reason == StopReason::kResourceBusy) {
     LOG(ERROR) << kTetheringStopAnomalyDetectorPrefix
                << StopReasonToString(reason);
   } else {
