@@ -37,6 +37,11 @@ int main(int argc, char** argv) {
 
   ::testing::InitGoogleTest(&argc, argv);
   ::testing::GTEST_FLAG(throw_on_failure) = true;
+
+  // Default Mock class behavior to NiceMock to avoid spamming logs with
+  // uninteresting calls. This should be before the InitGoogleMock() so that it
+  // can be overridden with the flag passed in when running the test.
+  ::testing::GMOCK_FLAG(default_mock_behavior) = 0;
   ::testing::InitGoogleMock(&argc, argv);
 
   if (cl->HasSwitch(switches::kHelp)) {
