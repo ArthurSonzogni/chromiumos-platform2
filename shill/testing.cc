@@ -5,9 +5,12 @@
 #include "shill/testing.h"
 
 #include <map>
+#include <string_view>
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
@@ -50,6 +53,17 @@ template <>
 void ReturnOperationFailed<BrilloAnyCallback>(BrilloAnyCallback callback) {
   std::move(callback).Run(std::map<uint32_t, brillo::Any>(),
                           Error(Error::kOperationFailed));
+}
+
+base::FilePath GetFilePathForTest(std::string_view filename) {
+  const char* out_dir = getenv("OUT");
+  if (out_dir != nullptr) {
+    return base::FilePath(out_dir).Append(filename);
+  }
+
+  char exec_path[PATH_MAX];
+  PCHECK(realpath("/proc/self/exe", exec_path));
+  return base::FilePath(exec_path).DirName().Append(filename);
 }
 
 }  // namespace shill

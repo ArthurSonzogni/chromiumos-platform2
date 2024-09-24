@@ -16,6 +16,7 @@
 #include "shill/metrics.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 #include "shill/protobuf_lite_streams.h"
+#include "shill/testing.h"
 
 using testing::Test;
 
@@ -30,10 +31,7 @@ class ServiceProvidersTest : public testing::Test {
   // Per-test-suite set-up.
   // Called before the first test in this test suite.
   static void SetUpTestSuite() {
-    const char* out_dir = getenv("OUT");
-    CHECK_NE(out_dir, nullptr);
-    base::FilePath database_path =
-        base::FilePath(out_dir).Append("serviceproviders.pbf");
+    base::FilePath database_path = GetFilePathForTest("serviceproviders.pbf");
     const char* database_path_cstr = database_path.value().c_str();
     std::unique_ptr<google::protobuf::io::CopyingInputStreamAdaptor>
         database_stream;

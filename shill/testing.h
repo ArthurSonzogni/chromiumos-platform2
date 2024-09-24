@@ -5,10 +5,12 @@
 #ifndef SHILL_TESTING_H_
 #define SHILL_TESTING_H_
 
+#include <string_view>
+
+#include <base/files/file_path.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include <base/test/test_future.h>
 
 #include "shill/device.h"
 #include "shill/error.h"
@@ -50,6 +52,13 @@ class CallbackValue<base::RepeatingCallback<F>> {
 
 template <typename CallbackType>
 void ReturnOperationFailed(typename CallbackValue<CallbackType>::Type callback);
+
+// Returns the filepath for |filename| in the OUT directory. `getenv("OUT")`
+// will be used if it exists (which will be the case if the unit test is invoked
+// by `FEATURES="test" emerge`). Otherwise assumes that the current executable
+// (which should be `shill_unittest`) is located in the OUT directory and
+// constructs the path from it.
+base::FilePath GetFilePathForTest(std::string_view filename);
 
 }  // namespace shill
 

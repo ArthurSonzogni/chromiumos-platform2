@@ -24,6 +24,7 @@
 #include "shill/cellular/mobile_operator_storage.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/testing.h"
 
 using testing::Mock;
 using testing::StrictMock;
@@ -58,12 +59,6 @@ enum EventCheckingPolicy {
   kEventCheckingPolicyNonStrict
 };
 
-base::FilePath GetTestProtoPath(const std::string& file) {
-  const char* out_dir = getenv("OUT");
-  CHECK_NE(out_dir, nullptr);
-  return base::FilePath(out_dir).Append(file);
-}
-
 }  // namespace
 
 using MobileOperatorMapperOnOperatorChangedCallbackMock =
@@ -81,7 +76,7 @@ class MobileOperatorMapperInitTest : public Test {
   bool SetUpDatabase(const std::vector<std::string>& files) {
     operator_info_->ClearDatabasePaths();
     for (const auto& file : files) {
-      operator_info_->AddDatabasePath(GetTestProtoPath(file));
+      operator_info_->AddDatabasePath(GetFilePathForTest(file));
     }
     return operator_info_->Init(on_operator_changed_cb_.Get());
   }

@@ -25,6 +25,7 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/testing.h"
 
 using std::string;
 using testing::Test;
@@ -110,12 +111,7 @@ class MobileOperatorInfoCarriersTest : public Test {
     shill::ScopeLogger::GetInstance()->set_verbose_level(1);
     shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
     operator_info_->ClearDatabasePaths();
-    const char* out_dir = getenv("OUT");
-    ASSERT_NE(out_dir, nullptr);
-    base::FilePath database_path =
-        base::FilePath(out_dir).Append("serviceproviders.pbf");
-
-    operator_info_->AddDatabasePath(database_path);
+    operator_info_->AddDatabasePath(GetFilePathForTest("serviceproviders.pbf"));
     operator_info_->Init();
   }
 
