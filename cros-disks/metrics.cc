@@ -143,10 +143,4 @@ void Metrics::RecordDeviceMediaType(const DeviceType device_media_type) {
                                  device_media_type);
 }
 
-void Metrics::RecordFuseMounterErrorCode(const std::string_view mounter_name,
-                                         const int error_code) {
-  metrics_library_.SendSparseToUMA(
-      base::StrCat({"CrosDisks.Fuse.", mounter_name}), error_code);
-}
-
 }  // namespace cros_disks
