@@ -26,12 +26,17 @@ using MantisAPIGetter = const MantisAPI* (*)();
 
 class MantisServiceTest : public testing::Test {
  public:
-  MantisServiceTest() : service_(raw_ref(shim_loader_)) { mojo::core::Init(); }
+  MantisServiceTest() : service_(raw_ref(shim_loader_)) {
+    mojo::core::Init();
+
+    service_.AddReceiver(service_remote_.BindNewPipeAndPassReceiver());
+  }
 
  protected:
   base::test::TaskEnvironment task_environment_;
   MantisService service_;
   odml::OdmlShimLoaderMock shim_loader_;
+  mojo::Remote<mojom::MantisService> service_remote_;
 };
 
 TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
@@ -41,7 +46,7 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
-  service_.Initialize(
+  service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
       base::BindLambdaForTesting([&](LoadModelResult result) {
         EXPECT_EQ(result, LoadModelResult::kFailedToLoadLibrary);
@@ -58,7 +63,7 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
-  service_.Initialize(
+  service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
       base::BindLambdaForTesting([&](LoadModelResult result) {
         EXPECT_EQ(result, LoadModelResult::kFailedToLoadLibrary);
@@ -75,13 +80,51 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
-  service_.Initialize(mojo::NullRemote(),
-                      processor.BindNewPipeAndPassReceiver(),
-                      base::BindLambdaForTesting([&](LoadModelResult result) {
-                        EXPECT_EQ(result, LoadModelResult::kSuccess);
-                        run_loop.Quit();
-                      }));
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        EXPECT_EQ(result, LoadModelResult::kSuccess);
+        run_loop.Quit();
+      }));
   run_loop.Run();
+}
+
+TEST_F(MantisServiceTest, MultipleClients) {
+  EXPECT_CALL(shim_loader_, IsShimReady())
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  // GetMantisAPI should only be called once
+  EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
+      .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
+          []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+
+  base::RunLoop run_loop_1;
+  mojo::Remote<mojom::MantisProcessor> processor1;
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor1.BindNewPipeAndPassReceiver(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        EXPECT_EQ(result, LoadModelResult::kSuccess);
+        run_loop_1.Quit();
+      }));
+  run_loop_1.Run();
+
+  base::RunLoop run_loop_2;
+  mojo::Remote<mojom::MantisProcessor> processor2;
+  service_remote_->Initialize(
+      mojo::NullRemote(), processor2.BindNewPipeAndPassReceiver(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        EXPECT_EQ(result, LoadModelResult::kSuccess);
+        run_loop_2.Quit();
+      }));
+  run_loop_2.Run();
+
+  EXPECT_FALSE(service_.IsProcessorNullForTesting());
+
+  processor1.reset();
+  processor2.reset();
+
+  service_remote_.FlushForTesting();
+  EXPECT_TRUE(service_.IsProcessorNullForTesting());
 }
 
 }  // namespace
