@@ -14,10 +14,10 @@ use crate::gsc::GSCTOOL_CMD_NAME;
 use crate::gsc::GSC_IMAGE_BASE_NAME;
 use crate::tpm2::ERASED_BOARD_ID;
 
-pub fn gsc_get_name(
+pub fn gsc_get_names(
     ctx: &mut impl Context,
     gsctool_command_options: &[&str],
-) -> Result<PathBuf, HwsecError> {
+) -> Result<Vec<PathBuf>, HwsecError> {
     const PRE_PVT_FLAG: u32 = 0x10;
 
     info!("updater is {}", GSCTOOL_CMD_NAME);
@@ -51,14 +51,17 @@ pub fn gsc_get_name(
         board_id.part_1, board_id.part_2, board_id.flag, board_flags, ext
     );
 
-    Ok(PathBuf::from(format!("{}.{}", GSC_IMAGE_BASE_NAME, ext)))
+    Ok(GSC_IMAGE_BASE_NAME
+        .iter()
+        .map(|&base| PathBuf::from(format!("{}.{}", base, ext)))
+        .collect())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::context::mock::MockContext;
-    use crate::gsc::GSC_IMAGE_BASE_NAME;
+
     #[test]
     fn test_gsc_get_name() {
         let mut mock_ctx = MockContext::new();
@@ -75,12 +78,15 @@ mod tests {
             "",
         );
 
-        let name = gsc_get_name(&mut mock_ctx, &["--any"]);
-
-        assert_eq!(
-            name,
-            Ok(PathBuf::from(String::from(GSC_IMAGE_BASE_NAME) + ".prod"))
-        );
+        let names = gsc_get_names(&mut mock_ctx, &["--any"]).unwrap();
+        assert!(!names.is_empty());
+        for name in names {
+            assert!(
+                name.to_str().unwrap().ends_with(".prod"),
+                "Path ends in .prod: {}",
+                name.display()
+            );
+        }
     }
 
     #[test]
@@ -99,8 +105,8 @@ mod tests {
             "",
         );
 
-        let name = gsc_get_name(&mut mock_ctx, &["--any"]);
-        assert_eq!(name, Err(HwsecError::GsctoolResponseBadFormatError));
+        let names = gsc_get_names(&mut mock_ctx, &["--any"]);
+        assert_eq!(names, Err(HwsecError::GsctoolResponseBadFormatError));
     }
 
     #[test]
@@ -119,11 +125,14 @@ mod tests {
             "",
         );
 
-        let name = gsc_get_name(&mut mock_ctx, &["--any"]);
-
-        assert_eq!(
-            name,
-            Ok(PathBuf::from(String::from(GSC_IMAGE_BASE_NAME) + ".prepvt"))
-        );
+        let names = gsc_get_names(&mut mock_ctx, &["--any"]).unwrap();
+        assert!(!names.is_empty());
+        for name in names {
+            assert!(
+                name.to_str().unwrap().ends_with(".prepvt"),
+                "Path ends in .prepvt: {}",
+                name.display()
+            );
+        }
     }
 }

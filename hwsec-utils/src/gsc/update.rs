@@ -9,7 +9,7 @@ use log::info;
 
 use crate::context::Context;
 use crate::error::HwsecError;
-use crate::gsc::gsc_get_name;
+use crate::gsc::gsc_get_names;
 use crate::gsc::gsctool_cmd_successful;
 use crate::gsc::run_gsctool_cmd;
 use crate::gsc::GSCTOOL_CMD_NAME;
@@ -33,16 +33,26 @@ pub fn gsc_update(ctx: &mut impl Context, root: &Path) -> Result<(), HwsecError>
         return Err(HwsecError::GsctoolError(1));
     }
 
-    let gsc_image = root.join(gsc_get_name(ctx, &options[..])?);
-    let gsc_image_str = gsc_image.to_str().ok_or_else(|| {
-        error!("Cannot convert {} to string.", gsc_image.display());
-        HwsecError::GsctoolResponseBadFormatError
-    })?;
-
-    if !ctx.path_exists(gsc_image_str) {
-        info!("{} not found, quitting.", gsc_image.display());
-        return Err(HwsecError::GsctoolError(1));
-    }
+    let gsc_images = gsc_get_names(ctx, &options[..])?
+        .iter()
+        .map(|base| {
+            root.join(base)
+                .to_str()
+                .ok_or_else(|| {
+                    error!("Cannot convert {} to string.", base.display());
+                    HwsecError::GsctoolResponseBadFormatError
+                })
+                .and_then(|path| {
+                    if ctx.path_exists(path) {
+                        Ok(path.to_owned())
+                    } else {
+                        info!("{path} not found, quitting.");
+                        Err(HwsecError::GsctoolError(1))
+                    }
+                })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let gsc_images: Vec<_> = gsc_images.iter().map(|s| s.as_ref()).collect();
 
     let mut exit_status: i32 = 0;
     for retries in 0..MAX_RETRIES {
@@ -53,8 +63,10 @@ pub fn gsc_update(ctx: &mut impl Context, root: &Path) -> Result<(), HwsecError>
             ctx.sleep(SLEEP_DURATION);
         }
 
-        let exe_result =
-            run_gsctool_cmd(ctx, [&options[..], &["--upstart", gsc_image_str]].concat())?;
+        let exe_result = run_gsctool_cmd(
+            ctx,
+            [&options[..], &["--upstart"], &gsc_images[..]].concat(),
+        )?;
         exit_status = exe_result.status.code().unwrap();
 
         // Exit status values 2 or below indicate successful update, nonzero
@@ -149,15 +161,19 @@ mod tests {
             "",
         );
 
-        let path = "/".to_owned() + &String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
-        mock_ctx.create_path(path.as_str());
+        let mut flags = vec!["--systemdev", "--upstart"];
+        let paths: Vec<_> = GSC_IMAGE_BASE_NAME
+            .iter()
+            .map(|&path| format!("/{path}.prepvt"))
+            .collect();
+        for path in &paths {
+            mock_ctx.create_path(path);
+            flags.push(path);
+        }
 
-        mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["--systemdev", "--upstart", path.as_str()],
-            0,
-            "",
-            "",
-        );
+        mock_ctx
+            .cmd_runner()
+            .add_gsctool_interaction(flags, 0, "", "");
 
         let result = gsc_update(&mut mock_ctx, Path::new("/"));
         assert_eq!(result, Ok(()));
@@ -176,16 +192,20 @@ mod tests {
             "",
         );
 
-        let path = "/".to_owned() + &String::from(GSC_IMAGE_BASE_NAME) + ".prepvt";
-        mock_ctx.create_path(path.as_str());
+        let mut flags = vec!["--systemdev", "--upstart"];
+        let paths: Vec<_> = GSC_IMAGE_BASE_NAME
+            .iter()
+            .map(|&path| format!("/{path}.prepvt"))
+            .collect();
+        for path in &paths {
+            mock_ctx.create_path(path);
+            flags.push(path);
+        }
 
         for _ in 0..MAX_RETRIES {
-            mock_ctx.cmd_runner().add_gsctool_interaction(
-                vec!["--systemdev", "--upstart", path.as_str()],
-                3,
-                "",
-                "",
-            );
+            mock_ctx
+                .cmd_runner()
+                .add_gsctool_interaction(flags.clone(), 3, "", "");
         }
 
         let result = gsc_update(&mut mock_ctx, Path::new("/"));
