@@ -4,8 +4,9 @@
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 #[derive(Parser)]
@@ -24,6 +25,10 @@ enum Action {
 struct TestInstallArgs {
     /// Image to install from.
     test_image: PathBuf,
+
+    /// Use the os_install_service (reven-only) to install, to test selinux.
+    #[arg(long)]
+    use_os_install_service: bool,
 }
 
 // Make running commands a little nicer:
@@ -123,13 +128,75 @@ fn basic_install() -> Result<()> {
     Ok(())
 }
 
+fn wait_for_os_install_service() -> Result<()> {
+    println!("Waiting for install complete...");
+
+    let mut monitor = vm_command()
+        .args([
+            "dbus-monitor",
+            "--system",
+            "sender=org.chromium.OsInstallService",
+        ])
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    let stdout = monitor.stdout.take().context("Couldn't get stdout")?;
+    let reader = BufReader::new(stdout);
+    let mut lines = reader
+        .lines()
+        .map_while(Result::ok)
+        .inspect(|line| println!("{}", line));
+
+    // Wait to see `member=OsInstallStatusChanged` (which signals install
+    // ending) before proceeding.
+    lines.find(|line| line.contains("member=OsInstallStatusChanged"));
+
+    // We can stop the monitor, now.
+    monitor.kill()?;
+
+    // Print the next line, which says whether it's a success or not.
+    let _ = lines.next();
+
+    Ok(())
+}
+
+fn install_via_service() -> Result<()> {
+    println!("Starting install via dbus...");
+
+    let mut cmd = vm_command();
+
+    cmd.args([
+        "sudo",
+        "-u",
+        "chronos",
+        "dbus-send",
+        "--print-reply",
+        "--system",
+        "--dest=org.chromium.OsInstallService",
+        "/org/chromium/OsInstallService",
+        "org.chromium.OsInstallService.StartOsInstall",
+    ]);
+
+    run_command(&mut cmd).context("Couldn't trigger install. Leaving vm running for debugging.")?;
+
+    // dbus-send doesn't block until complete, so let's wait on a signal that
+    // indicates it's done.
+    wait_for_os_install_service()?;
+
+    Ok(())
+}
+
 fn run_test_install(args: &TestInstallArgs) -> Result<()> {
     let workdir = TempDir::new_in(".")?;
     let hdb = make_hdb(workdir.path())?;
 
     start_vm(&args.test_image, &hdb)?;
 
-    basic_install()?;
+    if args.use_os_install_service {
+        install_via_service()
+    } else {
+        basic_install()
+    }?;
 
     stop_vm()?;
 
