@@ -18,6 +18,8 @@
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>
 
+#include "base/time/time.h"
+#include "base/timer/elapsed_timer.h"
 #include "cros-disks/sandboxed_init.h"
 
 namespace cros_disks {
@@ -110,6 +112,9 @@ class Process {
   const std::vector<std::string>& arguments() const { return arguments_; }
   const std::vector<std::string>& environment() const { return environment_; }
   const std::string& input() const { return input_; }
+
+  // Time elapsed since the process started.
+  base::TimeDelta Elapsed() const { return timer_.Elapsed(); }
 
  protected:
   Process();
@@ -213,6 +218,9 @@ class Process {
 
   // Process ID (default to kInvalidProcessId when the process has not started).
   pid_t pid_ = kInvalidProcessId;
+
+  // Timer to measure how long the process has been running.
+  base::ElapsedTimer timer_;
 
   // Exit code. A nonnegative value indicates that the process has finished.
   int exit_code_ = -1;

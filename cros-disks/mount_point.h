@@ -18,7 +18,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
-#include "base/timer/elapsed_timer.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/process.h"
 
@@ -152,9 +151,6 @@ class MountPoint final {
 
   // Eject action called after successfully unmounting this mount point.
   base::OnceClosure eject_;
-
-  // Timer used to measure how long it takes to mount the mount point.
-  const base::ElapsedTimer timer_;
 
   // Metrics object used to record the FUSE launcher exit code.
   Metrics* metrics_ = nullptr;

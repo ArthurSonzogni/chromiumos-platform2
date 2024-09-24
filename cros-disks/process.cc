@@ -200,6 +200,7 @@ bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
             << quote(arguments_);
   LOG_IF(INFO, !environment_.empty())
       << "and extra environment " << quote(environment_);
+  timer_ = base::ElapsedTimer();
   pid_ = StartImpl(std::move(in_fd), std::move(out_fd));
   return pid_ != kInvalidProcessId;
 }

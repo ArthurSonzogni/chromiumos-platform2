@@ -110,20 +110,29 @@ MountError MountPoint::ConvertLauncherExitCodeToMountError(
 }
 
 void MountPoint::OnLauncherExit(const int exit_code) {
-  // Record the FUSE launcher's exit code in Metrics.
-  if (metrics_) {
-    metrics_->RecordAction("Fuse.Start", data_.filesystem_type,
-                           Process::ExitCode(exit_code), timer_.Elapsed());
-  }
-
   DCHECK_EQ(MountError::kInProgress, data_.error);
   data_.error = ConvertLauncherExitCodeToMountError(exit_code);
   DCHECK_NE(MountError::kInProgress, data_.error);
 
-  if (exit_code != 0 && process_ && !LOG_IS_ON(INFO)) {
-    for (const auto& s : process_->GetCapturedOutput()) {
-      LOG(ERROR) << process_->GetProgramName() << "[" << process_->pid()
-                 << "]: " << s;
+  if (process_) {
+    // Record the FUSE launcher's exit code in Metrics.
+    if (metrics_) {
+      metrics_->RecordAction("Fuse.Start", data_.filesystem_type,
+                             Process::ExitCode(exit_code), process_->Elapsed());
+    }
+
+    if (exit_code != 0) {
+      if (!LOG_IS_ON(INFO)) {
+        for (const auto& s : process_->GetCapturedOutput()) {
+          LOG(ERROR) << process_->GetProgramName() << "[" << process_->pid()
+                     << "]: " << s;
+        }
+      }
+    } else {
+      LOG(INFO) << "FUSE daemon " << quote(process_->GetProgramName())
+                << " serving " << data_.filesystem_type << " "
+                << redact(data_.mount_path) << " started in "
+                << process_->Elapsed();
     }
   }
 
