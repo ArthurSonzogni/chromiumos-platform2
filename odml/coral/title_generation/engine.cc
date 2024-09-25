@@ -43,8 +43,7 @@ std::string AppToPromptLine(const mojom::App& app) {
 }
 
 std::string TabToPromptLine(const mojom::Tab& tab) {
-  return base::StringPrintf("tab title: %s, URL: %s\n", tab.title.c_str(),
-                            tab.url->url.c_str());
+  return base::StringPrintf("tab title: %s\n", tab.title.c_str());
 }
 
 std::string EntitiesToTitlePrompt(
