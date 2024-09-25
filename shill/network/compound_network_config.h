@@ -31,7 +31,9 @@ class CompoundNetworkConfig {
   // TODO(b/350884946): Rename to a more precise name.
   bool HasSLAAC();
 
-  void Clear();
+  // Clears NetworkConfigs except for `static_network_config_`.
+  void ClearNonStaticConfigs();
+
   // Setters of net_base::NetworkConfig from various sources. Returns true if it
   // results in a change of the combined NetworkConfig.
   bool SetFromStatic(const net_base::NetworkConfig& config);

@@ -410,7 +410,9 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     ip6config_ = nullptr;
     ipconfig_changed = true;
   }
-  config_.Clear();
+  // Static config is from Service but not per-connection, so it shouldn't be
+  // reset in Network::Stop().
+  config_.ClearNonStaticConfigs();
   dhcp_data_ = std::nullopt;
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {

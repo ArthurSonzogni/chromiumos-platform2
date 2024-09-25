@@ -41,11 +41,10 @@ bool CompoundNetworkConfig::HasSLAAC() {
          slaac_network_config_->ipv6_addresses;
 }
 
-void CompoundNetworkConfig::Clear() {
+void CompoundNetworkConfig::ClearNonStaticConfigs() {
   link_protocol_network_config_ = nullptr;
   dhcp_network_config_ = nullptr;
   slaac_network_config_ = nullptr;
-  static_network_config_ = {};
   Recalculate();
 }
 
