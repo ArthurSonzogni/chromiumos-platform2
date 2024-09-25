@@ -89,6 +89,13 @@ void ModelHolder::OnLoadFinish(bool success) {
 
 void ModelHolder::StateCheck() {
   if (state_ == HolderState::LOADED) {
+    // Resolve any WaitLoadResult
+    while (!wait_load_result_callbacks_.empty()) {
+      auto cb = std::move(wait_load_result_callbacks_.front());
+      wait_load_result_callbacks_.pop();
+      std::move(cb).Run(true);
+    }
+
     // Check if there's any pending task.
     if (!queued_tasks_.empty()) {
       RunJob();
@@ -113,6 +120,13 @@ void ModelHolder::StateCheck() {
           .Run(mojom::OnDeviceEmbeddingModelInferenceError::kModelLoadFailed,
                empty_embeddings);
       queued_tasks_.pop();
+    }
+
+    // WaitLoadResult should be resolved on failure as well.
+    while (!wait_load_result_callbacks_.empty()) {
+      auto cb = std::move(wait_load_result_callbacks_.front());
+      wait_load_result_callbacks_.pop();
+      std::move(cb).Run(false);
     }
   }
 }
@@ -152,6 +166,29 @@ void ModelHolder::OnRunFinish(mojom::OnDeviceEmbeddingModelInferenceError error,
 
 std::string ModelHolder::GetModelVersion() {
   return model_runner_->GetModelVersion();
+}
+
+bool ModelHolder::IsLoaded() {
+  switch (state_) {
+    case HolderState::LOADED:
+    case HolderState::RUNNING:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void ModelHolder::WaitLoadResult(WaitLoadResultCallback callback) {
+  if (IsLoaded()) {
+    std::move(callback).Run(true);
+    return;
+  }
+  if (state_ == HolderState::FAILED) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  wait_load_result_callbacks_.push(std::move(callback));
 }
 
 }  // namespace embedding_model

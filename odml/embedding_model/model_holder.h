@@ -69,6 +69,11 @@ class ModelHolder {
   // Basically ModelRunner::GetModelVersion().
   std::string GetModelVersion();
 
+  bool IsLoaded();
+
+  using WaitLoadResultCallback = base::OnceCallback<void(bool)>;
+  void WaitLoadResult(WaitLoadResultCallback callback);
+
  private:
   enum class HolderState {
     // The model is not loaded.
@@ -115,6 +120,8 @@ class ModelHolder {
   std::queue<std::unique_ptr<InferenceJobInfo>> queued_tasks_;
 
   std::unique_ptr<ModelRunner> model_runner_;
+
+  std::queue<WaitLoadResultCallback> wait_load_result_callbacks_;
 
   HolderState state_;
 
