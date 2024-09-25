@@ -9,6 +9,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   if (use.feature_management) {
     deps = [
+      ":embedding_model_console",
       ":install_dbus_config",
       ":install_init",
       ":install_minijail_conf",
@@ -159,6 +160,13 @@ source_set("odml") {
 executable("odml_console") {
   install_path = "/usr/local/bin"
   sources = [ "odml_console.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":odml" ]
+}
+
+executable("embedding_model_console") {
+  install_path = "/usr/local/bin"
+  sources = [ "embedding_model_console.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":odml" ]
 }
