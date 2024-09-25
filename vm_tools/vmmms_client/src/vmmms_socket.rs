@@ -10,6 +10,7 @@ use std::io::Read;
 use std::io::Write;
 use std::os::fd::AsFd;
 use std::os::fd::BorrowedFd;
+use std::os::fd::FromRawFd;
 use std::time::Duration;
 use system_api::vm_memory_management::ConnectionType;
 use system_api::vm_memory_management::PacketType;
@@ -29,6 +30,39 @@ impl VmmmsSocket {
             .set_read_timeout(timeout)
             .context("Failed to set read timeout")?;
         Ok(Self { socket: socket })
+    }
+
+    #[cfg(test)]
+    pub fn pair_for_testing(timeout: Option<Duration>) -> (Self, Self) {
+        // This code is quoted from crosvm base/sys/linux/mod.rs
+        let mut pipe_fds = [-1; 2];
+        // SAFETY:
+        // Safe because socketpair will only write 2 element array of i32 to the given pointer,
+        // and we check for error.
+        let ret =
+            unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, &mut pipe_fds[0]) };
+        assert_eq!(ret, 0);
+        // SAFETY:
+        // Safe because both fds must be valid for socketpair to have returned successfully
+        // and we have exclusive ownership of them.
+        let (client_vsock_test, server_vsock_test) = unsafe {
+            (
+                VsockStream::from_raw_fd(pipe_fds[0]),
+                VsockStream::from_raw_fd(pipe_fds[1]),
+            )
+        };
+        client_vsock_test
+            .set_read_timeout(timeout)
+            .expect("Failed to set read timeout");
+
+        (
+            VmmmsSocket {
+                socket: client_vsock_test,
+            },
+            VmmmsSocket {
+                socket: server_vsock_test,
+            },
+        )
     }
 
     pub fn write_packet(&mut self, packet: VmMemoryManagementPacket) -> Result<()> {
@@ -94,5 +128,152 @@ impl VmmmsSocket {
 impl AsFd for VmmmsSocket {
     fn as_fd(&self) -> BorrowedFd<'_> {
         return self.socket.as_fd();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::VmmmsSocket;
+    use crate::READ_TIMEOUT;
+    use protobuf::Message;
+    use std::io::Write;
+    use system_api::vm_memory_management::ConnectionType;
+    use system_api::vm_memory_management::PacketType;
+    use system_api::vm_memory_management::VmMemoryManagementPacket;
+    #[test]
+    fn write_and_read_packet_succeeds() {
+        let (mut client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        let mut handshake_packet = VmMemoryManagementPacket::new();
+        handshake_packet.type_ = PacketType::PACKET_TYPE_HANDSHAKE.into();
+        handshake_packet.mut_handshake().type_ = ConnectionType::CONNECTION_TYPE_STATS.into();
+        client_vsock_test
+            .write_packet(handshake_packet.clone())
+            .expect("Shoule be able to write the packet");
+
+        assert_eq!(
+            server_vsock_test
+                .read_packet()
+                .expect("Should be able to read packet"),
+            handshake_packet
+        );
+    }
+
+    #[test]
+    fn nothing_to_read() {
+        let (mut client_vsock_test, _server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+
+        assert!(client_vsock_test.read_packet().is_err());
+    }
+
+    #[test]
+    fn fails_to_read_broken_packet_size() {
+        let (mut client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        let packet_in_bytes = VmMemoryManagementPacket::new()
+            .write_to_bytes()
+            .expect("Should be able to serialize the packet");
+        // packet_buffer below is broken because its packet size is missing the first u8 item
+        let packet_buffer = [
+            &(packet_in_bytes.len() as u32).to_le_bytes()[1..],
+            &packet_in_bytes,
+        ]
+        .concat();
+        server_vsock_test
+            .socket
+            .write_all(&packet_buffer)
+            .expect("Should be able to write packet");
+
+        assert!(client_vsock_test.read_packet().is_err());
+    }
+
+    #[test]
+    fn fails_to_read_broken_packet() {
+        let (mut client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        let mut handshake_response = VmMemoryManagementPacket::new();
+        handshake_response.type_ = PacketType::PACKET_TYPE_CONNECTION_NACK.into();
+        let packet_in_bytes = handshake_response
+            .write_to_bytes()
+            .expect("Should be able to serialize the packet");
+        // packet_buffer below is broken because it is missing the last u8 item
+        let packet_buffer = [
+            &(packet_in_bytes.len() as u32).to_le_bytes()[..],
+            &packet_in_bytes[..packet_in_bytes.len() - 1],
+        ]
+        .concat();
+        server_vsock_test
+            .socket
+            .write_all(&packet_buffer)
+            .expect("Should be able to write packet");
+
+        assert!(client_vsock_test.read_packet().is_err());
+    }
+
+    #[test]
+    fn handshake_response_does_not_exist() {
+        let (mut client_vsock_test, _server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+
+        assert!(client_vsock_test
+            .handshake(ConnectionType::CONNECTION_TYPE_STATS)
+            .is_err());
+    }
+
+    #[test]
+    fn invalid_handshake_response() {
+        let (mut client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        let invalid_handshake_response = VmMemoryManagementPacket::new();
+        server_vsock_test
+            .write_packet(invalid_handshake_response)
+            .expect("Should be able to write packet");
+
+        assert!(client_vsock_test
+            .handshake(ConnectionType::CONNECTION_TYPE_STATS)
+            .is_err());
+    }
+
+    #[test]
+    fn handshake_response_with_connection_nack() {
+        let (mut client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        let mut handshake_response = VmMemoryManagementPacket::new();
+        handshake_response.type_ = PacketType::PACKET_TYPE_CONNECTION_NACK.into();
+        server_vsock_test
+            .write_packet(handshake_response)
+            .expect("Should be able to write packet");
+
+        assert!(client_vsock_test
+            .handshake(ConnectionType::CONNECTION_TYPE_STATS)
+            .is_err());
+    }
+
+    #[test]
+    fn handshake_succeeds() {
+        let (mut client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        let mut handshake_response = VmMemoryManagementPacket::new();
+        handshake_response.type_ = PacketType::PACKET_TYPE_CONNECTION_ACK.into();
+        server_vsock_test
+            .write_packet(handshake_response)
+            .expect("Should be able to write packet");
+
+        assert!(client_vsock_test
+            .handshake(ConnectionType::CONNECTION_TYPE_STATS)
+            .is_ok());
+
+        let mut handshake_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            handshake_packet.type_,
+            PacketType::PACKET_TYPE_HANDSHAKE.into()
+        );
+        assert_eq!(
+            handshake_packet.mut_handshake().type_,
+            ConnectionType::CONNECTION_TYPE_STATS.into()
+        );
     }
 }
