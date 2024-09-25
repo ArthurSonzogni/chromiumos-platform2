@@ -149,6 +149,7 @@ COMMIT
 :ingress_port_firewall - [0:0]
 :egress_port_firewall - [0:0]
 :ingress_downstream_network - [0:0]
+:ingress_dns_proxy - [0:0]
 :forward_tethering - [0:0]
 :egress_tethering - [0:0]
 :ingress_tethering - [0:0]
@@ -170,6 +171,7 @@ COMMIT
 {% endif -%}
 -A INPUT -j ingress_port_firewall
 -A INPUT -j ingress_downstream_network
+-A INPUT -j ingress_dns_proxy
 {% if ipv4 -%}
 -A INPUT -d 224.0.0.251/32 -p udp -m udp --dport 5353 -j ACCEPT
 -A INPUT -d 239.255.255.250/32 -p udp -m udp --dport 1900 -j ACCEPT

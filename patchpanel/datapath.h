@@ -521,6 +521,12 @@ class Datapath {
   bool ModifyDnsRedirectionSkipVpnRule(IpFamily family,
                                        Iptables::Command command);
 
+  // Allows guest traffic to go to DNS proxy daemon listening on the TAP or
+  // bridge interface |iif|.
+  bool ModifyIngressDnsProxyAcceptRule(IpFamily family,
+                                       Iptables::Command op,
+                                       std::string_view iif);
+
   // Allows traffic to go to DNS proxy's addresses.
   bool ModifyDnsProxyAcceptRule(IpFamily family,
                                 const DnsRedirectionRule& rule,

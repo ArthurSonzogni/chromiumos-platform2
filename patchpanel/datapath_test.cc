@@ -1350,6 +1350,14 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
       "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
       "DNAT --to-destination 100.115.92.130 -w");
   runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "filter -A ingress_dns_proxy -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "filter -A ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "nat -A redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
       "DNAT --to-destination ::1 -w");
@@ -1357,6 +1365,14 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
       IpFamily::kIPv6,
       "nat -A redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
       "DNAT --to-destination ::1 -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "filter -A ingress_dns_proxy -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "filter -A ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,
@@ -1480,6 +1496,14 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
       "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
       "DNAT --to-destination 100.115.92.130 -w");
   runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "filter -D ingress_dns_proxy -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "filter -D ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "nat -D redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
       "DNAT --to-destination ::1 -w");
@@ -1487,6 +1511,14 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
       IpFamily::kIPv6,
       "nat -D redirect_default_dns -i vmtap0 -p tcp --dport 53 -j "
       "DNAT --to-destination ::1 -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "filter -D ingress_dns_proxy -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "filter -D ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::DEFAULT,

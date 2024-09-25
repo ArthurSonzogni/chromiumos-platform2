@@ -122,6 +122,10 @@ constexpr char kIngressLocalOnlyChain[] = "ingress_localonly";
 // orders of other INPUT rules and must be after "ingress_port_firewall".
 constexpr char kIngressDownstreamNetworkChain[] = "ingress_downstream_network";
 
+// INPUT filter chain to accept DNS traffic for DNS proxy daemon listening on
+// the TAP or bridge interfaces. This is necessary for guest DNS traffic.
+constexpr char kIngressDnsProxyChain[] = "ingress_dns_proxy";
+
 // OUTPUT filter chain to drop host-initiated connection to Bruschetta and
 // FORWARD filter chain to drop external- and other-vm-initiated connection.
 constexpr char kDropOutputToBruschettaChain[] = "drop_output_to_bruschetta";
@@ -816,9 +820,21 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         LOG(ERROR) << "Failed to add DNS DNAT rule for " << rule.input_ifname;
         return false;
       }
+      if (!ModifyIngressDnsProxyAcceptRule(family, Iptables::Command::kA,
+                                           rule.input_ifname)) {
+        LOG(ERROR) << "Failed to add DNS ingress rule for "
+                   << rule.input_ifname;
+        return false;
+      }
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
+      if (!ModifyIngressDnsProxyAcceptRule(family, Iptables::Command::kA,
+                                           rule.input_ifname)) {
+        LOG(ERROR) << "Failed to add DNS ingress rule for "
+                   << rule.input_ifname;
+        return false;
+      }
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
@@ -889,11 +905,15 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
   // removal time. This prevents deletion of the rules by flushing the chains.
   switch (rule.type) {
     case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
+      ModifyIngressDnsProxyAcceptRule(family, Iptables::Command::kD,
+                                      rule.input_ifname);
       ModifyDnsProxyDNAT(family, rule, Iptables::Command::kD, rule.input_ifname,
                          kRedirectDefaultDnsChain);
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
+      ModifyIngressDnsProxyAcceptRule(family, Iptables::Command::kD,
+                                      rule.input_ifname);
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
@@ -1320,6 +1340,23 @@ bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
     };
     if (!ModifyIptables(family, Iptables::Table::kMangle, op,
                         kSkipApplyVpnMarkChain, args)) {
+      success = false;
+    }
+  }
+  return success;
+}
+
+bool Datapath::ModifyIngressDnsProxyAcceptRule(IpFamily family,
+                                               Iptables::Command op,
+                                               std::string_view iif) {
+  bool success = true;
+  for (const auto& protocol : {"udp", "tcp"}) {
+    std::vector<std::string_view> args = {
+        "-p", protocol, "--dport", kDefaultDnsPort, "-i", iif,
+        "-j", "ACCEPT", "-w",
+    };
+    if (!ModifyIptables(family, Iptables::Table::kFilter, op,
+                        kIngressDnsProxyChain, args)) {
       success = false;
     }
   }
