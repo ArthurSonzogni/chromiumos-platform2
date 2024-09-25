@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,6 +21,7 @@
 #include <base/observer_list.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/ip_address.h>
@@ -76,6 +78,29 @@ ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
 }
 
 }  // namespace
+
+std::string Network::StartOptions::ToString() const {
+  std::ostringstream oss;
+  oss << "{";
+  if (dhcp.has_value()) {
+    oss << "dhcp=" << dhcp.value().ToString() << ", ";
+  }
+  oss << "accept_ra=" << accept_ra << ", ";
+  oss << "dhcp_pd=" << dhcp_pd << ", ";
+  if (link_local_address.has_value()) {
+    oss << "link_local_address=" << link_local_address.value().ToString()
+        << ", ";
+  }
+  oss << "ignore_link_monitoring=" << ignore_link_monitoring << ", ";
+  // Skip probing_configuration which is too long.
+  oss << "probing_configuration="
+      << (probing_configuration == PortalDetector::DefaultProbingConfiguration()
+              ? "default, "
+              : "customized, ");
+  oss << "validation_mode=" << base::to_underlying(validation_mode);
+  oss << "}";
+  return oss.str();
+}
 
 int Network::next_network_id_ = 1;
 
@@ -145,7 +170,6 @@ void Network::UnregisterEventHandler(EventHandler* handler) {
 }
 
 void Network::Start(const Network::StartOptions& opts) {
-  // TODO(b/232177767): Log the StartOptions and other parameters.
   if (state_ != State::kIdle) {
     LOG(WARNING)
         << *this
@@ -153,6 +177,8 @@ void Network::Start(const Network::StartOptions& opts) {
            "new options";
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
   }
+
+  LOG(INFO) << *this << ": Starting with options=" << opts.ToString();
 
   // If the execution of this function fails, StopInternal() will be called and
   // turn the state to kIdle.

@@ -189,6 +189,8 @@ class Network : public NetworkMonitor::ClientNetwork {
     // owner of the Network can configure this mode later during the connection.
     NetworkMonitor::ValidationMode validation_mode =
         NetworkMonitor::ValidationMode::kFullValidation;
+
+    std::string ToString() const;
   };
 
   // State for tracking the L3 connectivity (e.g., portal state is not

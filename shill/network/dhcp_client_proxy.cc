@@ -4,6 +4,8 @@
 
 #include "shill/network/dhcp_client_proxy.h"
 
+#include <sstream>
+#include <string>
 #include <string_view>
 
 #include <base/functional/callback.h>
@@ -15,6 +17,18 @@ DHCPClientProxy::DHCPClientProxy(std::string_view interface,
     : interface_(interface), handler_(handler) {}
 
 DHCPClientProxy::~DHCPClientProxy() = default;
+
+std::string DHCPClientProxy::Options::ToString() const {
+  std::ostringstream oss;
+  oss << "{";
+  oss << "use_legacy_dhcpcd=" << use_legacy_dhcpcd << ", ";
+  oss << "use_arp_gateway=" << use_arp_gateway << ", ";
+  oss << "use_rfc_8925=" << use_rfc_8925 << ", ";
+  oss << "apply_dscp=" << apply_dscp;
+  // Skip hostname since it may contain PII.
+  oss << "}";
+  return oss.str();
+}
 
 bool operator==(const DHCPClientProxy::Options&,
                 const DHCPClientProxy::Options&) = default;

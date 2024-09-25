@@ -80,6 +80,7 @@ class DHCPClientProxy {
     // user-named origin.
     std::string hostname;
 
+    std::string ToString() const;
     friend bool operator==(const Options&, const Options&);
   };
 
