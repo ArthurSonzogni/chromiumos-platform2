@@ -189,6 +189,9 @@ class Network : public NetworkMonitor::ClientNetwork {
     // owner of the Network can configure this mode later during the connection.
     NetworkMonitor::ValidationMode validation_mode =
         NetworkMonitor::ValidationMode::kFullValidation;
+    // NetworkConfig specific to technology. Currently this is used by cellular
+    // and VPN.
+    std::unique_ptr<net_base::NetworkConfig> link_protocol_network_config;
 
     std::string ToString() const;
   };
@@ -239,13 +242,6 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   void RegisterEventHandler(EventHandler* handler);
   void UnregisterEventHandler(EventHandler* handler);
-
-  // Sets network config specific to technology. Currently this is used by
-  // cellular and VPN.
-  mockable void set_link_protocol_network_config(
-      std::unique_ptr<net_base::NetworkConfig> config) {
-    config_.SetFromLinkProtocol(std::move(config));
-  }
 
   mockable int network_id() const { return network_id_; }
   int interface_index() const { return interface_index_; }
@@ -416,6 +412,10 @@ class Network : public NetworkMonitor::ClientNetwork {
   }
   void set_dhcp_data_for_testing(const DHCPv4Config::Data data) {
     dhcp_data_ = data;
+  }
+  void set_link_protocol_network_config_for_testing(
+      std::unique_ptr<net_base::NetworkConfig> network_config) {
+    config_.SetFromLinkProtocol(std::move(network_config));
   }
   // Take ownership of an external created net_base::ProcFsStub and return the
   // point to internal proc_fs_ after move.

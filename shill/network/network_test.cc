@@ -479,8 +479,10 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   auto network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv6_addresses.push_back(
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:abcd::1234"));
-  network_->set_link_protocol_network_config(std::move(network_config));
-  network_->Start(Network::StartOptions{});
+  Network::StartOptions opts = {
+      .link_protocol_network_config = std::move(network_config),
+  };
+  network_->Start(opts);
 }
 
 TEST_F(NetworkTest, UseLegacyDHCPCD) {
@@ -584,7 +586,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
   network_config->ipv6_addresses = {
       *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
-  network_->set_link_protocol_network_config(std::move(network_config));
+  network_->set_link_protocol_network_config_for_testing(
+      std::move(network_config));
 
   // Connected network with IPv4 configured, reachability event matching the
   // IPv4 gateway.
@@ -685,7 +688,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       *net_base::IPv4CIDR::CreateFromStringAndPrefix(ipv4_addr_str, 32);
   network_config->ipv4_gateway =
       *net_base::IPv4Address::CreateFromString(ipv4_addr_str);
-  network_->set_link_protocol_network_config(std::move(network_config));
+  network_->set_link_protocol_network_config_for_testing(
+      std::move(network_config));
 
   SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(event1);
@@ -717,7 +721,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
   network_config->ipv6_gateway =
       *net_base::IPv6Address::CreateFromString(ipv6_addr_str);
-  network_->set_link_protocol_network_config(std::move(network_config));
+  network_->set_link_protocol_network_config_for_testing(
+      std::move(network_config));
 
   SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(event1);
@@ -745,7 +750,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       *net_base::IPv6CIDR::CreateFromStringAndPrefix(ipv6_addr_str, 120)};
   network_config->ipv6_gateway =
       *net_base::IPv6Address::CreateFromString(ipv6_addr_str);
-  network_->set_link_protocol_network_config(std::move(network_config));
+  network_->set_link_protocol_network_config_for_testing(
+      std::move(network_config));
 
   SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(event1);
@@ -1307,15 +1313,6 @@ class NetworkStartTest : public NetworkTest {
     if (test_opts.static_ipv4) {
       ConfigureStaticIPv4Config();
     }
-    if (test_opts.link_protocol_ipv4 || test_opts.link_protocol_ipv6) {
-      net_base::NetworkConfig* ipv6 =
-          test_opts.link_protocol_ipv6 ? &ipv6_link_protocol_config_ : nullptr;
-      net_base::NetworkConfig* ipv4 =
-          test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_config_ : nullptr;
-      auto network_config = net_base::NetworkConfig::Merge(ipv4, ipv6);
-      network_->set_link_protocol_network_config(
-          std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
-    }
     Network::StartOptions start_opts{
         .dhcp =
             test_opts.dhcp ? std::make_optional(kDHCPOptions) : std::nullopt,
@@ -1325,6 +1322,15 @@ class NetworkStartTest : public NetworkTest {
                                ? NetworkMonitor::ValidationMode::kFullValidation
                                : NetworkMonitor::ValidationMode::kDisabled,
     };
+    if (test_opts.link_protocol_ipv4 || test_opts.link_protocol_ipv6) {
+      net_base::NetworkConfig* ipv6 =
+          test_opts.link_protocol_ipv6 ? &ipv6_link_protocol_config_ : nullptr;
+      net_base::NetworkConfig* ipv4 =
+          test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_config_ : nullptr;
+      auto network_config = net_base::NetworkConfig::Merge(ipv4, ipv6);
+      start_opts.link_protocol_network_config =
+          std::make_unique<net_base::NetworkConfig>(network_config);
+    }
     EXPECT_CALL(*network_monitor_factory_, Create)
         .WillOnce([&start_opts, &test_opts, this]() {
           auto network_monitor = std::make_unique<MockNetworkMonitor>();

@@ -815,7 +815,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   config0->ipv4_address = net_base::IPv4CIDR::CreateFromAddressAndPrefix(
       *kTestIPAddress0.ToIPv4Address(), 32);
   config0->ipv4_gateway = kTestIPAddress0.ToIPv4Address();
-  device0->GetPrimaryNetwork()->set_link_protocol_network_config(
+  device0->GetPrimaryNetwork()->set_link_protocol_network_config_for_testing(
       std::move(config0));
 
   scoped_refptr<MockDevice> device1(new MockDevice(
@@ -837,7 +837,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   config1->ipv6_addresses = {*net_base::IPv6CIDR::CreateFromAddressAndPrefix(
       *kTestIPAddress2.ToIPv6Address(), 120)};
   config1->ipv6_gateway = kTestIPAddress2.ToIPv6Address();
-  device1->GetPrimaryNetwork()->set_link_protocol_network_config(
+  device1->GetPrimaryNetwork()->set_link_protocol_network_config_for_testing(
       std::move(config1));
 
   using Role = patchpanel::Client::NeighborRole;

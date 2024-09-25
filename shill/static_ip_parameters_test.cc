@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/service.h"
-
 #include <memory>
 
 #include <base/check.h>
@@ -21,6 +19,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/network/network.h"
+#include "shill/service.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
@@ -194,7 +193,8 @@ class StaticIPParametersTest : public Test {
     network_config->included_route_prefixes = {
         *net_base::IPCIDR::CreateFromCIDRString(kIncludedRoute0),
         *net_base::IPCIDR::CreateFromCIDRString(kIncludedRoute1)};
-    network_->set_link_protocol_network_config(std::move(network_config));
+    network_->set_link_protocol_network_config_for_testing(
+        std::move(network_config));
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
   void SetStaticPropertiesWithVersion(int version) {

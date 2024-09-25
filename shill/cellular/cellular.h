@@ -900,10 +900,8 @@ class Cellular : public Device,
     RpcIdentifier bearer_path_;
     std::unique_ptr<Network> network_;
     LinkState link_state_ = LinkState::kUnknown;
-    // Start options and network config only set after a successful
-    // Configure() operation.
+    // Start options only set after a successful Configure() operation.
     Network::StartOptions start_opts_;
-    std::optional<net_base::NetworkConfig> network_config_;
   };
 
   // Interface name of the network interface managed by this Cellular Device.

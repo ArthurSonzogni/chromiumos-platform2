@@ -3406,7 +3406,7 @@ class ServiceNetworkConfigTest : public ServiceTest {
   void SetNetworkConfigOnNetwork(const NetworkConfig& config) {
     // In this test we only need to update the merged NetworkConfig on the
     // network object. It doesn't matter which NetworkConfig we're setting here.
-    network_->set_link_protocol_network_config(
+    network_->set_link_protocol_network_config_for_testing(
         std::make_unique<NetworkConfig>(config));
   }
 

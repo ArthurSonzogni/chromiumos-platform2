@@ -4731,9 +4731,6 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     }
   }
 
-  network_config_ =
-      net_base::NetworkConfig::Merge(ipv4_config.get(), ipv6_config.get());
-
   start_opts_.dhcp = dhcp_opts;
   // TODO(b/234300343#comment43): Read probe URL override configuration
   // from shill APN dB.
@@ -4741,15 +4738,14 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
       cellular_->manager()->GetPortalDetectorProbingConfiguration();
   start_opts_.validation_mode =
       cellular_->service()->GetNetworkValidationMode();
+  start_opts_.link_protocol_network_config =
+      std::make_unique<net_base::NetworkConfig>(
+          net_base::NetworkConfig::Merge(ipv4_config.get(), ipv6_config.get()));
 
   return true;
 }
 
 void Cellular::NetworkInfo::Start() {
-  if (network_config_.has_value()) {
-    network_->set_link_protocol_network_config(
-        std::make_unique<net_base::NetworkConfig>(*network_config_));
-  }
   network_->Start(start_opts_);
 }
 

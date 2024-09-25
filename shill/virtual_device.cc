@@ -5,13 +5,13 @@
 #include "shill/virtual_device.h"
 
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
+#include <netinet/ether.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 
 #include <chromeos/net-base/network_config.h>
-#include <netinet/ether.h>
 
 #include "shill/manager.h"
 #include "shill/network/network_monitor.h"
@@ -54,14 +54,13 @@ void VirtualDevice::Stop(EnabledStateChangedCallback callback) {
 void VirtualDevice::UpdateNetworkConfig(
     std::unique_ptr<net_base::NetworkConfig> network_config) {
   CHECK(GetPrimaryNetwork());
-  GetPrimaryNetwork()->set_link_protocol_network_config(
-      std::move(network_config));
   GetPrimaryNetwork()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,
       .probing_configuration =
           manager()->GetPortalDetectorProbingConfiguration(),
       .validation_mode = NetworkMonitor::ValidationMode::kDisabled,
+      .link_protocol_network_config = std::move(network_config),
   });
 }
 

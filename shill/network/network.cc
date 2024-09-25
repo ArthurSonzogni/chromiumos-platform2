@@ -97,7 +97,10 @@ std::string Network::StartOptions::ToString() const {
       << (probing_configuration == PortalDetector::DefaultProbingConfiguration()
               ? "default, "
               : "customized, ");
-  oss << "validation_mode=" << base::to_underlying(validation_mode);
+  oss << "validation_mode=" << base::to_underlying(validation_mode) << ", ";
+  if (link_protocol_network_config) {
+    oss << "link_protocol_network_config=" << *link_protocol_network_config;
+  }
   oss << "}";
   return oss.str();
 }
@@ -195,6 +198,12 @@ void Network::Start(const Network::StartOptions& opts) {
       opts.validation_mode,
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
   network_monitor_->SetCapportEnabled(capport_enabled_);
+
+  // Cannot avoid a copy here since |opts| is a const ref.
+  if (opts.link_protocol_network_config) {
+    config_.SetFromLinkProtocol(std::make_unique<net_base::NetworkConfig>(
+        *opts.link_protocol_network_config));
+  }
 
   EnableARPFiltering();
 

@@ -1892,11 +1892,11 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
 
-  EXPECT_CALL(*default_pdn_,
-              set_link_protocol_network_config(Pointee(Eq(network_config))));
-
-  EXPECT_CALL(*default_pdn_,
-              Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
+  EXPECT_CALL(
+      *default_pdn_,
+      Start(AllOf(Field(&Network::StartOptions::dhcp, Eq(std::nullopt)),
+                  Field(&Network::StartOptions::link_protocol_network_config,
+                        Pointee(Eq(network_config))))));
 
   device_->DefaultLinkUp();
   EXPECT_EQ(service, device_->selected_service());
@@ -1941,10 +1941,11 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
                                    Cellular::LinkState::kDown);
 
-  EXPECT_CALL(*default_pdn_,
-              set_link_protocol_network_config(Pointee(Eq(network_config))));
-  EXPECT_CALL(*default_pdn_,
-              Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
+  EXPECT_CALL(
+      *default_pdn_,
+      Start(AllOf(Field(&Network::StartOptions::dhcp, Eq(std::nullopt)),
+                  Field(&Network::StartOptions::link_protocol_network_config,
+                        Pointee(Eq(network_config))))));
 
   device_->DefaultLinkUp();
   EXPECT_EQ(service, device_->selected_service());
