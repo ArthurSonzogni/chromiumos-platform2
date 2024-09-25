@@ -209,5 +209,62 @@ TEST(ServiceArcUtilsTest, ValidateStartArcVmRequest) {
        kEmptyDiskPath, kValidRuntimePropertiesFilePath, kEmptyDiskPath})));
 }
 
+TEST(ServiceArcUtilsTest, RelocateBootProps) {
+  std::vector<std::string> params = {
+      "root=/dev/vda",
+      "init=/init",
+      "androidboot.hardware=bertha",
+      "androidboot.container=1",
+      "androidboot.verifiedbootstate=orange",
+      "androidboot.hardware.hardware=abc",
+      "androidboothardware=cde",
+  };
+
+  std::vector<std::string> invalid_params = {
+      "androidboot.hardware=bertha",
+      "androidboot.foo",
+      "androidboot.container=1",
+  };
+
+  std::string props;
+
+  // Returns true for valid params
+  EXPECT_TRUE(RelocateBootProps(&params, &props));
+
+  auto vec_contains = [](const std::vector<std::string>& vec,
+                         const std::string& term) {
+    return std::find(vec.begin(), vec.end(), term) != vec.end();
+  };
+
+  auto str_contains = [](const std::string& str, const std::string& term) {
+    return str.find(term) != std::string::npos;
+  };
+
+  // Non-androidboot. properties are left in |params|
+  EXPECT_TRUE(vec_contains(params, "root=/dev/vda"));
+  EXPECT_FALSE(str_contains(props, "/dev/vda"));
+  EXPECT_TRUE(vec_contains(params, "init=/init"));
+  EXPECT_FALSE(str_contains(props, "=/init"));
+  EXPECT_TRUE(vec_contains(params, "androidboothardware=cde"));
+  EXPECT_FALSE(str_contains(props, "=cde"));
+
+  // Allowlisted properties are left in |params|
+  EXPECT_TRUE(vec_contains(params, "androidboot.hardware=bertha"));
+  EXPECT_FALSE(str_contains(props, "hardware=bertha"));
+  EXPECT_TRUE(vec_contains(params, "androidboot.verifiedbootstate=orange"));
+  EXPECT_FALSE(str_contains(props, "verifiedbootstate=orange"));
+
+  // Android properties are moved to |props|
+  EXPECT_FALSE(vec_contains(params, "androidboot.container=1"));
+  EXPECT_TRUE(str_contains(props, "ro.boot.container=1"));
+
+  // Property prefixed with an allowlisted property is moved to |props|
+  EXPECT_FALSE(vec_contains(params, "androidboot.hardware.hardware=abc"));
+  EXPECT_TRUE(str_contains(props, "ro.boot.hardware.hardware=abc"));
+
+  // Returns false if any properties do not have values
+  EXPECT_FALSE(RelocateBootProps(&invalid_params, &props));
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

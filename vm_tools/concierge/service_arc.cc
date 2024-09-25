@@ -187,7 +187,7 @@ bool WriteRuntimeSystemPropertiesToDisk(const base::FilePath& disk_path,
     return false;
   }
 
-  // Allocate the disk
+  // Allocate the disk so that it is aligned to kDefaultBlockSize.
   if (fallocate(disk_fd.get(), 0, 0, num_blocks * kDefaultBlockSize) != 0) {
     PLOG(ERROR) << "Failed to allocate disk for runtime system properties at "
                 << disk_path.value();
@@ -562,7 +562,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   vm_builder.SetCpus(topology.NumCPUs())
-      .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kArcvmVcpuCpuCgroup).value())
       .AppendCustomParam(
@@ -581,7 +580,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     kernel_path = base::FilePath(kGkiPath);
     vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
     // This is set to 0 by the GKI kernel so we set back to the default.
-    vm_builder.AppendKernelParam("8250.nr_uarts=4");
+    params.emplace_back("8250.nr_uarts=4");
     // TODO(b/331748554): The GKI doesn't have the pvclock driver.
     vm_builder.EnablePvClock(false /* disable */);
   } else {
@@ -605,7 +604,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     // Rise the uclamp_min value of the top-app in the ARCVM. This is a
     // performance tuning for games on big.LITTLE platform and Capacity
     // Aware Scheduler (CAS) on Linux.
-    vm_builder.AppendKernelParam(base::StringPrintf(
+    params.emplace_back(base::StringPrintf(
         "androidboot.arc_top_app_uclamp_min=%d", topology.TopAppUclampMin()));
   }
 
@@ -663,8 +662,12 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     response.set_failure_reason("Unable to read modified.prop");
     return response;
   }
-  // TODO(ynaffit): Relocate androidboot properties to this file once
-  // ARCVM can mount this block device during first_stage_init
+
+  if (!RelocateBootProps(&params, &props)) {
+    response.set_failure_reason(
+        "Unable to move androidboot command-line properties");
+    return response;
+  }
 
   if (!WriteRuntimeSystemPropertiesToDisk(sysprop_disk_path,
                                           std::move(sysprop_disk_fd), props)) {
@@ -674,6 +677,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
         "Unable to write runtime system properties to disk");
     return response;
   }
+
+  vm_builder.AppendKernelParam(base::JoinString(params, " "));
 
   base::RepeatingCallback<void(SwappingState)> vm_swapping_notify_callback =
       base::BindRepeating(&Service::NotifyVmSwapping,

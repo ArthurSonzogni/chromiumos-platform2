@@ -5,7 +5,9 @@
 #ifndef VM_TOOLS_CONCIERGE_SERVICE_ARC_UTILS_H_
 #define VM_TOOLS_CONCIERGE_SERVICE_ARC_UTILS_H_
 
+#include <set>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <vm_concierge/concierge_service.pb.h>
@@ -40,6 +42,42 @@ constexpr char kVendorImagePath[] = "/opt/google/vms/android/vendor.raw.img";
 constexpr char kApexPayloadImagePath[] =
     "/opt/google/vms/android/apex/payload.img";
 
+// Prefix for Android command-line system properties.
+constexpr char kAndroidBootPrefix[] = "androidboot.";
+constexpr size_t kAndroidBootPrefixLen = 12;
+
+// Allowlist of androidboot.* properties on the kernel command line.
+// Only properties that are fixed during PropertyInit or referenced explicitly
+// by their androidboot.* (i.e., not just ro.boot.*) name should be added to
+// this list. Please refer to the 'Property Migration' section of
+// go/arcvm-prop-blk-device for context.
+const std::set<std::string> kBootPropAllowList = {
+    // Properties that are fixed by ExportKernelBootProps during Android
+    // PropertyInit in property_service.cpp.
+    "androidboot.mode",        // ro.bootmode
+    "androidboot.baseband",    // ro.baseband
+    "androidboot.bootloader",  // ro.bootloader
+    "androidboot.hardware",    // ro.hardware
+    "androidboot.revision",    // ro.revision
+    // Properties that are referenced by their androidboot.* name explicitly
+    // somewhere in Android code; i.e., without using the Android
+    // PropertyService (i.e., by using getprop, property_get, etc.).
+    "androidboot.android_dt_dir",            // fs_mgr, ueventd
+    "androidboot.boot_device",               // fs_mgr
+    "androidboot.boot_devices",              // fs_mgr
+    "androidboot.dtbo_idx",                  // verified boot
+    "androidboot.first_stage_console",       // init
+    "androidboot.force_normal_boot",         // init
+    "androidboot.init_fatal_panic",          // init
+    "androidboot.init_fatal_reboot_target",  // init
+    "androidboot.partition_map",             // init
+    "androidboot.selinux",                   // init
+    "androidboot.slot",                      // verified boot
+    "androidboot.slot_suffix",               // fs_mgr, verified boot
+    "androidboot.verifiedbootstate",         // verified boot
+    "androidboot.veritymode",                // verified boot
+};
+
 // Returns "/run/daemon-store/crosvm/<owner_id>".
 base::FilePath GetCryptohomePath(const std::string& owner_id);
 
@@ -63,6 +101,13 @@ bool IsValidPropertiesFileDiskPath(const base::FilePath& path);
 
 // Returns true if the StartArcVmRequest contains valid ARCVM config values.
 bool ValidateStartArcVmRequest(const StartArcVmRequest& request);
+
+// Iterates through ARCVM kernel command line |params| to find androidboot.*
+// properties, writes them to |runtime_properties| as ro.boot. properties, and
+// removes them from |params|. Skips over non-system property parameters and
+// those in |kBootPropAllowList|.
+bool RelocateBootProps(std::vector<std::string>* params,
+                       std::string* runtime_properties);
 
 }  // namespace vm_tools::concierge
 

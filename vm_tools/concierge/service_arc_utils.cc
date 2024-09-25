@@ -145,4 +145,36 @@ bool ValidateStartArcVmRequest(const StartArcVmRequest& request) {
   return true;
 }
 
+bool RelocateBootProps(std::vector<std::string>* params,
+                       std::string* runtime_properties) {
+  for (auto it = params->begin(); it != params->end();) {
+    if (!base::StartsWith(*it, kAndroidBootPrefix)) {
+      ++it;
+      continue;
+    }
+
+    const size_t found = it->find("=");
+    if (found == std::string::npos) {
+      LOG(ERROR) << "Could not parse ARCVM command-line parameters. "
+                 << "Last param: " << *it;
+      return false;
+    }
+
+    const std::string key = it->substr(0, found);
+    // Do not start with (found + 1) because value starts with "=".
+    const std::string val = it->substr(found);
+
+    if (kBootPropAllowList.find(key) != kBootPropAllowList.end()) {
+      ++it;
+      continue;
+    }
+
+    *runtime_properties +=
+        "ro.boot." + key.substr(kAndroidBootPrefixLen) + val + "\n";
+    it = params->erase(it);
+  }
+
+  return true;
+}
+
 }  // namespace vm_tools::concierge
