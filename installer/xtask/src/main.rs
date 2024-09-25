@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -26,19 +26,31 @@ struct TestInstallArgs {
     test_image: PathBuf,
 }
 
+// Make running commands a little nicer:
+// * Log the command being run
+// * Handle the two-level status check
+fn run_command(cmd: &mut Command) -> Result<()> {
+    let cmd_str = format!("{:?}", cmd).replace('"', "");
+    println!("Running: {cmd_str}");
+
+    let status = cmd.status()?;
+    if !status.success() {
+        bail!("Command failed with: {:?}", status.code());
+    }
+
+    Ok(())
+}
+
 fn make_hdb(in_dir: &Path) -> Result<PathBuf> {
     let mut path = in_dir.to_path_buf();
     path.push("hdb");
 
-    let status = Command::new("qemu-img")
-        .args(["create", "-f", "raw"])
-        .arg(&path)
-        .arg("16G")
-        .status()?;
+    let mut cmd = Command::new("qemu-img");
+    cmd.args(["create", "-f", "raw"]);
+    cmd.arg(&path);
+    cmd.arg("16G");
 
-    if !status.success() {
-        bail!("Couldn't create hdb at {}", path.display())
-    }
+    run_command(&mut cmd).with_context(|| format!("Couldn't create hdb at {}", path.display()))?;
 
     Ok(path)
 }
@@ -76,10 +88,7 @@ fn start_vm(installer_image: &Path, hdb: &Path) -> Result<()> {
         &format!("if=none,id=hdb,format=raw,file={hdb_path}"),
     ]);
 
-    let status = cmd.status()?;
-    if !status.success() {
-        bail!("Couldn't start vm");
-    }
+    run_command(&mut cmd).context("Couldn't start vm")?;
 
     Ok(())
 }
@@ -90,10 +99,7 @@ fn stop_vm() -> Result<()> {
     let mut cmd = cros_vm();
     cmd.arg("--stop");
 
-    let status = cmd.status()?;
-    if !status.success() {
-        bail!("Couldn't stop vm, so it may still be running.");
-    }
+    run_command(&mut cmd).context("Couldn't stop vm, so it may still be running.")?;
 
     Ok(())
 }
@@ -112,10 +118,7 @@ fn basic_install() -> Result<()> {
     let mut cmd = vm_command();
     cmd.args(["chromeos-install", "--dst", "/dev/sdb", "--yes"]);
 
-    let status = cmd.status()?;
-    if !status.success() {
-        bail!("Couldn't install. Leaving vm running for debugging.");
-    }
+    run_command(&mut cmd).context("Couldn't install. Leaving vm running for debugging.")?;
 
     Ok(())
 }
