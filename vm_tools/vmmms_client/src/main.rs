@@ -16,6 +16,7 @@ use nix::poll::PollFd;
 use nix::poll::PollFlags;
 use nix::poll::PollTimeout;
 use std::os::fd::AsFd;
+use std::path::Path;
 use std::time::Duration;
 use std::time::Instant;
 use system_api::vm_memory_management::ResizePriority;
@@ -43,7 +44,7 @@ fn main() -> Result<()> {
             VM_MEMORY_MANAGEMENT_RECLAIM_SERVER_PORT,
             READ_TIMEOUT,
         )?,
-        MGLRU_ADMIN_FILE_PATH,
+        Path::new(MGLRU_ADMIN_FILE_PATH),
     )?;
 
     let mut kills_client: KillsClient = KillsClient::new(
@@ -52,7 +53,7 @@ fn main() -> Result<()> {
             VM_MEMORY_MANAGEMENT_KILLS_SERVER_PORT,
             READ_TIMEOUT,
         )?,
-        PSI_FILE_PATH,
+        Path::new(PSI_FILE_PATH),
     )?;
 
     info!("VmMemoryManagementClient connection established");

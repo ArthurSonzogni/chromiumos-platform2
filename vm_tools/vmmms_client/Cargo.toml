@@ -14,3 +14,4 @@ anyhow = "1.0.69"
 nix = { version = "0.28.0", features = ["poll"] }
 once_cell = "1.7"
 libc = "0.2"
+tempfile = "3.4.0"

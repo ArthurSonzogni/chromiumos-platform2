@@ -54,6 +54,9 @@ impl VmmmsSocket {
         client_vsock_test
             .set_read_timeout(timeout)
             .expect("Failed to set read timeout");
+        server_vsock_test
+            .set_read_timeout(timeout)
+            .expect("Failed to set read timeout");
 
         (
             VmmmsSocket {
@@ -132,7 +135,7 @@ impl AsFd for VmmmsSocket {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::VmmmsSocket;
     use crate::READ_TIMEOUT;
     use protobuf::Message;
@@ -140,6 +143,15 @@ mod tests {
     use system_api::vm_memory_management::ConnectionType;
     use system_api::vm_memory_management::PacketType;
     use system_api::vm_memory_management::VmMemoryManagementPacket;
+
+    pub fn write_handshake_response(server_vsock_test: &mut VmmmsSocket) {
+        let mut handshake_response = VmMemoryManagementPacket::new();
+        handshake_response.type_ = PacketType::PACKET_TYPE_CONNECTION_ACK.into();
+        server_vsock_test
+            .write_packet(handshake_response)
+            .expect("Should be able to write packet");
+    }
+
     #[test]
     fn write_and_read_packet_succeeds() {
         let (mut client_vsock_test, mut server_vsock_test) =

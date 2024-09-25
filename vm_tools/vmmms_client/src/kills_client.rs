@@ -13,6 +13,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::os::fd::AsFd;
+use std::path::Path;
 use std::time::Duration;
 use std::time::Instant;
 use system_api::vm_memory_management::ConnectionType;
@@ -33,7 +34,7 @@ pub struct KillsClient {
 }
 
 impl KillsClient {
-    pub fn new(mut vmmms_socket: VmmmsSocket, psi_file_path: &str) -> Result<Self> {
+    pub fn new(mut vmmms_socket: VmmmsSocket, psi_file_path: &Path) -> Result<Self> {
         vmmms_socket.handshake(ConnectionType::CONNECTION_TYPE_KILLS)?;
 
         const LOW_STALL_DURATION: Duration = Duration::from_millis(200);
@@ -56,7 +57,7 @@ impl KillsClient {
         })
     }
 
-    fn set_trigger(psi_file_path: &str, stall: Duration) -> Result<File> {
+    fn set_trigger(psi_file_path: &Path, stall: Duration) -> Result<File> {
         let mut psi_file: File = OpenOptions::new()
             .read(true)
             .write(true)
@@ -161,7 +162,7 @@ impl KillsClient {
                 continue;
             }
 
-            let mut kill_decision_response = self.vmmms_socket.read_packet()?;
+            let kill_decision_response = self.vmmms_socket.read_packet()?;
             if kill_decision_response.type_ != PacketType::PACKET_TYPE_KILL_DECISION.into() {
                 info!("Received unsupported command on kill decision request.");
                 continue;
@@ -172,7 +173,7 @@ impl KillsClient {
             };
 
             received_sequence_num = kill_decision_response
-                .mut_kill_decision_response()
+                .kill_decision_response()
                 .sequence_num;
             size_freed_kb = kill_decision_response
                 .kill_decision_response()
@@ -200,5 +201,369 @@ impl KillsClient {
         self.vmmms_socket.write_packet(latency_packet)?;
 
         return Ok(());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::vmmms_socket::tests::write_handshake_response;
+    use crate::KillsClient;
+    use crate::VmmmsSocket;
+    use crate::READ_TIMEOUT;
+    use std::time::Duration;
+    use std::time::Instant;
+    use system_api::vm_memory_management::ConnectionType;
+    use system_api::vm_memory_management::PacketType;
+    use system_api::vm_memory_management::ResizePriority;
+    use system_api::vm_memory_management::VmMemoryManagementPacket;
+    use tempfile::NamedTempFile;
+
+    fn write_kill_decision_response(
+        server_vsock_test: &mut VmmmsSocket,
+        sequence_num: u32,
+        size_freed_kb: u32,
+    ) {
+        let mut kill_decision_response = VmMemoryManagementPacket::new();
+        kill_decision_response.type_ = PacketType::PACKET_TYPE_KILL_DECISION.into();
+        kill_decision_response
+            .mut_kill_decision_response()
+            .sequence_num = sequence_num;
+        kill_decision_response
+            .mut_kill_decision_response()
+            .size_freed_kb = size_freed_kb;
+        server_vsock_test
+            .write_packet(kill_decision_response)
+            .expect("Should be able to write packet");
+    }
+
+    #[test]
+    fn connection_succeeds() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+
+        let file = NamedTempFile::new().unwrap();
+        let _kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+
+        let handshake_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            handshake_packet.type_,
+            PacketType::PACKET_TYPE_HANDSHAKE.into()
+        );
+        assert_eq!(
+            handshake_packet.handshake().type_,
+            ConnectionType::CONNECTION_TYPE_KILLS.into()
+        );
+    }
+
+    #[test]
+    fn no_kill_decision_response() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+
+        kills_client_test
+            .handle_psi_notification(ResizePriority::RESIZE_PRIORITY_CACHED_APP, Instant::now())
+            .expect("Should be able to handle psi notification");
+
+        let kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            kill_request.type_,
+            PacketType::PACKET_TYPE_KILL_REQUEST.into()
+        );
+        assert_eq!(
+            kill_request.kill_decision_request().priority,
+            ResizePriority::RESIZE_PRIORITY_CACHED_APP.into()
+        );
+        let latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            latency_packet.type_,
+            PacketType::PACKET_TYPE_DECISION_LATENCY.into()
+        );
+        assert_eq!(latency_packet.decision_latency().sequence_num, 1);
+        assert!(latency_packet.decision_latency().latency_ms == u32::MAX);
+    }
+
+    #[test]
+    fn several_kill_decision_response() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+
+        kills_client_test
+            .handle_psi_notification(ResizePriority::RESIZE_PRIORITY_CACHED_APP, Instant::now())
+            .expect("Should be able to handle psi notification");
+        let _kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        let _latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+
+        write_kill_decision_response(&mut server_vsock_test, 1, 100);
+        write_kill_decision_response(&mut server_vsock_test, 2, 100);
+        kills_client_test
+            .handle_psi_notification(ResizePriority::RESIZE_PRIORITY_CACHED_APP, Instant::now())
+            .expect("Should be able to handle psi notification");
+
+        let kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            kill_request.type_,
+            PacketType::PACKET_TYPE_KILL_REQUEST.into()
+        );
+        assert_eq!(
+            kill_request.kill_decision_request().priority,
+            ResizePriority::RESIZE_PRIORITY_CACHED_APP.into()
+        );
+        let latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            latency_packet.type_,
+            PacketType::PACKET_TYPE_DECISION_LATENCY.into()
+        );
+        assert_eq!(latency_packet.decision_latency().sequence_num, 2);
+        assert!(latency_packet.decision_latency().latency_ms < u32::MAX);
+    }
+
+    #[test]
+    fn invalid_kill_decision_response() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+
+        let mut ivalid_kill_decision_response = VmMemoryManagementPacket::new();
+        ivalid_kill_decision_response.type_ = PacketType::PACKET_TYPE_MGLRU_REQUEST.into();
+        server_vsock_test
+            .write_packet(ivalid_kill_decision_response)
+            .expect("Should be able to write packet");
+
+        kills_client_test
+            .handle_psi_notification(ResizePriority::RESIZE_PRIORITY_CACHED_APP, Instant::now())
+            .expect("Should be able to handle psi notification");
+        let kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            kill_request.type_,
+            PacketType::PACKET_TYPE_KILL_REQUEST.into()
+        );
+        assert_eq!(
+            kill_request.kill_decision_request().priority,
+            ResizePriority::RESIZE_PRIORITY_CACHED_APP.into()
+        );
+        let latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            latency_packet.type_,
+            PacketType::PACKET_TYPE_DECISION_LATENCY.into()
+        );
+        assert_eq!(latency_packet.decision_latency().sequence_num, 1);
+        assert!(latency_packet.decision_latency().latency_ms == u32::MAX);
+    }
+
+    #[test]
+    fn handle_psi_notification_succeeds() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+        write_kill_decision_response(&mut server_vsock_test, 1, 100);
+
+        kills_client_test
+            .handle_psi_notification(ResizePriority::RESIZE_PRIORITY_CACHED_APP, Instant::now())
+            .expect("Should be able to handle psi notification");
+        let kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            kill_request.type_,
+            PacketType::PACKET_TYPE_KILL_REQUEST.into()
+        );
+        assert_eq!(
+            kill_request.kill_decision_request().priority,
+            ResizePriority::RESIZE_PRIORITY_CACHED_APP.into()
+        );
+        let latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            latency_packet.type_,
+            PacketType::PACKET_TYPE_DECISION_LATENCY.into()
+        );
+        assert_eq!(latency_packet.decision_latency().sequence_num, 1);
+        assert!(latency_packet.decision_latency().latency_ms < u32::MAX);
+    }
+
+    #[test]
+    fn block_lower_priority_of_kill_request() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+        write_kill_decision_response(&mut server_vsock_test, 1, 100);
+        let first_notification_timestamp = Instant::now();
+        kills_client_test
+            .handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_FOCUSED_APP,
+                first_notification_timestamp,
+            )
+            .expect("Should be able to handle psi notification");
+        let _kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        let _latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        kills_client_test
+            .handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP,
+                first_notification_timestamp,
+            )
+            .expect("Should be able to handle psi notification");
+
+        assert!(server_vsock_test.read_packet().is_err());
+    }
+
+    #[test]
+    fn unblock_lower_priority_of_kill_request_after_cooldown() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+        write_kill_decision_response(&mut server_vsock_test, 1, 100);
+        let first_notification_timestamp = Instant::now();
+        kills_client_test
+            .handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_FOCUSED_APP,
+                first_notification_timestamp,
+            )
+            .expect("Should be able to handle psi notification");
+        let _kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        let _latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        const MEDIUM_COOLDOWN: Duration = Duration::from_secs(2);
+        write_kill_decision_response(&mut server_vsock_test, 2, 100);
+        kills_client_test
+            .handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP,
+                first_notification_timestamp
+                    .checked_add(MEDIUM_COOLDOWN)
+                    .unwrap(),
+            )
+            .expect("Should be able to handle psi notification");
+
+        let kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            kill_request.type_,
+            PacketType::PACKET_TYPE_KILL_REQUEST.into()
+        );
+        assert_eq!(
+            kill_request.kill_decision_request().priority,
+            ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP.into()
+        );
+        let latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            latency_packet.type_,
+            PacketType::PACKET_TYPE_DECISION_LATENCY.into()
+        );
+        assert_eq!(latency_packet.decision_latency().sequence_num, 2);
+        assert!(latency_packet.decision_latency().latency_ms < u32::MAX);
+    }
+
+    #[test]
+    fn unblock_higher_priority_of_kill_request() {
+        let (client_vsock_test, mut server_vsock_test) =
+            VmmmsSocket::pair_for_testing(READ_TIMEOUT);
+        write_handshake_response(&mut server_vsock_test);
+
+        let file = NamedTempFile::new().unwrap();
+        let mut kills_client_test: KillsClient =
+            KillsClient::new(client_vsock_test, file.path()).expect("Should complete handshake");
+        let _handshake_packet = server_vsock_test.read_packet().unwrap();
+        write_kill_decision_response(&mut server_vsock_test, 1, 100);
+        let first_notification_timestamp = Instant::now();
+        kills_client_test
+            .handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_APP,
+                first_notification_timestamp,
+            )
+            .expect("Should be able to handle psi notification");
+        let _kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        let _latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        write_kill_decision_response(&mut server_vsock_test, 2, 100);
+        kills_client_test
+            .handle_psi_notification(
+                ResizePriority::RESIZE_PRIORITY_FOCUSED_APP,
+                first_notification_timestamp,
+            )
+            .expect("Should be able to handle psi notification");
+
+        let kill_request = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            kill_request.type_,
+            PacketType::PACKET_TYPE_KILL_REQUEST.into()
+        );
+        assert_eq!(
+            kill_request.kill_decision_request().priority,
+            ResizePriority::RESIZE_PRIORITY_FOCUSED_APP.into()
+        );
+        let latency_packet = server_vsock_test
+            .read_packet()
+            .expect("Should be able to read packet");
+        assert_eq!(
+            latency_packet.type_,
+            PacketType::PACKET_TYPE_DECISION_LATENCY.into()
+        );
+        assert_eq!(latency_packet.decision_latency().sequence_num, 2);
+        assert!(latency_packet.decision_latency().latency_ms < u32::MAX);
     }
 }
