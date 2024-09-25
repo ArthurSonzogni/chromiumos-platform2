@@ -68,6 +68,7 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
     mojo::Remote<ReceiverType>& cur_model() { return cur_model_; }
     mojo::Remote<mojom::OnDeviceModel>& base_model() { return base_model_; }
     mojo::Remote<mojom::TextSafetyModel>& ts_model() { return ts_model_; }
+    mojom::ModelBackendType& backend_type() { return backend_type_; }
 
     base::WeakPtr<PlatformModel> AsWeakPtr() {
       return weak_ptr_factory_.GetWeakPtr();
@@ -81,6 +82,8 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
     mojo::Remote<ReceiverType> cur_model_;
     mojo::Remote<mojom::OnDeviceModel> base_model_;
     mojo::Remote<mojom::TextSafetyModel> ts_model_;
+    // Only used for base model ReceiverType.
+    mojom::ModelBackendType backend_type_ = mojom::ModelBackendType::kGpu;
     base::WeakPtrFactory<PlatformModel> weak_ptr_factory_{this};
   };
 

@@ -609,11 +609,20 @@ void ChromeosPlatformModelLoader::LoadAdaptationPlatformModel(
     return;
   }
 
-  on_device_model::AdaptationAssetPaths adaptation_paths;
-  adaptation_paths.weights = dlc_root.Append(weight_path);
-
+  // GPU backend sends the opened weight file to ML APIs directly. Other
+  // backends send the weight file path.
+  mojom::ModelBackendType backend_type =
+      base_record.platform_model->backend_type();
   auto params = on_device_model::mojom::LoadAdaptationParams::New();
-  params->assets = on_device_model::LoadAdaptationAssets(adaptation_paths);
+  if (backend_type == mojom::ModelBackendType::kGpu) {
+    on_device_model::AdaptationAssetPaths adaptation_paths;
+    adaptation_paths.weights = dlc_root.Append(weight_path);
+    params->assets = on_device_model::LoadAdaptationAssets(adaptation_paths);
+  } else {
+    on_device_model::AdaptationAssets assets;
+    assets.weights_path = dlc_root.Append(weight_path);
+    params->assets = std::move(assets);
+  }
 
   mojo::PendingReceiver<mojom::OnDeviceModel> pending =
       model->cur_model().BindNewPipeAndPassReceiver();
@@ -696,6 +705,7 @@ void ChromeosPlatformModelLoader::LoadBasePlatformModel(
   params->adaptation_ranks = adaptation_ranks;
   params->support_multiple_sessions = true;
 
+  model->backend_type() = backend_type;
   mojom::TextSafetyModel* ts_model = nullptr;
   if (model->ts_model()) {
     ts_model = model->ts_model().get();
