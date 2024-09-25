@@ -111,6 +111,9 @@ extern const char kPrefsManifestBytes[];
 extern const char kPrefsConsumerAutoUpdateDisabled[];
 extern const char kPrefsDeferredUpdateCompleted[];
 
+// Migration related prefs.
+extern const char kPrefsMigration[];
+
 // Keys used when storing and loading payload properties.
 extern const char kPayloadPropertyFileSize[];
 extern const char kPayloadPropertyFileHash[];

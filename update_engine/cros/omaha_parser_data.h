@@ -38,6 +38,7 @@ extern const char kAttrStatus[];
 extern const char kAttrDisableMarketSegment[];
 extern const char kAttrInvalidateLastUpdate[];
 extern const char kAttrNoUpdateReason[];
+extern const char kAttrMigration[];
 
 // |package| attributes.
 extern const char kAttrFp[];
@@ -92,6 +93,7 @@ struct OmahaParserData {
 
     struct UpdateCheck {
       std::string status;
+      std::string migration;
       std::string poll_interval;
       std::string eol_date;
       std::string extended_date;

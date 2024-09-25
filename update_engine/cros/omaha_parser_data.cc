@@ -35,6 +35,7 @@ const char kAttrStatus[] = "status";
 const char kAttrDisableMarketSegment[] = "_disable_dms";
 const char kAttrInvalidateLastUpdate[] = "_invalidate_last_update";
 const char kAttrNoUpdateReason[] = "_no_update_reason";
+const char kAttrMigration[] = "_migration";
 
 // |package| attributes.
 const char kAttrFp[] = "fp";

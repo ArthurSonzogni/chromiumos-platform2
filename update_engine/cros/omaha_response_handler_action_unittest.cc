@@ -1058,4 +1058,97 @@ TEST_F(OmahaResponseHandlerActionTest,
   ASSERT_FALSE(DoTest(omaha_response, &install_plan));
 }
 
+TEST_F(OmahaResponseHandlerActionTest, MigrationTest) {
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()),
+              SetString(kPrefsMigration, testing::_))
+      .WillOnce(Return(true));
+
+  OmahaResponse in;
+  in.update_exists = false;
+  in.migration = true;
+  InstallPlan install_plan;
+  EXPECT_FALSE(DoTest(in, &install_plan));
+}
+
+TEST_F(OmahaResponseHandlerActionTest, MigrationUpdateTest) {
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()),
+              SetString(kPrefsMigration, testing::_))
+      .WillOnce(Return(true));
+
+  OmahaResponse in;
+  in.update_exists = true;
+  in.version = "a.b.c.d";
+  in.packages.push_back({.payload_urls = {"http://foo/the_update_a.b.c.d.tgz"},
+                         .size = 12,
+                         .hash = kPayloadHashHex,
+                         .app_id = kPayloadAppId,
+                         .fp = kPayloadFp1});
+  in.more_info_url = "http://more/info";
+  in.prompt = false;
+  in.migration = true;
+  InstallPlan install_plan;
+  EXPECT_TRUE(DoTest(in, &install_plan));
+}
+
+TEST_F(OmahaResponseHandlerActionTest, MigrationFailedPrefCreateTest) {
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()),
+              SetString(kPrefsMigration, testing::_))
+      .WillOnce(Return(false));
+
+  OmahaResponse in;
+  in.update_exists = false;
+  in.migration = true;
+  InstallPlan install_plan;
+  EXPECT_FALSE(DoTest(in, &install_plan));
+  EXPECT_EQ(ErrorCode::kOmahaResponseInvalid, action_result_code_);
+}
+
+TEST_F(OmahaResponseHandlerActionTest, NoMigrationTest) {
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()), Exists(kPrefsMigration))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()), Delete(kPrefsMigration))
+      .WillOnce(Return(true));
+
+  OmahaResponse in;
+  in.update_exists = false;
+  in.migration = false;
+  InstallPlan install_plan;
+  EXPECT_FALSE(DoTest(in, &install_plan));
+}
+
+TEST_F(OmahaResponseHandlerActionTest, NoMigrationUpdateTest) {
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()), Exists(kPrefsMigration))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()), Delete(kPrefsMigration))
+      .WillOnce(Return(true));
+
+  OmahaResponse in;
+  in.update_exists = true;
+  in.version = "a.b.c.d";
+  in.packages.push_back({.payload_urls = {"http://foo/the_update_a.b.c.d.tgz"},
+                         .size = 12,
+                         .hash = kPayloadHashHex,
+                         .app_id = kPayloadAppId,
+                         .fp = kPayloadFp1});
+  in.more_info_url = "http://more/info";
+  in.prompt = false;
+  in.migration = false;
+  InstallPlan install_plan;
+  EXPECT_TRUE(DoTest(in, &install_plan));
+}
+
+TEST_F(OmahaResponseHandlerActionTest, NoMigrationFailedPrefDeleteTest) {
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()), Exists(kPrefsMigration))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*(FakeSystemState::Get()->mock_prefs()), Delete(kPrefsMigration))
+      .WillOnce(Return(false));
+
+  OmahaResponse in;
+  in.update_exists = false;
+  in.migration = false;
+  InstallPlan install_plan;
+  EXPECT_FALSE(DoTest(in, &install_plan));
+  EXPECT_EQ(ErrorCode::kOmahaResponseInvalid, action_result_code_);
+}
+
 }  // namespace chromeos_update_engine

@@ -4,6 +4,7 @@
 
 #include "update_engine/cros/omaha_request_action.h"
 
+#include <expat.h>
 #include <stdint.h>
 
 #include <limits>
@@ -23,7 +24,6 @@
 #include <brillo/message_loops/fake_message_loop.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
-#include <expat.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_libpolicy.h>
@@ -114,7 +114,7 @@ struct FakeUpdateResponse {
            (invalidate_last_update ? " _invalidate_last_update=\"true\" "
                                    : "") +
            (disable_market_segment ? " _disable_dms=\"true\" " : "") +
-           "/></app>" +
+           (migration ? " _migration=\"true\" " : "") + "/></app>" +
            (multi_app_no_update
                 ? "<app appid=\"" + app_id2 +
                       "\"><updatecheck status=\"noupdate\"" +
@@ -144,6 +144,7 @@ struct FakeUpdateResponse {
            " status=\"ok\">"
            "<ping status=\"ok\"/><updatecheck status=\"ok\"" +
            GetRollbackVersionAttributes() +
+           (migration ? " _migration=\"true\" " : "") +
            (disable_market_segment ? " _disable_dms=\"true\" " : "") + ">" +
            "<urls><url codebase=\"" + codebase +
            "\"/></urls>"
@@ -276,6 +277,9 @@ struct FakeUpdateResponse {
   bool disable_market_segment = false;
   bool invalidate_last_update = false;
   bool invalidate_non_platform_last_update = false;
+
+  // Update migration attribute.
+  bool migration = false;
 
   bool powerwash = false;
 
@@ -2120,6 +2124,46 @@ TEST_F(OmahaRequestActionTest, TargetChannelHintTest) {
   ASSERT_TRUE(TestUpdateCheck());
 
   EXPECT_NE(string::npos, post_str_.find("ltstag=\"hint&gt;\""));
+}
+
+TEST_F(OmahaRequestActionTest, MigrationNoUpdateTest) {
+  fake_update_response_.migration = true;
+  tuc_params_.http_response = fake_update_response_.GetNoUpdateResponse();
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  EXPECT_TRUE(TestUpdateCheck());
+  EXPECT_FALSE(response_.update_exists);
+  EXPECT_TRUE(response_.migration);
+}
+
+TEST_F(OmahaRequestActionTest, NoMigrationNoUpdateTest) {
+  fake_update_response_.migration = false;
+  tuc_params_.http_response = fake_update_response_.GetNoUpdateResponse();
+  tuc_params_.expected_check_result = metrics::CheckResult::kNoUpdateAvailable;
+  tuc_params_.expected_check_reaction = metrics::CheckReaction::kUnset;
+
+  EXPECT_TRUE(TestUpdateCheck());
+  EXPECT_FALSE(response_.update_exists);
+  EXPECT_FALSE(response_.migration);
+}
+
+TEST_F(OmahaRequestActionTest, MigrationUpdateTest) {
+  fake_update_response_.migration = true;
+  tuc_params_.http_response = fake_update_response_.GetUpdateResponse();
+
+  EXPECT_TRUE(TestUpdateCheck());
+  EXPECT_TRUE(response_.update_exists);
+  EXPECT_TRUE(response_.migration);
+}
+
+TEST_F(OmahaRequestActionTest, NoMigrationUpdateTest) {
+  fake_update_response_.migration = false;
+  tuc_params_.http_response = fake_update_response_.GetUpdateResponse();
+
+  EXPECT_TRUE(TestUpdateCheck());
+  EXPECT_TRUE(response_.update_exists);
+  EXPECT_FALSE(response_.migration);
 }
 
 void OmahaRequestActionTest::PingTest(bool ping_only) {

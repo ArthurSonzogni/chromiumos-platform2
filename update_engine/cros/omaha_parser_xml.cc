@@ -9,9 +9,9 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 using std::map;
 using std::string;
@@ -81,6 +81,7 @@ void OmahaParserXml::ParserHandlerStart(void* user_data,
   } else if (parser->current_path_ == "/response/app/updatecheck") {
     data->apps.back().updatecheck = {
         .status = attrs[kAttrStatus],
+        .migration = attrs[kAttrMigration],
         .poll_interval = attrs[kAttrPollInterval],
         .eol_date = attrs[kAttrEolDate],
         .extended_date = attrs[kAttrExtendedDate],

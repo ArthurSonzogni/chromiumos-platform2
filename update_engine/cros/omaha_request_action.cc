@@ -525,6 +525,8 @@ bool OmahaRequestAction::ParseResponse(ScopedActionCompleter* completer) {
 
     response_.invalidate_last_update =
         ParseBool(platform_app->updatecheck.invalidate_last_update);
+
+    response_.migration = ParseBool(platform_app->updatecheck.migration);
   }
 
   // Check for the "elapsed_days" attribute in the "daystart"

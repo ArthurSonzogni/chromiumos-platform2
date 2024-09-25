@@ -50,6 +50,24 @@ void OmahaResponseHandlerAction::PerformAction() {
   CHECK(HasInputObject());
   ScopedActionCompleter completer(processor_, this);
   const OmahaResponse& response = GetInputObject();
+
+  // Always create/delete based on any (missing or valid) migration attribute
+  // response.
+  auto* prefs = SystemState::Get()->prefs();
+  if (response.migration) {
+    if (!prefs->SetString(kPrefsMigration, "")) {
+      LOG(ERROR) << "Failed to create migration pref.";
+      completer.set_code(ErrorCode::kOmahaResponseInvalid);
+      return;
+    }
+  } else {  // NOLINT(readability/function)
+    if (prefs->Exists(kPrefsMigration) && !prefs->Delete(kPrefsMigration)) {
+      LOG(ERROR) << "Failed to clear migration pref.";
+      completer.set_code(ErrorCode::kOmahaResponseInvalid);
+      return;
+    }
+  }
+
   if (!response.update_exists) {
     // Record enterprise rollback requests that were rejected because of FSI.
     if (response.no_update_reason == kNoUpdateReasonFSI &&

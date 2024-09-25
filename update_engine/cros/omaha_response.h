@@ -108,6 +108,9 @@ struct OmahaResponse {
     uint16_t firmware = std::numeric_limits<uint16_t>::max();
   };
 
+  // True if the update is a migration.
+  bool migration = false;
+
   // Key versions of the returned rollback image. Values are 0xffff if the
   // image not a rollback, or the fields were not present.
   RollbackKeyVersion rollback_key_version;
