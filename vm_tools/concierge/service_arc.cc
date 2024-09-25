@@ -61,10 +61,6 @@ constexpr char kRamdiskPath[] = "/opt/google/vms/android/ramdisk.img";
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 
-// Path to the combined properties resolved by arcvm
-constexpr char kCombinedPropPath[] = "/run/arcvm/host_generated/combined.prop";
-constexpr char kBoardProp[] = "ro.product.board";
-
 // Path to the properties resolved by arcvm
 constexpr char kModifiedPropPath[] = "/run/arcvm/host_generated/modified.prop";
 
@@ -582,20 +578,10 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   base::FilePath kernel_path;
   if (request.use_gki()) {
-    std::string board_name;
     kernel_path = base::FilePath(kGkiPath);
     vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
     // This is set to 0 by the GKI kernel so we set back to the default.
     vm_builder.AppendKernelParam("8250.nr_uarts=4");
-    // TODO(b/325538592): Remove this line once expanded properties can
-    // be passed to ARCVM via serial device.
-    if (GetPropertyFromFile(base::FilePath(kCombinedPropPath), kBoardProp,
-                            &board_name)) {
-      vm_builder.AppendKernelParam(base::StringPrintf(
-          "arccustom.%s=%s", kBoardProp, board_name.c_str()));
-    } else {
-      LOG(WARNING) << "Failed to get value of '" << kBoardProp << "'.";
-    }
     // TODO(b/331748554): The GKI doesn't have the pvclock driver.
     vm_builder.EnablePvClock(false /* disable */);
   } else {
