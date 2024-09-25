@@ -84,6 +84,8 @@ class ModelHolder {
     // The model is being unloaded, that is, ModelRunner::Unload() has been
     // called but not yet finished.
     UNLOADING,
+    // The model failed to load, and all request should fail.
+    FAILED,
   };
 
   // Attempt to transition from NOT_LOADED into LOADING.

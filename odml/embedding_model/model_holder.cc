@@ -81,15 +81,7 @@ void ModelHolder::OnLoadFinish(bool success) {
   if (success) {
     state_ = HolderState::LOADED;
   } else {
-    state_ = HolderState::NOT_LOADED;
-    // We should fail all pending jobs because the load is unsuccessful.
-    std::vector<float> empty_embeddings;
-    while (!queued_tasks_.empty()) {
-      std::move(queued_tasks_.front()->callback)
-          .Run(mojom::OnDeviceEmbeddingModelInferenceError::kModelLoadFailed,
-               empty_embeddings);
-      queued_tasks_.pop();
-    }
+    state_ = HolderState::FAILED;
   }
 
   StateCheck();
@@ -112,6 +104,15 @@ void ModelHolder::StateCheck() {
     if (!queued_tasks_.empty() || !referenced_.empty()) {
       TriggerLoad();
       return;
+    }
+  } else if (state_ == HolderState::FAILED) {
+    // We should fail all pending jobs because the load is unsuccessful.
+    std::vector<float> empty_embeddings;
+    while (!queued_tasks_.empty()) {
+      std::move(queued_tasks_.front()->callback)
+          .Run(mojom::OnDeviceEmbeddingModelInferenceError::kModelLoadFailed,
+               empty_embeddings);
+      queued_tasks_.pop();
     }
   }
 }
