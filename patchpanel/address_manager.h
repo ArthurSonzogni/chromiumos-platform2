@@ -22,6 +22,17 @@
 
 namespace patchpanel {
 
+// Arbitrarily chosen IPv6 subnet inside ULA subnet for DNS proxy.
+const net_base::IPv6CIDR kDnsProxySubnet =
+    *net_base::IPv6CIDR::CreateFromStringAndPrefix("fd64:ffff::", 64);
+// IPv4 and IPv6 addresses allocated for DNS proxy on the loopback interface.
+const net_base::IPv6Address kDnsProxySystemIPv6Address =
+    *net_base::IPv6Address::CreateFromString("fd64:ffff::2");
+const net_base::IPv6Address kDnsProxyDefaultIPv6Address =
+    *net_base::IPv6Address::CreateFromString("fd64:ffff::3");
+const net_base::IPv4Address kDnsProxySystemIPv4Address(127, 0, 0, 2);
+const net_base::IPv4Address kDnsProxyDefaultIPv4Address(127, 0, 0, 3);
+
 // Responsible for address provisioning for guest networks.
 class BRILLO_EXPORT AddressManager {
  public:

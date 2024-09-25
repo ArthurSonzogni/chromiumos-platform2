@@ -69,6 +69,7 @@ AddressManager::AddressManager() {
       GuestType::kParallelsVM,
       SubnetPool::New(
           *net_base::IPv4CIDR::CreateFromCIDRString("100.115.93.0/29"), 32));
+  allocated_ipv6_subnets_.insert(kDnsProxySubnet);
 }
 
 net_base::MacAddress AddressManager::GenerateMacAddress(uint32_t index) {

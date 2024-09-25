@@ -34,6 +34,7 @@
 #include <chromeos/net-base/mac_address.h>
 
 #include "patchpanel/adb_proxy.h"
+#include "patchpanel/address_manager.h"
 #include "patchpanel/arc_service.h"
 #include "patchpanel/bpf/constants.h"
 #include "patchpanel/iptables.h"
@@ -52,6 +53,7 @@ using net_base::IPv6CIDR;
 // TODO(hugobenichi) Consolidate this constant definition in a single place.
 constexpr pid_t kTestPID = -2;
 constexpr char kDefaultIfname[] = "vmtap%d";
+constexpr char kLoopbackIfname[] = "lo";
 constexpr net_base::IPv4Address kArcAddr(100, 115, 92, 2);
 constexpr net_base::IPv4Address kLocalhostAddr(127, 0, 0, 1);
 constexpr char kDefaultDnsPort[] = "53";
@@ -334,9 +336,17 @@ void Datapath::Start() {
     install_rule(IpFamily::kDual, {"-j", "CONNMARK", "--save-mark", "--nfmask",
                                    qos_mask, "--ctmask", qos_mask, "-w"});
   }
+
+  // Additional loopback interface IPv6 addresses for DNS proxy to listen to.
+  AddIPv6Address(kLoopbackIfname, kDnsProxySystemIPv6Address.ToString());
+  AddIPv6Address(kLoopbackIfname, kDnsProxyDefaultIPv6Address.ToString());
 }
 
 void Datapath::Stop() {
+  // Additional loopback interface IPv6 addresses for DNS proxy to listen to.
+  RemoveIPv6Address(kLoopbackIfname, kDnsProxySystemIPv6Address.ToString());
+  RemoveIPv6Address(kLoopbackIfname, kDnsProxyDefaultIPv6Address.ToString());
+
   // Disable packet forwarding
   if (!system_->SysNetSet(System::SysNet::kIPv6Forward, "0")) {
     LOG(ERROR) << "Failed to restore net.ipv6.conf.all.forwarding.";

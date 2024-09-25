@@ -133,6 +133,9 @@ class DatapathTest : public testing::Test {
     EXPECT_CALL(runner_,
                 ip6tables_restore("/etc/patchpanel/ip6tables.start", _));
 
+    runner_.ExpectCallIp(IpFamily::kIPv6, "addr add fd64:ffff::2 dev lo");
+    runner_.ExpectCallIp(IpFamily::kIPv6, "addr add fd64:ffff::3 dev lo");
+
     static struct {
       IpFamily family;
       std::string args;
@@ -157,6 +160,8 @@ class DatapathTest : public testing::Test {
 
   // Sets the expectation for Datapath's destructor.
   void ExpectForDestructor() {
+    runner_.ExpectCallIp(IpFamily::kIPv6, "addr del fd64:ffff::2 dev lo");
+    runner_.ExpectCallIp(IpFamily::kIPv6, "addr del fd64:ffff::3 dev lo");
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4Forward, "0", ""));
     EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6Forward, "0", ""));
   }
