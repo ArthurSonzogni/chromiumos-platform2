@@ -50,7 +50,7 @@ class AgglomerativeClustering : public AgglomerativeClusteringInterface {
  public:
   // The input should be a N * N matrix, Crashes if the dimensions don't match.
   explicit AgglomerativeClustering(Matrix distances);
-  virtual ~AgglomerativeClustering() = default;
+  ~AgglomerativeClustering() override = default;
 
   std::optional<Groups> Run(LinkageType linkage_type,
                             std::optional<int> n_clusters,

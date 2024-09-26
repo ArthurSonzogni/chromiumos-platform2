@@ -4,7 +4,6 @@
 
 #include "odml/coral/clustering/agglomerative_clustering.h"
 
-#include <cmath>
 #include <memory>
 #include <queue>
 #include <unordered_map>
@@ -27,7 +26,7 @@ using DistanceMap = std::unordered_map<int, Distance>;
 class TreeNode {
  public:
   TreeNode(TreeNode* left, TreeNode* right, const int id)
-      : left_(left), right_(right), id_(id), active_(true) {}
+      : left_(left), right_(right), id_(id) {}
   ~TreeNode() = default;
 
   // Merge this node to another one. Update all pairs of distances for all
@@ -63,7 +62,7 @@ class TreeNode {
   // Node id.
   const int id_;
   // Whether this node has not been merged yet.
-  bool active_;
+  bool active_ = true;
 };
 
 // A list of nodes.
@@ -111,7 +110,7 @@ class LinkageAverage : public LinkageBase {
       sizes_[i] = 1;
     }
   }
-  ~LinkageAverage() = default;
+  ~LinkageAverage() override = default;
 
   void Merge(const int node_1_id,
              const int node_2_id,
@@ -199,7 +198,7 @@ std::optional<Groups> AgglomerativeClustering::Run(
 
   const int n = distances_.size();
 
-  DLOG(INFO) << "Start grouping with size: " << n;
+  VLOG(1) << "Start grouping with size: " << n;
 
   if (!(n_clusters.has_value() ^ threshold.has_value())) {
     LOG(ERROR) << "Exactly one of n_clusters or threshold should be given.";
@@ -207,7 +206,7 @@ std::optional<Groups> AgglomerativeClustering::Run(
   }
 
   if (n_clusters.has_value()) {
-    DLOG(INFO) << "n_clusters: " << *n_clusters;
+    VLOG(1) << "n_clusters: " << *n_clusters;
     if (*n_clusters < 0 || *n_clusters > n) {
       LOG(ERROR) << "Bad number of n_clusters: " << *n_clusters;
       return std::nullopt;
@@ -215,7 +214,7 @@ std::optional<Groups> AgglomerativeClustering::Run(
   }
 
   if (threshold.has_value()) {
-    DLOG(INFO) << "threhsold: " << *threshold;
+    VLOG(1) << "threhsold: " << *threshold;
     if (*threshold < 0) {
       LOG(ERROR) << "Bad threshold: " << *threshold;
       return std::nullopt;
@@ -235,8 +234,8 @@ std::optional<Groups> AgglomerativeClustering::Run(
   // Push all pairs of distances into the priority queue.
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < i; ++j) {
-      DLOG(INFO) << "Adding (" << j << ", " << i
-                 << "), value: " << distances_[j][i];
+      VLOG(1) << "Adding (" << j << ", " << i
+              << "), value: " << distances_[j][i];
       queue.push(QueueNode{
           .value_ = distances_[j][i],
           .node_1 = nodes[j].get(),
@@ -259,7 +258,7 @@ std::optional<Groups> AgglomerativeClustering::Run(
     // Current number of groups.
     const int num_groups = n - (nodes.size() - n);
     if (n_clusters.has_value() && num_groups <= *n_clusters) {
-      DLOG(INFO) << "Met n_clusters, break";
+      VLOG(1) << "Met n_clusters, break";
       break;
     }
 
@@ -268,22 +267,22 @@ std::optional<Groups> AgglomerativeClustering::Run(
 
     const int node_1_id = selected.node_1->get_id();
     const int node_2_id = selected.node_2->get_id();
-    DLOG(INFO) << "Min distance (" << node_1_id << ", " << node_2_id
-               << "), value: " << selected.value_;
+    VLOG(1) << "Min distance (" << node_1_id << ", " << node_2_id
+            << "), value: " << selected.value_;
     if (!selected.node_1->is_active() || !selected.node_2->is_active()) {
       continue;
     }
 
     if (threshold.has_value() && selected.value_ > *threshold) {
-      DLOG(INFO) << "Exceeds threshold, break";
+      VLOG(1) << "Exceeds threshold, break";
       break;
     }
 
     const int new_node_id = nodes.size();
     CHECK_LT(new_node_id, 2 * n);
 
-    DLOG(INFO) << "Merging (" << node_1_id << ", " << node_2_id << ") as "
-               << new_node_id;
+    VLOG(1) << "Merging (" << node_1_id << ", " << node_2_id << ") as "
+            << new_node_id;
     nodes.push_back(selected.node_1->Merge(selected.node_2, new_node_id));
 
     linkage->Merge(node_1_id, node_2_id, new_node_id, nodes);
@@ -291,8 +290,8 @@ std::optional<Groups> AgglomerativeClustering::Run(
     // Add pairs of distances from the new node to all unmerged nodes.
     const DistanceMap new_distances = linkage->GetDistances(new_node_id, nodes);
     for (const auto& [id, distance] : new_distances) {
-      DLOG(INFO) << "Adding (" << id << ", " << new_node_id
-                 << "), value: " << distance;
+      VLOG(1) << "Adding (" << id << ", " << new_node_id
+              << "), value: " << distance;
       queue.push(QueueNode{
           .value_ = distance,
           .node_1 = nodes[id].get(),

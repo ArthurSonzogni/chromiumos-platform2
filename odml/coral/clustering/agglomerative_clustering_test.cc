@@ -19,10 +19,6 @@ namespace coral::clustering {
 namespace {
 
 class AgglomerativeClusteringTest : public testing::Test {
- public:
-  AgglomerativeClusteringTest() {}
-  ~AgglomerativeClusteringTest() {}
-
  protected:
   struct Point {
     int x, y;
