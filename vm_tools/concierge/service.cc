@@ -3179,7 +3179,9 @@ void Service::RunDiskImageOperation(std::string uuid) {
 
   auto op = iter->op.get();
   op->Run(kDefaultIoLimit);
-  if (base::TimeTicks::Now() - iter->last_report_time > kDiskOpReportInterval ||
+  if (!iter->last_report_time.has_value() ||
+      base::TimeTicks::Now() - iter->last_report_time.value() >
+          kDiskOpReportInterval ||
       op->status() != DISK_STATUS_IN_PROGRESS) {
     LOG(INFO) << "Disk Image Operation: UUID=" << uuid
               << " progress: " << op->GetProgress()

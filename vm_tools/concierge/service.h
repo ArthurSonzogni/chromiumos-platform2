@@ -648,12 +648,12 @@ class Service final : public org::chromium::VmConciergeInterface,
   struct DiskOpInfo {
     std::unique_ptr<DiskImageOperation> op;
     bool canceled = false;
-    base::TimeTicks last_report_time;
+    std::optional<base::TimeTicks> last_report_time;
 
     explicit DiskOpInfo(std::unique_ptr<DiskImageOperation> disk_op)
         : op(std::move(disk_op)),
 
-          last_report_time(base::TimeTicks::Now()) {}
+          last_report_time(std::nullopt) {}
   };
   std::list<DiskOpInfo> disk_image_ops_;
 
