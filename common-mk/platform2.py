@@ -178,6 +178,7 @@ _IUSE = [
     "mount_oop",
     "msan",
     "mtd",
+    "mtk_neuron_delegate",
     "ndk_translation",
     "oemcrypto_v16",
     "oemcrypto_v17",

@@ -16,7 +16,7 @@ group("all") {
   if (use.camera_feature_effects) {
     deps += [ "//ml_core/cacher:all" ]
 
-    if (use.intel_openvino_delegate) {
+    if (use.intel_openvino_delegate || use.mtk_neuron_delegate) {
       deps += [ ":install_stable_delegate_settings" ]
     }
   }
@@ -106,6 +106,12 @@ install_config("unittest_deps") {
 }
 
 install_config("install_stable_delegate_settings") {
-  sources = [ "stable_delegate_settings.json" ]
+  sources = []
+  if (use.mtk_neuron_delegate) {
+    sources += [ "mtk_neuron_delegate_settings.json" ]
+  } else if (use.intel_openvino_delegate) {
+    sources += [ "intel_openvino_delegate_settings.json" ]
+  }
+  outputs = [ "stable_delegate_settings.json" ]
   install_path = "/etc/ml_core"
 }
