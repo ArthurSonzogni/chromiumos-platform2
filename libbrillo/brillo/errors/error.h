@@ -51,12 +51,13 @@ class BRILLO_EXPORT Error {
                     std::string_view message);
   // Same as the Error::AddTo above, but allows to pass in a printf-like
   // format string and optional parameters to format the error message.
+  PRINTF_FORMAT(5, 6)
   static void AddToPrintf(ErrorPtr* error,
                           const base::Location& location,
                           std::string_view domain,
                           std::string_view code,
                           const char* format,
-                          ...) PRINTF_FORMAT(5, 6);
+                          ...);
 
   // Clones error with all inner errors.
   ErrorPtr Clone() const;

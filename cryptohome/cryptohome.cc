@@ -161,7 +161,8 @@ class Printer {
     }
   }
   // A version of PrintHumanOutput that uses printf-style formatting.
-  void PrintFormattedHumanOutput(const char* format, ...) PRINTF_FORMAT(2, 3) {
+  PRINTF_FORMAT(2, 3)
+  void PrintFormattedHumanOutput(const char* format, ...) {
     va_list ap;
     va_start(ap, format);
     std::string output;

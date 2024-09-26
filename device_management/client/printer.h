@@ -5,17 +5,17 @@
 #ifndef DEVICE_MANAGEMENT_CLIENT_PRINTER_H_
 #define DEVICE_MANAGEMENT_CLIENT_PRINTER_H_
 
-#include "device_management/common/print_device_management_interface_proto.h"
-
-#include <openssl/sha.h>
 #include <string>
 
 #include <base/command_line.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <openssl/sha.h>
+
+#include "device_management/common/print_device_management_interface_proto.h"
 
 namespace device_management {
 // Defines the output format to use for display.
@@ -66,7 +66,8 @@ class Printer {
   }
 
   // A version of PrintHumanOutput that uses printf-style formatting.
-  void PrintFormattedHumanOutput(const char* format, ...) PRINTF_FORMAT(2, 3) {
+  PRINTF_FORMAT(2, 3)
+  void PrintFormattedHumanOutput(const char* format, ...) {
     va_list ap;
     va_start(ap, format);
     std::string output;
