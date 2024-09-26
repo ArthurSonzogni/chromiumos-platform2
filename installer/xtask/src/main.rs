@@ -4,7 +4,7 @@
 
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand};
-use std::io::{BufRead, BufReader};
+use std::io::{stdin, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use tempfile::TempDir;
@@ -35,6 +35,10 @@ struct TestInstallArgs {
     /// are incompatible.
     #[arg(long, conflicts_with("os_install_service"))]
     payload_image: Option<PathBuf>,
+
+    /// Pause before and after the install, giving time to ssh into the vm and inspect state.
+    #[arg(long)]
+    pause: bool,
 }
 
 // Make running commands a little nicer:
@@ -228,17 +232,30 @@ fn install_via_service() -> Result<()> {
     Ok(())
 }
 
+fn pause() {
+    println!("Pausing for dev to do something, hit 'Enter' when ready to proceed.");
+    let _ = stdin().read(&mut [0u8]);
+}
+
 fn run_test_install(args: &TestInstallArgs) -> Result<()> {
     let workdir = TempDir::new_in(".")?;
     let hdb = make_hdb(workdir.path())?;
 
     start_vm(&args.test_image, &hdb, &args.payload_image)?;
 
+    if args.pause {
+        pause();
+    }
+
     if args.use_os_install_service {
         install_via_service()
     } else {
         basic_install(args.payload_image.is_some())
     }?;
+
+    if args.pause {
+        pause();
+    }
 
     stop_vm()?;
 
