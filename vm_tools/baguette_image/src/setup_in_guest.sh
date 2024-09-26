@@ -89,12 +89,6 @@ main() {
   apt-get update
   apt-get -y install "${CROS_PACKAGES[@]}"
 
-  # test user for debugging
-  useradd -m -s /bin/bash -G audio,sudo,tss,video,dialout,netdev,floppy,cdrom chronos
-  chpasswd <<< chronos:test0000
-  mkdir -p /var/lib/systemd/linger
-  touch /var/lib/systemd/linger/chronos
-
   # # TODO(b/271522474): leave networking to NM
   ln -sf /run/resolv.conf /etc/resolv.conf
 
