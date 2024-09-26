@@ -14,7 +14,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
-#include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
@@ -44,8 +43,6 @@ class MantisService : public mojom::MantisService {
 
   void GetMantisFeatureStatus(GetMantisFeatureStatusCallback callback);
 
-  bool IsProcessorNullForTesting() { return processor_ == nullptr; }
-
  private:
   // Duplicate from on_device_model_service.h
   // TODO(b/368261193): Move this function to a common place and reuse it here.
@@ -58,11 +55,9 @@ class MantisService : public mojom::MantisService {
                              FailureType failure_result,
                              Args&... args);
 
-  void DeleteProcessor();
-
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 
-  std::unique_ptr<MantisProcessor> processor_;
+  std::unique_ptr<mojom::MantisProcessor> processor_;
 
   mojo::ReceiverSet<mojom::MantisService> receiver_set_;
 

@@ -57,10 +57,6 @@ bool MantisService::RetryIfShimIsNotReady(FuncType func,
   return true;
 }
 
-void MantisService::DeleteProcessor() {
-  processor_.reset();
-}
-
 void MantisService::Initialize(
     mojo::PendingRemote<PlatformModelProgressObserver> progress_observer,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
@@ -71,23 +67,19 @@ void MantisService::Initialize(
     return;
   }
 
-  if (processor_) {
-    processor_->AddReceiver(std::move(processor));
-    std::move(callback).Run(LoadModelResult::kSuccess);
-    return;
-  }
-
   auto get_api = shim_loader_->Get<MantisAPIGetter>("GetMantisAPI");
   if (!get_api) {
     LOG(ERROR) << "Unable to resolve GetMantisAPI() symbol.";
-    std::move(callback).Run(LoadModelResult::kFailedToLoadLibrary);
+    LoadModelResult result = LoadModelResult::kFailedToLoadLibrary;
+    std::move(callback).Run(std::move(result));
     return;
   }
 
   const MantisAPI* api = get_api();
   if (!api) {
     LOG(ERROR) << "Unable to get MantisAPI.";
-    std::move(callback).Run(LoadModelResult::kFailedToLoadLibrary);
+    LoadModelResult result = LoadModelResult::kFailedToLoadLibrary;
+    std::move(callback).Run(std::move(result));
     return;
   }
 
@@ -96,16 +88,17 @@ void MantisService::Initialize(
   // thread.
   MantisComponent component = api->Initialize("/tmp/mantis_assets");
 
-  processor_ = std::make_unique<MantisProcessor>(
-      component, api, std::move(processor),
-      base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)));
+  processor_ =
+      std::make_unique<MantisProcessor>(component, api, std::move(processor));
 
-  std::move(callback).Run(LoadModelResult::kSuccess);
+  LoadModelResult result = LoadModelResult::kSuccess;
+  std::move(callback).Run(std::move(result));
 }
 
 void MantisService::GetMantisFeatureStatus(
     GetMantisFeatureStatusCallback callback) {
-  std::move(callback).Run(MantisFeatureStatus::kDeviceNotSupported);
+  MantisFeatureStatus status = MantisFeatureStatus::kDeviceNotSupported;
+  std::move(callback).Run(std::move(status));
 }
 
 }  // namespace mantis

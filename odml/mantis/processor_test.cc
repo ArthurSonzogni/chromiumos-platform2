@@ -47,8 +47,7 @@ TEST_F(MantisProcessorTest, InpaintingMissingProcessor) {
           .processor = 0,
           .segmenter = 0,
       },
-      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver(),
-      base::DoNothing());
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
@@ -78,7 +77,7 @@ TEST_F(MantisProcessorTest, InpaintingReturnError) {
           .processor = kFakeProcessorPtr,
           .segmenter = 0,
       },
-      &api, processor_remote.BindNewPipeAndPassReceiver(), base::DoNothing());
+      &api, processor_remote.BindNewPipeAndPassReceiver());
 
   std::vector<uint8_t> image;
   TestFuture<mojom::MantisResultPtr> result_future;
@@ -97,8 +96,7 @@ TEST_F(MantisProcessorTest, InpaintingSucceeds) {
           .processor = kFakeProcessorPtr,
           .segmenter = 0,
       },
-      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver(),
-      base::DoNothing());
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.Inpainting(GetFakeImage(), GetFakeMask(), 0,
@@ -116,8 +114,7 @@ TEST_F(MantisProcessorTest, GenerativeFillMissingProcessor) {
           .processor = 0,
           .segmenter = 0,
       },
-      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver(),
-      base::DoNothing());
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
@@ -148,7 +145,7 @@ TEST_F(MantisProcessorTest, GenerativeFillReturnError) {
           .processor = kFakeProcessorPtr,
           .segmenter = 0,
       },
-      &api, processor_remote.BindNewPipeAndPassReceiver(), base::DoNothing());
+      &api, processor_remote.BindNewPipeAndPassReceiver());
 
   std::vector<uint8_t> image;
   TestFuture<mojom::MantisResultPtr> result_future;
@@ -167,8 +164,7 @@ TEST_F(MantisProcessorTest, GenerativeFillSucceeds) {
           .processor = kFakeProcessorPtr,
           .segmenter = 0,
       },
-      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver(),
-      base::DoNothing());
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver());
 
   TestFuture<mojom::MantisResultPtr> result_future;
   processor.GenerativeFill(GetFakeImage(), GetFakeMask(), 0, "a cute cat",
