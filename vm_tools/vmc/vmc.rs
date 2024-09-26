@@ -283,11 +283,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "UID for the non-root user to be set up.",
             "PARAM"
         );
-        opts.optmulti(
+        opts.optopt(
             "",
-            "user-group",
-            "Additional groups for the non-root user to be set up.",
-            "NAME"
+            "user-groups",
+            "Comma-separated additional groups for the non-root user to be set up.",
+            "NAME,NAME,..."
         );
         opts.optflag("", "help-start", "print this help menu");
 
@@ -341,11 +341,17 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             pflash: matches.opt_str("pflash"),
         };
 
+        let group_names = match matches.opt_str("user-groups") {
+            Some(groups) => groups.split(',')
+                                  .map(|v| v.to_string())
+                                  .collect(),
+            None => vec![]
+        };
         let user_info = match matches.opt_str("user") {
             Some(username) => Some(UserInfo {
-                username: username,
                 uid: matches.opt_str("user-uid").map(|x| x.parse()).transpose()?,
-                group_names: matches.opt_strs("user-group"),
+                username,
+                group_names,
             }),
             None => None,
         };
