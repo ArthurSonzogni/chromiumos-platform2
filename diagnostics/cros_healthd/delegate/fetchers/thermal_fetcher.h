@@ -10,10 +10,14 @@
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
+namespace ec {
+class EcCommandFactoryInterface;
+}  // namespace ec
+
 namespace diagnostics {
 
 std::optional<std::vector<ash::cros_healthd::mojom::ThermalSensorInfoPtr>>
-FetchEcThermalSensors();
+FetchEcThermalSensors(ec::EcCommandFactoryInterface* ec_command_factory);
 
 }  // namespace diagnostics
 

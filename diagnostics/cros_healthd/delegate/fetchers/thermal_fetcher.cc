@@ -7,6 +7,7 @@
 #include <fcntl.h>
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -14,6 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <chromeos/ec/ec_commands.h>
+#include <libec/ec_command_factory.h>
 #include <libec/thermal/get_memmap_temp_b_command.h>
 #include <libec/thermal/get_memmap_temp_command.h>
 #include <libec/thermal/get_memmap_thermal_version_command.h>
@@ -32,15 +34,16 @@ double KelvinToCelsius(int temperature_kelvin) {
 
 }  // namespace
 
-std::optional<std::vector<mojom::ThermalSensorInfoPtr>>
-FetchEcThermalSensors() {
+std::optional<std::vector<mojom::ThermalSensorInfoPtr>> FetchEcThermalSensors(
+    ec::EcCommandFactoryInterface* ec_command_factory) {
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
 
   std::vector<mojom::ThermalSensorInfoPtr> thermal_sensors;
 
-  ec::GetMemmapThermalVersionCommand get_version{};
-  if (!get_version.Run(cros_fd.get()) ||
-      !get_version.ThermalVersion().has_value()) {
+  std::unique_ptr<ec::GetMemmapThermalVersionCommand> get_version =
+      ec_command_factory->GetMemmapThermalVersionCommand();
+  if (!get_version || !get_version->Run(cros_fd.get()) ||
+      !get_version->ThermalVersion().has_value()) {
     LOG(ERROR) << "Failed to read thermal sensor version";
     return std::nullopt;
   }
@@ -50,24 +53,28 @@ FetchEcThermalSensors() {
     int temperature_offset;
 
     if (sensor_idx < EC_TEMP_SENSOR_ENTRIES) {
-      ec::GetMemmapTempCommand get_temp{sensor_idx};
-      if (!get_temp.Run(cros_fd.get()) || !get_temp.Temp().has_value()) {
+      std::unique_ptr<ec::GetMemmapTempCommand> get_temp =
+          ec_command_factory->GetMemmapTempCommand(sensor_idx);
+      if (!get_temp || !get_temp->Run(cros_fd.get()) ||
+          !get_temp->Temp().has_value()) {
         LOG(ERROR) << "Failed to read temperature for thermal sensor idx: "
                    << static_cast<int>(sensor_idx);
         continue;
       }
-      temperature_offset = get_temp.Temp().value();
-    } else if (get_version.ThermalVersion() >= 2) {
+      temperature_offset = get_temp->Temp().value();
+    } else if (get_version->ThermalVersion() >= 2) {
       // If the sensor index is larger than or equal to EC_TEMP_SENSOR_ENTRIES,
       // the temperature should be read from the second bank, which is only
       // supported in thermal version >= 2.
-      ec::GetMemmapTempBCommand get_temp{sensor_idx};
-      if (!get_temp.Run(cros_fd.get()) || !get_temp.Temp().has_value()) {
+      std::unique_ptr<ec::GetMemmapTempBCommand> get_temp =
+          ec_command_factory->GetMemmapTempBCommand(sensor_idx);
+      if (!get_temp || !get_temp->Run(cros_fd.get()) ||
+          !get_temp->Temp().has_value()) {
         LOG(ERROR) << "Failed to read temperature for thermal sensor idx: "
                    << static_cast<int>(sensor_idx);
         continue;
       }
-      temperature_offset = get_temp.Temp().value();
+      temperature_offset = get_temp->Temp().value();
     } else {
       // The sensor index is located in the second bank, but EC does not support
       // reading from it. Break and return only results from the first bank.
@@ -98,8 +105,10 @@ FetchEcThermalSensors() {
       continue;
     }
 
-    ec::TempSensorGetInfoCommand get_info{sensor_idx};
-    if (!get_info.Run(cros_fd.get()) || !get_info.SensorName().has_value()) {
+    std::unique_ptr<ec::TempSensorGetInfoCommand> get_info =
+        ec_command_factory->TempSensorGetInfoCommand(sensor_idx);
+    if (!get_info || !get_info->Run(cros_fd.get()) ||
+        !get_info->SensorName().has_value()) {
       LOG(ERROR) << "Failed to read sensor info for thermal sensor idx: "
                  << static_cast<int>(sensor_idx);
       continue;
@@ -108,7 +117,7 @@ FetchEcThermalSensors() {
     auto sensor_info = mojom::ThermalSensorInfo::New();
     sensor_info->temperature_celsius =
         KelvinToCelsius(temperature_offset + EC_TEMP_SENSOR_OFFSET);
-    sensor_info->name = get_info.SensorName().value();
+    sensor_info->name = get_info->SensorName().value();
     sensor_info->source = mojom::ThermalSensorInfo::ThermalSensorSource::kEc;
 
     thermal_sensors.push_back(std::move(sensor_info));

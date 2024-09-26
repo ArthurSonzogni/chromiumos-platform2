@@ -41,6 +41,7 @@ if (use.test) {
       "display_fetcher_test.cc",
       "graphics_fetcher_test.cc",
       "psr_fetcher_test.cc",
+      "thermal_fetcher_test.cc",
       "touchpad_fetcher_test.cc",
     ]
     pkg_deps = [

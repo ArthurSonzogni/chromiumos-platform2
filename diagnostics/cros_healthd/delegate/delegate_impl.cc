@@ -640,7 +640,7 @@ void DelegateImpl::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
 }
 
 void DelegateImpl::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
-  std::move(callback).Run(FetchEcThermalSensors());
+  std::move(callback).Run(FetchEcThermalSensors(ec_command_factory_));
 }
 
 void DelegateImpl::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
