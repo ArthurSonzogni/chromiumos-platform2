@@ -5,6 +5,8 @@
 #ifndef ODML_CORAL_COMMON_H_
 #define ODML_CORAL_COMMON_H_
 
+#include <vector>
+
 #include <base/types/expected.h>
 
 #include "odml/mojom/coral_service.mojom.h"
@@ -31,6 +33,8 @@ enum class ModelLoadState {
   // Model is loaded successfully.
   kLoaded,
 };
+
+using Embedding = std::vector<float>;
 
 }  // namespace coral
 

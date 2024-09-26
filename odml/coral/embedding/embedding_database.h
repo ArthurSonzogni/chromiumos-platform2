@@ -14,24 +14,25 @@
 #include <base/time/time.h>
 
 #include "coral/proto_bindings/embedding.pb.h"
+#include "odml/coral/common.h"
 
 namespace coral {
-
-using Embedding = std::vector<float>;
 
 class EmbeddingDatabase;
 
 class EmbeddingDatabaseFactory {
  public:
+  virtual ~EmbeddingDatabaseFactory() = default;
   // Creates a EmbeddingDatabase instance with the given parameters.
-  std::unique_ptr<EmbeddingDatabase> Create(const base::FilePath& file_path,
-                                            base::TimeDelta ttl) const;
+  virtual std::unique_ptr<EmbeddingDatabase> Create(
+      const base::FilePath& file_path, base::TimeDelta ttl) const;
 };
 
 // A file-backed embedding database.
 class EmbeddingDatabase {
  public:
-  friend class EmbeddingDatabaseFactory;
+  static std::unique_ptr<EmbeddingDatabase> Create(
+      const base::FilePath& file_path, base::TimeDelta ttl);
 
   ~EmbeddingDatabase();
   EmbeddingDatabase(const EmbeddingDatabase&) = delete;
@@ -40,7 +41,7 @@ class EmbeddingDatabase {
   // Writes (key, embedding) to the in-memory mapping. No sync yet.
   void Put(std::string key, Embedding embedding);
 
-  // Reads (key, embedding) from the in-memory mapping.
+  // Reads embedding from the in-memory mapping if the key exists in database.
   // Returns std::nullopt if the key doesn't exist.
   std::optional<Embedding> Get(const std::string& key);
 
@@ -57,6 +58,9 @@ class EmbeddingDatabase {
 
   // Returns true if a record is stale.
   bool IsRecordExpired(base::Time now, const EmbeddingRecord& record) const;
+
+  // Loads the database from |file_path_|.
+  bool LoadFromFile();
 
   bool dirty_;
   const base::FilePath file_path_;

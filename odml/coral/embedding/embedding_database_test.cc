@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/files/scoped_temp_file.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
@@ -211,6 +212,37 @@ TEST_F(EmbeddingDatabaseTest, FileCorrupted) {
   EXPECT_THAT(database->Get("key1"), Optional(ElementsAre(1, 2, 3)));
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
+}
+
+TEST_F(EmbeddingDatabaseTest, TestCreateDirectory) {
+  base::ScopedTempDir tmp_dir;
+  ASSERT_TRUE(tmp_dir.CreateUniqueTempDir());
+  base::FilePath dir_path = tmp_dir.GetPath();
+  base::FilePath file_path = dir_path.Append("sub_dir").Append("database");
+
+  std::unique_ptr<EmbeddingDatabase> database =
+      factory_.Create(file_path, base::Seconds(0));
+  database->Put("key1", {1, 2, 3});
+  database->Put("key2", {4, 5, 6});
+  database->Put("key3", {7, 8, 9});
+  // Synced to file in destructor.
+  database.reset();
+
+  // Reads it back from the file.
+  database = factory_.Create(file_path, base::Seconds(0));
+  EXPECT_THAT(database->Get("key1"), Optional(ElementsAre(1, 2, 3)));
+  EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
+  EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(7, 8, 9)));
+}
+
+TEST_F(EmbeddingDatabaseTest, TestCreateDirectoryFailure) {
+  // We should not have permission to create a directory at the root directory.
+  base::FilePath dir_path("/");
+  base::FilePath file_path = dir_path.Append("sub_dir").Append("database");
+
+  std::unique_ptr<EmbeddingDatabase> database =
+      factory_.Create(file_path, base::Seconds(0));
+  EXPECT_EQ(database.get(), nullptr);
 }
 
 }  // namespace coral

@@ -22,43 +22,38 @@ namespace coral {
 
 std::unique_ptr<EmbeddingDatabase> EmbeddingDatabaseFactory::Create(
     const base::FilePath& file_path, const base::TimeDelta ttl) const {
-  // EmbeddingDatabase() is private and only EmbeddingDatabaseFactory is a
-  // friend class.
-  return base::WrapUnique(new EmbeddingDatabase(file_path, ttl));
+  return EmbeddingDatabase::Create(file_path, ttl);
+}
+
+std::unique_ptr<EmbeddingDatabase> EmbeddingDatabase::Create(
+    const base::FilePath& file_path, const base::TimeDelta ttl) {
+  // EmbeddingDatabase() is private, so can not use make_unique.
+  auto instance = base::WrapUnique(new EmbeddingDatabase(file_path, ttl));
+
+  if (base::PathExists(file_path)) {
+    // Do not return nullptr, since we can try overwriting the file later when
+    // Sync().
+    if (!instance->LoadFromFile()) {
+      LOG(ERROR) << "Failed to load " << file_path;
+    }
+  } else {
+    base::File::Error error;
+    // If we can't create the parent directory, we can't write to |file_path|
+    // later in Sync(). So return nullptr to indicate an error.
+    if (!base::CreateDirectoryAndGetError(file_path.DirName(), &error)) {
+      LOG(ERROR) << "Unable to create parent direcotry for " << file_path
+                 << ": " << base::File::ErrorToString(error);
+      return nullptr;
+    } else {
+      LOG(INFO) << "Created directory" << file_path.DirName();
+    }
+  }
+  return instance;
 }
 
 EmbeddingDatabase::EmbeddingDatabase(const base::FilePath& file_path,
                                      const base::TimeDelta ttl)
-    : dirty_(false), file_path_(file_path), ttl_(ttl) {
-  std::string buf;
-  if (!base::ReadFileToString(file_path_, &buf)) {
-    LOG(WARNING) << "Failed to read the embedding database.";
-    return;
-  }
-
-  EmbeddingRecords records;
-  if (!records.ParseFromString(buf)) {
-    LOG(ERROR) << "Failed to parse the embedding database at " << file_path_
-               << ". Try removing the file.";
-    if (!brillo::DeleteFile(file_path_)) {
-      LOG(ERROR) << "Failed to delete the corrupted file " << file_path_;
-    }
-    return;
-  }
-
-  base::Time now = base::Time::Now();
-  for (const auto& [key, record] : records.records()) {
-    if (!IsRecordExpired(now, record)) {
-      embeddings_map_[std::move(key)] = std::move(record);
-    } else {
-      // Some records are expired, so needs to sync to file.
-      dirty_ = true;
-    }
-  }
-  LOG(INFO) << "Init() now: " << now << ", ttl: " << ttl_ << ", num_removed: "
-            << records.records().size() - embeddings_map_.size()
-            << ", size: " << embeddings_map_.size();
-}
+    : dirty_(false), file_path_(file_path), ttl_(ttl) {}
 
 EmbeddingDatabase::~EmbeddingDatabase() {
   // Ignore errors.
@@ -101,8 +96,8 @@ bool EmbeddingDatabase::Sync() {
     return false;
   });
 
-  LOG(INFO) << "Sync() with now: " << now << ", ttl: " << ttl_
-            << ", num_removed: " << num_removed
+  LOG(INFO) << "Sync " << file_path_ << " with now: " << now
+            << ", ttl: " << ttl_ << ", num_removed: " << num_removed
             << ", size: " << embeddings_map_.size();
 
   if (!dirty_ && !num_removed) {
@@ -131,6 +126,40 @@ bool EmbeddingDatabase::IsRecordExpired(const base::Time now,
       base::Time::FromMillisecondsSinceUnixEpoch(record.updated_time_ms());
   // 0 means no ttl.
   return !ttl_.is_zero() && now - last_used > ttl_;
+}
+
+bool EmbeddingDatabase::LoadFromFile() {
+  std::string buf;
+  if (!base::ReadFileToString(file_path_, &buf)) {
+    LOG(WARNING) << "Failed to read the embedding database.";
+    return false;
+  }
+
+  EmbeddingRecords records;
+  if (!records.ParseFromString(buf)) {
+    LOG(ERROR) << "Failed to parse the embedding database at " << file_path_
+               << ". Try removing the file.";
+    if (!brillo::DeleteFile(file_path_)) {
+      LOG(ERROR) << "Failed to delete the corrupted file " << file_path_;
+    }
+    return false;
+  }
+
+  // TODO(b/361429567) - Do not clean up stale records when loading the file.
+  base::Time now = base::Time::Now();
+  for (const auto& [key, record] : records.records()) {
+    if (!IsRecordExpired(now, record)) {
+      embeddings_map_[std::move(key)] = std::move(record);
+    } else {
+      // Some records are expired, so needs to sync to file.
+      dirty_ = true;
+    }
+  }
+  LOG(INFO) << "LoadFromFile " << file_path_ << " with now: " << now
+            << ", ttl: " << ttl_ << ", num_removed: "
+            << records.records().size() - embeddings_map_.size()
+            << ", size: " << embeddings_map_.size();
+  return true;
 }
 
 }  // namespace coral

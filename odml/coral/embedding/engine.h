@@ -5,6 +5,7 @@
 #ifndef ODML_CORAL_EMBEDDING_ENGINE_H_
 #define ODML_CORAL_EMBEDDING_ENGINE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "odml/coral/common.h"
+#include "odml/coral/embedding/embedding_database.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -19,7 +21,18 @@
 
 namespace coral {
 
-using Embedding = std::vector<float>;
+namespace internal {
+
+// Generates the embedding prompt for an entity.
+std::string EntityToEmbeddingPrompt(const mojom::Entity& entity);
+
+// Generates a uninque cache key for an entity.
+// All the factors which affect the embedding should be included in the key.
+std::optional<std::string> EntityToCacheKey(const mojom::Entity& entity,
+                                            const std::string& prompt,
+                                            const std::string& model_version);
+
+}  // namespace internal
 
 struct EmbeddingResponse : public MoveOnly {
   bool operator==(const EmbeddingResponse&) const = default;
@@ -40,9 +53,11 @@ class EmbeddingEngineInterface {
 class EmbeddingEngine : public EmbeddingEngineInterface,
                         public odml::SessionStateManagerInterface::Observer {
  public:
-  EmbeddingEngine(raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
-                      embedding_service,
-                  odml::SessionStateManagerInterface* session_state_manager);
+  EmbeddingEngine(
+      raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
+          embedding_service,
+      std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
+      odml::SessionStateManagerInterface* session_state_manager);
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
@@ -57,6 +72,8 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(on_device_model::mojom::LoadModelResult result);
+  void OnModelVersionLoaded(const std::string& version);
+  void ExecutePendingCallbacks();
   void DoProcess(mojom::GroupRequestPtr request, EmbeddingCallback callback);
   void ProcessEachPrompt(mojom::GroupRequestPtr request,
                          std::vector<std::string> prompts,
@@ -79,6 +96,15 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   // Callbacks that are queued and waiting for the model to be loaded.
   std::vector<base::OnceClosure> pending_callbacks_;
+
+  // Factory to create an embedding database to cache embedding vectors.
+  std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory_;
+
+  // The embedding database.
+  std::unique_ptr<EmbeddingDatabase> embedding_database_;
+
+  // The version of the loaded embedding model.
+  std::string model_version_;
 
   base::WeakPtrFactory<EmbeddingEngine> weak_ptr_factory_{this};
 };
