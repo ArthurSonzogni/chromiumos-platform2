@@ -119,7 +119,7 @@ void CarrierEntitlement::CheckInternal(bool user_triggered) {
     return;
   }
 
-  SLOG(3) << __func__ << " launching request at interface: " << network;
+  SLOG(3) << __func__ << " launching request at interface: " << *network;
 
   std::vector<std::string> dns_list_str;
   for (auto& ip : network->GetDNSServers()) {
