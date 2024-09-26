@@ -48,6 +48,7 @@ class ScryptAuthBlockTest : public ::testing::Test {
 TEST_F(ScryptAuthBlockTest, CreateAndDeriveTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob("foo");
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   ScryptAuthBlock auth_block;
   CreateTestFuture result;
   auth_block.Create(auth_input, {}, result.GetCallback());
@@ -59,7 +60,8 @@ TEST_F(ScryptAuthBlockTest, CreateAndDeriveTest) {
   EXPECT_FALSE(key_blobs->vkk_key.value().empty());
 
   DeriveTestFuture derive_result;
-  auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());
+  auth_block.Derive(auth_input, metadata, *auth_state,
+                    derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -72,11 +74,13 @@ TEST_F(ScryptAuthBlockTest, CreateAndDeriveTest) {
 TEST_F(ScryptAuthBlockTest, DeriveMissState) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob("foo");
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   ScryptAuthBlock auth_block;
   AuthBlockState auth_state;
   DeriveTestFuture derive_result;
-  auth_block.Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block.Derive(auth_input, metadata, auth_state,
+                    derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derived_key_blob, suggested_action] =
       derive_result.Take();
@@ -92,7 +96,8 @@ TEST_F(ScryptAuthBlockTest, DeriveMissState) {
   };
 
   DeriveTestFuture derive_result_1;
-  auth_block.Derive(auth_input, auth_state, derive_result_1.GetCallback());
+  auth_block.Derive(auth_input, metadata, auth_state,
+                    derive_result_1.GetCallback());
   ASSERT_TRUE(derive_result_1.IsReady());
   auto [derive_1_status, derive_key_blob_1, suggested_action_1] =
       derive_result_1.Take();
@@ -106,7 +111,8 @@ TEST_F(ScryptAuthBlockTest, DeriveMissState) {
   };
 
   DeriveTestFuture derive_result_2;
-  auth_block.Derive(auth_input, auth_state, derive_result_2.GetCallback());
+  auth_block.Derive(auth_input, metadata, auth_state,
+                    derive_result_2.GetCallback());
   ASSERT_TRUE(derive_result_2.IsReady());
   auto [derive_2_status, derive_key_blob_2, suggested_action_2] =
       derive_result_2.Take();
@@ -223,6 +229,7 @@ TEST_F(ScryptAuthBlockTest, DeriveTest) {
   KeyBlobs key_out_data;
   AuthInput auth_input;
   auth_input.user_input = key;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
@@ -266,7 +273,8 @@ TEST_F(ScryptAuthBlockTest, DeriveTest) {
       });
 
   auto scrypt_auth_block = std::make_unique<ScryptAuthBlock>();
-  scrypt_auth_block->Derive(auth_input, auth_state, std::move(derive_callback));
+  scrypt_auth_block->Derive(auth_input, metadata, auth_state,
+                            std::move(derive_callback));
 
   run_loop.Run();
 }

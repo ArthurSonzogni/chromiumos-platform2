@@ -45,6 +45,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
@@ -1248,9 +1249,10 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
              std::optional<AuthBlock::SuggestedAction>>
       result;
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   AuthBlockState auth_state;
   ASSERT_TRUE(vk.GetPinWeaverState(&auth_state));
-  auth_block->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());

@@ -123,8 +123,10 @@ TEST_F(TpmNotBoundToPcrTest, Success) {
   AuthBlockState derive_state;
   derive_state.state = std::move(state);
   AuthInput auth_input = {.user_input = vault_key};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, derive_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, derive_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -177,9 +179,11 @@ TEST_F(TpmNotBoundToPcrTest, DeriveFailureMissingSalt) {
   state.tpm_key = tpm_key;
   auth_state.state = std::move(state);
   AuthInput auth_input = {};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   // Test
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -199,9 +203,11 @@ TEST_F(TpmNotBoundToPcrTest, DeriveFailureMissingTpmKey) {
   state.salt = salt;
   auth_state.state = std::move(state);
   AuthInput auth_input = {};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   // Test
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -226,9 +232,11 @@ TEST_F(TpmNotBoundToPcrTest, DeriveFailureNoUserInput) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   // Test
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -259,10 +267,12 @@ TEST_F(TpmNotBoundToPcrTest, DeriveSuccess) {
   state.tpm_key = tpm_key;
   auth_state.state = std::move(state);
   AuthInput auth_input = {.user_input = vault_key};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   // Test
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();

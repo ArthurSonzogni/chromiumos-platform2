@@ -227,6 +227,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   brillo::SecureBlob le_secret(32);
   brillo::Blob chaps_iv(16, 'F');
   brillo::Blob fek_iv(16, 'X');
@@ -256,7 +257,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
              std::optional<AuthBlock::SuggestedAction>>
       derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kPinWeaver, auth_input, auth_state,
+      AuthBlockType::kPinWeaver, auth_input, metadata, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
@@ -335,6 +336,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   brillo::Blob tpm_key(20, 'B');
   brillo::Blob salt(system_salt_);
   crypto_.Init();
@@ -361,7 +363,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
              std::optional<AuthBlock::SuggestedAction>>
       derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
+      AuthBlockType::kTpmBoundToPcr, auth_input, metadata, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
@@ -437,6 +439,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   brillo::Blob tpm_key;
   brillo::Blob salt(system_salt_);
   brillo::SecureBlob aes_key(32);
@@ -463,7 +466,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
              std::optional<AuthBlock::SuggestedAction>>
       derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmNotBoundToPcr, auth_input, auth_state,
+      AuthBlockType::kTpmNotBoundToPcr, auth_input, metadata, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
@@ -540,6 +543,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   brillo::Blob salt(system_salt_);
   brillo::Blob fake_hash = brillo::BlobFromString("public key hash");
   crypto_.Init();
@@ -571,7 +575,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
              std::optional<AuthBlock::SuggestedAction>>
       derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, auth_input, auth_state,
+      AuthBlockType::kTpmEcc, auth_input, metadata, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
@@ -676,6 +680,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   ScryptAuthBlockState scrypt_state = {
       .salt = brillo::BlobFromString("salt"),
       .chaps_salt = brillo::BlobFromString("chaps_salt"),
@@ -694,7 +699,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
              std::optional<AuthBlock::SuggestedAction>>
       derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kScrypt, auth_input, auth_state,
+      AuthBlockType::kScrypt, auth_input, metadata, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
@@ -773,6 +778,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
       .username = kUser,
       .obfuscated_username = kObfuscated,
   };
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   ScryptAuthBlockState scrypt_state = {
       .salt = brillo::BlobFromString("salt"),
       .chaps_salt = brillo::BlobFromString("chaps_salt"),
@@ -796,7 +802,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
              std::optional<AuthBlock::SuggestedAction>>
       derive_result;
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kDoubleWrappedCompat, auth_input, auth_state,
+      AuthBlockType::kDoubleWrappedCompat, auth_input, metadata, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
@@ -976,8 +982,9 @@ TEST_F(AuthBlockUtilityImplTest, ChallengeCredentialDerive) {
           .challenge_signature_algorithms =
               {SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
           .dbus_service_name = kKeyDelegateDBusService}};
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType::kChallengeCredential, auth_input, auth_state,
+      AuthBlockType::kChallengeCredential, auth_input, metadata, auth_state,
       std::move(derive_callback));
 }
 

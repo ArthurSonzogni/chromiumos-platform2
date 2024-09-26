@@ -389,9 +389,10 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
     auto key_blobs2 = std::make_unique<KeyBlobs>(kKeyBlobs);
     EXPECT_CALL(mock_auth_block_utility_,
-                DeriveKeyBlobsWithAuthBlock(_, _, _, _))
+                DeriveKeyBlobsWithAuthBlock(_, _, _, _, _))
         .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
                                 const AuthInput& auth_input,
+                                const AuthFactorMetadata& auth_factor_metadata,
                                 const AuthBlockState& auth_state,
                                 AuthBlock::DeriveCallback derive_callback) {
           std::move(derive_callback)

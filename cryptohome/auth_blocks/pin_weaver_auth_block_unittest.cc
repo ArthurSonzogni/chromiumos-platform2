@@ -370,8 +370,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {.user_input = user_input};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -395,8 +396,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {.user_input = user_input};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -417,8 +419,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
       .le_label = 0, .salt = salt, .chaps_iv = chaps_iv, .fek_iv = fek_iv};
   auth_state.state = std::move(state);
   AuthInput auth_input = {};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -459,9 +462,10 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
 
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -510,8 +514,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -557,8 +562,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTestWithoutMigratePin) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -603,8 +609,9 @@ TEST_F(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());
@@ -654,8 +661,9 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -696,8 +704,9 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialFailureLeFiniteTimeout) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   DeriveTestFuture result;
-  auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, NotOk());
@@ -753,9 +762,10 @@ TEST_F(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PinMetadata()};
   for (int i = 0; i < 6; i++) {
     DeriveTestFuture result;
-    auth_block_->Derive(auth_input, auth_state, result.GetCallback());
+    auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
     ASSERT_TRUE(result.IsReady());
     auto [status, key_blobs, suggested_action] = result.Take();
     EXPECT_NE(user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE,

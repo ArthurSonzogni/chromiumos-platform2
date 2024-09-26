@@ -47,12 +47,14 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
   void Derive(const AuthInput& user_input,
+              const AuthFactorMetadata& auth_factor_metadata,
               const AuthBlockState& state,
               DeriveCallback callback) override;
 
  private:
   void CreateDeriveAfterScrypt(DeriveCallback callback,
                                const AuthInput& user_input,
+                               const AuthFactorMetadata& auth_factor_metadata,
                                const AuthBlockState& state,
                                CryptohomeStatus error,
                                std::unique_ptr<KeyBlobs> key_blobs,

@@ -295,9 +295,11 @@ void CryptohomeRecoveryAuthBlock::Create(
                           std::move(key_blobs), std::move(auth_block_state));
 }
 
-void CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
-                                         const AuthBlockState& state,
-                                         DeriveCallback callback) {
+void CryptohomeRecoveryAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
   // Check if the CryptohomeRecovery is locked.
   if (platform_->FileExists(GetRecoveryFactorLockPath())) {
     LOG(ERROR) << "CryptohomeRecovery is locked until reboot.";

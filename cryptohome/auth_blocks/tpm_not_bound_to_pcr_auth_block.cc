@@ -105,9 +105,11 @@ TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
   CHECK(cryptohome_key_loader_ != nullptr);
 }
 
-void TpmNotBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                       const AuthBlockState& state,
-                                       DeriveCallback callback) {
+void TpmNotBoundToPcrAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
     std::move(callback).Run(

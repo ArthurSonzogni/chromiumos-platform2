@@ -52,6 +52,7 @@ class ChallengeCredentialAuthBlock : public AuthBlock {
 
   // This derives the KeyBlobs from the key challenge service.
   void Derive(const AuthInput& user_input,
+              const AuthFactorMetadata& auth_factor_metadata,
               const AuthBlockState& state,
               DeriveCallback callback) override;
 
@@ -76,6 +77,7 @@ class ChallengeCredentialAuthBlock : public AuthBlock {
   // from the key challenge service.
   void DeriveContinue(
       DeriveCallback callback,
+      const AuthFactorMetadata& auth_factor_metadata,
       const AuthBlockState& scrypt_state,
       CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
           result);

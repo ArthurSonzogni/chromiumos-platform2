@@ -264,9 +264,11 @@ void TpmBoundToPcrAuthBlock::Create(
                           std::move(key_blobs), std::move(auth_block_state));
 }
 
-void TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
-                                    const AuthBlockState& state,
-                                    DeriveCallback callback) {
+void TpmBoundToPcrAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
   if (!auth_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
 

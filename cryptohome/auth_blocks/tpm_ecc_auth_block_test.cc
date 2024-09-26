@@ -346,10 +346,12 @@ TEST_F(TpmEccAuthBlockTest, DeriveTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -370,9 +372,11 @@ TEST_F(TpmEccAuthBlockTest, DeriveFailNoAuthInput) {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   AuthInput auth_input;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -394,11 +398,13 @@ TEST_F(TpmEccAuthBlockTest, DeriveGetEccAuthFailTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -419,10 +425,12 @@ TEST_F(TpmEccAuthBlockTest, DerivePreloadSealedDataFailTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -444,10 +452,12 @@ TEST_F(TpmEccAuthBlockTest, DeriveGetPublicKeyHashFailTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -469,11 +479,13 @@ TEST_F(TpmEccAuthBlockTest, DerivePublicKeyHashMismatchTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -497,11 +509,13 @@ TEST_F(TpmEccAuthBlockTest, DeriveRetryFailTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'E');
   auth_input.locked_to_single_user = true;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -531,9 +545,11 @@ TEST_F(TpmEccAuthBlockTest, DeriveUnsealFailTest) {
   auth_input.locked_to_single_user = false;
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -557,9 +573,11 @@ TEST_F(TpmEccAuthBlockTest, DeriveCryptohomeKeyFailTest) {
   auth_input.locked_to_single_user = true;
 
   AuthBlockState auth_state{.state = std::move(auth_block__state)};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();

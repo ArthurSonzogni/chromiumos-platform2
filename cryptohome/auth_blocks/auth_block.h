@@ -80,6 +80,7 @@ class AuthBlock {
   // Failure, error is assigned the related error value, the value of KeyBlobs
   // are not valid to use.
   virtual void Derive(const AuthInput& auth_input,
+                      const AuthFactorMetadata& auth_factor_metadata,
                       const AuthBlockState& state,
                       DeriveCallback callback) = 0;
 

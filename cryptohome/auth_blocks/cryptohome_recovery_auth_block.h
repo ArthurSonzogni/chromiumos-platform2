@@ -62,6 +62,7 @@ class CryptohomeRecoveryAuthBlock : public AuthBlock {
   // `cryptohome_recovery_auth_input.ephemeral_pub_key` and
   // `cryptohome_recovery_auth_input.recovery_response` fields set.
   void Derive(const AuthInput& auth_input,
+              const AuthFactorMetadata& auth_factor_metadata,
               const AuthBlockState& state,
               DeriveCallback callback) override;
 

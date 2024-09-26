@@ -350,6 +350,7 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
 }
 
 void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
+                                const AuthFactorMetadata& auth_factor_metadata,
                                 const AuthBlockState& state,
                                 DeriveCallback callback) {
   if (!auth_input.user_input.has_value()) {

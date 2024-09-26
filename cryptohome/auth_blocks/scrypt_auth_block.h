@@ -39,6 +39,7 @@ class ScryptAuthBlock : public AuthBlock {
 
   // This uses Scrypt to derive high entropy keys from the user's password.
   void Derive(const AuthInput& auth_input,
+              const AuthFactorMetadata& auth_factor_metadata,
               const AuthBlockState& state,
               DeriveCallback callback) override;
 

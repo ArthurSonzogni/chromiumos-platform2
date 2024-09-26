@@ -846,8 +846,9 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
       std::move(auth_session_performance_timer),
       std::move(auth_factor_type_user_policy), std::move(on_done));
 
-  auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
-      *auth_block_type, auth_input, auth_state, std::move(derive_callback));
+  auth_block_utility_->DeriveKeyBlobsWithAuthBlock(*auth_block_type, auth_input,
+                                                   metadata, auth_state,
+                                                   std::move(derive_callback));
 }
 
 void AuthSession::LoadVaultKeysetAndFsKeys(
@@ -3974,8 +3975,8 @@ void AuthSession::AuthenticateViaUserSecretStash(
       auth_factor, auth_input, std::move(auth_session_performance_timer),
       auth_factor_type_user_policy, std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
-      *auth_block_type, auth_input, auth_factor.auth_block_state(),
-      std::move(derive_callback));
+      *auth_block_type, auth_input, auth_factor.metadata(),
+      auth_factor.auth_block_state(), std::move(derive_callback));
 }
 
 void AuthSession::AuthenticateViaSingleFactor(

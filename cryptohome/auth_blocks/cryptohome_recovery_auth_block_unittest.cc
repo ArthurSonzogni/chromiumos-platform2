@@ -25,6 +25,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
@@ -164,9 +165,11 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
                                          &hwsec_pw_manager_, &platform_);
 
   AuthInput auth_input = GenerateFakeAuthInput();
+  AuthFactorMetadata metadata = {.metadata = CryptohomeRecoveryMetadata{
+                                     .mediator_pub_key = mediator_pub_key_}};
 
   CreateTestFuture result;
-  auth_block.Create(auth_input, {}, result.GetCallback());
+  auth_block.Create(auth_input, metadata, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, created_key_blobs, auth_state] = result.Take();
@@ -204,7 +207,8 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
       derive_cryptohome_recovery_auth_input;
 
   DeriveTestFuture derive_result;
-  auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());
+  auth_block.Derive(auth_input, metadata, *auth_state,
+                    derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derived_status, derived_key_blobs, suggested_action] =
       derive_result.Take();
@@ -228,10 +232,12 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithNoDeviceUserId) {
                                          &hwsec_pw_manager_, &platform_);
 
   AuthInput auth_input = GenerateFakeAuthInput();
+  AuthFactorMetadata metadata = {.metadata = CryptohomeRecoveryMetadata{
+                                     .mediator_pub_key = mediator_pub_key_}};
   auth_input.cryptohome_recovery_auth_input->device_user_id.clear();
 
   CreateTestFuture result;
-  auth_block.Create(auth_input, {}, result.GetCallback());
+  auth_block.Create(auth_input, metadata, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
 
   auto [status, created_key_blobs, auth_state] = result.Take();
@@ -269,7 +275,8 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithNoDeviceUserId) {
       derive_cryptohome_recovery_auth_input;
 
   DeriveTestFuture derive_result;
-  auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());
+  auth_block.Derive(auth_input, metadata, *auth_state,
+                    derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derived_status, derived_key_blobs, suggested_action] =
       derive_result.Take();
@@ -302,7 +309,10 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
 
   CreateTestFuture result;
   AuthInput auth_input = GenerateFakeAuthInput();
-  auth_block.Create(auth_input, {}, result.GetCallback());
+  AuthFactorMetadata metadata = {.metadata = CryptohomeRecoveryMetadata{
+                                     .mediator_pub_key = mediator_pub_key_}};
+
+  auth_block.Create(auth_input, metadata, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, created_key_blobs, auth_state] = result.Take();
 
@@ -353,7 +363,8 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
                           .he_secret = he_secret})));
 
   DeriveTestFuture derive_result;
-  auth_block.Derive(auth_input, *auth_state, derive_result.GetCallback());
+  auth_block.Derive(auth_input, metadata, *auth_state,
+                    derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derived_status, derived_key_blobs, suggested_action] =
       derive_result.Take();

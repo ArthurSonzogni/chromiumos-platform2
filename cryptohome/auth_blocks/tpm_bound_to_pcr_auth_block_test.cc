@@ -193,6 +193,7 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'I');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   brillo::SecureBlob pass_blob(kDefaultPassBlobSize);
   brillo::SecureBlob vkk_iv(kDefaultAesKeySize);
@@ -214,7 +215,8 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrTest) {
 
   // Test
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -235,6 +237,7 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrNoPreloadTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'I');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   EXPECT_CALL(hwsec_, PreloadSealedData(_)).WillOnce(ReturnValue(std::nullopt));
   brillo::SecureBlob auth_value(256, 'a');
@@ -251,7 +254,8 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrNoPreloadTest) {
 
   // Test
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -270,12 +274,14 @@ TEST_F(TpmBoundToPcrTest, DecryptBoundToPcrPreloadFailedTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'I');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   EXPECT_CALL(hwsec_, PreloadSealedData(_))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -302,9 +308,11 @@ TEST_F(TpmBoundToPcrTest, DeriveTest) {
   AuthInput auth_input;
   auth_input.user_input = brillo::SecureBlob(20, 'I');
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -331,8 +339,10 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureNoUserInput) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -355,8 +365,10 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureMissingSalt) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {.user_input = user_input};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -381,8 +393,10 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureMissingTpmKey) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {.user_input = user_input};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();
@@ -407,8 +421,10 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureMissingExtendedTpmKey) {
   auth_state.state = std::move(state);
 
   AuthInput auth_input = {.user_input = user_input};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
   DeriveTestFuture derive_result;
-  auth_block_->Derive(auth_input, auth_state, derive_result.GetCallback());
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      derive_result.GetCallback());
   ASSERT_TRUE(derive_result.IsReady());
   auto [derive_status, derive_key_blobs, suggested_action] =
       derive_result.Take();

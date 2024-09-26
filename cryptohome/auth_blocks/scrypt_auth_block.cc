@@ -132,6 +132,7 @@ void ScryptAuthBlock::Create(const AuthInput& auth_input,
 }
 
 void ScryptAuthBlock::Derive(const AuthInput& auth_input,
+                             const AuthFactorMetadata& auth_factor_metadata,
                              const AuthBlockState& auth_state,
                              DeriveCallback callback) {
   const ScryptAuthBlockState* state;

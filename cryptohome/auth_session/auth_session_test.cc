@@ -1011,9 +1011,10 @@ class AuthSessionWithUssTest : public AuthSessionTest {
         .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
     EXPECT_CALL(auth_block_utility_,
                 DeriveKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery,
-                                            _, _, _))
+                                            _, _, _, _))
         .WillOnce([&secret](auto auth_block_type, auto auth_input,
-                            auto auth_state, auto derive_callback) {
+                            auto auth_factor_metadata, auto auth_state,
+                            auto derive_callback) {
           auto key_blobs = std::make_unique<KeyBlobs>();
           key_blobs->vkk_key = brillo::SecureBlob(secret);
           std::move(derive_callback)
@@ -1050,8 +1051,9 @@ class AuthSessionWithUssTest : public AuthSessionTest {
         .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
     EXPECT_CALL(
         auth_block_utility_,
-        DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _))
+        DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _, _))
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                     const AuthFactorMetadata& auth_factor_metadata,
                      const AuthBlockState& auth_state,
                      AuthBlock::DeriveCallback derive_callback) {
           auto key_blobs = std::make_unique<KeyBlobs>();
@@ -1820,10 +1822,12 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaUss) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
-                                       AuthBlockType::kTpmBoundToPcr, _, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -1915,10 +1919,12 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUss) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
-                                       AuthBlockType::kTpmBoundToPcr, _, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _, _))
       .WillOnce([this, &kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2011,10 +2017,12 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePasswordAuthFactorViaAsyncUssFails) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
-                                       AuthBlockType::kTpmBoundToPcr, _, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _, _))
       .WillOnce([this](AuthBlockType auth_block_type,
                        const AuthInput& auth_input,
+                       const AuthFactorMetadata& auth_factor_metadata,
                        const AuthBlockState& auth_state,
                        AuthBlock::DeriveCallback derive_callback) {
         task_runner_->PostTask(
@@ -2104,10 +2112,11 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUss) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kPinWeaver, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2195,10 +2204,11 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinAuthFactorViaUssWithRecreate) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kPinWeaver, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2304,10 +2314,11 @@ TEST_F(AuthSessionWithUssTest,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kPinWeaver, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2401,10 +2412,11 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kPinWeaver, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2673,11 +2685,12 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
-  EXPECT_CALL(
-      auth_block_utility_,
-      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _,
+                                          _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         EXPECT_THAT(
@@ -2781,11 +2794,12 @@ TEST_F(AuthSessionWithUssTest, AuthenticateSmartCardAuthFactor) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<ChallengeCredentialAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kChallengeCredential));
-  EXPECT_CALL(
-      auth_block_utility_,
-      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kChallengeCredential, _, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kChallengeCredential,
+                                          _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2963,10 +2977,12 @@ TEST_F(AuthSessionWithUssTest, LightweightPasswordPostAction) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
-                                       AuthBlockType::kTpmBoundToPcr, _, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _, _))
       .WillOnce([this, &kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -4265,10 +4281,11 @@ TEST_F(AuthSessionWithUssTest, AddFingerprintAndAuth) {
             .Run(OkStatus<CryptohomeCryptoError>(), ret_auth_input,
                  auth_factors[1]);
       });
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kFingerprint, _, _, _, _))
       .WillRepeatedly([&](AuthBlockType auth_block_type,
                           const AuthInput& auth_input,
+                          const AuthFactorMetadata& auth_factor_metadata,
                           const AuthBlockState& auth_state,
                           AuthBlock::DeriveCallback derive_callback) {
         ASSERT_TRUE(auth_input.user_input.has_value());
@@ -5085,10 +5102,11 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinGenerateKeyStoreState) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kPinWeaver, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -5205,10 +5223,11 @@ TEST_F(AuthSessionWithUssTest, AuthenticatePinUpdateKeyStoreState) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
+                                       AuthBlockType::kPinWeaver, _, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthFactorMetadata& auth_factor_metadata,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();

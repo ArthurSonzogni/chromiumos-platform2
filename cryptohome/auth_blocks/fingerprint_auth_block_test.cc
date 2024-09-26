@@ -28,6 +28,7 @@
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {
 namespace {
@@ -501,6 +502,8 @@ TEST_F(FingerprintAuthBlockTest, DeriveSuccess) {
               .auth_secret = kFakeAuthSecret,
           },
   };
+  AuthFactorMetadata metadata = {
+      .metadata = FingerprintMetadata{.was_migrated = false}};
   const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
 
   EXPECT_CALL(hwsec_pw_manager_, CheckCredential(kFakeCredLabel, kFakeAuthPin))
@@ -509,7 +512,7 @@ TEST_F(FingerprintAuthBlockTest, DeriveSuccess) {
       }));
 
   DeriveTestFuture result;
-  auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
+  auth_block_->Derive(kFakeAuthInput, metadata, kFakeAuthBlockState,
                       result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
@@ -524,10 +527,12 @@ TEST_F(FingerprintAuthBlockTest, DeriveSuccess) {
 TEST_F(FingerprintAuthBlockTest, DeriveInvalidAuthInput) {
   const brillo::SecureBlob kFakeAuthPin(32, 1), kFakeGscSecret(32, 2);
   const AuthInput kFakeAuthInput{.user_input = kFakeAuthPin};
+  AuthFactorMetadata metadata = {
+      .metadata = FingerprintMetadata{.was_migrated = false}};
   const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
 
   DeriveTestFuture result;
-  auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
+  auth_block_->Derive(kFakeAuthInput, metadata, kFakeAuthBlockState,
                       result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());
@@ -548,6 +553,8 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
               .auth_secret = kFakeAuthSecret,
           },
   };
+  AuthFactorMetadata metadata = {
+      .metadata = FingerprintMetadata{.was_migrated = false}};
   const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
 
   EXPECT_CALL(hwsec_pw_manager_, CheckCredential)
@@ -555,7 +562,7 @@ TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
           "fake", hwsec::TPMRetryAction::kPinWeaverLockedOut));
 
   DeriveTestFuture result;
-  auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
+  auth_block_->Derive(kFakeAuthInput, metadata, kFakeAuthBlockState,
                       result.GetCallback());
 
   ASSERT_TRUE(result.IsReady());

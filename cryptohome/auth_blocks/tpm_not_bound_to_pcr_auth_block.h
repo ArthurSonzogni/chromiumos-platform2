@@ -42,6 +42,7 @@ class TpmNotBoundToPcrAuthBlock : public AuthBlock {
               CreateCallback callback) override;
 
   void Derive(const AuthInput& auth_input,
+              const AuthFactorMetadata& auth_factor_metadata,
               const AuthBlockState& state,
               DeriveCallback callback) override;
 

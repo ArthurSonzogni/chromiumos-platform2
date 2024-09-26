@@ -59,6 +59,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   void DeriveKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
+      const AuthFactorMetadata& auth_factor_metadata,
       const AuthBlockState& auth_state,
       AuthBlock::DeriveCallback derive_callback) override;
 

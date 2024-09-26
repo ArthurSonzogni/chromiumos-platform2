@@ -63,9 +63,11 @@ void DoubleWrappedCompatAuthBlock::Create(
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
 }
 
-void DoubleWrappedCompatAuthBlock::Derive(const AuthInput& user_input,
-                                          const AuthBlockState& state,
-                                          DeriveCallback callback) {
+void DoubleWrappedCompatAuthBlock::Derive(
+    const AuthInput& user_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
   const DoubleWrappedCompatAuthBlockState* auth_state;
   if (!(auth_state =
             std::get_if<DoubleWrappedCompatAuthBlockState>(&state.state))) {
@@ -83,15 +85,16 @@ void DoubleWrappedCompatAuthBlock::Derive(const AuthInput& user_input,
 
   AuthBlockState scrypt_state = {.state = auth_state->scrypt_state};
   scrypt_auth_block_.Derive(
-      user_input, scrypt_state,
+      user_input, auth_factor_metadata, scrypt_state,
       base::BindOnce(&DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt,
                      weak_factory_.GetWeakPtr(), std::move(callback),
-                     user_input, std::move(state)));
+                     user_input, auth_factor_metadata, std::move(state)));
 }
 
 void DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt(
     DeriveCallback callback,
     const AuthInput& user_input,
+    const AuthFactorMetadata& auth_factor_metadata,
     const AuthBlockState& state,
     CryptohomeStatus error,
     std::unique_ptr<KeyBlobs> key_blobs,
@@ -118,7 +121,7 @@ void DoubleWrappedCompatAuthBlock::CreateDeriveAfterScrypt(
 
   AuthBlockState tpm_state = {.state = auth_state->tpm_state};
   tpm_auth_block_.Derive(
-      user_input, tpm_state,
+      user_input, auth_factor_metadata, tpm_state,
       base::BindOnce(&DoubleWrappedCompatAuthBlock::CreateDeriveAfterTpm,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }

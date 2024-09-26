@@ -117,6 +117,7 @@ TEST_F(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   AuthInput auth_input;
   auth_input.user_input = key;
   auth_input.locked_to_single_user = false;
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
 
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
@@ -128,7 +129,7 @@ TEST_F(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   DoubleWrappedCompatAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
 
   DeriveTestFuture result;
-  auth_block.Derive(auth_input, auth_state, result.GetCallback());
+  auth_block.Derive(auth_input, metadata, auth_state, result.GetCallback());
   ASSERT_TRUE(result.IsReady());
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());

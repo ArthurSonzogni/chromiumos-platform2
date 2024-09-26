@@ -185,9 +185,11 @@ void FingerprintAuthBlock::Create(
       *auth_input.reset_secret));
 }
 
-void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
-                                  const AuthBlockState& state,
-                                  DeriveCallback callback) {
+void FingerprintAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
   if (!auth_input.fingerprint_auth_input.has_value() ||
       !auth_input.fingerprint_auth_input->auth_secret.has_value()) {
     LOG(ERROR) << "Missing auth_secret.";

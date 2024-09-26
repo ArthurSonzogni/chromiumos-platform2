@@ -29,6 +29,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/proto_bindings/key.pb.h"
@@ -407,6 +408,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, Derive) {
                        kRsassaPkcs1V15Sha256},
           },
   };
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
 
   EXPECT_CALL(challenge_credentials_helper_,
               Decrypt(kFakeAccountId, _, _, _, _))
@@ -429,7 +431,8 @@ TEST_F(ChallengeCredentialAuthBlockTest, Derive) {
         run_loop.Quit();
       });
 
-  auth_block_->Derive(auth_input, auth_state, std::move(derive_callback));
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      std::move(derive_callback));
 
   run_loop.Run();
 }
@@ -459,6 +462,7 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveFailed) {
                        kRsassaPkcs1V15Sha256},
           },
   };
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
 
   EXPECT_CALL(challenge_credentials_helper_,
               Decrypt(kFakeAccountId, _, _, _, _))
@@ -478,7 +482,8 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveFailed) {
         run_loop.Quit();
       });
 
-  auth_block_->Derive(auth_input, auth_state, std::move(derive_callback));
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      std::move(derive_callback));
 
   run_loop.Run();
 }
@@ -499,7 +504,9 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
   AuthInput auth_input{
       .locked_to_single_user = false,
   };
-  auth_block_->Derive(auth_input, auth_state, std::move(derive_callback));
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      std::move(derive_callback));
   run_loop.Run();
 }
 
@@ -524,7 +531,9 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoState) {
                        kRsassaPkcs1V15Sha256},
           },
   };
-  auth_block_->Derive(auth_input, auth_state, std::move(derive_callback));
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      std::move(derive_callback));
   run_loop.Run();
 }
 
@@ -552,7 +561,9 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
                        kRsassaPkcs1V15Sha256},
           },
   };
-  auth_block_->Derive(auth_input, auth_state, std::move(derive_callback));
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      std::move(derive_callback));
 
   run_loop.Run();
 }
@@ -599,7 +610,9 @@ TEST_F(ChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
                        kRsassaPkcs1V15Sha256},
           },
   };
-  auth_block_->Derive(auth_input, auth_state, std::move(derive_callback));
+  AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
+  auth_block_->Derive(auth_input, metadata, auth_state,
+                      std::move(derive_callback));
 
   run_loop.Run();
 }
@@ -624,8 +637,6 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
     challenge_credentials_helper_ =
         std::make_unique<ChallengeCredentialsHelperImpl>(&hwsec_);
   }
-
-  ~ChallengeCredentialAuthBlockFullTest() = default;
 
   void CreateAuthBlock() {
     auto owned_key_challenge_service =
@@ -701,10 +712,11 @@ class ChallengeCredentialAuthBlockFullTest : public ::testing::Test {
                              const AuthBlockState& auth_block_state,
                              std::unique_ptr<KeyBlobs>& out_key_blobs) {
     CHECK(auth_block_);
+    AuthFactorMetadata metadata = {.metadata = SmartCardMetadata()};
     base::RunLoop run_loop;
     CryptohomeStatus got_error;
     auth_block_->Derive(
-        auth_input, auth_block_state,
+        auth_input, metadata, auth_block_state,
         base::BindLambdaForTesting(
             [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::optional<AuthBlock::SuggestedAction> suggested_action) {

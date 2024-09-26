@@ -247,9 +247,11 @@ void ChallengeCredentialAuthBlock::CreateContinueAfterScrypt(
   }
 }
 
-void ChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
-                                          const AuthBlockState& state,
-                                          DeriveCallback callback) {
+void ChallengeCredentialAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
   if (!auth_input.challenge_credential_auth_input.has_value()) {
     LOG(ERROR) << __func__ << ": No valid challenge credential auth input.";
     std::move(callback).Run(
@@ -329,12 +331,13 @@ void ChallengeCredentialAuthBlock::Derive(const AuthInput& auth_input,
       std::move(key_challenge_service_),
       base::BindOnce(&ChallengeCredentialAuthBlock::DeriveContinue,
                      weak_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(scrypt_state)));
+                     std::move(auth_factor_metadata), std::move(scrypt_state)));
   return;
 }
 
 void ChallengeCredentialAuthBlock::DeriveContinue(
     DeriveCallback callback,
+    const AuthFactorMetadata& auth_factor_metadata,
     const AuthBlockState& scrypt_state,
     CryptoStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
         result) {
@@ -359,7 +362,8 @@ void ChallengeCredentialAuthBlock::DeriveContinue(
 
   ScryptAuthBlock scrypt_auth_block;
   auto key_blobs = std::make_unique<KeyBlobs>();
-  scrypt_auth_block.Derive(auth_input, scrypt_state, std::move(callback));
+  scrypt_auth_block.Derive(auth_input, auth_factor_metadata, scrypt_state,
+                           std::move(callback));
 }
 
 }  // namespace cryptohome

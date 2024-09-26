@@ -120,6 +120,7 @@ void TestPasswordBasedAuthBlockOnCorrectDerive(
   auth_block->Derive(
       AuthInput{.user_input = SecureBlob(kWrongPassword),
                 .obfuscated_username = obfuscated_username},
+      AuthFactorMetadata{.metadata = PasswordMetadata()},
       *created_auth_block_state,
       base::BindOnce(&TestPasswordBasedAuthBlockOnIncorrectDerive,
                      std::move(callback)));
@@ -145,10 +146,11 @@ void TestPasswordBasedAuthBlockOnCreate(
   const ObfuscatedUsername obfuscated_username(kUser);
 
   // Check derivation using the correct password.
+  AuthBlockState state_for_derive = *auth_block_state;
   auth_block->Derive(
       AuthInput{.user_input = SecureBlob(kPassword),
                 .obfuscated_username = obfuscated_username},
-      *auth_block_state,
+      AuthFactorMetadata{.metadata = PasswordMetadata()}, state_for_derive,
       base::BindOnce(&TestPasswordBasedAuthBlockOnCorrectDerive,
                      std::move(auth_block), std::move(key_blobs),
                      std::move(auth_block_state), std::move(callback)));

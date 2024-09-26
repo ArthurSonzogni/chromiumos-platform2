@@ -394,6 +394,7 @@ void TpmEccAuthBlock::Create(const AuthInput& user_input,
 }
 
 void TpmEccAuthBlock::Derive(const AuthInput& user_input,
+                             const AuthFactorMetadata& auth_factor_metadata,
                              const AuthBlockState& state,
                              AuthBlock::DeriveCallback callback) {
   if (!user_input.user_input.has_value()) {

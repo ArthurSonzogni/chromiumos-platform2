@@ -102,6 +102,7 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
 void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
     const AuthBlockState& auth_state,
     AuthBlock::DeriveCallback derive_callback) {
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
@@ -131,7 +132,8 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
       },
       std::move(auth_block.value()), std::move(derive_callback));
 
-  auth_block_ptr->Derive(auth_input, auth_state, std::move(managed_callback));
+  auth_block_ptr->Derive(auth_input, auth_factor_metadata, auth_state,
+                         std::move(managed_callback));
 }
 
 void AuthBlockUtilityImpl::SelectAuthFactorWithAuthBlock(
