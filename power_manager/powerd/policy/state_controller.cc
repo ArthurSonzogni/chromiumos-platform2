@@ -1550,7 +1550,6 @@ void StateController::HandleUpdateEngineStatusMessage(dbus::Message* message) {
   }
 
   update_engine::Operation operation = status.current_operation();
-  LOG(INFO) << "Update operation is " << Operation_Name(operation);
   UpdaterState state = UpdaterState::IDLE;
   if (operation == update_engine::Operation::DOWNLOADING ||
       operation == update_engine::Operation::VERIFYING ||
@@ -1562,6 +1561,10 @@ void StateController::HandleUpdateEngineStatusMessage(dbus::Message* message) {
 
   if (state == updater_state_)
     return;
+
+  // Only log the operation if the state changes.
+  // The few missed due to bundling into the same state aren't an issue.
+  LOG(INFO) << "Update operation is " << Operation_Name(operation);
 
   updater_state_ = state;
   UpdateSettingsAndState();
