@@ -404,7 +404,7 @@ void ThirdPartyVpnDriver::SetParameters(
       known_cidrs, true, error_message, warning_message);
 
   if (!error_message->empty()) {
-    LOG(ERROR) << __func__ << ": " << error_message;
+    LOG(ERROR) << __func__ << ": " << *error_message;
     return;
   }
   network_config_->ipv6_blackhole_route = true;
