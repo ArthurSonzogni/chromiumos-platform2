@@ -805,24 +805,27 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                                           bssid, mode, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(std::vector<uint8_t> ssid,
-                                                const WiFiSecurity& security) {
+                                                const WiFiSecurity& security,
+                                                bool hidden_ssid) {
     return new NiceMock<MockWiFiService>(&manager_, &wifi_provider_, ssid,
                                          kModeManaged, security.SecurityClass(),
-                                         security, false);
+                                         security, hidden_ssid);
   }
   MockWiFiServiceRefPtr MakeMockService(const WiFiSecurity& security) {
-    return MakeMockServiceWithSSID(std::vector<uint8_t>(1, 'a'), security);
+    return MakeMockServiceWithSSID(std::vector<uint8_t>(1, 'a'), security,
+                                   false);
   }
   RpcIdentifier MakeNewEndpointAndService(int16_t signal_strength,
                                           uint16_t frequency,
                                           WiFiEndpointRefPtr* endpoint_ptr,
-                                          MockWiFiServiceRefPtr* service_ptr) {
+                                          MockWiFiServiceRefPtr* service_ptr,
+                                          bool hidden_ssid) {
     std::string ssid;
     RpcIdentifier path;
     net_base::MacAddress bssid;
     WiFiEndpointRefPtr endpoint = MakeNewEndpoint(false, &ssid, &path, &bssid);
-    MockWiFiServiceRefPtr service =
-        MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
+    MockWiFiServiceRefPtr service = MakeMockServiceWithSSID(
+        endpoint->ssid(), endpoint->security_mode(), hidden_ssid);
     EXPECT_CALL(wifi_provider_, FindServiceForEndpoint(EndpointMatch(endpoint)))
         .WillRepeatedly(Return(service));
     ON_CALL(*service, GetBSSIDConnectableEndpointCount())
@@ -871,7 +874,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     MockWiFiServiceRefPtr service;
     WiFiEndpointRefPtr endpoint;
     RpcIdentifier bss_path(
-        MakeNewEndpointAndService(0, 0, &endpoint, &service));
+        MakeNewEndpointAndService(0, 0, &endpoint, &service, false));
     if (!network_path.value().empty()) {
       EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
       EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
@@ -1737,7 +1740,8 @@ TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   StartWiFi();
 
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
-  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  RpcIdentifier bss_path =
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false);
   InitiateConnect(service);
   ReportCurrentBSSChanged(bss_path);
 
@@ -2234,7 +2238,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
 
   // Initiate connection with weak signal
   MockWiFiServiceRefPtr service;
-  MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  MakeNewEndpointAndService(-90, 0, nullptr, &service, false);
   InitiateConnect(service);
 
   EXPECT_EQ(GetPendingService(), service);
@@ -2337,7 +2341,8 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   // Setup connection with weak signal
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service;
-  RpcIdentifier bss_path(MakeNewEndpointAndService(-80, 0, nullptr, &service));
+  RpcIdentifier bss_path(
+      MakeNewEndpointAndService(-80, 0, nullptr, &service, false));
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kPath), Return(true)));
@@ -2632,7 +2637,7 @@ TEST_F(WiFiMainTest, TimeoutHandshake) {
 TEST_F(WiFiMainTest, DisconnectInvalidService) {
   StartWiFi();
   MockWiFiServiceRefPtr service;
-  MakeNewEndpointAndService(0, 0, nullptr, &service);
+  MakeNewEndpointAndService(0, 0, nullptr, &service, false);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
   InitiateDisconnect(service);
 }
@@ -2654,7 +2659,7 @@ TEST_F(WiFiMainTest, Stop) {
   RpcIdentifier kPath("/fake/path");
   WiFiServiceRefPtr service0(SetupConnectedService(kPath, &endpoint0, nullptr));
   WiFiEndpointRefPtr endpoint1;
-  MakeNewEndpointAndService(0, 0, &endpoint1, nullptr);
+  MakeNewEndpointAndService(0, 0, &endpoint1, nullptr, false);
 
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(endpoint0)))
       .WillOnce(Return(nullptr));
@@ -3321,7 +3326,8 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   StartWiFi();
   test_event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service;
-  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  RpcIdentifier bss_path =
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false);
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
   InitiateConnect(service);
   ReportCurrentBSSChanged(bss_path);
@@ -3340,7 +3346,8 @@ TEST_F(WiFiMainTest, RoamStateChange) {
   StartWiFi();
   test_event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service;
-  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  RpcIdentifier bss_path =
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false);
   InitiateConnect(service);
   ReportCurrentBSSChanged(bss_path);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -3421,7 +3428,8 @@ TEST_F(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange) {
   MockWiFiServiceRefPtr service0 =
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   MockWiFiServiceRefPtr service1;
-  RpcIdentifier bss_path1(MakeNewEndpointAndService(0, 0, nullptr, &service1));
+  RpcIdentifier bss_path1(
+      MakeNewEndpointAndService(0, 0, nullptr, &service1, false));
   EXPECT_EQ(service0, GetCurrentService());
 
   // Ensure call to NotifyBSSIDChanged is called on BSSIDChanged.
@@ -3469,7 +3477,8 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   MockWiFiServiceRefPtr service0 =
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   MockWiFiServiceRefPtr service1;
-  RpcIdentifier bss_path1(MakeNewEndpointAndService(0, 0, nullptr, &service1));
+  RpcIdentifier bss_path1(
+      MakeNewEndpointAndService(0, 0, nullptr, &service1, false));
   EXPECT_EQ(service0, GetCurrentService());
 
   // Note that we deliberately omit intermediate supplicant states
@@ -3605,7 +3614,8 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnSSIDSwitch) {
   MockWiFiServiceRefPtr service0 =
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   MockWiFiServiceRefPtr service1;
-  RpcIdentifier bss_path1(MakeNewEndpointAndService(0, 0, nullptr, &service1));
+  RpcIdentifier bss_path1(
+      MakeNewEndpointAndService(0, 0, nullptr, &service1, false));
   int32_t reason = -IEEE_80211::kReasonCodeSenderHasLeft;
   // When we're already connected to |service0| and we attempt to connect to
   // another service, we expect |service0| to report that the disconnection was
@@ -3794,8 +3804,6 @@ TEST_F(WiFiMainTest, IsIdle) {
 
 MATCHER_P(WiFiAddedArgs, bgscan, "") {
   return arg.template Contains<uint32_t>(
-             WPASupplicant::kNetworkPropertyScanSSID) &&
-         arg.template Contains<uint32_t>(
              WPASupplicant::kNetworkPropertyDisableVHT) &&
          arg.template Contains<std::string>(
              WPASupplicant::kNetworkPropertyBgscan) &&
@@ -3806,7 +3814,7 @@ MATCHER_P(WiFiAddedArgs, bgscan, "") {
 TEST_F(WiFiMainTest, AddNetworkArgs) {
   StartWiFi();
   MockWiFiServiceRefPtr service;
-  MakeNewEndpointAndService(0, 0, nullptr, &service);
+  MakeNewEndpointAndService(0, 0, nullptr, &service, false);
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               AddNetwork(WiFiAddedArgs(true), _));
@@ -3817,11 +3825,31 @@ TEST_F(WiFiMainTest, AddNetworkArgs) {
 TEST_F(WiFiMainTest, AddNetworkArgsNoBgscan) {
   StartWiFi();
   MockWiFiServiceRefPtr service;
-  MakeNewEndpointAndService(0, 0, nullptr, &service);
+  MakeNewEndpointAndService(0, 0, nullptr, &service, false);
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(),
               AddNetwork(WiFiAddedArgs(false), _));
   EXPECT_TRUE(SetBgscanMethod(WPASupplicant::kNetworkBgscanMethodNone));
+  InitiateConnect(service);
+}
+
+MATCHER_P(WiFiAddedArgsHiddenSSID, scan_ssid, "") {
+  bool scan_ssid_1 = false;
+  if (arg.template Contains<uint32_t>(
+          WPASupplicant::kNetworkPropertyScanSSID)) {
+    scan_ssid_1 = true;
+  }
+  return scan_ssid_1 == scan_ssid;
+}
+
+TEST_F(WiFiMainTest, AddNetworkArgsHiddenSSID) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service;
+  MakeNewEndpointAndService(0, 0, nullptr, &service, true);
+  EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              AddNetwork(WiFiAddedArgsHiddenSSID(true), _));
+  EXPECT_TRUE(SetBgscanMethod(WPASupplicant::kNetworkBgscanMethodSimple));
   InitiateConnect(service);
 }
 
@@ -3947,7 +3975,8 @@ TEST_F(WiFiMainTest, BSSRemovedDestroysBSSProxy) {
   MockSupplicantBSSProxy* proxy = supplicant_bss_proxy_.get();
   EXPECT_CALL(*proxy, Die());
   StartWiFi();
-  RpcIdentifier bss_path(MakeNewEndpointAndService(0, 0, nullptr, nullptr));
+  RpcIdentifier bss_path(
+      MakeNewEndpointAndService(0, 0, nullptr, nullptr, false));
   EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(_)).WillOnce(Return(nullptr));
   RemoveBSS(bss_path);
   // Check this now, to make sure RemoveBSS killed the proxy (rather
@@ -6442,8 +6471,8 @@ TEST_F(WiFiMainTest, ANQPGet) {
   RpcIdentifier path;
   net_base::MacAddress bssid;
   WiFiEndpointRefPtr endpoint = MakeNewEndpoint(false, &ssid, &path, &bssid);
-  MockWiFiServiceRefPtr service =
-      MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
+  MockWiFiServiceRefPtr service = MakeMockServiceWithSSID(
+      endpoint->ssid(), endpoint->security_mode(), false);
   EXPECT_CALL(*wifi_provider(), FindServiceForEndpoint(EndpointMatch(endpoint)))
       .WillRepeatedly(Return(service));
   ON_CALL(*service, GetBSSIDConnectableEndpointCount())
@@ -6462,7 +6491,8 @@ TEST_F(WiFiMainTest, EndpointWithANQPCapsNoANQPGet) {
   StartWiFi();
 
   MockWiFiServiceRefPtr service;
-  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  RpcIdentifier bss_path =
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false);
 
   // Create properties with ANQP support and capability list.
   KeyValueStore properties, anqp_properties;
@@ -6508,7 +6538,8 @@ TEST_F(WiFiMainTest, ANQPQueryDone) {
 
 TEST_F(WiFiMainTest, NotifyANQPInformationChanged) {
   MockWiFiServiceRefPtr service;
-  RpcIdentifier bss_path = MakeNewEndpointAndService(-90, 0, nullptr, &service);
+  RpcIdentifier bss_path =
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false);
   WiFiEndpointRefPtr endpoint = GetEndpointMap().at(bss_path);
 
   // For an endpoint without capabilities, no metrics should be sent.
@@ -6557,7 +6588,8 @@ TEST_F(WiFiMainTest, DisconnectTypeSwitchNetwork) {
   MockWiFiServiceRefPtr service1(
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
   MockWiFiServiceRefPtr service2;
-  RpcIdentifier bss_path(MakeNewEndpointAndService(-80, 0, nullptr, &service2));
+  RpcIdentifier bss_path(
+      MakeNewEndpointAndService(-80, 0, nullptr, &service2, false));
   EXPECT_EQ(GetSelectedService(), service1);
 
   EXPECT_CALL(*service1, SetFailure(_)).Times(0);
