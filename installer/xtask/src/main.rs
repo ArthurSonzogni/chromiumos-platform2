@@ -39,6 +39,11 @@ struct TestInstallArgs {
     /// Pause before and after the install, giving time to ssh into the vm and inspect state.
     #[arg(long)]
     pause: bool,
+
+    /// Turn on debug logging in the installer.
+    /// This will make the shell script print everything it does (`set -x`).
+    #[arg(long)]
+    debug: bool,
 }
 
 // Make running commands a little nicer:
@@ -158,7 +163,7 @@ fn prep_payload_install() -> Result<String> {
     Ok(image_file)
 }
 
-fn basic_install(payload_image: bool) -> Result<()> {
+fn basic_install(payload_image: bool, debug: bool) -> Result<()> {
     println!("Running install...");
 
     let mut cmd = vm_command();
@@ -167,6 +172,10 @@ fn basic_install(payload_image: bool) -> Result<()> {
     if payload_image {
         let payload_location = prep_payload_install()?;
         cmd.args(["--payload_image", &payload_location]);
+    }
+
+    if debug {
+        cmd.arg("--debug");
     }
 
     run_command(&mut cmd).context("Couldn't install. Leaving vm running for debugging.")?;
@@ -250,7 +259,7 @@ fn run_test_install(args: &TestInstallArgs) -> Result<()> {
     if args.use_os_install_service {
         install_via_service()
     } else {
-        basic_install(args.payload_image.is_some())
+        basic_install(args.payload_image.is_some(), args.debug)
     }?;
 
     if args.pause {
