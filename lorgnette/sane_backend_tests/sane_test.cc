@@ -270,5 +270,172 @@ TEST_F(SANETest, MultipleCancel) {
   sane_close(handle);
 }
 
+class SANEOption {
+ public:
+  SANEOption(int index, const SANE_Option_Descriptor* desc)
+      : index(index), desc(desc), value(std::make_unique<char[]>(desc->size)) {}
+  SANEOption() : index(-1), desc(NULL) {}
+
+  bool is_valid() { return index >= 0 && desc; }
+
+  SANE_Status update_value(SANE_Handle handle) {
+    CHECK(is_valid());
+    return sane_control_option(handle, index, SANE_ACTION_GET_VALUE,
+                               value.get(), nullptr);
+  }
+
+  SANE_Status set_value(SANE_Handle handle, void* new_value, int* info_ptr) {
+    CHECK(is_valid());
+    return sane_control_option(handle, index, SANE_ACTION_SET_VALUE, new_value,
+                               info_ptr);
+  }
+
+  bool compare_value(SANE_Handle handle) {
+    CHECK(is_valid());
+    auto comparison_value = std::make_unique<char[]>(desc->size);
+    if (sane_control_option(handle, index, SANE_ACTION_GET_VALUE,
+                            comparison_value.get(),
+                            nullptr) != SANE_STATUS_GOOD) {
+      return false;
+    }
+    if (desc->type == SANE_TYPE_STRING) {
+      return !strcmp(value.get(), comparison_value.get());
+    } else {
+      return !memcmp(value.get(), comparison_value.get(), desc->size);
+    }
+  }
+
+  int index;
+  const SANE_Option_Descriptor* desc;
+  std::unique_ptr<char[]> value;
+};
+
+TEST_F(SANETest, ReloadOption) {
+  SANE_Handle handle;
+
+  ASSERT_EQ(sane_open(sane_backend_tests::scanner_under_test->c_str(), &handle),
+            SANE_STATUS_GOOD)
+      << "Failed to open scanner";
+
+  SANEOption source_option, res_option, mode_option;
+
+  for (int i = 1;; i++) {
+    const SANE_Option_Descriptor* desc = sane_get_option_descriptor(handle, i);
+    if (!desc) {
+      break;
+    }
+    if (!strcmp(desc->name, "source")) {
+      source_option = SANEOption(i, desc);
+    } else if (!strcmp(desc->name, "mode")) {
+      mode_option = SANEOption(i, desc);
+    } else if (!strcmp(desc->name, "resolution")) {
+      res_option = SANEOption(i, desc);
+    }
+  }
+
+  ASSERT_TRUE(source_option.is_valid()) << "Failed to find 'source' option";
+  ASSERT_TRUE(mode_option.is_valid()) << "Failed to find 'mode' option";
+  ASSERT_TRUE(res_option.is_valid()) << "Failed to find 'resolution' option";
+
+  // make sure source, mode, and resolution have the types we expect
+  ASSERT_EQ(source_option.desc->type, SANE_TYPE_STRING);
+  ASSERT_EQ(mode_option.desc->type, SANE_TYPE_STRING);
+  ASSERT_TRUE(res_option.desc->type == SANE_TYPE_INT ||
+              res_option.desc->type == SANE_TYPE_FIXED);
+
+  // make sure source and mode have the constraint type we expect (resolution is
+  // handled below)
+  ASSERT_EQ(source_option.desc->constraint_type, SANE_CONSTRAINT_STRING_LIST);
+  ASSERT_EQ(mode_option.desc->constraint_type, SANE_CONSTRAINT_STRING_LIST);
+
+  // get initial values of options
+  ASSERT_EQ(source_option.update_value(handle), SANE_STATUS_GOOD);
+  ASSERT_EQ(res_option.update_value(handle), SANE_STATUS_GOOD);
+  ASSERT_EQ(mode_option.update_value(handle), SANE_STATUS_GOOD);
+
+  // iterate through sources
+  for (const SANE_String_Const* val =
+           source_option.desc->constraint.string_list;
+       *val; val++) {
+    int info = 0;
+    ASSERT_EQ(source_option.set_value(
+                  handle,
+                  // you can thank cpplint for insisting that this is more
+                  // readable than a C-style cast
+                  static_cast<void*>(const_cast<char*>(*val)), &info),
+              SANE_STATUS_GOOD);
+    if (info & SANE_INFO_RELOAD_OPTIONS) {
+      ASSERT_EQ(source_option.update_value(handle), SANE_STATUS_GOOD);
+      ASSERT_EQ(res_option.update_value(handle), SANE_STATUS_GOOD);
+      ASSERT_EQ(mode_option.update_value(handle), SANE_STATUS_GOOD);
+    } else {
+      ASSERT_TRUE(res_option.compare_value(handle));
+      ASSERT_TRUE(mode_option.compare_value(handle));
+    }
+  }
+
+  // refresh value of source option in case the scanner decided to "round" it
+  // (which it can do, even for string values)
+  ASSERT_EQ(source_option.update_value(handle), SANE_STATUS_GOOD);
+
+  // iterate through color modes
+  for (const SANE_String_Const* val = mode_option.desc->constraint.string_list;
+       *val; val++) {
+    int info = 0;
+    ASSERT_EQ(mode_option.set_value(handle,
+                                    // you can thank cpplint for insisting that
+                                    // this is more readable than a C-style cast
+                                    static_cast<void*>(const_cast<char*>(*val)),
+                                    &info),
+              SANE_STATUS_GOOD);
+    if (info & SANE_INFO_RELOAD_OPTIONS) {
+      ASSERT_EQ(source_option.update_value(handle), SANE_STATUS_GOOD);
+      ASSERT_EQ(mode_option.update_value(handle), SANE_STATUS_GOOD);
+      ASSERT_EQ(res_option.update_value(handle), SANE_STATUS_GOOD);
+    } else {
+      ASSERT_TRUE(source_option.compare_value(handle));
+      ASSERT_TRUE(res_option.compare_value(handle));
+    }
+  }
+
+  // refresh value of mode option in case the scanner decided to "round" it
+  // (which it can do, even for string values)
+  ASSERT_EQ(mode_option.update_value(handle), SANE_STATUS_GOOD);
+
+  // iterate through resolutions
+  for (int i = 0;; i++) {
+    SANE_Word res_value;
+    if (res_option.desc->constraint_type == SANE_CONSTRAINT_RANGE) {
+      const SANE_Range* range = res_option.desc->constraint.range;
+      res_value = range->min + i * range->quant;
+      if (res_value > range->max) {
+        break;
+      }
+    } else {
+      ASSERT_EQ(res_option.desc->constraint_type, SANE_CONSTRAINT_WORD_LIST);
+      if (i == res_option.desc->constraint.word_list[0]) {
+        // word_list[0] is the length of the word list, not counting the length
+        // element itself
+        break;
+      }
+      res_value = res_option.desc->constraint.word_list[i + 1];
+    }
+
+    int info = 0;
+    ASSERT_EQ(
+        res_option.set_value(handle, static_cast<void*>(&res_value), &info),
+        SANE_STATUS_GOOD);
+    if (info & SANE_INFO_RELOAD_OPTIONS) {
+      ASSERT_EQ(source_option.update_value(handle), SANE_STATUS_GOOD);
+      ASSERT_EQ(mode_option.update_value(handle), SANE_STATUS_GOOD);
+    } else {
+      ASSERT_TRUE(source_option.compare_value(handle));
+      ASSERT_TRUE(mode_option.compare_value(handle));
+    }
+  }
+
+  sane_close(handle);
+}
+
 }  // namespace
 }  // namespace sane_backend_tests
