@@ -104,15 +104,11 @@ impl MockCommandRunner {
     }
     pub fn add_gsctool_interaction(
         &mut self,
-        mut flag: Vec<&str>,
+        flag: Vec<&str>,
         exit_status: i32,
         out: &str,
         err: &str,
     ) {
-        if cfg!(feature = "ti50_onboard") {
-            flag.push("--dauntless");
-        }
-
         self.add_expectation(
             MockCommandInput::new(GSCTOOL_CMD_NAME, flag),
             MockCommandOutput::new(exit_status, out, err),

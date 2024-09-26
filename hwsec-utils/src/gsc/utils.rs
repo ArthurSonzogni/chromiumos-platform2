@@ -63,12 +63,8 @@ pub fn get_value_from_gsctool_output<'a>(
 
 pub fn run_gsctool_cmd(
     ctx: &mut impl Context,
-    mut options: Vec<&str>,
+    options: Vec<&str>,
 ) -> Result<HwsecOutput, HwsecError> {
-    if cfg!(feature = "ti50_onboard") {
-        options.push("--dauntless");
-    }
-
     ctx.cmd_runner()
         .run(GSCTOOL_CMD_NAME, options)
         .map_err(|_| HwsecError::CommandRunnerError)
