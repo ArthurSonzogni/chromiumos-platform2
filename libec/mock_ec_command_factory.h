@@ -145,6 +145,22 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               ThermalAutoFanCtrlCommand,
               (uint8_t fan_idx),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetMemmapThermalVersionCommand>,
+              GetMemmapThermalVersionCommand,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetMemmapTempCommand>,
+              GetMemmapTempCommand,
+              (uint8_t id),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::GetMemmapTempBCommand>,
+              GetMemmapTempBCommand,
+              (uint8_t id),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ec::TempSensorGetInfoCommand>,
+              TempSensorGetInfoCommand,
+              (uint8_t id),
+              (override));
 };
 
 }  // namespace ec

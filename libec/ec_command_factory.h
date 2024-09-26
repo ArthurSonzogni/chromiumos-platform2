@@ -37,6 +37,10 @@
 #include "libec/motion_sense_command_lid_angle.h"
 #include "libec/pwm/pwm_get_fan_target_rpm_command.h"
 #include "libec/pwm/pwm_set_fan_target_rpm_command.h"
+#include "libec/thermal/get_memmap_temp_b_command.h"
+#include "libec/thermal/get_memmap_temp_command.h"
+#include "libec/thermal/get_memmap_thermal_version_command.h"
+#include "libec/thermal/temp_sensor_get_info_command.h"
 #include "libec/thermal/thermal_auto_fan_ctrl_command.h"
 
 namespace ec {
@@ -244,6 +248,34 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::GetMemmapThermalVersionCommand>
+  GetMemmapThermalVersionCommand() = 0;
+  static_assert(std::is_base_of<EcCommandInterface,
+                                ec::GetMemmapThermalVersionCommand>::value,
+                "All commands created by this class should derive from "
+                "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::GetMemmapTempCommand> GetMemmapTempCommand(
+      uint8_t id) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::GetMemmapTempCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::GetMemmapTempBCommand> GetMemmapTempBCommand(
+      uint8_t id) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::GetMemmapTempBCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::TempSensorGetInfoCommand>
+  TempSensorGetInfoCommand(uint8_t id) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::TempSensorGetInfoCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
   // TODO(b/144956297): Add factory methods for all of the EC
   // commands we use so that we can easily mock them for testing.
 };
@@ -347,6 +379,18 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::ThermalAutoFanCtrlCommand> ThermalAutoFanCtrlCommand(
       uint8_t fan_idx) override;
+
+  std::unique_ptr<ec::GetMemmapThermalVersionCommand>
+  GetMemmapThermalVersionCommand() override;
+
+  std::unique_ptr<ec::GetMemmapTempCommand> GetMemmapTempCommand(
+      uint8_t id) override;
+
+  std::unique_ptr<ec::GetMemmapTempBCommand> GetMemmapTempBCommand(
+      uint8_t id) override;
+
+  std::unique_ptr<ec::TempSensorGetInfoCommand> TempSensorGetInfoCommand(
+      uint8_t id) override;
 };
 
 }  // namespace ec

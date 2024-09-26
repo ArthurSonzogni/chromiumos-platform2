@@ -169,4 +169,24 @@ EcCommandFactory::ThermalAutoFanCtrlCommand(uint8_t fan_idx) {
   return std::make_unique<ec::ThermalAutoFanCtrlCommand>(fan_idx);
 }
 
+std::unique_ptr<ec::GetMemmapThermalVersionCommand>
+EcCommandFactory::GetMemmapThermalVersionCommand() {
+  return std::make_unique<ec::GetMemmapThermalVersionCommand>();
+}
+
+std::unique_ptr<ec::GetMemmapTempCommand>
+EcCommandFactory::GetMemmapTempCommand(uint8_t id) {
+  return std::make_unique<ec::GetMemmapTempCommand>(id);
+}
+
+std::unique_ptr<ec::GetMemmapTempBCommand>
+EcCommandFactory::GetMemmapTempBCommand(uint8_t id) {
+  return std::make_unique<ec::GetMemmapTempBCommand>(id);
+}
+
+std::unique_ptr<ec::TempSensorGetInfoCommand>
+EcCommandFactory::TempSensorGetInfoCommand(uint8_t id) {
+  return std::make_unique<ec::TempSensorGetInfoCommand>(id);
+}
+
 }  // namespace ec
