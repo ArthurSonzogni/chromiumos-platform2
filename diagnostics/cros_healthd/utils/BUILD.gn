@@ -41,6 +41,7 @@ if (use.test) {
       "libchrome",
       "libchrome-test",
       "libmetrics",
+      "libusb-1.0",
     ]
   }
 

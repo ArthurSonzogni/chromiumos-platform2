@@ -4,6 +4,8 @@
 
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 
+#include <libusb.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -20,6 +22,7 @@ namespace diagnostics {
 namespace {
 
 using ::testing::Return;
+using ::testing::StrEq;
 namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kFakePathUsb[] = "sys/devices/pci0000:00/0000:00:14.0";
@@ -146,6 +149,50 @@ TEST_F(UsbUtilsTest, TestFetchVidPidFallback) {
   EXPECT_CALL(mock_dev(), GetSysPath())
       .WillOnce(Return(fake_dev_path_.value().c_str()));
   EXPECT_EQ(GetUsbVidPid(dev_), std::make_pair(kFakeUsbVid, kFakeUsbPid));
+}
+
+TEST_F(UsbUtilsTest, TestLookUpUsbDeviceClass) {
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_AUDIO),
+              StrEq("Audio"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_COMM),
+              StrEq("Communication"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_HID),
+              StrEq("Human Interface Device"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_PHYSICAL),
+              StrEq("Physical"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_PRINTER),
+              StrEq("Printer"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_IMAGE),
+              StrEq("Image"));
+  EXPECT_THAT(
+      LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_MASS_STORAGE),
+      StrEq("Mass storage"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_HUB),
+              StrEq("Hub"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_DATA),
+              StrEq("Data"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_SMART_CARD),
+              StrEq("Smart Card"));
+  EXPECT_THAT(
+      LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_CONTENT_SECURITY),
+      StrEq("Content Security"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_VIDEO),
+              StrEq("Video"));
+  EXPECT_THAT(
+      LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_PERSONAL_HEALTHCARE),
+      StrEq("Personal Healthcare"));
+  EXPECT_THAT(
+      LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_DIAGNOSTIC_DEVICE),
+      StrEq("Diagnostic Device"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_WIRELESS),
+              StrEq("Wireless"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_APPLICATION),
+              StrEq("Application"));
+  EXPECT_THAT(LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_VENDOR_SPEC),
+              StrEq("Vendor Specific"));
+  EXPECT_THAT(
+      LookUpUsbDeviceClass(libusb_class_code::LIBUSB_CLASS_PER_INTERFACE),
+      StrEq("Unknown"));
 }
 
 TEST_F(UsbUtilsTest, TestDetermineUsbVersionRootHub) {
