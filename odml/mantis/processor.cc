@@ -32,17 +32,37 @@ constexpr auto kMapStatusToError =
 MantisProcessor::MantisProcessor(
     MantisComponent component,
     const MantisAPI* api,
-    mojo::PendingReceiver<mojom::MantisProcessor> receiver)
-    : component_(component), api_(api) {
+    mojo::PendingReceiver<mojom::MantisProcessor> receiver,
+    base::OnceCallback<void()> on_disconnected)
+    : component_(component),
+      api_(api),
+      on_disconnected_(std::move(on_disconnected)) {
   CHECK(api_);
   if (!component_.processor) {
     LOG(ERROR) << "Processor is missing";
   }
   receiver_set_.Add(this, std::move(receiver));
+  receiver_set_.set_disconnect_handler(base::BindRepeating(
+      &MantisProcessor::OnDisconnected, base::Unretained(this)));
 }
 
 MantisProcessor::~MantisProcessor() {
   api_->DestroyMantisComponent(component_);
+}
+
+void MantisProcessor::OnDisconnected() {
+  if (!receiver_set_.empty()) {
+    return;
+  }
+  if (on_disconnected_.is_null()) {
+    return;
+  }
+
+  base::OnceClosure closure = std::move(on_disconnected_);
+
+  // Don't use any member function or variable after this line, because the
+  // MantisProcessor may be destroyed inside the callback.
+  std::move(closure).Run();
 }
 
 void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,

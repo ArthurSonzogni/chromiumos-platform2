@@ -26,7 +26,8 @@ class MantisProcessor : public mojom::MantisProcessor {
   explicit MantisProcessor(
       MantisComponent component,
       const MantisAPI* api,
-      mojo::PendingReceiver<mojom::MantisProcessor> receiver);
+      mojo::PendingReceiver<mojom::MantisProcessor> receiver,
+      base::OnceCallback<void()> on_disconnected);
 
   ~MantisProcessor();
 
@@ -54,6 +55,8 @@ class MantisProcessor : public mojom::MantisProcessor {
                     SegmentationCallback callback) override;
 
  private:
+  void OnDisconnected();
+
   MantisComponent component_;
 
   const raw_ptr<const MantisAPI> api_;
@@ -61,6 +64,8 @@ class MantisProcessor : public mojom::MantisProcessor {
   mojo::ReceiverSet<mojom::MantisProcessor> receiver_set_;
 
   base::WeakPtrFactory<MantisProcessor> weak_ptr_factory_{this};
+
+  base::OnceClosure on_disconnected_;
 };
 
 }  // namespace mantis
