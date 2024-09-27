@@ -3437,14 +3437,14 @@ void WiFi::PendingTimeoutHandler() {
   // Failure cause is determined later in ServiceDisconnected().
   pending_service_->Disconnect(&unused_error, __func__);
 
-  // A hidden service may have no endpoints, since wpa_supplicant
-  // failed to attain a CurrentBSS.  If so, the service has no
-  // reference to |this| device and cannot call WiFi::DisconnectFrom()
-  // to reset pending_service_.  In this case, we must perform the
-  // disconnect here ourselves.
+  // If wpa_supplicant failed to pass on a CurrentBSS, the service has no
+  // reference to |this| device and cannot call WiFi::DisconnectFrom() to
+  // reset pending_service_.  In this case, we must perform the disconnect
+  // here ourselves.
   if (pending_service_) {
-    CHECK(!pending_service_->HasEndpoints());
-    LOG(INFO) << "Hidden service was not found.";
+    LOG(INFO) << __func__
+              << ": pending service is not null, disconnect from it."
+              << "HasEndpoints is: " << pending_service_->HasEndpoints();
     DisconnectFrom(pending_service_.get());
   }
 
