@@ -91,15 +91,15 @@ install_config("maybe_install_dev_lib") {
 install_config("unittest_deps") {
   sources = []
 
-  # Use either local or DLC version of ml-core-internal.
+  # Use either local or DLC version of ml-core-dlc.
   if (use.local_ml_core_internal) {
     sources += [
       "libcros_ml_core_internal.so",
       "moon_big.jpg",
     ]
-  } else if (use.camera_feature_effects && use.internal) {
+  } else if (use.camera_feature_effects) {
     # TODO(b/281928456): Investigate a cleaner way to check this condition.
-    sources += [ "${sysroot}/build/rootfs/dlc-scaled/ml-core-internal/" +
+    sources += [ "${sysroot}/build/rootfs/dlc-scaled/ml-core-dlc/" +
                  "package/root/libcros_ml_core_internal.so" ]
   }
   install_path = "/build/share/ml_core/"
