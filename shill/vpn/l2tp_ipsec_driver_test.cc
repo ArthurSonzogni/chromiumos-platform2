@@ -216,6 +216,10 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnSuspend) {
 
   EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
   driver_->OnBeforeSuspend(base::DoNothing());
+
+  // IPsecConnection should be disconnected in a PostTask().
+  EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect);
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
@@ -228,6 +232,10 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
   EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
   driver_->OnDefaultPhysicalServiceEvent(
       VPNDriver::DefaultPhysicalServiceEvent::kDown);
+
+  // IPsecConnection should be disconnected in a PostTask().
+  EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect);
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
@@ -240,6 +248,10 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
   EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
   driver_->OnDefaultPhysicalServiceEvent(
       VPNDriver::DefaultPhysicalServiceEvent::kChanged);
+
+  // IPsecConnection should be disconnected in a PostTask().
+  EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect);
+  dispatcher_.task_environment().RunUntilIdle();
 }
 
 TEST_F(L2TPIPsecDriverTest, PropertyStoreAndConfig) {

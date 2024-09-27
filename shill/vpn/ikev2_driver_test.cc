@@ -19,7 +19,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
-
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/vpn_connection_under_test.h"
@@ -182,7 +181,52 @@ TEST_F(IKEv2DriverTest, ConnectedFailure) {
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
 }
 
-// TODO(b/210064468): Add tests for default service change and suspend events.
+TEST_F(IKEv2DriverTest, DisconnectOnSuspend) {
+  InvokeAndVerifyConnectAsync();
+
+  // Makes it connected.
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
+  driver_->OnBeforeSuspend(base::DoNothing());
+
+  // IPsecConnection disconnected in PostTask().
+  EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect);
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IKEv2DriverTest, DisconnectOnDefaultPhysicalServiceDown) {
+  InvokeAndVerifyConnectAsync();
+
+  // Makes it connected.
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::DefaultPhysicalServiceEvent::kDown);
+
+  // IPsecConnection should be disconnected in a PostTask().
+  EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect);
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(IKEv2DriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
+  InvokeAndVerifyConnectAsync();
+
+  // Makes it connected.
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::DefaultPhysicalServiceEvent::kChanged);
+
+  // IPsecConnection should be disconnected in a PostTask().
+  EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect);
+  dispatcher_.task_environment().RunUntilIdle();
+}
 
 TEST_F(IKEv2DriverTest, PropertyStoreAndConfig) {
   Error unused_error;
