@@ -29,6 +29,7 @@
 #include <libhwsec/status.h>
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
+#include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -92,6 +93,20 @@ const DelaySchedule& SelectDelayScheduleForNewFactor(
       // For password, always use a delay schedule.
       return PasswordDelaySchedule();
   }
+}
+
+// Given the metadata for a factor attempt to determine the type of delay
+// schedule it should have. Returns nullopt if the factor does not support
+// pinweaver auth blocks.
+std::optional<DelayScheduleType> DetermineDelayScheduleType(
+    const AuthFactorMetadata& auth_factor_metadata) {
+  return std::visit<std::optional<DelayScheduleType>>(
+      base::Overloaded{
+          [](const PasswordMetadata&) { return DelayScheduleType::kPassword; },
+          [](const PinMetadata&) { return DelayScheduleType::kPin; },
+          [](const KioskMetadata&) { return DelayScheduleType::kPassword; },
+          [](const auto&) { return std::nullopt; }},
+      auth_factor_metadata.metadata);
 }
 
 }  // namespace
@@ -220,18 +235,13 @@ void PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   }
 
   // Determine if the input is a password or PIN, or fail otherwise.
-  auto schedule_type = std::visit<std::optional<DelayScheduleType>>(
-      base::Overloaded{
-          [](const PasswordMetadata&) { return DelayScheduleType::kPassword; },
-          [](const PinMetadata&) { return DelayScheduleType::kPin; },
-          [](const KioskMetadata&) { return DelayScheduleType::kPassword; },
-          [](const auto&) { return std::nullopt; }},
-      auth_factor_metadata.metadata);
+  auto schedule_type = DetermineDelayScheduleType(auth_factor_metadata);
   if (!schedule_type) {
     LOG(ERROR) << "Pinweaver only supports PIN and password factors";
     std::move(callback).Run(
         MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockFactorIsNotSupportedType),
+            CRYPTOHOME_ERR_LOC(
+                kLocPinWeaverAuthBlockCreateAuthFactorIsNotSupportedType),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
         nullptr, nullptr);
@@ -364,6 +374,20 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
     return;
   }
 
+  // Determine if the input is a password or PIN, or fail otherwise.
+  auto schedule_type = DetermineDelayScheduleType(auth_factor_metadata);
+  if (!schedule_type) {
+    LOG(ERROR) << "Pinweaver only supports PIN and password factors";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocPinWeaverAuthBlockDeriveAuthFactorIsNotSupportedType),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        nullptr, std::nullopt);
+    return;
+  }
+
   const PinWeaverAuthBlockState* auth_state;
   if (!(auth_state = std::get_if<PinWeaverAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
@@ -477,10 +501,13 @@ void PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   brillo::SecureBlob& he_secret = result->he_secret;
   key_blobs->reset_secret = result->reset_secret;
   std::optional<AuthBlock::SuggestedAction> suggested_action;
-  // If PIN migration is enabled, check if the credential is currently
-  // configured to use the modern delay policy. If it is not, attempt to migrate
-  // it. If any of that fails we don't fail the already-successful derivation.
-  if (features_->IsFeatureEnabled(Features::kMigratePin)) {
+
+  // If this factor is a PIN factor and PIN migration is enabled, check if the
+  // credential is currently configured to use the modern delay policy. If it is
+  // not, attempt to migrate it. If any of that fails we don't fail the
+  // already-successful derivation.
+  if (*schedule_type == DelayScheduleType::kPin &&
+      features_->IsFeatureEnabled(Features::kMigratePin)) {
     auto delay_sched =
         hwsec_pw_manager_->GetDelaySchedule(*auth_state->le_label);
     if (delay_sched.ok()) {

@@ -482,6 +482,56 @@ TEST_F(PinWeaverAuthBlockTest, DeriveTest) {
   EXPECT_EQ(suggested_action, std::nullopt);
 }
 
+TEST_F(PinWeaverAuthBlockTest, DeriveTestWithPassword) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::Blob salt(PKCS5_SALT_LEN, 'A');
+  brillo::Blob chaps_iv(kAesBlockSize, 'F');
+  brillo::Blob fek_iv(kAesBlockSize, 'X');
+
+  brillo::SecureBlob le_secret(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+
+  ON_CALL(hwsec_pw_manager_, CheckCredential(_, _))
+      .WillByDefault(
+          ReturnValue(hwsec::PinWeaverManager::CheckCredentialReply{}));
+  EXPECT_CALL(hwsec_pw_manager_, CheckCredential(_, le_secret))
+      .Times(Exactly(1));
+  features_.SetDefaultForFeature(Features::kMigratePin, true);
+
+  // Construct the vault keyset.
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized.set_salt(salt.data(), salt.size());
+  serialized.set_le_chaps_iv(chaps_iv.data(), chaps_iv.size());
+  serialized.set_le_label(0);
+  serialized.set_le_fek_iv(fek_iv.data(), fek_iv.size());
+
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
+
+  AuthInput auth_input = {vault_key};
+  AuthFactorMetadata metadata = {.metadata = PasswordMetadata()};
+
+  DeriveTestFuture result;
+  auth_block_->Derive(auth_input, metadata, auth_state, result.GetCallback());
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs, suggested_action] = result.Take();
+  ASSERT_THAT(status, IsOk());
+
+  // Set expectations of the key blobs.
+  EXPECT_NE(key_blobs->reset_secret, std::nullopt);
+  EXPECT_NE(key_blobs->chaps_iv, std::nullopt);
+  EXPECT_NE(key_blobs->vkk_iv, std::nullopt);
+
+  // PinWeaver should always use unique IVs.
+  EXPECT_NE(key_blobs->chaps_iv.value(), key_blobs->vkk_iv.value());
+
+  // No suggested_action with the credential.
+  EXPECT_EQ(suggested_action, std::nullopt);
+}
+
 TEST_F(PinWeaverAuthBlockTest, DeriveTestWithLockoutPin) {
   brillo::SecureBlob vault_key(20, 'C');
   brillo::Blob salt(PKCS5_SALT_LEN, 'A');

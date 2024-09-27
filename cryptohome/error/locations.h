@@ -1574,7 +1574,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* =Obsolete= */
   kLocUserDataAuthSessionNotAuthInRestoreDeviceKey = 2184,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
-  kLocPinWeaverAuthBlockFactorIsNotSupportedType = 2185,
+  kLocPinWeaverAuthBlockCreateAuthFactorIsNotSupportedType = 2185,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockDeriveAuthFactorIsNotSupportedType = 2186,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInStartAuthSession = 2190,
   /* ./user_secret_stash/manager.cc */

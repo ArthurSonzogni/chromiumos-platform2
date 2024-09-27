@@ -147,7 +147,8 @@ void TestPasswordBasedAuthBlockOnCreate(
 
   // Check derivation using the correct password.
   AuthBlockState state_for_derive = *auth_block_state;
-  auth_block->Derive(
+  AuthBlock* auth_block_ptr = auth_block.get();
+  auth_block_ptr->Derive(
       AuthInput{.user_input = SecureBlob(kPassword),
                 .obfuscated_username = obfuscated_username},
       AuthFactorMetadata{.metadata = PasswordMetadata()}, state_for_derive,
