@@ -6,6 +6,7 @@
 
 #include <poll.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -196,6 +197,37 @@ std::string CalculateBase64PublicKey(
 // which may generate a new parsable line.
 bool ValidateInputString(const std::string& value) {
   return value.find('\n') == value.npos;
+}
+
+// Infer whether we need to block IPv6. In the case that users only configure
+// IPv4 for WireGuard, they may want to block IPv6 to avoid traffic leak.
+// Ideally this information should be provided by user directly, but this is not
+// part of the standard WireGuard config so let's infer it from the existing
+// configuration heuristically. Use the following condition:
+//
+// blackhole_ipv6 = (no ipv6 configuration) && (shortest included routes < 8)
+//
+// Rationale: if shortest (largest) prefix is no shorter than 8, it's very
+// likely that this VPN is used as a split-routing VPN. For most of the
+// destinations in the IPv4 address space VPN will not be used, then it should
+// be fine to allow IPv6 traffic through the underlying physical network.
+//
+// We may want to do the same thing for blocking IPv4, but for now IPv6-only VPN
+// should be rare.
+bool ShouldBlockIPv6(const net_base::NetworkConfig& network_config) {
+  if (network_config.ipv6_addresses.size() != 0) {
+    return false;
+  }
+
+  int shortest_ipv4_prefix_length = 32;
+  for (const auto& prefix : network_config.included_route_prefixes) {
+    if (prefix.GetFamily() == net_base::IPFamily::kIPv6) {
+      return false;
+    }
+    shortest_ipv4_prefix_length =
+        std::min(shortest_ipv4_prefix_length, prefix.prefix_length());
+  }
+  return shortest_ipv4_prefix_length < 8;
 }
 
 }  // namespace
@@ -615,6 +647,8 @@ bool WireGuardDriver::PopulateIPProperties() {
       network_config_->included_route_prefixes.push_back(*prefix);
     }
   }
+
+  network_config_->ipv6_blackhole_route = ShouldBlockIPv6(*network_config_);
 
   // WireGuard would add 80 bytes to a packet in the worse case, so assume the
   // MTU on the physical network is 1500, set the MTU to 1500-80=1420 here.

@@ -722,5 +722,79 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   ASSERT_EQ(driver_->GetNetworkConfig(), nullptr);
   driver_->Disconnect();
 }
+
+TEST_F(WireGuardDriverTest, IPv6BlackholeRoute) {
+  Error err;
+  auto create_kernel_link = [&]() {
+    InvokeConnectAsyncKernel();
+    InvokeLinkReady();
+    std::move(wireguard_tools_exit_callback_).Run(0);
+  };
+  auto set_client_ips = [&](const std::vector<std::string>& value) {
+    property_store_->SetStringsProperty(kWireGuardIPAddress, value, &err);
+  };
+  auto set_allowed_ips = [&](const std::vector<std::string>& value) {
+    property_store_->SetStringmapsProperty(
+        kWireGuardPeers,
+        {
+            {{kWireGuardPeerPublicKey, "public-key-1"},
+             {kWireGuardPeerPresharedKey, "preshared-key-1"},
+             {kWireGuardPeerPersistentKeepalive, "10"},
+             {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+             {kWireGuardPeerAllowedIPs, base::JoinString(value, ",")}},
+        },
+        &err);
+  };
+
+  struct TestCase {
+    std::vector<std::string> client_ips;
+    std::vector<std::string> allowed_ips;
+    bool expectBlackholeIPv6;
+  } tcs[] = {
+      {
+          .client_ips = {kIPv4Address},
+          .allowed_ips = {"0.0.0.0/0"},
+          .expectBlackholeIPv6 = true,
+      },
+      {
+          .client_ips = {kIPv4Address},
+          .allowed_ips = {"0.0.0.0/7"},
+          .expectBlackholeIPv6 = true,
+      },
+      {
+          .client_ips = {kIPv6Address1},
+          .allowed_ips = {"0.0.0.0/7"},
+          .expectBlackholeIPv6 = false,
+      },
+      {
+          .client_ips = {kIPv4Address, kIPv6Address1},
+          .allowed_ips = {"0.0.0.0/7"},
+          .expectBlackholeIPv6 = false,
+      },
+      {
+          .client_ips = {kIPv4Address},
+          .allowed_ips = {"0.0.0.0/7", "::/128"},
+          .expectBlackholeIPv6 = false,
+      },
+      {
+          .client_ips = {kIPv4Address},
+          .allowed_ips = {"0.0.0.0/8"},
+          .expectBlackholeIPv6 = false,
+      },
+  };
+  for (const auto& tc : tcs) {
+    InitializePropertyStore();
+    set_client_ips(tc.client_ips);
+    set_allowed_ips(tc.allowed_ips);
+    create_kernel_link();
+    ASSERT_NE(driver_->GetNetworkConfig(), nullptr);
+    ASSERT_EQ(driver_->GetNetworkConfig()->ipv6_blackhole_route,
+              tc.expectBlackholeIPv6)
+        << "client_ips=" << base::JoinString(tc.client_ips, ",")
+        << ", allowed_ips=" << base::JoinString(tc.allowed_ips, ",");
+    driver_->Disconnect();
+  }
+}
+
 }  // namespace
 }  // namespace shill
