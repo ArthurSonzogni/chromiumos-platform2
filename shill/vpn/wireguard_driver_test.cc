@@ -705,9 +705,11 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   network_config = driver_->GetNetworkConfig();
   ASSERT_NE(network_config, nullptr);
   ASSERT_FALSE(network_config->ipv4_address.has_value());
-  ASSERT_EQ(network_config->ipv6_addresses.size(), 1);
+  ASSERT_EQ(network_config->ipv6_addresses.size(), 2);
   ASSERT_EQ(network_config->ipv6_addresses[0],
             net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address1, 128));
+  ASSERT_EQ(network_config->ipv6_addresses[1],
+            net_base::IPv6CIDR::CreateFromStringAndPrefix(kIPv6Address2, 128));
   driver_->Disconnect();
 
   // The case that the user configures one wrong format address.

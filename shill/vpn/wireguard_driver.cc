@@ -589,14 +589,9 @@ bool WireGuardDriver::PopulateIPProperties() {
         net_base::IPv4CIDR::CreateFromAddressAndPrefix(ipv4_address_list[0],
                                                        32);
   }
-  if (ipv6_address_list.size() > 1) {
-    LOG(WARNING) << "Multiple IPv6 addresses are set. Only apply the first one";
-  }
-  if (ipv6_address_list.size() > 0) {
+  for (const auto& address : ipv6_address_list) {
     network_config_->ipv6_addresses.push_back(
-        net_base::IPv6CIDR::CreateFromAddressAndPrefix(ipv6_address_list[0],
-                                                       128)
-            .value());
+        net_base::IPv6CIDR::CreateFromAddressAndPrefix(address, 128).value());
   }
   if ((ipv4_address_list.size() == 0) && (ipv6_address_list.size() == 0)) {
     LOG(ERROR) << "Missing client IP address in the configuration";
