@@ -472,6 +472,8 @@ void MetricsCollector::HandleShutdown(ShutdownReason reason) {
                  static_cast<int>(ShutdownReason::MAX));
   if (reason == ShutdownReason::SUSPEND_FAILED) {
     SendSuspendJourneyResult(SuspendJourneyResult::SHUTDOWN);
+  } else if (reason == ShutdownReason::SHUTDOWN_FROM_SUSPEND) {
+    SendSuspendJourneyResult(SuspendJourneyResult::SHUTDOWN_AFTER_X);
   }
 }
 

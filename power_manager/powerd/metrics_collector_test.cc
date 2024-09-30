@@ -1029,6 +1029,18 @@ TEST_F(MetricsCollectorTest, SuspendFailureShutdown) {
   collector_.HandleShutdown(ShutdownReason::SUSPEND_FAILED);
 }
 
+TEST_F(MetricsCollectorTest, ShutdownFromSuspend) {
+  EXPECT_ENUM_METRIC(kShutdownReasonName,
+                     static_cast<int>(ShutdownReason::SHUTDOWN_FROM_SUSPEND),
+                     static_cast<int>(ShutdownReason::MAX));
+
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::SHUTDOWN_AFTER_X),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+
+  collector_.HandleShutdown(ShutdownReason::SHUTDOWN_FROM_SUSPEND);
+}
+
 class AdaptiveChargingMetricsTest : public TestEnvironment {
  public:
   AdaptiveChargingMetricsTest() : metrics_sender_(metrics_) {}
