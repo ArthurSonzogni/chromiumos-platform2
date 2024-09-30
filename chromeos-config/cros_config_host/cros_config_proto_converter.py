@@ -651,6 +651,13 @@ def _build_derived_power_prefs(config: Config) -> dict:
         topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX,
     )
 
+    if form_factor in (
+        topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE,
+        topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX,
+    ):
+        result["shutdown-from-suspend-sec"] = wrappers_pb2.Int64Value(value=0)
+
     light_sensor = hw_features.light_sensor
     result["has-ambient-light-sensor"] = (
         light_sensor.lid_lightsensor,
