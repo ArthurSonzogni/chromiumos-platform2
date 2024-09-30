@@ -61,6 +61,9 @@ const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 // The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
 
+const VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME: &str =
+    "CrOSLateBootResourcedVmmmsReclaimEntireTarget";
+
 const DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME: &str =
     "CrOSLateBootDiscardStaleAtModeratePressure";
 
@@ -145,6 +148,8 @@ fn update_mglru_split_settings(
 }
 
 pub fn register_features(swappiness: SwappinessConfig) {
+    feature::register_feature(VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME, false, None);
+
     feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, false, None);
 
     feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
@@ -657,9 +662,17 @@ async fn try_vmms_reclaim_memory_critical(
     chrome_background_memory: u64,
     game_mode: common::GameMode,
 ) -> u64 {
+    let reclaim_entire_target =
+        feature::is_feature_enabled(VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME).unwrap_or(false);
+
     // Tell VM Memory Management Service to reclaim memory from guests to
     // try to save the background tabs.
-    let cached_target = std::cmp::min(chrome_background_memory, reclaim_target);
+    let cached_target = if reclaim_entire_target {
+        reclaim_target
+    } else {
+        std::cmp::min(chrome_background_memory, reclaim_target)
+    };
+
     let cached_actual = if cached_target > 0 {
         vmms_client
             .try_reclaim_memory(cached_target, ResizePriority::RESIZE_PRIORITY_CACHED_TAB)
@@ -690,9 +703,15 @@ async fn try_vmms_reclaim_memory_critical(
     // that Chrome will kill after it kills all background tabs.
     let protected_memory = get_chrome_memory_kb(ChromeProcessType::Protected, None, reclaim_target);
     let perceptible_actual = if protected_memory > 0 {
+        let perceptible_target = if reclaim_entire_target {
+            reclaim_target
+        } else {
+            std::cmp::min(protected_memory, reclaim_target)
+        };
+
         vmms_client
             .try_reclaim_memory(
-                std::cmp::min(protected_memory, reclaim_target),
+                perceptible_target,
                 ResizePriority::RESIZE_PRIORITY_PERCEPTIBLE_TAB,
             )
             .await
