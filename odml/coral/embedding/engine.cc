@@ -120,10 +120,14 @@ void EmbeddingEngine::OnUserLoggedIn(
           .Append(kEmbeddingDatabaseSubDir)
           .Append(kEmbeddingDatabaseFileName),
       kEmbeddingDatabaseCacheTime);
+  sync_db_timer_.Start(FROM_HERE, internal::kEmbeddingDatabaseSyncPeriod,
+                       base::BindRepeating(&EmbeddingEngine::SyncDatabase,
+                                           weak_ptr_factory_.GetWeakPtr()));
 }
 
 void EmbeddingEngine::OnUserLoggedOut() {
   LOG(INFO) << "EmbeddingEngine::OnUserLoggedOut";
+  sync_db_timer_.Stop();
   embedding_database_.reset();
 }
 
@@ -276,6 +280,12 @@ void EmbeddingEngine::OnModelOutput(mojom::GroupRequestPtr request,
   response.embeddings.push_back(embedding);
   ProcessEachPrompt(std::move(request), std::move(prompts), std::move(response),
                     std::move(callback));
+}
+
+void EmbeddingEngine::SyncDatabase() {
+  if (embedding_database_) {
+    embedding_database_->Sync();
+  }
 }
 
 }  // namespace coral

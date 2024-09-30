@@ -26,6 +26,7 @@ namespace coral {
 namespace {
 using base::test::TestFuture;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::ElementsAreArray;
 using ::testing::NiceMock;
 using ::testing::Optional;
@@ -105,10 +106,17 @@ class FakeEmbeddingModelService : public OnDeviceEmbeddingModelService {
 
 class FakeEmbeddingDatabaseFactory : public EmbeddingDatabaseFactory {
  public:
-  MOCK_METHOD(std::unique_ptr<EmbeddingDatabase>,
+  MOCK_METHOD(std::unique_ptr<EmbeddingDatabaseInterface>,
               Create,
               (const base::FilePath& file_path, base::TimeDelta ttl),
               (const override));
+};
+
+class FakeEmbeddingDatabase : public EmbeddingDatabaseInterface {
+ public:
+  MOCK_METHOD(void, Put, (std::string key, Embedding embedding), (override));
+  MOCK_METHOD(std::optional<Embedding>, Get, (const std::string&), (override));
+  MOCK_METHOD(bool, Sync, (), (override));
 };
 
 }  // namespace
@@ -130,7 +138,8 @@ class EmbeddingEngineTest : public testing::Test {
   }
 
  protected:
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   // Controls the result of next GenerateEmbeddings call.
   bool should_error_ = false;
@@ -258,29 +267,35 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   }
 
   // Fake database for fake user 1.
-  base::ScopedTempFile database_file_1;
-  ASSERT_TRUE(database_file_1.Create());
-  std::unique_ptr<EmbeddingDatabase> database_1 =
-      EmbeddingDatabase::Create(database_file_1.path(), base::Seconds(0));
-  ASSERT_TRUE(database_1);
-  database_1->Put(cache_keys[1], fake_embeddings[1]);
-  database_1->Put(cache_keys[4], fake_embeddings[4]);
-  EmbeddingDatabase* raw_database_1 = database_1.get();
+  // Ownership is transferred to |engine_| later.
+  FakeEmbeddingDatabase* database_1 = new FakeEmbeddingDatabase();
+  EXPECT_CALL(*database_1, Get(_)).Times(AnyNumber());
+  EXPECT_CALL(*database_1, Get(cache_keys[1]))
+      .WillOnce(Return(fake_embeddings[1]));
+  EXPECT_CALL(*database_1, Get(cache_keys[4]))
+      .WillOnce(Return(fake_embeddings[4]));
+  EXPECT_CALL(*database_1, Put(cache_keys[0], fake_embeddings[0])).Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[2], fake_embeddings[2])).Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[3], fake_embeddings[3])).Times(1);
+  EXPECT_CALL(*database_1, Put(cache_keys[5], fake_embeddings[5])).Times(1);
 
   // Fake database for fake user 2.
-  base::ScopedTempFile database_file_2;
-  ASSERT_TRUE(database_file_2.Create());
-  std::unique_ptr<EmbeddingDatabase> database_2 =
-      EmbeddingDatabase::Create(database_file_2.path(), base::Seconds(0));
-  ASSERT_TRUE(database_2);
-  database_2->Put(cache_keys[0], fake_embeddings[0]);
-  database_2->Put(cache_keys[5], fake_embeddings[5]);
-  EmbeddingDatabase* raw_database_2 = database_2.get();
+  // Ownership is transferred to |engine_| later.
+  FakeEmbeddingDatabase* database_2 = new FakeEmbeddingDatabase();
+  EXPECT_CALL(*database_2, Get(_)).Times(AnyNumber());
+  EXPECT_CALL(*database_2, Get(cache_keys[0]))
+      .WillOnce(Return(fake_embeddings[0]));
+  EXPECT_CALL(*database_2, Get(cache_keys[5]))
+      .WillOnce(Return(fake_embeddings[5]));
+  EXPECT_CALL(*database_2, Put(cache_keys[1], fake_embeddings[1])).Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[2], fake_embeddings[2])).Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[3], fake_embeddings[3])).Times(1);
+  EXPECT_CALL(*database_2, Put(cache_keys[4], fake_embeddings[4])).Times(1);
 
   // Ownership of |database_1| and |database_2| are transferred.
   EXPECT_CALL(*embedding_database_factory_, Create(_, _))
-      .WillOnce(Return(std::move(database_1)))
-      .WillOnce(Return(std::move(database_2)));
+      .WillOnce(Return(base::WrapUnique(database_1)))
+      .WillOnce(Return(base::WrapUnique(database_2)));
 
   std::unique_ptr<FakeEmbeddingModel> fake_model;
   bool should_error = false;
@@ -317,16 +332,9 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
     EmbeddingResponse response = std::move(*result);
     auto fake_response = GetFakeEmbeddingResponse();
     EXPECT_EQ(response, fake_response);
-
-    EXPECT_THAT(raw_database_1->Get(cache_keys[0]),
-                Optional(ElementsAreArray(fake_embeddings[0])));
-    EXPECT_THAT(raw_database_1->Get(cache_keys[2]),
-                Optional(ElementsAreArray(fake_embeddings[2])));
-    EXPECT_THAT(raw_database_1->Get(cache_keys[3]),
-                Optional(ElementsAreArray(fake_embeddings[3])));
-    EXPECT_THAT(raw_database_1->Get(cache_keys[5]),
-                Optional(ElementsAreArray(fake_embeddings[5])));
   }
+  EXPECT_CALL(*database_1, Sync()).Times(3);
+  task_environment_.FastForwardBy(internal::kEmbeddingDatabaseSyncPeriod * 3);
 
   engine_->OnUserLoggedOut();
   {
@@ -339,6 +347,8 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
     auto fake_response = GetFakeEmbeddingResponse();
     EXPECT_EQ(response, fake_response);
   }
+  // Doesn't increase count of Sync() calls of |database_1|.
+  task_environment_.FastForwardBy(internal::kEmbeddingDatabaseSyncPeriod * 3);
 
   engine_->OnUserLoggedIn(::odml::SessionStateManagerInterface::User(
       "fake_user_2", "fake_user_hash_2"));
@@ -351,16 +361,8 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
     EmbeddingResponse response = std::move(*result);
     auto fake_response = GetFakeEmbeddingResponse();
     EXPECT_EQ(response, fake_response);
-
-    EXPECT_THAT(raw_database_2->Get(cache_keys[1]),
-                Optional(ElementsAreArray(fake_embeddings[1])));
-    EXPECT_THAT(raw_database_2->Get(cache_keys[2]),
-                Optional(ElementsAreArray(fake_embeddings[2])));
-    EXPECT_THAT(raw_database_2->Get(cache_keys[3]),
-                Optional(ElementsAreArray(fake_embeddings[3])));
-    EXPECT_THAT(raw_database_2->Get(cache_keys[4]),
-                Optional(ElementsAreArray(fake_embeddings[4])));
   }
+  EXPECT_CALL(*database_2, Sync()).Times(5);
+  task_environment_.FastForwardBy(internal::kEmbeddingDatabaseSyncPeriod * 5);
 }
-
 }  // namespace coral

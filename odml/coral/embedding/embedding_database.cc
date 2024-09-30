@@ -20,11 +20,13 @@
 
 namespace coral {
 
-std::unique_ptr<EmbeddingDatabase> EmbeddingDatabaseFactory::Create(
+// class EmbeddingDatabaseFactory.
+std::unique_ptr<EmbeddingDatabaseInterface> EmbeddingDatabaseFactory::Create(
     const base::FilePath& file_path, const base::TimeDelta ttl) const {
   return EmbeddingDatabase::Create(file_path, ttl);
 }
 
+// class EmbeddingDatabase.
 std::unique_ptr<EmbeddingDatabase> EmbeddingDatabase::Create(
     const base::FilePath& file_path, const base::TimeDelta ttl) {
   // EmbeddingDatabase() is private, so can not use make_unique.

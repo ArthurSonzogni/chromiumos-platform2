@@ -53,7 +53,7 @@ class EmbeddingDatabaseTest : public testing::Test {
 
 TEST_F(EmbeddingDatabaseTest, InMemoryWriteRead) {
   // Empty database.
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), std::nullopt);
@@ -77,7 +77,7 @@ TEST_F(EmbeddingDatabaseTest, InMemoryWriteRead) {
 }
 
 TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path_, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
@@ -92,7 +92,7 @@ TEST_F(EmbeddingDatabaseTest, WriteThenRead) {
 }
 
 TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path_, base::Seconds(10));
   // timestamp 0.
   database->Put("key1", {1, 2, 3});
@@ -179,7 +179,7 @@ TEST_F(EmbeddingDatabaseTest, FileNotExist) {
   // Remove the temp file.
   ASSERT_TRUE(database_file_.Delete());
 
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path_, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
@@ -199,7 +199,7 @@ TEST_F(EmbeddingDatabaseTest, FileCorrupted) {
   std::string buf = "corrupted";
   ASSERT_TRUE(base::WriteFile(file_path_, buf));
 
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path_, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
@@ -220,7 +220,7 @@ TEST_F(EmbeddingDatabaseTest, TestCreateDirectory) {
   base::FilePath dir_path = tmp_dir.GetPath();
   base::FilePath file_path = dir_path.Append("sub_dir").Append("database");
 
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path, base::Seconds(0));
   database->Put("key1", {1, 2, 3});
   database->Put("key2", {4, 5, 6});
@@ -240,7 +240,7 @@ TEST_F(EmbeddingDatabaseTest, TestCreateDirectoryFailure) {
   base::FilePath dir_path("/");
   base::FilePath file_path = dir_path.Append("sub_dir").Append("database");
 
-  std::unique_ptr<EmbeddingDatabase> database =
+  std::unique_ptr<EmbeddingDatabaseInterface> database =
       factory_.Create(file_path, base::Seconds(0));
   EXPECT_EQ(database.get(), nullptr);
 }

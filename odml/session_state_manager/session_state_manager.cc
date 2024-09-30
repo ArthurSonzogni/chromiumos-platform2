@@ -41,8 +41,6 @@ SessionStateManager::SessionStateManager(
                      weak_factory_.GetWeakPtr()));
 }
 
-SessionStateManager::~SessionStateManager() = default;
-
 void SessionStateManager::OnSessionStateChanged(const std::string& state) {
   LOG(INFO) << "Session state changed to " << state;
 

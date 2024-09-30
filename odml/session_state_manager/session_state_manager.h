@@ -57,7 +57,7 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   SessionStateManager(const SessionStateManager&) = delete;
   SessionStateManager& operator=(const SessionStateManager&) = delete;
-  ~SessionStateManager() override;
+  ~SessionStateManager() override = default;
 
   void AddObserver(SessionStateManagerInterface::Observer* observer) override;
   void RemoveObserver(

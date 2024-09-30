@@ -18,37 +18,47 @@
 
 namespace coral {
 
-class EmbeddingDatabase;
+class EmbeddingDatabaseInterface;
 
 class EmbeddingDatabaseFactory {
  public:
   virtual ~EmbeddingDatabaseFactory() = default;
-  // Creates a EmbeddingDatabase instance with the given parameters.
-  virtual std::unique_ptr<EmbeddingDatabase> Create(
+  // Creates a EmbeddingDatabaseInterface instance with the given parameters.
+  virtual std::unique_ptr<EmbeddingDatabaseInterface> Create(
       const base::FilePath& file_path, base::TimeDelta ttl) const;
 };
 
+// Interface to a file-backed embedding database.
+class EmbeddingDatabaseInterface {
+ public:
+  virtual ~EmbeddingDatabaseInterface() = default;
+
+  // Writes (key, embedding) to the in-memory mapping. No sync yet.
+  virtual void Put(std::string key, Embedding embedding) = 0;
+
+  // Reads embedding from the in-memory mapping if the key exists in database.
+  // Returns std::nullopt if the key doesn't exist.
+  virtual std::optional<Embedding> Get(const std::string& key) = 0;
+
+  // Syncs the in-memory mapping to the file. Stale records are removed both in
+  // memory and file.
+  virtual bool Sync() = 0;
+};
+
 // A file-backed embedding database.
-class EmbeddingDatabase {
+class EmbeddingDatabase : public EmbeddingDatabaseInterface {
  public:
   static std::unique_ptr<EmbeddingDatabase> Create(
       const base::FilePath& file_path, base::TimeDelta ttl);
 
-  ~EmbeddingDatabase();
+  ~EmbeddingDatabase() override;
   EmbeddingDatabase(const EmbeddingDatabase&) = delete;
   EmbeddingDatabase& operator=(const EmbeddingDatabase&) = delete;
 
-  // Writes (key, embedding) to the in-memory mapping. No sync yet.
-  void Put(std::string key, Embedding embedding);
-
-  // Reads embedding from the in-memory mapping if the key exists in database.
-  // Returns std::nullopt if the key doesn't exist.
-  std::optional<Embedding> Get(const std::string& key);
-
-  // Syncs the in-memory mapping to the file. Stale records are removed both in
-  // memory and file.
-  // TODO(b/361429567): call this periodically.
-  bool Sync();
+  // EmbeddingDatabaseInterface overrides.
+  void Put(std::string key, Embedding embedding) override;
+  std::optional<Embedding> Get(const std::string& key) override;
+  bool Sync() override;
 
  private:
   // Backed by file |file_path|.

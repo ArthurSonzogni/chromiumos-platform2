@@ -23,6 +23,9 @@ namespace coral {
 
 namespace internal {
 
+inline constexpr base::TimeDelta kEmbeddingDatabaseSyncPeriod =
+    base::Minutes(10);
+
 // Generates the embedding prompt for an entity.
 std::string EntityToEmbeddingPrompt(const mojom::Entity& entity);
 
@@ -87,6 +90,8 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
       embedding_model::mojom::OnDeviceEmbeddingModelInferenceError error,
       const std::vector<float>& embedding);
 
+  void SyncDatabase();
+
   const raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
       embedding_service_;
   // model_ should only be used when state_ is kLoaded because the remote model
@@ -101,10 +106,13 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory_;
 
   // The embedding database.
-  std::unique_ptr<EmbeddingDatabase> embedding_database_;
+  std::unique_ptr<EmbeddingDatabaseInterface> embedding_database_;
 
   // The version of the loaded embedding model.
   std::string model_version_;
+
+  // The timer to sync database to disk periodically.
+  base::RepeatingTimer sync_db_timer_;
 
   base::WeakPtrFactory<EmbeddingEngine> weak_ptr_factory_{this};
 };
