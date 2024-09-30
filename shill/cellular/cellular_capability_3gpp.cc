@@ -1728,6 +1728,14 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
     OnModemStateChanged(state);
   }
 
+  if (properties.Contains<uint32_t>(MM_MODEM_PROPERTY_POWERSTATE)) {
+    uint32_t istate = properties.Get<uint32_t>(MM_MODEM_PROPERTY_POWERSTATE);
+    SLOG(this, 3) << "Modem power state: " << istate;
+    // Consider initialization has completed once modem is able to report
+    // current power state.
+    cellular()->SetInitializingProperty(false);
+  }
+
   // dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM) may not return all
   // properties, so only update SIM properties if SIM or SIMSLOTS was provided.
   bool sim_changed = false;

@@ -604,6 +604,9 @@ void Cellular::Start(EnabledStateChangedCallback callback) {
     // is instantiated and |cabability_| is created. Setting |state_|
     // to kEnabled here will cause CreateCapability to call StartModem.
     SetState(State::kEnabled);
+    if (interface_index_ == Modem::kCellularDefaultInterfaceIndex) {
+      SetInitializingProperty(true);
+    }
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Skipping Start (no capability).";
     std::move(callback).Run(Error(Error::kSuccess));
@@ -3560,6 +3563,7 @@ void Cellular::RegisterProperties() {
   store->RegisterConstString(kEquipmentIdProperty, &equipment_id_);
   store->RegisterConstBool(kScanningProperty, &scanning_);
   store->RegisterConstBool(kFlashingProperty, &flashing_);
+  store->RegisterConstBool(kInitializingProperty, &initializing_);
 
   store->RegisterConstString(kSelectedNetworkProperty, &selected_network_);
   store->RegisterConstStringmaps(kFoundNetworksProperty, &found_networks_);
@@ -4288,6 +4292,14 @@ void Cellular::SetFlashingProperty(bool flashing) {
     return;
   flashing_ = flashing;
   adaptor()->EmitBoolChanged(kFlashingProperty, flashing_);
+}
+
+void Cellular::SetInitializingProperty(bool initializing) {
+  if (initializing_ == initializing)
+    return;
+  initializing_ = initializing;
+  adaptor()->EmitBoolChanged(kInitializingProperty, initializing_);
+  SLOG(1) << LoggingTag() << ": " << __func__ << ": " << initializing_;
 }
 
 void Cellular::SetSelectedNetwork(const std::string& selected_network) {

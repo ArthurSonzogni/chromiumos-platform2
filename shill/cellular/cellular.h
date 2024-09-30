@@ -447,6 +447,7 @@ class Cellular : public Device,
   std::string ModemMREnumToString(ModemMR mr);
   ModemType modem_type() { return modem_type_; }
   void SetFlashingProperty(bool flashing);
+  void SetInitializingProperty(bool initializing);
 
   bool ShouldForceInitEpsBearerSettings();
   // DBus property getters
@@ -987,6 +988,7 @@ class Cellular : public Device,
   uint32_t max_multiplexed_bearers_ = 1;
   bool scanning_ = false;
   bool flashing_ = false;
+  bool initializing_ = false;
   bool polling_location_ = false;
   base::CancelableOnceClosure poll_location_task_;
 

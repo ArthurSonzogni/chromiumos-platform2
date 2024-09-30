@@ -468,6 +468,7 @@ constexpr char kSupportNetworkScanProperty[] = "Cellular.SupportNetworkScan";
 constexpr char kPrimaryMultiplexedInterfaceProperty[] =
     "Cellular.PrimaryMultiplexedInterface";
 constexpr char kFlashingProperty[] = "Cellular.Flashing";
+constexpr char kInitializingProperty[] = "Cellular.Initializing";
 
 constexpr char kDBusObjectProperty[] = "DBus.Object";
 constexpr char kDBusServiceProperty[] = "DBus.Service";
