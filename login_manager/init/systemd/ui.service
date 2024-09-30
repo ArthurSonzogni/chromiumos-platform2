@@ -22,9 +22,6 @@ Restart=on-success
 Environment=UI_LOG_DIR=/var/log/ui
 Environment=UI_LOG_FILE=ui.LATEST
 
-# Directory where session manager sets up container roots.
-Environment=CONTAINER_ROOT_DIR=/run/containers
-
 # Directory for renderer freezer.
 Environment=UI_FREEZER_CGROUP_DIR=/sys/fs/cgroup/freezer/ui
 Environment=CHROME_FREEZER_CGROUP_DIR=/sys/fs/cgroup/freezer/ui/chrome_renderers

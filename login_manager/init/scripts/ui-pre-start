@@ -94,8 +94,6 @@ fi
 mkdir -p "${UI_LOG_DIR:-}"
 ln -sf ui."$(date --utc +%Y%m%d-%H%M%S)" "${UI_LOG_DIR}/${UI_LOG_FILE:-}"
 
-mkdir -p "${CONTAINER_ROOT_DIR:-}"
-
 # Create support directory for Chrome to write its support files and give
 # ownership to Chronos since only interaction will be done by it.
 SUPPORT_DIR="/var/spool/support"
