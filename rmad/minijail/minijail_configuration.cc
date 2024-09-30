@@ -23,18 +23,6 @@ constexpr char kRmadSeccompFilterPath[] =
 constexpr char kRmadExecutorSeccompFilterPath[] =
     "/usr/share/policy/rmad-executor-seccomp.policy";
 
-// Checks to see if |file_path| exists on the device. If it does, it will be
-// bind-mounted inside |jail| at the same path it exists outside the minijail,
-// and it will not be writeable from inside |jail|.
-void BindMountIfPathExists(struct minijail* jail,
-                           const base::FilePath& file_path) {
-  if (!base::PathExists(file_path))
-    return;
-
-  const char* path_string = file_path.value().c_str();
-  minijail_bind(jail, path_string, path_string, 0);
-}
-
 }  // namespace
 
 void EnterMinijail(bool set_admin_caps) {
@@ -114,13 +102,10 @@ void EnterMinijail(bool set_admin_caps) {
   // Required to read VPD and sensor attributes.
   minijail_bind(j.get(), "/sys/bus", "/sys/bus", 0);
   minijail_add_fs_restriction_ro(j.get(), "/sys/bus");
-  minijail_bind(j.get(), "/sys/firmware/vpd", "/sys/firmware/vpd", 0);
-  minijail_add_fs_restriction_ro(j.get(), "/sys/firmware/vpd");
 
-  // Required to read system properties (crossystem) on arm.
-  BindMountIfPathExists(j.get(),
-                        base::FilePath("/sys/firmware/devicetree/base"));
-  minijail_add_fs_restriction_ro(j.get(), "/sys/firmware/devicetree/base");
+  // Required to read system properties (e.g. VPD, crossystem)
+  minijail_bind(j.get(), "/sys/firmware", "/sys/firmware", 0);
+  minijail_add_fs_restriction_ro(j.get(), "/sys/firmware");
 
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
