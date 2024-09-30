@@ -34,18 +34,18 @@ std::unique_ptr<EmbeddingDatabase> EmbeddingDatabase::Create(
     // Do not return nullptr, since we can try overwriting the file later when
     // Sync().
     if (!instance->LoadFromFile()) {
-      LOG(ERROR) << "Failed to load " << file_path;
+      LOG(ERROR) << "Failed to load from embedding database.";
     }
-  } else {
+  } else if (!base::PathExists(file_path.DirName())) {
     base::File::Error error;
     // If we can't create the parent directory, we can't write to |file_path|
     // later in Sync(). So return nullptr to indicate an error.
     if (!base::CreateDirectoryAndGetError(file_path.DirName(), &error)) {
-      LOG(ERROR) << "Unable to create parent direcotry for " << file_path
-                 << ": " << base::File::ErrorToString(error);
+      LOG(ERROR) << "Unable to create embedding database directory: "
+                 << base::File::ErrorToString(error);
       return nullptr;
     } else {
-      LOG(INFO) << "Created directory" << file_path.DirName();
+      LOG(INFO) << "Created embedding database directory.";
     }
   }
   return instance;
@@ -96,8 +96,8 @@ bool EmbeddingDatabase::Sync() {
     return false;
   });
 
-  LOG(INFO) << "Sync " << file_path_ << " with now: " << now
-            << ", ttl: " << ttl_ << ", num_removed: " << num_removed
+  LOG(INFO) << "Sync embedding database with now: " << now << ", ttl: " << ttl_
+            << ", num_removed: " << num_removed
             << ", size: " << embeddings_map_.size();
 
   if (!dirty_ && !num_removed) {
@@ -137,10 +137,10 @@ bool EmbeddingDatabase::LoadFromFile() {
 
   EmbeddingRecords records;
   if (!records.ParseFromString(buf)) {
-    LOG(ERROR) << "Failed to parse the embedding database at " << file_path_
-               << ". Try removing the file.";
+    LOG(ERROR)
+        << "Failed to parse the embedding database. Try removing the file.";
     if (!brillo::DeleteFile(file_path_)) {
-      LOG(ERROR) << "Failed to delete the corrupted file " << file_path_;
+      LOG(ERROR) << "Failed to delete the corrupted embedding database file.";
     }
     return false;
   }
@@ -155,7 +155,7 @@ bool EmbeddingDatabase::LoadFromFile() {
       dirty_ = true;
     }
   }
-  LOG(INFO) << "LoadFromFile " << file_path_ << " with now: " << now
+  LOG(INFO) << "Load from embedding database with now: " << now
             << ", ttl: " << ttl_ << ", num_removed: "
             << records.records().size() - embeddings_map_.size()
             << ", size: " << embeddings_map_.size();

@@ -74,7 +74,7 @@ std::string EntityToEmbeddingPrompt(const mojom::Entity& entity) {
   return "";
 }
 
-// <entity representtion>:<fingerprint of prompt and model version>
+// <entity representation>:<fingerprint of prompt and model version>
 // Example:
 //   tab<tab_title, tab_url>:2089388806
 //   app<app_title, app_id>:4263199713
