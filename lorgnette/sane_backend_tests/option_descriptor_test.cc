@@ -47,6 +47,58 @@ class OptionDescriptorTest : public testing::Test {
 
   void TearDown() override { sane_close(handle_); }
 
+  void TestResolution() {
+    bool resolution_found = false;
+
+    // Index 0 is the well-known option 0, which we skip here.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor) {
+      if (!descriptor->name ||
+          strcmp(descriptor->name, SANE_NAME_SCAN_RESOLUTION) != 0) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      EXPECT_EQ(descriptor->unit, SANE_UNIT_DPI)
+          << "Resolution option does not have unit: DPI";
+
+      EXPECT_TRUE(descriptor->type == SANE_TYPE_INT ||
+                  descriptor->type == SANE_TYPE_FIXED)
+          << "Resolution option has invalid type: " << descriptor->type;
+
+      EXPECT_TRUE(descriptor->constraint_type == SANE_CONSTRAINT_RANGE ||
+                  descriptor->constraint_type == SANE_CONSTRAINT_WORD_LIST)
+          << "Resolution option has invalid constraint type: "
+          << descriptor->constraint_type;
+
+      bool supported_resolution_found = false;
+      const std::set<uint32_t> supported_resolutions = {100, 150, 200, 300,
+                                                        600};
+      lorgnette::SaneOption option(*descriptor, i);
+      auto maybe_values = option.GetValidIntValues();
+      ASSERT_TRUE(maybe_values) << "Unable to parse resolution option";
+
+      for (auto resolution : maybe_values.value()) {
+        if (supported_resolutions.contains(resolution)) {
+          supported_resolution_found = true;
+          break;
+        }
+      }
+
+      EXPECT_TRUE(supported_resolution_found)
+          << "No supported resolutions found";
+
+      resolution_found = true;
+      break;
+    }
+
+    EXPECT_TRUE(resolution_found)
+        << "Required option missing for name: resolution";
+  }
+
   SANE_Handle handle_;
 };
 
@@ -109,7 +161,7 @@ TEST_F(OptionDescriptorTest, ScanSource) {
 }
 
 TEST_F(OptionDescriptorTest, Resolution) {
-  bool resolution_found = false;
+  std::unique_ptr<lorgnette::SaneOption> option = nullptr;
 
   // Index 0 is the well-known option 0, which we skip here.
   SANE_Int i = 1;
@@ -117,45 +169,33 @@ TEST_F(OptionDescriptorTest, Resolution) {
       sane_get_option_descriptor(handle_, i);
   while (descriptor) {
     if (!descriptor->name ||
-        strcmp(descriptor->name, SANE_NAME_SCAN_RESOLUTION) != 0) {
+        strcmp(descriptor->name, SANE_NAME_SCAN_SOURCE) != 0) {
       i++;
       descriptor = sane_get_option_descriptor(handle_, i);
       continue;
     }
 
-    EXPECT_EQ(descriptor->unit, SANE_UNIT_DPI)
-        << "Resolution option does not have unit: DPI";
-
-    EXPECT_TRUE(descriptor->type == SANE_TYPE_INT ||
-                descriptor->type == SANE_TYPE_FIXED)
-        << "Resolution option has invalid type: " << descriptor->type;
-
-    EXPECT_TRUE(descriptor->constraint_type == SANE_CONSTRAINT_RANGE ||
-                descriptor->constraint_type == SANE_CONSTRAINT_WORD_LIST)
-        << "Resolution option has invalid constraint type: "
-        << descriptor->constraint_type;
-
-    bool supported_resolution_found = false;
-    const std::set<uint32_t> supported_resolutions = {100, 150, 200, 300, 600};
-    lorgnette::SaneOption option(*descriptor, i);
-    auto maybe_values = option.GetValidIntValues();
-    ASSERT_TRUE(maybe_values) << "Unable to parse resolution option";
-
-    for (auto resolution : maybe_values.value()) {
-      if (supported_resolutions.contains(resolution)) {
-        supported_resolution_found = true;
-        break;
-      }
-    }
-
-    EXPECT_TRUE(supported_resolution_found) << "No supported resolutions found";
-
-    resolution_found = true;
+    option = std::make_unique<lorgnette::SaneOption>(*descriptor, i);
     break;
   }
 
-  EXPECT_TRUE(resolution_found)
-      << "Required option missing for name: resolution";
+  if (!option) {
+    // The scanner did not provide a source option. It must only have a single
+    // source.
+    TestResolution();
+  } else {
+    std::optional<std::vector<std::string>> sources =
+        option->GetValidStringValues();
+    ASSERT_TRUE(sources.has_value());
+    for (auto source : *sources) {
+      option->Set(source);
+      ASSERT_EQ(SANE_STATUS_GOOD,
+                sane_control_option(handle_, option->GetIndex(),
+                                    SANE_ACTION_SET_VALUE, option->GetPointer(),
+                                    nullptr));
+      TestResolution();
+    }
+  }
 }
 
 TEST_F(OptionDescriptorTest, ColorMode) {
