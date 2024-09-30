@@ -42,9 +42,10 @@ class OnDeviceModelServiceProviderImpl
  public:
   OnDeviceModelServiceProviderImpl(
       raw_ref<MetricsLibrary> metrics,
+      raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this), service_impl_(metrics, raw_ref(shim_loader_)) {
+      : receiver_(this), service_impl_(metrics, shim_loader) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosOdmlService,
         receiver_.BindNewPipeAndPassRemote());
@@ -65,8 +66,6 @@ class OnDeviceModelServiceProviderImpl
             std::move(receiver)));
   }
 
-  // The odml_shim loader.
-  odml::OdmlShimLoaderImpl shim_loader_;
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
       receiver_;
@@ -79,9 +78,11 @@ class EmbeddingModelServiceProviderImpl
  public:
   explicit EmbeddingModelServiceProviderImpl(
       raw_ref<MetricsLibrary> metrics,
+      raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : receiver_(this),
+      : embedding_model_factory_(raw_ref(shim_loader)),
+        receiver_(this),
         service_impl_(metrics, raw_ref(embedding_model_factory_)) {
     service_manager->Register(
         chromeos::mojo_services::kCrosEmbeddingModelService,
@@ -103,7 +104,7 @@ class EmbeddingModelServiceProviderImpl
             std::move(receiver)));
   }
 
-  embedding_model::ModelFactory embedding_model_factory_;
+  embedding_model::ModelFactoryImpl embedding_model_factory_;
 
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
@@ -154,11 +155,10 @@ class MantisServiceProviderImpl
  public:
   MantisServiceProviderImpl(
       raw_ref<MetricsLibrary> metrics,
+      raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : metrics_(metrics),
-        receiver_(this),
-        service_impl_(raw_ref(shim_loader_)) {
+      : metrics_(metrics), receiver_(this), service_impl_(shim_loader) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosMantisService,
         receiver_.BindNewPipeAndPassRemote());
@@ -178,8 +178,6 @@ class MantisServiceProviderImpl
 
   // The metrics lib.
   raw_ref<MetricsLibrary> metrics_;
-  // The odml_shim loader.
-  odml::OdmlShimLoaderImpl shim_loader_;
   // The receiver of ServiceProvider.
   mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
       receiver_;
@@ -227,11 +225,11 @@ class Daemon : public brillo::DBusDaemon {
         }));
 
     on_device_model_service_provider_impl_ =
-        std::make_unique<OnDeviceModelServiceProviderImpl>(raw_ref(metrics_),
-                                                           service_manager_);
+        std::make_unique<OnDeviceModelServiceProviderImpl>(
+            raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
     embedding_model_service_provider_impl_ =
-        std::make_unique<EmbeddingModelServiceProviderImpl>(raw_ref(metrics_),
-                                                            service_manager_);
+        std::make_unique<EmbeddingModelServiceProviderImpl>(
+            raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
     coral_service_provider_impl_ = std::make_unique<CoralServiceProviderImpl>(
         raw_ref(metrics_), service_manager_,
         on_device_model_service_provider_impl_->service(),
@@ -239,7 +237,7 @@ class Daemon : public brillo::DBusDaemon {
         session_state_manager_.get());
 
     mantis_service_provider_impl_ = std::make_unique<MantisServiceProviderImpl>(
-        raw_ref(metrics_), service_manager_);
+        raw_ref(metrics_), raw_ref(shim_loader_), service_manager_);
 
     session_state_manager_->RefreshPrimaryUser();
 
@@ -253,6 +251,9 @@ class Daemon : public brillo::DBusDaemon {
       service_manager_;
 
   std::unique_ptr<odml::SessionStateManager> session_state_manager_;
+
+  // The odml_shim loader. Should be destructed after service providers.
+  odml::OdmlShimLoaderImpl shim_loader_;
 
   // The metrics lib. Should be destructed after both service providers.
   MetricsLibrary metrics_;

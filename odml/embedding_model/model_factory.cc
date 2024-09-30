@@ -4,6 +4,7 @@
 
 #include "odml/embedding_model/model_factory.h"
 
+#include <memory>
 #include <utility>
 
 #include "odml/embedding_model/model_runner.h"
@@ -11,9 +12,11 @@
 
 namespace embedding_model {
 
-ModelFactory::ModelFactory() {}
+ModelFactoryImpl::ModelFactoryImpl(
+    const raw_ref<odml::OdmlShimLoader> shim_loader)
+    : shim_loader_(shim_loader) {}
 
-std::unique_ptr<ModelRunner> ModelFactory::BuildRunnerFromInfo(
+std::unique_ptr<ModelRunner> ModelFactoryImpl::BuildRunnerFromInfo(
     ModelInfo&& info) {
   if (info.model_type == kEmbeddingTfliteModelType) {
     std::unique_ptr<TfliteModelRunner> result =
@@ -23,8 +26,8 @@ std::unique_ptr<ModelRunner> ModelFactory::BuildRunnerFromInfo(
   return nullptr;
 }
 
-void ModelFactory::BuildRunnerFromUuid(const base::Uuid& uuid,
-                                       BuildRunnerFromUuidCallback callback) {
+void ModelFactoryImpl::BuildRunnerFromUuid(
+    const base::Uuid& uuid, BuildRunnerFromUuidCallback callback) {
   std::move(callback).Run(nullptr);
 }
 
