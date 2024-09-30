@@ -269,8 +269,10 @@ TEST_F(DeviceTest, SelectedService_SetServiceFailure) {
 TEST_F(DeviceTest, NetworkFailure) {
   EXPECT_CALL(*service_, AttachNetwork(IsWeakPtrTo(network_)));
   device_->SelectService(service_);
-  EXPECT_CALL(*service_, DisconnectWithFailure(Service::kFailureDHCP, _,
-                                               HasSubstr("OnIPConfigFailure")));
+  EXPECT_CALL(*service_,
+              DisconnectWithFailure(
+                  Service::kFailureDHCP, _,
+                  HasSubstr(Service::kDisconnectReasonIPConfigFailure)));
   device_->OnNetworkStopped(device_->interface_index(), /*is_failure=*/true);
 }
 

@@ -431,8 +431,9 @@ void Device::OnIPConfigsPropertyUpdated(int interface_index) {
 void Device::OnIPConfigFailure() {
   if (selected_service_) {
     Error error;
-    selected_service_->DisconnectWithFailure(Service::kFailureDHCP, &error,
-                                             __func__);
+    selected_service_->DisconnectWithFailure(
+        Service::kFailureDHCP, &error,
+        Service::kDisconnectReasonIPConfigFailure);
   }
 }
 

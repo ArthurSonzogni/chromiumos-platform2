@@ -127,6 +127,17 @@ class Service : public base::RefCounted<Service> {
   static constexpr base::TimeDelta kTrafficCountersRefreshInterval =
       base::Minutes(1);
 
+  // Reasons for Disconnect
+  static constexpr char kDisconnectReasonIPConfigFailure[] = "IPConfigFailure";
+  static constexpr char kDisconnectReasonBadPassphrase[] = "Bad-passphrase";
+  static constexpr char kDisconnectReasonDbus[] = "D-Bus RPC";
+  static constexpr char kDisconnectReasonUnload[] = "Unload";
+  static constexpr char kDisconnectReasonEthernet[] = "Ethernet";
+  static constexpr char kDisconnectReasonStop[] = "Stop";
+  static constexpr char kDisconnectReasonPendingTimeout[] = "PendingTimeout";
+  static constexpr char kDisconnectReasonHandshakeTimeout[] =
+      "HandshakeTimeout";
+
   enum ConnectFailure {
     kFailureNone,
     kFailureAAA,
@@ -365,7 +376,7 @@ class Service : public base::RefCounted<Service> {
   // Whether or not the most recent failure should be ignored. This will return
   // true if the failure was the result of a user-initiated disconnect, a
   // disconnect on shutdown, or a disconnect due to a suspend.
-  mockable bool ShouldIgnoreFailure() const;
+  virtual bool ShouldIgnoreFailure() const;
 
   // State utility functions
   static bool IsConnectedState(ConnectState state);

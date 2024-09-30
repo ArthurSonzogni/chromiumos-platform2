@@ -198,12 +198,16 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // After checking |service| state is active, initiate
   // process of disconnecting.  Log and return if not active.
-  virtual void DisconnectFromIfActive(WiFiService* service);
+  virtual void DisconnectFromIfActive(WiFiService* service,
+                                      Metrics::WiFiDisconnectType type);
 
   // If |service| is connected, initiate the process of disconnecting it.
   // Otherwise, if it a pending or current service, discontinue the process
-  // of connecting and return |service| to the idle state.
-  virtual void DisconnectFrom(WiFiService* service);
+  // of connecting and return |service| to the idle state. |type| can not be
+  // Metrics::kWiFiDisconnectTypeSystem because the disconnection is initiated
+  // by shill
+  virtual void DisconnectFrom(WiFiService* service,
+                              Metrics::WiFiDisconnectType type);
   void SelectNetwork(const RpcIdentifier& network);
   virtual bool IsIdle() const;
   // Clear any cached credentials wpa_supplicant may be holding for
@@ -254,7 +258,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void UpdateGeolocationObjects(
       std::vector<GeolocationInfo>* geolocation_infos) const override;
   // Called by a WiFiService when it disassociates itself from this Device.
-  virtual void DisassociateFromService(const WiFiServiceRefPtr& service);
+  virtual void DisassociateFromService(const WiFiServiceRefPtr& service,
+                                       Metrics::WiFiDisconnectType type);
 
   // Remove all networks from WPA supplicant.
   // Passed as a callback to |wake_on_wifi_| where it is used.
@@ -316,6 +321,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Generate firmware dump for WiFi technology.
   mockable void GenerateFirmwareDump() const;
+
+  // Check if disconnect_signal is out of range compared to threshold and
+  // is not the default.
+  bool SignalOutOfRange(const int16_t& disconnect_signal);
 
  private:
   std::string DeviceStorageSuffix() const override;
@@ -546,9 +555,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // and failure is not already set. Then set the state of the service back
   // to idle, so it can be used for future connections.
   void ServiceDisconnected(WiFiServiceRefPtr service, bool is_attempt_failure);
-  // Check if disconnect_signal is out of range compared to threshold and
-  // is not the default.
-  bool SignalOutOfRange(const int16_t& disconnect_signal);
   // Log and send to UMA any auth/assoc status code indicating a failure.
   // Returns inferred type of failure, which is useful in cases where we don't
   // have a disconnect reason from supplicant.

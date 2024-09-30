@@ -740,13 +740,6 @@ bool WiFiService::Save(StoreInterface* storage) {
 }
 
 bool WiFiService::Unload() {
-  // Expect the service to be disconnected if is currently connected or
-  // in the process of connecting.
-  if (IsConnected() || IsConnecting()) {
-    set_disconnect_type(Metrics::kWiFiDisconnectTypeUnload);
-  } else {
-    set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
-  }
   Service::Unload();
   hidden_ssid_ = false;
   ResetSuspectedCredentialFailures();
@@ -1356,10 +1349,28 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   return params;
 }
 
-void WiFiService::OnDisconnect(Error* error, const char* /*reason*/) {
-  // This function is called only when the user disconnects WiFi in UI
-  set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
-  wifi_->DisconnectFrom(this);
+void WiFiService::OnDisconnect(Error* error, const char* reason) {
+  SLOG(2) << __func__ << " disconnect reason: " << reason << " for service "
+          << log_name();
+  Metrics::WiFiDisconnectType type = Metrics::kWiFiDisconnectTypeShill;
+  std::string_view disconnect_reason{reason};
+  if (disconnect_reason == Service::kDisconnectReasonIPConfigFailure ||
+      disconnect_reason == Service::kDisconnectReasonBadPassphrase) {
+    type = Metrics::kWiFiDisconnectTypeIPConfigFailure;
+  } else if (disconnect_reason == Service::kDisconnectReasonDbus) {
+    type = Metrics::kWiFiDisconnectTypeUser;
+  } else if (disconnect_reason == Service::kDisconnectReasonUnload) {
+    type = Metrics::kWiFiDisconnectTypeUnload;
+  } else if (disconnect_reason == Service::kDisconnectReasonEthernet) {
+    type = Metrics::kWiFiDisconnectTypeEthernet;
+  } else if (disconnect_reason == Service::kDisconnectReasonStop) {
+    type = Metrics::kWiFiDisconnectTypeDisable;
+  } else if (disconnect_reason == Service::kDisconnectReasonPendingTimeout) {
+    type = Metrics::kWiFiDisconnectTypePendingTimeout;
+  } else {
+    LOG(ERROR) << __func__ << ": no match for disconnect reason: " << reason;
+  }
+  wifi_->DisconnectFrom(this, type);
 }
 
 bool WiFiService::IsDisconnectable(Error* error) const {
@@ -2021,7 +2032,10 @@ void WiFiService::SetWiFi(const WiFiRefPtr& new_wifi) {
     return;
   }
   if (wifi_) {
-    wifi_->DisassociateFromService(this);
+    Metrics::WiFiDisconnectType type =
+        new_wifi ? Metrics::kWiFiDisconnectTypeNewWiFi
+                 : Metrics::kWiFiDisconnectTypeNoEndpointLeft;
+    wifi_->DisassociateFromService(this, type);
   }
   if (new_wifi) {
     adaptor()->EmitRpcIdentifierChanged(kDeviceProperty,
@@ -2257,6 +2271,30 @@ bool WiFiService::IsBSSIDConnectable(
       return !bssid_requested_.has_value() ||
              bssid_requested_ == endpoint->bssid();
   }
+}
+
+bool WiFiService::expecting_disconnect() const {
+  // Estimate if the signal is out of range based on the latest signal strength
+  // from the associated endpoint.
+  bool signal_out_of_range = !wifi_ || wifi_->SignalOutOfRange(SignalLevel());
+  // If the disconnection is due to loss of the WiFi endpoint even though the
+  // signal strength is above the disconnect threshold
+  bool no_endpoint_on_good_signal =
+      disconnect_type_ == Metrics::kWiFiDisconnectTypeNoEndpointLeft &&
+      !signal_out_of_range;
+  return !(disconnect_type_ == Metrics::kWiFiDisconnectTypeSystem ||
+           disconnect_type_ == Metrics::kWiFiDisconnectTypeHandshakeTimeout ||
+           disconnect_type_ == Metrics::kWiFiDisconnectTypePendingTimeout ||
+           disconnect_type_ == Metrics::kWiFiDisconnectTypeIPConfigFailure ||
+           disconnect_type_ == Metrics::kWiFiDisconnectTypeReconnectTimeout ||
+           disconnect_type_ ==
+               Metrics::kWiFiDisconnectTypeRoamingIncorrectBSSID ||
+           disconnect_type_ == Metrics::kWiFiDisconnectTypeNewWiFi ||
+           no_endpoint_on_good_signal);
+}
+
+bool WiFiService::ShouldIgnoreFailure() const {
+  return Service::ShouldIgnoreFailure() || expecting_disconnect();
 }
 
 }  // namespace shill

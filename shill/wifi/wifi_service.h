@@ -298,9 +298,7 @@ class WiFiService : public Service {
   mockable void EmitLinkQualityReportEvent(
       const Metrics::WiFiLinkQualityReport& report) const;
 
-  bool expecting_disconnect() const {
-    return disconnect_type_ != Metrics::kWiFiDisconnectTypeSystem;
-  }
+  bool expecting_disconnect() const;
 
   void set_disconnect_type(Metrics::WiFiDisconnectType type) {
     disconnect_type_ = type;
@@ -327,6 +325,8 @@ class WiFiService : public Service {
   std::string GetBSSIDRequested(Error* error);
   bool SetBSSIDRequested(const std::string& bssid_requested, Error* error);
 
+  bool ShouldIgnoreFailure() const override;
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
@@ -340,7 +340,8 @@ class WiFiService : public Service {
                                  bool* decision) override;
 
  private:
-  friend class ManagerTest;  // Set current_endpoint_, endpoints_
+  friend class ManagerTest;     // Set current_endpoint_, endpoints_
+  friend class WiFiObjectTest;  // Set wifi_
   friend class WiFiServiceSecurityTest;
   friend class WiFiServiceTest;    // SetPassphrase, session_tag
   friend class WiFiServiceFuzzer;  // SetPassphrase

@@ -407,7 +407,7 @@ void Manager::Stop() {
   Error e;
   for (const auto& service : services_) {
     if (service->IsActive(nullptr)) {
-      service->Disconnect(&e, __func__);
+      service->Disconnect(&e, Service::kDisconnectReasonStop);
     }
   }
 
@@ -1408,12 +1408,7 @@ bool Manager::SetDisconnectingWiFiOnEthernet(
     for (const auto& service : services_) {
       if (service->technology() == Technology::kWiFi &&
           (service->IsConnected() || service->IsConnecting())) {
-        auto wifi_service = dynamic_cast<WiFiService*>(service.get());
-        if (wifi_service) {
-          wifi_service->set_disconnect_type(
-              Metrics::kWiFiDisconnectTypeEthernet);
-        }
-        service->Disconnect(&e, "Auto disconnect");
+        service->Disconnect(&e, Service::kDisconnectReasonEthernet);
       }
     }
   }
@@ -1568,12 +1563,7 @@ void Manager::NotifyServiceStateChanged(const ServiceRefPtr& to_update) {
       for (const auto& service : services_) {
         if (service->technology() == Technology::kWiFi &&
             (service->IsConnected() || service->IsConnecting())) {
-          auto wifi_service = dynamic_cast<WiFiService*>(service.get());
-          if (wifi_service) {
-            wifi_service->set_disconnect_type(
-                Metrics::kWiFiDisconnectTypeEthernet);
-          }
-          service->Disconnect(&e, "Auto disconnect");
+          service->Disconnect(&e, Service::kDisconnectReasonEthernet);
         }
       }
     }

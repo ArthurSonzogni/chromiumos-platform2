@@ -736,11 +736,9 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
       SetPhyState(WiFiState::PhyState::kTransitionToConnecting,
                   wifi_state_->GetScanMethod(), __func__);
     }
-    // Explicitly disconnect pending service.
-    pending_service_->set_disconnect_type(
-        Metrics::kWiFiDisconnectTypeSelectNetwork);
     previous_pending_service_ = pending_service_;
-    DisconnectFrom(pending_service_.get());
+    DisconnectFrom(pending_service_.get(),
+                   Metrics::kWiFiDisconnectTypeSelectNetwork);
   }
 
   Error unused_error;
@@ -811,7 +809,8 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   EmitMACAddress(new_mac);
 }
 
-void WiFi::DisconnectFromIfActive(WiFiService* service) {
+void WiFi::DisconnectFromIfActive(WiFiService* service,
+                                  Metrics::WiFiDisconnectType type) {
   SLOG(this, 2) << __func__ << " service " << service->log_name();
 
   if (service != current_service_ && service != pending_service_) {
@@ -822,11 +821,13 @@ void WiFi::DisconnectFromIfActive(WiFiService* service) {
     }
   }
 
-  DisconnectFrom(service);
+  DisconnectFrom(service, type);
 }
 
-void WiFi::DisconnectFrom(WiFiService* service) {
-  SLOG(this, 2) << __func__ << " service " << service->log_name();
+void WiFi::DisconnectFrom(WiFiService* service,
+                          Metrics::WiFiDisconnectType type) {
+  SLOG(this, 2) << __func__ << " service " << service->log_name()
+                << " disconnect type " << type;
 
   if (service != current_service_ && service != pending_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
@@ -855,7 +856,9 @@ void WiFi::DisconnectFrom(WiFiService* service) {
                  << service->log_name() << " which is not the current service.";
     return;
   }
-
+  if (service) {
+    service->set_disconnect_type(type);
+  }
   if (pending_service_) {
     // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
     // on this to drive the service state back to idle.  Do that here.
@@ -961,7 +964,8 @@ void WiFi::ClearCachedCredentials(const WiFiService* service) {
   // change event, so no need to explicitly disconnect here.
   if (service == pending_service_) {
     LOG(INFO) << "Disconnect pending service: credential changed";
-    DisconnectFrom(pending_service_.get());
+    DisconnectFrom(pending_service_.get(),
+                   Metrics::kWiFiDisconnectTypeClearCredential);
   }
 
   Error unused_error;
@@ -1493,6 +1497,7 @@ void WiFi::HandleDisconnect(WiFiService* affected_service) {
                   << " pending connection to: " << pending_service_->log_name()
                   << " after disconnect";
   }
+  affected_service->set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
 }
 
 void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
@@ -1722,7 +1727,8 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
       // Otherwise, we'd have to wait for the pending timeout to trigger the
       // disconnect. This will speed up the connection attempt process for
       // the pending_service_.
-      DisconnectFrom(pending_service_.get());
+      DisconnectFrom(pending_service_.get(),
+                     Metrics::kWiFiDisconnectTypeRoamingIncorrectBSSID);
     }
     return;
   }
@@ -2265,7 +2271,7 @@ void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
   if (disconnect_service) {
     LOG(INFO) << "Disconnecting from: " << service->log_name()
               << ": BSSRemoved";
-    DisconnectFrom(service.get());
+    DisconnectFrom(service.get(), Metrics::kWiFiDisconnectTypeNoEndpointLeft);
   }
 }
 
@@ -2983,9 +2989,10 @@ void WiFi::OnLinkMonitorFailure(net_base::IPFamily family) {
   LOG(INFO) << "In " << __func__ << "(): Called Reattach().";
 }
 
-void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service) {
+void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service,
+                                   Metrics::WiFiDisconnectType type) {
   SLOG(this, 2) << "In " << __func__ << " for service: " << service->log_name();
-  DisconnectFromIfActive(service.get());
+  DisconnectFromIfActive(service.get(), type);
   if (service == selected_service()) {
     DropConnection();
   }
@@ -3330,8 +3337,9 @@ void WiFi::OnIPConfigFailure() {
     // it is fair to suspect that our credentials to this network
     // may not be correct.
     Error error;
-    current_service_->DisconnectWithFailure(Service::kFailureBadPassphrase,
-                                            &error, __func__);
+    current_service_->DisconnectWithFailure(
+        Service::kFailureBadPassphrase, &error,
+        Service::kDisconnectReasonBadPassphrase);
     return;
   }
 
@@ -3463,7 +3471,8 @@ void WiFi::PendingTimeoutHandler() {
   auto service_prev_err = service->previous_error_number();
 
   // Failure cause is determined later in ServiceDisconnected().
-  pending_service_->Disconnect(&unused_error, __func__);
+  pending_service_->Disconnect(&unused_error,
+                               Service::kDisconnectReasonPendingTimeout);
 
   // If wpa_supplicant failed to pass on a CurrentBSS, the service has no
   // reference to |this| device and cannot call WiFi::DisconnectFrom() to
@@ -3473,7 +3482,8 @@ void WiFi::PendingTimeoutHandler() {
     LOG(INFO) << __func__
               << ": pending service is not null, disconnect from it."
               << "HasEndpoints is: " << pending_service_->HasEndpoints();
-    DisconnectFrom(pending_service_.get());
+    DisconnectFrom(pending_service_.get(),
+                   Metrics::kWiFiDisconnectTypePendingTimeout);
   }
 
   // Check if the SetFailure() has been called.
@@ -3527,7 +3537,8 @@ void WiFi::HandshakeTimeoutHandler() {
   // turns into |current_service_| must have a valid reference to |this| wifi
   // device. Therefore, |Service::Disconnect| alone will suffice and there's no
   // need to handle that case as |PendingTimeoutHandler| does.
-  service->Disconnect(&unused_error, __func__);
+  service->Disconnect(&unused_error,
+                      Service::kDisconnectReasonHandshakeTimeout);
 }
 
 void WiFi::StartReconnectTimer() {
@@ -3554,7 +3565,8 @@ void WiFi::ReconnectTimeoutHandler() {
   reconnect_timeout_callback_.Cancel();
   CHECK(current_service_);
   current_service_->SetFailure(Service::kFailureConnect);
-  DisconnectFrom(current_service_.get());
+  DisconnectFrom(current_service_.get(),
+                 Metrics::kWiFiDisconnectTypeReconnectTimeout);
 }
 
 void WiFi::OnSupplicantPresence(bool present) {

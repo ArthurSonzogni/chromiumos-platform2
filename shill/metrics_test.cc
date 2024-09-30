@@ -1167,6 +1167,15 @@ TEST_F(MetricsTest, WiFiDisconnectType) {
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeDisable, 4);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeUnload, 5);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeEthernet, 6);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeClearCredential, 7);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeNoEndpointLeft, 8);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeNewWiFi, 9);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeIPConfigFailure, 10);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypePendingTimeout, 11);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeHandshakeTimeout, 12);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeReconnectTimeout, 13);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeRoamingIncorrectBSSID, 14);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeShill, 15);
 }
 
 }  // namespace shill

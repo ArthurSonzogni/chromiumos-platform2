@@ -478,7 +478,7 @@ void Service::UserInitiatedDisconnect(const char* reason, Error* error) {
   // Disconnect flows could otherwise potentially hit NoteFailureEvent prior to
   // this being set.
   explicitly_disconnected_ = true;
-  Disconnect(error, reason);
+  Disconnect(error, Service::kDisconnectReasonDbus);
 }
 
 void Service::CompleteCellularActivation(Error* error) {
@@ -870,7 +870,7 @@ bool Service::Unload() {
   ClearEAPCertification();
   if (IsActive(nullptr)) {
     Error error;  // Ignored.
-    Disconnect(&error, __func__);
+    Disconnect(&error, Service::kDisconnectReasonUnload);
   }
   current_traffic_counters_.clear();
   static_ip_parameters_.Reset();

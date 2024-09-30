@@ -1057,6 +1057,25 @@ class Metrics {
     // WiFi disconnects when Ethernet is available if DisconnectWiFiOnEthernet
     // is enabled
     kWiFiDisconnectTypeEthernet = 6,
+    // WiFi disconnection due to clearing credentials
+    kWiFiDisconnectTypeClearCredential = 7,
+    // Disconnect from a WiFi service if it has no endpoint left
+    kWiFiDisconnectTypeNoEndpointLeft = 8,
+    // Disconnect from a WiFi service if the associated WiFi device changes
+    kWiFiDisconnectTypeNewWiFi = 9,
+    // IP configuration failed
+    kWiFiDisconnectTypeIPConfigFailure = 10,
+    // Connecting to a pending service timed out
+    kWiFiDisconnectTypePendingTimeout = 11,
+    // 4-way Handshake timed out
+    kWiFiDisconnectTypeHandshakeTimeout = 12,
+    // Reconnecting the service timed out
+    kWiFiDisconnectTypeReconnectTimeout = 13,
+    // Disconnect the pending service on roaming to a wrong AP
+    kWiFiDisconnectTypeRoamingIncorrectBSSID = 14,
+    // Default type for WiFi disconnects initiated by shill if it doesn't belong
+    // to the other WiFiDisconnectType
+    kWiFiDisconnectTypeShill = 15,
     kWiFiDisconnectTypeMax
   };
 

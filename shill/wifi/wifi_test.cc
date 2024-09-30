@@ -760,7 +760,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
     WiFiServiceRefPtr OnEndpointRemoved(
         const WiFiEndpointConstRefPtr& endpoint) {
-      wifi_->DisassociateFromService(service_);
+      wifi_->DisassociateFromService(
+          service_, Metrics::kWiFiDisconnectTypeNoEndpointLeft);
       return service_;
     }
 
@@ -861,11 +862,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     Error error;
     wifi_->ConnectTo(service.get(), &error);
   }
-  void InitiateDisconnect(WiFiServiceRefPtr service) {
-    wifi_->DisconnectFrom(service.get());
+  void InitiateDisconnect(WiFiServiceRefPtr service,
+                          Metrics::WiFiDisconnectType type) {
+    wifi_->DisconnectFrom(service.get(), type);
   }
-  void InitiateDisconnectIfActive(WiFiServiceRefPtr service) {
-    wifi_->DisconnectFromIfActive(service.get());
+  void InitiateDisconnectIfActive(WiFiServiceRefPtr service,
+                                  Metrics::WiFiDisconnectType type) {
+    wifi_->DisconnectFromIfActive(service.get(), type);
   }
   MockWiFiServiceRefPtr SetupConnectingService(
       const RpcIdentifier& network_path,
@@ -1222,7 +1225,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     // leads to WiFi::DisconnectFrom() call - which should be tested as part of
     // handling of the pending timeout.  Instead of mocking this up let's invoke
     // the actual code to make the call.
-    EXPECT_CALL(*service, Disconnect(_, HasSubstr("PendingTimeoutHandler")))
+    EXPECT_CALL(
+        *service,
+        Disconnect(_, HasSubstr(Service::kDisconnectReasonPendingTimeout)))
         .WillOnce(Invoke([service](auto err, auto reason) {
           service->Service::Disconnect(err, reason);
         }));
@@ -1250,6 +1255,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MockNetwork* network() { return network_; }
 
   const WiFiConstRefPtr wifi() const { return wifi_; }
+
+  void SetWiFi(WiFiServiceRefPtr service) { service->SetWiFi(wifi_); }
 
   MockWiFiProvider* wifi_provider() { return &wifi_provider_; }
 
@@ -2196,7 +2203,7 @@ TEST_F(WiFiMainTest, ReconnectPreservesDBusPath) {
 
   // Return the service to a connectable state.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Complete the disconnection by reporting a BSS change.
@@ -2217,8 +2224,7 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
   EXPECT_EQ(GetPendingService(), service);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
-  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
 }
@@ -2231,7 +2237,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithFailure) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypePendingTimeout);
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
 }
@@ -2250,7 +2256,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-90));
   ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypePendingTimeout);
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetPendingService());
 }
@@ -2273,7 +2279,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
   EXPECT_EQ(service0, GetCurrentService());
   EXPECT_EQ(service1, GetPendingService());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  InitiateDisconnect(service1);
+  InitiateDisconnect(service1, Metrics::kWiFiDisconnectTypeShill);
   EXPECT_EQ(service1->state(), Service::kStateIdle);
 
   // |current_service_| will be unchanged until supplicant signals
@@ -2289,8 +2295,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeUser);
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 
   // |current_service_| should not change until supplicant reports
   // a BSS change.
@@ -2316,7 +2321,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeIPConfigFailure);
 
   // |current_service_| should not change until supplicant reports
   // a BSS change.
@@ -2350,13 +2355,15 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kPath), Return(true)));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(kPath));
+  SetWiFi(service);
   InitiateConnect(service);
   ReportCurrentBSSChanged(bss_path);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 
+  // shill disconnects WiFi when the current service has no endpoint left
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-90));
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeNoEndpointLeft);
 
   // |current_service_| should not change until supplicant reports
   // a BSS change.
@@ -2370,9 +2377,46 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
 
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
-  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
-  EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
-  ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
+  // Disconnections triggered by shill due to no endpoint left with an
+  // out-of-range RSSI value are not failures
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).Times(0);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeSenderHasLeft);
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  EXPECT_EQ(service->state(), Service::kStateIdle);
+  EXPECT_EQ(nullptr, GetCurrentService());
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentServiceWithNoEndpointLeft) {
+  StartWiFi();
+
+  // Setup connection with good signal
+  RpcIdentifier kPath("/fake/path");
+  MockWiFiServiceRefPtr service;
+  RpcIdentifier bss_path(
+      MakeNewEndpointAndService(-30, 0, nullptr, &service, false));
+  SetWiFi(service);
+  InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-30));
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeNoEndpointLeft);
+
+  // |current_service_| should not change until supplicant reports
+  // a BSS change.
+  EXPECT_EQ(service, GetCurrentService());
+
+  // Expect that the entry associated with this network will be disabled.
+  auto network_proxy = std::make_unique<MockSupplicantNetworkProxy>();
+  EXPECT_CALL(*eap_state_handler_, Reset());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
+  // Disconnections triggered by shill due to no endpoint left with a good RSSI
+  // are failures
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service, SetFailure(Service::kFailureDisconnect));
+  ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeSenderHasLeft);
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
   EXPECT_EQ(service->state(), Service::kStateIdle);
   EXPECT_EQ(nullptr, GetCurrentService());
@@ -2386,7 +2430,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithErrors) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect())
       .WillOnce(Return(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(1);
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 
   // We may sometimes fail to disconnect via supplicant, and we patch up some
   // state when this happens.
@@ -2403,7 +2447,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
   EXPECT_EQ(service0, GetCurrentService());
   EXPECT_EQ(service1, GetPendingService());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
-  InitiateDisconnect(service0);
+  InitiateDisconnect(service0, Metrics::kWiFiDisconnectTypeShill);
 
   EXPECT_EQ(service0, GetCurrentService());
   EXPECT_EQ(service1, GetPendingService());
@@ -2425,7 +2469,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWhileRoaming) {
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath));
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 
   // Because the interface was not connected, we should have immediately
   // forced ourselves into a disconnected state.
@@ -2448,7 +2492,8 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnected) {
   EXPECT_CALL(log, Log(_, _, ContainsRegex("DisconnectFrom[^a-zA-Z].*service")))
       .Times(1);
   EXPECT_CALL(*service0, IsActive(_)).Times(0);
-  InitiateDisconnectIfActive(service0);
+  InitiateDisconnectIfActive(service0,
+                             Metrics::kWiFiDisconnectTypeNoEndpointLeft);
 
   Mock::VerifyAndClearExpectations(&log);
   Mock::VerifyAndClearExpectations(service0.get());
@@ -2460,7 +2505,8 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceIdle) {
   StartWiFi();
   MockWiFiServiceRefPtr service0(
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
-  InitiateDisconnectIfActive(service0);
+  InitiateDisconnectIfActive(service0,
+                             Metrics::kWiFiDisconnectTypeNoEndpointLeft);
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
   MockWiFiServiceRefPtr service1(
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr));
@@ -2474,7 +2520,8 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceIdle) {
   EXPECT_CALL(log, Log(logging::LOGGING_WARNING, _,
                        ContainsRegex("In .*DisconnectFrom\\(.*\\):")))
       .Times(0);
-  InitiateDisconnectIfActive(service0);
+  InitiateDisconnectIfActive(service0,
+                             Metrics::kWiFiDisconnectTypeNoEndpointLeft);
 
   Mock::VerifyAndClearExpectations(&log);
   Mock::VerifyAndClearExpectations(service0.get());
@@ -2499,12 +2546,48 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnectedInError) {
   EXPECT_CALL(log, Log(logging::LOGGING_WARNING, _,
                        ContainsRegex("In .*DisconnectFrom\\(.*\\):")))
       .Times(1);
-  InitiateDisconnectIfActive(service0);
+  InitiateDisconnectIfActive(service0,
+                             Metrics::kWiFiDisconnectTypeNoEndpointLeft);
 
   Mock::VerifyAndClearExpectations(&log);
   Mock::VerifyAndClearExpectations(service0.get());
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+}
+
+TEST_F(WiFiMainTest, CurrentServiceDisconnectedWithOutOfRange) {
+  StartWiFi();
+
+  // Setup connection with weak signal
+  RpcIdentifier kPath("/fake/path");
+  MockWiFiServiceRefPtr service;
+  RpcIdentifier bss_path(
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false));
+  EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kPath), Return(true)));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(kPath));
+  InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+
+  // Expect that the entry associated with this network will be disabled.
+  auto network_proxy = std::make_unique<MockSupplicantNetworkProxy>();
+  EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
+  EXPECT_CALL(*control_interface(), CreateSupplicantNetworkProxy(kPath))
+      .WillOnce(Return(ByMove(std::move(network_proxy))));
+
+  EXPECT_CALL(*eap_state_handler_, Reset());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
+  // Disconnections triggered by wpa_supplicant due to an out-of-range RSSI
+  // value are failures
+  EXPECT_CALL(*service, ShouldIgnoreFailure()).WillOnce(Return(false));
+  EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
+  ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  EXPECT_EQ(service->state(), Service::kStateIdle);
+  EXPECT_EQ(nullptr, GetCurrentService());
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
@@ -2554,7 +2637,9 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   EXPECT_EQ(service, GetPendingService());
   // We expect the service to get a disconnect call, but in this scenario
   // the service does nothing.
-  EXPECT_CALL(*service, Disconnect(_, HasSubstr("PendingTimeoutHandler")));
+  EXPECT_CALL(
+      *service,
+      Disconnect(_, HasSubstr(Service::kDisconnectReasonPendingTimeout)));
   // current_endpoint_ == nullptr so, without endpoint,
   // the service should return min possible value of int16_t
   EXPECT_CALL(*service, SignalLevel())
@@ -2616,7 +2701,9 @@ TEST_F(WiFiMainTest, TimeoutHandshake) {
   EXPECT_NE(nullptr, GetCurrentService());
 
   // Handshake timeout initiates disconnection.
-  EXPECT_CALL(*service, Disconnect(_, HasSubstr("HandshakeTimeoutHandler")));
+  EXPECT_CALL(
+      *service,
+      Disconnect(_, HasSubstr(Service::kDisconnectReasonHandshakeTimeout)));
   test_event_dispatcher_->task_environment().FastForwardBy(base::Seconds(15));
 
   // Make sure shill doesn't handle disconnect until it receives the
@@ -2625,7 +2712,7 @@ TEST_F(WiFiMainTest, TimeoutHandshake) {
   // mocked service is not full-fledged to call |DisconnectFrom|. This is
   // covered in |WiFiServiceTest.DisconnectWithWiFi|.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeHandshakeTimeout);
   EXPECT_NE(nullptr, GetCurrentService());
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
   EXPECT_EQ(service->state(), Service::kStateIdle);
@@ -2642,7 +2729,7 @@ TEST_F(WiFiMainTest, DisconnectInvalidService) {
   MockWiFiServiceRefPtr service;
   MakeNewEndpointAndService(0, 0, nullptr, &service, false);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
@@ -2652,7 +2739,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath));
-  InitiateDisconnect(service);
+  InitiateDisconnect(service, Metrics::kWiFiDisconnectTypeShill);
   EXPECT_EQ(nullptr, GetCurrentService());
 }
 
@@ -3637,7 +3724,6 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnUnexpectedSTA) {
   MockWiFiServiceRefPtr service =
       SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   int32_t reason = -IEEE_80211::kReasonCodeInactivity;
-  service->set_disconnect_type(Metrics::kWiFiDisconnectTypeSystem);
   // If supplicant reports a < 0 disconnection reason it means the station
   // decided to disconnect. If the service wasn't expecting a disconnection, we
   // report that the disconnection is unexpected.
@@ -3697,11 +3783,7 @@ TEST_F(WiFiMainTest, DisconnectReasonEmitEventOnAttemptFailureIn4WayHandshake) {
   // in a connection attempt accompanied by 4-way handshake timeout reason code
   // should not trigger a Disconnection event.
   int32_t reason = IEEE_80211::kReasonCode4WayTimeout;
-  EXPECT_CALL(*service,
-              EmitDisconnectionEvent(
-                  Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
-                  IEEE_80211::kReasonCode4WayTimeout))
-      .Times(0);
+  EXPECT_CALL(*service, EmitDisconnectionEvent(_, _)).Times(0);
   ReportDisconnectReasonChanged(reason);
 }
 
@@ -4358,8 +4440,10 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // If there was an increased byte-count while we were timing out DHCP,
   // this should be considered a DHCP failure and not a credential failure.
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
-                                              HasSubstr("OnIPConfigFailure")));
+  EXPECT_CALL(*service,
+              DisconnectWithFailure(
+                  Service::kFailureDHCP, _,
+                  HasSubstr(Service::kDisconnectReasonIPConfigFailure)));
   ReportIPConfigFailure();
   Mock::VerifyAndClearExpectations(service.get());
 
@@ -4367,8 +4451,10 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // due to a passphrase issue.
   EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
       .WillOnce(Return(false));
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
-                                              HasSubstr("OnIPConfigFailure")));
+  EXPECT_CALL(*service,
+              DisconnectWithFailure(
+                  Service::kFailureDHCP, _,
+                  HasSubstr(Service::kDisconnectReasonIPConfigFailure)));
   ReportIPConfigFailure();
   Mock::VerifyAndClearExpectations(service.get());
 
@@ -4376,8 +4462,10 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // passphrase issue.
   EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
       .WillOnce(Return(true));
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureBadPassphrase, _,
-                                              HasSubstr("OnIPConfigFailure")));
+  EXPECT_CALL(*service,
+              DisconnectWithFailure(
+                  Service::kFailureBadPassphrase, _,
+                  HasSubstr(Service::kDisconnectReasonBadPassphrase)));
   ReportIPConfigFailure();
 }
 

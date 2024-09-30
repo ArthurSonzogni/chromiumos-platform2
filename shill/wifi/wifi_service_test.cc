@@ -1390,14 +1390,16 @@ TEST_F(WiFiServiceTest, DisconnectWithWiFi) {
   // An inactive Service will not have OnDisconnected triggered.
   service->SetState(Service::kStateConnected);
   EXPECT_CALL(*wifi(), IsCurrentService(service.get())).WillOnce(Return(true));
-  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
+  EXPECT_CALL(*wifi(),
+              DisconnectFrom(service.get(), Metrics::kWiFiDisconnectTypeShill))
+      .Times(1);
   Error error;
   service->Disconnect(&error, "in test");
 }
 
 TEST_F(WiFiServiceTest, DisconnectWithoutWiFi) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassWep);
-  EXPECT_CALL(*wifi(), DisconnectFrom(_)).Times(0);
+  EXPECT_CALL(*wifi(), DisconnectFrom(_, _)).Times(0);
   service->SetState(Service::kStateAssociating);
   Error error;
   service->Disconnect(&error, "in test");
@@ -1406,7 +1408,7 @@ TEST_F(WiFiServiceTest, DisconnectWithoutWiFi) {
 
 TEST_F(WiFiServiceTest, DisconnectWithoutWiFiWhileAssociating) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassWep);
-  EXPECT_CALL(*wifi(), DisconnectFrom(_)).Times(0);
+  EXPECT_CALL(*wifi(), DisconnectFrom(_, _)).Times(0);
   service->SetState(Service::kStateAssociating);
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -1423,7 +1425,9 @@ TEST_F(WiFiServiceTest, UnloadAndClearCacheWEP) {
   service->SetState(Service::kStateConnected);
   EXPECT_CALL(*wifi(), IsCurrentService(service.get())).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
-  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
+  EXPECT_CALL(*wifi(),
+              DisconnectFrom(service.get(), Metrics::kWiFiDisconnectTypeUnload))
+      .Times(1);
   service->Unload();
 }
 
@@ -1433,7 +1437,9 @@ TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
   service->SetState(Service::kStateConnected);
   EXPECT_CALL(*wifi(), IsCurrentService(service.get())).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
-  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
+  EXPECT_CALL(*wifi(),
+              DisconnectFrom(service.get(), Metrics::kWiFiDisconnectTypeUnload))
+      .Times(1);
   service->Unload();
 }
 
