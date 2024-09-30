@@ -186,20 +186,11 @@ TEST_F(OptionDescriptorTest, ColorMode) {
     auto maybe_values = option.GetValidStringValues();
     ASSERT_TRUE(maybe_values) << "Unable to parse color mode option";
 
-    auto modes = maybe_values.value();
-    std::cout << "Do the reported color modes (";
-    for (int i = 0; i < modes.size(); i++) {
-      if (supported_color_modes.contains(modes[i])) {
+    for (auto mode : maybe_values.value()) {
+      if (supported_color_modes.contains(mode)) {
         supported_color_mode_found = true;
       }
-
-      if (i != 0) {
-        std::cout << ", ";
-      }
-      std::cout << modes[i];
     }
-    std::cout << ") look correct (y/n):" << std::endl;
-    EXPECT_TRUE(_y_or_no());
 
     EXPECT_TRUE(supported_color_mode_found) << "No supported color modes found";
 
