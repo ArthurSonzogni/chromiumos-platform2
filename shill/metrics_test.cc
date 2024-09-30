@@ -1163,7 +1163,7 @@ TEST_F(MetricsTest, WiFiDisconnectType) {
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeSystem, 0);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeUser, 1);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeSuspend, 2);
-  EXPECT_EQ(Metrics::kWiFiDisconnectTypeSwitchNetwork, 3);
+  EXPECT_EQ(Metrics::kWiFiDisconnectTypeSelectNetwork, 3);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeDisable, 4);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeUnload, 5);
   EXPECT_EQ(Metrics::kWiFiDisconnectTypeEthernet, 6);

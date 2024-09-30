@@ -204,6 +204,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Otherwise, if it a pending or current service, discontinue the process
   // of connecting and return |service| to the idle state.
   virtual void DisconnectFrom(WiFiService* service);
+  void SelectNetwork(const RpcIdentifier& network);
   virtual bool IsIdle() const;
   // Clear any cached credentials wpa_supplicant may be holding for
   // |service|.  This has a side-effect of disconnecting the service

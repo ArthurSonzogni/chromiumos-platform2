@@ -738,7 +738,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     }
     // Explicitly disconnect pending service.
     pending_service_->set_disconnect_type(
-        Metrics::kWiFiDisconnectTypeSwitchNetwork);
+        Metrics::kWiFiDisconnectTypeSelectNetwork);
     previous_pending_service_ = pending_service_;
     DisconnectFrom(pending_service_.get());
   }
@@ -795,13 +795,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
 
   wifi_link_statistics_->Reset();
   service->EmitConnectionAttemptEvent();
-  if (current_service_) {
-    // If we're already connected, |SelectNetwork| will make wpa_supplicant
-    // disconnect the current service before connecting to the new service.
-    current_service_->set_disconnect_type(
-        Metrics::kWiFiDisconnectTypeSwitchNetwork);
-  }
-  supplicant_interface_proxy_->SelectNetwork(network_rpcid);
+  SelectNetwork(network_rpcid);
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
 
@@ -918,6 +912,16 @@ void WiFi::DisconnectFrom(WiFiService* service) {
 
   CHECK(current_service_ == nullptr ||
         current_service_.get() != pending_service_.get());
+}
+
+void WiFi::SelectNetwork(const RpcIdentifier& network) {
+  if (current_service_) {
+    // If we're already connected, |SelectNetwork| will make wpa_supplicant
+    // disconnect the current service before connecting to the new service.
+    current_service_->set_disconnect_type(
+        Metrics::kWiFiDisconnectTypeSelectNetwork);
+  }
+  supplicant_interface_proxy_->SelectNetwork(network);
 }
 
 bool WiFi::DisableNetwork(const RpcIdentifier& network) {

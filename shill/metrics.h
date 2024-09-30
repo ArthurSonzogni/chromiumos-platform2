@@ -1048,8 +1048,8 @@ class Metrics {
     kWiFiDisconnectTypeUser = 1,
     // System suspend disconnects WiFi
     kWiFiDisconnectTypeSuspend = 2,
-    // Switching to a new network will disconnect from the current network first
-    kWiFiDisconnectTypeSwitchNetwork = 3,
+    // Selecting a new network will disconnect from the current network first
+    kWiFiDisconnectTypeSelectNetwork = 3,
     // WiFi is disabled or stopped
     kWiFiDisconnectTypeDisable = 4,
     // WiFi disconnection due to unloading the WiFi service

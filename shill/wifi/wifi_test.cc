@@ -6606,10 +6606,10 @@ TEST_F(WiFiMainTest, DisconnectTypeSwitchNetwork) {
   EXPECT_CALL(*metrics(), SendEnumToUMA(_, _)).Times(AnyNumber());
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kMetricWiFiDisconnect,
-                            Metrics::kWiFiDisconnectTypeSwitchNetwork));
+                            Metrics::kWiFiDisconnectTypeSelectNetwork));
   InitiateConnect(service2);
   EXPECT_EQ(service1->disconnect_type(),
-            Metrics::kWiFiDisconnectTypeSwitchNetwork);
+            Metrics::kWiFiDisconnectTypeSelectNetwork);
   ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
   ReportCurrentBSSChanged(bss_path);
   EXPECT_EQ(service2->disconnect_type(), Metrics::kWiFiDisconnectTypeSystem);
