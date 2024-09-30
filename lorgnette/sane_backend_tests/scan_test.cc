@@ -194,6 +194,7 @@ void verify_png_info(const char* filename,
   }
 }
 
+// Note: This function is invoked once per parameterized test case.
 std::vector<ScanTestParameter> scan_test_generator() {
   std::vector<ScanTestParameter> out;
   // Call a void function so we can use ASSERTs in them.
