@@ -35,7 +35,8 @@ type PanicHookInfo<'a> = panic::PanicInfo<'a>;
 
 fn panic_info_payload_str_common<'a>(panic_info: &'a PanicHookInfo<'_>) -> Option<&'a str> {
     let payload = panic_info.payload();
-    payload.downcast_ref::<&str>()
+    payload
+        .downcast_ref::<&str>()
         .copied()
         .or_else(|| payload.downcast_ref::<String>().map(|x| x.as_str()))
 }
