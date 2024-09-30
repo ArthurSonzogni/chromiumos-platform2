@@ -98,6 +98,7 @@ clone: arg0 & CLONE_THREAD
 # For mediapipe threads
 prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME
 sched_setaffinity: 1
+sched_getparam: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
