@@ -97,5 +97,14 @@ is_arc_vm(`
   ', (`cros_chromeos_install'))
 ')
 
-allow cros_chromeos_install cros_python_exec:dir { create_dir_perms getattr };
-allow cros_chromeos_install cros_python_exec:file create_file_perms;
+# This macro makes the policy permissive when used with the ARC container,
+# but not when used with ARCVM.
+# These allow rules were added by crrev/c/5804826 for ARCVM on ChromeOS Flex.
+is_arc_vm(`
+  allow cros_chromeos_install cros_python_exec:dir { create_dir_perms getattr };
+  allow cros_chromeos_install cros_python_exec:file create_file_perms;
+',`arc_cts_fails_release(`
+  allow cros_chromeos_install cros_python_exec:dir { create_dir_perms getattr };
+  allow cros_chromeos_install cros_python_exec:file create_file_perms;
+  ', (`cros_chromeos_install'))
+')

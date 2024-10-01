@@ -46,5 +46,14 @@ rw_dir_file(cros_installer, efivarfs)
 allow cros_installer efivarfs:filesystem getattr;
 allow cros_installer efivarfs:file { create unlink };
 # Allow cros_installer to perform privileged operations on efivarfs.
+
+# This macro makes the policy permissive when used with the ARC container,
+# but not when used with ARCVM.
+# This allow rule was added by crrev/c/5804826 for ARCVM on ChromeOS Flex.
 # TODO(b/322370774): drop dac_override in favor of more targeted permissions.
-allow cros_installer cros_installer:capability dac_override;
+is_arc_vm(`
+  allow cros_installer cros_installer:capability dac_override;
+',`arc_cts_fails_release(`
+  allow cros_installer cros_installer:capability dac_override;
+  ', (`cros_installer'))
+')
