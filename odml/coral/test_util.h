@@ -19,17 +19,6 @@
 // included in tests.
 namespace coral {
 
-inline mojom::EntityKeyPtr EntityToKey(mojom::EntityPtr entity) {
-  switch (entity->which()) {
-    case mojom::Entity::Tag::kUnknown:
-      return mojom::EntityKey::NewUnknown(false);
-    case mojom::Entity::Tag::kTab:
-      return mojom::EntityKey::NewTabUrl(std::move(entity->get_tab()->url));
-    case mojom::Entity::Tag::kApp:
-      return mojom::EntityKey::NewAppId(std::move(entity->get_app()->id));
-  }
-}
-
 inline std::vector<mojom::EntityPtr> GetFakeEntities() {
   std::vector<mojom::EntityPtr> ret;
   // The following 3 entities are similar.
@@ -81,17 +70,23 @@ inline ClusteringResponse GetFakeClusteringResponse() {
 inline TitleGenerationResponse GetFakeTitleGenerationResponse() {
   TitleGenerationResponse response;
   std::vector<mojom::EntityPtr> entities = GetFakeEntities();
-  std::vector<mojom::EntityKeyPtr> group1, group2, group3;
+  auto group1 = mojom::Group::New();
+  group1->title = "ABC";
+  auto group2 = mojom::Group::New();
+  group2->title = "DEF";
+  auto group3 = mojom::Group::New();
+  group3->title = "GHI";
   for (size_t i = 0; i < 3; i++) {
-    group1.push_back(EntityToKey(std::move(entities[i])));
+    group1->entities.push_back(std::move(entities[i]));
   }
   for (size_t i = 3; i < 5; i++) {
-    group2.push_back(EntityToKey(std::move(entities[i])));
+    group2->entities.push_back(std::move(entities[i]));
   }
-  group3.push_back(EntityToKey(std::move(entities[5])));
-  response.groups.emplace_back(mojom::Group::New("ABC", std::move(group1)));
-  response.groups.emplace_back(mojom::Group::New("DEF", std::move(group2)));
-  response.groups.emplace_back(mojom::Group::New("GHI", std::move(group3)));
+  group3->entities.push_back(std::move(entities[5]));
+
+  response.groups.push_back(std::move(group1));
+  response.groups.push_back(std::move(group2));
+  response.groups.push_back(std::move(group3));
   return response;
 }
 

@@ -64,17 +64,6 @@ std::string EntitiesToTitlePrompt(
   return prompt;
 }
 
-mojom::EntityKeyPtr EntityToKey(const mojom::Entity& entity) {
-  switch (entity.which()) {
-    case mojom::Entity::Tag::kUnknown:
-      return mojom::EntityKey::NewUnknown(false);
-    case mojom::Entity::Tag::kTab:
-      return mojom::EntityKey::NewTabUrl(entity.get_tab()->url->Clone());
-    case mojom::Entity::Tag::kApp:
-      return mojom::EntityKey::NewAppId(entity.get_app()->id);
-  }
-}
-
 }  // namespace
 
 TitleGenerationEngine::TitleGenerationEngine(
@@ -228,8 +217,10 @@ void TitleGenerationEngine::OnModelOutput(mojom::GroupRequestPtr request,
   // in UI.
   // TODO(b/361429962): Validate safety result of the title.
   group->title = std::move(title);
-  for (const mojom::EntityPtr& entity : clusters[index].entities) {
-    group->entities.push_back(EntityToKey(*entity));
+  group->entities = std::vector<mojom::EntityPtr>();
+  // We don't need clusters[index] after this anymore.
+  for (mojom::EntityPtr& entity : clusters[index].entities) {
+    group->entities.push_back(std::move(entity));
   }
   response.groups.push_back(std::move(group));
   ProcessEachPrompt(std::move(request), std::move(session), std::move(clusters),
