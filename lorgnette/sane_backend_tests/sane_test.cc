@@ -173,5 +173,28 @@ TEST_F(SANETest, OpenCloseStress) {
   }
 }
 
+TEST_F(SANETest, MultipleCancel) {
+  SANE_Handle handle;
+
+  ASSERT_EQ(sane_open(sane_backend_tests::scanner_under_test->c_str(), &handle),
+            SANE_STATUS_GOOD)
+      << "Failed to open scanner";
+
+  ASSERT_EQ(sane_start(handle), SANE_STATUS_GOOD) << "Failed to start scan";
+
+  std::cout << "Canceling scan\n";
+  sane_cancel(handle);
+  sane_cancel(handle);
+
+  std::cout << "Press enter when ready to scan again";
+  std::string ignored;
+  std::getline(std::cin, ignored);
+
+  ASSERT_EQ(sane_start(handle), SANE_STATUS_GOOD)
+      << "Failed to restart scan after canceling";
+
+  sane_close(handle);
+}
+
 }  // namespace
 }  // namespace sane_backend_tests
