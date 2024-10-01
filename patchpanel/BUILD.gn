@@ -370,6 +370,7 @@ if (use.test) {
       "subnet_test.cc",
       "subprocess_controller_test.cc",
       "system_test.cc",
+      "testrunner.cc",
       "vm_concierge_client_test.cc",
     ]
     configs += [
