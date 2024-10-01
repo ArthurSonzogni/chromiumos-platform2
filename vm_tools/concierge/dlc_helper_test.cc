@@ -4,15 +4,16 @@
 
 #include "vm_tools/concierge/dlc_helper.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <memory>
 #include <optional>
 #include <utility>
 
-#include "base/memory/scoped_refptr.h"
-#include "dlcservice/proto_bindings/dlcservice.pb.h"
+#include <base/memory/scoped_refptr.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "dlcservice/dbus-proxy-mocks.h"  //NOLINT (build/include_alpha)
+#include "dlcservice/proto_bindings/dlcservice.pb.h"
 
 using ::testing::_;
 

@@ -17,7 +17,6 @@
 #include <base/test/task_environment.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
-
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 #include "vm_tools/concierge/mm/fake_reclaim_server.h"

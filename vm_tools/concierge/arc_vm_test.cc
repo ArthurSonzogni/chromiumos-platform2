@@ -16,9 +16,9 @@
 #include <base/memory/page_size.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/bind.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
-#include <base/test/bind.h>
 #include <base/time/time.h>
 #include <base/timer/mock_timer.h>
 #include <base/timer/timer.h>

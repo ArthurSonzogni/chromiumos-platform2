@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gtest/gtest.h>
 
-#include "base/time/time.h"
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/fake_crosvm_control.h"
 

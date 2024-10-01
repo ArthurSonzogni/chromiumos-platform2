@@ -5,10 +5,10 @@
 #ifndef VM_TOOLS_CONCIERGE_MM_FAKE_BALLOON_H_
 #define VM_TOOLS_CONCIERGE_MM_FAKE_BALLOON_H_
 
-#include "vm_tools/concierge/mm/balloon.h"
-
 #include <string>
 #include <vector>
+
+#include "vm_tools/concierge/mm/balloon.h"
 
 namespace vm_tools::concierge::mm {
 

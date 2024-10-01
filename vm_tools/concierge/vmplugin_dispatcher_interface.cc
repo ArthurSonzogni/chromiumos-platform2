@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
+
 #include <memory>
 #include <optional>
 #include <utility>
@@ -16,12 +18,10 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-
 #include <vm_plugin_dispatcher/vm_plugin_dispatcher.pb.h>
 
 #include "vm_tools/concierge/dbus_proxy_util.h"
 #include "vm_tools/concierge/plugin_vm_config.h"
-#include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 namespace vm_tools::concierge::pvm::dispatcher {
 namespace {

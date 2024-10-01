@@ -5,10 +5,10 @@
 #include "vm_tools/concierge/mm/balloon_metrics.h"
 
 #include <limits>
-#include "base/time/time.h"
 
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/time/time.h>
 
 namespace vm_tools::concierge::mm {
 

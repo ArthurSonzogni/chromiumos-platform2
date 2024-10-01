@@ -6,7 +6,8 @@
 
 #include <utility>
 
-#include "base/logging.h"
+#include <base/logging.h>
+
 #include "perfetto/perfetto.h"
 
 PERFETTO_TRACK_EVENT_STATIC_STORAGE_IN_NAMESPACE(vm_tools::concierge);

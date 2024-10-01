@@ -4,13 +4,14 @@
 
 #include "vm_tools/concierge/vmm_swap_low_disk_policy.h"
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <spaced/disk_usage_proxy.h>
-#include <utility>
 
 namespace vm_tools::concierge {
 

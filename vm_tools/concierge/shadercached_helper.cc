@@ -4,14 +4,13 @@
 
 #include "vm_tools/concierge/shadercached_helper.h"
 
-#include <shadercached/proto_bindings/shadercached.pb.h>
-
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <dbus/bus.h>
 #include <dbus/error.h>
 #include <dbus/message.h>
 #include <dbus/shadercached/dbus-constants.h>
+#include <shadercached/proto_bindings/shadercached.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_proxy_util.h"

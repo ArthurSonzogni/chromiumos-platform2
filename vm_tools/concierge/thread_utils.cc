@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <utility>
-
 #include "vm_tools/concierge/thread_utils.h"
+
+#include <utility>
 
 namespace vm_tools::concierge {
 

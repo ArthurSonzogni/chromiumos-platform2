@@ -8,9 +8,10 @@
 #include <string>
 #include <utility>
 
-#include "base/memory/ptr_util.h"
-#include "base/task/sequenced_task_runner.h"
-#include "brillo/dbus/dbus_object.h"
+#include <base/memory/ptr_util.h>
+#include <base/task/sequenced_task_runner.h>
+#include <brillo/dbus/dbus_object.h>
+
 #include "dbus/vm_concierge/dbus-constants.h"
 #include "vm_tools/concierge/thread_utils.h"
 

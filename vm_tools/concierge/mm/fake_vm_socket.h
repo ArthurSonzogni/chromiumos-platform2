@@ -5,9 +5,9 @@
 #ifndef VM_TOOLS_CONCIERGE_MM_FAKE_VM_SOCKET_H_
 #define VM_TOOLS_CONCIERGE_MM_FAKE_VM_SOCKET_H_
 
-#include "vm_tools/concierge/mm/vm_socket.h"
-
 #include <unordered_set>
+
+#include "vm_tools/concierge/mm/vm_socket.h"
 
 namespace vm_tools::concierge::mm {
 

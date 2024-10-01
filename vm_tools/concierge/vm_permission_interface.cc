@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/concierge/vm_permission_interface.h"
+
 #include <memory>
 #include <utility>
 
@@ -13,11 +15,9 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-
 #include <vm_permission_service/vm_permission_service.pb.h>
 
 #include "vm_tools/concierge/dbus_proxy_util.h"
-#include "vm_tools/concierge/vm_permission_interface.h"
 
 namespace vm_tools::concierge::vm_permission {
 

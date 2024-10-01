@@ -12,10 +12,10 @@
 #include <utility>
 
 #include <base/functional/callback_forward.h>
+#include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <base/types/expected.h>
-#include <base/sequence_checker.h>
 #include <metrics/metrics_library.h>
 
 #include "vm_tools/common/vm_id.h"

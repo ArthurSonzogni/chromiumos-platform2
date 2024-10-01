@@ -7,8 +7,8 @@
 #include <optional>
 #include <utility>
 
-#include "base/containers/contains.h"
-#include "base/files/scoped_file.h"
+#include <base/containers/contains.h>
+#include <base/files/scoped_file.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

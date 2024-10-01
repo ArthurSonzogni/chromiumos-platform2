@@ -5,25 +5,25 @@
 #include "vm_tools/concierge/service.h"
 
 #include <unistd.h>
+
 #include <vector>
 
+#include <base/memory/scoped_refptr.h>
+#include <base/run_loop.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/task/thread_pool.h>
+#include <base/test/bind.h>
+#include <base/test/task_environment.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
+#include <dbus/mock_object_proxy.h>
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-#include "base/memory/scoped_refptr.h"
-#include "base/run_loop.h"
-#include "base/task/sequenced_task_runner.h"
-#include "base/task/thread_pool.h"
-#include "base/test/bind.h"
-#include "base/test/task_environment.h"
-#include "dbus/mock_bus.h"
-#include "dbus/mock_exported_object.h"
-#include "dbus/mock_object_proxy.h"
-#include "dbus/object_path.h"
 #include "dbus/vm_concierge/dbus-constants.h"
 #include "featured/feature_library.h"
-
 #include "vm_tools/concierge/mm/fake_mm_service.h"
 
 using ::testing::_;

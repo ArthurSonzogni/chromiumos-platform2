@@ -9,7 +9,6 @@
 
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
-
 #include <vm_tools/common/vm_id.h>
 
 namespace vm_tools::concierge::vm_permission {

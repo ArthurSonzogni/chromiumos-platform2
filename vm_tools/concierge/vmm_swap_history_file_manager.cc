@@ -5,10 +5,11 @@
 #include "vm_tools/concierge/vmm_swap_history_file_manager.h"
 
 #include <fcntl.h>
+
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/files/file_util.h>

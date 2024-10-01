@@ -8,15 +8,15 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <re2/re2.h>
 
-#include "base/files/file_path.h"
-#include "base/strings/string_split.h"
 #include "vm_tools/concierge/pci_utils.h"
 #include "vm_tools/concierge/vm_util.h"
 

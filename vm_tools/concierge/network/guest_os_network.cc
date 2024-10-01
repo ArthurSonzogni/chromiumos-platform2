@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "chromeos/patchpanel/dbus/client.h"
-
 #include "vm_tools/concierge/network/scoped_network.h"
 
 namespace vm_tools::concierge {

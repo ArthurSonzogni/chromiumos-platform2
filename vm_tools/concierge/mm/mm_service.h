@@ -10,8 +10,8 @@
 
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/scoped_file.h>
-#include <base/threading/thread.h>
 #include <base/sequence_checker.h>
+#include <base/threading/thread.h>
 
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/mm/balloon_broker.h"

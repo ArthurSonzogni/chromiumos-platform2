@@ -6,15 +6,15 @@
 #define VM_TOOLS_CONCIERGE_CONCIERGE_DAEMON_H_
 
 #include <memory>
-#include "base/run_loop.h"
-#include "base/thread_annotations.h"
 
 #include <base/at_exit.h>
-#include <base/files/scoped_file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_pump_type.h>
+#include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/thread_annotations.h>
 
 namespace vm_tools::concierge {
 

@@ -6,7 +6,6 @@
 #define VM_TOOLS_CONCIERGE_MM_RESIZE_PRIORITY_H_
 
 #include <base/containers/fixed_flat_map.h>
-
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 namespace vm_tools::concierge::mm {

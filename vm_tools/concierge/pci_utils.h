@@ -12,8 +12,8 @@
 #include <string_view>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/strings/string_split.h>
 #include <base/values.h>
 

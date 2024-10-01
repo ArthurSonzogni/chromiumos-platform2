@@ -9,7 +9,6 @@
 #include <string>
 
 #include "net-base/ipv4_address.h"
-
 #include "vm_tools/concierge/network/scoped_network.h"
 
 namespace vm_tools::concierge {

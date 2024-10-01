@@ -7,8 +7,8 @@
 #include <optional>
 #include <utility>
 
-#include "base/logging.h"
-#include "base/memory/ptr_util.h"
+#include <base/logging.h>
+#include <base/memory/ptr_util.h>
 
 #include "vm_tools/concierge/network/scoped_network.h"
 

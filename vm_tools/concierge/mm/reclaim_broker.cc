@@ -16,8 +16,8 @@
 #include <utility>
 
 #include <base/containers/flat_map.h>
-#include <base/logging.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/posix/eintr_wrapper.h>
 

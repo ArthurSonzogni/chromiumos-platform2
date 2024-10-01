@@ -8,7 +8,8 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/scoped_refptr.h"
+#include <base/memory/scoped_refptr.h>
+
 #include "chromeos/patchpanel/dbus/client.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
 

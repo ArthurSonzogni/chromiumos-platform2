@@ -5,13 +5,12 @@
 #ifndef VM_TOOLS_CONCIERGE_CROSVM_CONTROL_H_
 #define VM_TOOLS_CONCIERGE_CROSVM_CONTROL_H_
 
-#include <crosvm/crosvm_control.h>
-
 #include <memory>
 #include <optional>
 #include <string>
 
 #include <base/time/time.h>
+#include <crosvm/crosvm_control.h>
 
 namespace vm_tools::concierge {
 

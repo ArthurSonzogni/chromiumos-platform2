@@ -16,7 +16,6 @@
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <metrics/metrics_library.h>
-
 #include <vm_applications/apps.pb.h>
 #include <vm_memory_management/vm_memory_management.pb.h>
 

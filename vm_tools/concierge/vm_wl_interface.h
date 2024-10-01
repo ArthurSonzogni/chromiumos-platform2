@@ -8,14 +8,14 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/types/expected.h>
+#include <dbus/object_proxy.h>
 #include <vm_wl/wl.pb.h>
 
-#include "base/files/file_path.h"
-#include "base/files/scoped_file.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/memory/scoped_refptr.h"
-#include "base/types/expected.h"
-#include "dbus/object_proxy.h"
 #include "vm_tools/common/vm_id.h"
 
 namespace dbus {

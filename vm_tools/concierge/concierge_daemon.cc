@@ -5,23 +5,24 @@
 #include "vm_tools/concierge/concierge_daemon.h"
 
 #include <grp.h>
-#include <memory>
 #include <signal.h>
 #include <sys/prctl.h>
 #include <sys/signalfd.h>
+
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "base/functional/bind.h"
-#include "base/sequence_checker.h"
 #include "vm_tools/concierge/service.h"
 #include "vm_tools/concierge/tracing.h"
 

@@ -8,10 +8,10 @@
 #include <string>
 #include <utility>
 
-#include "base/logging.h"
-#include "base/memory/ptr_util.h"
-#include "chromeos/patchpanel/dbus/client.h"
+#include <base/logging.h>
+#include <base/memory/ptr_util.h>
 
+#include "chromeos/patchpanel/dbus/client.h"
 #include "vm_tools/concierge/network/guest_os_network.h"
 
 namespace vm_tools::concierge {

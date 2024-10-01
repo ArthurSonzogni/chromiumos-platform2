@@ -11,7 +11,6 @@
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
-
 #include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/mm/balloon.h"

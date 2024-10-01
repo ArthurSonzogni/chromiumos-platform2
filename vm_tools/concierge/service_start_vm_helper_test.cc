@@ -6,15 +6,15 @@
 
 #include <string>
 #include <vector>
-#include "vm_tools/concierge/vm_builder.h"
 
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
-#include "base/files/scoped_file.h"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <vm_concierge/concierge_service.pb.h>
+
+#include "vm_tools/concierge/vm_builder.h"
 namespace vm_tools {
 namespace concierge {
 

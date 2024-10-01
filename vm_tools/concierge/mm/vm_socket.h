@@ -7,11 +7,10 @@
 
 #include <memory>
 
-#include <base/files/scoped_file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/sequence_checker.h>
-
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 using vm_tools::vm_memory_management::VmMemoryManagementPacket;

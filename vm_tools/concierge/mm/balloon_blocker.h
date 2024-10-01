@@ -13,7 +13,6 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
-
 #include <vm_applications/apps.pb.h>
 
 #include "vm_tools/concierge/byte_unit.h"

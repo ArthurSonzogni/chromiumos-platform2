@@ -8,8 +8,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "base/synchronization/waitable_event.h"
-#include "base/task/task_runner.h"
+#include <base/synchronization/waitable_event.h>
+#include <base/task/task_runner.h>
 
 namespace vm_tools::concierge {
 

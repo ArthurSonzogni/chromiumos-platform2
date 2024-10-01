@@ -4,9 +4,10 @@
 
 #include "vm_tools/concierge/mm/server.h"
 
+// clang-format off
 #include <sys/socket.h>
-
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
+// clang-format on
 
 #include <memory>
 #include <utility>

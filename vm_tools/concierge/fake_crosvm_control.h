@@ -8,8 +8,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+
 #include <base/synchronization/waitable_event.h>
 #include <base/time/time.h>
+
 #include "vm_tools/concierge/crosvm_control.h"
 
 namespace vm_tools::concierge {

@@ -5,12 +5,12 @@
 #ifndef VM_TOOLS_CONCIERGE_MM_FAKE_BALLOON_BLOCKER_H_
 #define VM_TOOLS_CONCIERGE_MM_FAKE_BALLOON_BLOCKER_H_
 
-#include "vm_tools/concierge/mm/balloon_blocker.h"
-
 #include <memory>
 #include <vector>
 
 #include <base/containers/flat_map.h>
+
+#include "vm_tools/concierge/mm/balloon_blocker.h"
 namespace vm_tools::concierge::mm {
 
 class FakeBalloonBlocker : public BalloonBlocker {

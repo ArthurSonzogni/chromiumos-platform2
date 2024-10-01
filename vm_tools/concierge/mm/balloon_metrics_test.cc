@@ -6,11 +6,9 @@
 
 #include <memory>
 
-#include <gtest/gtest.h>
-
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
-
+#include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
 namespace vm_tools::concierge::mm {

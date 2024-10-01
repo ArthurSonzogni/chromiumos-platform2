@@ -12,12 +12,12 @@
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <base/timer/mock_timer.h>
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <vm_applications/apps.pb.h>
 
-#include "base/types/expected.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/byte_unit.h"
 

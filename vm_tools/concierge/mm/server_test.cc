@@ -2,21 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/concierge/mm/server.h"
+
 #include <fcntl.h>
 #include <sys/stat.h>
 
 #include <utility>
 
-#include <gtest/gtest.h>
-
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 
 #include "vm_tools/concierge/byte_unit.h"
 #include "vm_tools/concierge/mm/fake_vm_socket.h"
 #include "vm_tools/concierge/mm/kills_server.h"
 #include "vm_tools/concierge/mm/mglru_test_util.h"
 #include "vm_tools/concierge/mm/reclaim_server.h"
-#include "vm_tools/concierge/mm/server.h"
 
 namespace vm_tools::concierge::mm {
 namespace {

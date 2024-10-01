@@ -8,6 +8,7 @@
 #define VM_TOOLS_CONCIERGE_SERVICE_START_VM_HELPER_H_
 
 #include <sys/types.h>
+
 #include <string>
 
 #include <base/check.h>

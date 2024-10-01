@@ -6,14 +6,13 @@
 #include <unordered_map>
 #include <utility>
 
+// clang-format off
 #include <sys/socket.h>
-
-// Needs to be included after sys/socket.h
-#include <linux/vm_sockets.h>
-
-#include <gtest/gtest.h>
+#include <linux/vm_sockets.h>  // Needs to be included after sys/socket.h
+// clang-format on
 
 #include <base/test/task_environment.h>
+#include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <vm_applications/apps.pb.h>
 

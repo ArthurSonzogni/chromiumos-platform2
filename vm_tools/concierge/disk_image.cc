@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/concierge/disk_image.h"
+
 #include <archive.h>
 #include <archive_entry.h>
 #include <fcntl.h>
@@ -21,7 +23,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/uuid.h>
 
-#include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/service.h"

@@ -4,10 +4,10 @@
 
 #include "vm_tools/concierge/mm/fake_vm_socket.h"
 
-#include <gtest/gtest.h>
-
 #include <unordered_set>
 #include <utility>
+
+#include <gtest/gtest.h>
 
 namespace vm_tools::concierge::mm {
 

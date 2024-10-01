@@ -5,9 +5,10 @@
 #ifndef VM_TOOLS_CONCIERGE_MM_FAKE_RECLAIM_SERVER_H_
 #define VM_TOOLS_CONCIERGE_MM_FAKE_RECLAIM_SERVER_H_
 
-#include "vm_tools/concierge/mm/reclaim_server.h"
 #include <unordered_map>
 #include <vector>
+
+#include "vm_tools/concierge/mm/reclaim_server.h"
 
 namespace vm_tools::concierge::mm {
 

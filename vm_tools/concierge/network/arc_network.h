@@ -7,9 +7,9 @@
 
 #include <memory>
 
-#include "base/memory/scoped_refptr.h"
-#include "chromeos/patchpanel/dbus/client.h"
+#include <base/memory/scoped_refptr.h>
 
+#include "chromeos/patchpanel/dbus/client.h"
 #include "vm_tools/concierge/network/scoped_network.h"
 
 namespace dbus {

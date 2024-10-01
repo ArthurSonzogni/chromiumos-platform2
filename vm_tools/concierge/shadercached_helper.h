@@ -7,12 +7,12 @@
 
 #include <string>
 
-#include "base/files/file_path.h"
-#include "base/types/expected.h"
-#include "dbus/object_proxy.h"
+#include <base/files/file_path.h>
+#include <base/types/expected.h>
+#include <dbus/object_proxy.h>
+
 #include "dbus/shadercached/dbus-constants.h"
 #include "shadercached/proto_bindings/shadercached.pb.h"
-
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/vm_util.h"
 

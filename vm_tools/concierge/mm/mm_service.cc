@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <base/logging.h>
-
 #include <chromeos/constants/vm_tools.h>
 
 #include "vm_tools/concierge/mm/balloon_broker.h"

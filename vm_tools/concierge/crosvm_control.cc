@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <absl/base/call_once.h>
-
 #include <base/memory/ptr_util.h>
 
 namespace vm_tools::concierge {

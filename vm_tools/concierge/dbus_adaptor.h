@@ -5,13 +5,13 @@
 #ifndef VM_TOOLS_CONCIERGE_DBUS_ADAPTOR_H_
 #define VM_TOOLS_CONCIERGE_DBUS_ADAPTOR_H_
 
-#include <brillo/dbus/dbus_object.h>
 #include <memory>
 
-#include "base/functional/callback_forward.h"
-#include "dbus/bus.h"
-#include "vm_concierge/concierge_service.pb.h"
+#include <base/functional/callback_forward.h>
+#include <brillo/dbus/dbus_object.h>
+#include <dbus/bus.h>
 
+#include "vm_concierge/concierge_service.pb.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 
 namespace vm_tools::concierge {

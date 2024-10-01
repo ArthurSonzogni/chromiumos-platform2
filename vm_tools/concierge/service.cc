@@ -6,7 +6,6 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <google/protobuf/repeated_field.h>
 #include <linux/capability.h>
 #include <net/route.h>
 #include <signal.h>
@@ -14,14 +13,16 @@
 #include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/sendfile.h>
-#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <unistd.h>
 
+// clang-format off
+#include <sys/socket.h>
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
+// clang-format on
 
 #include <algorithm>
 #include <iterator>
@@ -84,6 +85,7 @@
 #include <dbus/object_proxy.h>
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
+#include <google/protobuf/repeated_field.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_writer.h>
 #include <spaced/dbus-proxies.h>

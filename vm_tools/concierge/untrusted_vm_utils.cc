@@ -4,21 +4,22 @@
 
 #include "vm_tools/concierge/untrusted_vm_utils.h"
 
+#include <sys/utsname.h>
+
 #include <cstring>
 #include <memory>
 #include <string>
 #include <string_view>
-#include <sys/utsname.h>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
-#include "base/files/file_path.h"
 #include "vm_tools/concierge/vm_util.h"
 
 namespace vm_tools::concierge {

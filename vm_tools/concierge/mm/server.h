@@ -12,7 +12,6 @@
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/functional/callback.h>
-
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 #include "vm_tools/concierge/mm/vm_socket.h"

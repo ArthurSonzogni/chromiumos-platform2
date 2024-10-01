@@ -27,7 +27,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-
 #include <chromeos-config/libcros_config/cros_config.h>
 
 #include "vm_tools/concierge/crosvm_control.h"

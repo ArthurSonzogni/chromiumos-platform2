@@ -10,8 +10,8 @@
 
 #include <base/functional/callback.h>
 #include <base/sequence_checker.h>
-#include <base/time/time.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 
 #include "vm_tools/concierge/byte_unit.h"
 

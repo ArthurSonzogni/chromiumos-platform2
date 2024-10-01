@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/sequence_checker.h>
-
 #include <vm_memory_management/vm_memory_management.pb.h>
 
 #include "vm_tools/concierge/byte_unit.h"
