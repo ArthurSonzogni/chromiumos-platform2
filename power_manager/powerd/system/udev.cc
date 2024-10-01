@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/files/dir_reader_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -16,6 +17,7 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
@@ -27,10 +29,8 @@ namespace {
 
 const char kChromeOSClassPath[] = "/sys/class/chromeos/";
 const char kFingerprintSysfsPath[] = "/sys/class/chromeos/cros_fp";
-const char kBluetoothHciSysfsPrefix[] = "/sys/class/bluetooth/hci";
+const char kBluetoothSysfsPrefix[] = "/sys/class/bluetooth/";
 const char kBluetoothIdentityFileName[] = "identity";
-// Search space for hci devices. i.e. hci0, hci1, etc. Only allow hci0 for now.
-constexpr int kBluetoothMaxHci = 1;
 const char kBluetoothPhysVar[] = "phys";
 const char kPowerdRoleCrosFP[] = "cros_fingerprint";
 const char kPowerdRoleCrosBT[] = "cros_bluetooth";
@@ -39,6 +39,7 @@ const char kPowerdUdevTag[] = "powerd";
 const char kPowerdTagsVar[] = "POWERD_TAGS";
 // Udev device type for USB devices.
 const char kUSBDevice[] = "usb_device";
+constexpr char kHciFolderRegex[] = "^hci[0-9]+$";
 
 // Returns true iff `device` is tagged with `role` in its udev properties.
 // Powerd role tags are applied to devices by the udev rules which are installed
@@ -86,17 +87,23 @@ std::string FindHciPathWithAddress(const std::string& addr) {
     return hci_path;
   }
 
-  for (int i = 0; i < kBluetoothMaxHci; ++i) {
-    std::string hci_id;
-    base::FilePath tmp_path(
-        base::JoinString({kBluetoothHciSysfsPrefix, std::to_string(i), "/",
-                          kBluetoothIdentityFileName},
-                         ""));
-    if (base::ReadFileToStringWithMaxSize(tmp_path, &hci_id, addr.size())) {
-      if (hci_id == addr) {
-        hci_path =
-            base::JoinString({kBluetoothHciSysfsPrefix, std::to_string(i)}, "");
-        break;
+  base::DirReaderPosix reader(kBluetoothSysfsPrefix);
+  if (!reader.IsValid())
+    return hci_path;
+
+  while (reader.Next()) {
+    if (RE2::FullMatch(reader.name(), kHciFolderRegex)) {
+      std::string hci_id;
+      base::FilePath tmp_path(
+          base::JoinString({kBluetoothSysfsPrefix, reader.name(), "/",
+                            kBluetoothIdentityFileName},
+                           ""));
+      if (base::ReadFileToStringWithMaxSize(tmp_path, &hci_id, addr.size())) {
+        if (hci_id == addr) {
+          hci_path =
+              base::JoinString({kBluetoothSysfsPrefix, reader.name()}, "");
+          break;
+        }
       }
     }
   }
