@@ -56,12 +56,13 @@ use crate::process_stats;
 use crate::psi::PsiWatcher;
 use crate::psi::Target;
 use crate::qos;
+use crate::qos::send_set_process_state_failure_to_uma;
+use crate::qos::send_set_thread_state_failure_to_uma;
 use crate::qos::set_process_state;
 use crate::qos::set_thread_state;
 use crate::qos::SchedQosContext;
-use crate::qos::MAX_QOS_ERROR_TYPE;
-use crate::qos::UMA_NAME_QOS_SET_PROCESS_STATE_ERROR;
-use crate::qos::UMA_NAME_QOS_SET_THREAD_STATE_ERROR;
+use crate::qos::QOS_ERROR_NO_CONTEXT;
+use crate::qos::QOS_ERROR_NO_SENDER;
 use crate::realtime;
 use crate::swappiness_config::new_swappiness_config;
 use crate::swappiness_config::SwappinessConfig;
@@ -478,6 +479,7 @@ fn register_interface(
                 let sender_euid = get_sender_euid(conn_clone.clone(), sender_bus_name);
                 async move {
                     let Some(sched_ctx) = sched_ctx else {
+                        send_set_process_state_failure_to_uma(QOS_ERROR_NO_CONTEXT);
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
 
@@ -485,6 +487,7 @@ fn register_interface(
                         Ok(euid) => euid,
                         Err(e) => {
                             error!("failed to get sender euid: {:#}", e);
+                            send_set_process_state_failure_to_uma(QOS_ERROR_NO_SENDER);
                             return sender_context
                                 .reply(Err(MethodErr::failed("failed to get sender info")));
                         }
@@ -494,13 +497,7 @@ fn register_interface(
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_process_state failed: {:#}, pid={}", e, process_id);
-                            if let Err(e) = metrics::send_enum_to_uma(
-                                UMA_NAME_QOS_SET_PROCESS_STATE_ERROR,
-                                e.to_uma_enum_sample(),
-                                MAX_QOS_ERROR_TYPE + 1,
-                            ) {
-                                error!("Failed to send set process state error to UMA: {}", e);
-                            }
+                            send_set_process_state_failure_to_uma(e.to_uma_enum_sample());
                             sender_context.reply(Err(e.to_dbus_error()))
                         }
                     }
@@ -519,6 +516,7 @@ fn register_interface(
                 let sender_euid = get_sender_euid(conn_clone.clone(), sender_bus_name);
                 async move {
                     let Some(sched_ctx) = sched_ctx else {
+                        send_set_thread_state_failure_to_uma(QOS_ERROR_NO_CONTEXT);
                         return sender_context.reply(Err(MethodErr::failed("no schedqos context")));
                     };
 
@@ -526,6 +524,7 @@ fn register_interface(
                         Ok(euid) => euid,
                         Err(e) => {
                             error!("failed to get sender euid: {:#}", e);
+                            send_set_thread_state_failure_to_uma(QOS_ERROR_NO_SENDER);
                             return sender_context
                                 .reply(Err(MethodErr::failed("failed to get sender info")));
                         }
@@ -541,13 +540,7 @@ fn register_interface(
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_thread_state failed: {:#}, pid={}", e, process_id);
-                            if let Err(e) = metrics::send_enum_to_uma(
-                                UMA_NAME_QOS_SET_THREAD_STATE_ERROR,
-                                e.to_uma_enum_sample(),
-                                MAX_QOS_ERROR_TYPE + 1,
-                            ) {
-                                error!("Failed to send set thread state error to UMA: {}", e);
-                            }
+                            send_set_thread_state_failure_to_uma(e.to_uma_enum_sample());
                             sender_context.reply(Err(e.to_dbus_error()))
                         }
                     }

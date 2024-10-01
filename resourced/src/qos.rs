@@ -28,6 +28,7 @@ use tokio::task::JoinHandle;
 use crate::config::ConfigProvider;
 use crate::cpu_utils::Cpuset;
 use crate::feature;
+use crate::metrics;
 use crate::proc::is_alive;
 use crate::proc::load_ruid;
 use crate::realtime::is_dlserver_available;
@@ -37,12 +38,34 @@ pub type SchedQosContext = schedqos::RestorableSchedQosContext;
 
 const STATE_FILE_PATH: &str = "/run/resourced/schedqos_states";
 
-pub const UMA_NAME_QOS_SET_PROCESS_STATE_ERROR: &str = "Scheduling.SchedQoS.SetProcessStateError";
-pub const UMA_NAME_QOS_SET_THREAD_STATE_ERROR: &str = "Scheduling.SchedQoS.SetThreadStateError";
-pub const MAX_QOS_ERROR_TYPE: i32 = 13;
+const UMA_NAME_QOS_SET_PROCESS_STATE_ERROR: &str = "Scheduling.SchedQoS.SetProcessStateError";
+const UMA_NAME_QOS_SET_THREAD_STATE_ERROR: &str = "Scheduling.SchedQoS.SetThreadStateError";
+const MAX_QOS_ERROR_TYPE: i32 = 15;
+pub const QOS_ERROR_NO_CONTEXT: i32 = 14;
+pub const QOS_ERROR_NO_SENDER: i32 = 15;
 
 const SET_RT_FOR_DISPLAY_THREADS_FEATURE_NAME: &str = "CrOSLateBootSetRtForDisplayThreads";
 const SET_RT_FOR_DISPLAY_THREADS_FEATURE_DEFAULT_VALUE: bool = false;
+
+pub fn send_set_process_state_failure_to_uma(sample: i32) {
+    if let Err(e) = metrics::send_enum_to_uma(
+        UMA_NAME_QOS_SET_PROCESS_STATE_ERROR,
+        sample,
+        MAX_QOS_ERROR_TYPE + 1,
+    ) {
+        error!("Failed to send set process state error to UMA: {}", e);
+    }
+}
+
+pub fn send_set_thread_state_failure_to_uma(sample: i32) {
+    if let Err(e) = metrics::send_enum_to_uma(
+        UMA_NAME_QOS_SET_THREAD_STATE_ERROR,
+        sample,
+        MAX_QOS_ERROR_TYPE + 1,
+    ) {
+        error!("Failed to send set thread state error to UMA: {}", e);
+    }
+}
 
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
