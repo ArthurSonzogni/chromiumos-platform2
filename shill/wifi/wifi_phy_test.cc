@@ -4,6 +4,8 @@
 
 #include "shill/wifi/wifi_phy.h"
 
+#include <linux/nl80211.h>
+
 #include <algorithm>
 #include <iterator>
 #include <vector>
@@ -898,6 +900,20 @@ TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
   EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_NAN));
   EXPECT_TRUE(wifi_phy_.SupportAPMode());
   EXPECT_TRUE(wifi_phy_.SupportP2PMode());
+
+  EXPECT_TRUE(SupportsConcurrency({NL80211_IFTYPE_STATION}));
+  EXPECT_TRUE(SupportsConcurrency({NL80211_IFTYPE_AP}));
+  EXPECT_TRUE(SupportsConcurrency({NL80211_IFTYPE_MONITOR}));
+  EXPECT_TRUE(SupportsConcurrency({NL80211_IFTYPE_P2P_CLIENT}));
+  EXPECT_TRUE(SupportsConcurrency({NL80211_IFTYPE_P2P_GO}));
+  EXPECT_TRUE(SupportsConcurrency({NL80211_IFTYPE_P2P_DEVICE}));
+  EXPECT_FALSE(
+      SupportsConcurrency({NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION}));
+  EXPECT_FALSE(SupportsConcurrency({NL80211_IFTYPE_AP_VLAN}));
+  EXPECT_FALSE(SupportsConcurrency({NL80211_IFTYPE_WDS}));
+  EXPECT_FALSE(SupportsConcurrency({NL80211_IFTYPE_MESH_POINT}));
+  EXPECT_FALSE(SupportsConcurrency({NL80211_IFTYPE_OCB}));
+  EXPECT_FALSE(SupportsConcurrency({NL80211_IFTYPE_NAN}));
 }
 
 TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
@@ -1767,6 +1783,85 @@ TEST_F(WiFiPhyTest, GetAllCandidates_empty) {
   std::vector<WiFiPhy::RemovalCandidate> expected_order;
   expected_order.push_back({{}});
   AssertRemovalCandidateSetOrder(candidates, expected_order);
+}
+
+TEST_F(WiFiPhyTest, AddDefaultCombinationForType) {
+  ConcurrencyCombinationSet defaultCombinationsForAPAndSTA = {
+      (struct ConcurrencyCombination){
+          .limits =
+              {
+                  (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_AP}, .max = 1},
+              },
+          .max_num = 1,
+          .num_channels = 1},
+      (struct ConcurrencyCombination){
+          .limits =
+              {
+                  (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                      .max = 1},
+              },
+          .max_num = 1,
+          .num_channels = 1}};
+
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 0);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 1);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 1);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_STATION);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 2);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_STATION);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 2);
+
+  AssertPhyConcurrencyIsEqualTo(defaultCombinationsForAPAndSTA);
+}
+
+TEST_F(WiFiPhyTest, AddDefaultCombinationForType_SameTypeDifferentLimit) {
+  // Ensure the default combination is still added, even if a different
+  // combination including the same interface type already exists.
+  struct ConcurrencyCombination comb = {
+      .limits =
+          {
+              (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_AP}, .max = 2},
+          },
+      .max_num = 1,
+      .num_channels = 1};
+  wifi_phy_.concurrency_combs_.insert(comb);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 1);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 2);
+}
+
+TEST_F(WiFiPhyTest, AddDefaultCombinationForType_SameTypeDifferentMax) {
+  // Ensure the default combination is still added, even if a different
+  // combination including the same interface type already exists.
+  struct ConcurrencyCombination comb = {
+      .limits =
+          {
+              (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_AP}, .max = 1},
+          },
+      .max_num = 2,
+      .num_channels = 1};
+  wifi_phy_.concurrency_combs_.insert(comb);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 1);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 2);
+}
+
+TEST_F(WiFiPhyTest, AddDefaultCombinationForType_SameTypeDifferentChannels) {
+  // Ensure the default combination is still added, even if a different
+  // combination including the same interface type already exists.
+  struct ConcurrencyCombination comb = {
+      .limits =
+          {
+              (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_AP}, .max = 1},
+          },
+      .max_num = 1,
+      .num_channels = 2};
+  wifi_phy_.concurrency_combs_.insert(comb);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 1);
+  wifi_phy_.AddDefaultCombinationForType(NL80211_IFTYPE_AP);
+  ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), 2);
 }
 
 }  // namespace shill

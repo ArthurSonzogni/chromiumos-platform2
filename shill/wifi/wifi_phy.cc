@@ -92,6 +92,8 @@ void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
         continue;
       }
       supported_ifaces_.insert(nl80211_iftype(iface));
+      // Add the default concurrency combination for this interface type.
+      AddDefaultCombinationForType(nl80211_iftype(iface));
     }
   }
 }
@@ -155,6 +157,11 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
       comb.limits.push_back(limit);
     }
     concurrency_combs_.insert(comb);
+  }
+
+  // Add the default concurrency combindation for each supported interface type.
+  for (auto& iface : supported_ifaces_) {
+    AddDefaultCombinationForType(iface);
   }
 }
 
@@ -499,6 +506,28 @@ std::set<int> WiFiPhy::GetActiveFrequencies() const {
   }
 
   return freqs;
+}
+
+void WiFiPhy::AddDefaultCombinationForType(nl80211_iftype iftype) {
+  for (auto& comb : concurrency_combs_) {
+    if (comb.limits.size() != 1 || comb.max_num != 1 ||
+        comb.num_channels != 1) {
+      continue;
+    }
+    if (comb.limits[0].iftypes.size() == 1 &&
+        comb.limits[0].iftypes[0] == iftype && comb.limits[0].max == 1) {
+      // This combindation is the default combination for |iftype|, so return.
+      return;
+    }
+  }
+  // Default combination for iftype not found, so add it.
+  struct IfaceLimit limit {
+    {iftype}, 1
+  };
+  struct ConcurrencyCombination comb {
+    {limit}, 1, 1
+  };
+  concurrency_combs_.insert(comb);
 }
 
 // Operators to facilitate interface combination logging.

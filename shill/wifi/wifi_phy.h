@@ -5,6 +5,8 @@
 #ifndef SHILL_WIFI_WIFI_PHY_H_
 #define SHILL_WIFI_WIFI_PHY_H_
 
+#include <linux/nl80211.h>
+
 #include <map>
 #include <set>
 #include <string_view>
@@ -188,6 +190,11 @@ class WiFiPhy {
   FRIEND_TEST(WiFiPhyTest, RemovalCandidateSet2);
   FRIEND_TEST(WiFiPhyTest, GetAllCandidates);
   FRIEND_TEST(WiFiPhyTest, GetAllCandidates_empty);
+  FRIEND_TEST(WiFiPhyTest, AddDefaultCombinationForType);
+  FRIEND_TEST(WiFiPhyTest, AddDefaultCombinationForType_SameTypeDifferentLimit);
+  FRIEND_TEST(WiFiPhyTest, AddDefaultCombinationForType_SameTypeDifferentMax);
+  FRIEND_TEST(WiFiPhyTest,
+              AddDefaultCombinationForType_SameTypeDifferentChannels);
 
   // Represents an interface under consideration for concurrent operation.
   // Contains the relevant bits of information about a WiFi interface which are
@@ -259,6 +266,12 @@ class WiFiPhy {
   void ParseFrequencies(const Nl80211Message& nl80211_message);
 
   void DumpFrequencies() const;
+
+  // The NL80211 API specifies that for each supported interface type, there
+  // exists an implicitly supported concurrency combination which supports
+  // exactly 1 instance of the interface on a single channel. This function
+  // adds this implicit combination for |iftype|, if it doesn't already exist.
+  void AddDefaultCombinationForType(nl80211_iftype iftype);
 
   // Helper for interface concurrency checking.
   static bool CombSupportsConcurrency(
