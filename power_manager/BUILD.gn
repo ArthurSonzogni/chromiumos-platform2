@@ -550,7 +550,10 @@ if (use.fuzzer || use.test) {
       "common/metrics_sender_stub.cc",
       "common/test_main_loop_runner.cc",
     ]
-    configs += [ ":target_defaults" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     libs = [ "fake_platform_features" ]
   }
 }
