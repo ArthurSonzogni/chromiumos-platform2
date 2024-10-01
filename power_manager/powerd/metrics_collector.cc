@@ -467,13 +467,16 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
   GenerateBatteryDischargeRateWhileSuspendedMetric();
 }
 
-void MetricsCollector::HandleShutdown(ShutdownReason reason) {
+void MetricsCollector::HandleShutdown(ShutdownReason reason,
+                                      bool in_dark_resume) {
   SendEnumMetric(kShutdownReasonName, static_cast<int>(reason),
                  static_cast<int>(ShutdownReason::MAX));
   if (reason == ShutdownReason::SUSPEND_FAILED) {
     SendSuspendJourneyResult(SuspendJourneyResult::SHUTDOWN);
   } else if (reason == ShutdownReason::SHUTDOWN_FROM_SUSPEND) {
     SendSuspendJourneyResult(SuspendJourneyResult::SHUTDOWN_AFTER_X);
+  } else if (reason == ShutdownReason::LOW_BATTERY && in_dark_resume) {
+    SendSuspendJourneyResult(SuspendJourneyResult::LOW_POWER_SHUTDOWN);
   }
 }
 

@@ -123,6 +123,19 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
+  // Helper class providing functionality needed by tests.
+  class TestApi {
+   public:
+    explicit TestApi(Daemon* daemon) : daemon_(daemon) {}
+    TestApi(const TestApi&) = delete;
+    TestApi& operator=(const TestApi&) = delete;
+
+    policy::Suspender* suspender() { return daemon_->suspender_.get(); }
+
+   private:
+    Daemon* daemon_;  // weak
+  };
+
   ~Daemon() override;
 
   void set_wakeup_count_path_for_testing(const base::FilePath& path) {

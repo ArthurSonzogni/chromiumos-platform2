@@ -979,6 +979,55 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
             async_commands_[0]);
 }
 
+TEST_F(DaemonTest, ShutDownForLowBatteryInDarkResume) {
+  Init();
+
+  async_commands_.clear();
+  system::PowerStatus status;
+  status.battery_is_present = true;
+  status.battery_below_shutdown_threshold = false;
+  power_supply_->set_status(status);
+
+  Daemon::TestApi daemon_testapi(daemon_.get());
+  policy::Suspender* suspender = daemon_testapi.suspender();
+  policy::Suspender::TestApi suspender_testapi(suspender);
+
+  // Start a suspend requeest to put the suspender into state
+  // WAITING_FOR_SUSPEND_DELAYS.
+  suspender->RequestSuspend(
+      SuspendImminent::Reason::SuspendImminent_Reason_IDLE,
+      std::nullopt,  // wakeup_count
+      base::Seconds(10), SuspendFlavor::SUSPEND_DEFAULT);
+
+  // Hack: the test causes the system to spookily go into dark resume after the
+  // suspend request has started, because it can't be in dark resume when the
+  // suspender is in an 'IDLE' state.
+  dark_resume_->set_in_dark_resume(true);
+  // This triggers a suspend.
+  suspender->OnReadyForSuspend(suspender_testapi.suspend_delay_controller(),
+                               suspender_testapi.suspend_id());
+  // When it comes out of suspend here, because the system is in dark resume, it
+  // goes into state WAITING_FOR_DARK_SUSPEND_DELAYS.
+
+  // Now, pretend the battery is running out.
+  status.battery_is_present = true;
+  status.battery_below_shutdown_threshold = true;
+  power_supply_->set_status(status);
+  // Tell powerd that the battery is running out. powerd should initiate a
+  // shutdown.
+  power_supply_->NotifyObservers();
+
+  ASSERT_EQ(1, async_commands_.size());
+  EXPECT_EQ(GetShutdownCommand(ShutdownReason::LOW_BATTERY),
+            async_commands_[0]);
+
+  MetricsSenderStub::Metric want_metric = MetricsSenderStub::Metric::CreateEnum(
+      metrics::kSuspendJourneyResultName,
+      static_cast<int>(SuspendJourneyResult::LOW_POWER_SHUTDOWN),
+      static_cast<int>(SuspendJourneyResult::MAX));
+  EXPECT_TRUE(metrics_sender_->ContainsMetric(want_metric));
+}
+
 TEST_F(DaemonTest, DeferShutdownWhileFlashromRunning) {
   Init();
   async_commands_.clear();

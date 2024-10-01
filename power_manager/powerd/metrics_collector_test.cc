@@ -1026,7 +1026,8 @@ TEST_F(MetricsCollectorTest, SuspendFailureShutdown) {
                      static_cast<int>(SuspendJourneyResult::SHUTDOWN),
                      static_cast<int>(SuspendJourneyResult::MAX));
 
-  collector_.HandleShutdown(ShutdownReason::SUSPEND_FAILED);
+  collector_.HandleShutdown(ShutdownReason::SUSPEND_FAILED,
+                            /*in_dark_resume=*/false);
 }
 
 TEST_F(MetricsCollectorTest, ShutdownFromSuspend) {
@@ -1038,7 +1039,21 @@ TEST_F(MetricsCollectorTest, ShutdownFromSuspend) {
                      static_cast<int>(SuspendJourneyResult::SHUTDOWN_AFTER_X),
                      static_cast<int>(SuspendJourneyResult::MAX));
 
-  collector_.HandleShutdown(ShutdownReason::SHUTDOWN_FROM_SUSPEND);
+  collector_.HandleShutdown(ShutdownReason::SHUTDOWN_FROM_SUSPEND,
+                            /*in_dark_resume=*/false);
+}
+
+TEST_F(MetricsCollectorTest, ShutdownLowBattery) {
+  EXPECT_ENUM_METRIC(kShutdownReasonName,
+                     static_cast<int>(ShutdownReason::LOW_BATTERY),
+                     static_cast<int>(ShutdownReason::MAX));
+
+  EXPECT_ENUM_METRIC(kSuspendJourneyResultName,
+                     static_cast<int>(SuspendJourneyResult::LOW_POWER_SHUTDOWN),
+                     static_cast<int>(SuspendJourneyResult::MAX));
+
+  collector_.HandleShutdown(ShutdownReason::LOW_BATTERY,
+                            /*in_dark_resume=*/true);
 }
 
 class AdaptiveChargingMetricsTest : public TestEnvironment {

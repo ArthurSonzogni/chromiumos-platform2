@@ -192,7 +192,7 @@ class MetricsCollector {
   void HandleScreenOffChange(bool off, base::TimeTicks last_user_activity_time);
   void HandleSessionStateChange(SessionState state);
   void HandlePowerStatusUpdate(const system::PowerStatus& status);
-  void HandleShutdown(ShutdownReason reason);
+  void HandleShutdown(ShutdownReason reason, bool in_dark_resume);
   void HandlePrivacyScreenStateChange(
       const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state);
 

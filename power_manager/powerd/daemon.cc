@@ -1972,7 +1972,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   shutting_down_ = true;
   retry_shutdown_for_lockfile_timer_.Stop();
   suspender_->HandleShutdown();
-  metrics_collector_->HandleShutdown(reason);
+  metrics_collector_->HandleShutdown(reason, dark_resume_->InDarkResume());
   if (adaptive_charging_controller_) {
     adaptive_charging_controller_->HandleShutdown();
   }
