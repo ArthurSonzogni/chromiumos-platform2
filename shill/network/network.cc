@@ -293,6 +293,16 @@ void Network::Start(const Network::StartOptions& opts) {
     return;
   }
 
+  // For VPN, if IPv6 is not set up, make sure that blackhole IPv6 routes are
+  // installed properly.
+  if (!ipv6_started && config_.Get().ipv6_blackhole_route) {
+    dispatcher_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Network::ApplyNetworkConfig,
+                       weak_factory_for_connection_.GetWeakPtr(),
+                       NetworkConfigArea::kIPv6Route, base::DoNothing()));
+  }
+
   // Preliminary set up routing policy to enable basic local connectivity
   // (needed for DHCPv6). Note that priority is not assigned until Network
   // became Connected, so here the rules are set up with default (lowest)

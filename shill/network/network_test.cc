@@ -1254,6 +1254,7 @@ class NetworkStartTest : public NetworkTest {
     bool dhcp = false;
     bool static_ipv4 = false;
     bool link_protocol_ipv4 = false;
+    bool blackhole_ipv6 = false;
     bool link_protocol_ipv6 = false;
     bool accept_ra = false;
     bool dhcp_pd = false;
@@ -1269,6 +1270,7 @@ class NetworkStartTest : public NetworkTest {
     kIPv4LinkProtocol,
     kIPv4DHCPWithStatic,
     kIPv4LinkProtocolWithStatic,
+    kIPv4LinkProtocolWithBlackholeIPv6,
     kIPv6SLAAC,
     kIPv6LinkProtocol,
     kIPv6DHCPPD,
@@ -1289,6 +1291,8 @@ class NetworkStartTest : public NetworkTest {
     ipv4_dhcp_with_static_config_.mtu = kIPv4DHCPMTU;
     ipv4_link_protocol_with_static_config_ = ipv4_static_config_;
     ipv4_link_protocol_with_static_config_.mtu = kIPv4LinkProtocolMTU;
+    ipv4_link_protocol_with_blackhole_ipv6_ = ipv4_link_protocol_config_;
+    ipv4_link_protocol_with_blackhole_ipv6_.ipv6_blackhole_route = true;
 
     ipv6_link_protocol_config_.ipv6_addresses = {
         *net_base::IPv6CIDR::CreateFromStringAndPrefix(
@@ -1328,6 +1332,7 @@ class NetworkStartTest : public NetworkTest {
       net_base::NetworkConfig* ipv4 =
           test_opts.link_protocol_ipv4 ? &ipv4_link_protocol_config_ : nullptr;
       auto network_config = net_base::NetworkConfig::Merge(ipv4, ipv6);
+      network_config.ipv6_blackhole_route = test_opts.blackhole_ipv6;
       start_opts.link_protocol_network_config =
           std::make_unique<net_base::NetworkConfig>(network_config);
     }
@@ -1344,6 +1349,10 @@ class NetworkStartTest : public NetworkTest {
     if (!expect_failure) {
       EXPECT_CALL(*network_,
                   ApplyNetworkConfig(NetworkConfigArea::kRoutingPolicy, _));
+      if (test_opts.blackhole_ipv6) {
+        EXPECT_CALL(*network_,
+                    ApplyNetworkConfig(NetworkConfigArea::kIPv6Route, _));
+      }
     }
     network_->Start(start_opts);
     dispatcher_.task_environment().RunUntilIdle();
@@ -1509,6 +1518,8 @@ class NetworkStartTest : public NetworkTest {
         return &ipv4_dhcp_with_static_config_;
       case IPConfigType::kIPv4LinkProtocolWithStatic:
         return &ipv4_link_protocol_with_static_config_;
+      case IPConfigType::kIPv4LinkProtocolWithBlackholeIPv6:
+        return &ipv4_link_protocol_with_blackhole_ipv6_;
       case IPConfigType::kIPv6SLAAC:
         return &slaac_config_;
       case IPConfigType::kIPv6LinkProtocol:
@@ -1526,6 +1537,7 @@ class NetworkStartTest : public NetworkTest {
       case IPConfigType::kIPv4LinkProtocol:
       case IPConfigType::kIPv4DHCPWithStatic:
       case IPConfigType::kIPv4LinkProtocolWithStatic:
+      case IPConfigType::kIPv4LinkProtocolWithBlackholeIPv6:
         return net_base::IPFamily::kIPv4;
       case IPConfigType::kIPv6SLAAC:
       case IPConfigType::kIPv6LinkProtocol:
@@ -1541,6 +1553,7 @@ class NetworkStartTest : public NetworkTest {
   net_base::NetworkConfig ipv4_link_protocol_config_;
   net_base::NetworkConfig ipv4_dhcp_with_static_config_;
   net_base::NetworkConfig ipv4_link_protocol_with_static_config_;
+  net_base::NetworkConfig ipv4_link_protocol_with_blackhole_ipv6_;
 
   net_base::NetworkConfig slaac_config_;
   net_base::NetworkConfig ipv6_link_protocol_config_;
@@ -1811,6 +1824,27 @@ TEST_F(NetworkStartTest, IPv4OnlyLinkProtocolWithStaticIP) {
   InvokeStart(test_opts);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   VerifyIPConfigs(IPConfigType::kIPv4LinkProtocolWithStatic,
+                  IPConfigType::kNone);
+}
+
+TEST_F(NetworkStartTest, IPv4OnlyLinkProtocolWithBlackholeIPv6) {
+  const TestOptions test_opts = {.static_ipv4 = false,
+                                 .link_protocol_ipv4 = true,
+                                 .blackhole_ipv6 = true,
+                                 .enable_network_validation = true,
+                                 .expect_network_monitor_start = true};
+  EXPECT_CALL(event_handler_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure).Times(0);
+  EXPECT_CALL(event_handler2_, OnConnectionUpdated(kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure).Times(0);
+
+  ExpectConnectionUpdateFromIPConfig(
+      IPConfigType::kIPv4LinkProtocolWithBlackholeIPv6);
+  InvokeStart(test_opts);
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  VerifyIPConfigs(IPConfigType::kIPv4LinkProtocolWithBlackholeIPv6,
                   IPConfigType::kNone);
 }
 

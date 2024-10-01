@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "patchpanel/network/network_applier.h"
+
 #include <linux/fib_rules.h>
 
 #include <memory>
@@ -20,7 +22,6 @@
 #include "patchpanel/network/mock_network_applier.h"
 #include "patchpanel/network/mock_routing_policy_service.h"
 #include "patchpanel/network/mock_routing_table.h"
-#include "patchpanel/network/network_applier.h"
 #include "patchpanel/network/routing_table.h"
 #include "patchpanel/routing_service.h"
 
@@ -297,7 +298,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
                                   /*gateway=*/Ne(std::nullopt),
                                   /*fix_gateway_reachability=*/false,
                                   /*default_route=*/true,
-                                  /*blackhole_ipv6=*/true, _, _, _))
+                                  /*blackhole_ipv6=*/false, _, _, _))
       .Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
@@ -311,12 +312,22 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
                                   /*gateway=*/Ne(std::nullopt),
                                   /*fix_gateway_reachability=*/true,
                                   /*default_route=*/true,
-                                  /*blackhole_ipv6=*/true, _, _, _))
+                                  /*blackhole_ipv6=*/false, _, _, _))
       .Times(1);
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kIPv4Route |
                                  NetworkApplier::Area::kIPv4DefaultRoute,
                              config, priority,
+                             NetworkApplier::Technology::kEthernet);
+
+  EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                                  /*gateway=*/_,
+                                  /*fix_gateway_reachability=*/false,
+                                  /*default_route=*/false,
+                                  /*blackhole_ipv6=*/true, _, _, _))
+      .Times(1);
+  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
+                             NetworkApplier::Area::kIPv6Route, config, priority,
                              NetworkApplier::Technology::kEthernet);
 }
 
@@ -868,12 +879,10 @@ TEST_F(NetworkApplierRouteTest, IPv4Simple) {
   EXPECT_CALL(*routing_table_,
               SetDefaultRoute(kInterfaceIndex, *gateway, kTableID))
       .WillOnce(Return(true));
-  EXPECT_CALL(*routing_table_,
-              CreateBlackholeRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
-                                   0, kTableID))
-      .WillOnce(Return(true));
   network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
-                               gateway, false, true, true, {}, {}, {});
+                               gateway, /*fix_gateway_reachability=*/false,
+                               /*default_route=*/true,
+                               /*blackhole_ipv6=*/false, {}, {}, {});
 }
 
 TEST_F(NetworkApplierRouteTest, IPv4FixGatewayReachability) {
@@ -991,5 +1000,21 @@ TEST_F(NetworkApplierRouteTest, IPv6) {
   network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
                                gateway, false, true, false, {*excluded_dst},
                                {*included_dst}, {});
+}
+
+TEST_F(NetworkApplierRouteTest, IPv6Blackhole) {
+  const int kInterfaceIndex = 3;
+  const int kTableID = 1003;
+  EXPECT_CALL(*routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv6));
+  EXPECT_CALL(*routing_table_,
+              CreateBlackholeRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                                   0, kTableID))
+      .WillOnce(Return(true));
+  network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                               /*gateway=*/std::nullopt,
+                               /*fix_gateway_reachability=*/false,
+                               /*default_route=*/false,
+                               /*blackhole_ipv6=*/true, {}, {}, {});
 }
 }  // namespace patchpanel

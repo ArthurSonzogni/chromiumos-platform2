@@ -358,7 +358,7 @@ void NetworkApplier::ApplyRoute(
   // 0. Flush existing routes set by patchpanel.
   routing_table_->FlushRoutesWithTag(interface_index, family);
 
-  // 1. Fix gateway reachablity (add an on-link /32 route to the gateway) if
+  // 1. Fix gateway reachability (add an on-link /32 route to the gateway) if
   // the gateway is not currently on-link. Note this only applies for IPv4 as
   // IPv6 uses the link local address for gateway.
   if (fix_gateway_reachability) {
@@ -386,7 +386,7 @@ void NetworkApplier::ApplyRoute(
     }
   }
 
-  if (blackhole_ipv6) {
+  if (family == net_base::IPFamily::kIPv6 && blackhole_ipv6) {
     if (!routing_table_->CreateBlackholeRoute(
             interface_index, net_base::IPFamily::kIPv6, 0, table_id)) {
       LOG(ERROR) << "Unable to add IPv6 blackhole route, if "
@@ -485,16 +485,14 @@ void NetworkApplier::ApplyNetworkConfig(
           << ", mitigating this by creating a link route to the gateway.";
     }
 
-    bool blackhole_ipv6 = network_config.ipv6_blackhole_route;
-
     std::optional<net_base::IPAddress> gateway = std::nullopt;
     if (network_config.ipv4_gateway) {
       gateway = net_base::IPAddress(*network_config.ipv4_gateway);
     }
 
     ApplyRoute(interface_index, net_base::IPFamily::kIPv4, gateway,
-               fix_gateway_reachability, default_route, blackhole_ipv6,
-               network_config.excluded_route_prefixes,
+               fix_gateway_reachability, default_route,
+               /*blackhole_ipv6=*/false, network_config.excluded_route_prefixes,
                network_config.included_route_prefixes,
                network_config.rfc3442_routes);
   }
@@ -514,7 +512,8 @@ void NetworkApplier::ApplyNetworkConfig(
 
     ApplyRoute(interface_index, net_base::IPFamily::kIPv6, gateway,
                /*fix_gateway_reachability=*/false, default_route,
-               /*blackhole_ipv6=*/false, network_config.excluded_route_prefixes,
+               network_config.ipv6_blackhole_route,
+               network_config.excluded_route_prefixes,
                network_config.included_route_prefixes, {});
   }
   if (area & Area::kRoutingPolicy) {
