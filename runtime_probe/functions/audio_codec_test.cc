@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/audio_codec.h"
+
 #include <string>
 
 #include <base/strings/string_util.h>
 
-#include "runtime_probe/functions/audio_codec.h"
 #include "runtime_probe/utils/function_test_utils.h"
 
 namespace runtime_probe {
@@ -35,6 +36,23 @@ TEST_F(AudioCodecTest, ProbeI2cCodecSucceedPreKernel4_4) {
     [
       { "name": "codec1" },
       { "name": "codec2" },
+      { "name": "codec3" }
+    ]
+  )JSON");
+
+  auto probe_function = CreateProbeFunction<AudioCodecFunction>();
+  auto result = EvalProbeFunction(probe_function.get());
+  EXPECT_EQ(result, ans);
+}
+
+TEST_F(AudioCodecTest, ProbeI2cCodecSucceedWithFixedGenericCodec) {
+  SetFile(kAsocPaths[0], "codec1\ngeneric-codec\ncodec3\n");
+  SetFile("/sys/firmware/devicetree/base/generic-codec/compatible",
+          base::MakeStringViewWithNulChars("codec-compatible\0"));
+  auto ans = CreateProbeResultFromJson(R"JSON(
+    [
+      { "name": "codec1" },
+      { "name": "codec-compatible" },
       { "name": "codec3" }
     ]
   )JSON");

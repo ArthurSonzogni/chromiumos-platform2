@@ -13,7 +13,8 @@
   },
   "audio_codec": {
     "binds": [
-      "/sys/kernel/debug/asoc/"
+      "/sys/kernel/debug/asoc/",
+      "/sys/firmware/devicetree/base/"
     ],
     "other_args": [
       "-k",
