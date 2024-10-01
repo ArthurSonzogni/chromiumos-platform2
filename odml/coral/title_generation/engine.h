@@ -43,7 +43,7 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
   explicit TitleGenerationEngine(
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
           on_device_model_service);
-  ~TitleGenerationEngine() = default;
+  ~TitleGenerationEngine() override = default;
 
   // TitleGenerationEngineInterface overrides.
   void Process(mojom::GroupRequestPtr request,
@@ -53,6 +53,7 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(on_device_model::mojom::LoadModelResult result);
+  void SetUnloadModelTimer();
   void UnloadModel();
 
   void DoProcess(mojom::GroupRequestPtr request,

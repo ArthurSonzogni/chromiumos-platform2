@@ -93,6 +93,8 @@ void TitleGenerationEngine::Process(mojom::GroupRequestPtr request,
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
   switch (state_) {
     case ModelLoadState::kLoaded:
+      // When the loaded model is used, reset the unload timer.
+      SetUnloadModelTimer();
       std::move(callback).Run();
       return;
     case ModelLoadState::kPending:
@@ -128,14 +130,16 @@ void TitleGenerationEngine::OnModelLoadResult(LoadModelResult result) {
     std::move(callback).Run();
   }
   if (result == LoadModelResult::kSuccess) {
-    base::Time unload_time = base::Time::Now() + kUnloadModelInterval;
-    // This resets any existing scheduled `UnloadModel` which is expected (as
-    // the model is used again and we should extend the unload timestamp).
-    unload_model_timer_.Start(
-        FROM_HERE, unload_time,
-        base::BindOnce(&TitleGenerationEngine::UnloadModel,
-                       weak_ptr_factory_.GetWeakPtr()));
+    SetUnloadModelTimer();
   }
+}
+
+void TitleGenerationEngine::SetUnloadModelTimer() {
+  base::Time unload_time = base::Time::Now() + kUnloadModelInterval;
+  // This resets any existing scheduled `UnloadModel`.
+  unload_model_timer_.Start(FROM_HERE, unload_time,
+                            base::BindOnce(&TitleGenerationEngine::UnloadModel,
+                                           weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TitleGenerationEngine::UnloadModel() {
