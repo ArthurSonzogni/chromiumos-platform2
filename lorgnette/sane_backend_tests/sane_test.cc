@@ -141,6 +141,77 @@ TEST_F(SANETest, TwoDeviceOpen) {
   sane_close(handle_2);
 }
 
+TEST_F(SANETest, DualScanNoClose) {
+  if (base::StartsWith(
+          base::ToLowerASCII(*sane_backend_tests::scanner_under_test),
+          "pfufs")) {
+    GTEST_SKIP() << "See b/365111847: pfufs backend skip of "
+                    "SANETest.DualScanNoClose";
+  }
+
+  SANE_Handle handle_1;
+  SANE_Handle handle_2;
+
+  // Accept second scanner from tester
+  std::optional<std::string> alt_scanner_opt =
+      _get_scanner_for_multiple_device_open_test();
+  ASSERT_TRUE(alt_scanner_opt.has_value())
+      << "Could not get alternative scanner from tester";
+  std::cout << "Using " << alt_scanner_opt.value()
+            << " as alternative scanner for test." << "\n";
+  std::string alt_scanner = alt_scanner_opt.value();
+
+  ASSERT_EQ(
+      sane_open(sane_backend_tests::scanner_under_test->c_str(), &handle_1),
+      SANE_STATUS_GOOD)
+      << "Failed to open scanner " << *sane_backend_tests::scanner_under_test;
+  ASSERT_EQ(sane_open(alt_scanner.c_str(), &handle_2), SANE_STATUS_GOOD)
+      << "Failed to open scanner " << alt_scanner;
+
+  ASSERT_EQ(sane_start(handle_1), SANE_STATUS_GOOD)
+      << "Failed to start scan on " << *sane_backend_tests::scanner_under_test;
+  ASSERT_EQ(sane_start(handle_2), SANE_STATUS_GOOD)
+      << "Failed to start scan on " << alt_scanner;
+
+  sane_close(handle_1);
+  sane_close(handle_2);
+}
+
+TEST_F(SANETest, DualScanCloseBeforeStartScan) {
+  if (base::StartsWith(
+          base::ToLowerASCII(*sane_backend_tests::scanner_under_test),
+          "pfufs")) {
+    GTEST_SKIP() << "See b/365111847: pfufs backend skip of "
+                    "SANETest.DualScanCloseBeforeStartScan";
+  }
+
+  SANE_Handle handle_1;
+  SANE_Handle handle_2;
+
+  // Accept second scanner from tester
+  std::optional<std::string> alt_scanner_opt =
+      _get_scanner_for_multiple_device_open_test();
+  ASSERT_TRUE(alt_scanner_opt.has_value())
+      << "Could not get alternative scanner from tester";
+  std::cout << "Using " << alt_scanner_opt.value()
+            << " as alternative scanner for test." << "\n";
+  std::string alt_scanner = alt_scanner_opt.value();
+
+  ASSERT_EQ(
+      sane_open(sane_backend_tests::scanner_under_test->c_str(), &handle_1),
+      SANE_STATUS_GOOD)
+      << "Failed to open scanner " << *sane_backend_tests::scanner_under_test;
+  ASSERT_EQ(sane_open(alt_scanner.c_str(), &handle_2), SANE_STATUS_GOOD)
+      << "Failed to open scanner " << alt_scanner;
+
+  sane_close(handle_2);
+
+  ASSERT_EQ(sane_start(handle_1), SANE_STATUS_GOOD)
+      << "Failed to start scan on " << *sane_backend_tests::scanner_under_test;
+
+  sane_close(handle_1);
+}
+
 TEST_F(SANETest, OpenExitStress) {
   if (base::StartsWith(
           base::ToLowerASCII(*sane_backend_tests::scanner_under_test),
