@@ -563,12 +563,6 @@ bool FramingStreamManipulator::Flush() {
 }
 
 bool FramingStreamManipulator::IsManualZoomSupported() {
-  // TODO(b/365891378): Add back board rauru after fixing the bug.
-  const std::string board = base::SysInfo::GetLsbReleaseBoard();
-  if (board == "rauru") {
-    return false;
-  }
-
   if (base::PathExists(base::FilePath(kForceDisableManualZoomPath))) {
     return false;
   }
