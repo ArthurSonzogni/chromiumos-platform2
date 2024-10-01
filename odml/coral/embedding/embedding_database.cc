@@ -147,20 +147,12 @@ bool EmbeddingDatabase::LoadFromFile() {
     return false;
   }
 
-  // TODO(b/361429567) - Do not clean up stale records when loading the file.
   base::Time now = base::Time::Now();
   for (const auto& [key, record] : records.records()) {
-    if (!IsRecordExpired(now, record)) {
-      embeddings_map_[std::move(key)] = std::move(record);
-    } else {
-      // Some records are expired, so needs to sync to file.
-      dirty_ = true;
-    }
+    embeddings_map_[key] = record;
   }
   LOG(INFO) << "Load from embedding database with now: " << now
-            << ", ttl: " << ttl_ << ", num_removed: "
-            << records.records().size() - embeddings_map_.size()
-            << ", size: " << embeddings_map_.size();
+            << ", ttl: " << ttl_ << ", size: " << embeddings_map_.size();
   return true;
 }
 

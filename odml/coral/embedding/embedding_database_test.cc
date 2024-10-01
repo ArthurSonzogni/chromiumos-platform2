@@ -122,6 +122,7 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
   EXPECT_THAT(database->Get("key5"), Optional(ElementsAre(40, 50, 60)));
   database.reset();
 
+  // timestamp 11.
   // Reads it back from the file with no ttl set.
   database = factory_.Create(file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
@@ -129,49 +130,64 @@ TEST_F(EmbeddingDatabaseTest, RecordsExpire) {
   EXPECT_THAT(database->Get("key3"), std::nullopt);
   EXPECT_THAT(database->Get("key4"), Optional(ElementsAre(10, 20, 30)));
   EXPECT_THAT(database->Get("key5"), Optional(ElementsAre(40, 50, 60)));
+  // No records are removed since no ttl was set.
   database.reset();
 
-  // Reads it back again from the file with some long ttl.
+  // timestamp 11.
+  // Reads it back again from the file.
   database = factory_.Create(file_path_, base::Seconds(30));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
   EXPECT_THAT(database->Get("key3"), std::nullopt);
   EXPECT_THAT(database->Get("key4"), Optional(ElementsAre(10, 20, 30)));
   EXPECT_THAT(database->Get("key5"), Optional(ElementsAre(40, 50, 60)));
+  // No records are removed since the ttl is long.
+  database.reset();
 
+  // timestamp 11.
+  // Reads it back again from the file.
+  database = factory_.Create(file_path_, base::Seconds(3));
+  EXPECT_THAT(database->Get("key1"), std::nullopt);
+  EXPECT_THAT(database->Get("key2"), Optional(ElementsAre(4, 5, 6)));
+  EXPECT_THAT(database->Get("key3"), std::nullopt);
+  EXPECT_THAT(database->Get("key4"), Optional(ElementsAre(10, 20, 30)));
+  EXPECT_THAT(database->Get("key5"), Optional(ElementsAre(40, 50, 60)));
   // timestamp 13.
   FastForwardBy(base::Seconds(2));
-  // key3 has timestamp 13 now, while key2 and key4 remain 11.
   database->Put("key3", {50, 51, 52});
   // timestamp 15.
   FastForwardBy(base::Seconds(2));
-  // key4 has timestamp 15.
   database->Get({"key4"});
+  // key2: timestamp 11
+  // key3: timestamp 13
+  // key4: timestamp 15
+  // key5: timestamp 11
+  // When syncing, records with timestamp < 12 (key2, key5) are removed.
   database.reset();
 
   // timestamp 17.
-  FastForwardBy(base::Seconds(2));
-  // Reads it back again from the file with some short ttl set.
-  // key2 and key5 have timestamp 11 so expired. key3 has timestamp 13,
-  // key4 has timestamp 15, so kept alive.
+  FastForwardBy(base::Seconds(3));
+  // Reads it back again from the file. Records with timestamp < 14 (key4)
+  // are expired. But since we don't remove stale records when loading the file,
+  // it is kept.
   database = factory_.Create(file_path_, base::Seconds(5));
-  // Now key3 and key4 has timestamp 17.
+  // Now key3, key4 has timestamp 17.
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), std::nullopt);
   EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(50, 51, 52)));
   EXPECT_THAT(database->Get("key4"), Optional(ElementsAre(10, 20, 30)));
   EXPECT_THAT(database->Get("key5"), std::nullopt);
+  // timestamp 23.
+  FastForwardBy(base::Seconds(6));
+  // Records with timestamp < 18 (key3, key4) are removed.
   database.reset();
 
-  // timestamp 19.
-  FastForwardBy(base::Seconds(2));
-  // Reads it one last time from the file.
-  // key3 and key4 has timestamp 17, so not expired.
-  database = factory_.Create(file_path_, base::Seconds(5));
+  // timestamp 23.
+  database = factory_.Create(file_path_, base::Seconds(0));
   EXPECT_THAT(database->Get("key1"), std::nullopt);
   EXPECT_THAT(database->Get("key2"), std::nullopt);
-  EXPECT_THAT(database->Get("key3"), Optional(ElementsAre(50, 51, 52)));
-  EXPECT_THAT(database->Get("key4"), Optional(ElementsAre(10, 20, 30)));
+  EXPECT_THAT(database->Get("key3"), std::nullopt);
+  EXPECT_THAT(database->Get("key4"), std::nullopt);
   EXPECT_THAT(database->Get("key5"), std::nullopt);
 }
 
