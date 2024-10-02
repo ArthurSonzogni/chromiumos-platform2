@@ -146,11 +146,22 @@ TEST_F(ThrottlerTest, ApplyThrottleToNewInterfaceWithoutThrottleRate) {
   EXPECT_FALSE(throttler_->ApplyThrottleToNewInterface(kNewAddedInterface));
 }
 
+TEST_F(ThrottlerTest, DisableThrottlingWhenNotThrottling) {
+  Client client;
+  // Expect returning true directly.
+  EXPECT_CALL(client, OnThrottlerDone(Property(&Error::type, Error::kSuccess)));
+  throttler_->DisableThrottlingOnAllInterfaces(client.GetCallback(),
+                                               kInterfaces);
+}
+
 TEST_F(ThrottlerTest, DisableThrottlingOnAllInterfaces) {
   ExpectCreateTCProcess(kDisabledCommands);
 
   Client client;
   EXPECT_CALL(client, OnThrottlerDone(Property(&Error::type, Error::kSuccess)));
+
+  // Change the internal state of the |throttler| to "throttling" at first.
+  throttler_->set_upload_rate_kbits_for_testing(kUploadThrottleRate);
 
   throttler_->DisableThrottlingOnAllInterfaces(client.GetCallback(),
                                                kInterfaces);
@@ -185,6 +196,9 @@ TEST_F(ThrottlerTest, DisableDuringThrottling) {
 TEST_F(ThrottlerTest, DisableThrottlingOnEmptyInterfaces) {
   Client client;
   EXPECT_CALL(client, OnThrottlerDone(Property(&Error::type, Error::kSuccess)));
+
+  // Change the internal state of the |throttler| to "throttling" at first.
+  throttler_->set_upload_rate_kbits_for_testing(kUploadThrottleRate);
 
   throttler_->DisableThrottlingOnAllInterfaces(client.GetCallback(), {});
   task_environment_.RunUntilIdle();

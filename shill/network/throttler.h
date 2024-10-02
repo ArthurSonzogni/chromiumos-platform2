@@ -51,6 +51,10 @@ class Throttler {
   // the bitrate is reset by DisableThrottlingOnAllInterfaces().
   virtual bool ApplyThrottleToNewInterface(const std::string& interface);
 
+  void set_upload_rate_kbits_for_testing(uint32_t upload_rate_kbits) {
+    upload_rate_kbits_ = upload_rate_kbits;
+  }
+
  private:
   // Throttles the next pending interface.
   void ThrottleNextPendingInterface();
@@ -62,6 +66,12 @@ class Throttler {
 
   // Resets the internal state and replies the result by |callback_|.
   void ResetAndReply(Error::Type error_type, std::string_view message);
+
+  // Returns whether throttling is enabled (at least one of upload/download is
+  // throttled).
+  bool IsThrottling() const {
+    return upload_rate_kbits_ != 0 || download_rate_kbits_ != 0;
+  }
 
   // The callback to return the result of the methods. The value is not null if
   // and only if the throttling task or the disabling task is running.

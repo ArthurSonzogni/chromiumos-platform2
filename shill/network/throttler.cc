@@ -128,6 +128,11 @@ Throttler::~Throttler() {
 
 bool Throttler::DisableThrottlingOnAllInterfaces(
     ResultCallback callback, const std::vector<std::string>& interfaces) {
+  if (!IsThrottling()) {
+    std::move(callback).Run(Error(Error::kSuccess, "", FROM_HERE));
+    return true;
+  }
+
   if (!callback_.is_null()) {
     ResetAndReply(Error::kOperationAborted, "Aborted by the following request");
   }
@@ -176,7 +181,7 @@ bool Throttler::ThrottleInterfaces(ResultCallback callback,
 }
 
 bool Throttler::ApplyThrottleToNewInterface(const std::string& interface) {
-  if (upload_rate_kbits_ == 0 && download_rate_kbits_ == 0) {
+  if (!IsThrottling()) {
     return false;
   }
 
