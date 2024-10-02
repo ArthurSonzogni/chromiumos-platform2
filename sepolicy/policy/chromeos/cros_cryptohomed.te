@@ -210,6 +210,7 @@ r_dir_file(cros_cryptohomed, sysfs_fs_ext4_features)
 allow cros_cryptohomed tpm_device:chr_file  r_file_perms;
 allow cros_cryptohomed device:blk_file      rw_file_perms;
 allowxperm cros_cryptohomed device:blk_file ioctl {
+  BLKZEROOUT
   BLKSECDISCARD
   BLKPBSZGET
   BLKRAGET
