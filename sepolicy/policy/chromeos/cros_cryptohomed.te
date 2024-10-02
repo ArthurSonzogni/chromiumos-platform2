@@ -203,6 +203,9 @@ allowxperm cros_cryptohomed device:blk_file ioctl {
   BLKPBSZGET  # 0x127b
   BLKDISCARDZEROES  # 0x127c
   FDGETPRM # 0x204
+  FDGETFDCSTAT # 0x215
+  CDROM_GET_CAPABILITY # 0x5331
+  CDROM_LAST_WRITTEN # 0x5395
 };
 
 r_dir_file(cros_cryptohomed, sysfs_fs_ext4_features)
