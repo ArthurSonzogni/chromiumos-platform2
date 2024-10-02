@@ -109,6 +109,10 @@ MATCHER_P(IsValidThrowRoute, dst, "") {
   return dst == arg.dst && arg.type == RTN_THROW;
 }
 
+MATCHER_P(IsValidBlackholeRoute, dst, "") {
+  return dst == arg.dst && arg.type == RTN_BLACKHOLE;
+}
+
 MATCHER_P(IsLinkRouteTo, dst, "") {
   return dst == arg.dst && arg.gateway.IsZero() && arg.scope == RT_SCOPE_LINK;
 }
@@ -1017,4 +1021,33 @@ TEST_F(NetworkApplierRouteTest, IPv6Blackhole) {
                                /*default_route=*/false,
                                /*blackhole_ipv6=*/true, {}, {}, {});
 }
+
+// Verify the case that there is no IPv6 address but with included / excluded
+// routes. This setup is mainly used by ARC VPN since it can have IPv6 but it's
+// not supported on the host side.
+TEST_F(NetworkApplierRouteTest, IPv6BlackholeSplitRouting) {
+  constexpr int kInterfaceIndex = 3;
+  // Default blackhole route should not be installed when there is a default
+  // excluded route.
+  const auto excluded_dst = net_base::IPCIDR::CreateFromCIDRString("::/0");
+  const auto included_dst =
+      net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:1::/64");
+
+  EXPECT_CALL(*routing_table_,
+              FlushRoutesWithTag(kInterfaceIndex, net_base::IPFamily::kIPv6));
+  EXPECT_CALL(*routing_table_,
+              AddRoute(kInterfaceIndex, IsValidThrowRoute(*excluded_dst)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*routing_table_,
+              AddRoute(kInterfaceIndex, IsValidBlackholeRoute(*included_dst)))
+      .WillOnce(Return(true));
+
+  network_applier_->ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
+                               /*gateway=*/std::nullopt,
+                               /*fix_gateway_reachability=*/false,
+                               /*default_route=*/false,
+                               /*blackhole_ipv6=*/true, {*excluded_dst},
+                               {*included_dst}, {});
+}
+
 }  // namespace patchpanel

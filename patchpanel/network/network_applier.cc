@@ -376,7 +376,7 @@ void NetworkApplier::ApplyRoute(
     }
   }
 
-  // 2. Default route and IPv6 blackhole route
+  // 2. Default route
   if (default_route) {
     if (!routing_table_->SetDefaultRoute(
             interface_index, gateway.value_or(empty_ip.address()), table_id)) {
@@ -386,22 +386,19 @@ void NetworkApplier::ApplyRoute(
     }
   }
 
-  if (family == net_base::IPFamily::kIPv6 && blackhole_ipv6) {
-    if (!routing_table_->CreateBlackholeRoute(
-            interface_index, net_base::IPFamily::kIPv6, 0, table_id)) {
-      LOG(ERROR) << "Unable to add IPv6 blackhole route, if "
-                 << interface_index;
-    }
-  }
-
   // 3. Excluded Routes
   // Since each Network has its own dedicated routing table, exclusion is as
   // simple as adding an RTN_THROW entry for each item on the list. Traffic that
   // matches the RTN_THROW entry will cause the kernel to stop traversing our
   // routing table and try the next rule in the list.
+  bool has_ipv6_default_excluded_prefix = false;
   for (const auto& excluded_prefix : excluded_routes) {
     if (excluded_prefix.GetFamily() != family) {
       continue;
+    }
+    if (excluded_prefix.prefix_length() == 0 &&
+        family == net_base::IPFamily::kIPv6) {
+      has_ipv6_default_excluded_prefix = true;
     }
     auto entry = RoutingTableEntry(family);
     entry.scope = RT_SCOPE_LINK;
@@ -415,7 +412,7 @@ void NetworkApplier::ApplyRoute(
     }
   }
 
-  // 4. Included Routes
+  // 4. Included Routes and IPv6 Blackhole Routes
   for (const auto& included_prefix : included_routes) {
     if (included_prefix.GetFamily() != family) {
       continue;
@@ -427,9 +424,20 @@ void NetworkApplier::ApplyRoute(
     }
     entry.table = table_id;
     entry.tag = interface_index;
+    if (family == net_base::IPFamily::kIPv6 && blackhole_ipv6) {
+      entry.type = RTN_BLACKHOLE;
+    }
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(WARNING) << "Unable to setup included route " << entry << ", if "
                    << interface_index;
+    }
+  }
+  if (family == net_base::IPFamily::kIPv6 && blackhole_ipv6 &&
+      !has_ipv6_default_excluded_prefix) {
+    if (!routing_table_->CreateBlackholeRoute(
+            interface_index, net_base::IPFamily::kIPv6, 0, table_id)) {
+      LOG(ERROR) << "Unable to add IPv6 blackhole route, if "
+                 << interface_index;
     }
   }
 
