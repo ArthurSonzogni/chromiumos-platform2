@@ -17,7 +17,6 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/time/time.h>
-
 #include <vm_applications/apps.pb.h>
 #include <vm_memory_management/vm_memory_management.pb.h>
 
@@ -357,9 +356,8 @@ size_t BalloonBroker::HandleKillRequest(Client client,
   int64_t balloon_delta_actual =
       EvenlyAdjustBalloons(targets, signed_delta, priority);
 
-  // If the balloon was not adjusted as much as requested, the process should be
-  // killed by the client.
-  if (std::abs(balloon_delta_actual) < proc_size) {
+  // If the balloon was not adjusted, the process will be killed by the client.
+  if (balloon_delta_actual == 0) {
     LOG(INFO) << "VMMMS:[" << client.cid << ",kill," << priority << ","
               << (proc_size / MiB(1)) << "MB]";
   }
