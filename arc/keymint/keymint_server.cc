@@ -99,6 +99,19 @@ void KeyMintServer::SetSystemVersion(uint32_t android_version,
                                 android_version, android_patchlevel));
 }
 
+void KeyMintServer::SetVendorPatchLevel(uint32_t android_vendor_patchlevel) {
+  auto task_lambda = [](context::ArcKeyMintContext* context,
+                        uint32_t android_vendor_patchlevel) {
+    // |context| is guaranteed valid here because it's owned
+    // by |backend_|, which outlives the |backend_thread_|
+    // this runs on.
+    context->SetVendorPatchlevel(android_vendor_patchlevel);
+  };
+  backend_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(task_lambda, backend_.context(),
+                                android_vendor_patchlevel));
+}
+
 template <typename KmMember, typename KmRequest, typename KmResponse>
 void KeyMintServer::RunKeyMintRequest(
     const base::Location& location,

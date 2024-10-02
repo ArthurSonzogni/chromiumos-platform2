@@ -42,6 +42,8 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   void SetSystemVersion(uint32_t android_version,
                         uint32_t android_patchLevel) override;
 
+  void SetVendorPatchLevel(uint32_t android_vendor_patchlevel) override;
+
   void AddRngEntropy(const std::vector<uint8_t>& data,
                      AddRngEntropyCallback callback) override;
 
