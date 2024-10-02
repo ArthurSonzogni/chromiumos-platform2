@@ -16,6 +16,11 @@
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
 #include <chaps/chaps_proxy_mock.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
+#include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <keymaster/android_keymaster.h>
@@ -55,6 +60,12 @@ constexpr char kUnlockedBootloaderState[] = "unlocked";
 constexpr char kSampleVbMetaDigest[] =
     "ab76eece2ea8e2bea108d4dfd618bb6ab41096b291c6e83937637a941d87b303";
 constexpr const char kVbMetaDigestFileName[] = "arcvm_vbmeta_digest.sha256";
+
+constexpr char kSampleBootKey[] = "eae4c36d842cfee8588924955da295feae79becc";
+constexpr char kDebugdTestMessage[] =
+    "bios::GBB::root_key::version::1\n"
+    "bios::GBB::root_key::sha1_sum::eae4c36d842cfee8588924955da295feae79becc\n"
+    "bios::GBB::recovery_key::valid\n";
 
 // Arbitrary CK_SLOT_ID for user slot.
 constexpr uint64_t kUserSlotId = 11;
@@ -296,10 +307,20 @@ class ContextTestPeer {
     return context->vbmeta_digest_;
   }
 
+  static std::optional<std::vector<uint8_t>> boot_key(
+      ArcKeyMintContext* context) {
+    return context->boot_key_;
+  }
+
   static void set_cros_system_for_tests(
       ArcKeyMintContext* context,
       std::unique_ptr<crossystem::Crossystem> cros_system) {
     context->set_cros_system_for_tests(std::move(cros_system));
+  }
+
+  static void set_dbus_for_tests(ArcKeyMintContext* context,
+                                 scoped_refptr<dbus::Bus> bus) {
+    context->set_dbus_for_tests(bus);
   }
 
   static std::string DeriveVerifiedBootStateForTest(
@@ -319,6 +340,10 @@ class ContextTestPeer {
   static std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFileForTest(
       ArcKeyMintContext* context) {
     return context->GetVbMetaDigestFromFile();
+  }
+
+  static void GetAndSetBootKeyFromLogsForTest(ArcKeyMintContext* context) {
+    context->GetAndSetBootKeyFromLogs();
   }
 };
 
@@ -356,6 +381,33 @@ class ArcKeyMintContextTest : public ::testing::Test {
         std::move(fake_cros_system_ptr));
     ContextTestPeer::set_cros_system_for_tests(context_,
                                                std::move(cros_system));
+
+    debugd_log_name_ = "verified boot";
+  }
+
+  void SetUpDBus() {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::MockBus(options);
+    mock_debug_proxy_ =
+        new dbus::MockObjectProxy(bus_.get(), debugd::kDebugdServiceName,
+                                  dbus::ObjectPath(debugd::kDebugdServicePath));
+
+    // Our MockResponse should be used by the tested class.
+    EXPECT_CALL(*mock_debug_proxy_.get(), CallMethodAndBlock(_, _))
+        .WillRepeatedly(
+            testing::Invoke(this, &ArcKeyMintContextTest::MockResponse));
+    // DebugdReader constructor should get our mocked ObjectProxy.
+    EXPECT_CALL(*bus_.get(),
+                GetObjectProxy(debugd::kDebugdServiceName,
+                               dbus::ObjectPath(debugd::kDebugdServicePath)))
+        .WillOnce(testing::Return(mock_debug_proxy_.get()));
+    EXPECT_CALL(*bus_.get(), Connect()).WillOnce(testing::Return(true));
+  }
+
+  void TearDownDBus() {
+    bus_->ShutdownAndBlock();
+    mock_debug_proxy_.reset();
   }
 
   ArcKeyMintContext* context_;  // Owned by |keymint_|.
@@ -368,6 +420,44 @@ class ArcKeyMintContextTest : public ::testing::Test {
   ::keymaster::AuthorizationSet hw_enforced_;
   ::keymaster::AuthorizationSet sw_enforced_;
   crossystem::fake::CrossystemFake* fake_cros_system_;
+  scoped_refptr<dbus::MockObjectProxy> mock_debug_proxy_;
+  scoped_refptr<dbus::MockBus> bus_;
+  std::string debugd_log_name_;
+
+ private:
+  base::expected<std::unique_ptr<dbus::Response>, dbus::Error> MockResponse(
+      dbus::MethodCall* call, int timeout_ms) {
+    std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    dbus::MessageReader reader(call);
+    std::string message;
+
+    if (call->GetInterface().compare(debugd::kDebugdInterface) ||
+        call->GetMember().compare(debugd::kGetLog)) {
+      return base::unexpected(
+          dbus::Error(DBUS_ERROR_NOT_SUPPORTED, "Not implemented"));
+    }
+
+    if (reader.GetDataType() != DBUS_TYPE_STRING) {
+      return base::unexpected(
+          dbus::Error(DBUS_ERROR_INVALID_ARGS, "Invalid input type"));
+    }
+
+    if (!reader.PopString(&message)) {
+      LOG(ERROR) << "Failed to extract input string";
+      return base::unexpected(dbus::Error());
+    }
+
+    // Follow debugd behavior. If LogName is as expected return TestMessage.
+    // Otherwise return an empty string to signal that no such log exists.
+    if (!debugd_log_name_.compare(message)) {
+      writer.AppendString(kDebugdTestMessage);
+    } else {
+      writer.AppendString("");
+    }
+
+    return base::ok(std::move(response));
+  }
 };
 
 TEST_F(ArcKeyMintContextTest, CreateKeyBlob) {
@@ -918,6 +1008,40 @@ TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Failure) {
 
   // Test.
   ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Success) {
+  // Prepare.
+  SetUpDBus();
+  ContextTestPeer::set_dbus_for_tests(context_, bus_);
+
+  // Execute.
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_);
+
+  // Test.
+  std::optional<std::vector<uint8_t>> boot_key =
+      ContextTestPeer::boot_key(context_);
+  ASSERT_TRUE(boot_key.has_value());
+  EXPECT_EQ(kSampleBootKey, brillo::BlobToString(boot_key.value()));
+
+  // Cleanup.
+  TearDownDBus();
+}
+
+TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Failure) {
+  // Prepare.
+  debugd_log_name_ = "invalid";
+  SetUpDBus();
+  ContextTestPeer::set_dbus_for_tests(context_, bus_);
+
+  // Execute.
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_);
+
+  // Test.
+  ASSERT_FALSE(ContextTestPeer::boot_key(context_).has_value());
+
+  // Cleanup.
+  TearDownDBus();
 }
 
 TEST_F(ArcKeyMintContextTest, SetVerifiedBootParams_Success) {

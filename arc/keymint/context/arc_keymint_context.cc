@@ -24,6 +24,7 @@
 #include <libarc-attestation/lib/interface.h>
 #include <mojo/cert_store.mojom.h>
 #include <openssl/evp.h>
+#include <re2/re2.h>
 
 #include "arc/keymint/context/chaps_client.h"
 #include "arc/keymint/context/openssl_utils.h"
@@ -58,6 +59,12 @@ const std::map<VerifiedBootState, std::string> kVerifiedBootStateToStringMap = {
 const std::map<VerifiedBootDeviceState, std::string> kDeviceStateToStringMap = {
     {VerifiedBootDeviceState::kLockedDevice, "locked"},
     {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}};
+
+// This debugd boot log name maps to /var/log/debug_vboot_noisy.log. See
+// https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform2/+/main:debugd/src/log_tool.cc
+constexpr const char kVerifiedBootLogName[] = "verified boot";
+constexpr const char kBootKeyRegex[] =
+    ".*bios::GBB::root_key::sha1_sum::([^ ].*)";
 
 bool DeserializeKeyMaterialToBlob(const std::string& key_material,
                                   ::keymaster::KeymasterKeyBlob* output) {
@@ -284,9 +291,14 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
       std::make_unique<ArcRemoteProvisioningContext>(security_level_);
 
   SetVerifiedBootParams(boot_state, bootloader_state, vbmeta_digest);
+  GetAndSetBootKeyFromLogs();
 }
 
-ArcKeyMintContext::~ArcKeyMintContext() = default;
+ArcKeyMintContext::~ArcKeyMintContext() {
+  if (bus_ != nullptr) {
+    bus_->ShutdownAndBlock();
+  }
+}
 
 void ArcKeyMintContext::set_placeholder_keys(
     std::vector<arc::keymint::mojom::ChromeOsKeyPtr> keys) {
@@ -770,6 +782,10 @@ void ArcKeyMintContext::set_vbmeta_digest_file_dir_for_tests(
   vbmeta_digest_file_dir_ = base::FilePath(vbmeta_digest_file_dir);
 }
 
+void ArcKeyMintContext::set_dbus_for_tests(scoped_refptr<dbus::Bus> bus) {
+  bus_ = bus;
+}
+
 std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
     const {
   base::FilePath vbmeta_digest_file_path =
@@ -793,6 +809,47 @@ std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
   }
 
   return vbmeta_digest_result;
+}
+
+void ArcKeyMintContext::GetAndSetBootKeyFromLogs() {
+  if (bus_ == nullptr) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::Bus(options);
+  }
+  if (!bus_->Connect()) {
+    LOG(ERROR) << "Unable to connect to DBUS. Cannot get verified boot key.";
+    return;
+  }
+
+  brillo::ErrorPtr error;
+  std::string verified_boot_log;
+  std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy =
+      std::make_unique<org::chromium::debugdProxy>(bus_.get());
+
+  if (debugd_proxy == nullptr) {
+    LOG(ERROR) << "debugd_proxy is null. Cannot get verified boot key.";
+    return;
+  }
+
+  debugd_proxy->GetLog(kVerifiedBootLogName, &verified_boot_log, &error);
+  if (error != nullptr) {
+    LOG(ERROR) << "debugd GetLog call failed with: " << error->GetMessage();
+    return;
+  }
+
+  if (verified_boot_log.empty()) {
+    LOG(ERROR) << "Empty verified boot log was retrieved from debugd";
+    return;
+  }
+
+  std::string boot_key;
+  if (!RE2::PartialMatch(verified_boot_log, kBootKeyRegex, &boot_key)) {
+    LOG(ERROR) << "Did not find boot key info in verified boot log";
+    return;
+  }
+
+  boot_key_ = brillo::BlobFromString(boot_key);
 }
 
 // mainfw_type describes the main firmware type (normal, recovery, developer).
@@ -893,6 +950,7 @@ keymaster::Buffer ArcKeyMintContext::GenerateUniqueId(
                                        creation_date_time, application_id,
                                        reset_since_rotation);
 }
+
 keymaster_error_t ArcKeyMintContext::SetVerifiedBootParams(
     std::string_view boot_state,
     std::string_view bootloader_state,

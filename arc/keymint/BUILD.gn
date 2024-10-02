@@ -51,6 +51,7 @@ executable("arc-keymintd") {
     "libbrillo",
     "libchrome",
     "libcrossystem",
+    "libdebugd-client",
     "libmojo",
   ]
   deps = [
@@ -238,8 +239,10 @@ shared_library("libarckeymint_context") {
     # TODO(b/274723555): Add package dependencies for KeyMint Context.
     # system_api depends on protobuf. It must appear before protobuf here so the
     # linker flags are in the right order.
+    "libdebugd-client",
     "system_api",
     "protobuf",
+    "re2",
   ]
   deps = [
     ":context_proto",
@@ -363,6 +366,7 @@ if (use.test) {
       "libchrome-test",
       "libcrossystem",
       "libcrossystem-test",
+      "libdebugd-client",
     ]
   }
   executable("arc-keymintd_testrunner") {

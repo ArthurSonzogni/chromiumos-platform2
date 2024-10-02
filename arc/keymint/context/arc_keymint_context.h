@@ -12,6 +12,7 @@
 
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
+#include <debugd/dbus-proxies.h>
 #include <hardware/keymaster_defs.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
@@ -170,10 +171,15 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   std::string DeriveBootloaderState() const;
   std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFile() const;
 
+  // Get boot key from ChromeOS verified boot debug logs and set the
+  // |boot_key_|.
+  void GetAndSetBootKeyFromLogs();
+
   void set_cros_system_for_tests(
       std::unique_ptr<crossystem::Crossystem> cros_system);
   void set_vbmeta_digest_file_dir_for_tests(
       base::FilePath& vbmeta_digest_file_dir);
+  void set_dbus_for_tests(scoped_refptr<dbus::Bus> bus);
 
   // Since the initialization of |rsa_key_factory_| uses
   // |context_adaptor_|, hence |context_adaptor_| must
@@ -185,6 +191,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
 
   std::unique_ptr<crossystem::Crossystem> cros_system_;
   base::FilePath vbmeta_digest_file_dir_;
+  std::optional<std::vector<uint8_t>> boot_key_;
+  scoped_refptr<dbus::Bus> bus_;
 
   friend class ContextTestPeer;
 };
