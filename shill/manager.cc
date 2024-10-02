@@ -3056,16 +3056,7 @@ bool Manager::SetDNSProxyAddresses(const std::vector<std::string>& addrs,
   for (const auto& addr : addrs) {
     const auto ipv4_addr = net_base::IPv4Address::CreateFromString(addr);
     if (ipv4_addr) {
-      // Verify proxy's IPv4 address.
-      if (kDNSProxyAllocationRange.InSameSubnetWith(*ipv4_addr)) {
-        continue;
-      }
-      ClearDNSProxyAddresses();
-      LOG(ERROR) << "IPv4 DNS proxy address " << addr
-                 << " is not allowed, cleared DNS proxy address(es)";
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidProperty,
-                            "Address not allowed: " + addr);
-      return false;
+      continue;
     }
 
     const auto ipv6_addr = net_base::IPv6Address::CreateFromString(addr);

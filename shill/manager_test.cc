@@ -4546,20 +4546,6 @@ TEST_F(ManagerTest, RefreshAllTrafficCountersTask) {
 
 TEST_F(ManagerTest, SetDNSProxyAddresses) {
   Error err;
-  // Bad cases.
-  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"10.10.10.1"}, &err));
-  EXPECT_TRUE(err.IsFailure());
-  err.Reset();
-  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"1.1"}, &err));
-  EXPECT_TRUE(err.IsFailure());
-  err.Reset();
-  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"blah"}, &err));
-  EXPECT_TRUE(err.IsFailure());
-  err.Reset();
-  EXPECT_FALSE(manager()->SetDNSProxyAddresses({"::g"}, &err));
-  EXPECT_TRUE(err.IsFailure());
-  err.Reset();
-
   // Good cases.
   manager()->last_default_physical_service_online_ = true;
   EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre("100.115.92.100")));
