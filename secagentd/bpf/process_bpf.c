@@ -64,9 +64,15 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->mode = BPF_CORE_READ(bprm, file, f_inode, i_mode);
   // Starting with Linux kernel v6.7-rc1, commit 12cd4402365 ("fs: rename
   // inode i_atime and i_mtime fields"), the field name changed.
+  // Starting with Linux kernel v6.11-rc1, commit 3aa63a569c64 ("fs: switch
+  // timespec64 fields in inode to discrete integers"), the field name
+  // changed again.
   //
-  // We can remove the guard after all ChromeOS kernels use __i_mtime.
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+  // We can remove the guard after all existing ChromeOS kernels are >= 6.11.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+  image_info->mtime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_mtime_sec);
+  image_info->mtime.tv_nsec = BPF_CORE_READ(bprm, file, f_inode, i_mtime_nsec);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
   image_info->mtime.tv_sec =
       BPF_CORE_READ(bprm, file, f_inode, __i_mtime.tv_sec);
   image_info->mtime.tv_nsec =
@@ -78,9 +84,15 @@ static inline __attribute__((always_inline)) void fill_image_info(
 #endif
   // Starts from Linux kernel v6.6-rc1, commit 13bc24457850 ("fs: rename
   // i_ctime field to __i_ctime"), the field name changed.
+  // Starting with Linux kernel v6.11-rc1, commit 3aa63a569c64 ("fs: switch
+  // timespec64 fields in inode to discrete integers"), the field name
+  // changed again.
   //
-  // We can remove the guard after all ChromeOS kernels use __i_ctime.
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+  // We can remove the guard after all existing ChromeOS kernels are >= 6.11.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+  image_info->ctime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_ctime_sec);
+  image_info->ctime.tv_nsec = BPF_CORE_READ(bprm, file, f_inode, i_ctime_nsec);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
   image_info->ctime.tv_sec =
       BPF_CORE_READ(bprm, file, f_inode, __i_ctime.tv_sec);
   image_info->ctime.tv_nsec =

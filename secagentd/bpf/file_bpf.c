@@ -771,9 +771,17 @@ static __always_inline void get_inode_attributes(struct inode* inode,
 
   // Starting with Linux kernel v6.7-rc1, commit 12cd4402365 ("fs: rename
   // inode i_atime and i_mtime fields"), the field name changed.
+  // Starting with Linux kernel v6.11-rc1, commit 3aa63a569c64 ("fs: switch
+  // timespec64 fields in inode to discrete integers"), the field name
+  // changed again.
+  //
+  // We can remove the guard after all existing ChromeOS kernels are >= 6.11.
 
   // Read access time
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+  ts.tv_sec = BPF_CORE_READ(inode, i_atime_sec);
+  ts.tv_nsec = BPF_CORE_READ(inode, i_atime_nsec);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
   ts = BPF_CORE_READ(inode, __i_atime);
 #else
   ts = BPF_CORE_READ(inode, i_atime);
@@ -783,7 +791,10 @@ static __always_inline void get_inode_attributes(struct inode* inode,
   attr->atime.tv_nsec = ts.tv_nsec;
 
   // Read modification time
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+  ts.tv_sec = BPF_CORE_READ(inode, i_mtime_sec);
+  ts.tv_nsec = BPF_CORE_READ(inode, i_mtime_nsec);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
   ts = BPF_CORE_READ(inode, __i_mtime);
 #else
   ts = BPF_CORE_READ(inode, i_mtime);
@@ -794,8 +805,15 @@ static __always_inline void get_inode_attributes(struct inode* inode,
 
 // Starts from Linux kernel v6.6-rc1, commit 13bc24457850 ("fs: rename
 // i_ctime field to __i_ctime"), the field name changed.
+// Starting with Linux kernel v6.11-rc1, commit 3aa63a569c64 ("fs: switch
+// timespec64 fields in inode to discrete integers"), the field name
+// changed again.
+// We can remove the guard after all existing ChromeOS kernels are >= 6.11.
 // Read change time
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
+  ts.tv_sec = BPF_CORE_READ(inode, i_ctime_sec);
+  ts.tv_nsec = BPF_CORE_READ(inode, i_ctime_nsec);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
   ts = BPF_CORE_READ(inode, __i_ctime);
 #else
   ts = BPF_CORE_READ(inode, i_ctime);
