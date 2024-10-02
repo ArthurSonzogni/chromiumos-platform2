@@ -225,6 +225,8 @@ allowxperm cros_cryptohomed device:blk_file ioctl {
   LOOP_SET_DIRECT_IO
 };
 
+allow cros_cryptohomed cros_stateful_partition_unencrypted_userspace_swap:file getattr;
+
 # TODO(b/178237710) Label the directories and files with specific contexts.
 allow cros_cryptohomed cros_run_namespaces:dir      search;
 allow cros_cryptohomed labeledfs:filesystem {
