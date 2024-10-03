@@ -97,67 +97,6 @@ bool MapperGetEntry(const std::string& name,
   return true;
 }
 
-// TODO(b/172220337): Consolidate with libbrillo/blkdevutils.
-// Executes the equivalent of: dmsetup wipe_table <name>
-// Returns true on success.
-bool MapperWipeTable(const std::string& name) {
-  auto task = dm_task_ptr(dm_task_create(DM_DEVICE_TABLE), &dm_task_destroy);
-  struct dm_info info;
-
-  if (!task) {
-    LOG(ERROR) << "dm_task_create failed!";
-    return false;
-  }
-
-  if (!dm_task_set_name(task.get(), name.c_str())) {
-    LOG(ERROR) << "dm_task_set_name failed!";
-    return false;
-  }
-
-  if (!dm_task_run(task.get())) {
-    LOG(ERROR) << "dm_task_run failed!";
-    return false;
-  }
-
-  if (!dm_task_get_info(task.get(), &info)) {
-    LOG(ERROR) << "dm_task_get_info failed!";
-    return false;
-  }
-
-  void* next = nullptr;
-  uint64_t start;
-  uint64_t length;
-  char* type;
-  char* parameters;
-  do {
-    next = dm_get_next_target(task.get(), next, &start, &length, &type,
-                              &parameters);
-    auto task = dm_task_ptr(dm_task_create(DM_DEVICE_RELOAD), &dm_task_destroy);
-
-    if (!task) {
-      LOG(ERROR) << "dm_task_create failed!";
-      return false;
-    }
-
-    if (!dm_task_set_name(task.get(), name.c_str())) {
-      LOG(ERROR) << "dm_task_set_name failed!";
-      return false;
-    }
-
-    if (!dm_task_add_target(task.get(), 0, length, type, parameters)) {
-      LOG(ERROR) << "dm_task_add_target failed!";
-      return false;
-    }
-
-    if (!dm_task_run(task.get())) {
-      LOG(ERROR) << "dm_task_run failed!";
-      return false;
-    }
-  } while (next);
-
-  return true;
-}
-
 // Executes the equivalent of: dmsetup remove <name>
 // Returns true on success.
 bool MapperRemove(const std::string& name, bool deferred = false) {
@@ -219,12 +158,6 @@ bool LaunchDMCreate(const std::string& name, const std::string& table) {
 
 // Clear the /dev/mapper/<foo> verity device.
 void ClearVerityDevice(const std::string& name) {
-  // Per the man page, wipe_table:
-  // Wait for any I/O in-flight through the device to complete, then replace the
-  // table with a new table that fails any new I/O sent to the device.  If
-  // successful, this should release any devices held open by the device's
-  // table(s).
-  MapperWipeTable(name);
   // Now remove the actual device. Fall back to deferred remove if the device
   // is (unlikely) busy: there is a possibility this can happen if udev is still
   // processing rules associated with the device.
@@ -549,12 +482,6 @@ bool CleanupImpl(const base::FilePath& mount_point,
   // Delete mount target folder
   brillo::DeletePathRecursively(mount_point);
 
-  // Clear Verity device.
-  if (!MapperWipeTable(source_path.value())) {
-    PLOG(ERROR) << "Device mapper wipe table failed, "
-                   "still continuing to remove the device mapper";
-    // Do not return here, proceed to remove.
-  }
   if (!MapperRemove(source_path.value())) {
     PLOG(ERROR) << "Device mapper remove failed; attempting a deferred removal";
     if (!MapperRemove(source_path.value(), /*deferred=*/true)) {
