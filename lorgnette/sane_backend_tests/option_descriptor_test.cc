@@ -196,6 +196,37 @@ class OptionDescriptorTest : public testing::Test {
     EXPECT_TRUE(color_depth_found) << "Required option missing for name: depth";
   }
 
+  void TestADFJustification(bool& adf_justification_found) {
+    // Index 0 is the well-known option 0, which we skip here.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor) {
+      if (!descriptor->name ||
+          strcmp(descriptor->name, "adf-justification-x") != 0) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      EXPECT_EQ(descriptor->type, SANE_TYPE_STRING)
+          << "ADF justification option does not have type: string";
+
+      EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_STRING_LIST)
+          << "ADF justification option does not have constraint type: string "
+             "list";
+
+      lorgnette::SaneOption option(*descriptor, i);
+      auto maybe_values = option.GetValidStringValues();
+      ASSERT_TRUE(maybe_values) << "Unable to parse ADF justification option";
+      EXPECT_THAT(maybe_values.value(), ::testing::UnorderedElementsAreArray(
+                                            {"left", "center", "right"}));
+
+      adf_justification_found = true;
+      break;
+    }
+  }
+
   SANE_Handle handle_;
 };
 
@@ -337,34 +368,24 @@ TEST_F(OptionDescriptorTest, ADFJustification) {
   }
 
   bool adf_justification_found = false;
+  auto option = GetSourceOption();
 
-  // Index 0 is the well-known option 0, which we skip here.
-  SANE_Int i = 1;
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, i);
-  while (descriptor) {
-    if (!descriptor->name ||
-        strcmp(descriptor->name, "adf-justification-x") != 0) {
-      i++;
-      descriptor = sane_get_option_descriptor(handle_, i);
-      continue;
+  if (!option) {
+    // The scanner did not provide a source option. It must only have a single
+    // source.
+    TestADFJustification(adf_justification_found);
+  } else {
+    std::optional<std::vector<std::string>> sources =
+        option->GetValidStringValues();
+    ASSERT_TRUE(sources.has_value());
+    for (auto source : *sources) {
+      option->Set(source);
+      ASSERT_EQ(SANE_STATUS_GOOD,
+                sane_control_option(handle_, option->GetIndex(),
+                                    SANE_ACTION_SET_VALUE, option->GetPointer(),
+                                    nullptr));
+      TestADFJustification(adf_justification_found);
     }
-
-    EXPECT_EQ(descriptor->type, SANE_TYPE_STRING)
-        << "ADF justification option does not have type: string";
-
-    EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_STRING_LIST)
-        << "ADF justification option does not have constraint type: string "
-           "list";
-
-    lorgnette::SaneOption option(*descriptor, i);
-    auto maybe_values = option.GetValidStringValues();
-    ASSERT_TRUE(maybe_values) << "Unable to parse ADF justification option";
-    EXPECT_THAT(maybe_values.value(), ::testing::UnorderedElementsAreArray(
-                                          {"left", "center", "right"}));
-
-    adf_justification_found = true;
-    break;
   }
 
   if (!adf_justification_found) {
