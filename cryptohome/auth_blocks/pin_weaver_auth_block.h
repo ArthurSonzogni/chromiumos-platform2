@@ -78,6 +78,7 @@ class PinWeaverAuthBlock : public AuthBlock {
 class NonPinweaverPasswordAuthBlock : public AuthBlock {
  protected:
   NonPinweaverPasswordAuthBlock(DerivationType derivation_type,
+                                AsyncInitFeatures& features,
                                 const hwsec::CryptohomeFrontend& hwsec);
 
  private:
@@ -94,6 +95,7 @@ class NonPinweaverPasswordAuthBlock : public AuthBlock {
                               const AuthBlockState& state,
                               DeriveCallback callback) = 0;
 
+  AsyncInitFeatures* features_;
   const hwsec::CryptohomeFrontend* hwsec_;
 };
 

@@ -34,6 +34,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/fake_features.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/vault_keyset.h"
@@ -893,8 +894,9 @@ TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalRemoveError) {
 // really matter it could be any block used for passwords.
 class TestPasswordAuthBlock : public NonPinweaverPasswordAuthBlock {
  public:
-  explicit TestPasswordAuthBlock(const hwsec::CryptohomeFrontend& hwsec)
-      : NonPinweaverPasswordAuthBlock(kTpmBackedEcc, hwsec) {}
+  TestPasswordAuthBlock(AsyncInitFeatures& features,
+                        const hwsec::CryptohomeFrontend& hwsec)
+      : NonPinweaverPasswordAuthBlock(kTpmBackedEcc, features, hwsec) {}
 
   MOCK_METHOD(void,
               Create,
@@ -913,7 +915,8 @@ class TestPasswordAuthBlock : public NonPinweaverPasswordAuthBlock {
 
 class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
  public:
-  NonPinweaverPasswordAuthBlockTest() : test_auth_block_(hwsec_) {}
+  NonPinweaverPasswordAuthBlockTest()
+      : test_auth_block_(features_.async, hwsec_) {}
 
  protected:
   // Fake location for when we want the mock to return an error.
@@ -923,6 +926,7 @@ class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
 
+  FakeFeaturesForTesting features_;
   StrictMock<hwsec::MockCryptohomeFrontend> hwsec_;
   TestPasswordAuthBlock test_auth_block_;
 };
@@ -930,6 +934,7 @@ class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
   AuthBlock& auth_block = test_auth_block_;
 
+  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   KeyBlobs* key_blobs_ptr = nullptr;
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
@@ -951,9 +956,33 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
   EXPECT_THAT(suggested_action, Eq(AuthBlock::SuggestedAction::kRecreate));
 }
 
+TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoFeature) {
+  AuthBlock& auth_block = test_auth_block_;
+
+  features_.SetDefaultForFeature(Features::kPinweaverForPassword, false);
+  KeyBlobs* key_blobs_ptr = nullptr;
+  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+      .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs_ptr = key_blobs.get();
+        std::move(callback).Run(OkStatus<CryptohomeError>(),
+                                std::move(key_blobs), std::nullopt);
+      });
+
+  DeriveTestFuture result;
+  auth_block.Derive({}, {}, {}, result.GetCallback());
+
+  ASSERT_THAT(result.IsReady(), IsTrue());
+  auto [status, key_blobs, suggested_action] = result.Take();
+  EXPECT_THAT(status, IsOk());
+  EXPECT_THAT(key_blobs.get(), Eq(key_blobs_ptr));
+  EXPECT_THAT(suggested_action, Eq(std::nullopt));
+}
+
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
   AuthBlock& auth_block = test_auth_block_;
 
+  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   KeyBlobs* key_blobs_ptr = nullptr;
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
@@ -978,6 +1007,7 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingOnError) {
   AuthBlock& auth_block = test_auth_block_;
 
+  features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
       .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(

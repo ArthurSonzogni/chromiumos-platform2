@@ -589,8 +589,10 @@ uint32_t PinWeaverAuthBlock::GetLockoutDelay(uint64_t label) {
 }
 
 NonPinweaverPasswordAuthBlock::NonPinweaverPasswordAuthBlock(
-    DerivationType derivation_type, const hwsec::CryptohomeFrontend& hwsec)
-    : AuthBlock(derivation_type), hwsec_(&hwsec) {}
+    DerivationType derivation_type,
+    AsyncInitFeatures& features,
+    const hwsec::CryptohomeFrontend& hwsec)
+    : AuthBlock(derivation_type), features_(&features), hwsec_(&hwsec) {}
 
 void NonPinweaverPasswordAuthBlock::Derive(
     const AuthInput& auth_input,
@@ -600,13 +602,15 @@ void NonPinweaverPasswordAuthBlock::Derive(
   DerivePassword(
       auth_input, auth_factor_metadata, state,
       base::BindOnce(
-          [](DeriveCallback callback, const hwsec::CryptohomeFrontend* hwsec,
-             CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+          [](DeriveCallback callback, AsyncInitFeatures* features,
+             const hwsec::CryptohomeFrontend* hwsec, CryptohomeStatus error,
+             std::unique_ptr<KeyBlobs> key_blobs,
              std::optional<SuggestedAction> suggested_action) {
             // If pinweaver is supported, suggest "recreate" to upgrade the auth
             // block to a pinweaver one. Don't do this if the Derive failed, or
             // if there's already a competing suggested action.
             if (error.ok() && !suggested_action.has_value() &&
+                features->IsFeatureEnabled(Features::kPinweaverForPassword) &&
                 PinWeaverAuthBlock::IsSupported(*hwsec).ok()) {
               suggested_action = SuggestedAction::kRecreate;
             }
@@ -614,7 +618,7 @@ void NonPinweaverPasswordAuthBlock::Derive(
             std::move(callback).Run(std::move(error), std::move(key_blobs),
                                     suggested_action);
           },
-          std::move(callback), hwsec_));
+          std::move(callback), features_, hwsec_));
 }
 
 }  // namespace cryptohome
