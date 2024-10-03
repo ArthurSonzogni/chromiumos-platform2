@@ -43,6 +43,7 @@ std::shared_ptr<DlcClientPtr> CreateDlcClient(const std::string& dlc_id,
           },
           std::move(split.second)),
       progress);
+  CHECK(dlc_client);
   (*shared_dlc_client) = std::move(dlc_client);
   return shared_dlc_client;
 }

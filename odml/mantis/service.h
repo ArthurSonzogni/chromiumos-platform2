@@ -6,11 +6,13 @@
 #define ODML_MANTIS_SERVICE_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
+#include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -59,6 +61,17 @@ class MantisService : public mojom::MantisService {
                              Args&... args);
 
   void DeleteProcessor();
+
+  void OnInstallDlcComplete(
+      mojo::PendingReceiver<mojom::MantisProcessor> processor,
+      InitializeCallback callback,
+      base::expected<base::FilePath, std::string> result);
+
+  void OnDlcProgress(
+      std::shared_ptr<
+          mojo::Remote<on_device_model::mojom::PlatformModelProgressObserver>>
+          progress_observer,
+      double progress);
 
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 

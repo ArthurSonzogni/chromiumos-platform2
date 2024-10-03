@@ -8,6 +8,7 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <ml_core/dlc/dlc_client.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <testing/gmock/include/gmock/gmock.h>
@@ -19,6 +20,8 @@
 
 namespace mantis {
 namespace {
+
+constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
 
 using ::on_device_model::mojom::LoadModelResult;
 using ::testing::Return;
@@ -32,6 +35,11 @@ class MantisServiceTest : public testing::Test {
     service_.AddReceiver(service_remote_.BindNewPipeAndPassReceiver());
   }
 
+  void SetupDlc() {
+    auto dlc_path = base::FilePath("testdata").Append(kDlcName);
+    cros::DlcClient::SetDlcPathForTest(&dlc_path);
+  }
+
  protected:
   base::test::TaskEnvironment task_environment_;
   MantisService service_;
@@ -43,6 +51,7 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
   EXPECT_CALL(shim_loader_, IsShimReady()).WillOnce(Return(true));
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(nullptr));
+  SetupDlc();
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
@@ -60,6 +69,7 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(
           MantisAPIGetter([]() -> const MantisAPI* { return 0; }))));
+  SetupDlc();
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
@@ -77,6 +87,7 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
           []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  SetupDlc();
 
   base::RunLoop run_loop;
   mojo::Remote<mojom::MantisProcessor> processor;
@@ -97,6 +108,7 @@ TEST_F(MantisServiceTest, MultipleClients) {
   EXPECT_CALL(shim_loader_, GetFunctionPointer("GetMantisAPI"))
       .WillOnce(Return(reinterpret_cast<void*>(MantisAPIGetter(
           []() -> const MantisAPI* { return fake::GetMantisApi(); }))));
+  SetupDlc();
 
   base::RunLoop run_loop_1;
   mojo::Remote<mojom::MantisProcessor> processor1;
