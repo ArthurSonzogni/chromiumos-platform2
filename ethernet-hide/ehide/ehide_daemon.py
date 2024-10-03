@@ -984,6 +984,7 @@ class EhideDaemon(daemon.Daemon):
         conf_path = os.path.join(self.dhclient_dir, "dhclient.conf")
         logging.info("Writing dhclinet configuration to %s...", conf_path)
         with open(conf_path, "w", encoding="utf-8") as f:
+            f.write('send vendor-class-identifier "chromeos";\n')
             for ifname, iface in self.interfaces.items():
                 # |iface.mac| cannot be None, just do a confidence check.
                 if iface.mac is None:
