@@ -47,6 +47,28 @@ class OptionDescriptorTest : public testing::Test {
 
   void TearDown() override { sane_close(handle_); }
 
+  std::unique_ptr<lorgnette::SaneOption> GetSourceOption() {
+    std::unique_ptr<lorgnette::SaneOption> option = nullptr;
+
+    // Index 0 is the well-known option 0, which we skip here.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor) {
+      if (!descriptor->name ||
+          strcmp(descriptor->name, SANE_NAME_SCAN_SOURCE) != 0) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      option = std::make_unique<lorgnette::SaneOption>(*descriptor, i);
+      break;
+    }
+
+    return option;
+  }
+
   void TestResolution() {
     bool resolution_found = false;
 
@@ -97,6 +119,81 @@ class OptionDescriptorTest : public testing::Test {
 
     EXPECT_TRUE(resolution_found)
         << "Required option missing for name: resolution";
+  }
+
+  void TestColorMode() {
+    bool color_mode_found = false;
+
+    // Index 0 is the well-known option 0, which we skip here.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor) {
+      if (!descriptor->name ||
+          strcmp(descriptor->name, SANE_NAME_SCAN_MODE) != 0) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      EXPECT_EQ(descriptor->type, SANE_TYPE_STRING)
+          << "Color mode option does not have type: string";
+
+      EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_STRING_LIST)
+          << "Color mode option does not have constraint type: string list";
+
+      bool supported_color_mode_found = false;
+      const std::set<std::string> supported_color_modes = {"Lineart", "Gray",
+                                                           "Color"};
+      lorgnette::SaneOption option(*descriptor, i);
+      auto maybe_values = option.GetValidStringValues();
+      ASSERT_TRUE(maybe_values) << "Unable to parse color mode option";
+
+      for (auto mode : maybe_values.value()) {
+        if (supported_color_modes.contains(mode)) {
+          supported_color_mode_found = true;
+        }
+      }
+
+      EXPECT_TRUE(supported_color_mode_found)
+          << "No supported color modes found";
+
+      color_mode_found = true;
+      break;
+    }
+
+    EXPECT_TRUE(color_mode_found) << "Required option missing for name: mode";
+  }
+
+  void TestColorDepth() {
+    bool color_depth_found = false;
+
+    // Index 0 is the well-known option 0, which we skip here.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor) {
+      if (!descriptor->name ||
+          strcmp(descriptor->name, SANE_NAME_BIT_DEPTH) != 0) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      EXPECT_EQ(descriptor->unit, SANE_UNIT_BIT)
+          << "Color depth option does not have unit: bit";
+
+      EXPECT_EQ(descriptor->type, SANE_TYPE_INT)
+          << "Color depth option does not have type: int";
+
+      EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_WORD_LIST)
+          << "Color depth option does not have constraint type: word list";
+
+      color_depth_found = true;
+      break;
+    }
+
+    EXPECT_TRUE(color_depth_found) << "Required option missing for name: depth";
   }
 
   SANE_Handle handle_;
@@ -161,23 +258,7 @@ TEST_F(OptionDescriptorTest, ScanSource) {
 }
 
 TEST_F(OptionDescriptorTest, Resolution) {
-  std::unique_ptr<lorgnette::SaneOption> option = nullptr;
-
-  // Index 0 is the well-known option 0, which we skip here.
-  SANE_Int i = 1;
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, i);
-  while (descriptor) {
-    if (!descriptor->name ||
-        strcmp(descriptor->name, SANE_NAME_SCAN_SOURCE) != 0) {
-      i++;
-      descriptor = sane_get_option_descriptor(handle_, i);
-      continue;
-    }
-
-    option = std::make_unique<lorgnette::SaneOption>(*descriptor, i);
-    break;
-  }
+  auto option = GetSourceOption();
 
   if (!option) {
     // The scanner did not provide a source option. It must only have a single
@@ -199,46 +280,25 @@ TEST_F(OptionDescriptorTest, Resolution) {
 }
 
 TEST_F(OptionDescriptorTest, ColorMode) {
-  bool color_mode_found = false;
+  auto option = GetSourceOption();
 
-  // Index 0 is the well-known option 0, which we skip here.
-  SANE_Int i = 1;
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, i);
-  while (descriptor) {
-    if (!descriptor->name ||
-        strcmp(descriptor->name, SANE_NAME_SCAN_MODE) != 0) {
-      i++;
-      descriptor = sane_get_option_descriptor(handle_, i);
-      continue;
+  if (!option) {
+    // The scanner did not provide a source option. It must only have a single
+    // source.
+    TestColorMode();
+  } else {
+    std::optional<std::vector<std::string>> sources =
+        option->GetValidStringValues();
+    ASSERT_TRUE(sources.has_value());
+    for (auto source : *sources) {
+      option->Set(source);
+      ASSERT_EQ(SANE_STATUS_GOOD,
+                sane_control_option(handle_, option->GetIndex(),
+                                    SANE_ACTION_SET_VALUE, option->GetPointer(),
+                                    nullptr));
+      TestColorMode();
     }
-
-    EXPECT_EQ(descriptor->type, SANE_TYPE_STRING)
-        << "Color mode option does not have type: string";
-
-    EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_STRING_LIST)
-        << "Color mode option does not have constraint type: string list";
-
-    bool supported_color_mode_found = false;
-    const std::set<std::string> supported_color_modes = {"Lineart", "Gray",
-                                                         "Color"};
-    lorgnette::SaneOption option(*descriptor, i);
-    auto maybe_values = option.GetValidStringValues();
-    ASSERT_TRUE(maybe_values) << "Unable to parse color mode option";
-
-    for (auto mode : maybe_values.value()) {
-      if (supported_color_modes.contains(mode)) {
-        supported_color_mode_found = true;
-      }
-    }
-
-    EXPECT_TRUE(supported_color_mode_found) << "No supported color modes found";
-
-    color_mode_found = true;
-    break;
   }
-
-  EXPECT_TRUE(color_mode_found) << "Required option missing for name: mode";
 }
 
 TEST_F(OptionDescriptorTest, ColorDepth) {
@@ -249,34 +309,25 @@ TEST_F(OptionDescriptorTest, ColorDepth) {
     GTEST_SKIP();
   }
 
-  bool color_depth_found = false;
+  auto option = GetSourceOption();
 
-  // Index 0 is the well-known option 0, which we skip here.
-  SANE_Int i = 1;
-  const SANE_Option_Descriptor* descriptor =
-      sane_get_option_descriptor(handle_, i);
-  while (descriptor) {
-    if (!descriptor->name ||
-        strcmp(descriptor->name, SANE_NAME_BIT_DEPTH) != 0) {
-      i++;
-      descriptor = sane_get_option_descriptor(handle_, i);
-      continue;
+  if (!option) {
+    // The scanner did not provide a source option. It must only have a single
+    // source.
+    TestColorDepth();
+  } else {
+    std::optional<std::vector<std::string>> sources =
+        option->GetValidStringValues();
+    ASSERT_TRUE(sources.has_value());
+    for (auto source : *sources) {
+      option->Set(source);
+      ASSERT_EQ(SANE_STATUS_GOOD,
+                sane_control_option(handle_, option->GetIndex(),
+                                    SANE_ACTION_SET_VALUE, option->GetPointer(),
+                                    nullptr));
+      TestColorDepth();
     }
-
-    EXPECT_EQ(descriptor->unit, SANE_UNIT_BIT)
-        << "Color depth option does not have unit: bit";
-
-    EXPECT_EQ(descriptor->type, SANE_TYPE_INT)
-        << "Color depth option does not have type: int";
-
-    EXPECT_EQ(descriptor->constraint_type, SANE_CONSTRAINT_WORD_LIST)
-        << "Color depth option does not have constraint type: word list";
-
-    color_depth_found = true;
-    break;
   }
-
-  EXPECT_TRUE(color_depth_found) << "Required option missing for name: depth";
 }
 
 TEST_F(OptionDescriptorTest, ADFJustification) {
