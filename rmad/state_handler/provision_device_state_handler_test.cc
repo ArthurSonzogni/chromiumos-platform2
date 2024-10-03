@@ -129,7 +129,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     std::string board_id_flags = kPvtBoardIdFlags;
     std::string hwid = kValidHwid;
     std::string brand_code = kHwidElements.brand_code.value();
-    GscVersion gsc_version = GscVersion::GSC_VERSION_CR50;
+    GscDevice gsc_device = GscDevice::GSC_DEVICE_H1;
     std::optional<FlashInfo> flash_info = std::nullopt;
     std::optional<HwidElements> hwid_elements = kHwidElements;
     std::optional<std::string> checksum = kHwidElements.checksum.value();
@@ -308,8 +308,8 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |TpmManagerClient|.
     auto mock_tpm_manager_client =
         std::make_unique<NiceMock<MockTpmManagerClient>>();
-    ON_CALL(*mock_tpm_manager_client, GetGscVersion(_))
-        .WillByDefault(DoAll(SetArgPointee<0>(args.gsc_version), Return(true)));
+    ON_CALL(*mock_tpm_manager_client, GetGscDevice(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(args.gsc_device), Return(true)));
 
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
@@ -1165,7 +1165,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
       .flash_info = flash_info,
   });
   handler->RunState();
@@ -1187,7 +1187,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
       .flash_size = std::nullopt,
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
   });
   handler->RunState();
   task_environment_.RunUntilIdle();
@@ -1209,7 +1209,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
       .set_addressing_success = false,
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
   });
   handler->RunState();
   task_environment_.RunUntilIdle();
@@ -1231,7 +1231,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
       .ap_wpsr_provisioned = true,
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
   });
   handler->RunState();
   task_environment_.RunUntilIdle();
@@ -1249,8 +1249,8 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_GetFlashInfo_Failed) {
   json_store_->SetValue(kWipeDevice, true);
 
   // Run the state handler.
-  auto handler = CreateInitializedStateHandler(
-      {.gsc_version = GscVersion::GSC_VERSION_TI50});
+  auto handler =
+      CreateInitializedStateHandler({.gsc_device = GscDevice::GSC_DEVICE_DT});
   handler->RunState();
   task_environment_.RunUntilIdle();
 
@@ -1274,7 +1274,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
       .get_ap_wpsr_success = false,
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
       .flash_info = flash_info,
   });
   handler->RunState();
@@ -1299,7 +1299,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
       .ap_wpsr_output = "INVALID\nOUTPUT\n",
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
       .flash_info = flash_info,
   });
   handler->RunState();
@@ -1325,7 +1325,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   // Run the state handler.
   auto handler = CreateInitializedStateHandler({
       .set_ap_wpsr_success = false,
-      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .gsc_device = GscDevice::GSC_DEVICE_DT,
       .flash_info = flash_info,
   });
   handler->RunState();

@@ -9,10 +9,10 @@
 
 namespace rmad {
 
-enum class GscVersion {
-  GSC_VERSION_NOT_GSC = 0,
-  GSC_VERSION_CR50 = 1,
-  GSC_VERSION_TI50 = 2,
+enum class GscDevice {
+  GSC_DEVICE_NOT_GSC = 0,
+  GSC_DEVICE_H1 = 1,
+  GSC_DEVICE_DT = 2,
 };
 
 class TpmManagerClient {
@@ -22,7 +22,7 @@ class TpmManagerClient {
 
   virtual bool GetRoVerificationStatus(
       RoVerificationStatus* ro_verification_status) = 0;
-  virtual bool GetGscVersion(GscVersion* gsc_version) = 0;
+  virtual bool GetGscDevice(GscDevice* gsc_device) = 0;
 };
 
 }  // namespace rmad

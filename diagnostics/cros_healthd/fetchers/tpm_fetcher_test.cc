@@ -6,15 +6,15 @@
 
 #include <optional>
 
-#include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client-test/attestation/dbus-proxy-mocks.h>
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -97,7 +97,7 @@ TEST_F(TpmFetcherTest, Success) {
 
 TEST_F(TpmFetcherTest, GetTpmVersionInfoSuccess) {
   auto version = tpm_manager::GetVersionInfoReply();
-  version.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  version.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   version.set_family(841887744);
   version.set_spec_level(116);
   version.set_manufacturer(1129467731);

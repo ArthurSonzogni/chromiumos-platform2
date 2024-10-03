@@ -9,15 +9,15 @@
 #include <string>
 #include <utility>
 
-#include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/check.h>
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -37,12 +37,12 @@ constexpr int64_t kDBusTimeoutMs = base::Minutes(2).InMilliseconds();
 
 mojom::TpmGSCVersion GetGscVersion(
     const tpm_manager::GetVersionInfoReply& reply) {
-  switch (reply.gsc_version()) {
-    case tpm_manager::GSC_VERSION_NOT_GSC:
+  switch (reply.gsc_device()) {
+    case tpm_manager::GSC_DEVICE_NOT_GSC:
       return mojom::TpmGSCVersion::kNotGSC;
-    case tpm_manager::GSC_VERSION_CR50:
+    case tpm_manager::GSC_DEVICE_H1:
       return mojom::TpmGSCVersion::kCr50;
-    case tpm_manager::GSC_VERSION_TI50:
+    case tpm_manager::GSC_DEVICE_DT:
       return mojom::TpmGSCVersion::kTi50;
   }
 }

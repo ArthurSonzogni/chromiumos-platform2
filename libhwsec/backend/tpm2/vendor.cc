@@ -16,8 +16,8 @@
 #include <base/sys_byteorder.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_utility.h>
 
@@ -157,10 +157,10 @@ StatusOr<int32_t> VendorTpm2::GetFingerprint() {
 StatusOr<VendorTpm2::GscType> VendorTpm2::GetGscType() {
   RETURN_IF_ERROR(EnsureVersionInfo());
 
-  switch (version_info_->gsc_version()) {
-    case tpm_manager::GscVersion::GSC_VERSION_CR50:
+  switch (version_info_->gsc_device()) {
+    case tpm_manager::GscDevice::GSC_DEVICE_H1:
       return GscType::kCr50;
-    case tpm_manager::GscVersion::GSC_VERSION_TI50:
+    case tpm_manager::GscDevice::GSC_DEVICE_DT:
       return GscType::kTi50;
     default:
       return GscType::kNotGsc;

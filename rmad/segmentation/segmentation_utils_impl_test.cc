@@ -50,7 +50,7 @@ class SegmentationUtilsTest : public testing::Test {
  public:
   struct Options {
     std::optional<std::string> devices_textproto = std::nullopt;
-    GscVersion gsc_version = GscVersion::GSC_VERSION_NOT_GSC;
+    GscDevice gsc_device = GscDevice::GSC_DEVICE_NOT_GSC;
     std::optional<std::string> board_id_type = kEmptyBoardIdType;
     bool is_initial_factory_mode = false;
     segmentation::FeatureManagementInterface::FeatureLevel feature_level =
@@ -77,9 +77,9 @@ class SegmentationUtilsTest : public testing::Test {
 
     auto mock_tpm_manager_client =
         std::make_unique<NiceMock<MockTpmManagerClient>>();
-    ON_CALL(*mock_tpm_manager_client, GetGscVersion(_))
+    ON_CALL(*mock_tpm_manager_client, GetGscDevice(_))
         .WillByDefault(
-            DoAll(SetArgPointee<0>(options.gsc_version), Return(true)));
+            DoAll(SetArgPointee<0>(options.gsc_device), Return(true)));
 
     auto mock_cros_config_utils =
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
@@ -153,41 +153,40 @@ TEST_F(SegmentationUtilsTest, IsFeatureEnabled_InvalidDeviceList) {
 
 TEST_F(SegmentationUtilsTest, IsFeatureMutable_NotGsc) {
   auto segmentation_utils =
-      CreateSegmentationUtils({.gsc_version = GscVersion::GSC_VERSION_NOT_GSC});
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_NOT_GSC});
   EXPECT_FALSE(segmentation_utils->IsFeatureMutable());
 }
 
 TEST_F(SegmentationUtilsTest, IsFeatureMutable_Cr50_BoardIdTypeEmpty) {
   auto segmentation_utils =
-      CreateSegmentationUtils({.gsc_version = GscVersion::GSC_VERSION_CR50,
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_H1,
                                .board_id_type = kEmptyBoardIdType});
   EXPECT_TRUE(segmentation_utils->IsFeatureMutable());
 }
 
 TEST_F(SegmentationUtilsTest, IsFeatureMutable_Cr50_BoardIdTypeNotEmpty) {
   auto segmentation_utils =
-      CreateSegmentationUtils({.gsc_version = GscVersion::GSC_VERSION_CR50,
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_H1,
                                .board_id_type = kTestBoardIdType});
   EXPECT_FALSE(segmentation_utils->IsFeatureMutable());
 }
 
 TEST_F(SegmentationUtilsTest, IsFeatureMutable_Cr50_BoardIdTypeFailed) {
-  auto segmentation_utils =
-      CreateSegmentationUtils({.gsc_version = GscVersion::GSC_VERSION_CR50,
-                               .board_id_type = std::nullopt});
+  auto segmentation_utils = CreateSegmentationUtils(
+      {.gsc_device = GscDevice::GSC_DEVICE_H1, .board_id_type = std::nullopt});
   EXPECT_FALSE(segmentation_utils->IsFeatureMutable());
 }
 
 TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50_InitialFactoryMode) {
   auto segmentation_utils =
-      CreateSegmentationUtils({.gsc_version = GscVersion::GSC_VERSION_TI50,
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_DT,
                                .is_initial_factory_mode = true});
   EXPECT_TRUE(segmentation_utils->IsFeatureMutable());
 }
 
 TEST_F(SegmentationUtilsTest, IsFeatureMutable_Ti50_NotInitialFactoryMode) {
   auto segmentation_utils =
-      CreateSegmentationUtils({.gsc_version = GscVersion::GSC_VERSION_TI50,
+      CreateSegmentationUtils({.gsc_device = GscDevice::GSC_DEVICE_DT,
                                .is_initial_factory_mode = false});
   EXPECT_FALSE(segmentation_utils->IsFeatureMutable());
 }

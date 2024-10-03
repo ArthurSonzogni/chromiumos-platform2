@@ -97,18 +97,18 @@ bool SegmentationUtilsImpl::IsFeatureEnabled() const {
 bool SegmentationUtilsImpl::IsFeatureMutable() const {
   // If anything goes wrong, assume feature is immutable to prevent someone
   // attempting to set the feature flags.
-  GscVersion gsc_version;
-  if (!tpm_manager_client_->GetGscVersion(&gsc_version)) {
+  GscDevice gsc_device;
+  if (!tpm_manager_client_->GetGscDevice(&gsc_device)) {
     LOG(ERROR) << "Failed to get GSC version";
     return false;
   }
   // Condition is different for Cr50 and Ti50.
-  switch (gsc_version) {
-    case GscVersion::GSC_VERSION_NOT_GSC:
+  switch (gsc_device) {
+    case GscDevice::GSC_DEVICE_NOT_GSC:
       return false;
-    case GscVersion::GSC_VERSION_CR50:
+    case GscDevice::GSC_DEVICE_H1:
       return IsBoardIdTypeEmpty();
-    case GscVersion::GSC_VERSION_TI50:
+    case GscDevice::GSC_DEVICE_DT:
       return IsInitialFactoryMode();
   }
 

@@ -261,15 +261,15 @@ metrics::Tpm AgentPlugin::GetTpmInformation(bool available) {
 
   base::AutoLock lock(tcb_attributes_lock_);
   auto security_chip = tcb_attributes_.mutable_security_chip();
-  if (version_reply.has_gsc_version()) {
-    switch (version_reply.gsc_version()) {
-      case tpm_manager::GSC_VERSION_NOT_GSC: {
+  if (version_reply.has_gsc_device()) {
+    switch (version_reply.gsc_device()) {
+      case tpm_manager::GSC_DEVICE_NOT_GSC: {
         security_chip->set_kind(pb::TcbAttributes_SecurityChip::Kind::
                                     TcbAttributes_SecurityChip_Kind_TPM);
         break;
       }
-      case tpm_manager::GSC_VERSION_CR50:
-      case tpm_manager::GSC_VERSION_TI50:
+      case tpm_manager::GSC_DEVICE_H1:
+      case tpm_manager::GSC_DEVICE_DT:
         security_chip->set_kind(
             pb::TcbAttributes_SecurityChip::Kind::
                 TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP);

@@ -7,8 +7,8 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/mock_command_transceiver.h>
 #include <trunks/mock_tpm_utility.h>
 
@@ -45,7 +45,7 @@ TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
   reply.set_tpm_model(1);
   reply.set_firmware_version(0x8E0F7DC508B56D7C);
   reply.set_vendor_specific(brillo::BlobToString(kFakeVendorSpecific));
-  reply.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  reply.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   reply.set_rw_version(std::to_string(kFakeEpoch) + "." +
                        std::to_string(kFakeMajor) + "." +
                        std::to_string(kFakeMinor));

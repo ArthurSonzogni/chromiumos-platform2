@@ -45,15 +45,14 @@ RoVerificationStatus TpmManagerRoStatusToRmadRoStatus(
   return RMAD_RO_VERIFICATION_UNSUPPORTED;
 }
 
-GscVersion TpmManagerGscVersionToRmadGscVersion(
-    tpm_manager::GscVersion version) {
-  switch (version) {
-    case tpm_manager::GSC_VERSION_NOT_GSC:
-      return GscVersion::GSC_VERSION_NOT_GSC;
-    case tpm_manager::GSC_VERSION_CR50:
-      return GscVersion::GSC_VERSION_CR50;
-    case tpm_manager::GSC_VERSION_TI50:
-      return GscVersion::GSC_VERSION_TI50;
+GscDevice TpmManagerGscDeviceToRmadGscDevice(tpm_manager::GscDevice device) {
+  switch (device) {
+    case tpm_manager::GSC_DEVICE_NOT_GSC:
+      return GscDevice::GSC_DEVICE_NOT_GSC;
+    case tpm_manager::GSC_DEVICE_H1:
+      return GscDevice::GSC_DEVICE_H1;
+    case tpm_manager::GSC_DEVICE_DT:
+      return GscDevice::GSC_DEVICE_DT;
     default:
       break;
   }
@@ -100,7 +99,7 @@ bool TpmManagerClientImpl::GetRoVerificationStatus(
   return true;
 }
 
-bool TpmManagerClientImpl::GetGscVersion(GscVersion* gsc_version) {
+bool TpmManagerClientImpl::GetGscDevice(GscDevice* gsc_device) {
   tpm_manager::GetVersionInfoRequest request;
   tpm_manager::GetVersionInfoReply reply;
 
@@ -115,8 +114,8 @@ bool TpmManagerClientImpl::GetGscVersion(GscVersion* gsc_version) {
     return false;
   }
 
-  if (gsc_version) {
-    *gsc_version = TpmManagerGscVersionToRmadGscVersion(reply.gsc_version());
+  if (gsc_device) {
+    *gsc_device = TpmManagerGscDeviceToRmadGscDevice(reply.gsc_device());
   }
   return true;
 }

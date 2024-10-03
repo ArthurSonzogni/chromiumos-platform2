@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sysexits.h>
+
 #include <cinttypes>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <sysexits.h>
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -17,13 +18,13 @@
 #include <brillo/syslog_logging.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
+#include "libhwsec-foundation/crypto/secure_blob_util.h"
+#include "libhwsec-foundation/status/status_chain_macros.h"
 #include "libhwsec/backend/vendor.h"
 #include "libhwsec/client/command_helpers.h"
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/factory/factory_impl.h"
 #include "libhwsec/frontend/client/frontend.h"
-#include "libhwsec-foundation/crypto/secure_blob_util.h"
-#include "libhwsec-foundation/status/status_chain_macros.h"
 
 using hwsec::ClientArgs;
 
@@ -155,8 +156,8 @@ struct GetVersionInfo {
            family, spec_level, manufacturer, tpm_model, firmware_version,
            vendor_specific_str.c_str());
 
-    if (tpm_model == tpm_manager::GscVersion::GSC_VERSION_CR50 ||
-        tpm_model == tpm_manager::GscVersion::GSC_VERSION_TI50) {
+    if (tpm_model == tpm_manager::GscDevice::GSC_DEVICE_H1 ||
+        tpm_model == tpm_manager::GscDevice::GSC_DEVICE_DT) {
       ASSIGN_OR_RETURN(hwsec::Vendor::RwVersion rw_version,
                        hwsec->GetRwVersion(), _.LogError().As(EXIT_FAILURE));
       printf("rw_version %" PRId32 ".%" PRId32 ".%" PRId32 "\n",

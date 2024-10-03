@@ -5,8 +5,6 @@
 #ifndef TPM_MANAGER_SERVER_TPM2_STATUS_IMPL_H_
 #define TPM_MANAGER_SERVER_TPM2_STATUS_IMPL_H_
 
-#include "tpm_manager/server/tpm_status.h"
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -16,6 +14,7 @@
 #include <trunks/trunks_factory.h>
 
 #include "tpm_manager/common/typedefs.h"
+#include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
 
@@ -45,7 +44,7 @@ class Tpm2StatusImpl : public TpmStatus {
   void MarkRandomOwnerPasswordSet() override;
   bool SupportU2f() override;
   bool SupportPinweaver() override;
-  GscVersion GetGscVersion() override;
+  GscDevice GetGscDevice() override;
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
   bool GetAlertsData(AlertsData* alerts) override;

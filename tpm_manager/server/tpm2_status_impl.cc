@@ -8,11 +8,11 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <trunks/cr50_headers/ap_ro_status.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
-#include <trunks/trunks_factory_impl.h>
-#include <trunks/cr50_headers/ap_ro_status.h>
 #include <trunks/tpm_utility.h>
+#include <trunks/trunks_factory_impl.h>
 
 #include "tpm_manager/server/tpm_manager_metrics.h"
 
@@ -321,14 +321,14 @@ bool Tpm2StatusImpl::SupportPinweaver() {
   return false;
 }
 
-GscVersion Tpm2StatusImpl::GetGscVersion() {
+GscDevice Tpm2StatusImpl::GetGscDevice() {
   if (USE_CR50_ONBOARD) {
-    return GscVersion::GSC_VERSION_CR50;
+    return GscDevice::GSC_DEVICE_H1;
   } else if (USE_TI50_ONBOARD) {
-    return GscVersion::GSC_VERSION_TI50;
+    return GscDevice::GSC_DEVICE_DT;
   }
 
-  return GscVersion::GSC_VERSION_NOT_GSC;
+  return GscDevice::GSC_DEVICE_NOT_GSC;
 }
 
 bool Tpm2StatusImpl::TestTpmSrkAndSaltingSession() {
@@ -433,7 +433,7 @@ bool Tpm2StatusImpl::GetRwVersion(std::string* rw_version) {
     return false;
   }
 
-  if (GetGscVersion() == GscVersion::GSC_VERSION_NOT_GSC) {
+  if (GetGscDevice() == GscDevice::GSC_DEVICE_NOT_GSC) {
     *rw_version = "0.0.0";
     VLOG(1) << "Report all zeros rw firmware version for non-GSC devices.";
     return true;
@@ -451,7 +451,7 @@ bool Tpm2StatusImpl::GetRwVersion(std::string* rw_version) {
 }
 
 void Tpm2StatusImpl::SendVendorSpecificMetrics(TpmManagerMetrics* metrics) {
-  if (GetGscVersion() == GscVersion::GSC_VERSION_TI50) {
+  if (GetGscDevice() == GscDevice::GSC_DEVICE_DT) {
     trunks::Ti50Stats stats = {0};
     if (GetTi50Stats(&stats)) {
       metrics->ReportFilesystemInitTime(stats.fs_init_time);

@@ -7,8 +7,8 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <trunks/mock_tpm_utility.h>
 
@@ -459,7 +459,7 @@ TEST_F(BackendU2fTpm2Test, CorpAttestFailed) {
 
 TEST_F(BackendU2fTpm2Test, GetFipsInfoTi50) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_TI50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_DT);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
@@ -476,7 +476,7 @@ TEST_F(BackendU2fTpm2Test, GetFipsInfoTi50) {
 
 TEST_F(BackendU2fTpm2Test, GetFipsInfoCr50Active) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
@@ -496,7 +496,7 @@ TEST_F(BackendU2fTpm2Test, GetFipsInfoCr50Active) {
 
 TEST_F(BackendU2fTpm2Test, GetFipsInfoInactive) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
@@ -510,7 +510,7 @@ TEST_F(BackendU2fTpm2Test, GetFipsInfoInactive) {
 
 TEST_F(BackendU2fTpm2Test, GetFipsInfoError) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
@@ -523,7 +523,7 @@ TEST_F(BackendU2fTpm2Test, GetFipsInfoError) {
 
 TEST_F(BackendU2fTpm2Test, ActivateFipsTi50) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_TI50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_DT);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
@@ -532,7 +532,7 @@ TEST_F(BackendU2fTpm2Test, ActivateFipsTi50) {
 
 TEST_F(BackendU2fTpm2Test, ActivateFipsSuccess) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 
@@ -547,7 +547,7 @@ TEST_F(BackendU2fTpm2Test, ActivateFipsSuccess) {
 
 TEST_F(BackendU2fTpm2Test, ActivateFipsError) {
   tpm_manager::GetVersionInfoReply version_info;
-  version_info.set_gsc_version(tpm_manager::GSC_VERSION_CR50);
+  version_info.set_gsc_device(tpm_manager::GSC_DEVICE_H1);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(version_info), Return(true)));
 

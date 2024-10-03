@@ -464,9 +464,9 @@ bool TpmStatusImpl::SupportPinweaver() {
   return false;
 }
 
-GscVersion TpmStatusImpl::GetGscVersion() {
+GscDevice TpmStatusImpl::GetGscDevice() {
   // TPM1.2 is not a GSC.
-  return GscVersion::GSC_VERSION_NOT_GSC;
+  return GscDevice::GSC_DEVICE_NOT_GSC;
 }
 
 bool TpmStatusImpl::GetRoVerificationStatus(

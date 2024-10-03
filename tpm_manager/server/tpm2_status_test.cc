@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "tpm_manager/server/tpm2_status_impl.h"
-
 #include <memory>
 
 #include <base/functional/bind.h>
@@ -17,6 +15,7 @@
 
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/mock_tpm_manager_metrics.h"
+#include "tpm_manager/server/tpm2_status_impl.h"
 
 using testing::_;
 using testing::Invoke;
@@ -295,9 +294,9 @@ TEST_F(Tpm2StatusTest, NotSupportPinweaver) {
   EXPECT_FALSE(tpm_status_->SupportPinweaver());
 }
 
-TEST_F(Tpm2StatusTest, GetGscVersion) {
+TEST_F(Tpm2StatusTest, GetGscDevice) {
   // Running this command should not crash.
-  tpm_status_->GetGscVersion();
+  tpm_status_->GetGscDevice();
 }
 
 TEST_F(Tpm2StatusTest, GetRoVerificationStatusSuccess) {
@@ -402,7 +401,7 @@ TEST_F(Tpm2StatusTest, GetRwVersionFailure) {
 
 TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV0) {
   StrictMock<MockTpmManagerMetrics> metrics{};
-  if (tpm_status_->GetGscVersion() == GscVersion::GSC_VERSION_TI50) {
+  if (tpm_status_->GetGscDevice() == GscDevice::GSC_DEVICE_DT) {
     EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))
         .WillOnce([](trunks::Ti50Stats* stats) {
           stats->fs_init_time = 1234;
@@ -427,7 +426,7 @@ TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV0) {
 
 TEST_F(Tpm2StatusTest, SendVendorSpecificMetricsV2) {
   StrictMock<MockTpmManagerMetrics> metrics{};
-  if (tpm_status_->GetGscVersion() == GscVersion::GSC_VERSION_TI50) {
+  if (tpm_status_->GetGscDevice() == GscDevice::GSC_DEVICE_DT) {
     EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_))
         .WillOnce([](trunks::Ti50Stats* stats) {
           stats->fs_init_time = 1234;

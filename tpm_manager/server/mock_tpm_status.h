@@ -5,12 +5,12 @@
 #ifndef TPM_MANAGER_SERVER_MOCK_TPM_STATUS_H_
 #define TPM_MANAGER_SERVER_MOCK_TPM_STATUS_H_
 
-#include "tpm_manager/server/tpm_status.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
 
@@ -38,7 +38,7 @@ class MockTpmStatus : public TpmStatus {
   MOCK_METHOD(void, MarkRandomOwnerPasswordSet, (), (override));
   MOCK_METHOD(bool, SupportU2f, (), (override));
   MOCK_METHOD(bool, SupportPinweaver, (), (override));
-  MOCK_METHOD(GscVersion, GetGscVersion, (), (override));
+  MOCK_METHOD(GscDevice, GetGscDevice, (), (override));
   MOCK_METHOD(bool,
               GetRoVerificationStatus,
               (tpm_manager::RoVerificationStatus*),

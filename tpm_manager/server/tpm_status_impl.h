@@ -5,18 +5,17 @@
 #ifndef TPM_MANAGER_SERVER_TPM_STATUS_IMPL_H_
 #define TPM_MANAGER_SERVER_TPM_STATUS_IMPL_H_
 
-#include "tpm_manager/server/tpm_status.h"
-
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <tpm_manager/server/tpm_connection.h>
 #include <trousers/tss.h>
 
-#include <tpm_manager/server/tpm_connection.h>
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
 
@@ -45,7 +44,7 @@ class TpmStatusImpl : public TpmStatus {
   void MarkRandomOwnerPasswordSet() override;
   bool SupportU2f() override;
   bool SupportPinweaver() override;
-  GscVersion GetGscVersion() override;
+  GscDevice GetGscDevice() override;
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
   bool GetAlertsData(AlertsData* alerts) override;

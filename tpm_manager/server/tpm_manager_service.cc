@@ -625,7 +625,7 @@ std::unique_ptr<GetVersionInfoReply> TpmManagerService::GetVersionInfoTask(
   reply->set_firmware_version(firmware_version);
   reply->set_vendor_specific(reinterpret_cast<char*>(vendor_specific.data()),
                              vendor_specific.size());
-  reply->set_gsc_version(tpm_status_->GetGscVersion());
+  reply->set_gsc_device(tpm_status_->GetGscDevice());
   reply->set_rw_version(rw_version);
   reply->set_status(STATUS_SUCCESS);
 

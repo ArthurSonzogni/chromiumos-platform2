@@ -63,7 +63,7 @@ using ::testing::WithArgs;
 struct BootmodeAndTpm {
   bool boot_mode;
   pb::TcbAttributes_FirmwareSecureBoot expected_firmware_secure_boot;
-  tpm_manager::GscVersion gsc_version;
+  tpm_manager::GscDevice gsc_device;
   pb::TcbAttributes_SecurityChip::Kind expected_security_chip_kind;
 };
 
@@ -215,7 +215,7 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   std::string family_string = "2.0";
   int manufacturer_decimal = 1397312853;
   std::string manufacturer_string = "SIMU";
-  tpm_information.set_gsc_version(tpm_manager::GSC_VERSION_NOT_GSC);
+  tpm_information.set_gsc_device(tpm_manager::GSC_DEVICE_NOT_GSC);
   tpm_information.set_family(family_decimal);
   tpm_information.set_spec_level((level << 32) | revision);
   tpm_information.set_manufacturer(manufacturer_decimal);
@@ -558,7 +558,7 @@ TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)
       .WillOnce(WithArg<1>(
           Invoke([&param](tpm_manager::GetVersionInfoReply* out_reply) {
-            out_reply->set_gsc_version(param.gsc_version);
+            out_reply->set_gsc_device(param.gsc_device);
             return true;
           })));
 
@@ -576,45 +576,44 @@ INSTANTIATE_TEST_SUITE_P(
     AgentPluginTestFixture,
     ::testing::ValuesIn<BootmodeAndTpm>({
         {false, pb::TcbAttributes_FirmwareSecureBoot_NONE,
-         tpm_manager::GscVersion::GSC_VERSION_NOT_GSC,
+         tpm_manager::GscDevice::GSC_DEVICE_NOT_GSC,
          pb::TcbAttributes_SecurityChip::Kind::
              TcbAttributes_SecurityChip_Kind_TPM},
         {false, pb::TcbAttributes_FirmwareSecureBoot_NONE,
-         tpm_manager::GscVersion::GSC_VERSION_CR50,
+         tpm_manager::GscDevice::GSC_DEVICE_H1,
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
         {false, pb::TcbAttributes_FirmwareSecureBoot_NONE,
-         tpm_manager::GscVersion::GSC_VERSION_TI50,
+         tpm_manager::GscDevice::GSC_DEVICE_DT,
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
         {true, pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT,
-         tpm_manager::GscVersion::GSC_VERSION_NOT_GSC,
+         tpm_manager::GscDevice::GSC_DEVICE_NOT_GSC,
          pb::TcbAttributes_SecurityChip::Kind::
              TcbAttributes_SecurityChip_Kind_TPM},
         {true, pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT,
-         tpm_manager::GscVersion::GSC_VERSION_CR50,
+         tpm_manager::GscDevice::GSC_DEVICE_H1,
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
         {true, pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT,
-         tpm_manager::GscVersion::GSC_VERSION_TI50,
+         tpm_manager::GscDevice::GSC_DEVICE_DT,
          pb::TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP},
     }),
     [](const ::testing::TestParamInfo<AgentPluginTestFixture::ParamType>&
            info) {
       std::string boot_mode =
           info.param.boot_mode ? "CrosVerifiedBoot" : "NoBoot";
-      std::string gsc_version;
+      std::string gsc_device;
 
-      switch (info.param.gsc_version) {
-        case tpm_manager::GscVersion::GSC_VERSION_NOT_GSC:
-          gsc_version = "NotGSC";
+      switch (info.param.gsc_device) {
+        case tpm_manager::GscDevice::GSC_DEVICE_NOT_GSC:
+          gsc_device = "NotGSC";
           break;
-        case tpm_manager::GscVersion::GSC_VERSION_CR50:
-          gsc_version = "CR50";
+        case tpm_manager::GscDevice::GSC_DEVICE_H1:
+          gsc_device = "CR50";
           break;
-        case tpm_manager::GscVersion::GSC_VERSION_TI50:
-          gsc_version = "TI50";
+        case tpm_manager::GscDevice::GSC_DEVICE_DT:
+          gsc_device = "TI50";
           break;
       }
-      return base::StringPrintf("%s_%s", boot_mode.c_str(),
-                                gsc_version.c_str());
+      return base::StringPrintf("%s_%s", boot_mode.c_str(), gsc_device.c_str());
     });
 
 }  // namespace secagentd::testing

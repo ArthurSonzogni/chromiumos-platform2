@@ -89,7 +89,7 @@ class TpmStatus {
   virtual bool SupportPinweaver() = 0;
 
   // Get the GSC version.
-  virtual GscVersion GetGscVersion() = 0;
+  virtual GscDevice GetGscDevice() = 0;
 
   // Get the RO verification status.
   virtual bool GetRoVerificationStatus(

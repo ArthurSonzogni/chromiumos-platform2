@@ -8,8 +8,8 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
 #include "libhwsec/overalls/mock_overalls.h"
@@ -43,7 +43,7 @@ TEST_F(BackendVendorTpm1Test, GetVersionInfo) {
   reply.set_tpm_model(0xFFFFFFFF);
   reply.set_firmware_version(0x62B);
   reply.set_vendor_specific(brillo::BlobToString(kFakeVendorSpecific));
-  reply.set_gsc_version(tpm_manager::GSC_VERSION_NOT_GSC);
+  reply.set_gsc_device(tpm_manager::GSC_DEVICE_NOT_GSC);
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
