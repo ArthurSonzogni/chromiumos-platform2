@@ -10,6 +10,9 @@
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <vm_protos/proto_bindings/vm_host.pb.h>
+
+#include "base/functional/callback_forward.h"
 
 namespace vm_tools::concierge {
 
@@ -48,6 +51,10 @@ grpc::Status StartupListenerImpl::VmInstallStatus(
     vm_tools::EmptyMessage* response) {
   LOG(INFO) << "Received VM install status: " << status->state();
   LOG(INFO) << "Install Step:" << status->in_progress_step();
+  if (install_state_cb_set_) {
+    LOG(INFO) << "Calling install state callback";
+    install_state_cb_.Run(*status);
+  }
   return grpc::Status::OK;
 }
 
@@ -60,6 +67,12 @@ void StartupListenerImpl::RemovePendingVm(uint32_t cid) {
   base::AutoLock lock(vm_lock_);
 
   pending_vms_.erase(cid);
+}
+
+void StartupListenerImpl::SetInstallStateCallback(
+    base::RepeatingCallback<void(VmInstallState state)> install_state_cb) {
+  install_state_cb_ = install_state_cb;
+  install_state_cb_set_ = true;
 }
 
 }  // namespace vm_tools::concierge

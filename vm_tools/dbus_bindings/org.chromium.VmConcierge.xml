@@ -780,6 +780,17 @@
                     value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::DnsSettings"/>
       </arg>
     </signal>
+    <signal name="VmInstallStateSignal">
+      <tp:docstring>
+        Indicates conclusion of VM installer, and success/failure status. The
+        origin of the signal is from the installer process, which concierge then
+        re-emits for Chrome listeners.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_concierge/concierge_service.pb.h;vm_tools::concierge::VmInstallStateSignal"/>
+      </arg>
+    </signal>
     <signal name="VmStartedSignal">
       <tp:docstring>
         Indicates that the concierge successfully launched crosvm as its child

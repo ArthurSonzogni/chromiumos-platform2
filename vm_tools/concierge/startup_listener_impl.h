@@ -14,6 +14,9 @@
 #include <base/synchronization/waitable_event.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
+#include <vm_protos/proto_bindings/vm_host.pb.h>
+
+#include "base/functional/callback.h"
 
 namespace vm_tools::concierge {
 
@@ -43,6 +46,10 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
   // Remove the WaitableEvent associated with |cid|.
   void RemovePendingVm(uint32_t cid);
 
+  // Set callback from concierge to signal install
+  void SetInstallStateCallback(
+      base::RepeatingCallback<void(VmInstallState state)> install_state_cb);
+
  private:
   // VMs that have been started but have not checked in as being ready yet. This
   // is a map of their cids to event fds registered in |AddPendingVm|.
@@ -51,6 +58,9 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
   // Lock to protect |pending_vms_|.
   // TODO(b/294160898): Use sequences instead of acquiring a lock here.
   base::Lock vm_lock_;
+
+  base::RepeatingCallback<void(VmInstallState state)> install_state_cb_;
+  bool install_state_cb_set_ = false;
 };
 
 }  // namespace vm_tools::concierge

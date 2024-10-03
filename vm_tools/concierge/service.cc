@@ -94,6 +94,7 @@
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
+#include <vm_protos/proto_bindings/vm_host.pb.h>
 
 #include "vm_tools/common/naming.h"
 #include "vm_tools/common/vm_id.h"
@@ -262,6 +263,48 @@ constexpr char kVmmSwapTbwHistoryFilePath[] =
 // D-Bus array length (64 MiB) and the configured maximum message size for the
 // system bus (usually 32 MiB).
 constexpr int64_t kMaxGetVmLogsSize = MiB(30);
+
+static const std::map<vm_tools::VmInstallState_State,
+                      vm_tools::concierge::VmInstallStateSignal_State>
+    state_to_signal_state = {{VmInstallState_State_IN_PROGRESS,
+                              vm_tools::concierge::VmInstallStateSignal_State::
+                                  VmInstallStateSignal_State_IN_PROGRESS},
+                             {VmInstallState_State_FAILED,
+                              vm_tools::concierge::VmInstallStateSignal_State::
+                                  VmInstallStateSignal_State_FAILED},
+                             {VmInstallState_State_SUCCEEDED,
+                              vm_tools::concierge::VmInstallStateSignal_State::
+                                  VmInstallStateSignal_State_SUCCEEDED},
+                             {VmInstallState_State_UNKNOWN,
+                              vm_tools::concierge::VmInstallStateSignal_State::
+                                  VmInstallStateSignal_State_UNKNOWN}};
+
+static const std::map<vm_tools::VmInstallState_Step,
+                      vm_tools::concierge::VmInstallStateSignal_Step>
+    state_to_signal_step = {{VmInstallState_Step_launcher_start,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_launcher_start},
+                            {VmInstallState_Step_core_start,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_core_start},
+                            {VmInstallState_Step_install_fetch_image,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_install_fetch_image},
+                            {VmInstallState_Step_install_configure,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_install_configure},
+                            {VmInstallState_Step_install_done,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_install_done},
+                            {VmInstallState_Step_install_success,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_install_success},
+                            {VmInstallState_Step_install_failure,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_install_failure},
+                            {VmInstallState_Step_unknown,
+                             vm_tools::concierge::VmInstallStateSignal_Step::
+                                 VmInstallStateSignal_Step_unknown}};
 
 std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
                                   bool is_rootfs_writable,
@@ -641,6 +684,25 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
   return response;
 }
 
+vm_tools::concierge::VmInstallStateSignal StateToSignal(VmInstallState state) {
+  vm_tools::concierge::VmInstallStateSignal signal;
+  if (auto it = state_to_signal_state.find(state.state());
+      it != state_to_signal_state.end()) {
+    signal.set_state(it->second);
+  } else {
+    signal.set_state(vm_tools::concierge::VmInstallStateSignal_State_UNKNOWN);
+  }
+
+  if (auto it = state_to_signal_step.find(state.in_progress_step());
+      it != state_to_signal_step.end()) {
+    signal.set_in_progress_step(it->second);
+  } else {
+    signal.set_in_progress_step(
+        vm_tools::concierge::VmInstallStateSignal_Step_unknown);
+  }
+  return signal;
+}
+
 }  // namespace
 
 namespace internal {
@@ -685,6 +747,12 @@ std::optional<internal::VmStartImageFds> GetVmStartImageFds(
   return result;
 }
 }  // namespace internal
+
+void Service::VmInstallStateSignal(VmInstallState state) {
+  if (concierge_adaptor_) {
+    concierge_adaptor_->SendVmInstallStateSignalSignal(StateToSignal(state));
+  }
+}
 
 base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
   std::string vm_dir;
@@ -1180,6 +1248,8 @@ bool Service::Init(MmServiceFactory mm_service_factory) {
   VMT_TRACE_END(kCategory);
 
   // Setup & start the gRPC listener services.
+  startup_listener_.SetInstallStateCallback(base::BindRepeating(
+      &Service::VmInstallStateSignal, weak_ptr_factory_.GetWeakPtr()));
   if (!SetupListenerService(
           &startup_listener_,
           base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,

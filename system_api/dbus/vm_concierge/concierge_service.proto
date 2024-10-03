@@ -505,7 +505,7 @@ message StartVmResponse {
     SUCCESS = 1;
 
     // The disk mount succeeded, but some data loss is
-    // likely. Currently this occurrs when the initial mount fails,
+    // likely. Currently this occurs when the initial mount fails,
     // but succeeds on a retry with -o usebackuproots.
     PARTIAL_DATA_LOSS = 2;
 
@@ -523,6 +523,30 @@ message StartVmResponse {
   // Whether the free_bytes field has been filled in. If false, ignore whatever
   // value is in the field.
   bool free_bytes_has_value = 7;
+}
+
+// Message used to communicate install status for VM.
+message VmInstallStateSignal {
+  enum State {
+    UNKNOWN = 0;
+    IN_PROGRESS = 1;
+    FAILED = 2;
+    SUCCEEDED = 3;
+  }
+  State state = 1;
+  enum Step {
+    unknown = 0;
+    launcher_start = 1;
+    core_start = 2;
+    install_fetch_image = 3;
+    install_configure = 4;
+    install_done = 5;
+    install_success = 6;
+    install_failure = 7;
+  }
+  Step in_progress_step = 2;
+  int64 in_progress_percent = 3;
+  string failed_reason = 4;
 }
 
 // Message used in the signal for when a VM has started, and can be controlled
