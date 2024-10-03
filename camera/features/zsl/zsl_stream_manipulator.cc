@@ -45,7 +45,7 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
   callbacks_ = std::move(callbacks);
   std::optional<uint8_t> vendor_tag =
       GetRoMetadata<uint8_t>(static_info, kCrosZslVendorTagCanAttempt);
-  can_attempt_zsl_ = vendor_tag.has_value() && *vendor_tag == 1;
+  can_attempt_zsl_ = vendor_tag == 1;
   LOGF(INFO) << "Can attempt to enable ZSL by private reprocessing: "
              << can_attempt_zsl_;
   if (!can_attempt_zsl_) {

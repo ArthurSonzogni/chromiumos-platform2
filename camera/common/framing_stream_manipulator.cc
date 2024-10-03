@@ -622,7 +622,7 @@ bool FramingStreamManipulator::InitializeOnThread(
 
   std::optional<uint8_t> vendor_tag =
       GetRoMetadata<uint8_t>(static_info, kCrosDigitalZoomVendorKey);
-  manual_zoom_supported_ = vendor_tag.has_value() && *vendor_tag == 1;
+  manual_zoom_supported_ = vendor_tag == 1;
 
   return true;
 }
