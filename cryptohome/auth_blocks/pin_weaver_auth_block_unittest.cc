@@ -26,12 +26,13 @@
 #include <libhwsec/error/tpm_error.h>
 #include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
+#include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/error/cryptohome_tpm_error.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -40,28 +41,29 @@
 namespace cryptohome {
 namespace {
 
-using base::test::TestFuture;
-using cryptohome::error::CryptohomeError;
-using cryptohome::error::CryptohomeTPMError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using hwsec_foundation::error::testing::IsOk;
-using hwsec_foundation::error::testing::NotOk;
-using hwsec_foundation::error::testing::OkStatus;
-
+using ::base::test::TestFuture;
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::kDefaultPassBlobSize;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::Exactly;
+using ::testing::IsTrue;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
+using ::testing::StrictMock;
 
 constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";
 
@@ -884,6 +886,113 @@ TEST_F(PinWeaverAuthBlockTest, PrepareForRemovalRemoveError) {
                                  auth_state, retry_result.GetCallback());
   EXPECT_TRUE(retry_result.IsReady());
   EXPECT_THAT(retry_result.Take(), IsOk());
+}
+
+// Test implementation of the non-pinweaver blocks. Just implements the calls
+// with mock functions. We use the ECC backed TPM identifier, but that doesn't
+// really matter it could be any block used for passwords.
+class TestPasswordAuthBlock : public NonPinweaverPasswordAuthBlock {
+ public:
+  explicit TestPasswordAuthBlock(const hwsec::CryptohomeFrontend& hwsec)
+      : NonPinweaverPasswordAuthBlock(kTpmBackedEcc, hwsec) {}
+
+  MOCK_METHOD(void,
+              Create,
+              (const AuthInput& user_input,
+               const AuthFactorMetadata& auth_factor_metadata,
+               CreateCallback callback),
+              (override));
+  MOCK_METHOD(void,
+              DerivePassword,
+              (const AuthInput& auth_input,
+               const AuthFactorMetadata& auth_factor_metadata,
+               const AuthBlockState& state,
+               DeriveCallback callback),
+              (override));
+};
+
+class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
+ public:
+  NonPinweaverPasswordAuthBlockTest() : test_auth_block_(hwsec_) {}
+
+ protected:
+  // Fake location for when we want the mock to return an error.
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<CryptohomeError::ErrorLocation>(1), std::string("test"));
+
+  base::test::TaskEnvironment task_environment_;
+
+  StrictMock<hwsec::MockCryptohomeFrontend> hwsec_;
+  TestPasswordAuthBlock test_auth_block_;
+};
+
+TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
+  AuthBlock& auth_block = test_auth_block_;
+
+  KeyBlobs* key_blobs_ptr = nullptr;
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+      .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs_ptr = key_blobs.get();
+        std::move(callback).Run(OkStatus<CryptohomeError>(),
+                                std::move(key_blobs), std::nullopt);
+      });
+
+  DeriveTestFuture result;
+  auth_block.Derive({}, {}, {}, result.GetCallback());
+
+  ASSERT_THAT(result.IsReady(), IsTrue());
+  auto [status, key_blobs, suggested_action] = result.Take();
+  EXPECT_THAT(status, IsOk());
+  EXPECT_THAT(key_blobs.get(), Eq(key_blobs_ptr));
+  EXPECT_THAT(suggested_action, Eq(AuthBlock::SuggestedAction::kRecreate));
+}
+
+TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
+  AuthBlock& auth_block = test_auth_block_;
+
+  KeyBlobs* key_blobs_ptr = nullptr;
+  EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
+  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+      .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs_ptr = key_blobs.get();
+        std::move(callback).Run(OkStatus<CryptohomeError>(),
+                                std::move(key_blobs), std::nullopt);
+      });
+
+  DeriveTestFuture result;
+  auth_block.Derive({}, {}, {}, result.GetCallback());
+
+  ASSERT_THAT(result.IsReady(), IsTrue());
+  auto [status, key_blobs, suggested_action] = result.Take();
+  EXPECT_THAT(status, IsOk());
+  EXPECT_THAT(key_blobs.get(), Eq(key_blobs_ptr));
+  EXPECT_THAT(suggested_action, Eq(std::nullopt));
+}
+
+TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingOnError) {
+  AuthBlock& auth_block = test_auth_block_;
+
+  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+      .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
+        std::move(callback).Run(MakeStatus<CryptohomeError>(
+                                    kErrorLocationForTesting, ErrorActionSet()),
+                                nullptr, std::nullopt);
+      });
+
+  DeriveTestFuture result;
+  auth_block.Derive({}, {}, {}, result.GetCallback());
+
+  ASSERT_THAT(result.IsReady(), IsTrue());
+  auto [status, key_blobs, suggested_action] = result.Take();
+  EXPECT_THAT(status, NotOk());
+  EXPECT_THAT(key_blobs.get(), Eq(nullptr));
+  EXPECT_THAT(suggested_action, Eq(std::nullopt));
 }
 
 }  // namespace cryptohome

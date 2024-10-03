@@ -54,7 +54,7 @@ user_data_auth::LockoutPolicy LockoutPolicyToAuthFactor(
 }  // namespace
 
 bool PinAuthFactorDriver::IsSupportedByHardware() const {
-  return PinWeaverAuthBlock::IsSupported(*crypto_).ok();
+  return PinWeaverAuthBlock::IsSupported(*crypto_->GetHwsec()).ok();
 }
 
 bool PinAuthFactorDriver::NeedsResetSecret() const {

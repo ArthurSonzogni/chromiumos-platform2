@@ -7,11 +7,11 @@
 
 #include <memory>
 
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/features.h"
@@ -36,7 +36,7 @@ class PinWeaverAuthBlock : public AuthBlock {
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kPinWeaver;
   using StateType = PinWeaverAuthBlockState;
-  static CryptoStatus IsSupported(Crypto& crypto);
+  static CryptoStatus IsSupported(const hwsec::CryptohomeFrontend& hwsec);
   static std::unique_ptr<AuthBlock> New(
       AsyncInitFeatures& features,
       const hwsec::PinWeaverManagerFrontend& hwsec_pw_manager);
@@ -68,6 +68,33 @@ class PinWeaverAuthBlock : public AuthBlock {
   // Feature lookup interface.
   AsyncInitFeatures* features_;
   const hwsec::PinWeaverManagerFrontend* const hwsec_pw_manager_;
+};
+
+// Wrapper implementation for password auth blocks which are not pinweaver.
+//
+// This abstract base will wrap the underlying Derive operation to request
+// recreating the block if pinweaver is available. This will upgrade the
+// blocks to pinweaver on such systems.
+class NonPinweaverPasswordAuthBlock : public AuthBlock {
+ protected:
+  NonPinweaverPasswordAuthBlock(DerivationType derivation_type,
+                                const hwsec::CryptohomeFrontend& hwsec);
+
+ private:
+  // Call DerivePassword, possibly adjusting the suggested action to request
+  // recreating the auth block.
+  void Derive(const AuthInput& auth_input,
+              const AuthFactorMetadata& auth_factor_metadata,
+              const AuthBlockState& state,
+              DeriveCallback callback) final;
+
+  // Subclasses should implement the actual underlying Derive operation here.
+  virtual void DerivePassword(const AuthInput& auth_input,
+                              const AuthFactorMetadata& auth_factor_metadata,
+                              const AuthBlockState& state,
+                              DeriveCallback callback) = 0;
+
+  const hwsec::CryptohomeFrontend* hwsec_;
 };
 
 }  // namespace cryptohome

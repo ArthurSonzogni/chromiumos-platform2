@@ -147,9 +147,9 @@ const DelaySchedule& PasswordDelaySchedule() {
   return *kValue;
 }
 
-CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
-  CHECK(crypto.GetHwsec());
-  hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
+CryptoStatus PinWeaverAuthBlock::IsSupported(
+    const hwsec::CryptohomeFrontend& hwsec) {
+  hwsec::StatusOr<bool> is_ready = hwsec.IsReady();
   if (!is_ready.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
@@ -165,7 +165,7 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  hwsec::StatusOr<bool> has_pinweaver = crypto.GetHwsec()->IsPinWeaverEnabled();
+  hwsec::StatusOr<bool> has_pinweaver = hwsec.IsPinWeaverEnabled();
   if (!has_pinweaver.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
@@ -586,6 +586,35 @@ uint32_t PinWeaverAuthBlock::GetLockoutDelay(uint64_t label) {
   }
 
   return delay.value();
+}
+
+NonPinweaverPasswordAuthBlock::NonPinweaverPasswordAuthBlock(
+    DerivationType derivation_type, const hwsec::CryptohomeFrontend& hwsec)
+    : AuthBlock(derivation_type), hwsec_(&hwsec) {}
+
+void NonPinweaverPasswordAuthBlock::Derive(
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    DeriveCallback callback) {
+  DerivePassword(
+      auth_input, auth_factor_metadata, state,
+      base::BindOnce(
+          [](DeriveCallback callback, const hwsec::CryptohomeFrontend* hwsec,
+             CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+             std::optional<SuggestedAction> suggested_action) {
+            // If pinweaver is supported, suggest "recreate" to upgrade the auth
+            // block to a pinweaver one. Don't do this if the Derive failed, or
+            // if there's already a competing suggested action.
+            if (error.ok() && !suggested_action.has_value() &&
+                PinWeaverAuthBlock::IsSupported(*hwsec).ok()) {
+              suggested_action = SuggestedAction::kRecreate;
+            }
+            // Forward the results to the original callback.
+            std::move(callback).Run(std::move(error), std::move(key_blobs),
+                                    suggested_action);
+          },
+          std::move(callback), hwsec_));
 }
 
 }  // namespace cryptohome
