@@ -18,6 +18,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -44,17 +45,19 @@ CryptoStatus DoubleWrappedCompatAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> DoubleWrappedCompatAuthBlock::New(
+    AsyncInitFeatures& features,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
   return std::make_unique<DoubleWrappedCompatAuthBlock>(
-      &hwsec, &cryptohome_keys_manager);
+      features, hwsec, cryptohome_keys_manager);
 }
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
-    const hwsec::CryptohomeFrontend* hwsec,
-    CryptohomeKeysManager* cryptohome_keys_manager)
-    : AuthBlock(kDoubleWrapped),
-      tpm_auth_block_(hwsec, cryptohome_keys_manager) {}
+    AsyncInitFeatures& features,
+    const hwsec::CryptohomeFrontend& hwsec,
+    CryptohomeKeysManager& cryptohome_keys_manager)
+    : NonPinweaverPasswordAuthBlock(kDoubleWrapped, features, hwsec),
+      tpm_auth_block_(features, hwsec, cryptohome_keys_manager) {}
 
 void DoubleWrappedCompatAuthBlock::Create(
     const AuthInput& user_input,
@@ -63,7 +66,7 @@ void DoubleWrappedCompatAuthBlock::Create(
   LOG(FATAL) << "Cannot create a keyset wrapped with both scrypt and TPM.";
 }
 
-void DoubleWrappedCompatAuthBlock::Derive(
+void DoubleWrappedCompatAuthBlock::DerivePassword(
     const AuthInput& user_input,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthBlockState& state,

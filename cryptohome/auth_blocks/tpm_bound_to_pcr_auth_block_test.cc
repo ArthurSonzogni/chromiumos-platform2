@@ -20,20 +20,21 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 
 namespace cryptohome {
 namespace {
 
-using base::test::TestFuture;
+using ::base::test::TestFuture;
 using ::hwsec::TPMError;
 using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::kDefaultPassBlobSize;
-using hwsec_foundation::error::testing::IsOk;
-using hwsec_foundation::error::testing::NotOk;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::testing::_;
@@ -62,16 +63,15 @@ void SetupMockHwsec(NiceMock<hwsec::MockCryptohomeFrontend>& hwsec) {
   ON_CALL(hwsec, IsReady()).WillByDefault(ReturnValue(true));
 }
 
-}  // namespace
-
 class TpmBoundToPcrTest : public ::testing::Test {
   void SetUp() override {
     SetupMockHwsec(hwsec_);
     auth_block_ = std::make_unique<TpmBoundToPcrAuthBlock>(
-        &hwsec_, &cryptohome_keys_manager_);
+        features_.async, hwsec_, cryptohome_keys_manager_);
   }
 
  protected:
+  FakeFeaturesForTesting features_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   std::unique_ptr<TpmBoundToPcrAuthBlock> auth_block_;
@@ -434,4 +434,6 @@ TEST_F(TpmBoundToPcrTest, DeriveFailureMissingExtendedTpmKey) {
   EXPECT_EQ(derive_status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
+
+}  // namespace
 }  // namespace cryptohome

@@ -76,12 +76,7 @@ class PinWeaverAuthBlock : public AuthBlock {
 // recreating the block if pinweaver is available. This will upgrade the
 // blocks to pinweaver on such systems.
 class NonPinweaverPasswordAuthBlock : public AuthBlock {
- protected:
-  NonPinweaverPasswordAuthBlock(DerivationType derivation_type,
-                                AsyncInitFeatures& features,
-                                const hwsec::CryptohomeFrontend& hwsec);
-
- private:
+ public:
   // Call DerivePassword, possibly adjusting the suggested action to request
   // recreating the auth block.
   void Derive(const AuthInput& auth_input,
@@ -89,6 +84,12 @@ class NonPinweaverPasswordAuthBlock : public AuthBlock {
               const AuthBlockState& state,
               DeriveCallback callback) final;
 
+ protected:
+  NonPinweaverPasswordAuthBlock(DerivationType derivation_type,
+                                AsyncInitFeatures& features,
+                                const hwsec::CryptohomeFrontend& hwsec);
+
+ private:
   // Subclasses should implement the actual underlying Derive operation here.
   virtual void DerivePassword(const AuthInput& auth_input,
                               const AuthFactorMetadata& auth_factor_metadata,

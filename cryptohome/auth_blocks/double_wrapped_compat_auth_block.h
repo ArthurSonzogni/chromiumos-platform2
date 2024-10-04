@@ -12,6 +12,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
@@ -22,18 +23,20 @@ namespace cryptohome {
 
 class CryptohomeKeysManager;
 
-class DoubleWrappedCompatAuthBlock : public AuthBlock {
+class DoubleWrappedCompatAuthBlock : public NonPinweaverPasswordAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kDoubleWrappedCompat;
   using StateType = DoubleWrappedCompatAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
+      AsyncInitFeatures& features,
       const hwsec::CryptohomeFrontend& hwsec,
       CryptohomeKeysManager& cryptohome_keys_manager);
 
-  DoubleWrappedCompatAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
-                               CryptohomeKeysManager* cryptohome_keys_manager);
+  DoubleWrappedCompatAuthBlock(AsyncInitFeatures& features,
+                               const hwsec::CryptohomeFrontend& hwsec,
+                               CryptohomeKeysManager& cryptohome_keys_manager);
 
   DoubleWrappedCompatAuthBlock(const DoubleWrappedCompatAuthBlock&) = delete;
   DoubleWrappedCompatAuthBlock& operator=(const DoubleWrappedCompatAuthBlock&) =
@@ -46,10 +49,10 @@ class DoubleWrappedCompatAuthBlock : public AuthBlock {
               CreateCallback callback) override;
 
   // First tries to derive the keys with scrypt, and falls back to the TPM.
-  void Derive(const AuthInput& user_input,
-              const AuthFactorMetadata& auth_factor_metadata,
-              const AuthBlockState& state,
-              DeriveCallback callback) override;
+  void DerivePassword(const AuthInput& user_input,
+                      const AuthFactorMetadata& auth_factor_metadata,
+                      const AuthBlockState& state,
+                      DeriveCallback callback) override;
 
  private:
   void CreateDeriveAfterScrypt(DeriveCallback callback,

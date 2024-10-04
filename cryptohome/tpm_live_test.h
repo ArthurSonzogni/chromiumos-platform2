@@ -10,7 +10,6 @@
 
 #include <map>
 #include <memory>
-#include <string>
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -18,6 +17,7 @@
 #include <libstorage/platform/fake_platform.h>
 
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/features.h"
 
 namespace cryptohome {
 
@@ -58,6 +58,7 @@ class TpmLiveTest {
                              const std::map<uint32_t, brillo::Blob>& pcr_map);
 
   libstorage::FakePlatform platform_;
+  AsyncInitFeatures features_;
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend> recovery_crypto_;

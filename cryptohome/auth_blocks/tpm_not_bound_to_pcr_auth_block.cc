@@ -87,25 +87,26 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> TpmNotBoundToPcrAuthBlock::New(
+    AsyncInitFeatures& features,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<TpmNotBoundToPcrAuthBlock>(&hwsec,
-                                                     &cryptohome_keys_manager);
+  return std::make_unique<TpmNotBoundToPcrAuthBlock>(features, hwsec,
+                                                     cryptohome_keys_manager);
 }
 
 TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
-    const hwsec::CryptohomeFrontend* hwsec,
-    CryptohomeKeysManager* cryptohome_keys_manager)
-    : AuthBlock(kTpmBackedNonPcrBound),
-      hwsec_(hwsec),
+    AsyncInitFeatures& features,
+    const hwsec::CryptohomeFrontend& hwsec,
+    CryptohomeKeysManager& cryptohome_keys_manager)
+    : NonPinweaverPasswordAuthBlock(kTpmBackedNonPcrBound, features, hwsec),
+      hwsec_(&hwsec),
       cryptohome_key_loader_(
-          cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)),
-      utils_(hwsec, cryptohome_key_loader_) {
-  CHECK(hwsec_ != nullptr);
+          cryptohome_keys_manager.GetKeyLoader(CryptohomeKeyType::kRSA)),
+      utils_(&hwsec, cryptohome_key_loader_) {
   CHECK(cryptohome_key_loader_ != nullptr);
 }
 
-void TpmNotBoundToPcrAuthBlock::Derive(
+void TpmNotBoundToPcrAuthBlock::DerivePassword(
     const AuthInput& auth_input,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthBlockState& state,

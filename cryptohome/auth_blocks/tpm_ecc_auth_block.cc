@@ -144,14 +144,14 @@ CryptoStatus TpmEccAuthBlock::IsSupported(Crypto& crypto) {
   return OkStatus<CryptohomeCryptoError>();
 }
 
-TpmEccAuthBlock::TpmEccAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
-                                 CryptohomeKeysManager* cryptohome_keys_manager)
-    : AuthBlock(kTpmBackedEcc),
-      hwsec_(hwsec),
+TpmEccAuthBlock::TpmEccAuthBlock(AsyncInitFeatures& features,
+                                 const hwsec::CryptohomeFrontend& hwsec,
+                                 CryptohomeKeysManager& cryptohome_keys_manager)
+    : NonPinweaverPasswordAuthBlock(kTpmBackedEcc, features, hwsec),
+      hwsec_(&hwsec),
       cryptohome_key_loader_(
-          cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kECC)),
-      utils_(hwsec, cryptohome_key_loader_) {
-  CHECK(hwsec_ != nullptr);
+          cryptohome_keys_manager.GetKeyLoader(CryptohomeKeyType::kECC)),
+      utils_(&hwsec, cryptohome_key_loader_) {
   CHECK(cryptohome_key_loader_ != nullptr);
 
   // Create the scrypt thread.
@@ -164,9 +164,11 @@ TpmEccAuthBlock::TpmEccAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
 }
 
 std::unique_ptr<AuthBlock> TpmEccAuthBlock::New(
+    AsyncInitFeatures& features,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<TpmEccAuthBlock>(&hwsec, &cryptohome_keys_manager);
+  return std::make_unique<TpmEccAuthBlock>(features, hwsec,
+                                           cryptohome_keys_manager);
 }
 
 void TpmEccAuthBlock::TryCreate(const AuthInput& user_input,
@@ -393,10 +395,11 @@ void TpmEccAuthBlock::Create(const AuthInput& user_input,
   TryCreate(user_input, kTryCreateMaxRetryCount, std::move(callback));
 }
 
-void TpmEccAuthBlock::Derive(const AuthInput& user_input,
-                             const AuthFactorMetadata& auth_factor_metadata,
-                             const AuthBlockState& state,
-                             AuthBlock::DeriveCallback callback) {
+void TpmEccAuthBlock::DerivePassword(
+    const AuthInput& user_input,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthBlockState& state,
+    AuthBlock::DeriveCallback callback) {
   if (!user_input.user_input.has_value()) {
     LOG(ERROR) << "Missing user_input";
     std::move(callback).Run(

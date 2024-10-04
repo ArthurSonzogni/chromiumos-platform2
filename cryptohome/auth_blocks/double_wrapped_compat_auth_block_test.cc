@@ -16,20 +16,19 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
+#include "cryptohome/fake_features.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 
 namespace cryptohome {
 namespace {
 
-using base::test::TestFuture;
-
-using hwsec_foundation::error::testing::IsOk;
+using ::base::test::TestFuture;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::testing::NiceMock;
 
 using DeriveTestFuture = TestFuture<CryptohomeStatus,
                                     std::unique_ptr<KeyBlobs>,
                                     std::optional<AuthBlock::SuggestedAction>>;
-
-}  // namespace
 
 class DoubleWrappedCompatAuthBlockTest : public ::testing::Test {
  protected:
@@ -124,9 +123,11 @@ TEST_F(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   AuthBlockState auth_state;
   EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
-  ::testing::NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
-  ::testing::NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  DoubleWrappedCompatAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
+  FakeFeaturesForTesting features;
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  DoubleWrappedCompatAuthBlock auth_block(features.async, hwsec,
+                                          cryptohome_keys_manager);
 
   DeriveTestFuture result;
   auth_block.Derive(auth_input, metadata, auth_state, result.GetCallback());
@@ -134,4 +135,6 @@ TEST_F(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   auto [status, key_blobs, suggested_action] = result.Take();
   ASSERT_THAT(status, IsOk());
 }
+
+}  // namespace
 }  // namespace cryptohome

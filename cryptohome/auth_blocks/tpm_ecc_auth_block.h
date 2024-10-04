@@ -14,26 +14,30 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
 
-class TpmEccAuthBlock : public AuthBlock {
+class TpmEccAuthBlock : public NonPinweaverPasswordAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kTpmEcc;
   using StateType = TpmEccAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
+      AsyncInitFeatures& features,
       const hwsec::CryptohomeFrontend& hwsec,
       CryptohomeKeysManager& cryptohome_keys_manager);
 
-  TpmEccAuthBlock(const hwsec::CryptohomeFrontend* hwsec,
-                  CryptohomeKeysManager* cryptohome_keys_manager);
+  TpmEccAuthBlock(AsyncInitFeatures& features,
+                  const hwsec::CryptohomeFrontend& hwsec,
+                  CryptohomeKeysManager& cryptohome_keys_manager);
 
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;
   TpmEccAuthBlock& operator=(const TpmEccAuthBlock&) = delete;
@@ -42,10 +46,10 @@ class TpmEccAuthBlock : public AuthBlock {
               const AuthFactorMetadata& auth_factor_metadata,
               CreateCallback callback) override;
 
-  void Derive(const AuthInput& auth_input,
-              const AuthFactorMetadata& auth_factor_metadata,
-              const AuthBlockState& state,
-              DeriveCallback callback) override;
+  void DerivePassword(const AuthInput& auth_input,
+                      const AuthFactorMetadata& auth_factor_metadata,
+                      const AuthBlockState& state,
+                      DeriveCallback callback) override;
 
  private:
   // The create process may fail due to the scalar of EC_POINT_mul out of range.

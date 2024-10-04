@@ -915,8 +915,7 @@ class TestPasswordAuthBlock : public NonPinweaverPasswordAuthBlock {
 
 class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
  public:
-  NonPinweaverPasswordAuthBlockTest()
-      : test_auth_block_(features_.async, hwsec_) {}
+  NonPinweaverPasswordAuthBlockTest() : auth_block_(features_.async, hwsec_) {}
 
  protected:
   // Fake location for when we want the mock to return an error.
@@ -928,17 +927,15 @@ class NonPinweaverPasswordAuthBlockTest : public ::testing::Test {
 
   FakeFeaturesForTesting features_;
   StrictMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  TestPasswordAuthBlock test_auth_block_;
+  TestPasswordAuthBlock auth_block_;
 };
 
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
-  AuthBlock& auth_block = test_auth_block_;
-
   features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   KeyBlobs* key_blobs_ptr = nullptr;
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
-  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+  EXPECT_CALL(auth_block_, DerivePassword(_, _, _, _))
       .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs_ptr = key_blobs.get();
@@ -947,7 +944,7 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
       });
 
   DeriveTestFuture result;
-  auth_block.Derive({}, {}, {}, result.GetCallback());
+  auth_block_.Derive({}, {}, {}, result.GetCallback());
 
   ASSERT_THAT(result.IsReady(), IsTrue());
   auto [status, key_blobs, suggested_action] = result.Take();
@@ -957,11 +954,9 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsRecreate) {
 }
 
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoFeature) {
-  AuthBlock& auth_block = test_auth_block_;
-
   features_.SetDefaultForFeature(Features::kPinweaverForPassword, false);
   KeyBlobs* key_blobs_ptr = nullptr;
-  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+  EXPECT_CALL(auth_block_, DerivePassword(_, _, _, _))
       .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs_ptr = key_blobs.get();
@@ -970,7 +965,7 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoFeature) {
       });
 
   DeriveTestFuture result;
-  auth_block.Derive({}, {}, {}, result.GetCallback());
+  auth_block_.Derive({}, {}, {}, result.GetCallback());
 
   ASSERT_THAT(result.IsReady(), IsTrue());
   auto [status, key_blobs, suggested_action] = result.Take();
@@ -980,13 +975,11 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoFeature) {
 }
 
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
-  AuthBlock& auth_block = test_auth_block_;
-
   features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
   KeyBlobs* key_blobs_ptr = nullptr;
   EXPECT_CALL(hwsec_, IsReady()).WillOnce(ReturnValue(true));
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
-  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+  EXPECT_CALL(auth_block_, DerivePassword(_, _, _, _))
       .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs_ptr = key_blobs.get();
@@ -995,7 +988,7 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
       });
 
   DeriveTestFuture result;
-  auth_block.Derive({}, {}, {}, result.GetCallback());
+  auth_block_.Derive({}, {}, {}, result.GetCallback());
 
   ASSERT_THAT(result.IsReady(), IsTrue());
   auto [status, key_blobs, suggested_action] = result.Take();
@@ -1005,10 +998,8 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingIfNoPinweaver) {
 }
 
 TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingOnError) {
-  AuthBlock& auth_block = test_auth_block_;
-
   features_.SetDefaultForFeature(Features::kPinweaverForPassword, true);
-  EXPECT_CALL(test_auth_block_, DerivePassword(_, _, _, _))
+  EXPECT_CALL(auth_block_, DerivePassword(_, _, _, _))
       .WillOnce([&](auto, auto, auto, AuthBlock::DeriveCallback callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
                                     kErrorLocationForTesting, ErrorActionSet()),
@@ -1016,7 +1007,7 @@ TEST_F(NonPinweaverPasswordAuthBlockTest, DeriveSuggestsNothingOnError) {
       });
 
   DeriveTestFuture result;
-  auth_block.Derive({}, {}, {}, result.GetCallback());
+  auth_block_.Derive({}, {}, {}, result.GetCallback());
 
   ASSERT_THAT(result.IsReady(), IsTrue());
   auto [status, key_blobs, suggested_action] = result.Take();

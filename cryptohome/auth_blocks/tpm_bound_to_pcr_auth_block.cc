@@ -32,6 +32,7 @@
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/features.h"
 #include "cryptohome/username.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -95,21 +96,22 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 std::unique_ptr<AuthBlock> TpmBoundToPcrAuthBlock::New(
+    AsyncInitFeatures& features,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<TpmBoundToPcrAuthBlock>(&hwsec,
-                                                  &cryptohome_keys_manager);
+  return std::make_unique<TpmBoundToPcrAuthBlock>(features, hwsec,
+                                                  cryptohome_keys_manager);
 }
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
-    const hwsec::CryptohomeFrontend* hwsec,
-    CryptohomeKeysManager* cryptohome_keys_manager)
-    : AuthBlock(kTpmBackedPcrBound),
-      hwsec_(hwsec),
+    AsyncInitFeatures& features,
+    const hwsec::CryptohomeFrontend& hwsec,
+    CryptohomeKeysManager& cryptohome_keys_manager)
+    : NonPinweaverPasswordAuthBlock(kTpmBackedPcrBound, features, hwsec),
+      hwsec_(&hwsec),
       cryptohome_key_loader_(
-          cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)),
-      utils_(hwsec, cryptohome_key_loader_) {
-  CHECK(hwsec_ != nullptr);
+          cryptohome_keys_manager.GetKeyLoader(CryptohomeKeyType::kRSA)),
+      utils_(&hwsec, cryptohome_key_loader_) {
   CHECK(cryptohome_key_loader_ != nullptr);
 
   // Create the scrypt thread.
@@ -264,7 +266,7 @@ void TpmBoundToPcrAuthBlock::Create(
                           std::move(key_blobs), std::move(auth_block_state));
 }
 
-void TpmBoundToPcrAuthBlock::Derive(
+void TpmBoundToPcrAuthBlock::DerivePassword(
     const AuthInput& auth_input,
     const AuthFactorMetadata& auth_factor_metadata,
     const AuthBlockState& state,

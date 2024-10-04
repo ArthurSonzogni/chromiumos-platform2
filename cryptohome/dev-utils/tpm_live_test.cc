@@ -47,6 +47,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/utilities.h"
+#include "cryptohome/features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/username.h"
@@ -193,7 +194,8 @@ hwsec::GenerateDhSharedSecretRequest CloneDhSharedSecretRequest(
 }  // namespace
 
 TpmLiveTest::TpmLiveTest()
-    : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
+    : features_(base::BindRepeating([]() -> Features* { return nullptr; })),
+      hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
       hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
       recovery_crypto_(hwsec_factory_->GetRecoveryCryptoFrontend()),
       cryptohome_keys_manager_(hwsec_.get(), &platform_) {
@@ -219,22 +221,22 @@ void TpmLiveTest::TpmEccAuthBlockTest(TPMTestCallback callback) {
     return;
   }
 
-  auto auth_block = std::make_unique<TpmEccAuthBlock>(
-      hwsec_.get(), &cryptohome_keys_manager_);
+  auto auth_block = std::make_unique<TpmEccAuthBlock>(features_, *hwsec_,
+                                                      cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
 void TpmLiveTest::TpmBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmBoundToPcrAuthBlockTest started";
   auto auth_block = std::make_unique<TpmBoundToPcrAuthBlock>(
-      hwsec_.get(), &cryptohome_keys_manager_);
+      features_, *hwsec_, cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
 void TpmLiveTest::TpmNotBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmNotBoundToPcrAuthBlockTest started";
   auto auth_block = std::make_unique<TpmNotBoundToPcrAuthBlock>(
-      hwsec_.get(), &cryptohome_keys_manager_);
+      features_, *hwsec_, cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
