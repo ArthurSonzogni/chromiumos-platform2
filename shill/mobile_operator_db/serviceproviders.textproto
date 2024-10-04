@@ -9613,13 +9613,14 @@ mno {
     uuid: "d1d4554d-62be-462c-a1c7-412208572b56"
     country: "nl"
     localized_name {
-      name: "T-Mobile NL"
+      name: "Odido"
     }
+    mccmnc: "20402"
     mccmnc: "20416"
     mccmnc: "20420"
     mobile_apn {
-      apn: "smartsites.t-mobile"
-      ip_type: IPV4V6
+      apn: "internet.mobiel"
+      ip_type: IPV4
       type: DEFAULT
     }
   }
@@ -9640,21 +9641,6 @@ mno {
         ip_type: IPV4V6
         type: DEFAULT
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid: "6864e27a-d529-4297-9273-17649eb21262"
-    country: "nl"
-    localized_name {
-      name: "T-Mobile"
-    }
-    mccmnc: "20416"
-    mobile_apn {
-      apn: "internet"
-      type: DEFAULT
     }
   }
   mvno {
@@ -9688,25 +9674,6 @@ mno {
     mccmnc: "20418"
     mobile_apn {
       apn: "internet.ziggo.nl"
-      type: DEFAULT
-    }
-  }
-}
-
-mno {
-  data {
-    uuid: "014e3ffb-1560-4c03-83b7-2742a4532a8b"
-    country: "nl"
-    localized_name {
-      name: "Tele2"
-    }
-    mccmnc: "20402"
-    mobile_apn {
-      apn: "internet.tele2.nl"
-      type: DEFAULT
-    }
-    mobile_apn {
-      apn: "data.tele2.nl"
       type: DEFAULT
     }
   }
