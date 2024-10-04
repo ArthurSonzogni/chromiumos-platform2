@@ -116,6 +116,8 @@ void IntelPMTCollector::OneShotWork() {
 
   LOG(INFO) << "PMT snapshot_size_ = " << snapshot_->ByteSizeLong();
   LOG(INFO) << "PMT old_snapshot_size = " << header.snapshot_size();
+  // We have to reset log offset after reading its header.
+  lseek(log_fd_, header_size_ + counter_ * snapshot_->ByteSizeLong(), SEEK_SET);
   if (header.snapshot_size() != snapshot_->ByteSizeLong()) {
     LOG(INFO) << "PMT snapshot size changes, clean up logs";
     CleanUpLogsAndSetNewHeader();
