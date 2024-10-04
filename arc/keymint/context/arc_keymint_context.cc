@@ -409,6 +409,8 @@ keymaster_error_t ArcKeyMintContext::CreateKeyBlob(
         case KM_TAG_ORIGIN:
         case KM_TAG_OS_VERSION:
         case KM_TAG_OS_PATCHLEVEL:
+        case KM_TAG_VENDOR_PATCHLEVEL:
+        case KM_TAG_BOOT_PATCHLEVEL:
         case KM_TAG_EARLY_BOOT_ONLY:
         case KM_TAG_UNLOCKED_DEVICE_REQUIRED:
         case KM_TAG_RSA_OAEP_MGF_DIGEST:
@@ -435,6 +437,14 @@ keymaster_error_t ArcKeyMintContext::CreateKeyBlob(
       key_description, origin, os_version_, os_patchlevel_, hw_enforced,
       sw_enforced, GetKmVersion());
   if (error != KM_ERROR_OK) {
+    return error;
+  }
+
+  error = ExtendKeyBlobAuthorizations(hw_enforced, sw_enforced,
+                                      vendor_patchlevel_, boot_patchlevel_);
+  if (error != KM_ERROR_OK) {
+    LOG(ERROR) << "Failed to extend key blob authorizations with vendor patch "
+                  "level and boot patch level";
     return error;
   }
 
