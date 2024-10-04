@@ -1325,6 +1325,13 @@ void Cellular::OnModemDestroyed() {
   set_interface_index(Modem::kCellularDefaultInterfaceIndex);
   set_link_name(Modem::kCellularDefaultInterfaceName);
 
+  // In scenario where shill triggers disconnect due to default link going
+  // down, we may not receive disconnect complete callback OnDisconnectReply(),
+  // and may receive OnModemDestroyed() directly, so we should clear flag
+  // here. If not cleared, it will impact when we call EstablishLink() next
+  // time.
+  explicit_disconnect_ = false;
+
   // When underlying modem is not available, device should be reported as
   // disabled.
   SetEnabledState(false);
