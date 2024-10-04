@@ -1421,9 +1421,13 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode,
     //    frames in the video.
     // 2. Do not drop frames for external camera, because it may not support
     //    constant frame rate and the hardware timestamp is not stable enough.
+    // 3. Do not drop frames when use kQuirkUserSpaceTimestamp, because in
+    //    such case the camera can not provide monotonically increasing
+    //    timestamp.
   } while (!is_video_recording_ && !IsExternalCamera() &&
            allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts &&
-           drop_count < input_buffers_.size());
+           drop_count < input_buffers_.size() &&
+           !(device_info_.quirks & kQuirkUserSpaceTimestamp));
   current_buffer_timestamp_in_user_ = user_ts;
   current_buffer_timestamp_in_v4l2_ = v4l2_ts;
 
