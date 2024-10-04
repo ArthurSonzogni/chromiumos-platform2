@@ -147,7 +147,7 @@ bool MinigbmAllocator::BufferObject::MapInternal(SyncType sync_type,
       gbm_bo_map2(bo_, 0, 0, gbm_bo_get_width(bo_), gbm_bo_get_height(bo_),
                   SyncTypeToGbmTransferFlag(sync_type), &stride,
                   &plane_data_[plane].map_data, plane);
-  if (addr == MAP_FAILED) {
+  if (addr == nullptr || addr == MAP_FAILED) {
     PLOGF(ERROR) << "Failed to map buffer";
     plane_data_[plane].map_data = nullptr;
     return false;
