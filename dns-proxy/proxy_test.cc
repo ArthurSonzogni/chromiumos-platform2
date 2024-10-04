@@ -40,10 +40,7 @@ constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
 constexpr int32_t kRequestMaxRetry = 1;
 
 int make_fd() {
-  std::string fn(
-      ::testing::UnitTest::GetInstance()->current_test_info()->name());
-  fn = "/tmp/" + fn;
-  return open(fn.c_str(), O_CREAT, 0600);
+  return open("/dev/null", O_RDONLY);
 }
 
 // A helper function to convert a list of IP addresses from type std::string to
@@ -179,11 +176,13 @@ class TestProxy : public Proxy {
             std::unique_ptr<patchpanel::Client> patchpanel,
             std::unique_ptr<shill::Client> shill,
             std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
-                msg_dispatcher)
+                msg_dispatcher,
+            bool root_ns_enabled)
       : Proxy(opts,
               std::move(patchpanel),
               std::move(shill),
-              std::move(msg_dispatcher)) {}
+              std::move(msg_dispatcher),
+              root_ns_enabled) {}
 
   std::unique_ptr<Resolver> resolver;
   std::unique_ptr<Resolver> NewResolver(base::TimeDelta timeout,
@@ -193,7 +192,8 @@ class TestProxy : public Proxy {
   }
 };
 
-class ProxyTest : public ::testing::Test {
+class ProxyTest : public ::testing::Test,
+                  public ::testing::WithParamInterface<bool> {
  protected:
   ProxyTest()
       : mock_bus_(new dbus::MockBus{dbus::Bus::Options{}}),
@@ -207,7 +207,8 @@ class ProxyTest : public ::testing::Test {
         .WillRepeatedly(Return(mock_proxy_.get()));
   }
 
-  void SetUpProxy(const Proxy::Options& opts,
+  void SetUpProxy(bool root_ns_enabled,
+                  const Proxy::Options& opts,
                   std::unique_ptr<shill::Client::Device> device = nullptr,
                   bool set_resolver = true) {
     // Set up mocks and fakes.
@@ -220,7 +221,8 @@ class ProxyTest : public ::testing::Test {
     // Initialize Proxy instance.
     proxy_ = std::make_unique<TestProxy>(
         opts, base::WrapUnique(patchpanel_client_),
-        base::WrapUnique(shill_client_), base::WrapUnique(msg_dispatcher_));
+        base::WrapUnique(shill_client_), base::WrapUnique(msg_dispatcher_),
+        root_ns_enabled);
 
     // Initialize default proxy behaviors.
     proxy_->shill_ready_ = true;
@@ -287,32 +289,39 @@ class ProxyTest : public ::testing::Test {
   std::unique_ptr<TestProxy> proxy_;
 };
 
-TEST_F(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill) {
+// Test with DNS proxy running on root namespace and inside a network namespace.
+INSTANTIATE_TEST_SUITE_P(ProxyTestInstance,
+                         ProxyTest,
+                         ::testing::Values(false, true));
+
+TEST_P(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill) {
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   int unused;
   proxy_->OnShutdown(&unused);
 }
 
-TEST_F(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill) {
+TEST_P(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill) {
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _)).Times(0);
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _)).Times(0);
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault}, ShillDevice());
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice());
   int unused;
   proxy_->OnShutdown(&unused);
 }
 
-TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
+TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   EXPECT_CALL(mock_manager_, SetProperty(_, _, _, _)).Times(0);
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr,
                                     /*die_on_failure=*/false,
                                     /*num_retries=*/0);
 }
 
-TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre(kNetnsPeerIPv4Addr.ToString(),
@@ -322,8 +331,9 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
   proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 }
 
-TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
 
   // Only IPv4 nameserver.
   SetNameServers({"8.8.8.8"}, /*ipv6_nameservers=*/{});
@@ -342,14 +352,15 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
   proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 }
 
-TEST_F(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
   proxy_->ClearShillDNSProxyAddresses();
 }
 
-TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, SystemProxy_SendIPAddressesToController) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
 
   ProxyAddrMessage msg;
@@ -361,8 +372,9 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
   proxy_->SendIPAddressesToController(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 }
 
-TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
 
   // Only IPv4 nameserver.
   SetNameServers({"8.8.8.8"}, /*ipv6_nameservers=*/{});
@@ -383,14 +395,14 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   proxy_->SendIPAddressesToController(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 }
 
-TEST_F(ProxyTest, SystemProxy_ClearIPAddressesInController) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_ClearIPAddressesInController) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   EXPECT_CALL(*msg_dispatcher_, SendMessage(_)).WillOnce(Return(true));
   proxy_->ClearIPAddressesInController();
 }
 
-TEST_F(ProxyTest, ShillInitializedWhenReady) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, ShillInitializedWhenReady) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
 
   // Test class defaults to make shill client ready. Reset to false.
   proxy_->shill_ready_ = false;
@@ -398,8 +410,8 @@ TEST_F(ProxyTest, ShillInitializedWhenReady) {
   EXPECT_TRUE(proxy_->shill_ready_);
 }
 
-TEST_F(ProxyTest, SystemProxy_ConnectedNamedspace) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_ConnectedNamedspace) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
 
   EXPECT_CALL(
       *patchpanel_client_,
@@ -411,8 +423,9 @@ TEST_F(ProxyTest, SystemProxy_ConnectedNamedspace) {
   proxy_->OnPatchpanelReady(true);
 }
 
-TEST_F(ProxyTest, DefaultProxy_ConnectedNamedspace) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault}, ShillDevice());
+TEST_P(ProxyTest, DefaultProxy_ConnectedNamedspace) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice());
 
   EXPECT_CALL(
       *patchpanel_client_,
@@ -424,8 +437,9 @@ TEST_F(ProxyTest, DefaultProxy_ConnectedNamedspace) {
   proxy_->OnPatchpanelReady(true);
 }
 
-TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"});
+TEST_P(ProxyTest, ArcProxy_ConnectedNamedspace) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"});
 
   EXPECT_CALL(*patchpanel_client_,
               ConnectNamespace(_, _, /*outbound_ifname=*/"eth0",
@@ -437,8 +451,9 @@ TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
   proxy_->OnPatchpanelReady(true);
 }
 
-TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, ShillResetRestoresAddressProperty) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
@@ -450,16 +465,18 @@ TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   proxy_->OnShillReset(true);
 }
 
-TEST_F(ProxyTest, StateClearedIfDefaultServiceDrops) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, StateClearedIfDefaultServiceDrops) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
 
   proxy_->OnDefaultDeviceChanged(nullptr /* no service */);
   EXPECT_FALSE(proxy_->device_);
   EXPECT_FALSE(proxy_->resolver_);
 }
 
-TEST_F(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
 
   proxy_->OnDefaultDeviceChanged(nullptr /* no service */);
@@ -467,8 +484,9 @@ TEST_F(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops) {
   EXPECT_TRUE(proxy_->resolver_);
 }
 
-TEST_F(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kReady);
   proxy_->OnDefaultDeviceChanged(dev.get());
@@ -477,8 +495,8 @@ TEST_F(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
   EXPECT_FALSE(proxy_->resolver_);
 }
 
-TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault},
+TEST_P(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              /*device=*/nullptr, /*set_resolver=*/false);
 
   auto* new_resolver = new MockResolver();
@@ -494,8 +512,8 @@ TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
   EXPECT_TRUE(proxy_->resolver_);
 }
 
-TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault});
+TEST_P(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0",
@@ -508,8 +526,8 @@ TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
   proxy_->OnDefaultDeviceChanged(dev.get());
 }
 
-TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline);
@@ -518,8 +536,8 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   proxy_->OnDefaultDeviceChanged(dev.get());
 }
 
-TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_IgnoresVPN) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   // Expect default device changes to WiFi.
@@ -535,8 +553,8 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
   EXPECT_EQ(proxy_->device_->type, shill::Client::Device::Type::kWifi);
 }
 
-TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   shill_client_->default_device_ =
@@ -550,8 +568,8 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
   EXPECT_EQ(proxy_->device_->type, shill::Client::Device::Type::kWifi);
 }
 
-TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault});
+TEST_P(ProxyTest, DefaultProxy_UsesVPN) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
 
   auto wifi = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                           shill::Client::Device::Type::kWifi);
@@ -566,8 +584,9 @@ TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
   EXPECT_EQ(proxy_->device_->type, shill::Client::Device::Type::kVPN);
 }
 
-TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
+TEST_P(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
 
   // Set name servers on device change event.
   auto wifi = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -596,8 +615,8 @@ TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
   proxy_->OnDeviceChanged(wifi.get());
 }
 
-TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   // Set name servers on device change event.
@@ -619,8 +638,8 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   proxy_->OnDeviceChanged(dev.get());
 }
 
-TEST_F(ProxyTest, DeviceChangeEventIgnored) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, DeviceChangeEventIgnored) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -640,8 +659,8 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   proxy_->OnDeviceChanged(dev.get());
 }
 
-TEST_F(ProxyTest, BasicDoHDisable) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, BasicDoHDisable) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   EXPECT_CALL(*resolver_, SetDoHProviders(IsEmpty(), false));
@@ -649,8 +668,8 @@ TEST_F(ProxyTest, BasicDoHDisable) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, BasicDoHAlwaysOn) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, BasicDoHAlwaysOn) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   EXPECT_CALL(
@@ -661,8 +680,8 @@ TEST_F(ProxyTest, BasicDoHAlwaysOn) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, BasicDoHAutomatic) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, BasicDoHAutomatic) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
   SetNameServers({"8.8.4.4"}, /*ipv6_nameservers=*/{});
 
@@ -674,8 +693,8 @@ TEST_F(ProxyTest, BasicDoHAutomatic) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, BasicDoHSecureWithFallback) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, BasicDoHSecureWithFallback) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
   SetNameServers({"8.8.4.4"}, /*ipv6_nameservers=*/{});
 
@@ -688,8 +707,8 @@ TEST_F(ProxyTest, BasicDoHSecureWithFallback) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   EXPECT_CALL(
@@ -700,8 +719,8 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
   SetNameServers({"8.8.4.4"}, /*ipv6_nameservers=*/{});
 
@@ -713,8 +732,8 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_SecureWithFallback) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, RemovesDNSQueryParameterTemplate_SecureWithFallback) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
   SetNameServers({"8.8.4.4"}, /*ipv6_nameservers=*/{});
 
@@ -727,8 +746,8 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_SecureWithFallback) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, NewResolverConfiguredWhenSet) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   brillo::VariantDictionary props;
@@ -748,8 +767,8 @@ TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
   proxy_->doh_config_.set_resolver(resolver_);
 }
 
-TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, DoHModeChangingFixedNameServers) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   // Initially off.
@@ -820,8 +839,8 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
   SetNameServers({"8.8.8.8"}, {"2620:119:35::35"});
 }
 
-TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   EXPECT_CALL(*resolver_, SetDoHProviders(UnorderedElementsAre(
@@ -834,8 +853,8 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   SetNameServers({"1.1.1.1", "10.10.10.10"}, /*ipv6_nameservers=*/{});
@@ -863,8 +882,8 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
   SetNameServers({"8.8.8.8", "10.10.10.10"}, {"2620:fe::9", "2620:119:53::53"});
 }
 
-TEST_F(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
   SetNameServers({"1.1.1.1", "10.10.10.10"}, /*ipv6_nameservers=*/{});
@@ -883,8 +902,8 @@ TEST_F(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
-TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+TEST_P(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
   SetNameServers({"1.1.1.1", "10.10.10.10"}, /*ipv6_nameservers=*/{});
 
@@ -912,8 +931,8 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
   SetNameServers({"8.8.8.8", "10.10.10.10"}, {"2620:fe::9", "2620:119:53::53"});
 }
 
-TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
+TEST_P(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   // System proxy requests a DnsRedirectionRule to exclude traffic destined
@@ -949,8 +968,9 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
                  "eth0"));
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault}, ShillDevice());
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
@@ -967,8 +987,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault});
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
   // Empty active device.
@@ -992,8 +1012,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault},
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0"));
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
@@ -1021,8 +1041,8 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
-TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault},
+TEST_P(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0"));
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
@@ -1035,8 +1055,9 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
                  "eth0"));
 }
 
-TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
 
@@ -1061,8 +1082,9 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   proxy_->RTNLMessageHandler(msg);
 }
 
-TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
 
   proxy_->lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                                 base::ScopedFD(make_fd()));
@@ -1077,8 +1099,8 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault});
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
 
   // Default device changed.
@@ -1110,8 +1132,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 1);
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault}, ShillDevice());
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
 
@@ -1143,8 +1166,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   proxy_->RTNLMessageHandler(msg);
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault}, ShillDevice());
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice());
 
   proxy_->lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                                 base::ScopedFD(make_fd()));
@@ -1166,8 +1190,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
-TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault}, ShillDevice());
+TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice());
 
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillRepeatedly(
@@ -1198,8 +1223,9 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   proxy_->RTNLMessageHandler(msg_unrelated_scope);
 }
 
-TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
@@ -1222,8 +1248,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
 }
 
-TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
@@ -1250,8 +1277,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
-TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   proxy_->ns_peer_ipv6_address_ = kNetnsPeerIPv6Addr;
 
@@ -1262,8 +1290,9 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
       virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0"));
 }
 
-TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
+TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
   proxy_->device_ = ShillDevice();
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
 
@@ -1274,8 +1303,9 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
       virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0"));
 }
 
-TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
 
@@ -1303,8 +1333,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   proxy_->RTNLMessageHandler(msg);
 }
 
-TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
 
   proxy_->lifeline_fds_.emplace(std::make_pair("arc_eth0", AF_INET6),
@@ -1325,8 +1356,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
-TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
 
   EXPECT_CALL(*patchpanel_client_, GetDevices())
@@ -1358,8 +1390,9 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   proxy_->RTNLMessageHandler(msg_unrelated_scope);
 }
 
-TEST_F(ProxyTest, UpdateNameServers) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
+TEST_P(ProxyTest, UpdateNameServers) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice());
   proxy_->device_->network_config.dns_servers = StringsToIPAddressesChecked(
       {// IPv4 name servers.
        "8.8.8.8", "192.168.1.1",

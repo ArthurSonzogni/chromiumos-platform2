@@ -38,6 +38,10 @@ class ChromeFeaturesServiceClient {
   // dns-proxy service is enabled.
   virtual void IsDNSProxyEnabled(IsFeatureEnabledCallback callback);
 
+  // Checks the Chrome Features service to determine whether or not the
+  // dns-proxy service should be running on the root namespace.
+  virtual void IsRootNsDNSProxyEnabled(IsFeatureEnabledCallback callback);
+
  private:
   void OnWaitForServiceAndCallMethod(const std::string& method_name,
                                      IsFeatureEnabledCallback callback,

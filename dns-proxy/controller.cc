@@ -134,10 +134,16 @@ void Controller::Setup() {
   if (features_) {
     features_->IsDNSProxyEnabled(base::BindOnce(&Controller::OnFeatureEnabled,
                                                 weak_factory_.GetWeakPtr()));
+    // TODO(jasongustaman): Call Chrome feature service for root namespace DNS
+    // proxy feature.
+    root_ns_enabled_.emplace(false);
   } else {
     LOG(ERROR) << "Failed to initialize Chrome features client - "
                << "service will be enabled by default";
-    feature_enabled_.emplace(true);
+    service_enabled_.emplace(true);
+    LOG(ERROR) << "Failed to initialize Chrome features client - "
+               << "service will be enabled inside a network namespace";
+    root_ns_enabled_.emplace(false);
   }
 
   patchpanel_ = patchpanel::Client::New(bus_);
@@ -172,12 +178,29 @@ void Controller::OnFeatureEnabled(std::optional<bool> enabled) {
   if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to read feature flag - "
                << "service will be enabled by default";
-    feature_enabled_.emplace(true);
+    service_enabled_.emplace(true);
   } else {
-    feature_enabled_.emplace(enabled.value());
+    service_enabled_.emplace(enabled.value());
     LOG(INFO) << "Service "
-              << (feature_enabled_.value() ? "enabled" : "disabled")
+              << (service_enabled_.value() ? "enabled" : "disabled")
               << " by feature flag";
+  }
+}
+
+void Controller::OnRootNsEnabled(std::optional<bool> enabled) {
+  // Avoid starting child processes when the controller is shut down.
+  if (is_shutdown_) {
+    return;
+  }
+  if (!enabled.has_value()) {
+    LOG(ERROR) << "Failed to read feature flag - "
+               << "service will be enabled inside a network namespace";
+    root_ns_enabled_.emplace(true);
+  } else {
+    root_ns_enabled_.emplace(enabled.value());
+    LOG(INFO) << "Service is running on "
+              << (root_ns_enabled_.value() ? "root namespace"
+                                           : "network namespace");
   }
 }
 
@@ -239,13 +262,13 @@ void Controller::OnShillReset(bool reset) {
 }
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
-  if (!feature_enabled_.has_value()) {
+  if (!service_enabled_.has_value() || !root_ns_enabled_.has_value()) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&Controller::RunProxy,
                                   weak_factory_.GetWeakPtr(), type, ifname));
     return;
   }
-  if (!feature_enabled_.value()) {
+  if (!service_enabled_.value()) {
     return;
   }
 
@@ -302,6 +325,10 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   }
   std::string flag_vmodule = "--vmodule=" + vmodule_;
   argv.push_back(const_cast<char*>(flag_vmodule.c_str()));
+  std::string flag_root_ns = "--root_ns";
+  if (root_ns_enabled_.value()) {
+    argv.push_back(const_cast<char*>(flag_root_ns.c_str()));
+  }
   argv.push_back(nullptr);
 
   pid_t pid;

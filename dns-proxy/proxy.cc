@@ -137,8 +137,10 @@ std::ostream& operator<<(std::ostream& stream, const Proxy& proxy) {
   return stream << "}";
 }
 
-Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
-    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+Proxy::Proxy(const Proxy::Options& opts, int32_t fd, bool root_ns_enabled)
+    : opts_(opts),
+      metrics_proc_type_(ProcessTypeOf(opts_.type)),
+      root_ns_enabled_(root_ns_enabled) {
   doh_config_.set_logger(
       base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()));
   if (opts_.type == Type::kSystem) {
@@ -160,11 +162,13 @@ Proxy::Proxy(const Options& opts,
              std::unique_ptr<patchpanel::Client> patchpanel,
              std::unique_ptr<shill::Client> shill,
              std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
-                 msg_dispatcher)
+                 msg_dispatcher,
+             bool root_ns_enabled)
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)),
-      metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+      metrics_proc_type_(ProcessTypeOf(opts_.type)),
+      root_ns_enabled_(root_ns_enabled) {
   if (opts_.type == Type::kSystem) {
     msg_dispatcher_ = std::move(msg_dispatcher);
   }

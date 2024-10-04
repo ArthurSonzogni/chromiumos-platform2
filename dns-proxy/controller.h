@@ -130,11 +130,16 @@ class Controller : public brillo::DBusDaemon {
   // IsDNSProxyEnabled.
   void OnFeatureEnabled(std::optional<bool> enabled);
 
+  // Triggered by the Chrome features client in response to checking
+  // IsRootNsDNSProxyEnabled.
+  void OnRootNsEnabled(std::optional<bool> enabled);
+
   FRIEND_TEST(ControllerTest, SetProxyAddrs);
   FRIEND_TEST(ControllerTest, ClearProxyAddrs);
 
   const std::string progname_;
   const std::string vmodule_;
+
   brillo::ProcessReaper process_reaper_;
   std::set<ProxyProc> proxies_;
   std::map<ProxyProc, ProxyRestarts> restarts_;
@@ -152,7 +157,10 @@ class Controller : public brillo::DBusDaemon {
 
   bool is_shutdown_{false};
 
-  std::optional<bool> feature_enabled_;
+  // Whether or not DNS proxy is running on the root namespace.
+  std::optional<bool> root_ns_enabled_;
+  // Whether or not DNS proxy service is running.
+  std::optional<bool> service_enabled_;
   std::unique_ptr<ChromeFeaturesServiceClient> features_;
 
   Metrics metrics_;

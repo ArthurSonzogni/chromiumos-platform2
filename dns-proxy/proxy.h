@@ -50,13 +50,14 @@ class Proxy : public brillo::DBusDaemon {
 
   using Logger = base::RepeatingCallback<void(std::ostream& stream)>;
 
-  Proxy(const Options& opts, int32_t fd);
+  Proxy(const Options& opts, int32_t fd, bool root_ns_enabled);
   // For testing.
   Proxy(const Options& opts,
         std::unique_ptr<patchpanel::Client> patchpanel,
         std::unique_ptr<shill::Client> shill,
         std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
-            msg_dispatcher);
+            msg_dispatcher,
+        bool root_ns_enabled);
   Proxy(const Proxy&) = delete;
   Proxy& operator=(const Proxy&) = delete;
   ~Proxy() = default;
@@ -326,6 +327,9 @@ class Proxy : public brillo::DBusDaemon {
 
   Metrics metrics_;
   const Metrics::ProcessType metrics_proc_type_;
+
+  // Whether or not DNS proxy is running on the root namespace.
+  const bool root_ns_enabled_;
 
   // Helper to send system proxy's IP addresses to be the controller. This is
   // necessary to write to /etc/resolv.conf.

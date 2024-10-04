@@ -261,6 +261,8 @@ const char kChromeFeaturesServiceIsPeripheralDataAccessEnabledMethod[] =
     "IsPeripheralDataAccessEnabled";
 const char kChromeFeaturesServiceIsDNSProxyEnabledMethod[] =
     "IsDNSProxyEnabled";
+const char kChromeFeaturesServiceIsRootNsDnsProxyEnabledMethod[] =
+    "IsRootNsDnsProxyEnabled";
 const char kChromeFeaturesServiceIsSuspendToDiskEnabledMethod[] =
     "IsSuspendToDiskEnabled";
 

@@ -14,6 +14,7 @@
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(log_to_stderr, false, "Log to both syslog and stderr");
+  DEFINE_bool(root_ns, false, "Run DNS proxy on the root namespace");
   DEFINE_string(t, "", "The proxy type or empty to run the controller");
   DEFINE_string(i, "", "The outbound network interface");
   DEFINE_int32(
@@ -38,7 +39,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (auto t = dns_proxy::Proxy::StringToType(FLAGS_t)) {
-    dns_proxy::Proxy proxy({.type = t.value(), .ifname = FLAGS_i}, FLAGS_fd);
+    dns_proxy::Proxy proxy({.type = t.value(), .ifname = FLAGS_i}, FLAGS_fd,
+                           FLAGS_root_ns);
     return proxy.Run();
   }
 
