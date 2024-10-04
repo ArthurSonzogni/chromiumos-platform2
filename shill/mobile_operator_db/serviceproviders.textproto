@@ -13800,11 +13800,8 @@ mno {
   }
   mvno {
     mvno_filter {
-      type: IMSI
-      range {
-        start: 310240150000000
-        end: 310240154999999
-      }
+      type: GID1
+      regex: "1A53"
     }
     data {
       uuid: "1964c3cf-748d-4bd2-993b-42086f5a7316"
@@ -13812,7 +13809,6 @@ mno {
       localized_name {
         name: "Assurance Wireless"
       }
-      mccmnc: "310240"
       mobile_apn {
         apn: "asw.data"
         ip_type: IPV6
