@@ -9,10 +9,10 @@
 
 #include <utility>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/strcat.h>
-#include "base/files/file_util.h"
 #include <base/rand_util.h>
+#include <base/strings/strcat.h>
 #include <base/uuid.h>
 
 namespace metrics::structured {
@@ -128,10 +128,10 @@ bool BatchEventStorage::IsMaxTimer() {
 
 void BatchEventStorage::MaybeWrite() {
   if (IsMaxByteSize()) {
-    PLOG(INFO) << "Events at max memory capacity. Triggering a flush.";
+    LOG(INFO) << "Events at max memory capacity. Triggering a flush.";
     Flush();
   } else if (IsMaxTimer()) {
-    PLOG(INFO) << "Events at exceeded timer. Triggering a flush.";
+    LOG(INFO) << "Events at exceeded timer. Triggering a flush.";
     Flush();
   }
 }
@@ -144,7 +144,7 @@ void BatchEventStorage::Flush() {
   }
 
   if (!WriteEventsProtoToDir(events_directory_.value(), events_)) {
-    PLOG(WARNING) << "Events flush failed to " << events_directory_.value();
+    LOG(WARNING) << "Events flush failed to " << events_directory_.value();
     return;
   }
 
