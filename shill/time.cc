@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <time.h>
-
 #include "shill/time.h"
+
+#include <time.h>
 
 #include <base/format_macros.h>
 #include <base/strings/stringprintf.h>
@@ -100,24 +100,6 @@ std::string Time::FormatTime(const struct tm& date_time, suseconds_t usec) {
   }
 
   return full_string;
-}
-
-// TODO(crbug.com/166153): Copied from Chrome's //base/time/time_now_posix.cc.
-// Make upstream code available via libchrome and use it here: crbug.com/166153
-// static
-int64_t Time::ConvertTimespecToMicros(const struct timespec& ts) {
-  // On 32-bit systems, the calculation cannot overflow int64_t.
-  // 2**32 * 1000000 + 2**64 / 1000 < 2**63
-  if (sizeof(ts.tv_sec) <= 4 && sizeof(ts.tv_nsec) <= 8) {
-    int64_t result = ts.tv_sec;
-    result *= base::Time::kMicrosecondsPerSecond;
-    result += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
-    return result;
-  }
-  base::CheckedNumeric<int64_t> result(ts.tv_sec);
-  result *= base::Time::kMicrosecondsPerSecond;
-  result += (ts.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
-  return result.ValueOrDie();
 }
 
 }  // namespace shill

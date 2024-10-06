@@ -58,8 +58,6 @@ class Time {
 
   static std::string FormatTime(const struct tm& date_time, suseconds_t usec);
 
-  static int64_t ConvertTimespecToMicros(const struct timespec& ts);
-
  protected:
   Time();
   Time(const Time&) = delete;
