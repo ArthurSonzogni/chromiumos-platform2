@@ -93,7 +93,7 @@ fn main() -> Result<()> {
             reclaim_client.handle_reclaim_socket_readable()?;
         }
         if is_mglru_file_readable {
-            reclaim_client.handle_mglru_notification()?;
+            reclaim_client.handle_mglru_notification(Instant::now())?;
         }
         if received_low_psi_notification {
             kills_client.handle_psi_notification(
