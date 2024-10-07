@@ -681,6 +681,19 @@ if (use.fuzzer) {
 
 if (use.test) {
   pkg_config("shill_unittest_config") {
+    # gtest is very expensive to compile, and in shill there are some large
+    # unit test source files which may take more than 1 minute to compile.
+    # Since in most cases the unit test will only be run once after compilation,
+    # it doesn't seem to be necessary to do optimization in compilation, if the
+    # time needed by optimization is much longer than the time gained when
+    # running the tests. If the host and target architecture match, the unit
+    # test run time is very short (~6 seconds with `-O0` on a single thread),
+    # so disabling optimization can speed up the local development iteration,
+    # and also reduce the usage of lab resources in the CQ.
+    # Assume the host arch is also amd64 here.
+    if (getenv("ARCH") == "amd64") {
+      cflags_cc = [ "-O0" ]
+    }
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
@@ -891,8 +904,11 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":libshill_config",
-      ":shill_unittest_config",
       ":target_defaults",
+
+      # Put this as the last one to make the cflags_cc set there can take
+      # effect.
+      ":shill_unittest_config",
     ]
 
     # Workaround for b/266863330: disable PCH when the user generates
