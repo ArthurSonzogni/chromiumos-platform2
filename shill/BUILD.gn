@@ -338,6 +338,7 @@ static_library("libshill") {
     "network/legacy_dhcpcd/legacy_dhcpcd_listener.cc",
     "network/legacy_dhcpcd/legacy_dhcpcd_proxy.cc",
     "network/network.cc",
+    "network/network_context.cc",
     "network/network_manager.cc",
     "network/network_monitor.cc",
     "network/portal_detector.cc",

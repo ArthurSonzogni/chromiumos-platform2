@@ -41,6 +41,7 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
+#include "shill/network/network_context.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/network/validation_log.h"
@@ -141,13 +142,13 @@ Network::Network(
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
-      logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
+      context_(interface_name_),
       proc_fs_(std::make_unique<net_base::ProcFsStub>(interface_name_)),
       legacy_dhcp_controller_factory_(
           std::move(legacy_dhcp_controller_factory)),
       dhcp_controller_factory_(std::move(dhcp_controller_factory)),
-      config_(logging_tag_),
+      config_(interface_name_),
       network_monitor_factory_(std::move(network_monitor_factory)),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
@@ -197,7 +198,8 @@ void Network::Start(const Network::StartOptions& opts) {
       dispatcher_, metrics_, this, patchpanel_client_, technology_,
       interface_index_, interface_name_, probing_configuration_,
       opts.validation_mode,
-      std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
+      std::make_unique<ValidationLog>(technology_, metrics_),
+      context_.logging_tag());
   network_monitor_->SetCapportEnabled(capport_enabled_);
 
   // Cannot avoid a copy here since |opts| is a const ref.
@@ -1110,11 +1112,11 @@ void Network::StartConnectivityTest(
   }
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, patchpanel_client_, interface_name_, probe_config,
-      logging_tag_);
+      context_.logging_tag());
   connectivity_test_portal_detector_->Start(
       /*http_only=*/false, *family, dns_list,
       base::BindOnce(&Network::ConnectivityTestCallback,
-                     weak_factory_.GetWeakPtr(), logging_tag_));
+                     weak_factory_.GetWeakPtr(), context_.logging_tag()));
 }
 
 void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
@@ -1282,7 +1284,7 @@ void Network::OnTermsAndConditions(const net_base::HttpUrl& url) {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
-  return stream << network.interface_name() << " " << network.logging_tag();
+  return stream << network.context_.logging_tag();
 }
 
 }  // namespace shill

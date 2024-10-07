@@ -1159,7 +1159,7 @@ void Service::AttachNetwork(base::WeakPtr<Network> network) {
     return;
   }
   attached_network_ = network;
-  attached_network_->set_logging_tag(log_name());
+  attached_network_->SetServiceLoggingName(log_name());
   adaptor_->EmitIntChanged(kNetworkIDProperty, network->network_id());
   EmitIPConfigPropertyChange();
   EmitNetworkConfigPropertyChange();
@@ -1179,7 +1179,7 @@ void Service::DetachNetwork() {
   attached_network_->UnregisterEventHandler(network_event_handler_.get());
   attached_network_->RegisterCurrentIPConfigChangeHandler({});
   attached_network_->OnStaticIPConfigChanged({});
-  attached_network_->set_logging_tag("");
+  attached_network_->ClearServiceLoggingName();
   attached_network_ = nullptr;
   EmitNetworkConfigPropertyChange();
   EmitIPConfigPropertyChange();

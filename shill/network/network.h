@@ -33,6 +33,7 @@
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
+#include "shill/network/network_context.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/portal_detector.h"
 #include "shill/network/slaac_controller.h"
@@ -362,10 +363,11 @@ class Network : public NetworkMonitor::ClientNetwork {
   RpcIdentifiers AvailableIPConfigIdentifiers() const;
 
   bool fixed_ip_params() const { return fixed_ip_params_; }
-  const std::string& logging_tag() const { return logging_tag_; }
-  void set_logging_tag(std::string_view logging_tag) {
-    logging_tag_ = logging_tag;
+
+  void SetServiceLoggingName(std::string_view name) {
+    context_.SetServiceLoggingName(name);
   }
+  void ClearServiceLoggingName() { context_.ClearServiceLoggingName(); }
 
   // Returns true if the IPv4 or IPv6 gateway respectively has been observed as
   // a reachable neighbor for the current active connection. Reachability can
@@ -472,6 +474,8 @@ class Network : public NetworkMonitor::ClientNetwork {
   // TODO(b/232177767): Refactor StaticIPParametersTest to remove this
   // dependency
   friend class StaticIPParametersTest;
+  // For logging.
+  friend std::ostream& operator<<(std::ostream& stream, const Network& network);
 
   // Configures (or reconfigures) the Network for |family|. If |is_slaac|, the
   // address and default route configuration is skipped.
@@ -564,13 +568,13 @@ class Network : public NetworkMonitor::ClientNetwork {
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;
-  // A header tag to use in LOG statement for identifying the Device and Service
-  // associated with a Network connection.
-  std::string logging_tag_;
 
   // If true, IP parameters should not be modified. This should not be changed
   // after a Network object is created. Make it modifiable just for unit tests.
   bool fixed_ip_params_;
+
+  // Context for logging.
+  NetworkContext context_;
 
   State state_ = State::kIdle;
 
