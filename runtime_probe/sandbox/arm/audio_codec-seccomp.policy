@@ -13,11 +13,13 @@ fstat64: 1
 fstatfs: 1
 fstatfs64: 1
 readlink: 1
+readlinkat: 1
 access: 1
 _llseek: 1
 brk: 1
 rt_sigprocmask: 1
 write: 1
+writev: 1
 rt_sigaction: 1
 getdents64: 1
 ARM_set_tls: 1

@@ -13,6 +13,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 close: 1
 readlink: 1
+readlinkat: 1
 clock_getres: 1
 clock_getres_time64: 1
 clock_gettime64: 1
@@ -28,6 +29,7 @@ getdents64: 1
 gettimeofday: 1
 _llseek: 1
 write: 1
+writev: 1
 brk: 1
 rt_sigprocmask: 1
 rt_sigaction: 1

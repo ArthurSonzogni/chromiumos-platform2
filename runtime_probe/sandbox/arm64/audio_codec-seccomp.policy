@@ -18,6 +18,7 @@ lseek: 1
 brk: 1
 rt_sigprocmask: 1
 write: 1
+writev: 1
 rt_sigaction: 1
 getdents64: 1
 set_tid_address: 1

@@ -9,6 +9,7 @@ newfstatat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 openat: 1
 readlink: 1
+readlinkat: 1
 read: 1
 close: 1
 # ioctl: arg1 == MEDIA_IOC_DEVICE_INFO || arg1 == MEDIA_IOC_ENUM_ENTITIES
@@ -17,6 +18,7 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 fstat: 1
 fstatfs: 1
 write: 1
+writev: 1
 gettid: 1
 lseek: 1
 getdents64: 1

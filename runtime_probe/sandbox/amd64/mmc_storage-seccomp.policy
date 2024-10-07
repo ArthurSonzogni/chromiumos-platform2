@@ -30,6 +30,7 @@ openat: 1
 prlimit64: 1
 read: 1
 readlink: 1
+readlinkat: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
@@ -38,6 +39,7 @@ set_robust_list: 1
 set_tid_address: 1
 stat: 1
 write: 1
+writev: 1
 fstatfs: 1
 getpid: 1
 futex: 1

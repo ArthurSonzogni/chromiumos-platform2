@@ -13,6 +13,7 @@ read: 1
 gettid: 1
 pread64: 1
 write: 1
+writev: 1
 brk: 1
 # I2C_SLAVE_FORCE == 0x0706
 # I2C_SMBUS == 0x0720

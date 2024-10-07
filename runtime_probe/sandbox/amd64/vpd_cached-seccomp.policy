@@ -35,6 +35,7 @@ set_robust_list: 1
 set_tid_address: 1
 stat: 1
 write: 1
+writev: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg0 == 0 && arg1 == TCGETS

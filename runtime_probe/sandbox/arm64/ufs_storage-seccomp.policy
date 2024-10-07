@@ -17,6 +17,7 @@ gettid: 1
 getdents64: 1
 brk: 1
 write: 1
+writev: 1
 rt_sigprocmask: 1
 set_tid_address: 1
 set_robust_list: 1

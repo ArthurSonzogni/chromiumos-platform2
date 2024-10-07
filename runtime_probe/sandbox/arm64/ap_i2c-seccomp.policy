@@ -13,6 +13,7 @@ fstat: 1
 fstatfs: 1
 gettid: 1
 write: 1
+writev: 1
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg1 == 0x00000706 || arg1 == 0x00000720 || arg0 == 0 && arg1 == TCGETS
 brk: 1

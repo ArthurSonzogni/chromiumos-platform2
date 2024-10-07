@@ -19,6 +19,7 @@ brk: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 write: 1
+writev: 1
 sendto: 1
 faccessat: 1
 faccessat2: 1
@@ -26,7 +27,9 @@ munmap: 1
 set_tid_address: 1
 set_robust_list: 1
 prlimit64: 1
+# For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg1 == TCGETS
+# For syslog
 socket: arg0 == AF_UNIX
 connect: 1
 lseek: 1

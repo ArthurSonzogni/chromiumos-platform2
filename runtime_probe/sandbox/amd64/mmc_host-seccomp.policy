@@ -11,12 +11,14 @@ mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 fstat: 1
 fstatfs: 1
 readlink: 1
+readlinkat: 1
 gettid: 1
 access: 1
 lseek: 1
 pread64: 1
 brk: 1
 write: 1
+writev: 1
 getdents64: 1
 arch_prctl: 1
 set_tid_address: 1

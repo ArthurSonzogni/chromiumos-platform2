@@ -19,6 +19,7 @@ pread64: 1
 getdents64: 1
 brk: 1
 write: 1
+writev: 1
 rt_sigaction: 1
 arch_prctl: 1
 munmap: 1

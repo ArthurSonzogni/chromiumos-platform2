@@ -20,6 +20,7 @@ fstat: 1
 fstatfs: 1
 sendto: 1
 write: 1
+writev: 1
 newfstatat: 1
 epoll_pwait: 1
 rt_sigprocmask: 1

@@ -23,9 +23,11 @@ newfstatat: 1
 openat: 1
 read: 1
 sendto: 1
+# For syslog
 socket: arg0 == AF_UNIX
 stat: 1
 write: 1
+writev: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg0 == 0 && arg1 == TCGETS

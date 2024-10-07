@@ -29,6 +29,7 @@ openat: 1
 prlimit64: 1
 read: 1
 readlink: 1
+readlinkat: 1
 restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
@@ -36,9 +37,11 @@ rt_sigreturn: 1
 sendto: 1
 set_robust_list: 1
 set_tid_address: 1
+# For syslog
 socket: arg0 == AF_UNIX
 stat: 1
 write: 1
+writev: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg0 == 0 && arg1 == TCGETS
