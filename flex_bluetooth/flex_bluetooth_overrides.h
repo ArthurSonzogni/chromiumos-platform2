@@ -16,6 +16,7 @@ namespace flex_bluetooth {
 enum class SyspropOverride {
   kDisableLEGetVendorCapabilities = 0,
   kDisableEnhancedSCOConnection = 1,
+  kEnableLEAdvMonRTLQuirk = 2,
 };
 
 const char kSyspropsLine[] = "[Sysprops]\n";
@@ -24,7 +25,9 @@ const std::map<SyspropOverride, std::string> kSyspropOverrideToString = {
     {SyspropOverride::kDisableLEGetVendorCapabilities,
      "bluetooth.core.le.vendor_capabilities.enabled=false\n"},
     {SyspropOverride::kDisableEnhancedSCOConnection,
-     "bluetooth.sco.disable_enhanced_connection=true\n"}};
+     "bluetooth.sco.disable_enhanced_connection=true\n"},
+    {SyspropOverride::kEnableLEAdvMonRTLQuirk,
+     "bluetooth.core.le.adv_mon_rtl_quirk=true\n"}};
 
 class BluetoothAdapter {
  public:

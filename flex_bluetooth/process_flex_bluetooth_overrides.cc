@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "flex_bluetooth/flex_bluetooth_overrides.h"
-
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/udev_enumerate.h>
+
+#include "flex_bluetooth/flex_bluetooth_overrides.h"
 
 namespace {
 
@@ -43,6 +43,20 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection}},
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x0a2b},
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection}},
+
+        // Enable MSFT AdvMon quirk on RTL8852BE.
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3570},
+         {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3571},
+         {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3572},
+         {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
+        {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3591},
+         {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
+        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe123},
+         {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
+        {flex_bluetooth::BluetoothAdapter{0x0489, 0xe125},
+         {flex_bluetooth::SyspropOverride::kEnableLEAdvMonRTLQuirk}},
 };
 }  // namespace
 
