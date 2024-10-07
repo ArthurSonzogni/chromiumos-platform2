@@ -112,6 +112,7 @@ uname: 1
 write: 1
 exit: 1
 kcmp: 1
+lseek: 1
 madvise: 1
 sched_setaffinity: 1
 setpriority: 1

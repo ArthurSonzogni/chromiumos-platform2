@@ -129,6 +129,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0406447 || arg1 == 0xc0606447 || arg1 == 0xc0786447 || \
        arg1 == 0xc02864c3
 kcmp: 1
+lseek: 1
 madvise: 1
 # Dangerous syscall needed for graphics fetcher
 memfd_create: 1
