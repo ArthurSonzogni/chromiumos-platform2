@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [ ":dbus_perfetto_producer" ]
+  if (use.test) {
+    deps += [ ":dbus_perfetto_producer_unittest" ]
+  }
 }
 
 pkg_config("target_defaults_pkg_deps") {
@@ -25,6 +28,7 @@ static_library("libdbus_perfetto_producer") {
   sources = [
     "dbus_monitor.cc",
     "perfetto_producer.cc",
+    "util.cc",
   ]
   configs += [ ":target_defaults" ]
 }
@@ -34,4 +38,22 @@ executable("dbus_perfetto_producer") {
   configs += [ ":target_defaults" ]
   install_path = "bin"
   deps = [ ":libdbus_perfetto_producer" ]
+}
+
+if (use.test) {
+  executable("dbus_perfetto_producer_unittest") {
+    sources = [
+      "perfetto_producer_test.cc",
+      "util_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libdbus_perfetto_producer",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
 }

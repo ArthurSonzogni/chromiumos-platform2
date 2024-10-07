@@ -12,10 +12,14 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <dbus/dbus.h>
+#include <dbus_perfetto_producer/util.h>
 
 PERFETTO_TRACK_EVENT_STATIC_STORAGE();
 
+namespace dbus_perfetto_producer {
+
 namespace {
+
 // Send a D-Bus message (method call) and wait for a reply (method return)
 DBusMessage* SendMessage(DBusConnection* connection,
                          DBusMessage* message,
@@ -149,30 +153,6 @@ ProcessInfo& StoreProcessName(DBusConnection* connection,
   auto process = maps.processes.insert({unique_name, std::move(process_info)});
 
   return process.first->second;
-}
-
-bool ReadInt(int fd, uint64_t& ptr) {
-  return (read(fd, &ptr, sizeof(uint64_t)) > 0);
-}
-
-bool ReadBuf(int fd, std::string& buf) {
-  size_t size;
-  if (read(fd, &size, sizeof(size_t)) <= 0) {
-    return false;
-  }
-
-  if (size > 0) {
-    char* buf_tmp = new char[size];
-    if (read(fd, buf_tmp, size) <= 0) {
-      return false;
-    }
-    buf = std::string(buf_tmp);
-    delete[] buf_tmp;
-  } else {
-    buf = "";
-  }
-
-  return true;
 }
 
 bool GetMessageInfo(int fd, MessageInfo& message_info) {
@@ -360,6 +340,7 @@ void CreatePerfettoEvent(DBusConnection* connection,
     }
   }
 }
+
 }  // namespace
 
 bool StoreProcessesNames(DBusConnection* connection,
@@ -414,3 +395,5 @@ void PerfettoProducer(DBusConnection* connection,
     CreatePerfettoEvent(connection, error, maps, message_info);
   }
 }
+
+}  // namespace dbus_perfetto_producer

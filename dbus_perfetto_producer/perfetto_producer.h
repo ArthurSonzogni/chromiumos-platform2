@@ -18,6 +18,8 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category(DBUS_PERFETTO_PRODUCER_PERFETTO_CATEGORY)
         .SetDescription("D-Bus Event"));
 
+namespace dbus_perfetto_producer {
+
 struct ProcessInfo;
 
 // Map from D-Bus well-known name to D-Bus unique name
@@ -53,5 +55,7 @@ struct MessageInfo {
   uint64_t reply_serial;
   uint64_t timestamp;
 };
+
+}  // namespace dbus_perfetto_producer
 
 #endif  // DBUS_PERFETTO_PRODUCER_PERFETTO_PRODUCER_H_

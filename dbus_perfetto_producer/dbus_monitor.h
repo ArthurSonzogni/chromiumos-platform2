@@ -7,6 +7,10 @@
 
 #include <dbus/dbus.h>
 
+namespace dbus_perfetto_producer {
+
 bool SetupConnection(DBusConnection*, DBusError*, int);
+
+}  // namespace dbus_perfetto_producer
 
 #endif  // DBUS_PERFETTO_PRODUCER_DBUS_MONITOR_H_

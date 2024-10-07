@@ -8,16 +8,11 @@
 #include <dbus/dbus.h>
 
 #include "dbus_perfetto_producer/perfetto_producer.h"
+#include "dbus_perfetto_producer/util.h"
+
+namespace dbus_perfetto_producer {
 
 namespace {
-bool WriteInt(int fd, uint64_t num) {
-  return (write(fd, &num, sizeof(uint64_t)) > 0);
-}
-
-bool WriteBuf(int fd, const char* name) {
-  size_t len = name ? strlen(name) + 1 : 0;
-  return (write(fd, &len, sizeof(size_t)) > 0 && write(fd, name, len) >= 0);
-}
 
 // filter function to be registered to D-Bus daemon
 DBusHandlerResult PassMessage(DBusConnection* connection,
@@ -98,3 +93,5 @@ bool SetupConnection(DBusConnection* connection, DBusError* error, int fd) {
 
   return true;
 }
+
+}  // namespace dbus_perfetto_producer

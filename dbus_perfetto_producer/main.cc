@@ -12,11 +12,14 @@
 #include "dbus_perfetto_producer/dbus_monitor.h"
 #include "dbus_perfetto_producer/perfetto_producer.h"
 
+namespace dbus_perfetto_producer {
 static volatile sig_atomic_t running = 1;
 
 void SigHandler(int sig) {
   running = 0;
 }
+
+}  // namespace dbus_perfetto_producer
 
 // This tool is only supported on shell as explained in README. Running this as
 // the daemon may cause an error.
@@ -49,9 +52,10 @@ int main(int argc, char** argv) {
     }
 
     // user data to be passed to a filter function
-    Maps maps;
+    dbus_perfetto_producer::Maps maps;
 
-    if (!StoreProcessesNames(connection, &error, maps)) {
+    if (!dbus_perfetto_producer::StoreProcessesNames(connection, &error,
+                                                     maps)) {
       LOG(ERROR) << "StoreProcessNames failed, exiting the program";
       exit(1);
     }
@@ -62,7 +66,7 @@ int main(int argc, char** argv) {
     perfetto::TrackEvent::Register();
 
     // This function returns only when an error occurs
-    PerfettoProducer(connection, &error, maps, fd[0]);
+    dbus_perfetto_producer::PerfettoProducer(connection, &error, maps, fd[0]);
 
     LOG(ERROR) << "PerfettoProducer failed, exiting the program";
     close(fd[0]);
@@ -70,7 +74,7 @@ int main(int argc, char** argv) {
 
     // Parent process (D-Bus Monitor)
   } else {
-    signal(SIGINT, SigHandler);
+    signal(SIGINT, dbus_perfetto_producer::SigHandler);
 
     close(fd[0]);
     connection = dbus_bus_get(type, &error);
@@ -80,14 +84,14 @@ int main(int argc, char** argv) {
       exit(1);
     }
 
-    if (!SetupConnection(connection, &error, fd[1])) {
+    if (!dbus_perfetto_producer::SetupConnection(connection, &error, fd[1])) {
       LOG(ERROR) << "DbusMonitor failed, exiting the program";
       close(fd[1]);
       exit(1);
     }
     LOG(INFO) << "Became a monitor. Start tracing.";
 
-    while (running) {
+    while (dbus_perfetto_producer::running) {
       if (!dbus_connection_read_write_dispatch(connection, -1)) {
         // The message of disconnection is processed
         LOG(INFO) << "Disconnected";
