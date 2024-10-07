@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/containers/flat_set.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
@@ -698,6 +699,19 @@ void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   auto new_network_config = config_.Get();
 
   if (update_type == SLAACController::UpdateType::kAddress) {
+    // Count the number of different prefixes. There might be a connectivity
+    // issue if there are multiple prefixes.
+    base::flat_set<net_base::IPv6CIDR> prefixes;
+    for (const auto& address : new_network_config.ipv6_addresses) {
+      prefixes.insert(address.GetPrefixCIDR());
+    }
+    if (prefixes.size() > 1) {
+      LOG(WARNING) << *this
+                   << ": SLAAC addresses from different prefixes are "
+                      "configured, # prefixes = "
+                   << prefixes.size();
+    }
+
     for (auto& ev : event_handlers_) {
       ev.OnGetSLAACAddress(interface_index_);
     }
