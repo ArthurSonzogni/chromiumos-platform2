@@ -183,6 +183,10 @@ void Network::Start(const Network::StartOptions& opts) {
     StopInternal(/*is_failure=*/false, /*trigger_callback=*/false);
   }
 
+  // Update session_id at the beginning of Start() so that logs after this can
+  // contain the proper session_id.
+  context_.UpdateSessionId();
+
   LOG(INFO) << *this << ": Starting with options=" << opts.ToString();
 
   // If the execution of this function fails, StopInternal() will be called and
@@ -446,6 +450,10 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       ev.OnNetworkStopped(interface_index_, is_failure);
     }
   }
+
+  // Clear session_id at the end so that logs before this can contain the proper
+  // session_id.
+  context_.ClearSessionId();
 }
 
 void Network::InvalidateIPv6Config() {
