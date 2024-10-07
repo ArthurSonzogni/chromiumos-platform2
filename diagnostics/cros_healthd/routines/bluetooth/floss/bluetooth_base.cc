@@ -273,6 +273,7 @@ void BluetoothRoutineBase::HandleSetPoweredResponse(bool powered,
 }
 
 void BluetoothRoutineBase::OnAdapterEnabledEventTimeout() {
+  LOG(ERROR) << "Failed to observe adapter change event within timeout.";
   if (!on_adapter_powered_changed_cb_.is_null()) {
     bool is_adapter_present = default_adapter_ != nullptr;
     if (current_powered_ != is_adapter_present) {

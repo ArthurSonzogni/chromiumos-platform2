@@ -48,7 +48,7 @@ inline constexpr char kBluetoothRoutineFailedFinishPairing[] =
     "Bluetooth routine failed to finish pairing.";
 
 // Timeout of waiting for the adapter powered changed event.
-constexpr base::TimeDelta kAdapterPoweredChangedTimeout = base::Seconds(2);
+constexpr base::TimeDelta kAdapterPoweredChangedTimeout = base::Seconds(5);
 
 // The poll interval time for checking adapter presence.
 constexpr base::TimeDelta kAdapterPresencePollInterval =
