@@ -953,21 +953,6 @@ pub async fn service_main() -> Result<()> {
     let token = register_interface(&mut cr, conn.clone(), swappiness_config);
     cr.insert(PATH_NAME, &[token], context.clone());
 
-    #[cfg(feature = "vm_grpc")]
-    {
-        // This block does a 1 time check at resourced startup to see if borealis vm
-        // is already running.  The `await` has a blocking timeout of 2 seconds
-        // (2 embedded dbus calls).  If there is no vm running (expected case), no grpc server
-        // will be started.  If resourced was respawned while a borealis session was
-        // active (corner case), this logic will start a vm_grpc server and re-establish the
-        // grpc link.
-        // Internal failures will be logged and ignored.  We don't interfere with resourced
-        // operations if grpc server/client fails.
-        let _ =
-            crate::vm_grpc::vm_grpc_util::handle_startup_borealis_state_async(conn.clone()).await;
-        let _ = crate::vm_grpc::vm_grpc_util::register_dbus_hooks_async(conn.clone()).await;
-    }
-
     if common::is_vm_boot_mode_enabled() {
         // Receive VmStartingUpSignal for VM boot mode
         let vm_starting_up_rule =

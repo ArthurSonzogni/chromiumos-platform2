@@ -143,7 +143,7 @@ pub mod intel_device {
         /// # Arguments
         ///
         /// * `root` - root path of device.  Used for using relative paths for testing.  Should
-        /// always be '/' for device.
+        ///   always be '/' for device.
         ///
         /// * `polling_interval_ms` - How often to check if tuning should be re-adjusted.
         ///

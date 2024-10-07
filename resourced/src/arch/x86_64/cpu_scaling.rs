@@ -174,8 +174,8 @@ impl DeviceCpuStatus {
     /// # Arguments
     ///
     /// * `val` - Value to set.  If it is above max, system will set it to max. If it results in the
-    /// difference between current min and max to be less than the threshold then
-    /// the value will remain unchanged.
+    ///   difference between current min and max to be less than the threshold then
+    ///   the value will remain unchanged.
     ///
     /// # Return
     ///
@@ -209,8 +209,8 @@ impl DeviceCpuStatus {
     /// # Arguments
     ///
     /// * `val` - Value to set.  If it is below min, system will set it to min.
-    /// If it results in the difference between current min and max to be
-    /// less than the threshold thenthe value will remain unchanged.
+    ///   If it results in the difference between current min and max to be
+    ///   less than the threshold thenthe value will remain unchanged.
     ///
     /// # Return
     ///
@@ -256,7 +256,7 @@ impl DeviceCpuStatus {
     /// # Arguments
     ///
     /// * `root` - Relative path from which sysfs files are searches.
-    /// Should be `/` for non-test cases.
+    ///   Should be `/` for non-test cases.
     ///
     /// * `core_num` - core number as defined in sysfs.
     ///
@@ -278,7 +278,7 @@ impl DeviceCpuStatus {
     /// # Arguments
     ///
     /// * `root` - Relative path from which sysfs files are searches.
-    /// Should be `/` for non-test cases.
+    ///   Should be `/` for non-test cases.
     ///
     /// # Return
     ///

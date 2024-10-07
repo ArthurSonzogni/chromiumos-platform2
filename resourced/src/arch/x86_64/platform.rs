@@ -47,7 +47,7 @@ fn find_tbt_controllers(root: &Path) -> Option<Vec<PathBuf>> {
 
     if let Ok(pci_paths) = glob(&pattern) {
         for entry in pci_paths.flatten() {
-            match read_to_string(&entry.join("device")) {
+            match read_to_string(entry.join("device")) {
                 Ok(pci_id) => {
                     if tbt_controllers.contains(&pci_id.trim()) {
                         found_tbt.push(entry);

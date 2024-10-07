@@ -214,10 +214,8 @@ fn read_and_parse_cpu_stats(
         let idle_delta = cpu_stats.idle.saturating_sub(prev_stats.idle);
 
         if total_delta > 0 {
-            let cpu_usage = (1.0 - (idle_delta as f64) / (total_delta as f64))
-                .max(0.0)
-                .min(1.0)
-                * 100.0;
+            let cpu_usage =
+                (1.0 - (idle_delta as f64) / (total_delta as f64)).clamp(0.0, 1.0) * 100.0;
 
             debug!("Core {}: CPU Usage: {:.2}%", cpu_index, cpu_usage);
 
