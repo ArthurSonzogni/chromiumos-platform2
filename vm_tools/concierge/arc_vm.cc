@@ -988,10 +988,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
     params.push_back("androidboot.arc_file_picker=1");
   }
 
-  if (request.enable_keyboard_shortcut_helper_integration()) {
-    params.push_back("androidboot.keyboard_shortcut_helper_integration=1");
-  }
-
   if (zram_size) {
     params.push_back(
         base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size));

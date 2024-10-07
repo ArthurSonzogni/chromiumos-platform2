@@ -192,28 +192,6 @@ TEST(ArcVmParamsTest, CustomTabsParamStableChannel) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=1"));
 }
 
-TEST(ArcVmParamsTest, KeyboardShortcutHelperParamTrue) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  request.set_enable_keyboard_shortcut_helper_integration(true);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
-      params, "androidboot.keyboard_shortcut_helper_integration=1"));
-}
-
-TEST(ArcVmParamsTest, KeyboardShortcutHelperParamFalse) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  request.set_enable_keyboard_shortcut_helper_integration(false);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_FALSE(is_parameter_set(
-      params, "androidboot.keyboard_shortcut_helper_integration"));
-}
-
 TEST(ArcVmParamsTest, EnableTtsCachingParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());

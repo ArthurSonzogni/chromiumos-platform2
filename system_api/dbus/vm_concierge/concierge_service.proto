@@ -364,9 +364,6 @@ message StartArcVmRequest {
   // Whether to lock guest memory (for the purpose of disabling host swap).
   bool lock_guest_memory = 18;
 
-  // Whether the keyboard shortcut helper integration feature is enabled.
-  bool enable_keyboard_shortcut_helper_integration = 21;
-
   // Whether broadcast anr prenotify is enabled.
   bool enable_broadcast_anr_prenotify = 25;
 
