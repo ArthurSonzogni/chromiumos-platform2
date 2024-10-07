@@ -989,44 +989,43 @@ keymaster_error_t ArcKeyMintContext::SetVerifiedBootParams(
 const ::keymaster::AttestationContext::VerifiedBootParams*
 ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
   static VerifiedBootParams params;
-  if (!vbmeta_digest_.has_value()) {
-    LOG(ERROR) << "Unable to get verified boot parameters because "
-                  "VB meta digest is not set";
-    *error = KM_ERROR_INVALID_ARGUMENT;
-    return &params;
-  }
-  if (!boot_key_.has_value()) {
-    LOG(ERROR) << "Unable to get verified boot parameters because "
-                  "boot key is not set";
-    *error = KM_ERROR_INVALID_ARGUMENT;
-    return &params;
-  }
-  if (!bootloader_state_.has_value()) {
-    LOG(ERROR) << "Unable to get verified boot parameters because "
-                  "bootloader state is not set";
-    *error = KM_ERROR_INVALID_ARGUMENT;
-    return &params;
-  }
-  if (!verified_boot_state_.has_value()) {
-    LOG(ERROR) << "Unable to get verified boot parameters because "
-                  "verified boot state is not set";
-    *error = KM_ERROR_INVALID_ARGUMENT;
-    return &params;
-  }
+
   const std::string locked_device =
       kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
-  params.device_locked = (bootloader_state_.value() == locked_device);
+  if (bootloader_state_.has_value()) {
+    params.device_locked = (bootloader_state_.value() == locked_device);
+  } else {
+    LOG(ERROR) << "Device Locked State could not be read from Bootloader state "
+                  "while fetching Verified Boot parameters";
+  }
 
   const std::string verified_state =
       kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
-  params.verified_boot_state = verified_boot_state_.value() == verified_state
-                                   ? KM_VERIFIED_BOOT_VERIFIED
-                                   : KM_VERIFIED_BOOT_UNVERIFIED;
+  if (verified_boot_state_.has_value()) {
+    params.verified_boot_state = verified_boot_state_.value() == verified_state
+                                     ? KM_VERIFIED_BOOT_VERIFIED
+                                     : KM_VERIFIED_BOOT_UNVERIFIED;
+  } else {
+    LOG(ERROR) << "Verified Boot State could not be read while fetching "
+                  "Verified Boot Parameters";
+  }
 
-  params.verified_boot_hash = {vbmeta_digest_.value().data(),
-                               vbmeta_digest_.value().size()};
-  params.verified_boot_key = {boot_key_.value().data(),
-                              boot_key_.value().size()};
+  if (vbmeta_digest_.has_value()) {
+    params.verified_boot_hash = {vbmeta_digest_.value().data(),
+                                 vbmeta_digest_.value().size()};
+  } else {
+    LOG(ERROR) << "Verified Boot hash could not be read from VB Meta digest "
+                  "while fetching Verified Boot Parameters";
+  }
+
+  if (boot_key_.has_value()) {
+    params.verified_boot_key = {boot_key_.value().data(),
+                                boot_key_.value().size()};
+  } else {
+    LOG(ERROR) << "Verified Boot Key could not be read while fetching Verified "
+                  "Boot Parameters";
+  }
+
   *error = KM_ERROR_OK;
   return &params;
 }

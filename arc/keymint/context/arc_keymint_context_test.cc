@@ -1114,15 +1114,4 @@ TEST_F(ArcKeyMintContextTest, GetVerifiedBootParams_Success) {
   // Cleanup.
   TearDownDBus();
 }
-
-TEST_F(ArcKeyMintContextTest, GetVerifiedBootParams_Failure) {
-  // Execute.
-  keymaster_error_t get_params_error;
-  auto result = context_->GetVerifiedBootParams(&get_params_error);
-
-  // Test.
-  ASSERT_TRUE(result);
-  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, get_params_error);
-}
-
 }  // namespace arc::keymint::context
