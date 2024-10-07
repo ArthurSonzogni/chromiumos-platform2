@@ -635,6 +635,19 @@ void Daemon::ModemPowerOff(const std::string& device_id) {
   if (modems_.count(device_id) == 0) {
     return;
   }
+  for (const auto& [name, full_task] : tasks_) {
+    if (full_task.task->type() == kTaskTypeFlash) {
+      // Delay powering off the modem when flashing is ongoing
+      // TODO(b/372748517): remove this delay and retry when requests to
+      // the modem helpers are serialized.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&Daemon::ModemPowerOff, weak_ptr_factory_.GetWeakPtr(),
+                         device_id),
+          kPowerOffHystTime);
+      return;
+    }
+  }
   if (modems_[device_id]->IsPowerOffPending()) {
     modems_[device_id]->UpdatePowerOffPendingFlag(false);
     ChangeModemPowerState(device_id, Modem::PowerState::OFF);
