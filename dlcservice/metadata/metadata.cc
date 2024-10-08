@@ -291,8 +291,10 @@ DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
   if (const auto& idx = GetIndex(*key_str)) {
     return *idx;
   }
-  LOG(WARNING) << "Unable to read the index file for key=" << *key_str
-               << ", looking up in the DLC metadata.";
+  if (filter_key != FilterKey::kNone) {
+    LOG(WARNING) << "Unable to read the index file for key=" << *key_str
+                 << ", looking up in the DLC metadata.";
+  }
 
   // Lookup in metadata.
   DlcIdList ids;
