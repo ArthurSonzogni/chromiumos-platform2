@@ -41,6 +41,8 @@ pkg_config("target_defaults") {
     "protobuf-lite",
     "system_api",
   ]
+  include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
+  libs = [ "tensorflowlite" ]
 }
 
 source_set("libdmabufheap_source_set") {

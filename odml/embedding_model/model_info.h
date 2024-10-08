@@ -18,6 +18,10 @@ struct EmbeddingTfliteModelInfo {
   // Is the tokenizer (sentencepiece) built into the tflite file?
   // Currently we only support false for this.
   bool builtin_spm;
+
+  // Path to the sentencepiece tokenizer file.
+  // This is only used when builtin_spm is false.
+  std::string spm_path;
 };
 
 // Contain information required to load and run the model.

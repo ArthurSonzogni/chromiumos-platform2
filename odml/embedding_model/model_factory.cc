@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "odml/embedding_model/model_runner.h"
+#include "odml/embedding_model/odml_shim_tokenizer.h"
 #include "odml/embedding_model/tflite_model_runner.h"
 
 namespace embedding_model {
@@ -19,8 +20,10 @@ ModelFactoryImpl::ModelFactoryImpl(
 std::unique_ptr<ModelRunner> ModelFactoryImpl::BuildRunnerFromInfo(
     ModelInfo&& info) {
   if (info.model_type == kEmbeddingTfliteModelType) {
+    auto tokenizer = std::make_unique<OdmlShimTokenizer>(raw_ref(shim_loader_));
     std::unique_ptr<TfliteModelRunner> result =
-        std::make_unique<TfliteModelRunner>(std::move(info));
+        std::make_unique<TfliteModelRunner>(std::move(info),
+                                            std::move(tokenizer), shim_loader_);
     return result;
   }
   return nullptr;
