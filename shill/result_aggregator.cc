@@ -6,12 +6,12 @@
 
 #include <utility>
 
-#include "shill/event_dispatcher.h"
-#include "shill/logging.h"
-
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+
+#include "shill/event_dispatcher.h"
+#include "shill/logging.h"
 
 namespace shill {
 
@@ -53,9 +53,15 @@ ResultAggregator::~ResultAggregator() {
 }
 
 void ResultAggregator::ReportResult(const Error& error) {
-  LOG(INFO) << Error::GetLocationAsString(error.location()) << error;
   got_result_ = true;
-  if (error_.IsSuccess() && error.IsFailure()) {  // Only copy first |error|.
+
+  // In the success case, we neither need to copy the error nor do any logging.
+  if (error.IsSuccess()) {
+    return;
+  }
+
+  LOG(INFO) << Error::GetLocationAsString(error.location()) << error;
+  if (error_.IsSuccess()) {  // Only copy first |error|.
     error_.Populate(error.type(), error_prefix_ + error.message(), location_);
   } else {
     LOG(WARNING) << "Dropping error type " << error;
