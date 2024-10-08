@@ -65,6 +65,12 @@ const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 // Copied from fs.h, remain same across architecture/filesystems/kernels
 #define MS_NOEXEC 8 /* Disallow program execution */
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+#define CROS_FULL_TASK_STORAGE_SUPPORT
+#else
+#undef CROS_FULL_TASK_STORAGE_SUPPORT
+#endif
+
 // Ring Buffer for Event Storage
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -201,7 +207,7 @@ struct buffer {
   u8 data[MAX_PATH_BUFFER_SIZE];
 };
 
-#define UMOUNT_TASK_MAP_SIZE 8
+#define TASK_MAP_SIZE 8
 
 struct {
   __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -222,13 +228,13 @@ struct {
   __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
   __type(key, uint32_t);
   __type(value, char[MAX_PATH_SIZE]);
-  __uint(max_entries, UMOUNT_TASK_MAP_SIZE);
+  __uint(max_entries, TASK_MAP_SIZE);
 } before_umount_path_map SEC(".maps");
 struct {
   __uint(type, BPF_MAP_TYPE_LRU_PERCPU_HASH);
   __type(key, uint64_t);
   __type(value, uint32_t);
-  __uint(max_entries, UMOUNT_TASK_MAP_SIZE);
+  __uint(max_entries, TASK_MAP_SIZE);
 } unmount_task_hash_map SEC(".maps");
 #endif
 
@@ -237,6 +243,82 @@ get_file_path_buffer() {
   u32 zero = 0;
   return (struct buffer*)bpf_map_lookup_elem(&file_path_buffer_map, &zero);
 }
+
+// BPF map to store rename information
+#ifdef CROS_FULL_TASK_STORAGE_SUPPORT
+struct {
+  __uint(type, BPF_MAP_TYPE_TASK_STORAGE);
+  __uint(map_flags, BPF_F_NO_PREALLOC);
+  __type(key, uint32_t);
+  __type(value, struct rename_map_value);
+} rename_map SEC(".maps");
+
+static inline __attribute__((always_inline)) struct rename_map_value*
+cros_rename_map_get_or_create() {
+  struct task_struct* task = bpf_get_current_task_btf();
+  if (!task) {
+    bpf_printk("cros_rename_map_get_or_create failed, task is NULL");
+    return (struct rename_map_value*)NULL;
+  }
+  return (struct rename_map_value*)bpf_task_storage_get(
+      &rename_map, task, NULL, BPF_LOCAL_STORAGE_GET_F_CREATE);
+}
+
+static inline __attribute__((always_inline)) struct rename_map_value*
+cros_rename_map_lookup() {
+  struct task_struct* task = bpf_get_current_task_btf();
+  if (!task) {
+    bpf_printk("cros_rename_map_lookup failed, task is NULL");
+    return (struct rename_map_value*)NULL;
+  }
+  return (struct rename_map_value*)bpf_task_storage_get(&rename_map, task, NULL,
+                                                        0);
+}
+
+static inline __attribute__((always_inline)) void cros_rename_map_delete() {
+  struct task_struct* task = bpf_get_current_task_btf();
+  if (task) {
+    bpf_task_storage_delete(&rename_map, task);
+  }
+}
+#else
+struct {
+  __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+  __type(key, uint32_t);
+  __type(value, struct rename_map_value);
+  __uint(max_entries, TASK_MAP_SIZE);
+} rename_map SEC(".maps");
+struct {
+  __uint(type, BPF_MAP_TYPE_LRU_PERCPU_HASH);
+  __type(key, uint64_t);
+  __type(value, uint32_t);
+  __uint(max_entries, TASK_MAP_SIZE);
+} rename_task_hash_map SEC(".maps");
+
+static inline __attribute__((always_inline)) struct rename_map_value*
+cros_rename_map_get_or_create() {
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  uint32_t index = pid_tid % TASK_MAP_SIZE;
+  bpf_map_update_elem(&rename_task_hash_map, &pid_tid, &index, BPF_ANY);
+  return (struct rename_map_value*)bpf_map_lookup_elem(&rename_map, &index);
+}
+
+static inline __attribute__((always_inline)) struct rename_map_value*
+cros_rename_map_lookup() {
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  uint32_t* index_value = bpf_map_lookup_elem(&rename_task_hash_map, &pid_tid);
+  if (!index_value) {
+    return (struct rename_map_value*)NULL;
+  }
+  uint32_t index = *index_value;
+  return (struct rename_map_value*)bpf_map_lookup_elem(&rename_map, &index);
+}
+
+static inline __attribute__((always_inline)) void cros_rename_map_delete() {
+  uint64_t pid_tid = bpf_get_current_pid_tgid();
+  bpf_map_delete_elem(&rename_task_hash_map, &pid_tid);
+}
+#endif
 
 /**
  * Construct a path as a string from struct path object.
@@ -257,7 +339,10 @@ get_file_path_buffer() {
 
  **/
 static __attribute__((__always_inline__)) long resolve_path_to_string(
-    u_char** path_str, const struct path* path) {
+    u_char** path_str,
+    const struct path* path,
+    struct dentry* extra_dentry,
+    bool include_dentry_path) {
   long ret;
   struct dentry *curr_dentry, *d_parent, *mnt_root;
   struct vfsmount* curr_vfsmount;
@@ -279,6 +364,36 @@ static __attribute__((__always_inline__)) long resolve_path_to_string(
 
   size_t buf_off =
       HALF_MAX_BUFFER_SIZE;  // Initialize buffer offset to halfway point
+
+  // If include_dentry_path is true, append the name of the extra dentry
+  if (include_dentry_path && extra_dentry) {
+    name_len = LIMIT_PATH_SIZE(BPF_CORE_READ(extra_dentry, d_name.len));
+
+    name_len = name_len + 1;  // Include space for a slash '/'
+    if (name_len > buf_off) {
+      return -1;  // Not enough space; exit early
+    }
+
+    volatile size_t new_buff_offset = buf_off - name_len;  // satisfy verifier
+
+    // Read the address of the name pointer into the stack to read the char
+    // array
+    name = BPF_CORE_READ(extra_dentry, d_name.name);
+    ret = bpf_core_read_str(
+        &(out_buf->data[LIMIT_HALF_MAX_BUFFER_SIZE(new_buff_offset)]), name_len,
+        name);
+    if (ret < 0) {
+      return ret;  // If read fails, return the error code
+    }
+
+    if (ret > 1) {   // Check if the read was successful
+      buf_off -= 1;  // Adjust offset for the slash separator
+      buf_off = LIMIT_HALF_MAX_BUFFER_SIZE(buf_off);
+      out_buf->data[buf_off] = '/';  // Add the slash to the buffer
+      buf_off -= ret - 1;  // Adjust buffer offset for the length of the name
+      buf_off = LIMIT_HALF_MAX_BUFFER_SIZE(buf_off);
+    }
+  }
 
 #pragma unroll
   for (int i = 0; i < MAX_PATH_DEPTH; i++) {
@@ -606,7 +721,8 @@ static __always_inline bool allows_file_operation(
   return (file_monitoring_mode == READ_AND_READ_WRITE_BOTH ||
           (file_monitoring_mode == READ_WRITE_ONLY &&
            fmod_type == FMOD_READ_WRITE_OPEN) ||
-          fmod_type == FMOD_LINK || fmod_type == FMOD_ATTR);
+          fmod_type == FMOD_LINK || fmod_type == FMOD_ATTR ||
+          fmod_type == FMOD_RENAME);
 }
 
 /**
@@ -846,7 +962,8 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
     const struct path* path,
     struct inode_attr* before_attr,
     uint8_t sensitive_file_type,
-    const struct task_struct* t) {
+    const struct task_struct* t,
+    struct rename_map_value* rename_map_value) {
   if (!image_info || !dentry) {
     return;
   }
@@ -854,13 +971,25 @@ static inline __attribute__((always_inline)) void fill_file_image_info(
   // Read the inode from the dentry
   struct inode* inode = BPF_CORE_READ(dentry, d_inode);
 
-  u_char* file_path = NULL;
-  resolve_path_to_string(&file_path, path);
-  bpf_core_read_str(image_info->path, MAX_PATH_SIZE, file_path);
+  if (rename_map_value) {
+    bpf_probe_read_str(image_info->path, MAX_PATH_SIZE,
+                       rename_map_value->new_path);
+    bpf_probe_read_str(image_info->old_path, MAX_PATH_SIZE,
+                       rename_map_value->old_path);
+    image_info->inode = rename_map_value->new_inode;
+    image_info->device_id = rename_map_value->new_device_id;
+    image_info->old_inode = rename_map_value->old_inode;
+    image_info->old_device_id = rename_map_value->old_device_id;
+  } else {
+    u_char* file_path = NULL;
+    resolve_path_to_string(&file_path, path, NULL, false);
+    bpf_core_read_str(image_info->path, MAX_PATH_SIZE, file_path);
 
-  // Fill inode information
-  image_info->inode = BPF_CORE_READ(inode, i_ino);
-  image_info->device_id = BPF_CORE_READ(inode, i_sb, s_dev);
+    // Fill inode information
+    image_info->inode = BPF_CORE_READ(inode, i_ino);
+    image_info->device_id = BPF_CORE_READ(inode, i_sb, s_dev);
+  }
+
   image_info->sensitive_file_type = sensitive_file_type;
 
   const struct task_struct* n = normalize_to_last_newns(t);
@@ -1174,7 +1303,8 @@ static inline __attribute__((always_inline)) int populate_rb(
     struct file* file,
     struct dentry* dentry,
     const struct path* path,
-    struct inode_attr* before_attr) {
+    struct inode_attr* before_attr,
+    struct rename_map_value* rename_map_value) {
   // Get the current task
   const struct task_struct* current_task =
       (struct task_struct*)bpf_get_current_task();
@@ -1202,10 +1332,203 @@ static inline __attribute__((always_inline)) int populate_rb(
       fill_process_start(&file_detailed_event->process_info, last_exec_task);
   fill_ns_info(&file_detailed_event->spawn_namespace, last_exec_task);
   fill_file_image_info(&file_detailed_event->image_info, file, dentry, path,
-                       before_attr, sensitive_file_type, last_exec_task);
+                       before_attr, sensitive_file_type, last_exec_task,
+                       rename_map_value);
 
   // Submit the event to the ring buffer
   bpf_ringbuf_submit(event, 0);
+  return 0;
+}
+
+/**
+ * BPF program for tracking exit of security_path_rename.
+ * This function runs after the rename syscall to track successful renames
+ * of files and directories, filtering for specific monitored paths.
+ *
+ * old_path - Path struct of the old (source) location.
+ * old_dentry - Dentry object of the old location.
+ * new_path - Path struct of the new (target) location.
+ * new_dentry - Dentry object of the new location.
+ * flags - Flags associated with the rename operation.
+ * ret - Return value from the security_path_rename function
+ */
+CROS_IF_FUNCTION_HOOK("fexit/security_path_rename",
+                      "tp_btf/cros_security_path_rename_exit")
+int BPF_PROG(fexit__security_path_rename,
+             const struct path* old_path,
+             struct dentry* old_dentry,
+             const struct path* new_path,
+             struct dentry* new_dentry,
+             unsigned int flags,
+             int ret) {
+  // Exit early if rename failed.
+  if (ret != 0) {
+    return 0;
+  }
+
+  // Filter out kernel threads for user-level monitoring only.
+  struct task_struct* t = (struct task_struct*)bpf_get_current_task();
+  if (is_kthread(t)) {
+    return 0;
+  }
+
+  // Filter blocked processes based on custom logic.
+  if (isProcessBlocklisted()) {
+    return 0;
+  }
+
+  // Ensure the provided path and dentry structures are valid.
+  if (!old_path || !new_path || !old_dentry || !new_dentry) {
+    return 0;
+  }
+
+  // Extract old inode and device ID.
+  struct inode* old_inode = BPF_CORE_READ(old_dentry, d_inode);
+  ino_t old_inode_id = BPF_CORE_READ(old_inode, i_ino);
+  dev_t old_device_id = BPF_CORE_READ(old_inode, i_sb, s_dev);
+
+  // Extract new device ID.
+  dev_t new_device_id = BPF_CORE_READ(new_path->dentry, d_inode, i_sb, s_dev);
+
+  // Filter out invalid file types (e.g., directories).
+  if (!is_valid_file(old_inode, 0)) {
+    return 0;
+  }
+
+  struct file_monitoring_settings file_monitoring_settings;
+  if (!is_dentry_allowlisted(old_dentry, old_device_id, FMOD_RENAME,
+                             &file_monitoring_settings)) {
+    return 0;
+  }
+
+  struct rename_map_value* value = cros_rename_map_get_or_create();
+
+  if (!value) {
+    return 0;
+  }
+
+  u_char* temp_path = NULL;
+
+  // Resolve the old path to a string and store it in the map.
+  resolve_path_to_string(&temp_path, old_path, old_dentry, true);
+  bpf_probe_read_str(value->old_path, MAX_PATH_SIZE, temp_path);
+
+  // Resolve the new path to a string and store it in the map.
+  resolve_path_to_string(&temp_path, new_path, new_dentry, true);
+  bpf_probe_read_str(value->new_path, MAX_PATH_SIZE, temp_path);
+
+  value->sensitive_file_type = file_monitoring_settings.sensitive_file_type;
+
+  return 0;
+}
+
+/**
+ * BPF program for the exit of vfs_rename.
+ * This function runs after the vfs_rename syscall to handle rename events,
+ * process inode information, and populate relevant fields for monitoring.
+ *
+ * rd - Struct containing rename data (old and new paths).
+ * ret - Return value from the vfs_rename function.
+ */
+CROS_IF_FUNCTION_HOOK("fexit/vfs_rename", "tp_btf/cros_vfs_rename_exit")
+int BPF_PROG(fexit__vfs_rename, struct renamedata* rd, int ret) {
+  struct rename_map_value* rename_map_value_ptr = cros_rename_map_lookup();
+
+  // Exit if we couldn't retrieve the rename_map_value_ptr.
+  if (!rename_map_value_ptr) {
+    return 0;
+  }
+
+  // Extract old dentry and validate it.
+  struct dentry* old_dentry = BPF_CORE_READ(rd, old_dentry);
+  if (!old_dentry) {
+    return 0;
+  }
+
+  // Extract old inode and validate it.
+  struct inode* old_inode = BPF_CORE_READ(old_dentry, d_inode);
+  if (!old_inode) {
+    return 0;
+  }
+
+  // Read old inode details.
+  ino_t old_inode_id = BPF_CORE_READ(old_inode, i_ino);
+  dev_t old_device_id = BPF_CORE_READ(old_inode, i_sb, s_dev);
+  unsigned int old_inode_link_count = BPF_CORE_READ(old_inode, i_nlink);
+
+  // Extract new dentry and inode information if available.
+  struct dentry* new_dentry = BPF_CORE_READ(rd, new_dentry);
+  unsigned int new_inode_link_count = 0;
+  ino_t new_inode_id = 0;
+  dev_t new_device_id = 0;
+  if (new_dentry) {
+    struct inode* new_inode = BPF_CORE_READ(new_dentry, d_inode);
+    if (new_inode) {
+      new_inode_link_count = BPF_CORE_READ(new_inode, i_nlink);
+      new_inode_id = BPF_CORE_READ(new_inode, i_ino);
+      new_device_id = BPF_CORE_READ(new_inode, i_sb, s_dev);
+    }
+  }
+
+  // Determine the final inode and path to use.
+  uint64_t final_inode = 0;
+  dev_t final_device_id = 0;
+  struct dentry* final_dentry;
+  uint8_t* final_path = rename_map_value_ptr->new_path;
+
+  // During a rename operation, an intermediate (or temporary) inode is often
+  // created as part of the process (e.g., a dummy inode that facilitates the
+  // transfer of information to the new inode). This temporary inode is
+  // typically cleaned up before the function finishes. However, in some rare
+  // cases (as suggested in the vfs_rename code), the old inode may be deleted,
+  // and the new inode may replace it entirely.
+  //
+  // The following logic determines which inode (old or new) should be
+  // considered the final one:
+  //
+  // 1. If the old inode still has links (old_inode_link_count > 0), we
+  // prioritize the old inode
+  //    and retain its device and dentry information. This case usually reflects
+  //    the situation where the old inode is still in use.
+  //
+  // 2. If the old inode is no longer valid but the new inode is
+  // (new_inode_link_count > 0),
+  //    we switch to using the new inode and update the device and dentry
+  //    information accordingly.
+  //
+  // 3. If both inodes are invalid (neither has remaining links), as a fallback,
+  //    we default to the old inode's information.
+  if (old_inode_link_count > 0) {
+    // Old inode is still valid, keep old inode and device info.
+    final_inode = old_inode_id;
+    final_device_id = old_device_id;
+    final_dentry = old_dentry;
+  } else if (new_inode_link_count > 0) {
+    // New inode is valid, use new inode and device info.
+    final_inode = new_inode_id;
+    final_device_id = new_device_id;
+    final_dentry = new_dentry;
+  } else {
+    // Neither inode is valid, default to old inode and device info.
+    final_inode = old_inode_id;
+    final_device_id = old_device_id;
+    final_dentry = old_dentry;
+  }
+
+  rename_map_value_ptr->new_device_id = final_device_id;
+  rename_map_value_ptr->new_inode = final_inode;
+  rename_map_value_ptr->old_device_id = old_device_id;
+  rename_map_value_ptr->old_inode = old_inode_id;
+
+  // Pass the information to populate_rb, used for recording the rename event.
+  populate_rb(FMOD_RENAME, rename_map_value_ptr->sensitive_file_type,
+              kFileRenameEvent, NULL, final_dentry, NULL, NULL,
+              rename_map_value_ptr);
+
+  // Cleanup: delete the entry from the map after processing.
+
+  cros_rename_map_delete();
+
   return 0;
 }
 
@@ -1264,7 +1587,7 @@ static inline __attribute__((always_inline)) int close_file_handler(
 
   // Populate the ring buffer with the event data
   populate_rb(modification_type, file_monitoring_settings.sensitive_file_type,
-              kFileCloseEvent, file, file_dentry, &file_path, NULL);
+              kFileCloseEvent, file, file_dentry, &file_path, NULL, NULL);
 
   return 0;
 }
@@ -1392,7 +1715,7 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
   }
 
   uint8_t* file_path = NULL;
-  resolve_path_to_string(&file_path, path);
+  resolve_path_to_string(&file_path, path, NULL, false);
 
   map_value.sensitive_file_type = monitor_settings.sensitive_file_type;
 
@@ -1465,7 +1788,7 @@ static inline __attribute__((always_inline)) void attr_change_fexit_common(
 
   // Populate the ring buffer with the event data
   populate_rb(FMOD_ATTR, sensitive_file_type, kFileAttributeModifyEvent, NULL,
-              dentry, path, &before_attr);
+              dentry, path, &before_attr, NULL);
 }
 
 CROS_IF_FUNCTION_HOOK("fexit/chmod_common", "tp_btf/cros_chmod_common_exit")
@@ -1677,7 +2000,7 @@ int BPF_PROG(fexit__path_mount,
   }
 
   u_char* file_path = NULL;
-  resolve_path_to_string(&file_path, path);
+  resolve_path_to_string(&file_path, path, NULL, false);
   bpf_core_read_str(mount_data->dest_device_path, MAX_PATH_SIZE, file_path);
 
   // Compare mount_type_buffer with "/media"
@@ -1706,7 +2029,7 @@ int BPF_PROG(fentry__path_umount, struct path* path, int flags) {
   }
   // Read the root directory entry (dentry) of the mount
   u_char* file_path = NULL;
-  resolve_path_to_string(&file_path, path);
+  resolve_path_to_string(&file_path, path, NULL, false);
 
   // Compare mount_type_buffer with "/media"
   if (!strings_starts_with(file_path, "/media/", sizeof("/media/"))) {
@@ -1722,7 +2045,7 @@ int BPF_PROG(fentry__path_umount, struct path* path, int flags) {
                                    BPF_LOCAL_STORAGE_GET_F_CREATE);
 #else
   uint64_t pid_tid = bpf_get_current_pid_tgid();
-  uint32_t index = pid_tid % UMOUNT_TASK_MAP_SIZE;
+  uint32_t index = pid_tid % TASK_MAP_SIZE;
   bpf_map_update_elem(&unmount_task_hash_map, &pid_tid, &index, BPF_ANY);
   dest_path = bpf_map_lookup_elem(&before_umount_path_map, &index);
 #endif

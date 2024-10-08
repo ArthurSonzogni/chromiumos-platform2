@@ -260,6 +260,17 @@ struct inode_dev_map_key {
   uint64_t dev_id;    // Device ID where the file or directory resides.
 } __attribute__((aligned(8)));
 
+// Structure to hold rename information
+struct rename_map_value {
+  uint8_t old_path[MAX_PATH_SIZE];
+  uint8_t new_path[MAX_PATH_SIZE];
+  uint8_t sensitive_file_type;
+  uint64_t new_device_id;
+  uint64_t new_inode;
+  uint64_t old_device_id;
+  uint64_t old_inode;
+} __attribute__((aligned(8)));
+
 /* The design idea behind the flow_map is that the BPF will be responsible for
  * creating and updating entries in the map. Each entry corresponds to a socket
  * identifier and a 5-tuple.
@@ -369,6 +380,9 @@ struct cros_file_image {
   bool file_system_noexec;  // Indicates if the filesystem is mounted with the
                             // 'noexec' flag.
   uint32_t pid_for_setns;
+  uint64_t old_device_id;        // Old Device ID (Rename Only)
+  uint64_t old_inode;            // Old Inode (Rename Only)
+  char old_path[MAX_PATH_SIZE];  // Old Path (Rename Only)
 } __attribute__((aligned(8)));
 
 enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };
@@ -378,7 +392,8 @@ enum cros_event_type { kProcessEvent, kNetworkEvent, kFileEvent };
 enum cros_file_event_type {
   kFileCloseEvent,
   kFileAttributeModifyEvent,
-  kFileMountEvent
+  kFileMountEvent,
+  kFileRenameEvent
 };
 
 // Structure to hold detailed file event information.
@@ -396,7 +411,8 @@ enum filemod_type {
   FMOD_LINK,             // Hard link created.
   FMOD_ATTR,             // File attribute change.
   FMOD_MOUNT,            // Mount operation.
-  FMOD_UMOUNT            // Unmount operation.
+  FMOD_UMOUNT,           // Unmount operation.
+  FMOD_RENAME            // Rename operation.
 };
 
 // Contains information needed to report process security

@@ -1272,6 +1272,9 @@ void FilePlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       OnUnmountEvent(fe.data.umount_event);
       return;
     }
+  } else if (fe.type == bpf::kFileRenameEvent) {
+    atomic_event->set_allocated_sensitive_modify(
+        MakeFileModifyEvent(fe.data.file_detailed_event).release());
   }
 
   std::unique_ptr<FileEventValue> fev = std::make_unique<FileEventValue>();

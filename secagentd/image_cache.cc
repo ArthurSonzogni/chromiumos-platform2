@@ -5,6 +5,7 @@
 #include "secagentd/image_cache.h"
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -42,6 +43,9 @@ namespace secagentd {
 constexpr ImageCache::InternalImageCacheType::size_type kImageCacheMaxSize =
     256;
 
+// Allow a 10 millisecond delta for nanosec.
+const u_int64_t kEpsilonNs = 10000000;
+
 absl::StatusOr<ImageCacheInterface::HashValue>
 ImageCache::VerifyStatAndGenerateImageHash(
     const ImageCacheInterface::ImageCacheKeyType& image_key,
@@ -56,12 +60,40 @@ ImageCache::VerifyStatAndGenerateImageHash(
       (image_stat.st_dev != image_key.inode_device_id) ||
       (image_stat.st_ino != image_key.inode) ||
       (image_stat.st_mtim.tv_sec != image_key.mtime.tv_sec) ||
-      (image_stat.st_mtim.tv_nsec != image_key.mtime.tv_nsec) ||
+      std::abs(image_stat.st_mtim.tv_nsec - image_key.mtime.tv_nsec) >
+          kEpsilonNs ||
       (image_stat.st_ctim.tv_sec != image_key.ctime.tv_sec) ||
-      (image_stat.st_ctim.tv_nsec != image_key.ctime.tv_nsec)) {
+      std::abs(image_stat.st_ctim.tv_nsec - image_key.ctime.tv_nsec) >
+          kEpsilonNs) {
     return absl::NotFoundError(
         base::StrCat({"Failed to match stat of image hashed at ",
-                      image_path_in_current_ns.value()}));
+                      image_path_in_current_ns.value(),
+                      "\nExpected values:\n",
+                      "  inode_device_id: ",
+                      base::NumberToString(image_key.inode_device_id),
+                      "\n  inode: ",
+                      base::NumberToString(image_key.inode),
+                      "\n  mtime: ",
+                      base::NumberToString(image_key.mtime.tv_sec),
+                      ".",
+                      base::NumberToString(image_key.mtime.tv_nsec),
+                      "\n  ctime: ",
+                      base::NumberToString(image_key.ctime.tv_sec),
+                      ".",
+                      base::NumberToString(image_key.ctime.tv_nsec),
+                      "\nActual values:\n",
+                      "  st_dev: ",
+                      base::NumberToString(image_stat.st_dev),
+                      "\n  st_ino: ",
+                      base::NumberToString(image_stat.st_ino),
+                      "\n  st_mtime: ",
+                      base::NumberToString(image_stat.st_mtim.tv_sec),
+                      ".",
+                      base::NumberToString(image_stat.st_mtim.tv_nsec),
+                      "\n  st_ctime: ",
+                      base::NumberToString(image_stat.st_ctim.tv_sec),
+                      ".",
+                      base::NumberToString(image_stat.st_ctim.tv_nsec)}));
   }
   return hash;
 }
