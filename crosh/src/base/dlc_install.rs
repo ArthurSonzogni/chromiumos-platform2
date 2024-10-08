@@ -61,7 +61,7 @@ fn validate_args(_args: &Arguments) -> Result<String, dispatcher::Error> {
 }
 
 fn valid_dlc_id_format(dlc_id: &str) -> bool {
-    if dlc_id.is_empty() || dlc_id.len() > 40 {
+    if dlc_id.is_empty() || dlc_id.len() > 80 {
         return false;
     }
 
@@ -133,6 +133,10 @@ mod tests {
             "just-exactly-forty-character-long-dlc-id"
         ));
         assert!(valid_dlc_id_format(
+            &("just-exactly-forty-character-long-dlc-id".to_owned() +
+            "just-exactly-forty-character-long-dlc-id")
+        ));
+        assert!(valid_dlc_id_format(
             "1234567890123456789012345678901234567890"
         ));
     }
@@ -143,7 +147,9 @@ mod tests {
         assert!(!valid_dlc_id_format("-starts-with-dash"));
         assert!(!valid_dlc_id_format("nöt-ascii"));
         assert!(!valid_dlc_id_format(
-            "12345678901234567890123456789012345678901"
+            &("just-exactly-forty-character-long-dlc-id".to_owned() +
+            "just-exactly-forty-character-long-dlc-id" +
+            "bitmore")
         ));
     }
 }
