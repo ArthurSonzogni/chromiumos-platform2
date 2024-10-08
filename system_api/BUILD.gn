@@ -46,8 +46,6 @@ group("all") {
     ":system_api-lorgnette-protos",
     ":system_api-lvmd-goprotos",
     ":system_api-lvmd-protos",
-    ":system_api-metrics_event-goprotos",
-    ":system_api-metrics_event-protos",
     ":system_api-minios-protos",
     ":system_api-ml-goprotos",
     ":system_api-ml-protos",
@@ -430,20 +428,6 @@ goproto_library("system_api-tpm_manager-goprotos") {
   proto_in_dir = "dbus/tpm_manager"
   proto_out_dir = "go/src/"
   sources = [ "${proto_in_dir}/tpm_manager.proto" ]
-}
-
-proto_library("system_api-metrics_event-protos") {
-  proto_in_dir = "dbus/metrics_event"
-  proto_out_dir = "include/metrics_event/proto_bindings"
-  sources = [ "${proto_in_dir}/metrics_event.proto" ]
-  standalone = true
-  install_package = true
-}
-
-goproto_library("system_api-metrics_event-goprotos") {
-  proto_in_dir = "dbus/metrics_event"
-  proto_out_dir = "go/src/"
-  sources = [ "${proto_in_dir}/metrics_event.proto" ]
 }
 
 proto_library("system_api-plugin_vm_service-protos") {
