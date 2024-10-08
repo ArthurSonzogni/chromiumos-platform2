@@ -1368,6 +1368,7 @@ properties:
                   pattern: "[0-9]+"
                 modem-type:
                   description: The type of modem present on the device.
+                    https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/proto/chromiumos/config/api/topology.proto
                   type: string
                   pattern: "[0-9]+"
               additionalProperties: false

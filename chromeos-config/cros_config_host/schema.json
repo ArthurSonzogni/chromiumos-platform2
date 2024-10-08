@@ -1237,7 +1237,7 @@
                     "type": "string"
                   },
                   "modem-type": {
-                    "description": "The type of modem present on the device.",
+                    "description": "The type of modem present on the device. https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/proto/chromiumos/config/api/topology.proto",
                     "pattern": "[0-9]+",
                     "type": "string"
                   },
