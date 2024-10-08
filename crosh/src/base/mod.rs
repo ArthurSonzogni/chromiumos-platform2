@@ -10,6 +10,7 @@ mod ccd_pass;
 mod connectivity;
 mod display_debug;
 mod dlc_install;
+mod dlc_list;
 mod dmesg;
 mod evtest;
 mod exit;
@@ -44,6 +45,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     ccd_pass::register(dispatcher);
     connectivity::register(dispatcher);
     dlc_install::register(dispatcher);
+    dlc_list::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
     evtest::register(dispatcher);
