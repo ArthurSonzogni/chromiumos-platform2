@@ -9,11 +9,14 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/types/pass_key.h>
 
 #include "odml/embedding_model/model_info.h"
 #include "odml/mojom/embedding_model.mojom.h"
 
 namespace embedding_model {
+
+class ModelHolder;
 
 // ModelRunner is an abstract class that represents the interface to a text
 // embedding model. The ModelHolder will hold instance of ModelRunner to ensure
@@ -32,16 +35,20 @@ class ModelRunner {
 
   // Calling Load() loads the model. Once the load finishes successfully
   // |callback| will be called with true, if not it'll be called with false.
-  // Caller should not call this if another call (Load() or Unload()) is in
-  // progress.
-  virtual void Load(LoadCallback callback) = 0;
+  // Caller should not call this if another call (Load(), Unload() or Run()) is
+  // in progress. Caller should not call again after successful Load() and
+  // before Unload() finishing.
+  virtual void Load(base::PassKey<ModelHolder> passkey,
+                    LoadCallback callback) = 0;
 
   using UnloadCallback = base::OnceCallback<void()>;
 
   // Calling Unload() unloads the model. Once the model is unloaded, |callback|
-  // is called. Caller should not call this if another call (Load() or Unload())
-  // is in progress.
-  virtual void Unload(UnloadCallback callback) = 0;
+  // is called. Caller should not call this if another call (Load(), Unload() or
+  // Run()) is in progress. Caller should not call again after Unload() finishes
+  // and before successful Load().
+  virtual void Unload(base::PassKey<ModelHolder> passkey,
+                      UnloadCallback callback) = 0;
 
   // Return the model version. See mojom::OnDeviceEmbeddingModel::Version() for
   // more info.
@@ -53,8 +60,11 @@ class ModelRunner {
                               const std::vector<float>& embeddings)>;
 
   // Run() runs the embedding inference, converting a string into a vector
-  // embedding.
-  virtual void Run(mojom::GenerateEmbeddingRequestPtr request,
+  // embedding. Caller should not overlap this with another call (Load(),
+  // Unload() or Run()), and can only call this after successful Load() and
+  // before Unload().
+  virtual void Run(base::PassKey<ModelHolder> passkey,
+                   mojom::GenerateEmbeddingRequestPtr request,
                    RunCallback callback) = 0;
 };
 

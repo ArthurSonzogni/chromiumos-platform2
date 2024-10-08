@@ -15,13 +15,20 @@ namespace embedding_model {
 
 class ModelRunnerMock : public ModelRunner {
  public:
-  MOCK_METHOD(void, Load, (LoadCallback callback), (override));
+  MOCK_METHOD(void,
+              Load,
+              (base::PassKey<ModelHolder> passkey, LoadCallback callback),
+              (override));
 
-  MOCK_METHOD(void, Unload, (UnloadCallback callback), (override));
+  MOCK_METHOD(void,
+              Unload,
+              (base::PassKey<ModelHolder> passkey, UnloadCallback callback),
+              (override));
 
   MOCK_METHOD(void,
               Run,
-              (mojom::GenerateEmbeddingRequestPtr request,
+              (base::PassKey<ModelHolder> passkey,
+               mojom::GenerateEmbeddingRequestPtr request,
                RunCallback callback),
               (override));
 

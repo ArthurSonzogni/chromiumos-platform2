@@ -125,7 +125,8 @@ TEST_F(EmbeddingModelServiceTest, LoadModelAndGetVersion) {
       std::make_unique<NiceMock<ModelRunnerMock>>();
   NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
   EXPECT_CALL(*runner_mock, Load)
-      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
         std::move(callback).Run(true);
       }));
   remote = LoadModel(kFakeModelUuid1, std::move(owned_runner_mock));
@@ -177,7 +178,8 @@ TEST_F(EmbeddingModelServiceTest, OverlappingLoadModelAndGetVersion) {
       std::make_unique<NiceMock<ModelRunnerMock>>();
   runner_mock = owned_runner_mock.get();
   EXPECT_CALL(*runner_mock, Load)
-      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
         std::move(callback).Run(true);
       }));
 
@@ -213,7 +215,8 @@ TEST_F(EmbeddingModelServiceTest, SerializedRun) {
   NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
   bool runner_busy = false;
   EXPECT_CALL(*runner_mock, Load)
-      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
         ASSERT_FALSE(runner_busy);
         std::move(callback).Run(true);
       }));
@@ -229,7 +232,8 @@ TEST_F(EmbeddingModelServiceTest, SerializedRun) {
   mojo_request2.truncate_input = false;
   std::optional<ModelRunner::RunCallback> run_callback1, run_callback2;
   EXPECT_CALL(*runner_mock, Run)
-      .WillRepeatedly(Invoke([&](mojom::GenerateEmbeddingRequestPtr request,
+      .WillRepeatedly(Invoke([&](base::PassKey<ModelHolder> passkey,
+                                 mojom::GenerateEmbeddingRequestPtr request,
                                  ModelRunner::RunCallback callback) {
         ASSERT_FALSE(runner_busy);
         runner_busy = true;
@@ -303,7 +307,8 @@ TEST_F(EmbeddingModelServiceTest, RequestWhileUnloading) {
       std::make_unique<NiceMock<ModelRunnerMock>>();
   NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
   EXPECT_CALL(*runner_mock, Load)
-      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
         ASSERT_FALSE(runner_busy);
         std::move(callback).Run(true);
       }));
@@ -313,7 +318,8 @@ TEST_F(EmbeddingModelServiceTest, RequestWhileUnloading) {
   // Stall the Unload() call.
   std::optional<ModelRunner::UnloadCallback> unload_callback;
   EXPECT_CALL(*runner_mock, Unload)
-      .WillOnce(Invoke([&](ModelRunner::UnloadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::UnloadCallback callback) {
         ASSERT_FALSE(runner_busy);
         runner_busy = true;
         unload_callback = std::move(callback);
@@ -329,7 +335,8 @@ TEST_F(EmbeddingModelServiceTest, RequestWhileUnloading) {
   // Load again but block ModelRunner::Load().
   std::optional<ModelRunner::LoadCallback> load_callback;
   EXPECT_CALL(*runner_mock, Load)
-      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
         ASSERT_FALSE(runner_busy);
         runner_busy = true;
         load_callback = std::move(callback);
@@ -353,7 +360,8 @@ TEST_F(EmbeddingModelServiceTest, RequestWhileUnloading) {
                                      std::end(kFakeEmbedding1));
   std::optional<ModelRunner::RunCallback> run_callback1;
   EXPECT_CALL(*runner_mock, Run)
-      .WillRepeatedly(Invoke([&](mojom::GenerateEmbeddingRequestPtr request,
+      .WillRepeatedly(Invoke([&](base::PassKey<ModelHolder> passkey,
+                                 mojom::GenerateEmbeddingRequestPtr request,
                                  ModelRunner::RunCallback callback) {
         ASSERT_FALSE(runner_busy);
         runner_busy = true;
@@ -411,7 +419,8 @@ TEST_F(EmbeddingModelServiceTest, ModelLoadFailed) {
   NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
   std::optional<ModelRunner::LoadCallback> load_callback;
   EXPECT_CALL(*runner_mock, Load)
-      .WillOnce(Invoke([&](ModelRunner::LoadCallback callback) {
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
         ASSERT_FALSE(runner_busy);
         runner_busy = true;
         load_callback = std::move(callback);

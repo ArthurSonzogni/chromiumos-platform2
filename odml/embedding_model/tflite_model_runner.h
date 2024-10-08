@@ -16,13 +16,15 @@ class TfliteModelRunner : public ModelRunner {
  public:
   explicit TfliteModelRunner(ModelInfo&& model_info);
 
-  void Load(LoadCallback callback) override;
+  void Load(base::PassKey<ModelHolder> passkey, LoadCallback callback) override;
 
-  void Unload(UnloadCallback callback) override;
+  void Unload(base::PassKey<ModelHolder> passkey,
+              UnloadCallback callback) override;
 
   std::string GetModelVersion() override;
 
-  void Run(mojom::GenerateEmbeddingRequestPtr request,
+  void Run(base::PassKey<ModelHolder> passkey,
+           mojom::GenerateEmbeddingRequestPtr request,
            RunCallback callback) override;
 
  private:

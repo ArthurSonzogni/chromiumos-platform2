@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/types/pass_key.h>
+
 namespace embedding_model {
 
 ModelReference::ModelReference(base::WeakPtr<ModelHolder> holder)
@@ -73,6 +75,7 @@ void ModelHolder::TriggerLoad() {
 
   state_ = HolderState::LOADING;
   model_runner_->Load(
+      base::PassKey<ModelHolder>(),
       base::BindOnce(&ModelHolder::OnLoadFinish, base::Unretained(this)));
 }
 
@@ -136,6 +139,7 @@ void ModelHolder::TriggerUnload() {
 
   state_ = HolderState::UNLOADING;
   model_runner_->Unload(
+      base::PassKey<ModelHolder>(),
       base::BindOnce(&ModelHolder::OnUnloadFinish, base::Unretained(this)));
 }
 
@@ -150,7 +154,7 @@ void ModelHolder::RunJob() {
   CHECK_EQ(state_, HolderState::LOADED);
   state_ = HolderState::RUNNING;
   model_runner_->Run(
-      std::move(queued_tasks_.front()->request),
+      base::PassKey<ModelHolder>(), std::move(queued_tasks_.front()->request),
       base::BindOnce(&ModelHolder::OnRunFinish, base::Unretained(this)));
 }
 
