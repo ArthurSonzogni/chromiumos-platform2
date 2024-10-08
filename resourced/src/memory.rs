@@ -154,15 +154,18 @@ pub fn register_features(swappiness: SwappinessConfig) {
 
     feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
 
-    feature::register_feature(
-        MGLRU_SPLIT_GENERATIONS,
-        false,
-        Some(Box::new(move |enabled| {
-            if let Err(e) = update_mglru_split_settings(enabled, &swappiness) {
-                error!("Failed to update MGLRU split settings {:?}", e);
-            }
-        })),
-    );
+    let kernel_version = sys_info::os_release().unwrap_or("".to_string());
+    if kernel_version.starts_with("5.15") || kernel_version.starts_with("6.6") {
+        feature::register_feature(
+            MGLRU_SPLIT_GENERATIONS,
+            false,
+            Some(Box::new(move |enabled| {
+                if let Err(e) = update_mglru_split_settings(enabled, &swappiness) {
+                    error!("Failed to update MGLRU split settings {:?}", e);
+                }
+            })),
+        );
+    }
 }
 
 pub const PSI_MEMORY_POLICY_FEATURE_NAME: &str = "CrOSLateBootPSIMemoryPolicy";
