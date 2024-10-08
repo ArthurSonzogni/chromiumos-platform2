@@ -88,6 +88,7 @@ struct PathInfo {
   bpf::file_monitoring_mode monitoringMode;
   cros_xdr::reporting::SensitiveFileType fileType;
   FilePathCategory pathCategory;
+  bool monitorHardLink = true;
   std::optional<std::string> fullResolvedPath;
   bpf::device_monitoring_type deviceMonitoringType =
       bpf::device_monitoring_type::MONITOR_SPECIFIC_FILES;
@@ -391,6 +392,9 @@ class FilePlugin : public PluginInterface {
 
   using OrderedEvents = std::vector<std::unique_ptr<FileEventValue>>;
 
+  using InodeMonitoringSettingsMap = std::unordered_map<
+      std::unique_ptr<secagentd::bpf::inode_dev_map_key>,
+      std::unique_ptr<secagentd::bpf::file_monitoring_settings>>;
   using FileEventMap =
       absl::flat_hash_map<FileEventKey, base::WeakPtr<FileEventValue>>;
 
@@ -555,6 +559,10 @@ class FilePlugin : public PluginInterface {
   // Timer to prevent long running async tasks from blocking forward progress
   // of file events.
   base::OneShotTimer async_abort_timer_;
+
+  void ProcessHardLinkTaskResult(
+      int fd,
+      std::unique_ptr<FilePlugin::InodeMonitoringSettingsMap> hard_link_map);
 
   void ReceiveHashComputeResults(absl::StatusOr<HashComputeResult> result);
 };

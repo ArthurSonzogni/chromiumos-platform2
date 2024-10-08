@@ -8,6 +8,9 @@
 
 #include "absl/status/status.h"
 #include "base/files/file.h"
+#include "base/files/file_enumerator.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_split.h"
@@ -98,18 +101,18 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
          {"/", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::ROOT_FS,
-          secagentd::FilePathCategory::SYSTEM_PATH, std::nullopt,
+          secagentd::FilePathCategory::SYSTEM_PATH, false, std::nullopt,
           secagentd::bpf::device_monitoring_type::MONITOR_ALL_FILES}},
         {secagentd::FilePathName::MOUNTED_ARCHIVE,
          {"/media/archive", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_FILE,
-          secagentd::FilePathCategory::REMOVABLE_PATH}},
+          secagentd::FilePathCategory::REMOVABLE_PATH, false}},
         {secagentd::FilePathName::GOOGLE_DRIVE_FS,
          {"/media/fuse/", "drivefs",
           secagentd::bpf::file_monitoring_mode::READ_AND_READ_WRITE_BOTH,
           cros_xdr::reporting::SensitiveFileType::USER_GOOGLE_DRIVE_FILE,
-          secagentd::FilePathCategory::REMOVABLE_PATH}},
+          secagentd::FilePathCategory::REMOVABLE_PATH, false}},
         {secagentd::FilePathName::STATEFUL_PARTITION,
          {"/home/.shadow/", "/auth_factors",
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
@@ -119,7 +122,7 @@ static const std::map<secagentd::FilePathName, secagentd::PathInfo>
          {"/media/removable/", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
           cros_xdr::reporting::SensitiveFileType::USB_MASS_STORAGE,
-          secagentd::FilePathCategory::REMOVABLE_PATH}},
+          secagentd::FilePathCategory::REMOVABLE_PATH, false}},
         {secagentd::FilePathName::DEVICE_SETTINGS_POLICY_DIR,
          {"/var/lib/devicesettings/policy.", std::nullopt,
           secagentd::bpf::file_monitoring_mode::READ_WRITE_ONLY,
@@ -209,6 +212,16 @@ const std::optional<std::string> ConstructOptionalUserhash(
 static uint64_t UserspaceToKernelDeviceId(const struct statx& fileStatx) {
   // Combine the major and minor numbers to form the kernel-space device ID
   return ((fileStatx.stx_dev_major << 20) | fileStatx.stx_dev_minor);
+}
+
+static uint64_t UserspaceToKernelDeviceId(uint64_t dev_t) {
+  // This function converts a user-space device ID (64 bits) to a kernel-space
+  // device ID (32 bits). In the kernel, the device ID is structured with the
+  // major number occupying the upper 20 bits and the minor number occupying
+  // the lower 12 bits. By shifting the major number left by 20 bits, we
+  // combine the major and minor numbers into a single 32-bit identifier,
+  // adhering to the kernel's requirements for device identification.
+  return ((major(dev_t) << 20) | minor(dev_t));
 }
 
 static uint64_t KernelToUserspaceDeviceId(uint64_t kernel_dev) {
@@ -517,6 +530,93 @@ void TraverseDirectories(
         (entry.is_regular_file() && processFiles)) {
       // Apply the callback function to the directory path
       callback.Run(entry.path().string());
+    }
+  }
+}
+
+std::unique_ptr<FilePlugin::InodeMonitoringSettingsMap>
+TraverseDirectoryHardlink(
+    std::unique_ptr<FilePlugin::InodeMonitoringSettingsMap> hard_link_map,
+    const base::FilePath& dir_path,
+    const PathInfo& pathInfo,
+    std::unordered_set<ino_t>& visited_inodes) {
+  // FileEnumerator for traversing directories
+  base::FileEnumerator enumerator(
+      dir_path, false,
+      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES);
+
+  for (base::FilePath current = enumerator.Next(); !current.empty();
+       current = enumerator.Next()) {
+    base::FileEnumerator::FileInfo file_info = enumerator.GetInfo();
+
+    if (file_info.GetName().value() == "." ||
+        file_info.GetName().value() == ".") {
+      continue;  // Skip the current and parent directories
+    }
+
+    // Check if we've already encountered this inode through a hard link
+    if (visited_inodes.find(file_info.stat().st_ino) != visited_inodes.end()) {
+      continue;  // Skip files or directories we've already processed
+    }
+
+    // Add the inode to the set to mark it as processed
+    visited_inodes.insert(file_info.stat().st_ino);
+
+    // Check if it's a regular file with multiple hard links
+    if (S_ISREG(file_info.stat().st_mode) && file_info.stat().st_nlink > 1) {
+      // Create key for BPF map update
+      auto key = std::make_unique<secagentd::bpf::inode_dev_map_key>(
+          secagentd::bpf::inode_dev_map_key{
+              .inode_id = file_info.stat().st_ino,
+              .dev_id = UserspaceToKernelDeviceId(file_info.stat().st_dev)});
+
+      auto monitoringSettings =
+          std::make_unique<secagentd::bpf::file_monitoring_settings>(
+              (uint8_t)pathInfo.fileType, pathInfo.monitoringMode);
+      hard_link_map->insert_or_assign(std::move(key),
+                                      std::move(monitoringSettings));
+    } else if (file_info.IsDirectory()) {
+      // Recursively call for directories
+      hard_link_map = TraverseDirectoryHardlink(
+          std::move(hard_link_map), current, pathInfo, visited_inodes);
+    }
+  }
+
+  return hard_link_map;
+}
+
+std::unique_ptr<FilePlugin::InodeMonitoringSettingsMap> UpdateHardLinksBPFMap(
+    const std::map<FilePathName, std::vector<PathInfo>>& pathsMap) {
+  std::unique_ptr<FilePlugin::InodeMonitoringSettingsMap> hard_link_map =
+      std::make_unique<FilePlugin::InodeMonitoringSettingsMap>();
+  for (const auto& [_, pathInfos] : pathsMap) {
+    for (const auto& pathInfo : pathInfos) {
+      if (!pathInfo.monitorHardLink || !pathInfo.fullResolvedPath.has_value()) {
+        continue;  // Skip if hard link monitoring is not enabled or path is not
+                   // resolved
+      }
+      base::FilePath dir_path(pathInfo.fullResolvedPath.value());
+      std::unordered_set<ino_t> visited_inodes;
+      // Traverse the directory and update the BPF map
+      hard_link_map = TraverseDirectoryHardlink(
+          std::move(hard_link_map), dir_path, pathInfo, visited_inodes);
+    }
+  }
+
+  return hard_link_map;
+}
+
+void FilePlugin::ProcessHardLinkTaskResult(
+    int fd,
+    std::unique_ptr<FilePlugin::InodeMonitoringSettingsMap> hard_link_map) {
+  // Iterate over the entries in the map
+  for (const auto& entry : *hard_link_map) {
+    const auto& key = entry.first;                  // The inode key
+    const auto& monitoringSettings = entry.second;  // Monitoring settings
+    // Update BPF map entry for each key-value pair
+    if (bpf_map_update_elem(fd, key.get(), monitoringSettings.get(), 0) != 0) {
+      LOG(ERROR) << "Failed to update HardLink BPF map for inode "
+                 << key->inode_id << " device id " << key->dev_id;
     }
   }
 }
@@ -869,6 +969,20 @@ absl::Status FilePlugin::UpdateBPFMapForPathMaps(
   if (!status.ok()) {
     return status;
   }
+
+  mapFdResult =
+      bpf_skeleton_helper_->FindBpfMapByName("allowlisted_hardlink_inodes");
+
+  if (!mapFdResult.ok()) {
+    return mapFdResult.status();
+  }
+
+  async_io_task_tracker_.PostTaskAndReplyWithResult(
+      async_io_task_.get(), FROM_HERE,
+      base::BindOnce(&UpdateHardLinksBPFMap, pathsMap),
+      base::BindOnce(&FilePlugin::ProcessHardLinkTaskResult,
+                     weak_ptr_factory_.GetWeakPtr(), mapFdResult.value()));
+
   return absl::OkStatus();
 }
 

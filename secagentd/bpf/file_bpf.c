@@ -407,13 +407,16 @@ bpf_map_lookup_allowlisted_hardlink_inodes(dev_t device_id, ino_t inode_id) {
 static __always_inline int bpf_map_update_allowlisted_hardlink_inodes(
     ino_t inode_id,
     dev_t dev_id,
-    struct file_monitoring_settings file_monitoring_settings) {
+    const struct file_monitoring_settings* file_monitoring_settings) {
+  if (!file_monitoring_settings) {
+    return 0;
+  }
   struct inode_dev_map_key key;
   __builtin_memset(&key, 0, sizeof(key));
   key.inode_id = inode_id;
   key.dev_id = dev_id;
   return bpf_map_update_elem(&allowlisted_hardlink_inodes, &key,
-                             &file_monitoring_settings, 0);
+                             file_monitoring_settings, 0);
 }
 
 static inline __attribute__((always_inline)) bool isProcessBlocklisted() {
@@ -1503,38 +1506,52 @@ int BPF_PROG(fexit__security_inode_link,
              struct dentry* new_dentry,
              int ret) {
   // Exit early if the operation failed or if `dir` or `old_dentry` is NULL
-  if (ret != 0 || !dir || !old_dentry) {
+  if (ret != 0 || !dir || !old_dentry || !new_dentry) {
     return 0;
   }
 
   // Initialize variables
   struct inode* old_inode = BPF_CORE_READ(old_dentry, d_inode);
-  struct file_monitoring_settings monitoring_settings, new_monitoring_settings;
+  struct file_monitoring_settings old_monitoring_settings,
+      new_monitoring_settings;
 
   if (!old_inode) {
     return 0;
   }
 
-  // Read the device ID of the old inode and check allowlist status
+  // Read the device ID of the old inode
   dev_t old_dev_id = BPF_CORE_READ(old_inode, i_sb, s_dev);
 
-  // Check if the old dentry is allowlisted for monitoring
-  if (!is_dentry_allowlisted(old_dentry, old_dev_id, FMOD_LINK,
-                             &monitoring_settings)) {
-    return 0;  // Skip if old dentry is not allowlisted for monitoring
+  // Check if either old or new dentry is allowlisted for monitoring
+  bool old_dentry_allowlisted = is_dentry_allowlisted(
+      old_dentry, old_dev_id, FMOD_LINK, &old_monitoring_settings);
+  dev_t new_dev_id = BPF_CORE_READ(dir, i_sb, s_dev);
+  bool new_dentry_allowlisted = is_dentry_allowlisted(
+      new_dentry, new_dev_id, FMOD_LINK, &new_monitoring_settings);
+
+  // if both locations are allowed than we don't need to add this
+  if (old_dentry_allowlisted && new_dentry_allowlisted) {
+    return 0;
   }
 
-  // Read the device ID of the new parent directory and check allowlist status
-  dev_t new_dev_id = BPF_CORE_READ(dir, i_sb, s_dev);
-
-  // Check if the new dentry is allowlisted for monitoring
-  if (!is_dentry_allowlisted(new_dentry, new_dev_id, FMOD_LINK,
-                             &new_monitoring_settings)) {
-    // If new dentry is not allowlisted, update the allowlist map with its
-    // inode ID
+  // If either old or new dentry is allowlisted, update the allowlist map
+  if (old_dentry_allowlisted || new_dentry_allowlisted) {
     ino_t inode_id = BPF_CORE_READ(old_inode, i_ino);
+
+    // Use the monitoring settings for the old dentry if it's allowlisted,
+    // otherwise use the settings for the new dentry
+    struct file_monitoring_settings* settings_to_use;
+    if (old_dentry_allowlisted) {
+      settings_to_use = &old_monitoring_settings;
+    } else {
+      settings_to_use = &new_monitoring_settings;
+    }
+    if (!settings_to_use) {
+      return 0;
+    }
+    // Update the allowlist with the inode ID and the chosen monitoring settings
     bpf_map_update_allowlisted_hardlink_inodes(inode_id, old_dev_id,
-                                               monitoring_settings);
+                                               settings_to_use);
   }
 
   return 0;
