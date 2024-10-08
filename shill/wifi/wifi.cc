@@ -749,11 +749,9 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   if (network_rpcid.value().empty()) {
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
-    if (service->hidden_ssid()) {
-      const uint32_t scan_ssid = 1;  // "True": Use directed probe.
-      service_params.Set<uint32_t>(WPASupplicant::kNetworkPropertyScanSSID,
-                                   scan_ssid);
-    }
+    const uint32_t scan_ssid = 1;  // "True": Use directed probe.
+    service_params.Set<uint32_t>(WPASupplicant::kNetworkPropertyScanSSID,
+                                 scan_ssid);
     std::string bgscan_string = AppendBgscan(service, &service_params);
     service_params.Set<uint32_t>(WPASupplicant::kNetworkPropertyDisableVHT,
                                  provider_->disable_vht());
