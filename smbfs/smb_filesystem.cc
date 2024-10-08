@@ -464,17 +464,19 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
                                     std::optional<uint64_t> file_handle,
                                     const struct stat& attr,
                                     int to_set) {
-  VLOG(2) << "SetAttrInternal inode: " << inode << " to_set: " << to_set;
+  VLOG(2) << "SetAttrInternal inode: " << inode
+          << " to_set: " << ToSetFlagsToString(to_set);
   if (request->IsInterrupted()) {
     return;
   }
 
   // Currently, only setting size (ie. O_TRUC, ftruncate()) or times (ie.
   // utime(), utimensat()) is supported.
-  const int kSupportedAttrs =
-      FUSE_SET_ATTR_SIZE | FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME;
+  const int kSupportedAttrs = FUSE_SET_ATTR_SIZE | FUSE_SET_ATTR_ATIME |
+                              FUSE_SET_ATTR_MTIME | FUSE_SET_ATTR_MTIME_NOW;
   if (to_set & ~kSupportedAttrs) {
-    LOG(WARNING) << "Unsupported |to_set| flags on setattr: " << to_set;
+    LOG(WARNING) << "Unsupported |to_set| flags on setattr: "
+                 << ToSetFlagsToString(to_set);
     request->ReplyError(ENOTSUP);
     return;
   }
@@ -510,7 +512,8 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
     }
   }
 
-  if (to_set & (FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME)) {
+  if (to_set &
+      (FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME | FUSE_SET_ATTR_ATIME_NOW)) {
     error = SetUtimesInternal(share_file_path, to_set, attr.st_atim,
                               attr.st_mtim, smb_stat, &reply_stat);
     if (error) {
