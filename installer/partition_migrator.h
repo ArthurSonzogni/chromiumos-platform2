@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <brillo/brillo_export.h>
 #include <installer/cgpt_manager.h>
 #include <vboot/cgpt_params.h>
 #include <vboot/gpt.h>
@@ -42,7 +43,7 @@ struct Partition {
   }
 };
 
-class PartitionMigrator {
+class BRILLO_EXPORT PartitionMigrator {
  public:
   PartitionMigrator(bool add_at_end,
                     Partition reclaimed_partition,

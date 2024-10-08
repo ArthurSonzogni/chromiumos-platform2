@@ -50,6 +50,10 @@ group("all") {
   deps = [
     ":cros_installer",
     ":crx_import_script",
+    ":libcros_installer_utils",
+    ":libcros_installer_utils_header",
+    ":libcros_installer_utils_pc",
+    ":partition_migrator",
     ":postinst_script_symlink",
     ":sbin_scripts",
   ]
@@ -102,14 +106,12 @@ if (use.postinst_metrics) {
 
 static_library("libcros_installer") {
   sources = [
-    "cgpt_manager.cc",
     "chromeos_install_config.cc",
     "chromeos_legacy.cc",
     "chromeos_postinst.cc",
     "chromeos_setimage.cc",
     "chromeos_verity.cc",
     "inst_util.cc",
-    "partition_migrator.cc",
   ]
   if (use.enable_slow_boot_notify) {
     sources += [ "slow_boot_notify_enable.cc" ]
@@ -134,6 +136,7 @@ static_library("libcros_installer") {
 
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libcros_installer_config" ]
+  deps = [ ":libcros_installer_utils" ]
 }
 
 pkg_config("cros_installer_config") {
@@ -154,6 +157,36 @@ executable("evwaitkey") {
   sources = [ "util/evwaitkey.c" ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
+}
+
+shared_library("libcros_installer_utils") {
+  sources = [
+    "cgpt_manager.cc",
+    "inst_util.cc",
+    "partition_migrator.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
+}
+
+install_config("libcros_installer_utils_header") {
+  sources = [ "inst_util.h" ]
+  install_path = "/usr/include/cros_installer"
+}
+
+generate_pkg_config("libcros_installer_utils_pc") {
+  name = "libcros_installer_utils"
+  description = "ChromeOS installer utils library"
+  version = "1.0"
+  libs = [ "-lcros_installer_utils" ]
+  install = true
+}
+
+executable("partition_migrator") {
+  sources = [ "partition_migrator_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libcros_installer_utils" ]
+  install_path = "/usr/local/bin"
 }
 
 if (use.mtd) {

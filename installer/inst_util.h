@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 
 extern const char kEnvIsInstall[];
 extern const char kEnvIsFactoryInstall[];
@@ -159,5 +160,13 @@ bool IsReadonly(const base::FilePath& device);
 // Sets |result| with the current running kernel information like name, version,
 // etc.
 bool GetKernelInfo(std::string* result);
+
+namespace installer {
+// Migrate the given reclaimed partition on the device, or revert an already
+// migrated partition.
+BRILLO_EXPORT bool MigratePartition(const base::FilePath& device,
+                                    int reclaimed_partition_num,
+                                    bool revert);
+}  // namespace installer
 
 #endif  // INSTALLER_INST_UTIL_H_

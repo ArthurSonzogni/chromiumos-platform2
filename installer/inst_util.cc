@@ -4,9 +4,6 @@
 
 #include "installer/inst_util.h"
 
-#include <array>
-#include <string_view>
-
 #include <ctype.h>
 #include <dirent.h>
 #include <err.h>
@@ -18,10 +15,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
+
+#include <array>
+#include <memory>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 extern "C" {
 #include <vboot/vboot_host.h>
@@ -34,6 +38,9 @@ extern "C" {
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
+
+#include "installer/cgpt_manager.h"
+#include "installer/partition_migrator.h"
 
 using std::string;
 using std::vector;
@@ -51,6 +58,25 @@ namespace {
 // which use the 'p' notation to denote partitions.
 constexpr std::array<std::string_view, 3> kNumberedDevices = {
     "/dev/loop", "/dev/mmcblk", "/dev/nvme"};
+
+constexpr uint64_t kMiB = 1024 * 1024;
+
+std::optional<uint64_t> GetSectorSize(const base::FilePath& device) {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
+  uint64_t size = 0;
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(device.value().c_str(), O_RDONLY | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "open " << device.value();
+    return std::nullopt;
+  }
+  if (ioctl(fd.get(), BLKSSZGET, &size)) {
+    PLOG(ERROR) << "ioctl(BLKSSZGET): " << device.value();
+    return std::nullopt;
+  }
+  return size;
+}
 
 }  // namespace
 
@@ -513,3 +539,123 @@ bool GetKernelInfo(std::string* result) {
             buf.version + ") machine(" + buf.machine + ")";
   return true;
 }
+
+namespace installer {
+
+bool MigratePartition(const base::FilePath& device,
+                      int reclaimed_partition_num,
+                      bool revert) {
+  auto sector_size = GetSectorSize(device);
+  if (!sector_size) {
+    LOG(ERROR) << "Failed to get device size for " << device;
+    return false;
+  }
+
+  std::vector<installer::Partition> new_partitions = {
+      {
+          .number = 13,
+          .label = "boot_a",
+          .size = (64 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_CHROMEOS_KERNEL,
+      },
+      {
+          .number = 14,
+          .label = "boot_b",
+          .size = (64 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_CHROMEOS_KERNEL,
+      },
+      {
+          .number = 15,
+          .label = "vbmeta_a",
+          .size = (4 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+      {
+          .number = 16,
+          .label = "vbmeta_b",
+          .size = (4 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+      {
+          .number = 17,
+          .label = "metadata",
+          .size = (16 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_LINUX_FS,
+      },
+      {
+          .number = 18,
+          .label = "init_boot_a",
+          .size = (32 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+      {
+          .number = 19,
+          .label = "init_boot_b",
+          .size = (32 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+      {
+          .number = 20,
+          .label = "vendor_boot_a",
+          .size = (32 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+      {
+          .number = 21,
+          .label = "vendor_boot_b",
+          .size = (32 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+      {
+          .number = 22,
+          .label = "misc",
+          .size = (4 * kMiB) / *sector_size,
+          .type = GPT_ENT_TYPE_BASIC_DATA,
+      },
+  };
+
+  std::vector<installer::Partition> relabeled_partitions = {
+      {
+          .number = 1,
+          .label = "userdata",
+          .old_label = "STATE",
+      },
+      {
+          .number = reclaimed_partition_num,
+          .label = "super",
+          .old_label = reclaimed_partition_num == 3 ? "ROOT-A" : "ROOT-B",
+      },
+  };
+
+  installer::Partition reclaimed_partition = {
+      .number = reclaimed_partition_num,
+  };
+
+  std::unique_ptr<CgptManager> cgpt_manager = std::make_unique<CgptManager>();
+
+  SectorRange reclaimed_range;
+  if (cgpt_manager->Initialize(base::FilePath(device)) !=
+      CgptErrorCode::kSuccess) {
+    return false;
+  }
+
+  if (cgpt_manager->GetSectorRange(PartitionNum(reclaimed_partition.number),
+                                   reclaimed_range) !=
+      CgptErrorCode::kSuccess) {
+    return false;
+  }
+
+  reclaimed_partition.start = reclaimed_range.start;
+  reclaimed_partition.size = reclaimed_range.count;
+
+  installer::PartitionMigrator migrator(
+      /*add_at_end=*/true, reclaimed_partition, std::move(new_partitions),
+      std::move(relabeled_partitions), std::move(cgpt_manager));
+
+  if (revert) {
+    migrator.RevertMigration();
+    return true;
+  }
+  return migrator.RunMigration();
+}
+}  // namespace installer

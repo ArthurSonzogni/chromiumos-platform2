@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 #include <vboot/gpt.h>
 
 #include "installer/inst_util.h"
@@ -24,7 +25,8 @@ enum class [[nodiscard]] CgptErrorCode {
   kInvalidArgument = 3,
 };
 
-std::ostream& operator<<(std::ostream& os, const CgptErrorCode& error);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
+                                       const CgptErrorCode& error);
 
 // Range of sectors on disk.
 struct SectorRange {
@@ -127,7 +129,7 @@ class CgptManagerInterface {
   virtual const base::FilePath& DeviceName() const = 0;
 };
 
-class CgptManager : public CgptManagerInterface {
+class BRILLO_EXPORT CgptManager : public CgptManagerInterface {
  public:
   // Default constructor. The Initialize method must be called before
   // any other method can be called on this class.
