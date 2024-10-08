@@ -22,6 +22,7 @@ gettid: 1
 #   HIDIOCGRDESC: 0x90044802
 ioctl: arg1 == 0x80044801 || arg1 == 0x90044802 || arg1 == TCGETS
 lseek: 1
+fstat: 1
 newfstatat: 1
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
