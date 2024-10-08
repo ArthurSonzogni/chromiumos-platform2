@@ -15,6 +15,9 @@ enum OnDeviceEmbeddingModelInferenceError {
   // The input exceeded the model's input token limit.
   kTooLong,
 
+  // Inference failed due to unexpected internal error.
+  kInternal,
+
   // Fail to load the model.
   kModelLoadFailed,
 };

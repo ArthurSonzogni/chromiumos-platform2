@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -15,6 +16,26 @@
 #include <tensorflow/lite/kernels/register.h>
 
 namespace embedding_model {
+
+namespace {
+
+int ComputeSizeFromDims(const TfLiteIntArray& dims) {
+  int result = 1;
+  for (int i = 0; i < dims.size; ++i) {
+    result *= dims.data[i];
+  }
+  return result;
+}
+
+using FormatForEmbeddingFunction = std::optional<std::string> (*)(
+    const std::string&,
+    const std::string&,
+    const std::unordered_map<std::string, std::string>&);
+
+constexpr char kClusteringTaskType[] = "clustering";
+constexpr char kContentKey[] = "content";
+
+}  // namespace
 
 TfliteModelRunner::TfliteModelRunner(
     ModelInfo&& model_info,
@@ -154,6 +175,96 @@ std::string TfliteModelRunner::GetModelVersion() {
 
 void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
                             mojom::GenerateEmbeddingRequestPtr request,
-                            RunCallback callback) {}
+                            RunCallback callback) {
+  if (!tokenizer_ || !tokenizer_->IsLoaded() || !interpreter_) {
+    LOG(ERROR) << "TfliteModelRunner::Run() called while not loaded.";
+    std::move(callback).Run(
+        mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
+        std::vector<float>());
+    return;
+  }
+
+  const TfLiteIntArray& input_dims =
+      *interpreter_->tensor(tflite_info_->input_node_id)->dims;
+  const TfLiteIntArray& output_dims =
+      *interpreter_->tensor(tflite_info_->output_node_id)->dims;
+
+  int input_size = ComputeSizeFromDims(input_dims);
+  int output_size = ComputeSizeFromDims(output_dims);
+
+  auto format_for_embedding_fn =
+      shim_loader_->Get<FormatForEmbeddingFunction>("FormatForEmbedding");
+  if (!format_for_embedding_fn) {
+    LOG(ERROR) << "No FormatForEmbedding in odml-shim.";
+    std::move(callback).Run(
+        mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
+        std::vector<float>());
+    return;
+  }
+
+  std::unordered_map<std::string, std::string> format_params;
+  format_params.insert(make_pair(kContentKey, std::move(request->content)));
+  std::optional<std::string> input_str = format_for_embedding_fn(
+      model_info_.model_version, kClusteringTaskType, format_params);
+  if (!input_str) {
+    LOG(ERROR) << "Failed to format input for embedding.";
+    std::move(callback).Run(
+        mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
+        std::vector<float>());
+    return;
+  }
+
+  // Tokenize
+  std::optional<std::vector<int>> token_ids =
+      tokenizer_->Tokenize(passkey, std::move(*input_str));
+  if (!token_ids.has_value()) {
+    // Tokenizing failed.
+    LOG(ERROR) << "Failed to tokenize input for embedding.";
+    std::move(callback).Run(
+        mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
+        std::vector<float>());
+    return;
+  }
+
+  if (token_ids->size() > input_size) {
+    if (request->truncate_input) {
+      token_ids->resize(input_size, 0);
+    } else {
+      std::move(callback).Run(
+          mojom::OnDeviceEmbeddingModelInferenceError::kTooLong,
+          std::vector<float>());
+      return;
+    }
+  } else if (token_ids->size() < input_size) {
+    token_ids->resize(input_size, 0);
+  }
+
+  // Populate input
+  int* input_ptr = interpreter_->typed_tensor<int>(tflite_info_->input_node_id);
+  for (int i = 0; i < input_size; i++) {
+    input_ptr[i] = (*token_ids)[i];
+  }
+
+  // Run the embedding model.
+  auto ret = interpreter_->Invoke();
+  if (ret != kTfLiteOk) {
+    LOG(ERROR) << "Tflite graph Invoke() failed unexpectedly.";
+    std::move(callback).Run(
+        mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
+        std::vector<float>());
+    return;
+  }
+
+  // Extract the output.
+  std::vector<float> output;
+  float* output_ptr =
+      interpreter_->typed_tensor<float>(tflite_info_->output_node_id);
+  for (int i = 0; i < output_size; i++) {
+    output.push_back(output_ptr[i]);
+  }
+
+  std::move(callback).Run(mojom::OnDeviceEmbeddingModelInferenceError::kSuccess,
+                          output);
+}
 
 }  // namespace embedding_model

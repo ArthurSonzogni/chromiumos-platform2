@@ -22,6 +22,10 @@ struct EmbeddingTfliteModelInfo {
   // Path to the sentencepiece tokenizer file.
   // This is only used when builtin_spm is false.
   std::string spm_path;
+
+  // Which node is the input/output in the tflite graph?
+  int input_node_id;
+  int output_node_id;
 };
 
 // Contain information required to load and run the model.
