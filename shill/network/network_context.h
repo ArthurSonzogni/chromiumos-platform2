@@ -36,6 +36,7 @@ class NetworkContext {
   void UpdateSessionId();
   // Clears the current session_id in this context.
   void ClearSessionId();
+  std::optional<int> session_id() const { return session_id_; }
 
  private:
   static int next_session_id_;

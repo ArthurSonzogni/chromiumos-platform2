@@ -202,6 +202,7 @@ constexpr char kNetworkIDProperty[] = "NetworkID";
 constexpr char kNetworkConfigProperty[] = "NetworkConfig";
 
 // Property names in the NetworkConfig dict.
+constexpr char kNetworkConfigSessionIDProperty[] = "SessionID";
 constexpr char kNetworkConfigIPv4AddressProperty[] = "IPv4Address";
 constexpr char kNetworkConfigIPv4GatewayProperty[] = "IPv4Gateway";
 constexpr char kNetworkConfigIPv6AddressesProperty[] = "IPv6Addresses";

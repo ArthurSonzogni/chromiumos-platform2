@@ -1246,6 +1246,10 @@ KeyValueStore Service::GetNetworkConfigDict(Error* /*error*/) {
 
   KeyValueStore kvs;
 
+  // Use 0 as default value here to match the default value of network_id.
+  kvs.Set<int>(kNetworkConfigSessionIDProperty,
+               attached_network_->session_id().value_or(0));
+
   KeyValueStoreSetStringFromOptional(kNetworkConfigIPv4AddressProperty,
                                      config.ipv4_address, kvs);
   KeyValueStoreSetStringFromOptional(kNetworkConfigIPv4GatewayProperty,

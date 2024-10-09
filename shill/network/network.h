@@ -249,6 +249,11 @@ class Network : public NetworkMonitor::ClientNetwork {
   std::string interface_name() const { return interface_name_; }
   Technology technology() const { return technology_; }
 
+  // Note that this getter is only supposed to be used by Service to be exposed
+  // via D-Bus. For logging purposes in other classes, prefer logging the
+  // Network object directly (e.g., `LOG(INFO) << *network_ptr;`).
+  std::optional<int> session_id() const { return context_.session_id(); }
+
   // Interfaces between Service and Network.
   // Callback invoked when the static IP properties configured on the selected
   // service changed.
