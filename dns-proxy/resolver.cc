@@ -22,6 +22,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
+#include <chromeos/net-base/byte_utils.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/socket.h>
 #include <chromeos/patchpanel/dns/dns_protocol.h>
@@ -257,6 +258,13 @@ bool Resolver::ListenTCP(struct sockaddr* addr, std::string_view ifname) {
     return false;
   }
 
+  // Use SO_REUSEADDR to avoid listen failures on proxy restarts or crashes.
+  int on = 1;
+  if (!tcp_src->SetSockOpt(SOL_SOCKET, SO_REUSEADDR,
+                           net_base::byte_utils::AsBytes(on))) {
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed on " << ifname;
+  }
+
   socklen_t len =
       addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
   if (!tcp_src->Bind(addr, len)) {
@@ -289,6 +297,13 @@ bool Resolver::ListenUDP(struct sockaddr* addr, std::string_view ifname) {
   if (!udp_src) {
     PLOG(ERROR) << *this << " Failed to create UDP socket";
     return false;
+  }
+
+  // Use SO_REUSEADDR to avoid listen failures on proxy restarts or crashes.
+  int on = 1;
+  if (!udp_src->SetSockOpt(SOL_SOCKET, SO_REUSEADDR,
+                           net_base::byte_utils::AsBytes(on))) {
+    PLOG(ERROR) << "setsockopt(SO_REUSEADDR) failed on " << ifname;
   }
 
   socklen_t len =
