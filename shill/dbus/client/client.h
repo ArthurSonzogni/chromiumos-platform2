@@ -92,12 +92,6 @@ class BRILLO_EXPORT Client {
       kDisconnecting,
     };
 
-    bool operator==(const Device& that) const {
-      return this->type == that.type && this->ifname == that.ifname &&
-             this->network_config == that.network_config &&
-             this->cellular_country_code == that.cellular_country_code;
-    }
-
     Type type;
     ConnectionState state;
     std::string ifname;
