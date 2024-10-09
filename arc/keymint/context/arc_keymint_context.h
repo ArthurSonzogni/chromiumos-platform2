@@ -14,6 +14,7 @@
 #include <brillo/secure_blob.h>
 #include <debugd/dbus-proxies.h>
 #include <hardware/keymaster_defs.h>
+#include <keymaster/attestation_context.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 #include <keymaster/key.h>
@@ -22,22 +23,13 @@
 #include <libcrossystem/crossystem.h>
 #include <mojo/cert_store.mojom.h>
 
+#include "arc/keymint/context/arc_attestation_context.h"
 #include "arc/keymint/context/arc_remote_provisioning_context.h"
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/cros_key.h"
 #include "arc/keymint/key_data.pb.h"
 
 namespace arc::keymint::context {
-
-enum class VerifiedBootState {
-  kUnverifiedBoot,
-  kVerifiedBoot,
-};
-
-enum class VerifiedBootDeviceState {
-  kUnlockedDevice,
-  kLockedDevice,
-};
 
 // Defines specific behavior for ARC KeyMint in ChromeOS.
 class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
@@ -113,8 +105,10 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
       const ::keymaster::AuthorizationSet& attestation_params,
       ::keymaster::AuthorizationSet* attestation) const override;
 
-  const VerifiedBootParams* GetVerifiedBootParams(
-      keymaster_error_t* error) const override;
+  AttestationContext* attestation_context() override;
+
+  const ::keymaster::AttestationContext::VerifiedBootParams*
+  GetVerifiedBootParams(keymaster_error_t* error) const override;
 
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|
@@ -211,6 +205,7 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   scoped_refptr<dbus::Bus> bus_;
   std::optional<uint32_t> vendor_patchlevel_;
   std::optional<uint32_t> boot_patchlevel_;
+  std::unique_ptr<ArcAttestationContext> arc_attestation_context_;
 
   friend class ContextTestPeer;
 };

@@ -43,7 +43,8 @@ class ArcAttestationContext : public ::keymaster::SoftAttestationContext {
   keymaster_error_t SetVerifiedBootParams(
       std::string_view boot_state,
       std::string_view bootloader_state,
-      const std::vector<uint8_t>& vbmeta_digest);
+      const std::vector<uint8_t>& vbmeta_digest,
+      std::optional<std::vector<uint8_t>> boot_key);
 
  private:
   keymaster_security_level_t security_level_;

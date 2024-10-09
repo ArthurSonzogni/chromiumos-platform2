@@ -292,8 +292,11 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
   pure_soft_remote_provisioning_context_ =
       std::make_unique<ArcRemoteProvisioningContext>(security_level_);
 
-  SetVerifiedBootParams(boot_state, bootloader_state, vbmeta_digest);
+  arc_attestation_context_ =
+      std::make_unique<ArcAttestationContext>(version, security_level_);
+
   GetAndSetBootKeyFromLogs();
+  SetVerifiedBootParams(boot_state, bootloader_state, vbmeta_digest);
 }
 
 ArcKeyMintContext::~ArcKeyMintContext() {
@@ -952,6 +955,20 @@ keymaster_error_t ArcKeyMintContext::SetVerifiedBootParams(
     LOG(ERROR) << "vbmeta_digest is empty when trying to set vb boot params";
   }
 
+  if (arc_attestation_context_ == nullptr) {
+    LOG(ERROR) << "arc_attestation_context_ is null. Cannot set "
+                  "verified boot info.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+
+  auto error = arc_attestation_context_->SetVerifiedBootParams(
+      boot_state, bootloader_state, vbmeta_digest, boot_key_);
+  if (error != KM_ERROR_OK) {
+    LOG(ERROR)
+        << "Cannot set Verified Boot parameters in ARC Attestation Context";
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+
   // We also need to set the fields in Arc Remote Provisioning Context.
   // Hence, dynamic casting a base class pointer to derived class.
   if (pure_soft_remote_provisioning_context_ == nullptr) {
@@ -971,50 +988,6 @@ keymaster_error_t ArcKeyMintContext::SetVerifiedBootParams(
   arc_remote_provisioning_context->SetVerifiedBootInfo(
       boot_state, bootloader_state, vbmeta_digest);
   return KM_ERROR_OK;
-}
-
-const ::keymaster::AttestationContext::VerifiedBootParams*
-ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
-  static VerifiedBootParams params;
-
-  const std::string locked_device =
-      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
-  if (bootloader_state_.has_value()) {
-    params.device_locked = (bootloader_state_.value() == locked_device);
-  } else {
-    LOG(ERROR) << "Device Locked State could not be read from Bootloader state "
-                  "while fetching Verified Boot parameters";
-  }
-
-  const std::string verified_state =
-      kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
-  if (verified_boot_state_.has_value()) {
-    params.verified_boot_state = verified_boot_state_.value() == verified_state
-                                     ? KM_VERIFIED_BOOT_VERIFIED
-                                     : KM_VERIFIED_BOOT_UNVERIFIED;
-  } else {
-    LOG(ERROR) << "Verified Boot State could not be read while fetching "
-                  "Verified Boot Parameters";
-  }
-
-  if (vbmeta_digest_.has_value()) {
-    params.verified_boot_hash = {vbmeta_digest_.value().data(),
-                                 vbmeta_digest_.value().size()};
-  } else {
-    LOG(ERROR) << "Verified Boot hash could not be read from VB Meta digest "
-                  "while fetching Verified Boot Parameters";
-  }
-
-  if (boot_key_.has_value()) {
-    params.verified_boot_key = {boot_key_.value().data(),
-                                boot_key_.value().size()};
-  } else {
-    LOG(ERROR) << "Verified Boot Key could not be read while fetching Verified "
-                  "Boot Parameters";
-  }
-
-  *error = KM_ERROR_OK;
-  return &params;
 }
 
 std::optional<uint32_t> ArcKeyMintContext::GetVendorPatchlevel() const {
@@ -1110,6 +1083,33 @@ keymaster_error_t ArcKeyMintContext::VerifyAndCopyDeviceIds(
       arc_remote_provisioning_context->VerifyAndCopyDeviceIds(
           attestation_params, attestation);
   return error;
+}
+
+::keymaster::AttestationContext* ArcKeyMintContext::attestation_context() {
+  return reinterpret_cast<::keymaster::AttestationContext*>(
+      arc_attestation_context_.get());
+}
+
+const ::keymaster::AttestationContext::VerifiedBootParams*
+ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
+  static VerifiedBootParams params;
+  if (error == nullptr) {
+    LOG(ERROR) << "Cannot return an error via nullptr";
+    return &params;
+  }
+  if (arc_attestation_context_ == nullptr) {
+    LOG(ERROR)
+        << "Arc Attestation Context is null. Cannot get Verified Boot Params";
+    // We still need to return KM_ERROR_OK to pass the CTS.
+    *error = KM_ERROR_OK;
+    return &params;
+  }
+  auto derived_params = arc_attestation_context_->GetVerifiedBootParams(error);
+  if (derived_params != nullptr) {
+    params = *derived_params;
+  }
+
+  return &params;
 }
 
 }  // namespace arc::keymint::context

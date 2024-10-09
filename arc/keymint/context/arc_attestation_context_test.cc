@@ -22,6 +22,7 @@ constexpr char kVerifiedBootState[] = "green";
 constexpr char kLockedBootloaderState[] = "locked";
 constexpr char kSampleVbMetaDigest[] =
     "ab76eece2ea8e2bea108d4dfd618bb6ab41096b291c6e83937637a941d87b303";
+constexpr char kSampleBootKey[] = "hsbfoweyrwfr12345nldfbqolf";
 
 std::string keymasterBlobToString(keymaster_blob_t& blob) {
   return std::string(reinterpret_cast<const char*>(blob.data),
@@ -48,8 +49,9 @@ TEST_F(ArcAttestationContextTest, GetVerifiedBootParams_Success) {
   // Prepare
   std::vector<uint8_t> vbmeta_digest =
       brillo::BlobFromString(kSampleVbMetaDigest);
+  std::vector<uint8_t> boot_key = brillo::BlobFromString(kSampleBootKey);
   arc_attestation_context_->SetVerifiedBootParams(
-      kVerifiedBootState, kLockedBootloaderState, vbmeta_digest);
+      kVerifiedBootState, kLockedBootloaderState, vbmeta_digest, boot_key);
 
   // Execute.
   keymaster_error_t get_params_error;
@@ -64,5 +66,7 @@ TEST_F(ArcAttestationContextTest, GetVerifiedBootParams_Success) {
 
   keymaster_blob_t boot_hash_blob = result->verified_boot_hash;
   EXPECT_EQ(kSampleVbMetaDigest, keymasterBlobToString(boot_hash_blob));
+  keymaster_blob_t boot_key_blob = result->verified_boot_key;
+  EXPECT_EQ(kSampleBootKey, keymasterBlobToString(boot_key_blob));
 }
 }  // namespace arc::keymint::context

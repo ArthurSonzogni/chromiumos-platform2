@@ -90,7 +90,8 @@ ArcAttestationContext::GetVerifiedBootParams(keymaster_error_t* error) const {
 keymaster_error_t ArcAttestationContext::SetVerifiedBootParams(
     std::string_view boot_state,
     std::string_view bootloader_state,
-    const std::vector<uint8_t>& vbmeta_digest) {
+    const std::vector<uint8_t>& vbmeta_digest,
+    std::optional<std::vector<uint8_t>> boot_key) {
   if (!bootloader_state.empty()) {
     bootloader_state_ = bootloader_state;
   } else {
@@ -109,6 +110,12 @@ keymaster_error_t ArcAttestationContext::SetVerifiedBootParams(
   } else {
     LOG(ERROR)
         << "vbmeta_digest is empty when trying to set Verified Boot params";
+  }
+
+  if (boot_key.has_value()) {
+    boot_key_ = boot_key;
+  } else {
+    LOG(ERROR) << "boot_key is empty when trying to set Verified Boot params";
   }
 
   return KM_ERROR_OK;
