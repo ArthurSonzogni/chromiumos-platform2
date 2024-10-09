@@ -1110,4 +1110,29 @@ keymaster_error_t ArcKeyMintContext::SetBootPatchlevel(
   return KM_ERROR_OK;
 }
 
+keymaster_error_t ArcKeyMintContext::VerifyAndCopyDeviceIds(
+    const ::keymaster::AuthorizationSet& attestation_params,
+    ::keymaster::AuthorizationSet* attestation) const {
+  // Dynamic casting a base class pointer to derived class.
+  if (pure_soft_remote_provisioning_context_ == nullptr) {
+    LOG(ERROR) << "pure_soft_remote_provisioning_context_ is null. Cannot "
+                  "verify and copy device IDs.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+  ArcRemoteProvisioningContext* arc_remote_provisioning_context =
+      dynamic_cast<ArcRemoteProvisioningContext*>(
+          pure_soft_remote_provisioning_context_.get());
+
+  if (arc_remote_provisioning_context == nullptr) {
+    LOG(ERROR) << "Failure to dynamically cast the pointer. Cannot "
+                  "verify and copy device IDs.";
+    return KM_ERROR_UNEXPECTED_NULL_POINTER;
+  }
+
+  keymaster_error_t error =
+      arc_remote_provisioning_context->VerifyAndCopyDeviceIds(
+          attestation_params, attestation);
+  return error;
+}
+
 }  // namespace arc::keymint::context

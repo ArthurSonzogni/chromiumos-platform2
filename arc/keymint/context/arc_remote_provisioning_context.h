@@ -103,6 +103,9 @@ class ArcRemoteProvisioningContext
   */
   void SetChallengeForCertificateRequest(std::vector<uint8_t>& challenge);
 
+  /* Verifies the Device IDs from build properties and adds them to the
+   list of attested parameters.
+  */
   keymaster_error_t VerifyAndCopyDeviceIds(
       const ::keymaster::AuthorizationSet& attestation_params,
       ::keymaster::AuthorizationSet* attestation) const;

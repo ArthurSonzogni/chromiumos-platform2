@@ -106,6 +106,12 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
                                      const keymaster_blob_t& application_id,
                                      bool reset_since_rotation,
                                      keymaster_error_t* error) const override;
+  /* Verifies the Device IDs from build properties and adds them to the
+   list of attested parameters.
+  */
+  keymaster_error_t VerifyAndCopyDeviceIds(
+      const ::keymaster::AuthorizationSet& attestation_params,
+      ::keymaster::AuthorizationSet* attestation) const override;
 
   const VerifiedBootParams* GetVerifiedBootParams(
       keymaster_error_t* error) const override;
