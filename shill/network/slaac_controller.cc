@@ -265,9 +265,7 @@ void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
       CaptivePortalMsgHandler(msg);
       break;
     case net_base::RTNLMessage::kTypeNdUserOption:
-      LOG(INFO) << "Received unknown ND user option type "
-                << static_cast<int>(msg.nd_user_option().type)
-                << " on interface " << interface_index_;
+      // Valid but unsupported ND option type.
       break;
     default:
       LOG(ERROR) << __func__ << ": Unexpected RTNLMessage type " << msg.type()
