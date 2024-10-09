@@ -234,8 +234,8 @@ fn load_config(root: &Path) -> anyhow::Result<Config> {
         thread_configs[ThreadState::Urgent as usize].rt_priority = RtPriority::Foreground(6);
     }
 
-    let cpu_normal = setup_cpu_cgroup("resourced/normal", normal_cpu_share)?;
-    let cpu_background = setup_cpu_cgroup("resourced/background", background_cpu_share)?;
+    let cpu_normal = setup_cpu_cgroup("normal", normal_cpu_share)?;
+    let cpu_background = setup_cpu_cgroup("background", background_cpu_share)?;
     let cpuset_all = Cpuset::all_cores(root)?;
     let cpuset_all = setup_cpuset_cgroup("resourced/all", &cpuset_all.to_string())?;
     let cpuset_efficient = Cpuset::little_cores(root)?;
