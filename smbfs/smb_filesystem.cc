@@ -18,6 +18,7 @@
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 
 #include "smbfs/samba_interface_impl.h"
 #include "smbfs/util.h"
@@ -473,7 +474,8 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
   // Currently, only setting size (ie. O_TRUC, ftruncate()) or times (ie.
   // utime(), utimensat()) is supported.
   const int kSupportedAttrs = FUSE_SET_ATTR_SIZE | FUSE_SET_ATTR_ATIME |
-                              FUSE_SET_ATTR_MTIME | FUSE_SET_ATTR_MTIME_NOW;
+                              FUSE_SET_ATTR_MTIME | FUSE_SET_ATTR_ATIME_NOW |
+                              FUSE_SET_ATTR_MTIME_NOW;
   if (to_set & ~kSupportedAttrs) {
     LOG(WARNING) << "Unsupported |to_set| flags on setattr: "
                  << ToSetFlagsToString(to_set);
@@ -512,8 +514,8 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
     }
   }
 
-  if (to_set &
-      (FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME | FUSE_SET_ATTR_ATIME_NOW)) {
+  if (to_set & (FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME |
+                FUSE_SET_ATTR_ATIME_NOW | FUSE_SET_ATTR_MTIME_NOW)) {
     error = SetUtimesInternal(share_file_path, to_set, attr.st_atim,
                               attr.st_mtim, smb_stat, &reply_stat);
     if (error) {
@@ -595,26 +597,33 @@ int SmbFilesystem::SetUtimesInternal(const std::string& share_file_path,
   DCHECK(to_set & (FUSE_SET_ATTR_ATIME | FUSE_SET_ATTR_MTIME));
   DCHECK(reply_stat);
 
-  struct timespec requested_atime = current_stat.st_atim;
-  struct timespec requested_mtime = current_stat.st_mtim;
+  struct timespec new_atime = current_stat.st_atim;
+  struct timespec new_mtime = current_stat.st_mtim;
+  auto now = (base::Time::Now() - base::Time::UnixEpoch()).ToTimeSpec();
 
-  if (to_set & FUSE_SET_ATTR_ATIME) {
-    requested_atime = atime;
-  }
-  if (to_set & FUSE_SET_ATTR_MTIME) {
-    requested_mtime = mtime;
+  // When the flag _NOW is set it should prevail over the provided atime.
+  if (to_set & FUSE_SET_ATTR_ATIME_NOW) {
+    new_atime = now;
+  } else if (to_set & FUSE_SET_ATTR_ATIME) {
+    new_atime = atime;
   }
 
-  int error =
-      samba_impl_->SetUtimes(share_file_path, requested_atime, requested_mtime);
+  // When the flag _NOW is set it should prevail over the provided mtime.
+  if (to_set & FUSE_SET_ATTR_MTIME_NOW) {
+    new_mtime = now;
+  } else if (to_set & FUSE_SET_ATTR_MTIME) {
+    new_mtime = mtime;
+  }
+
+  int error = samba_impl_->SetUtimes(share_file_path, new_atime, new_mtime);
   if (error) {
     VLOG(1) << "SetUtimes path: " << share_file_path
             << " failed: " << base::safe_strerror(error);
     return error;
   }
 
-  reply_stat->st_atim = requested_atime;
-  reply_stat->st_mtim = requested_mtime;
+  reply_stat->st_atim = new_atime;
+  reply_stat->st_mtim = new_mtime;
 
   return 0;
 }
