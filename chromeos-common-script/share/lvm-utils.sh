@@ -72,7 +72,7 @@ get_thinpool_size() {
 get_thinpool_metadata_size() {
   local thinpool_size="$1"
 
-  thin_metadata_size --block-size 4k --pool-size "${thinpool_size}M" \
+  thin_metadata_size --block-size 64k --pool-size "${thinpool_size}M" \
       --max-thins 200 --numeric-only -u M
 }
 
