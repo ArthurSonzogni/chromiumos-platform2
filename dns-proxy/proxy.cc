@@ -128,6 +128,9 @@ std::ostream& operator<<(std::ostream& stream, const Proxy& proxy) {
   } else {
     stream << "_";
   }
+  if (proxy.device_) {
+    stream << " sid=" << proxy.device_->session_id;
+  }
   return stream << "}";
 }
 
