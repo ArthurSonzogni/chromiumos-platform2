@@ -1093,10 +1093,12 @@ void Manager::ConfigureNetwork(int ifindex,
                                NetworkApplier::Area area,
                                const net_base::NetworkConfig& network_config,
                                net_base::NetworkPriority priority,
-                               NetworkApplier::Technology technology) {
+                               NetworkApplier::Technology technology,
+                               int session_id) {
   LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
-            << "): " << network_config << ", priority " << priority
-            << ", area 0x" << std::hex << base::to_underlying(area);
+            << ", sid=" << session_id << "): " << network_config
+            << ", priority " << priority << ", area 0x" << std::hex
+            << base::to_underlying(area);
 
   NetworkApplier::GetInstance()->ApplyNetworkConfig(
       ifindex, ifname, area, network_config, priority, technology);

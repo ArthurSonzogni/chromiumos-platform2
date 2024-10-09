@@ -164,6 +164,8 @@ ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
   priority.is_primary_for_dns = request.priority().is_primary_for_dns();
   priority.ranking_order = request.priority().ranking_order();
 
+  const int session_id = request.session_id();
+
   // TODO(b/289971126): Unify the multiple enums used for technology.
   NetworkApplier::Technology technology;
   switch (request.technology()) {
@@ -185,7 +187,7 @@ ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
 
   manager_->ConfigureNetwork(ifindex, ifname,
                              static_cast<NetworkApplier::Area>(request.area()),
-                             network_config, priority, technology);
+                             network_config, priority, technology, session_id);
 
   ConfigureNetworkResponse response;
   response.set_success(true);

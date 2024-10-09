@@ -544,6 +544,7 @@ class Network : public NetworkMonitor::ClientNetwork {
       const net_base::NetworkConfig& network_config,
       net_base::NetworkPriority priority,
       Technology technology,
+      int session_id,
       base::OnceCallback<void(bool)> callback,
       bool is_service_ready);
 

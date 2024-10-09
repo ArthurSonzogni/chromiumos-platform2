@@ -1202,11 +1202,17 @@ void Network::ApplyNetworkConfig(NetworkConfigArea area,
     resolver_->SetDNSFromLists(dns_strs, network_config.dns_search_domains);
   }
 
+  // This function should only be called when network is not idle, so empty
+  // session_id is unexpected.
+  if (context_.session_id() == std::nullopt) {
+    LOG(ERROR) << __func__ << ": " << *this << ": missing session_id";
+  }
+
   CHECK(patchpanel_client_);
   patchpanel_client_->RegisterOnAvailableCallback(base::BindOnce(
       &Network::CallPatchpanelConfigureNetwork, weak_factory_.GetWeakPtr(),
       interface_index_, interface_name_, area, network_config, priority_,
-      technology_, std::move(callback)));
+      technology_, context_.session_id().value_or(0), std::move(callback)));
 }
 
 void Network::CallPatchpanelConfigureNetwork(
@@ -1216,6 +1222,7 @@ void Network::CallPatchpanelConfigureNetwork(
     const net_base::NetworkConfig& network_config,
     net_base::NetworkPriority priority,
     Technology technology,
+    int session_id,
     base::OnceCallback<void(bool)> callback,
     bool is_service_ready) {
   if (!is_service_ready) {
@@ -1229,7 +1236,7 @@ void Network::CallPatchpanelConfigureNetwork(
   patchpanel_client_->ConfigureNetwork(
       interface_index, interface_name, static_cast<uint32_t>(area),
       network_config, priority,
-      ShillTechnologyToPatchpanelClientTechnology(technology),
+      ShillTechnologyToPatchpanelClientTechnology(technology), session_id,
       std::move(callback));
 }
 
@@ -1239,16 +1246,23 @@ void Network::CallPatchpanelDestroyNetwork() {
     LOG(ERROR) << __func__ << ": " << *this << ": missing patchpanel client.";
     return;
   }
+
+  // This function should only be called when network is not idle, so empty
+  // session_id is unexpected.
+  if (context_.session_id() == std::nullopt) {
+    LOG(ERROR) << __func__ << ": " << *this << ": missing session_id";
+  }
+
   // Note that we cannot use RegisterOnAvailableCallback here, as it is very
   // possible that the Network object get destroyed immediately after this and
-  // the callback won't fire. That's particularlly observable for the case of
+  // the callback won't fire. That's particularly observable for the case of
   // VPN. Directly calling patchpanel dbus here as the possibility of patchpanel
   // service not ready when a Network is being destroyed is very low.
   patchpanel_client_->ConfigureNetwork(
       interface_index_, interface_name_,
       static_cast<uint32_t>(NetworkConfigArea::kClear), {}, {},
       ShillTechnologyToPatchpanelClientTechnology(technology_),
-      base::DoNothing());
+      context_.session_id().value_or(0), base::DoNothing());
 }
 
 void Network::ReportNeighborLinkMonitorFailure(

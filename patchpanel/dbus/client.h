@@ -525,6 +525,7 @@ class BRILLO_EXPORT Client {
                                 const net_base::NetworkConfig& network_config,
                                 net_base::NetworkPriority priority,
                                 NetworkTechnology technology,
+                                int session_id,
                                 ConfigureNetworkCallback callback) = 0;
 
   // Tags the socket pointed by |fd| for routing and other purposes. Returns

@@ -110,6 +110,7 @@ class BRILLO_EXPORT FakeClient : public Client {
                         const net_base::NetworkConfig& network_config,
                         net_base::NetworkPriority priority,
                         NetworkTechnology technology,
+                        int session_id,
                         ConfigureNetworkCallback callback) override;
 
   bool SendSetFeatureFlagRequest(Client::FeatureFlag flag,

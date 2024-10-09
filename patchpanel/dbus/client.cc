@@ -11,8 +11,8 @@
 #include <ostream>
 #include <vector>
 
-#include <base/functional/bind.h>
 #include <base/barrier_callback.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
@@ -901,6 +901,7 @@ class ClientImpl : public Client {
                         const net_base::NetworkConfig& network_config,
                         net_base::NetworkPriority priority,
                         NetworkTechnology technology,
+                        int session_id,
                         ConfigureNetworkCallback callback) override;
 
   bool SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) override;
@@ -1678,6 +1679,7 @@ bool ClientImpl::ConfigureNetwork(int interface_index,
                                   const net_base::NetworkConfig& network_config,
                                   net_base::NetworkPriority priority,
                                   NetworkTechnology technology,
+                                  int session_id,
                                   ConfigureNetworkCallback callback) {
   ConfigureNetworkRequest request;
   request.set_technology(ConvertNetworkTechnology(technology));
@@ -1689,6 +1691,7 @@ bool ClientImpl::ConfigureNetwork(int interface_index,
   request_priority->set_is_primary_physical(priority.is_primary_physical);
   request_priority->set_is_primary_for_dns(priority.is_primary_for_dns);
   request_priority->set_ranking_order(priority.ranking_order);
+  request.set_session_id(session_id);
 
   SerializeNetworkConfig(network_config, request.mutable_network_config());
 

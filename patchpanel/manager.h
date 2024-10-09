@@ -184,7 +184,8 @@ class Manager : public ForwardingService {
                         NetworkApplier::Area area,
                         const net_base::NetworkConfig& network_config,
                         net_base::NetworkPriority priority,
-                        NetworkApplier::Technology technology);
+                        NetworkApplier::Technology technology,
+                        int session_id);
 
   DownstreamNetworkService* downstream_network_service() {
     return &downstream_network_svc_;

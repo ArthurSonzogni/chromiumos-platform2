@@ -162,6 +162,7 @@ bool FakeClient::ConfigureNetwork(int interface_index,
                                   const net_base::NetworkConfig& network_config,
                                   net_base::NetworkPriority priority,
                                   NetworkTechnology technology,
+                                  int session_id,
                                   ConfigureNetworkCallback callback) {
   // TODO(b/293997937): schedule |callback| for unit tests.
   return true;
