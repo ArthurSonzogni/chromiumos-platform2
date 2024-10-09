@@ -97,8 +97,12 @@ class BRILLO_EXPORT Client {
     std::string ifname;
     std::string cellular_primary_ifname;  // empty if cell device has no primary
                                           // interface property.
-    NetworkConfig network_config;
     std::string cellular_country_code;
+    NetworkConfig network_config;
+
+    // The session_id of the associated Network. This should only be used in
+    // logging.
+    int session_id = 0;
   };
 
   template <class Proxy>
@@ -254,7 +258,7 @@ class BRILLO_EXPORT Client {
   // Returns the default device.
   // If |exclude_vpn| is true, then the device returned will be associated with
   // the highest priority service that is not of type "vpn".
-  // This method always queries the Manager for the latest proeprties. The
+  // This method always queries the Manager for the latest properties. The
   // default device can be passively tracked by registering the appropriate
   // handler (assuming one is interested in the VPN device).
   virtual std::unique_ptr<Device> DefaultDevice(bool exclude_vpn);
