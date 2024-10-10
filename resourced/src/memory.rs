@@ -103,6 +103,34 @@ const MGLRU_SPLIT_GENERATIONS: &str = "CrOSLateBootSplitGenerations";
 
 const MGLRU_SPLIT_GENERATIONS_SWAPPINESS: &str = "Swappiness";
 
+const MGLRU_CONSERVATIVE_MM: &str = "CrOSLateBootMglruConservativeMm";
+
+fn update_mglru_sysfs(mask: u64, enable: bool) -> Result<()> {
+    const MGLRU_ENABLE_PATH: &str = "/sys/kernel/mm/lru_gen/enabled";
+
+    let enabled_setting: u64 = u64::from_str_radix(
+        std::str::from_utf8(
+            &std::fs::read(MGLRU_ENABLE_PATH).context("failed to read MGLRU enable state")?,
+        )
+        .context("malformed kernel output")?
+        .trim_start_matches("0x")
+        .trim(),
+        16,
+    )
+    .context("non-hex kernel output")?;
+
+    let enabled_setting = if enable {
+        enabled_setting | mask
+    } else {
+        enabled_setting & !mask
+    };
+
+    let mut bytes = Vec::new();
+    write!(&mut bytes, "0x{:x}", enabled_setting).expect("Failed to format string");
+    std::fs::write(MGLRU_ENABLE_PATH, bytes).context("Failed to update MGLRU enable state")?;
+    Ok(())
+}
+
 fn update_mglru_split_settings(
     enable_split_gens: bool,
     swappiness_config: &SwappinessConfig,
@@ -118,30 +146,9 @@ fn update_mglru_split_settings(
         None
     };
 
-    const MGLRU_ENABLE_PATH: &str = "/sys/kernel/mm/lru_gen/enabled";
-    const MGLRU_LINKED_GEN_BIT: u64 = 0x10;
-
-    let enabled_setting: u64 = u64::from_str_radix(
-        std::str::from_utf8(
-            &std::fs::read(MGLRU_ENABLE_PATH).context("failed to read MGLRU enable state")?,
-        )
-        .context("malformed kernel output")?
-        .trim_start_matches("0x")
-        .trim(),
-        16,
-    )
-    .context("non-hex kernel output")?;
-
     // Set the linked gen bit to the inverse of the split gen experiment state.
-    let enabled_setting = if enable_split_gens {
-        enabled_setting & !MGLRU_LINKED_GEN_BIT
-    } else {
-        enabled_setting | MGLRU_LINKED_GEN_BIT
-    };
-
-    let mut bytes = Vec::new();
-    write!(&mut bytes, "0x{:x}", enabled_setting).expect("Failed to format string");
-    std::fs::write(MGLRU_ENABLE_PATH, bytes).context("Failed to update MGLRU enable state")?;
+    const MGLRU_LINKED_GEN_BIT: u64 = 0x10;
+    update_mglru_sysfs(MGLRU_LINKED_GEN_BIT, !enable_split_gens)?;
 
     swappiness_config.update_default_swappiness(swappiness_val);
     Ok(())
@@ -165,6 +172,18 @@ pub fn register_features(swappiness: SwappinessConfig) {
                 }
             })),
         );
+
+        feature::register_feature(
+            MGLRU_CONSERVATIVE_MM,
+            false,
+            Some(Box::new(move |enabled| {
+                // Set the aggressive mm bit to the inverse of the split gen experiment state.
+                const MGLRU_AGGRESSIVE_MM_BIT: u64 = 0x30;
+                if let Err(e) = update_mglru_sysfs(MGLRU_AGGRESSIVE_MM_BIT, !enabled) {
+                    error!("Failed to update MGLRU conservative mm {:?}", e);
+                }
+            })),
+        )
     }
 }
 
