@@ -248,6 +248,7 @@ if (!use.cros_host) {
     all_dependent_pkg_deps = [
       "dbus-1",
       "expat",
+      "libcros_installer_utils",
       "libcrossystem",
       "libcurl",
       "libdebugd-client",

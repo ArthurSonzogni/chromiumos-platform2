@@ -73,6 +73,12 @@ bool BootControlStub::SetActiveBootSlot(Slot slot) {
   return false;
 }
 
+bool BootControlStub::SetActiveBootPartition(int partition_num,
+                                             const std::string& slot_name) {
+  LOG(ERROR) << __FUNCTION__ << " should never be called.";
+  return false;
+}
+
 bool BootControlStub::MarkBootSuccessful() {
   return false;
 }
@@ -117,6 +123,18 @@ bool BootControlStub::SupportsMiniOSPartitions() {
 bool BootControlStub::IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) {
   LOG(ERROR) << __FUNCTION__ << " should never be called.";
   return false;
+}
+
+BootControlInterface::Slot BootControlStub::GetHighestOffsetSlot(
+    const std::string& partition_name) const {
+  LOG(ERROR) << __FUNCTION__ << " should never be called.";
+  return 0;
+}
+
+int BootControlStub::GetPartitionNumber(const std::string partition_name,
+                                        BootControlInterface::Slot slot) const {
+  LOG(ERROR) << __FUNCTION__ << " should never be called.";
+  return 0;
 }
 
 }  // namespace chromeos_update_engine

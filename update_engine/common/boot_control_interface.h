@@ -95,6 +95,11 @@ class BootControlInterface {
   // method doesn't change the value of GetCurrentSlot() on the current boot.
   virtual bool SetActiveBootSlot(Slot slot) = 0;
 
+  // Set the passed |partition_num| as the preferred boot partition. Returns
+  // whether it succeeded setting the active boot partition.
+  virtual bool SetActiveBootPartition(int partition_num,
+                                      const std::string& slot_name) = 0;
+
   // Mark the current slot as successfully booted synchronously. No other slot
   // flags are modified. Returns false on failure.
   virtual bool MarkBootSuccessful() = 0;
@@ -130,6 +135,15 @@ class BootControlInterface {
 
   // Returns true if the LVM stack is enabled.
   virtual bool IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) = 0;
+
+  // Get the slot with the highest offset on the device.
+  virtual Slot GetHighestOffsetSlot(
+      const std::string& partition_name) const = 0;
+
+  // Return the partition number for the passed |partition_name| and |slot|. In
+  // case of invalid data, returns -1.
+  virtual int GetPartitionNumber(const std::string partition_name,
+                                 BootControlInterface::Slot slot) const = 0;
 
   // Return a human-readable slot name used for logging.
   static std::string SlotName(Slot slot) {

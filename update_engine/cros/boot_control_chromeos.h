@@ -56,6 +56,8 @@ class BootControlChromeOS : public BootControlInterface {
   bool IsSlotBootable(BootControlInterface::Slot slot) const override;
   bool MarkSlotUnbootable(BootControlInterface::Slot slot) override;
   bool SetActiveBootSlot(BootControlInterface::Slot slot) override;
+  bool SetActiveBootPartition(int partition_num,
+                              const std::string& slot_name) override;
   bool MarkBootSuccessful() override;
   bool MarkBootSuccessfulAsync(
       base::OnceCallback<void(bool)> callback) override;
@@ -67,6 +69,10 @@ class BootControlChromeOS : public BootControlInterface {
   std::string GetMiniOSPartitionName() override;
   bool SupportsMiniOSPartitions() override;
   bool IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) override;
+  BootControlInterface::Slot GetHighestOffsetSlot(
+      const std::string& partition_name) const override;
+  int GetPartitionNumber(const std::string partition_name,
+                         BootControlInterface::Slot slot) const override;
 
  private:
   friend class BootControlChromeOSTest;
@@ -84,11 +90,6 @@ class BootControlChromeOS : public BootControlInterface {
   // Returns true if the root |device| (e.g., "/dev/sdb") is known to be
   // removable, false otherwise.
   static bool IsRemovableDevice(const std::string& device);
-
-  // Return the hard-coded partition number used in Chrome OS for the passed
-  // |partition_name| and |slot|. In case of invalid data, returns -1.
-  int GetPartitionNumber(const std::string partition_name,
-                         BootControlInterface::Slot slot) const;
 
   // Extracts DLC module ID and package ID from partition name. The structure of
   // the partition name is dlc/<dlc-id>/<dlc-package>. For example:

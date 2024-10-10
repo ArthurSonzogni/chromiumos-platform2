@@ -26,6 +26,7 @@
 #include <brillo/errors/error_codes.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/constants/imageloader.h>
+#include <cros_installer/inst_util.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <update_engine/dbus-constants.h>
@@ -100,6 +101,10 @@ const char kAUTestURLRequest[] = "autest";
 const char kScheduledAUTestURLRequest[] = "autest-scheduled";
 
 const char kMigrationDlcId[] = "migration-dlc";
+
+constexpr unsigned int kPartitionNumberBootA = 13;
+constexpr char kPartitionNameBootA[] = "boot_a";
+constexpr char kPartitionNameRoot[] = "root";
 
 string ConvertToString(ProcessMode op) {
   switch (op) {
@@ -435,6 +440,24 @@ void UpdateAttempter::Install() {
     return;
   }
   const auto& dlc_id = dlc_ids_[0];
+
+  if (pm_ == ProcessMode::MIGRATE) {
+    auto* boot_control = SystemState::Get()->boot_control();
+    auto last_slot = boot_control->GetHighestOffsetSlot(kPartitionNameRoot);
+    auto inactive_slot = boot_control->GetFirstInactiveSlot();
+    if (inactive_slot == BootControlInterface::kInvalidSlot ||
+        last_slot == BootControlInterface::kInvalidSlot) {
+      LOG(ERROR) << "Unable to determine installation slot for the migration.";
+      return;
+    }
+    if (inactive_slot != last_slot) {
+      LOG(ERROR) << "Migration DLC must be installed in the last slot: "
+                 << boot_control->SlotName(last_slot)
+                 << ". First inactive slot: "
+                 << boot_control->SlotName(inactive_slot);
+      return;
+    }
+  }
 
   auto http_fetcher = std::make_unique<LibcurlHttpFetcher>(
       GetProxyResolver(), SystemState::Get()->hardware());
@@ -1450,8 +1473,34 @@ void UpdateAttempter::ProcessingDoneInstall(const ActionProcessor* processor,
 
 void UpdateAttempter::ProcessingDoneMigrate(const ActionProcessor* processor,
                                             ErrorCode code) {
-  // TODO(b/356338530): Partition migration after the install and change the
-  // boot slot.
+  // TODO(b/356338530): Create a `PartitionMigrateAction`.
+  // Partition migration.
+  BootControlInterface* boot_control = SystemState::Get()->boot_control();
+  const auto& boot_device = boot_control->GetBootDevicePath();
+  if (boot_device.empty()) {
+    LOG(ERROR) << "Unable to get the boot device.";
+    return;
+  }
+  const auto& last_slot =
+      boot_control->GetHighestOffsetSlot(kPartitionNameRoot);
+  const auto& last_root =
+      boot_control->GetPartitionNumber(kPartitionNameRoot, last_slot);
+  if (!installer::MigratePartition(boot_device, last_root,
+                                   /*revert=*/false)) {
+    LOG(ERROR) << "Failed to update partitions.";
+    return;
+  }
+
+  // Set boot priority.
+  if (!boot_control->SetActiveBootPartition(kPartitionNumberBootA,
+                                            kPartitionNameBootA)) {
+    LOG(ERROR) << "Failed to set the boot priority on " << kPartitionNameBootA
+               << ", restoring partitions.";
+    installer::MigratePartition(boot_device, last_root,
+                                /*revert=*/true);
+    return;
+  }
+
   WriteUpdateCompletedMarker();
   prefs_->SetString(kPrefsUpdateCompletedIsMigration, "");
   SetStatusAndNotify(UpdateStatus::UPDATED_NEED_REBOOT);

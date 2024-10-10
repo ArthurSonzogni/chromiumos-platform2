@@ -46,6 +46,8 @@ class BootControlStub : public BootControlInterface {
   bool IsSlotBootable(BootControlInterface::Slot slot) const override;
   bool MarkSlotUnbootable(BootControlInterface::Slot slot) override;
   bool SetActiveBootSlot(BootControlInterface::Slot slot) override;
+  bool SetActiveBootPartition(int partition_num,
+                              const std::string& slot_name) override;
   bool MarkBootSuccessful() override;
   bool MarkBootSuccessfulAsync(
       base::OnceCallback<void(bool)> callback) override;
@@ -57,6 +59,10 @@ class BootControlStub : public BootControlInterface {
   std::string GetMiniOSPartitionName() override;
   bool SupportsMiniOSPartitions() override;
   bool IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) override;
+  BootControlInterface::Slot GetHighestOffsetSlot(
+      const std::string& partition_name) const override;
+  int GetPartitionNumber(const std::string partition_name,
+                         BootControlInterface::Slot slot) const override;
 
  private:
   std::unique_ptr<DynamicPartitionControlInterface> dynamic_partition_control_;

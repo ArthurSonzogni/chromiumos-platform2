@@ -432,6 +432,11 @@ bool BootControlChromeOS::SetActiveBootSlot(Slot slot) {
   if (partition_num < 0)
     return false;
 
+  return SetActiveBootPartition(partition_num, SlotName(slot));
+}
+
+bool BootControlChromeOS::SetActiveBootPartition(int partition_num,
+                                                 const std::string& slot_name) {
   CgptPrioritizeParams prio_params;
   memset(&prio_params, 0, sizeof(prio_params));
 
@@ -442,7 +447,7 @@ bool BootControlChromeOS::SetActiveBootSlot(Slot slot) {
 
   int retval = CgptPrioritize(&prio_params);
   if (retval != CGPT_OK) {
-    LOG(ERROR) << "Unable to set highest priority for slot " << SlotName(slot)
+    LOG(ERROR) << "Unable to set highest priority for slot " << slot_name
                << " (partition " << partition_num << ").";
     return false;
   }
@@ -459,8 +464,8 @@ bool BootControlChromeOS::SetActiveBootSlot(Slot slot) {
   retval = CgptSetAttributes(&add_params);
   if (retval != CGPT_OK) {
     LOG(ERROR) << "Unable to set NumTriesLeft to " << add_params.tries
-               << " for slot " << SlotName(slot) << " (partition "
-               << partition_num << ").";
+               << " for slot " << slot_name << " (partition " << partition_num
+               << ").";
     return false;
   }
 
@@ -611,6 +616,32 @@ bool BootControlChromeOS::IsLvmStackEnabled(brillo::LogicalVolumeManager* lvm) {
     is_lvm_stack_enabled_ = pv.has_value() && pv->IsValid();
   }
   return is_lvm_stack_enabled_.value();
+}
+
+BootControlInterface::Slot BootControlChromeOS::GetHighestOffsetSlot(
+    const std::string& partition_name) const {
+  BootControlInterface::Slot slot = kInvalidSlot;
+  uint64_t last_offset = 0;
+  for (BootControlInterface::Slot i = 0; i < num_slots_; ++i) {
+    int partition_num = GetPartitionNumber(partition_name, i);
+    if (partition_num < 0)
+      continue;
+
+    CgptAddParams params = {
+        .drive_name = const_cast<char*>(boot_disk_name_.c_str()),
+        .partition = static_cast<uint32_t>(partition_num)};
+
+    int retval = CgptGetPartitionDetails(&params);
+    if (retval != CGPT_OK)
+      continue;
+
+    if (slot == kInvalidSlot || params.begin > last_offset) {
+      last_offset = params.begin;
+      slot = i;
+    }
+  }
+
+  return slot;
 }
 
 }  // namespace chromeos_update_engine
