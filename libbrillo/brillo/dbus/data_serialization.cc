@@ -363,8 +363,12 @@ bool PopValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
       // brillo::Any. Fail here.
       LOG(ERROR) << "Cannot return FileDescriptor via Any";
       return false;
+    case dbus::Message::INVALID_DATA:
+      LOG(ERROR) << "Invalid D-Bus data type";
+      return false;
     default:
-      LOG(FATAL) << "Unknown D-Bus data type: " << variant_reader.GetDataType();
+      LOG(FATAL) << "Unknown D-Bus data type " << reader->GetDataType()
+                 << " with signature \"" << reader->GetDataSignature() << "\"";
   }
 }
 

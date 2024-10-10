@@ -277,6 +277,17 @@ TEST(DBusUtils, AppendAndPopVariantDataTypes) {
   EXPECT_TRUE(any_vector_vector.IsEmpty());
 }
 
+// Check that empty variant data is handled without crashing. The scenario
+// happens when a D-Bus method with variant type input is called without passing
+// any arguments.
+TEST(DBusUtils, AppendAndPopEmptyVariantDataType) {
+  std::unique_ptr<Response> message = Response::CreateEmpty();
+  MessageReader reader(message.get());
+
+  Any any_value;
+  EXPECT_FALSE(PopVariantValueFromReader(&reader, &any_value));
+}
+
 TEST(DBusUtils, AppendAndPopBasicAny) {
   std::unique_ptr<Response> message = Response::CreateEmpty();
   MessageWriter writer(message.get());
