@@ -294,6 +294,7 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
 
   arc_attestation_context_ =
       std::make_unique<ArcAttestationContext>(version, security_level_);
+  arc_enforcement_policy_ = std::make_unique<ArcEnforcementPolicy>(64, 64);
 
   GetAndSetBootKeyFromLogs();
   SetVerifiedBootParams(boot_state, bootloader_state, vbmeta_digest);
@@ -1110,6 +1111,11 @@ ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
   }
 
   return &params;
+}
+
+::keymaster::KeymasterEnforcement* ArcKeyMintContext::enforcement_policy() {
+  return reinterpret_cast<::keymaster::KeymasterEnforcement*>(
+      arc_enforcement_policy_.get());
 }
 
 }  // namespace arc::keymint::context

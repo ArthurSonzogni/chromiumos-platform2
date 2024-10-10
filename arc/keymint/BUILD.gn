@@ -216,6 +216,7 @@ shared_library("libarckeymint_context") {
     "${keymint_src}/contexts/soft_attestation_context.cpp",
     "${keymint_src}/km_openssl/soft_keymaster_enforcement.cpp",
     "context/arc_attestation_context.cc",
+    "context/arc_enforcement_policy.cc",
     "context/arc_keymint_context.cc",
     "context/arc_remote_provisioning_context.cc",
     "context/chaps_client.cc",

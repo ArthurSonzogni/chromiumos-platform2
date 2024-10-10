@@ -24,6 +24,7 @@
 #include <mojo/cert_store.mojom.h>
 
 #include "arc/keymint/context/arc_attestation_context.h"
+#include "arc/keymint/context/arc_enforcement_policy.h"
 #include "arc/keymint/context/arc_remote_provisioning_context.h"
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/cros_key.h"
@@ -109,6 +110,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
 
   const ::keymaster::AttestationContext::VerifiedBootParams*
   GetVerifiedBootParams(keymaster_error_t* error) const override;
+
+  ::keymaster::KeymasterEnforcement* enforcement_policy() override;
 
  private:
   // If |key_blob| contains an ARC owned key, deserialize it into |key_material|
@@ -206,6 +209,7 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   std::optional<uint32_t> vendor_patchlevel_;
   std::optional<uint32_t> boot_patchlevel_;
   std::unique_ptr<ArcAttestationContext> arc_attestation_context_;
+  std::unique_ptr<ArcEnforcementPolicy> arc_enforcement_policy_;
 
   friend class ContextTestPeer;
 };
