@@ -25,8 +25,8 @@
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 
 #include "net-base/byte_utils.h"
 #include "net-base/rtnl_message.h"
@@ -293,6 +293,7 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
         case RTNLMessage::kTypeRdnss:
         case RTNLMessage::kTypeDnssl:
         case RTNLMessage::kTypeCaptivePortal:
+        case RTNLMessage::kTypePref64:
         case RTNLMessage::kTypeNdUserOption:
           DispatchEvent(kRequestNdUserOption, *msg);
           break;

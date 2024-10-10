@@ -94,7 +94,8 @@ void SLAACControllerTest::SendRTNLMessage(
     slaac_controller_.RouteMsgHandler(message);
   } else if (message.type() == net_base::RTNLMessage::kTypeRdnss ||
              message.type() == net_base::RTNLMessage::kTypeDnssl ||
-             message.type() == net_base::RTNLMessage::kTypeCaptivePortal) {
+             message.type() == net_base::RTNLMessage::kTypeCaptivePortal ||
+             message.type() == net_base::RTNLMessage::kTypePref64) {
     slaac_controller_.NDOptionMsgHandler(message);
   } else {
     NOTREACHED_IN_MIGRATION();

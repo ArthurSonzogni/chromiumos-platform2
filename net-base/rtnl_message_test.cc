@@ -20,6 +20,7 @@
 
 #include "net-base/byte_utils.h"
 #include "net-base/http_url.h"
+#include "net-base/ipv6_address.h"
 
 using testing::Optional;
 using testing::Test;
@@ -446,6 +447,33 @@ alignas(4) const uint8_t kNdCaptivePortalMessage[] = {
     0xfe, 0x20, 0x7e, 0x26,  // Link local source address of the RA packet.
 };
 
+// PREF64 = 64:ff9b::/96
+alignas(4) const uint8_t kPref64Message[] = {
+    // struct nlmsghdr
+    0x40, 0x00, 0x00, 0x00,  // nlmsg_len = 64
+    0x44, 0x00,              // nlmsg_type = RTM_NEWNDUSEROPT
+    0x00, 0x00,              // nlmsg_flags
+    0x00, 0x00, 0x00, 0x00,  // nlmsg_seq
+    0x00, 0x00, 0x00, 0x00,  // nlmsg_pid
+
+    // struct nduseroptmsg
+    0x0a,                    // nduseropt_family = AF_INET6
+    0x00,                    // nduseropt_pad1
+    0x10, 0x00,              // nduseropt_opts_len = 16
+    0x07, 0x00, 0x00, 0x00,  // nduseropt_ifindex = 7
+    0x86,                    // nduseropt_icmp_type
+    0x00,                    // nduseropt_icmp_code
+    0x00, 0x00,              // nduseropt_pad2
+    0x00, 0x00, 0x00, 0x00,  // nduseropt_pad3
+
+    // PREF64 Option
+    0x26, 0x02, 0x0e, 0x10, 0x00, 0x64, 0xff, 0x9b, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+
+    0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x88, 0xb9, 0xec, 0xff,
+    0xfe, 0x20, 0x7e, 0x26,  // Link local source address of the RA packet.
+};
+
 // Add IPv4 rule for src 100.87.84.110/24 table 1002
 alignas(4) const uint8_t kRuleMessage1[] = {
     0x3C, 0x0, 0x0, 0x0, 0x20, 0x0,  0x0,  0x0,  0x39, 0x0,  0x0,  0x0,
@@ -861,6 +889,17 @@ TEST_F(RTNLMessageTest, CaptivePortalOption) {
   EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
   EXPECT_EQ(7, msg->interface_index());
   EXPECT_EQ(expected_uri, msg->captive_portal_uri());
+}
+
+TEST_F(RTNLMessageTest, Pref64Option) {
+  const auto msg = RTNLMessage::Decode(kPref64Message);
+  const IPv6CIDR expected_pref =
+      *IPv6CIDR::CreateFromCIDRString("64:ff9b::/96");
+
+  ASSERT_TRUE(msg);
+  EXPECT_EQ(RTNLMessage::kTypePref64, msg->type());
+  EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
+  EXPECT_EQ(expected_pref, msg->pref64());
 }
 
 TEST_F(RTNLMessageTest, ParseRuleEvents) {

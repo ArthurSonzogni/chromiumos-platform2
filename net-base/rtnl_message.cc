@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <optional>
@@ -23,12 +24,13 @@
 
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_number_conversions.h>
 
 #include "net-base/byte_utils.h"
 #include "net-base/http_url.h"
+#include "net-base/ipv6_address.h"
 
 namespace net_base {
 namespace {
@@ -38,6 +40,7 @@ namespace {
 #define ND_OPT_RDNSS 25          /* RFC 5006 */
 #define ND_OPT_DNSSL 31          /* RFC 6106 */
 #define ND_OPT_CAPTIVE_PORTAL 37 /* RFC 8910 */
+#define ND_OPT_PREF64 38         /* RFC 8781 */
 
 using flag_info_t = std::pair<uint32_t, const char*>;
 
@@ -749,6 +752,15 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNdUserOption(
       }
       return msg;
     }
+    case ND_OPT_PREF64: {
+      msg = std::make_unique<RTNLMessage>(kTypePref64, mode, 0, 0, 0,
+                                          interface_index, family);
+      if (!msg->ParsePref64Option(payload)) {
+        LOG(ERROR) << "Invalid PREF64 RTNL packet.";
+        return nullptr;
+      }
+      return msg;
+    }
     default:
       msg = std::make_unique<RTNLMessage>(kTypeNdUserOption, mode, 0, 0, 0,
                                           interface_index, family);
@@ -866,6 +878,48 @@ bool RTNLMessage::ParseCaptivePortalOption(base::span<const uint8_t> data) {
     return false;
   }
   set_captive_portal_uri(*url);
+  return true;
+}
+
+bool RTNLMessage::ParsePref64Option(base::span<const uint8_t> data) {
+  // Section 4 of RFC8781.
+  // The layout of Pref64 option after the type and length field is:
+  // - Scaled Lifetime: 13 bits
+  // - Prefix Length Code: 3 bits.
+  // - Highest 96 bits of the Prefix: 12 bytes.
+  if (data.size() != 14) {
+    return false;
+  }
+  const uint8_t plc = data[1] & 0x7;
+  int prefix_len = 0;
+  switch (plc) {
+    case 0:
+      prefix_len = 96;
+      break;
+    case 1:
+      prefix_len = 64;
+      break;
+    case 2:
+      prefix_len = 56;
+      break;
+    case 3:
+      prefix_len = 48;
+      break;
+    case 4:
+      prefix_len = 40;
+      break;
+    case 5:
+      prefix_len = 32;
+      break;
+    default:
+      LOG(ERROR) << "Invalid PLC value: " << static_cast<int>(plc);
+      return false;
+  }
+  data = data.subspan(2);
+  std::array<uint8_t, IPv6Address::kAddressLength> address_data{};
+  std::copy(data.begin(), data.end(), address_data.begin());
+  set_pref64(*IPv6CIDR::CreateFromBytesAndPrefix(address_data, prefix_len));
+  // TODO(b/308893691): Lifetime is ignored for now.
   return true;
 }
 

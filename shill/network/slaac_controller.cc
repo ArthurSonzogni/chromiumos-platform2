@@ -264,6 +264,9 @@ void SLAACController::NDOptionMsgHandler(const net_base::RTNLMessage& msg) {
     case net_base::RTNLMessage::kTypeCaptivePortal:
       CaptivePortalMsgHandler(msg);
       break;
+    case net_base::RTNLMessage::kTypePref64:
+      // TODO(b/308893691): propagate msg.pref64() to NetworkConfig.
+      break;
     case net_base::RTNLMessage::kTypeNdUserOption:
       // Valid but unsupported ND option type.
       break;

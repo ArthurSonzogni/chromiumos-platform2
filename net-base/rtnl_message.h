@@ -41,6 +41,7 @@ class BRILLO_EXPORT RTNLMessage {
     kTypeRdnss,
     kTypeDnssl,
     kTypeCaptivePortal,
+    kTypePref64,
     kTypeNeighbor,
     kTypeNdUserOption,  // Unknown ND user options that does not have own types.
   };
@@ -220,6 +221,8 @@ class BRILLO_EXPORT RTNLMessage {
   void set_captive_portal_uri(const HttpUrl& captive_portal_uri) {
     captive_portal_uri_ = captive_portal_uri;
   }
+  const IPv6CIDR& pref64() const { return pref64_; }
+  void set_pref64(const IPv6CIDR& pref64) { pref64_ = pref64; }
   const NdUserOption& nd_user_option() const { return nd_user_option_; }
   const NeighborStatus& neighbor_status() const { return neighbor_status_; }
   void set_neighbor_status(const NeighborStatus& neighbor_status) {
@@ -318,6 +321,7 @@ class BRILLO_EXPORT RTNLMessage {
   bool ParseDnsslOption(base::span<const uint8_t> data);
   bool ParseRdnssOption(base::span<const uint8_t> data);
   bool ParseCaptivePortalOption(base::span<const uint8_t> data);
+  bool ParsePref64Option(base::span<const uint8_t> data);
   bool EncodeLink(RTNLHeader* hdr) const;
   bool EncodeAddress(RTNLHeader* hdr) const;
   bool EncodeRoute(RTNLHeader* hdr) const;
@@ -350,6 +354,7 @@ class BRILLO_EXPORT RTNLMessage {
   RdnssOption rdnss_option_;
   DnsslOption dnssl_option_;
   HttpUrl captive_portal_uri_;
+  IPv6CIDR pref64_;
   NdUserOption nd_user_option_;
   // Additional rtattr contained in the message.
   RTNLAttrMap attributes_;
