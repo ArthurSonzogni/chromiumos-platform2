@@ -337,7 +337,7 @@ TEST_F(OptionDescriptorTest, ColorDepth) {
                "mode? (y/n):"
             << std::endl;
   if (!_y_or_no()) {
-    GTEST_SKIP();
+    GTEST_SKIP() << "Scanner does not advertise multiple color depths";
   }
 
   auto option = GetSourceOption();
@@ -364,7 +364,7 @@ TEST_F(OptionDescriptorTest, ColorDepth) {
 TEST_F(OptionDescriptorTest, ADFJustification) {
   std::cout << "Does the scanner have an ADF? (y/n):" << std::endl;
   if (!_y_or_no()) {
-    GTEST_SKIP();
+    GTEST_SKIP() << "Scanner does not have an ADF";
   }
 
   bool adf_justification_found = false;
@@ -389,7 +389,7 @@ TEST_F(OptionDescriptorTest, ADFJustification) {
   }
 
   if (!adf_justification_found) {
-    GTEST_SKIP();
+    GTEST_SKIP() << "ADF Justification not found and is not required";
   }
 }
 }  // namespace
