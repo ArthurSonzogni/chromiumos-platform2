@@ -42,18 +42,15 @@ allow cros_installer proc_filesystems:file r_file_perms;
 allow cros_installer tmpfs:dir mounton;
 allow cros_installer vfat:file create;
 allow cros_installer vfat:filesystem { mount unmount };
-rw_dir_file(cros_installer, efivarfs)
-allow cros_installer efivarfs:filesystem getattr;
-allow cros_installer efivarfs:file { create unlink };
-# Allow cros_installer to perform privileged operations on efivarfs.
 
-# This macro makes the policy permissive when used with the ARC container,
-# but not when used with ARCVM.
-# This allow rule was added by crrev/c/5804826 for ARCVM on ChromeOS Flex.
-# TODO(b/322370774): drop dac_override in favor of more targeted permissions.
-is_arc_vm(`
+# Special handling for permissions that conflict with CTS neverallow
+# rules. CTS neverallow rules are only tested on the ARC Container
+# and these permissions are only needed for the no_arc board reven.
+no_arc(`
+  rw_dir_file(cros_installer, efivarfs)
+  allow cros_installer efivarfs:filesystem getattr;
+  allow cros_installer efivarfs:file { create unlink };
+  # Allow cros_installer to perform privileged operations on efivarfs.
+  # TODO(b/322370774): drop dac_override in favor of more targeted permissions.
   allow cros_installer cros_installer:capability dac_override;
-',`arc_cts_fails_release(`
-  allow cros_installer cros_installer:capability dac_override;
-  ', (`cros_installer'))
 ')
