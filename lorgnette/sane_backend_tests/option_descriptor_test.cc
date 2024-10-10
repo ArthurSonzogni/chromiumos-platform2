@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <set>
@@ -227,6 +228,142 @@ class OptionDescriptorTest : public testing::Test {
     }
   }
 
+  void TestOptionDescriptors() {
+    // Skip option 0, since it behaves a little differently - it's a
+    // SANE_TYPE_INT
+    // with an empty string as its name. This is a well-known option, so it
+    // shouldn't cause the test to fail.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor != nullptr) {
+      // Test that the descriptor's name, title and description conform to our
+      // specifications.
+      ASSERT_TRUE(descriptor->name) << "Descriptor name is nullptr";
+      if (descriptor->type != SANE_TYPE_GROUP) {
+        EXPECT_NE(descriptor->name[0], '\0')
+            << "Non-SANE_TYPE_GROUP descriptor name is empty";
+      }
+
+      ASSERT_NE(descriptor->title, nullptr) << "Descriptor title is nullptr";
+      EXPECT_NE(descriptor->title[0], '\0') << "Descriptor title is empty";
+
+      ASSERT_NE(descriptor->desc, nullptr)
+          << "Descriptor description is nullptr";
+
+      auto cap = descriptor->cap;
+      if (!SANE_OPTION_IS_ACTIVE(cap)) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      lorgnette::SaneOption option(*descriptor, i);
+      if (cap & SANE_CAP_SOFT_DETECT) {
+        EXPECT_EQ(SANE_STATUS_GOOD,
+                  sane_control_option(handle_, i, SANE_ACTION_GET_VALUE,
+                                      option.GetPointer(), nullptr));
+      }
+
+      if (SANE_OPTION_IS_SETTABLE(cap)) {
+        switch (option.GetType()) {
+          case SANE_TYPE_BOOL:
+            // There are only two possible values, so we might as well set them
+            // both.
+            option.Set(true);
+            EXPECT_EQ(SANE_STATUS_GOOD,
+                      sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                          option.GetPointer(), nullptr));
+            option.Set(false);
+            EXPECT_EQ(SANE_STATUS_GOOD,
+                      sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                          option.GetPointer(), nullptr));
+            break;
+          case SANE_TYPE_INT: {
+            // Set the highest and lowest values, or `123` if no constraint
+            // exists.
+            auto maybe_values = option.GetValidIntValues();
+            if (!maybe_values || maybe_values->size() == 0) {
+              EXPECT_EQ(SANE_CONSTRAINT_NONE, descriptor->constraint_type);
+              option.Set(123);
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+            } else {
+              std::sort(maybe_values->begin(), maybe_values->end());
+              option.Set(static_cast<int>(maybe_values->front()));
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+              option.Set(static_cast<int>(maybe_values->back()));
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+            }
+            break;
+          }
+          case SANE_TYPE_FIXED: {
+            // Set the highest and lowest values, or `123` if no constraint
+            // exists.
+            auto maybe_values = option.GetValidIntValues();
+            if (!maybe_values || maybe_values->size() == 0) {
+              EXPECT_EQ(SANE_CONSTRAINT_NONE, descriptor->constraint_type);
+              option.Set(123);
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+            } else {
+              std::sort(maybe_values->begin(), maybe_values->end());
+              option.Set(static_cast<double>(maybe_values->front()));
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+              option.Set(static_cast<double>(maybe_values->back()));
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+            }
+            break;
+          }
+          case SANE_TYPE_STRING: {
+            // If there's a constraint list, set them all. Otherwise, set the
+            // word `random`.
+            auto maybe_list = option.GetValidStringValues();
+            if (!maybe_list || maybe_list->size() == 0) {
+              EXPECT_EQ(SANE_CONSTRAINT_NONE, descriptor->constraint_type);
+              option.Set("random");
+              EXPECT_EQ(SANE_STATUS_GOOD,
+                        sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                            option.GetPointer(), nullptr));
+            } else {
+              for (auto str : maybe_list.value()) {
+                option.Set(str);
+                EXPECT_EQ(SANE_STATUS_GOOD,
+                          sane_control_option(handle_, i, SANE_ACTION_SET_VALUE,
+                                              option.GetPointer(), nullptr));
+              }
+            }
+            break;
+          }
+          case SANE_TYPE_BUTTON:
+            // We don't test buttons in case setting a button were to put the
+            // scanner under test into a strange state.
+            break;
+          case SANE_TYPE_GROUP:
+            // The capabilities field is not valid for group descriptors, so
+            // there's nothing to do here.
+            break;
+          default:
+            FAIL() << "Unexpected option type: " << option.GetType();
+            break;
+        }
+      }
+
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+    }
+  }
+
   SANE_Handle handle_;
 };
 
@@ -392,5 +529,44 @@ TEST_F(OptionDescriptorTest, ADFJustification) {
     GTEST_SKIP() << "ADF Justification not found and is not required";
   }
 }
+
+TEST_F(OptionDescriptorTest, OtherOptionDescriptor) {
+  std::unique_ptr<lorgnette::SaneOption> option = nullptr;
+
+  // Index 0 is the well-known option 0, which we skip here.
+  SANE_Int i = 1;
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, i);
+  while (descriptor) {
+    if (!descriptor->name ||
+        strcmp(descriptor->name, SANE_NAME_SCAN_SOURCE) != 0) {
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+      continue;
+    }
+
+    option = std::make_unique<lorgnette::SaneOption>(*descriptor, i);
+    break;
+  }
+
+  if (!option) {
+    // The scanner did not provide a source option. It must only have a single
+    // source.
+    TestOptionDescriptors();
+  } else {
+    std::optional<std::vector<std::string>> sources =
+        option->GetValidStringValues();
+    ASSERT_TRUE(sources.has_value());
+    for (auto source : *sources) {
+      option->Set(source);
+      ASSERT_EQ(SANE_STATUS_GOOD,
+                sane_control_option(handle_, option->GetIndex(),
+                                    SANE_ACTION_SET_VALUE, option->GetPointer(),
+                                    nullptr));
+      TestOptionDescriptors();
+    }
+  }
+}
+
 }  // namespace
 }  // namespace sane_backend_tests
