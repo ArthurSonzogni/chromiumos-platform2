@@ -126,24 +126,26 @@ TEST_F(DlcBaseTest, InitializationReservedSpaceDoesNotSparsifyAgain) {
   auto a_img = dlc.GetImagePath(system_state->active_boot_slot());
   auto b_img = dlc.GetImagePath(system_state->inactive_boot_slot());
   auto a_img_size = GetFileSize(a_img);
+  ASSERT_TRUE(a_img_size.has_value());
   auto b_img_size = GetFileSize(b_img);
+  ASSERT_TRUE(b_img_size.has_value());
 
   EXPECT_TRUE(base::PathExists(a_img));
   EXPECT_TRUE(base::PathExists(b_img));
-  EXPECT_TRUE(WriteToFile(a_img, std::string(a_img_size, '1')));
-  EXPECT_TRUE(WriteToFile(b_img, std::string(b_img_size, '2')));
+  EXPECT_TRUE(WriteToFile(a_img, std::string(a_img_size.value(), '1')));
+  EXPECT_TRUE(WriteToFile(b_img, std::string(b_img_size.value(), '2')));
 
   std::vector<uint8_t> expected_hash_a, expected_hash_b;
-  EXPECT_TRUE(HashFile(a_img, a_img_size, &expected_hash_a));
-  EXPECT_TRUE(HashFile(b_img, b_img_size, &expected_hash_b));
+  EXPECT_TRUE(HashFile(a_img, a_img_size.value(), &expected_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size.value(), &expected_hash_b));
 
   // Mimic a reboot.
   dlc.Initialize();
 
   // On reboot, there should not be resizing + re-sparsing of images.
   std::vector<uint8_t> actual_hash_a, actual_hash_b;
-  EXPECT_TRUE(HashFile(a_img, a_img_size, &actual_hash_a));
-  EXPECT_TRUE(HashFile(b_img, b_img_size, &actual_hash_b));
+  EXPECT_TRUE(HashFile(a_img, a_img_size.value(), &actual_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size.value(), &actual_hash_b));
 
   EXPECT_EQ(expected_hash_a, actual_hash_a);
   EXPECT_EQ(expected_hash_b, actual_hash_b);
@@ -167,16 +169,18 @@ TEST_F(DlcBaseTest, ReinstallingNonReservedSpaceDoesNotSparsifyAgain) {
   auto a_img = dlc.GetImagePath(system_state->active_boot_slot());
   auto b_img = dlc.GetImagePath(system_state->inactive_boot_slot());
   auto a_img_size = GetFileSize(a_img);
+  ASSERT_TRUE(a_img_size.has_value());
   auto b_img_size = GetFileSize(b_img);
+  ASSERT_TRUE(b_img_size.has_value());
 
   EXPECT_TRUE(base::PathExists(a_img));
   EXPECT_TRUE(base::PathExists(b_img));
-  EXPECT_TRUE(WriteToFile(a_img, std::string(a_img_size, '2')));
-  EXPECT_TRUE(WriteToFile(b_img, std::string(b_img_size, '3')));
+  EXPECT_TRUE(WriteToFile(a_img, std::string(a_img_size.value(), '2')));
+  EXPECT_TRUE(WriteToFile(b_img, std::string(b_img_size.value(), '3')));
 
   std::vector<uint8_t> expected_hash_a, expected_hash_b;
-  EXPECT_TRUE(HashFile(a_img, a_img_size, &expected_hash_a));
-  EXPECT_TRUE(HashFile(b_img, b_img_size, &expected_hash_b));
+  EXPECT_TRUE(HashFile(a_img, a_img_size.value(), &expected_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size.value(), &expected_hash_b));
 
   // Mimic re-install after reboot.
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -185,8 +189,8 @@ TEST_F(DlcBaseTest, ReinstallingNonReservedSpaceDoesNotSparsifyAgain) {
 
   // There should not be resizing + re-sparsing of images.
   std::vector<uint8_t> actual_hash_a, actual_hash_b;
-  EXPECT_TRUE(HashFile(a_img, a_img_size, &actual_hash_a));
-  EXPECT_TRUE(HashFile(b_img, b_img_size, &actual_hash_b));
+  EXPECT_TRUE(HashFile(a_img, a_img_size.value(), &actual_hash_a));
+  EXPECT_TRUE(HashFile(b_img, b_img_size.value(), &actual_hash_b));
 
   EXPECT_EQ(expected_hash_a, actual_hash_a);
   EXPECT_EQ(expected_hash_b, actual_hash_b);
@@ -690,7 +694,9 @@ TEST_F(DlcBaseTest, GetUsedBytesOnDisk) {
   uint64_t expected_size = 0;
   for (const auto& path : {dlc.GetImagePath(BootSlot::Slot::A),
                            dlc.GetImagePath(BootSlot::Slot::B)}) {
-    expected_size += GetFileSize(path);
+    auto maybe_size = GetFileSize(path);
+    ASSERT_TRUE(maybe_size.has_value());
+    expected_size += maybe_size.value();
   }
   EXPECT_GT(expected_size, 0);
 

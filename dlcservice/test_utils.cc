@@ -18,8 +18,8 @@
 #include <dbus/dlcservice/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxy-mocks.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 #if USE_LVM_STATEFUL_PARTITION
 #include <lvmd/proto_bindings/lvmd.pb.h>
 // NOLINTNEXTLINE(build/include_alpha)
@@ -164,12 +164,6 @@ void BaseTest::SetUpFilesAndDirectories() {
                   test_metadata);
     supported_dlc_.emplace(id);
   }
-}
-
-int64_t GetFileSize(const base::FilePath& path) {
-  int64_t file_size;
-  EXPECT_TRUE(base::GetFileSize(path, &file_size));
-  return file_size;
 }
 
 void BaseTest::SetUpMetadata(const std::string id,

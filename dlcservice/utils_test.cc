@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "dlcservice/utils.h"
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -21,7 +23,6 @@
 #include <gtest/gtest.h>
 
 #include "dlcservice/test_utils.h"
-#include "dlcservice/utils.h"
 #include "dlcservice/utils/utils.h"
 
 namespace dlcservice {
@@ -128,7 +129,9 @@ TEST_F(FixtureUtilsTest, CreateFile) {
     EXPECT_TRUE(base::PathExists(path));
     CheckPerms(path, kDlcFilePerms);
     EXPECT_FALSE(IsFileSparse(path));
-    EXPECT_EQ(GetFileSize(path), size);
+    std::optional<int64_t> maybe_size = GetFileSize(path);
+    ASSERT_TRUE(maybe_size.has_value());
+    EXPECT_EQ(maybe_size.value(), size);
     EXPECT_TRUE(base::DeletePathRecursively(path));
   }
 }
@@ -139,23 +142,31 @@ TEST_F(FixtureUtilsTest, CreateFileEvenIfItExists) {
   EXPECT_TRUE(CreateFile(path, 4096));
   EXPECT_TRUE(base::PathExists(path));
   CheckPerms(path, kDlcFilePerms);
-  EXPECT_EQ(GetFileSize(path), 4096);
+  std::optional<int64_t> maybe_size = GetFileSize(path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_EQ(maybe_size.value(), 4096);
 
   // Create again with different size.
   EXPECT_TRUE(CreateFile(path, 8192));
   EXPECT_TRUE(base::PathExists(path));
-  EXPECT_EQ(GetFileSize(path), 8192);
+  maybe_size = GetFileSize(path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_EQ(maybe_size.value(), 8192);
 }
 
 TEST_F(FixtureUtilsTest, ResizeFile) {
   auto path = JoinPaths(scoped_temp_dir_.GetPath(), "file");
   EXPECT_TRUE(CreateFile(path, 0));
-  EXPECT_EQ(GetFileSize(path), 0);
+  std::optional<int64_t> maybe_size = GetFileSize(path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_EQ(maybe_size.value(), 0);
   EXPECT_FALSE(IsFileSparse(path));
 
   EXPECT_TRUE(ResizeFile(path, 1));
 
-  EXPECT_EQ(GetFileSize(path), 1);
+  maybe_size = GetFileSize(path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_EQ(maybe_size.value(), 1);
   EXPECT_FALSE(IsFileSparse(path));
 }
 
@@ -174,8 +185,10 @@ TEST_F(FixtureUtilsTest, CopyAndHashFile) {
                            expected_sha256.size());
 
   std::vector<uint8_t> actual_sha256;
-  EXPECT_TRUE(CopyAndHashFile(src_path, dst_path, GetFileSize(src_path),
-                              &actual_sha256));
+  std::optional<int64_t> maybe_size = GetFileSize(src_path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_TRUE(
+      CopyAndHashFile(src_path, dst_path, maybe_size.value(), &actual_sha256));
   EXPECT_THAT(actual_sha256, testing::ElementsAreArray(expected_sha256));
 
   EXPECT_TRUE(base::PathExists(dst_path));
@@ -203,7 +216,9 @@ TEST_F(FixtureUtilsTest, HashFile) {
                            expected_sha256.size());
 
   std::vector<uint8_t> actual_sha256;
-  EXPECT_TRUE(HashFile(src_path, GetFileSize(src_path), &actual_sha256));
+  std::optional<int64_t> maybe_size = GetFileSize(src_path);
+  ASSERT_TRUE(maybe_size.has_value());
+  EXPECT_TRUE(HashFile(src_path, maybe_size.value(), &actual_sha256));
   EXPECT_THAT(actual_sha256, testing::ElementsAreArray(expected_sha256));
 }
 

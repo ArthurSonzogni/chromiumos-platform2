@@ -17,8 +17,8 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
-#include <imageloader/proto_bindings/imageloader.pb.h>
 #include <imageloader/dbus-proxy-mocks.h>
+#include <imageloader/proto_bindings/imageloader.pb.h>
 #if USE_LVM_STATEFUL_PARTITION
 #include <lvmd/proto_bindings/lvmd.pb.h>
 // NOLINTNEXTLINE(build/include_alpha)
@@ -65,8 +65,6 @@ MATCHER_P(CheckInstallRequest,
           "Matches the InstallRequest protobuf") {
   return arg.SerializeAsString() == install_request.SerializeAsString();
 }
-
-int64_t GetFileSize(const base::FilePath& path);
 
 class BaseTest : public testing::Test {
  public:
