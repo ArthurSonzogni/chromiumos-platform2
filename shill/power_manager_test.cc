@@ -67,14 +67,15 @@ class FakeControl : public MockControl {
 
 class PowerManagerTest : public Test {
  public:
-  static const char kDescription[];
-  static const char kDarkDescription[];
-  static const char kPowerManagerDefaultOwner[];
-  static const int kSuspendId1 = 123;
-  static const int kSuspendId2 = 456;
-  static const int64_t kSuspendDurationUsecs = 1000000;
-  static const int kDelayId = 4;
-  static const int kDelayId2 = 5;
+  static constexpr char kDescription[] = "shill";
+  static constexpr char kDarkDescription[] = "shill";
+  static constexpr char kPowerManagerDefaultOwner[] =
+      "PowerManagerDefaultOwner";
+  static constexpr int kSuspendId1 = 123;
+  static constexpr int kSuspendId2 = 456;
+  static constexpr int64_t kSuspendDurationUsecs = 1000000;
+  static constexpr int kDelayId = 4;
+  static constexpr int kDelayId2 = 5;
 
   PowerManagerTest()
       : kTimeout(base::Seconds(3)),
@@ -214,11 +215,6 @@ class PowerManagerTest : public Test {
   MockPowerManagerProxy* const power_manager_proxy_;
   PowerManagerProxyDelegate* const delegate_;
 };
-
-const char PowerManagerTest::kDescription[] = "shill";
-const char PowerManagerTest::kDarkDescription[] = "shill";
-const char PowerManagerTest::kPowerManagerDefaultOwner[] =
-    "PowerManagerDefaultOwner";
 
 TEST_F(PowerManagerTest, SuspendingState) {
   RegisterSuspendDelays();
