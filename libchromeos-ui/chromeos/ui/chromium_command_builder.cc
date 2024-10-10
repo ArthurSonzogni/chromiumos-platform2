@@ -542,6 +542,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("arc_disable_cros_video_decoder"))
     AddFeatureDisableOverride("ArcVideoDecoder");
 
+  if (UseFlagIsSet("disable_video_decode_batching"))
+    AddFeatureDisableOverride("VideoDecodeBatching");
+
   if (UseFlagIsSet("reduce_hardware_video_decoder_buffers"))
     AddFeatureEnableOverride("ReduceHardwareVideoDecoderBuffers");
 
