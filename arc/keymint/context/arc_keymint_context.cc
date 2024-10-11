@@ -1040,6 +1040,14 @@ ArcKeyMintContext::GetVerifiedBootParams(keymaster_error_t* error) const {
   return &params;
 }
 
+std::optional<uint32_t> ArcKeyMintContext::GetVendorPatchlevel() const {
+  return vendor_patchlevel_;
+}
+
+std::optional<uint32_t> ArcKeyMintContext::GetBootPatchlevel() const {
+  return boot_patchlevel_;
+}
+
 keymaster_error_t ArcKeyMintContext::SetVendorPatchlevel(
     uint32_t vendor_patchlevel) {
   if (vendor_patchlevel_.has_value() &&

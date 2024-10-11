@@ -81,6 +81,8 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
       const std::vector<uint8_t>& vbmeta_digest);
   keymaster_error_t SetVendorPatchlevel(uint32_t vendor_patchlevel) override;
   keymaster_error_t SetBootPatchlevel(uint32_t boot_patchlevel) override;
+  std::optional<uint32_t> GetVendorPatchlevel() const override;
+  std::optional<uint32_t> GetBootPatchlevel() const override;
 
   // Expose SerializeAuthorizationSetToBlob for tests.
   brillo::Blob TestSerializeAuthorizationSetToBlob(
