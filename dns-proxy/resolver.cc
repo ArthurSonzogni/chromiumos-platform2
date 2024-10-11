@@ -245,7 +245,7 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
       ares_client_(std::move(ares_client)),
       curl_client_(std::move(curl_client)) {}
 
-bool Resolver::ListenTCP(struct sockaddr* addr) {
+bool Resolver::ListenTCP(struct sockaddr* addr, std::string_view ifname) {
   std::unique_ptr<net_base::Socket> tcp_src =
       socket_factory_->Create(addr->sa_family, SOCK_STREAM | SOCK_NONBLOCK);
   if (!tcp_src) {
@@ -267,15 +267,19 @@ bool Resolver::ListenTCP(struct sockaddr* addr) {
 
   // Run the accept loop.
   LOG(INFO) << *this << " Accepting TCP connections on " << *addr;
-  tcp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      tcp_src->Get(), base::BindRepeating(&Resolver::OnTCPConnection,
-                                          weak_factory_.GetWeakPtr()));
-  tcp_src_ = std::move(tcp_src);
+  tcp_src_watchers_.emplace(
+      std::make_pair(ifname, addr->sa_family),
+      base::FileDescriptorWatcher::WatchReadable(
+          tcp_src->Get(), base::BindRepeating(&Resolver::OnTCPConnection,
+                                              weak_factory_.GetWeakPtr(),
+                                              ifname, addr->sa_family)));
+  tcp_srcs_.emplace(std::make_pair(ifname, addr->sa_family),
+                    std::move(tcp_src));
 
   return true;
 }
 
-bool Resolver::ListenUDP(struct sockaddr* addr) {
+bool Resolver::ListenUDP(struct sockaddr* addr, std::string_view ifname) {
   std::unique_ptr<net_base::Socket> udp_src =
       socket_factory_->Create(addr->sa_family, SOCK_DGRAM | SOCK_NONBLOCK);
   if (!udp_src) {
@@ -292,19 +296,28 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
 
   // Start listening.
   LOG(INFO) << *this << " Accepting UDP queries on " << *addr;
-  udp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      udp_src->Get(),
-      base::BindRepeating(&Resolver::OnDNSQuery, weak_factory_.GetWeakPtr(),
-                          udp_src->Get(), SOCK_DGRAM));
-  udp_src_ = std::move(udp_src);
+  udp_src_watchers_.emplace(
+      std::make_pair(ifname, addr->sa_family),
+      base::FileDescriptorWatcher::WatchReadable(
+          udp_src->Get(),
+          base::BindRepeating(&Resolver::OnDNSQuery, weak_factory_.GetWeakPtr(),
+                              udp_src->Get(), SOCK_DGRAM)));
+  udp_srcs_.emplace(std::make_pair(ifname, addr->sa_family),
+                    std::move(udp_src));
+
   return true;
 }
 
-void Resolver::OnTCPConnection() {
+void Resolver::OnTCPConnection(std::string_view ifname, sa_family_t family) {
   struct sockaddr_storage client_src = {};
   socklen_t sockaddr_len = sizeof(client_src);
+  const auto& it = tcp_srcs_.find(std::make_pair(std::string(ifname), family));
+  if (it == tcp_srcs_.end()) {
+    LOG(ERROR) << *this << " Failed to find TCP socket";
+    return;
+  }
   std::unique_ptr<net_base::Socket> client_conn =
-      tcp_src_->Accept((struct sockaddr*)&client_src, &sockaddr_len);
+      it->second->Accept((struct sockaddr*)&client_src, &sockaddr_len);
   if (!client_conn) {
     PLOG(ERROR) << *this << " Failed to accept TCP connection";
     return;
@@ -314,6 +327,15 @@ void Resolver::OnTCPConnection() {
       new TCPConnection(std::move(client_conn),
                         base::BindRepeating(&Resolver::OnDNSQuery,
                                             weak_factory_.GetWeakPtr())));
+}
+
+void Resolver::StopListen(sa_family_t family, std::string_view ifname) {
+  std::pair<std::string, sa_family_t> key =
+      std::make_pair(std::string(ifname), family);
+  udp_src_watchers_.erase(key);
+  udp_srcs_.erase(key);
+  tcp_src_watchers_.erase(key);
+  tcp_srcs_.erase(key);
 }
 
 bool Resolver::IsNXDOMAIN(const base::span<const unsigned char>& resp) {

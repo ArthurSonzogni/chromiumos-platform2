@@ -11,6 +11,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -156,8 +157,11 @@ class Resolver {
 
   // Listen on an incoming DNS query on address |addr| for UDP and TCP.
   // Listening on default DNS port (53) requires CAP_NET_BIND_SERVICE.
-  virtual bool ListenTCP(struct sockaddr* addr);
-  virtual bool ListenUDP(struct sockaddr* addr);
+  // |ifname| is used as an identifier for the listening sockets. A new listen
+  // call with the same |ifname| replaces the previous sockets.
+  virtual bool ListenTCP(struct sockaddr* addr, std::string_view ifname = "");
+  virtual bool ListenUDP(struct sockaddr* addr, std::string_view ifname = "");
+  virtual void StopListen(sa_family_t family, std::string_view ifname = "");
 
   // Set standard DNS and DNS-over-HTTPS servers endpoints.
   // If DoH servers are not empty, resolving domain will be done with DoH.
@@ -281,7 +285,7 @@ class Resolver {
   };
 
   // Callback to handle newly opened connections on TCP sockets.
-  void OnTCPConnection();
+  void OnTCPConnection(std::string_view ifname, sa_family_t family);
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
@@ -331,16 +335,24 @@ class Resolver {
   // Resolve using DoH if true.
   bool doh_enabled_;
 
-  // Watch |tcp_src_| for incoming TCP connections.
-  std::unique_ptr<net_base::Socket> tcp_src_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> tcp_src_watcher_;
+  // Watch |tcp_srcs_| for incoming TCP connections.
+  std::map<std::pair<std::string, sa_family_t>,
+           std::unique_ptr<net_base::Socket>>
+      tcp_srcs_;
+  std::map<std::pair<std::string, sa_family_t>,
+           std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+      tcp_src_watchers_;
 
   // Map of TCP connections keyed by their file descriptor.
   std::map<int, std::unique_ptr<TCPConnection>> tcp_connections_;
 
-  // Watch queries from |udp_src_|.
-  std::unique_ptr<net_base::Socket> udp_src_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> udp_src_watcher_;
+  // Watch queries from |udp_srcs_|.
+  std::map<std::pair<std::string, sa_family_t>,
+           std::unique_ptr<net_base::Socket>>
+      udp_srcs_;
+  std::map<std::pair<std::string, sa_family_t>,
+           std::unique_ptr<base::FileDescriptorWatcher::Controller>>
+      udp_src_watchers_;
 
   // Name servers and DoH providers validated through probes.
   std::vector<std::string> validated_name_servers_;

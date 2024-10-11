@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -158,8 +159,15 @@ class MockResolver : public Resolver {
                  kRequestMaxRetry) {}
   ~MockResolver() override = default;
 
-  MOCK_METHOD(bool, ListenUDP, (struct sockaddr*), (override));
-  MOCK_METHOD(bool, ListenTCP, (struct sockaddr*), (override));
+  MOCK_METHOD(bool,
+              ListenUDP,
+              (struct sockaddr*, std::string_view),
+              (override));
+  MOCK_METHOD(bool,
+              ListenTCP,
+              (struct sockaddr*, std::string_view),
+              (override));
+  MOCK_METHOD(void, StopListen, (sa_family_t, std::string_view), (override));
   MOCK_METHOD(void,
               SetNameServers,
               (const std::vector<std::string>&),
@@ -501,8 +509,8 @@ TEST_P(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
 
   auto* new_resolver = new MockResolver();
   proxy_->resolver = base::WrapUnique(new_resolver);
-  EXPECT_CALL(*new_resolver, ListenUDP(_)).WillOnce(Return(true));
-  EXPECT_CALL(*new_resolver, ListenTCP(_)).WillOnce(Return(true));
+  EXPECT_CALL(*new_resolver, ListenUDP(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*new_resolver, ListenTCP(_, _)).WillOnce(Return(true));
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline);
   brillo::VariantDictionary props;
