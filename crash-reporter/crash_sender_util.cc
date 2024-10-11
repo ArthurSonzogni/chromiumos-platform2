@@ -401,7 +401,7 @@ bool IsUserDisruptiveChromeCrash(const CrashDetails& details) {
   std::string process;
   // We must know the severity (e.g. fatal, error, info), process
   // name (e.g browser, renderer, utility), and product type (e.g.
-  // Chrome_ChromeOS, Chrome_Lacros, ChromeOS) of the crash.
+  // Chrome_ChromeOS, ChromeOS) of the crash.
   const std::string kSeverityKey = std::string(constants::kUploadVarPrefix) +
                                    constants::kClientComputedSeverityKey;
   const std::string kProductKey = std::string(constants::kUploadVarPrefix) +
@@ -418,8 +418,7 @@ bool IsUserDisruptiveChromeCrash(const CrashDetails& details) {
 
   base::IgnoreResult(details.metadata.GetString(kProcessKey, &process));
 
-  bool is_chrome_crash = (product == constants::kProductNameChromeLacros ||
-                          product == constants::kProductNameChromeAsh);
+  bool is_chrome_crash = (product == constants::kProductNameChromeAsh);
   bool is_user_disruptive =
       severity == constants::kClientComputedCrashSeverityFatal ||
       (severity == constants::kClientComputedCrashSeverityError &&

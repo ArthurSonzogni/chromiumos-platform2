@@ -86,7 +86,7 @@ class CrashCollector {
     kUi = 1,
     kPlatform = 2,
     kArc = 3,
-    kLacros = 4,
+    // Removed: kLacros = 4,
     kUnknownValue = 5,
     kMaxValue = kUnknownValue,
   };
@@ -749,9 +749,9 @@ class CrashCollector {
   // reported to UMA.
   std::string CrashSeverityEnumToHistogram(CrashSeverity crash_severity) const;
 
-  // Checks that |product| is one of { kUnspecified, kUi, kPlatform, kArc,
-  // kLacros }. If so, return |product| unmodified. If not, return
-  // Product::kUnknownValue. This value is reported to UMA.
+  // Checks that |product| is one of { kUnspecified, kUi, kPlatform, kArc }.
+  // If so, return |product| unmodified. If not, return Product::kUnknownValue.
+  // This value is reported to UMA.
   Product ValidateProductGroupForHistogram(Product product) const;
 
   // If the executable to product a crash report was DriveFS, annotate the crash

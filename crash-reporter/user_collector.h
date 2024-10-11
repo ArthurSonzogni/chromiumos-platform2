@@ -122,10 +122,6 @@ class UserCollector : public UserCollectorBase {
               DISABLED_SetsUpForEarlyChromeCrashes);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, IgnoresNonEarlyBrowser);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, NoEffectIfNotChrome);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest,
-              ComputeSeverity_HandleEarlyChromeCrashes_Lacros);
-  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest,
-              DISABLED_ComputeSeverity_HandleEarlyChromeCrashes_Lacros);
 
   // Returns true if we want to try to capture a crash of Chrome because we
   // think it may have happened early -- specifically, before crashpad was
@@ -133,12 +129,6 @@ class UserCollector : public UserCollectorBase {
   // ChromeCollector. We get less information by capturing them through
   // UserCollector, but we can still get stack traces.
   bool ShouldCaptureEarlyChromeCrash(const std::string& exec, pid_t pid);
-
-  // Guess at whether a crash in the Chrome executable located in
-  // |exec_directory| should have a product name of Chrome_Lacros or
-  // Chrome_ChromeOS.
-  static const char* GuessChromeProductName(
-      const base::FilePath& exec_directory);
 
   std::string GetPattern(bool enabled, bool early) const;
   bool SetUpInternal(bool enabled, bool early);
@@ -191,10 +181,6 @@ class UserCollector : public UserCollectorBase {
   std::string core_pipe_limit_file_;
   std::string our_path_;
   std::string filter_path_;
-
-  // Indicates the product key for the Chrome that crashed early as set by
-  // `UserCollector::GuessChromeProductName`.
-  std::string early_crash_chrome_product_key_;
 
   // Invoke special handling for early Chrome crashes. In particular, this
   // limits the size of the core file we're willing to process.

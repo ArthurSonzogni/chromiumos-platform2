@@ -543,39 +543,6 @@ class CrashSenderUtilTest : public testing::Test {
       return false;
     }
 
-    // This should not be removed since the OS timestamp is old, but lacros is
-    // new.
-    old_os_new_lacros_meta_ = crash_directory.Append("old_os_new_lacros.meta");
-    if (!CreateFile(old_os_new_lacros_meta_,
-                    base::StringPrintf(
-                        "payload=good.log\n"
-                        "os_millis=%" PRId64 "\n"
-                        "upload_var_build_time_millis=%" PRId64 "\n"
-                        "done=1\n",
-                        ((now - base::Time::UnixEpoch()) - base::Days(200))
-                            .InMilliseconds(),
-                        ((now - base::Time::UnixEpoch()) - base::Days(20))
-                            .InMilliseconds()),
-                    now)) {
-      return false;
-    }
-
-    // This should not be removed since the OS timestamp and lacros are old.
-    old_os_old_lacros_meta_ = crash_directory.Append("old_os_old_lacros.meta");
-    if (!CreateFile(old_os_old_lacros_meta_,
-                    base::StringPrintf(
-                        "payload=good.log\n"
-                        "os_millis=%" PRId64 "\n"
-                        "upload_var_build_time_millis=%" PRId64 "\n"
-                        "done=1\n",
-                        ((now - base::Time::UnixEpoch()) - base::Days(200))
-                            .InMilliseconds(),
-                        ((now - base::Time::UnixEpoch()) - base::Days(200))
-                            .InMilliseconds()),
-                    now)) {
-      return false;
-    }
-
     // Create large metadata with the size of 1MiB + 1byte.
     large_meta_ = crash_directory.Append("large.meta");
     if (!CreateFile(large_meta_, std::string(1024 * 1024 + 1, 'x'), now)) {
@@ -652,8 +619,6 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath recent_os_meta_;
   base::FilePath recent_os_log_;
   base::FilePath old_os_meta_;
-  base::FilePath old_os_new_lacros_meta_;
-  base::FilePath old_os_old_lacros_meta_;
   base::FilePath large_meta_;
   base::FilePath loop_meta_;
 };
@@ -1210,19 +1175,8 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_THAT(reason, HasSubstr("Old OS version"));
   EXPECT_FALSE(base::PathExists(old_os_meta_.ReplaceExtension(".processing")));
 
-  EXPECT_EQ(Sender::kSend,
-            sender.ChooseAction(old_os_new_lacros_meta_, &reason, &info));
-
   // Txt files should be sent if metrics enabled and we're using user consent.
   EXPECT_EQ(Sender::kSend, sender.ChooseAction(txt_meta_, &reason, &info));
-
-  EXPECT_CALL(
-      *raw_metrics_lib,
-      SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
-                    Sender::kLaCrosVersionTooOld, Sender::kSendReasonCount));
-  EXPECT_EQ(Sender::kRemove,
-            sender.ChooseAction(old_os_old_lacros_meta_, &reason, &info));
-  EXPECT_THAT(reason, HasSubstr("Old LaCros version"));
 
   EXPECT_CALL(
       *raw_metrics_lib,
@@ -1478,12 +1432,10 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_FALSE(base::PathExists(unknown_xxx_));
   EXPECT_FALSE(base::PathExists(old_incomplete_meta_));
   EXPECT_FALSE(base::PathExists(old_os_meta_));
-  EXPECT_TRUE(base::PathExists(old_os_new_lacros_meta_));
-  EXPECT_FALSE(base::PathExists(old_os_old_lacros_meta_));
   EXPECT_FALSE(base::PathExists(root_payload_meta_));
   EXPECT_TRUE(base::PathExists(loop_meta_));
   // Check what files were picked for sending.
-  EXPECT_EQ(5, to_send.size());
+  EXPECT_EQ(4, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
   EXPECT_EQ(recent_os_meta_.value(), to_send[1].first.value());
 
@@ -1531,7 +1483,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   CreateDeviceCoredumpUploadAllowedFile();
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
-  EXPECT_EQ(6, to_send.size());
+  EXPECT_EQ(5, to_send.size());
   EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
 }
 
@@ -2815,34 +2767,6 @@ INSTANTIATE_TEST_SUITE_P(
             /*process=*/constants::kChromeProcessTypeUtility,
             /*severity=*/constants::kClientComputedCrashSeverityError,
             /*product=*/constants::kProductNameChromeAsh,
-            /*fatal_crash_type=*/"chrome"),
-        // Fatal Lacros Chrome crash
-        CrashSenderGetFatalCrashTypeTest::ParamType(
-            /*collector=*/std::nullopt,
-            /*process=*/std::nullopt,
-            /*severity=*/constants::kClientComputedCrashSeverityFatal,
-            /*product=*/constants::kProductNameChromeLacros,
-            /*fatal_crash_type=*/"chrome"),
-        // Error Lacros Chrome crash in renderer process
-        CrashSenderGetFatalCrashTypeTest::ParamType(
-            /*collector=*/std::nullopt,
-            /*process=*/constants::kChromeProcessTypeRenderer,
-            /*severity=*/constants::kClientComputedCrashSeverityError,
-            /*product=*/constants::kProductNameChromeLacros,
-            /*fatal_crash_type=*/"chrome"),
-        // Error Lacros Chrome crash in extension process
-        CrashSenderGetFatalCrashTypeTest::ParamType(
-            /*collector=*/std::nullopt,
-            /*process=*/constants::kChromeProcessTypeExtension,
-            /*severity=*/constants::kClientComputedCrashSeverityError,
-            /*product=*/constants::kProductNameChromeLacros,
-            /*fatal_crash_type=*/"chrome"),
-        // Error Lacros Chrome crash in utility process
-        CrashSenderGetFatalCrashTypeTest::ParamType(
-            /*collector=*/std::nullopt,
-            /*process=*/constants::kChromeProcessTypeUtility,
-            /*severity=*/constants::kClientComputedCrashSeverityError,
-            /*product=*/constants::kProductNameChromeLacros,
             /*fatal_crash_type=*/"chrome")),
     [](const ::testing::TestParamInfo<
         CrashSenderGetFatalCrashTypeTest::ParamType>& info) {

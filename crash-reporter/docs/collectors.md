@@ -38,8 +38,8 @@ Crash severity is organized into 4 categories:
     crash reporting pipeline from devices in the field.
 
 The logic to compute the severity is dependent on the product the crash occurred
-on: Platform, ARC, UI, and Lacros. The computed severity and product are logged
-to UMA to help correlate crashes with metrics like user satisfaction (from HaTS).
+on: Platform, ARC, UI. The computed severity and product are logged to UMA to
+help correlate crashes with metrics like user satisfaction (from HaTS).
 
 # Boot Collectors
 

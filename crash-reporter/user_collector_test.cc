@@ -977,55 +977,6 @@ TEST_P(CopyStdinToCoreFileTest, Test) {
   }
 }
 
-TEST(UserCollectorNoFixtureTest, GuessChromeProductNameTest) {
-  paths::SetPrefixForTesting(base::FilePath());
-  struct Test {
-    std::string input_directory;
-    std::string expected_result;
-    const char* log_message;
-  };
-  const Test kTests[] = {
-      // Default ash-chrome location
-      {"/opt/google/chrome", "Chrome_ChromeOS", nullptr},
-      // Lacros in rootfs.
-      {"/run/lacros", "Chrome_Lacros", nullptr},
-      // Lacros in stateful, varies by channel.
-      {"/run/imageloader/lacros-stable", "Chrome_Lacros", nullptr},
-      {"/run/imageloader/lacros-beta", "Chrome_Lacros", nullptr},
-      {"/run/imageloader/lacros-dev", "Chrome_Lacros", nullptr},
-      {"/run/imageloader/lacros-canary", "Chrome_Lacros", nullptr},
-      // Internal docs (go/crosep-lacros) suggest there might be a version
-      // number in there as well. Probably obsolete but let's check.
-      {"/run/imageloader/lacros-stable/101.0.4951.2", "Chrome_Lacros", nullptr},
-      {"/run/imageloader/lacros-beta/101.0.4951.2", "Chrome_Lacros", nullptr},
-      {"/run/imageloader/lacros-dev/101.0.4951.2", "Chrome_Lacros", nullptr},
-      {"/run/imageloader/lacros-canary/101.0.4951.2", "Chrome_Lacros", nullptr},
-      // Lacros during development.
-      {"/usr/local/lacros-chrome", "Chrome_Lacros", nullptr},
-      // If we couldn't get a directory, default to Chrome_ChromeOS.
-      {"", "Chrome_ChromeOS", "Exectuable directory not known; assuming ash"},
-      // Random directories default to Chrome_ChromeOS.
-      {"/sbin", "Chrome_ChromeOS", "/sbin does not match Ash or Lacros paths"},
-      {"/run/imageloader/cros-termina", "Chrome_ChromeOS",
-       "/run/imageloader/cros-termina does not match Ash or Lacros paths"},
-  };
-
-  for (const Test& test : kTests) {
-    brillo::ClearLog();
-    EXPECT_EQ(UserCollector::GuessChromeProductName(
-                  base::FilePath(test.input_directory)),
-              test.expected_result)
-        << " for " << test.input_directory;
-    if (test.log_message == nullptr) {
-      EXPECT_THAT(brillo::GetLog(), IsEmpty())
-          << " for " << test.input_directory;
-    } else {
-      EXPECT_THAT(brillo::GetLog(), HasSubstr(test.log_message))
-          << " for " << test.input_directory;
-    }
-  }
-}
-
 // Fixure for testing ShouldCaptureEarlyChromeCrash. Adds some extra setup
 // that makes a basic fake set of /proc files, and has some extra functions
 // to add other types of files.
@@ -1195,17 +1146,4 @@ TEST_F(ShouldCaptureEarlyChromeCrashTest, NoEffectIfNotChrome) {
               AllOf(Not(HasSubstr("upload_var_prod=Chrome_ChromeOS\n")),
                     Not(HasSubstr("upload_var_early_chrome_crash=true\n")),
                     Not(HasSubstr("upload_var_ptype=browser\n"))));
-}
-
-TEST_F(ShouldCaptureEarlyChromeCrashTest,
-       ComputeSeverity_HandleEarlyChromeCrashes_Lacros) {
-  collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
-                                paths::Get("/run/lacros"));
-
-  CrashCollector::ComputedCrashSeverity computed_severity =
-      collector_.ComputeSeverity("test exec name");
-
-  EXPECT_EQ(computed_severity.crash_severity,
-            CrashCollector::CrashSeverity::kFatal);
-  EXPECT_EQ(computed_severity.product_group, CrashCollector::Product::kLacros);
 }

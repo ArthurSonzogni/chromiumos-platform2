@@ -83,8 +83,6 @@ const char kChannelKey[] = "channel";
 // variations::kExperimentListKey in the chromium repo.
 const char kVariationsKey[] = "variations";
 const char kNumExperimentsKey[] = "num-experiments";
-const char kLacrosVariationsKey[] = "lacros-variations";
-const char kLacrosNumExperimentsKey[] = "lacros-num-experiments";
 // Arbitrarily say we won't accept more than 1MiB for the variations file
 const int64_t kArbitraryMaxVariationsSize = 1 << 20;
 
@@ -1859,11 +1857,6 @@ CrashCollectionStatus CrashCollector::FinishCrash(
     LOG(ERROR) << "Failed to add variations to report";
   }
 
-  if (!AddVariations(paths::kLacrosVariationsListFile, kLacrosVariationsKey,
-                     kLacrosNumExperimentsKey)) {
-    LOG(ERROR) << "Failed to add lacros variations to report";
-  }
-
   const std::string product_version = GetProductVersion();
   std::string product_version_info =
       StringPrintf("ver=%s\n", product_version.c_str());
@@ -2039,8 +2032,6 @@ std::string CrashCollector::ProductEnumToString(Product product) const {
       return "Platform";
     case Product::kArc:
       return "Arc";
-    case Product::kLacros:
-      return "Lacros";
     default:
       LOG(ERROR) << "Unexpected enum value for Product: "
                  << static_cast<int>(product);
@@ -2076,7 +2067,6 @@ CrashCollector::Product CrashCollector::ValidateProductGroupForHistogram(
     case Product::kUi:
     case Product::kPlatform:
     case Product::kArc:
-    case Product::kLacros:
       return product;
     default:
       LOG(ERROR)

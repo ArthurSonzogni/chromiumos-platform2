@@ -222,7 +222,7 @@ class SenderBase {
     kTooManyRequests = 14,
     // Do not remove just yet
     kRetryUploading = 15,
-    kLaCrosVersionTooOld = 16,
+    // Removed: kLaCrosVersionTooOld = 16,
     kDryRun = 17,
     // Keep kSendReasonCount one larger than any other enum value.
     kSendReasonCount = 18,

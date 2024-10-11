@@ -129,9 +129,9 @@ void RecordSendAttempt(const base::FilePath& timestamps_dir, int bytes);
 
 // Returns true if the crash is user-disruptive Chrome crash. Returns false
 // otherwise. "User-disruptive" Chrome crashes are:
-// -  Ash and Lacros Chrome crashes with fatal severity
-// -  Ash and Lacros Chrome crashes with error severity in the "renderer",
-// "extension", or "utility" process.
+// -  Ash Chrome crashes with fatal severity
+// -  Ash Chrome crashes with error severity in the "renderer",
+//    "extension", or "utility" process.
 bool IsUserDisruptiveChromeCrash(const CrashDetails& details);
 
 // Gets the crash type based on crash details. Returns std::nullopt if the crash

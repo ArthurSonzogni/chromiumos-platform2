@@ -459,28 +459,9 @@ SenderBase::Action SenderBase::EvaluateMetaFileMinimal(
       info->metadata.GetString(kOsTimestamp, &os_timestamp_str) &&
       base::StringToInt64(os_timestamp_str, &os_millis) &&
       util::IsBuildTimestampTooOldForUploads(os_millis, clock_.get())) {
-    std::string build_time_str;
-    // If the OS timestamp is too old, and we don't have a browser build time
-    // (typically sent from Lacros), remove the report with reason
-    // kOSVersionTooOld.
-    // If on the other hand, the OS is too old *but* lacros exists and is
-    // sufficiently new, we send the report.
-    // If Lacros provides a build time that's too old, but the OS is
-    // sufficiently new, we'll send the crash anyway, as it's possible there's
-    // an ash<->lacros compatibility issue.
-    int64_t build_time_millis;
-    if (!info->metadata.GetString("upload_var_build_time_millis",
-                                  &build_time_str)) {
-      *reason = "Old OS version";
-      RecordCrashRemoveReason(kOSVersionTooOld);
-      return kRemove;
-    } else if (base::StringToInt64(build_time_str, &build_time_millis) &&
-               util::IsBuildTimestampTooOldForUploads(build_time_millis,
-                                                      clock_.get())) {
-      *reason = "Old LaCros version";
-      RecordCrashRemoveReason(kLaCrosVersionTooOld);
-      return kRemove;
-    }
+    *reason = "Old OS version";
+    RecordCrashRemoveReason(kOSVersionTooOld);
+    return kRemove;
   }
 
   return kSend;

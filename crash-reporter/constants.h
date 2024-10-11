@@ -50,16 +50,12 @@ inline constexpr char kCrashLoopModeKey[] = "crash_loop_mode";
 constexpr char kShutdownTypeKey[] = "shutdown-type";
 
 // An upload var for the metafile, giving the product name (for example,
-// "Chrome_ChromeOS" or "ChromeOS" or "Chrome_Lacros").
+// "Chrome_ChromeOS" or "ChromeOS").
 inline constexpr char kUploadDataKeyProductKey[] = "prod";
 
 // The product name for Chrome ash crashes. Must match the string in
 // ChromeCrashReporterClient::GetProductNameAndVersion() in the chromium repo.
 inline constexpr char kProductNameChromeAsh[] = "Chrome_ChromeOS";
-
-// The product name for Chrome Lacros crashes. Must match the string in
-// ChromeCrashReporterClient::GetProductNameAndVersion() in the chromium repo.
-inline constexpr char kProductNameChromeLacros[] = "Chrome_Lacros";
 
 // Upload var in the metadata file which holds the severity of a crash as
 // determined by the crash collector that handles the crash.

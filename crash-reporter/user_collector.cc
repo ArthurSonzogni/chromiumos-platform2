@@ -71,8 +71,7 @@ const char kCorePatternLockFile[] = "/proc/sys/kernel/lock_core_pattern";
 // Filename we touch in our state directory when we get enabled.
 constexpr char kCrashHandlingEnabledFlagFile[] = "crash-handling-enabled";
 
-// The name of the main chrome executable. Currently, both lacros and ash use
-// the same executable name.
+// The name of the main chrome executable.
 constexpr char kChromeExecName[] = "chrome";
 
 // The value of ptype for Chrome's browser process.  Must match the value of
@@ -172,18 +171,7 @@ CrashCollector::ComputedCrashSeverity UserCollector::ComputeSeverity(
     };
   }
 
-  // When `handling_early_chrome_crash_` is true, the crash can either be
-  // an ash or lacros chrome crash which is decided by the value
-  // of `early_crash_chrome_product_key_`. The appropriate product group value
-  // is associated with the returned ComputedCrashSeverity.
   if (handling_early_chrome_crash_) {
-    if (early_crash_chrome_product_key_ ==
-        constants::kProductNameChromeLacros) {
-      return ComputedCrashSeverity{
-          .crash_severity = CrashSeverity::kFatal,
-          .product_group = Product::kLacros,
-      };
-    }
     return ComputedCrashSeverity{
         .crash_severity = CrashSeverity::kFatal,
         .product_group = Product::kUi,
@@ -571,32 +559,6 @@ bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
   return true;
 }
 
-// static
-const char* UserCollector::GuessChromeProductName(
-    const base::FilePath& exec_directory) {
-  if (exec_directory.empty()) {
-    // Guess Chrome_ChromeOS for lack of a better choice.
-    LOG(WARNING) << "Exectuable directory not known; assuming ash";
-    return constants::kProductNameChromeAsh;
-  }
-
-  const base::FilePath kAshChromeDirectory(paths::Get("/opt/google/chrome"));
-  if (kAshChromeDirectory == exec_directory) {
-    return constants::kProductNameChromeAsh;
-  }
-
-  // Lacros can be in several different directories. Sometimes it runs from
-  // rootfs, sometimes from stateful. Just look for the "lacros" string.
-  if (exec_directory.value().find("lacros") != std::string::npos) {
-    return constants::kProductNameChromeLacros;
-  }
-
-  LOG(WARNING) << exec_directory.value()
-               << " does not match Ash or Lacros paths";
-  // Guess Chrome_ChromeOS for lack of a better choice.
-  return constants::kProductNameChromeAsh;
-}
-
 void UserCollector::BeginHandlingCrash(pid_t pid,
                                        const std::string& exec,
                                        const base::FilePath& exec_directory) {
@@ -607,10 +569,8 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
   if (!ShouldHandleChromeCrashes() && IsChromeExecName(exec) &&
       ShouldCaptureEarlyChromeCrash(exec, pid)) {
     handling_early_chrome_crash_ = true;
-    // Change product name to Chrome_ChromeOS or Chrome_Lacros.
-    early_crash_chrome_product_key_ = GuessChromeProductName(exec_directory);
     AddCrashMetaUploadData(constants::kUploadDataKeyProductKey,
-                           early_crash_chrome_product_key_);
+                           constants::kProductNameChromeAsh);
     AddCrashMetaUploadData("early_chrome_crash", "true");
 
     // Add the "ptype=browser" normally added by InitializeCrashpadImpl(). Since
@@ -632,8 +592,7 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
     // it here if appropriate. Otherwise we risk losing crashes if there's an
     // early crash loading a user's profile info.
 
-    LOG(INFO) << "Activating early Chrome crash mode for "
-              << early_crash_chrome_product_key_;
+    LOG(INFO) << "Activating early Chrome crash mode";
   }
 }
 

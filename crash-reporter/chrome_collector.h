@@ -77,8 +77,7 @@ class ChromeCollector : public CrashCollector {
   }
 
  protected:
-  // Returns the severity level and product group of the crash. The logic for
-  // computing crash severity is the same for both UI and Lacros crashes.
+  // Returns the severity level and product group of the crash.
   // Note: The parameter `exec_name` is not used to compute severity.
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
@@ -87,7 +86,6 @@ class ChromeCollector : public CrashCollector {
   friend class ChromeCollectorTest;
   friend class ComputeChromeCollectorCrashSeverityParameterizedTest;
   FRIEND_TEST(ChromeCollectorTest, GoodValues);
-  FRIEND_TEST(ChromeCollectorTest, GoodLacros);
   FRIEND_TEST(ChromeCollectorTest, GoodShutdown);
   FRIEND_TEST(ChromeCollectorTest, ProcessTypeCheck);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError);
@@ -148,8 +146,7 @@ class ChromeCollector : public CrashCollector {
                                       const base::FilePath& dir,
                                       const std::string& basename,
                                       CrashType crash_type,
-                                      base::FilePath* payload,
-                                      bool* is_lacros_crash);
+                                      base::FilePath* payload);
 
   // Some classes of JavaScript errors do not have stacks. Since crash_sender
   // cannot send error reports without a payload, create a simple payload that
@@ -247,8 +244,6 @@ class ChromeCollector : public CrashCollector {
 
   // Signal number of crash (if applicable). Used for computing crash severity.
   int signal_ = -1;
-
-  bool is_lacros_crash_ = false;
 
   bool is_browser_shutdown_hang_ = false;
 

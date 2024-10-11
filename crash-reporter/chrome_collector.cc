@@ -62,9 +62,6 @@ const char kShutdownBrowserPidPath[] = "/run/chrome/shutdown_browser_pid";
 // file. See HandleCrashWithDumpData for explanation.
 constexpr char kExecLogKeyName[] = "chrome";
 
-// When the executable is a lacros-chrome instance, use this key instead.
-constexpr char kLacrosChromeLogKeyName[] = "lacros_chrome";
-
 // Extract a string delimited by the given character, from the given offset
 // into a source string. Returns false if the string is zero-sized or no
 // delimiter was found.
@@ -145,18 +142,16 @@ CrashCollectionStatus ChromeCollector::HandleCrashWithDumpData(
 
   std::string dump_basename =
       FormatDumpBasename(key_for_basename, time(nullptr), pid);
-  bool is_lacros_crash = false;
   FilePath meta_path = GetCrashPath(dir, dump_basename, "meta");
   FilePath payload_path;
-  CrashCollectionStatus status = ParseCrashLog(
-      data, dir, dump_basename, crash_type, &payload_path, &is_lacros_crash);
+  CrashCollectionStatus status =
+      ParseCrashLog(data, dir, dump_basename, crash_type, &payload_path);
   if (!IsSuccessCode(status)) {
     LOG(ERROR) << "Failed to parse Chrome's crash log" << status;
     return status;
   }
 
   signal_ = signal;
-  is_lacros_crash_ = is_lacros_crash;
   crash_type_ = crash_type;
   AddCrashMetaUploadData("crashpad_signal_number",
                          base::NumberToString(signal_));
@@ -176,19 +171,14 @@ CrashCollectionStatus ChromeCollector::HandleCrashWithDumpData(
   }
 
   // Keyed by crash metadata key name.
-  // For Chrome crashes, we need to know if we're in lacros, as the paths used
-  // for logs are different (/home/chronos/user/lacros/lacros.log).
-  // For non-lacros crashes, we always use the logging key "chrome".
   // We may get names like "unknown" if the process disappeared before Breakpad
   // Crashpad could retrieve the executable name. It's probably chrome, so get
   // the normal chrome logs.
-  // Non-lacros JavaScript crashes with their non-exe error keys have different
+  // JavaScript crashes with their non-exe error keys have different
   // logs. For example, there's no point in getting session_manager logs for a
   // JavaScript crash.
   std::string key_for_logs;
-  if (is_lacros_crash) {
-    key_for_logs = std::string(kLacrosChromeLogKeyName);
-  } else if (crash_type == kExecutableCrash) {
+  if (crash_type == kExecutableCrash) {
     key_for_logs = std::string(kExecLogKeyName);
   } else {
     key_for_logs = non_exe_error_key;
@@ -296,10 +286,7 @@ CrashCollectionStatus ChromeCollector::ParseCrashLog(
     const base::FilePath& dir,
     const std::string& basename,
     CrashType crash_type,
-    base::FilePath* payload,
-    bool* is_lacros_crash) {
-  // Initialize value
-  *is_lacros_crash = false;
+    base::FilePath* payload) {
   size_t at = 0;
   while (at < data.size()) {
     // Look for a : followed by a decimal number, followed by another :
@@ -442,10 +429,7 @@ CrashCollectionStatus ChromeCollector::ParseCrashLog(
         }
       }
       AddCrashMetaUploadData(name, value_str);
-      if (name == constants::kUploadDataKeyProductKey &&
-          value_str == constants::kProductNameChromeLacros) {
-        *is_lacros_crash = true;
-      } else if (name == constants::kShutdownTypeKey) {
+      if (name == constants::kShutdownTypeKey) {
         is_shutdown_crash_ = true;
       } else if (name == constants::kChromeProcessTypeKey) {
         process_type_ = std::move(value_str);
@@ -485,7 +469,7 @@ CrashCollector::ComputedCrashSeverity ChromeCollector::ComputeSeverity(
   CrashCollector::ComputedCrashSeverity computed_severity =
       ComputedCrashSeverity{
           .crash_severity = CrashSeverity::kError,
-          .product_group = is_lacros_crash_ ? Product::kLacros : Product::kUi,
+          .product_group = Product::kUi,
       };
 
   if (IsJavaScriptError()) {
