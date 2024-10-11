@@ -35,6 +35,9 @@ using FormatForEmbeddingFunction = std::optional<std::string> (*)(
 constexpr char kClusteringTaskType[] = "clustering";
 constexpr char kContentKey[] = "content";
 
+constexpr char kDelegateCpu[] = "cpu";
+constexpr char kDelegateGpuOpenCl[] = "gpu-opencl";
+
 }  // namespace
 
 TfliteModelRunner::TfliteModelRunner(
@@ -43,6 +46,7 @@ TfliteModelRunner::TfliteModelRunner(
     const raw_ref<odml::OdmlShimLoader> shim_loader)
     : input_node_(-1),
       output_node_(-1),
+      delegate_type_(DelegateType::kDelegateTypeNotSet),
       shim_loader_(shim_loader),
       model_info_(std::move(model_info)),
       tflite_info_(std::get_if<struct EmbeddingTfliteModelInfo>(
@@ -55,6 +59,18 @@ void TfliteModelRunner::Load(base::PassKey<ModelHolder> passkey,
                              LoadCallback callback) {
   CHECK(tokenizer_);
   CHECK(!tokenizer_->IsLoaded());
+
+  if (tflite_info_->delegate == kDelegateCpu || tflite_info_->delegate == "") {
+    delegate_type_ = DelegateType::kDelegateTypeCpu;
+  } else if (tflite_info_->delegate == kDelegateGpuOpenCl) {
+    delegate_type_ = DelegateType::kDelegateTypeGpuOpenCl;
+  } else {
+    LOG(ERROR) << "Unsupported delegate option for TfliteModelRunner: "
+               << tflite_info_->delegate;
+    std::move(callback).Run(false);
+    return;
+  }
+
   model_.reset();
   interpreter_.reset();
 
@@ -116,8 +132,10 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
     return;
   }
 
-  // Apply GPU delegate
-  {
+  if (delegate_type_ == DelegateType::kDelegateTypeCpu) {
+    // Nothing to do.
+  } else if (delegate_type_ == DelegateType::kDelegateTypeGpuOpenCl) {
+    // Apply GPU delegate
     TfLiteGpuDelegateOptionsV2 options(TfLiteGpuDelegateOptionsV2Default());
     options.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_CL_ONLY;
     TfLiteDelegate* delegate = TfLiteGpuDelegateV2Create(&options);
@@ -131,6 +149,8 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
       std::move(callback).Run(false);
       return;
     }
+  } else {
+    NOTREACHED();
   }
 
   // Allocate memory for tensors.

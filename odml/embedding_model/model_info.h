@@ -22,6 +22,12 @@ struct EmbeddingTfliteModelInfo {
   // Path to the sentencepiece tokenizer file.
   // This is only used when builtin_spm is false.
   std::string spm_path;
+
+  // What delegate to use for the inference? Valid options are:
+  // "cpu" - Everything runs on CPU.
+  // "gpu-opencl" - Uses TfLiteGpuDelegate with OpenCL.
+  // If empty, will default to "cpu".
+  std::string delegate;
 };
 
 // Contain information required to load and run the model.

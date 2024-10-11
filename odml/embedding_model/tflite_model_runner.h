@@ -37,6 +37,12 @@ class TfliteModelRunner : public ModelRunner {
            RunCallback callback) override;
 
  private:
+  enum class DelegateType {
+    kDelegateTypeNotSet = 0,
+    kDelegateTypeCpu = 1,
+    kDelegateTypeGpuOpenCl = 2,
+  };
+
   // Part of Load(), runs after shim_loader_ finishes loading.
   void OnShimFinishLoading(base::PassKey<ModelHolder> passkey,
                            LoadCallback callback,
@@ -54,6 +60,10 @@ class TfliteModelRunner : public ModelRunner {
   // Which node is the input/output in the tflite graph?
   int input_node_;
   int output_node_;
+
+  // What delegates are we using? As in on which processor are we running this
+  // model?
+  DelegateType delegate_type_;
 
   // For access to the odml-shim functions, which is needed for formatting.
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
