@@ -69,17 +69,6 @@ class FakeBrowserJob : public BrowserJobInterface {
               SetAdditionalEnvironmentVariables,
               (const std::vector<std::string>&),
               (override));
-  MOCK_METHOD(void,
-              SetBrowserDataMigrationArgsForUser,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void, ClearBrowserDataMigrationArgs, (), (override));
-  MOCK_METHOD(void,
-              SetBrowserDataBackwardMigrationArgsForUser,
-              (const std::string&),
-              (override));
-  MOCK_METHOD(void, ClearBrowserDataBackwardMigrationArgs, (), (override));
-  MOCK_METHOD(void, SetMultiUserSessionStarted, (), (override));
 
   bool RunInBackground() override;
   const std::string GetName() const override;

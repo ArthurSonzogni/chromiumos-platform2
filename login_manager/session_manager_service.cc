@@ -302,11 +302,6 @@ void SessionManagerService::ScheduleShutdown() {
 void SessionManagerService::RunBrowser() {
   DCHECK(!abort_timer_.IsRunning());
   browser_->RunInBackground();
-  // Call |ClearBrowserDataMigrationArgs()| and
-  // |ClearBrowserDataBackwardMigrationArgs()| here to ensure that the migration
-  // happens only once.
-  browser_->ClearBrowserDataMigrationArgs();
-  browser_->ClearBrowserDataBackwardMigrationArgs();
 
   DLOG(INFO) << "Browser is " << browser_->CurrentPid();
   liveness_checker_->Start();
@@ -410,16 +405,6 @@ void SessionManagerService::SetFeatureFlagsForUser(
   browser_->SetFeatureFlags(feature_flags, origin_list_flags);
 }
 
-void SessionManagerService::SetBrowserDataMigrationArgsForUser(
-    const std::string& userhash, const std::string& mode) {
-  browser_->SetBrowserDataMigrationArgsForUser(userhash, mode);
-}
-
-void SessionManagerService::SetBrowserDataBackwardMigrationArgsForUser(
-    const std::string& userhash) {
-  browser_->SetBrowserDataBackwardMigrationArgsForUser(userhash);
-}
-
 bool SessionManagerService::IsBrowser(pid_t pid) {
   return (browser_->CurrentPid() > 0 && pid == browser_->CurrentPid());
 }
@@ -433,10 +418,6 @@ std::optional<pid_t> SessionManagerService::GetBrowserPid() const {
 
 base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
   return last_browser_restart_time_;
-}
-
-void SessionManagerService::SetMultiUserSessionStarted() {
-  browser_->SetMultiUserSessionStarted();
 }
 
 bool SessionManagerService::HandleExit(const siginfo_t& status) {

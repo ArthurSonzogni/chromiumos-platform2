@@ -170,14 +170,9 @@ class SessionManagerService
       const std::string& account_id,
       const std::vector<std::string>& feature_flags,
       const std::map<std::string, std::string>& origin_list_flags) override;
-  void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                          const std::string& mode) override;
-  void SetBrowserDataBackwardMigrationArgsForUser(
-      const std::string& userhash) override;
   bool IsBrowser(pid_t pid) override;
   std::optional<pid_t> GetBrowserPid() const override;
   base::TimeTicks GetLastBrowserRestartTime() override;
-  void SetMultiUserSessionStarted() override;
 
   // ChildExitHandler overrides:
   // Handles only browser exit (i.e. IsBrowser(pid) returns true).

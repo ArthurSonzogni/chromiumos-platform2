@@ -434,40 +434,6 @@ TEST_F(SessionManagerProcessTest, StopAllVms) {
   SimpleRunManager();
 }
 
-TEST_F(SessionManagerProcessTest, SetBrowserDataMigrationArgsForUser) {
-  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
-
-  const std::string userhash = "1234abcd";
-  const std::string mode = "move";
-  EXPECT_CALL(*job, SetBrowserDataMigrationArgsForUser(userhash, mode))
-      .Times(1);
-  manager_->SetBrowserDataMigrationArgsForUser(userhash, mode);
-}
-
-TEST_F(SessionManagerProcessTest, SetBrowserDataBackwardMigrationArgsForUser) {
-  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
-
-  const std::string userhash = "1234abcd";
-  EXPECT_CALL(*job, SetBrowserDataBackwardMigrationArgsForUser(userhash))
-      .Times(1);
-  manager_->SetBrowserDataBackwardMigrationArgsForUser(userhash);
-}
-
-TEST_F(SessionManagerProcessTest, ClearBrowserDataMigrationArgs) {
-  // Check that |SessionManager::RunBrowser()| calls
-  // |ClearBrowserDataMigrationArgs()| after fork/exec if browser data migration
-  // args were set, ensuring that migration is attempted only once.
-  FakeBrowserJob* job = CreateMockJobAndInitManager(false);
-  const std::string userhash = "1234abcd";
-  const std::string mode = "move";
-  manager_->SetBrowserDataMigrationArgsForUser(userhash, mode);
-
-  EXPECT_CALL(*job, ClearBrowserDataMigrationArgs());
-  EXPECT_CALL(*job, ClearBrowserDataBackwardMigrationArgs());
-
-  manager_->RunBrowser();
-}
-
 TEST_F(SessionManagerProcessTest, InitializeShouldSetExtraCommandlineArgs) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(/*schedule_exit=*/false);
 

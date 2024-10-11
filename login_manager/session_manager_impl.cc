@@ -810,10 +810,6 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
   if (is_first_real_user) {
     DCHECK(primary_user_account_id_.empty());
     primary_user_account_id_ = actual_account_id;
-  } else if (!is_incognito) {
-    // This means that |StartSessionEx()| is called for a non-primary user i.e.
-    // the device is entering a multi-user session.
-    manager_->SetMultiUserSessionStarted();
   }
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged: " << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
@@ -1062,64 +1058,6 @@ bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
 void SessionManagerImpl::HandleLockScreenShown() {
   LOG(INFO) << "HandleLockScreenShown() method called.";
   adaptor_.SendScreenIsLockedSignal();
-}
-
-bool SessionManagerImpl::StartBrowserDataMigration(
-    brillo::ErrorPtr* error,
-    const std::string& in_account_id,
-    const std::string& mode) {
-  std::string actual_account_id;
-  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
-    DCHECK(*error);
-    return false;
-  }
-
-  auto iter = user_sessions_.find(actual_account_id);
-  // Check if this user already started a session.
-  if (iter == user_sessions_.end()) {
-    *error = CREATE_ERROR_AND_LOG(
-        dbus_error::kSessionDoesNotExist,
-        "Provided user id does not have a session started.");
-    return false;
-  }
-
-  if (actual_account_id != primary_user_account_id_) {
-    *error =
-        CREATE_ERROR_AND_LOG(dbus_error::kInvalidAccount,
-                             "Migration should only happen for primary user.");
-    return false;
-  }
-
-  manager_->SetBrowserDataMigrationArgsForUser(iter->second->userhash, mode);
-  return true;
-}
-
-bool SessionManagerImpl::StartBrowserDataBackwardMigration(
-    brillo::ErrorPtr* error, const std::string& in_account_id) {
-  std::string actual_account_id;
-  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
-    DCHECK(*error);
-    return false;
-  }
-
-  auto iter = user_sessions_.find(actual_account_id);
-  // Check if this user already started a session.
-  if (iter == user_sessions_.end()) {
-    *error = CREATE_ERROR_AND_LOG(
-        dbus_error::kSessionDoesNotExist,
-        "Provided user id does not have a session started.");
-    return false;
-  }
-
-  if (actual_account_id != primary_user_account_id_) {
-    *error = CREATE_ERROR_AND_LOG(
-        dbus_error::kInvalidAccount,
-        "Backward migration should only happen for primary user.");
-    return false;
-  }
-
-  manager_->SetBrowserDataBackwardMigrationArgsForUser(iter->second->userhash);
-  return true;
 }
 
 void SessionManagerImpl::HandleLockScreenDismissed() {

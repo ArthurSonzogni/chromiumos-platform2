@@ -1228,20 +1228,6 @@ TEST_F(SessionManagerImplTest, StartSession_TwoUsers) {
   EXPECT_FALSE(error.get());
 }
 
-TEST_F(SessionManagerImplTest, StartSession_TwoUsers_MultiUserSession) {
-  // Test that starting an extra session on top of the primary user i.e.
-  // multi-user session, results in calling of |SetMultiUserSessionStarted()|.
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
-  EXPECT_FALSE(error.get());
-
-  EXPECT_CALL(manager_, SetMultiUserSessionStarted());
-  constexpr char kEmail2[] = "user2@somewhere";
-  EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
-  EXPECT_FALSE(error.get());
-  VerifyAndClearExpectations();
-}
-
 TEST_F(SessionManagerImplTest, EmitStartedUserSession) {
   // Succeed for a user who is starting a session.
   ExpectAndRunStartSession(kSaneEmail);
@@ -3239,114 +3225,6 @@ TEST_F(SessionManagerImplTest, QueryAdbSideload) {
   EXPECT_CALL(*arc_sideload_status_, QueryAdbSideload(_));
   ResponseCapturer capturer;
   impl_->QueryAdbSideload(capturer.CreateMethodResponse<bool>());
-}
-
-TEST_F(SessionManagerImplTest, StartBrowserDataMigrationCopy) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::string mode = "copy";
-
-  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
-      .Times(1);
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartBrowserDataMigration(&error, kSaneEmail, mode));
-}
-
-TEST_F(SessionManagerImplTest, StartBrowserDataMigrationMove) {
-  ExpectAndRunStartSession(kSaneEmail);
-  const std::string mode = "move";
-
-  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
-      .Times(1);
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartBrowserDataMigration(&error, kSaneEmail, mode));
-}
-
-TEST_F(SessionManagerImplTest, StartBrowserDataMigrationAny) {
-  ExpectAndRunStartSession(kSaneEmail);
-  // Only Chrome needs to understand the values.
-  const std::string mode = "any";
-
-  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
-      .Times(1);
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartBrowserDataMigration(&error, kSaneEmail, mode));
-}
-
-TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonLoggedInUser) {
-  // If session has not been started for user,
-  // |SetBrowserDataMigrationArgsForUser()| does not get called.
-  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
-  const std::string mode = "copy";
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
-      .Times(0);
-
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->StartBrowserDataMigration(&error, kSaneEmail, mode));
-  EXPECT_EQ(error->GetCode(), dbus_error::kSessionDoesNotExist);
-}
-
-TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimaryUser) {
-  const std::string second_user_email = "seconduser@gmail.com";
-  const std::string mode = "copy";
-  ExpectAndRunStartSession(kSaneEmail);
-  ExpectAndRunStartSession(second_user_email);
-
-  // Migration should only happen for primary user.
-  const std::string userhash = *SanitizeUserName(Username(second_user_email));
-  EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
-      .Times(0);
-
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(
-      impl_->StartBrowserDataMigration(&error, second_user_email, mode));
-  EXPECT_EQ(error->GetCode(), dbus_error::kInvalidAccount);
-}
-
-TEST_F(SessionManagerImplTest, StartBrowserDataBackwardMigration) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
-  EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
-      .Times(1);
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartBrowserDataBackwardMigration(&error, kSaneEmail));
-}
-
-TEST_F(SessionManagerImplTest,
-       StartBrowserDataBackwardMigrationForNonLoggedInUser) {
-  // If session has not been started for user,
-  // |SetBrowserDataBackwardMigrationArgsForUser()| does not get called.
-  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
-  EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
-      .Times(0);
-
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->StartBrowserDataBackwardMigration(&error, kSaneEmail));
-  EXPECT_EQ(error->GetCode(), dbus_error::kSessionDoesNotExist);
-}
-
-TEST_F(SessionManagerImplTest,
-       StartBrowserDataBackwardMigrationForNonPrimaryUser) {
-  const std::string second_user_email = "seconduser@gmail.com";
-  ExpectAndRunStartSession(kSaneEmail);
-  ExpectAndRunStartSession(second_user_email);
-
-  // Migration should only happen for primary user.
-  const std::string userhash = *SanitizeUserName(Username(second_user_email));
-  EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
-      .Times(0);
-
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(
-      impl_->StartBrowserDataBackwardMigration(&error, second_user_email));
-  EXPECT_EQ(error->GetCode(), dbus_error::kInvalidAccount);
 }
 
 class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {

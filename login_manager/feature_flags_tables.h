@@ -2038,8 +2038,6 @@ constexpr FeatureMappingEntry kSwitchesMap[] = {
      "enable-google-srp-isolated-prerender-nsp", 0},
     {"isolation-by-default", "", "isolation-by-default", 0},
     {"javascript-harmony", "", "enable-javascript-harmony", 0},
-    {"lacros-stability", "less-stable", "lacros-stability", 1},
-    {"lacros-stability", "more-stable", "lacros-stability", 2},
     {"lite-video-default-downlink-bandwidth-kbps", "100",
      "lite-video-default-downlink-bandwidth-kbps", 1},
     {"lite-video-default-downlink-bandwidth-kbps", "150",

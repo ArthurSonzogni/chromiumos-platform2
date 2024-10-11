@@ -42,13 +42,6 @@ const char BrowserJobInterface::kLoginManagerFlag[] = "--login-manager";
 const char BrowserJobInterface::kLoginUserFlag[] = "--login-user=";
 const char BrowserJobInterface::kLoginProfileFlag[] = "--login-profile=";
 const char BrowserJobInterface::kCrashLoopBeforeFlag[] = "--crash-loop-before=";
-const char BrowserJobInterface::kBrowserDataMigrationForUserFlag[] =
-    "--browser-data-migration-for-user=";
-const char BrowserJobInterface::kBrowserDataMigrationModeFlag[] =
-    "--browser-data-migration-mode=";
-const char BrowserJobInterface::kBrowserDataBackwardMigrationForUserFlag[] =
-    "--browser-data-backward-migration-for-user=";
-const char BrowserJobInterface::kDisallowLacrosFlag[] = "--disallow-lacros";
 
 const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 
@@ -242,19 +235,7 @@ bool BrowserJob::RunInBackground() {
   CHECK(login_metrics_);
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
   login_metrics_->RecordStats("chrome-exec");
-
-  // Skip `RecordTime()` if ash is being launched for browser data migration and
-  // browser backward data migration so that the relaunch for migration is not
-  // considered a launch crash by `ShouldDropExtraArguments()`. Without this
-  // "safe-mode" gets triggered for migration after a restart to apply flags.
-  // 1. Ash is launched.
-  // 2. Ash is relaunched to apply flags.
-  // 3. Ash is relaunched to do migration.
-  // 4. Ash is relaunched to put users back in session.
-  if (browser_data_migration_arguments_.empty() &&
-      browser_data_backward_migration_arguments_.empty()) {
-    RecordTime();
-  }
+  RecordTime();
 
   extra_one_time_arguments_.clear();
   if (first_boot)
@@ -466,54 +447,10 @@ void BrowserJob::ClearPid() {
   subprocess_->ClearPid();
 }
 
-void BrowserJob::SetMultiUserSessionStarted() {
-  multi_user_session_started_ = true;
-}
-
 std::vector<std::string> BrowserJob::ExportArgv() const {
   std::vector<std::string> to_return(arguments_.begin(), arguments_.end());
-
-  // Browser forward and backward data migration are exclusive.
-  // No migration is performed if both are false or both are true.
-  if (browser_data_migration_arguments_.empty() ==
-      browser_data_backward_migration_arguments_.empty()) {
-    CHECK(browser_data_migration_arguments_.empty() &&
-          browser_data_backward_migration_arguments_.empty())
-        << "Both forward and backward migration have been called.";
-
-    to_return.insert(to_return.end(), login_arguments_.begin(),
-                     login_arguments_.end());
-  } else {
-    // Browser data migration for lacros happens in the following steps.
-    // 1. Inside the login flow in ash-chrome, whether migration is required or
-    // not is checked.
-    // 2. If required, ash-chrome calls DBus method to session manager to be
-    // relaunched with specific args for migration.
-    // 3. Ash-chrome terminates itself.
-    // 4. Ash-chrome is relaunched to carry out the migration.
-    // 5. Ash-chrome terminates itself once migration is completed.
-    // 6. Ash-chrome is relaunched to display user's home screen.
-    //
-    // If |browser_data_migration_arguments_| is not empty, it means that
-    // |SetBrowserDataMigrationArgsForUser| was called. With these arguments
-    // present, ash-chrome gets launched to run browser data migration from
-    // ash-chrome to lacros-chrome. Concretely browser data files in
-    // ash-chrome's user data dir will be copied/moved to lacros-chrome's user
-    // data dir. |ClearBrowserDataMigrationArgs()| must be called after
-    // launching ash-chrome for data migration so ash-chrome doesn't get stuck
-    // in migration mode.
-    to_return.insert(to_return.end(), browser_data_migration_arguments_.begin(),
-                     browser_data_migration_arguments_.end());
-
-    // Backward migration works simmilarly:
-    // If |browser_data_backward_migration_arguments_| is not empty, it means
-    // that |SetBrowserDataBackwardMigrationArgsForUser| was called.
-    // |ClearBrowserDataBackwardMigrationArgs()| must be called after
-    // launching ash-chrome for data backward migration.
-    to_return.insert(to_return.end(),
-                     browser_data_backward_migration_arguments_.begin(),
-                     browser_data_backward_migration_arguments_.end());
-  }
+  to_return.insert(to_return.end(), login_arguments_.begin(),
+                   login_arguments_.end());
 
   if (ShouldDropExtraArguments()) {
     LOG(WARNING) << "Dropping extra arguments and setting safe-mode switch due "
@@ -556,10 +493,6 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                      extra_one_time_arguments_.end());
   }
 
-  if (multi_user_session_started_) {
-    to_return.push_back(kDisallowLacrosFlag);
-  }
-
   to_return.insert(to_return.end(), test_arguments_.begin(),
                    test_arguments_.end());
 
@@ -600,35 +533,6 @@ bool BrowserJob::ShouldDropExtraArguments() const {
   return (start_time_with_extra_args != 0 &&
           system_->time(nullptr) - start_time_with_extra_args <
               kRestartWindowSeconds);
-}
-
-void BrowserJob::SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                                    const std::string& mode) {
-  browser_data_migration_arguments_.clear();
-  browser_data_migration_arguments_.push_back(kBrowserDataMigrationForUserFlag +
-                                              userhash);
-
-  browser_data_migration_arguments_.push_back(kBrowserDataMigrationModeFlag +
-                                              mode);
-
-  browser_data_migration_arguments_.push_back(kLoginManagerFlag);
-}
-
-void BrowserJob::ClearBrowserDataMigrationArgs() {
-  browser_data_migration_arguments_.clear();
-}
-
-void BrowserJob::SetBrowserDataBackwardMigrationArgsForUser(
-    const std::string& userhash) {
-  browser_data_backward_migration_arguments_.clear();
-  browser_data_backward_migration_arguments_.push_back(
-      kBrowserDataBackwardMigrationForUserFlag + userhash);
-
-  browser_data_backward_migration_arguments_.push_back(kLoginManagerFlag);
-}
-
-void BrowserJob::ClearBrowserDataBackwardMigrationArgs() {
-  browser_data_backward_migration_arguments_.clear();
 }
 
 }  // namespace login_manager

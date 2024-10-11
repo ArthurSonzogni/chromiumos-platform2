@@ -52,18 +52,9 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&)),
               (override));
-  MOCK_METHOD(void,
-              SetBrowserDataMigrationArgsForUser,
-              (const std::string&, const std::string&),
-              (override));
-  MOCK_METHOD(void,
-              SetBrowserDataBackwardMigrationArgsForUser,
-              (const std::string&),
-              (override));
   MOCK_METHOD(bool, IsBrowser, (pid_t), (override));
   MOCK_METHOD(std::optional<pid_t>, GetBrowserPid, (), (const override));
   MOCK_METHOD(base::TimeTicks, GetLastBrowserRestartTime, (), (override));
-  MOCK_METHOD(void, SetMultiUserSessionStarted, (), (override));
 };
 }  // namespace login_manager
 

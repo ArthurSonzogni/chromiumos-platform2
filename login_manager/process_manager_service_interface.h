@@ -68,15 +68,6 @@ class ProcessManagerServiceInterface {
       const std::vector<std::string>& feature_flags,
       const std::map<std::string, std::string>& origin_list_flags) = 0;
 
-  // Calls |BrowserJob::SetBrowserDataMigrationArgsForUser()| in order to run
-  // browser data migration on chrome launched subsequently.
-  virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                                  const std::string& mode) = 0;
-  // Calls |BrowserJob::SetBrowserDataBackwardMigrationArgsForUser()| in order
-  // to run browser data backward migration on chrome launched subsequently.
-  virtual void SetBrowserDataBackwardMigrationArgsForUser(
-      const std::string& userhash) = 0;
-
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;
 
@@ -86,10 +77,6 @@ class ProcessManagerServiceInterface {
   // Returns the last time that the browser was restarted after exiting
   // (typically due to a crash).
   virtual base::TimeTicks GetLastBrowserRestartTime() = 0;
-
-  // Calls |BrowserJob::SetMultiUserSessionStarted()| so that |BrowserJob| can
-  // pass |kDisallowLacrosFlag| for subsequent Chrome runs.
-  virtual void SetMultiUserSessionStarted() = 0;
 };
 }  // namespace login_manager
 

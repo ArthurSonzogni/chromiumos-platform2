@@ -363,10 +363,6 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   builder->AddEnvVar("CHROME_LOG_FILE",
                      system_log_dir.Append("chrome").value());
 
-  // Log directory for Lacros to write logging messages before the user logs in.
-  base::FilePath lacros_system_log_dir("/var/log/lacros");
-  CHECK(EnsureDirectoryExists(lacros_system_log_dir, uid, gid, 0755));
-
   // Log directory for the user session. Note that the user dir won't be mounted
   // until later (when the cryptohome is mounted), so we don't create
   // CHROMEOS_SESSION_LOG_DIR here.
@@ -427,14 +423,6 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   // TODO(b/274706377): remove when the GPU Hang issue is resolved.
   if (builder->UseFlagIsSet("disable_webrtc_hw_decoding"))
     builder->AddFeatureDisableOverride("webrtc-hw-decoding");
-
-  // Enable rootfs only mode for LaCrOS.
-  if (builder->UseFlagIsSet("lacros_rootfs_only"))
-    builder->AddArg("--lacros-selection=rootfs");
-
-  // Bypass LaCrOS Availability Policy.
-  if (builder->UseFlagIsSet("lacros_ignore_availability"))
-    builder->AddArg("--lacros-availability-ignore");
 
   // In ash, we use mojo service manager as the mojo broker so disable it here.
   builder->AddArg("--disable-mojo-broker");
@@ -1086,12 +1074,6 @@ void AddFeatureManagementFlags(
                                      feature_management->GetMaxFeatureLevel()));
   builder->AddArg(base::StringPrintf("--feature-management-scope=%d",
                                      feature_management->GetScopeLevel()));
-
-  // TODO(b/315897922): Re-enable Lacros on targeted devices once they have been
-  // stabilized.
-  if (feature_management->IsFeatureEnabled("FeatureManagementDisableLacros")) {
-    builder->AddArg("--disallow-lacros");
-  }
 }
 
 // Adds flags related to specific devices and/or overlays

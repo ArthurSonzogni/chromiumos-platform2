@@ -94,31 +94,6 @@ class BrowserJobInterface : public ChildJobInterface {
   // Throw away the pid of the currently-tracked browser job.
   virtual void ClearPid() = 0;
 
-  // Sets |kBrowserDataMigrationForUserFlag| and |kLoginManagerFlag| to chrome
-  // launch flags. |userhash| is passed as the value of
-  // |kBrowserDataMigrationFlag| to let chrome know which user data directory to
-  // do migration on. |mode| is set as the value of
-  // |kBrowserDataMigrationModeFlag|.
-  virtual void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                                  const std::string& mode) = 0;
-
-  // Clears values set by |SetBrowserDataMigrationArgsForUser()|.
-  virtual void ClearBrowserDataMigrationArgs() = 0;
-
-  // Sets |kBrowserDataBackwardMigrationForUserFlag| and |kLoginManagerFlag| to
-  // chrome launch flags. |userhash| is passed as the value of
-  // |kBrowserDataBackwardMigrationFlag| to let chrome know which user data
-  // directory to do backward migration on.
-  virtual void SetBrowserDataBackwardMigrationArgsForUser(
-      const std::string& userhash) = 0;
-
-  // Called when non-primary user i.e. secondary user logs in using multi-user
-  // session feature.
-  virtual void SetMultiUserSessionStarted() = 0;
-
-  // Clears values set by |SetBrowserDataBackwardMigrationArgsForUser()|.
-  virtual void ClearBrowserDataBackwardMigrationArgs() = 0;
-
   // The flag to pass to Chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
 
@@ -134,27 +109,6 @@ class BrowserJobInterface : public ChildJobInterface {
   // The flag to pass to Chrome to tell it that, if it crashes, it should tell
   // crash_reporter to run in crash-loop mode.
   static const char kCrashLoopBeforeFlag[];
-
-  // The flag to pass to Chrome to tell it to run migration for the user with
-  // the specified user hash.
-  static const char kBrowserDataMigrationForUserFlag[];
-
-  // The flag to pass to Chrome to tell which migration to run.
-  // It is used together with |kBrowserDataMigrationForUserFlag|.
-  static const char kBrowserDataMigrationModeFlag[];
-
-  // The flag to pass to Chrome to tell it to run backward migration for the
-  // user with the specified user hash.
-  static const char kBrowserDataBackwardMigrationForUserFlag[];
-
-  // The flag to pass to Chrome to tell which migration to run.
-  // It is used together with |kBrowserDataBackwardMigrationForUserFlag|.
-  static const char kBrowserDataBackwardMigrationModeFlag[];
-
-  // The flag to pass to Chrome to tell that Lacros should not be allowed.
-  // Specifically it is used in case there are more than two users currently
-  // logged in to the device i.e. in multi-user session.
-  static const char kDisallowLacrosFlag[];
 };
 
 class BrowserJob : public BrowserJobInterface {
@@ -201,17 +155,10 @@ class BrowserJob : public BrowserJobInterface {
   void SetFeatureFlags(
       const std::vector<std::string>& feature_flags,
       const std::map<std::string, std::string>& origin_list_flags) override;
-  void SetBrowserDataMigrationArgsForUser(const std::string& userhash,
-                                          const std::string& mode) override;
-  void ClearBrowserDataMigrationArgs() override;
-  void SetBrowserDataBackwardMigrationArgsForUser(
-      const std::string& userhash) override;
-  void ClearBrowserDataBackwardMigrationArgs() override;
   void SetTestArguments(const std::vector<std::string>& arguments) override;
   void SetAdditionalEnvironmentVariables(
       const std::vector<std::string>& env_vars) override;
   void ClearPid() override;
-  void SetMultiUserSessionStarted() override;
 
   // Stores the current time as the time when the job was started.
   void RecordTime();
@@ -246,14 +193,6 @@ class BrowserJob : public BrowserJobInterface {
 
   // Login-related arguments to pass to exec.  Managed wholly by this class.
   std::vector<std::string> login_arguments_;
-
-  // Lacros related data migration arguments. This is only non-empty if
-  // |SetBrowserDataMigrationArgsForUser| is called.
-  std::vector<std::string> browser_data_migration_arguments_;
-
-  // Lacros related data backward migration arguments. This is only non-empty if
-  // |SetBrowserDataBackwardMigrationArgsForUser| is called.
-  std::vector<std::string> browser_data_backward_migration_arguments_;
 
   // Feature flags to pass to the browser.
   std::vector<std::string> feature_flags_;
@@ -294,11 +233,6 @@ class BrowserJob : public BrowserJobInterface {
   // browser requires us to track the _first_ user to start a session.
   // There is no issue filed to address this.
   bool session_already_started_ = false;
-
-  // Indicates that there are more than two user sessions started i.e. in
-  // multi-user session. If this is true, `kDisallowLacrosFlag` will be passed
-  // to Chrome on restart.
-  bool multi_user_session_started_ = false;
 
   Config config_;
 
