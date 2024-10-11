@@ -1029,6 +1029,27 @@ TEST_P(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
                  "eth0"));
 }
 
+TEST_P(ProxyTest, SystemProxy_NeverListenForGuests) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0"));
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // System proxy does not listen for guests
+  EXPECT_CALL(*new_resolver, ListenUDP(_, _)).Times(0);
+  EXPECT_CALL(*new_resolver, ListenTCP(_, _)).Times(0);
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kAdded,
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap1",
+                 "eth0"));
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kAdded,
+      virtualdev(patchpanel::Client::GuestType::kArcContainer, "arc_eth0",
+                 "eth0"));
+}
+
 TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice());
@@ -1102,6 +1123,37 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
+TEST_P(ProxyTest, DefaultProxy_ListenForGuests) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0"));
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // Guest started.
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, ListenUDP(_, "vmtap0")).WillOnce(Return(true));
+    EXPECT_CALL(*new_resolver, ListenTCP(_, "vmtap0")).WillOnce(Return(true));
+  } else {
+    EXPECT_CALL(*new_resolver, ListenUDP(_, _)).Times(0);
+    EXPECT_CALL(*new_resolver, ListenTCP(_, _)).Times(0);
+  }
+  auto plugin_vm_dev =
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0");
+  proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
+                                 plugin_vm_dev);
+
+  // Guest stopped.
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, StopListen(_, "vmtap0")).Times(2);
+  } else {
+    EXPECT_CALL(*new_resolver, StopListen(_, _)).Times(0);
+  }
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kRemoved, plugin_vm_dev);
+}
+
 TEST_P(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -1114,6 +1166,28 @@ TEST_P(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
       patchpanel::Client::VirtualDeviceEvent::kAdded,
       virtualdev(patchpanel::Client::GuestType::kArcContainer, "arc_eth0",
                  "eth0"));
+}
+
+TEST_P(ProxyTest, DefaultProxy_NeverListenForOtherGuests) {
+  SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0"));
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // Other guest started.
+  EXPECT_CALL(*new_resolver, ListenUDP(_, _)).Times(0);
+  EXPECT_CALL(*new_resolver, ListenTCP(_, _)).Times(0);
+  auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
+                            "arc_eth0", "eth0");
+  proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
+                                 arc_dev);
+
+  // Other guest stopped.
+  EXPECT_CALL(*new_resolver, StopListen(_, _)).Times(0);
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kRemoved, arc_dev);
 }
 
 TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
@@ -1334,6 +1408,38 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
 
+TEST_P(ProxyTest, ArcProxy_ListenForGuests) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0"));
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // Guest started.
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, ListenUDP(_, "arc_eth0")).WillOnce(Return(true));
+    EXPECT_CALL(*new_resolver, ListenTCP(_, "arc_eth0")).WillOnce(Return(true));
+  } else {
+    EXPECT_CALL(*new_resolver, ListenUDP(_, _)).Times(0);
+    EXPECT_CALL(*new_resolver, ListenTCP(_, _)).Times(0);
+  }
+  auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
+                            "arc_eth0", "eth0");
+  proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
+                                 arc_dev);
+
+  // Guest stopped.
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, StopListen(_, "arc_eth0")).Times(2);
+  } else {
+    EXPECT_CALL(*new_resolver, StopListen(_, _)).Times(0);
+  }
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kRemoved, arc_dev);
+}
+
 TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
@@ -1347,6 +1453,29 @@ TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
       virtualdev(patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0"));
 }
 
+TEST_P(ProxyTest, ArcProxy_NeverListenForOtherGuests) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kEthernet, "eth0"));
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // Other guest started.
+  EXPECT_CALL(*new_resolver, ListenUDP(_, _)).Times(0);
+  EXPECT_CALL(*new_resolver, ListenTCP(_, _)).Times(0);
+  auto plugin_vm_dev =
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0");
+  proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
+                                 plugin_vm_dev);
+
+  // Other guest stopped.
+  EXPECT_CALL(*new_resolver, StopListen(_, _)).Times(0);
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kRemoved, plugin_vm_dev);
+}
+
 TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
@@ -1358,6 +1487,29 @@ TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   proxy_->OnVirtualDeviceChanged(
       patchpanel::Client::VirtualDeviceEvent::kAdded,
       virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0"));
+}
+
+TEST_P(ProxyTest, ArcProxy_NeverListenForOtherIfname) {
+  SetUpProxy(GetParam(),
+             Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline,
+                         shill::Client::Device::Type::kWifi, "wlan0"));
+  SetListenAddresses(ipv4_address_, ipv6_address_);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // Other guest started.
+  EXPECT_CALL(*new_resolver, ListenUDP(_, _)).Times(0);
+  EXPECT_CALL(*new_resolver, ListenTCP(_, _)).Times(0);
+  auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
+                            "arc_eth0", "eth0");
+  proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
+                                 arc_dev);
+
+  // Other guest stopped.
+  EXPECT_CALL(*new_resolver, StopListen(_, _)).Times(0);
+  proxy_->OnVirtualDeviceChanged(
+      patchpanel::Client::VirtualDeviceEvent::kRemoved, arc_dev);
 }
 
 TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {

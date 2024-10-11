@@ -199,6 +199,13 @@ class Proxy : public brillo::DBusDaemon {
   void OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent event,
                               const patchpanel::Client::VirtualDevice& device);
 
+  // Listen on |device| IPv4 and IPv6 address for both TCP and UDP to handle DNS
+  // queries from the guest tied to the device.
+  bool ListenOnVirtualDevice(const patchpanel::Client::VirtualDevice& device,
+                             sa_family_t sa_family);
+  void StopListenOnVirtualDevice(
+      const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family);
+
   // Start and stop DNS redirection rules upon virtual device changed.
   void StartGuestDnsRedirection(const patchpanel::Client::VirtualDevice& device,
                                 sa_family_t sa_family);
@@ -235,6 +242,13 @@ class Proxy : public brillo::DBusDaemon {
 
   // Calls patchpanel ConnectNamespace API and sets the necessary states.
   bool ConnectNamespace();
+
+  // Returns whether or not the virtual device |device| is expected to be
+  // handled by the current DNS proxy process.
+  // The DEFAULT proxy handles all non-ARC VMs and the ARC proxies handles their
+  // respective ARC virtual devices.
+  bool IsValidVirtualDevice(
+      const patchpanel::Client::VirtualDevice& device) const;
 
   void LogName(std::ostream& stream) const;
 
@@ -307,6 +321,12 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted);
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added);
   FRIEND_TEST(ProxyTest, UpdateNameServers);
+  FRIEND_TEST(ProxyTest, SystemProxy_NeverListenForGuests);
+  FRIEND_TEST(ProxyTest, DefaultProxy_ListenForGuests);
+  FRIEND_TEST(ProxyTest, DefaultProxy_NeverListenForOtherGuests);
+  FRIEND_TEST(ProxyTest, ArcProxy_ListenForGuests);
+  FRIEND_TEST(ProxyTest, ArcProxy_NeverListenForOtherGuests);
+  FRIEND_TEST(ProxyTest, ArcProxy_NeverListenForOtherIfname);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
@@ -330,6 +350,13 @@ class Proxy : public brillo::DBusDaemon {
   // interface inside the network namespace |ns_|.
   std::optional<net_base::IPv4Address> ipv4_address_;
   std::optional<net_base::IPv6Address> ipv6_address_;
+
+  // Map of interface index to its link-local IPv6 addresses. This map is used
+  // to listen on the link-local address of the guest (Crostini, ARC, etc.).
+  // TODO(jasongustaman): Implement fetching the link-local IPv6 addresses.
+  // TODO(jasongustaman): Make sure only populate the addresses when they are
+  // ready.
+  std::map<int, net_base::IPv6Address> link_local_addresses_;
 
   std::unique_ptr<Resolver> resolver_;
   DoHConfig doh_config_;

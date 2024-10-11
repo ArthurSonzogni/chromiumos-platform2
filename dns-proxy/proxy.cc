@@ -273,8 +273,6 @@ void Proxy::OnPatchpanelReady(bool success) {
   }
 
   if (root_ns_enabled_) {
-    // TODO(jasongustaman): ARC now does not initialize these addresses. Add a
-    // way to fetch and use the addresses for guest cases.
     switch (opts_.type) {
       case Type::kSystem:
         ipv4_address_ = patchpanel::kDnsProxySystemIPv4Address;
@@ -700,6 +698,7 @@ void Proxy::MaybeCreateResolver() {
   resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 
   if (root_ns_enabled_) {
+    // Listen on the loopback interface.
     if (ipv4_address_) {
       struct sockaddr_in addr4 = {0};
       addr4.sin_family = AF_INET;
@@ -715,6 +714,15 @@ void Proxy::MaybeCreateResolver() {
       addr6.sin6_port = kDefaultPort;
       addr6.sin6_addr = ipv6_address_->ToIn6Addr();
       if (!Listen(reinterpret_cast<struct sockaddr*>(&addr6))) {
+        QuitWithExitCode(EX_IOERR);
+      }
+    }
+    // Listen on the virtual interfaces.
+    for (const auto& d : patchpanel_->GetDevices()) {
+      if (!ListenOnVirtualDevice(d, AF_INET)) {
+        QuitWithExitCode(EX_IOERR);
+      }
+      if (!ListenOnVirtualDevice(d, AF_INET6)) {
         QuitWithExitCode(EX_IOERR);
       }
     }
@@ -1129,81 +1137,111 @@ void Proxy::OnVirtualDeviceChanged(
     const patchpanel::Client::VirtualDevice& device) {
   switch (event) {
     case patchpanel::Client::VirtualDeviceEvent::kAdded:
+      if (root_ns_enabled_) {
+        if (!ListenOnVirtualDevice(device, AF_INET)) {
+          QuitWithExitCode(EX_IOERR);
+        }
+        if (!ListenOnVirtualDevice(device, AF_INET6)) {
+          QuitWithExitCode(EX_IOERR);
+        }
+      }
       StartGuestDnsRedirection(device, AF_INET);
       StartGuestDnsRedirection(device, AF_INET6);
       break;
     case patchpanel::Client::VirtualDeviceEvent::kRemoved:
       StopGuestDnsRedirection(device, AF_INET);
       StopGuestDnsRedirection(device, AF_INET6);
+      if (root_ns_enabled_) {
+        StopListenOnVirtualDevice(device, AF_INET);
+        StopListenOnVirtualDevice(device, AF_INET6);
+      }
       break;
     default:
       NOTREACHED_IN_MIGRATION();
   }
 }
 
+bool Proxy::ListenOnVirtualDevice(
+    const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
+  if (!IsValidVirtualDevice(device)) {
+    return true;
+  }
+
+  if (!resolver_) {
+    return true;
+  }
+
+  if (sa_family == AF_INET) {
+    struct sockaddr_in addr4 = {0};
+    addr4.sin_family = AF_INET;
+    addr4.sin_port = kDefaultPort;
+    addr4.sin_addr = device.host_ipv4_addr.ToInAddr();
+    return Listen(reinterpret_cast<struct sockaddr*>(&addr4), device.ifname);
+  }
+
+  // IPv6 case.
+  int ifindex = if_nametoindex(device.ifname.c_str());
+  const auto it = link_local_addresses_.find(ifindex);
+  if (it == link_local_addresses_.end()) {
+    return true;
+  }
+  struct sockaddr_in6 addr6 = {0};
+  addr6.sin6_family = AF_INET6;
+  addr6.sin6_port = kDefaultPort;
+  addr6.sin6_addr = it->second.ToIn6Addr();
+  addr6.sin6_scope_id = ifindex;
+  return Listen(reinterpret_cast<struct sockaddr*>(&addr6), device.ifname);
+}
+
+void Proxy::StopListenOnVirtualDevice(
+    const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
+  if (!IsValidVirtualDevice(device)) {
+    return;
+  }
+  if (!resolver_) {
+    return;
+  }
+  resolver_->StopListen(sa_family, device.ifname);
+}
+
 void Proxy::StartGuestDnsRedirection(
     const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
+  if (!IsValidVirtualDevice(device)) {
+    return;
+  }
   if (!device_ ||
       base::Contains(lifeline_fds_, std::make_pair(device.ifname, sa_family))) {
     return;
   }
 
-  switch (device.guest_type) {
-    case patchpanel::Client::GuestType::kTerminaVm:
-    case patchpanel::Client::GuestType::kParallelsVm:
-      if (opts_.type == Type::kDefault) {
-        StartDnsRedirection(device.ifname, sa_family);
-      }
-      return;
-    case patchpanel::Client::GuestType::kArcContainer:
-    case patchpanel::Client::GuestType::kArcVm:
-      // b/273741099: For multiplexed Cellular interfaces, patchpanel is
-      // responsible for advertasing the shill's Device kInterfaceProperty
-      // instead of the primary multiplexed interface, and consumers of
-      // patchpanel::VirtualDevice are expected to use the shill's Device
-      // kInterfaceProperty.
-      // TODO(b/273744897): Change this checks to compare the Network id
-      // associated with the shill's Device (primary Network) once patchpanel
-      // Network ids are available and once dnsproxy uses the patchpanel
-      // Network id.
-      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname) {
-        // TODO(b/273744897): Use the patchpanel Network id of the shill Device
-        // that this Proxy is associated to. Until the Network id is available,
-        // using the shill's Device kInterfaceProperty is consistent with
-        // patchpanel's tracking of shill's Devices. For multiplexed Cellular
-        // interfaces, patchpanel is responsible for using the correct
-        // multiplexed network interface. Callers of RedirectDNS are expected to
-        // use the shill's Device kInterfaceProperty.
-        StartDnsRedirection(device.ifname, sa_family);
-      }
-      return;
-    default:
-      return;
-  }
+  // TODO(jasongustaman): StartDnsRedirection should use the correct guest
+  // address.
+  StartDnsRedirection(device.ifname, sa_family);
 }
 
 void Proxy::StopGuestDnsRedirection(
     const patchpanel::Client::VirtualDevice& device, sa_family_t sa_family) {
+  if (!IsValidVirtualDevice(device)) {
+    return;
+  }
+  // For ARC, upon removal of the virtual device, the corresponding proxy
+  // will also be removed. This will undo the created firewall rules.
+  // However, if IPv6 is removed, firewall rules created need to be
+  // removed.
+  StopDnsRedirection(device.ifname, sa_family);
+}
+
+bool Proxy::IsValidVirtualDevice(
+    const patchpanel::Client::VirtualDevice& device) const {
   switch (device.guest_type) {
     case patchpanel::Client::GuestType::kTerminaVm:
     case patchpanel::Client::GuestType::kParallelsVm:
-      if (opts_.type == Type::kDefault) {
-        StopDnsRedirection(device.ifname, sa_family);
-      }
-      return;
+      return opts_.type == Type::kDefault;
+    case patchpanel::Client::GuestType::kArcContainer:
+    case patchpanel::Client::GuestType::kArcVm:
+      return opts_.type == Type::kARC && opts_.ifname == device.phys_ifname;
     default:
-      // For ARC, upon removal of the virtual device, the corresponding proxy
-      // will also be removed. This will undo the created firewall rules.
-      // However, if IPv6 is removed, firewall rules created need to be
-      // removed.
-      // TODO(b/273744897): Change this checks to compare the Network id
-      // associated with the shill's Device (primary Network) once patchpanel
-      // Network ids are available and once dnsproxy uses the patchpanel
-      // Network id.
-      if (opts_.type == Type::kARC && opts_.ifname == device.phys_ifname) {
-        StopDnsRedirection(device.ifname, sa_family);
-      }
-      return;
+      return false;
   }
 }
 
