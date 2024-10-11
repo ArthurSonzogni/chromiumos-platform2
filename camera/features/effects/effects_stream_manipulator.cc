@@ -14,9 +14,11 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
+#include <base/containers/fixed_flat_set.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -28,6 +30,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/synchronization/lock.h>
+#include <base/system/sys_info.h>
 #include <base/thread_annotations.h>
 #include <base/threading/thread_checker.h>
 #include <base/time/time.h>
@@ -199,6 +202,13 @@ Delegate GetDelegateFromInferenceBackend(cros::mojom::InferenceBackend backend,
   }
 }
 
+bool IsHd16SegementationModelSupportedByStableDelegate() {
+  static constexpr auto kUnsupportedBoards =
+      base::MakeFixedFlatSet<std::string_view>({"rauru"});
+
+  return !kUnsupportedBoards.contains(base::SysInfo::GetLsbReleaseBoard());
+}
+
 EffectsConfig ConvertMojoConfig(
     cros::mojom::EffectsConfigPtr effects_config,
     const SegmentationModelType& default_segmentation_model_type,
@@ -249,6 +259,12 @@ EffectsConfig ConvertMojoConfig(
       effects_config->segmentation_model ==
           mojom::SegmentationModel::kHighResolution) {
     config.segmentation_model_type = default_segmentation_model_type;
+  }
+  // TODO(b/373980665): Remove this fallback once MTK supports our fp16 model.
+  if (config.segmentation_delegate == Delegate::kStable &&
+      config.segmentation_model_type == cros::SegmentationModelType::kHd16 &&
+      !IsHd16SegementationModelSupportedByStableDelegate()) {
+    config.segmentation_model_type = cros::SegmentationModelType::kHd32;
   }
   if (effects_config->background_filepath) {
     base::FilePath path =
@@ -1178,9 +1194,17 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
                                    new_config.segmentation_model_type)) {
       LOGF(INFO) << "Segmentation Model Type: " << segmentation_model_type;
       if (new_config.segmentation_model_type == SegmentationModelType::kAuto) {
+        // TODO(b/373980665): Remove this fallback once MTK supports our fp16
+        // model.
+        if (new_config.segmentation_delegate == Delegate::kStable &&
+            !IsHd16SegementationModelSupportedByStableDelegate()) {
+          new_config.segmentation_model_type =
+              cros::SegmentationModelType::kHd32;
+        } else {
+          new_config.segmentation_model_type = default_segmentation_model_type_;
+        }
         LOGF(INFO) << "Using segmentation model type: "
-                   << static_cast<int>(default_segmentation_model_type_);
-        new_config.segmentation_model_type = default_segmentation_model_type_;
+                   << static_cast<int>(new_config.segmentation_model_type);
       }
     }
   }
