@@ -32,11 +32,12 @@
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
-#include <chromeos/ui/chromium_command_builder.h>
-#include <chromeos/ui/util.h>
 #include <libsegmentation/feature_management.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
+
+#include "login_manager/chromium_command_builder.h"
+#include "login_manager/util.h"
 
 // IMPORTANT: If you want to check for the presence of a new USE flag within
 // this file via UseFlagIsSet(), you need to add it to the IUSE list in the

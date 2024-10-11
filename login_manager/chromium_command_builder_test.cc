@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/ui/chromium_command_builder.h"
+#include "login_manager/chromium_command_builder.h"
 
 #include <string>
 #include <vector>
@@ -14,7 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "chromeos/ui/util.h"
+#include "login_manager/util.h"
 
 namespace chromeos {
 namespace ui {

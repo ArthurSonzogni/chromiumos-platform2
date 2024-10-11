@@ -24,12 +24,13 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
-#include <chromeos/ui/chromium_command_builder.h>
-#include <chromeos/ui/util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libsegmentation/feature_management.h>
 #include <libsegmentation/feature_management_fake.h>
+
+#include "login_manager/chromium_command_builder.h"
+#include "login_manager/util.h"
 
 using chromeos::ui::ChromiumCommandBuilder;
 using ::testing::Contains;

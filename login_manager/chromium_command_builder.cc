@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/ui/chromium_command_builder.h"
+#include "login_manager/chromium_command_builder.h"
 
 #include <sys/resource.h>
 
@@ -18,14 +18,14 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <cros_config/cros_config.h>
 
-#include "chromeos/ui/util.h"
+#include "login_manager/util.h"
 
 namespace chromeos {
 namespace ui {

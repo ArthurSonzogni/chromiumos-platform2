@@ -9,8 +9,8 @@
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
 
-#ifndef LIBCHROMEOS_UI_CHROMEOS_UI_UTIL_H_
-#define LIBCHROMEOS_UI_CHROMEOS_UI_UTIL_H_
+#ifndef LOGIN_MANAGER_UTIL_H_
+#define LOGIN_MANAGER_UTIL_H_
 
 namespace chromeos {
 namespace ui {
@@ -45,4 +45,4 @@ BRILLO_EXPORT bool Run(const char* command, const char* arg, ...);
 }  // namespace ui
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_UI_CHROMEOS_UI_UTIL_H_
+#endif  // LOGIN_MANAGER_UTIL_H_

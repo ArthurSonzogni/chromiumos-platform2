@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBCHROMEOS_UI_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
-#define LIBCHROMEOS_UI_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
+#ifndef LOGIN_MANAGER_CHROMIUM_COMMAND_BUILDER_H_
+#define LOGIN_MANAGER_CHROMIUM_COMMAND_BUILDER_H_
 
 #include <sys/types.h>
 
@@ -219,4 +219,4 @@ class BRILLO_EXPORT ChromiumCommandBuilder {
 }  // namespace ui
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_UI_CHROMEOS_UI_CHROMIUM_COMMAND_BUILDER_H_
+#endif  // LOGIN_MANAGER_CHROMIUM_COMMAND_BUILDER_H_

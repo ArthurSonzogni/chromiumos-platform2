@@ -104,7 +104,6 @@ copies.
 | [libarc-attestation](./libarc-attestation/) | Library to facilitate Android Attestation and Remote Key Provisioning for ARC Keymint Daemon |
 | [libbrillo](./libbrillo/) | Common platform utility library |
 | [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
-| [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
 | [libcrossystem](./libcrossystem/) | Library for getting ChromeOS system properties |
 | [libec](./libec/) | Library for interacting with [EC](https://chromium.googlesource.com/chromiumos/platform/ec/) |

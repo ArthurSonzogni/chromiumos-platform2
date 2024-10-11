@@ -69,7 +69,6 @@ LEGACYLIST = {
     "installer",
     "libbrillo",
     "libchromeos-rs",
-    "libchromeos-ui",
     "libcontainer",
     "libpasswordprovider",
     "media_capabilities",

@@ -20,8 +20,8 @@ The [`ui`](init/upstart/ui.conf) Upstart job is responsible for running
 directories.
 
 `session_manager` constructs a command line for running Chrome and fork-execs
-it. The command line is built by [`chrome_setup.cc`](chrome_setup.cc) and
-`libchromeos-ui`'s [ChromiumCommandBuilder] class. The command line's contents
+it. The command line is built by [`chrome_setup.cc`](chrome_setup.cc) [ChromiumCommandBuilder] class.
+The command line's contents
 are dependent on the presence of various [USE flags]. The
 [libchromeos-use-flags] package lists a number of USE flags in its `IUSE`
 variable; at build-time, it writes all of the set flags to

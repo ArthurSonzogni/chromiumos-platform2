@@ -15,7 +15,7 @@ Chrome and update `session_manager` to pass it with the appropriate value (if
 any).
 
 Chrome's command line is constructed by [chrome_setup.cc]. This file uses the
-[ChromiumCommandBuilder] class from `libchromeos-ui` to create directories
+[ChromiumCommandBuilder] class to create directories
 needed by Chrome, configure its environment, and build its command line.
 
 `ChromiumCommandBuilder` reads a subset of the Portage USE flags that were set
@@ -82,7 +82,7 @@ line or modify Chrome's environment. The file contains documentation about its
 format.
 
 [chrome_setup.cc]: ../chrome_setup.cc
-[ChromiumCommandBuilder]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/libchromeos-ui/chromeos/ui/chromium_command_builder.h
+[ChromiumCommandBuilder]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/login_manager/chromium_command_builder.h
 [libchromeos-use-flags]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/libchromeos-use-flags/libchromeos-use-flags-9999.ebuild
 [board overlays]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD
 [chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/
