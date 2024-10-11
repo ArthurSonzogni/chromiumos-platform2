@@ -99,7 +99,7 @@ TEST_F(SANETest, TwoDeviceOpen) {
   if (base::StartsWith(
           base::ToLowerASCII(*sane_backend_tests::scanner_under_test),
           "pfufs")) {
-    GTEST_SKIP() << "TODO(b/365111847): Fix pfufs backend failure of "
+    GTEST_SKIP() << "See b/365111847: pfufs backend skip of "
                     "SANETest.TwoDeviceOpen";
   }
 
@@ -145,7 +145,7 @@ TEST_F(SANETest, OpenExitStress) {
   if (base::StartsWith(
           base::ToLowerASCII(*sane_backend_tests::scanner_under_test),
           "pfufs")) {
-    GTEST_SKIP() << "TODO(b/365771471): Fix pfufs backend failure of "
+    GTEST_SKIP() << "See b/365771471: pfufs backend skip of "
                     "SANETest.OpenExitStress";
   }
 
