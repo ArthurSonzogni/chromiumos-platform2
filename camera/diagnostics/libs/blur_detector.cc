@@ -4,6 +4,8 @@
 
 #include "diagnostics/libs/blur_detector.h"
 
+#include <sys/prctl.h>
+
 #include <base/native_library.h>
 #include <libblurdetector/blur_detector_bindings.h>
 
@@ -27,6 +29,12 @@ bool EnsureLibraryLoaded(const base::FilePath& dlc_root_path) {
   CHECK(!dlc_root_path.empty());
   base::FilePath lib_path = dlc_root_path.Append(kLibraryName);
   LOGF(INFO) << "Loading blur detector library: " << lib_path;
+
+  // Restore process' "dumpable" flag to read to read /proc/self/auxv.
+  if (prctl(PR_SET_DUMPABLE, 1) != 0) {
+    LOGF(ERROR) << "Failed to set PR_SET_DUMPABLE";
+    return false;
+  }
 
   base::NativeLibraryOptions native_library_options;
   base::NativeLibraryLoadError load_error;

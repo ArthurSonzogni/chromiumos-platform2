@@ -50,8 +50,9 @@ newfstatat: 1
 openat: 1
 pipe2: 1
 poll: 1
-# prctl is used to create threads.
-prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS
+# prctl is used to create threads, and to restore process' "dumpable" flag to
+# read /proc/self/auxv.
+prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS || arg0 == PR_SET_DUMPABLE
 pread64: 1
 prlimit64: 1
 read: 1
