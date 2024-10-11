@@ -5,13 +5,13 @@
 #ifndef CRASH_REPORTER_VM_SUPPORT_PROPER_H_
 #define CRASH_REPORTER_VM_SUPPORT_PROPER_H_
 
-#include "crash-reporter/vm_support.h"
-
 #include <memory>
 #include <string>
 
 #include <base/types/expected.h>
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
+
+#include "crash-reporter/vm_support.h"
 
 namespace brillo {
 class KeyValueStore;

@@ -12,7 +12,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/strings/string_utils.h>
-
 #include <gtest/gtest.h>
 
 #include "crash-reporter/udev_bluetooth_util.h"

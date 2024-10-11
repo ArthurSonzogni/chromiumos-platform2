@@ -4,7 +4,9 @@
 
 #include "crash-reporter/user_collector.h"
 
+// clang-format off
 #include <bits/wordsize.h>
+// clang-format on
 #include <elf.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>

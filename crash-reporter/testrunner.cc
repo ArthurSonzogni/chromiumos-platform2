@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "brillo/syslog_logging.h"
-#include "common-mk/testrunner.h"
+#include <brillo/syslog_logging.h>
+#include <common-mk/testrunner.h>
 
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToStderr);

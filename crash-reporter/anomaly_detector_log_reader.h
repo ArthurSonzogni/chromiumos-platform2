@@ -10,13 +10,13 @@
 #ifndef CRASH_REPORTER_ANOMALY_DETECTOR_LOG_READER_H_
 #define CRASH_REPORTER_ANOMALY_DETECTOR_LOG_READER_H_
 
-#include "crash-reporter/anomaly_detector_text_file_reader.h"
-
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/time/time.h>
 #include <re2/re2.h>
+
+#include "crash-reporter/anomaly_detector_text_file_reader.h"
 
 namespace anomaly {
 

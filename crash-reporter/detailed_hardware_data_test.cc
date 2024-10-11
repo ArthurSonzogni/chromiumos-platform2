@@ -7,9 +7,9 @@
 #include <memory>
 #include <optional>
 
-#include <chromeos/constants/flex_hwis.h>
 #include <base/files/file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <chromeos/constants/flex_hwis.h>
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
 

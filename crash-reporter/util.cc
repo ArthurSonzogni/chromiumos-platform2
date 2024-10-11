@@ -13,19 +13,14 @@
 #include <memory>
 
 #include <base/check_op.h>
-#include <base/logging.h>
-#include <base/memory/ref_counted.h>
-#include <base/memory/scoped_refptr.h>
-
-#if USE_DIRENCRYPTION
-#include <keyutils.h>
-#endif  // USE_DIRENCRYPTION
-
 #include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/logging.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -33,11 +28,17 @@
 #include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
 #include <re2/re2.h>
+// clang-format off
 #include <zlib.h>
+// clang-format on
 
 #include "crash-reporter/crossystem.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/vm_support.h"
+
+#if USE_DIRENCRYPTION
+#include <keyutils.h>
+#endif  // USE_DIRENCRYPTION
 
 namespace util {
 

@@ -10,7 +10,7 @@
 #include <dbus/bus.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 
-#include <crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h>
+#include "crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h"
 
 class CrashAdaptor : public org::chromium::CrashReporterInterfaceAdaptor,
                      public org::chromium::CrashReporterInterfaceInterface {

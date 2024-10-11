@@ -7,18 +7,18 @@
 // TextFileReader class to open a log file. TextFileReader is responsible for
 // detecting log rotation and reopening the newly created log file.
 
-#include "crash-reporter/anomaly_detector_service.h"
-
 #include <memory>
 
 #include <base/at_exit.h>
 #include <base/check.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <base/files/file_descriptor_watcher_posix.h>
+
+#include "crash-reporter/anomaly_detector_service.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_bool(testonly_send_all, false,

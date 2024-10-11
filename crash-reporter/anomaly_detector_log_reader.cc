@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include "crash-reporter/anomaly_detector_log_reader.h"
-#include "crash-reporter/anomaly_detector_text_file_reader.h"
 
 #include <string>
 #include <utility>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+
+#include "crash-reporter/anomaly_detector_text_file_reader.h"
 
 namespace anomaly {
 

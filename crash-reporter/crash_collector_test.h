@@ -5,13 +5,13 @@
 #ifndef CRASH_REPORTER_CRASH_COLLECTOR_TEST_H_
 #define CRASH_REPORTER_CRASH_COLLECTOR_TEST_H_
 
-#include "crash-reporter/crash_collector.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "crash-reporter/crash_collector.h"
 
 class CrashCollectorMock : public CrashCollector {
  public:

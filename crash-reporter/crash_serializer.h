@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
-#include <base/time/clock.h>
-#include <base/files/file_path.h>
 #include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <base/time/clock.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "crash-reporter/crash_sender_base.h"

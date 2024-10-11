@@ -5,14 +5,14 @@
 #ifndef CRASH_REPORTER_CORE_COLLECTOR_COREDUMP_WRITER_H_
 #define CRASH_REPORTER_CORE_COLLECTOR_COREDUMP_WRITER_H_
 
+#include <elf.h>
+#include <link.h>
+
 #include <functional>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <elf.h>
-#include <link.h>
 
 #include <common/basictypes.h>
 

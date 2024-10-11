@@ -4,6 +4,8 @@
 
 #include "crash-reporter/kernel_collector.h"
 
+#include <linux/watchdog.h>
+
 #include <algorithm>
 #include <cinttypes>
 #include <memory>
@@ -22,7 +24,6 @@
 #include <base/types/expected.h>
 #include <base/types/expected_macros.h>
 #include <metrics/metrics_library.h>
-#include <linux/watchdog.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"

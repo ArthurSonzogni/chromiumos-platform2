@@ -22,9 +22,13 @@
 #include <base/time/default_clock.h>
 #include <brillo/array_utils.h>
 #include <brillo/syslog_logging.h>
+// clang-format off
 #include <libminijail.h>
+// clang-format on
 #include <metrics/metrics_library.h>
+// clang-format off
 #include <scoped_minijail.h>
+// clang-format on
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/crash_sender_util.h"

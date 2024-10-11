@@ -9,11 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/test_util.h"
-
-#include <base/check.h>
 
 namespace anomaly {
 

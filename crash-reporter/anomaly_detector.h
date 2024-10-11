@@ -17,9 +17,7 @@
 #ifndef CRASH_REPORTER_ANOMALY_DETECTOR_H_
 #define CRASH_REPORTER_ANOMALY_DETECTOR_H_
 
-#include <base/time/time.h>
-#include <dbus/bus.h>
-#include <metrics/metrics_library.h>
+#include <inttypes.h>
 
 #include <memory>
 #include <optional>
@@ -27,7 +25,9 @@
 #include <string>
 #include <vector>
 
-#include <inttypes.h>
+#include <base/time/time.h>
+#include <dbus/bus.h>
+#include <metrics/metrics_library.h>
 
 namespace anomaly {
 

@@ -4,8 +4,9 @@
 
 #include "crash-reporter/crash_adaptor.h"
 
-#include <crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h>
 #include <crash-reporter-client/crash-reporter/dbus-constants.h>
+
+#include "crash-reporter/dbus_adaptors/org.chromium.CrashReporterInterface.h"
 
 CrashAdaptor::CrashAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::CrashReporterInterfaceAdaptor(this),

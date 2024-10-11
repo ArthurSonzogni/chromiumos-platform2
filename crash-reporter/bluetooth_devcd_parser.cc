@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/bluetooth_devcd_parser_util.h"
-
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+
+#include "crash-reporter/bluetooth_devcd_parser_util.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(coredump_path, "", "Coredump file path");

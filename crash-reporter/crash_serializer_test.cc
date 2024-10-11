@@ -4,12 +4,12 @@
 
 #include "crash-reporter/crash_serializer.h"
 
+#include <inttypes.h>
+
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
-
-#include <inttypes.h>
 
 #include <base/containers/span.h>
 #include <base/files/file_util.h>

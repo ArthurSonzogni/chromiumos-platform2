@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <unistd.h>
-#include <cinttypes>
 
+#include <cinttypes>
 #include <memory>
 
 #include <base/check.h>

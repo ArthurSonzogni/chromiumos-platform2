@@ -34,8 +34,8 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/ranges/algorithm.h>
 #include <base/rand_util.h>
+#include <base/ranges/algorithm.h>
 #include <base/run_loop.h>
 #include <base/scoped_clear_last_error.h>
 #include <base/strings/strcat.h>
@@ -57,7 +57,9 @@
 #include <re2/re2.h>
 #include <redaction_tool/libmetrics_metrics_recorder.h>
 #include <redaction_tool/redaction_tool.h>
+// clang-format off
 #include <zlib.h>
+// clang-format on
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"

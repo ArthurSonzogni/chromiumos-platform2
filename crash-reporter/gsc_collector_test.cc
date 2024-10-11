@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/gsc_collector_base.h"
-
 #include <memory>
 
 #include <base/files/file_util.h>
@@ -13,12 +11,13 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
-#include <gmock/gmock.h>
 #include <gmock/gmock-matchers.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/gsc_collector_base.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 

@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-#include <chromeos/constants/flex_hwis.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <chromeos/constants/flex_hwis.h>
 
 #include "crash-reporter/paths.h"
 

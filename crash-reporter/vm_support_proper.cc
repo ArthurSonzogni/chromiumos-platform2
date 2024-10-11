@@ -4,6 +4,13 @@
 
 #include "crash-reporter/vm_support_proper.h"
 
+#include <sys/socket.h>
+// clang-format off
+#include <linux/vm_sockets.h>  // Depends on <sys/socket.h>.
+// clang-format on
+
+#include <utility>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -13,13 +20,8 @@
 #include <base/types/expected.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
-#include <grpcpp/grpcpp.h>
-
-#include <sys/socket.h>
-#include <utility>
-
 #include <google/protobuf/text_format.h>
-#include <linux/vm_sockets.h>
+#include <grpcpp/grpcpp.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"

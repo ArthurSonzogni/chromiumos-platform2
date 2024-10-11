@@ -5,12 +5,11 @@
 #include "crash-reporter/anomaly_detector_text_file_reader.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include <cerrno>
 #include <string>
 #include <vector>
-
-#include <sys/stat.h>
 
 #include <base/check_op.h>
 #include <base/logging.h>

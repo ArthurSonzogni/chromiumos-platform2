@@ -5,8 +5,6 @@
 #ifndef CRASH_REPORTER_KERNEL_COLLECTOR_TEST_H_
 #define CRASH_REPORTER_KERNEL_COLLECTOR_TEST_H_
 
-#include "crash-reporter/kernel_collector.h"
-
 #include <memory>
 
 #include <base/memory/ref_counted.h>
@@ -15,6 +13,8 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
+
+#include "crash-reporter/kernel_collector.h"
 
 class KernelCollectorMock : public KernelCollector {
  public:

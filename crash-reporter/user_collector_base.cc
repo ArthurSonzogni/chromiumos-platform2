@@ -20,7 +20,9 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
+// clang-format off
 #include <libminijail.h>
+// clang-format on
 #include <metrics/metrics_library.h>
 #include <re2/re2.h>
 

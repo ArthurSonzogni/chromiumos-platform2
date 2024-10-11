@@ -30,9 +30,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <brillo/flag_helper.h>
 #include <brillo/files/file_util.h>
 #include <brillo/files/safe_fd.h>
+#include <brillo/flag_helper.h>
 #include <brillo/http/http_proxy.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>

@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "crash-reporter/anomaly_detector.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -14,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/anomaly_detector.h"
 #include "crash-reporter/crash_reporter_parser.h"
 #include "crash-reporter/test_util.h"
 

@@ -22,8 +22,8 @@
 #include <absl/types/variant.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
-#include <base/memory/scoped_refptr.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
@@ -32,7 +32,9 @@
 #include <metrics/metrics_library.h>
 #include <policy/device_policy.h>
 #include <session_manager/dbus-proxies.h>
+// clang-format off
 #include <zlib.h>
+// clang-format on
 
 enum class CrashCollectionStatus;
 enum class CrashReporterCollector;
