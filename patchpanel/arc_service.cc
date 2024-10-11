@@ -74,22 +74,6 @@ bool IsAdbAllowed(std::optional<net_base::Technology> technology) {
          allowed_technologies.find(*technology) != allowed_technologies.end();
 }
 
-bool KernelVersion(int* major, int* minor) {
-  struct utsname u;
-  if (uname(&u) != 0) {
-    PLOG(ERROR) << "uname failed";
-    *major = *minor = 0;
-    return false;
-  }
-  int unused;
-  if (sscanf(u.release, "%d.%d.%d", major, minor, &unused) != 3) {
-    LOG(ERROR) << "unexpected release string: " << u.release;
-    *major = *minor = 0;
-    return false;
-  }
-  return true;
-}
-
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
 bool SetSysfsOwnerToAndroidRoot(pid_t pid, std::string_view path) {
@@ -126,20 +110,6 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
           // The ipsec modules for AH and ESP encryption for ipv6.
           "ah6",
           "esp6",
-      })) {
-    LOG(ERROR) << "One or more required kernel modules failed to load."
-               << " Some Android functionality may be broken.";
-    success = false;
-  }
-  // The xfrm modules needed for Android's ipsec APIs on kernels < 5.4.
-  int major, minor;
-  if (KernelVersion(&major, &minor) &&
-      (major < 5 || (major == 5 && minor < 4)) &&
-      !datapath.ModprobeAll({
-          "xfrm4_mode_transport",
-          "xfrm4_mode_tunnel",
-          "xfrm6_mode_transport",
-          "xfrm6_mode_tunnel",
       })) {
     LOG(ERROR) << "One or more required kernel modules failed to load."
                << " Some Android functionality may be broken.";
