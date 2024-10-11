@@ -82,6 +82,7 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendEffectsError(CameraEffectError error) override;
   void SendEffectsNumStillShotsTaken(int num_shots) override;
   void SendEffectsNumFramesDroppedAtStart(int count) override;
+  void SendEffectsNpuToGpuFallbackEvent(bool value) override;
 
   void SendPortraitModeNumStillShotsTaken(int num_shots) override;
   void SendPortraitModeProcessAvgLatency(base::TimeDelta latency) override;

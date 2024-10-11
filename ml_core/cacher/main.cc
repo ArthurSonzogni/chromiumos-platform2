@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
 
 #if USE_INTEL_OPENVINO_DELEGATE
   // Update OpenVINO Cache.
-  {
+  if (cros::NPUIsReady()) {
     LOG(INFO) << "Prepare OpenVINO cache";
     auto config = cros::EffectsConfig();
     config.segmentation_delegate = cros::Delegate::kStable;
@@ -137,6 +137,8 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "Failed to update OpenVINO Cache";
       update_failed = true;
     }
+  } else {
+    LOG(ERROR) << "NPU is not ready, skip OpenVINO caching";
   }
 #endif
 

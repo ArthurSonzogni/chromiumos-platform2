@@ -93,11 +93,15 @@ void EffectsMetricsData::RecordError(CameraEffectError error) {
 
 void EffectsMetricsData::RecordNumDroppedFramesAtStart(size_t count) {
   max_num_frames_dropped_at_startup_ =
-      std::max(count, max_num_frames_dropped_at_startup_);
+      std::max(count, max_num_frames_dropped_at_startup_.value_or(0));
 }
 
 bool EffectsMetricsData::EffectSelected(CameraEffect effect) const {
   return selected_effects_.contains(effect);
+}
+
+void EffectsMetricsData::RecordNpuToGpuFallback(bool fallback_occurred) {
+  npu_to_gpu_fallback_event_ = fallback_occurred;
 }
 
 base::TimeDelta EffectsMetricsData::AverageFrameProcessingLatency(
@@ -155,8 +159,14 @@ void EffectsMetricsUploader::UploadMetricsDataOnThread(
   metrics_helper_->SendEffectsError(metrics.error_);
   metrics_helper_->SendEffectsNumStillShotsTaken(
       metrics.num_still_shots_taken_);
-  metrics_helper_->SendEffectsNumFramesDroppedAtStart(
-      metrics.max_num_frames_dropped_at_startup_);
+  if (metrics.max_num_frames_dropped_at_startup_.has_value()) {
+    metrics_helper_->SendEffectsNumFramesDroppedAtStart(
+        metrics.max_num_frames_dropped_at_startup_.value());
+  }
+  if (metrics.npu_to_gpu_fallback_event_.has_value()) {
+    metrics_helper_->SendEffectsNpuToGpuFallbackEvent(
+        metrics.npu_to_gpu_fallback_event_.value());
+  }
 
   // Post per-effect metrics
   for (int i = 0; i <= static_cast<int>(CameraEffect::kMaxValue); i++) {

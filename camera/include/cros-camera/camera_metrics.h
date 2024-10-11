@@ -350,6 +350,10 @@ class CROS_CAMERA_EXPORT CameraMetrics {
   // initialized in EffectsStreamManipulator.
   virtual void SendEffectsNumFramesDroppedAtStart(int count) = 0;
 
+  // Records events when NPU was not ready in NPU enabled devices in
+  // EffectsStreamManipulator.
+  virtual void SendEffectsNpuToGpuFallbackEvent(bool value) = 0;
+
   // *** Portrait Mode metrics ***
 
   // Records the number of still capture shots taken in Portrait Mode per

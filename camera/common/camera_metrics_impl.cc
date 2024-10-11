@@ -211,6 +211,9 @@ constexpr int kMinEffectsDroppedFrames = 1;
 constexpr int kMaxEffectsDroppedFrames = 60;
 constexpr int kNumEffectsDroppedFramesBuckets = 60;
 
+constexpr char kCameraEffectsNpuToGpuFallbackEvent[] =
+    "ChromeOS.Camera.Effects.NpuToGpuFallbackEvent";
+
 // *** Portrait Mode metrics ***
 constexpr char kCameraPortraitModeNumStillShotsTaken[] =
     "ChromeOS.Camera.PortraitMode.NumStillShotsTaken";
@@ -591,6 +594,10 @@ void CameraMetricsImpl::SendEffectsNumFramesDroppedAtStart(int count) {
   metrics_lib_->SendToUMA(kCameraEffectsNumFramesDroppedAtStart, count,
                           kMinEffectsDroppedFrames, kMaxEffectsDroppedFrames,
                           kNumEffectsDroppedFramesBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsNpuToGpuFallbackEvent(bool value) {
+  metrics_lib_->SendBoolToUMA(kCameraEffectsNpuToGpuFallbackEvent, value);
 }
 
 void CameraMetricsImpl::SendPortraitModeNumStillShotsTaken(int num_shots) {

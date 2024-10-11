@@ -602,11 +602,12 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
   TRACE_EFFECTS([&](perfetto::EventContext ctx) {
     stream_config->PopulateEventAnnotation(ctx);
   });
-  UploadAndResetMetricsData();
 
+  // Don't need to reset at first ConfigureStreams.
   // |gl_thread_| might be busy loading the pipeline.
   // Blocking here directly adds to overall ConfigureStreams latency.
   if (needs_reset_) {
+    UploadAndResetMetricsData();
     gl_thread_.PostTaskSync(
         FROM_HERE, base::BindOnce(&EffectsStreamManipulatorImpl::ResetState,
                                   base::Unretained(this)));
@@ -991,12 +992,27 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
                          &default_relighting_delegate)) {
       if (ParseDelegate(default_relighting_delegate,
                         default_relighting_delegate_)) {
-        LOGF(INFO) << "Default relighting delegate set to "
+        LOGF(INFO) << "Default relighting delegate set to: "
                    << default_relighting_delegate;
       } else {
         LOGF(WARNING) << "Relighting delegate " << default_relighting_delegate
                       << " not recognized, keeping original default";
       }
+    }
+  }
+
+  // Only fallback to GPU when "stable" is the default delegate. We don't want
+  // to use the fallback when "stable" is used explicitly by mojo or override
+  // config. Otherwise it might hide failures in tests.
+  if ((default_segmentation_delegate_ == Delegate::kStable ||
+       default_relighting_delegate_ == Delegate::kStable)) {
+    if (cros::NPUIsReady()) {
+      metrics_.RecordNpuToGpuFallback(false);
+    } else {
+      LOGF(ERROR) << "NPU is not ready, setting GPU as default delegate!";
+      default_segmentation_delegate_ = Delegate::kGpu;
+      default_relighting_delegate_ = Delegate::kGpu;
+      metrics_.RecordNpuToGpuFallback(true);
     }
   }
 

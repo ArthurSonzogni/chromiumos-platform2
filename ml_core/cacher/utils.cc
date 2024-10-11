@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/files/dir_reader_posix.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/files/file_util.h>
 
@@ -14,6 +15,8 @@
 
 namespace {
 const char kPrebuiltOpenCLCacheDir[] = "cl_cache";
+constexpr size_t kProcModulesMaxFileSize = 65536;
+const base::FilePath kProcModulesPath("/proc/modules");
 }  // namespace
 
 namespace cros {
@@ -42,6 +45,16 @@ bool DirIsEmpty(const base::FilePath& source_dir) {
   }
 
   return is_empty;
+}
+
+bool NPUIsReady() {
+  std::string contents;
+  // Cache the value.
+  static bool npu_is_ready =
+      base::ReadFileToStringWithMaxSize(kProcModulesPath, &contents,
+                                        kProcModulesMaxFileSize) &&
+      contents.find("intel_vpu") != std::string::npos;
+  return npu_is_ready;
 }
 
 // Deletes all the files in the cache in |target_dir|.
