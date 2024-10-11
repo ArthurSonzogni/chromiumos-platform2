@@ -21,10 +21,11 @@
 #include <base/posix/file_descriptor_shuffle.h>
 #include <base/process/launch.h>
 #include <base/time/time.h>
-#include <vboot/crossystem.h>
-
+// clang-format off
 #include <libminijail.h>
 #include <scoped_minijail.h>
+// clang-format on
+#include <vboot/crossystem.h>
 
 #include "login_manager/landlock_policy.h"
 #include "login_manager/session_manager_service.h"

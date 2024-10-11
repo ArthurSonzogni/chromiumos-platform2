@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <base/files/scoped_file.h>
 #include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 
 #include "libpasswordprovider/password_provider.h"
 

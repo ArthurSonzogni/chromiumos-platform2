@@ -5,14 +5,14 @@
 #ifndef LOGIN_MANAGER_MOCK_PROCESS_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_MOCK_PROCESS_MANAGER_SERVICE_H_
 
-#include "login_manager/process_manager_service_interface.h"
-
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "login_manager/process_manager_service_interface.h"
 
 namespace login_manager {
 class GeneratorJobInterface;

@@ -17,18 +17,20 @@
 #include <base/memory/ptr_util.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/scoped_mount_namespace.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
-#include <brillo/scoped_mount_namespace.h>
+// clang-format off
 #include <keyhi.h>
 #include <pk11pub.h>
 #include <prerror.h>
 #include <secmod.h>
 #include <secmodt.h>
+// clang-format on
 
 using brillo::ScopedMountNamespace;
 

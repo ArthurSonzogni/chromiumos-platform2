@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_MOCK_POLICY_KEY_H_
 #define LOGIN_MANAGER_MOCK_POLICY_KEY_H_
 
-#include "login_manager/policy_key.h"
-
 #include <stdint.h>
 #include <unistd.h>
 
@@ -15,6 +13,8 @@
 
 #include <crypto/signature_verifier.h>
 #include <gmock/gmock.h>
+
+#include "login_manager/policy_key.h"
 
 namespace base {
 class RSAPrivateKey;

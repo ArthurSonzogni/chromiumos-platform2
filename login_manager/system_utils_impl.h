@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_SYSTEM_UTILS_IMPL_H_
 #define LOGIN_MANAGER_SYSTEM_UTILS_IMPL_H_
 
-#include "login_manager/system_utils.h"
-
 #include <stdint.h>
 #include <time.h>
 #include <unistd.h>
@@ -19,6 +17,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+
+#include "login_manager/system_utils.h"
 
 namespace base {
 class FilePath;

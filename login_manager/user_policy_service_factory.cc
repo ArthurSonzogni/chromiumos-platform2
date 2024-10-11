@@ -15,8 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-
-#include "brillo/cryptohome.h"
+#include <brillo/cryptohome.h>
 
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"

@@ -17,7 +17,7 @@ class TimeDelta;
 namespace dbus {
 class Error;
 class ObjectProxy;
-}
+}  // namespace dbus
 
 namespace login_manager {
 

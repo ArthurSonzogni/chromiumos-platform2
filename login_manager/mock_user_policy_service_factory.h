@@ -5,12 +5,12 @@
 #ifndef LOGIN_MANAGER_MOCK_USER_POLICY_SERVICE_FACTORY_H_
 #define LOGIN_MANAGER_MOCK_USER_POLICY_SERVICE_FACTORY_H_
 
-#include "login_manager/user_policy_service_factory.h"
-
 #include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
+
+#include "login_manager/user_policy_service_factory.h"
 
 namespace login_manager {
 

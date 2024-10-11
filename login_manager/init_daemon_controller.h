@@ -12,7 +12,7 @@
 namespace dbus {
 class Error;
 class Response;
-}
+}  // namespace dbus
 
 namespace base {
 class TimeDelta;

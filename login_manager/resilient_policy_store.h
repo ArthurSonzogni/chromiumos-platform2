@@ -5,14 +5,14 @@
 #ifndef LOGIN_MANAGER_RESILIENT_POLICY_STORE_H_
 #define LOGIN_MANAGER_RESILIENT_POLICY_STORE_H_
 
-#include "login_manager/policy_store.h"
-
 #include <map>
 #include <memory>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <policy/device_policy_impl.h>
+
+#include "login_manager/policy_store.h"
 
 namespace login_manager {
 class LoginMetrics;

@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_MOCK_NSS_UTIL_H_
 #define LOGIN_MANAGER_MOCK_NSS_UTIL_H_
 
-#include "login_manager/nss_util.h"
-
 #include <stdint.h>
 #include <unistd.h>
 
@@ -20,6 +18,8 @@
 #include <crypto/scoped_nss_types.h>
 #include <crypto/scoped_test_nss_db.h>
 #include <gmock/gmock.h>
+
+#include "login_manager/nss_util.h"
 
 namespace crypto {
 class RSAPrivateKey;

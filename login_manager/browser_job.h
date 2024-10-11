@@ -5,9 +5,6 @@
 #ifndef LOGIN_MANAGER_BROWSER_JOB_H_
 #define LOGIN_MANAGER_BROWSER_JOB_H_
 
-#include "login_manager/child_job.h"
-
-#include <gtest/gtest_prod.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -21,7 +18,9 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <brillo/namespaces/mount_namespace.h>
+#include <gtest/gtest_prod.h>
 
+#include "login_manager/child_job.h"
 #include "login_manager/chrome_setup.h"
 
 namespace login_manager {

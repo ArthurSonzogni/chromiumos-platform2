@@ -18,8 +18,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-
+// clang-format off
 #include <scoped_minijail.h>
+// clang-format on
 
 namespace base {
 class FilePath;

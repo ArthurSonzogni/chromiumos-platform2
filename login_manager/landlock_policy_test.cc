@@ -4,13 +4,12 @@
 
 #include "login_manager/landlock_policy.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <base/containers/contains.h>
-
 #include <libminijail.h>
 #include <scoped_minijail.h>
+
+#include <base/containers/contains.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace login_manager {
 namespace {

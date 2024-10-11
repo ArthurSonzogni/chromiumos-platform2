@@ -5,9 +5,9 @@
 #ifndef LOGIN_MANAGER_MOCK_FILE_CHECKER_H_
 #define LOGIN_MANAGER_MOCK_FILE_CHECKER_H_
 
-#include "login_manager/file_checker.h"
-
 #include <gmock/gmock.h>
+
+#include "login_manager/file_checker.h"
 
 namespace login_manager {
 class MockFileChecker : public FileChecker {

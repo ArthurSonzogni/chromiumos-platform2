@@ -5,9 +5,6 @@
 #ifndef LOGIN_MANAGER_MOCK_DEVICE_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_MOCK_DEVICE_POLICY_SERVICE_H_
 
-#include "login_manager/device_policy_service.h"
-#include "login_manager/mock_policy_store.h"
-
 #include <stdint.h>
 
 #include <memory>
@@ -18,6 +15,8 @@
 #include <libcrossystem/crossystem.h>
 
 #include "bindings/chrome_device_policy.pb.h"
+#include "login_manager/device_policy_service.h"
+#include "login_manager/mock_policy_store.h"
 
 namespace login_manager {
 class SystemUtils;

@@ -44,8 +44,9 @@
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
-
+// clang-format off
 #include <libminijail.h>
+// clang-format on
 
 #include "login_manager/child_job.h"  // For ChildJobInterface exit codes.
 

@@ -4,11 +4,11 @@
 
 #include "login_manager/child_exit_dispatcher.h"
 
-#include <algorithm>
-
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
+#include <algorithm>
 
 #include <base/check_op.h>
 #include <base/functional/bind.h>

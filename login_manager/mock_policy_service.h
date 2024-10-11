@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_MOCK_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_MOCK_POLICY_SERVICE_H_
 
-#include "login_manager/policy_service.h"
-
 #include <stdint.h>
 
 #include <string>
@@ -15,6 +13,8 @@
 #include <base/functional/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
+
+#include "login_manager/policy_service.h"
 
 namespace login_manager {
 MATCHER_P(PolicyErrorEq, error_code, "") {

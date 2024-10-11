@@ -5,9 +5,10 @@
 #ifndef LOGIN_MANAGER_FAKE_SECRET_UTIL_H_
 #define LOGIN_MANAGER_FAKE_SECRET_UTIL_H_
 
+#include <stdint.h>
+
 #include <map>
 #include <vector>
-#include <stdint.h>
 
 #include <base/files/scoped_file.h>
 

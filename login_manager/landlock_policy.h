@@ -5,11 +5,11 @@
 #ifndef LOGIN_MANAGER_LANDLOCK_POLICY_H_
 #define LOGIN_MANAGER_LANDLOCK_POLICY_H_
 
-#include <base/containers/span.h>
-
 #include <libminijail.h>
 
 #include <string_view>
+
+#include <base/containers/span.h>
 
 namespace login_manager {
 

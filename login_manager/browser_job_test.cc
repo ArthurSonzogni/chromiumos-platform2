@@ -831,8 +831,9 @@ TEST_F(BrowserJobTest, SetDoubleMigration) {
   job_->SetBrowserDataMigrationArgsForUser(kHash, "copy");
   job_->SetBrowserDataBackwardMigrationArgsForUser(kHash);
 
-  ASSERT_DEATH({ job_->ExportArgv(); },
-               "Both forward and backward migration have been called");
+  ASSERT_DEATH(
+      { job_->ExportArgv(); },
+      "Both forward and backward migration have been called");
 }
 
 TEST_F(BrowserJobTest, SetMultiUserSessionStarted) {

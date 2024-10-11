@@ -15,8 +15,8 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/files/file_util.h>
-#include <policy/policy_util.h>
 #include <policy/device_policy_impl.h>
+#include <policy/policy_util.h>
 #include <policy/resilient_policy_util.h>
 
 #include "login_manager/login_metrics.h"

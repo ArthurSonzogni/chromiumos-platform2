@@ -8,10 +8,9 @@
 #include <utility>
 #include <vector>
 
-#include "metrics/metrics_library.h"
-
 #include <base/check.h>
 #include <base/logging.h>
+#include <metrics/metrics_library.h>
 
 namespace {
 

@@ -4,9 +4,9 @@
 
 #include "login_manager/fake_browser_job.h"
 
-#include "login_manager/fake_child_process.h"
-
 #include <base/check.h>
+
+#include "login_manager/fake_child_process.h"
 
 namespace login_manager {
 

@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_IMPL_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_IMPL_H_
 
-#include "login_manager/session_manager_interface.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -38,6 +36,7 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
+#include "login_manager/session_manager_interface.h"
 
 class InstallAttributesReader;
 

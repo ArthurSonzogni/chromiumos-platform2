@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_FAKE_BROWSER_JOB_H_
 #define LOGIN_MANAGER_FAKE_BROWSER_JOB_H_
 
-#include "login_manager/browser_job.h"
-
 #include <sys/types.h>
 
 #include <map>
@@ -17,6 +15,8 @@
 
 #include <base/time/time.h>
 #include <gmock/gmock.h>
+
+#include "login_manager/browser_job.h"
 
 namespace login_manager {
 class FakeChildProcess;

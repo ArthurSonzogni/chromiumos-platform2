@@ -5,9 +5,9 @@
 #ifndef LOGIN_MANAGER_MOCK_METRICS_H_
 #define LOGIN_MANAGER_MOCK_METRICS_H_
 
-#include "login_manager/login_metrics.h"
-
 #include <gmock/gmock.h>
+
+#include "login_manager/login_metrics.h"
 
 namespace login_manager {
 class PolicyKey;

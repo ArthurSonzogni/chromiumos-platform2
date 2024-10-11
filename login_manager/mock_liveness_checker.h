@@ -5,9 +5,9 @@
 #ifndef LOGIN_MANAGER_MOCK_LIVENESS_CHECKER_H_
 #define LOGIN_MANAGER_MOCK_LIVENESS_CHECKER_H_
 
-#include "login_manager/liveness_checker.h"
-
 #include <gmock/gmock.h>
+
+#include "login_manager/liveness_checker.h"
 
 namespace login_manager {
 

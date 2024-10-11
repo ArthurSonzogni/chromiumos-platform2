@@ -5,10 +5,10 @@
 #ifndef LOGIN_MANAGER_MOCK_INSTALL_ATTRIBUTES_READER_H_
 #define LOGIN_MANAGER_MOCK_INSTALL_ATTRIBUTES_READER_H_
 
-#include <install_attributes/libinstallattributes.h>
-
 #include <map>
 #include <string>
+
+#include <install_attributes/libinstallattributes.h>
 
 // TODO(tnagel): Move to libbrillo/install_attributes.
 class MockInstallAttributesReader : public InstallAttributesReader {

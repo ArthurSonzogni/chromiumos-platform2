@@ -5,12 +5,12 @@
 #ifndef LOGIN_MANAGER_MOCK_SESSION_MANAGER_H_
 #define LOGIN_MANAGER_MOCK_SESSION_MANAGER_H_
 
-#include "login_manager/session_manager_interface.h"
-
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
+
+#include "login_manager/session_manager_interface.h"
 
 namespace login_manager {
 

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <errno.h>
+#include <linux/limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
@@ -35,10 +36,9 @@
 #include <brillo/namespaces/mount_namespace.h>
 #include <brillo/namespaces/platform.h>
 #include <brillo/syslog_logging.h>
-#include <chromeos/constants/cryptohome.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <chromeos/constants/cryptohome.h>
 #include <libsegmentation/feature_management.h>
-#include <linux/limits.h>
 #include <rootdev/rootdev.h>
 
 #include "login_manager/browser_job.h"

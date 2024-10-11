@@ -5,9 +5,9 @@
 #ifndef LOGIN_MANAGER_MOCK_ARC_SIDELOAD_STATUS_H_
 #define LOGIN_MANAGER_MOCK_ARC_SIDELOAD_STATUS_H_
 
-#include "login_manager/arc_sideload_status_interface.h"
-
 #include <memory>
+
+#include "login_manager/arc_sideload_status_interface.h"
 
 namespace login_manager {
 

@@ -4,10 +4,6 @@
 
 #include "login_manager/session_manager_service.h"
 
-#include <base/check.h>
-#include <base/check_op.h>
-#include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
-
 #include <fcntl.h>
 #include <stdint.h>
 #include <sys/stat.h>
@@ -20,8 +16,10 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/extend.h>
+#include <base/check.h>
+#include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/containers/extend.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -39,6 +37,7 @@
 #include <chromeos/dbus/vm_concierge/dbus-constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <dbus/bus.h>
+#include <dbus/dbus.h>  // C dbus library header. Used in FilterMessage().
 #include <dbus/error.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>

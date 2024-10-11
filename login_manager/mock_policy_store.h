@@ -5,9 +5,9 @@
 #ifndef LOGIN_MANAGER_MOCK_POLICY_STORE_H_
 #define LOGIN_MANAGER_MOCK_POLICY_STORE_H_
 
-#include "login_manager/policy_store.h"
-
 #include <gmock/gmock.h>
+
+#include "login_manager/policy_store.h"
 
 namespace login_manager {
 class MockPolicyStore : public PolicyStore {
