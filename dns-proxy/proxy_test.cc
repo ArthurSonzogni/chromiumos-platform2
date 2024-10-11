@@ -18,6 +18,7 @@
 #include <chromeos/net-base/byte_utils.h>
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/rtnl_message.h>
+#include <chromeos/patchpanel/address_manager.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <chromeos/patchpanel/mock_message_dispatcher.h>
 #include <dbus/mock_bus.h>
@@ -33,8 +34,8 @@
 namespace dns_proxy {
 namespace {
 
-constexpr net_base::IPv4Address kNetnsPeerIPv4Addr(100, 115, 92, 130);
-constexpr net_base::IPv6Address kNetnsPeerIPv6Addr(
+constexpr net_base::IPv4Address kNetnsPeerIPv4Aaddr(100, 115, 92, 130);
+constexpr net_base::IPv6Address kNetnsPeerIPv6Aaddr(
     0xfd, 0x05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01);
 constexpr base::TimeDelta kRequestTimeout = base::Seconds(10000);
 constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
@@ -185,12 +186,12 @@ class TestProxy : public Proxy {
             std::unique_ptr<shill::Client> shill,
             std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
                 msg_dispatcher,
-            bool root_ns_enabled)
+            bool root_ns_enabled_)
       : Proxy(opts,
               std::move(patchpanel),
               std::move(shill),
               std::move(msg_dispatcher),
-              root_ns_enabled) {}
+              root_ns_enabled_) {}
 
   std::unique_ptr<Resolver> resolver;
   std::unique_ptr<Resolver> NewResolver(base::TimeDelta timeout,
@@ -247,6 +248,25 @@ class ProxyTest : public ::testing::Test,
           .WillByDefault(Return(true));
       ON_CALL(*msg_dispatcher_, SendMessage(_)).WillByDefault(Return(true));
     }
+
+    // Initialize expected addresses.
+    if (root_ns_enabled) {
+      switch (opts.type) {
+        case Proxy::Type::kSystem:
+          ipv4_address_ = patchpanel::kDnsProxySystemIPv4Address;
+          ipv6_address_ = patchpanel::kDnsProxySystemIPv6Address;
+          break;
+        case Proxy::Type::kDefault:
+          ipv4_address_ = patchpanel::kDnsProxyDefaultIPv4Address;
+          ipv6_address_ = patchpanel::kDnsProxyDefaultIPv6Address;
+          break;
+        default:
+          break;
+      }
+    } else {
+      ipv4_address_ = kNetnsPeerIPv4Aaddr;
+      ipv6_address_ = kNetnsPeerIPv6Aaddr;
+    }
   }
 
   std::unique_ptr<shill::Client::Device> ShillDevice(
@@ -265,15 +285,18 @@ class ProxyTest : public ::testing::Test,
     return dev;
   }
 
-  void SetNamespaceAddresses(
+  void SetListenAddresses(
       const std::optional<net_base::IPv4Address>& ipv4_addr,
       const std::optional<net_base::IPv6Address>& ipv6_addr) {
+    proxy_->initialized_ = true;
+    proxy_->ipv4_address_ = ipv4_addr;
+    proxy_->ipv6_address_ = ipv6_addr;
+    if (proxy_->root_ns_enabled_) {
+      return;
+    }
     proxy_->ns_fd_ = base::ScopedFD(make_fd());
     if (ipv4_addr) {
       proxy_->ns_.peer_ipv4_address = *ipv4_addr;
-    }
-    if (ipv6_addr) {
-      proxy_->ns_peer_ipv6_address_ = *ipv6_addr;
     }
   }
 
@@ -295,6 +318,9 @@ class ProxyTest : public ::testing::Test,
   FakeShillClient* shill_client_;
   MockPatchpanelClient* patchpanel_client_;
   std::unique_ptr<TestProxy> proxy_;
+
+  net_base::IPv4Address ipv4_address_;
+  net_base::IPv6Address ipv6_address_;
 };
 
 // Test with DNS proxy running on root namespace and inside a network namespace.
@@ -322,7 +348,7 @@ TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   EXPECT_CALL(mock_manager_, SetProperty(_, _, _, _)).Times(0);
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr,
+  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_,
                                     /*die_on_failure=*/false,
                                     /*num_retries=*/0);
 }
@@ -332,11 +358,11 @@ TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_,
-              SetDNSProxyAddresses(ElementsAre(kNetnsPeerIPv4Addr.ToString(),
-                                               kNetnsPeerIPv6Addr.ToString()),
+              SetDNSProxyAddresses(ElementsAre(ipv4_address_.ToString(),
+                                               ipv6_address_.ToString()),
                                    _, _))
       .WillOnce(Return(true));
-  proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
 }
 
 TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
@@ -345,19 +371,17 @@ TEST_P(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
 
   // Only IPv4 nameserver.
   SetNameServers({"8.8.8.8"}, /*ipv6_nameservers=*/{});
-  EXPECT_CALL(
-      mock_manager_,
-      SetDNSProxyAddresses(ElementsAre(kNetnsPeerIPv4Addr.ToString()), _, _))
+  EXPECT_CALL(mock_manager_,
+              SetDNSProxyAddresses(ElementsAre(ipv4_address_.ToString()), _, _))
       .WillOnce(Return(true));
-  proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
 
   // Only IPv6 nameserver.
   SetNameServers(/*ipv4_nameservers=*/{}, {"2001:4860:4860::8888"});
-  EXPECT_CALL(
-      mock_manager_,
-      SetDNSProxyAddresses(ElementsAre(kNetnsPeerIPv6Addr.ToString()), _, _))
+  EXPECT_CALL(mock_manager_,
+              SetDNSProxyAddresses(ElementsAre(ipv6_address_.ToString()), _, _))
       .WillOnce(Return(true));
-  proxy_->SetShillDNSProxyAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  proxy_->SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
 }
 
 TEST_P(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
@@ -373,11 +397,11 @@ TEST_P(ProxyTest, SystemProxy_SendIPAddressesToController) {
 
   ProxyAddrMessage msg;
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs(kNetnsPeerIPv4Addr.ToString());
-  msg.add_addrs(kNetnsPeerIPv6Addr.ToString());
+  msg.add_addrs(ipv4_address_.ToString());
+  msg.add_addrs(ipv6_address_.ToString());
   EXPECT_CALL(*msg_dispatcher_, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
-  proxy_->SendIPAddressesToController(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  proxy_->SendIPAddressesToController(ipv4_address_, ipv6_address_);
 }
 
 TEST_P(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
@@ -388,19 +412,19 @@ TEST_P(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   SetNameServers({"8.8.8.8"}, /*ipv6_nameservers=*/{});
   ProxyAddrMessage msg;
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs(kNetnsPeerIPv4Addr.ToString());
+  msg.add_addrs(ipv4_address_.ToString());
   EXPECT_CALL(*msg_dispatcher_, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
-  proxy_->SendIPAddressesToController(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  proxy_->SendIPAddressesToController(ipv4_address_, ipv6_address_);
 
   // Only IPv6 nameserver.
   SetNameServers(/*ipv4_nameservers=*/{}, {"2001:4860:4860::8888"});
   msg.Clear();
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs(kNetnsPeerIPv6Addr.ToString());
+  msg.add_addrs(ipv6_address_.ToString());
   EXPECT_CALL(*msg_dispatcher_, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
-  proxy_->SendIPAddressesToController(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  proxy_->SendIPAddressesToController(ipv4_address_, ipv6_address_);
 }
 
 TEST_P(ProxyTest, SystemProxy_ClearIPAddressesInController) {
@@ -421,13 +445,18 @@ TEST_P(ProxyTest, ShillInitializedWhenReady) {
 TEST_P(ProxyTest, SystemProxy_ConnectedNamedspace) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
 
-  EXPECT_CALL(
-      *patchpanel_client_,
-      ConnectNamespace(_, _, /*outbound_ifname=*/"", /*route_on_vpn=*/false,
-                       patchpanel::Client::TrafficSource::kSystem, _))
-      .WillOnce(
-          Return(std::make_pair(base::ScopedFD(make_fd()),
-                                patchpanel::Client::ConnectedNamespace{})));
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*patchpanel_client_, ConnectNamespace(_, _, _, _, _, _))
+        .Times(0);
+  } else {
+    EXPECT_CALL(
+        *patchpanel_client_,
+        ConnectNamespace(_, _, /*outbound_ifname=*/"", /*route_on_vpn=*/false,
+                         patchpanel::Client::TrafficSource::kSystem, _))
+        .WillOnce(
+            Return(std::make_pair(base::ScopedFD(make_fd()),
+                                  patchpanel::Client::ConnectedNamespace{})));
+  }
   proxy_->OnPatchpanelReady(true);
 }
 
@@ -435,13 +464,18 @@ TEST_P(ProxyTest, DefaultProxy_ConnectedNamedspace) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice());
 
-  EXPECT_CALL(
-      *patchpanel_client_,
-      ConnectNamespace(_, _, /*outbound_ifname=*/"", /*route_on_vpn=*/true,
-                       patchpanel::Client::TrafficSource::kUser, _))
-      .WillOnce(
-          Return(std::make_pair(base::ScopedFD(make_fd()),
-                                patchpanel::Client::ConnectedNamespace{})));
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*patchpanel_client_, ConnectNamespace(_, _, _, _, _, _))
+        .Times(0);
+  } else {
+    EXPECT_CALL(
+        *patchpanel_client_,
+        ConnectNamespace(_, _, /*outbound_ifname=*/"", /*route_on_vpn=*/true,
+                         patchpanel::Client::TrafficSource::kUser, _))
+        .WillOnce(
+            Return(std::make_pair(base::ScopedFD(make_fd()),
+                                  patchpanel::Client::ConnectedNamespace{})));
+  }
   proxy_->OnPatchpanelReady(true);
 }
 
@@ -449,13 +483,18 @@ TEST_P(ProxyTest, ArcProxy_ConnectedNamedspace) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"});
 
-  EXPECT_CALL(*patchpanel_client_,
-              ConnectNamespace(_, _, /*outbound_ifname=*/"eth0",
-                               /*route_on_vpn=*/false,
-                               patchpanel::Client::TrafficSource::kArc, _))
-      .WillOnce(
-          Return(std::make_pair(base::ScopedFD(make_fd()),
-                                patchpanel::Client::ConnectedNamespace{})));
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*patchpanel_client_, ConnectNamespace(_, _, _, _, _, _))
+        .Times(0);
+  } else {
+    EXPECT_CALL(*patchpanel_client_,
+                ConnectNamespace(_, _, /*outbound_ifname=*/"eth0",
+                                 /*route_on_vpn=*/false,
+                                 patchpanel::Client::TrafficSource::kArc, _))
+        .WillOnce(
+            Return(std::make_pair(base::ScopedFD(make_fd()),
+                                  patchpanel::Client::ConnectedNamespace{})));
+  }
   proxy_->OnPatchpanelReady(true);
 }
 
@@ -463,11 +502,11 @@ TEST_P(ProxyTest, ShillResetRestoresAddressProperty) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   EXPECT_CALL(mock_manager_,
-              SetDNSProxyAddresses(ElementsAre(kNetnsPeerIPv4Addr.ToString(),
-                                               kNetnsPeerIPv6Addr.ToString()),
+              SetDNSProxyAddresses(ElementsAre(ipv4_address_.ToString(),
+                                               ipv6_address_.ToString()),
                                    _, _))
       .WillOnce(Return(true));
   proxy_->OnShillReset(true);
@@ -506,6 +545,7 @@ TEST_P(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
 TEST_P(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              /*device=*/nullptr, /*set_resolver=*/false);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   auto* new_resolver = new MockResolver();
   proxy_->resolver = base::WrapUnique(new_resolver);
@@ -522,6 +562,7 @@ TEST_P(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
 
 TEST_P(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0",
@@ -536,7 +577,7 @@ TEST_P(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
 
 TEST_P(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline);
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
@@ -546,7 +587,7 @@ TEST_P(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
 
 TEST_P(ProxyTest, SystemProxy_IgnoresVPN) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Expect default device changes to WiFi.
   auto wifi = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -563,7 +604,7 @@ TEST_P(ProxyTest, SystemProxy_IgnoresVPN) {
 
 TEST_P(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   shill_client_->default_device_ =
       ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -578,6 +619,7 @@ TEST_P(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
 
 TEST_P(ProxyTest, DefaultProxy_UsesVPN) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   auto wifi = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                           shill::Client::Device::Type::kWifi);
@@ -625,7 +667,7 @@ TEST_P(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
 
 TEST_P(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Set name servers on device change event.
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -648,7 +690,7 @@ TEST_P(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
 
 TEST_P(ProxyTest, DeviceChangeEventIgnored) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0");
@@ -941,7 +983,7 @@ TEST_P(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
 
 TEST_P(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // System proxy requests a DnsRedirectionRule to exclude traffic destined
   // not to the underlying network's name server.
@@ -951,13 +993,13 @@ TEST_P(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
       *patchpanel_client_,
       RedirectDns(
           patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination, _,
-          kNetnsPeerIPv4Addr.ToString(), _, _))
+          ipv4_address_.ToString(), _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(
           patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination, _,
-          kNetnsPeerIPv6Addr.ToString(), _, _))
+          ipv6_address_.ToString(), _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnDefaultDeviceChanged(dev.get());
 
@@ -980,7 +1022,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Set DNS redirection rule.
   EXPECT_CALL(*patchpanel_client_,
@@ -997,7 +1039,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
 
 TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Empty active device.
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1024,7 +1066,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0"));
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Guest started.
   auto plugin_vm_dev =
@@ -1032,12 +1074,12 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", kNetnsPeerIPv4Addr.ToString(), IsEmpty(), _))
+                  "vmtap0", ipv4_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", kNetnsPeerIPv6Addr.ToString(), IsEmpty(), _))
+                  "vmtap0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
                                  plugin_vm_dev);
@@ -1053,7 +1095,7 @@ TEST_P(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0"));
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Other guest started.
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1067,13 +1109,13 @@ TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
+  SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
 
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(
           patchpanel::Client::DnsRedirectionRequestType::kExcludeDestination, _,
-          kNetnsPeerIPv6Addr.ToString(), _, _))
+          ipv6_address_.ToString(), _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1086,7 +1128,7 @@ TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
                             AF_INET6);
   msg.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
 
@@ -1109,7 +1151,7 @@ TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
 
 TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
+  SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
 
   // Default device changed.
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
@@ -1128,7 +1170,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", kNetnsPeerIPv4Addr.ToString(), IsEmpty(), _))
+                  "vmtap0", ipv4_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
                                  plugin_vm_dev);
@@ -1144,7 +1186,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
+  SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
 
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillOnce(
@@ -1152,12 +1194,12 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
               patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0")}));
   EXPECT_CALL(*patchpanel_client_,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
-                          _, kNetnsPeerIPv6Addr.ToString(), _, _))
+                          _, ipv6_address_.ToString(), _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", kNetnsPeerIPv6Addr.ToString(), IsEmpty(), _))
+                  "vmtap0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1170,7 +1212,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
                             AF_INET6);
   msg.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
 
@@ -1218,7 +1260,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
       AF_INET6);
   msg_unrelated_ifindex.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg_unrelated_ifindex.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg_unrelated_ifindex.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_ifindex);
 
   net_base::RTNLMessage msg_unrelated_scope(
@@ -1227,7 +1269,7 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
       AF_INET6);
   msg_unrelated_scope.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
-  msg_unrelated_scope.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg_unrelated_scope.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_scope);
 }
 
@@ -1235,22 +1277,20 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Set devices created before the proxy started.
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillOnce(
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0")}));
-  EXPECT_CALL(
-      *patchpanel_client_,
-      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                  "arc_eth0", kNetnsPeerIPv4Addr.ToString(), IsEmpty(), _))
+  EXPECT_CALL(*patchpanel_client_,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
+                          "arc_eth0", ipv4_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  EXPECT_CALL(
-      *patchpanel_client_,
-      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                  "arc_eth0", kNetnsPeerIPv6Addr.ToString(), IsEmpty(), _))
+  EXPECT_CALL(*patchpanel_client_,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
+                          "arc_eth0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->Enable();
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
@@ -1260,20 +1300,18 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // Guest started.
   auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
                             "arc_eth0", "eth0");
-  EXPECT_CALL(
-      *patchpanel_client_,
-      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                  "arc_eth0", kNetnsPeerIPv4Addr.ToString(), IsEmpty(), _))
+  EXPECT_CALL(*patchpanel_client_,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
+                          "arc_eth0", ipv4_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
-  EXPECT_CALL(
-      *patchpanel_client_,
-      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                  "arc_eth0", kNetnsPeerIPv6Addr.ToString(), IsEmpty(), _))
+  EXPECT_CALL(*patchpanel_client_,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
+                          "arc_eth0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
                                  arc_dev);
@@ -1289,7 +1327,7 @@ TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
-  proxy_->ns_peer_ipv6_address_ = kNetnsPeerIPv6Addr;
+  proxy_->ipv6_address_ = ipv6_address_;
 
   // Other guest started.
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1302,7 +1340,7 @@ TEST_P(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"});
   proxy_->device_ = ShillDevice();
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
+  SetListenAddresses(ipv4_address_, ipv6_address_);
 
   // ARC guest with other interface started.
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
@@ -1315,16 +1353,15 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
-  SetNamespaceAddresses(kNetnsPeerIPv4Addr, /*ipv6_addr=*/std::nullopt);
+  SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
 
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillOnce(
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0")}));
-  EXPECT_CALL(
-      *patchpanel_client_,
-      RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                  "arc_eth0", kNetnsPeerIPv6Addr.ToString(), IsEmpty(), _))
+  EXPECT_CALL(*patchpanel_client_,
+              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
+                          "arc_eth0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
   // Proxy's ConnectedNamespace peer interface name is set to empty and
@@ -1337,7 +1374,7 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
                             AF_INET6);
   msg.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
 
@@ -1385,7 +1422,7 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
       AF_INET6);
   msg_unrelated_ifindex.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
-  msg_unrelated_ifindex.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg_unrelated_ifindex.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_ifindex);
 
   net_base::RTNLMessage msg_unrelated_scope(
@@ -1394,7 +1431,7 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
       AF_INET6);
   msg_unrelated_scope.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_LINK));
-  msg_unrelated_scope.SetAttribute(IFA_ADDRESS, kNetnsPeerIPv6Addr.ToBytes());
+  msg_unrelated_scope.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg_unrelated_scope);
 }
 

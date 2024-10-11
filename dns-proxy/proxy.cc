@@ -21,6 +21,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/patchpanel/address_manager.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <shill/dbus-constants.h>
 
@@ -217,15 +218,7 @@ void Proxy::Setup() {
       &Proxy::OnPatchpanelReset, weak_factory_.GetWeakPtr()));
 }
 
-void Proxy::OnPatchpanelReady(bool success) {
-  if (!success) {
-    metrics_.RecordProcessEvent(metrics_proc_type_,
-                                Metrics::ProcessEvent::kPatchpanelNotReady);
-    LOG(ERROR) << *this << " Failed to connect to patchpanel";
-    QuitWithExitCode(EX_UNAVAILABLE);
-    return;
-  }
-
+bool Proxy::ConnectNamespace() {
   // The default network proxy might actually be carrying Chrome, Crostini or
   // if a VPN is on, even ARC traffic, but we attribute this as as "user"
   // sourced.
@@ -260,13 +253,45 @@ void Proxy::OnPatchpanelReady(bool success) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoNamespace);
     LOG(ERROR) << *this << " Failed to establish private network namespace";
-    QuitWithExitCode(EX_CANTCREAT);
-    return;
+    return false;
   }
   ns_fd_ = std::move(res.first);
   ns_ = res.second;
+  ipv4_address_ = ns_.peer_ipv4_address;
   LOG(INFO) << *this << " Successfully connected private network namespace: "
             << ns_.host_ifname << " <--> " << ns_.peer_ifname;
+  return true;
+}
+
+void Proxy::OnPatchpanelReady(bool success) {
+  if (!success) {
+    metrics_.RecordProcessEvent(metrics_proc_type_,
+                                Metrics::ProcessEvent::kPatchpanelNotReady);
+    LOG(ERROR) << *this << " Failed to connect to patchpanel";
+    QuitWithExitCode(EX_UNAVAILABLE);
+    return;
+  }
+
+  if (root_ns_enabled_) {
+    // TODO(jasongustaman): ARC now does not initialize these addresses. Add a
+    // way to fetch and use the addresses for guest cases.
+    switch (opts_.type) {
+      case Type::kSystem:
+        ipv4_address_ = patchpanel::kDnsProxySystemIPv4Address;
+        ipv6_address_ = patchpanel::kDnsProxySystemIPv6Address;
+        break;
+      case Type::kDefault:
+        ipv4_address_ = patchpanel::kDnsProxyDefaultIPv4Address;
+        ipv6_address_ = patchpanel::kDnsProxyDefaultIPv6Address;
+        break;
+      case Type::kARC:
+        break;
+    }
+  } else if (!ConnectNamespace()) {
+    QuitWithExitCode(EX_CANTCREAT);
+    return;
+  }
+  initialized_ = true;
 
   // Now it's safe to connect shill.
   InitShill();
@@ -283,7 +308,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
                                 sa_family_t sa_family,
                                 const std::vector<std::string>& nameservers) {
   // Request IPv6 DNS redirection rule only if the IPv6 address is available.
-  if (sa_family == AF_INET6 && !ns_peer_ipv6_address_) {
+  if (sa_family == AF_INET6 && !ipv6_address_) {
     return;
   }
 
@@ -310,9 +335,8 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
       return;
   }
 
-  const auto peer_addr = sa_family == AF_INET6
-                             ? ns_peer_ipv6_address_->ToString()
-                             : ns_.peer_ipv4_address.ToString();
+  const auto peer_addr = sa_family == AF_INET6 ? ipv6_address_->ToString()
+                                               : ipv4_address_->ToString();
   auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers,
                                      ns_.host_ifname);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
@@ -391,8 +415,8 @@ void Proxy::OnShillReset(bool reset) {
     LOG(WARNING) << *this << " Shill has been reset";
 
     // If applicable, restore the address of the system proxy.
-    if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
-      SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
+    if (opts_.type == Type::kSystem && initialized_) {
+      SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
       // Start DNS redirection rule to exclude traffic with destination not
       // equal to the underlying name server.
       StartDnsRedirection(/*ifname=*/"", AF_INET);
@@ -423,13 +447,13 @@ void Proxy::OnSessionStateChanged(bool login) {
 }
 
 void Proxy::Enable() {
-  if (!ns_fd_.is_valid() || !device_) {
+  if (!initialized_ || !device_) {
     return;
   }
 
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
-    SendIPAddressesToController(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
+    SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
+    SendIPAddressesToController(ipv4_address_, ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     StartDnsRedirection(/*ifname=*/"", AF_INET);
@@ -455,7 +479,7 @@ void Proxy::Enable() {
 }
 
 void Proxy::Disable() {
-  if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
+  if (opts_.type == Type::kSystem && initialized_) {
     ClearShillDNSProxyAddresses();
     ClearIPAddressesInController();
   }
@@ -740,8 +764,8 @@ void Proxy::UpdateNameServers() {
                              doh_config_.ipv6_nameservers().size());
 
   if (opts_.type == Type::kSystem) {
-    SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
-    SendIPAddressesToController(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
+    SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
+    SendIPAddressesToController(ipv4_address_, ipv6_address_);
   }
 
   LOG(INFO) << *this << " applied device DNS configuration";
@@ -836,7 +860,7 @@ void Proxy::ClearShillDNSProxyAddresses() {
 }
 
 void Proxy::SendIPAddressesToController(
-    const net_base::IPv4Address& ipv4_addr,
+    const std::optional<net_base::IPv4Address>& ipv4_addr,
     const std::optional<net_base::IPv6Address>& ipv6_addr) {
   if (opts_.type != Type::kSystem) {
     LOG(DFATAL) << *this << " Must be called from system proxy only";
@@ -845,8 +869,8 @@ void Proxy::SendIPAddressesToController(
 
   ProxyAddrMessage msg;
   msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  if (!doh_config_.ipv4_nameservers().empty()) {
-    msg.add_addrs(ipv4_addr.ToString());
+  if (ipv4_addr && !doh_config_.ipv4_nameservers().empty()) {
+    msg.add_addrs(ipv4_addr->ToString());
   }
   if (ipv6_addr && !doh_config_.ipv6_nameservers().empty()) {
     msg.add_addrs(ipv6_addr->ToString());
@@ -1031,10 +1055,10 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
       }
 
       const auto peer_ipv6_addr = ifa_addr->ToIPv6CIDR()->address();
-      if (ns_peer_ipv6_address_ == peer_ipv6_addr) {
+      if (ipv6_address_ == peer_ipv6_addr) {
         return;
       }
-      ns_peer_ipv6_address_ = peer_ipv6_addr;
+      ipv6_address_ = peer_ipv6_addr;
       LOG(INFO) << *this << " Peer IPv6 addr updated to "
                 << peer_ipv6_addr.ToString();
       if (opts_.type == Type::kDefault && device_) {
@@ -1045,15 +1069,14 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
         StartGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
-        SendIPAddressesToController(ns_.peer_ipv4_address,
-                                    ns_peer_ipv6_address_);
+        SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
+        SendIPAddressesToController(ipv4_address_, ipv6_address_);
         StartDnsRedirection(/*ifname=*/"", AF_INET6);
       }
       return;
     }
     case net_base::RTNLMessage::kModeDelete:
-      ns_peer_ipv6_address_ = std::nullopt;
+      ipv6_address_ = std::nullopt;
       LOG(INFO) << *this << " Peer IPv6 addr removed";
       if (opts_.type == Type::kDefault) {
         StopDnsRedirection(/*ifname=*/"", AF_INET6);
@@ -1062,9 +1085,9 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
         StopGuestDnsRedirection(d, AF_INET6);
       }
       if (opts_.type == Type::kSystem && device_) {
-        SetShillDNSProxyAddresses(/*ipv4_addr=*/ns_.peer_ipv4_address,
+        SetShillDNSProxyAddresses(/*ipv4_addr=*/ipv4_address_,
                                   /*ipv6_addr=*/std::nullopt);
-        SendIPAddressesToController(/*ipv4_addr=*/ns_.peer_ipv4_address,
+        SendIPAddressesToController(/*ipv4_addr=*/ipv4_address_,
                                     /*ipv6_addr=*/std::nullopt);
         StopDnsRedirection(/*ifname=*/"", AF_INET6);
       }

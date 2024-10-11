@@ -219,7 +219,7 @@ class Proxy : public brillo::DBusDaemon {
   // Helper func to send the proxy IP addresses to the controller.
   // Only valid for the system proxy.
   void SendIPAddressesToController(
-      const net_base::IPv4Address& ipv4_addr,
+      const std::optional<net_base::IPv4Address>& ipv4_addr,
       const std::optional<net_base::IPv6Address>& ipv6_addr);
   void ClearIPAddressesInController();
   void SendProtoMessage(const ProxyAddrMessage& msg);
@@ -227,6 +227,9 @@ class Proxy : public brillo::DBusDaemon {
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.
   void RTNLMessageHandler(const net_base::RTNLMessage& msg);
+
+  // Calls patchpanel ConnectNamespace API and sets the necessary states.
+  bool ConnectNamespace();
 
   void LogName(std::ostream& stream) const;
 
@@ -308,7 +311,20 @@ class Proxy : public brillo::DBusDaemon {
 
   base::ScopedFD ns_fd_;
   patchpanel::Client::ConnectedNamespace ns_;
-  std::optional<net_base::IPv6Address> ns_peer_ipv6_address_;
+
+  // Whether or not DNS proxy process is initialized. This is set to true when
+  // patchpanel client is connected, the network namespace for the proxy is
+  // ready, and the listening IP address is ready.
+  bool initialized_ = false;
+
+  // The IPv4 and IPv6 addresses of address DNS proxy is listening on.
+  // When |root_ns_enabled_| is true, these contain the address allocated by
+  // patchpanel on the loopback interface for DNS proxy. The value only exists
+  // for the system and default instance of DNS proxy.
+  // When |root_ns_enabled_| is false, these contain the addresses of the
+  // interface inside the network namespace |ns_|.
+  std::optional<net_base::IPv4Address> ipv4_address_;
+  std::optional<net_base::IPv6Address> ipv6_address_;
 
   std::unique_ptr<Resolver> resolver_;
   DoHConfig doh_config_;
