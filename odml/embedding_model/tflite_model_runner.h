@@ -51,6 +51,10 @@ class TfliteModelRunner : public ModelRunner {
                          LoadCallback callback,
                          bool success);
 
+  // Which node is the input/output in the tflite graph?
+  int input_node_;
+  int output_node_;
+
   // For access to the odml-shim functions, which is needed for formatting.
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
 

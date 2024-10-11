@@ -41,7 +41,9 @@ TfliteModelRunner::TfliteModelRunner(
     ModelInfo&& model_info,
     std::unique_ptr<Tokenizer> tokenizer,
     const raw_ref<odml::OdmlShimLoader> shim_loader)
-    : shim_loader_(shim_loader),
+    : input_node_(-1),
+      output_node_(-1),
+      shim_loader_(shim_loader),
       model_info_(std::move(model_info)),
       tflite_info_(std::get_if<struct EmbeddingTfliteModelInfo>(
           &model_info_.type_specific_info)),
@@ -138,6 +140,19 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
     return;
   }
 
+  if (interpreter->inputs().size() != 1) {
+    LOG(ERROR) << "Unexpected multiple inputs in embedding model tflite.";
+    std::move(callback).Run(false);
+    return;
+  }
+  input_node_ = interpreter->inputs()[0];
+  if (interpreter->outputs().size() != 1) {
+    LOG(ERROR) << "Unexpected multiple outputs in embedding model tflite.";
+    std::move(callback).Run(false);
+    return;
+  }
+  output_node_ = interpreter->outputs()[0];
+
   interpreter_ = std::move(interpreter);
   LOG(INFO) << "Model loaded " << tflite_info_->tflite_path;
   std::move(callback).Run(true);
@@ -184,10 +199,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
     return;
   }
 
-  const TfLiteIntArray& input_dims =
-      *interpreter_->tensor(tflite_info_->input_node_id)->dims;
-  const TfLiteIntArray& output_dims =
-      *interpreter_->tensor(tflite_info_->output_node_id)->dims;
+  const TfLiteIntArray& input_dims = *interpreter_->tensor(input_node_)->dims;
+  const TfLiteIntArray& output_dims = *interpreter_->tensor(output_node_)->dims;
 
   int input_size = ComputeSizeFromDims(input_dims);
   int output_size = ComputeSizeFromDims(output_dims);
@@ -240,7 +253,7 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
   }
 
   // Populate input
-  int* input_ptr = interpreter_->typed_tensor<int>(tflite_info_->input_node_id);
+  int* input_ptr = interpreter_->typed_tensor<int>(input_node_);
   for (int i = 0; i < input_size; i++) {
     input_ptr[i] = (*token_ids)[i];
   }
@@ -257,8 +270,7 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
 
   // Extract the output.
   std::vector<float> output;
-  float* output_ptr =
-      interpreter_->typed_tensor<float>(tflite_info_->output_node_id);
+  float* output_ptr = interpreter_->typed_tensor<float>(output_node_);
   for (int i = 0; i < output_size; i++) {
     output.push_back(output_ptr[i]);
   }
