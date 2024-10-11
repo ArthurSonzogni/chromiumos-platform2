@@ -1167,7 +1167,6 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1191,7 +1190,6 @@ TEST_F(ArcServiceTest, VmImpl_StartEthernetDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1244,7 +1242,6 @@ TEST_F(ArcServiceTest, VmImpl_StartCellularMultiplexedDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1301,7 +1298,6 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1408,7 +1404,6 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1450,7 +1445,6 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1496,7 +1490,6 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   for (const auto& tap_ifname : kArcPhysicalTapIfnames) {
     EXPECT_CALL(datapath_, RemoveInterface(StrEq(tap_ifname)));
   }
-  EXPECT_CALL(datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
   EXPECT_CALL(datapath_,
               StopRoutingDevice(StrEq("arc_eth0"), TrafficSource::kArc));
   EXPECT_CALL(datapath_,
@@ -1527,7 +1520,6 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(datapath_,
               AddBridge(StrEq("arc_eth0"), AnyOfArray(kArcPhysicalHostCIDRs)))
       .WillOnce(Return(true));
@@ -1568,7 +1560,6 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);
@@ -1639,7 +1630,6 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
 
   auto eth0_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto eth1_dev = MakeShillDevice("eth1", net_base::Technology::kEthernet);
@@ -1711,7 +1701,6 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
       .WillOnce(Return(true));
   EXPECT_CALL(datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
-  EXPECT_CALL(datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
   EXPECT_CALL(forwarding_service_, StartIPv6NDPForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartMulticastForwarding).Times(0);
   EXPECT_CALL(forwarding_service_, StartBroadcastForwarding).Times(0);

@@ -438,11 +438,15 @@ bool ArcService::StartInternal(
     AddDevice(shill_device);
 
   // Enable conntrack helpers needed for processing through SNAT the IPv4 GRE
-  // packets sent by Android PPTP client (b/172214190).
-  // TODO(b/252749921) Find alternative for chromeos-6.1+ kernels.
-  if (!datapath_->SetConntrackHelpers(true)) {
-    // Do not consider this error fatal for ARC datapath setup (b/252749921).
-    LOG(ERROR) << "Failed to enable conntrack helpers";
+  // packets sent by Android PPTP client (b/172214190). Since PPTP is removed on
+  // Android T so this is no longer needed on T- boards (check if it's container
+  // as an approximate check). Note that `SetConntrackHelpers()` will fail on
+  // 6.1+ kernels (b/252749921), while we won't have a combination of ARC R and
+  // 6.1+ kernels.
+  if (arc_type_ == ArcType::kContainer) {
+    if (!datapath_->SetConntrackHelpers(true)) {
+      LOG(ERROR) << "Failed to enable conntrack helpers";
+    }
   }
 
   RecordEvent(metrics_, ArcServiceUmaEvent::kStartSuccess);
