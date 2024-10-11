@@ -12,6 +12,7 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/udev_stub.h"
@@ -191,7 +192,11 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
 
 TEST_F(DisplayWatcherTest, I2CDevices) {
   // Create a single connected device with no I2C device.
+  base::FilePath gpu_device_path = CreateDrmDevice("device");
+  base::FilePath card_path = CreateDrmDevice("card0");
   base::FilePath device_path = CreateDrmDevice("card0-DP-1");
+  SetDeviceParent(card_path, gpu_device_path);
+  SetDeviceParent(device_path, card_path);
   base::FilePath status_path =
       device_path.Append(DisplayWatcher::kDrmStatusFile);
   ASSERT_TRUE(
@@ -201,12 +206,62 @@ TEST_F(DisplayWatcherTest, I2CDevices) {
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
   EXPECT_EQ("", watcher_.GetDisplays()[0].i2c_path.value());
 
-  // Create an I2C directory within the DRM directory and check that the I2C
-  // device's path is set.
-  const char kI2CName[] = "i2c-3";
-  base::FilePath i2c_path = CreateI2CDevice(kI2CName);
-  base::FilePath drm_i2c_path = device_path.Append(kI2CName);
+  // Create an I2C device parented to the underlying device, but with a
+  // non-MST name, checking that it isn't returned.
+  const char kTopLevelI2CName[] = "i2c-2";
+  base::FilePath i2c_path = CreateI2CDevice(kTopLevelI2CName);
+  auto drm_i2c_path = gpu_device_path.Append(kTopLevelI2CName);
   ASSERT_TRUE(base::CreateDirectory(drm_i2c_path));
+  ASSERT_TRUE(base::WriteFile(drm_i2c_path.Append("name"), "DDI B\n"));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ("", watcher_.GetDisplays()[0].i2c_path.value());
+
+  // Update its name to DPMST, checking that it is returned.
+  ASSERT_TRUE(base::WriteFile(drm_i2c_path.Append("name"), "DPMST\n"));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(i2c_path.value(), watcher_.GetDisplays()[0].i2c_path.value());
+
+  // Add an extra I2C device under the underlying device that sorts ahead of the
+  // previous I2C device, with a non-MST name, to be ignored.
+  const char kExtraTopLevelI2CName[] = "i2c-1";
+  auto extra_i2c_path = CreateI2CDevice(kExtraTopLevelI2CName);
+  auto drm_extra_i2c_path = gpu_device_path.Append(kExtraTopLevelI2CName);
+  ASSERT_TRUE(base::CreateDirectory(drm_extra_i2c_path));
+  ASSERT_TRUE(base::WriteFile(drm_extra_i2c_path.Append("name"), "DDI A\n"));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(i2c_path.value(), watcher_.GetDisplays()[0].i2c_path.value());
+
+  // Change the new device to be named DPMST and expect it to be returned,
+  // sorting ahead of i2c-2.
+  ASSERT_TRUE(base::WriteFile(drm_extra_i2c_path.Append("name"), "DPMST\n"));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(extra_i2c_path.value(), watcher_.GetDisplays()[0].i2c_path.value());
+
+  // If the I2C device doesn't actually exist, the path shouldn't be set.
+  ASSERT_TRUE(brillo::DeleteFile(extra_i2c_path));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(i2c_path.value(), watcher_.GetDisplays()[0].i2c_path.value());
+
+  // Create an I2C directory within the DRM directory and check that the I2C
+  // device's path is set to that device, ignoring any DPMST I2C devices.
+  const char kI2CName[] = "i2c-3";
+  i2c_path = CreateI2CDevice(kI2CName);
+  drm_i2c_path = device_path.Append(kI2CName);
+  ASSERT_TRUE(base::CreateDirectory(drm_i2c_path));
+  NotifyAboutUdevEvent();
+  ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
+  EXPECT_EQ(i2c_path.value(), watcher_.GetDisplays()[0].i2c_path.value());
+
+  // Verify again with no DPMST I2C devices.
+  ASSERT_TRUE(
+      brillo::DeletePathRecursively(gpu_device_path.Append(kTopLevelI2CName)));
+  ASSERT_TRUE(brillo::DeletePathRecursively(
+      gpu_device_path.Append(kExtraTopLevelI2CName)));
   NotifyAboutUdevEvent();
   ASSERT_EQ(static_cast<size_t>(1), watcher_.GetDisplays().size());
   EXPECT_EQ(i2c_path.value(), watcher_.GetDisplays()[0].i2c_path.value());

@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/compiler_specific.h>
@@ -56,17 +57,17 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // unknown.
   static const char kDrmStatusUnknown[];
 
-  DisplayWatcher() = default;
+  DisplayWatcher();
   DisplayWatcher(const DisplayWatcher&) = delete;
   DisplayWatcher& operator=(const DisplayWatcher&) = delete;
 
   ~DisplayWatcher() override;
 
   void set_sysfs_drm_path_for_testing(const base::FilePath& path) {
-    sysfs_drm_path_for_testing_ = path;
+    sysfs_drm_path_ = path;
   }
   void set_i2c_dev_path_for_testing(const base::FilePath& path) {
-    i2c_dev_path_for_testing_ = path;
+    i2c_dev_path_ = path;
   }
 
   bool trigger_debounce_timeout_for_testing();
@@ -83,17 +84,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
   void OnUdevEvent(const UdevEvent& event) override;
 
  private:
-  // Returns the sys path of the parent device of the DRM device.
-  base::FilePath GetSysPath(const base::FilePath& drm_dir);
-
-  // Returns the path to the I2C device used for communicating with the display
-  // connected to the device described by |drm_dir|. Returns an empty path if
-  // the device isn't found.
-  base::FilePath GetI2CDevicePath(const base::FilePath& drm_dir);
-
-  // Helper used by GetI2CDevicePath() to locate the I2C device used for DDC/CI
-  // communication. Returns an empty path if the device isn't found.
-  base::FilePath FindI2CDeviceInDir(const base::FilePath& dir);
+  class Update;
 
   // Notify any observers that the display list has been modified.
   void PublishDisplayChanges();
@@ -120,9 +111,8 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // Runs HandleDebounceTimeout().
   base::OneShotTimer debounce_timer_;
 
-  // Used instead of the default paths if non-empty.
-  base::FilePath sysfs_drm_path_for_testing_;
-  base::FilePath i2c_dev_path_for_testing_;
+  base::FilePath sysfs_drm_path_;
+  base::FilePath i2c_dev_path_;
 };
 
 }  // namespace power_manager::system
