@@ -368,6 +368,7 @@ const std::array kCommandLogs {
   Log{kCommand, "power_supply_info", "/usr/bin/power_supply_info",
     kRoot, kRoot},
   Log{kCommand, "power_supply_sysfs", "/usr/bin/print_sysfs_power_supply_data"},
+  Log{kCommand, "primary_io_devices", "/usr/bin/vmc list-primary-io-devices"},
   Log{kCommand, "ps", "/bin/ps auxZ"},
   Log{kCommand, "pvs", "pvs --all --readonly --reportformat json -o pv_all",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},

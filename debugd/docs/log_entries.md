@@ -528,6 +528,11 @@ and base64-encoded.
 
 ## powerwash_count
 
+## primary_io_devices
+
+For use mostly on chromebox debugging, displays which keyboards/mice system
+services are tracking and considering as 'primary' to the device.
+
 ## ps
 
 ## psi
