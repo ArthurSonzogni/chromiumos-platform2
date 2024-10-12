@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -292,6 +293,11 @@ class CountersServiceTest : public testing::Test {
     std::map<CounterKey, Counter> expected;
     EXPECT_TRUE(CompareCounters(expected, actual));
   }
+
+  // Note that this needs to be initialized at first, since the ctors of other
+  // members may rely on it (e.g., FileDescriptorWatcher).
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   FakeProcessRunner process_runner_;
   NoopSystem system_;

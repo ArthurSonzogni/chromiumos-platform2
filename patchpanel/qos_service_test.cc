@@ -13,6 +13,7 @@
 #include <base/containers/span.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
+#include <base/test/task_environment.h>
 #include <chromeos/net-base/dns_client.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/technology.h>
@@ -209,6 +210,11 @@ class QoSServiceTest : public testing::Test {
                  &conntrack_monitor_,
                  &shill_client_,
                  base::WrapUnique(dns_factory_)) {}
+
+  // Note that this needs to be initialized at first, since the ctors of other
+  // members may rely on it (e.g., FileDescriptorWatcher).
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   FakeProcessRunner process_runner_;
   NoopSystem system_;

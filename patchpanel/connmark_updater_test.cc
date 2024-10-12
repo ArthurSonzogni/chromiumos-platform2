@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -49,9 +50,18 @@ ConnmarkUpdater::Conntrack5Tuple CreateTCPConnection() {
       .dport = kPort2,
       .proto = ConnmarkUpdater::IPProtocol::kTCP};
 }
+
+class ConnmarkUpdaterTest : public ::testing::Test {
+ private:
+  // Note that this needs to be initialized at first, since the ctors of other
+  // members may rely on it (e.g., FileDescriptorWatcher).
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+};
+
 // Verifies that when creating connmark updater, a listener will be registered
 // on ConntrackMonitor and initially the pending list is empty.
-TEST(ConnmarkUpdaterTest, CreateConnmarkUpdater) {
+TEST_F(ConnmarkUpdaterTest, CreateConnmarkUpdater) {
   MockConntrackMonitor conntrack_monitor;
   MockProcessRunner runner;
   EXPECT_CALL(conntrack_monitor,
@@ -62,7 +72,7 @@ TEST(ConnmarkUpdaterTest, CreateConnmarkUpdater) {
 
 // Verifies that whether initial try to update connmark for TCP connections
 // succeeds or fails, the TCP connection will not be added to the pending list.
-TEST(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
+TEST_F(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
   MockConntrackMonitor conntrack_monitor;
   MockProcessRunner runner;
   ConnmarkUpdater updater_(&conntrack_monitor, &runner);
@@ -99,7 +109,7 @@ TEST(ConnmarkUpdaterTest, UpdateTCPConnectionConnmark) {
 
 // Verifies that when initial try to update connmark succeeds, the UDP
 // Connection will not be added to the pending list.
-TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkSucceed) {
+TEST_F(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkSucceed) {
   MockConntrackMonitor conntrack_monitor;
   MockProcessRunner runner;
   ConnmarkUpdater updater_(&conntrack_monitor, &runner);
@@ -123,7 +133,7 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkSucceed) {
 // Verifies that when initial try to update connmark fails, the UDP connection
 // will be added to the pending list, and when trying to add the same UDP
 // connection, it will only be added once.
-TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
+TEST_F(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
   MockConntrackMonitor conntrack_monitor;
   MockProcessRunner runner;
   ConnmarkUpdater updater_(&conntrack_monitor, &runner);
@@ -164,7 +174,7 @@ TEST(ConnmarkUpdaterTest, UpdateUDPConnectionConnmarkFail) {
 // conntrack event that matches any entry in the pending list, and the pending
 // UDP connection entry will be deleted from the pending list after retrying
 // updating regardless of the result.
-TEST(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
+TEST_F(ConnmarkUpdaterTest, HandleConntrackMonitorEvent) {
   MockConntrackMonitor conntrack_monitor;
   MockProcessRunner runner;
   ConnmarkUpdater updater_(&conntrack_monitor, &runner);

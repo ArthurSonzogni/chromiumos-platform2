@@ -12,6 +12,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
+#include <base/test/task_environment.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/ipv6_address.h>
 #include <chromeos/net-base/mac_address.h>
@@ -81,6 +82,11 @@ class DownstreamNetworkServiceTest : public testing::Test {
                                 shill_client_.get(),
                                 &ipv6_svc_,
                                 &counters_svc_) {}
+
+  // Note that this needs to be initialized at first, since the ctors of other
+  // members may rely on it (e.g., FileDescriptorWatcher).
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   NiceMock<MetricsLibraryMock> metrics_;
   FakeProcessRunner process_runner_;

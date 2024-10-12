@@ -14,6 +14,8 @@
 namespace net_base {
 namespace {
 
+using ::testing::WithoutArgs;
+
 base::ScopedFD CreateFakeSocketFd() {
   // Create a real file descriptor for MockSocket.
   int sv[2];
@@ -33,7 +35,15 @@ MockSocket::MockSocket(base::ScopedFD fd, int type)
     : Socket(std::move(fd), type) {}
 MockSocket::~MockSocket() = default;
 
-MockSocketFactory::MockSocketFactory() = default;
+MockSocketFactory::MockSocketFactory() {
+  ON_CALL(*this, Create).WillByDefault(WithoutArgs([]() {
+    return std::make_unique<MockSocket>();
+  }));
+  ON_CALL(*this, CreateNetlink).WillByDefault(WithoutArgs([]() {
+    return std::make_unique<MockSocket>();
+  }));
+}
+
 MockSocketFactory::~MockSocketFactory() = default;
 
 }  // namespace net_base
