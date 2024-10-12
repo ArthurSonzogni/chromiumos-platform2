@@ -170,7 +170,6 @@ static_library("libpatchpanel") {
     "qos_service.cc",
     "routing_service.cc",
     "rtnl_client.cc",
-    "scoped_ns.cc",
     "shill_client.cc",
     "socket_daemon.cc",
     "socket_service_adaptor.cc",

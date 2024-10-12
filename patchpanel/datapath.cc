@@ -40,7 +40,6 @@
 #include "patchpanel/iptables.h"
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
-#include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
 namespace {
@@ -569,7 +568,7 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
 
   // Configure the remote veth in namespace |netns_name|.
   {
-    auto ns = ScopedNS::EnterNetworkNS(netns_name);
+    auto ns = System::EnterNetworkNS(netns_name);
     if (!ns && netns_pid != kTestPID) {
       LOG(ERROR)
           << "Cannot create virtual link -- invalid container namespace?";
@@ -702,7 +701,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   {
-    auto ns = ScopedNS::EnterNetworkNS(nsinfo.netns_name);
+    auto ns = System::EnterNetworkNS(nsinfo.netns_name);
     if (!ns && nsinfo.pid != kTestPID) {
       LOG(ERROR) << "Invalid namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);

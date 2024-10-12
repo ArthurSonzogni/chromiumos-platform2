@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -60,6 +61,13 @@ class System {
     // Used for modifying "net.ipv4.ip_default_ttl", this is a global setting
     // and does not require an interface argument.
     kIPv4DefaultTTL,
+  };
+
+  // Returned by the Enter*NS() functions in this class. Go back to the original
+  // namespace when destroyed.
+  class ScopedNS {
+   public:
+    virtual ~ScopedNS() = 0;
   };
 
   System() = default;
@@ -114,6 +122,13 @@ class System {
 
   // Returns if the eBPF is enabled on the system.
   virtual bool IsEbpfEnabled() const;
+
+  // Records the current mount (network) namespace and enters another namespace
+  // identified by the input argument. Will go back to the current namespace if
+  // the returned object goes out of scope. Returns nullptr on failure.
+  static std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid);
+  static std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid);
+  static std::unique_ptr<ScopedNS> EnterNetworkNS(std::string_view netns_name);
 };
 
 }  // namespace patchpanel

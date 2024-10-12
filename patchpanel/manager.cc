@@ -31,7 +31,6 @@
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/qos_service.h"
 #include "patchpanel/routing_service.h"
-#include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
 namespace {
@@ -311,7 +310,7 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
 }
 
 void Manager::RestartIPv6(std::string_view netns_name) {
-  auto ns = ScopedNS::EnterNetworkNS(netns_name);
+  auto ns = System::EnterNetworkNS(netns_name);
   if (!ns) {
     LOG(ERROR) << "Invalid namespace name " << netns_name;
     return;
@@ -726,7 +725,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
   if (pid != ConnectedNamespace::kNewNetnsPid) {
-    auto ns = ScopedNS::EnterNetworkNS(pid);
+    auto ns = System::EnterNetworkNS(pid);
     if (!ns) {
       LOG(ERROR) << "Invalid namespace pid " << pid;
       return response;

@@ -11,10 +11,14 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <memory>
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
@@ -53,7 +57,58 @@ constexpr char kSysNetIPv6HopLimitPath[] =
 constexpr char kSysNetIPv4DefaultTTL[] = "/proc/sys/net/ipv4/ip_default_ttl";
 
 constexpr char kTunDev[] = "/dev/net/tun";
+
+class ScopedNSImpl : public System::ScopedNS {
+ public:
+  ScopedNSImpl(int nstype,
+               const std::string& current_ns_path,
+               const std::string& target_ns_path);
+  ~ScopedNSImpl() override;
+
+  ScopedNSImpl(const ScopedNSImpl&) = delete;
+  ScopedNSImpl& operator=(const ScopedNSImpl&) = delete;
+
+  bool valid() const { return valid_; }
+
+ private:
+  int nstype_;
+  bool valid_;
+  base::ScopedFD ns_fd_;
+  base::ScopedFD self_fd_;
+};
+
+ScopedNSImpl::ScopedNSImpl(int nstype,
+                           const std::string& current_ns_path,
+                           const std::string& target_ns_path)
+    : nstype_(nstype), valid_(false) {
+  ns_fd_.reset(open(target_ns_path.c_str(), O_RDONLY | O_CLOEXEC));
+  if (!ns_fd_.is_valid()) {
+    PLOG(ERROR) << "Could not open namespace " << target_ns_path;
+    return;
+  }
+  self_fd_.reset(open(current_ns_path.c_str(), O_RDONLY | O_CLOEXEC));
+  if (!self_fd_.is_valid()) {
+    PLOG(ERROR) << "Could not open host namespace " << current_ns_path;
+    return;
+  }
+  if (setns(ns_fd_.get(), nstype_) != 0) {
+    PLOG(ERROR) << "Could not enter namespace " << target_ns_path;
+    return;
+  }
+  valid_ = true;
+}
+
+ScopedNSImpl::~ScopedNSImpl() {
+  if (valid_) {
+    if (setns(self_fd_.get(), nstype_) != 0) {
+      PLOG(FATAL) << "Could not re-enter host namespace type " << nstype_;
+    }
+  }
+}
+
 }  // namespace
+
+System::ScopedNS::~ScopedNS() = default;
 
 int System::Ioctl(int fd, ioctl_req_t request, const char* argp) {
   return ioctl(fd, request, argp);
@@ -216,6 +271,34 @@ bool System::WriteConfigFile(base::FilePath path, std::string_view contents) {
 
 bool System::IsEbpfEnabled() const {
   return base::PathExists(base::FilePath(kBPFPath));
+}
+
+std::unique_ptr<System::ScopedNS> System::EnterMountNS(pid_t pid) {
+  int nstype = CLONE_NEWNS;
+  const std::string current_path = "/proc/self/ns/mnt";
+  const std::string target_path = "/proc/" + std::to_string(pid) + "/ns/mnt";
+  auto ns =
+      base::WrapUnique(new ScopedNSImpl(nstype, current_path, target_path));
+  return ns->valid() ? std::move(ns) : nullptr;
+}
+
+std::unique_ptr<System::ScopedNS> System::EnterNetworkNS(pid_t pid) {
+  int nstype = CLONE_NEWNET;
+  const std::string current_path = "/proc/self/ns/net";
+  const std::string target_path = "/proc/" + std::to_string(pid) + "/ns/net";
+  auto ns =
+      base::WrapUnique(new ScopedNSImpl(nstype, current_path, target_path));
+  return ns->valid() ? std::move(ns) : nullptr;
+}
+
+std::unique_ptr<System::ScopedNS> System::EnterNetworkNS(
+    std::string_view netns_name) {
+  int nstype = CLONE_NEWNET;
+  const std::string current_path = "/proc/self/ns/net";
+  const std::string target_path = base::StrCat({"/run/netns/", netns_name});
+  auto ns =
+      base::WrapUnique(new ScopedNSImpl(nstype, current_path, target_path));
+  return ns->valid() ? std::move(ns) : nullptr;
 }
 
 }  // namespace patchpanel

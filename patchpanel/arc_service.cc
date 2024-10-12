@@ -33,8 +33,8 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/proto_utils.h"
-#include "patchpanel/scoped_ns.h"
 #include "patchpanel/shill_client.h"
+#include "patchpanel/system.h"
 #include "patchpanel/vm_concierge_client.h"
 
 namespace patchpanel {
@@ -77,7 +77,7 @@ bool IsAdbAllowed(std::optional<net_base::Technology> technology) {
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
 bool SetSysfsOwnerToAndroidRoot(pid_t pid, std::string_view path) {
-  auto ns = ScopedNS::EnterMountNS(pid);
+  auto ns = System::EnterMountNS(pid);
   if (!ns) {
     LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
     return false;
