@@ -41,6 +41,10 @@ class NoopSystem : public System {
     return 0;
   }
 
+  int Chown(const char* pathname, uid_t owner, gid_t group) override {
+    return 0;
+  }
+
   std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid) override {
     return std::make_unique<NoopScopedNS>();
   }

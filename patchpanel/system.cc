@@ -138,6 +138,10 @@ pid_t System::WaitPid(pid_t pid, int* wstatus, int options) {
   return waitpid(pid, wstatus, options);
 }
 
+int System::Chown(const char* pathname, uid_t owner, gid_t group) {
+  return chown(pathname, owner, group);
+}
+
 base::ScopedFD System::OpenTunDev() {
   return base::ScopedFD(open(kTunDev, O_RDWR | O_NONBLOCK));
 }

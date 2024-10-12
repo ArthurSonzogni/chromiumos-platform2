@@ -86,7 +86,8 @@ bool SetSysfsOwnerToAndroidRoot(System& system,
   }
 
   const std::string sysfs_path = base::StrCat({"/sys/class/", path});
-  if (chown(sysfs_path.c_str(), kAndroidRootUid, kAndroidRootUid) == -1) {
+  if (system.Chown(sysfs_path.c_str(), kAndroidRootUid, kAndroidRootUid) ==
+      -1) {
     PLOG(ERROR) << "Failed to change ownership of " + sysfs_path;
     return false;
   }

@@ -99,6 +99,8 @@ class System {
 
   virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
+  virtual int Chown(const char* pathname, uid_t owner, gid_t group);
+
   // Simple wrappers around if_nametoindex which returns a signed int instead
   // of an unsigned int to avoid static casts.
   virtual int IfNametoindex(const char* ifname);
