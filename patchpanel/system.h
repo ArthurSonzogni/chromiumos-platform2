@@ -126,9 +126,9 @@ class System {
   // Records the current mount (network) namespace and enters another namespace
   // identified by the input argument. Will go back to the current namespace if
   // the returned object goes out of scope. Returns nullptr on failure.
-  static std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid);
-  static std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid);
-  static std::unique_ptr<ScopedNS> EnterNetworkNS(std::string_view netns_name);
+  virtual std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid);
+  virtual std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid);
+  virtual std::unique_ptr<ScopedNS> EnterNetworkNS(std::string_view netns_name);
 };
 
 }  // namespace patchpanel

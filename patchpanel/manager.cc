@@ -102,6 +102,7 @@ Manager::Manager(const base::FilePath& cmd_path,
                &addr_mgr_,
                this,
                metrics_,
+               system_,
                dbus_client_notifier_),
       cros_svc_(bus, &addr_mgr_, &datapath_, this, dbus_client_notifier_),
       network_monitor_svc_(base::BindRepeating(
@@ -310,7 +311,7 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
 }
 
 void Manager::RestartIPv6(std::string_view netns_name) {
-  auto ns = System::EnterNetworkNS(netns_name);
+  auto ns = system_->EnterNetworkNS(netns_name);
   if (!ns) {
     LOG(ERROR) << "Invalid namespace name " << netns_name;
     return;
@@ -725,7 +726,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
   if (pid != ConnectedNamespace::kNewNetnsPid) {
-    auto ns = System::EnterNetworkNS(pid);
+    auto ns = system_->EnterNetworkNS(pid);
     if (!ns) {
       LOG(ERROR) << "Invalid namespace pid " << pid;
       return response;

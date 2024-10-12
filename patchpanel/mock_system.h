@@ -19,11 +19,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "patchpanel/noop_system.h"
 #include "patchpanel/system.h"
 
 namespace patchpanel {
 
-class MockSystem : public System {
+class MockSystem : public NoopSystem {
  public:
   MockSystem();
   ~MockSystem() override;

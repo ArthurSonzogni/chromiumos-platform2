@@ -118,7 +118,8 @@ class ArcServiceTest : public testing::Test,
 
   std::unique_ptr<ArcService> NewService(ArcService::ArcType arc_type) {
     return std::make_unique<ArcService>(arc_type, &datapath_, &addr_mgr_,
-                                        &forwarding_service_, &metrics_, this);
+                                        &forwarding_service_, &metrics_,
+                                        &system_, this);
   }
 
   void ArcDeviceEventHandler(const ShillClient::Device& shill_device,

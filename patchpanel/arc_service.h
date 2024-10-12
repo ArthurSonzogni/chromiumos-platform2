@@ -215,6 +215,7 @@ class ArcService {
              AddressManager* addr_mgr,
              ForwardingService* forwarding_service,
              MetricsLibraryInterface* metrics,
+             System* system,
              DbusClientNotifier* dbus_client_notifier);
   ArcService(const ArcService&) = delete;
   ArcService& operator=(const ArcService&) = delete;
@@ -315,6 +316,8 @@ class ArcService {
   ForwardingService* forwarding_service_;
   // UMA metrics client, owned by Manager.
   MetricsLibraryInterface* metrics_;
+  // Wrapper for calls affecting the environment, owned by Manager.
+  System* system_;
   // Interface for notifying DBus client about ARC virtual device creation and
   // removal events.
   DbusClientNotifier* dbus_client_notifier_;

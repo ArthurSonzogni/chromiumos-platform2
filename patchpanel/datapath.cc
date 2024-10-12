@@ -49,8 +49,6 @@ using net_base::IPv4CIDR;
 using net_base::IPv6Address;
 using net_base::IPv6CIDR;
 
-// TODO(hugobenichi) Consolidate this constant definition in a single place.
-constexpr pid_t kTestPID = -2;
 constexpr char kDefaultIfname[] = "vmtap%d";
 constexpr char kLoopbackIfname[] = "lo";
 constexpr net_base::IPv4Address kArcAddr(100, 115, 92, 2);
@@ -568,8 +566,8 @@ bool Datapath::ConnectVethPair(pid_t netns_pid,
 
   // Configure the remote veth in namespace |netns_name|.
   {
-    auto ns = System::EnterNetworkNS(netns_name);
-    if (!ns && netns_pid != kTestPID) {
+    auto ns = system_->EnterNetworkNS(netns_name);
+    if (!ns) {
       LOG(ERROR)
           << "Cannot create virtual link -- invalid container namespace?";
       return false;
@@ -701,8 +699,8 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
   }
 
   {
-    auto ns = System::EnterNetworkNS(nsinfo.netns_name);
-    if (!ns && nsinfo.pid != kTestPID) {
+    auto ns = system_->EnterNetworkNS(nsinfo.netns_name);
+    if (!ns) {
       LOG(ERROR) << "Invalid namespace pid " << nsinfo.pid;
       RemoveInterface(nsinfo.host_ifname);
       NetnsDeleteName(nsinfo.netns_name);

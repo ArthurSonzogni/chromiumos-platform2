@@ -52,7 +52,6 @@ using testing::UnorderedElementsAreArray;
 namespace patchpanel {
 namespace {
 
-// TODO(hugobenichi) Centralize this constant definition
 constexpr pid_t kTestPID = -2;
 
 class MockFirewall : public Firewall {

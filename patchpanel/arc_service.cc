@@ -76,8 +76,10 @@ bool IsAdbAllowed(std::optional<net_base::Technology> technology) {
 
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
-bool SetSysfsOwnerToAndroidRoot(pid_t pid, std::string_view path) {
-  auto ns = System::EnterMountNS(pid);
+bool SetSysfsOwnerToAndroidRoot(System& system,
+                                pid_t pid,
+                                std::string_view path) {
+  auto ns = system.EnterMountNS(pid);
   if (!ns) {
     LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
     return false;
@@ -92,7 +94,7 @@ bool SetSysfsOwnerToAndroidRoot(pid_t pid, std::string_view path) {
   return true;
 }
 
-bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
+bool OneTimeContainerSetup(Datapath& datapath, System& system, pid_t pid) {
   static bool done = false;
   if (done) {
     return true;
@@ -158,7 +160,7 @@ bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
   }
 
   // This is only needed for CTS (b/27932574).
-  if (!SetSysfsOwnerToAndroidRoot(pid, "xt_idletimer")) {
+  if (!SetSysfsOwnerToAndroidRoot(system, pid, "xt_idletimer")) {
     success = false;
   }
 
@@ -272,12 +274,14 @@ ArcService::ArcService(ArcType arc_type,
                        AddressManager* addr_mgr,
                        ForwardingService* forwarding_service,
                        MetricsLibraryInterface* metrics,
+                       System* system,
                        DbusClientNotifier* dbus_client_notifier)
     : arc_type_(arc_type),
       datapath_(datapath),
       addr_mgr_(addr_mgr),
       forwarding_service_(forwarding_service),
       metrics_(metrics),
+      system_(system),
       dbus_client_notifier_(dbus_client_notifier),
       id_(kInvalidId) {
   DCHECK(datapath_);
@@ -380,7 +384,7 @@ bool ArcService::StartInternal(
         LOG(ERROR) << "Invalid ARC container pid " << pid;
         return false;
       }
-      if (!OneTimeContainerSetup(*datapath_, pid)) {
+      if (!OneTimeContainerSetup(*datapath_, *system_, pid)) {
         RecordEvent(metrics_, ArcServiceUmaEvent::kOneTimeContainerSetupError);
         LOG(ERROR) << "One time container setup failed";
       }
@@ -750,7 +754,7 @@ void ArcService::StartArcDeviceDatapath(
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
     if (!SetSysfsOwnerToAndroidRoot(
-            pid,
+            *system_, pid,
             base::StrCat({"net/", arc_device.guest_device_ifname(), "/mtu"}))) {
       RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
     }

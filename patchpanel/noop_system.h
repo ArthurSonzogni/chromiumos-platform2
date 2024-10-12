@@ -5,6 +5,8 @@
 #ifndef PATCHPANEL_NOOP_SYSTEM_H_
 #define PATCHPANEL_NOOP_SYSTEM_H_
 
+#include <memory>
+
 #include "patchpanel/system.h"
 
 namespace patchpanel {
@@ -12,6 +14,8 @@ namespace patchpanel {
 // Stub the System class that all the methods do nothing and always succeeds.
 class NoopSystem : public System {
  public:
+  class NoopScopedNS : public ScopedNS {};
+
   NoopSystem() = default;
   NoopSystem(const NoopSystem&) = delete;
   NoopSystem& operator=(const NoopSystem&) = delete;
@@ -35,6 +39,17 @@ class NoopSystem : public System {
   }
   int Ioctl(int fd, ioctl_req_t request, struct in6_rtmsg* route) override {
     return 0;
+  }
+
+  std::unique_ptr<ScopedNS> EnterMountNS(pid_t pid) override {
+    return std::make_unique<NoopScopedNS>();
+  }
+  std::unique_ptr<ScopedNS> EnterNetworkNS(pid_t pid) override {
+    return std::make_unique<NoopScopedNS>();
+  }
+  std::unique_ptr<ScopedNS> EnterNetworkNS(
+      std::string_view netns_name) override {
+    return std::make_unique<NoopScopedNS>();
   }
 };
 
