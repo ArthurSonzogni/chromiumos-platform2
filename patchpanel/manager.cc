@@ -64,6 +64,7 @@ GetMulticastControlMessageDirection(MulticastForwarder::Direction dir) {
 }
 
 Manager::Manager(const base::FilePath& cmd_path,
+                 const scoped_refptr<dbus::Bus>& bus,
                  System* system,
                  net_base::ProcessManager* process_manager,
                  MetricsLibraryInterface* metrics,
@@ -103,7 +104,7 @@ Manager::Manager(const base::FilePath& cmd_path,
                this,
                metrics_,
                dbus_client_notifier_),
-      cros_svc_(&addr_mgr_, &datapath_, this, dbus_client_notifier_),
+      cros_svc_(bus, &addr_mgr_, &datapath_, this, dbus_client_notifier_),
       network_monitor_svc_(base::BindRepeating(
           &Manager::OnNeighborReachabilityEvent, weak_factory_.GetWeakPtr())),
       clat_svc_(&datapath_, process_manager, system) {

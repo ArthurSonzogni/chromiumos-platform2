@@ -120,7 +120,8 @@ class CrostiniService {
 
   // All pointers are required and must not be null, and are owned by the
   // caller.
-  CrostiniService(AddressManager* addr_mgr,
+  CrostiniService(const scoped_refptr<dbus::Bus>& bus,
+                  AddressManager* addr_mgr,
                   Datapath* datapath,
                   ForwardingService* forwarding_service,
                   DbusClientNotifier* dbus_client_notifier);
@@ -166,6 +167,7 @@ class CrostiniService {
   void StartAutoDNAT(const CrostiniDevice* crostini_device);
   void StopAutoDNAT(const CrostiniDevice* crostini_device);
 
+  scoped_refptr<dbus::Bus> bus_;
   // IPv4 prefix and address manager, owned by Manager.
   AddressManager* addr_mgr_;
   // Routing and iptables controller service, owned by Manager.
@@ -183,7 +185,6 @@ class CrostiniService {
   std::optional<ShillClient::Device> default_logical_device_;
   // Mapping of VM IDs to TAP devices
   std::map<uint64_t, std::unique_ptr<CrostiniDevice>> devices_;
-  scoped_refptr<dbus::Bus> bus_;
 
   base::WeakPtrFactory<CrostiniService> weak_factory_{this};
 };

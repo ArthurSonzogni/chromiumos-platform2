@@ -117,11 +117,13 @@ void CrostiniService::CrostiniDevice::ConvertToProto(
   // NetworkDevice does not have a field for the LXD container IPv4 allocation.
 }
 
-CrostiniService::CrostiniService(AddressManager* addr_mgr,
+CrostiniService::CrostiniService(const scoped_refptr<dbus::Bus>& bus,
+                                 AddressManager* addr_mgr,
                                  Datapath* datapath,
                                  ForwardingService* forwarding_service,
                                  DbusClientNotifier* dbus_client_notifier)
-    : addr_mgr_(addr_mgr),
+    : bus_(bus),
+      addr_mgr_(addr_mgr),
       datapath_(datapath),
       forwarding_service_(forwarding_service),
       dbus_client_notifier_(dbus_client_notifier),
@@ -129,23 +131,10 @@ CrostiniService::CrostiniService(AddressManager* addr_mgr,
   DCHECK(addr_mgr_);
   DCHECK(datapath_);
   DCHECK(forwarding_service_);
-
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-
-  bus_ = new dbus::Bus(options);
-  if (!bus_->Connect()) {
-    LOG(ERROR) << "Failed to connect to system bus";
-  } else {
-    CheckAdbSideloadingStatus();
-  }
+  CheckAdbSideloadingStatus();
 }
 
-CrostiniService::~CrostiniService() {
-  if (bus_) {
-    bus_->ShutdownAndBlock();
-  }
-}
+CrostiniService::~CrostiniService() = default;
 
 const CrostiniService::CrostiniDevice* CrostiniService::Start(
     uint64_t vm_id, CrostiniService::VMType vm_type, uint32_t subnet_index) {

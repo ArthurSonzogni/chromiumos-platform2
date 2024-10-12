@@ -49,6 +49,7 @@ class Manager : public ForwardingService {
   // The caller should guarantee |system|, |process_manager|, |metrics| and
   // |dbus_client_notifier| variables outlive the created Manager instance.
   Manager(const base::FilePath& cmd_path,
+          const scoped_refptr<dbus::Bus>& bus,
           System* system,
           net_base::ProcessManager* process_manager,
           MetricsLibraryInterface* metrics,

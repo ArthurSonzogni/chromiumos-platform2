@@ -12,6 +12,8 @@
 #include <vector>
 
 #include <chromeos/net-base/ipv4_address.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -50,6 +52,8 @@ class CrostiniServiceTest : public testing::Test,
                             public patchpanel::DbusClientNotifier {
  protected:
   void SetUp() override {
+    ON_CALL(*mock_bus_, GetObjectProxy)
+        .WillByDefault(Return(mock_proxy_.get()));
     datapath_ =
         std::make_unique<NiceMock<MockDatapath>>(&process_runner_, &system_);
     addr_mgr_ = std::make_unique<AddressManager>();
@@ -58,7 +62,8 @@ class CrostiniServiceTest : public testing::Test,
   }
 
   std::unique_ptr<CrostiniService> NewService() {
-    return std::make_unique<CrostiniService>(addr_mgr_.get(), datapath_.get(),
+    return std::make_unique<CrostiniService>(mock_bus_, addr_mgr_.get(),
+                                             datapath_.get(),
                                              forwarding_service_.get(), this);
   }
 
@@ -76,11 +81,22 @@ class CrostiniServiceTest : public testing::Test,
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type) override {}
 
+  // Note that this needs to be initialized at first, since the ctors of other
+  // members may rely on it (e.g., FileDescriptorWatcher).
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
+  scoped_refptr<dbus::MockBus> mock_bus_{
+      new dbus::MockBus{dbus::Bus::Options{}}};
+  scoped_refptr<dbus::MockObjectProxy> mock_proxy_{new dbus::MockObjectProxy(
+      mock_bus_.get(), "interface", dbus::ObjectPath("/path"))};
+
   FakeProcessRunner process_runner_;
   NoopSystem system_;
   std::unique_ptr<AddressManager> addr_mgr_;
   std::unique_ptr<MockDatapath> datapath_;
   std::unique_ptr<MockForwardingService> forwarding_service_;
+
   std::map<std::string, NetworkDeviceChangedSignal::Event> guest_device_events_;
   std::map<std::string, NetworkDevice> network_device_signals_;
 };
