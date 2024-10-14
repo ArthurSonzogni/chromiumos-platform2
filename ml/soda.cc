@@ -4,8 +4,6 @@
 
 #include "ml/soda.h"
 
-#include <malloc.h>
-
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -88,20 +86,13 @@ void SodaLibrary::DeleteExtendedSodaAsync(
 }
 
 void SodaLibrary::ExtendedAddAudio(void* extended_soda_async_handle,
-                                   const std::vector<uint8_t>& audio) {
+                                   const std::vector<uint8_t>& audio) const {
   DCHECK(status_ == Status::kOk);
   // audio.data() returns const unsigned char* which is not quite the
   // same. reinterpret_cast for convenience.
   (*extended_add_audio_)(extended_soda_async_handle,
                          reinterpret_cast<const char*>(audio.data()),
                          audio.size());
-
-  // Regularly tell malloc to return unused heap to the OS. Reduces ongoing RSS.
-  audio_bytes_since_malloc_trim_ += audio.size();
-  if (audio_bytes_since_malloc_trim_ >= kAudioBytesPerMallocTrim) {
-    audio_bytes_since_malloc_trim_ = 0;
-    malloc_trim(0);
-  }
 }
 
 void SodaLibrary::ExtendedSodaStop(void* extended_soda_async_handle) const {

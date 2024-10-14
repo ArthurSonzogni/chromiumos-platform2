@@ -60,7 +60,7 @@ class SodaLibrary {
   void* CreateExtendedSodaAsync(const ExtendedSodaConfig& config) const;
   void DeleteExtendedSodaAsync(void* extended_soda_async_handle) const;
   void ExtendedAddAudio(void* extended_soda_async_handle,
-                        const std::vector<uint8_t>& audio);
+                        const std::vector<uint8_t>& audio) const;
   void ExtendedSodaStop(void* extended_soda_async_handle) const;
   void ExtendedSodaStart(void* extended_soda_async_handle) const;
   void ExtendedSodaMarkDone(void* extended_soda_async_handle) const;
@@ -75,10 +75,6 @@ class SodaLibrary {
 
   std::optional<base::ScopedNativeLibrary> library_;
   Status status_;
-
-  // Tracking for regular calls to malloc_trim.
-  int audio_bytes_since_malloc_trim_ = 0;
-  static constexpr int kAudioBytesPerMallocTrim = 2000000;  // E.g. ~10 seconds.
 
   // These pointers are used to store the "extended" interface function
   // pointers. They have more control about when speech starts/stops etc.
