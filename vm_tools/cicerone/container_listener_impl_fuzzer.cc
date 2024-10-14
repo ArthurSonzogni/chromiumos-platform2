@@ -11,8 +11,8 @@
 #include <base/notreached.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/error.h>
-#include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 #include <gmock/gmock.h>
+#include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 #include <vm_protos/proto_bindings/fuzzer.pb.h>
 
@@ -228,13 +228,6 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kSelectFileRequest:
-        // ContainerListenerImpl::SelectFile() cannot be fuzzed since it blocks
-        // the execution thread and expects a call to cicerone::FileSelected()
-        // to signal the thread to continue.
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kInstallLinuxPackageProgressInfo:
         container_listener->InstallLinuxPackageProgress(
             &context, &action.install_linux_package_progress_info(), &response);
@@ -265,6 +258,86 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kApplyAnsiblePlaybookProgressInfo:
+        container_listener->ApplyAnsiblePlaybookProgress(
+            &context, &action.apply_ansible_playbook_progress_info(),
+            &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kFileWatchTriggeredInfo:
+        container_listener->FileWatchTriggered(
+            &context, &action.file_watch_triggered_info(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kLowDiskSpaceTriggeredInfo:
+        container_listener->LowDiskSpaceTriggered(
+            &context, &action.low_disk_space_triggered_info(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kForwardSecurityKeyMessageRequest:
+        container_listener->ForwardSecurityKeyMessage(
+            &context, &action.forward_security_key_message_request(),
+            &forward_sk_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kSelectFileRequest:
+        // ContainerListenerImpl::SelectFile() cannot be fuzzed since it blocks
+        // the execution thread and expects a call to cicerone::FileSelected()
+        // to signal the thread to continue.
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kReportMetricsRequest:
+        container_listener->ReportMetrics(&context,
+                                          &action.report_metrics_request(),
+                                          &report_metrics_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kInstallShaderCacheRequest:
+        // TODO(b/373195749): fuzz InstallShaderCacheRequest
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kUninstallShaderCacheRequest:
+        // TODO(b/373195749): fuzz UninstallShaderCacheRequest
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kInhibitScreensaverInfo:
+        container_listener->InhibitScreensaver(
+            &context, &action.inhibit_screensaver_info(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kUninhibitScreensaverInfo:
+        container_listener->UninhibitScreensaver(
+            &context, &action.uninhibit_screensaver_info(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kMetricsConsentRequest:
+        crash_listener->CheckMetricsConsent(&context, &response,
+                                            &metrics_response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kSendCrashReportRequest:
+        crash_listener->SendCrashReport(
+            &context, &action.send_crash_report_request(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
+          kSendFailureReportRequest:
+        crash_listener->SendFailureReport(
+            &context, &action.send_failure_report_request(), &response);
+        break;
+
+      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kTremplinStartupInfo:
         tremplin_listener->TremplinReady(
             &context, &action.tremplin_startup_info(), &tremplin_response);
@@ -291,12 +364,6 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kContainerStopProgress:
-        tremplin_listener->UpdateStopStatus(
-            &context, &action.container_stop_progress(), &tremplin_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kContainerExportProgress:
         tremplin_listener->UpdateExportStatus(
             &context, &action.container_export_progress(), &tremplin_response);
@@ -316,34 +383,9 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kApplyAnsiblePlaybookProgressInfo:
-        container_listener->ApplyAnsiblePlaybookProgress(
-            &context, &action.apply_ansible_playbook_progress_info(),
-            &response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
           kUpgradeContainerProgress:
         tremplin_listener->UpgradeContainerStatus(
             &context, &action.upgrade_container_progress(), &tremplin_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kMetricsConsentRequest:
-        crash_listener->CheckMetricsConsent(&context, &response,
-                                            &metrics_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kSendCrashReportRequest:
-        crash_listener->SendCrashReport(
-            &context, &action.send_crash_report_request(), &response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kSendFailureReportRequest:
-        crash_listener->SendFailureReport(
-            &context, &action.send_failure_report_request(), &response);
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
@@ -359,41 +401,9 @@ DEFINE_PROTO_FUZZER(
         break;
 
       case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kFileWatchTriggeredInfo:
-        container_listener->FileWatchTriggered(
-            &context, &action.file_watch_triggered_info(), &response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kLowDiskSpaceTriggeredInfo:
-        container_listener->LowDiskSpaceTriggered(
-            &context, &action.low_disk_space_triggered_info(), &response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kForwardSecurityKeyMessageRequest:
-        container_listener->ForwardSecurityKeyMessage(
-            &context, &action.forward_security_key_message_request(),
-            &forward_sk_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kReportMetricsRequest:
-        container_listener->ReportMetrics(&context,
-                                          &action.report_metrics_request(),
-                                          &report_metrics_response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kInhibitScreensaverInfo:
-        container_listener->InhibitScreensaver(
-            &context, &action.inhibit_screensaver_info(), &response);
-        break;
-
-      case vm_tools::container::ContainerListenerFuzzerSingleAction::
-          kUninhibitScreensaverInfo:
-        container_listener->UninhibitScreensaver(
-            &context, &action.uninhibit_screensaver_info(), &response);
+          kContainerStopProgress:
+        tremplin_listener->UpdateStopStatus(
+            &context, &action.container_stop_progress(), &tremplin_response);
         break;
 
       default:
