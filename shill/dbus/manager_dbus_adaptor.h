@@ -162,9 +162,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   void DisconnectFromP2PGroup(
       DBusMethodResponsePtr<brillo::VariantDictionary> response,
       int32_t shill_id) override;
-  bool SetWiFiInterfacePriority(brillo::ErrorPtr* error,
-                                const std::string& name,
-                                const int32_t priority) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

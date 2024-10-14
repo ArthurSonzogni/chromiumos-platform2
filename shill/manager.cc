@@ -3195,12 +3195,6 @@ KeyValueStores Manager::GetWiFiInterfacePriorities(Error* error) {
   return wifi_provider_->GetWiFiInterfacePriorities(devices_);
 }
 
-void Manager::SetWiFiInterfacePriority(const std::string name,
-                                       const int32_t priority,
-                                       Error* error) {
-  wifi_provider_->SetWiFiInterfacePriority(name, priority, devices_, error);
-}
-
 bool Manager::AddPasspointCredentials(const std::string& profile_rpcid,
                                       const KeyValueStore& properties,
                                       Error* error) {

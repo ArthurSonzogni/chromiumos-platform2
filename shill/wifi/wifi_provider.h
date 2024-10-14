@@ -328,11 +328,6 @@ class WiFiProvider : public ProviderInterface {
   KeyValueStores GetWiFiInterfacePriorities(
       const std::vector<DeviceRefPtr>& devices) const;
 
-  void SetWiFiInterfacePriority(const std::string name,
-                                const int32_t priority,
-                                const std::vector<DeviceRefPtr>& devices,
-                                Error* error);
-
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
