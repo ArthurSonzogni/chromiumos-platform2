@@ -69,6 +69,7 @@ const char kSetHfpMicSrEnabled[] = "SetHfpMicSrEnabled";
 const char kIsHfpMicSrSupported[] = "IsHfpMicSrSupported";
 const char kGetNumberOfArcStreams[] = "GetNumberOfArcStreams";
 const char kSetSpatialAudio[] = "SetSpatialAudio";
+const char kIsSpatialAudioSupported[] = "IsSpatialAudioSupported";
 
 // Names of properties returned by GetNodes() and GetNodeInfos()
 const char kIsInputProperty[] = "IsInput";
