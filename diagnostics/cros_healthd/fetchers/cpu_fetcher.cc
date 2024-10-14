@@ -24,6 +24,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
@@ -64,15 +66,6 @@ constexpr char kMediatekFamilyName[] = "MediaTek";
 constexpr char kRelativeStatFileRegex[] =
     R"(cpu(\d+)\s+(\d+) (\d+) (\d+) (\d+))";
 
-// Directory containing all CPU temperature subdirectories.
-const char kHwmonDir[] = "sys/class/hwmon/";
-// Subdirectory of sys/class/hwmon/hwmon*/ which sometimes contains the CPU
-// temperature files.
-const char kDeviceDir[] = "device";
-// Matches all CPU temperature subdirectories of |kHwmonDir|.
-const char kHwmonDirectoryPattern[] = "hwmon*";
-// Matches all files containing CPU temperatures.
-const char kCPUTempFilePattern[] = "temp*_input";
 // String "aeskl" indicates keylocker support.
 const char kKeylockerAeskl[] = "aeskl";
 
@@ -107,54 +100,40 @@ struct ParsedStatContents {
   uint64_t idle_time_user_hz;
 };
 
-// Read system temperature sensor data and appends it to |out_contents|. Returns
-// |true| iff there was at least one sensor value in given |sensor_dir|.
-bool ReadTemperatureSensorInfo(
-    const base::FilePath& sensor_dir,
-    std::vector<mojom::CpuTemperatureChannelPtr>* out_contents) {
-  bool has_data = false;
+// Read thermal zone data and appends it to |out_contents|.
+std::optional<mojom::CpuTemperatureChannelPtr> ReadThermalZoneInfo(
+    const std::unique_ptr<brillo::UdevDevice>& udevice) {
+  auto channel = mojom::CpuTemperatureChannel::New();
 
-  base::FileEnumerator enumerator(
-      sensor_dir, false, base::FileEnumerator::FILES, kCPUTempFilePattern);
-  for (base::FilePath temperature_path = enumerator.Next();
-       !temperature_path.empty(); temperature_path = enumerator.Next()) {
-    // Get appropriate temp*_label file.
-    std::string label_path = temperature_path.MaybeAsASCII();
-    if (label_path.empty()) {
-      LOG(WARNING) << "Unable to parse a path to temp*_input file as ASCII";
-      continue;
-    }
-    base::ReplaceSubstringsAfterOffset(&label_path, 0, "input", "label");
-    const base::FilePath& name_path = sensor_dir.Append("name");
-
-    // Get the label describing this temperature. Use temp*_label
-    // if present, fall back on name file.
-    std::string label;
-    if (base::PathExists(base::FilePath(label_path))) {
-      ReadAndTrimString(base::FilePath(label_path), &label);
-    } else if (base::PathExists(base::FilePath(name_path))) {
-      ReadAndTrimString(name_path, &label);
-    }
-
-    // Read temperature in millidegree Celsius.
-    int32_t temperature = 0;
-    if (ReadInteger(temperature_path, base::StringToInt, &temperature)) {
-      has_data = true;
-      // Convert from millidegree Celsius to Celsius.
-      temperature /= 1000;
-
-      auto channel = mojom::CpuTemperatureChannel::New();
-      if (!label.empty()) {
-        channel->label = label;
-      }
-      channel->temperature_celsius = temperature;
-      out_contents->push_back(std::move(channel));
-    } else {
-      LOG(WARNING) << "Unable to read CPU temp from "
-                   << temperature_path.MaybeAsASCII();
-    }
+  const char* device_type =
+      udevice->GetSysAttributeValue(kThermalAttributeType);
+  std::optional<std::string> device_type_str;
+  if (device_type) {
+    device_type_str = std::string(device_type);
+  } else {
+    LOG(WARNING) << "Unable to get the device's type from "
+                 << udevice->GetSysPath();
+    device_type_str = std::nullopt;
   }
-  return has_data;
+
+  const char* temperature =
+      udevice->GetSysAttributeValue(kThermalAttributeTemperature);
+  int32_t temperature_int = 0;
+  if (temperature) {
+    if (base::StringToInt(temperature, &temperature_int)) {
+      temperature_int /= 1000;
+      channel->label = device_type_str;
+      channel->temperature_celsius = temperature_int;
+      return channel;
+    } else {
+      LOG(WARNING) << "Unable to parse " << temperature << " as int";
+      return std::nullopt;
+    }
+  } else {
+    LOG(WARNING) << "Unable to get device's temp from "
+                 << udevice->GetSysPath();
+    return std::nullopt;
+  }
 }
 
 // Gets the time spent in each C-state for the logical processor whose ID is
@@ -579,24 +558,70 @@ bool State::FetchKeylockerInfo(const base::FilePath& root_dir) {
 
 // Fetches and returns information about the device's CPU temperature channels.
 bool State::FetchCpuTemperatures(const base::FilePath& root_dir) {
-  std::vector<mojom::CpuTemperatureChannelPtr> temps;
-  // Get directories |/sys/class/hwmon/hwmon*|
-  base::FileEnumerator hwmon_enumerator(root_dir.AppendASCII(kHwmonDir), false,
-                                        base::FileEnumerator::DIRECTORIES,
-                                        kHwmonDirectoryPattern);
-  for (base::FilePath hwmon_path = hwmon_enumerator.Next(); !hwmon_path.empty();
-       hwmon_path = hwmon_enumerator.Next()) {
-    // First try to get |temp*_input| files from |hwmon*/device/|. If the values
-    // cannot be read, fallback to |hwmon*/| instead.
-    const base::FilePath& device_path = hwmon_path.Append(kDeviceDir);
-    if (base::PathExists(device_path) &&
-        ReadTemperatureSensorInfo(device_path, &temps)) {
+  std::vector<mojom::CpuTemperatureChannelPtr> all_temps, cpu_temps;
+  // Gets directories |/sys/class/thermal/thermal_zone*|
+  base::FileEnumerator thermal_zone_enumerator(
+      root_dir.AppendASCII(kThermalDir), false,
+      base::FileEnumerator::DIRECTORIES, kThermalPattern);
+
+  for (base::FilePath thermal_zone_path = thermal_zone_enumerator.Next();
+       !thermal_zone_path.empty();
+       thermal_zone_path = thermal_zone_enumerator.Next()) {
+    auto udevice = context_->udev()->CreateDeviceFromSysPath(
+        thermal_zone_path.value().c_str());
+    if (!udevice) {
+      LOG(WARNING) << "Unable to get the device from "
+                   << thermal_zone_path.MaybeAsASCII();
       continue;
     }
-    ReadTemperatureSensorInfo(hwmon_path, &temps);
+    std::optional<mojom::CpuTemperatureChannelPtr> temp_channel =
+        ReadThermalZoneInfo(udevice);
+    if (temp_channel.has_value()) {
+      all_temps.push_back(std::move(temp_channel.value()));
+    } else {
+      LOG(WARNING) << "Unable to parse thermal zone "
+                   << thermal_zone_path.MaybeAsASCII();
+    }
+  }
+  // Needs architecture info to determine the corresponding pattern of the
+  // device type.
+  mojom::CpuArchitectureEnum cpu_architecture;
+  if (FetchArchitecture()) {
+    cpu_architecture = cpu_info_->architecture;
+  } else {
+    cpu_architecture = mojom::CpuArchitectureEnum::kUnknown;
   }
 
-  cpu_info_->temperature_channels = std::move(temps);
+  for (auto& temp_channel : all_temps) {
+    switch (cpu_architecture) {
+      case mojom::CpuArchitectureEnum::kX86_64:
+        // Check if device type is `x86_pkg_temp`.
+        if (temp_channel->label.has_value() &&
+            temp_channel->label.value() == kThermalDeviceTypeX86) {
+          cpu_temps.push_back(std::move(temp_channel));
+        }
+        break;
+      case mojom::CpuArchitectureEnum::kAArch64:
+      case mojom::CpuArchitectureEnum::kArmv7l:
+        // Check if device type is `cpu*`.
+        if (temp_channel->label.has_value() &&
+            base::StartsWith(temp_channel->label.value(),
+                             kThermalDeviceTypeArm)) {
+          cpu_temps.push_back(std::move(temp_channel));
+        }
+        break;
+      case mojom::CpuArchitectureEnum::kUnknown:
+        cpu_temps.push_back(std::move(temp_channel));
+        break;
+    }
+  }
+
+  // Fall back to return all thermal zones info when there is no matching device
+  // type.
+  if (cpu_temps.empty()) {
+    cpu_temps = std::move(all_temps);
+  }
+  cpu_info_->temperature_channels = std::move(cpu_temps);
 
   return true;
 }

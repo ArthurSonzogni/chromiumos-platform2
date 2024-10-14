@@ -49,6 +49,20 @@ inline constexpr char kRelativeCryptoFilePath[] = "proc/crypto";
 // File to see if KVM exists.
 inline constexpr char kRelativeKvmFilePath[] = "dev/kvm";
 
+// Directory containing thermal zone info.
+inline constexpr char kThermalDir[] = "sys/class/thermal/";
+
+// Matches all thermal zones in |kRelativeThermalDir|.
+const char kThermalPattern[] = "thermal_zone*";
+
+// The attribute keys for temperature of udev devices
+constexpr char kThermalAttributeTemperature[] = "temp";
+constexpr char kThermalAttributeType[] = "type";
+
+// // The pattern of the CPU's device type
+constexpr char kThermalDeviceTypeX86[] = "x86_pkg_temp";
+constexpr char kThermalDeviceTypeArm[] = "cpu";
+
 // The different bits that indicates what kind of CPU virtualization is enabled
 // and locked.
 inline constexpr uint64_t kIA32FeatureLocked = 1llu << 0;

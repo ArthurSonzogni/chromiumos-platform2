@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <tuple>
@@ -21,6 +22,8 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
+#include <brillo/udev/mock_udev.h>
+#include <brillo/udev/mock_udev_device.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -116,20 +119,55 @@ constexpr uint64_t kThirdFakeUserTime = 0 + 64823;
 constexpr uint64_t kThirdFakeSystemTime = 293802;
 constexpr uint32_t kThirdFakeIdleTime = 871239;
 
-constexpr char kFirstFakeCpuTemperatureDir[] = "sys/class/hwmon/hwmon1/device";
-constexpr char kFirstFakeCpuTemperatureInputFile[] = "temp9_input";
-constexpr char kFirstFakeCpuTemperatureLabelFile[] = "name";
+constexpr char kFirstFakeCpuTemperatureDir[] =
+    "sys/class/thermal/thermal_zone0";
 constexpr int32_t kFirstFakeCpuTemperature = -186;
 constexpr int32_t kFirstFakeCpuTemperatureMilliDegrees =
     kFirstFakeCpuTemperature * 1000;
-constexpr char kFirstFakeCpuTemperatureLabel[] = "First Temperature Label";
-constexpr char kSecondFakeCpuTemperatureDir[] = "sys/class/hwmon/hwmon2";
-constexpr char kSecondFakeCpuTemperatureInputFile[] = "temp1_input";
-constexpr char kSecondFakeCpuTemperatureLabelFile[] = "temp1_label";
+constexpr char kFirstFakeCpuTemperatureLabel[] = "x86_pkg_temp";
+constexpr char kSecondFakeCpuTemperatureDir[] =
+    "sys/class/thermal/thermal_zone1";
 constexpr int32_t kSecondFakeCpuTemperature = 99;
 constexpr int32_t kSecondFakeCpuTemperatureMilliDegrees =
     kSecondFakeCpuTemperature * 1000;
-constexpr char kSecondFakeCpuTemperatureLabel[] = "Second Temperature Label";
+constexpr char kSecondFakeCpuTemperatureLabel[] = "x86_pkg_temp";
+constexpr char kThirdFakeCpuTemperatureDir[] =
+    "sys/class/thermal/thermal_zone2";
+constexpr int32_t kThirdFakeCpuTemperature = 25;
+constexpr int32_t kThirdFakeCpuTemperatureMilliDegrees =
+    kThirdFakeCpuTemperature * 1000;
+constexpr char kThirdFakeCpuTemperatureLabel[] = "cpu0-thermal";
+
+class FakeUdevDevice : public brillo::MockUdevDevice {
+ public:
+  FakeUdevDevice(std::optional<std::string> type,
+                 std::string temperature,
+                 base::FilePath syspath)
+      : type_(type), temperature_(temperature), syspath_(syspath) {
+    EXPECT_CALL(*this, GetSysAttributeValue)
+        .WillRepeatedly([this](const char* key) {
+          if (std::string(key) == kThermalAttributeType) {
+            if (type_.has_value()) {
+              return type_.value().c_str();
+            }
+            return (const char*)nullptr;
+          } else if (std::string(key) == kThermalAttributeTemperature) {
+            return temperature_.c_str();
+          } else {
+            NOTREACHED_NORETURN() << "Unknown key: " << key;
+          }
+        });
+    ON_CALL(*this, GetSysPath).WillByDefault([this]() {
+      return syspath_.value().c_str();
+    });
+  }
+  ~FakeUdevDevice() = default;
+
+ private:
+  std::optional<std::string> type_;
+  std::string temperature_;
+  base::FilePath syspath_;
+};
 
 constexpr char kFakeCryptoContents[] =
     "name\t: crypto_name\n"
@@ -205,8 +243,8 @@ void VerifyLogicalCpu(
 }
 
 // Verifies that the two received CPU temperature channels have the correct
-// values.
-void VerifyCpuTemps(
+// values for X86.
+void VerifyCpuTempsX86(
     const std::vector<mojom::CpuTemperatureChannelPtr>& cpu_temps) {
   ASSERT_EQ(cpu_temps.size(), 2);
 
@@ -221,6 +259,22 @@ void VerifyCpuTemps(
       UnorderedElementsAreArray(
           {MatchesCpuTemperatureChannelPtr(std::cref(first_expected_temp)),
            MatchesCpuTemperatureChannelPtr(std::cref(second_expected_temp))}));
+}
+
+// Verifies that the one received CPU temperature channel have the correct
+// values for Arm.
+void VerifyCpuTempsArm(
+    const std::vector<mojom::CpuTemperatureChannelPtr>& cpu_temps) {
+  ASSERT_EQ(cpu_temps.size(), 1);
+
+  // Since fetching temperatures uses base::FileEnumerator, we're not
+  // guaranteed the order of the two results.
+  ASSERT_EQ(cpu_temps.size(), 1);
+  const auto& temp = cpu_temps[0];
+  ASSERT_FALSE(temp.is_null());
+  ASSERT_TRUE(temp->label.has_value());
+  EXPECT_EQ(temp->label.value(), kThirdFakeCpuTemperatureLabel);
+  EXPECT_EQ(temp->temperature_celsius, kThirdFakeCpuTemperature);
 }
 
 class CpuFetcherTest : public BaseFileTest {
@@ -283,14 +337,18 @@ class CpuFetcherTest : public BaseFileTest {
         GetCoreIdPath(GetRootDir(), kThirdLogicalId), "0"));
 
     // Write CPU temperature data.
-    SetFile({kFirstFakeCpuTemperatureDir, kFirstFakeCpuTemperatureInputFile},
+    SetFile({kFirstFakeCpuTemperatureDir, kThermalAttributeTemperature},
             base::NumberToString(kFirstFakeCpuTemperatureMilliDegrees));
-    SetFile({kFirstFakeCpuTemperatureDir, kFirstFakeCpuTemperatureLabelFile},
+    SetFile({kFirstFakeCpuTemperatureDir, kThermalAttributeType},
             kFirstFakeCpuTemperatureLabel);
-    SetFile({kSecondFakeCpuTemperatureDir, kSecondFakeCpuTemperatureInputFile},
+    SetFile({kSecondFakeCpuTemperatureDir, kThermalAttributeTemperature},
             base::NumberToString(kSecondFakeCpuTemperatureMilliDegrees));
-    SetFile({kSecondFakeCpuTemperatureDir, kSecondFakeCpuTemperatureLabelFile},
+    SetFile({kSecondFakeCpuTemperatureDir, kThermalAttributeType},
             kSecondFakeCpuTemperatureLabel);
+    SetFile({kThirdFakeCpuTemperatureDir, kThermalAttributeTemperature},
+            base::NumberToString(kThirdFakeCpuTemperatureMilliDegrees));
+    SetFile({kThirdFakeCpuTemperatureDir, kThermalAttributeType},
+            kThirdFakeCpuTemperatureLabel);
 
     // Write /proc/crypto.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCryptoPath(GetRootDir()),
@@ -299,6 +357,7 @@ class CpuFetcherTest : public BaseFileTest {
     fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineX86_64);
     // Write the virtualization files.
     SetupDefaultVirtualizationFiles();
+    MockUdevDevice();
   }
 
   void TearDown() override {
@@ -306,7 +365,7 @@ class CpuFetcherTest : public BaseFileTest {
     task_environment_.RunUntilIdle();
   }
 
-  // Write the fake vulnerability files for unit testing
+  // Write the fake vulnerability files for unit testing.
   void SetVulnerabiility(const std::string& filename,
                          const std::string& content) {
     SetFile({kRelativeCpuDir, kVulnerabilityDirName, filename}, content);
@@ -315,6 +374,64 @@ class CpuFetcherTest : public BaseFileTest {
   void SetupDefaultVirtualizationFiles() {
     SetFile({kRelativeCpuDir, kSmtDirName, kSmtActiveFileName}, "1");
     SetFile({kRelativeCpuDir, kSmtDirName, kSmtControlFileName}, "on");
+  }
+
+  // Customize UdevDevice's behavior.
+  std::function<std::unique_ptr<FakeUdevDevice>(const char*)>
+  MockUdevDeviceFunc(bool without_lable = false,
+                     bool incorrect_format = false) {
+    return [=, this](const char* syspath) {
+      base::FilePath sys_file_path = base::FilePath{syspath};
+      if (sys_file_path == GetPathUnderRoot(kFirstFakeCpuTemperatureDir)) {
+        if (without_lable) {
+          // return one thermal zone without device type.
+          return std::make_unique<FakeUdevDevice>(
+              std::nullopt,
+              std::to_string(kFirstFakeCpuTemperatureMilliDegrees),
+              sys_file_path);
+        } else if (incorrect_format) {
+          // return one thermal zone with incorrect format.
+          return std::make_unique<FakeUdevDevice>(kFirstFakeCpuTemperatureLabel,
+                                                  kNonIntegralFileContents,
+                                                  sys_file_path);
+        } else {
+          return std::make_unique<FakeUdevDevice>(
+              kFirstFakeCpuTemperatureLabel,
+              std::to_string(kFirstFakeCpuTemperatureMilliDegrees),
+              sys_file_path);
+        }
+      } else if (sys_file_path ==
+                 GetPathUnderRoot(kSecondFakeCpuTemperatureDir)) {
+        return std::make_unique<FakeUdevDevice>(
+            kSecondFakeCpuTemperatureLabel,
+            std::to_string(kSecondFakeCpuTemperatureMilliDegrees),
+            sys_file_path);
+      } else if (sys_file_path ==
+                 GetPathUnderRoot(kThirdFakeCpuTemperatureDir)) {
+        return std::make_unique<FakeUdevDevice>(
+            kThirdFakeCpuTemperatureLabel,
+            std::to_string(kThirdFakeCpuTemperatureMilliDegrees),
+            sys_file_path);
+      } else {
+        std::unique_ptr<FakeUdevDevice> udevice(nullptr);
+        return udevice;
+      }
+    };
+  }
+
+  void MockUdevDevice() {
+    ON_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillByDefault(MockUdevDeviceFunc());
+  }
+
+  void MockUdevDeviceWithOneIncorrectFormat() {
+    EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillRepeatedly(MockUdevDeviceFunc(false, true));
+  }
+
+  void MockUdevDeviceWithOneMissingType() {
+    EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillRepeatedly(MockUdevDeviceFunc(true, false));
   }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
@@ -461,7 +578,26 @@ TEST_F(CpuFetcherTest, TestFetchCpu) {
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
   EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
-  VerifyCpuTemps(cpu_info->temperature_channels);
+}
+
+TEST_F(CpuFetcherTest, TestParseCpuTempX86) {
+  fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineX86_64);
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
+  VerifyCpuTempsX86(cpu_info->temperature_channels);
+}
+
+TEST_F(CpuFetcherTest, TestParseCpuTempArm) {
+  fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineArmv7l);
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kArmv7l);
+  VerifyCpuTempsArm(cpu_info->temperature_channels);
 }
 
 // Test that we handle a cpuinfo file for processors without physical_ids.
@@ -497,7 +633,7 @@ TEST_F(CpuFetcherTest, HardwareDescriptionCpuinfoFile) {
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
   EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
-  VerifyCpuTemps(cpu_info->temperature_channels);
+  VerifyCpuTempsX86(cpu_info->temperature_channels);
 }
 
 // Test that we handle a cpuinfo file without a model name.
@@ -557,7 +693,7 @@ TEST_F(CpuFetcherTest, ValidArmCpuFlagsCpuinfoFile) {
   ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus[0]->flags, expected);
 }
 
-// Test that we have soc_id for Arm devices that don't have a specific driver
+// Test that we have soc_id for Arm devices that don't have a specific driver.
 TEST_F(CpuFetcherTest, ModelNameFromJEP106SoCID) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
                                            kNoModelNameCpuinfoContents));
@@ -573,7 +709,7 @@ TEST_F(CpuFetcherTest, ModelNameFromJEP106SoCID) {
   ASSERT_EQ(model_name.value(), "MediaTek 8192");
 }
 
-// Test that we have soc_id for Qualcomm devices
+// Test that we have soc_id for Qualcomm devices.
 TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCID) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
                                            kNoModelNameCpuinfoContents));
@@ -648,7 +784,7 @@ TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCIDWithBogus) {
   ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
 }
 
-// Test that we have soc_id for MediaTek devices
+// Test that we have soc_id for MediaTek devices.
 TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCID) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
                                            kNoModelNameCpuinfoContents));
@@ -906,39 +1042,45 @@ TEST_F(CpuFetcherTest, MissingCryptoFile) {
   EXPECT_EQ(cpu_result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
-// Test that we handle CPU temperatures without labels.
-TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
-  UnsetPath({kFirstFakeCpuTemperatureDir, kFirstFakeCpuTemperatureLabelFile});
-
+// Test that we handle CPU temperatures without type.
+TEST_F(CpuFetcherTest, CpuTemperatureWithoutType) {
+  UnsetPath({kFirstFakeCpuTemperatureDir, kThermalAttributeType});
+  MockUdevDeviceWithOneMissingType();
+  // Use unknown architecture so that we will parse all thermal zones, including
+  // the one without device type.
+  fake_system_utils()->SetUnameResponse(0, "Unknown uname machine");
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
   const auto& cpu_info = cpu_result->get_cpu_info();
   EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
-  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kX86_64);
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kUnknown);
   VerifyPhysicalCpus(cpu_info->physical_cpus);
 
   const auto& cpu_temps = cpu_info->temperature_channels;
-  ASSERT_EQ(cpu_temps.size(), 2);
+  ASSERT_EQ(cpu_temps.size(), 3);
 
   // Since fetching temperatures uses base::FileEnumerator, we're not
-  // guaranteed the order of the two results.
+  // guaranteed the order of the three results.
   auto first_expected_temp =
       mojom::CpuTemperatureChannel::New(std::nullopt, kFirstFakeCpuTemperature);
   auto second_expected_temp = mojom::CpuTemperatureChannel::New(
       kSecondFakeCpuTemperatureLabel, kSecondFakeCpuTemperature);
+  auto third_expected_temp = mojom::CpuTemperatureChannel::New(
+      kThirdFakeCpuTemperatureLabel, kThirdFakeCpuTemperature);
   EXPECT_THAT(
       cpu_temps,
       UnorderedElementsAreArray(
           {MatchesCpuTemperatureChannelPtr(std::cref(first_expected_temp)),
-           MatchesCpuTemperatureChannelPtr(std::cref(second_expected_temp))}));
+           MatchesCpuTemperatureChannelPtr(std::cref(second_expected_temp)),
+           MatchesCpuTemperatureChannelPtr(std::cref(third_expected_temp))}));
 }
 
 // Test that we handle incorrectly-formatted CPU temperature files.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
-  SetFile({kFirstFakeCpuTemperatureDir, kFirstFakeCpuTemperatureInputFile},
+  SetFile({kFirstFakeCpuTemperatureDir, kThermalAttributeTemperature},
           kNonIntegralFileContents);
-
+  MockUdevDeviceWithOneIncorrectFormat();
   auto cpu_result = FetchCpuInfoSync();
 
   ASSERT_TRUE(cpu_result->is_cpu_info());
@@ -956,6 +1098,35 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
   ASSERT_TRUE(second_temp->label.has_value());
   EXPECT_EQ(second_temp->label.value(), kSecondFakeCpuTemperatureLabel);
   EXPECT_EQ(second_temp->temperature_celsius, kSecondFakeCpuTemperature);
+}
+
+// Test that we fall back to return all thermal zones data when there is
+// no matching device type.
+TEST_F(CpuFetcherTest, MissingCorrespondingThermalZone) {
+  fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineArmv7l);
+  // Unset the thermal zone for Arm CPU.
+  UnsetPath(kThirdFakeCpuTemperatureDir);
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  EXPECT_EQ(cpu_info->architecture, mojom::CpuArchitectureEnum::kArmv7l);
+
+  // We should have data of all existing thermal zones since there is no
+  // thermal zone has the corresponding device type name for the CPU.
+  const auto& cpu_temps = cpu_info->temperature_channels;
+  ASSERT_EQ(cpu_temps.size(), 2);
+
+  auto first_expected_temp = mojom::CpuTemperatureChannel::New(
+      kFirstFakeCpuTemperatureLabel, kFirstFakeCpuTemperature);
+  auto second_expected_temp = mojom::CpuTemperatureChannel::New(
+      kSecondFakeCpuTemperatureLabel, kSecondFakeCpuTemperature);
+  EXPECT_THAT(
+      cpu_temps,
+      UnorderedElementsAreArray(
+          {MatchesCpuTemperatureChannelPtr(std::cref(first_expected_temp)),
+           MatchesCpuTemperatureChannelPtr(std::cref(second_expected_temp))}));
 }
 
 // Test that we handle uname failing.
