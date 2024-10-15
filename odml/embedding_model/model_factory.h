@@ -10,6 +10,7 @@
 #include <base/functional/callback.h>
 #include <base/uuid.h>
 
+#include "odml/embedding_model/dlc_model_loader.h"
 #include "odml/embedding_model/model_runner.h"
 #include "odml/utils/odml_shim_loader.h"
 
@@ -48,6 +49,11 @@ class ModelFactoryImpl : public ModelFactory {
                            BuildRunnerFromUuidCallback callback) override;
 
  private:
+  void OnDlcLoadFinish(BuildRunnerFromUuidCallback callback,
+                       std::optional<struct ModelInfo> model_info);
+
+  DlcModelLoader dlc_model_loader_;
+
   // For access to the odml-shim functions, which contains a wrapper to
   // SentencePiece library.
   const raw_ref<odml::OdmlShimLoader> shim_loader_;

@@ -31,7 +31,25 @@ std::unique_ptr<ModelRunner> ModelFactoryImpl::BuildRunnerFromInfo(
 
 void ModelFactoryImpl::BuildRunnerFromUuid(
     const base::Uuid& uuid, BuildRunnerFromUuidCallback callback) {
-  std::move(callback).Run(nullptr);
+  // Note that base::Unretained(this) is safe because dlc_model_loader_ is owned
+  // by the model factory.
+  dlc_model_loader_.LoadDlcWithUuid(
+      uuid, base::BindOnce(&ModelFactoryImpl::OnDlcLoadFinish,
+                           base::Unretained(this), std::move(callback)));
+}
+
+void ModelFactoryImpl::OnDlcLoadFinish(
+    BuildRunnerFromUuidCallback callback,
+    std::optional<struct ModelInfo> model_info) {
+  if (!model_info.has_value()) {
+    // Load failed, and DlcModelLoader should emit the relevant messages.
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  std::unique_ptr<ModelRunner> runner =
+      BuildRunnerFromInfo(std::move(*model_info));
+  std::move(callback).Run(std::move(runner));
 }
 
 }  // namespace embedding_model
