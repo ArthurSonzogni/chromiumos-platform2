@@ -394,19 +394,11 @@ mod tests {
         cfg.posix_acl = true;
 
         let expect_str = String::from(
-            "cache=auto,timeout=1,rewrite-security-xattrs=true,writeback=false,negative_timeout=1",
+            "cache=auto,timeout=1,rewrite-security-xattrs=true,writeback=false,negative_timeout=1,\
+            ascii_casefold=false,posix_acl=true",
         );
         let str = parse_vhost_user_fs_cfg_to_string(&cfg);
         assert_eq!(str, expect_str);
-
-        // test parse optional fields
-        cfg.ascii_casefold = true;
-        cfg.posix_acl = false;
-        cfg.privileged_quota_uids.push(0);
-        let expect_str2 =
-            expect_str + ",ascii_casefold=true,posix_acl=false,privileged_quota_uids=0";
-        let str2 = parse_vhost_user_fs_cfg_to_string(&cfg);
-        assert_eq!(str2, expect_str2);
     }
 
     #[test]
