@@ -43,6 +43,7 @@ class BRILLO_EXPORT RTNLMessage {
     kTypeCaptivePortal,
     kTypePref64,
     kTypeNeighbor,
+    kTypePrefix,
     kTypeNdUserOption,  // Unknown ND user options that does not have own types.
   };
 
@@ -140,6 +141,14 @@ class BRILLO_EXPORT RTNLMessage {
     uint8_t type;
   };
 
+  // Helper struct correpsponding to a RTM_NEWPREFIX message.
+  struct PrefixStatus {
+    // PIO flags. Corresponds to prefixmsg.prefix_flags.
+    uint8_t prefix_flags;
+    // Prefix constructed from PREFIX_ADDRESS option and prefixmsg.prefix_len.
+    IPv6CIDR prefix;
+  };
+
   struct RdnssOption {
     RdnssOption() : lifetime(0) {}
     RdnssOption(uint32_t lifetime_in, std::vector<IPv6Address> addresses_in)
@@ -227,6 +236,10 @@ class BRILLO_EXPORT RTNLMessage {
   const NeighborStatus& neighbor_status() const { return neighbor_status_; }
   void set_neighbor_status(const NeighborStatus& neighbor_status) {
     neighbor_status_ = neighbor_status;
+  }
+  const PrefixStatus& prefix_status() const { return prefix_status_; }
+  void set_prefix_status(const PrefixStatus& prefix_status) {
+    prefix_status_ = prefix_status;
   }
   // GLint hates "unsigned short", and I don't blame it, but that's the
   // type that's used in the system headers.  Use uint16_t instead and hope
@@ -316,6 +329,8 @@ class BRILLO_EXPORT RTNLMessage {
       Mode mode, base::span<const uint8_t> payload);
   static std::unique_ptr<RTNLMessage> DecodeNeighbor(
       Mode mode, base::span<const uint8_t> payload);
+  static std::unique_ptr<RTNLMessage> DecodePrefix(
+      Mode mode, base::span<const uint8_t> payload);
 
   void SetNdUserOptionBytes(base::span<const uint8_t> data);
   bool ParseDnsslOption(base::span<const uint8_t> data);
@@ -351,6 +366,7 @@ class BRILLO_EXPORT RTNLMessage {
   AddressStatus address_status_;
   RouteStatus route_status_;
   NeighborStatus neighbor_status_;
+  PrefixStatus prefix_status_;
   RdnssOption rdnss_option_;
   DnsslOption dnssl_option_;
   HttpUrl captive_portal_uri_;

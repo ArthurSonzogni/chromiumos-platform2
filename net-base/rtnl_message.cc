@@ -509,6 +509,7 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
     case RTM_NEWRULE:
     case RTM_NEWNDUSEROPT:
     case RTM_NEWNEIGH:
+    case RTM_NEWPREFIX:
       mode = kModeAdd;
       break;
 
@@ -558,6 +559,10 @@ std::unique_ptr<RTNLMessage> RTNLMessage::Decode(
 
     case RTM_NEWNDUSEROPT:
       msg = DecodeNdUserOption(mode, payload);
+      break;
+
+    case RTM_NEWPREFIX:
+      msg = DecodePrefix(mode, payload);
       break;
 
     case RTM_NEWNEIGH:
@@ -935,6 +940,39 @@ std::unique_ptr<RTNLMessage> RTNLMessage::DecodeNeighbor(
                                            ndm->ndm_ifindex, ndm->ndm_family);
   msg->set_neighbor_status(
       NeighborStatus(ndm->ndm_state, ndm->ndm_flags, ndm->ndm_type));
+  return msg;
+}
+
+std::unique_ptr<RTNLMessage> RTNLMessage::DecodePrefix(
+    Mode mode, base::span<const uint8_t> payload) {
+  if (payload.size() < sizeof(struct prefixmsg)) {
+    return nullptr;
+  }
+  const struct prefixmsg* pm =
+      reinterpret_cast<const struct prefixmsg*>(payload.data());
+
+  auto msg = std::make_unique<RTNLMessage>(
+      kTypePrefix, mode, 0, 0, 0, pm->prefix_ifindex, pm->prefix_family);
+  PrefixStatus status;
+  status.prefix_flags = pm->prefix_flags;
+
+  payload = payload.subspan(sizeof(struct prefixmsg));
+  std::unique_ptr<RTNLAttrMap> attrs = ParseAttrs(
+      reinterpret_cast<const rtattr*>(payload.data()), payload.size());
+  if (!attrs) {
+    return nullptr;
+  }
+  std::optional<IPv6CIDR> cidr;
+  if (base::Contains(*attrs, PREFIX_ADDRESS)) {
+    cidr = IPv6CIDR::CreateFromBytesAndPrefix(
+        attrs->find(PREFIX_ADDRESS)->second, pm->prefix_len);
+  }
+  if (!cidr) {
+    return nullptr;
+  }
+  status.prefix = *cidr;
+
+  msg->set_prefix_status(status);
   return msg;
 }
 

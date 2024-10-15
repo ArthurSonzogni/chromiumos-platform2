@@ -474,6 +474,33 @@ alignas(4) const uint8_t kPref64Message[] = {
     0xfe, 0x20, 0x7e, 0x26,  // Link local source address of the RA packet.
 };
 
+// RTM_NEWPREFIX notification
+// ifindex: 2
+// Prefix: 2001:db8:480:ee08::/64
+alignas(4) const uint8_t kPrefixMessage[] = {
+    // struct nlmsghdr
+    0x3c, 0x00, 0x00, 0x00,  // nlmsg_len = 60
+    0x34, 0x00,              // nlmsg_type = RTM_NEWPREFIX
+    0x00, 0x00,              // nlmsg_flags
+    0x00, 0x00, 0x00, 0x00,  // nlmsg_seq
+    0x00, 0x00, 0x00, 0x00,  // nlmsg_pid
+
+    // struct prefixmsg
+    0x0a,                    // prefix_family = AF_INET6
+    0x00,                    // prefix_pad1
+    0x00, 0x00,              // prefix_pad2
+    0x02, 0x00, 0x00, 0x00,  // prefix_ifindex = 2
+    0x03,                    // prefix_type = 3 (ND_OPT_PREFIX_INFORMATION)
+    0x40,                    // prefix_len = 64
+    0xc0,                    // prefix_flags = 0xC0 (L,A)
+    0x00,                    // prefix_pad3
+
+    // PREFIX_ADDRESS option
+    0x14, 0x00, 0x01, 0x00, 0x20, 0x01, 0x0d, 0xb8, 0x04, 0x80, 0xee, 0x08,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    // PREFIX_CACHEINFO option
+    0x0c, 0x00, 0x02, 0x00, 0x80, 0x3a, 0x09, 0x00, 0x00, 0x8d, 0x27, 0x00};
+
 // Add IPv4 rule for src 100.87.84.110/24 table 1002
 alignas(4) const uint8_t kRuleMessage1[] = {
     0x3C, 0x0, 0x0, 0x0, 0x20, 0x0,  0x0,  0x0,  0x39, 0x0,  0x0,  0x0,
@@ -900,6 +927,18 @@ TEST_F(RTNLMessageTest, Pref64Option) {
   EXPECT_EQ(RTNLMessage::kTypePref64, msg->type());
   EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
   EXPECT_EQ(expected_pref, msg->pref64());
+}
+
+TEST_F(RTNLMessageTest, NewPrefix) {
+  const auto msg = RTNLMessage::Decode(kPrefixMessage);
+  const IPv6CIDR expected_prefix =
+      *IPv6CIDR::CreateFromCIDRString("2001:db8:480:ee08::/64");
+
+  ASSERT_TRUE(msg);
+  EXPECT_EQ(RTNLMessage::kTypePrefix, msg->type());
+  EXPECT_EQ(RTNLMessage::kModeAdd, msg->mode());
+  EXPECT_EQ(expected_prefix, msg->prefix_status().prefix);
+  EXPECT_EQ(0xc0, msg->prefix_status().prefix_flags);
 }
 
 TEST_F(RTNLMessageTest, ParseRuleEvents) {

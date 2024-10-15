@@ -297,6 +297,11 @@ void RTNLHandler::ParseRTNL(base::span<const uint8_t> data) {
         case RTNLMessage::kTypeNdUserOption:
           DispatchEvent(kRequestNdUserOption, *msg);
           break;
+        case RTNLMessage::kTypePrefix:
+          // Though kTypePrefix is from RTM_NEWPREFIX and not RTM_NEWNDUSEROPT,
+          // dispatch as kRequestNdUserOption event to reuse the same callback.
+          DispatchEvent(kRequestNdUserOption, *msg);
+          break;
         default:
           LOG(ERROR) << "Unknown RTNL message type: " << msg->type();
       }
