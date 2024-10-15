@@ -19,10 +19,10 @@ allow cros_os_install_service cros_var_log_os_install_service:file rw_file_perms
 # Allow running chromeos-install
 allow cros_os_install_service sh_exec:file rx_file_perms;
 
-# Allow mounting and unmounting the target stateful partition to copy the install log, these rules are needed only for Reven
-no_arc(`
+
 allow cros_os_install_service cros_os_install_service:capability sys_admin;
 allow cros_os_install_service kernel:process setsched;
+
 # Create type for access to /tmp/, for copying the log to the new root.
 tmp_file(cros_os_install_service, { dir file });
 # Allow mounting the new root, creating a dir, and to copying the log over.
@@ -30,4 +30,13 @@ allow cros_os_install_service cros_os_install_service_tmp_file:dir { mounton cre
 # Label our log file and allow access.
 filetrans_pattern(cros_os_install_service, unlabeled, cros_os_install_service_tmp_file, file, "flex-install.log");
 allow cros_os_install_service cros_os_install_service_tmp_file:file { create_file_perms};
+
+# This macro makes the policy permissive when used with the ARC container,
+# but not when used with ARCVM.
+# This allow rule was added by crrev/c/5804826 for ARCVM on ChromeOS Flex.
+is_arc_vm(`
+  allow cros_os_install_service labeledfs:filesystem { mount unmount };
+',`arc_cts_fails_release(`
+  allow cros_os_install_service labeledfs:filesystem { mount unmount };
+  ', (`cros_os_install_service'))
 ')
