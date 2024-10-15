@@ -89,14 +89,15 @@ class MockTitleGenerationEngine : public TitleGenerationEngineInterface {
               Process,
               (mojom::GroupRequestPtr,
                ClusteringResponse,
+               mojo::PendingRemote<mojom::TitleObserver>,
                TitleGenerationCallback),
               (override));
   void Expect(ClusteringResponse clustering_response,
               CoralResult<TitleGenerationResponse> response) {
     clustering_response_ = std::move(clustering_response);
     MoveAssignExpected(response_, std::move(response));
-    EXPECT_CALL(*this, Process(_, Eq(std::ref(clustering_response_)), _))
-        .WillOnce([this](auto&& request, auto&&, auto&& callback) {
+    EXPECT_CALL(*this, Process(_, Eq(std::ref(clustering_response_)), _, _))
+        .WillOnce([this](auto&& request, auto&&, auto&&, auto&& callback) {
           std::move(callback).Run(std::move(request), std::move(response_));
         });
   }
@@ -126,7 +127,8 @@ class CoralServiceTest : public testing::Test {
   void ExpectGroupResult(mojom::GroupRequestPtr request,
                          mojom::GroupResultPtr group_result) {
     TestFuture<mojom::GroupResultPtr> group_future;
-    service_->Group(std::move(request), group_future.GetCallback());
+    service_->Group(std::move(request), mojo::NullRemote(),
+                    group_future.GetCallback());
     EXPECT_EQ(group_future.Take(), group_result);
   }
 

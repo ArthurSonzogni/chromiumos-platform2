@@ -48,7 +48,9 @@ class CoralService : public mojom::CoralService {
   }
 
   // mojom::CoralService:
-  void Group(mojom::GroupRequestPtr request, GroupCallback callback) override;
+  void Group(mojom::GroupRequestPtr request,
+             mojo::PendingRemote<mojom::TitleObserver> observer,
+             GroupCallback callback) override;
   void CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
                        CacheEmbeddingsCallback callback) override;
 
@@ -56,9 +58,11 @@ class CoralService : public mojom::CoralService {
   // These callbacks are used for asynchronous Engine::Process calls, performs
   // error handling then calls the next step.
   void OnEmbeddingResult(GroupCallback callback,
+                         mojo::PendingRemote<mojom::TitleObserver> observer,
                          mojom::GroupRequestPtr request,
                          CoralResult<EmbeddingResponse> result);
   void OnClusteringResult(GroupCallback callback,
+                          mojo::PendingRemote<mojom::TitleObserver> observer,
                           mojom::GroupRequestPtr request,
                           CoralResult<ClusteringResponse> result);
   void OnTitleGenerationResult(GroupCallback callback,

@@ -76,7 +76,7 @@ TEST_F(TitleGenerationEngineTest, Success) {
   TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
       title_future;
   engine_->Process(std::move(request), std::move(clustering_response),
-                   title_future.GetCallback());
+                   mojo::NullRemote(), title_future.GetCallback());
   auto [_, result] = title_future.Take();
   ASSERT_TRUE(result.has_value());
   TitleGenerationResponse response = std::move(*result);
@@ -95,7 +95,7 @@ TEST_F(TitleGenerationEngineTest, NoGroups) {
 
   TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
       title_future;
-  engine_->Process(std::move(request), ClusteringResponse(),
+  engine_->Process(std::move(request), ClusteringResponse(), mojo::NullRemote(),
                    title_future.GetCallback());
   auto [_, result] = title_future.Take();
   ASSERT_TRUE(result.has_value());
@@ -113,7 +113,7 @@ TEST_F(TitleGenerationEngineTest, LoadModelFailed) {
   TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
       title_future;
   engine_->Process(std::move(request), std::move(clustering_response),
-                   title_future.GetCallback());
+                   mojo::NullRemote(), title_future.GetCallback());
   auto [_, result] = title_future.Take();
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
@@ -132,9 +132,9 @@ TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadFailed) {
   TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
       title_future1, title_future2;
   engine_->Process(request.Clone(), GetFakeClusteringResponse(),
-                   title_future1.GetCallback());
+                   mojo::NullRemote(), title_future1.GetCallback());
   engine_->Process(std::move(request), GetFakeClusteringResponse(),
-                   title_future2.GetCallback());
+                   mojo::NullRemote(), title_future2.GetCallback());
 
   auto fake_response = GetFakeTitleGenerationResponse();
   auto [_, result] = title_future1.Take();
@@ -152,9 +152,9 @@ TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadSuccess) {
   TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
       title_future1, title_future2;
   engine_->Process(request.Clone(), GetFakeClusteringResponse(),
-                   title_future1.GetCallback());
+                   mojo::NullRemote(), title_future1.GetCallback());
   engine_->Process(std::move(request), GetFakeClusteringResponse(),
-                   title_future2.GetCallback());
+                   mojo::NullRemote(), title_future2.GetCallback());
 
   auto fake_response = GetFakeTitleGenerationResponse();
   auto [_, result] = title_future1.Take();

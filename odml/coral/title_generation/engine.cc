@@ -71,9 +71,11 @@ TitleGenerationEngine::TitleGenerationEngine(
         on_device_model_service)
     : on_device_model_service_(on_device_model_service) {}
 
-void TitleGenerationEngine::Process(mojom::GroupRequestPtr request,
-                                    ClusteringResponse clustering_response,
-                                    TitleGenerationCallback callback) {
+void TitleGenerationEngine::Process(
+    mojom::GroupRequestPtr request,
+    ClusteringResponse clustering_response,
+    mojo::PendingRemote<mojom::TitleObserver> observer,
+    TitleGenerationCallback callback) {
   EnsureModelLoaded(base::BindOnce(
       &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
       std::move(request), std::move(clustering_response), std::move(callback)));

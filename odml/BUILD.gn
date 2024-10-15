@@ -75,6 +75,7 @@ generate_mojom_bindings("mojo_bindings") {
     "mojom/on_device_model.mojom",
     "mojom/on_device_model_service.mojom",
     "mojom/read_only_file.mojom",
+    "mojom/token.mojom",
     "mojom/url.mojom",
     "mojom/uuid.mojom",
   ]
@@ -98,6 +99,8 @@ source_set("mojo_bindings_lib") {
     "mojom/model_assets_mojom_traits.h",
     "mojom/read_only_file_mojom_traits.cc",
     "mojom/read_only_file_mojom_traits.h",
+    "mojom/token_mojom_traits.cc",
+    "mojom/token_mojom_traits.h",
     "mojom/uuid_mojom_traits.cc",
     "mojom/uuid_mojom_traits.h",
     "on_device_model/ml/chrome_ml_types_traits.cc",

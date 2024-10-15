@@ -35,6 +35,7 @@ class TitleGenerationEngineInterface {
       mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>)>;
   virtual void Process(mojom::GroupRequestPtr request,
                        ClusteringResponse clustering_response,
+                       mojo::PendingRemote<mojom::TitleObserver> observer,
                        TitleGenerationCallback callback) = 0;
 };
 
@@ -48,6 +49,7 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
   // TitleGenerationEngineInterface overrides.
   void Process(mojom::GroupRequestPtr request,
                ClusteringResponse clustering_response,
+               mojo::PendingRemote<mojom::TitleObserver> observer,
                TitleGenerationCallback callback) override;
 
  private:

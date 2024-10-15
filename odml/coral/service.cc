@@ -4,7 +4,6 @@
 
 #include "odml/coral/service.h"
 
-#include "odml/coral/clustering/agglomerative_clustering.h"
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/embedding_database.h"
@@ -47,11 +46,13 @@ CoralService::CoralService(
       title_generation_engine_(std::move(title_generation_engine)) {}
 
 void CoralService::Group(mojom::GroupRequestPtr request,
+                         mojo::PendingRemote<mojom::TitleObserver> observer,
                          GroupCallback callback) {
   embedding_engine_->Process(
       std::move(request),
       base::BindOnce(&CoralService::OnEmbeddingResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(observer)));
 }
 
 void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
@@ -78,9 +79,11 @@ void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
           std::move(callback)));
 }
 
-void CoralService::OnEmbeddingResult(GroupCallback callback,
-                                     mojom::GroupRequestPtr request,
-                                     CoralResult<EmbeddingResponse> result) {
+void CoralService::OnEmbeddingResult(
+    GroupCallback callback,
+    mojo::PendingRemote<mojom::TitleObserver> observer,
+    mojom::GroupRequestPtr request,
+    CoralResult<EmbeddingResponse> result) {
   if (!result.has_value()) {
     std::move(callback).Run(GroupResult::NewError(result.error()));
     return;
@@ -88,18 +91,21 @@ void CoralService::OnEmbeddingResult(GroupCallback callback,
   clustering_engine_->Process(
       std::move(request), std::move(*result),
       base::BindOnce(&CoralService::OnClusteringResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(observer)));
 }
 
-void CoralService::OnClusteringResult(GroupCallback callback,
-                                      mojom::GroupRequestPtr request,
-                                      CoralResult<ClusteringResponse> result) {
+void CoralService::OnClusteringResult(
+    GroupCallback callback,
+    mojo::PendingRemote<mojom::TitleObserver> observer,
+    mojom::GroupRequestPtr request,
+    CoralResult<ClusteringResponse> result) {
   if (!result.has_value()) {
     std::move(callback).Run(GroupResult::NewError(result.error()));
     return;
   }
   title_generation_engine_->Process(
-      std::move(request), std::move(*result),
+      std::move(request), std::move(*result), std::move(observer),
       base::BindOnce(&CoralService::OnTitleGenerationResult,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }

@@ -125,6 +125,24 @@
         "odml/on_device_model/ml/chrome_ml_types_traits.h"
       ],
       "typename": "::ml::InputPiece"
+    },
+    "mojo_base.mojom.Token": {
+      "copyable_pass_by_value": false,
+      "default_constructible": true,
+      "force_serialize": false,
+      "forward_declaration": null,
+      "hashable": false,
+      "move_only": false,
+      "non_copyable_non_movable": false,
+      "non_const_ref": false,
+      "nullable_is_same_type": true,
+      "public_headers": [
+        "base/token.h"
+      ],
+      "traits_headers": [
+        "odml/mojom/token_mojom_traits.h"
+      ],
+      "typename": "base::Token"
     }
   }
 }
