@@ -2,3 +2,6 @@
 
 # Disable wakes from sd-card on x86 devices.
 SUBSYSTEM=="pci", DRIVER=="sdhci-pci", ATTR{power/wakeup}="disabled"
+
+# Disable wakes from HID battery devices, e.g. stylus (b/283024813).
+SUBSYSTEM=="power_supply", KERNEL=="hid-*", ATTR{power/wakeup}="disabled"
