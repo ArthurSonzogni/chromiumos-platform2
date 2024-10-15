@@ -24,8 +24,9 @@ bool get_board_name(int board_buffer_len, char* board) {
       break;
     }
 
-    if (strncmp(line, kBoardKey, strlen(kBoardKey)) != 0)
+    if (strncmp(line, kBoardKey, strlen(kBoardKey)) != 0) {
       continue;
+    }
 
     /* chomp trailing newline character. */
     line[strlen(line) - 1] = '\0';
@@ -51,12 +52,14 @@ void match_rule(char* board, char* rule_line) {
   char* comment = strchr(rule_line, '#');
 
   /* ignore comments */
-  if (comment)
+  if (comment) {
     *comment = '\0';
+  }
 
   pattern = strtok(rule_line, " \t\n");
-  if (!pattern)
+  if (!pattern) {
     return;  // blank line
+  }
 
   regex_t reg;
   regmatch_t match;
@@ -78,8 +81,9 @@ void detect_label_by_board_name() {
   char rule_line[1024];
   FILE* fp;
 
-  if (!get_board_name(sizeof(board), board))
+  if (!get_board_name(sizeof(board), board)) {
     return;
+  }
 
   TRACE("board=%s\n", board);
 

@@ -103,8 +103,9 @@ bool is_vaapi_support_formats(int fd,
     return false;
   }
 
-  if (match_vaapi_capabilities(va_display, profiles, entrypoint, format))
+  if (match_vaapi_capabilities(va_display, profiles, entrypoint, format)) {
     found = true;
+  }
 
   vaTerminate(va_display);
 

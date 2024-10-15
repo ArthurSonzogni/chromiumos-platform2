@@ -303,8 +303,9 @@ bool detect_4k_device_h264(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_h264))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_h264)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -322,8 +323,9 @@ bool detect_4k_device_vp8(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp8))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp8)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -341,8 +343,9 @@ bool detect_4k_device_vp9(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -360,8 +363,9 @@ bool detect_4k_device_vp9_2(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9_2))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9_2)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -378,8 +382,9 @@ bool detect_4k_device_av1(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_av1))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_av1)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -397,8 +402,9 @@ bool detect_4k_device_av1_10bpp(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_av1_10bpp))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_av1_10bpp)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -415,8 +421,9 @@ bool detect_4k_device_hevc(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_hevc))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_hevc)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -434,8 +441,9 @@ bool detect_4k_device_hevc_10bpp(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_hevc_10bpp))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_hevc_10bpp)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -507,8 +515,9 @@ bool detect_4k_device_enc_h264(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_h264))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_h264)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -526,8 +535,9 @@ bool detect_4k_device_enc_vp8(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp8))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp8)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -545,8 +555,9 @@ bool detect_4k_device_enc_vp9(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp9))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp9)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;

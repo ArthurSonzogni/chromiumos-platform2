@@ -530,13 +530,15 @@ static bool is_vaapi_enc_jpeg_device(int fd) {
  */
 bool detect_video_acc_h264(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_h264_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_h264_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_h264_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_h264_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -548,13 +550,15 @@ bool detect_video_acc_h264(void) {
  */
 bool detect_video_acc_vp8(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_vp8_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_vp8_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp8_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp8_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -566,13 +570,15 @@ bool detect_video_acc_vp8(void) {
  */
 bool detect_video_acc_vp9(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_vp9_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_vp9_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -588,8 +594,9 @@ bool detect_video_acc_vp9_2(void) {
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_2_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_2_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -601,13 +608,15 @@ bool detect_video_acc_vp9_2(void) {
  */
 bool detect_video_acc_av1(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_av1_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_av1_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -619,13 +628,15 @@ bool detect_video_acc_av1(void) {
  */
 bool detect_video_acc_av1_10bpp(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_10bpp_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_av1_10bpp_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_av1_10bpp_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_av1_10bpp_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -636,13 +647,15 @@ bool detect_video_acc_av1_10bpp(void) {
  */
 bool detect_video_acc_hevc(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_hevc_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_hevc_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_hevc_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_hevc_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -654,13 +667,15 @@ bool detect_video_acc_hevc(void) {
  */
 bool detect_video_acc_hevc_10bpp(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_hevc_10bpp_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_hevc_10bpp_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_hevc_10bpp_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_hevc_10bpp_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -673,13 +688,15 @@ bool detect_video_acc_hevc_10bpp(void) {
  */
 bool detect_video_acc_enc_h264(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_h264_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_h264_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_h264_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_h264_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -692,13 +709,15 @@ bool detect_video_acc_enc_h264(void) {
  */
 bool detect_video_acc_enc_h264_vbr(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_h264_vbr_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_h264_vbr_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_h264_vbr_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_h264_vbr_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -710,13 +729,15 @@ bool detect_video_acc_enc_h264_vbr(void) {
  */
 bool detect_video_acc_enc_vp8(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp8_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp8_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_vp8_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_vp8_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -729,13 +750,15 @@ bool detect_video_acc_enc_vp8(void) {
  */
 bool detect_video_acc_enc_vp8_vbr(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp8_vbr_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp8_vbr_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_vp8_vbr_device))
+  if (is_any_device(kVideoDevicePattern, is_v4l2_enc_vp8_vbr_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -747,8 +770,9 @@ bool detect_video_acc_enc_vp8_vbr(void) {
  */
 bool detect_video_acc_enc_vp9(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -760,8 +784,9 @@ bool detect_video_acc_enc_vp9(void) {
  */
 bool detect_video_acc_enc_vp9_vbr(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_vbr_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_vbr_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -773,8 +798,9 @@ bool detect_video_acc_enc_vp9_vbr(void) {
  */
 bool detect_video_acc_enc_av1(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_av1_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_av1_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -786,8 +812,9 @@ bool detect_video_acc_enc_av1(void) {
  */
 bool detect_video_acc_enc_av1_vbr(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_av1_vbr_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_av1_vbr_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
   return false;
@@ -799,13 +826,15 @@ bool detect_video_acc_enc_av1_vbr(void) {
  */
 bool detect_jpeg_acc_dec(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_jpeg_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_dec_jpeg_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kJpegDevicePattern, is_v4l2_dec_jpeg_device))
+  if (is_any_device(kJpegDevicePattern, is_v4l2_dec_jpeg_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
@@ -817,13 +846,15 @@ bool detect_jpeg_acc_dec(void) {
  */
 bool detect_jpeg_acc_enc(void) {
 #if defined(USE_VAAPI)
-  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_jpeg_device))
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_jpeg_device)) {
     return true;
+  }
 #endif  // defined(USE_VAAPI)
 
 #if defined(USE_V4L2_CODEC)
-  if (is_any_device(kJpegDevicePattern, is_v4l2_enc_jpeg_device))
+  if (is_any_device(kJpegDevicePattern, is_v4l2_enc_jpeg_device)) {
     return true;
+  }
 #endif  // defined(USE_V4L2_CODEC)
 
   return false;
