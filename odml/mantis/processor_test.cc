@@ -7,6 +7,7 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
+#include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 #include <testing/gmock/include/gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>
@@ -19,6 +20,7 @@ namespace {
 using base::test::TestFuture;
 using mojom::MantisError;
 using mojom::MantisResult;
+using mojom::SafetyClassifierVerdict;
 using testing::IsEmpty;
 
 constexpr ProcessorPtr kFakeProcessorPtr = 0xDEADBEEF;
@@ -246,6 +248,23 @@ TEST_F(MantisProcessorTest, SegmentationSucceeds) {
   auto result = result_future.Take();
   ASSERT_TRUE(result->is_result_image());
   EXPECT_THAT(result->get_result_image(), Not(IsEmpty()));
+}
+
+TEST_F(MantisProcessorTest, ReturnPass) {
+  mojo::Remote<mojom::MantisProcessor> processor_remote;
+  MantisProcessor processor(
+      {
+          .processor = 0,
+          .segmenter = 0,
+      },
+      fake::GetMantisApi(), processor_remote.BindNewPipeAndPassReceiver(),
+      base::DoNothing());
+
+  TestFuture<mojom::SafetyClassifierVerdict> verdict_future;
+  processor.ClassifyImageSafety(GetFakeImage(), verdict_future.GetCallback());
+
+  auto verdict = verdict_future.Take();
+  EXPECT_EQ(verdict, SafetyClassifierVerdict::kPass);
 }
 
 }  // namespace

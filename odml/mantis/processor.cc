@@ -4,7 +4,6 @@
 
 #include "odml/mantis/processor.h"
 
-#include <fstream>
 #include <vector>
 
 #include <base/check.h>
@@ -18,6 +17,7 @@ namespace mantis {
 namespace {
 using mojom::MantisError;
 using mojom::MantisResult;
+using mojom::SafetyClassifierVerdict;
 
 constexpr auto kMapStatusToError =
     base::MakeFixedFlatMap<MantisStatus, MantisError>({
@@ -126,6 +126,12 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
   }
 
   std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
+}
+
+// TODO(b/373509603): Implement this API once T&S API is ready.
+void MantisProcessor::ClassifyImageSafety(
+    const std::vector<uint8_t>& image, ClassifyImageSafetyCallback callback) {
+  std::move(callback).Run(SafetyClassifierVerdict::kPass);
 }
 
 }  // namespace mantis

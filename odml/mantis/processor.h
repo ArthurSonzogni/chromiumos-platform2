@@ -5,7 +5,6 @@
 #ifndef ODML_MANTIS_PROCESSOR_H_
 #define ODML_MANTIS_PROCESSOR_H_
 
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -53,6 +52,9 @@ class MantisProcessor : public mojom::MantisProcessor {
   void Segmentation(const std::vector<uint8_t>& image,
                     const std::vector<uint8_t>& prior,
                     SegmentationCallback callback) override;
+
+  void ClassifyImageSafety(const std::vector<uint8_t>& image,
+                           ClassifyImageSafetyCallback callback) override;
 
  private:
   void OnDisconnected();

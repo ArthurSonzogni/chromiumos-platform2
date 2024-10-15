@@ -19,6 +19,13 @@ union MantisResult {
   array<uint8> result_image;
 };
 
+// This enum type identifies the result of T&S's checking.
+[Stable, Extensible]
+enum SafetyClassifierVerdict {
+  kPass,
+  [Default] kFail,
+};
+
 [Stable]
 interface MantisProcessor {
   Inpainting@0(array<uint8> image, array<uint8> mask, uint32 seed)
@@ -31,4 +38,8 @@ interface MantisProcessor {
   [MinVersion=1]
   Segmentation@2(array<uint8> image, array<uint8> prior)
       => (MantisResult result);
+
+  [MinVersion=2]
+  ClassifyImageSafety@3(array<uint8> image)
+      => (SafetyClassifierVerdict verdict);
 };
