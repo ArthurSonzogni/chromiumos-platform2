@@ -38,6 +38,7 @@ ppoll: 1
 epoll_pwait: 1
 gettid: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 munmap: 1
 sendto: 1
 madvise: 1
