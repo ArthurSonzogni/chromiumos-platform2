@@ -271,6 +271,14 @@ bool VmExportOperation::PrepareOutput() {
     return false;
   }
 
+  ret = archive_write_set_options(out_.get(), "compression-level=1");
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason(base::StringPrintf(
+        "libarchive: failed to set compression level: %s, %s",
+        archive_error_string(out_.get()), strerror(archive_errno(out_.get()))));
+    return false;
+  }
+
   ret = archive_write_open(out_.get(), reinterpret_cast<void*>(this),
                            OutputFileOpenCallback, OutputFileWriteCallback,
                            OutputFileCloseCallback);
