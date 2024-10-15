@@ -24,7 +24,6 @@
 #include <tuple>
 #include <utility>
 
-#include <base/containers/flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -40,7 +39,6 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
-#include <brillo/secure_blob.h>
 #include <chromeos/constants/vm_tools.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vboot/crossystem.h>
@@ -109,35 +107,6 @@ constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 // Constants for querying the ChromeOS channel
 constexpr char kChromeOsReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 constexpr char kUnknown[] = "unknown";
-
-constexpr const char kVbMetaDigestFileDir[] = "/opt/google/vms/android/";
-constexpr const char kVbMetaDigestFileName[] = "arcvm_vbmeta_digest.sha256";
-constexpr uint32_t kExpectedVbMetaDigestSize = 64;
-
-// Relate cros system property mainfw_type (main firmware type)
-// to verified boot state. Devices in normal and recovery mode
-// are in verified boot state. Devices in developer mode are in
-// an unverified boot state.
-const base::flat_map<std::string, VerifiedBootState> kMainfwTypeToBootStateMap =
-    {{"normal", VerifiedBootState::kVerifiedBoot},
-     {"recovery", VerifiedBootState::kVerifiedBoot},
-     {"developer", VerifiedBootState::kUnverifiedBoot}};
-
-// Converts VerifiedBootState to the value expected by Android in DeviceInfo
-// for |vb_state|.
-// DeviceInfo expected values:
-// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
-const base::flat_map<VerifiedBootState, std::string>
-    kVerifiedBootStateToStringMap = {
-        {VerifiedBootState::kVerifiedBoot, "green"},
-        {VerifiedBootState::kUnverifiedBoot, "orange"}};
-
-// Converts VerifiedBootDeviceState to the value expected by Android in
-// DeviceInfo for |bootloader_state|.
-const base::flat_map<VerifiedBootDeviceState, std::string>
-    kDeviceStateToStringMap = {
-        {VerifiedBootDeviceState::kLockedDevice, "locked"},
-        {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}};
 
 // The vmm-swap out should be skipped for 24 hours once it's done.
 constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
@@ -959,12 +928,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
   arc::StartArcMiniInstanceRequest mini_instance_request =
       request.mini_instance_request();
 
-  const base::FilePath vbmeta_digest_file_dir(kVbMetaDigestFileDir);
-  const std::string verified_boot_state = DeriveVerifiedBootState(cros_system);
-  const std::string vb_device_state = DeriveBootloaderState(cros_system);
-  const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
-      GetVbMetaDigestFromFile(vbmeta_digest_file_dir);
-
   int64_t zram_size = MiB(request.guest_zram_mib());
 
   std::vector<std::string> params = {
@@ -1003,21 +966,11 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          mini_instance_request.enable_arc_attestation()),
       base::StringPrintf("androidboot.arc.signed_in=%d",
                          mini_instance_request.arc_signed_in()),
-      base::StringPrintf("androidboot.verifiedbootstate=%s",
-                         verified_boot_state.c_str()),
-      base::StringPrintf("androidboot.vbmeta.device_state=%s",
-                         vb_device_state.c_str()),
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
       "rcutree.kthread_prio=1",
   };
-
-  if (vbmeta_digest_opt.has_value()) {
-    params.push_back(base::StringPrintf(
-        "androidboot.vbmeta.digest=%s",
-        brillo::BlobToString(vbmeta_digest_opt.value()).c_str()));
-  }
 
   if (is_host_on_vm) {
     params.push_back("androidboot.host_is_in_vm=1");
@@ -1189,103 +1142,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
   }
 
   return params;
-}
-
-// static
-std::optional<std::vector<uint8_t>> ArcVm::GetVbMetaDigestFromFile(
-    const base::FilePath& vbmeta_digest_file_dir) {
-  base::FilePath vbmeta_digest_file_path =
-      vbmeta_digest_file_dir.Append(kVbMetaDigestFileName);
-  std::string vbmeta_digest;
-  if (!base::PathExists(vbmeta_digest_file_path) ||
-      !base::ReadFileToString(base::FilePath(vbmeta_digest_file_path),
-                              &vbmeta_digest)) {
-    // In case of failure to read vb meta digest into string, return nullopt.
-    LOG(ERROR) << "Failed to read vb meta digest file from path "
-               << vbmeta_digest_file_path;
-    return std::nullopt;
-  }
-  std::vector<uint8_t> vbmeta_digest_result =
-      brillo::BlobFromString(vbmeta_digest);
-  if (vbmeta_digest_result.size() != kExpectedVbMetaDigestSize) {
-    LOG(ERROR) << "vbmeta digest is not a valid hash. "
-               << "Expected size: " << kExpectedVbMetaDigestSize
-               << ". Actual size: " << vbmeta_digest_result.size();
-    return std::nullopt;
-  }
-
-  return vbmeta_digest_result;
-}
-
-// static
-std::string ArcVm::DeriveVerifiedBootState(
-    const crossystem::Crossystem& cros_system) {
-  const std::string default_unverified_state =
-      kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
-
-  // Convert main firmware type (mainfw_type) to VerifiedBootState enum.
-  // Possible values are normal, recovery, or developer.
-  // This property is used to determine whether or not the device is in a
-  // verified boot state.
-  std::optional<std::string> mainfw_type =
-      cros_system.VbGetSystemPropertyString("mainfw_type");
-  if (!mainfw_type.has_value()) {
-    LOG(ERROR) << "mainfw_type was not set";
-    return default_unverified_state;
-  }
-  auto boot_state_enum_iter =
-      kMainfwTypeToBootStateMap.find(mainfw_type.value());
-  if (boot_state_enum_iter == kMainfwTypeToBootStateMap.end()) {
-    LOG(ERROR) << "Unexpected mainfw_type: " << mainfw_type.value();
-    return default_unverified_state;
-  }
-
-  // Convert VerifiedBootState enum to color.
-  VerifiedBootState boot_state_enum = boot_state_enum_iter->second;
-  auto boot_state_string_iter =
-      kVerifiedBootStateToStringMap.find(boot_state_enum);
-  if (boot_state_string_iter == kVerifiedBootStateToStringMap.end()) {
-    LOG(ERROR) << "Unexpected boot_state_enum: "
-               << static_cast<int>(boot_state_enum);
-    return default_unverified_state;
-  }
-
-  return boot_state_string_iter->second;
-}
-
-// cros_debug indicates if the device is in debug mode or not.
-// Devices in debug mode are considered unlocked since new
-// software can be flashed and it does not enforce verification.
-// Non-debug devices do not allow modification and must go through
-// verified boot.
-// static
-std::string ArcVm::DeriveBootloaderState(
-    const crossystem::Crossystem& cros_system) {
-  const std::string default_unlocked_device_state =
-      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
-  // Convert cros_debug to VerifiedBootDeviceState enum.
-  std::optional<int> cros_debug =
-      cros_system.VbGetSystemPropertyInt("cros_debug");
-  VerifiedBootDeviceState device_state_enum;
-  if (!cros_debug.has_value() || cros_debug < 0) {
-    LOG(ERROR) << "Error while trying to read cros_debug";
-    device_state_enum = VerifiedBootDeviceState::kUnlockedDevice;
-  } else if (cros_debug == 1) {
-    device_state_enum = VerifiedBootDeviceState::kUnlockedDevice;
-  } else {
-    device_state_enum = VerifiedBootDeviceState::kLockedDevice;
-  }
-
-  // Convert VerifiedBootDeviceState to device state ("locked" or "unlocked").
-  auto device_state_string_iter =
-      kDeviceStateToStringMap.find(device_state_enum);
-  if (device_state_string_iter == kDeviceStateToStringMap.end()) {
-    LOG(ERROR) << "Unexpected device_state_enum: "
-               << static_cast<int>(device_state_enum);
-    return default_unlocked_device_state;
-  }
-
-  return device_state_string_iter->second;
 }
 
 }  // namespace vm_tools::concierge

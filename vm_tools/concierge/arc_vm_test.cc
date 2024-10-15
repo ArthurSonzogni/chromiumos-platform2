@@ -22,7 +22,6 @@
 #include <base/time/time.h>
 #include <base/timer/mock_timer.h>
 #include <base/timer/timer.h>
-#include <brillo/secure_blob.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -65,11 +64,6 @@ static constexpr char kMetricsArcvmAvgPagesInFileName[] =
     "Memory.VmmSwap.ARCVM.AvgPagesInFile";
 static constexpr char kMetricsArcvmPageAverageDurationInFileName[] =
     "Memory.VmmSwap.ARCVM.PageAverageDurationInFile";
-
-static constexpr char kSampleVbMetaDigest[] =
-    "ab76eece2ea8e2bea108d4dfd618bb6ab41096b291c6e83937637a941d87b303";
-static constexpr const char kVbMetaDigestFileName[] =
-    "arcvm_vbmeta_digest.sha256";
 
 bool is_parameter_set(const std::vector<std::string>& params,
                       std::string target) {
@@ -908,115 +902,6 @@ TEST(ArcVmParamsTest, ForceMaxAcquiredBuffersExperimentTwo) {
       base::Contains(params, "androidboot.vendor.arc.sf.maxacquired=2"));
 }
 
-TEST(ArcVmParamsTest, RecoveryModeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyString("mainfw_type", "recovery");
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=green"));
-}
-
-TEST(ArcVmParamsTest, NormalModeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyString("mainfw_type", "normal");
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=green"));
-}
-
-TEST(ArcVmParamsTest, DeveloperModeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyString("mainfw_type", "developer");
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=orange"));
-}
-
-TEST(ArcVmParamsTest, InvalidMainFwTypeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyString("mainfw_type", "invalid");
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=orange"));
-}
-
-TEST(ArcVmParamsTest, NoMainfwTypeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(base::Contains(params, "androidboot.verifiedbootstate=orange"));
-}
-
-TEST(ArcVmParamsTest, NonDebugModeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyInt("cros_debug", 0);
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(base::Contains(params, "androidboot.vbmeta.device_state=locked"));
-}
-
-TEST(ArcVmParamsTest, DebugModeVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyInt("cros_debug", 1);
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.vbmeta.device_state=unlocked"));
-}
-
-TEST(ArcVmParamsTest, UnexpectedCrosDebugVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  cros_system.VbSetSystemPropertyInt("cros_debug", -1);
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.vbmeta.device_state=unlocked"));
-}
-
-TEST(ArcVmParamsTest, NoCrosDebugVerifiedBootParams) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.vbmeta.device_state=unlocked"));
-}
-
 class FakeSwapVmCallback {
  public:
   ArcVm::SwapVmCallback Create() {
@@ -1034,12 +919,6 @@ class FakeSwapVmCallback {
 
 // Test fixture for actually testing the ArcVm functionality.
 class ArcVmTest : public ::testing::Test {
- public:
-  static std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFileForTest(
-      const base::FilePath& vbmeta_digest_file_dir) {
-    return ArcVm::GetVbMetaDigestFromFile(vbmeta_digest_file_dir);
-  }
-
  protected:
   static constexpr int64_t kGuestMemorySize = GiB(1);
 
@@ -1862,31 +1741,6 @@ TEST_F(ArcVmTest, SendSwappingInSignal) {
   EXPECT_TRUE(latest_vm_swapping_state_.has_value());
   EXPECT_EQ(latest_vm_swapping_state_.value(), SWAPPING_IN);
   ASSERT_EQ(FakeCrosvmControl::Get()->count_disable_vmm_swap_, 1);
-}
-
-TEST_F(ArcVmTest, GetVbMetaDigestFromFileSuccess) {
-  std::string file_data(kSampleVbMetaDigest);
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  ASSERT_TRUE(base::WriteFile(temp_dir.GetPath().Append(kVbMetaDigestFileName),
-                              file_data));
-
-  std::optional<std::vector<uint8_t>> result =
-      ArcVmTest::GetVbMetaDigestFromFileForTest(temp_dir.GetPath());
-
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kSampleVbMetaDigest, brillo::BlobToString(result.value()));
-}
-
-TEST_F(ArcVmTest, GetVbMetaDigestFromFileFailure) {
-  std::string file_data(kSampleVbMetaDigest);
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-
-  std::optional<std::vector<uint8_t>> result =
-      ArcVmTest::GetVbMetaDigestFromFileForTest(temp_dir.GetPath());
-
-  ASSERT_FALSE(result.has_value());
 }
 
 }  // namespace concierge
