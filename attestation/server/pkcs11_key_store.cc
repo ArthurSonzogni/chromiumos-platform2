@@ -552,8 +552,9 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
     LOG(ERROR) << "Key search failed: " << key_name;
     return CK_INVALID_HANDLE;
   }
-  if (count == 1)
+  if (count == 1) {
     return key_handle;
+  }
   return CK_INVALID_HANDLE;
 }
 
@@ -630,8 +631,9 @@ bool Pkcs11KeyStore::EnumObjects(
         LOG(WARNING) << "Found key object but failed to get name.";
         continue;
       }
-      if (!callback.Run(key_name, handles[i]))
+      if (!callback.Run(key_name, handles[i])) {
         return false;
+      }
     }
     if (C_FindObjects(session_handle, handles, kMaxHandles, &count) != CKR_OK) {
       LOG(ERROR) << "Key search continuation failed.";

@@ -1422,8 +1422,9 @@ bool AttestationService::AddDeviceKey(const std::string& key_label,
       break;
     }
   }
-  if (!found)
+  if (!found) {
     *database_pb->add_device_keys() = key;
+  }
   return database_->SaveChanges();
 }
 
@@ -1459,8 +1460,9 @@ bool AttestationService::RemoveDeviceKeysByPrefix(
   for (int i = 0; i < device_keys->size(); ++i) {
     if (device_keys->Get(i).key_name().find(key_prefix) != 0) {
       // Prefix doesn't match -> keep.
-      if (i != next_keep_index)
+      if (i != next_keep_index) {
         device_keys->SwapElements(next_keep_index, i);
+      }
       ++next_keep_index;
     }
   }
@@ -1514,8 +1516,9 @@ int AttestationService::ChooseTemporalIndex(const std::string& user,
         database_pb.temporal_index_record(i);
     // Ignore out-of-range index values.
     if (record.temporal_index() < 0 ||
-        record.temporal_index() >= kNumTemporalValues)
+        record.temporal_index() >= kNumTemporalValues) {
       continue;
+    }
     if (record.origin_hash() == origin_hash) {
       if (record.user_hash() == user_hash) {
         // We've previously chosen this index for this user, reuse it.
@@ -1528,8 +1531,9 @@ int AttestationService::ChooseTemporalIndex(const std::string& user,
   }
   int least_used_index = 0;
   for (int i = 1; i < kNumTemporalValues; ++i) {
-    if (histogram[i] < histogram[least_used_index])
+    if (histogram[i] < histogram[least_used_index]) {
       least_used_index = i;
+    }
   }
   if (histogram[least_used_index] > 0) {
     LOG(WARNING) << "Unique origin-specific identifiers have been exhausted.";
@@ -2996,9 +3000,10 @@ void AttestationService::SignEnterpriseChallengeTask(
   }
   key_info.set_device_id(request.device_id());
 
-  if (request.has_device_trust_signals_json())
+  if (request.has_device_trust_signals_json()) {
     *key_info.mutable_device_trust_signals_json() =
         request.device_trust_signals_json();
+  }
 
   std::optional<CertifiedKey> key_for_certificate_and_spkac;
   if (request.include_certificate()) {
@@ -3343,8 +3348,9 @@ KeyType AttestationService::GetAttestationIdentityKeyType() const {
 }
 
 bool AttestationService::PopulateCustomerId(KeyInfo* key_info) {
-  if (!policy_provider_.get())
+  if (!policy_provider_.get()) {
     policy_provider_ = std::make_unique<policy::PolicyProvider>();
+  }
   policy_provider_->Reload();
 
   // If device_policy is still not loaded, return an error.

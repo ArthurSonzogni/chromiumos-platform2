@@ -1231,10 +1231,12 @@ class ClientLoop : public ClientLoopBase {
     uint32_t parsed_index;
     uint32_t parsed_size;
 
-    if (!base::HexStringToUInt(index, &parsed_index))
+    if (!base::HexStringToUInt(index, &parsed_index)) {
       LOG(ERROR) << "Failed to parse index.";
-    if (!base::StringToUint(size_bytes, &parsed_size))
+    }
+    if (!base::StringToUint(size_bytes, &parsed_size)) {
       LOG(ERROR) << "Failed to parse size.";
+    }
 
     request.set_nv_index(parsed_index);
     request.set_nv_size(parsed_size);

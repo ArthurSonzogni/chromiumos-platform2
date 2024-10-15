@@ -240,17 +240,20 @@ class KeyStoreTest : public testing::Test {
     chaps::Attributes parsed;
     parsed.Parse(attributes_in);
     if (parsed.num_attributes() == 1 &&
-        parsed.attributes()[0].type == CKA_LABEL)
+        parsed.attributes()[0].type == CKA_LABEL) {
       value = label;
+    }
     if (parsed.num_attributes() != 1 ||
         (parsed.attributes()[0].type != CKA_VALUE &&
          parsed.attributes()[0].type != CKA_LABEL) ||
         (parsed.attributes()[0].pValue &&
-         parsed.attributes()[0].ulValueLen != value.size()))
+         parsed.attributes()[0].ulValueLen != value.size())) {
       return CKR_GENERAL_ERROR;
+    }
     parsed.attributes()[0].ulValueLen = value.size();
-    if (parsed.attributes()[0].pValue)
+    if (parsed.attributes()[0].pValue) {
       memcpy(parsed.attributes()[0].pValue, value.data(), value.size());
+    }
     parsed.Serialize(attributes_out);
     return CKR_OK;
   }
@@ -348,8 +351,9 @@ class KeyStoreTest : public testing::Test {
     CK_ATTRIBUTE_PTR array = parsed.attributes();
     for (CK_ULONG i = 0; i < parsed.num_attributes(); ++i) {
       if (array[i].type == type) {
-        if (!array[i].pValue)
+        if (!array[i].pValue) {
           return "";
+        }
         return std::string(reinterpret_cast<char*>(array[i].pValue),
                            array[i].ulValueLen);
       }
