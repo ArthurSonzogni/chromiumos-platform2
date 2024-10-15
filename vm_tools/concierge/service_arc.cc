@@ -274,6 +274,43 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
+  base::FilePath data_dir = base::FilePath(kAndroidDataDir);
+  if (!base::PathExists(data_dir)) {
+    LOG(WARNING) << "Android data directory does not exist";
+
+    response.set_failure_reason("Android data directory does not exist");
+    return response;
+  }
+
+  const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
+  SharedDataParam shared_data{.data_dir = data_dir,
+                              .tag = "_data",
+                              .uid_map = kAndroidUidMap,
+                              .gid_map = kAndroidGidMap,
+                              .enable_caches = SharedDataParam::Cache::kAlways,
+                              .ascii_casefold = false,
+                              .posix_acl = true,
+                              .privileged_quota_uids = privileged_quota_uids};
+  SharedDataParam shared_data_media{
+      .data_dir = data_dir,
+      .tag = "_data_media",
+      .uid_map = kAndroidUidMap,
+      .gid_map = kAndroidGidMap,
+      .enable_caches = SharedDataParam::Cache::kAlways,
+      .ascii_casefold = true,
+      .posix_acl = true,
+      .privileged_quota_uids = privileged_quota_uids};
+
+  const base::FilePath stub_dir(kStubVolumeSharedDir);
+  SharedDataParam shared_stub{.data_dir = stub_dir,
+                              .tag = "stub",
+                              .uid_map = kAndroidUidMap,
+                              .gid_map = kAndroidGidMap,
+                              .enable_caches = SharedDataParam::Cache::kAuto,
+                              .ascii_casefold = true,
+                              .posix_acl = false,
+                              .privileged_quota_uids = privileged_quota_uids};
+
   // Create the /metadata disk if it is requested but does not yet exist.
   // (go/arcvm-metadata)
   if (request.disks().size() > kMetadataDiskIndex) {
@@ -479,45 +516,8 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   const auto pstore_path = GetPstoreDest(request.owner_id());
 
-  base::FilePath data_dir = base::FilePath(kAndroidDataDir);
-  if (!base::PathExists(data_dir)) {
-    LOG(WARNING) << "Android data directory does not exist";
-
-    response.set_failure_reason("Android data directory does not exist");
-    return response;
-  }
-
   VmId vm_id(request.owner_id(), request.name());
   SendVmStartingUpSignal(vm_id, apps::VmType::ARCVM, vsock_cid);
-
-  const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
-  SharedDataParam shared_data{.data_dir = data_dir,
-                              .tag = "_data",
-                              .uid_map = kAndroidUidMap,
-                              .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAlways,
-                              .ascii_casefold = false,
-                              .posix_acl = true,
-                              .privileged_quota_uids = privileged_quota_uids};
-  SharedDataParam shared_data_media{
-      .data_dir = data_dir,
-      .tag = "_data_media",
-      .uid_map = kAndroidUidMap,
-      .gid_map = kAndroidGidMap,
-      .enable_caches = SharedDataParam::Cache::kAlways,
-      .ascii_casefold = true,
-      .posix_acl = true,
-      .privileged_quota_uids = privileged_quota_uids};
-
-  const base::FilePath stub_dir(kStubVolumeSharedDir);
-  SharedDataParam shared_stub{.data_dir = stub_dir,
-                              .tag = "stub",
-                              .uid_map = kAndroidUidMap,
-                              .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAuto,
-                              .ascii_casefold = true,
-                              .posix_acl = false,
-                              .privileged_quota_uids = privileged_quota_uids};
 
   // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |affinity|
   // should be passed from chrome instead of |enable_rt_vcpu|.
