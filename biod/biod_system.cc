@@ -12,7 +12,7 @@ extern "C" {
 namespace {
 constexpr char kHardwareWriteProtect[] = "wpsw_cur";
 constexpr char kDevBootSignedOnly[] = "dev_boot_signed_only";
-}
+}  // namespace
 
 namespace biod {
 

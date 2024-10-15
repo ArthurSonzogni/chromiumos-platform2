@@ -47,10 +47,11 @@ class PowerManagerClientTest : public testing::Test, public PowerEventObserver {
   // PowerEventObserver implementation
   void PowerButtonEventReceived(bool down,
                                 const base::TimeTicks& timestamp) override {
-    if (down)
+    if (down) {
       last_power_button_down_event_ = timestamp;
-    else
+    } else {
       last_power_button_up_event_ = timestamp;
+    }
   }
 
  protected:

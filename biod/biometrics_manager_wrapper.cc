@@ -107,8 +107,9 @@ void BiometricsManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
   }
 
   // We are only interested in cases where a name gets dropped from D-Bus.
-  if (name.empty() || !new_owner.empty())
+  if (name.empty() || !new_owner.empty()) {
     return;
+  }
 
   // If one of the session was owned by the dropped name, the session should
   // also be dropped, as there is nobody left to end it explicitly.
@@ -116,29 +117,34 @@ void BiometricsManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
   if (name == enroll_session_owner_) {
     LOG(INFO) << "EnrollSession object owner " << enroll_session_owner_
               << " has died. EnrollSession is canceled automatically.";
-    if (enroll_session_)
+    if (enroll_session_) {
       enroll_session_.End();
+    }
 
-    if (enroll_session_dbus_object_)
+    if (enroll_session_dbus_object_) {
       FinalizeEnrollSessionObject();
+    }
   }
 
   if (name == auth_session_owner_) {
     LOG(INFO) << "AuthSession object owner " << auth_session_owner_
               << " has died. AuthSession is ended automatically.";
-    if (auth_session_)
+    if (auth_session_) {
       auth_session_.End();
+    }
 
-    if (auth_session_dbus_object_)
+    if (auth_session_dbus_object_) {
       FinalizeAuthSessionObject();
+    }
   }
 }
 
 void BiometricsManagerWrapper::OnEnrollScanDone(
     ScanResult scan_result,
     const BiometricsManager::EnrollStatus& enroll_status) {
-  if (!enroll_session_dbus_object_)
+  if (!enroll_session_dbus_object_) {
     return;
+  }
 
   dbus::Signal enroll_scan_done_signal(kBiometricsManagerInterface,
                                        kBiometricsManagerEnrollScanDoneSignal);
@@ -160,8 +166,9 @@ void BiometricsManagerWrapper::OnEnrollScanDone(
 
 void BiometricsManagerWrapper::OnAuthScanDone(
     FingerprintMessage result, BiometricsManager::AttemptMatches matches) {
-  if (!auth_session_dbus_object_)
+  if (!auth_session_dbus_object_) {
     return;
+  }
 
   dbus::Signal auth_scan_done_signal(kBiometricsManagerInterface,
                                      kBiometricsManagerAuthScanDoneSignal);
@@ -196,8 +203,9 @@ void BiometricsManagerWrapper::OnSessionFailed() {
     FinalizeEnrollSessionObject();
   }
 
-  if (enroll_session_)
+  if (enroll_session_) {
     enroll_session_.End();
+  }
 
   if (auth_session_dbus_object_) {
     dbus::Signal session_failed_signal(kBiometricsManagerInterface,
@@ -206,8 +214,9 @@ void BiometricsManagerWrapper::OnSessionFailed() {
     FinalizeAuthSessionObject();
   }
 
-  if (auth_session_)
+  if (auth_session_) {
     auth_session_.End();
+  }
 }
 
 void BiometricsManagerWrapper::EmitStatusChanged(
@@ -280,8 +289,9 @@ bool BiometricsManagerWrapper::GetRecordsForUser(brillo::ErrorPtr* error,
   }
 
   for (const auto& record : records_) {
-    if (record->GetUserId() == user_id)
+    if (record->GetUserId() == user_id) {
       out->emplace_back(record->path());
+    }
   }
   return true;
 }

@@ -201,14 +201,16 @@ void SessionStateManager::OnSessionManagerNameOwnerChanged(
   // When session_manager has started user is always logged out.
   // When user logs in, OnSessionStateChanged() callback will be called
   // accordingly.
-  if (!new_owner.empty())
+  if (!new_owner.empty()) {
     return;
+  }
 
   // When primary user is empty, it means that user was not logged in or
   // session_manager notified us that session state was changed to stopped
   // before dying. In either case there is nothing to do.
-  if (primary_user_.empty())
+  if (primary_user_.empty()) {
     return;
+  }
 
   LOG(WARNING)
       << "Name " << login_manager::kSessionManagerServiceName

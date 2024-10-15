@@ -24,9 +24,10 @@ std::string LogSafeID(const std::string& id) {
 void LogOnSignalConnected(const std::string& interface_name,
                           const std::string& signal_name,
                           bool success) {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Failed to connect to signal " << signal_name
                << " of interface " << interface_name;
+  }
 }
 
 std::string EnrollResultToString(int result) {

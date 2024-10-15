@@ -542,8 +542,9 @@ void CrosFpAuthStackManager::KillMcuSession() {
 }
 
 void CrosFpAuthStackManager::OnMkbpEvent(uint32_t event) {
-  if (!next_session_action_.is_null())
+  if (!next_session_action_.is_null()) {
     next_session_action_.Run(event);
+  }
 }
 
 void CrosFpAuthStackManager::OnTaskComplete() {
@@ -685,8 +686,9 @@ void CrosFpAuthStackManager::DoEnrollImageEvent(uint32_t event) {
     OnEnrollScanDone(scan_result, enroll_status);
 
     // The user needs to remove the finger before the next enrollment image.
-    if (!RequestEnrollFingerUp())
+    if (!RequestEnrollFingerUp()) {
       OnSessionFailed();
+    }
 
     return;
   }
@@ -709,8 +711,9 @@ void CrosFpAuthStackManager::DoEnrollFingerUpEvent(uint32_t event) {
     return;
   }
 
-  if (!RequestEnrollImage())
+  if (!RequestEnrollImage()) {
     OnSessionFailed();
+  }
 }
 
 StartAuthSessionStatus CrosFpAuthStackManager::PrepareStartAuthSession(

@@ -141,8 +141,9 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     auto biometrics_manager_proxy =
         base::WrapUnique(new BiometricsManagerProxy());
 
-    if (!biometrics_manager_proxy->Initialize(bus, path, pset_reader))
+    if (!biometrics_manager_proxy->Initialize(bus, path, pset_reader)) {
       return nullptr;
+    }
     return biometrics_manager_proxy;
   }
 
@@ -162,8 +163,9 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
             ->CallMethodAndBlock(&method_call,
                                  biod::dbus_constants::kDbusTimeoutMs)
             .value_or(nullptr);
-    if (!response)
+    if (!response) {
       return nullptr;
+    }
 
     dbus::MessageReader response_reader(response.get());
     dbus::ObjectPath enroll_session_path;
@@ -199,8 +201,9 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
             .value_or(nullptr);
 
     std::vector<RecordProxy> records;
-    if (!response)
+    if (!response) {
       return records;
+    }
 
     dbus::MessageReader response_reader(response.get());
     dbus::MessageReader records_reader(nullptr);
@@ -392,8 +395,9 @@ class BiodProxy {
         if (interface_name == biod::kBiometricsManagerInterface) {
           auto biometrics_manager =
               BiometricsManagerProxy::Create(bus_, object_path, &pset_reader);
-          if (biometrics_manager)
+          if (biometrics_manager) {
             biometrics_managers_.emplace_back(std::move(biometrics_manager));
+          }
         }
       }
     }
@@ -432,8 +436,9 @@ class BiodProxy {
         ret = 1;
       }
     }
-    if (ret)
+    if (ret) {
       LOG(WARNING) << "Not all records were destroyed";
+    }
     return ret;
   }
 
@@ -532,8 +537,9 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
 
     biometrics_manager_path = biometrics_manager->path().value();
 
-    if (user_id.empty())
+    if (user_id.empty()) {
       continue;
+    }
 
     for (const RecordProxy& record :
          biometrics_manager->GetRecordsForUser(user_id)) {

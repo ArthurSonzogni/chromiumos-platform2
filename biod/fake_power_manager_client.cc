@@ -25,8 +25,9 @@ void FakePowerManagerClient::RemoveObserver(PowerEventObserver* observer) {
 
 void FakePowerManagerClient::GeneratePowerButtonEvent(
     bool down, base::TimeTicks timestamp) {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.PowerButtonEventReceived(down, timestamp);
+  }
 }
 
 }  // namespace biod

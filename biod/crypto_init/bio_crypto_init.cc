@@ -117,8 +117,9 @@ bool BioCryptoInit::CrosFpTemplateVersionCompatible(
   // If biod has template version 4, firmware with version 3 is still
   // compatible until we deprecate it.
   if (firmware_fp_template_format_version == 3 &&
-      biod_fp_template_format_version == 4)
+      biod_fp_template_format_version == 4) {
     return true;
+  }
   return firmware_fp_template_format_version == biod_fp_template_format_version;
 }
 

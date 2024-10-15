@@ -151,8 +151,9 @@ bool CrosFpBiometricsManager::RemoveRecord(const std::string& record_id) {
   std::string user_id = record->user_id;
 
   // TODO(b/115399954): only delete record if user_id is primary user.
-  if (!record_manager_->DeleteRecord(record_id))
+  if (!record_manager_->DeleteRecord(record_id)) {
     return false;
+  }
 
   // We cannot remove only one record in the FPMCU. Reload user records.
   return ReadRecordsForSingleUser(user_id);
@@ -290,27 +291,31 @@ CrosFpBiometricsManager::~CrosFpBiometricsManager() {}
 
 void CrosFpBiometricsManager::OnEnrollScanDone(
     ScanResult result, const BiometricsManager::EnrollStatus& enroll_status) {
-  if (!on_enroll_scan_done_.is_null())
+  if (!on_enroll_scan_done_.is_null()) {
     on_enroll_scan_done_.Run(result, enroll_status);
+  }
 }
 
 void CrosFpBiometricsManager::OnAuthScanDone(
     FingerprintMessage result,
     const BiometricsManager::AttemptMatches& matches) {
-  if (!on_auth_scan_done_.is_null())
+  if (!on_auth_scan_done_.is_null()) {
     on_auth_scan_done_.Run(result, matches);
+  }
 }
 
 void CrosFpBiometricsManager::OnSessionFailed() {
   LOG(INFO) << __func__;
 
-  if (!on_session_failed_.is_null())
+  if (!on_session_failed_.is_null()) {
     on_session_failed_.Run();
+  }
 }
 
 void CrosFpBiometricsManager::OnMkbpEvent(uint32_t event) {
-  if (!next_session_action_.is_null())
+  if (!next_session_action_.is_null()) {
     next_session_action_.Run(event);
+  }
 }
 
 bool CrosFpBiometricsManager::RequestEnrollImage(
@@ -402,8 +407,9 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
     OnEnrollScanDone(scan_result, enroll_status);
 
     // The user needs to remove the finger before the next enrollment image.
-    if (!RequestEnrollFingerUp(std::move(record)))
+    if (!RequestEnrollFingerUp(std::move(record))) {
       OnSessionFailed();
+    }
 
     return;
   }
@@ -460,8 +466,9 @@ void CrosFpBiometricsManager::DoEnrollFingerUpEvent(
     return;
   }
 
-  if (!RequestEnrollImage(std::move(record)))
+  if (!RequestEnrollImage(std::move(record))) {
     OnSessionFailed();
+  }
 }
 
 void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
@@ -471,8 +478,9 @@ void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
     return;
   }
   // The user has lifted their finger, try to match the next touch.
-  if (!RequestMatch())
+  if (!RequestMatch()) {
     OnSessionFailed();
+  }
 }
 
 bool CrosFpBiometricsManager::CheckPositiveMatchSecret(
@@ -539,8 +547,9 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     // 6. biod sees a match again and this time notifies chrome without
     //    filtering it as it has filtered one already.
 
-    if (!RequestMatchFingerUp())
+    if (!RequestMatchFingerUp()) {
       OnSessionFailed();
+    }
 
     biod_metrics_->SendIgnoreMatchEventOnPowerButtonPress(true);
     return;
@@ -564,8 +573,9 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   if (match_result == EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE &&
       attempt < kMaxPartialAttempts) {
     /* retry a match */
-    if (!RequestMatch(attempt + 1))
+    if (!RequestMatch(attempt + 1)) {
       OnSessionFailed();
+    }
     return;
   }
 

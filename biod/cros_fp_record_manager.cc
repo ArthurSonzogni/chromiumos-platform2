@@ -28,8 +28,9 @@ void CrosFpRecordManager::SetAllowNoValidationValue(bool allow) {
 std::optional<RecordMetadata> CrosFpRecordManager::GetRecordMetadata(
     const std::string& record_id) {
   auto entry = records_metadata_.find(record_id);
-  if (entry == records_metadata_.end())
+  if (entry == records_metadata_.end()) {
     return std::nullopt;
+  }
 
   return entry->second.metadata;
 }

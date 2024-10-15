@@ -43,13 +43,15 @@ PowerButtonFilter::create_power_button_filter_for_test(
 }
 
 bool PowerButtonFilter::ShouldFilterFingerprintMatch() {
-  if (!fp_on_power_button_)
+  if (!fp_on_power_button_) {
     return false;
+  }
 
   // If we have already suppressed a fp touch for the latest power button event,
   // let us not suppress anymore fp touch events.
-  if (is_already_filtered_ == true)
+  if (is_already_filtered_ == true) {
     return false;
+  }
 
   if ((tick_clock_->NowTicks() - base::Milliseconds(kAuthIgnoreTimeoutmsecs)) <
       last_power_button_event_) {
@@ -96,8 +98,9 @@ void PowerButtonFilter::Init(
 
   LOG(INFO) << "Fp is " << (fp_on_power_button_ ? "" : "not ")
             << "overlapped on powerbutton.";
-  if (fp_on_power_button_ && !power_manager_client_->HasObserver(this))
+  if (fp_on_power_button_ && !power_manager_client_->HasObserver(this)) {
     power_manager_client_->AddObserver(this);
+  }
 }
 
 }  // namespace biod

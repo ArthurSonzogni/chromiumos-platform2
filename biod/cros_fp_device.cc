@@ -63,8 +63,9 @@ constexpr char CrosFpDevice::kCrosFpPath[];
 
 CrosFpDevice::~CrosFpDevice() {
   // Current session is gone, clean-up temporary state in the FP MCU.
-  if (cros_fd_.is_valid())
+  if (cros_fd_.is_valid()) {
     ResetContext();
+  }
 }
 
 std::optional<CrosFpDevice::EcProtocolInfo> CrosFpDevice::EcProtoInfo() {
@@ -154,8 +155,9 @@ void CrosFpDevice::OnEventReadable() {
 
   // We are interested only in fingerprint events, discard the other ones.
   if (evt.event_type != EC_MKBP_EVENT_FINGERPRINT ||
-      sz < sizeof(evt.event_type) + sizeof(evt.data.fp_events))
+      sz < sizeof(evt.event_type) + sizeof(evt.data.fp_events)) {
     return;
+  }
 
   // Properly aligned event value.
   uint32_t events;
@@ -436,8 +438,9 @@ bool CrosFpDevice::Init() {
     return false;
   }
 
-  if (!EcDevInit())
+  if (!EcDevInit()) {
     return false;
+  }
 
   if (!InitEntropy(false)) {
     return false;
@@ -447,8 +450,9 @@ bool CrosFpDevice::Init() {
   ResetContext();
 
   // Retrieve the sensor information / parameters.
-  if (!UpdateFpInfo())
+  if (!UpdateFpInfo()) {
     return false;
+  }
 
   LOG(INFO) << "CROS FP Sensor Info ";
   LOG(INFO) << "  Vendor ID  : " << FourCC(info_->sensor_id()->vendor_id);

@@ -50,8 +50,9 @@ bool BiometricsManagerRecord::SetLabel(std::string label) {
 }
 
 bool BiometricsManagerRecord::Remove() {
-  if (!biometrics_manager_)
+  if (!biometrics_manager_) {
     return false;
+  }
 
   return biometrics_manager_->RemoveRecord(record_id_);
 }

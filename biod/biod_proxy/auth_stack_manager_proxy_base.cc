@@ -27,8 +27,9 @@ std::unique_ptr<AuthStackManagerProxyBase> AuthStackManagerProxyBase::Create(
   auto auth_stack_manager_proxy_base =
       base::WrapUnique(new AuthStackManagerProxyBase());
 
-  if (!auth_stack_manager_proxy_base->Initialize(bus, path))
+  if (!auth_stack_manager_proxy_base->Initialize(bus, path)) {
     return nullptr;
+  }
 
   return auth_stack_manager_proxy_base;
 }
@@ -189,8 +190,9 @@ bool AuthStackManagerProxyBase::Initialize(const scoped_refptr<dbus::Bus>& bus,
   bus_ = bus;
   proxy_ = bus_->GetObjectProxy(biod::kBiodServiceName, path);
 
-  if (!proxy_)
+  if (!proxy_) {
     return false;
+  }
 
   return true;
 }

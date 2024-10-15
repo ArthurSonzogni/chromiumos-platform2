@@ -128,8 +128,9 @@ void AuthStackManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
   }
 
   // We are only interested in cases where a name gets dropped from D-Bus.
-  if (name.empty() || !new_owner.empty())
+  if (name.empty() || !new_owner.empty()) {
     return;
+  }
 
   // If one of the session was owned by the dropped name, the session should
   // also be dropped, as there is nobody left to end it explicitly.
@@ -137,29 +138,34 @@ void AuthStackManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
   if (name == enroll_session_owner_) {
     LOG(INFO) << "EnrollSession object owner " << enroll_session_owner_
               << " has died. EnrollSession is canceled automatically.";
-    if (enroll_session_)
+    if (enroll_session_) {
       enroll_session_.RunAndReset();
+    }
 
-    if (enroll_session_dbus_object_)
+    if (enroll_session_dbus_object_) {
       FinalizeEnrollSessionObject();
+    }
   }
 
   if (name == auth_session_owner_) {
     LOG(INFO) << "AuthSession object owner " << auth_session_owner_
               << " has died. AuthSession is ended automatically.";
-    if (auth_session_)
+    if (auth_session_) {
       auth_session_.RunAndReset();
+    }
 
-    if (auth_session_dbus_object_)
+    if (auth_session_dbus_object_) {
       FinalizeAuthSessionObject();
+    }
   }
 }
 
 void AuthStackManagerWrapper::OnEnrollScanDone(
     ScanResult scan_result,
     const AuthStackManager::EnrollStatus& enroll_status) {
-  if (!enroll_session_dbus_object_)
+  if (!enroll_session_dbus_object_) {
     return;
+  }
 
   dbus::Signal enroll_scan_done_signal(kAuthStackManagerInterface,
                                        kBiometricsManagerEnrollScanDoneSignal);
@@ -179,8 +185,9 @@ void AuthStackManagerWrapper::OnEnrollScanDone(
 }
 
 void AuthStackManagerWrapper::OnAuthScanDone() {
-  if (!auth_session_dbus_object_)
+  if (!auth_session_dbus_object_) {
     return;
+  }
 
   dbus::Signal auth_scan_done_signal(kAuthStackManagerInterface,
                                      kBiometricsManagerAuthScanDoneSignal);
@@ -195,8 +202,9 @@ void AuthStackManagerWrapper::OnSessionFailed() {
     FinalizeEnrollSessionObject();
   }
 
-  if (enroll_session_)
+  if (enroll_session_) {
     enroll_session_.RunAndReset();
+  }
 
   if (auth_session_dbus_object_) {
     dbus::Signal session_failed_signal(kAuthStackManagerInterface,
@@ -205,8 +213,9 @@ void AuthStackManagerWrapper::OnSessionFailed() {
     FinalizeAuthSessionObject();
   }
 
-  if (auth_session_)
+  if (auth_session_) {
     auth_session_.RunAndReset();
+  }
 }
 
 void AuthStackManagerWrapper::GetNonce(

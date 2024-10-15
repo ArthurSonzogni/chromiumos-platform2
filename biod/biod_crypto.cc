@@ -17,8 +17,9 @@ bool BiodCrypto::ComputeValidationValue(const brillo::SecureVector& secret,
                                         std::vector<uint8_t>* out) {
   std::vector<uint8_t> user_id_bytes;
 
-  if (!base::HexStringToBytes(user_id, &user_id_bytes))
+  if (!base::HexStringToBytes(user_id, &user_id_bytes)) {
     return false;
+  }
   // Pad user_id so that we have exactly the same user_id as FPMCU has.
   // Otherwise the user_id length is different and validation value is wrong.
   user_id_bytes.resize(FP_CONTEXT_USERID_WORDS * sizeof(uint32_t));

@@ -20,8 +20,9 @@ namespace {
 bool DeserializeProtocolBuffer(const std::vector<uint8_t>& serialized_protobuf,
                                google::protobuf::MessageLite* protobuf_out) {
   CHECK(protobuf_out);
-  if (serialized_protobuf.empty())
+  if (serialized_protobuf.empty()) {
     return false;
+  }
   return protobuf_out->ParseFromArray(&serialized_protobuf.front(),
                                       serialized_protobuf.size());
 }
@@ -73,8 +74,9 @@ void PowerManagerClient::InputEvent(
       proto.type() == power_manager::InputEvent_Type_POWER_BUTTON_UP) {
     const bool down =
         (proto.type() == power_manager::InputEvent_Type_POWER_BUTTON_DOWN);
-    for (auto& observer : observers_)
+    for (auto& observer : observers_) {
       observer.PowerButtonEventReceived(down, timestamp);
+    }
   }
 }
 

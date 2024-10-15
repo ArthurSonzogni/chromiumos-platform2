@@ -38,8 +38,9 @@ bool BiometricsManagerProxyBase::Initialize(const scoped_refptr<dbus::Bus>& bus,
   bus_ = bus;
   proxy_ = bus_->GetObjectProxy(biod::kBiodServiceName, path);
 
-  if (!proxy_)
+  if (!proxy_) {
     return false;
+  }
 
   proxy_->ConnectToSignal(
       biod::kBiometricsManagerInterface,
@@ -57,8 +58,9 @@ std::unique_ptr<BiometricsManagerProxyBase> BiometricsManagerProxyBase::Create(
   auto biometrics_manager_proxy_base =
       base::WrapUnique(new BiometricsManagerProxyBase());
 
-  if (!biometrics_manager_proxy_base->Initialize(bus, path))
+  if (!biometrics_manager_proxy_base->Initialize(bus, path)) {
     return nullptr;
+  }
 
   return biometrics_manager_proxy_base;
 }
@@ -138,8 +140,9 @@ void BiometricsManagerProxyBase::EndAuthSession() {
 }
 
 void BiometricsManagerProxyBase::OnFinish(bool success) {
-  if (on_finish_)
+  if (on_finish_) {
     on_finish_.Run(success);
+  }
 }
 
 void BiometricsManagerProxyBase::OnSessionFailed(dbus::Signal* signal) {

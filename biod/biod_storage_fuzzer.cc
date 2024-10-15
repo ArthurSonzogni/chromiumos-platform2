@@ -46,10 +46,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   std::vector<uint8_t> biod_data;
 
-  if (data_provider.remaining_bytes() > data_len)
+  if (data_provider.remaining_bytes() > data_len) {
     biod_data = data_provider.ConsumeBytes<uint8_t>(data_len);
-  else
+  } else {
     biod_data = data_provider.ConsumeRemainingBytes<uint8_t>();
+  }
 
   base::FilePath root_path("/tmp/biod_storage_fuzzing_data/biod");
 
