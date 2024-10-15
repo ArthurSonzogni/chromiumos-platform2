@@ -83,8 +83,9 @@ std::optional<brillo::SecureBlob> DoAes256GcmDecrypt(
   CHECK_EQ(iv.size(), kIvSize);
 
   // Input must have a tag appended to it.
-  if (input.size() < kTagSize)
+  if (input.size() < kTagSize) {
     return std::nullopt;
+  }
 
   // Initialize cipher.
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
@@ -136,14 +137,16 @@ std::optional<brillo::Blob> Aes256GcmEncrypt(const brillo::SecureBlob& key,
                                              const brillo::SecureBlob& input) {
   // Compute a random IV.
   brillo::Blob iv(kIvSize);
-  if (1 != RAND_bytes(iv.data(), iv.size()))
+  if (1 != RAND_bytes(iv.data(), iv.size())) {
     return std::nullopt;
+  }
 
   // Encrypt the input.
   std::optional<brillo::Blob> encrypted =
       DoAes256GcmEncrypt(key, auth_data, iv, input);
-  if (!encrypted.has_value())
+  if (!encrypted.has_value()) {
     return std::nullopt;
+  }
 
   // Append the random IV used for encryption to the output.
   encrypted->insert(encrypted->end(), iv.begin(), iv.end());
@@ -155,8 +158,9 @@ std::optional<brillo::SecureBlob> Aes256GcmDecrypt(
     const brillo::Blob& auth_data,
     const brillo::Blob& input) {
   // Input must have an IV appended to it.
-  if (input.size() < kIvSize)
+  if (input.size() < kIvSize) {
     return std::nullopt;
+  }
 
   // Split the input between the encrypted portion and the IV.
   brillo::Blob encrypted(input.begin(), input.end() - kIvSize);

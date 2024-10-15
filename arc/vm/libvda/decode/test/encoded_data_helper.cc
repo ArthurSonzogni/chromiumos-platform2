@@ -73,22 +73,26 @@ std::string EncodedDataHelper::GetBytesForNextFragment() {
 
 size_t EncodedDataHelper::GetBytesForNextNALU(size_t start_pos) {
   size_t pos = start_pos;
-  if (pos + 4 > data_.size())
+  if (pos + 4 > data_.size()) {
     return pos;
+  }
   LOG_ASSERT(IsNALHeader(data_, pos));
   pos += 4;
-  while (pos + 4 <= data_.size() && !IsNALHeader(data_, pos))
+  while (pos + 4 <= data_.size() && !IsNALHeader(data_, pos)) {
     ++pos;
-  if (pos + 3 >= data_.size())
+  }
+  if (pos + 3 >= data_.size()) {
     pos = data_.size();
+  }
   return pos;
 }
 
 bool EncodedDataHelper::LookForSPS(size_t* skipped_fragments_count) {
   *skipped_fragments_count = 0;
   while (next_pos_to_decode_ + 4 < data_.size()) {
-    if ((data_[next_pos_to_decode_ + 4] & 0x1f) == kNalUnitTypeSPS)
+    if ((data_[next_pos_to_decode_ + 4] & 0x1f) == kNalUnitTypeSPS) {
       return true;
+    }
     *skipped_fragments_count += 1;
     next_pos_to_decode_ = GetBytesForNextNALU(next_pos_to_decode_);
   }
@@ -99,8 +103,9 @@ std::string EncodedDataHelper::GetBytesForNextFrame() {
   // Helpful description: http://wiki.multimedia.cx/index.php?title=IVF
   size_t pos = next_pos_to_decode_;
   std::string bytes;
-  if (pos == 0)
+  if (pos == 0) {
     pos = 32;  // Skip IVF header.
+  }
 
   uint32_t frame_size = *reinterpret_cast<uint32_t*>(&data_[pos]);
   pos += 12;  // Skip frame header.

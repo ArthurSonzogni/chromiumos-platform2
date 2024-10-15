@@ -71,8 +71,9 @@ std::optional<uint64_t> ChapsCryptoOperation::Begin(
   chaps_ = std::make_unique<ChapsClient>(context_adaptor_, slot_);
   std::optional<CK_OBJECT_HANDLE> handle =
       chaps_->FindObject(CKO_PRIVATE_KEY, label_, id_);
-  if (!handle.has_value())
+  if (!handle.has_value()) {
     return std::nullopt;
+  }
 
   CK_OBJECT_HANDLE key_handle = handle.value();
 

@@ -110,8 +110,9 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
   }
   file_entry.type = row[3];
 
-  if (row[4])
+  if (row[4]) {
     file_entry.attributes = std::string(row[4]);
+  }
 
   if (!row[5]) {
     LOG(ERROR) << "FileEntry.size is null";
@@ -122,8 +123,9 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
     return SQLITE_ERROR;
   }
 
-  if (row[6])
+  if (row[6]) {
     file_entry.hash = std::string(row[6]);
+  }
 
   if (!row[7]) {
     LOG(ERROR) << "FileEntry.access_time is null";
@@ -193,16 +195,18 @@ bool ApkCacheDatabase::IsOpen() {
 }
 
 int ApkCacheDatabase::Close() {
-  if (!db_)
+  if (!db_) {
     return SQLITE_OK;
+  }
 
   // Error code will be returned in case of error. The caller may retry in this
   // case. If the database is successfully closed, db_ pointer must be released,
   // Otherwise sqlite3_close will be called again on already released db_
   // pointer by the destructor, which will result in undefined behavior.
   int result = sqlite3_close(db_.get());
-  if (result == SQLITE_OK)
+  if (result == SQLITE_OK) {
     db_.release();
+  }
 
   return result;
 }

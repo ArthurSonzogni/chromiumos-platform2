@@ -28,8 +28,9 @@ class Environment {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Limit the input size to avoid timing out on ClusterFuzz.
-  if (size > kMaxInputSize)
+  if (size > kMaxInputSize) {
     return 0;
+  }
 
   FuzzedDataProvider data_provider(data, size);
 
@@ -45,15 +46,17 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     std::string path =
         std::string("/") + data_provider.ConsumeBytesAsString(path_size);
 
-    if (data_provider.remaining_bytes() == 0)
+    if (data_provider.remaining_bytes() == 0) {
       break;
+    }
 
     size_t property_size = data_provider.ConsumeIntegralInRange<size_t>(
         1, data_provider.remaining_bytes());
     std::string property = data_provider.ConsumeBytesAsString(property_size);
 
-    if (data_provider.remaining_bytes() == 0)
+    if (data_provider.remaining_bytes() == 0) {
       break;
+    }
 
     size_t val_size = data_provider.ConsumeIntegralInRange<size_t>(
         1, data_provider.remaining_bytes());

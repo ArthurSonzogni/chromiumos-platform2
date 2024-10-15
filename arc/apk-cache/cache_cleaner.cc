@@ -187,8 +187,9 @@ bool Clean(const base::FilePath& cache_path) {
   for (base::FilePath package_path = packages.Next(); !package_path.empty();
        package_path = packages.Next()) {
     // Skip |files| directory which should be managed by database cleaner.
-    if (package_path.BaseName().MaybeAsASCII() == std::string(kFilesBase))
+    if (package_path.BaseName().MaybeAsASCII() == std::string(kFilesBase)) {
       continue;
+    }
 
     if (!IsPackageValid(package_path)) {
       if (!brillo::DeletePathRecursively(package_path)) {

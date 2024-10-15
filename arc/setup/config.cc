@@ -39,8 +39,9 @@ bool StringToBool(const std::string str, bool* out) {
 Config::Config(const base::FilePath& config_json,
                std::unique_ptr<base::Environment> config_env)
     : env_(std::move(config_env)) {
-  if (!config_json.empty())
+  if (!config_json.empty()) {
     CHECK(ParseJsonFile(config_json));
+  }
 }
 
 Config::~Config() = default;
@@ -135,8 +136,9 @@ bool Config::ParseJsonFile(const base::FilePath& config_json) {
 
 base::Value* Config::FindConfig(std::string_view name) const {
   auto it = json_.find(name);
-  if (it == json_.end())
+  if (it == json_.end()) {
     return nullptr;
+  }
   return it->second.get();
 }
 

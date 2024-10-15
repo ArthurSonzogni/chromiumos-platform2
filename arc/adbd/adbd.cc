@@ -225,8 +225,9 @@ std::string GetUDCDriver() {
       base::FilePath("/sys/class/udc/"), false /* recursive */,
       base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
   const base::FilePath name = udc_enum.Next();
-  if (name.empty())
+  if (name.empty()) {
     return std::string();
+  }
   // We expect to only have one UDC driver in the system, so we can just return
   // the first file in the directory.
   return name.BaseName().value();
@@ -274,22 +275,27 @@ bool SetupConfigFS(const std::string& serialnumber,
   // In libchrome r780000, the variant
   // base::WriteFile(const FilePath& filename, StringPiece data) will be added
   // which causes ambiguity to calling adbd::WriteFile.
-  if (!base::WriteFile(gadget_path.Append("idVendor"), "0x18d1"))
+  if (!base::WriteFile(gadget_path.Append("idVendor"), "0x18d1")) {
     return false;
-  if (!base::WriteFile(gadget_path.Append("idProduct"), usb_product_id))
+  }
+  if (!base::WriteFile(gadget_path.Append("idProduct"), usb_product_id)) {
     return false;
+  }
   if (!base::WriteFile(gadget_path.Append("strings/0x409/serialnumber"),
                        serialnumber)) {
     return false;
   }
   if (!base::WriteFile(gadget_path.Append("strings/0x409/manufacturer"),
-                       "google"))
+                       "google")) {
     return false;
+  }
   if (!base::WriteFile(gadget_path.Append("strings/0x409/product"),
-                       usb_product_name))
+                       usb_product_name)) {
     return false;
-  if (!base::WriteFile(gadget_path.Append("configs/b.1/MaxPower"), "500"))
+  }
+  if (!base::WriteFile(gadget_path.Append("configs/b.1/MaxPower"), "500")) {
     return false;
+  }
 
   return true;
 }

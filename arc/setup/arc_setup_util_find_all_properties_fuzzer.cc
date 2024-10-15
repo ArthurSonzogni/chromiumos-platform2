@@ -30,8 +30,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         0, data_provider.remaining_bytes());
     std::string cur_line = data_provider.ConsumeBytesAsString(cur_line_size);
 
-    if (arc::FindAllProperties(&out_properties, cur_line))
+    if (arc::FindAllProperties(&out_properties, cur_line)) {
       return 0;
+    }
   }
 
   return 0;

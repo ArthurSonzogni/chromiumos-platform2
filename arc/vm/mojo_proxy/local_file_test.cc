@@ -289,8 +289,9 @@ TEST_F(SocketStreamTest, PendingWrite) {
     ASSERT_GT(result, 0);
     buf.resize(result);
     read_data += buf;
-    for (auto& fd : fds)
+    for (auto& fd : fds) {
       read_fds.push_back(std::move(fd));
+    }
   }
 
   EXPECT_EQ(sent_data, read_data);

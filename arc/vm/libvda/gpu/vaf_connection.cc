@@ -92,8 +92,9 @@ VafConnection::~VafConnection() {
 
 void VafConnection::CleanupOnIpcThread() {
   DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
-  if (remote_factory_.is_bound())
+  if (remote_factory_.is_bound()) {
     remote_factory_.reset();
+  }
 }
 
 bool VafConnection::Initialize() {

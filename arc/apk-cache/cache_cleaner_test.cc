@@ -96,9 +96,10 @@ void VerifyCache(const base::FilePath& cache_root_path,
         cache_root_path, false /* recursive */,
         base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
     base::FilePath unnecessary_file_path = files.Next();
-    if (!unnecessary_file_path.empty())
+    if (!unnecessary_file_path.empty()) {
       FAIL() << "Cache root should not contain any files but it contains "
              << unnecessary_file_path.value();
+    }
   }
 
   {

@@ -34,22 +34,27 @@ constexpr uint32_t kMaxDecodes = 20;
 
 base::FilePath GetTestVideoFilePath(const base::CommandLine* cmd_line) {
   base::FilePath path = cmd_line->GetSwitchValuePath("test_video_file");
-  if (path.empty())
+  if (path.empty()) {
     path = base::FilePath("test-25fps.h264");
-  if (!path.IsAbsolute())
+  }
+  if (!path.IsAbsolute()) {
     path = base::MakeAbsoluteFilePath(path);
+  }
   return path;
 }
 
 vda_profile_t GetVideoFileProfile(const base::FilePath& video_file) {
   const std::string& extension = video_file.Extension();
 
-  if (base::EqualsCaseInsensitiveASCII(extension, ".h264"))
+  if (base::EqualsCaseInsensitiveASCII(extension, ".h264")) {
     return H264PROFILE_MAIN;
-  if (base::EqualsCaseInsensitiveASCII(extension, ".vp8"))
+  }
+  if (base::EqualsCaseInsensitiveASCII(extension, ".vp8")) {
     return VP8PROFILE_ANY;
-  if (base::EqualsCaseInsensitiveASCII(extension, ".vp9"))
+  }
+  if (base::EqualsCaseInsensitiveASCII(extension, ".vp9")) {
     return VP9PROFILE_MIN;
+  }
 
   LOG(ERROR) << "Unsupported file extension: " << extension;
   return VIDEO_CODEC_PROFILE_UNKNOWN;
@@ -64,8 +69,9 @@ bool WaitForDecodesDone(arc::test::DecodeEventThread* event_thread,
   while (wait_timer.Elapsed() < max_wait_time) {
     *waiting_decodes -=
         event_thread->GetAndClearEndOfBitstreamBufferEventCount();
-    if (*waiting_decodes <= max_decodes)
+    if (*waiting_decodes <= max_decodes) {
       return true;
+    }
     base::PlatformThread::Sleep(wait_interval);
   }
   return false;

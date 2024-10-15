@@ -420,8 +420,9 @@ std::optional<ProxyFileSystem::State> ProxyFileSystem::GetState(
     fuse_ino_t inode) {
   base::AutoLock lock_(inode_lock_);
   auto iter = inode_to_state_.find(inode);
-  if (iter == inode_to_state_.end())
+  if (iter == inode_to_state_.end()) {
     return std::nullopt;
+  }
   return iter->second;
 }
 

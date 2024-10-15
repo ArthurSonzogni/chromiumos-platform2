@@ -38,8 +38,9 @@ arc::Mode GetMode(const std::string& mode) {
       {"remove-stale-data", arc::Mode::REMOVE_STALE_DATA},
   };
   for (const auto& mode_name : kModeNameMapping) {
-    if (mode == mode_name.first)
+    if (mode == mode_name.first) {
       return mode_name.second;
+    }
   }
 
   CHECK(false) << "Invalid mode '" << mode << "'";

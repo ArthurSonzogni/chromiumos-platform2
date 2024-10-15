@@ -58,13 +58,15 @@ constexpr std::array<uint8_t, 5> kBlob3{{1, 2, 3, 4, 5}};
   }
   if (!(b[0]->param->is_boolean_value() && b[1]->param->is_integer() &&
         b[2]->param->is_long_integer() && b[3]->param->is_date_time() &&
-        b[4]->param->is_blob()))
+        b[4]->param->is_blob())) {
     return ::testing::AssertionFailure() << "Incorrect union value type";
+  }
   if (!(a[0].boolean == b[0]->param->get_boolean_value() &&
         a[1].integer == b[1]->param->get_integer() &&
         a[2].long_integer == b[2]->param->get_long_integer() &&
-        a[3].date_time == b[3]->param->get_date_time()))
+        a[3].date_time == b[3]->param->get_date_time())) {
     return ::testing::AssertionFailure() << "Values differ";
+  }
   return VerifyVectorUint8(a[4].blob.data, a[4].blob.data_length,
                            b[4]->param->get_blob());
 }

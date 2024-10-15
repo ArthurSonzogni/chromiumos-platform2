@@ -108,8 +108,9 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   void UnmountOnOnetimeStopForTesting();
 
   void set_create_tagged_ashmem(bool create_tagged_ashmem) {
-    if (create_tagged_ashmem)
+    if (create_tagged_ashmem) {
       CHECK_EQ(mode_, Mode::PRE_CHROOT);
+    }
     create_tagged_ashmem_ = create_tagged_ashmem;
   }
 

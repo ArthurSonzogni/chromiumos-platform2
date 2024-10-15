@@ -23,8 +23,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   int MAX_LEN = 255;
 
-  if (size < 1)
+  if (size < 1) {
     return 0;
+  }
 
   FuzzedDataProvider data_provider(data, size);
 

@@ -91,17 +91,19 @@ void DataFilter::OnDevReadable() {
   std::vector<char> data(kMaxFuseDataSize);
   int result = HANDLE_EINTR(read(fd_dev_.get(), data.data(), data.size()));
   if (result <= 0) {
-    if (result == 0)
+    if (result == 0) {
       LOG(ERROR) << "Unexpected EOF on /dev/fuse";
-    else
+    } else {
       PLOG(ERROR) << "Failed to read /dev/fuse";
+    }
     AbortWatching();
     return;
   }
   data.resize(result);
 
-  if (!FilterDataFromDev(&data))
+  if (!FilterDataFromDev(&data)) {
     AbortWatching();
+  }
 }
 
 void DataFilter::OnDevWritable() {
@@ -134,8 +136,9 @@ void DataFilter::OnSocketReadable() {
   }
   data.resize(result);
 
-  if (!FilterDataFromSocket(&data))
+  if (!FilterDataFromSocket(&data)) {
     AbortWatching();
+  }
 }
 
 void DataFilter::OnSocketWritable() {
@@ -175,8 +178,9 @@ void DataFilter::AbortWatching() {
   fd_dev_.reset();
   fd_socket_.reset();
 
-  if (!on_stopped_callback_.is_null())
+  if (!on_stopped_callback_.is_null()) {
     origin_task_runner_->PostTask(FROM_HERE, std::move(on_stopped_callback_));
+  }
 }
 
 bool DataFilter::FilterDataFromDev(std::vector<char>* data) {

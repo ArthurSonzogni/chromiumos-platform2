@@ -382,8 +382,9 @@ GpuVeaImpl::~GpuVeaImpl() {
 
 bool GpuVeaImpl::Initialize() {
   input_formats_ = GetSupportedRawFormats(GbmUsageType::ENCODE);
-  if (input_formats_.empty())
+  if (input_formats_.empty()) {
     return false;
+  }
 
   ipc_task_runner_ = connection_->GetIpcTaskRunner();
   // Make sure we are not running on |ipc_task_runner_| to avoid dead lock.
@@ -400,8 +401,9 @@ bool GpuVeaImpl::Initialize() {
                                 base::Unretained(this), &init_complete_event));
   init_complete_event.Wait();
 
-  if (output_formats_.empty())
+  if (output_formats_.empty()) {
     return false;
+  }
 
   capabilities_.num_input_formats = input_formats_.size();
   capabilities_.input_formats = input_formats_.data();

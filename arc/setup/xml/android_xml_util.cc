@@ -31,12 +31,14 @@ constexpr char kAttributeFingerprint[] = " fingerprint=\"";
 std::string_view GetAttributeValue(std::string_view line,
                                    std::string_view key) {
   std::string_view::size_type key_begin_pos = line.find(key);
-  if (key_begin_pos == std::string_view::npos)
+  if (key_begin_pos == std::string_view::npos) {
     return std::string_view();
+  }
   std::string_view::size_type value_begin_pos = key_begin_pos + key.length();
   std::string_view::size_type value_end_pos = line.find('"', value_begin_pos);
-  if (value_end_pos == std::string_view::npos)
+  if (value_end_pos == std::string_view::npos) {
     return std::string_view();
+  }
   return line.substr(value_begin_pos, value_end_pos - value_begin_pos);
 }
 
@@ -131,14 +133,16 @@ bool FindLine(
 
     // Trim all '\r' and '\n' characters from the end of the line.
     std::string::size_type end = line.find_last_not_of("\r\n");
-    if (end == std::string::npos)
+    if (end == std::string::npos) {
       line.clear();
-    else if (end + 1 < line.length())
+    } else if (end + 1 < line.length()) {
       line.erase(end + 1);
+    }
 
     // Stop reading the file if |callback| returns true.
-    if (callback.Run(line))
+    if (callback.Run(line)) {
       return true;
+    }
   } while (!file.eof());
 
   // |callback| didn't find anything in the file.
@@ -158,11 +162,14 @@ bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
   // The serializer does not try to pretty-print the XML, and inserts '\n' only
   // to certain places like endTag.
   std::string_view trimmed = base::TrimWhitespaceASCII(line, base::TRIM_ALL);
-  if (!base::StartsWith(trimmed, kElementVersion, base::CompareCase::SENSITIVE))
+  if (!base::StartsWith(trimmed, kElementVersion,
+                        base::CompareCase::SENSITIVE)) {
     return false;  // Not a <version> element. Ignoring.
+  }
 
-  if (trimmed.find(kAttributeVolumeUuid) != std::string::npos)
+  if (trimmed.find(kAttributeVolumeUuid) != std::string::npos) {
     return false;  // This is for an external storage. Ignoring.
+  }
 
   std::string_view fingerprint =
       GetAttributeValue(trimmed, kAttributeFingerprint);

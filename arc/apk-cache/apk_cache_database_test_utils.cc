@@ -70,13 +70,15 @@ int ExecSQL(const base::FilePath& db_path,
   int result;
   result = sqlite3_open(db_path.MaybeAsASCII().c_str(), &db);
   std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_ptr(db, &sqlite3_close);
-  if (result != SQLITE_OK)
+  if (result != SQLITE_OK) {
     return result;
+  }
 
   for (const auto& sql : sqls) {
     result = sqlite3_exec(db_ptr.get(), sql.c_str(), nullptr, nullptr, nullptr);
-    if (result != SQLITE_OK)
+    if (result != SQLITE_OK) {
       return result;
+    }
   }
 
   return sqlite3_close(db_ptr.release());

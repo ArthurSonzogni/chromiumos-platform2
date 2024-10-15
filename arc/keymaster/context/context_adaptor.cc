@@ -36,15 +36,17 @@ ContextAdaptor::~ContextAdaptor() = default;
 
 scoped_refptr<::dbus::Bus> ContextAdaptor::GetBus() {
   // Ensure |bus_| is initialized before usages.
-  if (!bus_)
+  if (!bus_) {
     bus_ = InitDBusInCurrentTaskRunner();
+  }
   return bus_;
 }
 
 std::optional<std::string> ContextAdaptor::FetchPrimaryUserEmail() {
   // Short circuit if the results is already cached.
-  if (cached_email_.has_value())
+  if (cached_email_.has_value()) {
     return cached_email_.value();
+  }
 
   // Prepare output variables.
   std::string user_email;
@@ -79,13 +81,15 @@ std::optional<CK_SLOT_ID> ContextAdaptor::FetchSlotId(Slot slot) {
 
 std::optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlotId() {
   // Short circuit if the result is already cached.
-  if (cached_user_slot_.has_value())
+  if (cached_user_slot_.has_value()) {
     return cached_user_slot_;
+  }
 
   // Fetch email of the primary signed in user.
   std::optional<std::string> user_email = FetchPrimaryUserEmail();
-  if (!user_email.has_value())
+  if (!user_email.has_value()) {
     return std::nullopt;
+  }
 
   // Cache and return result.
   cached_user_slot_ = FetchSlotIdFromTpmTokenInfo(user_email);
@@ -112,8 +116,9 @@ std::optional<CK_SLOT_ID> ContextAdaptor::FetchSlotIdFromTpmTokenInfo(
   user_data_auth::Pkcs11GetTpmTokenInfoRequest request;
   // Setting a username retrieves the token info for that user. Leaving it empty
   // retrieves token info for the system.
-  if (user_email.has_value())
+  if (user_email.has_value()) {
     request.set_username(user_email.value());
+  }
   user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
   brillo::ErrorPtr error;
   bool success = pkcs11_proxy_->Pkcs11GetTpmTokenInfo(

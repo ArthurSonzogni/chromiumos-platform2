@@ -66,19 +66,22 @@ int64_t ReadFileAllocationTable(base::File* file,
     case FatType::FAT_12: {
       const int n_shift = (index % 2) ? 4 : 0;
       result = (le16toh(*reinterpret_cast<__le16*>(buf)) >> n_shift) & 0xfff;
-      if (result < FAT_START_ENT || result >= BAD_FAT12)
+      if (result < FAT_START_ENT || result >= BAD_FAT12) {
         result = kInvalidValue;
+      }
       break;
     }
     case FatType::FAT_16:
       result = le16toh(*reinterpret_cast<__le16*>(buf));
-      if (result < FAT_START_ENT || result >= BAD_FAT16)
+      if (result < FAT_START_ENT || result >= BAD_FAT16) {
         result = kInvalidValue;
+      }
       break;
     case FatType::FAT_32:
       result = le32toh(*reinterpret_cast<__le32*>(buf));
-      if (result < FAT_START_ENT || result >= BAD_FAT32)
+      if (result < FAT_START_ENT || result >= BAD_FAT32) {
         result = kInvalidValue;
+      }
       break;
   }
   return result;

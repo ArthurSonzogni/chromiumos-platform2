@@ -119,8 +119,9 @@ void deinitialize_encode(void* impl) {
 vea_session_info_t* init_encode_session(void* impl, vea_config_t* config) {
   arc::VeaContext* context =
       static_cast<arc::VeaImpl*>(impl)->InitEncodeSession(config);
-  if (!context)
+  if (!context) {
     return nullptr;
+  }
   vea_session_info_t* session_info = new vea_session_info_t();
   session_info->ctx = context;
   session_info->event_pipe_fd = context->GetEventFd();

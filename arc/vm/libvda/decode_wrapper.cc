@@ -147,8 +147,9 @@ const vda_capabilities_t* get_vda_capabilities(void* impl) {
 vda_session_info_t* init_decode_session(void* impl, vda_profile_t profile) {
   arc::VdaContext* context =
       static_cast<arc::VdaImpl*>(impl)->InitDecodeSession(profile);
-  if (!context)
+  if (!context) {
     return nullptr;
+  }
   vda_session_info_t* session_info = new vda_session_info_t();
   session_info->ctx = context;
   session_info->event_pipe_fd = context->GetEventFd();

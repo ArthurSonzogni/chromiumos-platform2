@@ -236,8 +236,9 @@ bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
       ScopedMount::CreateScopedMount(mounter, "binfmt_misc",
                                      binfmt_misc_directory, "binfmt_misc",
                                      MS_NOSUID | MS_NODEV | MS_NOEXEC, nullptr);
-  if (!binfmt_misc_mount)
+  if (!binfmt_misc_mount) {
     return false;
+  }
 
   const base::FilePath binfmt_misc_register_path =
       binfmt_misc_directory.Append("register");
@@ -245,8 +246,9 @@ bool RegisterAllBinFmtMiscEntries(ArcMounter* mounter,
     const base::FilePath entry_path = entry_directory.Append(entry_name);
     // arm64_{dyn,exe} are only available on some boards/configurations. Only
     // install them if they are present.
-    if (!base::PathExists(entry_path))
+    if (!base::PathExists(entry_path)) {
       continue;
+    }
     const base::FilePath format_path = binfmt_misc_directory.Append(entry_name);
     if (base::PathExists(format_path)) {
       // If we had already registered this format earlier and failed
@@ -298,8 +300,9 @@ ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
     return ArcSdkVersionUpgradeType::NO_UPGRADE;
   }
   if (data_sdk_version == AndroidSdkVersion::ANDROID_M) {
-    if (system_sdk_version == AndroidSdkVersion::ANDROID_P)
+    if (system_sdk_version == AndroidSdkVersion::ANDROID_P) {
       return ArcSdkVersionUpgradeType::M_TO_P;
+    }
   }
   if (data_sdk_version == AndroidSdkVersion::ANDROID_N_MR1 &&
       system_sdk_version == AndroidSdkVersion::ANDROID_P) {
@@ -408,8 +411,9 @@ const std::vector<EsdfsMount> GetEsdfsMounts(AndroidSdkVersion version) {
       {"write/emulated", 0007, kEverybodyGid},
   }};
   std::vector<EsdfsMount> mounts;
-  for (const auto& mount : kEsdfsMounts)
+  for (const auto& mount : kEsdfsMounts) {
     mounts.push_back(mount);
+  }
   if (version > AndroidSdkVersion::ANDROID_P) {
     // For container R.
     mounts.push_back({"full/emulated", 0007, kEverybodyGid});
@@ -475,8 +479,9 @@ bool WaitForSdcardSource(const base::FilePath& android_root,
   ret = WaitForPaths({fs_version}, kInstalldTimeout, &elapsed);
 
   LOG(INFO) << "Waiting for installd took " << elapsed.InSeconds() << "s";
-  if (!ret)
+  if (!ret) {
     LOG(ERROR) << "Timed out waiting for /data setup.";
+  }
 
   return ret;
 }
@@ -529,8 +534,9 @@ bool IsChromeOSUserAvailable(Mode mode) {
 // Converts Dalvik memory profile to androidboot property if applicable.
 std::string GetDalvikMemoryProfileParam(
     const std::string& dalvik_memory_profile) {
-  if (dalvik_memory_profile.empty())
+  if (dalvik_memory_profile.empty()) {
     return std::string();
+  }
   return base::StringPrintf("androidboot.arc_dalvik_memory_profile=%s ",
                             dalvik_memory_profile.c_str());
 }
@@ -538,8 +544,9 @@ std::string GetDalvikMemoryProfileParam(
 // Converts host ureadahead mode to androidboot property if applicable.
 std::string GetHostUreadaheadModeParam(
     const std::string& host_ureadahead_mode) {
-  if (host_ureadahead_mode.empty())
+  if (host_ureadahead_mode.empty()) {
     return std::string();
+  }
   return base::StringPrintf("androidboot.arc_host_ureadahead_mode=%s ",
                             host_ureadahead_mode.c_str());
 }
@@ -547,16 +554,18 @@ std::string GetHostUreadaheadModeParam(
 // Converts MediaStore maintenance bool to androidboot property if applicable.
 std::string GetDisableMediaStoreMaintenance(
     bool disable_media_store_maintenance) {
-  if (!disable_media_store_maintenance)
+  if (!disable_media_store_maintenance) {
     return std::string();
+  }
   return "androidboot.disable_media_store_maintenance=1 ";
 }
 
 // Converts disable download provider bool to androidboot property if
 // applicable.
 std::string GetDisableDownloadProvider(bool disable_download_provider) {
-  if (!disable_download_provider)
+  if (!disable_download_provider) {
     return std::string();
+  }
   return "androidboot.disable_download_provider=1 ";
 }
 
@@ -881,23 +890,26 @@ ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
     is_ndk_translation_available = false;
   }
 
-  if (!is_houdini_available && !is_ndk_translation_available)
+  if (!is_houdini_available && !is_ndk_translation_available) {
     return ArcBinaryTranslationType::NONE;
+  }
 
   const bool prefer_ndk_translation =
       (!is_houdini_available ||
        config_.GetBoolOrDie("NATIVE_BRIDGE_EXPERIMENT"));
 
-  if (is_ndk_translation_available && prefer_ndk_translation)
+  if (is_ndk_translation_available && prefer_ndk_translation) {
     return ArcBinaryTranslationType::NDK_TRANSLATION;
+  }
 
   return ArcBinaryTranslationType::HOUDINI;
 }
 
 void ArcSetup::SetUpBinFmtMisc(ArcBinaryTranslationType bin_type) {
   const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
-  if (system_arch != "x86_64")
+  if (system_arch != "x86_64") {
     return;
+  }
 
   base::FilePath root_directory;
 
@@ -1032,8 +1044,9 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
     // are migrated to static XML config.
     const base::FilePath generate_camera_profile(
         "/usr/bin/generate_camera_profile");
-    if (base::PathExists(generate_camera_profile))
+    if (base::PathExists(generate_camera_profile)) {
       EXIT_IF(!LaunchAndWait({generate_camera_profile.value()}));
+    }
   }
 
   if (base::PathExists(media_profile_xml)) {
@@ -1061,8 +1074,9 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
   base::FilePath hardware_features_xml =
       GetConfigPath(*config, kHardwareFeaturesSetting)
           .value_or(base::FilePath("/etc/hardware_features.xml"));
-  if (!base::PathExists(hardware_features_xml))
+  if (!base::PathExists(hardware_features_xml)) {
     return;
+  }
 
   const base::FilePath platform_xml_file =
       base::FilePath(oem_mount_directory)
@@ -1087,8 +1101,9 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
   // are migrated to static XML config.
   const base::FilePath board_hardware_features(
       "/usr/sbin/board_hardware_features");
-  if (!base::PathExists(board_hardware_features))
+  if (!base::PathExists(board_hardware_features)) {
     return;
+  }
 
   // The board_hardware_features is usually made by shell script and should
   // receive platform XML file argument in absolute path to avoid unexpected
@@ -1303,8 +1318,9 @@ void ArcSetup::InstallLinksToHostSideCode() {
   for (auto src_isa_directory = src_directory_iter.Next();
        !src_isa_directory.empty();
        src_isa_directory = src_directory_iter.Next()) {
-    if (IsDirectoryEmpty(src_isa_directory))
+    if (IsDirectoryEmpty(src_isa_directory)) {
       continue;
+    }
     const std::string isa = src_isa_directory.BaseName().value();
     if (!InstallLinksToHostSideCodeInternal(src_isa_directory,
                                             dest_directory.Append(isa), isa)) {
@@ -1390,8 +1406,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   LOG(INFO) << "MediaStore maintenance is " << !disable_media_store_maintenance;
 
   bool arc_generate_pai;
-  if (!config_.GetBool("ARC_GENERATE_PAI", &arc_generate_pai))
+  if (!config_.GetBool("ARC_GENERATE_PAI", &arc_generate_pai)) {
     arc_generate_pai = false;
+  }
   LOG(INFO) << "arc_generate_pai is " << arc_generate_pai;
 
   const int enable_tts_caching = config_.GetIntOrDie("ENABLE_TTS_CACHING");
@@ -1403,8 +1420,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
             << enable_consumer_auto_update_toggle;
 
   const bool use_dev_caches = config_.GetBoolOrDie("USE_DEV_CACHES");
-  if (use_dev_caches)
+  if (use_dev_caches) {
     LOG(INFO) << "use_dev_caches is set";
+  }
 
   const int enable_privacy_hub_for_chrome =
       config_.GetIntOrDie("ENABLE_PRIVACY_HUB_FOR_CHROME");
@@ -1412,8 +1430,9 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
             << enable_privacy_hub_for_chrome;
 
   const int arc_signed_in = config_.GetBoolOrDie("ARC_SIGNED_IN");
-  if (arc_signed_in)
+  if (arc_signed_in) {
     LOG(INFO) << "arc_signed_in is enabled";
+  }
 
   std::string native_bridge;
   switch (IdentifyBinaryTranslationType()) {
@@ -1533,8 +1552,9 @@ void ArcSetup::SetUpMountPointForDebugFilesystem(bool is_dev_mode) {
     EXIT_IF(!Chown(kSystemUid, kSystemGid, sync_directory));
     EXIT_IF(!Chown(kSystemUid, kSystemGid, sync_directory.Append("info")));
     // Kernel change that introduces sw_sync is follows sync/info
-    if (base::PathExists(sync_directory.Append("sw_sync")))
+    if (base::PathExists(sync_directory.Append("sw_sync"))) {
       EXIT_IF(!Chown(kSystemUid, kSystemGid, sync_directory.Append("sw_sync")));
+    }
 
     EXIT_IF(!arc_mounter_->BindMount(sync_directory, sync_mount_directory));
   }
@@ -1546,8 +1566,9 @@ void ArcSetup::SetUpMountPointForDebugFilesystem(bool is_dev_mode) {
   EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
                             tracing_mount_directory));
 
-  if (!is_dev_mode)
+  if (!is_dev_mode) {
     return;
+  }
 
   const base::FilePath tracing_directory("/sys/kernel/tracing");
   EXIT_IF(!arc_mounter_->BindMount(tracing_directory, tracing_mount_directory));
@@ -1695,11 +1716,13 @@ void ArcSetup::RestoreContext() {
       arc_paths_->sdcard_mount_directory, arc_paths_->sysfs_cpu,
       arc_paths_->sysfs_tracing,
   };
-  if (base::DirectoryExists(arc_paths_->restorecon_allowlist_sync))
+  if (base::DirectoryExists(arc_paths_->restorecon_allowlist_sync)) {
     directories.push_back(arc_paths_->restorecon_allowlist_sync);
+  }
   // usbfs does not exist on test VMs without any USB emulation, skip it there.
-  if (base::DirectoryExists(arc_paths_->usb_devices_directory))
+  if (base::DirectoryExists(arc_paths_->usb_devices_directory)) {
     directories.push_back(arc_paths_->usb_devices_directory);
+  }
 
   EXIT_IF(!RestoreconRecursively(directories));
 }
@@ -1724,12 +1747,14 @@ void ArcSetup::SetUpGraphicsSysfsContext() {
     auto device = Realpath(dev.Append("device"));
     // If it's virtio gpu, actually the PCI device
     // directory should be the parent directory.
-    if (device.BaseName().value().find("virtio") == 0)
+    if (device.BaseName().value().find("virtio") == 0) {
       device = device.DirName();
+    }
     for (const auto& attr : attrs) {
       auto attr_path = device.Append(attr);
-      if (base::PathExists(attr_path))
+      if (base::PathExists(attr_path)) {
         EXIT_IF(!Chcon(sysfs_drm_context, Realpath(attr_path)));
+      }
     }
   }
 }
@@ -1827,8 +1852,9 @@ void ArcSetup::SetUpSharedApkDirectory() {
 
 void ArcSetup::CleanUpBinFmtMiscSetUp() {
   const std::string system_arch = base::SysInfo::OperatingSystemArchitecture();
-  if (system_arch != "x86_64")
+  if (system_arch != "x86_64") {
     return;
+  }
   std::unique_ptr<ScopedMount> binfmt_misc_mount =
       ScopedMount::CreateScopedMount(
           arc_mounter_.get(), "binfmt_misc", arc_paths_->binfmt_misc_directory,
@@ -1886,8 +1912,9 @@ AndroidSdkVersion ArcSetup::GetSdkVersion() {
   LOG(INFO) << "SDK version string: " << version_str;
 
   const AndroidSdkVersion version = SdkVersionFromString(version_str);
-  if (version == AndroidSdkVersion::UNKNOWN)
+  if (version == AndroidSdkVersion::UNKNOWN) {
     LOG(FATAL) << "Unknown SDK version: " << version_str;
+  }
   return version;
 }
 
@@ -2135,17 +2162,20 @@ void ArcSetup::UnmountSharedAndroidDirectories() {
 void ArcSetup::MaybeStartAdbdProxy(bool is_dev_mode,
                                    bool is_inside_vm,
                                    const std::string& serialnumber) {
-  if (!is_dev_mode || is_inside_vm)
+  if (!is_dev_mode || is_inside_vm) {
     return;
+  }
   const base::FilePath adbd_config_path("/etc/arc/adbd.json");
-  if (!base::PathExists(adbd_config_path))
+  if (!base::PathExists(adbd_config_path)) {
     return;
+  }
   // Poll the firmware to determine whether UDC is enabled or not. We're only
   // stopping the process if it's explicitly disabled because some systems (like
   // ARM) do not have this signal wired in and just rely on the presence of
   // adbd.json.
-  if (LaunchAndWait({"/usr/bin/crossystem", "dev_enable_udc?0"}))
+  if (LaunchAndWait({"/usr/bin/crossystem", "dev_enable_udc?0"})) {
     return;
+  }
 
   // Now that we have identified that the system is capable of continuing, touch
   // the path where the FIFO will be located.
@@ -2286,9 +2316,10 @@ void ArcSetup::EnsureContainerDirectories() {
   // uid/gid will be modified by cras.conf later.
   // FIXME(b/64553266): Work around push_to_device/deploy_vendor_image running
   // arc_setup after cras.conf by skipping the setup if the directory exists.
-  if (!base::DirectoryExists(arc_paths_->cras_socket_directory))
+  if (!base::DirectoryExists(arc_paths_->cras_socket_directory)) {
     EXIT_IF(!InstallDirectory(01770, kHostRootUid, kHostRootGid,
                               arc_paths_->cras_socket_directory));
+  }
 
   // arc-setup writes to /run/arc/host_generated even before starting the mini
   // container.
@@ -2299,8 +2330,9 @@ void ArcSetup::EnsureContainerDirectories() {
 }
 
 void ArcSetup::SetUpTestharness(bool is_dev_mode) {
-  if (base::DirectoryExists(arc_paths_->testharness_directory))
+  if (base::DirectoryExists(arc_paths_->testharness_directory)) {
     return;
+  }
 
   if (is_dev_mode) {
     EXIT_IF(!InstallDirectory(07770, kSystemUid, kSystemGid,
@@ -2328,8 +2360,9 @@ void ArcSetup::StartNetworking() {
 
 void ArcSetup::StopNetworking() {
   // The container pid isn't available at this point.
-  if (!patchpanel::Client::New()->NotifyArcShutdown())
+  if (!patchpanel::Client::New()->NotifyArcShutdown()) {
     LOG(ERROR) << "Failed to notify network service";
+  }
 }
 
 void ArcSetup::MountOnOnetimeSetup() {
@@ -2435,8 +2468,9 @@ void ArcSetup::SendUpgradeMetrics(AndroidSdkVersion data_sdk_version) {
 }
 
 void ArcSetup::DeleteAndroidDataOnUpgrade(AndroidSdkVersion data_sdk_version) {
-  if (!ShouldDeleteAndroidData(GetSdkVersion(), data_sdk_version))
+  if (!ShouldDeleteAndroidData(GetSdkVersion(), data_sdk_version)) {
     return;
+  }
 
   LOG(INFO) << "Deleting old Android data";
   EXIT_IF(!MoveDirIntoDataOldDir(arc_paths_->android_data_directory,
@@ -2445,10 +2479,12 @@ void ArcSetup::DeleteAndroidDataOnUpgrade(AndroidSdkVersion data_sdk_version) {
 
 void ArcSetup::DeleteAndroidMediaProviderDataOnUpgrade(
     AndroidSdkVersion data_sdk_version) {
-  if (GetSdkVersion() < AndroidSdkVersion::ANDROID_R)
+  if (GetSdkVersion() < AndroidSdkVersion::ANDROID_R) {
     return;
-  if (data_sdk_version != AndroidSdkVersion::ANDROID_P)
+  }
+  if (data_sdk_version != AndroidSdkVersion::ANDROID_P) {
     return;
+  }
   LOG(INFO) << "Deleting old Android Media Provider data";
   const auto media_provider_data_directory =
       arc_paths_->android_data_directory.Append(
@@ -2613,8 +2649,9 @@ void ArcSetup::OnPreChroot() {
       << "Failed to enter the container mount namespace";
 
   BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
-  if (create_tagged_ashmem_)
+  if (create_tagged_ashmem_) {
     CreateTaggedAshmem(rootfs);
+  }
   RestoreContextOnPreChroot(rootfs);
   CreateDevColdbootDoneOnPreChroot(rootfs);
 }
@@ -2624,25 +2661,31 @@ void ArcSetup::CreateTaggedAshmem(const base::FilePath& rootfs) {
   EXIT_IF(!base::ReadFileToString(base::FilePath(kBootIdFile), &boot_id));
 
   CHECK(!boot_id.empty());
-  if (boot_id.back() == '\n')
+  if (boot_id.back() == '\n') {
     boot_id.pop_back();
+  }
 
   // Inherit device type from host's ashmem file.
   struct stat st_buf;
-  if (stat("/dev/ashmem", &st_buf) != 0)
+  if (stat("/dev/ashmem", &st_buf) != 0) {
     PLOG(FATAL) << "Failed to stat ashmem on host";
+  }
 
   const base::FilePath guest_ashmem = rootfs.Append("dev/ashmem" + boot_id);
   // Don't bother specifying G and O bits since umask will just clobber them.
-  if (mknod(guest_ashmem.value().c_str(), S_IFCHR | 0600, st_buf.st_rdev) != 0)
+  if (mknod(guest_ashmem.value().c_str(), S_IFCHR | 0600, st_buf.st_rdev) !=
+      0) {
     PLOG(FATAL) << "Failed to mknod " << guest_ashmem;
+  }
 
   // Since the file is world-rw-able, this is an optional adjustment.
-  if (chown(guest_ashmem.value().c_str(), kRootUid, kRootGid) != 0)
+  if (chown(guest_ashmem.value().c_str(), kRootUid, kRootGid) != 0) {
     PLOG(WARNING) << "Failed to chown to android root: " << guest_ashmem;
+  }
 
-  if (chmod(guest_ashmem.value().c_str(), 0666) != 0)
+  if (chmod(guest_ashmem.value().c_str(), 0666) != 0) {
     PLOG(FATAL) << "Failed to chmod " << guest_ashmem;
+  }
 }
 
 void ArcSetup::OnRemoveData() {
@@ -2686,8 +2729,9 @@ void ArcSetup::OnRemoveData() {
   }
 
   // Ensure to remove ARC /data in LVM stateful partition.
-  if (USE_ARCVM && USE_LVM_STATEFUL_PARTITION)
+  if (USE_ARCVM && USE_LVM_STATEFUL_PARTITION) {
     RemoveDataInLvm();
+  }
 }
 
 void ArcSetup::RemoveDataInLvm() {
@@ -2712,8 +2756,9 @@ void ArcSetup::RemoveDataInLvm() {
                                                     kResetLvmDbusTimeoutMs) ||
       err) {
     std::string msg;
-    if (err.get())
+    if (err.get()) {
       msg = err->GetDomain() + "," + err->GetCode() + "," + err->GetMessage();
+    }
     LOG(ERROR) << "ResetApplicationContainer call failed: " << msg;
     return;
   }
@@ -2805,8 +2850,9 @@ void ArcSetup::OnApplyPerBoardConfig() {
   brillo::SafeFD::Error err;
   std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(
       per_board_config_path.Append(kPlatformXmlFileRelative));
-  if (err == brillo::SafeFD::Error::kDoesNotExist)
+  if (err == brillo::SafeFD::Error::kDoesNotExist) {
     return;  // the board does not have the file.
+  }
   EXIT_IF(!fd.is_valid());
 
   uid_t crosvm_uid;

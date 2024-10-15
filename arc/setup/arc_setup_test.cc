@@ -62,8 +62,9 @@ class MockArcMounter : public ArcMounter {
 
   bool Umount(const base::FilePath& path) override {
     auto it = mount_points_.find(path.value());
-    if (it == mount_points_.end())
+    if (it == mount_points_.end()) {
       return false;
+    }
     mount_points_.erase(it);
     return true;
   }
@@ -76,8 +77,9 @@ class MockArcMounter : public ArcMounter {
 
   bool LoopUmount(const base::FilePath& path) override {
     auto it = loop_mount_points_.find(path.value());
-    if (it == loop_mount_points_.end())
+    if (it == loop_mount_points_.end()) {
       return false;
+    }
     loop_mount_points_.erase(it);
     return true;
   }

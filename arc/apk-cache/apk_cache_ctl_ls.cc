@@ -56,10 +56,11 @@ ExitCode CommandLs(const base::FilePath& cache_root, std::ostream& out_stream) {
         files_base.AppendASCII(GetFileNameById(entry.id));
 
     int64_t file_size;
-    if (base::GetFileSize(file_path, &file_size))
+    if (base::GetFileSize(file_path, &file_size)) {
       out_stream << file_size;
-    else
+    } else {
       out_stream << "null";
+    }
 
     out_stream << std::endl;
   }

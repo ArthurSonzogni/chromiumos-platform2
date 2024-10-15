@@ -49,12 +49,14 @@ int main(int argc, const char** argv) {
                       .svm_cid = VMADDR_CID_HOST};
   base::ScopedFD vm_fd = StartListening(reinterpret_cast<sockaddr*>(&vm_addr));
 
-  if (!vm_fd.is_valid())
+  if (!vm_fd.is_valid()) {
     return -1;
+  }
 
   // Delete host socket path if it exists.
-  if (!brillo::DeleteFile(base::FilePath(kHostSocketPath)))
+  if (!brillo::DeleteFile(base::FilePath(kHostSocketPath))) {
     LOG(FATAL) << "Unable to delete pre-existing socket at " << kHostSocketPath;
+  }
 
   // Listen for connection from host/Chrome. Chrome expects that by the time it
   // connects to this server, we are already listening for connections from
@@ -64,36 +66,42 @@ int main(int argc, const char** argv) {
   memcpy(host_addr.sun_path, kHostSocketPath, sizeof(kHostSocketPath));
   base::ScopedFD host_fd =
       StartListening(reinterpret_cast<sockaddr*>(&host_addr));
-  if (!host_fd.is_valid())
+  if (!host_fd.is_valid()) {
     return -1;
+  }
 
   // Allow access to socket.
-  if (!base::SetPosixFilePermissions(base::FilePath(kHostSocketPath), 0720))
+  if (!base::SetPosixFilePermissions(base::FilePath(kHostSocketPath), 0720)) {
     LOG(FATAL) << "Unable to chmod " << kHostSocketPath;
+  }
 
   // Chrome will connect first to check that the server is listening, without
   // sending anything.
   {
     base::ScopedFD conn = WaitForClientConnect(host_fd.get());
-    if (!conn.is_valid())
+    if (!conn.is_valid()) {
       LOG(FATAL) << "Unable to accept connection from host";
+    }
   }
 
   // Receive props from Chrome.
   base::ScopedFD host_client = WaitForClientConnect(host_fd.get());
-  if (!host_client.is_valid())
+  if (!host_client.is_valid()) {
     LOG(FATAL) << "Unable to accept connection from host";
+  }
 
   std::optional<std::string> props = ReadFD(host_client.get());
-  if (!props)
+  if (!props) {
     LOG(FATAL) << "Did not receive props from host";
+  }
 
   LOG(INFO) << "Received " << *props << " from host.";
 
   std::optional<std::pair<unsigned int, std::string>> extracted =
       ExtractCidValue(*props);
-  if (!extracted)
+  if (!extracted) {
     LOG(FATAL) << "The received props did not contain 'CID=<CID>' line";
+  }
 
   unsigned int expected_cid;
   std::string send_props;

@@ -73,8 +73,9 @@ base::ScopedFD CreateUnixDomainSocket(const base::FilePath& path) {
   LOG(INFO) << "Creating " << path.value();
 
   struct sockaddr_un sa;
-  if (!ToSockAddr(path, &sa))
+  if (!ToSockAddr(path, &sa)) {
     return {};
+  }
 
   base::ScopedFD fd(
       socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
@@ -121,8 +122,9 @@ std::pair<int, base::ScopedFD> ConnectUnixDomainSocket(
   LOG(INFO) << "Connecting to " << path.value();
 
   struct sockaddr_un sa;
-  if (!ToSockAddr(path, &sa))
+  if (!ToSockAddr(path, &sa)) {
     return std::make_pair(EFAULT, base::ScopedFD());
+  }
 
   base::ScopedFD fd(
       socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
@@ -175,8 +177,9 @@ ssize_t Sendmsg(int fd,
   cmsg->cmsg_level = SOL_SOCKET;
   cmsg->cmsg_type = SCM_RIGHTS;
   cmsg->cmsg_len = CMSG_LEN(fds.size() * sizeof(int));
-  for (size_t i = 0; i != fds.size(); ++i)
+  for (size_t i = 0; i != fds.size(); ++i) {
     reinterpret_cast<int*>(CMSG_DATA(cmsg))[i] = fds[i].get();
+  }
   return HANDLE_EINTR(sendmsg(fd, &msg, MSG_NOSIGNAL));
 }
 
@@ -195,8 +198,9 @@ ssize_t Recvmsg(int fd,
       .msg_controllen = sizeof(control_buffer),
   };
   const ssize_t result = HANDLE_EINTR(recvmsg(fd, &msg, 0));
-  if (result < 0)  // Failed.
+  if (result < 0) {  // Failed.
     return result;
+  }
 
   if (msg.msg_controllen > 0) {
     // Extract file descriptors from the control data.
@@ -208,8 +212,9 @@ ssize_t Recvmsg(int fd,
         const size_t n_fds = payload_length / sizeof(int);
         const int* data = reinterpret_cast<int*>(CMSG_DATA(cmsg));
         fds->reserve(n_fds);
-        for (size_t i = 0; i < n_fds; ++i)
+        for (size_t i = 0; i < n_fds; ++i) {
           fds->emplace_back(data[i]);
+        }
       }
     }
   }

@@ -82,8 +82,9 @@ base::FilePath GetLoopDevicePath(int32_t device) {
 
 // Immediately removes the loop device from the system.
 void RemoveLoopDevice(int control_fd, int32_t device) {
-  if (ioctl(control_fd, LOOP_CTL_REMOVE, device) < 0)
+  if (ioctl(control_fd, LOOP_CTL_REMOVE, device) < 0) {
     PLOG(ERROR) << "Failed to free /dev/loop" << device;
+  }
 }
 
 // Disassociates the loop device from any file descriptor.
@@ -110,10 +111,11 @@ int RestoreConLogCallback(int type, const char* fmt, ...) {
   // empty lines in the log.
   base::TrimString(message, "\r\n", &message);
 
-  if (type == SELINUX_INFO)
+  if (type == SELINUX_INFO) {
     LOG(INFO) << message;
-  else
+  } else {
     LOG(ERROR) << message;
+  }
 
   return 0;
 }
@@ -220,10 +222,12 @@ class ArcMounterImpl : public ArcMounter {
     for (size_t i = 0; i < kRetryMax; ++i) {
       bool retry = false;
       if (LoopMountInternal(source, target, filesystem_type, mount_flags,
-                            &retry))
+                            &retry)) {
         return true;
-      if (!retry)
+      }
+      if (!retry) {
         break;
+      }
       LOG(INFO) << "LoopMountInternal failed with EBUSY. Retrying...";
     }
     return false;
@@ -313,8 +317,9 @@ class ArcMounterImpl : public ArcMounter {
       autoclear = loop_info.lo_flags & LO_FLAGS_AUTOCLEAR;
     }
 
-    if (!Umount(path))
+    if (!Umount(path)) {
       return false;
+    }
 
     if (!autoclear) {
       base::ScopedFD scoped_loop_fd(
@@ -491,8 +496,9 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedMount(
     const char* filesystem_type,
     unsigned long mount_flags,  // NOLINT(runtime/int)
     const char* data) {
-  if (!mounter->Mount(source, target, filesystem_type, mount_flags, data))
+  if (!mounter->Mount(source, target, filesystem_type, mount_flags, data)) {
     return nullptr;
+  }
   return std::make_unique<ScopedMount>(target, mounter, false /*is_loop*/);
 }
 
@@ -503,8 +509,9 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedLoopMount(
     const base::FilePath& target,
     LoopMountFilesystemType filesystem_type,
     unsigned long flags) {  // NOLINT(runtime/int)
-  if (!mounter->LoopMount(source, target, filesystem_type, flags))
+  if (!mounter->LoopMount(source, target, filesystem_type, flags)) {
     return nullptr;
+  }
   return std::make_unique<ScopedMount>(target, mounter, true /*is_loop*/);
 }
 
@@ -513,8 +520,9 @@ std::unique_ptr<ScopedMount> ScopedMount::CreateScopedBindMount(
     ArcMounter* mounter,
     const base::FilePath& old_path,
     const base::FilePath& new_path) {
-  if (!mounter->BindMount(old_path, new_path))
+  if (!mounter->BindMount(old_path, new_path)) {
     return nullptr;
+  }
   return std::make_unique<ScopedMount>(new_path, mounter, false /*is_loop*/);
 }
 
@@ -523,8 +531,9 @@ base::FilePath Realpath(const base::FilePath& path) {
   // if |path| points to a directory (for Windows compatibility.)
   char buf[PATH_MAX] = {};
   if (!realpath(path.value().c_str(), buf)) {
-    if (errno != ENOENT)
+    if (errno != ENOENT) {
       PLOG(WARNING) << "Failed to resolve " << path.value();
+    }
     return path;
   }
   return base::FilePath(buf);
@@ -532,8 +541,9 @@ base::FilePath Realpath(const base::FilePath& path) {
 
 bool Chown(uid_t uid, gid_t gid, const base::FilePath& path) {
   base::ScopedFD fd(brillo::OpenSafely(path, O_RDONLY, 0));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
   return fchown(fd.get(), uid, gid) == 0;
 }
 
@@ -550,12 +560,14 @@ bool InstallDirectory(mode_t mode,
                       uid_t uid,
                       gid_t gid,
                       const base::FilePath& path) {
-  if (!brillo::MkdirRecursively(path, 0755).is_valid())
+  if (!brillo::MkdirRecursively(path, 0755).is_valid()) {
     return false;
+  }
 
   base::ScopedFD fd(brillo::OpenSafely(path, O_DIRECTORY | O_RDONLY, 0));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
 
   // Unlike 'mkdir -m mode -p' which does not change modes when the path already
   // exists, 'install -d' always sets modes and owner regardless of whether the
@@ -573,12 +585,15 @@ bool WriteToFile(const base::FilePath& file_path,
 
   base::ScopedFD fd(
       brillo::OpenSafely(file_path, O_WRONLY | O_CREAT | O_TRUNC, kMode));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
-  if (!SetPermissions(fd.get(), mode))
+  }
+  if (!SetPermissions(fd.get(), mode)) {
     return false;
-  if (content.empty())
+  }
+  if (content.empty()) {
     return true;
+  }
 
   // Note: WriteFileDescriptor() makes a best effort to write all data.
   // While-loop for handling partial-write is not needed here.
@@ -624,31 +639,36 @@ bool WaitForPaths(std::initializer_list<base::FilePath> paths,
   do {
     left.erase(std::remove_if(left.begin(), left.end(), base::PathExists),
                left.end());
-    if (left.empty())
+    if (left.empty()) {
       break;  // all paths are found.
+    }
     base::PlatformThread::Sleep(sleep_interval);
   } while (timeout >= timer.Elapsed());
 
-  if (out_elapsed)
+  if (out_elapsed) {
     *out_elapsed = timer.Elapsed();
+  }
 
-  for (const auto& path : left)
+  for (const auto& path : left) {
     LOG(ERROR) << path.value() << " not found";
+  }
   return left.empty();
 }
 
 bool LaunchAndWait(const std::vector<std::string>& argv) {
   base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
-  if (!process.IsValid())
+  if (!process.IsValid()) {
     return false;
+  }
   int exit_code = -1;
   return process.WaitForExit(&exit_code) && (exit_code == 0);
 }
 
 bool LaunchAndWait(const std::vector<std::string>& argv, int* exit_code) {
   base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
-  if (!process.IsValid())
+  if (!process.IsValid()) {
     return false;
+  }
   return process.WaitForExit(exit_code);
 }
 
@@ -874,8 +894,9 @@ bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
   SHA1_Init(&sha_context);
   for (const auto& file : files) {
     std::string file_str;
-    if (!base::ReadFileToString(file, &file_str))
+    if (!base::ReadFileToString(file, &file_str)) {
       return false;
+    }
     SHA1_Update(&sha_context, file_str.data(), file_str.size());
   }
   unsigned char hash[SHA_DIGEST_LENGTH];
@@ -887,8 +908,9 @@ bool GetSha1HashOfFiles(const std::vector<base::FilePath>& files,
 bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
                              AndroidSdkVersion data_sdk_version) {
   // Initial launch with clean data.
-  if (data_sdk_version == AndroidSdkVersion::UNKNOWN)
+  if (data_sdk_version == AndroidSdkVersion::UNKNOWN) {
     return false;
+  }
   // Downgraded. (b/80113276)
   if (data_sdk_version > system_sdk_version) {
     LOG(INFO) << "Clearing /data dir because ARC was downgraded from "
@@ -963,8 +985,9 @@ bool GetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {
   constexpr int kDefaultPwnameLength = 1024;
   // Load the passwd entry
   long user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT long
-  if (user_name_length == -1)
+  if (user_name_length == -1) {
     user_name_length = kDefaultPwnameLength;
+  }
   passwd user_info;
   passwd* user_infop = nullptr;
   std::vector<char> user_name_buf(user_name_length);
@@ -972,8 +995,9 @@ bool GetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {
                  user_name_length, &user_infop)) {
     return false;
   }
-  if (!user_infop)
+  if (!user_infop) {
     return false;  // no such user
+  }
   *user_id = user_info.pw_uid;
   *group_id = user_info.pw_gid;
   return true;

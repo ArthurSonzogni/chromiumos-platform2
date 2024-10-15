@@ -53,8 +53,9 @@ LocalFile::ReadResult LocalFile::Read() {
 
   // Caller is responsible to call this function only when FD is readable.
   // FD is readable && buffer_size==0 means it reached EOF.
-  if (buffer_size == 0)
+  if (buffer_size == 0) {
     return {0, std::string(), {}};
+  }
 
   // Read data.
   std::string buf(buffer_size, 0);
@@ -73,8 +74,9 @@ LocalFile::ReadResult LocalFile::Read() {
 
 bool LocalFile::Write(std::string blob, std::vector<base::ScopedFD> fds) {
   pending_write_.emplace_back(Data{std::move(blob), std::move(fds)});
-  if (!writable_watcher_)  // TrySendMsg will be called later if watching.
+  if (!writable_watcher_) {  // TrySendMsg will be called later if watching.
     TrySendMsg();
+  }
   return true;
 }
 

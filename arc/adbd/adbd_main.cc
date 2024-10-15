@@ -64,8 +64,9 @@ int main(int argc, char** argv) {
   const std::string board = base::SysInfo::HardwareModelName();
 
   const base::FilePath control_pipe_path = runtime_path.Append("ep0");
-  if (!FLAGS_arcvm && !adbd::CreatePipe(control_pipe_path))
+  if (!FLAGS_arcvm && !adbd::CreatePipe(control_pipe_path)) {
     return 1;
+  }
 
   char buffer[4096];
 
@@ -97,8 +98,9 @@ int main(int argc, char** argv) {
       // the FIFO and CreatePipe() returns. That seems unavoidable, but should
       // not present too much of a problem since exactly one process in Android
       // has the correct user to open this file in the first place (adbd).
-      if (!adbd::CreatePipe(control_pipe_path))
+      if (!adbd::CreatePipe(control_pipe_path)) {
         return 1;
+      }
     }
     // Once adbd has opened the control pipe, we set up the adb gadget on behalf
     // of that process, if we have not already.
@@ -146,10 +148,12 @@ int main(int argc, char** argv) {
     while (true) {
       ssize_t bytes_read =
           HANDLE_EINTR(read(control_pipe.get(), buffer, sizeof(buffer)));
-      if (bytes_read < 0)
+      if (bytes_read < 0) {
         PLOG(ERROR) << "Failed to read from FIFO";
-      if (bytes_read <= 0)
+      }
+      if (bytes_read <= 0) {
         break;
+      }
     }
   }
 }

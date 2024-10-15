@@ -26,10 +26,11 @@ bool ReceiveData(int fd,
     ssize_t result =
         fds ? Recvmsg(fd, buf, size, fds) : HANDLE_EINTR(read(fd, buf, size));
     if (result <= 0) {
-      if (result == 0)
+      if (result == 0) {
         LOG(ERROR) << "Unexpected EOF while receiving data.";
-      else
+      } else {
         PLOG(ERROR) << "Failed to receive data.";
+      }
       return false;
     }
     fds = nullptr;  // No need to receive FDs again.

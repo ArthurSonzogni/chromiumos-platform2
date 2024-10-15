@@ -44,8 +44,10 @@ class DataFilterTest : public testing::Test {
   // Reads filtered data which /dev/fuse sent to app.
   bool ReadInData(fuse_in_header* header, void* body, size_t body_size) {
     std::vector<char> buf(sizeof(*header) + body_size);
-    if (HANDLE_EINTR(read(fd_app_.get(), buf.data(), buf.size())) != buf.size())
+    if (HANDLE_EINTR(read(fd_app_.get(), buf.data(), buf.size())) !=
+        buf.size()) {
       return false;
+    }
     memcpy(header, buf.data(), sizeof(*header));
     memcpy(body, buf.data() + sizeof(*header), body_size);
     return true;
@@ -54,8 +56,10 @@ class DataFilterTest : public testing::Test {
   // Reads filtered data which app sent to /dev/fuse.
   bool ReadOutData(fuse_out_header* header, void* body, size_t body_size) {
     std::vector<char> buf(sizeof(*header) + body_size);
-    if (HANDLE_EINTR(read(fd_dev_.get(), buf.data(), buf.size())) != buf.size())
+    if (HANDLE_EINTR(read(fd_dev_.get(), buf.data(), buf.size())) !=
+        buf.size()) {
       return false;
+    }
     memcpy(header, buf.data(), sizeof(*header));
     memcpy(body, buf.data() + sizeof(*header), body_size);
     return true;

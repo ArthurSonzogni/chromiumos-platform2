@@ -249,8 +249,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // invocations of LLVMFuzzerTestOneInput.
   static ScopedSession session_manager;
 
-  if (!size)
+  if (!size) {
     return 0;
+  }
 
   DataReader reader(data, size);
   VdaCommand command = static_cast<VdaCommand>(

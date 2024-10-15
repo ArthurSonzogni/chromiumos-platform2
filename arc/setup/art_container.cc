@@ -160,8 +160,9 @@ std::unique_ptr<ArtContainer> ArtContainer::CreateContainer(
 std::vector<std::string> ArtContainer::GetIsas() {
   std::vector<std::string> isas;
   for (const std::string& arch : {"arm", "arm64", "x86", "x86_64"}) {
-    if (base::DirectoryExists(base::FilePath(kFrameworkPath).Append(arch)))
+    if (base::DirectoryExists(base::FilePath(kFrameworkPath).Append(arch))) {
       isas.push_back(arch);
+    }
   }
   return isas;
 }
@@ -206,8 +207,9 @@ bool ArtContainer::PatchImageChild(uint64_t offset_seed) {
   {
     // Enter an intermediate mount namespace to avoid leaking mounts.
     ScopedMinijail art_jail(minijail_new());
-    if (!art_jail)
+    if (!art_jail) {
       return false;
+    }
     minijail_namespace_vfs(art_jail.get());
     minijail_enter(art_jail.get());
   }
@@ -217,45 +219,53 @@ bool ArtContainer::PatchImageChild(uint64_t offset_seed) {
   std::unique_ptr<ScopedMount> art_rootfs = ScopedMount::CreateScopedLoopMount(
       mounter_, kSystemImage, art_paths_->art_rootfs_directory,
       LoopMountFilesystemType::kUnspecified, MS_RDONLY | MS_NOSUID | MS_NODEV);
-  if (!art_rootfs)
+  if (!art_rootfs) {
     return false;
+  }
   std::unique_ptr<ScopedMount> loop_vendor = ScopedMount::CreateScopedLoopMount(
       mounter_, kVendorImage, art_paths_->vendor_directory,
       LoopMountFilesystemType::kUnspecified, MS_RDONLY | MS_NOEXEC | MS_NOSUID);
-  if (!loop_vendor)
+  if (!loop_vendor) {
     return false;
+  }
   std::unique_ptr<ScopedMount> art_vendor = ScopedMount::CreateScopedBindMount(
       mounter_, art_paths_->vendor_directory,
       art_paths_->art_rootfs_directory.Append("vendor"));
-  if (!art_vendor)
+  if (!art_vendor) {
     return false;
+  }
   // Patchoat did not map /dev/ashmem with PROT_EXEC and using MS_NOEXEC here.
   std::unique_ptr<ScopedMount> loop_dev = ScopedMount::CreateScopedLoopMount(
       mounter_, kArtDevRootfsImage, art_paths_->art_dev_rootfs_directory,
       LoopMountFilesystemType::kUnspecified, MS_RDONLY | MS_NOEXEC | MS_NOSUID);
-  if (!loop_dev)
+  if (!loop_dev) {
     return false;
+  }
   std::unique_ptr<ScopedMount> art_dev = ScopedMount::CreateScopedBindMount(
       mounter_, art_paths_->art_dev_rootfs_directory.Append("dev"),
       art_paths_->art_rootfs_directory.Append("dev"));
-  if (!art_dev)
+  if (!art_dev) {
     return false;
+  }
   // Bind mount /dev/ashmem from host to art container. The minor number of
   // ashmem is dynamic, we overwrite the one in art_dev.
   std::unique_ptr<ScopedMount> ashmem = ScopedMount::CreateScopedBindMount(
       mounter_, base::FilePath("/dev/ashmem"),
       art_paths_->art_rootfs_directory.Append("dev/ashmem"));
-  if (!ashmem)
+  if (!ashmem) {
     return false;
+  }
   std::unique_ptr<ScopedMount> art_data = ScopedMount::CreateScopedBindMount(
       mounter_, art_paths_->art_dalvik_cache_directory.DirName(),
       art_paths_->art_rootfs_directory.Append("data"));
-  if (!art_data)
+  if (!art_data) {
     return false;
+  }
 
   for (const std::string& isa : ArtContainer::GetIsas()) {
-    if (!PatchImage(isa, offset_seed))
+    if (!PatchImage(isa, offset_seed)) {
       return false;
+    }
   }
   return true;
 }

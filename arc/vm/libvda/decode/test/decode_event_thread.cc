@@ -181,8 +181,9 @@ void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,
 
     // Check that offsets are increasing which would indicate that all planes
     // are in a single buffer.
-    if (vda_planes.size())
+    if (vda_planes.size()) {
       CHECK_GT(plane.offset, vda_planes.back().offset);
+    }
 
     vda_planes.push_back(std::move(plane));
   }

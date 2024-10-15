@@ -44,11 +44,13 @@ std::optional<std::pair<base::ScopedFD, base::ScopedFD>> SetupSocketPair() {
 }
 
 bool SetPayloadLength(const size_t payload_len, std::vector<char>* header) {
-  if (header == nullptr)
+  if (header == nullptr) {
     return false;
+  }
   auto sz = header->size();
-  if (sz < kAmessageDataLenOffset + 4)
+  if (sz < kAmessageDataLenOffset + 4) {
     return false;
+  }
   for (int i = 0; i < 4; i++) {
     // Some parentheses in the next line are added for readability.
     (*header)[kAmessageDataLenOffset + i] = (payload_len >> (8 * i)) & 0xff;
@@ -60,13 +62,16 @@ bool SetPayloadLength(const size_t payload_len, std::vector<char>* header) {
 // Returns true if the content is identical between the write and read.
 bool LoopCheck(int fd, const std::vector<char>& src) {
   auto sz = src.size();
-  if (fd < 0 || !sz)
+  if (fd < 0 || !sz) {
     return false;
-  if (!base::WriteFileDescriptor(fd, std::string_view(src.data(), sz)))
+  }
+  if (!base::WriteFileDescriptor(fd, std::string_view(src.data(), sz))) {
     return false;
+  }
   std::vector<char> output(sz);
-  if (!base::ReadFromFD(fd, output))
+  if (!base::ReadFromFD(fd, output)) {
     return false;
+  }
   return src == output;
 }
 

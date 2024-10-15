@@ -77,14 +77,16 @@ std::optional<std::string> ReadFD(int fd) {
       PLOG(ERROR) << "Unable to read from fd " << fd;
       return std::nullopt;
     }
-    if (len == 0)
+    if (len == 0) {
       break;
+    }
 
     out.append(buf, len);
   }
 
-  if (out.empty())
+  if (out.empty()) {
     return std::nullopt;
+  }
 
   return out;
 }

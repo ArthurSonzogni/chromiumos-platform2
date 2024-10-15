@@ -103,8 +103,9 @@ bool OpaqueFilesCleaner::Clean() {
   }
 
   // Exit normally if any other session is active.
-  if (IsOtherSessionActive(db))
+  if (IsOtherSessionActive(db)) {
     return true;
+  }
 
   // Open cache cleaner session.
   int64_t session_id = OpenSession(db);
@@ -116,18 +117,22 @@ bool OpaqueFilesCleaner::Clean() {
 
   bool success = true;
 
-  if (!CleanOutdatedFiles(db))
+  if (!CleanOutdatedFiles(db)) {
     success = false;
+  }
 
-  if (!CleanSessionsWithoutFile(db, session_id))
+  if (!CleanSessionsWithoutFile(db, session_id)) {
     success = false;
+  }
 
-  if (!CleanFiles(db))
+  if (!CleanFiles(db)) {
     success = false;
+  }
 
   // Close cache cleaner session.
-  if (!CloseSession(db, session_id))
+  if (!CloseSession(db, session_id)) {
     success = false;
+  }
 
   int result = db.Close();
   if (result != SQLITE_OK) {
@@ -154,8 +159,9 @@ bool OpaqueFilesCleaner::DeleteCache() const {
 
 bool OpaqueFilesCleaner::DeleteFiles() const {
   if (base::PathExists(files_path_) &&
-      brillo::DeletePathRecursively(files_path_))
+      brillo::DeletePathRecursively(files_path_)) {
     return true;
+  }
 
   LOG(ERROR) << "Failed to delete files directory";
   return false;
@@ -163,8 +169,9 @@ bool OpaqueFilesCleaner::DeleteFiles() const {
 
 bool OpaqueFilesCleaner::CleanStaleSessions(const ApkCacheDatabase& db) const {
   auto sessions = db.GetSessions();
-  if (!sessions)
+  if (!sessions) {
     return false;
+  }
 
   base::Time current_time = base::Time::Now();
 
@@ -176,15 +183,17 @@ bool OpaqueFilesCleaner::CleanStaleSessions(const ApkCacheDatabase& db) const {
       // situation the dead session will never be closed normally and will block
       // other sessions from being created.
       base::TimeDelta age = current_time - session.timestamp;
-      if (age.InSeconds() < 0)
+      if (age.InSeconds() < 0) {
         LOG(WARNING) << "Session " << session.id << " is in the future";
-      else if (age > kSessionMaxAge)
+      } else if (age > kSessionMaxAge) {
         LOG(WARNING) << "Session " << session.id << " expired";
-      else
+      } else {
         continue;
+      }
 
-      if (!db.DeleteSession(session.id))
+      if (!db.DeleteSession(session.id)) {
         return false;
+      }
     }
   }
 
@@ -194,8 +203,9 @@ bool OpaqueFilesCleaner::CleanStaleSessions(const ApkCacheDatabase& db) const {
 bool OpaqueFilesCleaner::IsOtherSessionActive(
     const ApkCacheDatabase& db) const {
   auto sessions = db.GetSessions();
-  if (!sessions)
+  if (!sessions) {
     return true;
+  }
 
   for (const Session& session : *sessions) {
     if (session.status == kSessionStatusOpen) {
@@ -224,8 +234,9 @@ bool OpaqueFilesCleaner::CloseSession(const ApkCacheDatabase& db,
 
 bool OpaqueFilesCleaner::CleanOutdatedFiles(const ApkCacheDatabase& db) const {
   auto file_entries = db.GetFileEntries();
-  if (!file_entries)
+  if (!file_entries) {
     return false;
+  }
 
   std::set<Package> packages_to_delete;
 
@@ -244,9 +255,10 @@ bool OpaqueFilesCleaner::CleanOutdatedFiles(const ApkCacheDatabase& db) const {
   // Delete all invalid packages.
   for (const Package& package : packages_to_delete) {
     int deleted_rows = db.DeletePackage(package.name, package.version);
-    if (deleted_rows > 0)
+    if (deleted_rows > 0) {
       LOG(INFO) << "Deleted " << deleted_rows << " files in package "
                 << package.name << " version " << package.version;
+    }
   }
 
   return true;
@@ -255,8 +267,9 @@ bool OpaqueFilesCleaner::CleanOutdatedFiles(const ApkCacheDatabase& db) const {
 bool OpaqueFilesCleaner::CleanSessionsWithoutFile(
     const ApkCacheDatabase& db, int64_t cleaner_session_id) const {
   int result = db.DeleteSessionsWithoutFileEntries(cleaner_session_id);
-  if (result > 0)
+  if (result > 0) {
     LOG(INFO) << "Deleted " << result << " sessions";
+  }
 
   return result != -1;
 }
@@ -264,13 +277,15 @@ bool OpaqueFilesCleaner::CleanSessionsWithoutFile(
 bool OpaqueFilesCleaner::CleanFiles(const ApkCacheDatabase& db) const {
   // Get all recorded file entries.
   auto file_entries = db.GetFileEntries();
-  if (!file_entries)
+  if (!file_entries) {
     return false;
+  }
 
   // Convert ID to file name
   std::unordered_set<std::string> known_file_names;
-  for (const FileEntry& file_entry : *file_entries)
+  for (const FileEntry& file_entry : *file_entries) {
     known_file_names.insert(GetFileNameById(file_entry.id));
+  }
 
   return RemoveUnexpectedItemsFromDir(
       files_path_,

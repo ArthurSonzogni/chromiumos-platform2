@@ -303,8 +303,9 @@ TEST_P(ChapsClientTest, CachesExportedEncryptionKey) {
   EXPECT_EQ(kKeyBlob, key);
 
   // Verify exporting key again won't trigger more FindObject calls.
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 10; ++i) {
     chaps_client_.ExportOrGenerateEncryptionKey();
+  }
 }
 
 TEST_P(ChapsClientTest, ReturnsCachedEncryptionKey) {

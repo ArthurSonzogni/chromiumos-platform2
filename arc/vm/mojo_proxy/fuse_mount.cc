@@ -45,8 +45,9 @@ FuseMount::~FuseMount() {
     fuse_session_remove_chan(channel_);
     fuse_session_destroy(session_);
   }
-  if (channel_)
+  if (channel_) {
     fuse_unmount(mount_path_.value().c_str(), channel_);
+  }
 }
 
 bool FuseMount::Init(int argc,

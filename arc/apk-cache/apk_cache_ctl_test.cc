@@ -61,8 +61,9 @@ bool CreateFileEntry(const base::FilePath& db_path,
   file_entry.access_time = base::Time::Now();
   file_entry.priority = kTestPackagePriority;
   file_entry.session_id = kTestSessionId;
-  if (!InsertFileEntryForTesting(db_path, file_entry))
+  if (!InsertFileEntryForTesting(db_path, file_entry)) {
     return false;
+  }
 
   base::FilePath file_path = files_path.Append(GetFileNameById(id));
   return base::WriteFile(file_path, kTestFileContent);

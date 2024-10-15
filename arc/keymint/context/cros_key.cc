@@ -305,7 +305,8 @@ CrosOperationFactory::~CrosOperationFactory() = default;
   ChapsKey* chaps_key = dynamic_cast<ChapsKey*>(&key);
 
   if (!chaps_key) {
-    NOTREACHED_IN_MIGRATION() << __func__ << " should not be called with non CrOS key.";
+    NOTREACHED_IN_MIGRATION()
+        << __func__ << " should not be called with non CrOS key.";
     *error = KM_ERROR_UNKNOWN_ERROR;
     return nullptr;
   }

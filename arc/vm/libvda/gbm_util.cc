@@ -30,12 +30,14 @@ ScopedGbmDevice ScopedGbmDevice::Create() {
     std::snprintf(path, sizeof(path), kRenderNodesFmt,
                   kDrmRenderNodeStart + offset);
     base::ScopedFD fd(HANDLE_EINTR(open(path, O_RDWR)));
-    if (!fd.is_valid())
+    if (!fd.is_valid()) {
       continue;
+    }
 
     gbm_device* device = gbm_create_device(fd.get());
-    if (device)
+    if (device) {
       return ScopedGbmDevice(device, std::move(fd));
+    }
   }
 
   // Try card nodes... for vkms mostly.
@@ -43,12 +45,14 @@ ScopedGbmDevice ScopedGbmDevice::Create() {
     std::snprintf(path, sizeof(path), kCardNodesFmt,
                   kDrmCardNodeStart + offset);
     base::ScopedFD fd(HANDLE_EINTR(open(path, O_RDWR)));
-    if (!fd.is_valid())
+    if (!fd.is_valid()) {
       continue;
+    }
 
     gbm_device* device = gbm_create_device(fd.get());
-    if (device)
+    if (device) {
       return ScopedGbmDevice(device, std::move(fd));
+    }
   }
 
   LOG(ERROR) << "Could not create gbm device.";
@@ -104,8 +108,9 @@ uint32_t ConvertPixelFormatToGbmFormat(video_pixel_format_t format) {
 std::vector<video_pixel_format_t> GetSupportedRawFormats(
     GbmUsageType usage_type) {
   auto device = ScopedGbmDevice::Create();
-  if (!device.get())
+  if (!device.get()) {
     return {};
+  }
 
   uint32_t usage_flags = GBM_BO_USE_TEXTURING;
   switch (usage_type) {
@@ -124,12 +129,14 @@ std::vector<video_pixel_format_t> GetSupportedRawFormats(
   for (video_pixel_format_t pixel_format : pixel_formats) {
     // VEA has NV12 hardcoded as the only allowed format on many devices,
     // only check NV12 for now.
-    if (usage_type == ENCODE && pixel_format != NV12)
+    if (usage_type == ENCODE && pixel_format != NV12) {
       continue;
+    }
 
     uint32_t gbm_format = ConvertPixelFormatToGbmFormat(pixel_format);
-    if (gbm_format == 0u)
+    if (gbm_format == 0u) {
       continue;
+    }
     if (!gbm_device_is_format_supported(device.get(), gbm_format,
                                         usage_flags)) {
       DLOG(INFO) << "Not supported: " << pixel_format;

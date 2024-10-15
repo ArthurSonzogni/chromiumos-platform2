@@ -663,14 +663,16 @@ int main(int argc, char** argv) {
   struct fuse* fuse = fuse_setup(
       fuse_argv.size(), const_cast<char**>(fuse_argv.data()), &passthrough_ops,
       sizeof(passthrough_ops), &mountpoint, &multithreaded, &private_data);
-  if (fuse == nullptr)
+  if (fuse == nullptr) {
     return 1;
+  }
 
   int res = 0;
-  if (multithreaded)
+  if (multithreaded) {
     res = fuse_loop_mt(fuse);
-  else
+  } else {
     res = fuse_loop(fuse);
+  }
 
   // The code below does the same thing fuse_teardown() except that it ignores
   // signals instead of calling fuse_remove_signal_handlers().

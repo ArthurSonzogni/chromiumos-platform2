@@ -71,8 +71,9 @@ int main(int argc, char* argv[]) {
         read_success = num_bytes % sizeof(message[0]) == 0;
       }
 
-      if (!read_success)
+      if (!read_success) {
         break;
+      }
 
       const size_t num_requests = num_bytes / sizeof(message[0]);
       int64_t response[kNumElements];
@@ -87,8 +88,9 @@ int main(int argc, char* argv[]) {
         response[idx] =
             ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec;
       }
-      if (error)
+      if (error) {
         break;
+      }
 
       if (!base::WriteFileDescriptor(
               fd.get(),

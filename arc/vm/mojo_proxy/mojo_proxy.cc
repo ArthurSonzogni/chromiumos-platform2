@@ -105,10 +105,11 @@ int64_t MojoProxy::RegisterFileDescriptor(
   const int raw_fd = fd.get();
   if (handle == 0) {
     // TODO(hidehiko): Ensure handle is unique in case of overflow.
-    if (delegate_->GetType() == Type::SERVER)
+    if (delegate_->GetType() == Type::SERVER) {
       handle = next_handle_++;
-    else
+    } else {
       handle = next_handle_--;
+    }
   }
 
   auto file = CreateFile(std::move(fd), fd_type,
@@ -135,8 +136,9 @@ void MojoProxy::Connect(const base::FilePath& path, ConnectCallback callback) {
   request->set_cookie(cookie);
   request->set_path(path.value());
   pending_connect_.emplace(cookie, std::move(callback));
-  if (!delegate_->SendMessage(message, {}))
+  if (!delegate_->SendMessage(message, {})) {
     Stop();
+  }
 }
 
 void MojoProxy::Pread(int64_t handle,
@@ -152,8 +154,9 @@ void MojoProxy::Pread(int64_t handle,
   request->set_count(count);
   request->set_offset(offset);
   pending_pread_.emplace(cookie, std::move(callback));
-  if (!delegate_->SendMessage(message, {}))
+  if (!delegate_->SendMessage(message, {})) {
     Stop();
+  }
 }
 
 void MojoProxy::Pwrite(int64_t handle,
@@ -169,8 +172,9 @@ void MojoProxy::Pwrite(int64_t handle,
   request->set_blob(std::move(blob));
   request->set_offset(offset);
   pending_pwrite_.emplace(cookie, std::move(callback));
-  if (!delegate_->SendMessage(message, {}))
+  if (!delegate_->SendMessage(message, {})) {
     Stop();
+  }
 }
 
 void MojoProxy::Fstat(int64_t handle, FstatCallback callback) {
@@ -181,8 +185,9 @@ void MojoProxy::Fstat(int64_t handle, FstatCallback callback) {
   request->set_cookie(cookie);
   request->set_handle(handle);
   pending_fstat_.emplace(cookie, std::move(callback));
-  if (!delegate_->SendMessage(message, {}))
+  if (!delegate_->SendMessage(message, {})) {
     Stop();
+  }
 }
 
 void MojoProxy::Ftruncate(int64_t handle,
@@ -196,29 +201,33 @@ void MojoProxy::Ftruncate(int64_t handle,
   request->set_handle(handle);
   request->set_length(length);
   pending_ftruncate_.emplace(cookie, std::move(callback));
-  if (!delegate_->SendMessage(message, {}))
+  if (!delegate_->SendMessage(message, {})) {
     Stop();
+  }
 }
 
 void MojoProxy::Close(int64_t handle) {
   arc_proxy::MojoMessage message;
   message.mutable_close()->set_handle(handle);
-  if (!delegate_->SendMessage(message, {}))
+  if (!delegate_->SendMessage(message, {})) {
     Stop();
+  }
 }
 
 void MojoProxy::OnMojoMessageAvailable() {
   arc_proxy::MojoMessage message;
   std::vector<base::ScopedFD> fds;
   if (!delegate_->ReceiveMessage(&message, &fds) ||
-      !HandleMessage(&message, std::move(fds)))
+      !HandleMessage(&message, std::move(fds))) {
     Stop();
+  }
 }
 
 bool MojoProxy::HandleMessage(arc_proxy::MojoMessage* message,
                               std::vector<base::ScopedFD> fds) {
-  for (auto& fd : fds)
+  for (auto& fd : fds) {
     received_fds_.push_back(std::move(fd));
+  }
 
   switch (message->command_case()) {
     case arc_proxy::MojoMessage::kClose:
@@ -256,8 +265,9 @@ bool MojoProxy::HandleMessage(arc_proxy::MojoMessage* message,
 }
 
 void MojoProxy::Stop() {
-  if (!message_watcher_)  // Do nothing if already stopped.
+  if (!message_watcher_) {  // Do nothing if already stopped.
     return;
+  }
 
   // Run all pending callbacks.
   for (auto& x : pending_ftruncate_) {
@@ -314,8 +324,9 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
     switch (transferred_fd.type()) {
       case arc_proxy::FileDescriptor::FIFO_READ: {
         auto created = CreatePipe();
-        if (!created)
+        if (!created) {
           return false;
+        }
         std::tie(remote_fd, local_fd) = std::move(*created);
         // Set local_fd (the mojo proxy side) fd as non-blocking, leaving fd to
         // be passed to other processes as blocking.
@@ -324,8 +335,9 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
       }
       case arc_proxy::FileDescriptor::FIFO_WRITE: {
         auto created = CreatePipe();
-        if (!created)
+        if (!created) {
           return false;
+        }
         std::tie(local_fd, remote_fd) = std::move(*created);
         // Set local_fd (the mojo proxy side) fd as non-blocking, leaving fd to
         // be passed to other processes as blocking.
@@ -335,8 +347,9 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
       case arc_proxy::FileDescriptor::REGULAR_FILE: {
         remote_fd = delegate_->CreateProxiedRegularFile(transferred_fd.handle(),
                                                         transferred_fd.flags());
-        if (!remote_fd.is_valid())
+        if (!remote_fd.is_valid()) {
           return false;
+        }
         break;
       }
       case arc_proxy::FileDescriptor::TRANSPORTABLE: {
@@ -350,22 +363,25 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
       }
       case arc_proxy::FileDescriptor::SOCKET_STREAM: {
         auto created = CreateSocketPair(SOCK_STREAM | SOCK_NONBLOCK);
-        if (!created)
+        if (!created) {
           return false;
+        }
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
       case arc_proxy::FileDescriptor::SOCKET_DGRAM: {
         auto created = CreateSocketPair(SOCK_DGRAM | SOCK_NONBLOCK);
-        if (!created)
+        if (!created) {
           return false;
+        }
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
       case arc_proxy::FileDescriptor::SOCKET_SEQPACKET: {
         auto created = CreateSocketPair(SOCK_SEQPACKET | SOCK_NONBLOCK);
-        if (!created)
+        if (!created) {
           return false;
+        }
         std::tie(local_fd, remote_fd) = std::move(*created);
         break;
       }
@@ -384,8 +400,9 @@ bool MojoProxy::OnData(arc_proxy::Data* data) {
   }
 
   if (!it->second.file->Write(std::move(*data->mutable_blob()),
-                              std::move(transferred_fds)))
+                              std::move(transferred_fds))) {
     HandleLocalFileError(data->handle());
+  }
   return true;
 }
 
@@ -445,8 +462,9 @@ void MojoProxy::SendPreadResponse(int64_t cookie,
   arc_proxy::MojoMessage reply;
   *reply.mutable_pread_response() = std::move(response);
 
-  if (!delegate_->SendMessage(reply, {}))
+  if (!delegate_->SendMessage(reply, {})) {
     Stop();
+  }
 }
 
 bool MojoProxy::OnPreadResponse(arc_proxy::PreadResponse* response) {
@@ -484,8 +502,9 @@ void MojoProxy::SendPwriteResponse(int64_t cookie,
   arc_proxy::MojoMessage reply;
   *reply.mutable_pwrite_response() = std::move(response);
 
-  if (!delegate_->SendMessage(reply, {}))
+  if (!delegate_->SendMessage(reply, {})) {
     Stop();
+  }
 }
 
 bool MojoProxy::OnPwriteResponse(arc_proxy::PwriteResponse* response) {
@@ -521,8 +540,9 @@ void MojoProxy::SendFstatResponse(int64_t cookie,
   arc_proxy::MojoMessage reply;
   *reply.mutable_fstat_response() = std::move(response);
 
-  if (!delegate_->SendMessage(reply, {}))
+  if (!delegate_->SendMessage(reply, {})) {
     Stop();
+  }
 }
 
 bool MojoProxy::OnFstatResponse(arc_proxy::FstatResponse* response) {
@@ -559,8 +579,9 @@ void MojoProxy::SendFtruncateResponse(int64_t cookie,
   arc_proxy::MojoMessage reply;
   *reply.mutable_ftruncate_response() = std::move(response);
 
-  if (!delegate_->SendMessage(reply, {}))
+  if (!delegate_->SendMessage(reply, {})) {
     Stop();
+  }
 }
 
 bool MojoProxy::OnFtruncateResponse(arc_proxy::FtruncateResponse* response) {
@@ -613,8 +634,9 @@ void MojoProxy::OnLocalFileDesciptorReadReady(int64_t handle) {
     DCHECK(message.has_data());
     message.mutable_data()->set_handle(handle);
   }
-  if (!delegate_->SendMessage(message, fds_to_send))
+  if (!delegate_->SendMessage(message, fds_to_send)) {
     Stop();
+  }
 }
 
 bool MojoProxy::ConvertDataToMojoMessage(

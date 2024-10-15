@@ -45,13 +45,16 @@ std::optional<std::pair<base::ScopedFD, base::ScopedFD>> SetupSocketPair() {
 // return true if the content is identical between the write and read.
 bool LoopCheck(int fd, const std::vector<char>& src) {
   auto sz = src.size();
-  if (fd < 0 || !sz)
+  if (fd < 0 || !sz) {
     return false;
-  if (!base::WriteFileDescriptor(fd, std::string_view(src.data(), sz)))
+  }
+  if (!base::WriteFileDescriptor(fd, std::string_view(src.data(), sz))) {
     return false;
+  }
   std::vector<char> output(sz);
-  if (!base::ReadFromFD(fd, output))
+  if (!base::ReadFromFD(fd, output)) {
     return false;
+  }
   return src == output;
 }
 

@@ -137,8 +137,9 @@ std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
 
   // Allow wildcard configuration to indicate that all regions should be
   // included.
-  if (regions.compare("*") == 0 && region_code.length() >= 2)
+  if (regions.compare("*") == 0 && region_code.length() >= 2) {
     return board + "_" + region_code;
+  }
 
   // Check to see if region code is in the list of regions that should be
   // included in the property.
@@ -146,8 +147,9 @@ std::string ComputeOEMKey(brillo::CrosConfigInterface* config,
       base::SplitString(regions, ",", base::WhitespaceHandling::TRIM_WHITESPACE,
                         base::SplitResult::SPLIT_WANT_NONEMPTY);
   for (const auto& region : region_vector) {
-    if (region_code.compare(region) == 0)
+    if (region_code.compare(region) == 0) {
       return board + "_" + region_code;
+    }
   }
 
   return board;
@@ -238,8 +240,9 @@ bool ExpandPropertyContents(const std::string& content,
         prev_match = match_end + 1;
         match_start = line.find('{', match_end);
       }
-      if (prev_match != std::string::npos)
+      if (prev_match != std::string::npos) {
         expanded += line.substr(prev_match);
+      }
       line = expanded;
     } while (inserted);
 
@@ -259,8 +262,9 @@ bool ExpandPropertyContents(const std::string& content,
     }
 
     new_properties += truncated + "\n";
-    if (truncated != orig_line)
+    if (truncated != orig_line) {
       modified_properties += truncated + "\n";
+    }
 
     // Special-case ro.product.board to compute ro.oem.key1 at runtime, as it
     // can depend upon the device region.
@@ -371,8 +375,9 @@ bool ExpandPropertyFile(const base::FilePath& input,
 
   auto WriteOrAppendFile = [&WriteFile](const base::FilePath& file,
                                         const std::string& data) {
-    if (!base::PathExists(file))
+    if (!base::PathExists(file)) {
       return WriteFile(file, data);
+    }
 
     if (!base::AppendToFile(file, data)) {
       PLOG(ERROR) << "Failed to append to " << file;
@@ -381,8 +386,9 @@ bool ExpandPropertyFile(const base::FilePath& input,
     return true;
   };
 
-  if (!append)
+  if (!append) {
     return WriteFile(output, expanded) && WriteFile(modified_output, modified);
+  }
 
   return WriteOrAppendFile(output, expanded) &&
          WriteOrAppendFile(modified_output, modified);
@@ -490,16 +496,19 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   // NOTE: Use base::ReadFileToString() instead of SafelyReadFile() below
   // on purpose because Linux sysfs expects symlink traversal.
   if (base::PathExists(machine_path)) {
-    if (!base::ReadFileToString(machine_path, &machine))
+    if (!base::ReadFileToString(machine_path, &machine)) {
       PLOG(ERROR) << "Failed to read " << machine_path;
+    }
   }
   if (base::PathExists(family_path)) {
-    if (!base::ReadFileToString(family_path, &family))
+    if (!base::ReadFileToString(family_path, &family)) {
       PLOG(ERROR) << "Failed to read " << family_path;
+    }
   }
   if (base::PathExists(soc_id_path)) {
-    if (!base::ReadFileToString(soc_id_path, &soc_id))
+    if (!base::ReadFileToString(soc_id_path, &soc_id)) {
       PLOG(ERROR) << "Failed to read " << soc_id_path;
+    }
   }
 
   // There can be SoC-specif socinfo drivers in the kernel that have a
@@ -553,8 +562,9 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 
   for (auto soc_dir_path = soc_dir_it.Next(); !soc_dir_path.empty();
        soc_dir_path = soc_dir_it.Next()) {
-    if (ParseOneSocinfo(soc_dir_path, dest, config))
+    if (ParseOneSocinfo(soc_dir_path, dest, config)) {
       return;
+    }
   }
 
   std::string platform;
@@ -739,8 +749,9 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
     const ExtraProps extra_props = std::get<2>(tuple);
 
     const base::FilePath source_file = source_path.Append(file);
-    if (is_optional && !base::PathExists(source_file))
+    if (is_optional && !base::PathExists(source_file)) {
       continue;
+    }
 
     const base::FilePath dest_file =
         single_file ? dest_path : dest_path.Append(file);

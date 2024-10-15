@@ -338,8 +338,9 @@ std::vector<std::vector<uint8_t>> ConvertToMojo(
 
 std::vector<arc::mojom::KeyParameterPtr> ConvertToMojo(
     const keymaster_key_param_set_t& param_set) {
-  if (param_set.length == 0 || !param_set.params)
+  if (param_set.length == 0 || !param_set.params) {
     return std::vector<arc::mojom::KeyParameterPtr>();
+  }
 
   std::vector<arc::mojom::KeyParameterPtr> out(param_set.length);
   keymaster_key_param_t* params = param_set.params;

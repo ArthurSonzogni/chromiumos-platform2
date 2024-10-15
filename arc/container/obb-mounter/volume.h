@@ -90,8 +90,9 @@ class Volume {
 
   // Returns the given cluster's first sector.
   int64_t GetClusterStartSector(int64_t cluster) const {
-    if (cluster < FAT_START_ENT)
+    if (cluster < FAT_START_ENT) {
       return kInvalidValue;
+    }
     return data_start_sector_ +
            (cluster - FAT_START_ENT) * sectors_per_cluster_;
   }

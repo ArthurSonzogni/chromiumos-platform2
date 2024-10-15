@@ -19,8 +19,9 @@ namespace arc {
 namespace {
 
 bool FindLineCallback(std::string* out_prop, const std::string& line) {
-  if (line != "string_to_find")
+  if (line != "string_to_find") {
     return false;
+  }
   *out_prop = "FOUND";
   return true;
 }

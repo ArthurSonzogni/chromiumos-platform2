@@ -344,8 +344,9 @@ vda_result_t GpuVdContext::UseOutputBuffer(int32_t picture_buffer_id,
                                            size_t num_planes,
                                            video_frame_plane_t* planes,
                                            uint64_t modifier) {
-  if (!CheckValidOutputFormat(format, num_planes))
+  if (!CheckValidOutputFormat(format, num_planes)) {
     return INVALID_ARGUMENT;
+  }
 
   // Move semantics don't seem to work with mojo pointers so copy the
   // video_frame_plane_t objects and handle in the ipc thread. This allows
@@ -550,15 +551,17 @@ std::vector<vda_input_format_t> GpuVdImpl::GetSupportedInputFormats() {
 
 bool GpuVdImpl::PopulateCapabilities() {
   input_formats_ = GetSupportedInputFormats();
-  if (input_formats_.empty())
+  if (input_formats_.empty()) {
     return false;
+  }
 
   capabilities_.num_input_formats = input_formats_.size();
   capabilities_.input_formats = input_formats_.data();
 
   output_formats_ = GetSupportedRawFormats(GbmUsageType::DECODE);
-  if (output_formats_.empty())
+  if (output_formats_.empty()) {
     return false;
+  }
 
   capabilities_.num_output_formats = output_formats_.size();
   capabilities_.output_formats = output_formats_.data();

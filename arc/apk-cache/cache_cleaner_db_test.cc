@@ -60,8 +60,9 @@ bool CreateFileEntry(const base::FilePath& db_path,
   file_entry.access_time = base::Time::Now();
   file_entry.priority = kTestPackagePriority;
   file_entry.session_id = kTestSessionId;
-  if (!InsertFileEntryForTesting(db_path, file_entry))
+  if (!InsertFileEntryForTesting(db_path, file_entry)) {
     return false;
+  }
 
   base::FilePath file_path = files_path.Append(GetFileNameById(id));
   return base::WriteFile(file_path, kTestFileContent);
@@ -188,8 +189,9 @@ TEST_F(CacheCleanerDBTest, OtherSessionActive) {
   ASSERT_EQ(db.Init(), SQLITE_OK);
   auto sessions = db.GetSessions();
   ASSERT_TRUE(sessions);
-  for (Session session : *sessions)
+  for (Session session : *sessions) {
     EXPECT_NE(session.source, kCacheCleanerSessionSource);
+  }
 }
 
 // Session without file entries should be removed.
@@ -207,11 +209,12 @@ TEST_F(CacheCleanerDBTest, SessionWithoutFileEntries) {
   auto sessions = db.GetSessions();
   ASSERT_TRUE(sessions);
   bool session_exists = false;
-  for (Session session : *sessions)
+  for (Session session : *sessions) {
     if (session.id == kTestSessionId) {
       session_exists = true;
       break;
     }
+  }
   EXPECT_FALSE(session_exists);
 }
 
@@ -238,11 +241,12 @@ TEST_F(CacheCleanerDBTest, ExpiredOpenSessions) {
   auto sessions = db.GetSessions();
   ASSERT_TRUE(sessions);
   bool session_exists = false;
-  for (Session session : *sessions)
+  for (Session session : *sessions) {
     if (session.id == kTestSessionId) {
       session_exists = true;
       break;
     }
+  }
   EXPECT_FALSE(session_exists);
   // Package should be removed.
   auto file_entries = db.GetFileEntries();

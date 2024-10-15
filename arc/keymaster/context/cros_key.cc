@@ -252,17 +252,20 @@ keymaster_error_t ChapsKey::formatted_key_material(
     size_t* out_size) const {
   // KM_KEY_FORMAT_X509 refers to the SubjectPublicKeyInfo, and that's the only
   // format we support.
-  if (format != KM_KEY_FORMAT_X509)
+  if (format != KM_KEY_FORMAT_X509) {
     return KM_ERROR_UNSUPPORTED_KEY_FORMAT;
+  }
 
-  if (out_material == nullptr || out_size == nullptr)
+  if (out_material == nullptr || out_size == nullptr) {
     return KM_ERROR_OUTPUT_PARAMETER_NULL;
+  }
 
   ChapsClient chaps_client(cros_key_factory()->context_adaptor(), slot());
   std::optional<brillo::Blob> spki =
       chaps_client.ExportSubjectPublicKeyInfo(label(), id());
-  if (!spki.has_value())
+  if (!spki.has_value()) {
     return KM_ERROR_UNKNOWN_ERROR;
+  }
 
   out_material->reset(new uint8_t[spki->size()]);
   std::copy(spki->begin(), spki->end(), out_material->get());
@@ -288,7 +291,8 @@ CrosOperationFactory::~CrosOperationFactory() = default;
   ChapsKey* chaps_key = dynamic_cast<ChapsKey*>(&key);
 
   if (!chaps_key) {
-    NOTREACHED_IN_MIGRATION() << __func__ << " should not be called with non CrOS key.";
+    NOTREACHED_IN_MIGRATION()
+        << __func__ << " should not be called with non CrOS key.";
     *error = KM_ERROR_UNKNOWN_ERROR;
     return nullptr;
   }
@@ -317,8 +321,9 @@ keymaster_error_t CrosOperation::Begin(
 
   std::optional<uint64_t> handle = operation_->Begin(d);
 
-  if (!handle.has_value())
+  if (!handle.has_value()) {
     return KM_ERROR_UNKNOWN_ERROR;
+  }
 
   operation_handle_ = handle.value();
   return KM_ERROR_OK;
@@ -353,13 +358,15 @@ keymaster_error_t CrosOperation::Finish(
     brillo::Blob input_blob(input.begin(), input.end());
     std::optional<brillo::Blob> updateResult = operation_->Update(input_blob);
 
-    if (!updateResult.has_value())
+    if (!updateResult.has_value()) {
       return KM_ERROR_UNKNOWN_ERROR;
+    }
   }
 
   std::optional<brillo::Blob> finish_result = operation_->Finish();
-  if (!finish_result.has_value())
+  if (!finish_result.has_value()) {
     return KM_ERROR_UNKNOWN_ERROR;
+  }
 
   output->Reinitialize(finish_result->size());
   output->write(finish_result->data(), finish_result->size());

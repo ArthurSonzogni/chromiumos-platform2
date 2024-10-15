@@ -173,8 +173,9 @@ class ChapsClientTest
                             std::vector<uint8_t>* attributes_out) {
     chaps::Attributes input;
     input.Parse(attributes_in);
-    if (input.attributes()[0].type == CKA_VALUE)
+    if (input.attributes()[0].type == CKA_VALUE) {
       return ParseAttribute(kKeyBlob, attributes_in, attributes_out);
+    }
     return ParseAttribute(kArcKeyPermissionTrue, attributes_in, attributes_out);
   }
 
@@ -186,8 +187,9 @@ class ChapsClientTest
       std::vector<uint8_t>* attributes_out) {
     chaps::Attributes input;
     input.Parse(attributes_in);
-    if (input.attributes()[0].type == CKA_VALUE)
+    if (input.attributes()[0].type == CKA_VALUE) {
       return ParseAttribute(kKeyBlob, attributes_in, attributes_out);
+    }
     return ParseAttribute(kArcKeyPermissionFalse, attributes_in,
                           attributes_out);
   }
@@ -303,8 +305,9 @@ TEST_P(ChapsClientTest, CachesExportedEncryptionKey) {
   EXPECT_EQ(kKeyBlob, key);
 
   // Verify exporting key again won't trigger more FindObject calls.
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < 10; ++i) {
     chaps_client_.ExportOrGenerateEncryptionKey();
+  }
 }
 
 TEST_P(ChapsClientTest, ReturnsCachedEncryptionKey) {
