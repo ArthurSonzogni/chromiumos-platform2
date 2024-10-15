@@ -30,15 +30,17 @@ int main(int argc, char* argv[]) {
   base::CommandLine::StringVector args = cl->GetArgs();
 
   // Event name must always be provided (and only that).
-  if (args.size() != 1)
+  if (args.size() != 1) {
     usage(argv[0]);
+  }
 
   if (cl->HasSwitch("sync")) {
     std::string sync = cl->GetSwitchValueASCII("sync");
-    if (sync == "rtc")
+    if (sync == "rtc") {
       bootstat::BootStat().LogRtcSync(args[0].c_str());
-    else
+    } else {
       usage(argv[0]);
+    }
   } else {
     bootstat::BootStat().LogEvent(args[0].c_str());
   }

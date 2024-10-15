@@ -139,8 +139,9 @@ bool BootstatTest::WriteMockDiskStats(const std::string& content) {
 
 bool BootstatTest::WriteUptime(const std::string& content) {
   base::FilePath dir = mock_root_path_.Append(kProcPath);
-  if (!base::CreateDirectoryAndGetError(dir, nullptr))
+  if (!base::CreateDirectoryAndGetError(dir, nullptr)) {
     return false;
+  }
   return base::WriteFile(mock_root_path_.Append(kProcUptimePath), content);
 }
 
@@ -165,8 +166,9 @@ void BootstatTest::ValidateStatsDirectoryContent(
       stats_output_dir_, false,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
   for (base::FilePath name = enumerator.Next(); !name.empty();
-       name = enumerator.Next())
+       name = enumerator.Next()) {
     seen.insert(name);
+  }
 
   EXPECT_EQ(expected, seen);
 }

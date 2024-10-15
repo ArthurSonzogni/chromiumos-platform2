@@ -86,8 +86,9 @@ static std::optional<std::vector<base::TimeDelta>> ParseDecimalColumns(
       LOG(ERROR) << "Malformed decimal: " << line;
       return std::nullopt;
     }
-    for (int i = 0; i < 9 - pieces[1].size(); i++)
+    for (int i = 0; i < 9 - pieces[1].size(); i++) {
       nsecs *= 10;
+    }
 
     results.push_back(base::Seconds(secs) + base::Nanoseconds(nsecs));
   }
@@ -174,8 +175,9 @@ std::optional<base::TimeDelta> BootStatSystem::GetIdleTime() const {
 
 base::ScopedFD BootStatSystem::OpenRtc() const {
   int rtc_fd = HANDLE_EINTR(open("/dev/rtc", O_RDONLY | O_CLOEXEC));
-  if (rtc_fd < 0)
+  if (rtc_fd < 0) {
     PLOG(ERROR) << "Cannot open RTC";
+  }
 
   return base::ScopedFD(rtc_fd);
 }
@@ -220,13 +222,15 @@ base::FilePath BootStat::GetEventPath(const std::string& prefix,
 
 std::optional<struct BootStat::RtcTick> BootStat::GetRtcTick() const {
   base::ScopedFD rtc_fd = boot_stat_system_->OpenRtc();
-  if (!rtc_fd.is_valid())
+  if (!rtc_fd.is_valid()) {
     return std::nullopt;
+  }
 
   // Record start time so that we can timeout if needed.
   std::optional<struct timespec> tps_start = boot_stat_system_->GetUpTime();
-  if (!tps_start)
+  if (!tps_start) {
     return std::nullopt;
+  }
 
   std::optional<struct rtc_time> rtc_time[2];
 
@@ -235,18 +239,21 @@ std::optional<struct BootStat::RtcTick> BootStat::GetRtcTick() const {
     int cur = i % 2;
 
     std::optional<struct timespec> tps_cur = boot_stat_system_->GetUpTime();
-    if (!tps_cur)
+    if (!tps_cur) {
       return std::nullopt;
+    }
 
     rtc_time[cur] = boot_stat_system_->GetRtcTime(&rtc_fd);
-    if (!rtc_time[cur])
+    if (!rtc_time[cur]) {
       return std::nullopt;
+    }
 
     if (i > 0 && rtc_time[cur]->tm_sec != rtc_time[old]->tm_sec) {
       // RTC ticked, record "after" time.
       std::optional<struct timespec> tps_after = boot_stat_system_->GetUpTime();
-      if (!tps_after)
+      if (!tps_after) {
         return std::nullopt;
+      }
       return {{*rtc_time[cur], *tps_cur, *tps_after}};
     }
 
@@ -289,8 +296,9 @@ base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
   // Double check the read permissions, because umask may override us during
   // creation, and we need those. (We allow write permissions to be masked.)
   mode_t new_mode = stat.st_mode | S_IRGRP | S_IROTH;
-  if (stat.st_mode == new_mode)
+  if (stat.st_mode == new_mode) {
     return base::ScopedFD(output_fd);
+  }
 
   // We need to force the permissions again. There's a small race here, as the
   // file may exist with a umask()'ed (incorrect) mode briefly, so consumers
@@ -307,8 +315,9 @@ bool BootStat::LogDiskEvent(const std::string& event_name) const {
   base::FilePath disk_statistics_file_path =
       boot_stat_system_->GetDiskStatisticsFilePath();
 
-  if (disk_statistics_file_path.empty())
+  if (disk_statistics_file_path.empty()) {
     return false;
+  }
 
   std::string data;
   if (!base::ReadFileToString(disk_statistics_file_path, &data)) {
@@ -318,8 +327,9 @@ bool BootStat::LogDiskEvent(const std::string& event_name) const {
   }
 
   base::ScopedFD output_fd = OpenEventFile("disk", event_name);
-  if (!output_fd.is_valid())
+  if (!output_fd.is_valid()) {
     return false;
+  }
 
   bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write disk event.";
@@ -328,12 +338,14 @@ bool BootStat::LogDiskEvent(const std::string& event_name) const {
 
 bool BootStat::LogUptimeEvent(const std::string& event_name) const {
   std::optional<struct timespec> uptime = boot_stat_system_->GetUpTime();
-  if (!uptime)
+  if (!uptime) {
     return false;
+  }
 
   std::optional<base::TimeDelta> idle = boot_stat_system_->GetIdleTime();
-  if (!idle)
+  if (!idle) {
     return false;
+  }
 
   std::string data = base::StringPrintf(
       "%" PRId64 ".%09ld %" PRId64 ".%09" PRId64 "\n",
@@ -341,8 +353,9 @@ bool BootStat::LogUptimeEvent(const std::string& event_name) const {
       idle->InNanoseconds() % kNsecsPerSec);
 
   base::ScopedFD output_fd = OpenEventFile("uptime", event_name);
-  if (!output_fd.is_valid())
+  if (!output_fd.is_valid()) {
     return false;
+  }
 
   bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write uptime event.";
@@ -357,8 +370,9 @@ std::optional<std::vector<BootStat::BootstatTiming>> BootStat::ParseUptimeEvent(
   std::vector<BootStat::BootstatTiming> events;
   for (auto& line : lines) {
     auto result = ParseDecimalColumns(line);
-    if (!result)
+    if (!result) {
       return std::nullopt;
+    }
     if (result->size() != 2) {
       LOG(ERROR) << "Unexpected uptime line: " << line;
       return std::nullopt;
@@ -386,12 +400,14 @@ bool BootStat::LogEvent(const std::string& event_name) const {
 
 bool BootStat::LogRtcSync(const char* event_name) {
   std::optional<struct RtcTick> tick = GetRtcTick();
-  if (!tick)
+  if (!tick) {
     return false;
+  }
 
   base::ScopedFD output_fd = OpenEventFile("sync-rtc", event_name);
-  if (!output_fd.is_valid())
+  if (!output_fd.is_valid()) {
     return false;
+  }
 
   std::string data = base::StringPrintf(
       "%" PRId64 ".%09ld %" PRId64 ".%09ld %04d-%02d-%02d %02d:%02d:%02d\n",
@@ -418,8 +434,9 @@ std::optional<std::vector<BootStat::BootstatTiming>> BootStat::GetEventTimings(
   }
 
   auto result = ParseUptimeEvent(data);
-  if (!result)
+  if (!result) {
     LOG(ERROR) << "Failed to parse bootstat file for event: " << event_name;
+  }
 
   return result;
 }
