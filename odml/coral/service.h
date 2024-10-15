@@ -66,7 +66,6 @@ class CoralService : public mojom::CoralService {
                           mojom::GroupRequestPtr request,
                           CoralResult<ClusteringResponse> result);
   void OnTitleGenerationResult(GroupCallback callback,
-                               mojom::GroupRequestPtr request,
                                CoralResult<TitleGenerationResponse> result);
 
   std::unique_ptr<EmbeddingEngineInterface> embedding_engine_;

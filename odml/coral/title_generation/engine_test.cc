@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -33,6 +34,41 @@ using ::testing::Return;
 
 constexpr char kFakeModelName[] = "5f30b8ca-2447-445e-9716-a6da073fae51";
 }  // namespace
+
+class FakeObserver : public mojom::TitleObserver {
+ public:
+  // We need to know the expected number of updates, and end the run loop after
+  // receiving all of them.
+  FakeObserver(int expected_updates, base::RunLoop* run_loop)
+      : expected_updates_(expected_updates), run_loop_(run_loop) {}
+  void TitleUpdated(const base::Token& group_id,
+                    const std::string& title) override {
+    titles_[group_id] = title;
+    expected_updates_--;
+    if (expected_updates_ == 0) {
+      run_loop_->Quit();
+    }
+  }
+
+  mojo::PendingRemote<mojom::TitleObserver> BindRemote() {
+    return receiver_.BindNewPipeAndPassRemote();
+  }
+
+  std::optional<std::string> GetTitle(const base::Token& group_id) {
+    auto it = titles_.find(group_id);
+    if (it == titles_.end()) {
+      return std::nullopt;
+    }
+    return it->second;
+  }
+
+ private:
+  mojo::Receiver<mojom::TitleObserver> receiver_{this};
+  std::unordered_map<base::Token, std::string, base::TokenHash> titles_;
+
+  int expected_updates_;
+  base::RunLoop* run_loop_;
+};
 
 class TitleGenerationEngineTest : public testing::Test {
  public:
@@ -73,11 +109,10 @@ TEST_F(TitleGenerationEngineTest, Success) {
   auto request = GetFakeGroupRequest();
   auto clustering_response = GetFakeClusteringResponse();
 
-  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
-      title_future;
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
   engine_->Process(std::move(request), std::move(clustering_response),
                    mojo::NullRemote(), title_future.GetCallback());
-  auto [_, result] = title_future.Take();
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
   ASSERT_TRUE(result.has_value());
   TitleGenerationResponse response = std::move(*result);
   auto fake_response = GetFakeTitleGenerationResponse();
@@ -93,11 +128,10 @@ TEST_F(TitleGenerationEngineTest, Success) {
 TEST_F(TitleGenerationEngineTest, NoGroups) {
   auto request = GetFakeGroupRequest();
 
-  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
-      title_future;
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
   engine_->Process(std::move(request), ClusteringResponse(), mojo::NullRemote(),
                    title_future.GetCallback());
-  auto [_, result] = title_future.Take();
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->groups.size(), 0);
 }
@@ -110,11 +144,10 @@ TEST_F(TitleGenerationEngineTest, LoadModelFailed) {
   auto dlc_path = base::FilePath("not_exist");
   cros::DlcClient::SetDlcPathForTest(&dlc_path);
 
-  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
-      title_future;
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
   engine_->Process(std::move(request), std::move(clustering_response),
                    mojo::NullRemote(), title_future.GetCallback());
-  auto [_, result] = title_future.Take();
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
 }
@@ -129,19 +162,18 @@ TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadFailed) {
   auto dlc_path = base::FilePath("not_exist");
   cros::DlcClient::SetDlcPathForTest(&dlc_path);
 
-  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
-      title_future1, title_future2;
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
   engine_->Process(request.Clone(), GetFakeClusteringResponse(),
                    mojo::NullRemote(), title_future1.GetCallback());
   engine_->Process(std::move(request), GetFakeClusteringResponse(),
                    mojo::NullRemote(), title_future2.GetCallback());
 
   auto fake_response = GetFakeTitleGenerationResponse();
-  auto [_, result] = title_future1.Take();
+  CoralResult<TitleGenerationResponse> result = title_future1.Take();
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
 
-  std::tie(_, result) = title_future2.Take();
+  result = title_future2.Take();
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
 }
@@ -149,22 +181,86 @@ TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadFailed) {
 TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadSuccess) {
   auto request = GetFakeGroupRequest();
 
-  TestFuture<mojom::GroupRequestPtr, CoralResult<TitleGenerationResponse>>
-      title_future1, title_future2;
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
   engine_->Process(request.Clone(), GetFakeClusteringResponse(),
                    mojo::NullRemote(), title_future1.GetCallback());
   engine_->Process(std::move(request), GetFakeClusteringResponse(),
                    mojo::NullRemote(), title_future2.GetCallback());
 
   auto fake_response = GetFakeTitleGenerationResponse();
-  auto [_, result] = title_future1.Take();
+  CoralResult<TitleGenerationResponse> result = title_future1.Take();
   ASSERT_TRUE(result.has_value());
   TitleGenerationResponse response = std::move(*result);
   ASSERT_EQ(response.groups.size(), fake_response.groups.size());
 
-  std::tie(_, result) = title_future2.Take();
+  result = title_future2.Take();
   response = std::move(*result);
   ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+}
+
+TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
+  base::RunLoop run_loop;
+  FakeObserver observer(3, &run_loop);
+  auto request = GetFakeGroupRequest();
+  auto clustering_response = GetFakeClusteringResponse();
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
+  engine_->Process(std::move(request), std::move(clustering_response),
+                   observer.BindRemote(), title_future.GetCallback());
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
+  ASSERT_TRUE(result.has_value());
+  TitleGenerationResponse response = std::move(*result);
+  auto fake_response = GetFakeTitleGenerationResponse();
+  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+  for (size_t i = 0; i < response.groups.size(); i++) {
+    // When the response is returned, the titles shouldn't have been generated
+    // yet.
+    EXPECT_TRUE(response.groups[i]->title.empty());
+    EXPECT_EQ(observer.GetTitle(response.groups[i]->id), std::nullopt);
+    EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
+  }
+  run_loop.Run();
+  for (const mojom::GroupPtr& group : response.groups) {
+    // Now the titles should have been updated to the observer.
+    std::optional<std::string> title = observer.GetTitle(group->id);
+    ASSERT_TRUE(title.has_value());
+    EXPECT_FALSE(title->empty());
+  }
+}
+
+TEST_F(TitleGenerationEngineTest, ObserverFailed) {
+  base::RunLoop run_loop;
+  FakeObserver observer(3, &run_loop);
+  auto request = GetFakeGroupRequest();
+  auto clustering_response = GetFakeClusteringResponse();
+
+  // Override DLC path to a non-existent path.
+  auto dlc_path = base::FilePath("not_exist");
+  cros::DlcClient::SetDlcPathForTest(&dlc_path);
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
+  engine_->Process(std::move(request), std::move(clustering_response),
+                   observer.BindRemote(), title_future.GetCallback());
+  CoralResult<TitleGenerationResponse> result = title_future.Take();
+  ASSERT_TRUE(result.has_value());
+  TitleGenerationResponse response = std::move(*result);
+  auto fake_response = GetFakeTitleGenerationResponse();
+  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+  for (size_t i = 0; i < response.groups.size(); i++) {
+    // When the response is returned, the titles shouldn't have been generated
+    // yet.
+    EXPECT_TRUE(response.groups[i]->title.empty());
+    EXPECT_EQ(observer.GetTitle(response.groups[i]->id), std::nullopt);
+    EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
+  }
+  run_loop.Run();
+  for (const mojom::GroupPtr& group : response.groups) {
+    // Now the titles should have been updated to the observer, but because
+    // model load failed, all the titles will be empty.
+    std::optional<std::string> title = observer.GetTitle(group->id);
+    ASSERT_TRUE(title.has_value());
+    EXPECT_TRUE(title->empty());
+  }
 }
 
 }  // namespace coral

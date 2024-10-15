@@ -111,9 +111,7 @@ void CoralService::OnClusteringResult(
 }
 
 void CoralService::OnTitleGenerationResult(
-    GroupCallback callback,
-    mojom::GroupRequestPtr request,
-    CoralResult<TitleGenerationResponse> result) {
+    GroupCallback callback, CoralResult<TitleGenerationResponse> result) {
   if (!result.has_value()) {
     std::move(callback).Run(GroupResult::NewError(result.error()));
     return;

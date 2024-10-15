@@ -14,6 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
+#include <base/token.h>
 #include <base/types/expected.h>
 #include <base/uuid.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -74,11 +75,38 @@ TitleGenerationEngine::TitleGenerationEngine(
 void TitleGenerationEngine::Process(
     mojom::GroupRequestPtr request,
     ClusteringResponse clustering_response,
-    mojo::PendingRemote<mojom::TitleObserver> observer,
+    mojo::PendingRemote<mojom::TitleObserver> pending_observer,
     TitleGenerationCallback callback) {
-  EnsureModelLoaded(base::BindOnce(
-      &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
-      std::move(request), std::move(clustering_response), std::move(callback)));
+  // Prepare the clusters along with their prompts.
+  std::vector<GroupData> groups;
+  for (Cluster& cluster : clustering_response.clusters) {
+    // TODO(b/361429962): Validate safety result of the group.
+    std::string prompt = EntitiesToTitlePrompt(cluster.entities);
+    groups.push_back(GroupData{
+        .id = base::Token::CreateRandom(),
+        .prompt = prompt,
+        .entities = std::move(cluster.entities),
+    });
+  }
+  mojo::Remote<mojom::TitleObserver> observer(std::move(pending_observer));
+  if (observer) {
+    ReplyGroupsWithoutTitles(groups, std::move(callback));
+    ProcessCallback on_complete =
+        base::BindOnce(&TitleGenerationEngine::OnAllTitleGenerationFinished,
+                       weak_ptr_factory_.GetWeakPtr());
+    EnsureModelLoaded(base::BindOnce(
+        &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), std::move(observer), std::move(groups),
+        std::move(on_complete)));
+  } else {
+    ProcessCallback on_complete =
+        base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+    EnsureModelLoaded(base::BindOnce(
+        &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), std::move(observer), std::move(groups),
+        std::move(on_complete)));
+  }
 }
 
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
@@ -138,11 +166,66 @@ void TitleGenerationEngine::UnloadModel() {
   state_ = ModelLoadState::kNew;
 }
 
-void TitleGenerationEngine::DoProcess(mojom::GroupRequestPtr request,
-                                      ClusteringResponse clustering_response,
-                                      TitleGenerationCallback callback) {
+void TitleGenerationEngine::ReplyGroupsWithoutTitles(
+    std::vector<GroupData>& groups,
+    TitleGenerationEngine::TitleGenerationCallback callback) {
+  TitleGenerationResponse response;
+  for (GroupData& group_data : groups) {
+    auto group = mojom::Group::New();
+    group->id = group_data.id;
+    group->entities = std::move(group_data.entities);
+    group_data.entities.clear();
+    response.groups.push_back(std::move(group));
+  }
+  std::move(callback).Run(std::move(response));
+}
+
+void TitleGenerationEngine::ReplyGroupsWithTitles(
+    TitleGenerationEngine::TitleGenerationCallback callback,
+    mojo::Remote<mojom::TitleObserver> observer,
+    std::vector<GroupData> groups,
+    CoralResult<void> result) {
+  TitleGenerationResponse response;
+  if (!result.has_value()) {
+    std::move(callback).Run(base::unexpected(result.error()));
+    return;
+  }
+  for (GroupData& group_data : groups) {
+    auto group = mojom::Group::New();
+    group->id = group_data.id;
+    group->title = std::move(group_data.title);
+    group->entities = std::move(group_data.entities);
+    response.groups.push_back(std::move(group));
+  }
+  std::move(callback).Run(std::move(response));
+}
+
+void TitleGenerationEngine::OnAllTitleGenerationFinished(
+    mojo::Remote<mojom::TitleObserver> observer,
+    std::vector<GroupData> groups,
+    CoralResult<void> result) {
+  if (result.has_value()) {
+    // All titles should have been updated to the observer.
+    return;
+  }
+  LOG(ERROR) << "Failed to generate titles with code: "
+             << static_cast<int>(result.error());
+  // Update the remaining groups to with empty title to the observer.
+  for (const GroupData& group : groups) {
+    if (group.updated_to_observer) {
+      continue;
+    }
+    observer->TitleUpdated(group.id, "");
+  }
+}
+
+void TitleGenerationEngine::DoProcess(
+    mojom::GroupRequestPtr request,
+    mojo::Remote<mojom::TitleObserver> observer,
+    std::vector<GroupData> groups,
+    ProcessCallback callback) {
   if (!model_) {
-    std::move(callback).Run(std::move(request),
+    std::move(callback).Run(std::move(observer), std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
@@ -151,40 +234,37 @@ void TitleGenerationEngine::DoProcess(mojom::GroupRequestPtr request,
   auto session = SimpleSession::New();
   model_->StartSession(session->BindReceiver());
   if (!session->is_bound()) {
-    std::move(callback).Run(std::move(request),
+    std::move(callback).Run(std::move(observer), std::move(groups),
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
-  std::vector<std::string> prompts;
-  for (const Cluster& cluster : clustering_response.clusters) {
-    prompts.push_back(EntitiesToTitlePrompt(cluster.entities));
-  }
-  ProcessEachPrompt(std::move(request), std::move(session),
-                    std::move(clustering_response.clusters), std::move(prompts),
-                    TitleGenerationResponse(), std::move(callback));
+
+  ProcessEachPrompt(0, std::move(request), std::move(session),
+                    std::move(observer), std::move(groups),
+                    std::move(callback));
 }
 
 void TitleGenerationEngine::ProcessEachPrompt(
+    size_t index,
     mojom::GroupRequestPtr request,
     SimpleSession::Ptr session,
-    std::vector<Cluster> clusters,
-    std::vector<std::string> prompts,
-    TitleGenerationResponse response,
-    TitleGenerationCallback callback) {
+    mojo::Remote<mojom::TitleObserver> observer,
+    std::vector<GroupData> groups,
+    ProcessCallback callback) {
   CHECK(session->is_bound());
 
-  size_t index = response.groups.size();
   // > covers the index out-of-range case although it shouldn't happen.
-  if (index >= prompts.size()) {
-    std::move(callback).Run(std::move(request), std::move(response));
+  if (index >= groups.size()) {
+    std::move(callback).Run(std::move(observer), std::move(groups), base::ok());
     return;
   }
-  base::flat_map<std::string, std::string> fields{{"prompt", prompts[index]}};
+  base::flat_map<std::string, std::string> fields{
+      {"prompt", groups[index].prompt}};
   SimpleSession* session_ptr = session.get();
   auto on_model_output = base::BindOnce(
       &TitleGenerationEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
-      std::move(request), std::move(session), std::move(clusters),
-      std::move(prompts), std::move(response), std::move(callback));
+      index, std::move(request), std::move(session), std::move(observer),
+      std::move(groups), std::move(callback));
   auto execute_session = base::BindOnce(
       [](SimpleSession* session, base::OnceCallback<void(std::string)> callback,
          const std::optional<std::string>& formatted) {
@@ -204,29 +284,26 @@ void TitleGenerationEngine::ProcessEachPrompt(
       std::move(execute_session));
 }
 
-void TitleGenerationEngine::OnModelOutput(mojom::GroupRequestPtr request,
-                                          SimpleSession::Ptr session,
-                                          std::vector<Cluster> clusters,
-                                          std::vector<std::string> prompts,
-                                          TitleGenerationResponse response,
-                                          TitleGenerationCallback callback,
-                                          std::string title) {
-  size_t index = response.groups.size();
-  CHECK(index < clusters.size());
+void TitleGenerationEngine::OnModelOutput(
+    size_t index,
+    mojom::GroupRequestPtr request,
+    SimpleSession::Ptr session,
+    mojo::Remote<mojom::TitleObserver> observer,
+    std::vector<GroupData> groups,
+    ProcessCallback callback,
+    std::string title) {
+  CHECK(index < groups.size());
 
-  auto group = mojom::Group::New();
   // TODO(b/361429962): Figure out whether truncating should happen in here or
   // in UI.
   // TODO(b/361429962): Validate safety result of the title.
-  group->title = std::move(title);
-  group->entities = std::vector<mojom::EntityPtr>();
-  // We don't need clusters[index] after this anymore.
-  for (mojom::EntityPtr& entity : clusters[index].entities) {
-    group->entities.push_back(std::move(entity));
+  groups[index].title = std::move(title);
+  if (observer) {
+    observer->TitleUpdated(groups[index].id, groups[index].title);
+    groups[index].updated_to_observer = true;
   }
-  response.groups.push_back(std::move(group));
-  ProcessEachPrompt(std::move(request), std::move(session), std::move(clusters),
-                    std::move(prompts), std::move(response),
+  ProcessEachPrompt(index + 1, std::move(request), std::move(session),
+                    std::move(observer), std::move(groups),
                     std::move(callback));
 }
 

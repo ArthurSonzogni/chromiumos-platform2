@@ -97,8 +97,8 @@ class MockTitleGenerationEngine : public TitleGenerationEngineInterface {
     clustering_response_ = std::move(clustering_response);
     MoveAssignExpected(response_, std::move(response));
     EXPECT_CALL(*this, Process(_, Eq(std::ref(clustering_response_)), _, _))
-        .WillOnce([this](auto&& request, auto&&, auto&&, auto&& callback) {
-          std::move(callback).Run(std::move(request), std::move(response_));
+        .WillOnce([this](auto&&, auto&&, auto&&, auto&& callback) {
+          std::move(callback).Run(std::move(response_));
         });
   }
 
