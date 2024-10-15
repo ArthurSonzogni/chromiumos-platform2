@@ -236,9 +236,19 @@ class Proxy : public brillo::DBusDaemon {
   void ClearIPAddressesInController();
   void SendProtoMessage(const ProxyAddrMessage& msg);
 
-  // Callback from RTNetlink listener, invoked when the lan interface IPv6
-  // address is changed.
+  // Callback from RTNL listener, calls NetNSRTNLMessageHandler or
+  // RootNSRTNLMessageHandler.
   void RTNLMessageHandler(const net_base::RTNLMessage& msg);
+
+  // Callback from RTNL listener when DNS proxy is running on ConnectNamespace
+  // network namespace. Processes IPv6 address changes for the lan interface
+  // inside the network namespace.
+  void NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg);
+
+  // Callback from RTNL listener when DNS proxy is running on the root network
+  // namespace. Processes IPv6 link-local address changes for guests TAP or
+  // bridges interface.
+  void RootNSRTNLMessageHandler(const net_base::RTNLMessage& msg);
 
   // Calls patchpanel ConnectNamespace API and sets the necessary states.
   bool ConnectNamespace();
@@ -254,6 +264,9 @@ class Proxy : public brillo::DBusDaemon {
 
   // Return the property accessor, creating it if needed.
   shill::Client::ManagerPropertyAccessor* shill_props();
+
+  // Wrapper of if_nametoindex for unit tests.
+  virtual int IfNameToIndex(const char* ifname);
 
   friend class ProxyTest;
   FRIEND_TEST(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill);
@@ -353,9 +366,6 @@ class Proxy : public brillo::DBusDaemon {
 
   // Map of interface index to its link-local IPv6 addresses. This map is used
   // to listen on the link-local address of the guest (Crostini, ARC, etc.).
-  // TODO(jasongustaman): Implement fetching the link-local IPv6 addresses.
-  // TODO(jasongustaman): Make sure only populate the addresses when they are
-  // ready.
   std::map<int, net_base::IPv6Address> link_local_addresses_;
 
   std::unique_ptr<Resolver> resolver_;

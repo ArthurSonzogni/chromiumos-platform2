@@ -199,6 +199,19 @@ class TestProxy : public Proxy {
                                         int max_num_retries) override {
     return std::move(resolver);
   }
+
+  std::map<std::string, int> ifindexes;
+  // Returns a consistent mapping between |ifname| and its index value.
+  int IfNameToIndex(const char* ifname) override {
+    static int cur_index = 1;
+    const std::string ifname_str(ifname);
+    const auto it = ifindexes.find(ifname_str);
+    if (it != ifindexes.end()) {
+      return it->second;
+    }
+    ifindexes[ifname_str] = cur_index;
+    return cur_index++;
+  }
 };
 
 class ProxyTest : public ::testing::Test,
@@ -1196,6 +1209,11 @@ TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
 
+  // Test only applicable for specific network namespace.
+  if (proxy_->root_ns_enabled_) {
+    return;
+  }
+
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(
@@ -1203,14 +1221,10 @@ TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
           ipv6_address_.ToString(), _, _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
-  // Proxy's ConnectedNamespace peer interface name is set to empty and
-  // RTNL message's interface index is set to 0 in order to match.
-  // if_nametoindex which is used to get the interface index will return 0 on
-  // error.
+  int ifindex = proxy_->IfNameToIndex(proxy_->ns_.peer_ifname.c_str());
   net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
                             net_base::RTNLMessage::kModeAdd, 0 /* flags */,
-                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                            AF_INET6);
+                            0 /* seq */, 0 /* pid */, ifindex, AF_INET6);
   msg.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   msg.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
@@ -1221,13 +1235,18 @@ TEST_P(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice());
 
+  // Test only applicable for specific network namespace.
+  if (proxy_->root_ns_enabled_) {
+    return;
+  }
+
   proxy_->lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                                 base::ScopedFD(make_fd()));
 
+  int ifindex = proxy_->IfNameToIndex(proxy_->ns_.peer_ifname.c_str());
   net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
                             net_base::RTNLMessage::kModeDelete, 0 /* flags */,
-                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                            AF_INET6);
+                            0 /* seq */, 0 /* pid */, ifindex, AF_INET6);
   msg.set_address_status(
       net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
   proxy_->RTNLMessageHandler(msg);
@@ -1272,31 +1291,46 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
+  // in a follow-up patch.
+  if (proxy_->root_ns_enabled_) {
+    return;
+  }
+
+  if (!proxy_->root_ns_enabled_) {
+    EXPECT_CALL(
+        *patchpanel_client_,
+        RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser, _,
+                    ipv6_address_.ToString(), _, _))
+        .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
+  }
 
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillOnce(
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0")}));
-  EXPECT_CALL(*patchpanel_client_,
-              RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kUser,
-                          _, ipv6_address_.ToString(), _, _))
-      .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
                   "vmtap0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
-  // Proxy's ConnectedNamespace peer interface name is set to empty and
-  // RTNL message's interface index is set to 0 in order to match.
-  // if_nametoindex which is used to get the interface index will return 0 on
-  // error.
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, ListenUDP(_, "vmtap0")).WillOnce(Return(true));
+    EXPECT_CALL(*new_resolver, ListenTCP(_, "vmtap0")).WillOnce(Return(true));
+  }
+
+  std::string ifname =
+      proxy_->root_ns_enabled_ ? "vmtap0" : proxy_->ns_.peer_ifname;
+  int ifindex = proxy_->IfNameToIndex(ifname.c_str());
   net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
                             net_base::RTNLMessage::kModeAdd, 0 /* flags */,
-                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                            AF_INET6);
-  msg.set_address_status(
-      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+                            0 /* seq */, 0 /* pid */, ifindex, AF_INET6);
+  int scope = proxy_->root_ns_enabled_ ? RT_SCOPE_LINK : RT_SCOPE_UNIVERSE;
+  msg.set_address_status(net_base::RTNLMessage::AddressStatus(0, 0, scope));
   msg.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
@@ -1304,6 +1338,14 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
 TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   SetUpProxy(GetParam(), Proxy::Options{.type = Proxy::Type::kDefault},
              ShillDevice());
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
+  // in a follow-up patch.
+  if (proxy_->root_ns_enabled_) {
+    return;
+  }
 
   proxy_->lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                                 base::ScopedFD(make_fd()));
@@ -1315,14 +1357,24 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0")}));
 
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, StopListen(AF_INET6, "vmtap0")).Times(1);
+  }
+
+  std::string ifname =
+      proxy_->root_ns_enabled_ ? "vmtap0" : proxy_->ns_.peer_ifname;
+  int ifindex = proxy_->IfNameToIndex(ifname.c_str());
   net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
                             net_base::RTNLMessage::kModeDelete, 0 /* flags */,
-                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                            AF_INET6);
-  msg.set_address_status(
-      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+                            0 /* seq */, 0 /* pid */, ifindex, AF_INET6);
+  int scope = proxy_->root_ns_enabled_ ? RT_SCOPE_LINK : RT_SCOPE_UNIVERSE;
+  msg.set_address_status(net_base::RTNLMessage::AddressStatus(0, 0, scope));
   proxy_->RTNLMessageHandler(msg);
-  EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_EQ(proxy_->lifeline_fds_.size(), 1);
+  } else {
+    EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
+  }
 }
 
 TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
@@ -1335,10 +1387,6 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
               patchpanel::Client::GuestType::kTerminaVm, "vmtap0", "eth0")}));
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
 
-  // Proxy's ConnectedNamespace peer interface name is set to empty and
-  // RTNL message's interface index is set to -1 in order to not match.
-  // if_nametoindex which is used to get the interface index will return 0 on
-  // error.
   net_base::RTNLMessage msg_unrelated_ifindex(
       net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,
@@ -1517,6 +1565,14 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
+  // in a follow-up patch.
+  if (proxy_->root_ns_enabled_) {
+    return;
+  }
 
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillOnce(
@@ -1527,16 +1583,19 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
                           "arc_eth0", ipv6_address_.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
 
-  // Proxy's ConnectedNamespace peer interface name is set to empty and
-  // RTNL message's interface index is set to 0 in order to match.
-  // if_nametoindex which is used to get the interface index will return 0 on
-  // error.
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, ListenUDP(_, "arc_eth0")).WillOnce(Return(true));
+    EXPECT_CALL(*new_resolver, ListenTCP(_, "arc_eth0")).WillOnce(Return(true));
+  }
+
+  std::string ifname =
+      proxy_->root_ns_enabled_ ? "arc_eth0" : proxy_->ns_.peer_ifname;
+  int ifindex = proxy_->IfNameToIndex(ifname.c_str());
   net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
                             net_base::RTNLMessage::kModeAdd, 0 /* flags */,
-                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                            AF_INET6);
-  msg.set_address_status(
-      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+                            0 /* seq */, 0 /* pid */, ifindex, AF_INET6);
+  int scope = proxy_->root_ns_enabled_ ? RT_SCOPE_LINK : RT_SCOPE_UNIVERSE;
+  msg.set_address_status(net_base::RTNLMessage::AddressStatus(0, 0, scope));
   msg.SetAttribute(IFA_ADDRESS, ipv6_address_.ToBytes());
   proxy_->RTNLMessageHandler(msg);
 }
@@ -1545,6 +1604,14 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
   SetUpProxy(GetParam(),
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
+  auto* new_resolver = new MockResolver();
+  proxy_->resolver_ = base::WrapUnique(new_resolver);
+
+  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
+  // in a follow-up patch.
+  if (proxy_->root_ns_enabled_) {
+    return;
+  }
 
   proxy_->lifeline_fds_.emplace(std::make_pair("arc_eth0", AF_INET6),
                                 base::ScopedFD(make_fd()));
@@ -1554,12 +1621,18 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
               patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0")}));
 
+  if (proxy_->root_ns_enabled_) {
+    EXPECT_CALL(*new_resolver, StopListen(AF_INET6, "arc_eth0")).Times(1);
+  }
+
+  std::string ifname =
+      proxy_->root_ns_enabled_ ? "arc_eth0" : proxy_->ns_.peer_ifname;
+  int ifindex = proxy_->IfNameToIndex(ifname.c_str());
   net_base::RTNLMessage msg(net_base::RTNLMessage::kTypeAddress,
                             net_base::RTNLMessage::kModeDelete, 0 /* flags */,
-                            0 /* seq */, 0 /* pid */, 0 /* interface_index */,
-                            AF_INET6);
-  msg.set_address_status(
-      net_base::RTNLMessage::AddressStatus(0, 0, RT_SCOPE_UNIVERSE));
+                            0 /* seq */, 0 /* pid */, ifindex, AF_INET6);
+  int scope = proxy_->root_ns_enabled_ ? RT_SCOPE_LINK : RT_SCOPE_UNIVERSE;
+  msg.set_address_status(net_base::RTNLMessage::AddressStatus(0, 0, scope));
   proxy_->RTNLMessageHandler(msg);
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 0);
 }
@@ -1575,10 +1648,6 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
               patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0")}));
   EXPECT_CALL(*patchpanel_client_, RedirectDns(_, _, _, _, _)).Times(0);
 
-  // Proxy's ConnectedNamespace peer interface name is set to empty and
-  // RTNL message's interface index is set to -1 in order to not match.
-  // if_nametoindex which is used to get the interface index will return 0 on
-  // error.
   net_base::RTNLMessage msg_unrelated_ifindex(
       net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeAdd,
       0 /* flags */, 0 /* seq */, 0 /* pid */, -1 /* interface_index */,

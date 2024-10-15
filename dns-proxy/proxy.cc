@@ -151,11 +151,22 @@ Proxy::Proxy(const Proxy::Options& opts, int32_t fd, bool root_ns_enabled)
             base::ScopedFD(fd));
   }
 
+  // Track IPv6 address changes.
   addr_listener_ = std::make_unique<net_base::RTNLListener>(
       net_base::RTNLHandler::kRequestAddr,
       base::BindRepeating(&Proxy::RTNLMessageHandler,
                           weak_factory_.GetWeakPtr()));
   net_base::RTNLHandler::GetInstance()->Start(RTMGRP_IPV6_IFADDR);
+
+  // Fetch initial IPv6 address.
+  auto msg = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypeAddress, net_base::RTNLMessage::kModeGet,
+      NLM_F_REQUEST | NLM_F_DUMP, /*seq=*/0, /*pid=*/0, /*ifindex=*/0,
+      AF_INET6);
+  if (!net_base::RTNLHandler::GetInstance()->SendMessage(std::move(msg),
+                                                         /*msg_seq=*/nullptr)) {
+    LOG(WARNING) << "Failed to send address dump message";
+  }
 }
 
 // This ctor is only used for testing.
@@ -1070,6 +1081,14 @@ void Proxy::DoHConfig::set_logger(Proxy::Logger logger) {
 }
 
 void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
+  if (root_ns_enabled_) {
+    RootNSRTNLMessageHandler(msg);
+  } else {
+    NetNSRTNLMessageHandler(msg);
+  }
+}
+
+void Proxy::NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
   // Listen only for global or site-local IPv6 address changes.
   if (msg.address_status().scope != RT_SCOPE_UNIVERSE &&
       msg.address_status().scope != RT_SCOPE_SITE) {
@@ -1077,11 +1096,12 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
   }
 
   // Listen only for the peer interface IPv6 changes.
-  if (msg.interface_index() != if_nametoindex(ns_.peer_ifname.c_str())) {
+  if (msg.interface_index() != IfNameToIndex(ns_.peer_ifname.c_str())) {
     return;
   }
 
   switch (msg.mode()) {
+    case net_base::RTNLMessage::kModeGet:
     case net_base::RTNLMessage::kModeAdd: {
       const auto ifa_addr = msg.GetAddress();
       if (!ifa_addr || ifa_addr->GetFamily() != net_base::IPFamily::kIPv6) {
@@ -1125,6 +1145,63 @@ void Proxy::RTNLMessageHandler(const net_base::RTNLMessage& msg) {
         SendIPAddressesToController(/*ipv4_addr=*/ipv4_address_,
                                     /*ipv6_addr=*/std::nullopt);
         StopDnsRedirection(/*ifname=*/"", AF_INET6);
+      }
+      return;
+    default:
+      return;
+  }
+}
+
+void Proxy::RootNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
+  // Listen only for link-local IPv6 address changes.
+  if (msg.address_status().scope != RT_SCOPE_LINK) {
+    return;
+  }
+
+  uint32_t ifindex = msg.interface_index();
+  switch (msg.mode()) {
+    case net_base::RTNLMessage::kModeGet:
+    case net_base::RTNLMessage::kModeAdd: {
+      // No need to process tentative addresses.
+      if (msg.address_status().flags & IFA_F_TENTATIVE) {
+        return;
+      }
+      std::optional<net_base::IPv6Address> ipv6_addr = std::nullopt;
+      const auto it = link_local_addresses_.find(ifindex);
+      if (it != link_local_addresses_.end()) {
+        ipv6_addr = it->second;
+      }
+      const auto ifa_addr = msg.GetAddress();
+      if (!ifa_addr || ifa_addr->GetFamily() != net_base::IPFamily::kIPv6) {
+        LOG(ERROR) << *this << " RTNL message does not have valid IPv6 address";
+        return;
+      }
+      const auto new_ipv6_addr = ifa_addr->ToIPv6CIDR()->address();
+      if (ipv6_addr && ipv6_addr == new_ipv6_addr) {
+        return;
+      }
+      link_local_addresses_[ifindex] = new_ipv6_addr;
+      for (const auto& d : patchpanel_->GetDevices()) {
+        if (ifindex != IfNameToIndex(d.ifname.c_str())) {
+          continue;
+        }
+        if (!ListenOnVirtualDevice(d, AF_INET6)) {
+          QuitWithExitCode(EX_IOERR);
+        }
+        StartGuestDnsRedirection(d, AF_INET6);
+        break;
+      }
+      return;
+    }
+    case net_base::RTNLMessage::kModeDelete:
+      link_local_addresses_.erase(ifindex);
+      for (const auto& d : patchpanel_->GetDevices()) {
+        if (ifindex != IfNameToIndex(d.ifname.c_str())) {
+          continue;
+        }
+        StopGuestDnsRedirection(d, AF_INET6);
+        StopListenOnVirtualDevice(d, AF_INET6);
+        break;
       }
       return;
     default:
@@ -1180,7 +1257,7 @@ bool Proxy::ListenOnVirtualDevice(
   }
 
   // IPv6 case.
-  int ifindex = if_nametoindex(device.ifname.c_str());
+  int ifindex = IfNameToIndex(device.ifname.c_str());
   const auto it = link_local_addresses_.find(ifindex);
   if (it == link_local_addresses_.end()) {
     return true;
@@ -1243,6 +1320,15 @@ bool Proxy::IsValidVirtualDevice(
     default:
       return false;
   }
+}
+
+int Proxy::IfNameToIndex(const char* ifname) {
+  uint32_t ifindex = if_nametoindex(ifname);
+  if (ifindex > INT_MAX) {
+    errno = EINVAL;
+    return 0;
+  }
+  return static_cast<int>(ifindex);
 }
 
 void Proxy::LogName(std::ostream& stream) const {
