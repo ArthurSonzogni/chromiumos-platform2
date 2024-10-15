@@ -46,8 +46,9 @@ static int save_ustack(struct pt_regs* ctx, struct lockmon_event* event) {
   long ret = bpf_get_stack(ctx, event->ustack_ents, sizeof(event->ustack_ents),
                            BPF_F_USER_STACK);
 
-  if (ret < 0)
+  if (ret < 0) {
     return -EINVAL;
+  }
 
   event->num_ustack_ents = ret / sizeof(event->ustack_ents[0]);
   return 0;
@@ -57,8 +58,9 @@ static struct lockmon_event* bpf_ringbuf_event_get(void) {
   struct lockmon_event* event;
 
   event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
-  if (!event)
+  if (!event) {
     return NULL;
+  }
 
   event->type = LOCKMON_EVENT_INVALID;
   event->num_ustack_ents = 0;
@@ -73,8 +75,9 @@ static int lockmon_event(struct pt_regs* ctx,
   u64 id;
 
   event = bpf_ringbuf_event_get();
-  if (!event)
+  if (!event) {
     return -ENOMEM;
+  }
 
   id = bpf_get_current_pid_tgid();
   event->pid = id >> 32;
@@ -167,8 +170,9 @@ int BPF_UPROBE(call_mutex_trylock, void* lock) {
   int ret =
       lockmon_event(ctx, LOCKMON_EVENT_MUTEX_TRYLOCK_CALL, (unsigned long)lock);
 
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   ret = __call_event(ctx, LOCKMON_EVENT_MUTEX_TRYLOCK_RET, (unsigned long)lock);
   return ret;
@@ -177,8 +181,9 @@ int BPF_UPROBE(call_mutex_trylock, void* lock) {
 SEC("uretprobe")
 int BPF_URETPROBE(ret_mutex_trylock, void* lock) {
   /* Only successful try_lock() is reported */
-  if (PT_REGS_RC(ctx) != 0)
+  if (PT_REGS_RC(ctx) != 0) {
     return 0;
+  }
 
   return __ret_event(ctx, LOCKMON_EVENT_MUTEX_TRYLOCK_RET);
 }

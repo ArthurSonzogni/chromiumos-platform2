@@ -44,8 +44,9 @@ typedef int (*event_handler_t)(void* ctx, void* data, size_t data_sz);
 static int attach_probes(struct memmon_bpf* mon, pid_t pid) {
   std::string libc;
 
-  if (libmon::lookup_lib(pid, "libc.so", libc))
+  if (libmon::lookup_lib(pid, "libc.so", libc)) {
     return -ENOENT;
+  }
 
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "malloc", call_malloc);
   LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "malloc", ret_malloc);
@@ -73,8 +74,9 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
 
     libmon::decode_ustack(event->pid, event->ustack_ents,
                           event->num_ustack_ents, bt);
-    for (auto& frame : bt)
+    for (auto& frame : bt) {
       frames += frame + "\n";
+    }
 
     MEMMON_EVENT_BEGIN("mm", memmon_event_track(event), "sz", event->size, "fn",
                        memmon_event_name(event), "addr", addr.c_str(),
@@ -82,8 +84,9 @@ static int perfetto_memmon_event(void* ctx, void* data, size_t data_sz) {
   }
 
   if (event->type == MEMMON_EVENT_FREE || event->type == MEMMON_EVENT_MUNMAP) {
-    if (event->ptr == 0x00)
+    if (event->ptr == 0x00) {
       return 0;
+    }
     MEMMON_EVENT_END(memmon_event_track(event));
   }
 
@@ -146,8 +149,9 @@ static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
   struct memmon_event* event = (struct memmon_event*)data;
   struct memmon_event* ev;
 
-  if (event->ptr == 0x00)
+  if (event->ptr == 0x00) {
     return 0;
+  }
 
   switch (event->type) {
     case MEMMON_EVENT_MALLOC:
@@ -168,8 +172,9 @@ static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
     case MEMMON_EVENT_FREE:
     case MEMMON_EVENT_MUNMAP:
       /* Most likely missed allocation event (e.g. attached after alloc) */
-      if (events.find(event->ptr) == events.end())
+      if (events.find(event->ptr) == events.end()) {
         return 0;
+      }
 
       if (events[event->ptr]) {
         delete events[event->ptr];
@@ -191,8 +196,9 @@ static int leakcheck_memmon_event(void* ctx, void* data, size_t data_sz) {
 }
 
 static void show_leakcheck(void) {
-  if (run_mode != RUN_MODE_LEAKCHECK)
+  if (run_mode != RUN_MODE_LEAKCHECK) {
     return;
+  }
 
   for (auto& e : events) {
     if (e.second) {
@@ -217,8 +223,9 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   }
 
   err = libmon::prepare_target(pid, cmd, cmd_args);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   if (run_mode == RUN_MODE_PERFETTO) {
     event_handler = perfetto_memmon_event;
@@ -238,8 +245,9 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   }
 
   err = attach_probes(mon, pid);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), event_handler, NULL, NULL);
   if (!rb) {
@@ -249,12 +257,14 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   }
 
   err = libmon::setup_sig_handlers();
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   err = libmon::follow_target(pid);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   do {
     err = ring_buffer__poll(rb, LIBMON_RB_POLL_TIMEOUT);
@@ -263,17 +273,20 @@ static int memmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
       err = 0;
       break;
     }
-    if (err == -EINTR)
+    if (err == -EINTR) {
       continue;
+    }
     if (err < 0) {
       printf("rb polling error: %d\n", err);
       break;
     }
     /* Even if the target has terminated we still need to handle all events */
-    if (err > 0)
+    if (err > 0) {
       continue;
-    if (libmon::target_terminated())
+    }
+    if (libmon::target_terminated()) {
       break;
+    }
   } while (1);
 
   show_leakcheck();
@@ -299,8 +312,9 @@ int main(int argc, char** argv) {
     c = getopt_long(argc, argv, "p:e:m:", long_options, &option_index);
 
     /* Detect the end of the options. */
-    if (c == -1)
+    if (c == -1) {
       break;
+    }
 
     switch (c) {
       case 'p':
@@ -346,8 +360,9 @@ int main(int argc, char** argv) {
   }
 
   ret = libmon::init_stack_decoder();
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   ret = memmon(pid, exec_cmd, exec_args);
 

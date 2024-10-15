@@ -71,8 +71,9 @@ static std::string cxx_demangle(std::string& sym) {
   char* r;
 
   r = abi::__cxa_demangle(sym.c_str(), 0, 0, &status);
-  if (r)
+  if (r) {
     return std::string(r);
+  }
   return sym;
 }
 
@@ -103,9 +104,11 @@ static struct addr* lookup_addr(addr_range_t& r, uintptr_t ptr) {
    * O(n) is okay here.  Had this not been a throwaway code
    * we'd use interval tree of some sort.
    */
-  for (auto n : r)
-    if (n->lo <= ptr && ptr < n->hi)
+  for (auto n : r) {
+    if (n->lo <= ptr && ptr < n->hi) {
       return n;
+    }
+  }
   return NULL;
 }
 
@@ -125,30 +128,35 @@ static __attribute__((unused)) int populate_ksyms(void) {
   std::ifstream in("/proc/kallsyms");
   std::string input;
 
-  if (!in.is_open())
+  if (!in.is_open()) {
     return -EINVAL;
+  }
 
   while (std::getline(in, input)) {
-    if (input.empty())
+    if (input.empty()) {
       break;
+    }
 
     std::vector<std::string> split;
 
     input_split(input, ' ', split);
     struct addr* r;
 
-    if (split.size() < 3)
+    if (split.size() < 3) {
       continue;
+    }
 
     r = new struct addr;
-    if (!r)
+    if (!r) {
       return -ENOMEM;
+    }
 
     r->lo = std::strtoull(split[0].c_str(), nullptr, 16);
     r->hi = 0;
     r->sym = split[2];
-    if (split.size() >= 4)
+    if (split.size() >= 4) {
       r->mod = split[3];
+    }
 
     ksyms.push_back(r);
   }
@@ -163,12 +171,14 @@ static int populate_maps_syms(std::string& fn, uintptr_t lo) {
   size_t shstrndx;
   int fd, ret;
 
-  if (elf_version(EV_CURRENT) == EV_NONE)
+  if (elf_version(EV_CURRENT) == EV_NONE) {
     return -EINVAL;
+  }
 
   fd = open(fn.c_str(), O_RDONLY, 0);
-  if (fd < 0)
+  if (fd < 0) {
     return -ENOENT;
+  }
 
   e = elf_begin(fd, ELF_C_READ, nullptr);
   if (!e) {
@@ -188,8 +198,9 @@ static int populate_maps_syms(std::string& fn, uintptr_t lo) {
 
   while ((scn = elf_nextscn(e, scn)) != nullptr) {
     gelf_getshdr(scn, &shdr);
-    if (shdr.sh_type != SHT_SYMTAB && shdr.sh_type != SHT_DYNSYM)
+    if (shdr.sh_type != SHT_SYMTAB && shdr.sh_type != SHT_DYNSYM) {
       continue;
+    }
 
     Elf_Data* data = elf_getdata(scn, nullptr);
     size_t symbol_count = shdr.sh_size / shdr.sh_entsize;
@@ -199,21 +210,25 @@ static int populate_maps_syms(std::string& fn, uintptr_t lo) {
 
       gelf_getsym(data, i, &sym);
 
-      if (GELF_ST_TYPE(sym.st_info) != STT_FUNC)
+      if (GELF_ST_TYPE(sym.st_info) != STT_FUNC) {
         continue;
+      }
 
-      if (sym.st_value == 0 || sym.st_shndx == SHN_UNDEF)
+      if (sym.st_value == 0 || sym.st_shndx == SHN_UNDEF) {
         continue;
+      }
 
       // maybe sub "shdr.sh_addr + shdr.sh_offset";
       uintptr_t rst_val = sym.st_value;
       struct addr* r = lookup_maps_syms_addr(lo + rst_val);
-      if (r)
+      if (r) {
         continue;
+      }
 
       name = elf_strptr(e, shdr.sh_link, sym.st_name);
-      if (!name || *name == 0x00)
+      if (!name || *name == 0x00) {
         continue;
+      }
 
       r = new struct addr;
       if (!r) {
@@ -232,10 +247,12 @@ static int populate_maps_syms(std::string& fn, uintptr_t lo) {
   ret = 0;
 
 out:
-  if (e)
+  if (e) {
     elf_end(e);
-  if (fd > 0)
+  }
+  if (fd > 0) {
     close(fd);
+  }
   return ret;
 }
 
@@ -243,41 +260,49 @@ static int populate_maps(pid_t pid) {
   std::ifstream in("/proc/" + std::to_string(pid) + "/maps");
   std::string input;
 
-  if (!in.is_open())
+  if (!in.is_open()) {
     return -EINVAL;
+  }
 
   while (std::getline(in, input)) {
-    if (input.empty())
+    if (input.empty()) {
       break;
+    }
 
     std::vector<std::string> split;
 
     input_split(input, ' ', split);
     struct addr* r;
 
-    if (split.size() < 5)
+    if (split.size() < 5) {
       continue;
+    }
 
-    if (stol(split[4]) == 0)
+    if (stol(split[4]) == 0) {
       continue;
+    }
 
-    if (split[1][2] != 'x')
+    if (split[1][2] != 'x') {
       continue;
+    }
 
     std::vector<std::string> interval;
     input_split(split[0], '-', interval);
-    if (interval.size() != 2)
+    if (interval.size() != 2) {
       return -ENOMEM;
+    }
 
     uintptr_t lo = std::strtoul(interval[0].c_str(), nullptr, 16);
     uintptr_t hi = std::strtoul(interval[1].c_str(), nullptr, 16);
 
-    if (lookup_maps_addr(lo))
+    if (lookup_maps_addr(lo)) {
       continue;
+    }
 
     r = new struct addr;
-    if (!r)
+    if (!r) {
       return -ENOMEM;
+    }
 
     r->lo = lo;
     r->hi = hi;
@@ -306,10 +331,11 @@ void decode_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
     sym = lookup_maps_syms_addr(ptr);
 
     std::string dsym;
-    if (sym)
+    if (sym) {
       dsym = cxx_demangle(sym->sym);
-    else
+    } else {
       dsym = "unknown";
+    }
 
     printf("<%lx> %s [%s]\n", ptr, dsym.c_str(),
            mod ? mod->mod.c_str() : "unknown");

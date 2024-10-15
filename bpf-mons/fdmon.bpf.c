@@ -46,8 +46,9 @@ static int save_ustack(struct pt_regs* ctx, struct fdmon_event* event) {
   long ret = bpf_get_stack(ctx, event->ustack_ents, sizeof(event->ustack_ents),
                            BPF_F_USER_STACK);
 
-  if (ret < 0)
+  if (ret < 0) {
     return -EINVAL;
+  }
 
   event->num_ustack_ents = ret / sizeof(event->ustack_ents[0]);
   return 0;
@@ -57,8 +58,9 @@ static struct fdmon_event* bpf_ringbuf_event_get(void) {
   struct fdmon_event* event;
 
   event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
-  if (!event)
+  if (!event) {
     return NULL;
+  }
 
   event->type = FDMON_EVENT_INVALID;
   event->num_ustack_ents = 0;
@@ -73,8 +75,9 @@ static int fdmon_event(struct pt_regs* ctx,
   u64 id;
 
   event = bpf_ringbuf_event_get();
-  if (!event)
+  if (!event) {
     return -ENOMEM;
+  }
 
   id = bpf_get_current_pid_tgid();
   event->pid = id >> 32;

@@ -78,8 +78,9 @@ static void register_lock(struct lockmon_event* event) {
 /* Checks currently held locks against the newly acquired one */
 static void recursive_locking(uint64_t id, struct lockmon_event* event) {
   for (auto& st : ctx[id]) {
-    if (st->lock != event->lock)
+    if (st->lock != event->lock) {
       continue;
+    }
 
     printf("comm: %s pid: %d attempts to acquire lock %p:\n", event->comm,
            event->pid, reinterpret_cast<void*>(event->lock));
@@ -105,8 +106,9 @@ static bool is_reachable(uintptr_t from, struct lockmon_event* event) {
 
     struct lock* l = locks[cur];
     /* what, what, what do you mean? */
-    if (!l)
+    if (!l) {
       continue;
+    }
 
     for (auto& dep : l->deps) {
       struct dep* d = dep.second;
@@ -133,15 +135,18 @@ static bool is_reachable(uintptr_t from, struct lockmon_event* event) {
 
 /* Check for violations of known locking ordering */
 static void locking_chains(uint64_t id, struct lockmon_event* event) {
-  if (tainted)
+  if (tainted) {
     return;
+  }
 
-  if (ctx[id].empty())
+  if (ctx[id].empty()) {
     return;
+  }
 
   for (auto& cur : ctx[id]) {
-    if (!is_reachable(event->lock, cur))
+    if (!is_reachable(event->lock, cur)) {
       continue;
+    }
 
     printf("reverse dependency chain\n");
 
@@ -158,19 +163,22 @@ static void locking_chains(uint64_t id, struct lockmon_event* event) {
 static void lock_dependency(struct lockmon_event* event) {
   uint64_t id = generate_ctxid(event);
 
-  if (tainted)
+  if (tainted) {
     return;
+  }
 
-  if (ctx[id].empty())
+  if (ctx[id].empty()) {
     return;
+  }
 
   /* 'top' lock is the most recently acquired one */
   struct lockmon_event* top = ctx[id].back();
   struct lock* tl = lookup_lock(top);
 
   /* Do we already know that new lock depends on the top one */
-  if (tl->deps.find(event->lock) != tl->deps.end())
+  if (tl->deps.find(event->lock) != tl->deps.end()) {
     return;
+  }
 
   struct dep* d = new struct dep;
   memcpy(&d->s, top, sizeof(*top));
@@ -184,8 +192,9 @@ static void __lock(struct lockmon_event* event) {
   /* keep track of all locks we attempt to lock */
   register_lock(event);
 
-  if (ctx.find(id) == ctx.end())
+  if (ctx.find(id) == ctx.end()) {
     return;
+  }
 
   recursive_locking(id, event);
   locking_chains(id, event);
@@ -204,8 +213,9 @@ static void lock(struct lockmon_event* event) {
   __lock(event);
   lock_dependency(event);
 
-  if (tainted)
+  if (tainted) {
     return;
+  }
 
   ctx_add_top_lock(event);
 }
@@ -228,8 +238,9 @@ static void unlock(struct lockmon_event* event) {
   uint64_t id = generate_ctxid(event);
 
   /* Somehow unlock() is the first event we see for this ctx */
-  if (ctx.find(id) == ctx.end())
+  if (ctx.find(id) == ctx.end()) {
     return;
+  }
 
   for (auto it = ctx[id].begin(); it != ctx[id].end(); it++) {
     struct lockmon_event* cur = *it;
@@ -249,8 +260,9 @@ static void init(struct lockmon_event* event) {
 static void destroy(struct lockmon_event* event) {
   struct lock* l;
 
-  if (locks.find(event->lock) == locks.end())
+  if (locks.find(event->lock) == locks.end()) {
     return;
+  }
 
   l = lookup_lock(event);
   for (auto& it : l->deps) {
@@ -263,8 +275,9 @@ static void destroy(struct lockmon_event* event) {
 static int attach_probes(struct lockmon_bpf* mon, pid_t pid) {
   std::string libc;
 
-  if (libmon::lookup_lib(pid, "libc.so", libc))
+  if (libmon::lookup_lib(pid, "libc.so", libc)) {
     return -ENOENT;
+  }
 
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "pthread_mutex_init",
                        call_mutex_init);
@@ -294,8 +307,9 @@ static int attach_probes(struct lockmon_bpf* mon, pid_t pid) {
 static int lockmon_event(void* ctx, void* data, size_t data_sz) {
   struct lockmon_event* event = (struct lockmon_event*)data;
 
-  if (tainted)
+  if (tainted) {
     return 0;
+  }
 
   switch (event->type) {
     case LOCKMON_EVENT_MUTEX_INIT:
@@ -336,8 +350,9 @@ static int lockmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   }
 
   err = libmon::prepare_target(pid, cmd, cmd_args);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   err = lockmon_bpf__load(mon);
   if (err) {
@@ -346,8 +361,9 @@ static int lockmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   }
 
   err = attach_probes(mon, pid);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), lockmon_event, NULL, NULL);
   if (!rb) {
@@ -357,12 +373,14 @@ static int lockmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
   }
 
   err = libmon::setup_sig_handlers();
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   err = libmon::follow_target(pid);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   do {
     err = ring_buffer__poll(rb, LIBMON_RB_POLL_TIMEOUT);
@@ -371,17 +389,20 @@ static int lockmon(pid_t pid, const char* cmd, std::vector<char*>& cmd_args) {
       err = 0;
       break;
     }
-    if (err == -EINTR)
+    if (err == -EINTR) {
       continue;
+    }
     if (err < 0) {
       printf("rb polling error: %d\n", err);
       break;
     }
     /* Even if the target has terminated we still need to handle all events */
-    if (err > 0)
+    if (err > 0) {
       continue;
-    if (libmon::target_terminated())
+    }
+    if (libmon::target_terminated()) {
       break;
+    }
   } while (1);
 
 cleanup:
@@ -405,8 +426,9 @@ int main(int argc, char** argv) {
     c = getopt_long(argc, argv, "p:e:", long_options, &option_index);
 
     /* Detect the end of the options. */
-    if (c == -1)
+    if (c == -1) {
       break;
+    }
 
     switch (c) {
       case 'p':
@@ -440,8 +462,9 @@ int main(int argc, char** argv) {
   }
 
   ret = libmon::init_stack_decoder();
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   ret = lockmon(pid, exec_cmd, exec_args);
 

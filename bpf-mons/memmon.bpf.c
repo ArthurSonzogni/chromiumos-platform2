@@ -54,8 +54,9 @@ static int save_ustack(struct pt_regs* ctx, struct memmon_event* event) {
   long ret = bpf_get_stack(ctx, event->ustack_ents, sizeof(event->ustack_ents),
                            BPF_F_USER_STACK);
 
-  if (ret < 0)
+  if (ret < 0) {
     return -EINVAL;
+  }
 
   event->num_ustack_ents = ret / sizeof(event->ustack_ents[0]);
   return 0;
@@ -65,8 +66,9 @@ static struct memmon_event* bpf_ringbuf_event_get(void) {
   struct memmon_event* event;
 
   event = bpf_ringbuf_reserve(&rb, sizeof(*event), 0);
-  if (!event)
+  if (!event) {
     return NULL;
+  }
 
   event->type = MEMMON_EVENT_INVALID;
   event->num_ustack_ents = 0;
@@ -82,8 +84,9 @@ static int memmon_event(struct pt_regs* ctx,
   u64 id;
 
   event = bpf_ringbuf_event_get();
-  if (!event)
+  if (!event) {
     return -ENOMEM;
+  }
 
   id = bpf_get_current_pid_tgid();
   event->pid = id >> 32;
@@ -223,8 +226,9 @@ int BPF_KPROBE(call_handle_mm_fault,
                unsigned long ptr) {
   s32 pid = bpf_get_current_pid_tgid() >> 32;
 
-  if (pid != kprobe_mon_pid)
+  if (pid != kprobe_mon_pid) {
     return 0;
+  }
 
   return memmon_event(ctx, MEMMON_EVENT_PF, 0, (unsigned long)ptr);
 }

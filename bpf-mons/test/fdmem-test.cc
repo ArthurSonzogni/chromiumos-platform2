@@ -105,14 +105,16 @@ class char_test : public test {
 
     char* data_copy = strdup(data);
     BUG_ON(!data_copy);
-    for (int i = 0; i < CHAR_TEST_DATA_SZ; i++)
+    for (int i = 0; i < CHAR_TEST_DATA_SZ; i++) {
       data_copy[i] = 'g';
+    }
 
     char* data_copy2 =
         reinterpret_cast<char*>(calloc(CHAR_TEST_DATA_SZ, sizeof(char)));
     BUG_ON(!data_copy2);
-    for (int i = 0; i < CHAR_TEST_DATA_SZ; i++)
+    for (int i = 0; i < CHAR_TEST_DATA_SZ; i++) {
       data_copy2[i] = data_copy[i];
+    }
 
     free(data_copy);
     /* Note that we deliberately "leak" data_copy2 */
@@ -152,8 +154,9 @@ int main(int argc, char* argv[]) {
     c = getopt_long(argc, argv, "i:s:", long_options, &option_index);
 
     /* Detect the end of the options. */
-    if (c == -1)
+    if (c == -1) {
       break;
+    }
 
     switch (c) {
       case 'i':
@@ -184,8 +187,9 @@ int main(int argc, char* argv[]) {
     fd_test->execute();
     delete fd_test;
 
-    if (iter < num_iter)
+    if (iter < num_iter) {
       sleep(iter_sleep);
+    }
   }
 
   // This is sort of important, we need to give the monitor some time to

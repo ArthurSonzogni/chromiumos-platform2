@@ -52,20 +52,23 @@ int setup_sig_handlers(void) {
   sa.sa_handler = mon_sig_handler;
   sa.sa_flags = 0;
   sigemptyset(&sa.sa_mask);
-  if (sigaction(SIGINT, &sa, NULL) == -1)
+  if (sigaction(SIGINT, &sa, NULL) == -1) {
     return -EINVAL;
+  }
 
   sa.sa_handler = mon_sig_handler;
   sa.sa_flags = 0;
   sigemptyset(&sa.sa_mask);
-  if (sigaction(SIGTERM, &sa, NULL) == -1)
+  if (sigaction(SIGTERM, &sa, NULL) == -1) {
     return -EINVAL;
+  }
 
   sa.sa_handler = mon_sig_handler;
   sa.sa_flags = SA_NOCLDSTOP;
   sigemptyset(&sa.sa_mask);
-  if (sigaction(SIGCHLD, &sa, NULL) == -1)
+  if (sigaction(SIGCHLD, &sa, NULL) == -1) {
     return -EINVAL;
+  }
 
   return 0;
 }
@@ -78,20 +81,24 @@ int prepare_target(pid_t& pid, const char* cmd, std::vector<char*>& args) {
     return 0;
   }
 
-  if (cmd == NULL)
+  if (cmd == NULL) {
     return -EINVAL;
+  }
 
   npid = fork();
-  if (npid == -1)
+  if (npid == -1) {
     return -EINVAL;
+  }
 
   if (npid == 0) {
     char** argv = new char*[args.size()];
-    if (!argv)
+    if (!argv) {
       return -EINVAL;
+    }
 
-    for (int i = 0; i < args.size(); i++)
+    for (int i = 0; i < args.size(); i++) {
       argv[i] = args[i];
+    }
 
     /*
      * STOP the process so that we can load the monitor, attach it and setup
@@ -117,8 +124,9 @@ static void show_frame(uintptr_t ip,
                        const char* fn,
                        const blaze_symbolize_code_info* ci) {
   printf("    %016lx: %s @ 0x%lx+0x%lx", ip, fn, addr, offt);
-  if (ci && ci->file)
+  if (ci && ci->file) {
     printf(" %s\n", ci->file);
+  }
   printf("\n");
 }
 
@@ -164,16 +172,19 @@ static void show_stack_trace(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
 }
 
 void show_ustack(pid_t pid, uintptr_t* ents, uint32_t num_ents) {
-  if (pid < 0)
+  if (pid < 0) {
     return;
-  if (!num_ents)
+  }
+  if (!num_ents) {
     return;
+  }
   show_stack_trace(pid, ents, num_ents);
 }
 
 void show_kstack(uintptr_t* ents, uint32_t num_ents) {
-  if (!num_ents)
+  if (!num_ents) {
     return;
+  }
   show_stack_trace(0, ents, num_ents);
 }
 
@@ -229,18 +240,21 @@ void decode_ustack(pid_t pid,
                    uintptr_t* ents,
                    uint32_t num_ents,
                    std::vector<std::string>& trace) {
-  if (pid < 0)
+  if (pid < 0) {
     return;
-  if (!num_ents)
+  }
+  if (!num_ents) {
     return;
+  }
   decode_stack_trace(pid, ents, num_ents, trace);
 }
 
 void decode_kstack(uintptr_t* ents,
                    uint32_t num_ents,
                    std::vector<std::string>& trace) {
-  if (!num_ents)
+  if (!num_ents) {
     return;
+  }
   decode_stack_trace(0, ents, num_ents, trace);
 }
 
@@ -261,17 +275,20 @@ static int lookup_map_files(pid_t pid, const char* name, std::string& path) {
   std::filesystem::path dir = "/proc/" + std::to_string(pid) + "/map_files";
   std::string lib_name = name;
 
-  if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
+  if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir)) {
     return -ENOENT;
+  }
 
   for (auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
-    if (!entry.is_symlink())
+    if (!entry.is_symlink()) {
       continue;
+    }
 
     std::error_code ec;
     std::filesystem::path link = std::filesystem::read_symlink(entry, ec);
-    if (ec)
+    if (ec) {
       continue;
+    }
 
     std::string ent = link.filename();
     if (ent.find(lib_name) != std::string::npos) {
@@ -286,16 +303,19 @@ int lookup_lib(pid_t pid, const char* name, std::string& path) {
   std::vector<std::filesystem::path> search = {"/lib64", "/usr/lib64"};
   std::string lib_name = name;
 
-  if (lookup_map_files(pid, name, path) == 0)
+  if (lookup_map_files(pid, name, path) == 0) {
     return 0;
+  }
 
   for (const auto& dir : search) {
-    if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir))
+    if (!std::filesystem::exists(dir) || !std::filesystem::is_directory(dir)) {
       continue;
+    }
 
     for (auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
-      if (!entry.is_regular_file())
+      if (!entry.is_regular_file()) {
         continue;
+      }
 
       std::string ent = entry.path().filename();
       /* Either full match or substring match, e.g. libc.so and libc.so.6 */
@@ -313,8 +333,9 @@ static std::string cxx_demangle(const char* sym) {
   char* r;
 
   r = abi::__cxa_demangle(sym, 0, 0, &status);
-  if (r)
+  if (r) {
     return std::string(r);
+  }
   return sym;
 }
 
@@ -325,12 +346,14 @@ int lookup_cxx_sym(const std::string& so, const char* fn, std::string& cxx) {
   size_t shstrndx;
   int fd, ret;
 
-  if (elf_version(EV_CURRENT) == EV_NONE)
+  if (elf_version(EV_CURRENT) == EV_NONE) {
     return -EINVAL;
+  }
 
   fd = open(so.c_str(), O_RDONLY, 0);
-  if (fd < 0)
+  if (fd < 0) {
     return -ENOENT;
+  }
 
   e = elf_begin(fd, ELF_C_READ, nullptr);
   if (!e) {
@@ -350,8 +373,9 @@ int lookup_cxx_sym(const std::string& so, const char* fn, std::string& cxx) {
 
   while ((scn = elf_nextscn(e, scn)) != nullptr) {
     gelf_getshdr(scn, &shdr);
-    if (shdr.sh_type != SHT_SYMTAB && shdr.sh_type != SHT_DYNSYM)
+    if (shdr.sh_type != SHT_SYMTAB && shdr.sh_type != SHT_DYNSYM) {
       continue;
+    }
 
     Elf_Data* data = elf_getdata(scn, nullptr);
     size_t symbol_count = shdr.sh_size / shdr.sh_entsize;
@@ -361,15 +385,18 @@ int lookup_cxx_sym(const std::string& so, const char* fn, std::string& cxx) {
 
       gelf_getsym(data, i, &sym);
 
-      if (GELF_ST_TYPE(sym.st_info) != STT_FUNC)
+      if (GELF_ST_TYPE(sym.st_info) != STT_FUNC) {
         continue;
+      }
 
-      if (sym.st_value == 0 || sym.st_shndx == SHN_UNDEF)
+      if (sym.st_value == 0 || sym.st_shndx == SHN_UNDEF) {
         continue;
+      }
 
       name = elf_strptr(e, shdr.sh_link, sym.st_name);
-      if (!name || *name == 0x00)
+      if (!name || *name == 0x00) {
         continue;
+      }
 
       std::string d_name = cxx_demangle(name);
       if (d_name.find(fn) != std::string::npos) {
@@ -382,10 +409,12 @@ int lookup_cxx_sym(const std::string& so, const char* fn, std::string& cxx) {
   ret = 0;
 
 out:
-  if (e)
+  if (e) {
     elf_end(e);
-  if (fd > 0)
+  }
+  if (fd > 0) {
     close(fd);
+  }
   return ret;
 }
 

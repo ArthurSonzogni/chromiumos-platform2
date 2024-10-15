@@ -41,8 +41,9 @@ typedef int (*event_handler_t)(void* ctx, void* data, size_t data_sz);
 static int attach_probes(struct fdmon_bpf* mon, pid_t pid) {
   std::string libc;
 
-  if (libmon::lookup_lib(pid, "libc.so", libc))
+  if (libmon::lookup_lib(pid, "libc.so", libc)) {
     return -ENOENT;
+  }
 
   LIBMON_ATTACH_URETPROBE(mon, pid, libc.c_str(), "open", ret_open);
   LIBMON_ATTACH_UPROBE(mon, pid, libc.c_str(), "dup2", call_dup2);
@@ -80,8 +81,9 @@ static int leakcheck_fdmon_event(void* ctx, void* data, size_t data_sz) {
   struct fdmon_event* event = (struct fdmon_event*)data;
   struct fdmon_event* ev;
 
-  if (event->nfd < 0)
+  if (event->nfd < 0) {
     return 0;
+  }
 
   switch (event->type) {
     case FDMON_EVENT_OPEN:
@@ -112,8 +114,9 @@ static int leakcheck_fdmon_event(void* ctx, void* data, size_t data_sz) {
 }
 
 static void show_leakcheck(void) {
-  if (run_mode != RUN_MODE_LEAKCHECK)
+  if (run_mode != RUN_MODE_LEAKCHECK) {
     return;
+  }
 
   for (auto& e : events) {
     if (e.second) {
@@ -138,8 +141,9 @@ static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
   }
 
   err = libmon::prepare_target(pid, cmd, args);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   err = fdmon_bpf__load(mon);
   if (err) {
@@ -148,11 +152,13 @@ static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
   }
 
   err = attach_probes(mon, pid);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
-  if (run_mode == RUN_MODE_LEAKCHECK)
+  if (run_mode == RUN_MODE_LEAKCHECK) {
     event_handler = leakcheck_fdmon_event;
+  }
 
   rb = ring_buffer__new(bpf_map__fd(mon->maps.rb), event_handler, NULL, NULL);
   if (!rb) {
@@ -162,12 +168,14 @@ static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
   }
 
   err = libmon::setup_sig_handlers();
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   err = libmon::follow_target(pid);
-  if (err)
+  if (err) {
     goto cleanup;
+  }
 
   do {
     err = ring_buffer__poll(rb, LIBMON_RB_POLL_TIMEOUT);
@@ -176,17 +184,20 @@ static int fdmon(pid_t pid, const char* cmd, std::vector<char*>& args) {
       err = 0;
       break;
     }
-    if (err == -EINTR)
+    if (err == -EINTR) {
       continue;
+    }
     if (err < 0) {
       printf("rb polling error: %d\n", err);
       break;
     }
     /* Even if the target has terminated we still need to handle all events */
-    if (err > 0)
+    if (err > 0) {
       continue;
-    if (libmon::target_terminated())
+    }
+    if (libmon::target_terminated()) {
       break;
+    }
   } while (1);
 
   show_leakcheck();
@@ -212,8 +223,9 @@ int main(int argc, char** argv) {
     c = getopt_long(argc, argv, "p:e:m:", long_options, &option_index);
 
     /* Detect the end of the options. */
-    if (c == -1)
+    if (c == -1) {
       break;
+    }
 
     switch (c) {
       case 'p':
@@ -248,8 +260,9 @@ int main(int argc, char** argv) {
   }
 
   ret = libmon::init_stack_decoder();
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   if (exec_cmd) {
     exec_args.push_back(basename(exec_cmd));
