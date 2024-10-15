@@ -46,8 +46,9 @@ class AlarmTimerTester {
  private:
   void Run() {
     *did_run_ = true;
-    if (quit_closure_)
+    if (quit_closure_) {
       std::move(quit_closure_).Run();
+    }
   }
 
   bool* did_run_;
