@@ -44,8 +44,9 @@ int main(int argc, char* argv[]) {
       std::min(GetOldestModifiedTime(), base::Time::Now() - base::Days(8));
 
   if (WriteCurrentBootEntry(base::FilePath(kBootLogFile),
-                            first_timestamp_to_keep, kBootLogMaxEntries))
+                            first_timestamp_to_keep, kBootLogMaxEntries)) {
     return 0;
-  else
+  } else {
     return EXIT_FAILURE;
+  }
 }

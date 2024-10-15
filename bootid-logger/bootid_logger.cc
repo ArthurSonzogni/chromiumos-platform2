@@ -60,26 +60,30 @@ std::string GenerateBootEntryString(const std::string current_boot_id,
 
 // Validate the given boot entry is valid (as an entry with UTC timestap).
 bool ValidateBootEntryWithUTC(const std::string& boot_id_entry) {
-  if (boot_id_entry.length() != kBootEntryLength)
+  if (boot_id_entry.length() != kBootEntryLength) {
     return false;
+  }
 
   if (boot_id_entry[kBootEntrySeverityOffset - 1] != ' ' ||
       boot_id_entry[kBootEntryPrefixOffset - 1] != ' ' ||
-      boot_id_entry[kBootEntryBootIdOffset - 1] != ' ')
+      boot_id_entry[kBootEntryBootIdOffset - 1] != ' ') {
     return false;
+  }
 
   return true;
 }
 
 // Validate the given boot entry is valid (as an entry with local timestap).
 bool ValidateBootEntryWithTimezone(const std::string& boot_id_entry) {
-  if (boot_id_entry.length() != kBootEntryLocalTimeLength)
+  if (boot_id_entry.length() != kBootEntryLocalTimeLength) {
     return false;
+  }
 
   if (boot_id_entry[kBootEntryLocalTimeSeverityOffset - 1] != ' ' ||
       boot_id_entry[kBootEntryLocalTimeMessageOffset - 1] != ' ' ||
-      boot_id_entry[kBootEntryLocalTimeBootIdOffset - 1] != ' ')
+      boot_id_entry[kBootEntryLocalTimeBootIdOffset - 1] != ' ') {
     return false;
+  }
 
   return true;
 }
@@ -111,22 +115,26 @@ std::optional<std::deque<std::string>> ReadPreviousBootEntries(
     std::string s;
     while (std::getline(ss, s)) {
       // Skip an empty log.
-      if (s.empty())
+      if (s.empty()) {
         continue;
+      }
 
       // Skip a duplicated entry.
-      if (!previous_boot_entries.empty() && previous_boot_entries.back() == s)
+      if (!previous_boot_entries.empty() && previous_boot_entries.back() == s) {
         continue;
+      }
 
       // Skip an invalid entry.
-      if (!ValidateBootEntry(s))
+      if (!ValidateBootEntry(s)) {
         continue;
+      }
 
       if (!first_timestamp_to_keep.is_null()) {
         base::Time time = ExtractTimestampString(s);
         // Skips the entry with older timestamp than |first_timestamp_to_keep|.
-        if (!time.is_null() && time < first_timestamp_to_keep)
+        if (!time.is_null() && time < first_timestamp_to_keep) {
           continue;
+        }
       }
 
       previous_boot_entries.push_back(s);
@@ -163,11 +171,13 @@ bool ValidateBootEntry(const std::string& boot_id_entry) {
 
 // Extracts the boot ID from the givin boot ID entry.
 std::string ExtractBootId(const std::string& boot_id_entry) {
-  if (boot_id_entry.length() == kBootEntryLength)
+  if (boot_id_entry.length() == kBootEntryLength) {
     return boot_id_entry.substr(kBootEntryBootIdOffset, kBootIdLength);
+  }
 
-  if (boot_id_entry.length() == kBootEntryLocalTimeLength)
+  if (boot_id_entry.length() == kBootEntryLocalTimeLength) {
     return boot_id_entry.substr(kBootEntryLocalTimeBootIdOffset, kBootIdLength);
+  }
 
   return "";
 }

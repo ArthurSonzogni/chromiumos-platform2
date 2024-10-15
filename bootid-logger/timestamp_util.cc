@@ -39,8 +39,9 @@ base::Time GetFirstTimestamp(const base::FilePath& file) {
   croslog::LogEntryReader reader(
       file, std::make_unique<croslog::LogParserSyslog>(), false);
   croslog::MaybeLogEntry e = reader.GetNextEntry();
-  if (e.has_value())
+  if (e.has_value()) {
     return e->time();
+  }
 
   return base::Time();
 }
@@ -53,8 +54,9 @@ base::Time GetOldestTimestampFromLogFiles(const base::FilePath& dir_path,
   // (without a suffix).
   {
     base::FilePath log_file_path = dir_path.Append(base_log_name);
-    if (base::PathExists(log_file_path))
+    if (base::PathExists(log_file_path)) {
       oldest_last_modified = GetFirstTimestamp(log_file_path);
+    }
   }
 
   // Pattern to match the older log files with suffix.
@@ -68,14 +70,18 @@ base::Time GetOldestTimestampFromLogFiles(const base::FilePath& dir_path,
     // If the first timestamp can't be retrieved, use the timestamp one day
     // prior to the last modified time of the file (assuming the file is
     // rotated daily).
-    if (last_modified.is_null())
+    if (last_modified.is_null()) {
       last_modified = e.GetInfo().GetLastModifiedTime() - base::Days(1);
+    }
 
-    if (last_modified.is_null())
+    if (last_modified.is_null()) {
       continue;
+    }
 
-    if (oldest_last_modified.is_null() || oldest_last_modified > last_modified)
+    if (oldest_last_modified.is_null() ||
+        oldest_last_modified > last_modified) {
       oldest_last_modified = last_modified;
+    }
   }
 
   return oldest_last_modified;
@@ -89,11 +95,14 @@ base::Time GetOldestModifiedTime(base::FilePath log_directory,
     base::Time last_modified =
         GetOldestTimestampFromLogFiles(log_directory, log_files[i]);
 
-    if (last_modified.is_null())
+    if (last_modified.is_null()) {
       continue;
+    }
 
-    if (oldest_last_modified.is_null() || oldest_last_modified > last_modified)
+    if (oldest_last_modified.is_null() ||
+        oldest_last_modified > last_modified) {
       oldest_last_modified = last_modified;
+    }
   }
 
   return oldest_last_modified;
@@ -112,8 +121,9 @@ base::Time ExtractTimestampString(const std::string& boot_id_entry) {
     std::string log_time = boot_id_entry.substr(0, kTimestampLength);
 
     bool result = base::Time::FromString(log_time.c_str(), &time);
-    if (!result)
+    if (!result) {
       return base::Time();
+    }
 
     return time;
   } else if (boot_id_entry[26] == '+' || boot_id_entry[26] == '-') {
@@ -121,8 +131,9 @@ base::Time ExtractTimestampString(const std::string& boot_id_entry) {
     std::string log_time = boot_id_entry.substr(0, kLocalTimeTimestampLength);
 
     bool result = base::Time::FromString(log_time.c_str(), &time);
-    if (!result)
+    if (!result) {
       return base::Time();
+    }
 
     return time;
   }

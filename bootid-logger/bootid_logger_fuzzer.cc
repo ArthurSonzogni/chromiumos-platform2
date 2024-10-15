@@ -39,8 +39,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   const std::string& cur_boot_id =
       data_provider.ConsumeBytesAsString(kBootIdLength);
   // Boot id must be 32 hexadecimal digits.
-  if (cur_boot_id.length() != kBootIdLength)
+  if (cur_boot_id.length() != kBootIdLength) {
     return 0;
+  }
 
   base::Time now =
       base::Time::FromTimeT(data_provider.ConsumeIntegral<time_t>());
