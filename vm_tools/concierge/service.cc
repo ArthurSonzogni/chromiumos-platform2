@@ -195,7 +195,7 @@ constexpr int kMaxVmNameLength = 60;
 constexpr uint64_t kDefaultIoLimit = MiB(1);
 
 // How often we should broadcast state of a disk operation (import or export).
-constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(15);
+constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(1);
 
 // Path to cpu information directories
 constexpr char kCpuInfosPath[] = "/sys/devices/system/cpu/";
