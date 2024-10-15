@@ -27,8 +27,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
     adaptor_ = std::make_unique<cecservice::CecServiceDBusAdaptor>(bus_);
-    adaptor_->RegisterAsync(sequencer->GetHandler(
-        "RegisterAsync() failed.", true));
+    adaptor_->RegisterAsync(
+        sequencer->GetHandler("RegisterAsync() failed.", true));
   }
 
  private:

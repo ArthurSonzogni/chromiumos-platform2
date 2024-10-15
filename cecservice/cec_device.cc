@@ -521,8 +521,9 @@ void CecDeviceImpl::Impl::SetWakeUp(
 }
 
 void CecDeviceImpl::Impl::RequestWriteWatch() {
-  if (!state_->NeedsWrite())
+  if (!state_->NeedsWrite()) {
     return;
+  }
 
   if (!fd_->WriteWatch()) {
     LOG(ERROR) << device_path_.value()
@@ -1009,8 +1010,9 @@ void ProbingTvAddressState::Enter() {
 }
 
 bool ProbingTvAddressState::ProcessResponse(const cec_msg& msg) {
-  if (msg.sequence != sequence_id_)
+  if (msg.sequence != sequence_id_) {
     return false;
+  }
 
   if (msg.tx_status == CEC_TX_STATUS_OK) {
     switch (subState_) {
