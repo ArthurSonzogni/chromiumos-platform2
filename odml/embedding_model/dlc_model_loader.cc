@@ -25,9 +25,99 @@ namespace {
 constexpr char kMlDlcPrefix[] = "ml-dlc-";
 constexpr char kModelDescriptor[] = "model.json";
 
+constexpr char kModelTypeKey[] = "model_type";
+constexpr char kModelVersionKey[] = "model_version";
+constexpr char kTfliteInfoKey[] = "tflite_info";
+constexpr char kTflitePathKey[] = "tflite_path";
+constexpr char kBuiltinSpmKey[] = "builtin_spm";
+constexpr char kSpmPathKey[] = "spm_path";
+constexpr char kDelegateKey[] = "delegate";
+
+constexpr char kEmbeddingTflite[] = "embedding_tflite";
+
+std::optional<EmbeddingTfliteModelInfo> ParseTfliteModelInfo(
+    const base::Value::Dict& tflite_info_dict, const base::FilePath& dlc_root) {
+  EmbeddingTfliteModelInfo tflite_info;
+
+  const std::string* tflite_path = tflite_info_dict.FindString(kTflitePathKey);
+  if (!tflite_path) {
+    LOG(ERROR) << "No tflite model path in tflite embedding model DLC "
+               << dlc_root;
+    return std::nullopt;
+  }
+  tflite_info.tflite_path = dlc_root.Append(*tflite_path).value();
+
+  std::optional<bool> builtin_spm = tflite_info_dict.FindBool(kBuiltinSpmKey);
+  if (!builtin_spm.has_value()) {
+    LOG(ERROR) << "No indication on whether spm tokenizer is built-in in "
+                  "tflite embedding model DLC "
+               << dlc_root;
+    return std::nullopt;
+  }
+  tflite_info.builtin_spm = *builtin_spm;
+
+  if (!tflite_info.builtin_spm) {
+    const std::string* spm_path = tflite_info_dict.FindString(kSpmPathKey);
+    if (!spm_path) {
+      LOG(ERROR) << "No spm tokenizer model path when external tokenizer is "
+                    "specified for tflite embedding model DLC "
+                 << dlc_root;
+      return std::nullopt;
+    }
+    tflite_info.spm_path = dlc_root.Append(*spm_path).value();
+  }
+
+  const std::string* delegate = tflite_info_dict.FindString(kDelegateKey);
+  if (!delegate) {
+    LOG(ERROR) << "No tflite delegate specified for tflite embedding model DLC "
+               << dlc_root;
+    return std::nullopt;
+  }
+  tflite_info.delegate = *delegate;
+
+  return tflite_info;
+}
+
 std::optional<ModelInfo> ParseModelInfo(const base::Value::Dict& model_dict,
                                         const base::FilePath& dlc_root) {
-  // TODO(b/364243814): Implement this.
+  const std::string* model_type = model_dict.FindString(kModelTypeKey);
+  if (!model_type) {
+    LOG(ERROR) << "Failed to read model type from embedding model DLC "
+               << dlc_root;
+    return std::nullopt;
+  }
+
+  const std::string* model_version = model_dict.FindString(kModelVersionKey);
+  if (!model_version) {
+    LOG(ERROR) << "No model version specified for embedding model DLC "
+               << dlc_root;
+    return std::nullopt;
+  }
+
+  if (*model_type == kEmbeddingTflite) {
+    const base::Value::Dict* tflite_info_dict =
+        model_dict.FindDict(kTfliteInfoKey);
+    if (!tflite_info_dict) {
+      LOG(ERROR) << "No tflite info for tflite embedding model DLC "
+                 << dlc_root;
+      return std::nullopt;
+    }
+
+    std::optional<EmbeddingTfliteModelInfo> tflite_info =
+        ParseTfliteModelInfo(*tflite_info_dict, dlc_root);
+    if (!tflite_info.has_value()) {
+      // No need to log, as ParseTfliteModelInfo() already logs on failure.
+      return std::nullopt;
+    }
+    ModelInfo model_info;
+    model_info.model_type = *model_type;
+    model_info.model_version = *model_version;
+    model_info.type_specific_info = std::move(*tflite_info);
+    return model_info;
+  }
+
+  LOG(ERROR) << "Unknown model type " << model_type
+             << " for embedding model DLC " << dlc_root;
   return std::nullopt;
 }
 
