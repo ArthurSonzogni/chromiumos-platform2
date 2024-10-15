@@ -205,6 +205,11 @@ class Proxy : public brillo::DBusDaemon {
   void StopGuestDnsRedirection(const patchpanel::Client::VirtualDevice& device,
                                sa_family_t sa_family);
 
+  // Listen on |addr| with the identifier of |ifname|. Returns false only if it
+  // fails to listen on UDP. An empty string is used as the identifier when
+  // |ifname| is empty.
+  bool Listen(struct sockaddr* addr, std::string_view ifname = "");
+
   // Helper func for setting the dns-proxy IPv4 and IPv6 address in shill.
   // Only valid for the system proxy.
   // Will retry on failure up to |num_retries| before possibly crashing the

@@ -672,6 +672,23 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
   }
 }
 
+bool Proxy::Listen(struct sockaddr* addr, std::string_view ifname) {
+  if (!resolver_->ListenTCP(addr, ifname)) {
+    metrics_.RecordProcessEvent(
+        metrics_proc_type_, Metrics::ProcessEvent::kResolverListenTCPFailure);
+    LOG(ERROR) << *this << " failed to start TCP relay loop"
+               << (ifname.empty() ? "" : " on interface ") << ifname;
+  }
+  if (!resolver_->ListenUDP(addr, ifname)) {
+    metrics_.RecordProcessEvent(
+        metrics_proc_type_, Metrics::ProcessEvent::kResolverListenUDPFailure);
+    LOG(ERROR) << *this << " failed to start UDP relay loop"
+               << (ifname.empty() ? "" : " on interface ") << ifname;
+    return false;
+  }
+  return true;
+}
+
 void Proxy::MaybeCreateResolver() {
   if (resolver_) {
     return;
@@ -682,27 +699,37 @@ void Proxy::MaybeCreateResolver() {
   doh_config_.set_resolver(resolver_.get());
   resolver_->SetDomainDoHConfigs(doh_included_domains_, doh_excluded_domains_);
 
-  // Listen on IPv4 and IPv6. Listening on AF_INET explicitly is not needed
-  // because net.ipv6.bindv6only sysctl is defaulted to 0 and is not
-  // explicitly turned on in the codebase.
-  struct sockaddr_in6 addr = {0};
-  addr.sin6_family = AF_INET6;
-  addr.sin6_port = kDefaultPort;
-  addr.sin6_addr =
-      in6addr_any;  // Since we're running in the private namespace.
-
-  if (!resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr))) {
-    metrics_.RecordProcessEvent(
-        metrics_proc_type_, Metrics::ProcessEvent::kResolverListenUDPFailure);
-    LOG(ERROR) << *this << " failed to start UDP relay loop";
-    QuitWithExitCode(EX_IOERR);
-    return;
-  }
-
-  if (!resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr))) {
-    metrics_.RecordProcessEvent(
-        metrics_proc_type_, Metrics::ProcessEvent::kResolverListenTCPFailure);
-    LOG(DFATAL) << *this << " failed to start TCP relay loop";
+  if (root_ns_enabled_) {
+    if (ipv4_address_) {
+      struct sockaddr_in addr4 = {0};
+      addr4.sin_family = AF_INET;
+      addr4.sin_port = kDefaultPort;
+      addr4.sin_addr = ipv4_address_->ToInAddr();
+      if (!Listen(reinterpret_cast<struct sockaddr*>(&addr4))) {
+        QuitWithExitCode(EX_IOERR);
+      }
+    }
+    if (ipv6_address_) {
+      struct sockaddr_in6 addr6 = {0};
+      addr6.sin6_family = AF_INET6;
+      addr6.sin6_port = kDefaultPort;
+      addr6.sin6_addr = ipv6_address_->ToIn6Addr();
+      if (!Listen(reinterpret_cast<struct sockaddr*>(&addr6))) {
+        QuitWithExitCode(EX_IOERR);
+      }
+    }
+  } else {
+    // Listen on IPv4 and IPv6. Listening on AF_INET explicitly is not needed
+    // because net.ipv6.bindv6only sysctl is defaulted to 0 and is not
+    // explicitly turned on in the codebase.
+    struct sockaddr_in6 addr = {0};
+    addr.sin6_family = AF_INET6;
+    addr.sin6_port = kDefaultPort;
+    addr.sin6_addr =
+        in6addr_any;  // Since we're running in the private namespace.
+    if (!Listen(reinterpret_cast<struct sockaddr*>(&addr))) {
+      QuitWithExitCode(EX_IOERR);
+    }
   }
 
   // Fetch the DoH settings.

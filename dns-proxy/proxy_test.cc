@@ -549,8 +549,19 @@ TEST_P(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
 
   auto* new_resolver = new MockResolver();
   proxy_->resolver = base::WrapUnique(new_resolver);
-  EXPECT_CALL(*new_resolver, ListenUDP(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(*new_resolver, ListenTCP(_, _)).WillOnce(Return(true));
+  if (proxy_->root_ns_enabled_) {
+    // Called for both IPv4 and IPv6.
+    EXPECT_CALL(*new_resolver, ListenUDP(_, _))
+        .Times(2)
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*new_resolver, ListenTCP(_, _))
+        .Times(2)
+        .WillRepeatedly(Return(true));
+  } else {
+    // Called for IPv6 only.
+    EXPECT_CALL(*new_resolver, ListenUDP(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*new_resolver, ListenTCP(_, _)).WillOnce(Return(true));
+  }
 
   auto dev = ShillDevice(shill::Client::Device::ConnectionState::kOnline);
   brillo::VariantDictionary props;
