@@ -56,8 +56,9 @@ void PrintSysfsNode(const base::FilePath& dev, const std::string& node_name) {
 
   auto auth_path = dev.Append(node_name);
   // If we can't read the sysfs entry, just return silently.
-  if (!base::ReadFileToString(auth_path, &str))
+  if (!base::ReadFileToString(auth_path, &str)) {
     return;
+  }
 
   base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
   std::cout << node_name << ": " << str << std::endl;
@@ -67,8 +68,9 @@ void PrintTBTControllerVersion(const std::string& dev_name) {
   auto path = base::FilePath(kUSB4Debugfs).Append(dev_name).Append("regs");
 
   std::string str;
-  if (!base::ReadFileToString(path, &str))
+  if (!base::ReadFileToString(path, &str)) {
     return;
+  }
 
   std::vector<std::string> entries = base::SplitString(
       str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -79,16 +81,19 @@ void PrintTBTControllerVersion(const std::string& dev_name) {
     std::string offset_str, vid_did_str;
     uint32_t offset, vid_did;
     base::TrimWhitespaceASCII(entry, base::TRIM_TRAILING, &entry);
-    if (!RE2::FullMatch(entry, kTBTControllerRegex, &offset_str, &vid_did_str))
+    if (!RE2::FullMatch(entry, kTBTControllerRegex, &offset_str,
+                        &vid_did_str)) {
       continue;
+    }
 
     if (!base::HexStringToUInt(offset_str.c_str(), &offset) ||
         !base::HexStringToUInt(vid_did_str.c_str(), &vid_did)) {
       continue;
     }
 
-    if (offset != kPCICSDeviceIDOffset)
+    if (offset != kPCICSDeviceIDOffset) {
       continue;
+    }
 
     uint16_t device_id = vid_did >> 16;
     std::string controller_family;
@@ -96,20 +101,23 @@ void PrintTBTControllerVersion(const std::string& dev_name) {
     std::vector<uint16_t> ar(std::begin(kAlpineRidgeIDs),
                              std::end(kAlpineRidgeIDs));
     auto it = std::find(ar.begin(), ar.end(), device_id);
-    if (it != ar.end())
+    if (it != ar.end()) {
       controller_family = "Alpine Ridge";
+    }
 
     std::vector<uint16_t> tr(std::begin(kTitanRidgeIDs),
                              std::end(kTitanRidgeIDs));
     it = std::find(tr.begin(), tr.end(), device_id);
-    if (it != tr.end())
+    if (it != tr.end()) {
       controller_family = "Titan Ridge";
+    }
 
     // Return if this is a controller family which isn't in our known list.
     // We don't want to print out device IDs for unknown controller families
     // since we don't know how privacy-sensitive those identifiers might be.
-    if (controller_family.empty())
+    if (controller_family.empty()) {
       return;
+    }
 
     std::cout << "Thunderbolt controller type: " << controller_family
               << std::endl;
@@ -137,8 +145,9 @@ int main(int argc, char** argv) {
     auto name = dev.BaseName().value();
 
     // We don't care about the host device or domain.
-    if (name == kUSB4HostDevice || name == kUSB4HostDomain)
+    if (name == kUSB4HostDevice || name == kUSB4HostDomain) {
       continue;
+    }
 
     PrintDeviceInfo(dev);
   }

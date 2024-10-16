@@ -55,23 +55,30 @@ bool PingTool::Start(const base::ScopedFD& outfd,
   }
 
   p->AddArg(kSetuidHack);
-  if (brillo::GetVariantValueOrDefault<bool>(options, "v6"))
+  if (brillo::GetVariantValueOrDefault<bool>(options, "v6")) {
     p->AddArg(kPing6);
-  else
+  } else {
     p->AddArg(kPing);
+  }
 
-  if (options.count("broadcast") == 1)
+  if (options.count("broadcast") == 1) {
     p->AddArg("-b");
-  if (!AddIntOption(p, options, "count", "-c", error))
+  }
+  if (!AddIntOption(p, options, "count", "-c", error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
-  if (!AddIntOption(p, options, "interval", "-i", error))
+  }
+  if (!AddIntOption(p, options, "interval", "-i", error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
-  if (options.count("numeric") == 1)
+  }
+  if (options.count("numeric") == 1) {
     p->AddArg("-n");
-  if (!AddIntOption(p, options, "packetsize", "-s", error))
+  }
+  if (!AddIntOption(p, options, "packetsize", "-s", error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
-  if (!AddIntOption(p, options, "waittime", "-W", error))
+  }
+  if (!AddIntOption(p, options, "waittime", "-W", error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   auto interface = options.find("interface");
   if (interface != options.end()) {

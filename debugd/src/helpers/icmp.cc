@@ -101,11 +101,13 @@ int main(int argc, char* argv[]) {
 
   // Parse out the IP address.
   base::CommandLine::StringVector args = cl->GetArgs();
-  if (args.size() != 1)
+  if (args.size() != 1) {
     Die(kHelpMessage);
+  }
   string ip_addr = args[0];
-  if (!base::ContainsOnlyChars(ip_addr, kIPv4v6Chars))
+  if (!base::ContainsOnlyChars(ip_addr, kIPv4v6Chars)) {
     Die("not ip address");
+  }
 
   // Construct command.
   string size_out = size ? StringPrintf("-s %d", size) : "";
@@ -121,16 +123,18 @@ int main(int argc, char* argv[]) {
 
   // Execute!
   out = popen(command.c_str(), "r");
-  if (!out)
+  if (!out) {
     Die("can't create subprocess");
+  }
 
   // Parse output.
   while (fgets(outbuf, sizeof(outbuf), out)) {
     if (sscanf(outbuf, "From %127s icmp_seq=", ipbuf) == 1) {
       // If there is a colon after the ip, strip it.
       char* last_char = ipbuf + strlen(ipbuf) - 1;
-      if (*last_char == ':')
+      if (*last_char == ':') {
         *last_char = '\0';
+      }
       continue;
 
     } else if (sscanf(outbuf,
@@ -151,8 +155,9 @@ int main(int argc, char* argv[]) {
     }
   }
   pclose(out);
-  if (time == -1)
+  if (time == -1) {
     Die("didn't get all output");
+  }
   string ip_out = ipbuf[0] ? ipbuf : ip_addr;
 
   printf("{ \"%s\":\n", ip_out.c_str());

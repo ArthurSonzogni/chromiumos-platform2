@@ -40,8 +40,9 @@ ParseResult GetOption(const brillo::VariantDictionary& options,
   DCHECK(value);
 
   const auto& it = options.find(key);
-  if (it == options.end())
+  if (it == options.end()) {
     return ParseResult::NOT_PRESENT;
+  }
 
   if (!it->second.GetValue(value)) {
     std::string expected = brillo::GetUndecoratedTypeName<T>();

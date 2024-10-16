@@ -735,8 +735,9 @@ bool GetNamedLogFrom(const string& name,
 
 template <std::size_t N>
 void GetLogsFrom(const std::array<Log, N>& logs, LogTool::LogMap* map) {
-  for (const Log& log : logs)
+  for (const Log& log : logs) {
     (*map)[log.GetName()] = log.GetLogData();
+  }
 }
 
 void GetLsbReleaseInfo(LogTool::LogMap* map) {
@@ -805,8 +806,9 @@ void GetPerfData(LogTool::LogMap* map, debugd::PerfTool* perf_tool) {
   int32_t status;
 
   if (!perf_tool->GetPerfOutput(kPerfDurationSecs, perf_args, &perf_data,
-                                nullptr, &status, nullptr))
+                                nullptr, &status, nullptr)) {
     return;
+  }
 
   // Retrieve and attach the Perfetto trace.
   if (perfetto) {
@@ -819,8 +821,9 @@ void GetPerfData(LogTool::LogMap* map, debugd::PerfTool* perf_tool) {
 
   // XZ compress the profile data.
   std::vector<uint8_t> perf_data_xz;
-  if (!CompressXzBuffer(perf_data, &perf_data_xz))
+  if (!CompressXzBuffer(perf_data, &perf_data_xz)) {
     return;
+  }
 
   // Base64 encode the compressed data.
   std::string perf_data_str(reinterpret_cast<const char*>(perf_data_xz.data()),
@@ -887,13 +890,15 @@ std::string Log::GetLogData() const {
       return "<unknown log type>";
   }
   if (!output.has_value()) {
-    if (output.error().empty())
+    if (output.error().empty()) {
       return kLogEmpty;
-    else
+    } else {
       return output.error();
+    }
   }
-  if (output->empty())
+  if (output->empty()) {
     return kLogEmpty;
+  }
 
   return LogTool::EncodeString(std::move(*output), encoding_);
 }
@@ -901,26 +906,32 @@ std::string Log::GetLogData() const {
 // TODO(ellyjones): sandbox. crosbug.com/35122
 base::expected<std::string, std::string> Log::GetCommandLogData() const {
   DCHECK_EQ(type_, kCommand);
-  if (type_ != kCommand)
+  if (type_ != kCommand) {
     return base::unexpected("<log type mismatch>");
+  }
   std::string tailed_cmdline =
       base::StringPrintf("%s | tail -c %" PRId64, data_.c_str(), max_bytes_);
   ProcessWithOutput p;
-  if (minijail_disabled_for_test_)
+  if (minijail_disabled_for_test_) {
     p.set_use_minijail(false);
-  if (!user_.empty() && !group_.empty())
+  }
+  if (!user_.empty() && !group_.empty()) {
     p.SandboxAs(user_, group_);
-  if (access_root_mount_ns_)
+  }
+  if (access_root_mount_ns_) {
     p.AllowAccessRootMountNamespace();
+  }
   // Opt-out of Minijail's default runtime environment, because the seccomp
   // policy causes issues on jacuzzi. See b/267050115.
   std::vector<std::string> minijail_args{"--no-default-runtime-environment"};
-  if (!p.Init(minijail_args))
+  if (!p.Init(minijail_args)) {
     return base::unexpected(kLogNotAvailable);
+  }
   p.AddArg(kShell);
   p.AddStringOption("-c", tailed_cmdline);
-  if (p.Run())
+  if (p.Run()) {
     return base::unexpected(kLogNotAvailable);
+  }
   std::string output;
   p.GetOutput(&output);
   return base::ok(output);
@@ -949,8 +960,9 @@ base::expected<std::string, std::string> Log::GetFileData(
   }
   if (seteuid(new_euid)) {
     PLOG(ERROR) << "Failed to set effective user id to " << new_euid;
-    if (setegid(old_egid))
+    if (setegid(old_egid)) {
       PLOG(ERROR) << "Failed to restore effective group id to " << old_egid;
+    }
     return base::unexpected(kLogNotAvailable);
   }
 
@@ -963,8 +975,9 @@ base::expected<std::string, std::string> Log::GetFileData(
     if (!base::ReadFileToString(path, &contents)) {
       result = base::unexpected(kLogNotAvailable);
     } else {
-      if (contents.size() > max_bytes)
+      if (contents.size() > max_bytes) {
         contents.erase(0, contents.size() - max_bytes);
+      }
       result = base::ok(std::move(contents));
     }
   } else {
@@ -989,27 +1002,31 @@ base::expected<std::string, std::string> Log::GetFileData(
   }
 
   // Make sure we restore our old euid/egid before returning.
-  if (seteuid(old_euid))
+  if (seteuid(old_euid)) {
     PLOG(ERROR) << "Failed to restore effective user id to " << old_euid;
+  }
 
-  if (setegid(old_egid))
+  if (setegid(old_egid)) {
     PLOG(ERROR) << "Failed to restore effective group id to " << old_egid;
+  }
 
   return result;
 }
 
 base::expected<std::string, std::string> Log::GetFileLogData() const {
   DCHECK_EQ(type_, kFile);
-  if (type_ != kFile)
+  if (type_ != kFile) {
     return base::unexpected("<log type mismatch>");
+  }
 
   return GetFileData(base::FilePath(data_), max_bytes_, user_, group_);
 }
 
 base::expected<std::string, std::string> Log::GetGlobLogData() const {
   DCHECK_EQ(type_, kGlob);
-  if (type_ != kGlob)
+  if (type_ != kGlob) {
     return base::unexpected("<log type mismatch>");
+  }
 
   // NB: base::FileEnumerator requires a directory to walk, and a pattern to
   // match against each result.  Here we accept full paths with globs in them.
@@ -1036,10 +1053,11 @@ base::expected<std::string, std::string> Log::GetGlobLogData() const {
     base::expected<std::string, std::string> result =
         GetFileData(path, max_bytes_, user_, group_);
     std::string contents;
-    if (result.has_value())
+    if (result.has_value()) {
       contents = result.value();
-    else
+    } else {
       contents = result.error();
+    }
 
     // NB: The 3 represents the bytes we add in the output string below.
     output_size += path.value().size() + contents.size() + 3;
@@ -1093,15 +1111,18 @@ gid_t Log::GidForGroup(const std::string& group) {
 
 bool Log::StartToGetLogData(std::unique_ptr<SandboxedProcess>& child_proc,
                             const base::FilePath& output_file_name) const {
-  if (!user_.empty() && !group_.empty())
+  if (!user_.empty() && !group_.empty()) {
     child_proc->SandboxAs(user_, group_);
-  if (access_root_mount_ns_)
+  }
+  if (access_root_mount_ns_) {
     child_proc->AllowAccessRootMountNamespace();
+  }
   // Opt-out of Minijail's default runtime environment, because the seccomp
   // policy causes issues on jacuzzi. See b/267050115.
   std::vector<std::string> minijail_args{"--no-default-runtime-environment"};
-  if (!child_proc->Init(minijail_args))
+  if (!child_proc->Init(minijail_args)) {
     return false;
+  }
 
   child_proc->AddArg(kShell);
   child_proc->AddStringOption("-c", data_);
@@ -1316,8 +1337,9 @@ void LogTool::CreateConnectivityReport(bool wait_for_results) {
   // before collecting the logs for feedback.
   // TODO(silberst): Replace the simple approach of a single timeout with a more
   // coordinated effort.
-  if (shill && shill->CreateConnectivityReport(nullptr) && wait_for_results)
+  if (shill && shill->CreateConnectivityReport(nullptr) && wait_for_results) {
     sleep(kConnectionTesterTimeoutSeconds);
+  }
 }
 
 std::optional<string> LogTool::GetLog(const string& name) {
@@ -1601,12 +1623,14 @@ void LogTool::DeleteArcBugReportBackup(const std::string& username) {
 
 // static
 string LogTool::EncodeString(string value, LogTool::Encoding source_encoding) {
-  if (source_encoding == LogTool::Encoding::kBinary)
+  if (source_encoding == LogTool::Encoding::kBinary) {
     return value;
+  }
 
   if (source_encoding == LogTool::Encoding::kAutodetect) {
-    if (base::IsStringUTF8(value))
+    if (base::IsStringUTF8(value)) {
       return value;
+    }
     source_encoding = LogTool::Encoding::kBase64;
   }
 

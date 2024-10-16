@@ -79,12 +79,13 @@ constexpr char kDRMTraceToolErrorString[] =
 // Convert |size| to the corresponding DRMTraceSizes enum value. Returns
 // false if |size| is not a valid enum value.
 bool ConvertSize(uint32_t size, DRMTraceSizes* out_size) {
-  if (size == DRMTraceSize_DEFAULT)
+  if (size == DRMTraceSize_DEFAULT) {
     *out_size = DRMTraceSize_DEFAULT;
-  else if (size == DRMTraceSize_DEBUG)
+  } else if (size == DRMTraceSize_DEBUG) {
     *out_size = DRMTraceSize_DEBUG;
-  else
+  } else {
     return false;
+  }
 
   return true;
 }
@@ -143,8 +144,9 @@ bool DRMTraceTool::SetCategories(brillo::ErrorPtr* error, uint32_t categories) {
   // Flags for categories match the flags expected by the kernel for drm_trace,
   // as asserted above.
   uint32_t mask = categories;
-  if (categories == 0)
+  if (categories == 0) {
     mask = kDefaultMask;
+  }
 
   return WriteToFile(error, mask_path, base::StringPrintf("%d", mask));
 }
@@ -160,8 +162,9 @@ bool DRMTraceTool::SetSize(brillo::ErrorPtr* error, uint32_t size_enum) {
   }
 
   uint32_t size_kb = kDefaultTraceBufferSizeKb;
-  if (drm_trace_size == DRMTraceSize_DEBUG)
+  if (drm_trace_size == DRMTraceSize_DEBUG) {
     size_kb = kDebugTraceBufferSizeKb;
+  }
 
   return WriteToFile(error, size_path, base::StringPrintf("%d", size_kb));
 }
@@ -222,8 +225,9 @@ bool DRMTraceTool::Snapshot(brillo::ErrorPtr* error, uint32_t type_enum) {
 
   // Create the empty snapshot file to copy the log contents into.
   brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
-  if (!brillo::SafeFD::IsError(result.second))
+  if (!brillo::SafeFD::IsError(result.second)) {
     result = result.first.MakeFile(snapshot_path);
+  }
   if (brillo::SafeFD::IsError(result.second)) {
     DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
                          "Failed to create snapshot file: : %s",
@@ -278,12 +282,14 @@ void DRMTraceTool::OnSessionStopped() {
 
 void DRMTraceTool::SetToDefault() {
   brillo::ErrorPtr error;
-  if (!SetCategories(&error, 0))
+  if (!SetCategories(&error, 0)) {
     LOG(WARNING) << "Failed to reset categories; drm_trace may have unexpected "
                     "log entries.";
-  if (!SetSize(&error, DRMTraceSize_DEFAULT))
+  }
+  if (!SetSize(&error, DRMTraceSize_DEFAULT)) {
     LOG(WARNING) << "Failed to reset trace buffer size; drm_trace may be "
                     "larger than expected.";
+  }
 }
 
 }  // namespace debugd

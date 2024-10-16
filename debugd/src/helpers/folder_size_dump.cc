@@ -46,8 +46,9 @@ class DirAdder {
       }
 
       auto entry = path_ + name;
-      if (filter_(entry))
+      if (filter_(entry)) {
         output->push_back(entry);
+      }
     }
 
     if (!dir_reader.IsValid()) {
@@ -83,14 +84,17 @@ bool FilterNonUserDirs(const std::string& entry) {
 bool FilterStateful(const std::string& entry) {
   base::FilePath path(entry);
 
-  if (path.BaseName().value() == "dev_image")
+  if (path.BaseName().value() == "dev_image") {
     return false;
+  }
 
-  if (path.BaseName().value() == "encrypted")
+  if (path.BaseName().value() == "encrypted") {
     return false;
+  }
 
-  if (path.BaseName().value() == "home")
+  if (path.BaseName().value() == "home") {
     return false;
+  }
 
   return true;
 }
@@ -98,8 +102,9 @@ bool FilterStateful(const std::string& entry) {
 bool FilterEncrypted(const std::string& entry) {
   base::FilePath path(entry);
 
-  if (path.BaseName().value() == "chronos")
+  if (path.BaseName().value() == "chronos") {
     return false;
+  }
 
   return true;
 }
@@ -114,8 +119,9 @@ bool DumpDirectory(const DirAdder& entry,
   std::vector<std::string> du_argv{"du", "--human-readable", "--total",
                                    "--summarize"};
 
-  if (one_filesystem)
+  if (one_filesystem) {
     du_argv.push_back("--one-file-system");
+  }
 
   auto arg_count = du_argv.size();
 

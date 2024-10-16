@@ -26,15 +26,19 @@ std::vector<std::string> GetBtUsbIdentifiers() {
   std::string matched_value;
   std::vector<std::string> entries;
 
-  if (!base::PathExists(symbolic_hci_path) || !base::IsLink(symbolic_hci_path))
+  if (!base::PathExists(symbolic_hci_path) ||
+      !base::IsLink(symbolic_hci_path)) {
     return entries;
+  }
 
-  if (!base::ReadSymbolicLink(symbolic_hci_path, &resolved_path))
+  if (!base::ReadSymbolicLink(symbolic_hci_path, &resolved_path)) {
     return entries;
+  }
 
   if (!RE2::PartialMatch(resolved_path.MaybeAsASCII(), kBtIdentifierRegex,
-                         &matched_value))
+                         &matched_value)) {
     return entries;
+  }
 
   entries = base::SplitString(matched_value, "/", base::KEEP_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY);
@@ -45,8 +49,9 @@ std::vector<std::string> GetBtUsbIdentifiers() {
 int LocateUsbDisconnects() {
   std::vector<std::string> identifiers = GetBtUsbIdentifiers();
 
-  if (identifiers.empty())
+  if (identifiers.empty()) {
     return 0;
+  }
 
   // A USB disconnect event will show up in the logs with the format:
   // "usb 1-3: USB disconnect", but there are more than one identifier that may

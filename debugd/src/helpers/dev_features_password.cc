@@ -71,8 +71,9 @@ int main(int argc, char** argv) {
   }
   std::string password(password_buffer);
   // Remove trailing newline.
-  if (password.back() == '\n')
+  if (password.back() == '\n') {
     password.pop_back();
+  }
 
   if (utils.SetPassword(FLAGS_user, password, password_file)) {
     return EXIT_SUCCESS;

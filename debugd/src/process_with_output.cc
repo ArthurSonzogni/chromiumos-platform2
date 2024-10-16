@@ -33,10 +33,12 @@ ProcessWithOutput::~ProcessWithOutput() {
   outfile_.reset();
   errfile_.reset();
 
-  if (!outfile_path_.empty())
+  if (!outfile_path_.empty()) {
     brillo::DeleteFile(outfile_path_);  // not recursive
-  if (!errfile_path_.empty())
+  }
+  if (!errfile_path_.empty()) {
     brillo::DeleteFile(errfile_path_);
+  }
 }
 
 bool ProcessWithOutput::Init() {
@@ -46,8 +48,9 @@ bool ProcessWithOutput::Init() {
 bool ProcessWithOutput::Init(
     const std::vector<std::string>& minijail_extra_args) {
   if (use_minijail_) {
-    if (!SandboxedProcess::Init(minijail_extra_args))
+    if (!SandboxedProcess::Init(minijail_extra_args)) {
       return false;
+    }
   }
 
   outfile_ = base::CreateAndOpenTemporaryStream(&outfile_path_);
@@ -75,8 +78,9 @@ bool ProcessWithOutput::Init(
 
 bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) const {
   std::string contents;
-  if (!GetOutput(&contents))
+  if (!GetOutput(&contents)) {
     return false;
+  }
 
   // If the file contains "a\nb\n", base::SplitString() will return a vector
   // {"a", "b", ""} because it treats "\n" as a delimiter, not an EOL
@@ -181,11 +185,13 @@ int ProcessWithOutput::DoRunProcess(const std::string& command,
     result = process->Run();
   }
 
-  if (stdout)
+  if (stdout) {
     process->GetOutput(stdout);
+  }
 
-  if (stderr)
+  if (stderr) {
     process->GetError(stderr);
+  }
 
   return result;
 }

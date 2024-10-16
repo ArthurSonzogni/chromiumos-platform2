@@ -21,8 +21,9 @@ bool AddIntOption(SandboxedProcess* process,
                   brillo::ErrorPtr* error) {
   int value;
   ParseResult result = GetOption(options, key, &value, error);
-  if (result == ParseResult::PARSED)
+  if (result == ParseResult::PARSED) {
     process->AddIntOption(flag_name, value);
+  }
 
   return result != ParseResult::PARSE_ERROR;
 }
@@ -34,8 +35,9 @@ bool AddBoolOption(SandboxedProcess* process,
                    brillo::ErrorPtr* error) {
   int value;
   ParseResult result = GetOption(options, key, &value, error);
-  if (result == ParseResult::PARSED && value)
+  if (result == ParseResult::PARSED && value) {
     process->AddArg(flag_name);
+  }
 
   return result != ParseResult::PARSE_ERROR;
 }
@@ -48,8 +50,9 @@ bool AddStringOption(SandboxedProcess* process,
                      brillo::ErrorPtr* error) {
   std::string value;
   ParseResult result = GetOption(options, key, &value, error);
-  if (result != ParseResult::PARSED || value.empty())
+  if (result != ParseResult::PARSED || value.empty()) {
     return result != ParseResult::PARSE_ERROR;
+  }
 
   if (!value_re.empty() && RE2::FullMatch(value, value_re)) {
     process->AddStringOption(flag_name, value);

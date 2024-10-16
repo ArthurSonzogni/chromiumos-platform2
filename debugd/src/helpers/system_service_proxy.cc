@@ -25,8 +25,9 @@ const char kDBusPropertiesGetAllMethod[] = "GetAll";
 std::unique_ptr<SystemServiceProxy> SystemServiceProxy::Create(
     const std::string& service_name) {
   scoped_refptr<dbus::Bus> bus = ConnectToSystemBus();
-  if (!bus)
+  if (!bus) {
     return nullptr;
+  }
 
   return std::unique_ptr<SystemServiceProxy>(
       new SystemServiceProxy(bus, service_name));
@@ -41,8 +42,9 @@ scoped_refptr<dbus::Bus> SystemServiceProxy::ConnectToSystemBus() {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
-  if (!bus->Connect())
+  if (!bus->Connect()) {
     return nullptr;
+  }
 
   return bus;
 }
@@ -60,8 +62,9 @@ std::unique_ptr<dbus::Response> SystemServiceProxy::CallMethodAndGetResponse(
 std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponseAsValue(
     const dbus::ObjectPath& object_path, dbus::MethodCall* method_call) {
   auto response = CallMethodAndGetResponse(object_path, method_call);
-  if (!response)
+  if (!response) {
     return std::nullopt;
+  }
 
   dbus::MessageReader reader(response.get());
   return std::optional<base::Value>(dbus::PopDataAsValue(&reader));
@@ -74,8 +77,9 @@ std::optional<base::Value::Dict> SystemServiceProxy::GetProperties(
   dbus::MessageWriter writer(&method_call);
   writer.AppendString(interface_name);
   auto response = CallMethodAndGetResponseAsValue(object_path, &method_call);
-  if (!response || !response->is_dict())
+  if (!response || !response->is_dict()) {
     return std::nullopt;
+  }
   return std::move(response->GetDict());
 }
 

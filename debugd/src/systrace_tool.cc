@@ -26,16 +26,18 @@ const char kSystraceHelper[] = "systrace.sh";
 void AddCategoryArgs(ProcessWithOutput* p, const std::string& categories) {
   std::vector<std::string> pieces = base::SplitString(
       categories, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (const auto& category : pieces)
+  for (const auto& category : pieces) {
     p->AddArg(category);
+  }
 }
 
 }  // namespace
 
 std::string SystraceTool::Start(const std::string& categories) {
   std::string path;
-  if (!GetHelperPath(kSystraceHelper, &path))
+  if (!GetHelperPath(kSystraceHelper, &path)) {
     return "";
+  }
 
   ProcessWithOutput p;
   // this tool needs to reach into /sys/kernel/debug to enable/disable tracing
@@ -52,8 +54,9 @@ std::string SystraceTool::Start(const std::string& categories) {
 
 void SystraceTool::Stop(const base::ScopedFD& outfd) {
   std::string path;
-  if (!GetHelperPath(kSystraceHelper, &path))
+  if (!GetHelperPath(kSystraceHelper, &path)) {
     return;
+  }
 
   SandboxedProcess p;
   p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
@@ -67,8 +70,9 @@ void SystraceTool::Stop(const base::ScopedFD& outfd) {
 
 std::string SystraceTool::Status() {
   std::string path;
-  if (!GetHelperPath(kSystraceHelper, &path))
+  if (!GetHelperPath(kSystraceHelper, &path)) {
     return "";
+  }
 
   ProcessWithOutput p;
   p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);

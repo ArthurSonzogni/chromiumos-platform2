@@ -13,8 +13,9 @@ namespace debugd {
 
 std::unique_ptr<ShillProxy> ShillProxy::Create() {
   scoped_refptr<dbus::Bus> bus = ConnectToSystemBus();
-  if (!bus)
+  if (!bus) {
     return nullptr;
+  }
 
   return std::unique_ptr<ShillProxy>(new ShillProxy(bus));
 }
@@ -26,8 +27,9 @@ std::optional<base::Value::Dict> ShillProxy::GetProperties(
     const std::string& interface_name, const dbus::ObjectPath& object_path) {
   dbus::MethodCall method_call(interface_name, shill::kGetPropertiesFunction);
   auto response = CallMethodAndGetResponseAsValue(object_path, &method_call);
-  if (!response || !response->is_dict())
+  if (!response || !response->is_dict()) {
     return std::nullopt;
+  }
   return std::move(response->GetDict());
 }
 

@@ -34,15 +34,17 @@ PerfettoTool::~PerfettoTool() = default;
 
 bool PerfettoTool::Init() {
   int pipe_fds[2];
-  if (HANDLE_EINTR(pipe2(pipe_fds, O_CLOEXEC)) != 0)
+  if (HANDLE_EINTR(pipe2(pipe_fds, O_CLOEXEC)) != 0) {
     return false;
+  }
   pipe_[0].reset(pipe_fds[0]);
   pipe_[1].reset(pipe_fds[1]);
 
   perfetto_.SandboxAs("debugd", "traced-consumer");
   perfetto_.AllowAccessRootMountNamespace();
-  if (!perfetto_.Init())
+  if (!perfetto_.Init()) {
     return false;
+  }
   perfetto_.AddArg("/usr/bin/perfetto");
   perfetto_.AddArg("-c");
   perfetto_.AddArg("/usr/share/debugd/perfetto_feedback_config.textproto");
@@ -52,8 +54,9 @@ bool PerfettoTool::Init() {
   perfetto_.set_separate_stderr(true);
   perfetto_.BindFd(pipe_[1].get(), STDOUT_FILENO);
 
-  if (!compressor_.Init())
+  if (!compressor_.Init()) {
     return false;
+  }
   compressor_.AddArg("/usr/bin/zstd");
   compressor_.AddArg("-qc");
   compressor_.set_separate_stderr(true);

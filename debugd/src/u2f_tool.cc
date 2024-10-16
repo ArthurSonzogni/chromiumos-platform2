@@ -74,15 +74,17 @@ std::string U2fTool::SetFlags(const std::string& flags) {
   for (const std::string& cur : base::SplitString(
            flags, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
     // Validate the flag name.
-    if (all_flags.find(cur) != all_flags.end())
+    if (all_flags.find(cur) != all_flags.end()) {
       brillo::TouchFile(FlagFile(cur.c_str()));
-    else
+    } else {
       result += "Discarded unknown flag '" + cur + "'.\n";
+    }
   }
 
   // Start the u2fd daemon with the new configuration.
-  if (ControlU2fd(true))
+  if (ControlU2fd(true)) {
     result += "Failed to restart u2fd.";
+  }
 
   // Returns the outcome of the operations (empty for success).
   return result;

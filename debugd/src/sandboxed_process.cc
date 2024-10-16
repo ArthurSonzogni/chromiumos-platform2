@@ -110,8 +110,9 @@ bool SandboxedProcess::Init(
     AddArg(base::JoinString({env_var.first, env_var.second}, "="));
   }
 
-  for (const auto& arg : minijail_extra_args)
+  for (const auto& arg : minijail_extra_args) {
     AddArg(arg);
+  }
 
   AddArg("--");
 

@@ -83,11 +83,13 @@ void SessionManagerProxy::OnSessionStateChanged(dbus::Signal* signal) {
   }
 
   if (state == kSessionStarted) {
-    for (SessionManagerObserverInterface& o : observer_list_)
+    for (SessionManagerObserverInterface& o : observer_list_) {
       o.OnSessionStarted();
+    }
   } else if (state == kSessionStopped) {
-    for (SessionManagerObserverInterface& o : observer_list_)
+    for (SessionManagerObserverInterface& o : observer_list_) {
       o.OnSessionStopped();
+    }
   }
 }
 

@@ -17,8 +17,9 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  if (!base::PathExists(base::FilePath(kTypecSysfs)))
+  if (!base::PathExists(base::FilePath(kTypecSysfs))) {
     return 1;
+  }
 
   ParseDirsAndExecute(base::FilePath(kTypecSysfs), 0, kPortRegex,
                       &PrintPortInfo);

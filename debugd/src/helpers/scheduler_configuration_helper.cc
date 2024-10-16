@@ -79,8 +79,9 @@ bool CoreSchedSupported() {
   int ret = prctl(PR_SET_CORE_SCHED, 2);
   DCHECK_LT(ret, 0);  // This should never succeed.
   // The kernel supports the call but we gave it a bogus argument.
-  if (errno == ERANGE)
+  if (errno == ERANGE) {
     return true;
+  }
 
   // Otherwise, try the new interface (available on >=5.10 kernels) to check
   // for support.
@@ -88,8 +89,9 @@ bool CoreSchedSupported() {
 
   // Since HT is likely not enabled initially, the prctl(2) may initially
   // return -ENODEV and we know the prctl(2) is working.
-  if (ret != -1 || (ret == -1 && errno == ENODEV))
+  if (ret != -1 || (ret == -1 && errno == ENODEV)) {
     return true;
+  }
 
   return false;
 }

@@ -47,9 +47,11 @@ const char * const kAllowedScripts[] = {
 
 // Only permit certain scripts here.
 bool AllowedScript(const std::string& script, brillo::ErrorPtr* error) {
-  for (const char* listed : kAllowedScripts)
-    if (script == listed)
+  for (const char* listed : kAllowedScripts) {
+    if (script == listed) {
       return true;
+    }
+  }
 
   DEBUGD_ADD_ERROR(error, kUnsupportedShillScriptToolErrorName, script.c_str());
   return false;
@@ -62,8 +64,9 @@ bool ShillScriptsTool::Run(const base::ScopedFD& outfd,
                            const std::vector<std::string>& script_args,
                            std::string* out_id,
                            brillo::ErrorPtr* error) {
-  if (!AllowedScript(script, error))
+  if (!AllowedScript(script, error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   auto p = std::make_unique<ProcessWithId>();
   p->SandboxAs(kUser, kGroup);
@@ -72,8 +75,9 @@ bool ShillScriptsTool::Run(const base::ScopedFD& outfd,
   const base::FilePath dir(kScriptsDir);
   p->AddArg(dir.Append(script).value());
 
-  for (const auto& arg : script_args)
+  for (const auto& arg : script_args) {
     p->AddArg(arg);
+  }
 
   p->BindFd(outfd.get(), STDOUT_FILENO);
   p->BindFd(outfd.get(), STDERR_FILENO);

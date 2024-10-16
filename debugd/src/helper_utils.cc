@@ -17,8 +17,9 @@ bool GetHelperPath(const std::string& relative_path, std::string* full_path) {
   std::string path =
       base::StringPrintf("%s/%s", helpers_dir, relative_path.c_str());
 
-  if (path.length() >= PATH_MAX)
+  if (path.length() >= PATH_MAX) {
     return false;
+  }
 
   *full_path = path;
   return true;

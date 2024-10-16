@@ -47,8 +47,9 @@ bool RunHelper(const std::string& command,
     return false;
   }
 
-  if (exit_status)
+  if (exit_status) {
     *exit_status = result;
+  }
   return true;
 }
 
@@ -85,8 +86,9 @@ bool SetUserPasswordQuery(const std::string& username,
                           int* exit_status,
                           brillo::ErrorPtr* error) {
   ArgList args{"-q", "--user=" + username};
-  if (system)
+  if (system) {
     args.push_back("--system");
+  }
 
   return RunHelper("dev_features_password", args,
                    true,     // requires root to read either password file.
@@ -158,8 +160,9 @@ bool DevFeaturesTool::SetUserPassword(const std::string& username,
 
   // If rootfs is locked, don't bother setting the system password.
   int exit_status;
-  if (!RemoveRootfsVerificationQuery(&exit_status, error) || exit_status != 0)
+  if (!RemoveRootfsVerificationQuery(&exit_status, error) || exit_status != 0) {
     return true;
+  }
 
   args.push_back("--system");
   return RunHelper("dev_features_password", args,
@@ -171,11 +174,13 @@ bool DevFeaturesTool::SetUserPassword(const std::string& username,
 
 bool DevFeaturesTool::EnableChromeDevFeatures(const std::string& root_password,
                                               brillo::ErrorPtr* error) const {
-  if (!EnableBootFromUsb(error))
+  if (!EnableBootFromUsb(error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
-  if (!ConfigureSshServer(error))
+  if (!ConfigureSshServer(error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   return SetUserPassword(
       "root", root_password.empty() ? kDefaultRootPassword : root_password,
@@ -221,8 +226,9 @@ bool DevFeaturesTool::QueryDevFeatures(int32_t* flags,
       // hit one.
       return false;  // DEBUGD_ADD_ERROR is already called.
     }
-    if (exit_status == 0)
+    if (exit_status == 0) {
       result_flags |= query.flag;
+    }
   }
   *flags = result_flags;
   return true;

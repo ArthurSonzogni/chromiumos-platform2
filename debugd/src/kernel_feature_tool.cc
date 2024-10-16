@@ -101,8 +101,9 @@ bool JsonFeatureParser::ParseFile(const base::FilePath& path,
                                   std::string* err_str) {
   std::string input;
 
-  if (features_parsed_)
+  if (features_parsed_) {
     return true;
+  }
 
   if (!ReadFileToString(path, &input)) {
     *err_str = "debugd: Failed to read kernel-features config!";
@@ -275,13 +276,15 @@ bool KernelFeatureTool::GetFeatureList(std::string* csv_list,
   for (auto& it : *(parser_->GetFeatureMap())) {
     // Skip features that device does not support
     const auto& feature_obj = it.second;
-    if (!feature_obj.IsSupported())
+    if (!feature_obj.IsSupported()) {
       continue;
+    }
 
-    if (!first)
+    if (!first) {
       csv_list->append(",");
-    else
+    } else {
       first = false;
+    }
 
     csv_list->append(it.first);
   }

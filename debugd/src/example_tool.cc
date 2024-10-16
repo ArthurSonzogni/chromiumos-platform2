@@ -20,21 +20,24 @@ namespace debugd {
 // wrong.
 std::string ExampleTool::GetExample() {
   std::string path;
-  if (!GetHelperPath("example", &path))
+  if (!GetHelperPath("example", &path)) {
     return "<path too long>";
+  }
   // This whole method is synchronous, so we create a subprocess, let it run to
   // completion, then gather up its output to return it.
   ProcessWithOutput process;
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
   // If you're going to add switches to a command, have a look at the Process
   // interface; there's support for adding options specifically.
   process.AddArg(path);
   process.AddArg("hello");
   // Run the process to completion. If the process might take a while, you may
   // have to make this asynchronous using .Start().
-  if (process.Run() != 0)
+  if (process.Run() != 0) {
     return "<process exited with nonzero status>";
+  }
   std::string output;
   process.GetOutput(&output);
   return output;

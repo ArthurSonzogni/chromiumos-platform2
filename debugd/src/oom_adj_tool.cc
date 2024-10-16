@@ -107,8 +107,9 @@ uid_t ProcessHandler::GetUserNamespaceRootUid(std::string* errors) {
   // user namespace. If not it returns kInvalidUid.
   while (fscanf(uid_file.get(), "%d%d%*d", &start, &map) == 2) {
     // Returns mapping of UID 0 = root.
-    if (start == 0)
+    if (start == 0) {
       return map;
+    }
   }
   return kInvalidUid;
 }
@@ -185,14 +186,17 @@ bool OomScoreSetter::IsValidOwner(const pid_t pid, std::string* errors) {
 
   uid_t process_owner_uid = handler.GetProcessOwnerUid(errors);
   VLOG(2) << "Owner of " << pid << ": " << process_owner_uid;
-  if (IsValidUid(process_owner_uid) && process_owner_uid == chronos_uid_)
+  if (IsValidUid(process_owner_uid) && process_owner_uid == chronos_uid_) {
     return true;
+  }
 
   uid_t namespace_root_uid = handler.GetUserNamespaceRootUid(errors);
   VLOG(2) << "Root of the user namespace " << pid
           << " is in: " << namespace_root_uid;
-  if (IsValidUid(namespace_root_uid) && namespace_root_uid == android_root_uid_)
+  if (IsValidUid(namespace_root_uid) &&
+      namespace_root_uid == android_root_uid_) {
     return true;
+  }
 
   return false;
 }

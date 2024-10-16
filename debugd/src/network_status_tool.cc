@@ -11,8 +11,9 @@ namespace debugd {
 
 std::string NetworkStatusTool::GetNetworkStatus() {
   std::string path;
-  if (!GetHelperPath("network_status", &path))
+  if (!GetHelperPath("network_status", &path)) {
     return "";
+  }
 
   ProcessWithOutput p;
   p.Init();

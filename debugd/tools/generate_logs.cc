@@ -62,14 +62,16 @@ int main(int argc, char* argv[]) {
   auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
   if (!args.empty()) {
     LOG(ERROR) << "Unexpected arguments (try rerunning with --help):";
-    for (const auto& arg : args)
+    for (const auto& arg : args) {
       LOG(ERROR) << arg;
+    }
     return EXIT_FAILURE;
   }
 
   base::FilePath output(FLAGS_output);
-  if (output.empty())
+  if (output.empty()) {
     output = base::FilePath{"/tmp/" + LogName(FLAGS_compress)};
+  }
 
   base::ScopedFILE fp(base::OpenFile(output, "w"));
   if (fp == nullptr) {

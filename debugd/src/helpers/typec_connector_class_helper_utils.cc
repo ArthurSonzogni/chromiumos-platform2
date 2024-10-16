@@ -38,18 +38,21 @@ void ParseDirsAndExecute(const base::FilePath& dir,
                          void (*func)(const base::FilePath&, int)) {
   base::FileEnumerator it(dir, false, base::FileEnumerator::DIRECTORIES);
   for (base::FilePath s_dir = it.Next(); !s_dir.empty(); s_dir = it.Next()) {
-    if (RE2::FullMatch(s_dir.BaseName().value(), regex))
+    if (RE2::FullMatch(s_dir.BaseName().value(), regex)) {
       func(s_dir, indent);
+    }
   }
 }
 
 void PrintFile(const base::FilePath& path, int indent) {
-  if (!base::PathExists(path))
+  if (!base::PathExists(path)) {
     return;
+  }
 
   std::string f_str;
-  if (!base::ReadFileToString(path, &f_str))
+  if (!base::ReadFileToString(path, &f_str)) {
     return;
+  }
 
   f_str = FormatString(f_str, indent);
   std::cout << GetIndentStr(indent) << path.BaseName().value() << ": " << f_str
@@ -59,18 +62,21 @@ void PrintFile(const base::FilePath& path, int indent) {
 void PrintDirFiles(const base::FilePath& dir, int indent) {
   std::cout << GetIndentStr(indent) << dir.BaseName().value() << std::endl;
   base::FileEnumerator it(dir, false, base::FileEnumerator::FILES);
-  for (base::FilePath f = it.Next(); !f.empty(); f = it.Next())
+  for (base::FilePath f = it.Next(); !f.empty(); f = it.Next()) {
     PrintFile(f, indent + 2);
+  }
 }
 
 PDRev GetPDRev(const base::FilePath& dir) {
   std::string pd_revision_str;
   if (!base::ReadFileToString(dir.Append("usb_power_delivery_revision"),
-                              &pd_revision_str))
+                              &pd_revision_str)) {
     return PDRev::kNone;
+  }
 
-  if (pd_revision_str.length() < 3)
+  if (pd_revision_str.length() < 3) {
     return PDRev::kNone;
+  }
 
   if (pd_revision_str[0] == '2' && pd_revision_str[2] == '0') {
     return PDRev::kPD20;
@@ -84,8 +90,9 @@ PDRev GetPDRev(const base::FilePath& dir) {
 
 bool ReadVdo(const base::FilePath& path, uint32_t* vdo) {
   std::string str;
-  if (!vdo || !base::ReadFileToString(path, &str))
+  if (!vdo || !base::ReadFileToString(path, &str)) {
     return false;
+  }
 
   base::TrimWhitespaceASCII(str, base::TRIM_TRAILING, &str);
   base::HexStringToUInt(str, vdo);
@@ -96,8 +103,9 @@ void PrintVdo(const base::FilePath& vdo_file,
               const std::vector<VdoField> vdo_description,
               int indent) {
   uint32_t vdo;
-  if (!ReadVdo(vdo_file, &vdo))
+  if (!ReadVdo(vdo_file, &vdo)) {
     return;
+  }
 
   std::cout << GetIndentStr(indent) << vdo_file.BaseName().value() << ": 0x"
             << std::hex << vdo << std::endl;
@@ -110,16 +118,18 @@ void PrintVdo(const base::FilePath& vdo_file,
 }
 
 void PrintAltMode(const base::FilePath& alt_mode, int indent) {
-  if (!base::DirectoryExists(alt_mode))
+  if (!base::DirectoryExists(alt_mode)) {
     return;
+  }
 
   PrintDirFiles(alt_mode, indent);
   ParseDirsAndExecute(alt_mode, indent + 2, kModeRegex, &PrintDirFiles);
 }
 
 void PrintPdos(const base::FilePath& pdo_path, int indent) {
-  if (!base::DirectoryExists(pdo_path))
+  if (!base::DirectoryExists(pdo_path)) {
     return;
+  }
 
   PrintDirFiles(pdo_path, indent);
   ParseDirsAndExecute(pdo_path, indent + 2, kPdoCapabilitiesRegex,
@@ -127,16 +137,18 @@ void PrintPdos(const base::FilePath& pdo_path, int indent) {
 }
 
 void PrintPdoCapabilities(const base::FilePath& capabilities, int indent) {
-  if (!base::DirectoryExists(capabilities))
+  if (!base::DirectoryExists(capabilities)) {
     return;
+  }
 
   PrintDirFiles(capabilities, indent);
   ParseDirsAndExecute(capabilities, indent + 2, kPdoTypeRegex, &PrintDirFiles);
 }
 
 void PrintPlugInfo(const base::FilePath& plug, int indent) {
-  if (!base::DirectoryExists(plug))
+  if (!base::DirectoryExists(plug)) {
     return;
+  }
 
   PrintDirFiles(plug, indent);
   ParseDirsAndExecute(plug, indent + 2, kPlugAltModeRegex, &PrintAltMode);
@@ -146,17 +158,19 @@ ProductType GetPartnerProductType(const base::FilePath& dir) {
   PDRev pd_rev = GetPDRev(dir);
 
   uint32_t id_header;
-  if (!ReadVdo(dir.Append("identity").Append("id_header"), &id_header))
+  if (!ReadVdo(dir.Append("identity").Append("id_header"), &id_header)) {
     return ProductType::kOther;
+  }
 
   ProductType ret = ProductType::kOther;
   if (pd_rev == PDRev::kPD20) {
     // Alternate Mode Adapter (AMA) is the only partner product type in the
     // USB PD 2.0 specification
-    if ((id_header & kPDUFPProductTypeMask) == kPD20AMAComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD20AMAComp) {
       return ProductType::kPD20AMA;
-    else
+    } else {
       return ProductType::kOther;
+    }
   } else if (pd_rev == PDRev::kPD30) {
     // In USB PD 3.0 a partner can be an upstream facing port (UFP),
     // downstream facing port (DFP), or a dual-role data port (DRD).
@@ -164,52 +178,58 @@ ProductType GetPartnerProductType(const base::FilePath& dir) {
     // separately then compared to determine a partner's product type.
     // Separate from UFP/DFP, they can support AMA/VPD as a UFP type.
     bool ufp_supported = false;
-    if ((id_header & kPDUFPProductTypeMask) == kPD30HubComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD30HubComp) {
       ufp_supported = true;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD30PeripheralComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD30PeripheralComp) {
       ufp_supported = true;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD30AMAComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD30AMAComp) {
       return ProductType::kPD30AMA;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD30VPDComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD30VPDComp) {
       return ProductType::kPD30VPD;
+    }
 
     bool dfp_supported = false;
-    if ((id_header & kPDDFPProductTypeMask) == kPD30DFPHubComp)
+    if ((id_header & kPDDFPProductTypeMask) == kPD30DFPHubComp) {
       dfp_supported = true;
-    else if ((id_header & kPDDFPProductTypeMask) == kPD30DFPHostComp)
+    } else if ((id_header & kPDDFPProductTypeMask) == kPD30DFPHostComp) {
       dfp_supported = true;
-    else if ((id_header & kPDDFPProductTypeMask) == kPD30PowerBrickComp)
+    } else if ((id_header & kPDDFPProductTypeMask) == kPD30PowerBrickComp) {
       dfp_supported = true;
+    }
 
-    if (ufp_supported && dfp_supported)
+    if (ufp_supported && dfp_supported) {
       ret = ProductType::kPD30DRD;
-    else if (ufp_supported)
+    } else if (ufp_supported) {
       ret = ProductType::kPD30UFP;
-    else if (dfp_supported)
+    } else if (dfp_supported) {
       ret = ProductType::kPD30DFP;
+    }
   } else if (pd_rev == PDRev::kPD31) {
     // Similar to USB PD 3.0, USB PD 3.1 can have a partner which is both UFP
     // and DFP (DRD).
     bool ufp_supported = false;
-    if ((id_header & kPDUFPProductTypeMask) == kPD31HubComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD31HubComp) {
       ufp_supported = true;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD31PeripheralComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD31PeripheralComp) {
       ufp_supported = true;
+    }
 
     bool dfp_supported = false;
-    if ((id_header & kPDDFPProductTypeMask) == kPD31DFPHubComp)
+    if ((id_header & kPDDFPProductTypeMask) == kPD31DFPHubComp) {
       dfp_supported = true;
-    else if ((id_header & kPDDFPProductTypeMask) == kPD31DFPHostComp)
+    } else if ((id_header & kPDDFPProductTypeMask) == kPD31DFPHostComp) {
       dfp_supported = true;
-    else if ((id_header & kPDDFPProductTypeMask) == kPD31PowerBrickComp)
+    } else if ((id_header & kPDDFPProductTypeMask) == kPD31PowerBrickComp) {
       dfp_supported = true;
+    }
 
-    if (ufp_supported && dfp_supported)
+    if (ufp_supported && dfp_supported) {
       ret = ProductType::kPD31DRD;
-    else if (ufp_supported)
+    } else if (ufp_supported) {
       ret = ProductType::kPD31UFP;
-    else if (dfp_supported)
+    } else if (dfp_supported) {
       ret = ProductType::kPD31DFP;
+    }
   }
   return ret;
 }
@@ -218,36 +238,40 @@ ProductType GetCableProductType(const base::FilePath& dir) {
   PDRev pd_rev = GetPDRev(dir);
 
   uint32_t id_header;
-  if (!ReadVdo(dir.Append("identity").Append("id_header"), &id_header))
+  if (!ReadVdo(dir.Append("identity").Append("id_header"), &id_header)) {
     return ProductType::kOther;
+  }
 
   if (pd_rev == PDRev::kPD20) {
     // USB PD 2.0 only supports active and passive cables.
-    if ((id_header & kPDUFPProductTypeMask) == kPD20PassiveCableComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD20PassiveCableComp) {
       return ProductType::kPD20PassiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD20ActiveCableComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD20ActiveCableComp) {
       return ProductType::kPD20ActiveCable;
-    else
+    } else {
       return ProductType::kOther;
+    }
   } else if (pd_rev == PDRev::kPD30) {
     // USB PD 3.0 supports only active and passive cables.
-    if ((id_header & kPDUFPProductTypeMask) == kPD30PassiveCableComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD30PassiveCableComp) {
       return ProductType::kPD30PassiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD30ActiveCableComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD30ActiveCableComp) {
       return ProductType::kPD30ActiveCable;
-    else
+    } else {
       return ProductType::kOther;
+    }
   } else if (pd_rev == PDRev::kPD31) {
     // USB PD 3.1 supports active cables, passive cables and Vconn Powered
     // Devices (VPD) definitions from id_header.
-    if ((id_header & kPDUFPProductTypeMask) == kPD31PassiveCableComp)
+    if ((id_header & kPDUFPProductTypeMask) == kPD31PassiveCableComp) {
       return ProductType::kPD31PassiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD31ActiveCableComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD31ActiveCableComp) {
       return ProductType::kPD31ActiveCable;
-    else if ((id_header & kPDUFPProductTypeMask) == kPD31VPDComp)
+    } else if ((id_header & kPDUFPProductTypeMask) == kPD31VPDComp) {
       return ProductType::kPD31VPD;
-    else
+    } else {
       return ProductType::kOther;
+    }
   } else {
     return ProductType::kOther;
   }
@@ -255,8 +279,9 @@ ProductType GetCableProductType(const base::FilePath& dir) {
 
 void PrintPartnerIdentity(const base::FilePath& partner, int indent) {
   auto identity = partner.Append("identity");
-  if (!base::DirectoryExists(identity))
+  if (!base::DirectoryExists(identity)) {
     return;
+  }
 
   std::cout << GetIndentStr(indent) << "identity" << std::endl;
 
@@ -344,8 +369,9 @@ void PrintPartnerIdentity(const base::FilePath& partner, int indent) {
 
 void PrintCableIdentity(const base::FilePath& cable, int indent) {
   auto identity = cable.Append("identity");
-  if (!base::DirectoryExists(identity))
+  if (!base::DirectoryExists(identity)) {
     return;
+  }
 
   std::cout << GetIndentStr(indent) << "identity" << std::endl;
 
@@ -428,8 +454,9 @@ void PrintCableIdentity(const base::FilePath& cable, int indent) {
 
 void PrintPartner(const base::FilePath& port, int indent) {
   auto partner_dir = port.Append(port.BaseName().value() + "-partner");
-  if (!base::DirectoryExists(partner_dir))
+  if (!base::DirectoryExists(partner_dir)) {
     return;
+  }
 
   PrintDirFiles(partner_dir, indent);
   PrintPartnerIdentity(partner_dir, indent + 2);
@@ -440,8 +467,9 @@ void PrintPartner(const base::FilePath& port, int indent) {
 
 void PrintCable(const base::FilePath& port, int indent) {
   auto cable_dir = port.Append(port.BaseName().value() + "-cable");
-  if (!base::DirectoryExists(cable_dir))
+  if (!base::DirectoryExists(cable_dir)) {
     return;
+  }
 
   PrintDirFiles(cable_dir, indent);
   PrintCableIdentity(cable_dir, indent + 2);
@@ -450,8 +478,9 @@ void PrintCable(const base::FilePath& port, int indent) {
 
 void PrintPhysicalLocation(const base::FilePath& port, int indent) {
   auto physical_location_dir = port.Append("physical_location");
-  if (!base::DirectoryExists(physical_location_dir))
+  if (!base::DirectoryExists(physical_location_dir)) {
     return;
+  }
 
   std::cout << GetIndentStr(indent) << "physical_location" << std::endl;
   PrintFile(physical_location_dir.Append("panel"), indent + 2);
@@ -469,8 +498,9 @@ void PrintUsbDeviceInfo(const base::FilePath& usb_device, int indent) {
 
 void PrintUsbDevice(const base::FilePath& usb_port, int indent) {
   auto usb_device_dir = usb_port.Append("device");
-  if (!base::DirectoryExists(usb_device_dir))
+  if (!base::DirectoryExists(usb_device_dir)) {
     return;
+  }
 
   PrintUsbDeviceInfo(usb_device_dir, indent);
 }
@@ -481,8 +511,9 @@ void PrintUsbSubsystem(const base::FilePath& port, int indent) {
 
 void PrintDrmSubsystem(const base::FilePath& port, int indent) {
   auto drm_connector_dir = port.Append("drm_connector");
-  if (!base::DirectoryExists(drm_connector_dir))
+  if (!base::DirectoryExists(drm_connector_dir)) {
     return;
+  }
 
   std::cout << GetIndentStr(indent) << "dp_connector" << std::endl;
   PrintFile(drm_connector_dir.Append("connector_id"), indent + 2);

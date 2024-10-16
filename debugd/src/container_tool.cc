@@ -20,8 +20,9 @@ const char kRunOci[] = "/usr/bin/run_oci";
 namespace debugd {
 
 void ContainerTool::ContainerStarted() {
-  if (device_jail_started_)
+  if (device_jail_started_) {
     return;
+  }
 
   LOG(INFO) << "Starting up device jail";
   base::LaunchOptions options;

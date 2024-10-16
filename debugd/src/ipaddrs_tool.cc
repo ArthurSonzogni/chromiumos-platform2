@@ -52,8 +52,9 @@ std::vector<std::string> IpAddrsTool::GetIpAddresses(
   std::vector<std::string> full_result, cmd_result;
 
   std::string ip_version = "-4";
-  if (brillo::GetVariantValueOrDefault<bool>(options, "v6"))
+  if (brillo::GetVariantValueOrDefault<bool>(options, "v6")) {
     ip_version = "-6";
+  }
 
   RunOneIPCommand(&full_result, {ip_version, "-s", "-s", "addr", "show"});
 

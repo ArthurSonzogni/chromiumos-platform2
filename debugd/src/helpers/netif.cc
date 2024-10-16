@@ -80,8 +80,9 @@ std::string getmac(int fd, const char* ifname) {
   ifr.ifr_addr.sa_family = AF_PACKET;
   strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name) - 1);
   ret = ioctl(fd, SIOCGIFHWADDR, &ifr);
-  if (ret < 0)
+  if (ret < 0) {
     return "<can't fetch>";
+  }
   return base::HexEncode(ifr.ifr_hwaddr.sa_data, 6);
 }
 
@@ -91,12 +92,13 @@ std::string sockaddr2str(struct sockaddr* sa) {
   // These need NOLINT because cpplint thinks we're taking the address of a
   // cast, which we aren't - we're taking the address of a member after casting
   // a pointer to a different type.
-  if (sa->sa_family == AF_INET)
+  if (sa->sa_family == AF_INET) {
     addr = &((struct sockaddr_in*)sa)->sin_addr;  // NOLINT
-  else if (sa->sa_family == AF_INET6)
+  } else if (sa->sa_family == AF_INET6) {
     addr = &((struct sockaddr_in6*)sa)->sin6_addr;  // NOLINT
-  else
+  } else {
     return "unknown";
+  }
   const char* result = inet_ntop(sa->sa_family, addr, buf, sizeof(buf));
   return result ?: "invalid";
 }
@@ -129,8 +131,9 @@ struct ifflag {
 Value flags2list(unsigned int flags) {
   Value::List lv;
   for (const auto& ifflag : ifflags) {
-    if (flags & ifflag.bit)
+    if (flags & ifflag.bit) {
       lv.Append(ifflag.name);
+    }
   }
   return Value(std::move(lv));
 }
@@ -171,16 +174,19 @@ void NetInterface::AddSignalStrength(const std::string& name, int strength) {
 
 void NetInterface::AddAddressTo(Value::Dict& dict, struct sockaddr* sa) {
   Value::List* lv = dict.FindList("addrs");
-  if (lv == nullptr)
+  if (lv == nullptr) {
     lv = dict.Set("addrs", Value::List{})->GetIfList();
+  }
   lv->Append(sockaddr2str(sa));
 }
 
 void NetInterface::AddAddress(struct ifaddrs* ifa) {
-  if (flags_.GetList().empty())
+  if (flags_.GetList().empty()) {
     flags_ = flags2list(ifa->ifa_flags);
-  if (!ifa->ifa_addr)
+  }
+  if (!ifa->ifa_addr) {
     return;
+  }
   if (ifa->ifa_addr->sa_family == AF_INET) {
     // An IPv4 address.
     auto& ipv4_dict = ipv4_.GetDict();
@@ -199,36 +205,43 @@ void NetInterface::AddAddress(struct ifaddrs* ifa) {
 
 Value NetInterface::ToValue() const {
   Value::Dict dv;
-  if (!ipv4_.GetDict().empty())
+  if (!ipv4_.GetDict().empty()) {
     dv.Set("ipv4", ipv4_.Clone());
-  if (!ipv6_.GetDict().empty())
+  }
+  if (!ipv6_.GetDict().empty()) {
     dv.Set("ipv6", ipv6_.Clone());
-  if (flags_.GetList().size())
+  }
+  if (flags_.GetList().size()) {
     dv.Set("flags", flags_.Clone());
-  if (!signal_strengths_.empty())
+  }
+  if (!signal_strengths_.empty()) {
     dv.Set("signal-strengths", signal_strengths_.Clone());
+  }
   dv.Set("mac", mac_);
   return Value(std::move(dv));
 }
 
 std::string DevicePathToName(const std::string& path) {
   static const char kPrefix[] = "/device/";
-  if (path.find(kPrefix) == 0)
+  if (path.find(kPrefix) == 0) {
     return path.substr(strlen(kPrefix));
+  }
   return "?";
 }
 
 void AddSignalStrengths(
     std::map<std::string, std::unique_ptr<NetInterface>>* interfaces) {
   auto proxy = debugd::ShillProxy::Create();
-  if (!proxy)
+  if (!proxy) {
     return;
+  }
 
   auto manager_properties =
       proxy->GetProperties(shill::kFlimflamManagerInterface,
                            dbus::ObjectPath(shill::kFlimflamServicePath));
-  if (!manager_properties)
+  if (!manager_properties) {
     return;
+  }
 
   auto service_paths =
       proxy->GetObjectPaths(*manager_properties, shill::kServicesProperty);
@@ -276,8 +289,9 @@ int main() {
 
   AddSignalStrengths(&interfaces);
 
-  for (const auto& interface : interfaces)
+  for (const auto& interface : interfaces) {
     result.Set(interface.first, interface.second->ToValue());
+  }
 
   std::string json;
   base::JSONWriter::WriteWithOptions(

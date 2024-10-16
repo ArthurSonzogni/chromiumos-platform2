@@ -11,12 +11,14 @@ namespace debugd {
 
 std::string NetifTool::GetInterfaces() {
   std::string path;
-  if (!GetHelperPath("netif", &path))
+  if (!GetHelperPath("netif", &path)) {
     return "<path too long>";
+  }
 
   ProcessWithOutput p;
-  if (!p.Init())
+  if (!p.Init()) {
     return "<can't create process>";
+  }
   p.AddArg(path);
   p.Run();
   std::string out;

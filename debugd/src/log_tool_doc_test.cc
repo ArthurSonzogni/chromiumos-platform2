@@ -209,8 +209,9 @@ TEST(LogToolDocTest, EntriesAreSorted) {
   // Check if entries of log_tool.cc are sorted.
   auto categories = GetAllDebugTitlesForTest();
   for (const auto& category : categories) {
-    if (category.size() <= 1)
+    if (category.size() <= 1) {
       continue;
+    }
     auto it = std::is_sorted_until(category.begin(), category.end());
     EXPECT_TRUE(it == category.end()) << *it << " is not sorted.";
   }

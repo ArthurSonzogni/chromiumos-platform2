@@ -45,8 +45,9 @@ bool RunEctoolWithArgs(brillo::ErrorPtr* error,
   }
 
   process.AddArg(kEctoolBinary);
-  for (const auto& arg : ectool_args)
+  for (const auto& arg : ectool_args) {
     process.AddArg(arg);
+  }
   if (process.Run() != EXIT_SUCCESS) {
     DEBUGD_ADD_ERROR(error, kErrorPath, "Failed to run process.");
     return false;

@@ -200,13 +200,15 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
     FD_SET(primary_fd, &set);
     FD_SET(eventfd.get(), &set);
     int max_fd = std::max({fd, primary_fd, eventfd.get()});
-    if (select(max_fd + 1, &set, nullptr, nullptr, nullptr) < 0)
+    if (select(max_fd + 1, &set, nullptr, nullptr, nullptr) < 0) {
       break;
+    }
 
     if (FD_ISSET(fd, &set)) {
       ret = read(fd, buf, sizeof(buf));
-      if (ret < 0)
+      if (ret < 0) {
         break;
+      }
       if (ret > 0) {
         if (!base::WriteFileDescriptor(primary_fd, std::span(buf, ret))) {
           PLOG(ERROR) << kCroshWriteErrorString;
@@ -216,8 +218,9 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
     }
     if (FD_ISSET(primary_fd, &set)) {
       ret = read(primary_fd, buf, sizeof(buf));
-      if (ret < 0)
+      if (ret < 0) {
         break;
+      }
       if (ret > 0) {
         if (!base::WriteFileDescriptor(fd, std::span(buf, ret))) {
           PLOG(ERROR) << kCroshWriteErrorString;
@@ -229,8 +232,9 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
       // Read the eventfd to reset the counter.
       uint64_t counter;
       ret = read(eventfd.get(), &counter, sizeof(counter));
-      if (ret < 0)
+      if (ret < 0) {
         break;
+      }
       UpdateWindowSize(infd, scoped_primary_fd);
     }
   }
@@ -254,11 +258,12 @@ void ReapChildProcess(const pid_t pid) {
     return;
   }
 
-  if (!WIFEXITED(status))
+  if (!WIFEXITED(status)) {
     // Only check !WIFEXITED(status), because checking !WIFSIGNALED(status) too
     // would cause the message loop to exit too early.
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, base::BindOnce(&ReapChildProcess, pid), kReapDelay);
+  }
 }
 
 }  // namespace

@@ -75,8 +75,9 @@ bool RunHelper(const std::string& command,
     return false;
   }
 
-  if (exit_status)
+  if (exit_status) {
     *exit_status = result;
+  }
   return true;
 }
 
@@ -100,8 +101,9 @@ bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
   bool is_policy_conservative = (policy == kConservativePolicy);
 
   if (policy_locked_conservative_) {
-    if (is_policy_conservative)
+    if (is_policy_conservative) {
       return true;
+    }
 
     DEBUGD_ADD_ERROR(error, kErrorPath, "Policy locked to conservative");
     return false;

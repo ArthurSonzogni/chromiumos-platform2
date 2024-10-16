@@ -26,18 +26,22 @@ ProcessWithId* SubprocessTool::CreateProcess(
     bool access_root_mount_ns,
     const std::vector<std::string>& minijail_extra_args) {
   auto process = std::make_unique<ProcessWithId>();
-  if (!sandboxed)
+  if (!sandboxed) {
     process->DisableSandbox();
+  }
 
-  if (access_root_mount_ns)
+  if (access_root_mount_ns) {
     process->AllowAccessRootMountNamespace();
+  }
 
-  if (!process->Init(minijail_extra_args))
+  if (!process->Init(minijail_extra_args)) {
     return nullptr;
+  }
 
   ProcessWithId* process_ptr = process.get();
-  if (RecordProcess(std::move(process)))
+  if (RecordProcess(std::move(process))) {
     return process_ptr;
+  }
 
   return nullptr;
 }
@@ -48,8 +52,9 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
 }
 
 bool SubprocessTool::RecordProcess(std::unique_ptr<ProcessWithId> process) {
-  if (base::Contains(processes_, process->id()))
+  if (base::Contains(processes_, process->id())) {
     return false;
+  }
 
   processes_[process->id()] = std::move(process);
   return true;

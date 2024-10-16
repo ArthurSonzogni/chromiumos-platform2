@@ -51,8 +51,9 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed, const base::ScopedFD& fd) {
   brillo::ProcessImpl p;
   p.AddArg(kTar);
   p.AddArg("-c");
-  if (is_compressed)
+  if (is_compressed) {
     p.AddArg("-z");
+  }
   p.AddArg("-C");
   p.AddArg(temp_dir.GetPath().value());
   p.AddArg(kFeedbackLogsDir);

@@ -103,27 +103,33 @@ std::string StorageTool::Smartctl(const std::string& option) {
   base::FilePath bname = device.BaseName();
 
   std::string path;
-  if (!GetHelperPath("storage", &path))
+  if (!GetHelperPath("storage", &path)) {
     return "<path too long>";
+  }
 
   ProcessWithOutput process;
   // Disabling sandboxing since smartctl requires higher privileges.
   process.DisableSandbox();
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
 
   if (bname.value().compare(0, 4, "nvme") == 0) {
     process.AddArg(kSmartctl);
 
-    if (option == "attributes")
+    if (option == "attributes") {
       process.AddArg("-A");
-    if (option == "capabilities")
+    }
+    if (option == "capabilities") {
       process.AddArg("-c");
-    if (option == "error")
+    }
+    if (option == "error") {
       process.AddStringOption("-l", "error");
+    }
     if (option == "abort_test" || option == "health" || option == "selftest" ||
-        option == "short_test")
+        option == "short_test") {
       return "<Option not supported>";
+    }
 
   } else {
     const base::FilePath dir =
@@ -138,20 +144,27 @@ std::string StorageTool::Smartctl(const std::string& option) {
 
     process.AddArg(kSmartctl);
 
-    if (option == "abort_test")
+    if (option == "abort_test") {
       process.AddArg("-X");
-    if (option == "attributes")
+    }
+    if (option == "attributes") {
       process.AddArg("-A");
-    if (option == "capabilities")
+    }
+    if (option == "capabilities") {
       process.AddArg("-c");
-    if (option == "error")
+    }
+    if (option == "error") {
       process.AddStringOption("-l", "error");
-    if (option == "health")
+    }
+    if (option == "health") {
       process.AddArg("-H");
-    if (option == "selftest")
+    }
+    if (option == "selftest") {
       process.AddStringOption("-l", "selftest");
-    if (option == "short_test")
+    }
+    if (option == "short_test") {
       process.AddStringOption("-t", "short");
+    }
   }
 
   process.AddArg(device.value());
@@ -171,8 +184,9 @@ std::string StorageTool::Start(const base::ScopedFD& outfd) {
 
   ProcessWithId* p =
       CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
-  if (!p)
+  if (!p) {
     return "";
+  }
 
   p->AddArg(kBadblocks);
   p->AddArg("-sv");
@@ -187,8 +201,9 @@ std::string StorageTool::Start(const base::ScopedFD& outfd) {
 std::string StorageTool::Mmc(const std::string& option) {
   ProcessWithOutput process;
   process.DisableSandbox();
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
 
   process.AddArg(kMmc);
 
@@ -213,8 +228,9 @@ std::string StorageTool::Mmc(const std::string& option) {
 std::string StorageTool::Ufs(const std::string& option) {
   ProcessWithOutput process;
   process.DisableSandbox();
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
 
   const base::FilePath rootdev = GetRootDevice();
 
@@ -240,8 +256,9 @@ std::string StorageTool::Nvme(const std::string& option) {
   ProcessWithOutput process;
   // Disabling sandboxing since nvme requires higher privileges.
   process.DisableSandbox();
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
 
   process.AddArg(kNvme);
 
@@ -295,8 +312,9 @@ std::string StorageTool::NvmeLog(const uint32_t& page_id,
   ProcessWithOutput process;
   // Disabling sandboxing since nvme requires higher privileges.
   process.DisableSandbox();
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
 
   process.AddArg(kNvme);
   process.AddArg("get-log");

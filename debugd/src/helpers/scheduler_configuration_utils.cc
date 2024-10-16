@@ -63,8 +63,9 @@ bool SchedulerConfigurationUtils::ParseCPUNumbers(
   DCHECK(result);
   std::vector<std::string> tokens = base::SplitString(
       cpus, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  if (tokens.size() < 1)
+  if (tokens.size() < 1) {
     return false;
+  }
 
   for (const auto& token : tokens) {
     // If it's a number, push immediately to the list.
@@ -137,8 +138,9 @@ bool SchedulerConfigurationUtils::LookupFDAndWriteFlag(
   }
 
   bool result = WriteFlagToCPUControlFile(fd->second, flag);
-  if (!result)
+  if (!result) {
     PLOG(ERROR) << "write";
+  }
   return result;
 }
 
@@ -175,8 +177,9 @@ bool SchedulerConfigurationUtils::EnablePerformanceConfiguration(
     }
   }
 
-  if (!result)
+  if (!result) {
     LOG(ERROR) << "Failed to enable CPU(s): " << failed_cpus;
+  }
 
   return result && UpdateAllCPUSets();
 }
@@ -283,8 +286,9 @@ bool SchedulerConfigurationUtils::GetFDsFromControlFile(
   }
 
   // The kernel returns 0xa if the file is empty.
-  if (cpus_str == std::string(1, kLineTerminator))
+  if (cpus_str == std::string(1, kLineTerminator)) {
     return true;
+  }
 
   if (!ParseCPUNumbers(cpus_str, cpu_nums)) {
     LOG(ERROR) << "Unknown range: " << cpus_str;
@@ -297,8 +301,9 @@ bool SchedulerConfigurationUtils::GetFDsFromControlFile(
 
   for (const auto& cpu_num : *cpu_nums) {
     // There is no control file for cpu0, which cannot be turned off.
-    if (cpu_num == "0")
+    if (cpu_num == "0") {
       continue;
+    }
 
     base::FilePath cpu_path =
         base_path_.Append(kCPUSubpath).Append("cpu" + cpu_num).Append("online");

@@ -54,17 +54,21 @@ int LpToolsImpl::RunAsUser(const std::string& user,
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
 
-  if (!seccomp_policy.empty())
+  if (!seccomp_policy.empty()) {
     process.SetSeccompFilterPolicyFile(seccomp_policy);
+  }
 
-  if (inherit_usergroups)
+  if (inherit_usergroups) {
     process.InheritUsergroups();
+  }
 
-  if (!env.empty())
+  if (!env.empty()) {
     process.SetEnvironmentVariables(env);
+  }
 
-  if (!process.Init())
+  if (!process.Init()) {
     return ProcessWithOutput::kRunError;
+  }
 
   process.AddArg(command);
   for (const std::string& arg : arg_list) {

@@ -24,8 +24,9 @@ std::string MemtesterTool::Start(const base::ScopedFD& outfd,
                                  const uint32_t& memory) {
   ProcessWithId* p =
       CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
-  if (!p)
+  if (!p) {
     return "";
+  }
 
   p->AddArg(kMemtesterpath);
   p->AddArg(base::StringPrintf("%u", memory));

@@ -57,8 +57,9 @@ void Stopwatch::SendToUMA(const std::string& metric_name,
 
 Stopwatch::~Stopwatch() {
   base::TimeDelta duration = base::TimeTicks::Now() - sw_start_;
-  if (local_logging_)
+  if (local_logging_) {
     DLOG(INFO) << metric_name_ << ", total elapsed time: " << duration;
+  }
   // The total elapsed time is always reported to UMA.
   SendToUMA(metric_name_, duration);
 }

@@ -37,8 +37,9 @@ bool GetIntValFromKvStore(const brillo::KeyValueStore& kv,
                           const std::string& key,
                           int* val) {
   std::string val_str;
-  if (!kv.GetString(key, &val_str))
+  if (!kv.GetString(key, &val_str)) {
     return false;
+  }
 
   base::TrimWhitespaceASCII(val_str, base::TRIM_ALL, &val_str);
   return base::StringToInt(val_str, val);
@@ -56,8 +57,9 @@ std::string EcTypeCTool::GetInventory() {
 
   brillo::ErrorPtr error;
   if (!RunEctoolWithArgs(&error, seccomp_policy_path, ectool_args, kRunAs,
-                         &output))
+                         &output)) {
     output.clear();
+  }
 
   return output;
 }
@@ -76,8 +78,9 @@ bool EcTypeCTool::EnterMode(brillo::ErrorPtr* error,
   ectool_args.push_back(base::StringPrintf("%u", mode));
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
-                         output))
+                         output)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   return true;
 }
@@ -94,8 +97,9 @@ bool EcTypeCTool::ExitMode(brillo::ErrorPtr* error,
   ectool_args.push_back("0");
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
-                         output))
+                         output)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   return true;
 }
@@ -110,8 +114,9 @@ bool EcTypeCTool::DpState(brillo::ErrorPtr* error,
   std::string result;
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
-                         &result))
+                         &result)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   return ParseDpState(error, port_num, result, output);
 }
@@ -127,8 +132,9 @@ bool EcTypeCTool::ParseDpState(brillo::ErrorPtr* error,
     int port_num_ret;
     std::string mux_str;
     if (!RE2::FullMatch(str, kMuxInfoPortRegex, &port_num_ret, &mux_str) ||
-        port_num_ret != port_num)
+        port_num_ret != port_num) {
       continue;
+    }
 
     base::TrimWhitespaceASCII(mux_str, base::TRIM_ALL, &mux_str);
     std::vector<std::string> kv_pairs = base::SplitString(
@@ -139,8 +145,9 @@ bool EcTypeCTool::ParseDpState(brillo::ErrorPtr* error,
       kv.LoadFromString(pair);
 
       int dp;
-      if (!GetIntValFromKvStore(kv, "DP", &dp))
+      if (!GetIntValFromKvStore(kv, "DP", &dp)) {
         continue;
+      }
 
       *output = dp;
       return true;
@@ -162,8 +169,9 @@ bool EcTypeCTool::HpdState(brillo::ErrorPtr* error,
   ectool_args.push_back(base::StringPrintf(kHpdGpioStr, port_num));
 
   if (!RunEctoolWithArgs(error, seccomp_policy_path, ectool_args, kRunAs,
-                         &result))
+                         &result)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   return ParseHpdState(error, port_num, result, output);
 }

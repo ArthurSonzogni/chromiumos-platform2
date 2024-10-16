@@ -25,8 +25,9 @@ std::string BatteryTool::BatteryFirmware(const std::string& option) {
   ProcessWithOutput process;
   // Disabling sandboxing since battery requires higher privileges.
   process.DisableSandbox();
-  if (!process.Init())
+  if (!process.Init()) {
     return "<process init failed>";
+  }
 
   if (option == "info") {
     tool_name = kEcTool;
@@ -35,8 +36,9 @@ std::string BatteryTool::BatteryFirmware(const std::string& option) {
   } else {
     return "<process invalid option>";
   }
-  if (access(tool_name, F_OK) != 0)
+  if (access(tool_name, F_OK) != 0) {
     return kUnsupportedMessage;
+  }
 
   process.Run();
   process.GetOutput(&output);

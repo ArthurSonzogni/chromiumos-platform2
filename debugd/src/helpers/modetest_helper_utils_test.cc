@@ -18,8 +18,9 @@ std::vector<std::string> SplitLines(const std::string& str) {
   std::vector<std::string> lines;
   std::stringstream ss(str);
   std::string line;
-  while (std::getline(ss, line, '\n'))
+  while (std::getline(ss, line, '\n')) {
     lines.push_back(line);
+  }
   return lines;
 }
 }  // namespace
@@ -59,8 +60,9 @@ TEST(ModetestHelperUtils, EDIDStripSerialNumber) {
 
   // Check that no other lines were modified.
   for (int i = 0; i < lines.size(); ++i) {
-    if (i == edid_serial_line)
+    if (i == edid_serial_line) {
       continue;
+    }
     EXPECT_EQ(lines[i], lines_original[i]);
   }
 }
@@ -150,8 +152,9 @@ Connectors:
 
   // Check that no other lines were modified.
   for (int i = 0; i < lines.size(); ++i) {
-    if (i == edid_serial_lines[0] || i == edid_serial_lines[1])
+    if (i == edid_serial_lines[0] || i == edid_serial_lines[1]) {
       continue;
+    }
     EXPECT_EQ(lines[i], lines_original[i]);
   }
 }
@@ -214,8 +217,9 @@ TEST(ModetestHelperUtils, FilterBlob) {
   ASSERT_EQ(lines[kBlobValueLineNum + kNumBlobLines + 1], "    2 DPMS:");
 
   for (auto& line : lines) {
-    if (blob_filter.ProcessLine(line))
+    if (blob_filter.ProcessLine(line)) {
       filtered_lines.push_back(line);
+    }
   }
 
   // The blob takes up four lines.

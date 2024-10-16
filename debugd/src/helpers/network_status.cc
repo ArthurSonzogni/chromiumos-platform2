@@ -22,16 +22,18 @@ base::Value::Dict CollectNetworkStatus() {
   base::Value::Dict result;
 
   auto proxy = ShillProxy::Create();
-  if (!proxy)
+  if (!proxy) {
     return result;
+  }
 
   // Gets the manager properties from which we can identify the list of device
   // and service object paths.
   auto manager_properties =
       proxy->GetProperties(shill::kFlimflamManagerInterface,
                            dbus::ObjectPath(shill::kFlimflamServicePath));
-  if (!manager_properties)
+  if (!manager_properties) {
     return result;
+  }
 
   // Gets the device properties of all listed devices.
   auto device_paths =

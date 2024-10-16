@@ -83,12 +83,15 @@ const std::map<std::string, OptionType> kQuipperOptions = {
 // Returns one of the above enums given an vector of perf arguments, starting
 // with "perf" itself in |args[0]|.
 PerfSubcommand GetPerfSubcommandType(std::string command) {
-  if (command == "record")
+  if (command == "record") {
     return PERF_COMMAND_RECORD;
-  if (command == "stat")
+  }
+  if (command == "stat") {
     return PERF_COMMAND_STAT;
-  if (command == "mem")
+  }
+  if (command == "mem") {
     return PERF_COMMAND_MEM;
+  }
   return PERF_COMMAND_UNSUPPORTED;
 }
 
@@ -149,8 +152,9 @@ bool WriteCpuIdleStates(const base::Value::Dict& all_cpu_states,
                                              all_states.first.c_str(), state));
       if (base::PathExists(path)) {
         std::string v = "1";
-        if (!disable)
+        if (!disable) {
           v = state_pair.second.GetString();
+        }
         if (!base::WriteFile(path, v)) {
           PLOG(ERROR) << "Failed to write to " << path;
           completed = false;
@@ -158,8 +162,9 @@ bool WriteCpuIdleStates(const base::Value::Dict& all_cpu_states,
       }
     }
   }
-  if (!completed)
+  if (!completed) {
     LOG(ERROR) << "Not all cpuidle states are written";
+  }
   return completed;
 }
 
@@ -191,8 +196,9 @@ bool DisableCpuIdleStates() {
     for (int state = 0;; ++state) {
       const auto disable_file = base::FilePath(
           base::StringPrintf(kCpuIdleStatePathPattern, cpu.c_str(), state));
-      if (!base::PathExists(disable_file))
+      if (!base::PathExists(disable_file)) {
         break;
+      }
 
       std::string disable_state;
       base::ReadFileToString(disable_file, &disable_state);
@@ -220,16 +226,18 @@ bool DisableCpuIdleStates() {
 void RestoreCpuIdleStates() {
   base::FilePath cpuidle_states_map(kCpuIdleStateMapLocation);
   std::string json;
-  if (!base::PathExists(cpuidle_states_map))
+  if (!base::PathExists(cpuidle_states_map)) {
     return;
+  }
   if (!base::ReadFileToString(cpuidle_states_map, &json)) {
     PLOG(ERROR) << "Failed to read cpuidle states from: "
                 << kCpuIdleStateMapLocation;
     return;
   }
   std::optional<base::Value> all_cpu_states = base::JSONReader::Read(json);
-  if (all_cpu_states.has_value() && all_cpu_states->is_dict())
+  if (all_cpu_states.has_value() && all_cpu_states->is_dict()) {
     WriteCpuIdleStates(all_cpu_states->GetDict());
+  }
   brillo::DeleteFile(cpuidle_states_map);
 }
 
@@ -289,8 +297,9 @@ bool PerfTool::GetPerfOutputV2(const std::vector<std::string>& quipper_args,
                                uint64_t* session_id,
                                brillo::ErrorPtr* error) {
   PerfSubcommand subcommand;
-  if (!ValidateQuipperArguments(quipper_args, subcommand, error))
+  if (!ValidateQuipperArguments(quipper_args, subcommand, error)) {
     return false;  // DEBUGD_ADD_ERROR is already called.
+  }
 
   if (perf_running()) {
     // Do not run multiple sessions at the same time. Attempt to start another
@@ -536,8 +545,9 @@ void PerfTool::EtmStrobbingSettings() {
       base::StringPrintf(kStrobbingSettingPathPattern, "window"));
   const base::FilePath period_path = base::FilePath(
       base::StringPrintf(kStrobbingSettingPathPattern, "period"));
-  if (!base::PathExists(window_path) || !base::PathExists(period_path))
+  if (!base::PathExists(window_path) || !base::PathExists(period_path)) {
     return;
+  }
 
   std::string ws, ps;
   base::ReadFileToString(window_path, &ws);

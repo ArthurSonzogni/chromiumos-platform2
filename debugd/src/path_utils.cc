@@ -20,8 +20,9 @@ namespace path_utils {
 
 base::FilePath GetFilePath(std::string_view file_path) {
   if (g_test_prefix) {
-    if (base::StartsWith(file_path, "/"))
+    if (base::StartsWith(file_path, "/")) {
       file_path.remove_prefix(1);
+    }
     return g_test_prefix->Append(file_path);
   }
   return base::FilePath(file_path);
@@ -34,8 +35,9 @@ void SetPrefixForTesting(const base::FilePath& prefix) {
     delete g_test_prefix;
     g_test_prefix = nullptr;
   }
-  if (!prefix.empty())
+  if (!prefix.empty()) {
     g_test_prefix = new base::FilePath(prefix);
+  }
 }
 
 }  // namespace testing

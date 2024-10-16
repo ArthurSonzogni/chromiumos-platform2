@@ -24,16 +24,19 @@ std::string TracePathTool::Start(const base::ScopedFD& outfd,
                                  const brillo::VariantDictionary& options) {
   ProcessWithId* p =
       CreateProcess(true /* sandboxed */, false /* access_root_mount_ns */);
-  if (!p)
+  if (!p) {
     return "";
+  }
 
-  if (brillo::GetVariantValueOrDefault<bool>(options, "v6"))
+  if (brillo::GetVariantValueOrDefault<bool>(options, "v6")) {
     p->AddArg(kTracepath6);
-  else
+  } else {
     p->AddArg(kTracepath);
+  }
 
-  if (options.count("numeric") == 1)
+  if (options.count("numeric") == 1) {
     p->AddArg("-n");
+  }
 
   p->AddArg(destination);
   p->BindFd(outfd.get(), STDOUT_FILENO);

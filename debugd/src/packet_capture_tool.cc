@@ -76,8 +76,9 @@ bool ValidateInterfaceName(const std::string& name) {
   for (char c : name) {
     // These are the only plausible interface name characters.
     if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c) && c != '-' &&
-        c != '_')
+        c != '_') {
       return false;
+    }
   }
   return true;
 }
@@ -214,18 +215,24 @@ PacketCaptureTool::CreateCaptureProcessForFrequencyBasedCapture(
     return nullptr;
   }
   p->AddArg(exec_path);
-  if (!AddValidatedStringOption(p, options, "device", "--device", error))
+  if (!AddValidatedStringOption(p, options, "device", "--device", error)) {
     return nullptr;  // DEBUGD_ADD_ERROR is already called.
-  if (!AddIntOption(p, options, "frequency", "--frequency", error))
+  }
+  if (!AddIntOption(p, options, "frequency", "--frequency", error)) {
     return nullptr;  // DEBUGD_ADD_ERROR is already called.
+  }
   if (!AddValidatedStringOption(p, options, "ht_location", "--ht-location",
-                                error))
+                                error)) {
     return nullptr;  // DEBUGD_ADD_ERROR is already called.
-  if (!AddValidatedStringOption(p, options, "vht_width", "--vht-width", error))
+  }
+  if (!AddValidatedStringOption(p, options, "vht_width", "--vht-width",
+                                error)) {
     return nullptr;  // DEBUGD_ADD_ERROR is already called.
+  }
   if (!AddValidatedStringOption(p, options, "monitor_connection_on",
-                                "--monitor-connection-on", error))
+                                "--monitor-connection-on", error)) {
     return nullptr;  // DEBUGD_ADD_ERROR is already called.
+  }
   int max_size = 0;
   debugd::GetOption(options, "max_size", &max_size, error);
   p->AddIntOption("--max-size", max_size);
