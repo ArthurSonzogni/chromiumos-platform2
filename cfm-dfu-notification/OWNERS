@@ -1,5 +1,1 @@
-ziegs@chromium.org
-kdgwill@chromium.org
-pceballos@chromium.org
-bgoodwin@chromium.org
-jpdelima@chromium.org
+include chromiumos/owners:v1:/platform/OWNERS.cfm
