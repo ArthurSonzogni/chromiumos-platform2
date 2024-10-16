@@ -39,8 +39,9 @@ int main(int argc, char* argv[]) {
 
   log_rotator::RotateStandardLogFiles();
 
-  if (!ReloadRsyslog())
+  if (!ReloadRsyslog()) {
     return 1;
+  }
 
   return 0;
 }

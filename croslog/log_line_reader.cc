@@ -45,8 +45,9 @@ LogLineReader::LogLineReader(Backend backend_mode)
 }
 
 LogLineReader::~LogLineReader() {
-  if (file_change_watcher_)
+  if (file_change_watcher_) {
     file_change_watcher_->RemoveWatch(file_path_);
+  }
 }
 
 void LogLineReader::OpenFile(const base::FilePath& file_path) {
@@ -65,8 +66,9 @@ void LogLineReader::OpenFile(const base::FilePath& file_path) {
   pos_ = 0;
 
   base::stat_wrapper_t file_stat;
-  if (base::File::Fstat(file_.GetPlatformFile(), &file_stat) == 0)
+  if (base::File::Fstat(file_.GetPlatformFile(), &file_stat) == 0) {
     file_inode_ = file_stat.st_ino;
+  }
   DCHECK_NE(0, file_inode_);
 
   if (backend_mode_ == Backend::FILE_FOLLOW) {
@@ -104,8 +106,9 @@ void LogLineReader::SetPositionLast() {
   CHECK(buffer->valid()) << "Mmap failed. Maybe the file has been truncated.";
 
   // Traverses in reverse order to find the last LF.
-  while (pos_ > pos_traversal_start && buffer->GetChar(pos_ - 1) != '\n')
+  while (pos_ > pos_traversal_start && buffer->GetChar(pos_ - 1) != '\n') {
     pos_--;
+  }
 
   if (pos_ != 0 && pos_ <= pos_traversal_start) {
     LOG(ERROR) << "The last line is too long to handle (more than: "
@@ -204,8 +207,9 @@ std::tuple<std::string, LogLineReader::ReadResult> LogLineReader::Forward() {
 
     // If next file doesn't exist, leave the remaining string.
     // If next file exists, read the remaining string.
-    if (!rotated_)
+    if (!rotated_) {
       return {std::string(), ReadResult::NO_MORE_LOGS};
+    }
 
     pos_line_end = reader_->GetFileSize();
   } else if (pos_line_end == (pos_ + g_max_line_length)) {
@@ -221,8 +225,9 @@ std::tuple<std::string, LogLineReader::ReadResult> LogLineReader::Forward() {
 
   if (pos_ < reader_->GetFileSize()) {
     // Unless the line is too long, proceed the LF.
-    if (buffer->GetChar(pos_) == '\n')
+    if (buffer->GetChar(pos_) == '\n') {
       pos_ += 1;
+    }
   }
 
   return {GetString(std::move(buffer), pos_line_start, line_length),
@@ -231,8 +236,9 @@ std::tuple<std::string, LogLineReader::ReadResult> LogLineReader::Forward() {
 
 std::tuple<std::string, LogLineReader::ReadResult> LogLineReader::Backward() {
   DCHECK_LE(0, pos_);
-  if (pos_ == 0)
+  if (pos_ == 0) {
     return {std::string(), ReadResult::NO_MORE_LOGS};
+  }
 
   if (pos_ > reader_->GetFileSize()) {
     LOG(WARNING) << "Reading next line is failed. Maybe the file has been"
@@ -316,16 +322,18 @@ void LogLineReader::OnFileContentMaybeChanged() {
 
   if (previous_file_size != current_file_size) {
     reader_->ApplyFileSizeExpansion();
-    for (Observer& obs : observers_)
+    for (Observer& obs : observers_) {
       obs.OnFileChanged(this);
+    }
   }
 }
 
 void LogLineReader::OnFileNameMaybeChanged() {
   CHECK(backend_mode_ == Backend::FILE_FOLLOW);
 
-  if (rotated_)
+  if (rotated_) {
     return;
+  }
 
   if (!PathExists(file_path_)) {
     rotated_ = true;
@@ -335,13 +343,15 @@ void LogLineReader::OnFileNameMaybeChanged() {
     bool inode_changed = ((stat(file_path_.value().c_str(), &file_stat) == 0) &&
                           (file_inode_ != file_stat.st_ino));
 
-    if (inode_changed)
+    if (inode_changed) {
       rotated_ = true;
+    }
   }
 
   if (rotated_) {
-    for (Observer& obs : observers_)
+    for (Observer& obs : observers_) {
       obs.OnFileChanged(this);
+    }
   }
 }
 

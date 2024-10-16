@@ -35,8 +35,9 @@ class FileChangeWatcherTest : public ::testing::Test,
     while (counter() < target_value) {
       base::PlatformThread::Sleep(kTinyTimeout);
       base::RunLoop().RunUntilIdle();
-      if (--max_try == 0)
+      if (--max_try == 0) {
         return false;
+      }
     }
     return true;
   }

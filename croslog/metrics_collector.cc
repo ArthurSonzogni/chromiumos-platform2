@@ -120,16 +120,18 @@ class MetricsCollector {
       croslog::Multiplexer multiplexer;
       for (const auto& log_path_str : croslog::kLogSources) {
         base::FilePath path(log_path_str.data());
-        if (!base::PathExists(path))
+        if (!base::PathExists(path)) {
           continue;
+        }
         multiplexer.AddSource(
             path, std::make_unique<croslog::LogParserSyslog>(), false);
       }
 
       for (const auto& log_path_str : croslog::kAuditLogSources) {
         base::FilePath path(log_path_str.data());
-        if (!base::PathExists(path))
+        if (!base::PathExists(path)) {
           continue;
+        }
         multiplexer.AddSource(path, std::make_unique<croslog::LogParserAudit>(),
                               false);
       }

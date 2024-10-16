@@ -27,8 +27,9 @@ std::vector<BootRecords::BootEntry> ReadBootLogs(base::FilePath file_path) {
   LogLineReader reader(LogLineReader::Backend::FILE);
 
   std::vector<BootRecords::BootEntry> boot_log_entries;
-  if (!base::PathExists(file_path))
+  if (!base::PathExists(file_path)) {
     return boot_log_entries;
+  }
 
   LogParserSyslog parser;
   reader.OpenFile(std::move(file_path));
@@ -69,8 +70,7 @@ std::vector<BootRecords::BootRange> ConvertBootEntriesToRanges(
     if (boot_entry.boot_time() >= next_boot_time) {
       LOG(WARNING) << "Boot entries must be in an incremental order, but not: "
                    << boot_entry.boot_time() << " -> " << next_boot_time
-                   << ". This "
-                   << "entry is ignored.";
+                   << ". This " << "entry is ignored.";
       continue;
     }
 
@@ -118,8 +118,9 @@ bool operator==(BootRecords::BootRange const& a,
 
 // static
 bool BootRecords::IsValidBootId(const std::string& boot_id) {
-  if (boot_id.size() != 32)
+  if (boot_id.size() != 32) {
     return false;
+  }
 
   for (int i = 0; i < 32; i++) {
     if (!(boot_id[i] >= '0' && boot_id[i] <= '9') &&
@@ -145,8 +146,9 @@ std::optional<BootRecords::BootRange> BootRecords::GetBootRange(
     const std::string& boot_str) const {
   int boot_offset = 0;
   if (boot_str.empty() || base::StringToInt(boot_str, &boot_offset)) {
-    if (boot_str.empty())
+    if (boot_str.empty()) {
       boot_offset = 0;
+    }
 
     // The specified string may be a boot number.
     DCHECK_GT(kBootEntryMaxLen, boot_ranges_.size());
@@ -171,8 +173,9 @@ std::optional<BootRecords::BootRange> BootRecords::GetBootRange(
     // The specified string may be a boot ID.
     for (int i = 0; i < boot_ranges_.size(); i++) {
       const auto& boot_entry = boot_ranges_[i];
-      if (boot_entry.boot_id() != boot_str)
+      if (boot_entry.boot_id() != boot_str) {
         continue;
+      }
       return boot_entry;
     }
   }

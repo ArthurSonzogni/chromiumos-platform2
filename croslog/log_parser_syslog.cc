@@ -26,8 +26,9 @@ int ParseTime(const std::string& entire_line, base::Time* time) {
     std::string log_time = entire_line.substr(0, kTimeStringLengthUTC);
 
     bool result = base::Time::FromString(log_time.c_str(), time);
-    if (!result)
+    if (!result) {
       return -1;
+    }
 
     return kTimeStringLengthUTC;
   } else if (entire_line.length() >= kTimeStringLengthWithTimeZone &&
@@ -36,8 +37,9 @@ int ParseTime(const std::string& entire_line, base::Time* time) {
     std::string log_time = entire_line.substr(0, kTimeStringLengthWithTimeZone);
 
     bool result = base::Time::FromString(log_time.c_str(), time);
-    if (!result)
+    if (!result) {
       return -1;
+    }
 
     return kTimeStringLengthWithTimeZone;
   }
@@ -104,16 +106,18 @@ MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
     for (int i = pos + 1; i < entire_line.size(); i++) {
       if (entire_line[i] == ']') {
         std::string pid_str = entire_line.substr(pos + 1, i - pos - 1);
-        if (!base::StringToInt(pid_str, &pid))
+        if (!base::StringToInt(pid_str, &pid)) {
           pid = -1;
+        }
         pos = i + 1;
         break;
       }
     }
   }
 
-  if (entire_line.size() > pos && entire_line[pos] == ':')
+  if (entire_line.size() > pos && entire_line[pos] == ':') {
     pos++;
+  }
 
   std::string message;
   if (entire_line.size() > pos) {

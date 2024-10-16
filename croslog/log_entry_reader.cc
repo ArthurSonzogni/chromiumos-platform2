@@ -44,8 +44,9 @@ MaybeLogEntry LogEntryReader::GetPreviousEntry() {
 
     MaybeLogEntry entry = parser_->Parse(std::move(line));
     if (entry.has_value()) {
-      if (!lines.empty())
+      if (!lines.empty()) {
         entry->AppendLinesToMessage(lines);
+      }
       return entry;
     }
 

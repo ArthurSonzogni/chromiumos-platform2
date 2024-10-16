@@ -40,8 +40,9 @@ int main(int argc, char* argv[]) {
   // potentially write logs.
   int log_flags = config.quiet ? 0 : brillo::kLogToStderr;
   // if the stdin is not tty, send logs to syslog as well.
-  if (!isatty(0) || command_line->HasSwitch("send-syslog"))
+  if (!isatty(0) || command_line->HasSwitch("send-syslog")) {
     log_flags |= brillo::kLogToSyslog;
+  }
   brillo::InitLog(log_flags);
 
   switch (config.source) {

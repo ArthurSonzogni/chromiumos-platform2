@@ -76,8 +76,9 @@ class LogLineReaderTest : public ::testing::Test,
       base::RunLoop().RunUntilIdle();
       max_try--;
       EXPECT_NE(0u, max_try);
-      if (max_try == 0)
+      if (max_try == 0) {
         return false;
+      }
     }
     return true;
   }

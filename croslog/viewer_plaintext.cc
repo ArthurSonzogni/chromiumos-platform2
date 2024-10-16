@@ -48,20 +48,23 @@ ViewerPlaintext::ViewerPlaintext(const croslog::Config& config,
 void ViewerPlaintext::Initialize() {
   if (!config_.grep.empty()) {
     config_grep_.emplace(config_.grep);
-    if (!config_grep_->ok())
+    if (!config_grep_->ok()) {
       config_grep_.reset();
+    }
   }
 
   if (!config_.after_cursor.empty()) {
-    if (ParseCursor(config_.after_cursor, &config_cursor_time_))
+    if (ParseCursor(config_.after_cursor, &config_cursor_time_)) {
       config_cursor_mode_ = CursorMode::NEWER;
-    else
+    } else {
       LOG(WARNING) << "Invalid cursor format in 'after-cursor' option.";
+    }
   } else if (!config_.cursor.empty()) {
-    if (ParseCursor(config_.cursor, &config_cursor_time_))
+    if (ParseCursor(config_.cursor, &config_cursor_time_)) {
       config_cursor_mode_ = CursorMode::SAME_AND_NEWER;
-    else
+    } else {
       LOG(WARNING) << "Invalid cursor format in 'cursor' option.";
+    }
   }
 
   config_show_cursor_ = config_.show_cursor && !config_.follow;
@@ -69,8 +72,9 @@ void ViewerPlaintext::Initialize() {
   config_boot_range_.reset();
   if (config_.boot.has_value()) {
     auto range = boot_records_.GetBootRange(*config_.boot);
-    if (range.has_value())
+    if (range.has_value()) {
       config_boot_range_.emplace(*range);
+    }
   }
 }
 
@@ -78,16 +82,18 @@ bool ViewerPlaintext::Run() {
   bool install_change_watcher = config_.follow;
   for (const auto& log_path_str : croslog::kLogSources) {
     base::FilePath path(log_path_str.data());
-    if (!base::PathExists(path))
+    if (!base::PathExists(path)) {
       continue;
+    }
     multiplexer_.AddSource(path, std::make_unique<LogParserSyslog>(),
                            install_change_watcher);
   }
 
   for (const auto& log_path_str : croslog::kAuditLogSources) {
     base::FilePath path(log_path_str.data());
-    if (!base::PathExists(path))
+    if (!base::PathExists(path)) {
       continue;
+    }
     multiplexer_.AddSource(path, std::make_unique<LogParserAudit>(),
                            install_change_watcher);
   }
@@ -128,23 +134,29 @@ bool ViewerPlaintext::ShouldFilterOutEntry(const LogEntry& e) {
     }
   }
 
-  if (!config_.since.is_null() && e.time() < config_.since)
+  if (!config_.since.is_null() && e.time() < config_.since) {
     return true;
+  }
 
-  if (!config_.until.is_null() && e.time() > config_.until)
+  if (!config_.until.is_null() && e.time() > config_.until) {
     return true;
+  }
 
   const std::string& tag = e.tag();
-  if (!config_.identifier.empty() && config_.identifier != tag)
+  if (!config_.identifier.empty() && config_.identifier != tag) {
     return true;
+  }
 
   const Severity severity = e.severity();
-  if (config_.severity != Severity::UNSPECIFIED && config_.severity < severity)
+  if (config_.severity != Severity::UNSPECIFIED &&
+      config_.severity < severity) {
     return true;
+  }
 
   const std::string& message = e.message();
-  if (config_grep_.has_value() && !RE2::PartialMatch(message, *config_grep_))
+  if (config_grep_.has_value() && !RE2::PartialMatch(message, *config_grep_)) {
     return true;
+  }
 
   if (config_.boot.has_value()) {
     if (!config_boot_range_.has_value() ||
@@ -161,15 +173,18 @@ void ViewerPlaintext::ReadRemainingLogs() {
 
   while (true) {
     const MaybeLogEntry& e = multiplexer_.Forward();
-    if (!e.has_value())
+    if (!e.has_value()) {
       break;
+    }
 
     // Shoe the last cursor regardless of visibility.
-    if (config_show_cursor_)
+    if (config_show_cursor_) {
       last_shown_log_time = e->time();
+    }
 
-    if (ShouldFilterOutEntry(*e))
+    if (ShouldFilterOutEntry(*e)) {
       continue;
+    }
 
     WriteLog(*e);
   }
@@ -178,8 +193,9 @@ void ViewerPlaintext::ReadRemainingLogs() {
     if (last_shown_log_time.is_null()) {
       multiplexer_.SetLinesFromLast(1);
       const MaybeLogEntry& e = multiplexer_.Forward();
-      if (e.has_value())
+      if (e.has_value()) {
         last_shown_log_time = e->time();
+      }
     }
 
     if (!last_shown_log_time.is_null()) {
@@ -198,8 +214,9 @@ ViewerPlaintext::GenerateKeyValues(const LogEntry& e) {
   kvs.push_back(std::make_pair("SYSLOG_IDENTIFIER", e.tag()));
 
   const std::string& boot_id = GetBootIdAt(e.time());
-  if (!boot_id.empty())
+  if (!boot_id.empty()) {
     kvs.push_back(std::make_pair("_BOOT_ID", boot_id));
+  }
 
   std::string timestamp =
       base::NumberToString(ToMicrosecondsSinceUnixEpoch(e.time()));
@@ -215,10 +232,12 @@ ViewerPlaintext::GenerateKeyValues(const LogEntry& e) {
 }
 
 void ViewerPlaintext::WriteLog(const LogEntry& entry) {
-  if (config_.output == OutputMode::EXPORT)
+  if (config_.output == OutputMode::EXPORT) {
     return WriteLogInExportFormat(entry);
-  if (config_.output == OutputMode::JSON)
+  }
+  if (config_.output == OutputMode::JSON) {
     return WriteLogInJsonFormat(entry);
+  }
 
   const std::string& s = entry.entire_line();
   WriteOutput(s);
@@ -267,13 +286,15 @@ void ViewerPlaintext::WriteLogInJsonFormat(const LogEntry& entry) {
   for (const auto& kv : kvs) {
     std::string escaped_value;
     bool ret_value = base::EscapeJSONString(kv.second, true, &escaped_value);
-    if (!ret_value)
+    if (!ret_value) {
       escaped_value = "<<INVALID>>";
+    }
 
-    if (!first)
+    if (!first) {
       WriteOutput(", \"");
-    else
+    } else {
       WriteOutput("\"");
+    }
     // All keys are hard-corded and unnecessary to escape.
     WriteOutput(kv.first);
     WriteOutput("\": ");

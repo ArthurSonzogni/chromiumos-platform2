@@ -176,8 +176,9 @@ TEST_F(LogRotatorTest, CleanUpFiles) {
                         "test.hoge", "test.fuga.1", "testt.log"};
     base::FilePath base_file_path = temp_dir.GetPath().Append(files[0]);
 
-    for (int i = 0; i < std::size(files); ++i)
+    for (int i = 0; i < std::size(files); ++i) {
       base::WriteFile(temp_dir.GetPath().Append(files[i]), "x");
+    }
 
     LogRotator rotator(base_file_path);
     rotator.CleanUpFiles(1);
@@ -268,8 +269,9 @@ TEST_F(LogRotatorTest, RotateLogFile) {
     base::WriteFile(base_file_path, "0");
 
     for (int i = 1; i < 5; ++i) {
-      if (i == 3)
+      if (i == 3) {
         continue;
+      }
       std::string number = base::NumberToString(i);
       base::WriteFile(temp_dir.GetPath().Append("test." + number), number);
     }

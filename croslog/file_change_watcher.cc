@@ -204,11 +204,13 @@ class FileChangeWatcherImpl : public FileChangeWatcher,
         inotify_wd_it != unexpectedly_removed_inotify_wds_.end();
 
     int ret = inotify_rm_watch(inotify_fd_.get(), inotify_wd);
-    if (ret == -1 && !already_removed_unexpectedly)
+    if (ret == -1 && !already_removed_unexpectedly) {
       DPLOG(WARNING) << "inotify_rm_watch (" << path << ") failed";
+    }
 
-    if (already_removed_unexpectedly)
+    if (already_removed_unexpectedly) {
       unexpectedly_removed_inotify_wds_.erase(inotify_wd_it);
+    }
   }
 
  private:

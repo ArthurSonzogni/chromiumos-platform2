@@ -57,8 +57,9 @@ std::pair<uint64_t, uint64_t> CalculateAppropriateBufferRange(
                (g_allocate_chunk_size / 2 - 1) * g_chunk_size_in_bytes);
 
   // Adjust the length not to overrun the file size.
-  if ((buffer_start_pos + buffer_length) > file_size)
+  if ((buffer_start_pos + buffer_length) > file_size) {
     buffer_length = file_size - buffer_start_pos;
+  }
 
   // Ensure the calculated range is valid.
   DCHECK_LE(buffer_start_pos, request_pos);
@@ -242,8 +243,9 @@ FileMapReader::~FileMapReader() = default;
 void FileMapReader::ApplyFileSizeExpansion() {
   const int64_t current_file_size = delegate_->GetCurrentFileSize();
   CHECK_GE(current_file_size, 0);
-  if (current_file_size == file_size_)
+  if (current_file_size == file_size_) {
     return;
+  }
 
   // We assume the log files never shrink.
   CHECK_LT(file_size_, current_file_size);

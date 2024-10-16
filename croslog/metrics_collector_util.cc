@@ -28,21 +28,27 @@ void CalculateLogMetrics(const base::FilePath& path,
                          int64_t* max_throughput_out) {
   // Checks if the file exists.
   if (!base::PathExists(path)) {
-    if (byte_count_out)
+    if (byte_count_out) {
       *byte_count_out = -1;
-    if (entry_count_out)
+    }
+    if (entry_count_out) {
       *entry_count_out = -1;
-    if (max_throughput_out)
+    }
+    if (max_throughput_out) {
       *max_throughput_out = -1;
+    }
     return;
   }
 
-  if (byte_count_out)
+  if (byte_count_out) {
     *byte_count_out = 0;
-  if (entry_count_out)
+  }
+  if (entry_count_out) {
     *entry_count_out = 0;
-  if (max_throughput_out)
+  }
+  if (max_throughput_out) {
     *max_throughput_out = 0;
+  }
 
   LogEntryReader reader(path, std::move(parser_in), false);
 
@@ -52,11 +58,13 @@ void CalculateLogMetrics(const base::FilePath& path,
   std::deque<base::Time> recent_timestamps;
   while (true) {
     MaybeLogEntry entry = reader.GetPreviousEntry();
-    if (!entry.has_value())
+    if (!entry.has_value()) {
       return;
+    }
 
-    if (!count_after.is_null() && entry->time() < count_after)
+    if (!count_after.is_null() && entry->time() < count_after) {
       return;
+    }
 
     if (byte_count_out && *byte_count_out >= 0) {
       *byte_count_out += entry->entire_line().size();
@@ -85,8 +93,9 @@ void CalculateLogMetrics(const base::FilePath& path,
       *max_throughput_out = std::max(*max_throughput_out, current_throughput);
     }
 
-    if (entry_count_out)
+    if (entry_count_out) {
       (*entry_count_out)++;
+    }
   }
 }
 
@@ -96,19 +105,23 @@ void CalculateMultipleLogMetrics(Multiplexer* multiplexer,
                                  int64_t* max_throughput_out) {
   multiplexer->SetLinesFromLast(0);
 
-  if (entry_count_out)
+  if (entry_count_out) {
     *entry_count_out = 0;
-  if (max_throughput_out)
+  }
+  if (max_throughput_out) {
     *max_throughput_out = 0;
+  }
 
   std::deque<base::Time> recent_timestamps;
   while (true) {
     const MaybeLogEntry& entry = multiplexer->Backward();
-    if (!entry.has_value())
+    if (!entry.has_value()) {
       return;
+    }
 
-    if (!count_after.is_null() && entry->time() < count_after)
+    if (!count_after.is_null() && entry->time() < count_after) {
       return;
+    }
 
     if (max_throughput_out) {
       // Resets the state, if the timestamp order is strange.
@@ -131,8 +144,9 @@ void CalculateMultipleLogMetrics(Multiplexer* multiplexer,
       *max_throughput_out = std::max(*max_throughput_out, current_throughput);
     }
 
-    if (entry_count_out)
+    if (entry_count_out) {
       (*entry_count_out)++;
+    }
   }
 }
 
@@ -145,12 +159,15 @@ void CalculateChromeLogMetrics(const base::FilePath& directory,
   // This logic traverses the chrome logs, since the chrome logs are splitted
   // on every session, instead of daily rotation like other log files.
 
-  if (entry_count_out)
+  if (entry_count_out) {
     *entry_count_out = 0;
-  if (byte_count_out)
+  }
+  if (byte_count_out) {
     *byte_count_out = 0;
-  if (max_throughput_out)
+  }
+  if (max_throughput_out) {
     *max_throughput_out = 0;
+  }
 
   std::vector<base::FilePath> file_path;
   base::FileEnumerator e(directory, false, base::FileEnumerator::FILES,
@@ -170,8 +187,9 @@ void CalculateChromeLogMetrics(const base::FilePath& directory,
 
   for (const base::FilePath& name : file_path) {
     int64_t file_size;
-    if (!GetFileSize(name, &file_size) || file_size == 0)
+    if (!GetFileSize(name, &file_size) || file_size == 0) {
       continue;
+    }
 
     int64_t byte_count_temporary;
     int64_t entry_count_temporary;
@@ -182,19 +200,23 @@ void CalculateChromeLogMetrics(const base::FilePath& directory,
 
     // Skips this file since the file doesn't exist (this rarely happens by
     // file remove/rename race).
-    if (entry_count_temporary < 0)
+    if (entry_count_temporary < 0) {
       continue;
+    }
 
     // Stops the traversal. We found no entries newer than |count_after| in
     // this log files. So, we assume the later files contain older entries,
     // since the file list has been sorted (more recent file first).
-    if (entry_count_temporary == 0)
+    if (entry_count_temporary == 0) {
       return;
+    }
 
-    if (entry_count_out)
+    if (entry_count_out) {
       *entry_count_out += entry_count_temporary;
-    if (byte_count_out)
+    }
+    if (byte_count_out) {
       *byte_count_out += byte_count_temporary;
+    }
     if (max_throughput_out) {
       *max_throughput_out =
           std::max(*max_throughput_out, max_throughput_temporary);

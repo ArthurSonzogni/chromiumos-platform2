@@ -27,16 +27,18 @@ LogRotator::LogRotator(base::FilePath base_log_path)
 
 base::FilePath LogRotator::GetFilePathWithIndex(int index) {
   CHECK_GE(index, 0);
-  if (index == 0)
+  if (index == 0) {
     return base_log_path_;
+  }
 
   return base_log_path_.InsertBeforeExtensionASCII("." +
                                                    base::NumberToString(index));
 }
 
 int LogRotator::GetIndexFromFilePath(const base::FilePath& log_path) {
-  if (log_path == base_log_path_)
+  if (log_path == base_log_path_) {
     return 0;
+  }
 
   if (log_path.value().length() <= base_log_path_.value().length()) {
     // Invalid input, since the given path must be longer than the base path.
@@ -73,8 +75,9 @@ int LogRotator::GetIndexFromFilePath(const base::FilePath& log_path) {
       base_path_body_len + 1,
       log_path.value().length() - base_path_body_len - final_extension_len - 1);
   int index = 0;
-  if (!base::StringToInt(log_path_index_str, &index))
+  if (!base::StringToInt(log_path_index_str, &index)) {
     return -1;
+  }
 
   if (index == 0) {
     // The ".0" extension is invalid. The 0-th file should have no extension.
@@ -94,8 +97,9 @@ void LogRotator::CleanUpFiles(int max_index) {
   while (!file_enumerator.Next().empty()) {
     base::FilePath file_path = dir.Append(file_enumerator.GetInfo().GetName());
     int index = GetIndexFromFilePath(file_path);
-    if (index > max_index || index < 0)
+    if (index > max_index || index < 0) {
       base::DeleteFile(file_path);
+    }
   }
 }
 
@@ -103,15 +107,17 @@ void LogRotator::RotateLogFile(int max_index) {
   std::vector<base::FileEnumerator::FileInfo> info;
 
   base::FilePath max_index_path = GetFilePathWithIndex(max_index);
-  if (base::PathExists(max_index_path))
+  if (base::PathExists(max_index_path)) {
     base::DeleteFile(max_index_path);
+  }
 
   for (int i = (max_index - 1); i >= 0; --i) {
     base::FilePath old_path = GetFilePathWithIndex(i);
     base::FilePath new_path = GetFilePathWithIndex(i + 1);
 
-    if (!base::PathExists(old_path))
+    if (!base::PathExists(old_path)) {
       continue;
+    }
 
     if (!base::Move(old_path, new_path)) {
       LOG(ERROR) << "File error while moving " << old_path << " to " << new_path
@@ -126,8 +132,9 @@ void LogRotator::RotateLogFile(int max_index) {
 
 void LogRotator::CreateNewBaseFile(int max_index) {
   const base::FilePath base_file_path = GetFilePathWithIndex(0);
-  if (base::PathExists(base_file_path))
+  if (base::PathExists(base_file_path)) {
     return;
+  }
 
   int mode = -1;
   uid_t uid = 0;
@@ -136,8 +143,9 @@ void LogRotator::CreateNewBaseFile(int max_index) {
   // Traverse the log files from newer one, and retrieve the file info.
   for (int i = 1; i < max_index; ++i) {
     const base::FilePath previous_file_path = GetFilePathWithIndex(i);
-    if (!base::PathExists(previous_file_path))
+    if (!base::PathExists(previous_file_path)) {
       continue;
+    }
 
     base::stat_wrapper_t file_info;
     if (base::File::Stat(previous_file_path, &file_info) == 0) {

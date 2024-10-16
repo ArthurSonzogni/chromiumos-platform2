@@ -33,8 +33,9 @@ void Multiplexer::AddSource(base::FilePath log_file,
 
 void Multiplexer::OnFileChanged(LogLineReader* reader) {
   for (auto&& source : sources_) {
-    if (source->reader.file_path() != reader->file_path())
+    if (source->reader.file_path() != reader->file_path()) {
       continue;
+    }
 
     // Invalidate caches, since the backed buffer may be invalid.
     if (source->cache_next_backward.has_value()) {
@@ -47,8 +48,9 @@ void Multiplexer::OnFileChanged(LogLineReader* reader) {
     }
   }
 
-  for (Observer& obs : observers_)
+  for (Observer& obs : observers_) {
     obs.OnLogFileChanged();
+  }
 }
 
 MaybeLogEntry Multiplexer::Forward() {
@@ -150,8 +152,9 @@ void Multiplexer::SetLinesFromLast(uint32_t pos) {
 
   for (int i = 0; i < pos; i++) {
     MaybeLogEntry s = Backward();
-    if (!s.has_value())
+    if (!s.has_value()) {
       return;
+    }
   }
 }
 

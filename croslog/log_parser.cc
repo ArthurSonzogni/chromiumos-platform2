@@ -14,8 +14,9 @@ namespace {
 std::string StripLeadingNull(std::string&& entire_line) {
   int null_len = 0;
   for (; null_len < entire_line.size(); null_len++) {
-    if (entire_line[null_len] != '\0')
+    if (entire_line[null_len] != '\0') {
       break;
+    }
   }
 
   return entire_line.substr(null_len);

@@ -22,12 +22,13 @@ bool ViewerJournal::Run(const Config& config) {
   if (config.output != croslog::OutputMode::SHORT) {
     journalctl_command_line.push_back("--output");
     std::string output_mode;
-    if (config.output == croslog::OutputMode::EXPORT)
+    if (config.output == croslog::OutputMode::EXPORT) {
       output_mode = "export";
-    else if (config.output == croslog::OutputMode::JSON)
+    } else if (config.output == croslog::OutputMode::JSON) {
       output_mode = "json";
-    else
+    } else {
       output_mode = "short";
+    }
     journalctl_command_line.push_back(output_mode);
   }
 
@@ -38,8 +39,9 @@ bool ViewerJournal::Run(const Config& config) {
 
   if (config.boot.has_value()) {
     journalctl_command_line.push_back("--boot");
-    if (!config.boot->empty())
+    if (!config.boot->empty()) {
       journalctl_command_line.push_back(config.boot.value());
+    }
   }
 
   if (!config.identifier.empty()) {
@@ -86,8 +88,9 @@ bool ViewerJournal::Run(const Config& config) {
 
   base::Process process(
       base::LaunchProcess(journalctl_command_line, base::LaunchOptions()));
-  if (!process.IsValid())
+  if (!process.IsValid()) {
     return false;
+  }
   int exit_code = -1;
   return process.WaitForExit(&exit_code) && (exit_code == 0);
 }

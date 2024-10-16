@@ -18,17 +18,20 @@ std::string GenerateCursor(const base::Time& time) {
 }
 
 bool ParseCursor(const std::string& cursor_str, base::Time* output) {
-  if (cursor_str.size() != (sizeof(int64_t) * 2 + 5))
+  if (cursor_str.size() != (sizeof(int64_t) * 2 + 5)) {
     return false;
+  }
 
-  if (cursor_str.rfind("time=", 0) != 0)
+  if (cursor_str.rfind("time=", 0) != 0) {
     return false;
+  }
 
   int64_t time_value;
   if (!base::HexStringToInt64(
           std::string_view(cursor_str).substr(5, sizeof(int64_t) * 2),
-          &time_value))
+          &time_value)) {
     return false;
+  }
 
   *output =
       base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(time_value));
