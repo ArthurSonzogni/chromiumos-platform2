@@ -1234,7 +1234,7 @@ grpc::Status ServiceImpl::SetUpUser(grpc::ServerContext* ctx,
       return grpc::Status::OK;
     }
   }
-  if (base::WriteFile(linger_dir.Append(request->username()), NULL, 0) < 0) {
+  if (!base::WriteFile(linger_dir.Append(request->username()), std::string())) {
     response->set_failure_reason("Could not create linger file");
     LOG(ERROR) << response->failure_reason();
     return grpc::Status::OK;
