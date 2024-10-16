@@ -16,9 +16,11 @@
 #include <string_view>
 #include <vector>
 
+#include <base/command_line.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/socket.h>
 #include <fuzzer/FuzzedDataProvider.h>
@@ -91,11 +93,20 @@ class TestMulticastForwarder : public MulticastForwarder {
   std::vector<uint8_t> payload;
 };
 
+class Environment {
+ public:
+  Environment() {
+    // Turn off logging.
+    logging::SetMinLogLevel(logging::LOGGING_FATAL);
+    base::CommandLine::Init(0, nullptr);
+    TestTimeouts::Initialize();
+    base::test::TaskEnvironment task_environment{
+        base::test::TaskEnvironment::MainThreadType::IO};
+  }
+};
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  // Turn off logging.
-  logging::SetMinLogLevel(logging::LOGGING_FATAL);
-  base::test::TaskEnvironment task_environment{
-      base::test::TaskEnvironment::MainThreadType::IO};
+  static Environment env;
 
   // Copy the input data so that TranslateMdnsIp can mutate it.
   char* payload = new char[size];
