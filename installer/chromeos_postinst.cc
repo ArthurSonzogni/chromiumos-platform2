@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "installer/chromeos_postinst.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +27,6 @@
 #include "installer/cgpt_manager.h"
 #include "installer/chromeos_install_config.h"
 #include "installer/chromeos_legacy.h"
-#include "installer/chromeos_postinst.h"
 #include "installer/chromeos_setimage.h"
 #include "installer/inst_util.h"
 #include "installer/metrics.h"
@@ -718,7 +719,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       if (SlowBootNotifyRequired(fspm_main, fspm_next)) {
         base::FilePath slow_boot_req_file(string(kStatefulMount) +
                                           "/etc/slow_boot_required");
-        if (WriteFile(slow_boot_req_file, "1", 1) != 1)
+        if (!WriteFile(slow_boot_req_file, "1"))
           PLOG(ERROR) << "Unable to write to file:"
                       << slow_boot_req_file.value();
       }
