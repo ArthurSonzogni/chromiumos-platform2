@@ -205,8 +205,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoBattery) {
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
   auto expected_routines = GetAllAvailableRoutines();
-  for (auto r : GetBatteryRoutines())
+  for (auto r : GetBatteryRoutines()) {
     expected_routines.erase(r);
+  }
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -233,8 +234,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoNvme) {
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
-  for (const auto r : GetNvmeRoutines())
+  for (const auto r : GetNvmeRoutines()) {
     expected_routines.erase(r);
+  }
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -262,8 +264,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoSmartctl) {
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
-  for (const auto r : GetSmartCtlRoutines())
+  for (const auto r : GetSmartCtlRoutines()) {
     expected_routines.erase(r);
+  }
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -278,8 +281,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesWithMmc) {
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
-  for (const auto r : GetMmcRoutines())
+  for (const auto r : GetMmcRoutines()) {
     expected_routines.insert(r);
+  }
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -293,8 +297,9 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesWithUfs) {
   std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
 
   auto expected_routines = GetAllAvailableRoutines();
-  for (const auto r : GetUfsRoutines())
+  for (const auto r : GetUfsRoutines()) {
     expected_routines.insert(r);
+  }
 
   EXPECT_EQ(reply_set, expected_routines);
 }

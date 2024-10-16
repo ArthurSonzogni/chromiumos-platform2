@@ -61,8 +61,9 @@ bool ReadAndTrimString(const base::FilePath& file_path, StringType* out) {
   DCHECK(out);
   std::string out_raw;
 
-  if (!ReadAndTrimString(file_path, &out_raw))
+  if (!ReadAndTrimString(file_path, &out_raw)) {
     return false;
+  }
 
   *out = static_cast<StringType>(out_raw);
   return true;
@@ -91,8 +92,9 @@ bool ReadInteger(const base::FilePath& file_path,
   DCHECK(out);
 
   std::string buffer;
-  if (!ReadAndTrimString(file_path, &buffer))
+  if (!ReadAndTrimString(file_path, &buffer)) {
     return false;
+  }
 
   return StringToInteger(buffer, out);
 }

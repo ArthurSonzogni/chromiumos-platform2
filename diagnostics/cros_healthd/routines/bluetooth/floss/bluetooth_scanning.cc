@@ -349,8 +349,9 @@ void BluetoothScanningRoutine::UpdatePercentage() {
   }
 
   // Update the percentage.
-  if (new_percentage > state()->percentage && new_percentage < 100)
+  if (new_percentage > state()->percentage && new_percentage < 100) {
     SetPercentage(new_percentage);
+  }
 }
 
 void BluetoothScanningRoutine::OnScanningFinished() {

@@ -70,8 +70,9 @@ MiniDiagMetrics::~MiniDiagMetrics() = default;
 
 void MiniDiagMetrics::RecordLaunch(int count) const {
   if (!metrics_library_->SendLinearToUMA(metrics::kLaunchHistogram, count,
-                                         metrics::kLaunchCountMax))
+                                         metrics::kLaunchCountMax)) {
     LOG(ERROR) << "Cannot send MiniDiag launch count to UMA";
+  }
 }
 
 void MiniDiagMetrics::RecordTestReport(const std::string& type,

@@ -70,8 +70,9 @@ org::chromium::bluetooth::BluetoothProxyInterface* GetTargetAdapter(
       dbus::ObjectPath("/org/chromium/bluetooth/hci" +
                        base::NumberToString(hci_interface) + "/adapter");
   for (const auto& adapter : floss_controller->GetAdapters()) {
-    if (adapter && adapter->GetObjectPath() == target_adapter_path)
+    if (adapter && adapter->GetObjectPath() == target_adapter_path) {
       return adapter;
+    }
   }
   LOG(ERROR) << "Failed to get target adapter for hci" << hci_interface;
   return nullptr;
@@ -83,8 +84,9 @@ org::chromium::bluetooth::BluetoothQAProxyInterface* GetTargetAdapterQA(
       dbus::ObjectPath("/org/chromium/bluetooth/hci" +
                        base::NumberToString(hci_interface) + "/qa");
   for (const auto& adapter_qa : floss_controller->GetAdapterQAs()) {
-    if (adapter_qa && adapter_qa->GetObjectPath() == target_adapter_qa_path)
+    if (adapter_qa && adapter_qa->GetObjectPath() == target_adapter_qa_path) {
       return adapter_qa;
+    }
   }
   LOG(WARNING) << "Failed to get target adapter QA for hci" << hci_interface;
   return nullptr;
@@ -96,8 +98,9 @@ org::chromium::bluetooth::BluetoothAdminProxyInterface* GetTargetAdmin(
       dbus::ObjectPath("/org/chromium/bluetooth/hci" +
                        base::NumberToString(hci_interface) + "/admin");
   for (const auto& admin : floss_controller->GetAdmins()) {
-    if (admin && admin->GetObjectPath() == target_admin_path)
+    if (admin && admin->GetObjectPath() == target_admin_path) {
       return admin;
+    }
   }
   LOG(WARNING) << "Failed to get target admin for hci" << hci_interface;
   return nullptr;
@@ -110,8 +113,9 @@ org::chromium::bluetooth::BatteryManagerProxyInterface* GetTargetBatteryManager(
       "/battery_manager");
   for (const auto& battery_manager : floss_controller->GetBatteryManagers()) {
     if (battery_manager &&
-        battery_manager->GetObjectPath() == target_battery_manager_path)
+        battery_manager->GetObjectPath() == target_battery_manager_path) {
       return battery_manager;
+    }
   }
   LOG(WARNING) << "Failed to get battery manager for hci" << hci_interface;
   return nullptr;

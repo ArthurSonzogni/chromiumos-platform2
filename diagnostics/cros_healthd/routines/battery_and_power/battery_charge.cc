@@ -56,8 +56,9 @@ void BatteryChargeRoutine::Start() {
 void BatteryChargeRoutine::Resume() {
   DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kWaiting);
   RunBatteryChargeRoutine();
-  if (GetStatus() != mojom::DiagnosticRoutineStatusEnum::kRunning)
+  if (GetStatus() != mojom::DiagnosticRoutineStatusEnum::kRunning) {
     LOG(ERROR) << "Routine failed: " << GetStatusMessage();
+  }
 }
 
 void BatteryChargeRoutine::Cancel() {

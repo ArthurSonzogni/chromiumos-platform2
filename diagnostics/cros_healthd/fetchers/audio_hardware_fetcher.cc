@@ -61,12 +61,14 @@ std::tuple<mojom::HDAudioCodecPtr, mojom::ProbeErrorPtr> FetchCodec(
       flag_address = true;
     }
   }
-  if (!flag_codec)
+  if (!flag_codec) {
     return {nullptr, mojom::ProbeError::New(mojom::ErrorType::kParseError,
                                             "Missing field: Codec")};
-  if (!flag_address)
+  }
+  if (!flag_address) {
     return {nullptr, mojom::ProbeError::New(mojom::ErrorType::kParseError,
                                             "Missing field: Address")};
+  }
   return {std::move(codec), nullptr};
 }
 
@@ -100,10 +102,11 @@ std::tuple<base::FilePath, mojom::ProbeErrorPtr> GetAudioCardSysfsRealPath(
   auto path =
       root_dir.Append("sys/class/sound").Append(card_dir_name).Append("device");
   auto result = base::MakeAbsoluteFilePath(path);
-  if (result.empty())
+  if (result.empty()) {
     return {base::FilePath{},
             mojom::ProbeError::New(mojom::ErrorType::kParseError,
                                    "File not found: " + path.value())};
+  }
   return {result, nullptr};
 }
 

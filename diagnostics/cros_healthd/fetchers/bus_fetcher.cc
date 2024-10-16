@@ -41,8 +41,9 @@ namespace mojom = ::ash::cros_healthd::mojom;
 template <typename T>
 bool HexToUInt(std::string_view in, T* out) {
   uint32_t raw;
-  if (!base::HexStringToUInt(in, &raw))
+  if (!base::HexStringToUInt(in, &raw)) {
     return false;
+  }
   *out = static_cast<T>(raw);
   return true;
 }
@@ -53,11 +54,13 @@ const auto& HexToU16 = HexToUInt<uint16_t>;
 bool HexToNullableUint16WithZeroHandling(std::string_view in,
                                          mojom::NullableUint16Ptr* out) {
   uint16_t raw;
-  if (!HexToU16(in, &raw))
+  if (!HexToU16(in, &raw)) {
     return false;
+  }
   // Subsystem device and subsystem vendor is 0x0000 when it is not available.
-  if (raw == 0)
+  if (raw == 0) {
     return false;
+  }
   *out = mojom::NullableUint16::New(raw);
   return true;
 }
@@ -77,8 +80,9 @@ std::vector<base::FilePath> ListDirectory(const base::FilePath& path) {
 
 std::optional<std::string> GetDriver(const base::FilePath& path) {
   base::FilePath driver_path;
-  if (base::ReadSymbolicLink(path.Append(kFileDriver), &driver_path))
+  if (base::ReadSymbolicLink(path.Append(kFileDriver), &driver_path)) {
     return driver_path.BaseName().value();
+  }
   return std::nullopt;
 }
 
@@ -87,8 +91,9 @@ mojom::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
   uint32_t class_raw;
   if (!ReadInteger(path, kFilePciClass, &base::HexStringToUInt, &class_raw) ||
       !ReadInteger(path, kFilePciDevice, &HexToU16, &info->device_id) ||
-      !ReadInteger(path, kFilePciVendor, &HexToU16, &info->vendor_id))
+      !ReadInteger(path, kFilePciVendor, &HexToU16, &info->vendor_id)) {
     return nullptr;
+  }
   ReadInteger(path, kFilePciSubVendor, &HexToNullableUint16WithZeroHandling,
               &info->sub_vendor_id);
   ReadInteger(path, kFilePciSubDevice, &HexToNullableUint16WithZeroHandling,
@@ -103,33 +108,40 @@ mojom::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
 // Some devices cannot be identified by their class id. Try to identify them by
 // checking the sysfs structure.
 mojom::BusDeviceClass GetDeviceClassBySysfs(const base::FilePath& path) {
-  if (base::PathExists(path.Append("bluetooth")))
+  if (base::PathExists(path.Append("bluetooth"))) {
     return mojom::BusDeviceClass::kBluetoothAdapter;
+  }
   const auto net = path.Append("net");
   if (base::PathExists(net)) {
     for (const auto& nic_path : ListDirectory(net)) {
       const auto name = nic_path.BaseName().value();
-      if (name.starts_with("eth"))
+      if (name.starts_with("eth")) {
         return mojom::BusDeviceClass::kEthernetController;
-      if (name.starts_with("wlan"))
+      }
+      if (name.starts_with("wlan")) {
         return mojom::BusDeviceClass::kWirelessController;
+      }
     }
   }
-  if (base::PathExists(path.Append("sound")))
+  if (base::PathExists(path.Append("sound"))) {
     return mojom::BusDeviceClass::kAudioCard;
+  }
   return mojom::BusDeviceClass::kOthers;
 }
 
 mojom::BusDeviceClass GetPciDeviceClass(const base::FilePath& path,
                                         const mojom::PciBusInfoPtr& info) {
   CHECK(info);
-  if (info->class_id == pci_ids::display::kId)
+  if (info->class_id == pci_ids::display::kId) {
     return mojom::BusDeviceClass::kDisplayController;
+  }
   if (info->class_id == pci_ids::network::kId) {
-    if (info->subclass_id == pci_ids::network::ethernet::kId)
+    if (info->subclass_id == pci_ids::network::ethernet::kId) {
       return mojom::BusDeviceClass::kEthernetController;
-    if (info->subclass_id == pci_ids::network::network::kId)
+    }
+    if (info->subclass_id == pci_ids::network::network::kId) {
       return mojom::BusDeviceClass::kWirelessController;
+    }
   }
   return GetDeviceClassBySysfs(path);
 }
@@ -137,8 +149,9 @@ mojom::BusDeviceClass GetPciDeviceClass(const base::FilePath& path,
 mojom::BusDevicePtr FetchPciDevice(const base::FilePath& path,
                                    const std::unique_ptr<PciUtil>& pci_util) {
   auto pci_info = FetchPciInfo(path);
-  if (pci_info.is_null())
+  if (pci_info.is_null()) {
     return nullptr;
+  }
 
   auto device = mojom::BusDevice::New();
   device->vendor_name = pci_util->GetVendorName(pci_info->vendor_id);
@@ -156,8 +169,9 @@ mojom::UsbBusInterfaceInfoPtr FetchUsbBusInterfaceInfo(
   if (!ReadInteger(path, kFileUsbIFNumber, &HexToU8, &info->interface_number) ||
       !ReadInteger(path, kFileUsbIFClass, &HexToU8, &info->class_id) ||
       !ReadInteger(path, kFileUsbIFSubclass, &HexToU8, &info->subclass_id) ||
-      !ReadInteger(path, kFileUsbIFProtocol, &HexToU8, &info->protocol_id))
+      !ReadInteger(path, kFileUsbIFProtocol, &HexToU8, &info->protocol_id)) {
     return nullptr;
+  }
   info->driver = GetDriver(path);
   return info;
 }
@@ -188,8 +202,9 @@ mojom::UsbBusInfoPtr FetchUsbBusInfo(
       !ReadInteger(path, kFileUsbDevSubclass, &HexToU8, &info->subclass_id) ||
       !ReadInteger(path, kFileUsbDevProtocol, &HexToU8, &info->protocol_id) ||
       !ReadInteger(path, kFileUsbVendor, &HexToU16, &info->vendor_id) ||
-      !ReadInteger(path, kFileUsbProduct, &HexToU16, &info->product_id))
+      !ReadInteger(path, kFileUsbProduct, &HexToU16, &info->product_id)) {
     return nullptr;
+  }
 
   info->spec_speed = GetUsbSpecSpeed(path);
   info->version = DetermineUsbVersion(path);
@@ -220,11 +235,13 @@ mojom::BusDeviceClass GetUsbDeviceClass(const base::FilePath& path,
   // Try to get the type by checking the type of each interface.
   for (const auto& if_path : ListDirectory(path)) {
     // |if_path| is an interface if and only if |kFileUsbIFNumber| exist.
-    if (!base::PathExists(if_path.Append(kFileUsbIFNumber)))
+    if (!base::PathExists(if_path.Append(kFileUsbIFNumber))) {
       continue;
+    }
     auto type = GetDeviceClassBySysfs(if_path);
-    if (type != mojom::BusDeviceClass::kOthers)
+    if (type != mojom::BusDeviceClass::kOthers) {
       return type;
+    }
   }
   return mojom::BusDeviceClass::kOthers;
 }
@@ -234,8 +251,9 @@ mojom::BusDevicePtr FetchUsbDevice(
     const std::unique_ptr<brillo::UdevDevice>& udevice,
     const fwupd_utils::DeviceList& fwupd_devices) {
   auto usb_info = FetchUsbBusInfo(path, fwupd_devices);
-  if (usb_info.is_null())
+  if (usb_info.is_null()) {
     return nullptr;
+  }
   auto device = mojom::BusDevice::New();
   if (udevice) {
     device->vendor_name = GetUsbVendorName(udevice);
@@ -259,8 +277,9 @@ mojom::ThunderboltBusInterfaceInfoPtr FetchThunderboltBusInterfaceInfo(
   // Check interface directory name starting with same domain number.
   auto interface_domain_id = interface_dir_name.substr(0, domain_id.length());
 
-  if (interface_domain_id != domain_id)
+  if (interface_domain_id != domain_id) {
     return nullptr;
+  }
 
   auto info = mojom::ThunderboltBusInterfaceInfo::New();
   std::string rx_speed, tx_speed;
@@ -277,8 +296,9 @@ mojom::ThunderboltBusInterfaceInfoPtr FetchThunderboltBusInterfaceInfo(
       !ReadAndTrimString(path.Append(kFileThunderboltUUID),
                          &info->device_uuid) ||
       !ReadAndTrimString(path.Append(kFileThunderboltFWVer),
-                         &info->device_fw_version))
+                         &info->device_fw_version)) {
     return nullptr;
+  }
 
   // Thunderbolt sysfs populate rx_speed and tx_speed value
   // as string "20.0 Gb/s" so reading first integer value.
@@ -292,18 +312,24 @@ mojom::ThunderboltBusInterfaceInfoPtr FetchThunderboltBusInterfaceInfo(
 
 mojom::ThunderboltSecurityLevel StrToEnumThunderboltSecurity(
     const std::string& str) {
-  if (str == "none")
+  if (str == "none") {
     return mojom::ThunderboltSecurityLevel::kNone;
-  if (str == "user")
+  }
+  if (str == "user") {
     return mojom::ThunderboltSecurityLevel::kUserLevel;
-  if (str == "secure")
+  }
+  if (str == "secure") {
     return mojom::ThunderboltSecurityLevel::kSecureLevel;
-  if (str == "dponly")
+  }
+  if (str == "dponly") {
     return mojom::ThunderboltSecurityLevel::kDpOnlyLevel;
-  if (str == "usbonly")
+  }
+  if (str == "usbonly") {
     return mojom::ThunderboltSecurityLevel::kUsbOnlyLevel;
-  if (str == "nopcie")
+  }
+  if (str == "nopcie") {
     return mojom::ThunderboltSecurityLevel::kNoPcieLevel;
+  }
 
   return mojom::ThunderboltSecurityLevel::kNone;
 }
@@ -321,15 +347,17 @@ mojom::ThunderboltBusInfoPtr FetchThunderboltBusInfo(
   auto domain_dir = components.back();
   std::string domain_id;
 
-  if (domain_dir.starts_with("domain"))
+  if (domain_dir.starts_with("domain")) {
     domain_id = domain_dir.substr(strlen("domain"));
-  else
+  } else {
     return nullptr;
+  }
 
-  if (ReadAndTrimString(dev_path.Append(kFileThunderboltSecurity), &security))
+  if (ReadAndTrimString(dev_path.Append(kFileThunderboltSecurity), &security)) {
     info->security_level = StrToEnumThunderboltSecurity(security);
-  else
+  } else {
     return nullptr;
+  }
 
   for (const auto& if_path : ListDirectory(thunderbolt_path)) {
     auto if_info = FetchThunderboltBusInterfaceInfo(if_path, domain_id);
@@ -345,8 +373,9 @@ mojom::BusDevicePtr FetchThunderboltDevice(
     const base::FilePath& thunderbolt_path, const base::FilePath& dev_path) {
   auto thunderbolt_bus_info =
       FetchThunderboltBusInfo(thunderbolt_path, dev_path);
-  if (thunderbolt_bus_info.is_null())
+  if (thunderbolt_bus_info.is_null()) {
     return nullptr;
+  }
   auto device = mojom::BusDevice::New();
   device->device_class = mojom::BusDeviceClass::kThunderboltController;
   device->bus_info =

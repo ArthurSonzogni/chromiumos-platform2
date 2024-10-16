@@ -34,8 +34,9 @@ constexpr char kSeccompFilterPath[] =
 // Returns 0 on success or when the file doesn't exist, non-zero for failure.
 int BindMountIfPathExists(struct minijail* jail,
                           const base::FilePath& file_path) {
-  if (!base::PathExists(file_path))
+  if (!base::PathExists(file_path)) {
     return 0;
+  }
 
   const char* path_string = file_path.value().c_str();
   return minijail_bind(jail, path_string, path_string, 0);

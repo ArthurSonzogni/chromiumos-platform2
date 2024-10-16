@@ -388,8 +388,9 @@ class CpuFetcherTest : public BaseFileTest {
   void WriteCStateData(
       const std::vector<std::pair<std::string, uint64_t>>& data,
       int logical_id) {
-    for (const auto& [name, time] : data)
+    for (const auto& [name, time] : data) {
       WriteCStateFiles(logical_id, name, base::NumberToString(time));
+    }
   }
 
   // Writes to cpuinfo_max_freq, scaling_max_freq, and scaling_cur_freq. If any

@@ -270,8 +270,9 @@ mojom::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
                                 base::SPLIT_WANT_NONEMPTY);
 
   if (subs.size() < kMinComponentLength ||
-      subs[kBlockSubsystemIndex] != kBlockSubsystem)
+      subs[kBlockSubsystemIndex] != kBlockSubsystem) {
     return nullptr;
+  }
 
   if (subs[kBlockTypeSubsystemIndex] == kNvmeSubsystem) {
     block_device_info = FetchNvmeImmutableBlockDeviceInfo(dev_sys_path);
@@ -358,8 +359,9 @@ std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
     const Platform* platform) {
   auto immutable_block_device_info = FetchImmutableBlockDeviceInfo(
       dev_sys_path, dev_node_path, subsystem, platform);
-  if (!immutable_block_device_info)
+  if (!immutable_block_device_info) {
     return nullptr;
+  }
   return base::WrapUnique(
       new StorageDeviceInfo(dev_sys_path, dev_node_path,
                             std::move(immutable_block_device_info), platform));

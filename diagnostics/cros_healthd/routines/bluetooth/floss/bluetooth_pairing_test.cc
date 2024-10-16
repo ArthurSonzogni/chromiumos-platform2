@@ -107,8 +107,9 @@ class BluetoothPairingRoutineTest : public ::testing::Test {
             [=, this](base::OnceCallback<void(bool is_success)> on_success) {
               std::move(on_success).Run(/*is_success=*/true);
               // Send out peripheral in |added_devices|.
-              for (const auto& device : added_devices)
+              for (const auto& device : added_devices) {
                 fake_floss_event_hub()->SendDeviceAdded(device);
+              }
             }));
   }
 

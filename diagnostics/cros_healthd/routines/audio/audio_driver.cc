@@ -35,12 +35,14 @@ void AudioDriverRoutine::OnStart() {
   detail->internal_card_detected = false;
   detail->audio_devices_succeed_to_open = false;
 
-  if (!CheckInternalCardDetected(detail->internal_card_detected))
+  if (!CheckInternalCardDetected(detail->internal_card_detected)) {
     return;
+  }
   SetPercentage(50);
 
-  if (!CheckAudioDevicesSucceedToOpen(detail->audio_devices_succeed_to_open))
+  if (!CheckAudioDevicesSucceedToOpen(detail->audio_devices_succeed_to_open)) {
     return;
+  }
 
   bool result =
       detail->internal_card_detected && detail->audio_devices_succeed_to_open;

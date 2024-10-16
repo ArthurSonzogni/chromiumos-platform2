@@ -89,8 +89,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // 100 KiB max input size. Doing multiple writes and read for significantly
   // large files can potentially cause the fuzzer to timeout.
   constexpr int kMaxInputSize = 102400;
-  if (size > kMaxInputSize)
+  if (size > kMaxInputSize) {
     return 0;
+  }
 
   FuzzedDataProvider provider(data, size);
   // Populate the fake lsb-release file.

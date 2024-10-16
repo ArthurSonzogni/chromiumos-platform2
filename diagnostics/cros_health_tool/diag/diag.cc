@@ -432,8 +432,9 @@ int UrandomMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunUrandomRoutine(
       command_line->HasSwitch("length_seconds")
@@ -451,8 +452,9 @@ int SmartctlCheckMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunSmartctlCheckRoutine(
       command_line->HasSwitch("percentage_used_threshold")
@@ -472,8 +474,9 @@ int AcPowerMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunAcPowerRoutine(
       FLAGS_ac_power_is_connected ? mojom::AcPowerStatusEnum::kConnected
@@ -491,8 +494,9 @@ int CpuCacheMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunCpuCacheRoutine(
       command_line->HasSwitch("length_seconds")
@@ -508,8 +512,9 @@ int CpuStressMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunCpuStressRoutine(
       command_line->HasSwitch("length_seconds")
@@ -525,8 +530,9 @@ int FloatingPointAccuracyMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunFloatingPointAccuracyRoutine(
       command_line->HasSwitch("length_seconds")
@@ -544,8 +550,9 @@ int NvmeSelfTestMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunNvmeSelfTestRoutine(
       FLAGS_nvme_self_test_long ? mojom::NvmeSelfTestTypeEnum::kLongSelfTest
@@ -566,8 +573,9 @@ int DiskReadMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   mojom::DiskReadRoutineTypeEnum type;
   if (FLAGS_disk_read_routine_type == "linear") {
@@ -593,8 +601,9 @@ int PrimeSearchMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunPrimeSearchRoutine(
       command_line->HasSwitch("length_seconds")
@@ -614,8 +623,9 @@ int BatteryDischargeMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunBatteryDischargeRoutine(
       FLAGS_length_seconds, FLAGS_maximum_discharge_percent_allowed);
@@ -633,8 +643,9 @@ int BatteryChargeMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunBatteryChargeRoutine(
       FLAGS_length_seconds, FLAGS_minimum_charge_percent_required);
@@ -658,8 +669,9 @@ int MemoryMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunMemoryRoutine(
       command_line->HasSwitch("max_testing_mem_kib")
@@ -713,8 +725,9 @@ int VideoConferencingMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunVideoConferencingRoutine(
       (FLAGS_stun_server_hostname == "")
@@ -755,8 +768,9 @@ int PrivacyScreenMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   bool target_state;
   if (FLAGS_set_privacy_screen == "on") {
@@ -793,8 +807,9 @@ int BluetoothScanningMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   auto result = actions.ActionRunBluetoothScanningRoutine(
       command_line->HasSwitch("length_seconds")
@@ -812,8 +827,9 @@ int BluetoothPairingMain(int argc, char** argv) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 
   DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
+  if (command_line->HasSwitch("force_cancel_at_percent")) {
     actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
+  }
 
   if (FLAGS_peripheral_id.empty()) {
     std::cout << "Invalid empty peripheral_id" << std::endl;

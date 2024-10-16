@@ -21,8 +21,9 @@ PrimeNumberSearchDelegate::PrimeNumberSearchDelegate(uint64_t max_num)
        i <= static_cast<uint64_t>(std::sqrt(static_cast<double>(max_num_)));
        ++i) {
     if (prime_sieve_[i]) {
-      for (uint64_t j = (i * i); j <= max_num_; j += i)
+      for (uint64_t j = (i * i); j <= max_num_; j += i) {
         prime_sieve_[j] = 0;
+      }
     }
   }
 }
@@ -45,14 +46,17 @@ bool PrimeNumberSearchDelegate::Run() {
 }
 
 bool PrimeNumberSearchDelegate::IsPrime(uint64_t num) const {
-  if (num == 0 || num == 1)
+  if (num == 0 || num == 1) {
     return false;
+  }
 
   uint64_t sqrt_root =
       static_cast<uint64_t>(std::sqrt(static_cast<double>(num)));
-  for (uint64_t divisor = 2; divisor <= sqrt_root; ++divisor)
-    if (num % divisor == 0)
+  for (uint64_t divisor = 2; divisor <= sqrt_root; ++divisor) {
+    if (num % divisor == 0) {
       return false;
+    }
+  }
 
   return true;
 }

@@ -31,9 +31,10 @@ DiskFetcher::~DiskFetcher() = default;
 
 mojom::ProbeErrorPtr DiskFetcher::InitManager() {
   auto udev = brillo::Udev::Create();
-  if (!udev)
+  if (!udev) {
     return mojom::ProbeError::New(mojom::ErrorType::kSystemUtilityError,
                                   "Unable to create udev interface");
+  }
 
   manager_ = std::make_unique<StorageDeviceManager>(
       std::make_unique<StorageDeviceLister>(), std::move(udev),

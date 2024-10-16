@@ -18,9 +18,10 @@ FakeSystemUtilities::~FakeSystemUtilities() = default;
 int FakeSystemUtilities::Uname(struct utsname* buf) {
   CHECK(buf);
 
-  if (uname_ret_code_ == 0)
+  if (uname_ret_code_ == 0) {
     snprintf(buf->machine, sizeof(utsname::machine), "%s",
              uname_machine_.c_str());
+  }
 
   return uname_ret_code_;
 }
@@ -28,8 +29,9 @@ int FakeSystemUtilities::Uname(struct utsname* buf) {
 void FakeSystemUtilities::SetUnameResponse(
     int ret_code, const std::optional<std::string>& machine) {
   uname_ret_code_ = ret_code;
-  if (machine.has_value())
+  if (machine.has_value()) {
     uname_machine_ = machine.value();
+  }
 }
 
 }  // namespace diagnostics

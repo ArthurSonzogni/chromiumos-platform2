@@ -314,12 +314,14 @@ void DiskReadRoutine::UpdatePercentage() {
   }
 
   // Update the percentage if the fio prepare job is finished.
-  if (step_ == kFioRead)
+  if (step_ == kFioRead) {
     new_percentage += 50;
+  }
 
   // Update the percentage.
-  if (new_percentage > state()->percentage && new_percentage < 100)
+  if (new_percentage > state()->percentage && new_percentage < 100) {
     SetPercentage(new_percentage);
+  }
 }
 
 }  // namespace diagnostics

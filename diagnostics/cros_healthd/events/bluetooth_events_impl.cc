@@ -25,8 +25,9 @@ void SendBluetoothEvent(
     mojom::BluetoothEventInfo::State event_state) {
   mojom::BluetoothEventInfo info;
   info.state = event_state;
-  for (auto& observer : event_observers)
+  for (auto& observer : event_observers) {
     observer->OnEvent(mojom::EventInfo::NewBluetoothEventInfo(info.Clone()));
+  }
 }
 
 }  // namespace

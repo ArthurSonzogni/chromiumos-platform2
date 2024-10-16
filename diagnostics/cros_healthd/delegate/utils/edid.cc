@@ -26,16 +26,19 @@ constexpr int kSupportedVersion = 0x01;
 bool isValidEdid(const EdidRaw& edid_raw) {
   // Invalid header.
   if (!std::equal(kValidHeader, kValidHeader + kValidHeaderLen,
-                  edid_raw.header))
+                  edid_raw.header)) {
     return false;
+  }
 
   // Unsupported EDID version.
-  if (edid_raw.version != kSupportedVersion)
+  if (edid_raw.version != kSupportedVersion) {
     return false;
+  }
 
   // Non-pixel clock format is not supported.
-  if (!edid_raw.pixel_clock)
+  if (!edid_raw.pixel_clock) {
     return false;
+  }
   return true;
 }
 
@@ -57,18 +60,21 @@ std::string ExtractDisplayName(const uint8_t* data) {
 
 std::optional<EdidInfo> Edid::From(const std::vector<uint8_t>& blob) {
   // Incomplete data.
-  if (blob.size() < kSize)
+  if (blob.size() < kSize) {
     return std::nullopt;
+  }
 
   // Sum of all 128 bytes should equal 0 (mod 256).
-  if ((std::accumulate(blob.begin(), blob.begin() + kSize, 0) & 0xff) != 0)
+  if ((std::accumulate(blob.begin(), blob.begin() + kSize, 0) & 0xff) != 0) {
     return std::nullopt;
+  }
 
   EdidRaw edid_raw;
   std::copy(blob.begin(), blob.begin() + kSize,
             reinterpret_cast<uint8_t*>(&edid_raw));
-  if (!isValidEdid(edid_raw))
+  if (!isValidEdid(edid_raw)) {
     return std::nullopt;
+  }
 
   return Edid(edid_raw);
 }
@@ -92,8 +98,9 @@ Edid::Edid(const EdidRaw& edid_raw) {
 
   // Format of |edid_raw.serial|:
   //   32 bits, little-endian. If this field is not used, the stored value is 0.
-  if (edid_raw.serial)
+  if (edid_raw.serial) {
     serial_number = edid_raw.serial;
+  }
 
   // Format of |edid_raw.mfg_week|
   //   0x00: Manufacture week is not specified.
@@ -122,10 +129,12 @@ Edid::Edid(const EdidRaw& edid_raw) {
   // Mapping of |display_descriptor.type|:
   //   0xFC: Display name.
   for (auto display_descriptor : edid_raw.display_descriptors) {
-    if (display_descriptor.pixel_clock)
+    if (display_descriptor.pixel_clock) {
       continue;
-    if (display_descriptor.type == 0xFC)
+    }
+    if (display_descriptor.type == 0xFC) {
       display_name = ExtractDisplayName(display_descriptor.data);
+    }
   }
 }
 

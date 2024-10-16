@@ -585,8 +585,9 @@ void CrosHealthdDiagnosticsService::
         brillo::Error* err,
         bool floss_enabled) {
   std::optional<base::TimeDelta> exec_duration;
-  if (!length_seconds.is_null())
+  if (!length_seconds.is_null()) {
     exec_duration = base::Seconds(length_seconds->value);
+  }
 
   if (!err && floss_enabled) {
     auto args = mojom::BluetoothScanningRoutineArgument::New();

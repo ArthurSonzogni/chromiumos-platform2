@@ -61,8 +61,9 @@ std::vector<std::string> StorageDeviceLister::ListDevices(
         break;
       }
     }
-    if (ignored)
+    if (ignored) {
       continue;
+    }
 
     // Filter explicitly removable, or devices where removability could not be
     // detected.
@@ -79,8 +80,9 @@ std::vector<std::string> StorageDeviceLister::ListDevices(
     // filter all eMMC devices unless they're the |root_device|.
     auto root_device = platform_->GetRootDeviceName();
     if (base::StartsWith(dev_name, kEmmcPrefix, base::CompareCase::SENSITIVE)) {
-      if (root_device != dev_name)
+      if (root_device != dev_name) {
         continue;
+      }
     }
 
     result.push_back(device_path.BaseName().value());

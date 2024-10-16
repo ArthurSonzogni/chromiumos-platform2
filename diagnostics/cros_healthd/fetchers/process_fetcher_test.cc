@@ -229,8 +229,9 @@ class ProcessFetcherTest : public BaseFileTest {
 
     // Reconstruct the fake data in the correct format.
     std::string new_fake_data;
-    for (const auto& token : tokens)
+    for (const auto& token : tokens) {
       new_fake_data = new_fake_data + token + " ";
+    }
 
     // Write the new fake data.
     return WriteFileAndCreateParentDirs(

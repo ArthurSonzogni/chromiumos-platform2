@@ -87,15 +87,19 @@ base::Value::Dict ConvertToValueInV1Format(
   base::Value::Dict result_dict;
 
   result_dict.Set("bytesTested", base::NumberToString(detail->bytes_tested));
-  for (const auto& subtest_name : detail->result->passed_items)
+  for (const auto& subtest_name : detail->result->passed_items) {
     subtest_dict.Set(EnumToString(subtest_name), "ok");
-  for (const auto& subtest_name : detail->result->failed_items)
+  }
+  for (const auto& subtest_name : detail->result->failed_items) {
     subtest_dict.Set(EnumToString(subtest_name), "failed");
+  }
 
-  if (!subtest_dict.empty())
+  if (!subtest_dict.empty()) {
     result_dict.Set("subtests", std::move(subtest_dict));
-  if (!result_dict.empty())
+  }
+  if (!result_dict.empty()) {
     output_dict.Set("resultDetails", std::move(result_dict));
+  }
 
   return output_dict;
 }

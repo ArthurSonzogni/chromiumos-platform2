@@ -50,17 +50,19 @@ void TouchscreenEventsImpl::AddObserver(
 void TouchscreenEventsImpl::OnTouch(
     mojom::TouchscreenTouchEventPtr touch_event) {
   auto info = mojom::TouchscreenEventInfo::NewTouchEvent(touch_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewTouchscreenEventInfo(info.Clone()));
+  }
 }
 
 void TouchscreenEventsImpl::OnConnected(
     mojom::TouchscreenConnectedEventPtr connected_event) {
   cached_connected_event_ =
       mojom::TouchscreenEventInfo::NewConnectedEvent(connected_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewTouchscreenEventInfo(
         cached_connected_event_.Clone()));
+  }
 }
 
 void TouchscreenEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {

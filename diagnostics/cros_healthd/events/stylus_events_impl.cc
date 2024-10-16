@@ -49,17 +49,19 @@ void StylusEventsImpl::AddObserver(
 
 void StylusEventsImpl::OnTouch(mojom::StylusTouchEventPtr touch_event) {
   auto info = mojom::StylusEventInfo::NewTouchEvent(touch_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewStylusEventInfo(info.Clone()));
+  }
 }
 
 void StylusEventsImpl::OnConnected(
     mojom::StylusConnectedEventPtr connected_event) {
   cached_connected_event_ =
       mojom::StylusEventInfo::NewConnectedEvent(connected_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(
         mojom::EventInfo::NewStylusEventInfo(cached_connected_event_.Clone()));
+  }
 }
 
 void StylusEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {

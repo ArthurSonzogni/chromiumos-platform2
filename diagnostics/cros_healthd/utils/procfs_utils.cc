@@ -55,8 +55,9 @@ std::optional<uint64_t> ParseIomemContent(const std::string& content) {
         base::TrimString(raw_range, " ", base::TrimPositions::TRIM_ALL);
     std::string_view label =
         base::TrimString(raw_label, " ", base::TrimPositions::TRIM_ALL);
-    if (label != "System RAM")
+    if (label != "System RAM") {
       continue;
+    }
     auto start_end = base::SplitStringPiece(range, "-", base::TRIM_WHITESPACE,
                                             base::SPLIT_WANT_NONEMPTY);
     if (start_end.size() != 2) {
@@ -75,8 +76,9 @@ std::optional<uint64_t> ParseIomemContent(const std::string& content) {
 
   // |total_bytes| can be 0 if |content| is empty or truncated,
   // which should be treated as an error.
-  if (total_bytes == 0)
+  if (total_bytes == 0) {
     return std::nullopt;
+  }
 
   return total_bytes;
 }

@@ -101,8 +101,9 @@ PathLiteral GetSensorPropertyPath(SensorType sensor) {
 
 std::optional<bool> HasGravitySensor(std::optional<bool> has_accel,
                                      std::optional<bool> has_gyro) {
-  if (!has_accel.has_value() || !has_gyro.has_value())
+  if (!has_accel.has_value() || !has_gyro.has_value()) {
     return std::nullopt;
+  }
   return has_accel.value() && has_gyro.value();
 }
 

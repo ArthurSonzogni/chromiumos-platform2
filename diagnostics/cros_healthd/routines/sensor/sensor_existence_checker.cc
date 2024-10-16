@@ -24,8 +24,9 @@ bool IsTargetType(const std::vector<cros::mojom::DeviceType>& types) {
     if (type == cros::mojom::DeviceType::ACCEL ||
         type == cros::mojom::DeviceType::ANGLVEL ||
         type == cros::mojom::DeviceType::MAGN ||
-        type == cros::mojom::DeviceType::GRAVITY)
+        type == cros::mojom::DeviceType::GRAVITY) {
       return true;
+    }
   }
   return false;
 }
@@ -37,10 +38,11 @@ diagnostics::SensorExistenceChecker::Result::State GetExistenceCheckState(
   if (!has_sensor.has_value()) {
     return diagnostics::SensorExistenceChecker::Result::State::kSkipped;
   } else if (has_sensor.value() != is_present) {
-    if (!is_present)
+    if (!is_present) {
       return diagnostics::SensorExistenceChecker::Result::State::kMissing;
-    else
+    } else {
       return diagnostics::SensorExistenceChecker::Result::State::kUnexpected;
+    }
   } else {
     return diagnostics::SensorExistenceChecker::Result::State::kPassed;
   }
@@ -67,8 +69,9 @@ void SensorExistenceChecker::VerifySensorInfo(
       base::BindOnce(&SensorExistenceChecker::CheckSystemConfig,
                      weak_ptr_factory_.GetWeakPtr(), std::move(on_finish))};
   for (const auto& [sensor_id, sensor_types] : ids_types) {
-    if (!IsTargetType(sensor_types))
+    if (!IsTargetType(sensor_types)) {
       continue;
+    }
 
     // Get the sensor location.
     mojo_service_->GetSensorDevice(sensor_id)->GetAttributes(
@@ -91,25 +94,29 @@ void SensorExistenceChecker::HandleSensorLocationResponse(
   const auto& location = attributes[0].value();
   for (const auto& type : sensor_types) {
     if (type == cros::mojom::DeviceType::ACCEL) {
-      if (location == cros::mojom::kLocationBase)
+      if (location == cros::mojom::kLocationBase) {
         iio_sensor_ids_[SensorType::kBaseAccelerometer].push_back(sensor_id);
-      else if (location == cros::mojom::kLocationLid)
+      } else if (location == cros::mojom::kLocationLid) {
         iio_sensor_ids_[SensorType::kLidAccelerometer].push_back(sensor_id);
+      }
     } else if (type == cros::mojom::DeviceType::ANGLVEL) {
-      if (location == cros::mojom::kLocationBase)
+      if (location == cros::mojom::kLocationBase) {
         iio_sensor_ids_[SensorType::kBaseGyroscope].push_back(sensor_id);
-      else if (location == cros::mojom::kLocationLid)
+      } else if (location == cros::mojom::kLocationLid) {
         iio_sensor_ids_[SensorType::kLidGyroscope].push_back(sensor_id);
+      }
     } else if (type == cros::mojom::DeviceType::MAGN) {
-      if (location == cros::mojom::kLocationBase)
+      if (location == cros::mojom::kLocationBase) {
         iio_sensor_ids_[SensorType::kBaseMagnetometer].push_back(sensor_id);
-      else if (location == cros::mojom::kLocationLid)
+      } else if (location == cros::mojom::kLocationLid) {
         iio_sensor_ids_[SensorType::kLidMagnetometer].push_back(sensor_id);
+      }
     } else if (type == cros::mojom::DeviceType::GRAVITY) {
-      if (location == cros::mojom::kLocationBase)
+      if (location == cros::mojom::kLocationBase) {
         iio_sensor_ids_[SensorType::kBaseGravitySensor].push_back(sensor_id);
-      else if (location == cros::mojom::kLocationLid)
+      } else if (location == cros::mojom::kLocationLid) {
         iio_sensor_ids_[SensorType::kLidGravitySensor].push_back(sensor_id);
+      }
     }
   }
 }

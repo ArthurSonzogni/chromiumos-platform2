@@ -50,8 +50,9 @@ std::vector<base::FilePath> StorageDeviceManager::ListDevicesPaths(
   std::vector<base::FilePath> res;
   std::vector<std::string> device_names = device_lister_->ListDevices(root);
 
-  for (auto d : device_names)
+  for (auto d : device_names) {
     res.push_back(root.Append(kSysBlockPath).Append(d));
+  }
 
   return res;
 }
@@ -96,8 +97,9 @@ mojom::ProbeErrorPtr StorageDeviceManager::RefreshDevices(
     std::string subsystem = dev->GetSubsystem();
     for (auto it = dev->GetParent(); it; it = it->GetParent()) {
       auto s = it->GetSubsystem();
-      if (s != nullptr)
+      if (s != nullptr) {
         subsystem += std::string(":") + s;
+      }
     }
 
     auto dev_info = StorageDeviceInfo::Create(

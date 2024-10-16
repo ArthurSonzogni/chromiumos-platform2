@@ -71,8 +71,9 @@ void DisplayError(const mojom::ProbeErrorPtr& error) {
 }
 
 void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
-  if (result.is_null())
+  if (result.is_null()) {
     return;
+  }
 
   if (result->is_error()) {
     DisplayError(result->get_error());
@@ -120,8 +121,9 @@ base::Value::Dict PopulateInputDeviceFields(
 }
 
 void DisplayMultipleProcessInfo(const mojom::MultipleProcessResultPtr& result) {
-  if (result.is_null())
+  if (result.is_null()) {
     return;
+  }
 
   const auto& info = result;
 
@@ -1209,92 +1211,114 @@ void DisplayThermalInfo(const mojom::ThermalResultPtr& result) {
 // Displays the retrieved telemetry information to the console.
 void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
-  if (battery_result)
+  if (battery_result) {
     DisplayBatteryInfo(battery_result);
+  }
 
   const auto& block_device_result = info->block_device_result;
-  if (block_device_result)
+  if (block_device_result) {
     DisplayBlockDeviceInfo(block_device_result);
+  }
 
   const auto& cpu_result = info->cpu_result;
-  if (cpu_result)
+  if (cpu_result) {
     DisplayCpuInfo(cpu_result);
+  }
 
   const auto& timezone_result = info->timezone_result;
-  if (timezone_result)
+  if (timezone_result) {
     DisplayTimezoneInfo(timezone_result);
+  }
 
   const auto& memory_result = info->memory_result;
-  if (memory_result)
+  if (memory_result) {
     DisplayMemoryInfo(memory_result);
+  }
 
   const auto& backlight_result = info->backlight_result;
-  if (backlight_result)
+  if (backlight_result) {
     DisplayBacklightInfo(backlight_result);
+  }
 
   const auto& fan_result = info->fan_result;
-  if (fan_result)
+  if (fan_result) {
     DisplayFanInfo(fan_result);
+  }
 
   const auto& stateful_partition_result = info->stateful_partition_result;
-  if (stateful_partition_result)
+  if (stateful_partition_result) {
     DisplayStatefulPartitionInfo(stateful_partition_result);
+  }
 
   const auto& bluetooth_result = info->bluetooth_result;
-  if (bluetooth_result)
+  if (bluetooth_result) {
     DisplayBluetoothInfo(bluetooth_result);
+  }
 
   const auto& network_result = info->network_result;
-  if (network_result)
+  if (network_result) {
     DisplayNetworkInfo(network_result);
+  }
 
   const auto& audio_result = info->audio_result;
-  if (audio_result)
+  if (audio_result) {
     DisplayAudioInfo(audio_result);
+  }
 
   const auto& boot_performance_result = info->boot_performance_result;
-  if (boot_performance_result)
+  if (boot_performance_result) {
     DisplayBootPerformanceInfo(boot_performance_result);
+  }
 
   const auto& network_interface_result = info->network_interface_result;
-  if (network_interface_result)
+  if (network_interface_result) {
     DisplayNetworkInterfaceInfo(network_interface_result);
+  }
 
   const auto& bus_result = info->bus_result;
-  if (bus_result)
+  if (bus_result) {
     DisplayBusDevices(bus_result);
+  }
 
   const auto& tpm_result = info->tpm_result;
-  if (tpm_result)
+  if (tpm_result) {
     DisplayTpmInfo(tpm_result);
+  }
 
   const auto& system_result = info->system_result;
-  if (system_result)
+  if (system_result) {
     DisplaySystemInfo(system_result);
+  }
 
   const auto& graphics_result = info->graphics_result;
-  if (graphics_result)
+  if (graphics_result) {
     DisplayGraphicsInfo(graphics_result);
+  }
 
   const auto& display_result = info->display_result;
-  if (display_result)
+  if (display_result) {
     DisplayDisplayInfo(display_result);
+  }
 
   const auto& input_result = info->input_result;
-  if (input_result)
+  if (input_result) {
     DisplayInputInfo(input_result);
+  }
 
   const auto& audio_hardware_result = info->audio_hardware_result;
-  if (audio_hardware_result)
+  if (audio_hardware_result) {
     DisplayAudioHardwareInfo(audio_hardware_result);
+  }
 
   const auto& sensor_result = info->sensor_result;
-  if (sensor_result)
+  if (sensor_result) {
     DisplaySensorInfo(sensor_result);
+  }
 
   const auto& thermal_result = info->thermal_result;
-  if (thermal_result)
+  if (thermal_result) {
     DisplayThermalInfo(thermal_result);
+  }
 }
 
 // Create a stringified list of the category names for use in help.

@@ -54,8 +54,9 @@ void CancelAdapterDiscovery(FlossController* floss_controller,
                             int32_t hci_interface) {
   auto adapter_path = GetAdapterPath(hci_interface);
   for (const auto& adapter : floss_controller->GetAdapters()) {
-    if (adapter && adapter->GetObjectPath() == adapter_path)
+    if (adapter && adapter->GetObjectPath() == adapter_path) {
       adapter->CancelDiscoveryAsync(base::DoNothing(), base::DoNothing());
+    }
   }
 }
 
@@ -118,8 +119,9 @@ void BluetoothRoutineBase::SetupDefaultAdapter(
   // Setup default adapter.
   const auto adapter_path = GetAdapterPath(default_adapter_hci_);
   for (const auto& adapter : context_->floss_controller()->GetAdapters()) {
-    if (adapter && adapter->GetObjectPath() == adapter_path)
+    if (adapter && adapter->GetObjectPath() == adapter_path) {
       default_adapter_ = adapter;
+    }
   }
 
   event_subscriptions_.push_back(
@@ -295,8 +297,9 @@ void BluetoothRoutineBase::OnAdapterAdded(
 
 void BluetoothRoutineBase::OnAdapterRemoved(
     const dbus::ObjectPath& adapter_path) {
-  if (GetAdapterPath(default_adapter_hci_) == adapter_path)
+  if (GetAdapterPath(default_adapter_hci_) == adapter_path) {
     default_adapter_ = nullptr;
+  }
 }
 
 void BluetoothRoutineBase::OnAdapterPoweredChanged(int32_t hci_interface,

@@ -106,8 +106,9 @@ MojoServiceImpl::GetCameraDiagnostics() {
 }
 
 void MojoServiceImpl::BindSensorDeviceRemoteIfNeeded(int32_t device_id) {
-  if (sensor_devices_[device_id].is_bound())
+  if (sensor_devices_[device_id].is_bound()) {
     return;
+  }
 
   MojoServiceImpl::GetSensorService()->GetDevice(
       device_id, sensor_devices_[device_id].BindNewPipeAndPassReceiver());
@@ -135,8 +136,9 @@ void MojoServiceImpl::SendServiceRequest(
     mojo::PendingReceiver<InterfaceType> pending_receiver) {
   // When shutdowning, the service manager could be disconnected. Don't call the
   // interface to prevent crashing during shutdown.
-  if (!service_manager_.is_connected())
+  if (!service_manager_.is_connected()) {
     return;
+  }
   service_manager_->Request(service_name, std::nullopt,
                             pending_receiver.PassPipe());
 }

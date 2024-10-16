@@ -36,12 +36,13 @@ constexpr char kBluetoothTypeDualName[] = "DUAL";
 
 // Convert std::string to |BluetoothDeviceType| enum.
 mojom::BluetoothDeviceType GetDeviceType(const std::string& type) {
-  if (type == kBluetoothTypeBrEdrName)
+  if (type == kBluetoothTypeBrEdrName) {
     return mojom::BluetoothDeviceType::kBrEdr;
-  else if (type == kBluetoothTypeLeName)
+  } else if (type == kBluetoothTypeLeName) {
     return mojom::BluetoothDeviceType::kLe;
-  else if (type == kBluetoothTypeDualName)
+  } else if (type == kBluetoothTypeDualName) {
     return mojom::BluetoothDeviceType::kDual;
+  }
   return mojom::BluetoothDeviceType::kUnknown;
 }
 
@@ -76,30 +77,38 @@ void ParseDevicesInfo(
   ParseBatteryPercentage(batteries, battery_percentage);
 
   for (const auto& device : devices) {
-    if (!device || !device->connected())
+    if (!device || !device->connected()) {
       continue;
+    }
 
     mojom::BluetoothDeviceInfo info;
     info.address = device->address();
 
     // The following are optional device properties.
-    if (device->is_name_valid())
+    if (device->is_name_valid()) {
       info.name = device->name();
-    if (device->is_type_valid())
+    }
+    if (device->is_type_valid()) {
       info.type = GetDeviceType(device->type());
-    else
+    } else {
       info.type = mojom::BluetoothDeviceType::kUnknown;
-    if (device->is_appearance_valid())
+    }
+    if (device->is_appearance_valid()) {
       info.appearance = mojom::NullableUint16::New(device->appearance());
-    if (device->is_modalias_valid())
+    }
+    if (device->is_modalias_valid()) {
       info.modalias = device->modalias();
-    if (device->is_rssi_valid())
+    }
+    if (device->is_rssi_valid()) {
       info.rssi = mojom::NullableInt16::New(device->rssi());
-    if (device->is_uuids_valid())
+    }
+    if (device->is_uuids_valid()) {
       info.uuids = device->uuids();
-    if (device->is_bluetooth_class_valid())
+    }
+    if (device->is_bluetooth_class_valid()) {
       info.bluetooth_class =
           mojom::NullableUint32::New(device->bluetooth_class());
+    }
 
     const auto it = battery_percentage.find(device->GetObjectPath());
     if (it != battery_percentage.end()) {
@@ -134,8 +143,9 @@ void FetchBluetoothInfoFromBluez(Context* context,
 
   // Fetch adapters' info.
   for (const auto& adapter : bluez_controller->GetAdapters()) {
-    if (!adapter)
+    if (!adapter) {
       continue;
+    }
     mojom::BluetoothAdapterInfo info;
 
     info.name = adapter->name();

@@ -61,8 +61,9 @@ BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
 BluetoothRoutineBase::~BluetoothRoutineBase() = default;
 
 org::bluez::Adapter1ProxyInterface* BluetoothRoutineBase::GetAdapter() const {
-  if (adapters_.empty())
+  if (adapters_.empty()) {
     return nullptr;
+  }
   return adapters_[0];
 }
 

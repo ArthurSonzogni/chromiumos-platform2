@@ -54,15 +54,17 @@ void AudioEventsImpl::AddObserver(
 void AudioEventsImpl::OnUnderrunSignal() {
   mojom::AudioEventInfo info;
   info.state = mojom::AudioEventInfo::State::kUnderrun;
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewAudioEventInfo(info.Clone()));
+  }
 }
 
 void AudioEventsImpl::OnSevereUnderrunSignal() {
   mojom::AudioEventInfo info;
   info.state = mojom::AudioEventInfo::State::kSevereUnderrun;
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewAudioEventInfo(info.Clone()));
+  }
 }
 
 }  // namespace diagnostics

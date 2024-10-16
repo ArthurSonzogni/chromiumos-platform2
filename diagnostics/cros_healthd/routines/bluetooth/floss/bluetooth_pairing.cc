@@ -319,8 +319,9 @@ void BluetoothPairingRoutine::HandleUpdateDiscoveryResponse(
 
 void BluetoothPairingRoutine::OnDeviceAdded(
     const brillo::VariantDictionary& device) {
-  if (step_ != TestStep::kScanTargetDevice)
+  if (step_ != TestStep::kScanTargetDevice) {
     return;
+  }
 
   auto devie_info = floss_utils::ParseDeviceInfo(device);
   if (!devie_info.has_value()) {
@@ -543,8 +544,9 @@ void BluetoothPairingRoutine::OnDeviceBondChanged(uint32_t bt_status,
     return;
   }
   // Routine will receive this event after SSP process is finished.
-  if (bond_state == BondState::kBonded)
+  if (bond_state == BondState::kBonded) {
     RunNextStep();
+  }
 }
 
 void BluetoothPairingRoutine::HandleRemoveBondResponse(brillo::Error* error,
@@ -559,8 +561,9 @@ void BluetoothPairingRoutine::HandleRemoveBondResponse(brillo::Error* error,
 void BluetoothPairingRoutine::UpdatePercentage() {
   double new_percentage = static_cast<int32_t>(step_) * 100.0 /
                           static_cast<int32_t>(TestStep::kComplete);
-  if (new_percentage > state()->percentage && new_percentage < 100)
+  if (new_percentage > state()->percentage && new_percentage < 100) {
     SetPercentage(new_percentage);
+  }
 }
 
 void BluetoothPairingRoutine::OnTimeoutOccurred() {

@@ -51,21 +51,24 @@ base::expected<base::FilePath, std::string> GetDriverSymlinkTarget(
       CharToNonNullStr(dev.GetPropertyValue(touchpad::kUdevPropertyMajor));
   std::string minor =
       CharToNonNullStr(dev.GetPropertyValue(touchpad::kUdevPropertyMinor));
-  if (major.empty() || minor.empty())
+  if (major.empty() || minor.empty()) {
     return base::unexpected(
         "Unable to get major/minor numbers from device properties");
+  }
 
   std::string driver_path = base::StrCat(
       {root_path, "sys/dev/char/", major, ":", minor, "/device/device/driver"});
 
   base::FilePath target;
 
-  if (!base::ReadSymbolicLink(base::FilePath{driver_path}, &target))
+  if (!base::ReadSymbolicLink(base::FilePath{driver_path}, &target)) {
     return base::unexpected(
         base::StrCat({"Error reading symbolic link at ", driver_path}));
+  }
 
-  if (target.empty())
+  if (target.empty()) {
     return base::unexpected("Error reading driver symlink target");
+  }
 
   return base::ok(target);
 }
@@ -93,8 +96,9 @@ std::string GetPsmouseDriver(const brillo::UdevDevice& dev,
 
   base::FilePath protocol_filepath{protocol_path};
 
-  if (!base::ReadFileToString(protocol_filepath, &protocol_result))
+  if (!base::ReadFileToString(protocol_filepath, &protocol_result)) {
     return "psmouse";
+  }
 
   std::vector<std::string_view> protocol = base::SplitStringPiece(
       protocol_result, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -138,17 +142,20 @@ bool IsInternalTouchpad(const brillo::UdevDevice& dev) {
 base::expected<std::vector<mojom::TouchpadDevicePtr>, std::string>
 PopulateTouchpadDevices(std::unique_ptr<brillo::Udev> udev,
                         std::string root_path) {
-  if (udev == nullptr)
+  if (udev == nullptr) {
     return base::unexpected("Error initializing udev");
+  }
 
   std::unique_ptr<brillo::UdevEnumerate> udev_enumerate =
       udev->CreateEnumerate();
-  if (udev_enumerate == nullptr)
+  if (udev_enumerate == nullptr) {
     return base::unexpected("Error initializing udev_enumerate");
+  }
 
   if (!udev_enumerate->AddMatchSubsystem(kSubsystemInput) ||
-      !udev_enumerate->ScanDevices())
+      !udev_enumerate->ScanDevices()) {
     return base::unexpected("Failed to scan input devices");
+  }
 
   for (std::unique_ptr<brillo::UdevListEntry> entry =
            udev_enumerate->GetListEntry();
@@ -166,12 +173,14 @@ PopulateTouchpadDevices(std::unique_ptr<brillo::Udev> udev,
                    << sys_path.c_str();
       continue;
     }
-    if (!IsInternalTouchpad(*dev))
+    if (!IsInternalTouchpad(*dev)) {
       continue;
+    }
 
     auto symlink_target_result = GetDriverSymlinkTarget(*dev, root_path);
-    if (!symlink_target_result.has_value())
+    if (!symlink_target_result.has_value()) {
       return base::unexpected(symlink_target_result.error());
+    }
 
     base::FilePath symlink_target = symlink_target_result.value();
     std::string driver_name;
@@ -180,9 +189,10 @@ PopulateTouchpadDevices(std::unique_ptr<brillo::Udev> udev,
       driver_name = GetPsmouseDriver(*dev, root_path);
     } else {
       std::vector<std::string> filepath_list = symlink_target.GetComponents();
-      if (filepath_list.empty())
+      if (filepath_list.empty()) {
         return base::unexpected(
             "Touchpad symlink was empty. Could not read driver name");
+      }
 
       driver_name = filepath_list.back();
     }

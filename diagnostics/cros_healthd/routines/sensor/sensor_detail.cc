@@ -83,8 +83,9 @@ std::vector<std::string> GetRequiredChannels(
   std::vector<std::string> channels = {cros::mojom::kTimestampChannel};
   for (auto type : types) {
     auto channel_prefix = ConvertDeviceTypeToChannelPrefix(type);
-    for (char axis : kChannelAxes)
+    for (char axis : kChannelAxes) {
       channels.push_back(channel_prefix + "_" + axis);
+    }
   }
   return channels;
 }
@@ -129,8 +130,9 @@ SensorDetail::CheckRequiredChannelsAndGetIndices(
 
 void SensorDetail::UpdateChannelSample(int32_t indice, int64_t value) {
   // Passed channels are removed from |checking_channel_sample_|.
-  if (checking_channel_sample_.find(indice) == checking_channel_sample_.end())
+  if (checking_channel_sample_.find(indice) == checking_channel_sample_.end()) {
     return;
+  }
 
   // First sample data for the channel.
   if (!checking_channel_sample_[indice].has_value()) {

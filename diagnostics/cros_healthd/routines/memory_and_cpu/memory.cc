@@ -311,8 +311,9 @@ void MemoryRoutine::ReadNewMemtesterResult() {
     } else if (c == '\r') {
       continue;
     } else if (c == '\b') {
-      if (parsed_memtester_result_.back().back().length() > 0)
+      if (parsed_memtester_result_.back().back().length() > 0) {
         parsed_memtester_result_.back().emplace_back("");
+      }
     } else {
       parsed_memtester_result_.back().back().push_back(c);
     }

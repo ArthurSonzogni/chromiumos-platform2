@@ -68,8 +68,9 @@ PciUtilImpl::PciUtilImpl() {
 }
 
 PciUtilImpl::~PciUtilImpl() {
-  if (pacc_)
+  if (pacc_) {
     pci_cleanup(pacc_);
+  }
 }
 
 std::string PciUtilImpl::GetVendorName(uint16_t vendor_id) {

@@ -49,23 +49,26 @@ void TouchpadEventsImpl::AddObserver(
 
 void TouchpadEventsImpl::OnButton(mojom::TouchpadButtonEventPtr button_event) {
   auto info = mojom::TouchpadEventInfo::NewButtonEvent(button_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewTouchpadEventInfo(info.Clone()));
+  }
 }
 
 void TouchpadEventsImpl::OnTouch(mojom::TouchpadTouchEventPtr touch_event) {
   auto info = mojom::TouchpadEventInfo::NewTouchEvent(touch_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewTouchpadEventInfo(info.Clone()));
+  }
 }
 
 void TouchpadEventsImpl::OnConnected(
     mojom::TouchpadConnectedEventPtr connected_event) {
   cached_connected_event_ =
       mojom::TouchpadEventInfo::NewConnectedEvent(connected_event.Clone());
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewTouchpadEventInfo(
         cached_connected_event_.Clone()));
+  }
 }
 
 void TouchpadEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {

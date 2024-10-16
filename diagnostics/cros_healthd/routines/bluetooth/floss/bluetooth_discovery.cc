@@ -280,8 +280,9 @@ void BluetoothDiscoveryRoutine::OnAdapterDiscoveringChanged(
     const dbus::ObjectPath& adapter_path, bool discovering) {
   if ((step_ != TestStep::kCheckDiscoveringStatusOn &&
        step_ != TestStep::kCheckDiscoveringStatusOff) ||
-      adapter_path != default_adapter_path_)
+      adapter_path != default_adapter_path_) {
     return;
+  }
 
   current_dbus_discovering_ = discovering;
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
@@ -413,8 +414,9 @@ void BluetoothDiscoveryRoutine::UpdatePercentage() {
   double new_percentage = static_cast<int32_t>(step_) * 100.0 /
                           static_cast<int32_t>(TestStep::kComplete);
   // Update the percentage.
-  if (new_percentage > state()->percentage && new_percentage < 100)
+  if (new_percentage > state()->percentage && new_percentage < 100) {
     SetPercentage(new_percentage);
+  }
 }
 
 void BluetoothDiscoveryRoutine::OnTimeoutOccurred() {

@@ -35,8 +35,9 @@ base::Value::Dict ConstructPeripheralDict(
 
   // RSSI history.
   base::Value::List out_rssi_history;
-  for (const auto& rssi : rssi_history)
+  for (const auto& rssi : rssi_history) {
     out_rssi_history.Append(rssi);
+  }
   peripheral.Set("rssi_history", std::move(out_rssi_history));
 
   if (rssi_history.empty() ||
@@ -55,8 +56,9 @@ base::Value::Dict ConstructPeripheralDict(
   // UUIDs.
   if (device.uuids.has_value()) {
     base::Value::List out_uuids;
-    for (const auto& uuid : device.uuids.value())
+    for (const auto& uuid : device.uuids.value()) {
       out_uuids.Append(uuid);
+    }
     peripheral.Set("uuids", std::move(out_uuids));
   }
   return peripheral;
@@ -126,8 +128,9 @@ void BluetoothScanningRoutine::PopulateStatusUpdate(
 
   if (include_output) {
     base::Value::List peripherals;
-    for (const auto& [unused, device] : scanned_devices_)
+    for (const auto& [unused, device] : scanned_devices_) {
       peripherals.Append(ConstructPeripheralDict(device));
+    }
     base::Value::Dict output_dict;
     output_dict.Set("peripherals", std::move(peripherals));
     std::string json;
@@ -218,25 +221,30 @@ void BluetoothScanningRoutine::HandleAdapterDiscoveryError(
 
 void BluetoothScanningRoutine::OnDeviceAdded(
     org::bluez::Device1ProxyInterface* device) {
-  if (!device || step_ != TestStep::kScanning)
+  if (!device || step_ != TestStep::kScanning) {
     return;
+  }
 
   const auto& path = device->GetObjectPath();
   scanned_devices_[path].peripheral_id =
       base::NumberToString(base::FastHash(device->address()));
-  if (device->is_name_valid())
+  if (device->is_name_valid()) {
     scanned_devices_[path].name = device->name();
-  if (device->is_rssi_valid())
+  }
+  if (device->is_rssi_valid()) {
     scanned_devices_[path].rssi_history.push_back(device->rssi());
-  if (device->is_uuids_valid())
+  }
+  if (device->is_uuids_valid()) {
     scanned_devices_[path].uuids = device->uuids();
+  }
 }
 
 void BluetoothScanningRoutine::OnDevicePropertyChanged(
     org::bluez::Device1ProxyInterface* device,
     const std::string& property_name) {
-  if (!device || step_ != TestStep::kScanning)
+  if (!device || step_ != TestStep::kScanning) {
     return;
+  }
 
   const auto& path = device->GetObjectPath();
   // The device is cached before routine starts.
@@ -246,14 +254,17 @@ void BluetoothScanningRoutine::OnDevicePropertyChanged(
   }
 
   if (property_name == device->NameName()) {
-    if (device->is_name_valid())
+    if (device->is_name_valid()) {
       scanned_devices_[path].name = device->name();
+    }
   } else if (property_name == device->UUIDsName()) {
-    if (device->is_uuids_valid())
+    if (device->is_uuids_valid()) {
       scanned_devices_[path].uuids = device->uuids();
+    }
   } else if (property_name == device->RSSIName()) {
-    if (device->is_rssi_valid())
+    if (device->is_rssi_valid()) {
       scanned_devices_[path].rssi_history.push_back(device->rssi());
+    }
   }
 }
 

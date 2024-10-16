@@ -27,8 +27,9 @@ uint32_t CalculateProgressPercent(mojom::DiagnosticRoutineStatusEnum status) {
   // 0 or 100.
   if (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
       status == mojom::DiagnosticRoutineStatusEnum::kFailed ||
-      status == mojom::DiagnosticRoutineStatusEnum::kError)
+      status == mojom::DiagnosticRoutineStatusEnum::kError) {
     return 100;
+  }
   return 0;
 }
 

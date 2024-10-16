@@ -84,57 +84,70 @@ void SetJsonDictValue(std::string_view key,
     // string.
     SetJsonDictValue(key, base::NumberToString(value), output);
   } else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
-    if (value.has_value())
+    if (value.has_value()) {
       SetJsonDictValue(key, value.value(), output);
+    }
   } else if constexpr (std::is_same_v<
                            T, std::optional<std::vector<std::string>>>) {
-    if (value.has_value())
+    if (value.has_value()) {
       SetJsonDictValue(key, value.value(), output);
+    }
   } else if constexpr (std::is_same_v<T, std::optional<double>>) {
-    if (value.has_value())
+    if (value.has_value()) {
       SetJsonDictValue(key, value.value(), output);
+    }
   } else if constexpr (std::is_same_v<T, std::optional<uint64_t>>) {
-    if (value.has_value())
+    if (value.has_value()) {
       SetJsonDictValue(key, value.value(), output);
+    }
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableDoublePtr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableUint8Ptr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableInt16Ptr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableUint16Ptr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableUint32Ptr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_same_v<
                            T, ash::cros_healthd::mojom::NullableUint64Ptr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_same_v<
                            T,
                            chromeos::network_health::mojom::UInt32ValuePtr>) {
-    if (value)
+    if (value) {
       SetJsonDictValue(key, value->value, output);
+    }
   } else if constexpr (std::is_enum_v<T>) {
     SetJsonDictValue(key, EnumToString(value), output);
   } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
     base::Value::List string_vector;
-    for (const auto& s : value)
+    for (const auto& s : value) {
       string_vector.Append(s);
+    }
     output->Set(key, std::move(string_vector));
   } else if constexpr (std::is_same_v<T, std::optional<bool>>) {
-    if (value.has_value())
+    if (value.has_value()) {
       SetJsonDictValue(key, value.value(), output);
+    }
   } else {
     output->Set(key, value);
   }

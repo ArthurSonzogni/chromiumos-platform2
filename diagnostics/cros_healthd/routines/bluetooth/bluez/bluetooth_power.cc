@@ -149,8 +149,9 @@ void BluetoothPowerRoutine::OnAdapterPropertyChanged(
     org::bluez::Adapter1ProxyInterface* adapter,
     const std::string& property_name) {
   if (adapter != GetAdapter() || property_name != adapter->PoweredName() ||
-      (step_ != kCheckPoweredStatusOff && step_ != kCheckPoweredStatusOn))
+      (step_ != kCheckPoweredStatusOff && step_ != kCheckPoweredStatusOn)) {
     return;
+  }
 
   // Validate the powered status in HCI level first.
   GetDefaultHciConfig(

@@ -73,8 +73,9 @@ void AcPowerRoutine::Start() {
 void AcPowerRoutine::Resume() {
   DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kWaiting);
   RunAcPowerRoutine();
-  if (GetStatus() != mojom::DiagnosticRoutineStatusEnum::kPassed)
+  if (GetStatus() != mojom::DiagnosticRoutineStatusEnum::kPassed) {
     LOG(ERROR) << "Routine failed: " << GetStatusMessage();
+  }
 }
 
 void AcPowerRoutine::Cancel() {
@@ -144,13 +145,15 @@ void AcPowerRoutine::RunAcPowerRoutine() {
 
     // Skip all batteries.
     base::TrimWhitespaceASCII(type, base::TRIM_ALL, &type);
-    if (type == "Battery")
+    if (type == "Battery") {
       continue;
+    }
 
     // Skip all power supplies which don't populate the online file.
     std::string online;
-    if (!base::ReadFileToString(path.AppendASCII(kOnlineFileName), &online))
+    if (!base::ReadFileToString(path.AppendASCII(kOnlineFileName), &online)) {
       continue;
+    }
 
     // If we found an online power supply, then that's the power supply we wish
     // to test.

@@ -56,8 +56,9 @@ mojom::UsbVersion LinuxRootHubProductIdToUsbVersion(uint32_t product_id) {
 std::string GetUsbVendorName(
     const std::unique_ptr<brillo::UdevDevice>& device) {
   const char* prop = device->GetPropertyValue(kPropertieVendorFromDB);
-  if (prop)
+  if (prop) {
     return prop;
+  }
   return GetUsbVendorName(GetSysPath(device));
 }
 
@@ -70,8 +71,9 @@ std::string GetUsbVendorName(const base::FilePath& sys_path) {
 std::string GetUsbProductName(
     const std::unique_ptr<brillo::UdevDevice>& device) {
   const char* prop = device->GetPropertyValue(kPropertieModelFromDB);
-  if (prop)
+  if (prop) {
     return prop;
+  }
   return GetUsbProductName(GetSysPath(device));
 }
 
@@ -99,8 +101,9 @@ std::pair<uint16_t, uint16_t> GetUsbVidPid(
     }
   }
 
-  if (raw_vid == "" || raw_pid == "")
+  if (raw_vid == "" || raw_pid == "") {
     std::tie(raw_vid, raw_pid) = GetUsbVidPidFromSys(device);
+  }
 
   uint32_t vid = 0;
   uint32_t pid = 0;

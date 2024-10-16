@@ -75,8 +75,9 @@ void PowerEventsImpl::OnPowerSupplyPollSignal(
     return;
   }
 
-  if (!power_supply.has_external_power())
+  if (!power_supply.has_external_power()) {
     return;
+  }
 
   PowerEventType event_type;
   switch (power_supply.external_power()) {
@@ -139,19 +140,23 @@ void PowerEventsImpl::OnSuspendDoneSignal(
     const std::vector<uint8_t>& /* signal */) {
   mojom::PowerEventInfo info;
   info.state = mojom::PowerEventInfo::State::kOsResume;
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewPowerEventInfo(info.Clone()));
-  for (auto& observer : deprecated_observers_)
+  }
+  for (auto& observer : deprecated_observers_) {
     observer->OnOsResume();
+  }
 }
 
 void PowerEventsImpl::OnAnySuspendImminentSignal() {
   mojom::PowerEventInfo info;
   info.state = mojom::PowerEventInfo::State::kOsSuspend;
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewPowerEventInfo(info.Clone()));
-  for (auto& observer : deprecated_observers_)
+  }
+  for (auto& observer : deprecated_observers_) {
     observer->OnOsSuspend();
+  }
 }
 
 }  // namespace diagnostics

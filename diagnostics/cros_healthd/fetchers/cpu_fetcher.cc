@@ -144,8 +144,9 @@ bool ReadTemperatureSensorInfo(
       temperature /= 1000;
 
       auto channel = mojom::CpuTemperatureChannel::New();
-      if (!label.empty())
+      if (!label.empty()) {
         channel->label = label;
+      }
       channel->temperature_celsius = temperature;
       out_contents->push_back(std::move(channel));
     } else {
@@ -624,8 +625,9 @@ bool State::FetchPhysicalCpus(const base::FilePath& root_dir) {
 
   std::map<int, mojom::PhysicalCpuInfoPtr> physical_cpus;
   for (const auto& processor : processor_info) {
-    if (!IsProcessorBlock(processor))
+    if (!IsProcessorBlock(processor)) {
       continue;
+    }
 
     int processor_id;
     std::string model_name;
@@ -655,8 +657,9 @@ bool State::FetchPhysicalCpus(const base::FilePath& root_dir) {
         // It may be Arm CPU. We will return SoC model name instead.
         GetArmSoCModelName(root_dir, &model_name);
       }
-      if (!model_name.empty())
+      if (!model_name.empty()) {
         physical_cpu->model_name = std::move(model_name);
+      }
 
       physical_cpu->flags = std::move(cpu_flags);
 
@@ -912,8 +915,9 @@ void State::HandleCallbackComplete(FetchCpuInfoCallback callback,
 
 void State::LogAndSetError(mojom::ErrorType type, const std::string& message) {
   LOG(ERROR) << message;
-  if (error_.is_null())
+  if (error_.is_null()) {
     error_ = mojom::ProbeError::New(type, message);
+  }
 }
 
 void State::Fetch(Context* context, FetchCpuInfoCallback callback) {

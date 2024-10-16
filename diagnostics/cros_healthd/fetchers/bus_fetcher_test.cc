@@ -41,10 +41,12 @@ class FakeUdevDevice : public brillo::MockUdevDevice {
       : vendor_name_(vendor_name), device_name_(device_name) {
     EXPECT_CALL(*this, GetPropertyValue)
         .WillRepeatedly([this](const char* key) {
-          if (std::string(key) == kPropertieVendorFromDB)
+          if (std::string(key) == kPropertieVendorFromDB) {
             return vendor_name_.c_str();
-          if (std::string(key) == kPropertieModelFromDB)
+          }
+          if (std::string(key) == kPropertieModelFromDB) {
             return device_name_.c_str();
+          }
           return "";
         });
   }

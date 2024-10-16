@@ -184,14 +184,16 @@ class BluezBluetoothScanningRoutineTest : public testing::Test {
         }
         if (device.uuids.has_value()) {
           base::Value::List out_uuids;
-          for (const auto& uuid : device.uuids.value())
+          for (const auto& uuid : device.uuids.value()) {
             out_uuids.Append(uuid);
+          }
           peripheral.Set("uuids", std::move(out_uuids));
         }
       }
       base::Value::List out_rssi_history;
-      for (const auto& rssi : device.rssi_history)
+      for (const auto& rssi : device.rssi_history) {
         out_rssi_history.Append(rssi);
+      }
       peripheral.Set("rssi_history", std::move(out_rssi_history));
       peripherals.Append(std::move(peripheral));
     }

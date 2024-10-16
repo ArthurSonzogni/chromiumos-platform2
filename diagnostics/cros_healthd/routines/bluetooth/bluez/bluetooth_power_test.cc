@@ -134,8 +134,9 @@ class BluezBluetoothPowerRoutineTest : public testing::Test {
       std::optional<base::Value::Dict> power_on_result = std::nullopt) {
     base::Value::Dict output_dict;
     output_dict.Set("power_off_result", std::move(power_off_result));
-    if (power_on_result.has_value())
+    if (power_on_result.has_value()) {
       output_dict.Set("power_on_result", std::move(power_on_result.value()));
+    }
     return output_dict;
   }
 

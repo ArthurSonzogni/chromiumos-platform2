@@ -11,8 +11,9 @@
 namespace diagnostics {
 
 BluezEventHub::BluezEventHub(org::bluezProxy* bluez_proxy) {
-  if (!bluez_proxy)
+  if (!bluez_proxy) {
     return;
+  }
   bluez_proxy->SetAdapter1AddedCallback(base::BindRepeating(
       &BluezEventHub::OnAdapterAdded, weak_ptr_factory_.GetWeakPtr()));
   bluez_proxy->SetAdapter1RemovedCallback(base::BindRepeating(

@@ -25,8 +25,9 @@ struct StructTraits<ash::cros_healthd::external::mojo_base::mojom::UuidDataView,
       ash::cros_healthd::external::mojo_base::mojom::UuidDataView data,
       base::Uuid* uuid) {
     std::string result;
-    if (!data.ReadValue(&result))
+    if (!data.ReadValue(&result)) {
       return false;
+    }
     *uuid = base::Uuid::ParseCaseInsensitive(result);
     return uuid->is_valid();
   }

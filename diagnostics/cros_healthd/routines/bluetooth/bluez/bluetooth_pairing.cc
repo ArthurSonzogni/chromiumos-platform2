@@ -222,8 +222,9 @@ void BluetoothPairingRoutine::HandleAdapterPoweredOn(bool is_success) {
 
 void BluetoothPairingRoutine::RemoveCachedDeviceIfNeeded() {
   for (const auto& device : context_->bluez_controller()->GetDevices()) {
-    if (!device)
+    if (!device) {
       continue;
+    }
 
     auto device_id = base::NumberToString(base::FastHash(device->address()));
     bool is_target_device = peripheral_id_ == device_id;
@@ -235,8 +236,9 @@ void BluetoothPairingRoutine::RemoveCachedDeviceIfNeeded() {
                                       base::DoNothing(), base::DoNothing());
     }
 
-    if (!is_target_device)
+    if (!is_target_device) {
       continue;
+    }
 
     if (device->paired()) {
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
@@ -282,8 +284,9 @@ void BluetoothPairingRoutine::OnDeviceAdded(
   }
   if (device->is_uuids_valid()) {
     base::Value::List out_uuids;
-    for (const auto& uuid : device->uuids())
+    for (const auto& uuid : device->uuids()) {
       out_uuids.Append(uuid);
+    }
     pairing_peripheral_info_->Set("uuids", std::move(out_uuids));
   }
   RunNextStep();
@@ -305,8 +308,9 @@ void BluetoothPairingRoutine::OnDevicePropertyChanged(
   } else if (property_name == device->UUIDsName()) {
     if (device->is_uuids_valid()) {
       base::Value::List out_uuids;
-      for (const auto& uuid : device->uuids())
+      for (const auto& uuid : device->uuids()) {
         out_uuids.Append(uuid);
+      }
       pairing_peripheral_info_->Set("uuids", std::move(out_uuids));
     }
   } else if (property_name == device->PairedName()) {
@@ -398,8 +402,10 @@ void BluetoothPairingRoutine::OnTimeoutOccurred() {
 }
 
 void BluetoothPairingRoutine::StopDiscoveryIfNeeded() {
-  if (step_ < TestStep::kScanTargetDevice || step_ >= TestStep::kStopDiscovery)
+  if (step_ < TestStep::kScanTargetDevice ||
+      step_ >= TestStep::kStopDiscovery) {
     return;
+  }
 
   GetAdapter()->StopDiscoveryAsync(base::DoNothing(), base::DoNothing());
 }

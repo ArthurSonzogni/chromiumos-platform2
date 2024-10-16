@@ -36,8 +36,9 @@ std::unique_ptr<DisplayUtilImpl> DisplayUtilImpl::Create() {
        path = lister.Next()) {
     base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
                               base::File::FLAG_WRITE);
-    if (!file.IsValid())
+    if (!file.IsValid()) {
       continue;
+    }
 
     resource.reset(drmModeGetResources(file.GetPlatformFile()));
     // Usually, there is only one card with valid drm resources.
@@ -72,8 +73,9 @@ std::optional<uint32_t> DisplayUtilImpl::GetEmbeddedDisplayConnectorID() {
     ScopedDrmModeConnectorPtr connector(
         drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
 
-    if (!connector || connector->connection == DRM_MODE_DISCONNECTED)
+    if (!connector || connector->connection == DRM_MODE_DISCONNECTED) {
       continue;
+    }
 
     if (connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
         connector->connector_type == DRM_MODE_CONNECTOR_VIRTUAL ||
@@ -102,8 +104,9 @@ std::vector<uint32_t> DisplayUtilImpl::GetExternalDisplayConnectorIDs() {
     ScopedDrmModeConnectorPtr connector(
         drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
 
-    if (!connector || connector->connection == DRM_MODE_DISCONNECTED)
+    if (!connector || connector->connection == DRM_MODE_DISCONNECTED) {
       continue;
+    }
 
     if (!(connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
           connector->connector_type == DRM_MODE_CONNECTOR_VIRTUAL ||
@@ -120,8 +123,9 @@ void DisplayUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
                                             bool* privacy_screen_enabled) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
-  if (!connector)
+  if (!connector) {
     return;
+  }
 
   *privacy_screen_supported = false;
   *privacy_screen_enabled = false;
@@ -156,12 +160,15 @@ void DisplayUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
 
 std::string DisplayUtilImpl::GetEnumName(const ScopedDrmPropertyPtr& prop,
                                          uint32_t value) {
-  if (!prop)
+  if (!prop) {
     return std::string();
+  }
 
-  for (int i = 0; i < prop->count_enums; ++i)
-    if (prop->enums[i].value == value)
+  for (int i = 0; i < prop->count_enums; ++i) {
+    if (prop->enums[i].value == value) {
       return prop->enums[i].name;
+    }
+  }
 
   return std::string();
 }
@@ -169,14 +176,16 @@ std::string DisplayUtilImpl::GetEnumName(const ScopedDrmPropertyPtr& prop,
 int DisplayUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
                                     const std::string& name,
                                     ScopedDrmPropertyPtr* prop) {
-  if (!connector)
+  if (!connector) {
     return -1;
+  }
 
   for (int i = 0; i < connector->count_props; ++i) {
     ScopedDrmPropertyPtr tmp(drmModeGetProperty(device_file_.GetPlatformFile(),
                                                 connector->props[i]));
-    if (!tmp)
+    if (!tmp) {
       continue;
+    }
 
     if (name == tmp->name) {
       *prop = std::move(tmp);
@@ -194,13 +203,15 @@ DisplayUtilImpl::ScopedDrmModeCrtcPtr DisplayUtilImpl::GetDrmCrtc(
   // Sometimes there is no crtc info, for example, when the device hibernate,
   // the screen is black, there is no need to render, so the encoder id is
   // invalid as 0.
-  if (!connector || connector->encoder_id == INVALID_ENCODER_ID)
+  if (!connector || connector->encoder_id == INVALID_ENCODER_ID) {
     return nullptr;
+  }
 
   ScopedDrmModeEncoderPtr encoder(
       drmModeGetEncoder(device_file_.GetPlatformFile(), connector->encoder_id));
-  if (!encoder)
+  if (!encoder) {
     return nullptr;
+  }
 
   return ScopedDrmModeCrtcPtr(
       drmModeGetCrtc(device_file_.GetPlatformFile(), encoder->crtc_id));
@@ -211,8 +222,9 @@ bool DisplayUtilImpl::FillDisplaySize(const uint32_t connector_id,
                                       uint32_t* height) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
-  if (!connector)
+  if (!connector) {
     return false;
+  }
 
   *width = connector->mmWidth;
   *height = connector->mmHeight;
@@ -231,8 +243,9 @@ bool DisplayUtilImpl::FillDisplayResolution(const uint32_t connector_id,
     // Fall back to use the preferred mode info in connector.
     ScopedDrmModeConnectorPtr connector(
         drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
-    if (!connector)
+    if (!connector) {
       return false;
+    }
     for (int i = 0; i < connector->count_modes; ++i) {
       if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
         *horizontal = connector->modes[i].hdisplay;
@@ -262,8 +275,9 @@ bool DisplayUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
     // Fall back to use the preferred mode info in connector.
     ScopedDrmModeConnectorPtr connector(
         drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
-    if (!connector)
+    if (!connector) {
       return false;
+    }
     for (int i = 0; i < connector->count_modes; ++i) {
       if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
         *refresh_rate =
@@ -281,8 +295,9 @@ DisplayUtilImpl::ScopedDrmPropertyBlobPtr DisplayUtilImpl::GetDrmPropertyBlob(
     const uint32_t connector_id, const std::string& name) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
-  if (!connector)
+  if (!connector) {
     return nullptr;
+  }
 
   ScopedDrmPropertyPtr prop;
   int idx = GetDrmProperty(connector, name, &prop);
@@ -296,8 +311,9 @@ DisplayUtilImpl::ScopedDrmPropertyBlobPtr DisplayUtilImpl::GetDrmPropertyBlob(
 bool DisplayUtilImpl::FillEdidInfo(const uint32_t connector_id,
                                    EdidInfo* info) {
   auto blob = GetDrmPropertyBlob(connector_id, "EDID");
-  if (!blob || !blob->length)
+  if (!blob || !blob->length) {
     return false;
+  }
 
   std::vector<uint8_t> blob_data(
       reinterpret_cast<uint8_t*>(blob->data),
@@ -350,20 +366,24 @@ mojom::EmbeddedDisplayInfoPtr DisplayUtilImpl::GetEmbeddedDisplayInfo() {
   if (FillEdidInfo(connector_id, &edid_info)) {
     info->manufacturer = edid_info.manufacturer;
     info->model_id = mojom::NullableUint16::New(edid_info.model_id);
-    if (edid_info.serial_number.has_value())
+    if (edid_info.serial_number.has_value()) {
       info->serial_number =
           mojom::NullableUint32::New(edid_info.serial_number.value());
-    if (edid_info.manufacture_week.has_value())
+    }
+    if (edid_info.manufacture_week.has_value()) {
       info->manufacture_week =
           mojom::NullableUint8::New(edid_info.manufacture_week.value());
-    if (edid_info.manufacture_year.has_value())
+    }
+    if (edid_info.manufacture_year.has_value()) {
       info->manufacture_year =
           mojom::NullableUint16::New(edid_info.manufacture_year.value());
+    }
     info->edid_version = edid_info.edid_version;
-    if (edid_info.is_digital_input)
+    if (edid_info.is_digital_input) {
       info->input_type = mojom::DisplayInputType::kDigital;
-    else
+    } else {
       info->input_type = mojom::DisplayInputType::kAnalog;
+    }
     info->display_name = edid_info.display_name;
   }
 
@@ -397,20 +417,24 @@ mojom::ExternalDisplayInfoPtr DisplayUtilImpl::GetExternalDisplayInfo(
   if (FillEdidInfo(connector_id, &edid_info)) {
     info->manufacturer = edid_info.manufacturer;
     info->model_id = mojom::NullableUint16::New(edid_info.model_id);
-    if (edid_info.serial_number.has_value())
+    if (edid_info.serial_number.has_value()) {
       info->serial_number =
           mojom::NullableUint32::New(edid_info.serial_number.value());
-    if (edid_info.manufacture_week.has_value())
+    }
+    if (edid_info.manufacture_week.has_value()) {
       info->manufacture_week =
           mojom::NullableUint8::New(edid_info.manufacture_week.value());
-    if (edid_info.manufacture_year.has_value())
+    }
+    if (edid_info.manufacture_year.has_value()) {
       info->manufacture_year =
           mojom::NullableUint16::New(edid_info.manufacture_year.value());
+    }
     info->edid_version = edid_info.edid_version;
-    if (edid_info.is_digital_input)
+    if (edid_info.is_digital_input) {
       info->input_type = mojom::DisplayInputType::kDigital;
-    else
+    } else {
       info->input_type = mojom::DisplayInputType::kAnalog;
+    }
     info->display_name = edid_info.display_name;
   }
 

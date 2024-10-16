@@ -98,8 +98,9 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
               WithArg<0>([=, this](base::OnceCallback<void()> on_success) {
                 std::move(on_success).Run();
                 // Send out peripheral in |added_devices|.
-                for (const auto& device : added_devices)
+                for (const auto& device : added_devices) {
                   fake_bluez_event_hub()->SendDeviceAdded(device);
+                }
               }));
     } else {
       EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
@@ -211,15 +212,18 @@ class BluezBluetoothPairingRoutineTest : public testing::Test {
     }
     if (!target_uuids_.empty()) {
       base::Value::List out_uuids;
-      for (const auto& uuid : target_uuids_)
+      for (const auto& uuid : target_uuids_) {
         out_uuids.Append(uuid);
+      }
       output_pairing_peripheral.Set("uuids", std::move(out_uuids));
     }
 
-    if (connect_error)
+    if (connect_error) {
       output_pairing_peripheral.Set("connect_error", connect_error->GetCode());
-    if (pair_error)
+    }
+    if (pair_error) {
       output_pairing_peripheral.Set("pair_error", pair_error->GetCode());
+    }
 
     base::Value::Dict output_dict;
     output_dict.Set("pairing_peripheral", std::move(output_pairing_peripheral));

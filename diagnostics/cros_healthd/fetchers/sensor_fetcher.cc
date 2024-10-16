@@ -69,12 +69,13 @@ std::vector<mojom::Sensor::Type> GetSupportedTypes(
 mojom::Sensor::Location ConvertLocation(
     const std::optional<std::string>& location) {
   if (location.has_value()) {
-    if (location.value() == cros::mojom::kLocationBase)
+    if (location.value() == cros::mojom::kLocationBase) {
       return mojom::Sensor::Location::kBase;
-    else if (location.value() == cros::mojom::kLocationLid)
+    } else if (location.value() == cros::mojom::kLocationLid) {
       return mojom::Sensor::Location::kLid;
-    else if (location.value() == cros::mojom::kLocationCamera)
+    } else if (location.value() == cros::mojom::kLocationCamera) {
       return mojom::Sensor::Location::kCamera;
+    }
   }
   return mojom::Sensor::Location::kUnknown;
 }
@@ -127,8 +128,9 @@ void State::HandleSensorIdsTypesResponse(
                           /*on_error=*/base::DoNothing()};
   for (const auto& [sensor_id, sensor_types] : ids_types) {
     auto types = GetSupportedTypes(sensor_types);
-    if (types.size() == 0)
+    if (types.size() == 0) {
       continue;
+    }
 
     mojo_service_->GetSensorDevice(sensor_id)->GetAttributes(
         kTargetSensorAttributes_,

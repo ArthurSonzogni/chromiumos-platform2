@@ -66,8 +66,9 @@ class DlcManagerTest : public testing::Test {
                 const base::RepeatingCallback<void(
                     const dlcservice::DlcState&)>& signal_callback,
                 dbus::ObjectProxy::OnConnectedCallback* on_connected_callback) {
-              if (is_success)
+              if (is_success) {
                 state_changed_cb = signal_callback;
+              }
               std::move(*on_connected_callback).Run("", "", is_success);
             }));
   }

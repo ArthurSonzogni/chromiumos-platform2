@@ -162,8 +162,9 @@ void BluetoothDiscoveryRoutine::OnAdapterPropertyChanged(
     const std::string& property_name) {
   if (adapter != GetAdapter() || property_name != adapter->DiscoveringName() ||
       (step_ != kCheckDiscoveringStatusOn &&
-       step_ != kCheckDiscoveringStatusOff))
+       step_ != kCheckDiscoveringStatusOff)) {
     return;
+  }
 
   ValidateHciDiscovering(/*dbus_discovering=*/adapter->discovering(),
                          /*retry_count=*/0);

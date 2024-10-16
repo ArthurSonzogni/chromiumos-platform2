@@ -642,11 +642,13 @@ bool DiagActions::ProcessNonInteractiveResultAndEnd(
 
   // Clean up the routine if necessary - if the routine never started, then we
   // don't need to remove it.
-  if (status != mojom::DiagnosticRoutineStatusEnum::kFailedToStart)
+  if (status != mojom::DiagnosticRoutineStatusEnum::kFailedToStart) {
     RemoveRoutine();
+  }
 
-  if (!PrintStatus(status))
+  if (!PrintStatus(status)) {
     return false;
+  }
 
   PrintStatusMessage(noninteractive_result->status_message);
 

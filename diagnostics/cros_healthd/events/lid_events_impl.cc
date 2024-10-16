@@ -55,16 +55,18 @@ void LidEventsImpl::OnLidClosedSignal() {
   mojom::LidEventInfo info;
   info.state = mojom::LidEventInfo::State::kClosed;
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewLidEventInfo(info.Clone()));
+  }
 }
 
 void LidEventsImpl::OnLidOpenedSignal() {
   mojom::LidEventInfo info;
   info.state = mojom::LidEventInfo::State::kOpened;
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewLidEventInfo(info.Clone()));
+  }
 }
 
 }  // namespace diagnostics

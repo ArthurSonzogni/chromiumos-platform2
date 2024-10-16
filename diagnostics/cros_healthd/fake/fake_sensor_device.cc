@@ -56,8 +56,9 @@ void FakeSensorDevice::StartReadingSamples(
     mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
   observer_.reset();
   observer_.Bind(std::move(observer));
-  if (on_start_reading_)
+  if (on_start_reading_) {
     std::move(on_start_reading_).Run();
+  }
 }
 
 void FakeSensorDevice::StopReadingSamples() {

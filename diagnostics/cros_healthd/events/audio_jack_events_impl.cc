@@ -40,8 +40,9 @@ void AudioJackEventsImpl::OnAdd(
   info.state = mojom::AudioJackEventInfo::State::kAdd;
   info.device_type = device_type;
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewAudioJackEventInfo(info.Clone()));
+  }
 }
 
 void AudioJackEventsImpl::OnRemove(
@@ -50,8 +51,9 @@ void AudioJackEventsImpl::OnRemove(
   info.state = mojom::AudioJackEventInfo::State::kRemove;
   info.device_type = device_type;
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnEvent(mojom::EventInfo::NewAudioJackEventInfo(info.Clone()));
+  }
 }
 
 void AudioJackEventsImpl::StartMonitor() {

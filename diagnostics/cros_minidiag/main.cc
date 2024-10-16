@@ -34,8 +34,9 @@ int GetElogtoolString(std::string& output) {
 
   output = "";
   const int result = elogtool.Run();
-  if (result == 0)
+  if (result == 0) {
     output = elogtool.GetOutputString(STDOUT_FILENO);
+  }
   return result;
 }
 }  // namespace

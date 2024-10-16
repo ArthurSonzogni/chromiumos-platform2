@@ -48,8 +48,9 @@ base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
 
 mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
     std::string_view content) {
-  if (content.empty())
+  if (content.empty()) {
     return mojo::ScopedHandle();
+  }
   base::MappedReadOnlyRegion region_mapping =
       base::ReadOnlySharedMemoryRegion::Create(content.length());
   base::ReadOnlySharedMemoryRegion read_only_region =

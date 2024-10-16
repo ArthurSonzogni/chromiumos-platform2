@@ -192,8 +192,9 @@ void State::FetchBootMode(const base::FilePath& root_dir,
 
   std::string cmdline;
   const auto path = root_dir.Append(kFilePathProcCmdline);
-  if (!ReadAndTrimString(path, &cmdline))
+  if (!ReadAndTrimString(path, &cmdline)) {
     return;
+  }
 
   auto tokens = base::SplitString(cmdline, " ", base::TRIM_WHITESPACE,
                                   base::SPLIT_WANT_NONEMPTY);
@@ -215,8 +216,9 @@ void State::FetchBootMode(const base::FilePath& root_dir,
 
 bool State::FetchOsInfo(const base::FilePath& root_dir) {
   auto os_info = mojom::OsInfo::New();
-  if (!FetchOsVersion(os_info->os_version))
+  if (!FetchOsVersion(os_info->os_version)) {
     return false;
+  }
   os_info->code_name = context_->system_config()->GetCodeName();
   os_info->marketing_name = context_->system_config()->GetMarketingName();
 
@@ -254,13 +256,15 @@ bool IsUEFISecureBoot(const std::string& content) {
 void State::HandleSecureBootResponse(
     const std::optional<std::string>& content) {
   DCHECK_EQ(info_->os_info->boot_mode, mojom::BootMode::kCrosEfi);
-  if (content && IsUEFISecureBoot(content.value()))
+  if (content && IsUEFISecureBoot(content.value())) {
     info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
+  }
 }
 
 void State::HandleEfiPlatformSize(const std::optional<std::string>& content) {
-  if (!content)
+  if (!content) {
     return;
+  }
   std::string content_trimmed;
   base::TrimWhitespaceASCII(content.value(), base::TRIM_ALL, &content_trimmed);
   if (content_trimmed == "64") {
@@ -277,8 +281,9 @@ void State::HandleEfiPlatformSize(const std::optional<std::string>& content) {
 void State::SetError(mojom::ErrorType type, const std::string& message) {
   LOG(ERROR) << message;
   // Ignore the error if there is already an error to be returned.
-  if (!error_)
+  if (!error_) {
     error_ = mojom::ProbeError::New(type, message);
+  }
 }
 
 void State::HandlePsrInfo(mojom::GetPsrResultPtr result) {
@@ -312,8 +317,9 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
 
   const auto& root_dir = GetRootDir();
   if (!state_ptr->FetchCachedVpdInfo(root_dir) ||
-      !state_ptr->FetchDmiInfo(root_dir) || !state_ptr->FetchOsInfo(root_dir))
+      !state_ptr->FetchDmiInfo(root_dir) || !state_ptr->FetchOsInfo(root_dir)) {
     return;
+  }
 
   // `base::Unretained` is safe because `state` is hold by CallbackBarrier.
   if (state_ptr->info_->os_info->boot_mode == mojom::BootMode::kCrosEfi) {
@@ -334,8 +340,9 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
   // Fallback to VPD (vpd.ro.oem-name) if it’s missing in cros-config. Note that
   // VPD info may be null, for example, on Flex devices & VM.
   if (!state_ptr->info_->os_info->oem_name.has_value() &&
-      !state_ptr->info_->vpd_info.is_null())
+      !state_ptr->info_->vpd_info.is_null()) {
     state_ptr->info_->os_info->oem_name = state_ptr->info_->vpd_info->oem_name;
+  }
 }
 
 }  // namespace

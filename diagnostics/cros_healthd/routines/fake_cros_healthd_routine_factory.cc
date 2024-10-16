@@ -87,12 +87,15 @@ FakeDiagnosticRoutine::FakeDiagnosticRoutine(
       num_expected_cancel_calls_(num_expected_cancel_calls) {}
 
 FakeDiagnosticRoutine::~FakeDiagnosticRoutine() {
-  if (num_expected_start_calls_ != kNumCallsNotTracked)
+  if (num_expected_start_calls_ != kNumCallsNotTracked) {
     EXPECT_EQ(num_expected_start_calls_, num_actual_start_calls_);
-  if (num_expected_resume_calls_ != kNumCallsNotTracked)
+  }
+  if (num_expected_resume_calls_ != kNumCallsNotTracked) {
     EXPECT_EQ(num_expected_resume_calls_, num_actual_resume_calls_);
-  if (num_expected_cancel_calls_ != kNumCallsNotTracked)
+  }
+  if (num_expected_cancel_calls_ != kNumCallsNotTracked) {
     EXPECT_EQ(num_expected_cancel_calls_, num_actual_cancel_calls_);
+  }
 }
 
 void FakeDiagnosticRoutine::Start() {

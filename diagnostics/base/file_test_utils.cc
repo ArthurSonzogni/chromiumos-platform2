@@ -29,10 +29,12 @@ bool WriteFileAndCreateParentDirs(const base::FilePath& file_path,
 bool WriteFileAndCreateSymbolicLink(const base::FilePath& file_path,
                                     const std::string& file_contents,
                                     const base::FilePath& symlink_path) {
-  if (!WriteFileAndCreateParentDirs(file_path, file_contents))
+  if (!WriteFileAndCreateParentDirs(file_path, file_contents)) {
     return false;
-  if (!base::CreateDirectory(symlink_path.DirName()))
+  }
+  if (!base::CreateDirectory(symlink_path.DirName())) {
     return false;
+  }
   return base::CreateSymbolicLink(file_path, symlink_path);
 }
 
@@ -60,8 +62,9 @@ void BaseFileTest::SetSymbolicLink(const PathType& target,
 }
 
 base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
-  if (!path.file_path().IsAbsolute())
+  if (!path.file_path().IsAbsolute()) {
     return GetRootedPath(base::FilePath{"/"}.Append(path.file_path()));
+  }
   return GetRootedPath(path.file_path());
 }
 

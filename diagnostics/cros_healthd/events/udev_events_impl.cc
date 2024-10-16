@@ -58,8 +58,9 @@ void FillUsbCategory(const std::unique_ptr<brillo::UdevDevice>& device,
     for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
       std::string content;
       ReadAndTrimString(path.Append(kFileUsbIFClass), &content);
-      if (!base::HexStringToUInt(content, &class_code))
+      if (!base::HexStringToUInt(content, &class_code)) {
         continue;
+      }
       categories.insert(LookUpUsbDeviceClass(class_code));
     }
   }
@@ -240,37 +241,45 @@ void UdevEventsImpl::AddThunderboltObserver(
 void UdevEventsImpl::OnThunderboltAddEvent() {
   mojom::ThunderboltEventInfo info;
   info.state = mojom::ThunderboltEventInfo::State::kAdd;
-  for (auto& observer : thunderbolt_observers_)
+  for (auto& observer : thunderbolt_observers_) {
     observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
-  for (auto& observer : deprecated_thunderbolt_observers_)
+  }
+  for (auto& observer : deprecated_thunderbolt_observers_) {
     observer->OnAdd();
+  }
 }
 
 void UdevEventsImpl::OnThunderboltRemoveEvent() {
   mojom::ThunderboltEventInfo info;
   info.state = mojom::ThunderboltEventInfo::State::kRemove;
-  for (auto& observer : thunderbolt_observers_)
+  for (auto& observer : thunderbolt_observers_) {
     observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
-  for (auto& observer : deprecated_thunderbolt_observers_)
+  }
+  for (auto& observer : deprecated_thunderbolt_observers_) {
     observer->OnRemove();
+  }
 }
 
 void UdevEventsImpl::OnThunderboltAuthorizedEvent() {
   mojom::ThunderboltEventInfo info;
   info.state = mojom::ThunderboltEventInfo::State::kAuthorized;
-  for (auto& observer : thunderbolt_observers_)
+  for (auto& observer : thunderbolt_observers_) {
     observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
-  for (auto& observer : deprecated_thunderbolt_observers_)
+  }
+  for (auto& observer : deprecated_thunderbolt_observers_) {
     observer->OnAuthorized();
+  }
 }
 
 void UdevEventsImpl::OnThunderboltUnAuthorizedEvent() {
   mojom::ThunderboltEventInfo info;
   info.state = mojom::ThunderboltEventInfo::State::kUnAuthorized;
-  for (auto& observer : thunderbolt_observers_)
+  for (auto& observer : thunderbolt_observers_) {
     observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
-  for (auto& observer : deprecated_thunderbolt_observers_)
+  }
+  for (auto& observer : deprecated_thunderbolt_observers_) {
     observer->OnUnAuthorized();
+  }
 }
 
 void UdevEventsImpl::AddUsbObserver(
@@ -289,10 +298,12 @@ void UdevEventsImpl::OnUsbAdd(
   FillUsbEventInfo(device, &info);
   info.state = mojom::UsbEventInfo::State::kAdd;
 
-  for (auto& observer : usb_observers_)
+  for (auto& observer : usb_observers_) {
     observer->OnEvent(mojom::EventInfo::NewUsbEventInfo(info.Clone()));
-  for (auto& observer : deprecated_usb_observers_)
+  }
+  for (auto& observer : deprecated_usb_observers_) {
     observer->OnAdd(info.Clone());
+  }
 }
 
 void UdevEventsImpl::OnUsbRemove(
@@ -301,10 +312,12 @@ void UdevEventsImpl::OnUsbRemove(
   FillUsbEventInfo(device, &info);
   info.state = mojom::UsbEventInfo::State::kRemove;
 
-  for (auto& observer : usb_observers_)
+  for (auto& observer : usb_observers_) {
     observer->OnEvent(mojom::EventInfo::NewUsbEventInfo(info.Clone()));
-  for (auto& observer : deprecated_usb_observers_)
+  }
+  for (auto& observer : deprecated_usb_observers_) {
     observer->OnRemove(info.Clone());
+  }
 }
 
 void UdevEventsImpl::AddSdCardObserver(
@@ -323,8 +336,9 @@ void UdevEventsImpl::OnSdCardAdd() {
 void UdevEventsImpl::OnSdCardRemove() {
   mojom::SdCardEventInfo info;
   info.state = mojom::SdCardEventInfo::State::kRemove;
-  for (auto& observer : sd_card_observers_)
+  for (auto& observer : sd_card_observers_) {
     observer->OnEvent(mojom::EventInfo::NewSdCardEventInfo(info.Clone()));
+  }
 }
 
 void UdevEventsImpl::AddExternalDisplayObserver(

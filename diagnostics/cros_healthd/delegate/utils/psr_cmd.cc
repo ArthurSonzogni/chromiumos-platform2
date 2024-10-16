@@ -103,21 +103,25 @@ PsrCmd::CmdStatus PsrCmd::Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) {
       mei_connect_data_->out_client_properties.max_msg_length);
 
   ssize_t tx_len = sizeof(tx_buff);
-  if (tx_len > buff_size)
+  if (tx_len > buff_size) {
     return kInsufficentBuffer;
+  }
 
-  if (!MeiSend(reinterpret_cast<void*>(&tx_buff), tx_len))
+  if (!MeiSend(reinterpret_cast<void*>(&tx_buff), tx_len)) {
     return kMeiSendErr;
+  }
 
   std::vector<uint8_t> rcv_buff;
   rcv_buff.reserve(buff_size);
   memset(rcv_buff.data(), 0, buff_size);
-  if (!MeiReceive(rcv_buff, buff_size))
+  if (!MeiReceive(rcv_buff, buff_size)) {
     return kMeiRecErr;
+  }
 
   ssize_t rx_len = sizeof(rx_buff);
-  if (buff_size > rx_len)
+  if (buff_size > rx_len) {
     return kInsufficentBuffer;
+  }
 
   std::memcpy(reinterpret_cast<void*>(&rx_buff),
               static_cast<void*>(rcv_buff.data()), buff_size);
@@ -151,8 +155,9 @@ std::optional<bool> PsrCmd::CheckPlatformServiceRecord() {
   }
 
   // Check if PSR is supported.
-  if (static_cast<uint32_t>(response.rule_data[0]) & 32)
+  if (static_cast<uint32_t>(response.rule_data[0]) & 32) {
     return true;
+  }
 
   return false;
 }
@@ -176,20 +181,24 @@ PsrCmd::CmdStatus PsrCmd::Transaction(HeciGetRequest& tx_buff,
   }
 
   ssize_t tx_len = sizeof(tx_buff);
-  if (tx_len > buff_size)
+  if (tx_len > buff_size) {
     return kInsufficentBuffer;
+  }
 
-  if (!MeiSend(reinterpret_cast<void*>(&tx_buff), tx_len))
+  if (!MeiSend(reinterpret_cast<void*>(&tx_buff), tx_len)) {
     return kMeiSendErr;
+  }
 
   std::vector<uint8_t> rcv_buff;
   rcv_buff.reserve(buff_size);
-  if (!MeiReceive(rcv_buff, buff_size))
+  if (!MeiReceive(rcv_buff, buff_size)) {
     return kMeiRecErr;
+  }
 
   ssize_t rx_len = sizeof(rx_buff);
-  if (buff_size > rx_len)
+  if (buff_size > rx_len) {
     return kInsufficentBuffer;
+  }
 
   std::memcpy(reinterpret_cast<void*>(&rx_buff),
               static_cast<void*>(rcv_buff.data()), buff_size);

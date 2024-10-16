@@ -270,17 +270,20 @@ std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
   }
 
   auto error = GetProcessState(stat_tokens[ProcPidStatIndices::kState], state);
-  if (error.has_value())
+  if (error.has_value()) {
     return error;
+  }
 
   error =
       GetInt8FromString(stat_tokens[ProcPidStatIndices::kPriority], priority);
-  if (error.has_value())
+  if (error.has_value()) {
     return error;
+  }
 
   error = GetInt8FromString(stat_tokens[ProcPidStatIndices::kNice], nice);
-  if (error.has_value())
+  if (error.has_value()) {
     return error;
+  }
 
   std::string_view start_time_str = stat_tokens[ProcPidStatIndices::kStartTime];
   if (!base::StringToUint64(start_time_str, &start_time_ticks)) {
@@ -443,8 +446,9 @@ std::optional<mojom::ProbeErrorPtr> GetProcessUid(
 
   std::string uid_str;
   for (const auto& line : status_lines) {
-    if (!RE2::FullMatch(line, kUidStatusRegex, &uid_str))
+    if (!RE2::FullMatch(line, kUidStatusRegex, &uid_str)) {
       continue;
+    }
 
     unsigned int user_id_uint;
     if (!base::StringToUint(uid_str, &user_id_uint)) {

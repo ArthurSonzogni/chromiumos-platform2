@@ -23,8 +23,9 @@ base::FilePath& RootDir() {
 }  // namespace
 
 base::FilePath GetRootDir() {
-  if (RootDir().empty())
+  if (RootDir().empty()) {
     return base::FilePath{"/"};
+  }
   return RootDir();
 }
 
@@ -33,15 +34,17 @@ base::FilePath GetRootedPath(base::FilePath path) {
   CHECK(path.IsAbsolute());
   const base::FilePath& root_dir = RootDir();
   // If the path is not overridden, don't modify the path.
-  if (root_dir.empty())
+  if (root_dir.empty()) {
     return path;
+  }
 
   CHECK(!root_dir.IsParent(path))
       << "The path is already under the test root " << root_dir;
   // Special case for who only want to get the root dir, which is not supported
   // by `AppendRelativePath()`.
-  if (path == base::FilePath("/"))
+  if (path == base::FilePath("/")) {
     return root_dir;
+  }
   base::FilePath res = root_dir;
   CHECK(base::FilePath("/").AppendRelativePath(path, &res))
       << "Cannot append path " << path << " to " << root_dir
@@ -65,8 +68,9 @@ bool ReadAndTrimString<std::string>(const base::FilePath& file_path,
                                     std::string* out) {
   DCHECK(out);
 
-  if (!base::ReadFileToString(file_path, out))
+  if (!base::ReadFileToString(file_path, out)) {
     return false;
+  }
 
   base::TrimWhitespaceASCII(*out, base::TRIM_ALL, out);
   return true;

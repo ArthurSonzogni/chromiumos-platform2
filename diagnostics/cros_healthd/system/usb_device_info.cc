@@ -51,8 +51,9 @@ void USBDeviceInfo::RetrieveFromFile(const base::FilePath& path) {
   auto lines = base::SplitString(file_content, "\n", base::KEEP_WHITESPACE,
                                  base::SPLIT_WANT_NONEMPTY);
   for (const auto& line : lines) {
-    if (IsLineSkippable(line))
+    if (IsLineSkippable(line)) {
       continue;
+    }
 
     std::vector<std::string> tokens = base::SplitString(
         line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
