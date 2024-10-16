@@ -1,1 +1,4 @@
 allenwebb@google.com
+dverkamp@google.com
+
+include chromiumos/third_party/rust_crates:/OWNERS
