@@ -184,8 +184,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     }
   }
 
-  std::unique_ptr<FirmwareIndex> index_;
-  base::FilePath fw_manifest_directory_;
+  std::unique_ptr<const FirmwareIndex> index_;
+  const base::FilePath fw_manifest_directory_;
   std::string variant_;
 };
 
