@@ -65,12 +65,14 @@ class KernelCollectorForFuzzing : public KernelCollector {
     auto arch = data_provider->ConsumeEnum<kernel_util::ArchKind>();
 
     auto eventlog = test_dir.Append("eventlog.txt");
-    if (!WriteFuzzedFile(data_provider, eventlog))
+    if (!WriteFuzzedFile(data_provider, eventlog)) {
       return 0;
+    }
 
     auto bios_log = test_dir.Append("bios_log");
-    if (!WriteFuzzedFile(data_provider, bios_log))
+    if (!WriteFuzzedFile(data_provider, bios_log)) {
       return 0;
+    }
 
     // Fuzz either a ramoops crash or EFI crash.
     if (data_provider->ConsumeBool()) {
@@ -83,8 +85,9 @@ class KernelCollectorForFuzzing : public KernelCollector {
       } else {
         ramoops = kcrash_dir.Append("dmesg-ramoops-0");
       }
-      if (!WriteFuzzedFile(data_provider, ramoops))
+      if (!WriteFuzzedFile(data_provider, ramoops)) {
         return 0;
+      }
     } else {
       int maxEfiParts = data_provider->ConsumeIntegralInRange<int>(
           0, KernelCollector::EfiCrash::kMaxPart);
@@ -95,8 +98,9 @@ class KernelCollectorForFuzzing : public KernelCollector {
             "dmesg-efi-%" PRIu64,
             (id * maxEfiParts + i) * KernelCollector::EfiCrash::kMaxDumpRecord +
                 1));
-        if (!WriteFuzzedFile(data_provider, efikcrash))
+        if (!WriteFuzzedFile(data_provider, efikcrash)) {
           return 0;
+        }
       }
     }
 

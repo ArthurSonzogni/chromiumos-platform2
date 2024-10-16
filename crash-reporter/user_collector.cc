@@ -261,8 +261,9 @@ bool UserCollector::SetUpInternal(bool enabled, bool early) {
 
   // First nuke all existing content.  This will take care of deleting any
   // existing paths (files, symlinks, dirs, etc...) for us.
-  if (!base::DeletePathRecursively(dir))
+  if (!base::DeletePathRecursively(dir)) {
     PLOG(WARNING) << "Cleanup of directory failed: " << dir.value();
+  }
 
   // This will create the directory with 0700 mode.  Since init is run as root,
   // root will own these too.

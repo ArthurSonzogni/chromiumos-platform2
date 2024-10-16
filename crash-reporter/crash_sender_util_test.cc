@@ -181,8 +181,9 @@ std::string GetBasePartHelper(const std::string& file_name) {
 // Creates lsb-release file with information about the build type.
 bool CreateLsbReleaseFile(BuildType type) {
   std::string label = "Official build";
-  if (type == kUnofficialBuild)
+  if (type == kUnofficialBuild) {
     label = "Test build";
+  }
 
   return test_util::CreateFile(paths::Get("/etc/lsb-release"),
                                "CHROMEOS_RELEASE_DESCRIPTION=" + label + "\n");
@@ -201,8 +202,9 @@ std::vector<base::FilePath> GetFileNamesIn(const base::FilePath& directory) {
   std::vector<base::FilePath> files;
   base::FileEnumerator iter(directory, false /* recursive */,
                             base::FileEnumerator::FILES, "*");
-  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next())
+  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
     files.push_back(file);
+  }
   return files;
 }
 
@@ -263,8 +265,9 @@ class CrashSenderUtilTest : public testing::Test {
 
     // ParseCommandLine() uses base::CommandLine via
     // brillo::FlagHelper. Reset these here to avoid side effects.
-    if (base::CommandLine::InitializedForCurrentProcess())
+    if (base::CommandLine::InitializedForCurrentProcess()) {
       base::CommandLine::Reset();
+    }
     brillo::FlagHelper::ResetForTesting();
   }
 
@@ -354,11 +357,13 @@ class CrashSenderUtilTest : public testing::Test {
   bool CreateFile(const base::FilePath& file_path,
                   std::string_view content,
                   base::Time timestamp) {
-    if (!test_util::CreateFile(file_path, content))
+    if (!test_util::CreateFile(file_path, content)) {
       return false;
+    }
 
-    if (!test_util::TouchFileHelper(file_path, timestamp))
+    if (!test_util::TouchFileHelper(file_path, timestamp)) {
       return false;
+    }
 
     return true;
   }
@@ -378,10 +383,12 @@ class CrashSenderUtilTest : public testing::Test {
     // These should be kept, since the payload is a known kind and exists.
     good_meta_ = crash_directory.Append("good.meta");
     good_log_ = crash_directory.Append("good.log");
-    if (!CreateFile(good_meta_, "payload=good.log\ndone=1\n", good_meta_time))
+    if (!CreateFile(good_meta_, "payload=good.log\ndone=1\n", good_meta_time)) {
       return false;
-    if (!CreateFile(good_log_, "", now))
+    }
+    if (!CreateFile(good_log_, "", now)) {
       return false;
+    }
 
     // These should be removed, as we shouldn't accept files outside of the
     // crash log directory.
@@ -389,29 +396,35 @@ class CrashSenderUtilTest : public testing::Test {
     absolute_log_ = crash_directory.Append("absolute.log");
     if (!CreateFile(absolute_meta_,
                     "payload=" + absolute_log_.value() + "\n" + "done=1\n",
-                    absolute_meta_time))
+                    absolute_meta_time)) {
       return false;
-    if (!CreateFile(absolute_log_, "", now))
+    }
+    if (!CreateFile(absolute_log_, "", now)) {
       return false;
+    }
 
     // These should be removed, since the `alreadyuploaded` file exists.
     uploaded_meta_ = crash_directory.Append("uploaded.meta");
     uploaded_log_ = crash_directory.Append("uploaded.log");
     uploaded_already_ = crash_directory.Append("uploaded.alreadyuploaded");
     if (!CreateFile(uploaded_meta_, "payload=uploaded.log\ndone=1\n",
-                    good_meta_time))
+                    good_meta_time)) {
       return false;
-    if (!CreateFile(uploaded_log_, "", now))
+    }
+    if (!CreateFile(uploaded_log_, "", now)) {
       return false;
-    if (!CreateFile(uploaded_already_, "", now))
+    }
+    if (!CreateFile(uploaded_already_, "", now)) {
       return false;
+    }
 
     // This should be ignored as corrupt. Payload can't be /.
     root_payload_meta_ = crash_directory.Append("root_payload.meta");
     if (!test_util::CreateFile(root_payload_meta_,
                                "payload=/\n"
-                               "done=1\n"))
+                               "done=1\n")) {
       return false;
+    }
 
     // These should be ignored, if uploading of device coredumps is not allowed.
     devcore_meta_ = crash_directory.Append("devcore.meta");
@@ -419,42 +432,51 @@ class CrashSenderUtilTest : public testing::Test {
     if (!CreateFile(devcore_meta_,
                     "payload=devcore.devcore\n"
                     "done=1\n",
-                    devcore_meta_time))
+                    devcore_meta_time)) {
       return false;
-    if (!CreateFile(devcore_devcore_, "", now))
+    }
+    if (!CreateFile(devcore_devcore_, "", now)) {
       return false;
+    }
 
     // These should be kept, since the payload is a known kind and exists.
     txt_meta_ = crash_directory.Append("txt.meta");
     txt_txt_ = crash_directory.Append("txt.txt");
-    if (!CreateFile(txt_meta_, "payload=txt.txt\ndone=1\n", now))
+    if (!CreateFile(txt_meta_, "payload=txt.txt\ndone=1\n", now)) {
       return false;
-    if (!CreateFile(txt_txt_, "", now))
+    }
+    if (!CreateFile(txt_txt_, "", now)) {
       return false;
+    }
 
     // This should be ignored, since the metadata is corrupted but the file is
     // still fairly new.
     new_corrupted_meta_ = crash_directory.Append("new_corrupted.meta");
-    if (!CreateFile(new_corrupted_meta_, "foo\ndone=1\n", now))
+    if (!CreateFile(new_corrupted_meta_, "foo\ndone=1\n", now)) {
       return false;
+    }
 
     // This should be removed, since metadata is corrupted.
     old_corrupted_meta_ = crash_directory.Append("old_corrupted.meta");
-    if (!CreateFile(old_corrupted_meta_, "!@#$%^&*\ndone=1\n", now - hour * 1))
+    if (!CreateFile(old_corrupted_meta_, "!@#$%^&*\ndone=1\n",
+                    now - hour * 1)) {
       return false;
+    }
 
     // This should be removed, since no payload info is recorded.
     empty_meta_ = crash_directory.Append("empty.meta");
-    if (!CreateFile(empty_meta_, "done=1\n", now))
+    if (!CreateFile(empty_meta_, "done=1\n", now)) {
       return false;
+    }
 
     // This should be removed, since the payload file does not exist.
     nonexistent_meta_ = crash_directory.Append("nonexistent.meta");
     if (!CreateFile(nonexistent_meta_,
                     "payload=nonexistent.log\n"
                     "done=1\n",
-                    now))
+                    now)) {
       return false;
+    }
 
     // These should be removed, since the payload is an unknown kind.
     unknown_meta_ = crash_directory.Append("unknown.meta");
@@ -462,29 +484,35 @@ class CrashSenderUtilTest : public testing::Test {
     if (!CreateFile(unknown_meta_,
                     "payload=unknown.xxx\n"
                     "done=1\n",
-                    now))
+                    now)) {
       return false;
-    if (!CreateFile(unknown_xxx_, "", now))
+    }
+    if (!CreateFile(unknown_xxx_, "", now)) {
       return false;
+    }
 
     // This should be removed, since the meta file is old.
     old_incomplete_meta_ = crash_directory.Append("old_incomplete.meta");
-    if (!CreateFile(old_incomplete_meta_, "payload=good.log\n", now))
+    if (!CreateFile(old_incomplete_meta_, "payload=good.log\n", now)) {
       return false;
-    if (!test_util::TouchFileHelper(old_incomplete_meta_, now - hour * 24))
+    }
+    if (!test_util::TouchFileHelper(old_incomplete_meta_, now - hour * 24)) {
       return false;
+    }
 
     // This should be ignored, even though the payload doesn't exist,
     // since the meta file is new.
     new_incomplete_meta_ = crash_directory.Append("new_incomplete.meta");
-    if (!CreateFile(new_incomplete_meta_, "payload=nonexistent.log\n", now))
+    if (!CreateFile(new_incomplete_meta_, "payload=nonexistent.log\n", now)) {
       return false;
+    }
 
     // This should be ignored, even though there's no payload, since the meta
     // file is new.
     new_empty_meta_ = crash_directory.Append("new_empty.meta");
-    if (!CreateFile(new_empty_meta_, "", now))
+    if (!CreateFile(new_empty_meta_, "", now)) {
       return false;
+    }
 
     // This should be kept since the OS timestamp is recent.
     recent_os_meta_ = crash_directory.Append("recent_os.meta");
@@ -498,8 +526,9 @@ class CrashSenderUtilTest : public testing::Test {
       return false;
     }
     recent_os_log_ = crash_directory.Append("recent_os.log");
-    if (!CreateFile(recent_os_log_, "", now))
+    if (!CreateFile(recent_os_log_, "", now)) {
       return false;
+    }
 
     // This should be removed since the OS timestamp is old.
     old_os_meta_ = crash_directory.Append("old_os.meta");
@@ -556,8 +585,10 @@ class CrashSenderUtilTest : public testing::Test {
     loop_meta_ = crash_directory.Append("loop.meta");
     if (!CreateFile(
             loop_meta_,
-            "payload=good.log\nupload_var_crash_loop_mode=true\ndone=1\n", now))
+            "payload=good.log\nupload_var_crash_loop_mode=true\ndone=1\n",
+            now)) {
       return false;
+    }
 
     return true;
   }
@@ -578,8 +609,9 @@ class CrashSenderUtilTest : public testing::Test {
                             SessionType session_type,
                             MetricsFlag metrics_flag,
                             MetricsLibraryMock* metrics_lib) {
-    if (!CreateLsbReleaseFile(build_type))
+    if (!CreateLsbReleaseFile(build_type)) {
       return false;
+    }
 
     metrics_lib->set_guest_mode(session_type == kGuestMode);
     metrics_lib->set_metrics_enabled(metrics_flag == kMetricsEnabled);

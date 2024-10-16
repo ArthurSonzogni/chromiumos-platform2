@@ -26,8 +26,9 @@ std::vector<anomaly::CrashReport> ParseLogMessages(
   std::vector<anomaly::CrashReport> crash_reports;
   for (auto& msg : log_msgs) {
     auto crash_report = parser->ParseLogEntry(msg);
-    if (crash_report)
+    if (crash_report) {
       crash_reports.push_back(std::move(*crash_report));
+    }
   }
   return crash_reports;
 }
@@ -35,8 +36,9 @@ std::vector<anomaly::CrashReport> ParseLogMessages(
 void ReplaceMsgContent(std::vector<std::string>* log_msgs,
                        const std::string& find_this,
                        const std::string& replace_with) {
-  for (auto& msg : *log_msgs)
+  for (auto& msg : *log_msgs) {
     base::ReplaceSubstringsAfterOffset(&msg, 0, find_this, replace_with);
+  }
 }
 
 std::vector<std::string> GetTestLogMessages(base::FilePath input_file) {
@@ -51,8 +53,9 @@ std::vector<std::string> GetTestLogMessages(base::FilePath input_file) {
     return log_msgs;
   }
   // Handle likely newline at end of file.
-  if (log_msgs.back().empty())
+  if (log_msgs.back().empty()) {
     log_msgs.pop_back();
+  }
   return log_msgs;
 }
 
@@ -63,8 +66,9 @@ void ParserTest(const std::string& input_file_name,
       GetTestLogMessages(test_util::GetTestDataPath(input_file_name,
                                                     /*use_testdata=*/true));
   for (auto& run : parser_runs) {
-    if (run.find_this && run.replace_with)
+    if (run.find_this && run.replace_with) {
       ReplaceMsgContent(&log_msgs, *run.find_this, *run.replace_with);
+    }
     auto crash_reports = ParseLogMessages(parser, log_msgs);
 
     ASSERT_THAT(crash_reports, SizeIs(run.expected_size));

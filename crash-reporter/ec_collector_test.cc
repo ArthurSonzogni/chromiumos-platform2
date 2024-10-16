@@ -49,8 +49,9 @@ class ECCollectorTest : public ::testing::Test {
 
     if (present) {
       char data[116];
-      for (unsigned int i = 0; i < sizeof(data); i++)
+      for (unsigned int i = 0; i < sizeof(data); i++) {
         data[i] = i;
+      }
 
       if (valid) {
         // Forge a panic data with valid arch, struct version, flag, and
@@ -60,10 +61,11 @@ class ECCollectorTest : public ::testing::Test {
         data[PANIC_DATA_FLAGS_BYTE] = 0;
         data[kPanicDataReservedByte] = 0;
       }
-      if (stale)
+      if (stale) {
         data[PANIC_DATA_FLAGS_BYTE] |= PANIC_DATA_FLAG_OLD_HOSTCMD;
-      else
+      } else {
         data[PANIC_DATA_FLAGS_BYTE] &= ~PANIC_DATA_FLAG_OLD_HOSTCMD;
+      }
 
       ASSERT_TRUE(base::WriteFile(panicinfo_path,
                                   std::string_view(data, sizeof(data))));

@@ -47,8 +47,9 @@ void ReadHeaderToMap(const std::string& line,
 
     if (begin != std::string::npos) {
       // TODO(domlaskowski): Use multimap to allow multiple "Package" headers.
-      if (!map->emplace(line.substr(0, end), line.substr(begin)).second)
+      if (!map->emplace(line.substr(0, end), line.substr(begin)).second) {
         LOG(WARNING) << "Duplicate header: " << line;
+      }
       return;
     }
   }
@@ -106,16 +107,18 @@ std::optional<std::string> GetVersionFromFingerprint(
   // Assuming the fingerprint format won't change. Everything between ':' and
   // '/R' is the version.
   auto begin = fingerprint.find(':');
-  if (begin == std::string::npos)
+  if (begin == std::string::npos) {
     return std::nullopt;
+  }
 
   // Make begin point to the start of the "version".
   begin++;
 
   // Version must have at least one digit.
   const auto end = fingerprint.find("/R", begin + 1);
-  if (end == std::string::npos)
+  if (end == std::string::npos) {
     return std::nullopt;
+  }
 
   return fingerprint.substr(begin, end - begin);
 }
@@ -133,8 +136,9 @@ bool ParseCrashLog(const std::string& type,
     ReadHeaderToMap(line, map);
   }
 
-  if (stream.fail())
+  if (stream.fail()) {
     return false;
+  }
 
   if (HasExceptionInfo(type)) {
     std::ostringstream out;
@@ -244,12 +248,15 @@ std::string FormatDuration(base::TimeDelta delta) {
   const auto minutes = seconds / kSecondsPerMinute;
   seconds %= kSecondsPerMinute;
 
-  if (days > 0)
+  if (days > 0) {
     out << days << "d ";
-  if (days > 0 || hours > 0)
+  }
+  if (days > 0 || hours > 0) {
     out << hours << "h ";
-  if (days > 0 || hours > 0 || minutes > 0)
+  }
+  if (days > 0 || hours > 0 || minutes > 0) {
     out << minutes << "min ";
+  }
 
   out << seconds << 's';
   return out.str();

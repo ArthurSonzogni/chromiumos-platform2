@@ -73,8 +73,9 @@ bool GetDelimitedString(const std::string& str,
                         size_t offset,
                         std::string* substr) {
   size_t at = str.find_first_of(ch, offset);
-  if (at == std::string::npos || at == offset || at == str.length() - 1)
+  if (at == std::string::npos || at == offset || at == str.length() - 1) {
     return false;
+  }
   *substr = str.substr(offset, at - offset);
   return true;
 }
@@ -640,8 +641,9 @@ bool ChromeCollector::ProcessDriErrorState(
     const std::string& log_name,
     const std::string& dri_error_state_str,
     const base::FilePath& error_state_path) {
-  if (dri_error_state_str == "<empty>")
+  if (dri_error_state_str == "<empty>") {
     return false;
+  }
 
   const char kBase64Header[] = "<base64>: ";
   const size_t kBase64HeaderLength = sizeof(kBase64Header) - 1;

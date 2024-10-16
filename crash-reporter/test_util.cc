@@ -72,15 +72,17 @@ base::Time GetDefaultTime() {
 }
 
 bool CreateFile(const base::FilePath& file_path, std::string_view content) {
-  if (!base::CreateDirectory(file_path.DirName()))
+  if (!base::CreateDirectory(file_path.DirName())) {
     return false;
+  }
   return base::WriteFile(file_path, content);
 }
 
 void SetActiveSessions(org::chromium::SessionManagerInterfaceProxyMock* mock,
                        const std::map<std::string, std::string>& sessions) {
-  if (g_active_sessions)
+  if (g_active_sessions) {
     delete g_active_sessions;
+  }
   g_active_sessions = new std::map<std::string, std::string>(sessions);
 
   EXPECT_CALL(*mock, RetrieveActiveSessions(_, _, _))
@@ -93,8 +95,9 @@ bool DirectoryHasFileWithPattern(const base::FilePath& directory,
   base::FileEnumerator enumerator(
       directory, false, base::FileEnumerator::FileType::FILES, pattern);
   base::FilePath path = enumerator.Next();
-  if (!path.empty() && found_file_path)
+  if (!path.empty() && found_file_path) {
     *found_file_path = path;
+  }
   return !path.empty();
 }
 

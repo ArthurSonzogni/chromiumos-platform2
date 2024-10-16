@@ -83,8 +83,9 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
   std::string signature;
   std::string content;
   std::map<std::string, std::string> extra_metadata;
-  if (!LoadSecurityAnomaly(&content, &signature, &extra_metadata))
+  if (!LoadSecurityAnomaly(&content, &signature, &extra_metadata)) {
     return false;
+  }
 
   base::FilePath crash_directory;
   if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
@@ -106,8 +107,9 @@ bool SecurityAnomalyCollector::Collect(int32_t weight) {
 
   AddCrashMetaData(kSignatureKey, signature);
 
-  for (const auto& metadata : extra_metadata)
+  for (const auto& metadata : extra_metadata) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
 
   FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 

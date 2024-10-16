@@ -850,8 +850,9 @@ TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
     // Check for the expected crash signature:
     std::string sanitized_name = driver_name;
     for (size_t i = 0; i < sanitized_name.size(); ++i) {
-      if (!isalnum(sanitized_name[i]) && sanitized_name[i] != '_')
+      if (!isalnum(sanitized_name[i]) && sanitized_name[i] != '_') {
         sanitized_name[i] = '_';
+      }
     }
     base::FilePath meta_path;
     std::string meta_pattern = "devcoredump_";

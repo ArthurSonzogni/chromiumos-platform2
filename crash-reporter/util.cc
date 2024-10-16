@@ -80,8 +80,9 @@ bool IsDeviceCoredumpUploadAllowed() {
 bool IsDeveloperImage() {
   // If we're testing crash reporter itself, we don't want to special-case
   // for developer images.
-  if (IsCrashTestInProgress())
+  if (IsCrashTestInProgress()) {
     return false;
+  }
   return base::PathExists(paths::Get(paths::kLeaveCoreFile));
 }
 
@@ -100,8 +101,9 @@ bool IsReallyTestImage() {
 bool IsTestImage() {
   // If we're testing crash reporter itself, we don't want to special-case
   // for test images.
-  if (IsCrashTestInProgress())
+  if (IsCrashTestInProgress()) {
     return false;
+  }
 
   return IsReallyTestImage();
 }
@@ -350,8 +352,9 @@ std::string GetHardwareClass() {
 std::string GetBootModeString() {
   // If we're testing crash reporter itself, we don't want to special-case
   // for developer mode.
-  if (IsCrashTestInProgress())
+  if (IsCrashTestInProgress()) {
     return "";
+  }
 
   auto vb_value =
       crash_crossystem::GetInstance()->VbGetSystemPropertyInt(kDevSwBoot);
@@ -359,8 +362,9 @@ std::string GetBootModeString() {
     LOG(ERROR) << "Error trying to determine boot mode";
     return "missing-crossystem";
   }
-  if (vb_value.value() == 1)
+  if (vb_value.value() == 1) {
     return kDevMode;
+  }
 
   return "";
 }
@@ -544,8 +548,9 @@ int RunAndCaptureOutput(brillo::ProcessImpl* process,
         break;
       }
 
-      if (count == 0)
+      if (count == 0) {
         return process->Wait();
+      }
 
       output->append(buffer, count);
     }
@@ -557,13 +562,15 @@ int RunAndCaptureOutput(brillo::ProcessImpl* process,
 void LogMultilineError(const std::string& error) {
   std::vector<std::string_view> lines = base::SplitStringPiece(
       error, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (auto line : lines)
+  for (auto line : lines) {
     LOG(ERROR) << line;
+  }
 }
 
 bool ReadMemfdToString(int mem_fd, std::string* contents) {
-  if (contents)
+  if (contents) {
     contents->clear();
+  }
   base::ScopedFILE file(fdopen(mem_fd, "r"));
   if (!file) {
     PLOG(ERROR) << "Failed to fdopen(" << mem_fd << ")";
@@ -592,8 +599,9 @@ bool ReadMemfdToString(int mem_fd, std::string* contents) {
     PLOG(ERROR) << "fread() error";
     return false;
   }
-  if (contents)
+  if (contents) {
     contents->assign(buf.get(), file_size);
+  }
 
   return true;
 }
@@ -650,11 +658,13 @@ bool ReadFdToStream(unsigned int fd, std::stringstream* stream) {
 
   while (true) {
     const int count = src.ReadAtCurrentPosNoBestEffort(buffer, kBufferSize);
-    if (count < 0)
+    if (count < 0) {
       return false;
+    }
 
-    if (count == 0)
+    if (count == 0) {
       return stream->tellp() > 0;  // Crash log should not be empty.
+    }
 
     stream->write(buffer, count);
   }
@@ -688,8 +698,9 @@ void JoinSessionKeyring() {
 // a larger prime number (16127 vs 131).
 unsigned HashString(std::string_view input) {
   unsigned hash = 0;
-  for (auto c : input)
+  for (auto c : input) {
     hash = hash * 16127 + c;
+  }
   return hash;
 }
 

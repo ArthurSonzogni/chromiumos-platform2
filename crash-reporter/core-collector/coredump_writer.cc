@@ -48,8 +48,9 @@ struct FdOperation {
     BytePtr ptr = reinterpret_cast<BytePtr>(data);
     while (count > 0) {
       const ssize_t n = TEMP_FAILURE_RETRY(op(fd, ptr, count));
-      if (n < 0)
+      if (n < 0) {
         return false;
+      }
       if (n == 0) {
         errno = EIO;
         return false;
@@ -84,8 +85,9 @@ class CoredumpWriter::Reader {
   Reader& operator=(const Reader&) = delete;
 
   bool Read(void* buf, size_t count) {
-    if (!ReadAllBlocking(fd_, buf, count))
+    if (!ReadAllBlocking(fd_, buf, count)) {
       return false;
+    }
     bytes_read_ += count;
     return true;
   }
@@ -96,14 +98,16 @@ class CoredumpWriter::Reader {
     while (count > 0) {
       const ssize_t n =
           TEMP_FAILURE_RETRY(read(fd_, buf, std::min(kBufSize, count)));
-      if (n < 0)
+      if (n < 0) {
         return false;
+      }
       if (n == 0) {
         errno = 0;
         break;
       }
-      if (dest_fd >= 0 && !WriteAllBlocking(dest_fd, buf, n))
+      if (dest_fd >= 0 && !WriteAllBlocking(dest_fd, buf, n)) {
         return false;
+      }
       count -= n;
       bytes_read_ += n;
     }
@@ -111,8 +115,9 @@ class CoredumpWriter::Reader {
   }
 
   bool Seek(size_t offset) {
-    if (offset < bytes_read_)  // Cannot move backward.
+    if (offset < bytes_read_) {  // Cannot move backward.
       return false;
+    }
     return CopyTo(-1, offset - bytes_read_);
   }
 
@@ -154,13 +159,15 @@ int CoredumpWriter::WriteCoredump() {
   std::vector<Phdr> program_headers;
   std::vector<char> note_buf;
   int error = ReadUntilNote(&reader, &elf_header, &program_headers, &note_buf);
-  if (error != EX_OK)
+  if (error != EX_OK) {
     return error;
+  }
 
   // Get a set of address ranges occupied by mapped files from PT_NOTE segment.
   FileMappings file_mappings;
-  if (!GetFileMappings(note_buf, &file_mappings))
+  if (!GetFileMappings(note_buf, &file_mappings)) {
     return EX_OSFILE;
+  }
 
   // Strip segments backed by mapped files, since they are not needed to
   // generate a minidump.
@@ -225,8 +232,9 @@ int CoredumpWriter::WriteCoredump() {
   // Write segments that were not stripped.
   for (size_t i = 1; i < stripped_program_headers.size(); ++i) {
     const Phdr& program_header = stripped_program_headers[i];
-    if (program_header.p_filesz == 0)
+    if (program_header.p_filesz == 0) {
       continue;
+    }
     const Phdr& program_header_original = program_headers[i];
     if (!reader.Seek(program_header_original.p_offset)) {
       PLOG_ERROR << "Failed to seek segment";
@@ -292,8 +300,9 @@ bool CoredumpWriter::GetFileMappings(const std::vector<char>& note_buf,
                                      FileMappings* file_mappings) {
   // Locate NT_FILE note.
   ElfCoreDump::Note note({note_buf.data(), note_buf.size()});
-  while (note.IsValid() && note.GetType() != NT_FILE)
+  while (note.IsValid() && note.GetType() != NT_FILE) {
     note = note.GetNextNote();
+  }
 
   if (!note.IsValid()) {
     LOG_ERROR << "Failed to locate NT_FILE note";
@@ -356,23 +365,26 @@ void CoredumpWriter::StripSegments(
     // backed by a file, so it can be excluded as it doesn't contain stack data
     // useful to generate a minidump.
     const FileRange range(out.p_vaddr, out.p_vaddr + out.p_memsz);
-    if (out.p_type == PT_LOAD && file_mappings.count(range))
+    if (out.p_type == PT_LOAD && file_mappings.count(range)) {
       out.p_filesz = 0;
+    }
 
     // Calculate offset.
     const Phdr& prev_program_header = (*stripped_program_headers)[i - 1];
     out.p_offset = prev_program_header.p_offset + prev_program_header.p_filesz;
     // Offset alignment.
-    if (out.p_align != 0 && out.p_offset % out.p_align != 0)
+    if (out.p_align != 0 && out.p_offset % out.p_align != 0) {
       out.p_offset += out.p_align - out.p_offset % out.p_align;
+    }
   }
 }
 
 int CoredumpWriter::WriteAuxv(const std::vector<char>& note_buf) {
   // Locate NT_AUXV note.
   ElfCoreDump::Note note({note_buf.data(), note_buf.size()});
-  while (note.IsValid() && note.GetType() != NT_AUXV)
+  while (note.IsValid() && note.GetType() != NT_AUXV) {
     note = note.GetNextNote();
+  }
 
   if (!note.IsValid()) {
     LOG_ERROR << "Failed to locate NT_AUXV note";
@@ -405,8 +417,9 @@ int CoredumpWriter::WriteMaps(const std::vector<Phdr>& program_headers,
   }
 
   for (const auto& program_header : program_headers) {
-    if (program_header.p_type != PT_LOAD)
+    if (program_header.p_type != PT_LOAD) {
       continue;
+    }
     const FileRange range(program_header.p_vaddr,
                           program_header.p_vaddr + program_header.p_memsz);
     // If a mapping is found for the range, the range is mapped to a file.
@@ -433,8 +446,9 @@ int CoredumpWriter::WriteMaps(const std::vector<Phdr>& program_headers,
         0,    // Fake device (minor) value.
         0ul,  // Fake inode value.
         path);
-    if (len < 0 || len >= kBufSize || !WriteAllBlocking(maps, buf, len))
+    if (len < 0 || len >= kBufSize || !WriteAllBlocking(maps, buf, len)) {
       return EX_OSFILE;
+    }
   }
 
   return EX_OK;

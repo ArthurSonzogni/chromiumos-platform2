@@ -233,8 +233,9 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   // If we're not root, we won't be able to jail ourselves (well, we could if
   // we used user namespaces, but maybe later).  Need to double check handling
   // when called by chrome to process its crashes.
-  if (getuid() != 0)
+  if (getuid() != 0) {
     return;
+  }
 
   struct minijail* j = minijail_new();
   minijail_namespace_ipc(j);
@@ -246,8 +247,9 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   minijail_remount_mode(j, MS_SLAVE);
   minijail_mount_tmp(j);
   minijail_mount_dev(j);
-  if (!log_to_stderr)
+  if (!log_to_stderr) {
     minijail_bind(j, "/dev/log", "/dev/log", 0);
+  }
   minijail_no_new_privs(j);
 
   // We need access to /sys/class/watchdog to determine if the device rebooted
@@ -816,10 +818,12 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_clean_shutdown) {
     int ret = 0;
-    if (!unclean_shutdown_collector->Disable())
+    if (!unclean_shutdown_collector->Disable()) {
       ret = 1;
-    if (!user_collector->Disable())
+    }
+    if (!user_collector->Disable()) {
       ret = 1;
+    }
     return ret;
   }
 

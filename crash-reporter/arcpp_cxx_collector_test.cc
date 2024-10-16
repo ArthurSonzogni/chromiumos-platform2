@@ -140,15 +140,17 @@ class ArcppCxxCollectorTest : public Test {
     };
 
     bool GetArcPid(pid_t* pid) const override {
-      if (arc_pid_ == 0)
+      if (arc_pid_ == 0) {
         return false;
+      }
       *pid = arc_pid_;
       return true;
     }
     bool GetPidNamespace(pid_t pid, std::string* ns) const override {
       const auto it = processes_.find(pid);
-      if (it == processes_.end())
+      if (it == processes_.end()) {
         return false;
+      }
       ns->assign(it->second.ns);
       return true;
     }
@@ -157,29 +159,34 @@ class ArcppCxxCollectorTest : public Test {
         std::string* exec,
         base::FilePath* exec_directory) const override {
       const auto it = processes_.find(pid);
-      if (it == processes_.end())
+      if (it == processes_.end()) {
         return false;
+      }
       exec->assign(it->second.exec);
       *exec_directory = base::FilePath::FromASCII(it->second.directory);
       return true;
     }
     bool GetCommand(pid_t pid, std::string* command) const override {
       const auto it = processes_.find(pid);
-      if (it == processes_.end())
+      if (it == processes_.end()) {
         return false;
+      }
       const auto cmd = it->second.cmd;
-      if (!cmd)
+      if (!cmd) {
         return false;
+      }
       command->assign(cmd);
       return true;
     }
     bool ReadAuxvForProcess(pid_t pid, std::string* contents) const override {
       const auto it = processes_.find(pid);
-      if (it == processes_.end())
+      if (it == processes_.end()) {
         return false;
+      }
       const auto* auxv = it->second.auxv;
-      if (!auxv)
+      if (!auxv) {
         return false;
+      }
       std::istringstream ss(auxv);
       contents->clear();
       uint32_t byte;

@@ -126,8 +126,9 @@ std::string CreateSemiRandomString(size_t size) {
   result.reserve(size);
   while (result.length() < size) {
     int rem = size - result.length();
-    if (rem > sizeof(kSemiRandomData) - 1)
+    if (rem > sizeof(kSemiRandomData) - 1) {
       rem = sizeof(kSemiRandomData) - 1;
+    }
     int rand_start = base::RandInt(0, rem - 1);
     int rand_end = base::RandInt(rand_start + 1, rem);
     result.append(&kSemiRandomData[rand_start], rand_end - rand_start);

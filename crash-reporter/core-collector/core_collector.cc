@@ -94,9 +94,10 @@ void PrintUsage(const Flags& flags) {
   std::cout << "Generate minidump from core dump piped to standard input.\n"
             << std::endl;
 
-  for (const auto& flag : flags)
+  for (const auto& flag : flags) {
     std::cout << std::setw(12) << flag.first << "  " << flag.second.description
               << " (default: \"" << flag.second.value << "\")" << std::endl;
+  }
 }
 
 bool ParseFlags(int argc, char* argv[], Flags* flags) {

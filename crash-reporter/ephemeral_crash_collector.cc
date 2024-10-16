@@ -98,8 +98,9 @@ CrashCollectionStatus EphemeralCrashCollector::Collect() {
   }
 
   // Cleanup crash directory.
-  for (auto& dir : source_directories_)
+  for (auto& dir : source_directories_) {
     base::DeletePathRecursively(dir);
+  }
 
   // Not kSuccess because we didn't actually create any new crash reports.
   return CrashCollectionStatus::kFinishedEphermeralCollection;

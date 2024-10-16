@@ -115,8 +115,9 @@ bool SELinuxViolationCollector::Collect(int32_t weight) {
   std::string violation_signature;
   std::string content;
   std::map<std::string, std::string> extra_metadata;
-  if (!LoadSELinuxViolation(&content, &violation_signature, &extra_metadata))
+  if (!LoadSELinuxViolation(&content, &violation_signature, &extra_metadata)) {
     return true;
+  }
 
   FilePath crash_directory;
   if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
@@ -154,8 +155,9 @@ bool SELinuxViolationCollector::Collect(int32_t weight) {
 
   AddCrashMetaData(kSignatureKey, violation_signature);
 
-  for (const auto& metadata : extra_metadata)
+  for (const auto& metadata : extra_metadata) {
     AddCrashMetaUploadData(metadata.first, metadata.second);
+  }
 
   FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 

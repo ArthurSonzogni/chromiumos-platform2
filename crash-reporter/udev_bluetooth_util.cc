@@ -139,8 +139,9 @@ bool IsBluetoothCoredump(const base::FilePath& coredump_path) {
 bool ProcessBluetoothCoredump(const base::FilePath& coredump_path,
                               const base::FilePath& target_path,
                               std::string* crash_sig) {
-  if (!crash_sig)
+  if (!crash_sig) {
     return false;
+  }
 
   // Create a scoped temp dir to store bluetooth parser output files.
   base::ScopedTempDir tmp_dir;

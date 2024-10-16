@@ -120,18 +120,21 @@ bool ArcppCxxCollector::GetArcPid(pid_t* arc_pid) {
        container = containers.Next()) {
     std::string contents;
     if (!ReadFileToString(container.Append(kContainerPid), &contents) ||
-        contents.empty())
+        contents.empty()) {
       continue;
+    }
 
     contents.pop_back();  // Trim EOL.
 
     pid_t pid;
     if (!base::StringToInt(contents, &pid) ||
-        !base::PathExists(GetProcessPath(pid)))
+        !base::PathExists(GetProcessPath(pid))) {
       continue;
+    }
 
-    if (arc_pid)
+    if (arc_pid) {
       *arc_pid = pid;
+    }
 
     return true;
   }
@@ -168,8 +171,9 @@ bool ArcppCxxCollector::ArcContext::GetExecBaseNameAndDirectory(
 bool ArcppCxxCollector::ArcContext::GetCommand(pid_t pid,
                                                std::string* command) const {
   std::vector<std::string> args = collector_->GetCommandLine(pid);
-  if (args.size() == 0)
+  if (args.size() == 0) {
     return false;
+  }
   // Return the command and discard the arguments.
   *command = args[0];
   return true;
@@ -190,14 +194,16 @@ std::string ArcppCxxCollector::GetProductVersion() const {
 
 bool ArcppCxxCollector::GetExecutableBaseNameAndDirectoryFromPid(
     pid_t pid, std::string* base_name, base::FilePath* exec_directory) {
-  if (!context_->GetExecBaseNameAndDirectory(pid, base_name, exec_directory))
+  if (!context_->GetExecBaseNameAndDirectory(pid, base_name, exec_directory)) {
     return false;
+  }
 
   // The runtime for non-native ARC apps overwrites its command line with the
   // package name of the app, so use that instead.
   if (IsArcProcess(pid) && IsAppProcess(*base_name)) {
-    if (!context_->GetCommand(pid, base_name))
+    if (!context_->GetCommand(pid, base_name)) {
       LOG(ERROR) << "Failed to get package name";
+    }
   }
   return true;
 }
@@ -302,8 +308,9 @@ void ArcppCxxCollector::AddArcMetaData(const std::string& process) {
                            arc_util::FormatDuration(uptime));
   }
 
-  if (arc_util::IsSilentReport(arc_util::kNativeCrash))
+  if (arc_util::IsSilentReport(arc_util::kNativeCrash)) {
     AddCrashMetaData(arc_util::kSilentKey, "true");
+  }
 
   arc_util::BuildProperty build_property;
   if (GetArcProperties(FilePath(kArcBuildProp), &build_property)) {
@@ -394,8 +401,9 @@ bool GetArcProperties(const base::FilePath& build_prop_path,
 
   if (store.GetString(kFingerprintProperty, &(build_property->fingerprint)) &&
       store.GetString(kBoardProperty, &(build_property->board)) &&
-      store.GetString(kCpuAbiProperty, &(build_property->cpu_abi)))
+      store.GetString(kCpuAbiProperty, &(build_property->cpu_abi))) {
     return true;
+  }
 
   LOG(ERROR) << "Failed to get ARC properties";
   return false;

@@ -37,11 +37,12 @@ std::vector<std::string> ConstructLoggingCommands(StorageDeviceType device_type,
   std::vector<std::string> cmds;
   switch (device_type) {
     case StorageDeviceType::kStateful:
-      if (is_mount_failure)
+      if (is_mount_failure) {
         cmds = {"dumpe2fs_stateful", "console-ramoops", "kernel-warning",
                 "dm_snapshot_status"};
-      else
+      } else {
         cmds = {"shutdown_umount_failure_state", "umount-encrypted"};
+      }
       break;
     case StorageDeviceType::kEncryptedStateful:
       cmds = {"dumpe2fs_encstateful", "console-ramoops", "kernel-warning",
@@ -71,14 +72,15 @@ MountFailureCollector::MountFailureCollector(
 // static
 StorageDeviceType MountFailureCollector::ValidateStorageDeviceType(
     const std::string& device_label) {
-  if (device_label == kStatefulDeviceLabel)
+  if (device_label == kStatefulDeviceLabel) {
     return StorageDeviceType::kStateful;
-  else if (device_label == kEncryptedStatefulDeviceLabel)
+  } else if (device_label == kEncryptedStatefulDeviceLabel) {
     return StorageDeviceType::kEncryptedStateful;
-  else if (device_label == kCryptohomeDeviceLabel)
+  } else if (device_label == kCryptohomeDeviceLabel) {
     return StorageDeviceType::kCryptohome;
-  else
+  } else {
     return StorageDeviceType::kInvalidDevice;
+  }
 }
 
 // static

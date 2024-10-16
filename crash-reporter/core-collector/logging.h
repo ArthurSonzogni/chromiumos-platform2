@@ -25,8 +25,9 @@ class ErrorMessage {
   }
 
   ~ErrorMessage() {
-    if (!os_error_.empty())
+    if (!os_error_.empty()) {
       std::cerr << ": " << os_error_;
+    }
 
     std::cerr << ".\n";
   }

@@ -32,8 +32,9 @@ bool LogReader::GetNextEntry(LogEntry* entry) {
   std::string line;
   while (log_file_.GetLine(&line)) {
     // ReadLine returns true if the line contains a valid LogEntry.
-    if (ReadLine(line, entry))
+    if (ReadLine(line, entry)) {
       return true;
+    }
   }
   return false;
 }

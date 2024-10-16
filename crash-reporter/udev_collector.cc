@@ -91,8 +91,9 @@ UdevCollector::~UdevCollector() {}
 bool UdevCollector::IsSafeDevCoredump(
     std::map<std::string, std::string> udev_event_map) {
   // Is it a device coredump?
-  if (udev_event_map[kUdevSubsystem] != kUdevSubsystemDevCoredump)
+  if (udev_event_map[kUdevSubsystem] != kUdevSubsystemDevCoredump) {
     return false;
+  }
 
   int instance_number;
   if (!base::StringToInt(udev_event_map[kUdevKernelNumber], &instance_number)) {

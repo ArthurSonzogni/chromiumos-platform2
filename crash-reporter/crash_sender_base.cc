@@ -48,8 +48,9 @@ bool IsKnownKind(const std::string& kind) {
 
 // Returns true if the given key is valid for crash metadata.
 bool IsValidKey(const std::string& key) {
-  if (key.empty())
+  if (key.empty()) {
     return false;
+  }
 
   for (const char c : key) {
     if (!(base::IsAsciiAlpha(c) || base::IsAsciiDigit(c) || c == '_' ||
@@ -76,21 +77,23 @@ bool g_force_is_mock = false;
 bool g_force_is_mock_successful = false;
 
 std::string GetImageType() {
-  if (util::IsTestImage())
+  if (util::IsTestImage()) {
     return "test";
-  else if (util::IsDeveloperImage())
+  } else if (util::IsDeveloperImage()) {
     return "dev";
-  else if (IsMock() && !IsMockSuccessful())
+  } else if (IsMock() && !IsMockSuccessful()) {
     return "mock-fail";
-  else
+  } else {
     return "";
+  }
 }
 
 base::FilePath GetFilePathFromMetadata(const brillo::KeyValueStore& metadata,
                                        const std::string& key) {
   std::string value;
-  if (!metadata.GetString(key, &value))
+  if (!metadata.GetString(key, &value)) {
     return base::FilePath();
+  }
 
   return base::FilePath(value);
 }
@@ -100,17 +103,21 @@ std::string GetKindFromPayloadPath(const base::FilePath& payload_path) {
       base::SplitString(payload_path.BaseName().value(), ".",
                         base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   // Suppress "gz".
-  if (parts.size() >= 2 && parts.back() == "gz")
+  if (parts.size() >= 2 && parts.back() == "gz") {
     parts.pop_back();
+  }
 
-  if (parts.size() <= 1)
+  if (parts.size() <= 1) {
     return "";
+  }
 
   std::string extension = parts.back();
-  if (extension == constants::kMinidumpExtension)
+  if (extension == constants::kMinidumpExtension) {
     return constants::kKindForMinidump;
-  if (extension == constants::kJavaScriptStackExtension)
+  }
+  if (extension == constants::kJavaScriptStackExtension) {
     return constants::kKindForJavaScriptError;
+  }
 
   return extension;
 }
@@ -118,12 +125,14 @@ std::string GetKindFromPayloadPath(const base::FilePath& payload_path) {
 bool ParseMetadata(const std::string& raw_metadata,
                    brillo::KeyValueStore* metadata) {
   metadata->Clear();
-  if (!metadata->LoadFromString(raw_metadata))
+  if (!metadata->LoadFromString(raw_metadata)) {
     return false;
+  }
 
   for (const auto& key : metadata->GetKeys()) {
-    if (!IsValidKey(key))
+    if (!IsValidKey(key)) {
       return false;
+    }
   }
 
   return true;
@@ -132,8 +141,9 @@ bool ParseMetadata(const std::string& raw_metadata,
 bool IsCompleteMetadata(const brillo::KeyValueStore& metadata) {
   // *.meta files always end with done=1 so we can tell if they are complete.
   std::string value;
-  if (!metadata.GetString("done", &value))
+  if (!metadata.GetString("done", &value)) {
     return false;
+  }
   return value == "1";
 }
 
@@ -639,8 +649,9 @@ std::optional<std::string> SenderBase::GetOsReleaseValue(
   }
   std::string value;
   for (const auto& key : keys) {
-    if (os_release_reader_->GetString(key, &value))
+    if (os_release_reader_->GetString(key, &value)) {
       return std::optional<std::string>(value);
+    }
   }
   return std::optional<std::string>();
 }

@@ -135,8 +135,9 @@ void ArcJavaCollector::AddArcMetaData(const std::string& process,
                            arc_util::FormatDuration(uptime));
   }
 
-  if (arc_util::IsSilentReport(crash_type))
+  if (arc_util::IsSilentReport(crash_type)) {
     AddCrashMetaData(arc_util::kSilentKey, "true");
+  }
 }
 
 CrashCollectionStatus ArcJavaCollector::CreateReportForJavaCrash(
@@ -183,8 +184,9 @@ CrashCollectionStatus ArcJavaCollector::CreateReportForJavaCrash(
       std::ostringstream out;
       out << '[' << tag << ']';
       const auto it = map.find(arc_util::kSubjectKey);
-      if (it != map.end())
+      if (it != map.end()) {
         out << ' ' << it->second;
+      }
 
       AddCrashMetaData(arc_util::kSignatureField, out.str());
     } else {

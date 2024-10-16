@@ -264,13 +264,16 @@ bool ProcessStackTrace(re2::StringPiece kernel_dump,
       // Keep track of two hashables, one that doesn't include include any
       // uncertain (prefixed by '?') frames and ones that includes all frames.
       // We only use the uncertain hashable if there are no certain frames.
-      if (!uncertain_hashable.empty())
+      if (!uncertain_hashable.empty()) {
         uncertain_hashable.append("|");
+      }
       uncertain_hashable.append(function_name);
-      if (!is_certain)
+      if (!is_certain) {
         continue;
-      if (!hashable.empty())
+      }
+      if (!hashable.empty()) {
         hashable.append("|");
+      }
       hashable.append(function_name);
 
       // Store the first non-ignored function since that's a good candidate
@@ -384,12 +387,13 @@ std::string ComputeKernelStackSignature(const std::string& kernel_dump,
 std::string BiosCrashSignature(const std::string& dump) {
   const char* type = "";
 
-  if (RE2::PartialMatch(dump, RE2("PANIC in EL3")))
+  if (RE2::PartialMatch(dump, RE2("PANIC in EL3"))) {
     type = "PANIC";
-  else if (RE2::PartialMatch(dump, RE2("Unhandled Exception in EL3")))
+  } else if (RE2::PartialMatch(dump, RE2("Unhandled Exception in EL3"))) {
     type = "EXCPT";
-  else if (RE2::PartialMatch(dump, RE2("Unhandled Interrupt Exception in")))
+  } else if (RE2::PartialMatch(dump, RE2("Unhandled Interrupt Exception in"))) {
     type = "INTR";
+  }
 
   std::string elr;
   RE2::PartialMatch(dump, RE2("x30 =\\s+(0x[0-9a-fA-F]+)"), &elr);
@@ -418,10 +422,12 @@ std::string ComputeNoCErrorSignature(const std::string& dump) {
   // of all the registers
   while (RE2::FindAndConsume(&dump_piece, line_re, &line)) {
     if (RE2::PartialMatch(line, noc_entry_re, &noc_name, &regval)) {
-      if (!hashable.empty())
+      if (!hashable.empty()) {
         hashable.append("|");
-      if (first_noc.empty())
+      }
+      if (first_noc.empty()) {
         first_noc = noc_name;
+      }
       hashable.append(noc_name);
       hashable.append("|");
       hashable.append(regval);

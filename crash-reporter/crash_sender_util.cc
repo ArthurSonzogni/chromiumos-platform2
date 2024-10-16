@@ -227,8 +227,9 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name) {
   }
   const std::string base_name = base::JoinString(parts, ".");
 
-  if (components.size() == 1)
+  if (components.size() == 1) {
     return base::FilePath(base_name);
+  }
   return file_name.DirName().Append(base_name);
 }
 
@@ -250,8 +251,9 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
 
     if (!base::PathExists(meta_file) && delta.InHours() >= 24) {
       LOG(INFO) << "Removing old orphaned file: " << file.value();
-      if (!base::DeleteFile(file))
+      if (!base::DeleteFile(file)) {
         PLOG(WARNING) << "Failed to remove " << file.value();
+      }
     }
   }
 }
@@ -287,8 +289,9 @@ std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
   }
   std::sort(time_meta_pairs.begin(), time_meta_pairs.end());
 
-  for (const auto& pair : time_meta_pairs)
+  for (const auto& pair : time_meta_pairs) {
     meta_files.push_back(pair.second);
+  }
   return meta_files;
 }
 
@@ -358,8 +361,9 @@ bool IsBelowRate(const base::FilePath& timestamps_dir,
       }
       current_bytes += previous_send.size();
     } else {
-      if (!base::DeleteFile(file))
+      if (!base::DeleteFile(file)) {
         PLOG(WARNING) << "Failed to remove old report " << file.value();
+      }
     }
   }
   LOG(INFO) << "Current send rate: " << current_rate << " sends and "
@@ -474,8 +478,9 @@ bool Sender::HasCrashUploadingConsent(const CrashInfo& info) {
         {constants::kUploadVarPrefix, constants::kCrashLoopModeKey});
     // Only skip consent check if the crash happened in crash loop mode.
     bool crash_loop_mode;
-    if (!info.metadata.GetBoolean(crash_loop_mode_key, &crash_loop_mode))
+    if (!info.metadata.GetBoolean(crash_loop_mode_key, &crash_loop_mode)) {
       return false;
+    }
     return crash_loop_mode;
   }
 
@@ -484,8 +489,9 @@ bool Sender::HasCrashUploadingConsent(const CrashInfo& info) {
 
 bool Sender::IsSafeDeviceCoredump(const CrashInfo& info) {
   std::string value;
-  if (!info.metadata.GetString("exec_name", &value))
+  if (!info.metadata.GetString("exec_name", &value)) {
     return false;
+  }
   return value == "devcoredump_adreno" || value == "devcoredump_msm_dpu" ||
          value == "devcoredump_qcom-venus" || value == "devcoredump_amdgpu";
 }
@@ -598,8 +604,9 @@ void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
 }
 
 void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
-  if (crash_meta_files.empty())
+  if (crash_meta_files.empty()) {
     return;
+  }
 
   std::string client_id = GetClientId();
 
@@ -749,43 +756,52 @@ std::unique_ptr<brillo::http::FormData> Sender::CreateCrashFormData(
     }
   }
 
-  if (!crash.image_type.empty())
+  if (!crash.image_type.empty()) {
     form_data->AddTextField("image_type", crash.image_type);
+  }
 
-  if (!crash.boot_mode.empty())
+  if (!crash.boot_mode.empty()) {
     form_data->AddTextField("boot_mode", crash.boot_mode);
+  }
 
-  if (!crash.error_type.empty())
+  if (!crash.error_type.empty()) {
     form_data->AddTextField("error_type", crash.error_type);
+  }
 
   LOG(INFO) << "Sending crash:";
-  if (crash.prod != kChromeOsProduct)
+  if (crash.prod != kChromeOsProduct) {
     LOG(INFO) << "  Sending crash report on behalf of " << crash.prod;
+  }
   LOG(INFO) << "  Metadata: " << details.meta_file.value() << " ("
             << details.payload_kind << ")";
   LOG(INFO) << "  Payload: " << details.payload_file.value();
   LOG(INFO) << "  Version: " << crash.ver;
-  if (!crash.image_type.empty())
+  if (!crash.image_type.empty()) {
     LOG(INFO) << "  Image type: " << crash.image_type;
-  if (!crash.boot_mode.empty())
+  }
+  if (!crash.boot_mode.empty()) {
     LOG(INFO) << "  Boot mode: " << crash.boot_mode;
+  }
   if (IsMock()) {
     LOG(INFO) << "  Product: " << crash.prod;
     LOG(INFO) << "  URL: " << kReportUploadProdUrl;
     LOG(INFO) << "  Board: " << crash.board;
     LOG(INFO) << "  HWClass: " << crash.hwclass;
-    if (!crash.sig.empty())
+    if (!crash.sig.empty()) {
       LOG(INFO) << "  sig: " << crash.sig;
+    }
   }
 
   LOG(INFO) << "  Exec name: " << crash.exec_name;
-  if (!crash.error_type.empty())
+  if (!crash.error_type.empty()) {
     LOG(INFO) << "  Error type: " << crash.error_type;
+  }
 
   form_data->AddTextField("guid", crash.guid);
 
-  if (product_name_out)
+  if (product_name_out) {
     *product_name_out = crash.prod;
+  }
 
   return form_data;
 }
@@ -882,8 +898,9 @@ base::Value::Dict Sender::CreateJsonEntity(const std::string& report_id,
       details.metadata.GetString(kMetadataKeySource, &source)) {
     // Hide the real source to avoid privacy concern if it is not a system
     // crash.
-    if (!paths::Get(paths::kSystemCrashDirectory).IsParent(details.meta_file))
+    if (!paths::Get(paths::kSystemCrashDirectory).IsParent(details.meta_file)) {
       source = kMetadataValueRedacted;
+    }
     root_dict.Set(kJsonLogKeySource, source);
   }
 
@@ -1045,8 +1062,9 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
     const CrashDetails& details,
     const std::string& report_id,
     std::string product_name) {
-  if (product_name == constants::kProductNameChromeAsh)
+  if (product_name == constants::kProductNameChromeAsh) {
     product_name = "Chrome";
+  }
   if (dry_run_) {
     // Writes the log to stdout under the dry run mode.
     auto entry_or_reason =

@@ -31,13 +31,16 @@ const char kSignatureKey[] = "sig";
 
 // Validate BERT table signature, length and region length.
 bool BertCheckTable(const struct acpi_table_bert& bert_table) {
-  if (memcmp(bert_table.signature, ACPI_SIG_BERT, ACPI_NAME_SIZE) != 0)
+  if (memcmp(bert_table.signature, ACPI_SIG_BERT, ACPI_NAME_SIZE) != 0) {
     return false;
-  if (bert_table.length != sizeof(struct acpi_table_bert))
+  }
+  if (bert_table.length != sizeof(struct acpi_table_bert)) {
     return false;
+  }
   if (bert_table.region_length != 0 &&
-      bert_table.region_length < ACPI_BERT_REGION_STRUCT_SIZE)
+      bert_table.region_length < ACPI_BERT_REGION_STRUCT_SIZE) {
     return false;
+  }
 
   return true;
 }

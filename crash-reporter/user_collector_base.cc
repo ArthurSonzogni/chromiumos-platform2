@@ -384,8 +384,9 @@ CrashCollectionStatus UserCollectorBase::ConvertAndEnqueueCrash(
       return status;
     } else {
       base::FilePath target;
-      if (!NormalizeFilePath(minidump_path, &target))
+      if (!NormalizeFilePath(minidump_path, &target)) {
         target = minidump_path;
+      }
 
       // TODO(crbug.com/1053847) The executable name is sensitive user data
       // inside the VM, so don't log this message. Eventually we will move the

@@ -379,22 +379,23 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   }
 
   const char* exec_name;
-  if (type == kWifi)
+  if (type == kWifi) {
     exec_name = kWifiWarningExecName;
-  else if (type == kKfence)
+  } else if (type == kKfence) {
     exec_name = kKfenceExecName;
-  else if (type == kSMMUFault)
+  } else if (type == kSMMUFault) {
     exec_name = kSMMUFaultExecName;
-  else if (type == kSuspend)
+  } else if (type == kSuspend) {
     exec_name = kSuspendWarningExecName;
-  else if (type == kGeneric)
+  } else if (type == kGeneric) {
     exec_name = kGenericWarningExecName;
-  else if (type == kAth10k)
+  } else if (type == kAth10k) {
     exec_name = kKernelAth10kErrorExecName;
-  else if (type == kAth11k)
+  } else if (type == kAth11k) {
     exec_name = kKernelAth11kErrorExecName;
-  else
+  } else {
     exec_name = kKernelIwlwifiErrorExecName;
+  }
 
   // Attempt to make the exec_name more unique to avoid collisions.
   if (!func_name.empty()) {

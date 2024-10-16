@@ -233,12 +233,14 @@ bool ValidatePathAndOpen(const FilePath& dir, int* outfd) {
     if (dirfd < 0) {
       PLOG(ERROR) << "Unable to access crash path: " << dir.value() << " ("
                   << component << ")";
-      if (parentfd != AT_FDCWD)
+      if (parentfd != AT_FDCWD) {
         close(parentfd);
+      }
       return false;
     }
-    if (parentfd != AT_FDCWD)
+    if (parentfd != AT_FDCWD) {
       close(parentfd);
+    }
     parentfd = dirfd;
   }
   *outfd = parentfd;
@@ -471,10 +473,11 @@ bool CrashCollector::CreateDirectoryWithSettings(const FilePath& dir,
     }
   }
 
-  if (dirfd_out)
+  if (dirfd_out) {
     *dirfd_out = dirfd;
-  else
+  } else {
     close(dirfd);
+  }
   return true;
 }
 
@@ -565,8 +568,9 @@ CrashCollector::CrashCollector(
 }
 
 CrashCollector::~CrashCollector() {
-  if (bus_)
+  if (bus_) {
     bus_->ShutdownAndBlock();
+  }
 }
 
 void CrashCollector::Initialize(bool early) {
@@ -580,8 +584,9 @@ void CrashCollector::Initialize(bool early) {
 }
 
 bool CrashCollector::TrySetUpDBus() {
-  if (bus_)
+  if (bus_) {
     return true;
+  }
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -825,8 +830,9 @@ bool CrashCollector::CopyFdToNewCompressedFile(
   gzFile compressed_output;
 
   fd_dup = OpenNewCompressedFileForWriting(target_path, &compressed_output);
-  if (!fd_dup.is_valid())
+  if (!fd_dup.is_valid()) {
     return false;
+  }
 
   ssize_t bytes_read;
 
@@ -836,8 +842,9 @@ bool CrashCollector::CopyFdToNewCompressedFile(
       gzclose_w(compressed_output);
       return false;
     }
-    if (!WriteCompressedFile(compressed_output, buffer.data(), bytes_read))
+    if (!WriteCompressedFile(compressed_output, buffer.data(), bytes_read)) {
       return false;
+    }
   } while (bytes_read > 0);
 
   return CloseCompressedFileAndUpdateStats(compressed_output, std::move(fd_dup),
@@ -851,11 +858,13 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
   gzFile compressed_output;
 
   fd_dup = OpenNewCompressedFileForWriting(filename, &compressed_output);
-  if (!fd_dup.is_valid())
+  if (!fd_dup.is_valid()) {
     return false;
+  }
 
-  if (!WriteCompressedFile(compressed_output, data, size))
+  if (!WriteCompressedFile(compressed_output, data, size)) {
     return false;
+  }
 
   return CloseCompressedFileAndUpdateStats(compressed_output, std::move(fd_dup),
                                            filename);
@@ -902,8 +911,9 @@ std::string CrashCollector::Sanitize(const std::string& name) {
   // The logic in crash_sender relies on this.
   std::string result = name;
   for (size_t i = 0; i < name.size(); ++i) {
-    if (!isalnum(result[i]) && result[i] != '_')
+    if (!isalnum(result[i]) && result[i] != '_') {
       result[i] = '_';
+    }
   }
   return result;
 }
@@ -1191,8 +1201,9 @@ CrashCollector::GetCreatedCrashDirectory(base::FilePath& full_path,
   if (!CheckHasCapacity(crash_dir_procfd, (full_path).value())) {
     // TODO(b/177552411): Remove the out_of_capacity output parameter and just
     // have callers check the return value of kOutOfCapacity.
-    if (out_of_capacity)
+    if (out_of_capacity) {
       *out_of_capacity = true;
+    }
     return base::unexpected(CrashCollectionStatus::kOutOfCapacity);
   }
   return crash_dir_procfd;
@@ -1200,8 +1211,9 @@ CrashCollector::GetCreatedCrashDirectory(base::FilePath& full_path,
 
 CrashCollectionStatus CrashCollector::GetCreatedCrashDirectoryByEuid(
     uid_t euid, FilePath* crash_directory, bool* out_of_capacity) {
-  if (out_of_capacity)
+  if (out_of_capacity) {
     *out_of_capacity = false;
+  }
 
   // In crash loop mode, we don't actually need a crash directory, so don't
   // bother creating one.
@@ -1364,8 +1376,9 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory,
     const base::FilePath filename(ent->d_name);
     const std::string ext = filename.FinalExtension();
     if (ext != ".core" && ext != constants::kMinidumpExtensionWithDot &&
-        ext != ".meta" && ext != constants::kJavaScriptStackExtensionWithDot)
+        ext != ".meta" && ext != constants::kJavaScriptStackExtensionWithDot) {
       continue;
+    }
 
     // Track the basenames as our unique identifiers.  When the core/dmp files
     // are part of a single report, this will count them as one report.
@@ -1523,27 +1536,31 @@ bool CrashCollector::GetProcessTree(pid_t pid,
     const FilePath status_path = proc_path.Append("status");
 
     // Read the command line and append it to the log.
-    if (!base::ReadFileToString(proc_path.Append("cmdline"), &contents))
+    if (!base::ReadFileToString(proc_path.Append("cmdline"), &contents)) {
       break;
+    }
     base::ReplaceChars(contents, std::string(1, '\0'), " ", &contents);
     stream << "cmdline: " << contents << std::endl;
 
     // Read the status file and append it to the log.
-    if (!base::ReadFileToString(proc_path.Append("status"), &contents))
+    if (!base::ReadFileToString(proc_path.Append("status"), &contents)) {
       break;
+    }
     stream << contents;
 
     // Include values of interest from the environment.
-    if (!base::ReadFileToString(proc_path.Append("environ"), &contents))
+    if (!base::ReadFileToString(proc_path.Append("environ"), &contents)) {
       break;
+    }
     ExtractEnvironmentVars(contents, &stream);
     stream << std::endl;
 
     // Pull out the parent pid from the status file.  The line will look like:
     // PPid:\t1234
     base::StringPairs pairs;
-    if (!base::SplitStringIntoKeyValuePairs(contents, ':', '\n', &pairs))
+    if (!base::SplitStringIntoKeyValuePairs(contents, ':', '\n', &pairs)) {
       break;
+    }
     pid = 0;
     for (const auto& key_value : pairs) {
       if (key_value.first == "PPid") {
@@ -1552,14 +1569,16 @@ bool CrashCollector::GetProcessTree(pid_t pid,
 
         // Parse the parent pid.  Set it only if it's valid.
         base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
-        if (base::StringToInt(value, &ppid))
+        if (base::StringToInt(value, &ppid)) {
           pid = ppid;
+        }
         break;
       }
     }
     // If we couldn't find the parent pid, break out.
-    if (pid == 0)
+    if (pid == 0) {
       break;
+    }
   }
 
   // Always do this after log collection is "finished" so we don't accidentally
@@ -1748,22 +1767,26 @@ std::string CrashCollector::GetProductVersion() const {
 
 std::string CrashCollector::GetKernelName() const {
   struct utsname buf;
-  if (!test_kernel_name_.empty())
+  if (!test_kernel_name_.empty()) {
     return test_kernel_name_;
+  }
 
-  if (uname(&buf))
+  if (uname(&buf)) {
     return kUnknownValue;
+  }
 
   return buf.sysname;
 }
 
 std::string CrashCollector::GetKernelVersion() const {
   struct utsname buf;
-  if (!test_kernel_version_.empty())
+  if (!test_kernel_version_.empty()) {
     return test_kernel_version_;
+  }
 
-  if (uname(&buf))
+  if (uname(&buf)) {
     return kUnknownValue;
+  }
 
   // 3.8.11 #1 SMP Wed Aug 22 02:18:30 PDT 2018
   return StringPrintf("%s %s", buf.release, buf.version);
@@ -2069,8 +2092,9 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
     // Check if there's an override to indicate we should indeed collect
     // chrome crashes.  This allows the crashes to still be tracked when
     // they occur in integration tests.  See "crosbug.com/17987".
-    if (base::PathExists(FilePath(kCollectChromeFile)))
+    if (base::PathExists(FilePath(kCollectChromeFile))) {
       return true;
+    }
   }
   // We default to ignoring chrome crashes.
   return false;
@@ -2079,8 +2103,9 @@ bool CrashCollector::ShouldHandleChromeCrashes() {
 bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
   if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunStateDirectory),
                                    kSystemRunStateDirectoryMode,
-                                   constants::kRootUid, kRootGroup, nullptr))
+                                   constants::kRootUid, kRootGroup, nullptr)) {
     return false;
+  }
 
   if (early) {
     if (!CreateDirectoryWithSettings(FilePath(paths::kSystemRunCrashDirectory),
@@ -2099,8 +2124,9 @@ bool CrashCollector::InitializeSystemCrashDirectories(bool early) {
     if (!CreateDirectoryWithSettings(
             FilePath(paths::kSystemCrashDirectory), kSystemCrashDirectoryMode,
             constants::kRootUid, directory_group, nullptr,
-            /*files_mode=*/constants::kSystemCrashFilesMode))
+            /*files_mode=*/constants::kSystemCrashFilesMode)) {
       return false;
+    }
 
     if (!CreateDirectoryWithSettings(
             FilePath(paths::kCrashReporterStateDirectory),
@@ -2149,20 +2175,24 @@ bool CrashCollector::InitializeSystemMetricsDirectories() {
 
   // Ensure /run/metrics directory exists.
   if (!CreateDirectoryWithSettings(metrics_dir, kSystemRunMetricsFlagMode,
-                                   metrics_user_id, metrics_group_id, nullptr))
+                                   metrics_user_id, metrics_group_id,
+                                   nullptr)) {
     return false;
+  }
 
   // Ensure metrics/external exists.
   if (!CreateDirectoryWithSettings(metrics_external_dir,
                                    kSystemRunMetricsFlagMode, metrics_user_id,
-                                   metrics_group_id, nullptr))
+                                   metrics_group_id, nullptr)) {
     return false;
+  }
 
   // Create final crash-reporter flag directory.
   if (!CreateDirectoryWithSettings(metrics_flag_directory,
                                    kSystemRunMetricsFlagMode, metrics_user_id,
-                                   metrics_group_id, nullptr))
+                                   metrics_group_id, nullptr)) {
     return false;
+  }
 
   return true;
 }
@@ -2172,8 +2202,9 @@ bool CrashCollector::ParseProcessTicksFromStat(std::string_view stat,
                                                uint64_t* ticks) {
   // Skip "pid" and "comm" fields. See format in proc(5).
   const auto pos = stat.find_last_of(')');
-  if (pos == std::string_view::npos)
+  if (pos == std::string_view::npos) {
     return false;
+  }
 
   stat.remove_prefix(pos + 1);
   const auto fields = base::SplitStringPiece(stat, " ", base::TRIM_WHITESPACE,

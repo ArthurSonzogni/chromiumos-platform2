@@ -230,8 +230,9 @@ int main(int argc, const char* argv[]) {
   }
   const pid_t pid = minijail_fork(jail.get());
 
-  if (pid == 0)
+  if (pid == 0) {
     return RunChildMain(argc, argv);
+  }
 
   // We rely on the child handling its own exit status, and a non-zero status
   // isn't necessarily a bug (e.g. if mocked out that way).  Only warn for an

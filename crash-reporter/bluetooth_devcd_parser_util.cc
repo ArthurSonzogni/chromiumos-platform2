@@ -720,16 +720,18 @@ enum class ParserState {
 bool ParseAssertLine(base::File& file, std::string& out) {
   std::string line;
 
-  if (!util::GetNextLine(file, line))
+  if (!util::GetNextLine(file, line)) {
     return false;
+  }
 
   std::vector<std::string> tokens = base::SplitString(
       line, ";,", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Record the first part after ";" which is the file name and line number of
   // the crash
-  if (tokens.size() > 1)
+  if (tokens.size() > 1) {
     out = CreateDumpEntry("Crash Location", tokens[1]);
+  }
 
   return true;
 }
@@ -737,8 +739,9 @@ bool ParseAssertLine(base::File& file, std::string& out) {
 bool ParseProgCounter(base::File& file, std::string& out, std::string* pc) {
   std::string line;
 
-  if (!util::GetNextLine(file, line))
+  if (!util::GetNextLine(file, line)) {
     return false;
+  }
 
   std::vector<std::string> out_vec;
   std::vector<std::string> tokens = base::SplitString(
@@ -777,8 +780,9 @@ bool ParseLogRegisters(base::File& file, std::string& out) {
   for (int i = 0; i < kTotalLogRegisters; i++) {
     std::string line;
 
-    if (!util::GetNextLine(file, line))
+    if (!util::GetNextLine(file, line)) {
       return false;
+    }
 
     std::vector<std::pair<std::string, std::string>> target_keyval;
 
@@ -788,8 +792,9 @@ bool ParseLogRegisters(base::File& file, std::string& out) {
     base::SplitStringIntoKeyValuePairs(line, '=', ';', &target_keyval);
 
     for (const auto& key_value : target_keyval) {
-      if (!key_value.first.empty())
+      if (!key_value.first.empty()) {
         out_vec.push_back(CreateDumpEntry(key_value.first, key_value.second));
+      }
     }
   }
 

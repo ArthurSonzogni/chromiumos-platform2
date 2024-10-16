@@ -62,11 +62,13 @@ class CrashSerializerTest : public testing::Test {
   bool CreateFile(const base::FilePath& file_path,
                   std::string_view content,
                   base::Time timestamp) {
-    if (!test_util::CreateFile(file_path, content))
+    if (!test_util::CreateFile(file_path, content)) {
       return false;
+    }
 
-    if (!test_util::TouchFileHelper(file_path, timestamp))
+    if (!test_util::TouchFileHelper(file_path, timestamp)) {
       return false;
+    }
 
     return true;
   }
@@ -88,10 +90,12 @@ class CrashSerializerTest : public testing::Test {
     // These should be serialized, since the payload is a known kind and exists.
     good_meta_ = crash_directory.Append("good.meta");
     good_log_ = crash_directory.Append("good.log");
-    if (!CreateFile(good_meta_, "payload=good.log\ndone=1\n", good_meta_time))
+    if (!CreateFile(good_meta_, "payload=good.log\ndone=1\n", good_meta_time)) {
       return false;
-    if (!CreateFile(good_log_, "", now))
+    }
+    if (!CreateFile(good_log_, "", now)) {
       return false;
+    }
 
     // These should be serialized, the payload path is absolute but should be
     // handled properly.
@@ -99,10 +103,12 @@ class CrashSerializerTest : public testing::Test {
     absolute_log_ = crash_directory.Append("absolute.log");
     if (!CreateFile(absolute_meta_,
                     "payload=" + absolute_log_.value() + "\n" + "done=1\n",
-                    absolute_meta_time))
+                    absolute_meta_time)) {
       return false;
-    if (!CreateFile(absolute_log_, "", now))
+    }
+    if (!CreateFile(absolute_log_, "", now)) {
       return false;
+    }
 
     // These should be serialized, even though the `alreadyuploaded` file
     // exists.
@@ -110,19 +116,23 @@ class CrashSerializerTest : public testing::Test {
     uploaded_log_ = crash_directory.Append("uploaded.log");
     uploaded_already_ = crash_directory.Append("uploaded.alreadyuploaded");
     if (!CreateFile(uploaded_meta_, "payload=uploaded.log\ndone=1\n",
-                    uploaded_meta_time))
+                    uploaded_meta_time)) {
       return false;
-    if (!CreateFile(uploaded_log_, "", now))
+    }
+    if (!CreateFile(uploaded_log_, "", now)) {
       return false;
-    if (!CreateFile(uploaded_already_, "", now))
+    }
+    if (!CreateFile(uploaded_already_, "", now)) {
       return false;
+    }
 
     // This should be ignored as corrupt. Payload can't be /.
     root_payload_meta_ = crash_directory.Append("root_payload.meta");
     if (!test_util::CreateFile(root_payload_meta_,
                                "payload=/\n"
-                               "done=1\n"))
+                               "done=1\n")) {
       return false;
+    }
 
     // These should be serialized -- serializing devcore files is always OK
     // (as opposed to sending them, which is only sometimes okay).
@@ -131,28 +141,33 @@ class CrashSerializerTest : public testing::Test {
     if (!CreateFile(devcore_meta_,
                     "payload=devcore.devcore\n"
                     "done=1\n",
-                    devcore_meta_time))
+                    devcore_meta_time)) {
       return false;
-    if (!CreateFile(devcore_devcore_, "", now))
+    }
+    if (!CreateFile(devcore_devcore_, "", now)) {
       return false;
+    }
 
     // This should be ignored, since metadata is corrupted.
     corrupted_meta_ = crash_directory.Append("corrupted.meta");
-    if (!CreateFile(corrupted_meta_, "!@#$%^&*\ndone=1\n", now))
+    if (!CreateFile(corrupted_meta_, "!@#$%^&*\ndone=1\n", now)) {
       return false;
+    }
 
     // This should be ignored, since no payload info is recorded.
     empty_meta_ = crash_directory.Append("empty.meta");
-    if (!CreateFile(empty_meta_, "done=1\n", now))
+    if (!CreateFile(empty_meta_, "done=1\n", now)) {
       return false;
+    }
 
     // This should be ignored, since the payload file does not exist.
     nonexistent_meta_ = crash_directory.Append("nonexistent.meta");
     if (!CreateFile(nonexistent_meta_,
                     "payload=nonexistent.log\n"
                     "done=1\n",
-                    now))
+                    now)) {
       return false;
+    }
 
     // These should be ignored, since the payload is an unknown kind.
     unknown_meta_ = crash_directory.Append("unknown.meta");
@@ -160,22 +175,27 @@ class CrashSerializerTest : public testing::Test {
     if (!CreateFile(unknown_meta_,
                     "payload=unknown.xxx\n"
                     "done=1\n",
-                    now))
+                    now)) {
       return false;
-    if (!CreateFile(unknown_xxx_, "", now))
+    }
+    if (!CreateFile(unknown_xxx_, "", now)) {
       return false;
+    }
 
     // This should be ignored, since it's incomplete.
     old_incomplete_meta_ = crash_directory.Append("old_incomplete.meta");
-    if (!CreateFile(old_incomplete_meta_, "payload=good.log\n", now))
+    if (!CreateFile(old_incomplete_meta_, "payload=good.log\n", now)) {
       return false;
-    if (!test_util::TouchFileHelper(old_incomplete_meta_, now - hour * 24))
+    }
+    if (!test_util::TouchFileHelper(old_incomplete_meta_, now - hour * 24)) {
       return false;
+    }
 
     // This should be ignored, since it's incomplete.
     new_incomplete_meta_ = crash_directory.Append("new_incomplete.meta");
-    if (!CreateFile(new_incomplete_meta_, "payload=nonexistent.log\n", now))
+    if (!CreateFile(new_incomplete_meta_, "payload=nonexistent.log\n", now)) {
       return false;
+    }
 
     // This should be serialized since the OS timestamp is recent.
     recent_os_meta_ = crash_directory.Append("recent_os.meta");
@@ -189,8 +209,9 @@ class CrashSerializerTest : public testing::Test {
       return false;
     }
     recent_os_log_ = crash_directory.Append("recent_os.log");
-    if (!CreateFile(recent_os_log_, "", now))
+    if (!CreateFile(recent_os_log_, "", now)) {
       return false;
+    }
 
     // This should be serialized despite the old OS timestamp.
     old_os_meta_ = crash_directory.Append("old_os.meta");

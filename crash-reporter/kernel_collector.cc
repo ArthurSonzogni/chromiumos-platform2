@@ -101,16 +101,21 @@ std::string KernelCollector::PstoreRecordTypeToString(
 // kernel.
 PstoreRecordType KernelCollector::StringToPstoreRecordType(
     std::string_view record) {
-  if (record == "Panic")
+  if (record == "Panic") {
     return PstoreRecordType::kPanic;
-  if (record == "Oops")
+  }
+  if (record == "Oops") {
     return PstoreRecordType::kOops;
-  if (record == "Emergency")
+  }
+  if (record == "Emergency") {
     return PstoreRecordType::kEmergency;
-  if (record == "Shutdown")
+  }
+  if (record == "Shutdown") {
     return PstoreRecordType::kShutdown;
-  if (record == "Unknown")
+  }
+  if (record == "Unknown") {
     return PstoreRecordType::kUnknown;
+  }
   return PstoreRecordType::kParseFailed;
 }
 
@@ -214,8 +219,9 @@ bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
 
     // If banner found but no log before it, don't look for other stage banners.
     // This just means we booted up from S5 and there was nothing left in DRAM.
-    if (found)
+    if (found) {
       return false;
+    }
   }
 
   // This shouldn't happen since we should always see at least the current boot.
@@ -226,11 +232,13 @@ bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
 bool KernelCollector::LastRebootWasBiosCrash(const std::string& dump) {
   // BIOS crash detection only supported on ARM64 for now. We're in userspace,
   // so we can't easily check for 64-bit (but that's not a big deal).
-  if (arch_ != kernel_util::kArchArm)
+  if (arch_ != kernel_util::kArchArm) {
     return false;
+  }
 
-  if (dump.empty())
+  if (dump.empty()) {
     return false;
+  }
 
   return RE2::PartialMatch(
       dump, RE2("(PANIC|Unhandled( Interrupt)? Exception) in EL3"));
@@ -238,8 +246,9 @@ bool KernelCollector::LastRebootWasBiosCrash(const std::string& dump) {
 
 bool KernelCollector::LastRebootWasNoCError(const std::string& dump) {
   // NoC errors are only on Qualcomm platforms for now.
-  if (dump.empty())
+  if (dump.empty()) {
     return false;
+  }
 
   return RE2::PartialMatch(dump, RE2("QTISECLIB.*NOC ERROR: ERRLOG"));
 }
@@ -319,20 +328,27 @@ GetWatchdogRebootReasonFromPath(const base::FilePath& watchdog_path,
   }
 
   // bootstatus is a bitmap, so build up the reboot reason string.
-  if (bootstatus & WDIOF_OVERHEAT)
+  if (bootstatus & WDIOF_OVERHEAT) {
     watchdog_reboot_reason += "-(OVERHEAT)";
-  if (bootstatus & WDIOF_FANFAULT)
+  }
+  if (bootstatus & WDIOF_FANFAULT) {
     watchdog_reboot_reason += "-(FANFAULT)";
-  if (bootstatus & WDIOF_EXTERN1)
+  }
+  if (bootstatus & WDIOF_EXTERN1) {
     watchdog_reboot_reason += "-(EXTERN1)";
-  if (bootstatus & WDIOF_EXTERN2)
+  }
+  if (bootstatus & WDIOF_EXTERN2) {
     watchdog_reboot_reason += "-(EXTERN2)";
-  if (bootstatus & WDIOF_POWERUNDER)
+  }
+  if (bootstatus & WDIOF_POWERUNDER) {
     watchdog_reboot_reason += "-(POWERUNDER)";
-  if (bootstatus & WDIOF_CARDRESET)
+  }
+  if (bootstatus & WDIOF_CARDRESET) {
     watchdog_reboot_reason += "-(WATCHDOG)";
-  if (bootstatus & WDIOF_POWEROVER)
+  }
+  if (bootstatus & WDIOF_POWEROVER) {
     watchdog_reboot_reason += "-(POWEROVER)";
+  }
 
   // Watchdog recorded some kind of reset, so collect a crash dump.
   return true;
@@ -390,8 +406,9 @@ KernelCollector::LastRebootWasWatchdog(std::string& watchdog_reboot_reason) {
 
   std::string_view piece = std::string_view(eventlog);
   size_t last_boot = piece.rfind(kEventNameBoot);
-  if (last_boot == std::string_view::npos)
+  if (last_boot == std::string_view::npos) {
     return false;
+  }
 
   watchdog_reboot_reason = "-(WATCHDOG)";
   return piece.find(kEventNameWatchdog, last_boot) != std::string_view::npos;

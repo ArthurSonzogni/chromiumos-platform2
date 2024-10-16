@@ -91,8 +91,9 @@ ServiceParser::ServiceParser(bool testonly_send_all)
 MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
   std::string service_name;
   std::string exit_status;
-  if (!RE2::FullMatch(line, *service_failure, &service_name, &exit_status))
+  if (!RE2::FullMatch(line, *service_failure, &service_name, &exit_status)) {
     return std::nullopt;
+  }
 
   if (service_name == "cros-camera") {
     // cros-camera uses non-zero exit status to indicate transient failures and
@@ -109,16 +110,18 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
 
   uint32_t hash = StringHash(service_name.c_str());
 
-  if (WasAlreadySeen(hash))
+  if (WasAlreadySeen(hash)) {
     return std::nullopt;
+  }
 
   std::string text = base::StringPrintf(
       "%08x-exit%s-%s\n", hash, exit_status.c_str(), service_name.c_str());
   std::string flag;
-  if (base::StartsWith(service_name, "arc-", base::CompareCase::SENSITIVE))
+  if (base::StartsWith(service_name, "arc-", base::CompareCase::SENSITIVE)) {
     flag = "--arc_service_failure=" + service_name;
-  else
+  } else {
     flag = "--service_failure=" + service_name;
+  }
   return CrashReport(std::move(text), {std::move(flag)});
 }
 
@@ -164,14 +167,16 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
 
   std::string only_alpha = OnlyAsciiAlpha(line);
   uint32_t hash = StringHash(only_alpha.c_str());
-  if (WasAlreadySeen(hash))
+  if (WasAlreadySeen(hash)) {
     return std::nullopt;
+  }
 
   std::string signature;
 
   // This case is strange: the '-' is only added if 'granted' was present.
-  if (RE2::PartialMatch(line, *granted))
+  if (RE2::PartialMatch(line, *granted)) {
     signature += "granted-";
+  }
 
   std::string scontext = GetField(line, R"(scontext=(\S*))");
   std::string tcontext = GetField(line, R"(tcontext=(\S*))");
@@ -198,14 +203,18 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
   std::string text =
       base::StringPrintf("%08x-selinux-%s\n", hash, signature.c_str());
 
-  if (!comm.empty())
+  if (!comm.empty()) {
     text += "comm\x01" + comm + "\x02";
-  if (!name.empty())
+  }
+  if (!name.empty()) {
     text += "name\x01" + name + "\x02";
-  if (!scontext.empty())
+  }
+  if (!scontext.empty()) {
     text += "scontext\x01" + scontext + "\x02";
-  if (!tcontext.empty())
+  }
+  if (!tcontext.empty()) {
     text += "tcontext\x01" + tcontext + "\x02";
+  }
   text += "\n";
   text += line;
 
@@ -227,10 +236,12 @@ std::string DetermineFlag(const std::string& info) {
   //   net/wireless/...
   //   net/mac80211/...
   if (info.find("net/wireless") != std::string::npos ||
-      info.find("net/mac80211") != std::string::npos)
+      info.find("net/mac80211") != std::string::npos) {
     return "--kernel_wifi_warning";
-  if (RE2::PartialMatch(info, *kernel_suspend_warning))
+  }
+  if (RE2::PartialMatch(info, *kernel_suspend_warning)) {
     return "--kernel_suspend_warning";
+  }
 
   return "--kernel_warning";
 }
@@ -287,8 +298,9 @@ KernelParser::KernelParser(bool testonly_send_all)
 
 MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
   if (last_line_ == LineType::None) {
-    if (line.find(cut_here) != std::string::npos)
+    if (line.find(cut_here) != std::string::npos) {
       last_line_ = LineType::Start;
+    }
   } else if (last_line_ == LineType::Start || last_line_ == LineType::Header) {
     std::string info;
     if (RE2::FullMatch(line, *header, &info)) {
@@ -669,8 +681,9 @@ MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
     // Avoid creating crash reports if the user doesn't exist or if cryptohome
     // can't authenticate the user's password.
     if (error_code == cryptohome::MOUNT_ERROR_USER_DOES_NOT_EXIST ||
-        error_code == cryptohome::MOUNT_ERROR_KEY_FAILURE)
+        error_code == cryptohome::MOUNT_ERROR_KEY_FAILURE) {
       return std::nullopt;
+    }
 
     return CrashReport("", {std::move("--mount_failure"),
                             std::move("--mount_device=cryptohome")});
@@ -853,8 +866,9 @@ MaybeCrashReport ModemfwdParser::ParseLogEntry(const std::string& line) {
     // cellular SKUs.
     if (error_code == modemfwd::kErrorResultInitFailureNonLteSku ||
         error_code ==
-            modemfwd::kErrorResultFailureReturnedByHelperModemNeverSeen)
+            modemfwd::kErrorResultFailureReturnedByHelperModemNeverSeen) {
       return std::nullopt;
+    }
     weight = 50;
   } else {
     return std::nullopt;
