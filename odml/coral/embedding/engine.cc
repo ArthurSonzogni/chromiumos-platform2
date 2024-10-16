@@ -25,9 +25,7 @@ using embedding_model::mojom::OnDeviceEmbeddingModelInferenceError;
 using mojom::CoralError;
 using on_device_model::mojom::LoadModelResult;
 
-// TODO(b/361429567): Decide and use the final embedding model. This is just a
-// random UUID for now.
-constexpr char kModelUuid[] = "a4ad9399-76c5-4b37-8982-41cb5996ca69";
+constexpr char kModelUuid[] = "a97333ed-3157-49a3-b503-2d2d3f23c81d";
 
 // Files in /run/daemon-store-cache are prone to be cleaned up on low disk space
 // situation.
