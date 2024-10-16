@@ -32,19 +32,22 @@ std::string Uri::value() const {
 Uri Uri::Parse(const std::string_view s) {
   // Look for URI scheme delimiter.
   const size_t pos = s.find(kUriDelimiter);
-  if (pos == std::string_view::npos || pos == 0)
+  if (pos == std::string_view::npos || pos == 0) {
     return {};
+  }
 
   // Extract scheme part.
   const std::string_view scheme = s.substr(0, pos);
 
   // Check scheme validity (see RFC 3986, section 3.1).
-  if (!isalpha(scheme[0]))
+  if (!isalpha(scheme[0])) {
     return {};
+  }
 
   for (const char c : scheme.substr(1)) {
-    if (!isalnum(c) && c != '-' && c != '+' && c != '.')
+    if (!isalnum(c) && c != '-' && c != '+' && c != '.') {
       return {};
+    }
   }
 
   // Scheme is deemed valid.

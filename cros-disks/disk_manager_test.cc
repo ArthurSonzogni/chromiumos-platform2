@@ -68,8 +68,9 @@ class FakeDiskMonitor : public DiskMonitor {
                            Disk* disk) const override {
     for (const auto& d : disks_) {
       if (d.device_file == path.value()) {
-        if (disk)
+        if (disk) {
           *disk = d;
+        }
         return true;
       }
     }

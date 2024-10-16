@@ -73,8 +73,9 @@ Metrics::ArchiveType Metrics::GetArchiveType(const std::string_view path) {
   };
 
   for (const auto [ext, type] : entries) {
-    if (base::EndsWith(path, ext, base::CompareCase::INSENSITIVE_ASCII))
+    if (base::EndsWith(path, ext, base::CompareCase::INSENSITIVE_ASCII)) {
       return type;
+    }
   }
 
   return kArchiveUnknown;

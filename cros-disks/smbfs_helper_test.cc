@@ -50,10 +50,12 @@ class PlatformForTest : public MockPlatform {
                          uid_t* uid,
                          gid_t* gid) const override {
     if (name == "fuse-smbfs") {
-      if (uid)
+      if (uid) {
         *uid = 123;
-      if (gid)
+      }
+      if (gid) {
         *gid = 456;
+      }
       return true;
     }
     return false;

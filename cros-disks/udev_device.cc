@@ -183,10 +183,12 @@ void UdevDevice::GetSizeInfo(uint64_t* total_size,
     }
   }
 
-  if (total_size)
+  if (total_size) {
     *total_size = total;
-  if (remaining_size)
+  }
+  if (remaining_size) {
     *remaining_size = remaining;
+  }
 }
 
 size_t UdevDevice::GetPartitionCount() const {
@@ -206,14 +208,17 @@ size_t UdevDevice::GetPartitionCount() const {
 }
 
 DeviceType UdevDevice::GetDeviceMediaType() const {
-  if (IsPropertyTrue(kPropertyCDROMDVD))
+  if (IsPropertyTrue(kPropertyCDROMDVD)) {
     return DeviceType::kDVD;
+  }
 
-  if (IsPropertyTrue(kPropertyCDROM))
+  if (IsPropertyTrue(kPropertyCDROM)) {
     return DeviceType::kOpticalDisc;
+  }
 
-  if (IsOnSdDevice())
+  if (IsOnSdDevice()) {
     return DeviceType::kSD;
+  }
 
   std::string vendor_id, product_id;
   if (GetVendorAndProductId(&vendor_id, &product_id)) {
@@ -311,8 +316,9 @@ bool UdevDevice::IsMobileBroadbandDevice() const {
   std::unique_ptr<brillo::UdevDevice> parent =
       dev_->GetParentWithSubsystemDeviceType(kSubsystemUsb,
                                              kPropertyDeviceTypeUSBDevice);
-  if (!parent)
+  if (!parent) {
     return false;
+  }
 
   return UdevDevice(std::move(parent))
       .IsPropertyTrue(kPropertyMistSupportedDevice);
@@ -325,8 +331,9 @@ bool UdevDevice::IsAutoMountable() const {
 }
 
 bool UdevDevice::IsHidden() {
-  if (IsPropertyTrue(kPropertyPresentationHide))
+  if (IsPropertyTrue(kPropertyPresentationHide)) {
     return true;
+  }
 
   // Hide an optical disc without any data track.
   // udev/cdrom_id only sets ID_CDROM_MEDIA_TRACK_COUNT_DATA when there is at
@@ -338,23 +345,26 @@ bool UdevDevice::IsHidden() {
 
   // Hide a mobile broadband device, which may initially expose itself as a USB
   // mass storage device and later be switched to a modem by mist.
-  if (IsMobileBroadbandDevice())
+  if (IsMobileBroadbandDevice()) {
     return true;
+  }
 
   // Hide a device that is neither marked as a partition nor a filesystem,
   // unless it has no valid partitions (e.g. the device is unformatted or
   // corrupted). An unformatted or corrupted device is visible in the file
   // the file browser so that we can provide a way to format it.
   if (!HasAttribute(kAttributePartition) &&
-      !HasProperty(kPropertyFilesystemUsage) && (GetPartitionCount() > 0))
+      !HasProperty(kPropertyFilesystemUsage) && (GetPartitionCount() > 0)) {
     return true;
+  }
 
   // Hide special partitions based on partition type.
   std::string partition_type = GetProperty(kPropertyPartitionEntryType);
   if (!partition_type.empty()) {
     for (const char* partition_type_to_hide : kPartitionTypesToHide) {
-      if (partition_type == partition_type_to_hide)
+      if (partition_type == partition_type_to_hide) {
         return true;
+      }
     }
   }
   return false;
@@ -435,8 +445,9 @@ std::string UdevDevice::StorageDevicePath() const {
         const std::string_view allowed_subsystems[] = {
             kSubsystemMmc, kSubsystemNvme, kSubsystemScsi};
         if (!subsystem ||
-            !base::Contains(allowed_subsystems, std::string_view(subsystem)))
+            !base::Contains(allowed_subsystems, std::string_view(subsystem))) {
           return false;
+        }
 
         if (const char* const sys_path = device.GetSysPath()) {
           path->assign(sys_path);
@@ -507,8 +518,9 @@ Disk UdevDevice::ToDisk() {
   disk.uuid = base::HexEncode(uuid_hash.data(), uuid_hash.size());
 
   const char* dev_file = dev_->GetDeviceNode();
-  if (dev_file)
+  if (dev_file) {
     disk.device_file = dev_file;
+  }
 
   disk.mount_paths = GetMountPaths();
 

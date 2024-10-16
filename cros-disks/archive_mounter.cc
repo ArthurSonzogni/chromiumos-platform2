@@ -74,8 +74,9 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     return nullptr;
   }
 
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordArchiveType(path);
+  }
 
   auto sandbox = sandbox_factory_->CreateSandboxedProcess();
 
@@ -147,8 +148,9 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     sandbox->AddArgument("encoding=" + encoding);
   }
 
-  for (const auto& opt : extra_command_line_options_)
+  for (const auto& opt : extra_command_line_options_) {
     sandbox->AddArgument(opt);
+  }
 
   sandbox->AddArgument(path.value());
 

@@ -29,10 +29,12 @@ bool FindLastElementStartingWith(const std::vector<std::string>& container,
 
 bool IsReadOnlyMount(const std::vector<std::string>& options) {
   for (const auto& option : base::Reversed(options)) {
-    if (option == "ro")
+    if (option == "ro") {
       return true;
-    if (option == "rw")
+    }
+    if (option == "rw") {
       return false;
+    }
   }
   return false;
 }
@@ -74,8 +76,9 @@ size_t RemoveParamsWithSameName(std::vector<std::string>* params,
 bool JoinParamsIntoOptions(const std::vector<std::string>& params,
                            std::string* out) {
   for (const auto& element : params) {
-    if (element.find(',') != std::string::npos)
+    if (element.find(',') != std::string::npos) {
       return false;
+    }
   }
   *out = base::JoinString(params, ",");
   return true;

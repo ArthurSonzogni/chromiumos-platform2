@@ -50,15 +50,17 @@ MountError MountPoint::Unmount() {
   if (is_mounted_) {
     // To prevent the umount() syscall from blocking for too long (b/258344222),
     // request the FUSE process termination if this process is "safe" to kill.
-    if (process_ && is_read_only())
+    if (process_ && is_read_only()) {
       process_->KillPidNamespace();
+    }
 
     error = platform_->Unmount(data_.mount_path, data_.filesystem_type);
     if (error == MountError::kSuccess || error == MountError::kPathNotMounted) {
       is_mounted_ = false;
 
-      if (eject_)
+      if (eject_) {
         std::move(eject_).Run();
+      }
     }
   }
 
@@ -79,8 +81,9 @@ MountError MountPoint::Unmount() {
 }
 
 MountError MountPoint::Remount(bool read_only) {
-  if (!is_mounted_)
+  if (!is_mounted_) {
     return MountError::kPathNotMounted;
+  }
 
   uint64_t flags = data_.flags;
   if (read_only) {
@@ -92,19 +95,22 @@ MountError MountPoint::Remount(bool read_only) {
   const MountError error =
       platform_->Mount(data_.source, data_.mount_path.value(),
                        data_.filesystem_type, flags | MS_REMOUNT, data_.data);
-  if (error == MountError::kSuccess)
+  if (error == MountError::kSuccess) {
     data_.flags = flags;
+  }
 
   return error;
 }
 
 MountError MountPoint::ConvertLauncherExitCodeToMountError(
     const int exit_code) const {
-  if (exit_code == 0)
+  if (exit_code == 0) {
     return MountError::kSuccess;
+  }
 
-  if (base::Contains(password_needed_exit_codes_, exit_code))
+  if (base::Contains(password_needed_exit_codes_, exit_code)) {
     return MountError::kNeedPassword;
+  }
 
   return MountError::kMountProgramFailed;
 }
@@ -136,22 +142,25 @@ void MountPoint::OnLauncherExit(const int exit_code) {
     }
   }
 
-  if (launcher_exit_callback_)
+  if (launcher_exit_callback_) {
     std::move(launcher_exit_callback_).Run(data_.error);
+  }
 }
 
 bool MountPoint::ParseProgressMessage(std::string_view message,
                                       int* const percent) {
-  if (message.empty() || message.back() != '%')
+  if (message.empty() || message.back() != '%') {
     return false;
+  }
 
   // |message| ends with a percent sign '%'
   message.remove_suffix(1);
 
   // Extract the number before the percent sign.
   std::string_view::size_type i = message.size();
-  while (i > 0 && base::IsAsciiDigit(message[i - 1]))
+  while (i > 0 && base::IsAsciiDigit(message[i - 1])) {
     i--;
+  }
   message.remove_prefix(i);
 
   DCHECK(percent);
@@ -161,12 +170,14 @@ bool MountPoint::ParseProgressMessage(std::string_view message,
 
 void MountPoint::OnProgress(const std::string_view message) {
   int percent;
-  if (!ParseProgressMessage(message, &percent))
+  if (!ParseProgressMessage(message, &percent)) {
     return;
+  }
 
   progress_percent_ = percent;
-  if (progress_callback_)
+  if (progress_callback_) {
     progress_callback_.Run(this);
+  }
 }
 
 void MountPoint::SetProcess(std::unique_ptr<Process> process,

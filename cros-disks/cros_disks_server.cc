@@ -201,8 +201,9 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
   for (MountManager* const manager : mount_managers_) {
     DCHECK(manager);
     error = manager->Unmount(path);
-    if (error != MountError::kPathNotMounted)
+    if (error != MountError::kPathNotMounted) {
       break;
+    }
   }
 
   LOG_IF(ERROR, error != MountError::kSuccess)
@@ -235,8 +236,9 @@ CrosDisksServer::MountEntries CrosDisksServer::EnumerateMountEntries() {
       DCHECK(mount_point);
 
       // Skip the in-progress mount points.
-      if (mount_point->error() == MountError::kInProgress)
+      if (mount_point->error() == MountError::kInProgress) {
         continue;
+      }
 
       entries.emplace_back(static_cast<uint32_t>(mount_point->error()),
                            mount_point->source(), mount_point->source_type(),

@@ -12,15 +12,17 @@
 namespace cros_disks {
 
 void DeviceEventQueue::Remove() {
-  if (!events_.empty())
+  if (!events_.empty()) {
     events_.pop_back();
+  }
 }
 
 void DeviceEventQueue::Add(const DeviceEvent& event) {
   // Discard an Ignored or DeviceScanned event.
   if (event.event_type == DeviceEvent::kIgnored ||
-      event.event_type == DeviceEvent::kDeviceScanned)
+      event.event_type == DeviceEvent::kDeviceScanned) {
     return;
+  }
 
   for (DeviceEventList::iterator last_event_iterator = events_.begin();
        last_event_iterator != events_.end(); ++last_event_iterator) {
@@ -28,8 +30,9 @@ void DeviceEventQueue::Add(const DeviceEvent& event) {
 
     // Skip an unrelated event.
     if (event.device_path != last_event.device_path ||
-        event.IsDiskEvent() != last_event.IsDiskEvent())
+        event.IsDiskEvent() != last_event.IsDiskEvent()) {
       continue;
+    }
 
     // Combine events of the same type and device path and keep the latest one.
     if (event.event_type == last_event.event_type) {
@@ -53,8 +56,9 @@ void DeviceEventQueue::Add(const DeviceEvent& event) {
     // Discard a DiskChanged event if a related DiskAdded event is already
     // in the queue.
     if (event.event_type == DeviceEvent::kDiskChanged &&
-        last_event.event_type == DeviceEvent::kDiskAdded)
+        last_event.event_type == DeviceEvent::kDiskAdded) {
       return;
+    }
   }
 
   events_.push_front(event);

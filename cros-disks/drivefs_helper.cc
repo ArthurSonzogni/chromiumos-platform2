@@ -209,13 +209,15 @@ bool DrivefsHelper::CanMount(const std::string& source,
                              const std::vector<std::string>& params,
                              base::FilePath* suggested_name) const {
   const Uri uri = Uri::Parse(source);
-  if (!uri.valid() || uri.scheme() != kType)
+  if (!uri.valid() || uri.scheme() != kType) {
     return false;
+  }
 
-  if (uri.path().empty())
+  if (uri.path().empty()) {
     *suggested_name = base::FilePath(kType);
-  else
+  } else {
     *suggested_name = base::FilePath(uri.path());
+  }
   return true;
 }
 

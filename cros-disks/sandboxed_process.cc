@@ -37,8 +37,9 @@ void SimulateProgressForTesting() {
 int Exec(char* const args[],
          char* const env[],
          const bool simulate_progress_for_testing) {
-  if (simulate_progress_for_testing)
+  if (simulate_progress_for_testing) {
     SimulateProgressForTesting();
+  }
 
   const char* const path = args[0];
   execve(path, args, env);
@@ -89,17 +90,20 @@ void SandboxedProcess::NewPidNamespace() {
 }
 
 bool SandboxedProcess::SetUpMinimalMounts() {
-  if (minijail_bind(jail_, "/", "/", 0))
+  if (minijail_bind(jail_, "/", "/", 0)) {
     return false;
-  if (minijail_bind(jail_, "/proc", "/proc", 0))
+  }
+  if (minijail_bind(jail_, "/proc", "/proc", 0)) {
     return false;
+  }
   minijail_remount_proc_readonly(jail_);
   minijail_mount_tmp_size(jail_, 128 * 1024 * 1024);
 
   // Create a minimal /dev with a very restricted set of device nodes.
   minijail_mount_dev(jail_);
-  if (minijail_bind(jail_, "/dev/log", "/dev/log", 0))
+  if (minijail_bind(jail_, "/dev/log", "/dev/log", 0)) {
     return false;
+  }
   return true;
 }
 
@@ -234,8 +238,9 @@ int SandboxedProcess::WaitImpl() {
 
   while (true) {
     const int status = minijail_wait(jail_);
-    if (status >= 0)
+    if (status >= 0) {
       return status;
+    }
 
     if (const int err = -status; err != EINTR) {
       LOG(ERROR) << "Cannot wait for process " << pid() << ": "
@@ -273,8 +278,9 @@ int SandboxedProcess::WaitNonBlockingImpl() {
 }
 
 bool SandboxedProcess::KillPidNamespace() {
-  if (!termination_fd_.is_valid())
+  if (!termination_fd_.is_valid()) {
     return false;
+  }
 
   DCHECK(kill_pid_namespace_);
 
@@ -302,8 +308,9 @@ int FakeSandboxedProcess::WaitImpl() {
 }
 
 int FakeSandboxedProcess::WaitNonBlockingImpl() {
-  if (ret_code_)
+  if (ret_code_) {
     return ret_code_.value();
+  }
   return -1;
 }
 

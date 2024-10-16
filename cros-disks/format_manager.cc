@@ -299,30 +299,34 @@ void FormatManager::OnDone(const std::string& fs_type,
     }
   }
 
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordAction("Format", fs_type, exit_code, timer.Elapsed());
+  }
 
-  if (observer_)
+  if (observer_) {
     observer_->OnFormatCompleted(device_path,
                                  exit_code == Process::ExitCode::kSuccess
                                      ? FormatError::kSuccess
                                      : FormatError::kFormatProgramFailed);
+  }
 }
 
 std::string FormatManager::GetFormatProgramPath(
     const std::string& filesystem) const {
   for (const char* program_path : kFormatProgramPaths) {
     std::string path = program_path + filesystem;
-    if (base::PathExists(base::FilePath(path)))
+    if (base::PathExists(base::FilePath(path))) {
       return path;
+    }
   }
   return std::string();
 }
 
 bool FormatManager::IsFilesystemSupported(const std::string& filesystem) const {
   for (const char* supported_filesystem : kSupportedFilesystems) {
-    if (filesystem == supported_filesystem)
+    if (filesystem == supported_filesystem) {
       return true;
+    }
   }
   return false;
 }

@@ -15,11 +15,13 @@ static const char kRedacted[] = "***";
 
 std::ostream& operator<<(std::ostream& out, Quoter<const char*> quoter) {
   const char* const s = quoter.ref;
-  if (!s)
+  if (!s) {
     return out << "(null)";
+  }
 
-  if (!*s || !quoter.redacted)
+  if (!*s || !quoter.redacted) {
     return out << std::quoted(s, '\'');
+  }
 
   return out << kRedacted;
 }
@@ -27,17 +29,20 @@ std::ostream& operator<<(std::ostream& out, Quoter<const char*> quoter) {
 std::ostream& operator<<(std::ostream& out, Quoter<std::string> quoter) {
   const std::string& s = quoter.ref;
 
-  if (s.empty() || !quoter.redacted)
+  if (s.empty() || !quoter.redacted) {
     return out << std::quoted(s, '\'');
+  }
 
   DCHECK(!s.empty());
-  if (s.front() == '/')
+  if (s.front() == '/') {
     return out << redact(base::FilePath(s), quoter.redacted);
+  }
 
   for (const std::string_view prefix :
        {"sftp://", "fusebox://", "smbfs://", "drivefs://"}) {
-    if (base::StartsWith(s, prefix))
+    if (base::StartsWith(s, prefix)) {
       return out << '\'' << prefix << kRedacted << '\'';
+    }
   }
 
   return out << kRedacted;
@@ -47,15 +52,17 @@ std::ostream& operator<<(std::ostream& out, Quoter<base::FilePath> quoter) {
   const base::FilePath& p = quoter.ref;
   const std::string& s = p.value();
 
-  if (s.empty() || !quoter.redacted)
+  if (s.empty() || !quoter.redacted) {
     return out << std::quoted(s, '\'');
+  }
 
   for (const std::string_view prefix :
        {"/media/archive/", "/media/removable/", "/media/fuse/crostini_",
         "/media/fuse/smbfs-", "/media/fuse/drivefs-", "/media/fuse/fusebox/",
         "/home/chronos/", "/run/arc/sdcard/"}) {
-    if (base::StartsWith(s, prefix))
+    if (base::StartsWith(s, prefix)) {
       return out << '\'' << prefix << kRedacted << p.Extension() << '\'';
+    }
   }
 
   return out << std::quoted(s, '\'');

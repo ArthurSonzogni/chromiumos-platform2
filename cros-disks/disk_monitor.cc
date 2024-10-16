@@ -43,16 +43,21 @@ const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 // Checks if the device is allowed to be used through cros-disks.
 bool IsDeviceAllowed(const UdevDevice& device,
                      const std::set<std::string>& allowlist) {
-  if (device.IsIgnored())
+  if (device.IsIgnored()) {
     return false;
-  if (base::Contains(allowlist, device.NativePath()))
+  }
+  if (base::Contains(allowlist, device.NativePath())) {
     return true;
-  if (device.IsLoopDevice())
+  }
+  if (device.IsLoopDevice()) {
     return false;
-  if (device.IsMobileBroadbandDevice())
+  }
+  if (device.IsMobileBroadbandDevice()) {
     return false;
-  if (device.IsOnBootDevice())
+  }
+  if (device.IsOnBootDevice()) {
     return false;
+  }
   return true;
 }
 
@@ -63,8 +68,9 @@ bool AppendDiskIfNotIgnored(const std::set<std::string>& allowlist,
                             std::vector<Disk>* disks,
                             std::unique_ptr<brillo::UdevDevice> dev) {
   UdevDevice device(std::move(dev));
-  if (IsDeviceAllowed(device, allowlist))
+  if (IsDeviceAllowed(device, allowlist)) {
     disks->push_back(device.ToDisk());
+  }
   return true;  // Continue the enumeration.
 }
 
@@ -82,8 +88,9 @@ bool MatchDiskByPath(const std::string& path,
   const char* dev_file = dev->GetDeviceNode();
   bool match = (sys_path && path == sys_path) ||
                (dev_path && path == dev_path) || (dev_file && path == dev_file);
-  if (!match)
+  if (!match) {
     return true;  // Not a match. Continue the enumeration.
+  }
 
   *device = std::make_unique<UdevDevice>(std::move(dev));
   return false;  // Match. Stop enumeration.
@@ -91,8 +98,9 @@ bool MatchDiskByPath(const std::string& path,
 
 // Logs a device with its properties.
 void LogUdevDevice(const brillo::UdevDevice& dev) {
-  if (!VLOG_IS_ON(1))
+  if (!VLOG_IS_ON(1)) {
     return;
+  }
 
   // Some device events (eg USB drive removal) result in devnode being null.
   // This is gracefully handled by quote() without crashing.
@@ -100,8 +108,9 @@ void LogUdevDevice(const brillo::UdevDevice& dev) {
   VLOG(1) << "   devtype: " << quote(dev.GetDeviceType());
   VLOG(1) << "   syspath: " << quote(dev.GetSysPath());
 
-  if (!VLOG_IS_ON(2))
+  if (!VLOG_IS_ON(2)) {
     return;
+  }
 
   // Log all properties.
   for (std::unique_ptr<brillo::UdevListEntry> prop =
@@ -112,8 +121,9 @@ void LogUdevDevice(const brillo::UdevDevice& dev) {
 }
 
 void LogDevice(const UdevDevice& dev) {
-  if (!VLOG_IS_ON(1))
+  if (!VLOG_IS_ON(1)) {
     return;
+  }
 
   VLOG(1) << "Device " << quote(dev.NativePath());
   VLOG(1) << " virtual:" << dev.IsVirtual() << " loop:" << dev.IsLoopDevice()
@@ -178,15 +188,17 @@ void DiskMonitor::EnumerateBlockDevices(
        entry; entry = entry->GetNext()) {
     std::unique_ptr<brillo::UdevDevice> dev =
         udev_->CreateDeviceFromSysPath(entry->GetName());
-    if (!dev)
+    if (!dev) {
       continue;
+    }
 
     VLOG(1) << "Found device " << quote(dev->GetSysName());
     LogUdevDevice(*dev);
 
     bool continue_enumeration = callback.Run(std::move(dev));
-    if (!continue_enumeration)
+    if (!continue_enumeration) {
       break;
+    }
   }
 }
 
@@ -197,8 +209,9 @@ void DiskMonitor::ProcessBlockDeviceEvents(
   brillo::UdevDevice* raw_dev = dev.get();
   UdevDevice device(std::move(dev));
   LogDevice(device);
-  if (!IsDeviceAllowed(device, allowlist_))
+  if (!IsDeviceAllowed(device, allowlist_)) {
     return;
+  }
 
   bool disk_added = false;
   bool disk_removed = false;
@@ -275,8 +288,9 @@ void DiskMonitor::ProcessMmcOrScsiDeviceEvents(
     DeviceEventList* events) {
   UdevDevice device(std::move(dev));
   LogDevice(device);
-  if (!IsDeviceAllowed(device, allowlist_))
+  if (!IsDeviceAllowed(device, allowlist_)) {
     return;
+  }
 
   std::string device_path = device.NativePath();
   if (strcmp(action, kUdevAddAction) == 0) {
@@ -334,21 +348,25 @@ bool DiskMonitor::GetDeviceEvents(DeviceEventList* events) {
 bool DiskMonitor::GetDiskByDevicePath(const base::FilePath& device_path,
                                       Disk* disk) const {
   VLOG(1) << "Getting disk by path " << quote(device_path) << "...";
-  if (device_path.empty())
+  if (device_path.empty()) {
     return false;
+  }
 
   std::unique_ptr<UdevDevice> device;
   EnumerateBlockDevices(base::BindRepeating(
       &MatchDiskByPath, device_path.value(), base::Unretained(&device)));
-  if (!device)
+  if (!device) {
     return false;
+  }
 
   LogDevice(*device);
-  if (!IsDeviceAllowed(*device, allowlist_))
+  if (!IsDeviceAllowed(*device, allowlist_)) {
     return false;
+  }
 
-  if (disk)
+  if (disk) {
     *disk = device->ToDisk();
+  }
   return true;
 }
 

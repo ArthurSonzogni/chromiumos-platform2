@@ -55,16 +55,18 @@ std::vector<std::string> MountInfo::GetMountPaths(
     const std::string& source_path) const {
   std::vector<std::string> mount_paths;
   for (const auto& mount_point : mount_points_) {
-    if (mount_point.source == source_path)
+    if (mount_point.source == source_path) {
       mount_paths.push_back(mount_point.mount_path.value());
+    }
   }
   return mount_paths;
 }
 
 bool MountInfo::HasMountPath(const std::string& mount_path) const {
   for (const auto& mount_point : mount_points_) {
-    if (mount_point.mount_path.value() == mount_path)
+    if (mount_point.mount_path.value() == mount_path) {
       return true;
+    }
   }
   return false;
 }

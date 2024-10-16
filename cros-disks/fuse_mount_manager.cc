@@ -36,8 +36,9 @@ FUSEMountManager::~FUSEMountManager() {
 }
 
 bool FUSEMountManager::Initialize() {
-  if (!MountManager::Initialize())
+  if (!MountManager::Initialize()) {
     return false;
+  }
 
   if (!platform()->CreateDirectory(working_dirs_root_)) {
     PLOG(ERROR) << "Cannot create writable FUSE directory "
@@ -105,8 +106,9 @@ std::unique_ptr<MountPoint> FUSEMountManager::DoMount(
 bool FUSEMountManager::CanMount(const std::string& source) const {
   base::FilePath dir;
   for (const auto& helper : helpers_) {
-    if (helper->CanMount(source, {}, &dir))
+    if (helper->CanMount(source, {}, &dir)) {
       return true;
+    }
   }
   return false;
 }
@@ -120,8 +122,9 @@ std::string FUSEMountManager::SuggestMountPath(
 
   base::FilePath dir;
   for (const auto& helper : helpers_) {
-    if (helper->CanMount(source, {}, &dir))
+    if (helper->CanMount(source, {}, &dir)) {
       return mount_root().Append(dir).value();
+    }
   }
   base::FilePath base_name = base::FilePath(source).BaseName();
   return mount_root().Append(base_name).value();

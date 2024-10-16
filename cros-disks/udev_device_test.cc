@@ -32,8 +32,9 @@ class UdevDeviceTest : public ::testing::Test {
  protected:
   void SetUp() override {
     udev_ = brillo::Udev::Create();
-    if (!udev_)
+    if (!udev_) {
       return;
+    }
 
     std::string boot_device_path = GetBootDevicePath();
 
@@ -45,12 +46,14 @@ class UdevDeviceTest : public ::testing::Test {
          entry = entry->GetNext()) {
       const char* path = entry->GetName();
       auto device = udev_->CreateDeviceFromSysPath(path);
-      if (!device)
+      if (!device) {
         continue;
+      }
 
       const char* device_file = device->GetDeviceNode();
-      if (!device_file)
+      if (!device_file) {
         continue;
+      }
 
       if (!boot_device_ && !boot_device_path.empty() &&
           boot_device_path == device_file) {
@@ -88,8 +91,9 @@ class UdevDeviceTest : public ::testing::Test {
 
   static std::string GetBootDevicePath() {
     char boot_device_path[PATH_MAX];
-    if (rootdev(boot_device_path, sizeof(boot_device_path), true, true) == 0)
+    if (rootdev(boot_device_path, sizeof(boot_device_path), true, true) == 0) {
       return boot_device_path;
+    }
     return std::string();
   }
 

@@ -90,8 +90,9 @@ class MountManagerUnderTest : public MountManager {
 
   bool RemoveMountPathFromCache(const std::string& path) {
     MountPoint* mp = FindMountByMountPath(base::FilePath(path));
-    if (!mp)
+    if (!mp) {
       return false;
+    }
     return RemoveMount(mp);
   }
 

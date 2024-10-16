@@ -22,15 +22,17 @@ bool FileReader::ReadLine(std::string* line) {
   CHECK(line) << "Invalid argument";
 
   FILE* fp = file_.get();
-  if (fp == nullptr)
+  if (fp == nullptr) {
     return false;
+  }
 
   line->clear();
   bool line_valid = false;
   int ch;
   while ((ch = fgetc(fp)) != EOF) {
-    if (ch == '\n')
+    if (ch == '\n') {
       return true;
+    }
     line->push_back(static_cast<char>(ch));
     line_valid = true;
   }

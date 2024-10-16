@@ -83,8 +83,9 @@ std::ostream& operator<<(std::ostream& out, MountFlags flags) {
   PRINT(MS_UNBINDABLE)
 
   // If there are any remaining bits set, just print them in numeric form.
-  if (flags)
+  if (flags) {
     out << sep << static_cast<std::uint64_t>(flags);
+  }
 
   return out << "}";
 }
@@ -95,8 +96,9 @@ error_t SyncFs(const base::FilePath& mount_path) {
   const int fd =
       HANDLE_EINTR(open(mount_path.value().c_str(),
                         O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW));
-  if (fd < 0)
+  if (fd < 0) {
     return errno;
+  }
 
   // Ensure that the file descriptor will be closed.
   const base::ScopedFD scoped_fd(fd);
@@ -171,8 +173,9 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
   DCHECK(!path->empty());
 
   if (!base::Contains(reserved_paths, *path) &&
-      CreateOrReuseEmptyDirectory(*path))
+      CreateOrReuseEmptyDirectory(*path)) {
     return true;
+  }
 
   for (unsigned suffix = 1; suffix <= max_suffix_to_retry; ++suffix) {
     std::string fallback_path = GetDirectoryFallbackName(*path, suffix);
@@ -213,8 +216,9 @@ int Platform::ReadFile(const std::string& file, char* data, int size) const {
 
 std::string Platform::GetDirectoryFallbackName(const std::string& path,
                                                unsigned suffix) const {
-  if (!path.empty() && base::IsAsciiDigit(path.back()))
+  if (!path.empty() && base::IsAsciiDigit(path.back())) {
     return base::StringPrintf("%s (%u)", path.c_str(), suffix);
+  }
 
   return base::StringPrintf("%s %u", path.c_str(), suffix);
 }
@@ -242,11 +246,13 @@ bool Platform::GetOwnership(const std::string& path,
   VLOG(1) << "File " << redact(path) << " has UID " << st.st_uid << " and GID "
           << st.st_gid;
 
-  if (user_id)
+  if (user_id) {
     *user_id = st.st_uid;
+  }
 
-  if (group_id)
+  if (group_id) {
     *group_id = st.st_gid;
+  }
 
   return true;
 }
@@ -326,8 +332,9 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
   VLOG(1) << "Unmounting " << fs_type << " " << quote(mount_path);
   base::ElapsedTimer timer;
   error_t error = umount(mount_path.value().c_str()) ? errno : 0;
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordSysCall("umount", fs_type, error, timer.Elapsed());
+  }
 
   if (!error) {
     LOG(INFO) << "Cleanly unmounted " << fs_type << " " << quote(mount_path);
@@ -342,8 +349,9 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
     VLOG(1) << "Synchronizing " << fs_type << " " << quote(mount_path);
     timer = base::ElapsedTimer();
     error = SyncFs(mount_path);
-    if (metrics_)
+    if (metrics_) {
       metrics_->RecordSysCall("syncfs", fs_type, error, timer.Elapsed());
+    }
 
     if (error) {
       errno = error;
@@ -372,8 +380,9 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
     error =
         umount2(mount_path.value().c_str(), MNT_FORCE | MNT_DETACH) ? errno : 0;
 
-    if (metrics_)
+    if (metrics_) {
       metrics_->RecordSysCall("umount2", fs_type, error, timer2.Elapsed());
+    }
 
     if (!error) {
       LOG(WARNING) << "Detached " << fs_type << " " << redact(mount_path)
@@ -409,8 +418,9 @@ MountError Platform::Mount(const std::string& source_path,
                               filesystem_type.c_str(), flags, options.c_str())
                             ? errno
                             : 0;
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordSysCall("mount", filesystem_type, error, timer.Elapsed());
+  }
 
   if (!error) {
     VLOG(1) << "Created mount point " << filesystem_type << " "
@@ -461,21 +471,25 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
   while (true) {
     errno = 0;
     const dirent* const entry = readdir(d.get());
-    if (!entry)
+    if (!entry) {
       break;
+    }
 
     const std::string_view name = entry->d_name;
-    if (name == "." || name == "..")
+    if (name == "." || name == "..") {
       continue;
+    }
 
     const base::FilePath subdir = base::FilePath(dir).Append(name);
     LOG(WARNING) << "Found stale mount point " << redact(subdir);
 
-    if (Platform::Unmount(subdir, "stale") == MountError::kSuccess)
+    if (Platform::Unmount(subdir, "stale") == MountError::kSuccess) {
       LOG(WARNING) << "Unmounted stale mount point " << redact(subdir);
+    }
 
-    if (Platform::RemoveEmptyDirectory(subdir.value()))
+    if (Platform::RemoveEmptyDirectory(subdir.value())) {
       LOG(WARNING) << "Removed stale mount point " << redact(subdir);
+    }
   }
 
   if (errno) {

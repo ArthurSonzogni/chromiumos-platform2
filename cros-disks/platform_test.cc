@@ -20,16 +20,18 @@ class PlatformTest : public ::testing::Test {
                              uid_t user_id,
                              gid_t group_id) {
     struct stat buffer;
-    if (stat(path.c_str(), &buffer) != 0)
+    if (stat(path.c_str(), &buffer) != 0) {
       return false;
+    }
     return buffer.st_uid == user_id && buffer.st_gid == group_id;
   }
 
   // Returns true if |path| has its permissions set to |mode|.
   static bool CheckPermissions(const std::string& path, mode_t mode) {
     struct stat buffer;
-    if (stat(path.c_str(), &buffer) != 0)
+    if (stat(path.c_str(), &buffer) != 0) {
       return false;
+    }
     return (buffer.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == mode;
   }
 

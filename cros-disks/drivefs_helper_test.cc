@@ -70,8 +70,9 @@ class PlatformForTest : public MockPlatform {
     base::FilePath result(components[0]);
     components.erase(components.begin());
     for (const auto& part : components) {
-      if (part != ".")
+      if (part != ".") {
         result = result.Append(part);
+      }
     }
     *real_path = result.value();
     return true;

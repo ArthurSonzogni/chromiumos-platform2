@@ -91,8 +91,9 @@ std::unique_ptr<SandboxedProcess>
 FUSESandboxedProcessFactory::CreateSandboxedProcess() const {
   std::unique_ptr<SandboxedProcess> sandbox =
       std::make_unique<SandboxedProcess>();
-  if (!ConfigureSandbox(sandbox.get()))
+  if (!ConfigureSandbox(sandbox.get())) {
     sandbox.reset();
+  }
   return sandbox;
 }
 
@@ -183,12 +184,14 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   sandbox->SetUserId(run_as_.uid);
   sandbox->SetGroupId(run_as_.gid);
 
-  if (!supplementary_groups_.empty())
+  if (!supplementary_groups_.empty()) {
     sandbox->SetSupplementaryGroupIds(supplementary_groups_);
+  }
 
   // Enter mount namespace in the sandbox if necessary.
-  if (mount_namespace_)
+  if (mount_namespace_) {
     sandbox->EnterExistingMountNamespace(mount_namespace_.value().value());
+  }
 
   if (!platform_->PathExists(executable_.value())) {
     LOG(ERROR) << "Cannot find mounter program " << quote(executable_);
@@ -254,8 +257,9 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     // kind of performance benefit, if any, could be gained. At the very least,
     // specify the block size of the underlying device. Without this, UFS cards
     // with 4k sector size will fail to mount.
-    if (const int blksize = GetPhysicalBlockSize(source))
+    if (const int blksize = GetPhysicalBlockSize(source)) {
       fuse_mount_options.append(base::StringPrintf(",blksize=%d", blksize));
+    }
 
     fuse_type = "fuseblk";
   }
@@ -268,11 +272,13 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   // Prepare mount flags.
   uint64_t mount_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_DIRSYNC;
 
-  if (read_only)
+  if (read_only) {
     mount_flags |= MS_RDONLY;
+  }
 
-  if (config_.nosymfollow)
+  if (config_.nosymfollow) {
     mount_flags |= MS_NOSYMFOLLOW;
+  }
 
   std::unique_ptr<MountPoint> mount_point =
       MountPoint::Mount({.mount_path = target_path,
@@ -366,8 +372,9 @@ std::unique_ptr<SandboxedProcess> FUSEMounterHelper::PrepareSandbox(
 
   *error =
       ConfigureSandbox(source, target_path, std::move(params), sandbox.get());
-  if (*error != MountError::kSuccess)
+  if (*error != MountError::kSuccess) {
     return nullptr;
+  }
 
   return sandbox;
 }

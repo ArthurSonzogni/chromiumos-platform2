@@ -73,10 +73,12 @@ class MockFUSEPlatform : public MockPlatform {
                              uid_t* user_id,
                              gid_t* group_id) const {
     if (user == kMountUser) {
-      if (user_id)
+      if (user_id) {
         *user_id = kMountUID;
-      if (group_id)
+      }
+      if (group_id) {
         *group_id = kMountGID;
+      }
       return true;
     }
     return false;

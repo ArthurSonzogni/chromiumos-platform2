@@ -156,8 +156,9 @@ void MountManager::MountNewSource(const std::string& source,
   // Extract the mount label string from the passed options.
   std::string label;
   if (const std::string_view key = "mountlabel";
-      GetParamValue(options, key, &label))
+      GetParamValue(options, key, &label)) {
     RemoveParamsWithSameName(&options, key);
+  }
 
   // Create a directory and set up its ownership/permissions for mounting
   // the source path. If an error occurs, ShouldReserveMountPathOnError()
@@ -166,8 +167,9 @@ void MountManager::MountNewSource(const std::string& source,
   base::FilePath mount_path;
   if (const MountError error =
           CreateMountPathForSource(source, label, &mount_path);
-      error != MountError::kSuccess)
+      error != MountError::kSuccess) {
     return std::move(mount_callback).Run(filesystem_type, "", error, false);
+  }
 
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
@@ -247,27 +249,31 @@ void MountManager::OnLauncherExit(
       .Run(mount_point ? mount_point->fstype() : "", mount_path.value(), error,
            mount_point ? mount_point->is_read_only() : false);
 
-  if (!mount_point)
+  if (!mount_point) {
     return;
+  }
 
   DCHECK_EQ(mount_path, mount_point->path());
   DCHECK_EQ(error, mount_point->error());
   DCHECK_NE(MountError::kInProgress, error);
 
-  if (error != MountError::kSuccess)
+  if (error != MountError::kSuccess) {
     RemoveMount(mount_point.get());
+  }
 }
 
 MountError MountManager::Unmount(const std::string& path) {
   // Look for a matching mount point, either by source path or by mount path.
   MountPoint* const mount_point =
       FindMountBySource(path) ?: FindMountByMountPath(base::FilePath(path));
-  if (!mount_point)
+  if (!mount_point) {
     return MountError::kPathNotMounted;
+  }
 
   if (const MountError error = mount_point->Unmount();
-      mount_point->is_mounted())
+      mount_point->is_mounted()) {
     return error;
+  }
 
   RemoveMount(mount_point);
   return MountError::kSuccess;
@@ -285,8 +291,9 @@ bool MountManager::ResolvePath(const std::string& path,
 MountPoint* MountManager::FindMountBySource(const std::string& source) const {
   for (const auto& mount_point : mount_points_) {
     DCHECK(mount_point);
-    if (mount_point->source() == source)
+    if (mount_point->source() == source) {
       return mount_point.get();
+    }
   }
   return nullptr;
 }
@@ -295,8 +302,9 @@ MountPoint* MountManager::FindMountByMountPath(
     const base::FilePath& path) const {
   for (const auto& mount_point : mount_points_) {
     DCHECK(mount_point);
-    if (mount_point->path() == path)
+    if (mount_point->path() == path) {
       return mount_point.get();
+    }
   }
   return nullptr;
 }
@@ -414,8 +422,9 @@ bool MountManager::IsPathImmediateChildOfParent(const base::FilePath& path,
       path.StripTrailingSeparators().GetComponents();
   std::vector<std::string> parent_components =
       parent.StripTrailingSeparators().GetComponents();
-  if (path_components.size() != parent_components.size() + 1)
+  if (path_components.size() != parent_components.size() + 1) {
     return false;
+  }
 
   if (path_components.back() == base::FilePath::kCurrentDirectory ||
       path_components.back() == base::FilePath::kParentDirectory) {

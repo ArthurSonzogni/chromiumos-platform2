@@ -115,13 +115,15 @@ Process::~Process() = default;
 void Process::AddArgument(std::string argument) {
   DCHECK(arguments_array_.empty());
   arguments_.push_back(std::move(argument));
-  if (arguments_.size() == 1)
+  if (arguments_.size() == 1) {
     program_name_ = base::FilePath(arguments_.front()).BaseName().value();
+  }
 }
 
 char* const* Process::GetArguments() {
-  if (arguments_array_.empty())
+  if (arguments_array_.empty()) {
     BuildArgumentsArray();
+  }
 
   return arguments_array_.data();
 }
@@ -234,30 +236,35 @@ bool Process::Start() {
 }
 
 int Process::Wait() {
-  if (finished())
+  if (finished()) {
     return exit_code_;
+  }
 
   DCHECK_NE(kInvalidProcessId, pid_);
   exit_code_ = WaitImpl();
   DCHECK(finished());
 
-  if (launcher_exit_callback_)
+  if (launcher_exit_callback_) {
     std::move(launcher_exit_callback_).Run(exit_code_);
+  }
 
   return exit_code_;
 }
 
 bool Process::IsFinished() {
-  if (finished())
+  if (finished()) {
     return true;
+  }
 
   CHECK_NE(kInvalidProcessId, pid_);
   exit_code_ = WaitNonBlockingImpl();
-  if (!finished())
+  if (!finished()) {
     return false;
+  }
 
-  if (launcher_exit_callback_)
+  if (launcher_exit_callback_) {
     std::move(launcher_exit_callback_).Run(exit_code_);
+  }
   return true;
 }
 
@@ -265,8 +272,9 @@ void Process::StoreOutputLine(const std::string_view line) {
   DCHECK(!line.empty());
   LOG(INFO) << program_name_ << ": " << line;
   captured_output_.emplace_back(line);
-  if (output_callback_)
+  if (output_callback_) {
     output_callback_.Run(line);
+  }
 }
 
 void Process::SplitOutputIntoLines(std::string_view data) {
@@ -282,8 +290,9 @@ void Process::SplitOutputIntoLines(std::string_view data) {
 }
 
 bool Process::CaptureOutput() {
-  if (!out_fd_.is_valid())
+  if (!out_fd_.is_valid()) {
     return false;
+  }
 
   const int fd = out_fd_.get();
 
@@ -321,8 +330,9 @@ bool Process::CaptureOutput() {
 }
 
 bool Process::WaitAndCaptureOutput() {
-  if (!out_fd_.is_valid())
+  if (!out_fd_.is_valid()) {
     return false;
+  }
 
   const int fd = out_fd_.get();
 
@@ -372,14 +382,16 @@ int Process::Run() {
   out_fd_ = std::move(out.parent_fd);
   DCHECK(out_fd_.is_valid());
 
-  if (!Start(WrapStdIn(input_), std::move(out.child_fd)))
+  if (!Start(WrapStdIn(input_), std::move(out.child_fd))) {
     return -1;
+  }
 
   VLOG(1) << "Collecting output of program " << quote(program_name_) << "...";
 
   // Poll process and pipe. Read from pipe when possible.
-  while (!IsFinished() && WaitAndCaptureOutput())
+  while (!IsFinished() && WaitAndCaptureOutput()) {
     continue;
+  }
 
   // Really wait for process to finish.
   const int exit_code = Wait();

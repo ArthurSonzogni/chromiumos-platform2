@@ -72,14 +72,16 @@ bool RarMounter::Increment(const std::string::iterator begin,
 RarMounter::IndexRange RarMounter::ParseDigits(std::string_view path) {
   const std::string_view extension = kExtension;
 
-  if (!base::EndsWith(path, extension, base::CompareCase::INSENSITIVE_ASCII))
+  if (!base::EndsWith(path, extension, base::CompareCase::INSENSITIVE_ASCII)) {
     return {};
+  }
 
   path.remove_suffix(extension.size());
   const size_t end = path.size();
 
-  while (!path.empty() && base::IsAsciiDigit(path.back()))
+  while (!path.empty() && base::IsAsciiDigit(path.back())) {
     path.remove_suffix(1);
+  }
 
   return {path.size(), end};
 }
@@ -91,8 +93,9 @@ void RarMounter::AddPathsWithOldNamingScheme(
 
   // Is the extension right?
   if (!base::EndsWith(original_path, kExtension,
-                      base::CompareCase::INSENSITIVE_ASCII))
+                      base::CompareCase::INSENSITIVE_ASCII)) {
     return;
+  }
 
   // Prepare candidate path.
   std::string candidate_path(original_path);
@@ -103,8 +106,9 @@ void RarMounter::AddPathsWithOldNamingScheme(
   std::fill(end - 2, end, '0');
 
   // Is there at least the first supplementary file of the multipart archive?
-  if (!platform()->PathExists(candidate_path))
+  if (!platform()->PathExists(candidate_path)) {
     return;
+  }
 
   bind_paths->push_back(candidate_path);
 
@@ -112,8 +116,9 @@ void RarMounter::AddPathsWithOldNamingScheme(
   // '.r00' -> '.r01' -> ... -> '.r99' -> '.s00' -> ... -> '.z99'
   // or
   // '.R00' -> '.R01' -> ... -> '.R99' -> '.S00' -> ... -> '.Z99'
-  while (Increment(end - 3, end) && platform()->PathExists(candidate_path))
+  while (Increment(end - 3, end) && platform()->PathExists(candidate_path)) {
     bind_paths->push_back(candidate_path);
+  }
 }
 
 void RarMounter::AddPathsWithNewNamingScheme(
@@ -136,8 +141,9 @@ void RarMounter::AddPathsWithNewNamingScheme(
 
   // Find all the files making the multipart archive.
   while (Increment(begin, end) && platform()->PathExists(candidate_path)) {
-    if (candidate_path != original_path)
+    if (candidate_path != original_path) {
       bind_paths->push_back(candidate_path);
+    }
   }
 }
 

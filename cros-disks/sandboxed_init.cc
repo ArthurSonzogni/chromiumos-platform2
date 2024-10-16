@@ -45,26 +45,31 @@ void SigAlarm(const int sig) {
 }
 
 void ScheduleTermination() {
-  if (getpid() != 1)
+  if (getpid() != 1) {
     TerminateNow();
+  }
 
   // This is running as the 'init' process of a PID namespace.
-  if (signal(SIGTERM, SIG_IGN) == SIG_ERR)
+  if (signal(SIGTERM, SIG_IGN) == SIG_ERR) {
     RAW_LOG(ERROR, "Cannot reset SIGTERM handler");
+  }
 
   // Send SIGTERM to all the processes in the PID namespace.
   RAW_LOG(INFO, "The 'init' process is broadcasting SIGTERM...");
-  if (kill(-1, SIGTERM) < 0)
+  if (kill(-1, SIGTERM) < 0) {
     RAW_LOG(ERROR, "The 'init' process cannot broadcast SIGTERM");
+  }
 
   // Set an alarm to terminate in a couple of seconds.
   RAW_LOG(INFO, "The 'init' process is entering a grace period of 2 seconds");
 
-  if (signal(SIGALRM, &SigAlarm) == SIG_ERR)
+  if (signal(SIGALRM, &SigAlarm) == SIG_ERR) {
     RAW_LOG(ERROR, "Cannot set SIGALRM handler");
+  }
 
-  if (alarm(2) != 0)
+  if (alarm(2) != 0) {
     RAW_LOG(ERROR, "A previous alarm was already set");
+  }
 }
 
 // File descriptor of the termination pipe.
@@ -94,12 +99,14 @@ void SigTerm(const int sig) {
 // Check if the termination pipe has some data or if its write end has been
 // closed.
 bool ShouldTerminate() {
-  if (termination_fd == base::kInvalidFd)
+  if (termination_fd == base::kInvalidFd) {
     return false;
+  }
 
   if (char buffer; read(termination_fd, &buffer, sizeof(buffer)) < 0) {
-    if (errno != EAGAIN)
+    if (errno != EAGAIN) {
       RAW_LOG(ERROR, "Reading from termination fd returned error != EAGAIN");
+    }
     return false;
   }
 
@@ -116,8 +123,9 @@ void SigIo(const int sig) {
   }
 
   RAW_LOG(INFO, "The 'init' process received SIGIO");
-  if (ShouldTerminate())
+  if (ShouldTerminate()) {
     ScheduleTermination();
+  }
 }
 
 }  // namespace
@@ -168,8 +176,9 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     PCHECK(signal(SIGIO, SigIo) != SIG_ERR);
     PCHECK(fcntl(termination_fd, F_SETOWN, getpid()) >= 0);
     PCHECK(fcntl(termination_fd, F_SETFL, O_ASYNC | O_NONBLOCK) >= 0);
-    if (ShouldTerminate())
+    if (ShouldTerminate()) {
       TerminateNow();
+    }
   }
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
@@ -209,12 +218,14 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     VLOG(2) << "Child process " << pid
             << " of the 'init' process finished with " << exit_code;
 
-    if (exit_code != Process::ExitCode::kSuccess)
+    if (exit_code != Process::ExitCode::kSuccess) {
       last_failure_code = exit_code;
+    }
 
     // Was it the 'launcher' process?
-    if (pid != launcher_pid)
+    if (pid != launcher_pid) {
       continue;
+    }
 
     // Write the 'launcher' process's exit code to the control pipe.
     DCHECK(ctrl_fd_.is_valid());

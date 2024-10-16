@@ -104,8 +104,9 @@ bool SshfsHelper::CanMount(const std::string& source,
                            const std::vector<std::string>& params,
                            base::FilePath* suggested_name) const {
   const Uri uri = Uri::Parse(source);
-  if (!uri.valid() || !IsSupportedScheme(uri.scheme()))
+  if (!uri.valid() || !IsSupportedScheme(uri.scheme())) {
     return false;
+  }
 
   if (uri.path().empty()) {
     *suggested_name = base::FilePath(uri.scheme());

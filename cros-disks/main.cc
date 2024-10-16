@@ -21,8 +21,9 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   logging::SetMinLogLevel(FLAGS_log_level);
 
-  if (!FLAGS_foreground)
+  if (!FLAGS_foreground) {
     PCHECK(daemon(0, 0) == 0);
+  }
 
   LOG(INFO) << "Service started";
   const int ret = cros_disks::Daemon(!FLAGS_no_session_manager).Run();

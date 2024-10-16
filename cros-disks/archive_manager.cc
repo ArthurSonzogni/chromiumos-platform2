@@ -32,8 +32,9 @@ ArchiveManager::~ArchiveManager() {
 }
 
 bool ArchiveManager::Initialize() {
-  if (!MountManager::Initialize())
+  if (!MountManager::Initialize()) {
     return false;
+  }
 
   {
     SandboxedExecutable executable = {
@@ -126,8 +127,9 @@ bool ArchiveManager::Initialize() {
     };
 
     std::vector<std::string> opts = {"--passphrase"};
-    if (!LOG_IS_ON(INFO))
+    if (!LOG_IS_ON(INFO)) {
       opts.push_back("--redact");
+    }
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
         platform(), process_reaper(), "archive", ext, metrics(),
@@ -157,22 +159,26 @@ bool ArchiveManager::ResolvePath(const std::string& path,
 bool ArchiveManager::IsInAllowedFolder(const std::string& source_path) {
   std::vector<std::string> parts = base::FilePath(source_path).GetComponents();
 
-  if (parts.size() < 2 || parts[0] != "/")
+  if (parts.size() < 2 || parts[0] != "/") {
     return false;
+  }
 
-  if (parts[1] == "home")
+  if (parts[1] == "home") {
     return parts.size() > 5 && parts[2] == "chronos" &&
            base::StartsWith(parts[3], "u-", base::CompareCase::SENSITIVE) &&
            brillo::cryptohome::home::IsSanitizedUserName(parts[3].substr(2)) &&
            parts[4] == "MyFiles";
+  }
 
-  if (parts[1] == "media")
+  if (parts[1] == "media") {
     return parts.size() > 4 && (parts[2] == "archive" || parts[2] == "fuse" ||
                                 parts[2] == "removable");
+  }
 
-  if (parts[1] == "run")
+  if (parts[1] == "run") {
     return parts.size() > 8 && parts[2] == "arc" && parts[3] == "sdcard" &&
            parts[4] == "write" && parts[5] == "emulated" && parts[6] == "0";
+  }
 
   return false;
 }
@@ -189,8 +195,9 @@ std::vector<gid_t> ArchiveManager::GetSupplementaryGroups() const {
 
   // To access Play Files.
   gid_t gid;
-  if (platform()->GetGroupId("android-everybody", &gid))
+  if (platform()->GetGroupId("android-everybody", &gid)) {
     groups.push_back(gid);
+  }
 
   return groups;
 }

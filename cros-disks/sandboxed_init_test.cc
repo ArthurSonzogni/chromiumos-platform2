@@ -28,16 +28,18 @@ namespace {
 
 // Writes a string to a file descriptor.
 void Write(int fd, std::string_view s) {
-  if (!base::WriteFileDescriptor(fd, s))
+  if (!base::WriteFileDescriptor(fd, s)) {
     PLOG(FATAL) << "Cannot write '" << s << "' to file descriptor " << fd;
+  }
 }
 
 // Reads a string from a file descriptor.
 std::string Read(int fd) {
   char buffer[PIPE_BUF];
   const ssize_t n = HANDLE_EINTR(read(fd, buffer, PIPE_BUF));
-  if (n < 0)
+  if (n < 0) {
     PLOG(FATAL) << "Cannot read from file descriptor " << fd;
+  }
   DCHECK_GE(n, 0);
   DCHECK_LE(n, PIPE_BUF);
   return std::string(buffer, n);
@@ -123,8 +125,9 @@ class SandboxedInitTest : public testing::Test {
     int wstatus;
     const int ret =
         HANDLE_EINTR(waitpid(pid_, &wstatus, no_hang ? WNOHANG : 0));
-    if (ret < 0)
+    if (ret < 0) {
       PLOG(FATAL) << "Cannot wait for the 'init' process PID " << pid_;
+    }
 
     if (ret == 0) {
       CHECK(no_hang);
@@ -509,8 +512,9 @@ TEST_F(SandboxedInitTest, InitCrashesWhileLauncherIsRunning) {
 TEST_F(SandboxedInitTest, InitCrashesWhileDaemonIsRunning) {
   RunUnderInit([]() {
     // Launcher process starts a 'daemon' process.
-    if (daemon(0, 1) < 0)
+    if (daemon(0, 1) < 0) {
       PLOG(FATAL) << "Cannot daemon";
+    }
 
     // Signal that the 'daemon' process started.
     Write(STDOUT_FILENO, "Begin");
@@ -551,8 +555,9 @@ TEST_F(SandboxedInitTest, InitCrashesWhileDaemonIsRunning) {
 TEST_F(SandboxedInitTest, DaemonBlocksAndTerminates) {
   RunUnderInit([]() {
     // Launcher process starts a 'daemon' process.
-    if (daemon(0, 1) < 0)
+    if (daemon(0, 1) < 0) {
       PLOG(FATAL) << "Cannot daemon";
+    }
 
     // Signal that the 'daemon' process started.
     Write(STDOUT_FILENO, "Begin");
@@ -590,8 +595,9 @@ TEST_F(SandboxedInitTest, DaemonBlocksAndTerminates) {
 TEST_F(SandboxedInitTest, DaemonCrashes) {
   RunUnderInit([]() {
     // Launcher process starts a 'daemon' process.
-    if (daemon(0, 1) < 0)
+    if (daemon(0, 1) < 0) {
       PLOG(FATAL) << "Cannot daemon";
+    }
 
     // Signal that the 'daemon' process started.
     Write(STDOUT_FILENO, "Begin");
@@ -622,8 +628,9 @@ TEST_F(SandboxedInitTest, DaemonCrashes) {
 TEST_F(SandboxedInitTest, DISABLED_InitRelaysSigTerm) {
   RunUnderInit([]() {
     // Launcher process starts a 'daemon' process.
-    if (daemon(0, 1) < 0)
+    if (daemon(0, 1) < 0) {
       PLOG(FATAL) << "Cannot daemon";
+    }
 
     // Signal that the 'daemon' process started.
     Write(STDOUT_FILENO, "Begin");
@@ -656,8 +663,9 @@ TEST_F(SandboxedInitTest, DISABLED_InitRelaysSigTerm) {
   EXPECT_EQ(-1, WaitForInit(true));
 
   // Send SIGTERM to the 'init' process.
-  if (kill(pid_, SIGTERM) < 0)
+  if (kill(pid_, SIGTERM) < 0) {
     PLOG(FATAL) << "Cannot send SIGKILL to 'init' process PID " << pid_;
+  }
 
   // The SIGTERM signal should be relayed by 'init' to the 'daemon' process, and
   // that should gracefully terminate the daemon, and the 'init' process.

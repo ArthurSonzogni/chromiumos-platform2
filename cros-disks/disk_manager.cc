@@ -73,8 +73,9 @@ class DiskFUSEMounter : public FUSEMounter {
   bool CanMount(const std::string& source,
                 const std::vector<std::string>& params,
                 base::FilePath* suggested_name) const override {
-    if (suggested_name)
+    if (suggested_name) {
       *suggested_name = base::FilePath("disk");
+    }
     return true;
   }
 
@@ -381,8 +382,9 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   }
 
   for (const std::string_view prefix : {"", "kernel-", "fuse-"}) {
-    if (it != mounters_.end())
+    if (it != mounters_.end()) {
       break;
+    }
     it = mounters_.find(base::StrCat({prefix, fstype}));
   }
 
@@ -463,8 +465,9 @@ std::unique_ptr<MountPoint> DiskManager::MaybeWrapMountPointForEject(
   if (disk.IsOpticalDisk()) {
     mount_point->SetEject(base::BindOnce(
         [](DiskManager* const disk_manager, const std::string& device_file) {
-          if (!disk_manager->EjectDevice(device_file))
+          if (!disk_manager->EjectDevice(device_file)) {
             LOG(ERROR) << "Cannot eject device " << quote(device_file);
+          }
         },
         this, disk.device_file));
   }

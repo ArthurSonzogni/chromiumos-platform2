@@ -52,12 +52,15 @@ class FuseBoxHelperTest : public ::testing::Test {
     bool GetUserAndGroupId(const std::string& name,
                            uid_t* uid,
                            gid_t* gid) const override {
-      if (name != kOwnerUserName)
+      if (name != kOwnerUserName) {
         return false;
-      if (uid)
+      }
+      if (uid) {
         *uid = kFuseBoxUserUID;
-      if (gid)
+      }
+      if (gid) {
         *gid = kFuseBoxUserGID;
+      }
       return true;
     }
   };

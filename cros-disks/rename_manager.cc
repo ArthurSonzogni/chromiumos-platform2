@@ -208,14 +208,16 @@ void RenameManager::OnDone(const std::string& fs_type,
     }
   }
 
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordAction("Rename", fs_type, exit_code, timer.Elapsed());
+  }
 
-  if (observer_)
+  if (observer_) {
     observer_->OnRenameCompleted(device_path,
                                  exit_code == Process::ExitCode::kSuccess
                                      ? RenameError::kSuccess
                                      : RenameError::kRenameProgramFailed);
+  }
 }
 
 bool RenameManager::CanRename(const std::string& source_path) const {

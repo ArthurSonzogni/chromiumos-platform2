@@ -33,8 +33,9 @@ DeviceType USBDeviceInfo::GetDeviceMediaType(
   std::string id = vendor_id + ":" + product_id;
   std::map<std::string, USBDeviceEntry>::const_iterator map_iterator =
       entries_.find(id);
-  if (map_iterator != entries_.end())
+  if (map_iterator != entries_.end()) {
     return map_iterator->second.media_type;
+  }
   return DeviceType::kUSB;
 }
 
@@ -49,8 +50,9 @@ bool USBDeviceInfo::RetrieveFromFile(const std::string& path) {
 
   std::string line;
   while (reader.ReadLine(&line)) {
-    if (IsLineSkippable(line))
+    if (IsLineSkippable(line)) {
       continue;
+    }
 
     std::vector<std::string> tokens = base::SplitString(
         line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -79,8 +81,9 @@ bool USBDeviceInfo::GetVendorAndProductName(const std::string& ids_file,
   bool found_vendor = false;
   std::string line;
   while (reader.ReadLine(&line)) {
-    if (IsLineSkippable(line))
+    if (IsLineSkippable(line)) {
       continue;
+    }
 
     std::string id, name;
     // If the target vendor ID is found, search for a matching product ID.
