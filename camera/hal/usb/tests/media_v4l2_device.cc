@@ -579,7 +579,8 @@ bool V4L2Device::EnumInput() {
         break;
       }
     }
-    LOGF(INFO) << base::StringPrintf("Current input: %s %s", input.name,
+    LOGF(INFO) << base::StringPrintf("Current input: %s %s",
+                                     reinterpret_cast<const char*>(input.name),
                                      i == index ? "*" : "");
   }
   return true;
@@ -599,12 +600,14 @@ bool V4L2Device::EnumStandard() {
     return false;
   }
 
-  LOGF(INFO) << base::StringPrintf("Current input %s supports:", input.name);
+  LOGF(INFO) << base::StringPrintf("Current input %s supports:",
+                                   reinterpret_cast<const char*>(input.name));
   memset(&standard, 0, sizeof(standard));
   standard.index = 0;
   while (0 == DoIoctl(VIDIOC_ENUMSTD, &standard)) {
     if (standard.id & input.std)
-      LOGF(INFO) << base::StringPrintf("%s", standard.name);
+      LOGF(INFO) << base::StringPrintf(
+          "%s", reinterpret_cast<const char*>(standard.name));
     standard.index++;
   }
   // EINVAL indicates the end of the enumeration, which cannot be
@@ -630,11 +633,13 @@ bool V4L2Device::EnumControl(bool show_menu) {
          query_ctrl.id < query_ctrl_sets[i].second; ++query_ctrl.id) {
       if (0 == DoIoctl(VIDIOC_QUERYCTRL, &query_ctrl)) {
         if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
-          LOGF(INFO) << base::StringPrintf("Control %s is disabled",
-                                           query_ctrl.name);
+          LOGF(INFO) << base::StringPrintf(
+              "Control %s is disabled",
+              reinterpret_cast<const char*>(query_ctrl.name));
         } else {
           LOGF(INFO) << base::StringPrintf(
-              "Control %s is enabled(%d-%d:%d)", query_ctrl.name,
+              "Control %s is enabled(%d-%d:%d)",
+              reinterpret_cast<const char*>(query_ctrl.name),
               query_ctrl.minimum, query_ctrl.maximum, query_ctrl.default_value);
         }
         if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu)
@@ -649,11 +654,13 @@ bool V4L2Device::EnumControl(bool show_menu) {
   for (query_ctrl.id = V4L2_CID_PRIVATE_BASE;; query_ctrl.id++) {
     if (0 == DoIoctl(VIDIOC_QUERYCTRL, &query_ctrl)) {
       if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED)
-        LOGF(INFO) << base::StringPrintf("Private Control %s is disabled",
-                                         query_ctrl.name);
+        LOGF(INFO) << base::StringPrintf(
+            "Private Control %s is disabled",
+            reinterpret_cast<const char*>(query_ctrl.name));
       else
-        LOGF(INFO) << base::StringPrintf("Private Control %s is enabled",
-                                         query_ctrl.name);
+        LOGF(INFO) << base::StringPrintf(
+            "Private Control %s is enabled",
+            reinterpret_cast<const char*>(query_ctrl.name));
       if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu)
         EnumControlMenu(query_ctrl);
     } else {
@@ -675,7 +682,8 @@ bool V4L2Device::EnumControlMenu(const v4l2_queryctrl& query_ctrl) {
   for (query_menu.index = query_ctrl.minimum;
        query_menu.index <= query_ctrl.maximum; ++query_menu.index) {
     if (0 == DoIoctl(VIDIOC_QUERYMENU, &query_menu)) {
-      LOGF(INFO) << base::StringPrintf("\t%s", query_menu.name);
+      LOGF(INFO) << base::StringPrintf(
+          "\t%s", reinterpret_cast<const char*>(query_menu.name));
     } else {
       LOGF(INFO) << "VIDIOC_QUERYMENU not supported";
       return false;
@@ -700,12 +708,13 @@ bool V4L2Device::EnumFormat(uint32_t* num_formats, bool show_fmt) {
       }
     }
     if (show_fmt)
-      LOGF(INFO) << base::StringPrintf("Supported format #%d: %s (%c%c%c%c)",
-                                       i + 1, format_desc.description,
-                                       (format_desc.pixelformat >> 0) & 0xff,
-                                       (format_desc.pixelformat >> 8) & 0xff,
-                                       (format_desc.pixelformat >> 16) & 0xff,
-                                       (format_desc.pixelformat >> 24) & 0xff);
+      LOGF(INFO) << base::StringPrintf(
+          "Supported format #%d: %s (%c%c%c%c)", i + 1,
+          reinterpret_cast<const char*>(format_desc.description),
+          (format_desc.pixelformat >> 0) & 0xff,
+          (format_desc.pixelformat >> 8) & 0xff,
+          (format_desc.pixelformat >> 16) & 0xff,
+          (format_desc.pixelformat >> 24) & 0xff);
   }
 
   if (num_formats)
