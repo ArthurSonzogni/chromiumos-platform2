@@ -722,13 +722,6 @@ void Device::SetEnabledUnchecked(bool enable,
   }
 }
 
-void Device::SetEnabledState(bool enable) {
-  SLOG(this, 1) << __func__;
-  enabled_ = enable;
-  manager_->UpdateEnabledTechnologies();
-  adaptor_->EmitBoolChanged(kPoweredProperty, enabled_);
-}
-
 bool Device::RequestRoam(const std::string& addr, Error* error) {
   return false;
 }

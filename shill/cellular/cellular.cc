@@ -1334,10 +1334,6 @@ void Cellular::OnModemDestroyed() {
   // here. If not cleared, it will impact when we call EstablishLink() next
   // time.
   explicit_disconnect_ = false;
-
-  // When underlying modem is not available, device should be reported as
-  // disabled.
-  SetEnabledState(false);
 }
 
 void Cellular::CreateCapability() {

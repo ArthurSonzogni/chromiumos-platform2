@@ -312,7 +312,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Update the device state to the pending state.
   void UpdateEnabledState();
-  void SetEnabledState(bool enable);
 
   // Create the implicit Network object. Device subclasses that use a single
   // network interface and a single Network should call CreateImplicitNetwork in
