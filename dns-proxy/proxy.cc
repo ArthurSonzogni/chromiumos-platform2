@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/rtnl_handler.h>
 #include <chromeos/patchpanel/address_manager.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
@@ -314,14 +315,10 @@ void Proxy::OnPatchpanelReady(bool success) {
 }
 
 void Proxy::StartDnsRedirection(const std::string& ifname,
-                                sa_family_t sa_family,
+                                const net_base::IPAddress& addr,
                                 const std::vector<std::string>& nameservers) {
-  // Request IPv6 DNS redirection rule only if the IPv6 address is available.
-  if (sa_family == AF_INET6 && !ipv6_address_) {
-    return;
-  }
-
   // Reset last created rules.
+  sa_family_t sa_family = net_base::ToSAFamily(addr.GetFamily());
   lifeline_fds_.erase(std::make_pair(ifname, sa_family));
 
   patchpanel::Client::DnsRedirectionRequestType type;
@@ -344,9 +341,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
       return;
   }
 
-  const auto peer_addr = sa_family == AF_INET6 ? ipv6_address_->ToString()
-                                               : ipv4_address_->ToString();
-  auto fd = patchpanel_->RedirectDns(type, ifname, peer_addr, nameservers,
+  auto fd = patchpanel_->RedirectDns(type, ifname, addr.ToString(), nameservers,
                                      ns_.host_ifname);
   // Restart the proxy if DNS redirection rules are failed to be set up. This
   // is necessary because when DNS proxy is running, /etc/resolv.conf is
@@ -428,8 +423,12 @@ void Proxy::OnShillReset(bool reset) {
       SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
       // Start DNS redirection rule to exclude traffic with destination not
       // equal to the underlying name server.
-      StartDnsRedirection(/*ifname=*/"", AF_INET);
-      StartDnsRedirection(/*ifname=*/"", AF_INET6);
+      if (ipv4_address_) {
+        StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_));
+      }
+      if (ipv6_address_) {
+        StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
+      }
     }
 
     return;
@@ -465,18 +464,26 @@ void Proxy::Enable() {
     SendIPAddressesToController(ipv4_address_, ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
-    StartDnsRedirection(/*ifname=*/"", AF_INET);
-    StartDnsRedirection(/*ifname=*/"", AF_INET6);
+    if (ipv4_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_));
+    }
+    if (ipv6_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
+    }
     return;
   }
 
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection(/*ifname=*/"", AF_INET,
-                        ToStringVec(doh_config_.ipv4_nameservers()));
-    StartDnsRedirection(/*ifname=*/"", AF_INET6,
-                        ToStringVec(doh_config_.ipv6_nameservers()));
+    if (ipv4_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_),
+                          ToStringVec(doh_config_.ipv4_nameservers()));
+    }
+    if (ipv6_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_),
+                          ToStringVec(doh_config_.ipv6_nameservers()));
+    }
   }
 
   // Process the current set of patchpanel devices and add necessary
@@ -584,10 +591,14 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (opts_.type == Type::kDefault) {
     // Start DNS redirection rule for user traffic (cups, chronos, update
     // engine, etc).
-    StartDnsRedirection(/*ifname=*/"", AF_INET,
-                        ToStringVec(doh_config_.ipv4_nameservers()));
-    StartDnsRedirection(/*ifname=*/"", AF_INET6,
-                        ToStringVec(doh_config_.ipv6_nameservers()));
+    if (ipv4_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_),
+                          ToStringVec(doh_config_.ipv4_nameservers()));
+    }
+    if (ipv6_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_),
+                          ToStringVec(doh_config_.ipv6_nameservers()));
+    }
     // Process the current set of patchpanel devices and add necessary
     // redirection rules.
     for (const auto& d : patchpanel_->GetDevices()) {
@@ -599,8 +610,12 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (opts_.type == Type::kSystem) {
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
-    StartDnsRedirection(/*ifname=*/"", AF_INET);
-    StartDnsRedirection(/*ifname=*/"", AF_INET6);
+    if (ipv4_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv4_address_));
+    }
+    if (ipv6_address_) {
+      StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
+    }
   }
 }
 
@@ -1117,7 +1132,7 @@ void Proxy::NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
       LOG(INFO) << *this << " Peer IPv6 addr updated to "
                 << peer_ipv6_addr.ToString();
       if (opts_.type == Type::kDefault && device_) {
-        StartDnsRedirection(/*ifname=*/"", AF_INET6,
+        StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_),
                             ToStringVec(doh_config_.ipv6_nameservers()));
       }
       for (const auto& d : patchpanel_->GetDevices()) {
@@ -1126,7 +1141,7 @@ void Proxy::NetNSRTNLMessageHandler(const net_base::RTNLMessage& msg) {
       if (opts_.type == Type::kSystem && device_) {
         SetShillDNSProxyAddresses(ipv4_address_, ipv6_address_);
         SendIPAddressesToController(ipv4_address_, ipv6_address_);
-        StartDnsRedirection(/*ifname=*/"", AF_INET6);
+        StartDnsRedirection(/*ifname=*/"", net_base::IPAddress(*ipv6_address_));
       }
       return;
     }
@@ -1291,9 +1306,26 @@ void Proxy::StartGuestDnsRedirection(
     return;
   }
 
-  // TODO(jasongustaman): StartDnsRedirection should use the correct guest
-  // address.
-  StartDnsRedirection(device.ifname, sa_family);
+  if (root_ns_enabled_) {
+    if (sa_family == AF_INET) {
+      StartDnsRedirection(device.ifname,
+                          net_base::IPAddress(device.host_ipv4_addr));
+    }
+    if (sa_family == AF_INET6) {
+      uint32_t ifindex = IfNameToIndex(device.ifname.c_str());
+      const auto it = link_local_addresses_.find(ifindex);
+      if (it != link_local_addresses_.end()) {
+        StartDnsRedirection(device.ifname, net_base::IPAddress(it->second));
+      }
+    }
+  } else {
+    if (sa_family == AF_INET && ipv4_address_) {
+      StartDnsRedirection(device.ifname, net_base::IPAddress(*ipv4_address_));
+    }
+    if (sa_family == AF_INET6 && ipv6_address_) {
+      StartDnsRedirection(device.ifname, net_base::IPAddress(*ipv6_address_));
+    }
+  }
 }
 
 void Proxy::StopGuestDnsRedirection(

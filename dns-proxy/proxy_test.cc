@@ -87,11 +87,13 @@ MATCHER_P(EqualsProto,
 patchpanel::Client::VirtualDevice virtualdev(
     patchpanel::Client::GuestType guest_type,
     const std::string& ifname,
-    const std::string& phys_ifname) {
+    const std::string& phys_ifname,
+    const net_base::IPv4Address& host_ipv4_addr = {}) {
   patchpanel::Client::VirtualDevice device;
   device.ifname = ifname;
   device.phys_ifname = phys_ifname;
   device.guest_type = guest_type;
+  device.host_ipv4_addr = host_ipv4_addr;
   return device;
 }
 
@@ -319,6 +321,12 @@ class ProxyTest : public ::testing::Test,
     proxy_->device_->network_config.dns_servers =
         StringsToIPAddressesChecked(ipv6_nameservers, ipv4_nameservers);
     proxy_->UpdateNameServers();
+  }
+
+  void SetInterfaceIPv6Address(const std::string& ifname,
+                               const net_base::IPv6Address& addr) {
+    int ifindex = proxy_->IfNameToIndex(ifname.c_str());
+    proxy_->link_local_addresses_[ifindex] = addr;
   }
 
  protected:
@@ -1112,19 +1120,28 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleGuest) {
              ShillDevice(shill::Client::Device::ConnectionState::kOnline,
                          shill::Client::Device::Type::kEthernet, "eth0"));
   SetListenAddresses(ipv4_address_, ipv6_address_);
+  SetInterfaceIPv6Address("vmtap0",
+                          *net_base::IPv6Address::CreateFromString("fd00::1"));
 
   // Guest started.
   auto plugin_vm_dev =
-      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0");
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0",
+                 net_base::IPv4Address(192, 168, 1, 1));
+  net_base::IPv4Address addr4 =
+      proxy_->root_ns_enabled_ ? plugin_vm_dev.host_ipv4_addr : ipv4_address_;
+  net_base::IPv6Address addr6 =
+      proxy_->root_ns_enabled_
+          ? *net_base::IPv6Address::CreateFromString("fd00::1")
+          : ipv6_address_;
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", ipv4_address_.ToString(), IsEmpty(), _))
+                  "vmtap0", addr4.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", ipv6_address_.ToString(), IsEmpty(), _))
+                  "vmtap0", addr6.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
                                  plugin_vm_dev);
@@ -1270,11 +1287,14 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
 
   // Guest started.
   auto plugin_vm_dev =
-      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0");
+      virtualdev(patchpanel::Client::GuestType::kParallelsVm, "vmtap0", "eth0",
+                 net_base::IPv4Address(192, 168, 1, 1));
+  net_base::IPv4Address addr =
+      proxy_->root_ns_enabled_ ? plugin_vm_dev.host_ipv4_addr : ipv4_address_;
   EXPECT_CALL(
       *patchpanel_client_,
       RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kDefault,
-                  "vmtap0", ipv4_address_.ToString(), IsEmpty(), _))
+                  "vmtap0", addr.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
                                  plugin_vm_dev);
@@ -1293,12 +1313,6 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   SetListenAddresses(ipv4_address_, /*ipv6_addr=*/std::nullopt);
   auto* new_resolver = new MockResolver();
   proxy_->resolver_ = base::WrapUnique(new_resolver);
-
-  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
-  // in a follow-up patch.
-  if (proxy_->root_ns_enabled_) {
-    return;
-  }
 
   if (!proxy_->root_ns_enabled_) {
     EXPECT_CALL(
@@ -1340,12 +1354,6 @@ TEST_P(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
              ShillDevice());
   auto* new_resolver = new MockResolver();
   proxy_->resolver_ = base::WrapUnique(new_resolver);
-
-  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
-  // in a follow-up patch.
-  if (proxy_->root_ns_enabled_) {
-    return;
-  }
 
   proxy_->lifeline_fds_.emplace(std::make_pair("", AF_INET6),
                                 base::ScopedFD(make_fd()));
@@ -1411,19 +1419,29 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   SetListenAddresses(ipv4_address_, ipv6_address_);
+  SetInterfaceIPv6Address("arc_eth0",
+                          *net_base::IPv6Address::CreateFromString("fd00::1"));
+
+  net_base::IPv4Address addr4 = proxy_->root_ns_enabled_
+                                    ? net_base::IPv4Address(192, 168, 1, 1)
+                                    : ipv4_address_;
+  net_base::IPv6Address addr6 =
+      proxy_->root_ns_enabled_
+          ? *net_base::IPv6Address::CreateFromString("fd00::1")
+          : ipv6_address_;
 
   // Set devices created before the proxy started.
   EXPECT_CALL(*patchpanel_client_, GetDevices())
-      .WillOnce(
-          Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
-              patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0")}));
+      .WillOnce(Return(std::vector<patchpanel::Client::VirtualDevice>{
+          virtualdev(patchpanel::Client::GuestType::kArcVm, "arc_eth0", "eth0",
+                     net_base::IPv4Address(192, 168, 1, 1))}));
   EXPECT_CALL(*patchpanel_client_,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                          "arc_eth0", ipv4_address_.ToString(), IsEmpty(), _))
+                          "arc_eth0", addr4.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*patchpanel_client_,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                          "arc_eth0", ipv6_address_.ToString(), IsEmpty(), _))
+                          "arc_eth0", addr6.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->Enable();
   EXPECT_EQ(proxy_->lifeline_fds_.size(), 2);
@@ -1434,17 +1452,26 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
              Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
              ShillDevice());
   SetListenAddresses(ipv4_address_, ipv6_address_);
+  SetInterfaceIPv6Address("arc_eth0",
+                          *net_base::IPv6Address::CreateFromString("fd00::1"));
 
   // Guest started.
-  auto arc_dev = virtualdev(patchpanel::Client::GuestType::kArcContainer,
-                            "arc_eth0", "eth0");
+  auto arc_dev =
+      virtualdev(patchpanel::Client::GuestType::kArcContainer, "arc_eth0",
+                 "eth0", net_base::IPv4Address(192, 168, 1, 1));
+  net_base::IPv4Address addr4 =
+      proxy_->root_ns_enabled_ ? arc_dev.host_ipv4_addr : ipv4_address_;
+  net_base::IPv6Address addr6 =
+      proxy_->root_ns_enabled_
+          ? *net_base::IPv6Address::CreateFromString("fd00::1")
+          : ipv6_address_;
   EXPECT_CALL(*patchpanel_client_,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                          "arc_eth0", ipv4_address_.ToString(), IsEmpty(), _))
+                          "arc_eth0", addr4.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(*patchpanel_client_,
               RedirectDns(patchpanel::Client::DnsRedirectionRequestType::kArc,
-                          "arc_eth0", ipv6_address_.ToString(), IsEmpty(), _))
+                          "arc_eth0", addr6.ToString(), IsEmpty(), _))
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   proxy_->OnVirtualDeviceChanged(patchpanel::Client::VirtualDeviceEvent::kAdded,
                                  arc_dev);
@@ -1568,12 +1595,6 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   auto* new_resolver = new MockResolver();
   proxy_->resolver_ = base::WrapUnique(new_resolver);
 
-  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
-  // in a follow-up patch.
-  if (proxy_->root_ns_enabled_) {
-    return;
-  }
-
   EXPECT_CALL(*patchpanel_client_, GetDevices())
       .WillOnce(
           Return(std::vector<patchpanel::Client::VirtualDevice>{virtualdev(
@@ -1606,12 +1627,6 @@ TEST_P(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
              ShillDevice());
   auto* new_resolver = new MockResolver();
   proxy_->resolver_ = base::WrapUnique(new_resolver);
-
-  // TODO(jasongustaman): Update test when IPv6 listening address is corrected
-  // in a follow-up patch.
-  if (proxy_->root_ns_enabled_) {
-    return;
-  }
 
   proxy_->lifeline_fds_.emplace(std::make_pair("arc_eth0", AF_INET6),
                                 base::ScopedFD(make_fd()));

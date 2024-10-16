@@ -155,8 +155,7 @@ class Proxy : public brillo::DBusDaemon {
 
   // Start and stop DNS redirection rules by querying patchpanel's API. This is
   // necessary to route corresponding DNS traffic to the DNS proxy.
-  // |sa_family| values will be either AF_INET or AF_INET6, for IPv4 and IPv6
-  // respectively.
+  // |addr| values can be either IPv4 or IPv6 address.
   // Calls from each DNS proxy types will result in a different rule:
   // - System:
   //   Rules to exclude traffic that is not using the underlying name
@@ -170,7 +169,7 @@ class Proxy : public brillo::DBusDaemon {
   //   Rules to redirect ARC traffic to the proxy (ARC).
   void StartDnsRedirection(
       const std::string& ifname,
-      sa_family_t sa_family,
+      const net_base::IPAddress& addr,
       const std::vector<std::string>& nameservers = std::vector<std::string>());
   void StopDnsRedirection(const std::string& ifname, sa_family_t sa_family);
 
