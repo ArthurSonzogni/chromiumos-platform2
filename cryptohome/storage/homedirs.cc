@@ -71,8 +71,9 @@ bool HomeDirs::GetEphemeralSettings(
 
   std::optional<policy::DevicePolicy::EphemeralSettings> ephemeral_settings =
       policy_provider_->GetDevicePolicy().GetEphemeralSettings();
-  if (!ephemeral_settings)
+  if (!ephemeral_settings) {
     return false;
+  }
 
   *settings = *ephemeral_settings;
   return true;
@@ -81,8 +82,9 @@ bool HomeDirs::GetEphemeralSettings(
 bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
   // Search through /proc/crypto for 'aeskl' as an indicator that AES Keylocker
   // is supported.
-  if (!IsAesKeylockerSupported())
+  if (!IsAesKeylockerSupported()) {
     return false;
+  }
 
   // Check if keylocker is force enabled for testing.
   // TODO(sarthakkukreti@, b/209516710): Remove in M102.
@@ -95,17 +97,19 @@ bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
 
   // If the policy cannot be loaded, default to AESNI.
   bool keylocker_for_storage_encryption_enabled = false;
-  if (policy_provider_->device_policy_is_loaded())
+  if (policy_provider_->device_policy_is_loaded()) {
     policy_provider_->GetDevicePolicy()
         .GetDeviceKeylockerForStorageEncryptionEnabled(
             &keylocker_for_storage_encryption_enabled);
+  }
   return keylocker_for_storage_encryption_enabled;
 }
 
 bool HomeDirs::MustRunAutomaticCleanupOnLogin() {
   // If the policy cannot be loaded, default to not run cleanup.
-  if (!policy_provider_->device_policy_is_loaded())
+  if (!policy_provider_->device_policy_is_loaded()) {
     return false;
+  }
 
   // If the device is not enterprise owned, do not run cleanup.
   if (!enterprise_owned()) {
@@ -258,8 +262,9 @@ std::vector<HomeDirs::HomeDir> HomeDirs::GetHomeDirs() {
 
   auto is_mounted = platform_->AreDirectoriesMounted(user_paths);
 
-  if (!is_mounted)
+  if (!is_mounted) {
     return ret;  // assume all are unmounted
+  }
 
   int i = 0;
   for (const bool& m : is_mounted.value()) {
@@ -311,8 +316,9 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
                                               kTrackedDirectoryNameAttribute)) {
         std::string name;
         if (!platform_->GetExtendedFileAttributeAsString(
-                dir, kTrackedDirectoryNameAttribute, &name))
+                dir, kTrackedDirectoryNameAttribute, &name)) {
           return false;
+        }
         if (name == name_component) {
           // This is the directory we're looking for.
           next_path = dir;
@@ -332,8 +338,9 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
 
 libstorage::StorageContainerType HomeDirs::ChooseVaultType() {
   // Validate stateful partition logical volume support.
-  if (platform_->IsStatefulLogicalVolumeSupported())
+  if (platform_->IsStatefulLogicalVolumeSupported()) {
     return libstorage::StorageContainerType::kDmcrypt;
+  }
 
   dircrypto::KeyState state = platform_->GetDirCryptoKeyState(ShadowRoot());
   switch (state) {
@@ -513,18 +520,21 @@ bool HomeDirs::Remove(const ObfuscatedUsername& username) {
 }
 
 bool HomeDirs::RemoveDmcryptCacheContainer(const ObfuscatedUsername& username) {
-  if (!DmcryptCacheContainerExists(username))
+  if (!DmcryptCacheContainerExists(username)) {
     return false;
+  }
 
   auto vault =
       vault_factory_->Generate(username, libstorage::FileSystemKeyReference(),
                                libstorage::StorageContainerType::kDmcrypt);
-  if (!vault)
+  if (!vault) {
     return false;
+  }
 
   if (vault->GetCacheContainerType() !=
-      libstorage::StorageContainerType::kDmcrypt)
+      libstorage::StorageContainerType::kDmcrypt) {
     return false;
+  }
 
   return vault->PurgeCacheContainer();
 }
@@ -598,11 +608,13 @@ int32_t HomeDirs::GetUnmountedAndroidDataCount() {
 
   return std::count_if(
       homedirs.begin(), homedirs.end(), [this](const HomeDirs::HomeDir& dir) {
-        if (dir.is_mounted)
+        if (dir.is_mounted) {
           return false;
+        }
 
-        if (EcryptfsCryptohomeExists(dir.obfuscated))
+        if (EcryptfsCryptohomeExists(dir.obfuscated)) {
           return false;
+        }
 
         FilePath shadow_dir = UserPath(dir.obfuscated);
         FilePath root_home_dir;

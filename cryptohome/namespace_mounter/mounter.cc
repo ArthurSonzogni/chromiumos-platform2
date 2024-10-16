@@ -646,8 +646,9 @@ bool Mounter::MountLegacyHome(const FilePath& from) {
   }
 
   if (!BindAndPush(from, FilePath(kDefaultHomeDir),
-                   libstorage::RemountOption::kMountsFlowIn))
+                   libstorage::RemountOption::kMountsFlowIn)) {
     return false;
+  }
 
   return true;
 }
@@ -933,8 +934,9 @@ bool Mounter::InternalMountDaemonStoreDirectories(
     // Assuming that |run_daemon_store_path| is a shared mount and the daemon
     // runs in a file system namespace with |run_daemon_store_path| mounted as
     // secondary, this mount event propagates into the daemon.
-    if (!BindAndPush(mount_source, mount_target))
+    if (!BindAndPush(mount_source, mount_target)) {
       return false;
+    }
   }
 
   return true;
@@ -1050,35 +1052,41 @@ bool Mounter::MountHomesAndDaemonStores(
   // Bind mount user directory as a shared bind mount.
   // This allows us to set up user mounts as subsidiary mounts without needing
   // to replicate that across multiple mount points.
-  if (!BindAndPush(user_home, user_home, libstorage::RemountOption::kShared))
+  if (!BindAndPush(user_home, user_home, libstorage::RemountOption::kShared)) {
     return false;
+  }
 
   // Same as above for |root_home|, to ensure submounts are propagated
   // correctly.
-  if (!BindAndPush(root_home, root_home, libstorage::RemountOption::kShared))
+  if (!BindAndPush(root_home, root_home, libstorage::RemountOption::kShared)) {
     return false;
+  }
 
   // Mount /home/chronos/user.
-  if (legacy_mount_ && !MountLegacyHome(user_home))
+  if (legacy_mount_ && !MountLegacyHome(user_home)) {
     return false;
+  }
 
   // Mount /home/chronos/u-<user_hash>
   const FilePath new_user_path = GetNewUserPath(username);
   if (!BindAndPush(user_home, new_user_path,
-                   libstorage::RemountOption::kMountsFlowIn))
+                   libstorage::RemountOption::kMountsFlowIn)) {
     return false;
+  }
 
   // Mount /home/user/<user_hash>.
   const FilePath user_multi_home = GetUserPath(username);
   if (!BindAndPush(user_home, user_multi_home,
-                   libstorage::RemountOption::kMountsFlowIn))
+                   libstorage::RemountOption::kMountsFlowIn)) {
     return false;
+  }
 
   // Mount /home/root/<user_hash>.
   const FilePath root_multi_home = GetRootPath(username);
   if (!BindAndPush(root_home, root_multi_home,
-                   libstorage::RemountOption::kMountsFlowIn))
+                   libstorage::RemountOption::kMountsFlowIn)) {
     return false;
+  }
 
   // Mount Downloads to MyFiles/Downloads in the user shadow directory.
   if (!HandleMyFilesDownloads(user_home)) {
@@ -1086,8 +1094,9 @@ bool Mounter::MountHomesAndDaemonStores(
   }
 
   // Mount directories used by daemons to store per-user data.
-  if (!MountDaemonStoreDirectories(root_home, obfuscated_username))
+  if (!MountDaemonStoreDirectories(root_home, obfuscated_username)) {
     return false;
+  }
 
   return true;
 }
@@ -1428,8 +1437,9 @@ void Mounter::ForceUnmount(const FilePath& src, const FilePath& dest) {
                << "' immediately, was_busy=" << std::boolalpha << was_busy;
     // Failed to unmount immediately, do a lazy unmount.  If |was_busy| we also
     // want to sync before the unmount to help prevent data loss.
-    if (was_busy)
+    if (was_busy) {
       platform_->SyncDirectory(dest);
+    }
     platform_->LazyUnmount(dest);
     platform_->SyncDirectory(src);
   }

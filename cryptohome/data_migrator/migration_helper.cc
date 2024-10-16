@@ -233,8 +233,9 @@ class MigrationHelper::WorkerPool {
   bool PopJob(Job* job) {
     base::AutoLock lock(jobs_lock_);
     while (jobs_.empty()) {
-      if (no_more_new_jobs_)
+      if (no_more_new_jobs_) {
         return false;
+      }
       job_thread_wakeup_condition_.Wait();
     }
     if (should_abort_) {
@@ -344,9 +345,10 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   }
   effective_chunk_size_ =
       std::min(max_chunk_size_, kFreeSpaceForJobThreads / num_job_threads_);
-  if (effective_chunk_size_ > kErasureBlockSize)
+  if (effective_chunk_size_ > kErasureBlockSize) {
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
+  }
 
   LOG(INFO) << "Free space for migrator: " << free_space_for_migrator;
   LOG(INFO) << "Total directory byte count: " << total_directory_byte_count_;
@@ -383,8 +385,9 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
       worker_pool_->Start(num_job_threads_, max_job_list_size_) &&
       MigrateDir(base::FilePath(base::FilePath::kCurrentDirectory), from_stat);
   // No matter if successful or not, always join the job threads.
-  if (!worker_pool_->Join())
+  if (!worker_pool_->Join()) {
     success = false;
+  }
   if (!success) {
     LOG(ERROR) << "Migration Failed, aborting.";
     status_reporter.SetFileErrorFailure(failed_operation_type_,
@@ -396,8 +399,9 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     }
     return false;
   }
-  if (!resumed)
+  if (!resumed) {
     delegate_->ReportEndTime();
+  }
 
   // One more progress update to say that we've hit 100%
   ReportStatus();
@@ -440,14 +444,16 @@ bool MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
     const libstorage::FileEnumerator::FileInfo& info = enumerator->GetInfo();
     total_byte_count_ += info.GetSize();
 
-    if (S_ISREG(info.stat().st_mode))
+    if (S_ISREG(info.stat().st_mode)) {
       ++n_files_;
+    }
     if (S_ISDIR(info.stat().st_mode)) {
       total_directory_byte_count_ += info.GetSize();
       ++n_dirs_;
     }
-    if (S_ISLNK(info.stat().st_mode))
+    if (S_ISLNK(info.stat().st_mode)) {
       ++n_symlinks_;
+    }
   }
   LOG(INFO) << "Number of files: " << n_files_;
   LOG(INFO) << "Number of directories: " << n_dirs_;
@@ -458,8 +464,9 @@ bool MigrationHelper::CalculateDataToMigrate(const base::FilePath& from) {
 void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
   base::AutoLock lock(migrated_byte_count_lock_);
   migrated_byte_count_ += bytes;
-  if (next_report_ < base::TimeTicks::Now())
+  if (next_report_ < base::TimeTicks::Now()) {
     ReportStatus();
+  }
 }
 
 void MigrationHelper::ReportStatus() {
@@ -491,8 +498,9 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
                                     FailureLocationType::kDest);
     return false;
   }
-  if (!CopyAttributes(child, stat))
+  if (!CopyAttributes(child, stat)) {
     return false;
+  }
 
   // Dummy child count increment to protect this directory while reading.
   IncrementChildCount(child);
@@ -521,15 +529,17 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
     IncrementChildCount(child);
     if (S_ISDIR(entry_stat.st_mode)) {
       // Directory.
-      if (!MigrateDir(new_child, entry_stat))
+      if (!MigrateDir(new_child, entry_stat)) {
         return false;
+      }
       IncrementMigratedBytes(entry_stat.st_size);
     } else {
       Job job;
       job.child = new_child;
       job.stat = entry_stat;
-      if (!worker_pool_->PushJob(job))
+      if (!worker_pool_->PushJob(job)) {
         return false;
+      }
     }
   }
   enumerator.reset();
@@ -567,8 +577,9 @@ bool MigrationHelper::MigrateLink(const base::FilePath& child,
     return false;
   }
 
-  if (!CopyAttributes(child, stat))
+  if (!CopyAttributes(child, stat)) {
     return false;
+  }
   // We don't need to modify the source file, so we can safely set times here
   // directly instead of storing them in xattrs first.
   if (!platform_->SetFileTimes(new_path, stat.st_atim, stat.st_mtim,
@@ -651,8 +662,9 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
     }
   }
 
-  if (!CopyAttributes(child, stat))
+  if (!CopyAttributes(child, stat)) {
     return false;
+  }
 
   while (from_length > 0) {
     if (is_cancelled_.IsSet()) {
@@ -701,15 +713,17 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
 
   from_file.Close();
   to_file.Close();
-  if (!FixTimes(child))
+  if (!FixTimes(child)) {
     return false;
+  }
   if (!platform_->SyncFile(to_child)) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child,
                                     FailureLocationType::kDest);
     return false;
   }
-  if (!RemoveTimeXattrsIfPresent(child))
+  if (!RemoveTimeXattrsIfPresent(child)) {
     return false;
+  }
 
   return true;
 }
@@ -726,15 +740,17 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
     return false;
   }
 
-  if (!CopyExtendedAttributes(child))
+  if (!CopyExtendedAttributes(child)) {
     return false;
+  }
 
   mode_t mode = stat.st_mode;
 
   // We don't need to modify the source file, so no special timestamp handling
   // needed.  Permissions and flags are also not supported on symlinks in linux.
-  if (S_ISLNK(mode))
+  if (S_ISLNK(mode)) {
     return true;
+  }
   if (!platform_->SetPermissions(to, mode)) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child,
                                     FailureLocationType::kDest);
@@ -952,13 +968,15 @@ void MigrationHelper::RecordFileErrorWithCurrentErrno(
 bool MigrationHelper::ProcessJob(const Job& job) {
   if (S_ISLNK(job.stat.st_mode)) {
     // Symlink
-    if (!MigrateLink(job.child, job.stat))
+    if (!MigrateLink(job.child, job.stat)) {
       return false;
+    }
     IncrementMigratedBytes(job.stat.st_size);
   } else if (S_ISREG(job.stat.st_mode)) {
     // File
-    if (!MigrateFile(job.child, job.stat))
+    if (!MigrateFile(job.child, job.stat)) {
       return false;
+    }
   } else {
     LOG(ERROR) << "Unknown file type: " << job.child.value();
   }
@@ -984,8 +1002,9 @@ bool MigrationHelper::DecrementChildCountAndDeleteIfNecessary(
     base::AutoLock lock(child_counts_lock_);
     auto it = child_counts_.find(child);
     --(it->second);
-    if (it->second > 0)  // This directory is not empty yet.
+    if (it->second > 0) {  // This directory is not empty yet.
       return true;
+    }
     child_counts_.erase(it);
   }
   // The last child was removed. Finish migrating this directory.
@@ -1001,12 +1020,14 @@ bool MigrationHelper::DecrementChildCountAndDeleteIfNecessary(
                                     FailureLocationType::kDest);
     return false;
   }
-  if (!RemoveTimeXattrsIfPresent(child))
+  if (!RemoveTimeXattrsIfPresent(child)) {
     return false;
+  }
 
   // Don't delete the top directory.
-  if (child.value() == base::FilePath::kCurrentDirectory)
+  if (child.value() == base::FilePath::kCurrentDirectory) {
     return true;
+  }
 
   if (!platform_->DeleteFile(from_dir)) {
     PLOG(ERROR) << "Failed to delete " << child.value();

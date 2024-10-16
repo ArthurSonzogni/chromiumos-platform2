@@ -77,22 +77,25 @@ bool LowDiskSpaceHandler::Init(
           FROM_HERE,
           base::BindOnce(&LowDiskSpaceHandler::FreeDiskSpace,
                          weak_factory_.GetWeakPtr()),
-          base::TimeDelta()))
+          base::TimeDelta())) {
     return false;
+  }
 
   if (!post_delayed_task_.Run(
           FROM_HERE,
           base::BindOnce(&LowDiskSpaceHandler::LowDiskSpaceCheck,
                          weak_factory_.GetWeakPtr()),
-          base::TimeDelta()))
+          base::TimeDelta())) {
     return false;
+  }
 
   return true;
 }
 
 void LowDiskSpaceHandler::FreeDiskSpace() {
-  if (stopped_)
+  if (stopped_) {
     return;
+  }
 
   if (!cleanup_->FreeDiskSpace()) {
     LOG(ERROR) << "FreeDiskSpace encontered an error";
@@ -102,8 +105,9 @@ void LowDiskSpaceHandler::FreeDiskSpace() {
 }
 
 void LowDiskSpaceHandler::LowDiskSpaceCheck() {
-  if (stopped_)
+  if (stopped_) {
     return;
+  }
 
   bool low_disk_space_signal_emitted = false;
   auto free_disk_space = cleanup_->AmountOfFreeDiskSpace();
@@ -142,8 +146,9 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
                                     (!low_disk_space_signal_was_emitted_ ||
                                      cleanup_->IsFreeableDiskSpaceAvailable());
 
-  if (time_for_auto_cleanup || early_cleanup_needed)
+  if (time_for_auto_cleanup || early_cleanup_needed) {
     FreeDiskSpace();
+  }
 
   const bool time_for_update_user_activity_timestamp =
       current_time - last_update_user_activity_timestamp_time_ >

@@ -208,8 +208,9 @@ FileSystemKeyset VaultKeyset::ToFileSystemKeyset() const {
 bool VaultKeyset::Load(const base::FilePath& filename) {
   CHECK(platform_);
   brillo::Blob contents;
-  if (!platform_->ReadFile(filename, &contents))
+  if (!platform_->ReadFile(filename, &contents)) {
     return false;
+  }
   ResetVaultKeyset();
 
   SerializedVaultKeyset serialized;
@@ -983,8 +984,9 @@ bool VaultKeyset::GetTpmEccState(AuthBlockState* auth_state) const {
 
 bool VaultKeyset::Save(const base::FilePath& filename) {
   CHECK(platform_);
-  if (!encrypted_)
+  if (!encrypted_) {
     return false;
+  }
   SerializedVaultKeyset serialized = ToSerialized();
 
   brillo::Blob contents(serialized.ByteSizeLong());

@@ -147,8 +147,9 @@ std::optional<LedgerInfo> LoadLedgerInfoFromJsonFile(
 
 bool CheckMandatoryFlag(const std::string& flag_name,
                         const std::string& flag_value) {
-  if (!flag_value.empty())
+  if (!flag_value.empty()) {
     return true;
+  }
   LOG(ERROR) << "--" << flag_name << " is mandatory.";
   return false;
 }
@@ -176,8 +177,9 @@ bool ReadHexFileToBlobLogged(const FilePath& file_path,
 bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
                                    brillo::SecureBlob* contents) {
   brillo::Blob blob;
-  if (!ReadHexFileToBlobLogged(file_path, &blob))
+  if (!ReadHexFileToBlobLogged(file_path, &blob)) {
     return false;
+  }
   // This conversion is to be avoided in production code, but is OK for a
   // test-only file reader.
   *contents = brillo::SecureBlob(std::move(blob));
@@ -188,24 +190,26 @@ template <typename Alloc>
 bool WriteHexFileLogged(const FilePath& file_path,
                         const std::vector<uint8_t, Alloc>& contents) {
   if (base::WriteFile(file_path,
-                      base::HexEncode(contents.data(), contents.size())))
+                      base::HexEncode(contents.data(), contents.size()))) {
     return true;
+  }
   LOG(ERROR) << "Failed to write to file " << file_path.value() << ".";
   return false;
 }
 
 user_data_auth::AuthFactorType GetAuthFactorTypeFromString(
     const std::string& raw_auth_factor_type) {
-  if (raw_auth_factor_type == "password")
+  if (raw_auth_factor_type == "password") {
     return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD;
-  else if (raw_auth_factor_type == "pin")
+  } else if (raw_auth_factor_type == "pin") {
     return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN;
-  else if (raw_auth_factor_type == "kiosk")
+  } else if (raw_auth_factor_type == "kiosk") {
     return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_KIOSK;
-  else if (raw_auth_factor_type == "smart_card")
+  } else if (raw_auth_factor_type == "smart_card") {
     return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_SMART_CARD;
-  else
+  } else {
     return user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_UNSPECIFIED;
+  }
 }
 
 bool DoRecoveryCryptoCreateHsmPayloadAction(
@@ -603,12 +607,14 @@ bool DoCreateVaultKeyset(const std::string& auth_session_id_hex,
   // Fill challenge credential parameters depending on AuthFactorType.
   if (auth_factor_type ==
       user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_SMART_CARD) {
-    if (!key_delegate_dbus_service_name.empty())
+    if (!key_delegate_dbus_service_name.empty()) {
       request.set_key_delegate_dbus_service_name(
           key_delegate_dbus_service_name);
+    }
 
-    if (!public_key_spki_der.empty())
+    if (!public_key_spki_der.empty()) {
       request.set_public_key_spki_der(public_key_spki_der);
+    }
   } else {
     // Anything factor that isn't a challenge credntial has a passkey.
     // Format passkey to match cryptohome.cc command line.

@@ -92,8 +92,9 @@ class DiskCleanupRoutinesTest
   // same parent directory.
   void ExpectTrackedDirectoryEnumeration(
       const std::vector<base::FilePath>& child_directories) {
-    if (ShouldTestEcryptfs())  // No expecations needed for eCryptfs.
+    if (ShouldTestEcryptfs()) {  // No expecations needed for eCryptfs.
       return;
+    }
 
     ASSERT_FALSE(child_directories.empty());
     base::FilePath parent_directory = child_directories[0].DirName();
@@ -150,8 +151,9 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserCache) {
   EXPECT_CALL(platform_, DeleteFile(_)).Times(0);
   EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
 
-  for (const auto& entry : entriesToClean)
+  for (const auto& entry : entriesToClean) {
     EXPECT_CALL(platform_, DeletePathRecursively(entry)).WillOnce(Return(true));
+  }
 
   routines_.DeleteUserCache(kTestUser);
 }
@@ -194,8 +196,9 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV1) {
   EXPECT_CALL(platform_, DeleteFile(_)).Times(0);
   EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
 
-  for (const auto& entry : entriesToClean)
+  for (const auto& entry : entriesToClean) {
     EXPECT_CALL(platform_, DeletePathRecursively(entry)).WillOnce(Return(true));
+  }
 
   routines_.DeleteUserGCache(kTestUser);
 }
@@ -298,8 +301,9 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
 
   for (auto& entry : entriesToClean) {
     std::vector<base::FilePath> entries;
-    for (const auto& entryToDelete : entriesToDelete)
+    for (const auto& entryToDelete : entriesToDelete) {
       entries.push_back(entry.Append(entryToDelete));
+    }
 
     EXPECT_CALL(platform_,
                 GetFileEnumerator(entry, false,
@@ -310,9 +314,10 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
         .WillRepeatedly(InvokeWithoutArgs(
             std::bind(CreateMockFileEnumeratorWithEntries, entries)));
 
-    for (const auto& entry : entries)
+    for (const auto& entry : entries) {
       EXPECT_CALL(platform_, DeletePathRecursively(entry))
           .WillOnce(Return(true));
+    }
   }
 
   auto* enumerator = new NiceMock<libstorage::MockFileEnumerator>;
@@ -401,8 +406,9 @@ TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCache) {
   // Don't delete anything else.
   EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(0);
 
-  for (const auto& entry : allDaemonPaths)
+  for (const auto& entry : allDaemonPaths) {
     EXPECT_CALL(platform_, DeletePathRecursively(entry)).WillOnce(Return(true));
+  }
 
   routines_.DeleteDaemonStoreCache(kTestUser);
 }

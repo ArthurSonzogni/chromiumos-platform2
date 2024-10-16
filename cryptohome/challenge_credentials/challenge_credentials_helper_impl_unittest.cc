@@ -75,8 +75,9 @@ SerializedChallengePublicKeyInfo MakeChallengePublicKeyInfo(
     const std::vector<SerializedChallengeSignatureAlgorithm>& key_algorithms) {
   SerializedChallengePublicKeyInfo public_key_info;
   public_key_info.public_key_spki_der = set_public_key_spki_der;
-  for (auto key_algorithm : key_algorithms)
+  for (auto key_algorithm : key_algorithms) {
     public_key_info.signature_algorithm.push_back(key_algorithm);
+  }
   return public_key_info;
 }
 

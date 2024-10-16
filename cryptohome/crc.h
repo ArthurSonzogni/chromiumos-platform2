@@ -18,8 +18,9 @@ inline uint8_t Crc8(const void* buffer, uint32_t len) {
   for (auto* next = data; next != data + len; ++next) {
     crc ^= (*next << 8);
     for (int i = 0; i < 8; ++i) {
-      if (crc & 0x8000)
+      if (crc & 0x8000) {
         crc ^= (0x1070 << 3);
+      }
       crc <<= 1;
     }
   }

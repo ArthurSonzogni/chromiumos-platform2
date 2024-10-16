@@ -107,8 +107,9 @@ class FingerprintManager {
     ~AuthScanDoneResourceManager() {
       // If auth session is still open, then we are waiting for retry, so keep
       // |current_user_|.
-      if (fingerprint_manager_->state_ != State::AUTH_SESSION_OPEN)
+      if (fingerprint_manager_->state_ != State::AUTH_SESSION_OPEN) {
         fingerprint_manager_->current_user_->clear();
+      }
     }
 
    private:

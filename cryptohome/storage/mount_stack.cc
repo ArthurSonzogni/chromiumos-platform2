@@ -19,8 +19,9 @@ MountStack::MountInfo::MountInfo(const FilePath& src, const FilePath& dest)
 MountStack::~MountStack() {
   if (!mounts_.empty()) {
     LOG(ERROR) << "MountStack destroyed with " << mounts_.size() << " mounts.";
-    for (const auto& it : mounts_)
+    for (const auto& it : mounts_) {
       LOG(ERROR) << "  " << it.src.value() << " -> " << it.dest.value();
+    }
   }
 }
 
@@ -29,8 +30,9 @@ void MountStack::Push(const FilePath& src, const FilePath& dest) {
 }
 
 bool MountStack::Pop(FilePath* src_out, FilePath* dest_out) {
-  if (mounts_.empty())
+  if (mounts_.empty()) {
     return false;
+  }
 
   const MountInfo& info = mounts_.back();
   *src_out = info.src;
@@ -41,8 +43,9 @@ bool MountStack::Pop(FilePath* src_out, FilePath* dest_out) {
 
 bool MountStack::ContainsDest(const FilePath& dest) const {
   for (const auto& info : mounts_) {
-    if (info.dest == dest)
+    if (info.dest == dest) {
       return true;
+    }
   }
   return false;
 }

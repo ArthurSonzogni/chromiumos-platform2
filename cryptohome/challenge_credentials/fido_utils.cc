@@ -113,8 +113,9 @@ FidoPKCredCreationOptionsPtr BuildFidoMakeCredentialOptions(
   }
 
   options->set_hmac_create_secret(use_hmac_secret);
-  if (protection_policy != cryptohome::fido::ProtectionPolicy::UNSPECIFIED)
+  if (protection_policy != cryptohome::fido::ProtectionPolicy::UNSPECIFIED) {
     options->set_protection_policy(protection_policy);
+  }
   options->set_enforce_protection_policy(enforce_protection_policy);
 
   if (!appid_exclude.empty()) {
@@ -127,8 +128,9 @@ FidoPKCredCreationOptionsPtr BuildFidoMakeCredentialOptions(
     const cryptohome::AccountIdentifier& account,
     const std::vector<uint8_t>& challenge,
     bool create_hmac_secret) {
-  if (account.account_id() == "")
+  if (account.account_id() == "") {
     return nullptr;
+  }
 
   std::vector<uint8_t> fido_account_id = GetFidoUserId(account.account_id());
   auto user = GetPublicKeyCredentialUserEntity(

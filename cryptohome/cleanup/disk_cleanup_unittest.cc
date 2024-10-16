@@ -121,8 +121,9 @@ class DiskCleanupTest : public ::testing::Test {
   std::vector<HomeDirs::HomeDir> mounted_homedirs() {
     std::vector<HomeDirs::HomeDir> ret = unmounted_homedirs();
 
-    for (auto& dir : ret)
+    for (auto& dir : ret) {
       dir.is_mounted = true;
+    }
 
     return ret;
   }
@@ -134,8 +135,9 @@ class DiskCleanupTest : public ::testing::Test {
 
     int queries = cleanups * (GetTestHomedirs().size() + 1);
 
-    if (cleanups > 1)
+    if (cleanups > 1) {
       queries++;  // GCache cleanup reports UMA stats.
+    }
 
     if (cleanups > 2) {
       queries++;  // Daemon cache cleanup reports UMA stats.
@@ -654,8 +656,9 @@ TEST_F(DiskCleanupTest, KeepOwner) {
     InSequence seq;
     for (int i = 0; i < GetTestHomedirs().size(); i++) {
       // Skip owner.
-      if (i == 2)
+      if (i == 2) {
         continue;
+      }
 
       EXPECT_CALL(*cleanup_routines_,
                   DeleteUserProfile(GetTestHomedirs()[i].obfuscated))

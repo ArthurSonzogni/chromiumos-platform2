@@ -120,8 +120,9 @@ bool ReadSignatures(const std::string& text,
     num_sig++;
 
     // Avoid spending forever parsing a note with many signatures.
-    if (num_sig > kMaxSignatureNumber)
+    if (num_sig > kMaxSignatureNumber) {
       return false;
+    }
 
     if (!base::StartsWith(signature_line, kInclusionProofSigPrefix,
                           base::CompareCase::SENSITIVE)) {

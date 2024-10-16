@@ -338,11 +338,13 @@ bool CryptohomeVault::Purge() {
 }
 
 bool CryptohomeVault::PurgeCacheContainer() {
-  if (!cache_container_)
+  if (!cache_container_) {
     return false;
+  }
 
-  if (cache_container_->Exists() && !cache_container_->Purge())
+  if (cache_container_->Exists() && !cache_container_->Purge()) {
     return false;
+  }
 
   return true;
 }

@@ -44,8 +44,9 @@ std::vector<uint8_t> Extract(base::span<const uint8_t> span,
 base::span<const uint8_t> ExtractSpan(base::span<const uint8_t> span,
                                       size_t pos,
                                       size_t length) {
-  if (!(pos <= span.size() && length <= span.size() - pos))
+  if (!(pos <= span.size() && length <= span.size() - pos)) {
     return base::span<const uint8_t>();
+  }
   return span.subspan(pos, length);
 }
 

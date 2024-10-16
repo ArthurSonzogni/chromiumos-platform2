@@ -282,8 +282,9 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
 }
 
 void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
-  if (!salt_signature_ || !unsealed_secret_)
+  if (!salt_signature_ || !unsealed_secret_) {
     return;
+  }
   auto passkey = std::make_unique<brillo::SecureBlob>(
       ConstructPasskey(*unsealed_secret_, *salt_signature_));
   Resolve(ChallengeCredentialsHelper::GenerateNewOrDecryptResult(

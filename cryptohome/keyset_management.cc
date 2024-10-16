@@ -144,8 +144,9 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
 std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
     const ObfuscatedUsername& obfuscated_username,
     const std::string& key_label) const {
-  if (key_label.empty())
+  if (key_label.empty()) {
     return nullptr;
+  }
 
   // Walk all indices to find a match.
   // We should move to label-derived suffixes to be efficient.
@@ -316,8 +317,9 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
       return false;  // 2
     }
   }
-  if (scrypt_wrapped && !should_tpm && !tpm_wrapped)
+  if (scrypt_wrapped && !should_tpm && !tpm_wrapped) {
     return false;  // 7
+  }
 
   LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
             << ": should_tpm=" << should_tpm
@@ -477,12 +479,13 @@ CryptohomeStatus KeysetManagement::RemoveKeysetFile(
   if (!platform_->DeleteFileSecurely(remove_vk.GetSourceFile())) {
     LOG(WARNING) << "Secure erase of VaultKeyset file is failed, deleting "
                     "normal way.";
-    if (!platform_->DeleteFile(remove_vk.GetSourceFile()))
+    if (!platform_->DeleteFile(remove_vk.GetSourceFile())) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(
               kLocKeysetManagementFailedRemoveInRemoveKeysetFile),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
   }
   return OkStatus<CryptohomeError>();
 }

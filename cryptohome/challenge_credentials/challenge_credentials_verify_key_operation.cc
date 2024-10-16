@@ -51,8 +51,9 @@ std::optional<SerializedChallengeSignatureAlgorithm> ChooseChallengeAlgorithm(
   for (auto algo : public_key_info.signature_algorithm) {
     currently_chosen_algorithm = algo;
     if (*currently_chosen_algorithm !=
-        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
+        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1) {
       break;
+    }
   }
   return currently_chosen_algorithm;
 }

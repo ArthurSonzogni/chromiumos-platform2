@@ -233,23 +233,26 @@ class CryptohomeVaultTest
         storage_container_factory_.Generate(
             ConfigFromType(ContainerType(), "data"), ContainerType(),
             key_reference_, create_container);
-    if (create_container)
+    if (create_container) {
       CreateExistingContainer(ContainerType());
+    }
 
     std::unique_ptr<libstorage::StorageContainer> migrating_container =
         storage_container_factory_.Generate(
             ConfigFromType(MigratingContainerType(), "data"),
             MigratingContainerType(), key_reference_,
             create_migrating_container);
-    if (create_migrating_container)
+    if (create_migrating_container) {
       CreateExistingContainer(MigratingContainerType());
+    }
 
     std::unique_ptr<libstorage::StorageContainer> cache_container =
         storage_container_factory_.Generate(
             ConfigFromType(CacheContainerType(), "cache"), CacheContainerType(),
             key_reference_, create_cache_container);
-    if (create_cache_container)
+    if (create_cache_container) {
       CreateExistingContainer(CacheContainerType());
+    }
 
     std::unordered_map<std::string,
                        std::unique_ptr<libstorage::StorageContainer>>
@@ -274,8 +277,9 @@ class CryptohomeVaultTest
   }
 
   bool ResetApplicationContainer(const std::string& app) {
-    if (ContainerType() != libstorage::StorageContainerType::kDmcrypt)
+    if (ContainerType() != libstorage::StorageContainerType::kDmcrypt) {
       return true;
+    }
     return vault_->ResetApplicationContainer(app);
   }
 

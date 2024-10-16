@@ -35,9 +35,11 @@ int main(int argc, char** argv) {
   libstorage::Platform platform;
   bool ok =
       cryptohome::CacheLockbox(&platform, nvram_path, lockbox_path, cache_path);
-  if (cl->HasSwitch(switches::kUnlinkNvram))
+  if (cl->HasSwitch(switches::kUnlinkNvram)) {
     platform.DeleteFile(nvram_path);
-  if (!ok)
+  }
+  if (!ok) {
     platform.DeleteFile(cache_path);
+  }
   return !ok;
 }

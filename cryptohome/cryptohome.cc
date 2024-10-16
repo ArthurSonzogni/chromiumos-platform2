@@ -424,8 +424,9 @@ bool GetSecret(Printer& printer,
     tcsetattr(0, TCSANOW, &new_attr);
     printer.PrintFormattedHumanOutput("%s: ", prompt.c_str());
     printer.Flush();
-    if (fgets(buffer, std::size(buffer), stdin))
+    if (fgets(buffer, std::size(buffer), stdin)) {
       secret = buffer;
+    }
     printer.PrintHumanOutput("\n");
     tcsetattr(0, TCSANOW, &original_attr);
   }
@@ -1010,8 +1011,9 @@ int DoAddAuthFactor(
 
   std::string auth_session_id_hex, auth_session_id;
 
-  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
     return 1;
+  }
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
   req.set_auth_session_id(auth_session_id);
   if (!BuildAuthFactor(printer, cl, switches::kKeyLabelSwitch,
@@ -1050,8 +1052,9 @@ int DoAuthenticateAuthFactor(
 
   std::string auth_session_id_hex, auth_session_id;
 
-  if (!GetAuthSessionId(*printer, cl, &auth_session_id_hex))
+  if (!GetAuthSessionId(*printer, cl, &auth_session_id_hex)) {
     return 1;
+  }
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
   req.set_auth_session_id(auth_session_id);
 
@@ -1213,14 +1216,16 @@ int PrepareAuthFactorAndWatchSignal(
   user_data_auth::PrepareAuthFactorRequest request;
 
   std::string auth_session_id_hex, auth_session_id;
-  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
     return 1;
+  }
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
   request.set_auth_session_id(auth_session_id);
 
   user_data_auth::AuthFactorType auth_factor_type;
-  if (!GetAuthFactorType(printer, cl, &auth_factor_type))
+  if (!GetAuthFactorType(printer, cl, &auth_factor_type)) {
     return 1;
+  }
   request.set_auth_factor_type(auth_factor_type);
   request.set_purpose(prepare_purpose);
 
@@ -1250,14 +1255,16 @@ int DoTerminateAuthFactor(Printer& printer,
   user_data_auth::TerminateAuthFactorReply reply;
 
   std::string auth_session_id_hex, auth_session_id;
-  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+  if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
     return 1;
+  }
   base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
   request.set_auth_session_id(auth_session_id);
 
   user_data_auth::AuthFactorType auth_factor_type;
-  if (!GetAuthFactorType(printer, cl, &auth_factor_type))
+  if (!GetAuthFactorType(printer, cl, &auth_factor_type)) {
     return 1;
+  }
   request.set_auth_factor_type(auth_factor_type);
 
   brillo::ErrorPtr error;
@@ -1359,10 +1366,11 @@ int DoPrepareAuthenticateTerminate(
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  if (cl->HasSwitch(switches::kSyslogSwitch))
+  if (cl->HasSwitch(switches::kSyslogSwitch)) {
     brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
-  else
+  } else {
     brillo::InitLog(brillo::kLogToStderr);
+  }
 
   // Use output format to construct a printer. We process this argument first so
   // that we can use the resulting printer for outputting errors when processing
@@ -1423,8 +1431,9 @@ int main(int argc, char** argv) {
 
     if (cl->HasSwitch(switches::kAuthSessionId)) {
       std::string auth_session_id_hex, auth_session_id;
-      if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
         return 1;
+      }
       base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
       req.set_auth_session_id(auth_session_id);
     }
@@ -1646,8 +1655,9 @@ int main(int argc, char** argv) {
     }
     for (const auto& user_dir : user_dirs) {
       const std::string dir_name = user_dir.BaseName().value();
-      if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name))
+      if (!brillo::cryptohome::home::IsSanitizedUserName(dir_name)) {
         continue;
+      }
       base::Time last_activity = base::Time::UnixEpoch();
 
       FilePath timestamp_path = user_dir.Append("timestamp");
@@ -1814,8 +1824,9 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_TO_DIRCRYPTO],
                      action.c_str())) {
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(printer, cl, &id))
+    if (!BuildAccountId(printer, cl, &id)) {
       return 1;
+    }
 
     user_data_auth::StartMigrateToDircryptoRequest req;
     user_data_auth::StartMigrateToDircryptoReply reply;
@@ -1868,10 +1879,11 @@ int main(int argc, char** argv) {
       return static_cast<int>(reply.error());
     }
 
-    if (reply.needs_dircrypto_migration())
+    if (reply.needs_dircrypto_migration()) {
       printer.PrintHumanOutput("Yes\n");
-    else
+    } else {
       printer.PrintHumanOutput("No\n");
+    }
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_GET_SUPPORTED_KEY_POLICIES],
                      action.c_str())) {
@@ -1897,8 +1909,9 @@ int main(int argc, char** argv) {
     user_data_auth::GetAccountDiskUsageReply reply;
 
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(printer, cl, &id))
+    if (!BuildAccountId(printer, cl, &id)) {
       return 1;
+    }
 
     *req.mutable_identifier() = id;
 
@@ -1932,8 +1945,9 @@ int main(int argc, char** argv) {
     user_data_auth::LockToSingleUserMountUntilRebootReply reply;
 
     cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(printer, cl, &id))
+    if (!BuildAccountId(printer, cl, &id)) {
       return 1;
+    }
     *req.mutable_account_id() = id;
 
     brillo::ErrorPtr error;
@@ -1991,8 +2005,9 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
 
@@ -2010,8 +2025,9 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
 
@@ -2064,8 +2080,9 @@ int main(int argc, char** argv) {
     user_data_auth::CreatePersistentUserReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
     req.set_auth_session_id(auth_session_id);
@@ -2116,8 +2133,9 @@ int main(int argc, char** argv) {
     user_data_auth::PrepareEphemeralVaultReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
     req.set_auth_session_id(auth_session_id);
@@ -2146,8 +2164,9 @@ int main(int argc, char** argv) {
     user_data_auth::PreparePersistentVaultReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
     req.set_auth_session_id(auth_session_id);
@@ -2180,8 +2199,9 @@ int main(int argc, char** argv) {
     user_data_auth::PrepareVaultForMigrationReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
 
     req.set_auth_session_id(auth_session_id);
@@ -2216,8 +2236,9 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     std::string broadcast_id_hex, broadcast_id;
 
-    if (!GetBroadcastId(printer, cl, &broadcast_id_hex))
+    if (!GetBroadcastId(printer, cl, &broadcast_id_hex)) {
       return 1;
+    }
     base::HexStringToString(broadcast_id_hex, &broadcast_id);
     return DoAuthenticateWithStatusUpdate(printer, cl, userdataauth_proxy,
                                           misc_proxy, broadcast_id);
@@ -2231,8 +2252,9 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     std::string broadcast_id_hex, broadcast_id;
 
-    if (!GetBroadcastId(printer, cl, &broadcast_id_hex))
+    if (!GetBroadcastId(printer, cl, &broadcast_id_hex)) {
       return 1;
+    }
     base::HexStringToString(broadcast_id_hex, &broadcast_id);
     return FetchStatusUpdateSignal(printer, userdataauth_proxy, broadcast_id);
   } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_AUTH_FACTOR],
@@ -2242,8 +2264,9 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     if (!BuildAuthFactor(printer, cl, switches::kKeyLabelSwitch,
@@ -2277,8 +2300,9 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     std::string old_label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
@@ -2320,8 +2344,9 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     std::string old_label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
@@ -2361,8 +2386,9 @@ int main(int argc, char** argv) {
 
     std::string auth_session_id_hex, auth_session_id;
 
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
     if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
@@ -2479,19 +2505,22 @@ int main(int argc, char** argv) {
     user_data_auth::PrepareAuthFactorReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex, &auth_session_id);
     request.set_auth_session_id(auth_session_id);
 
     user_data_auth::AuthFactorPreparePurpose prepare_purpose;
-    if (!GetPreparePurpose(printer, cl, &prepare_purpose))
+    if (!GetPreparePurpose(printer, cl, &prepare_purpose)) {
       return 1;
+    }
     request.set_purpose(prepare_purpose);
 
     user_data_auth::AuthFactorType auth_factor_type;
-    if (!GetAuthFactorType(printer, cl, &auth_factor_type))
+    if (!GetAuthFactorType(printer, cl, &auth_factor_type)) {
       return 1;
+    }
     request.set_auth_factor_type(auth_factor_type);
 
     brillo::ErrorPtr error;
@@ -2671,8 +2700,9 @@ int main(int argc, char** argv) {
     user_data_auth::MigrateLegacyFingerprintsReply reply;
 
     std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
       return 1;
+    }
     base::HexStringToString(auth_session_id_hex, &auth_session_id);
     req.set_auth_session_id(auth_session_id);
 
@@ -2726,9 +2756,10 @@ int main(int argc, char** argv) {
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
-    for (int i = 0; switches::kActions[i]; i++)
+    for (int i = 0; switches::kActions[i]; i++) {
       printer.PrintFormattedHumanOutput("  --action=%s\n",
                                         switches::kActions[i]);
+    }
   }
   return 0;
 }  // NOLINT(readability/fn_size)

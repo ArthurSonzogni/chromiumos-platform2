@@ -77,8 +77,9 @@ bool DiskCleanup::HasTargetFreeSpace() const {
 }
 
 bool DiskCleanup::IsFreeableDiskSpaceAvailable() {
-  if (!homedirs_->enterprise_owned())
+  if (!homedirs_->enterprise_owned()) {
     return false;
+  }
 
   const auto homedirs = homedirs_->GetHomeDirs();
 
@@ -352,8 +353,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   for (const auto& aggressive_cleanup_homedir :
        base::Reversed(aggressive_cleanup_homedirs)) {
     if (!routines_->DeleteUserAndroidCache(
-            aggressive_cleanup_homedir.obfuscated))
+            aggressive_cleanup_homedir.obfuscated)) {
       return_result = false;
+    }
 
     if (HasTargetFreeSpace()) {
       early_stop = true;
@@ -361,8 +363,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     }
   }
 
-  if (!early_stop)
+  if (!early_stop) {
     last_aggressive_disk_cleanup_complete_ = platform_->GetCurrentTime();
+  }
 
   switch (GetFreeDiskSpaceState()) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
@@ -389,8 +392,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   // devices have no owner, so don't delete the most-recent user.
   int deleted_users_count = 0;
   ObfuscatedUsername owner;
-  if (!homedirs_->enterprise_owned() && !homedirs_->GetOwner(&owner))
+  if (!homedirs_->enterprise_owned() && !homedirs_->GetOwner(&owner)) {
     return return_result;
+  }
 
   int mounted_cryptohomes_count =
       std::count_if(homedirs.begin(), homedirs.end(),
@@ -419,8 +423,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     }
 
     LOG(INFO) << "Freeing disk space by deleting user " << dir->obfuscated;
-    if (!routines_->DeleteUserProfile(dir->obfuscated))
+    if (!routines_->DeleteUserProfile(dir->obfuscated)) {
       return_result = false;
+    }
     timestamp_manager_->RemoveUser(dir->obfuscated);
     ++deleted_users_count;
 
@@ -437,8 +442,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     LOG(INFO) << "Removing user " << dir->obfuscated << " freed "
               << cleaned_in_mb << " MiB";
 
-    if (HasTargetFreeSpace())
+    if (HasTargetFreeSpace()) {
       break;
+    }
   }
 
   if (deleted_users_count > 0) {
@@ -514,8 +520,9 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveCaches(
   DiskCleanupActionResult result;
 
   for (const auto& homedir : base::Reversed(homedirs)) {
-    if (!routines_->DeleteUserCache(homedir.obfuscated))
+    if (!routines_->DeleteUserCache(homedir.obfuscated)) {
       result.success = false;
+    }
 
     if (HasTargetFreeSpace()) {
       ReportDiskCleanupProgress(
@@ -542,8 +549,9 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
   }
 
   for (const auto& homedir : base::Reversed(homedirs)) {
-    if (!routines_->DeleteUserGCache(homedir.obfuscated))
+    if (!routines_->DeleteUserGCache(homedir.obfuscated)) {
       result.success = false;
+    }
 
     if (HasTargetFreeSpace()) {
       ReportDiskCleanupProgress(
@@ -608,8 +616,9 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDaemonStoreCache(
 
   auto old_free_disk_space = free_disk_space;
   for (const auto& homedir : base::Reversed(homedirs)) {
-    if (!routines_->DeleteDaemonStoreCache(homedir.obfuscated))
+    if (!routines_->DeleteDaemonStoreCache(homedir.obfuscated)) {
       result.success = false;
+    }
 
     if (HasTargetFreeSpace()) {
       ReportDiskCleanupProgress(
@@ -677,8 +686,9 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDmCryptCacheVaults(
 
   auto old_free_disk_space = free_disk_space;
   for (const auto& homedir : base::Reversed(homedirs)) {
-    if (!routines_->DeleteCacheVault(homedir.obfuscated))
+    if (!routines_->DeleteCacheVault(homedir.obfuscated)) {
       result.success = false;
+    }
 
     if (HasTargetFreeSpace()) {
       ReportDiskCleanupProgress(
@@ -756,8 +766,9 @@ bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
 
     LOG(INFO) << "Freeing disk space by deleting user "
               << unmounted_homedir.obfuscated;
-    if (!routines_->DeleteUserProfile(unmounted_homedir.obfuscated))
+    if (!routines_->DeleteUserProfile(unmounted_homedir.obfuscated)) {
       result = false;
+    }
     timestamp_manager_->RemoveUser(unmounted_homedir.obfuscated);
 
     performed_cleanup = true;

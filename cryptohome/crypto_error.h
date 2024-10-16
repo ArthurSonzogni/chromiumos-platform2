@@ -49,8 +49,9 @@ std::ostream& operator<<(std::ostream& os, const CryptoError& obj);
 // checking the error pointer. If |error| is |nullptr|, this does nothing.
 template <typename ErrorType>
 void PopulateError(ErrorType* error, ErrorType error_code) {
-  if (error)
+  if (error) {
     *error = error_code;
+  }
 }
 
 }  // namespace cryptohome

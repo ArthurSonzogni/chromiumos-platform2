@@ -35,10 +35,12 @@ uint64_t CalculateInodeCount(int64_t filesystem_size) {
   constexpr uint64_t kGigabytes = 1024 * 1024 * 1024;
   constexpr uint64_t kBaseInodeCount = 256 * 1024;
 
-  if (filesystem_size <= 16 * kGigabytes)
+  if (filesystem_size <= 16 * kGigabytes) {
     return kBaseInodeCount;
-  if (filesystem_size <= 32 * kGigabytes)
+  }
+  if (filesystem_size <= 32 * kGigabytes) {
     return 2 * kBaseInodeCount;
+  }
 
   return 4 * kBaseInodeCount;
 }
@@ -89,8 +91,9 @@ CryptohomeVaultFactory::GenerateStorageContainer(
       config.backing_dir = GetUserMountDirectory(obfuscated_username);
       break;
     case libstorage::StorageContainerType::kDmcrypt: {
-      if (!vg_ || !vg_->IsValid() || !thinpool_ || !thinpool_->IsValid())
+      if (!vg_ || !vg_->IsValid() || !thinpool_ || !thinpool_->IsValid()) {
         return nullptr;
+      }
 
       // Calculate size for dm-crypt partition.
       stateful_device = platform_->GetStatefulDevice();
@@ -293,8 +296,9 @@ void CryptohomeVaultFactory::CacheLogicalVolumeObjects(
 bool CryptohomeVaultFactory::ContainerExists(const std::string& container) {
   brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
 
-  if (!vg_ || !vg_->IsValid())
+  if (!vg_ || !vg_->IsValid()) {
     return false;
+  }
 
   return lvm->GetLogicalVolume(*vg_.get(), container) != std::nullopt;
 }

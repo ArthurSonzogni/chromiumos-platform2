@@ -91,12 +91,13 @@ void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
       *mock_hwsec_,
       ChallengeWithSignatureAndCurrentUser(
           expected_sealed_data, public_key_spki_der_, key_algorithms_));
-  if (mock_repeatedly)
+  if (mock_repeatedly) {
     expected_call.WillRepeatedly(
         ReturnError<TPMError>("fake", TPMRetryAction::kLater));
-  else
+  } else {
     expected_call.WillOnce(
         ReturnError<TPMError>("fake", TPMRetryAction::kLater));
+  }
 }
 
 void SignatureSealedUnsealingMocker::SetUpUsealingFailingMock() {

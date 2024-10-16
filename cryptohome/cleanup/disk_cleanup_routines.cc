@@ -101,8 +101,9 @@ bool DiskCleanupRoutines::DeleteUserGCache(
 
 bool DiskCleanupRoutines::DeleteCacheVault(
     const ObfuscatedUsername& obfuscated) {
-  if (!homedirs_->DmcryptCacheContainerExists(obfuscated))
+  if (!homedirs_->DmcryptCacheContainerExists(obfuscated)) {
     return true;
+  }
 
   VLOG(1) << "Deleting Cache Volume for " << obfuscated;
 
@@ -219,8 +220,9 @@ bool DiskCleanupRoutines::GetTrackedDirectoryForDirCrypto(
                                               kTrackedDirectoryNameAttribute)) {
         std::string name;
         if (!platform_->GetExtendedFileAttributeAsString(
-                dir, kTrackedDirectoryNameAttribute, &name))
+                dir, kTrackedDirectoryNameAttribute, &name)) {
           return false;
+        }
         if (name == name_component) {
           // This is the directory we're looking for.
           next_path = dir;

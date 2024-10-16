@@ -1001,8 +1001,9 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   // initialization, as low_disk_space_handler_ uses homedirs to check the
   // enterprise_owned status.
   if (!low_disk_space_handler_->Init(base::BindRepeating(
-          &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
+          &UserDataAuth::PostTaskToMountThread, base::Unretained(this)))) {
     return false;
+  }
 
   PostTaskToMountThread(FROM_HERE,
                         base::BindOnce(&UserDataAuth::CreateFingerprintManager,
@@ -1342,8 +1343,9 @@ bool UserDataAuth::FilterActiveMounts(
           keep = true;
           // If !include_busy_mount, other mount points not owned scanned after
           // should be preserved as well.
-          if (include_busy_mount)
+          if (include_busy_mount) {
             break;
+          }
         }
       }
 
@@ -1420,8 +1422,9 @@ bool UserDataAuth::UnloadPkcs11Tokens(const std::vector<FilePath>& exclude) {
   SecureBlob isolate =
       chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
   std::vector<std::string> tokens;
-  if (!chaps_client_->GetTokenList(isolate, &tokens))
+  if (!chaps_client_->GetTokenList(isolate, &tokens)) {
     return false;
+  }
   for (const std::string& token : tokens) {
     if (token != chaps::kSystemTokenPath && !PrefixPresent(exclude, token)) {
       // It's not a system token and is not under one of the excluded path.

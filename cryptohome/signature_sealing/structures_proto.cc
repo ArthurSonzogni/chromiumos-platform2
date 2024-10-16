@@ -180,10 +180,11 @@ SignatureSealedData ToProto(const hwsec::SignatureSealedData& obj) {
 }
 
 hwsec::SignatureSealedData FromProto(const SignatureSealedData& obj) {
-  if (obj.has_tpm2_policy_signed_data())
+  if (obj.has_tpm2_policy_signed_data()) {
     return FromProto(obj.tpm2_policy_signed_data());
-  else if (obj.has_tpm12_certified_migratable_key_data())
+  } else if (obj.has_tpm12_certified_migratable_key_data()) {
     return FromProto(obj.tpm12_certified_migratable_key_data());
+  }
 
   LOG(WARNING) << "Unknown signature sealed data type from protobuf.";
   // Return with the default constructor.
@@ -218,8 +219,9 @@ SerializedSignatureChallengeInfo FromProto(
 ChallengePublicKeyInfo ToProto(const SerializedChallengePublicKeyInfo& obj) {
   ChallengePublicKeyInfo result;
   result.set_public_key_spki_der(BlobToString(obj.public_key_spki_der));
-  for (const auto& content : obj.signature_algorithm)
+  for (const auto& content : obj.signature_algorithm) {
     result.add_signature_algorithm(ToProto(content));
+  }
   return result;
 }
 

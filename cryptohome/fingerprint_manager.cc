@@ -27,8 +27,9 @@ struct AuthScanDBusResult {
 bool ParseDBusSignal(dbus::Signal* signal, AuthScanDBusResult* result) {
   dbus::MessageReader signal_reader(signal);
 
-  if (!signal_reader.PopArrayOfBytesAsProto(&result->auth_result))
+  if (!signal_reader.PopArrayOfBytesAsProto(&result->auth_result)) {
     return false;
+  }
 
   switch (result->auth_result.msg_case()) {
     case biod::FingerprintMessage::MsgCase::kError:
@@ -51,17 +52,20 @@ bool ParseDBusSignal(dbus::Signal* signal, AuthScanDBusResult* result) {
   }
 
   dbus::MessageReader matches_reader(nullptr);
-  if (!signal_reader.PopArray(&matches_reader))
+  if (!signal_reader.PopArray(&matches_reader)) {
     return false;
+  }
 
   while (matches_reader.HasMoreData()) {
     dbus::MessageReader entry_reader(nullptr);
-    if (!matches_reader.PopDictEntry(&entry_reader))
+    if (!matches_reader.PopDictEntry(&entry_reader)) {
       return false;
+    }
 
     std::string user_id;
-    if (!entry_reader.PopString(&user_id))
+    if (!entry_reader.PopString(&user_id)) {
       return false;
+    }
 
     result->user_ids.emplace_back(user_id);
   }
@@ -74,8 +78,9 @@ bool ParseDBusSignal(dbus::Signal* signal, AuthScanDBusResult* result) {
 std::unique_ptr<FingerprintManager> FingerprintManager::Create(
     const scoped_refptr<dbus::Bus>& bus, const dbus::ObjectPath& path) {
   auto fingerprint_manager = std::make_unique<FingerprintManager>();
-  if (!fingerprint_manager->Initialize(bus, path))
+  if (!fingerprint_manager->Initialize(bus, path)) {
     return nullptr;
+  }
   return fingerprint_manager;
 }
 
@@ -87,15 +92,17 @@ FingerprintManager::~FingerprintManager() = default;
 bool FingerprintManager::Initialize(const scoped_refptr<dbus::Bus>& bus,
                                     const dbus::ObjectPath& path) {
   default_proxy_ = biod::BiometricsManagerProxyBase::Create(bus, path);
-  if (!default_proxy_)
+  if (!default_proxy_) {
     return false;
+  }
   default_proxy_->ConnectToAuthScanDoneSignal(
       base::BindRepeating(&FingerprintManager::OnAuthScanDone,
                           weak_factory_.GetWeakPtr()),
       base::BindOnce(&FingerprintManager::OnAuthScanDoneSignalConnected,
                      weak_factory_.GetWeakPtr()));
-  if (!proxy_)
+  if (!proxy_) {
     proxy_ = default_proxy_.get();
+  }
   return true;
 }
 
@@ -130,8 +137,9 @@ void FingerprintManager::OnAuthScanDone(dbus::Signal* signal) {
 
   // This method is called if any auth scan operation completes, so we validate
   // that this signal is expected.
-  if (state_ != State::AUTH_SESSION_OPEN)
+  if (state_ != State::AUTH_SESSION_OPEN) {
     return;
+  }
 
   AuthScanDoneResourceManager resource_manager(this);
 
@@ -169,10 +177,12 @@ void FingerprintManager::OnAuthScanDone(dbus::Signal* signal) {
   }
 
   VLOG(1) << "Authentication succeeded.";
-  if (auth_scan_done_callback_)
+  if (auth_scan_done_callback_) {
     std::move(auth_scan_done_callback_).Run(FingerprintScanStatus::SUCCESS);
-  if (signal_callback_)
+  }
+  if (signal_callback_) {
     signal_callback_.Run(FingerprintScanStatus::SUCCESS);
+  }
 
   state_ = State::AUTH_SESSION_LOCKED;
 }
@@ -187,10 +197,12 @@ void FingerprintManager::ProcessRetry() {
   } else {
     error = FingerprintScanStatus::FAILED_RETRY_ALLOWED;
   }
-  if (auth_scan_done_callback_)
+  if (auth_scan_done_callback_) {
     std::move(auth_scan_done_callback_).Run(error);
-  if (signal_callback_)
+  }
+  if (signal_callback_) {
     signal_callback_.Run(error);
+  }
 }
 
 void FingerprintManager::ProcessFailed() {
@@ -208,8 +220,9 @@ void FingerprintManager::SetAuthScanDoneCallback(
     ResultCallback auth_scan_done_callback) {
   DCHECK(base::PlatformThread::CurrentId() == mount_thread_id_);
 
-  if (!connected_to_auth_scan_done_signal_)
+  if (!connected_to_auth_scan_done_signal_) {
     return;
+  }
 
   // Don't allow any operation if we are not in an auth session.
   if (state_ != State::AUTH_SESSION_OPEN) {
@@ -246,8 +259,9 @@ void FingerprintManager::StartAuthSessionAsyncForUser(
     StartSessionCallback auth_session_start_client_callback) {
   DCHECK(base::PlatformThread::CurrentId() == mount_thread_id_);
 
-  if (!connected_to_auth_scan_done_signal_)
+  if (!connected_to_auth_scan_done_signal_) {
     return;
+  }
 
   // Disallow starting auth session if another session might be pending.
   if (state_ != State::NO_AUTH_SESSION) {
@@ -280,11 +294,13 @@ void FingerprintManager::EndAuthSession() {
 bool FingerprintManager::HasAuthSessionForUser(const ObfuscatedUsername& user) {
   DCHECK(base::PlatformThread::CurrentId() == mount_thread_id_);
 
-  if (!proxy_ || !connected_to_auth_scan_done_signal_)
+  if (!proxy_ || !connected_to_auth_scan_done_signal_) {
     return false;
+  }
 
-  if (state_ != State::AUTH_SESSION_OPEN || current_user_ != user)
+  if (state_ != State::AUTH_SESSION_OPEN || current_user_ != user) {
     return false;
+  }
 
   return true;
 }

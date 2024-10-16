@@ -33,8 +33,9 @@ constexpr size_t kAttestedCredentialDataOffset =
 // static
 std::optional<AuthenticatorData> AuthenticatorData::DecodeAuthenticatorData(
     base::span<const uint8_t> auth_data) {
-  if (auth_data.size() < kAttestedCredentialDataOffset)
+  if (auth_data.size() < kAttestedCredentialDataOffset) {
     return std::nullopt;
+  }
   auto application_parameter = auth_data.first<kRpIdHashLength>();
   uint8_t flag_byte = auth_data[kRpIdHashLength];
   auto counter =
@@ -142,8 +143,9 @@ AuthenticatorData& AuthenticatorData::operator=(AuthenticatorData&& other) =
 AuthenticatorData::~AuthenticatorData() = default;
 
 void AuthenticatorData::DeleteDeviceAaguid() {
-  if (!attested_data_)
+  if (!attested_data_) {
     return;
+  }
 
   attested_data_->DeleteAaguid();
 }
@@ -196,8 +198,9 @@ std::string AuthenticatorData::ToString() {
 }
 
 std::vector<uint8_t> AuthenticatorData::GetCredentialId() const {
-  if (!attested_data_)
+  if (!attested_data_) {
     return std::vector<uint8_t>();
+  }
   return attested_data_->credential_id();
 }
 

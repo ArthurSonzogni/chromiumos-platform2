@@ -26,8 +26,9 @@ namespace cryptohome {
 namespace {
 // Helper to create a test file.
 bool CreateFile(const base::FilePath& file_path, std::string_view content) {
-  if (!base::CreateDirectory(file_path.DirName()))
+  if (!base::CreateDirectory(file_path.DirName())) {
     return false;
+  }
   return base::WriteFile(file_path, content);
 }
 }  // namespace

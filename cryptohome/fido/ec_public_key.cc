@@ -29,8 +29,9 @@ namespace fido_device {
 std::unique_ptr<ECPublicKey> ECPublicKey::ParseECPublicKey(
     base::span<const uint8_t> cose_encoded_public_key) {
   std::unique_ptr<ECPublicKey> ec_key(new ECPublicKey());
-  if (!ec_key->ParseCOSE(cose_encoded_public_key))
+  if (!ec_key->ParseCOSE(cose_encoded_public_key)) {
     return nullptr;
+  }
 
   // Save the cose string.
   std::vector<uint8_t> bytes(cose_encoded_public_key.begin(),
@@ -163,8 +164,9 @@ BinaryValue ECPublicKey::GetY() const {
 }
 
 std::optional<int> ECPublicKey::GetAlgorithmNid() const {
-  if (algorithm_ == "ES256")
+  if (algorithm_ == "ES256") {
     return NID_X9_62_prime256v1;
+  }
 
   return std::nullopt;
 }

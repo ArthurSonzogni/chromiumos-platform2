@@ -170,8 +170,9 @@ MATCHER_P(HasPossibleAction, action, "") {
     return false;
   }
   for (int i = 0; i < arg.possible_actions_size(); i++) {
-    if (arg.possible_actions(i) == action)
+    if (arg.possible_actions(i) == action) {
       return true;
+    }
   }
 
   return false;
@@ -1318,8 +1319,9 @@ bool StaleShadowMounts(const FilePath& from_prefix,
   for (const auto& m : kShadowMounts) {
     if (m.src.value().find(from_prefix.value()) == 0) {
       i++;
-      if (mounts)
+      if (mounts) {
         mounts->insert(std::make_pair(m.src, m.dst));
+      }
     }
   }
   return i > 0;
@@ -1328,26 +1330,31 @@ bool StaleShadowMounts(const FilePath& from_prefix,
 bool DmcryptDeviceMounts(
     const std::string& from_prefix,
     std::multimap<const FilePath, const FilePath>* mounts) {
-  if (!mounts)
+  if (!mounts) {
     return false;
-  for (const auto& m : kDmcryptMounts)
+  }
+  for (const auto& m : kDmcryptMounts) {
     mounts->insert(std::make_pair(m.src, m.dst));
+  }
   return true;
 }
 
 bool LoopDeviceMounts(std::multimap<const FilePath, const FilePath>* mounts) {
-  if (!mounts)
+  if (!mounts) {
     return false;
-  for (const auto& m : kLoopDevMounts)
+  }
+  for (const auto& m : kLoopDevMounts) {
     mounts->insert(std::make_pair(m.src, m.dst));
+  }
   return true;
 }
 
 bool EnumerateSparseFiles(const base::FilePath& path,
                           bool is_recursive,
                           std::vector<base::FilePath>* ent_list) {
-  if (path != FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir))
+  if (path != FilePath(kEphemeralCryptohomeDir).Append(kSparseFileDir)) {
     return false;
+  }
   ent_list->insert(ent_list->begin(), kSparseFiles.begin(), kSparseFiles.end());
   return true;
 }

@@ -52,8 +52,9 @@ ChooseSaltSignatureAlgorithm(
   for (auto algo : public_key_info.signature_algorithm) {
     currently_chosen_algorithm = algo;
     if (*currently_chosen_algorithm !=
-        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1)
+        SerializedChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha1) {
       break;
+    }
   }
   return currently_chosen_algorithm;
 }
@@ -260,8 +261,9 @@ void ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse(
 }
 
 void ChallengeCredentialsGenerateNewOperation::ProceedIfComputationsDone() {
-  if (!salt_signature_ || !tpm_protected_secret_value_)
+  if (!salt_signature_ || !tpm_protected_secret_value_) {
     return;
+  }
 
   auto signature_challenge_info =
       std::make_unique<SerializedSignatureChallengeInfo>(

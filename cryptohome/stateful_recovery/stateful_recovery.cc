@@ -62,8 +62,9 @@ bool StatefulRecovery::Requested() {
 bool StatefulRecovery::CopyPartitionInfo() {
   struct statvfs vfs;
 
-  if (!platform_->StatVFS(FilePath(kRecoverSource), &vfs))
+  if (!platform_->StatVFS(FilePath(kRecoverSource), &vfs)) {
     return false;
+  }
 
   base::Value::Dict dv =
       base::Value::Dict()
@@ -79,17 +80,19 @@ bool StatefulRecovery::CopyPartitionInfo() {
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &output);
 
-  if (!platform_->WriteStringToFile(FilePath(kRecoverBlockUsage), output))
+  if (!platform_->WriteStringToFile(FilePath(kRecoverBlockUsage), output)) {
     return false;
+  }
 
   FilePath device = platform_->FindFilesystemDevice(FilePath(kRecoverSource));
   if (device.empty()) {
     return false;
   }
 
-  if (!platform_->ReportFilesystemDetails(device,
-                                          FilePath(kRecoverFilesystemDetails)))
+  if (!platform_->ReportFilesystemDetails(
+          device, FilePath(kRecoverFilesystemDetails))) {
     return false;
+  }
 
   return true;
 }
@@ -108,8 +111,9 @@ bool StatefulRecovery::CopyUserContents() {
   Unmount();
   // If it failed, unmountfn_ would log the error.
 
-  if (rc)
+  if (rc) {
     return true;
+  }
   LOG(ERROR) << "Failed to copy " << path.value();
   return false;
 }
@@ -118,8 +122,9 @@ bool StatefulRecovery::CopyPartitionContents() {
   int rc;
 
   rc = platform_->Copy(FilePath(kRecoverSource), FilePath(kRecoverDestination));
-  if (rc)
+  if (rc) {
     return true;
+  }
   LOG(ERROR) << "Failed to copy " << FilePath(kRecoverSource).value();
   return false;
 }
@@ -131,10 +136,12 @@ bool StatefulRecovery::RecoverV1() {
     return false;
   }
 
-  if (!CopyPartitionContents())
+  if (!CopyPartitionContents()) {
     return false;
-  if (!CopyPartitionInfo())
+  }
+  if (!CopyPartitionInfo()) {
     return false;
+  }
 
   return true;
 }
@@ -167,8 +174,9 @@ bool StatefulRecovery::RecoverV2() {
 }
 
 bool StatefulRecovery::Recover() {
-  if (!requested_)
+  if (!requested_) {
     return false;
+  }
 
   // Start with a clean slate. Note that there is a window of opportunity for
   // another process to create the directory with funky permissions after the
@@ -194,8 +202,9 @@ bool StatefulRecovery::Recover() {
 bool StatefulRecovery::ParseFlagFile() {
   std::string contents;
   size_t delim, pos;
-  if (!platform_->ReadFileToString(flag_file_, &contents))
+  if (!platform_->ReadFileToString(flag_file_, &contents)) {
     return false;
+  }
 
   // Make sure there is a trailing newline.
   contents += "\n";
@@ -203,26 +212,31 @@ bool StatefulRecovery::ParseFlagFile() {
   do {
     pos = 0;
     delim = contents.find("\n", pos);
-    if (delim == std::string::npos)
+    if (delim == std::string::npos) {
       break;
+    }
     version_ = contents.substr(pos, delim);
 
-    if (version_ == "1")
+    if (version_ == "1") {
       return true;
+    }
 
-    if (version_ != "2")
+    if (version_ != "2") {
       break;
+    }
 
     pos = delim + 1;
     delim = contents.find("\n", pos);
-    if (delim == std::string::npos)
+    if (delim == std::string::npos) {
       break;
+    }
     user_ = Username(contents.substr(pos, delim - pos));
 
     pos = delim + 1;
     delim = contents.find("\n", pos);
-    if (delim == std::string::npos)
+    if (delim == std::string::npos) {
       break;
+    }
     passkey_ = contents.substr(pos, delim - pos);
 
     return true;
@@ -394,11 +408,13 @@ bool StatefulRecovery::Unmount() {
 bool StatefulRecovery::IsOwner(const std::string& username) {
   std::string owner;
   policy_provider_->Reload();
-  if (!policy_provider_->device_policy_is_loaded())
+  if (!policy_provider_->device_policy_is_loaded()) {
     return false;
+  }
   policy_provider_->GetDevicePolicy().GetOwner(&owner);
-  if (username.empty() || owner.empty())
+  if (username.empty() || owner.empty()) {
     return false;
+  }
 
   return username == owner;
 }

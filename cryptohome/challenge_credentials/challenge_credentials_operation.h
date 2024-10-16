@@ -69,8 +69,9 @@ class ChallengeCredentialsOperation {
   template <typename CompletionCallback, typename... Args>
   static void Complete(CompletionCallback* completion_callback,
                        Args&&... args) {
-    if (completion_callback->is_null())
+    if (completion_callback->is_null()) {
       return;
+    }
     // Move the callback into a temporary variable *before* running it, as the
     // value passed via |completion_callback| may become destroyed during the
     // callback execution.
@@ -83,8 +84,9 @@ class ChallengeCredentialsOperation {
   static void CompleteWithError(CompletionCallback* completion_callback,
                                 CryptoStatus status
                                 [[clang::param_typestate(unconsumed)]]) {
-    if (completion_callback->is_null())
+    if (completion_callback->is_null()) {
       return;
+    }
     // Move the callback into a temporary variable *before* running it, as the
     // value passed via |completion_callback| may become destroyed during the
     // callback execution.

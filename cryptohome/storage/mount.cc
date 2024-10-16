@@ -76,8 +76,9 @@ Mount::Mount(libstorage::Platform* platform,
 Mount::Mount() : Mount(nullptr, nullptr, nullptr) {}
 
 Mount::~Mount() {
-  if (IsMounted())
+  if (IsMounted()) {
     UnmountCryptohome();
+  }
 }
 
 StorageStatus Mount::MountEphemeralCryptohome(const Username& username) {
@@ -405,8 +406,9 @@ bool Mount::PerformMigration(const MigrationHelper::ProgressCallback& callback,
 
   {  // Abort if already cancelled.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
-    if (is_dircrypto_migration_cancelled_)
+    if (is_dircrypto_migration_cancelled_) {
       return false;
+    }
     CHECK(!active_dircrypto_migrator_);
     active_dircrypto_migrator_ = &migrator;
   }

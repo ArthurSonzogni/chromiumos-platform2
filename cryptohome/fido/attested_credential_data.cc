@@ -26,14 +26,16 @@ namespace fido_device {
 std::optional<std::pair<AttestedCredentialData, base::span<const uint8_t>>>
 AttestedCredentialData::ConsumeFromCtapResponse(
     base::span<const uint8_t> buffer) {
-  if (buffer.size() < kAaguidLength)
+  if (buffer.size() < kAaguidLength) {
     return std::nullopt;
+  }
 
   auto aaguid = buffer.first<kAaguidLength>();
   buffer = buffer.subspan(kAaguidLength);
 
-  if (buffer.size() < kCredentialIdLengthLength)
+  if (buffer.size() < kCredentialIdLengthLength) {
     return std::nullopt;
+  }
 
   auto credential_id_length_span = buffer.first<kCredentialIdLengthLength>();
   const size_t credential_id_length =
@@ -41,8 +43,9 @@ AttestedCredentialData::ConsumeFromCtapResponse(
       base::strict_cast<size_t>(credential_id_length_span[1]);
   buffer = buffer.subspan(kCredentialIdLengthLength);
 
-  if (buffer.size() < credential_id_length)
+  if (buffer.size() < credential_id_length) {
     return std::nullopt;
+  }
 
   auto credential_id = buffer.first(credential_id_length);
   buffer = buffer.subspan(credential_id_length);
@@ -58,8 +61,9 @@ AttestedCredentialData::ConsumeFromCtapResponse(
   // Only EC Public key is supported for now.
   auto credential_public_key =
       ECPublicKey::ParseECPublicKey(buffer.first(bytes_read));
-  if (!credential_public_key)
+  if (!credential_public_key) {
     return std::nullopt;
+  }
 
   buffer = buffer.subspan(bytes_read);
   return std::make_pair(

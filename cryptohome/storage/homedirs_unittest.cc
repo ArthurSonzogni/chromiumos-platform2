@@ -61,8 +61,9 @@ constexpr char kOwnerPassword[] = "owner_pass";
 constexpr int kOwnerIndex = 3;
 
 ACTION_P2(SetOwner, owner_known, owner) {
-  if (owner_known)
+  if (owner_known) {
     *arg0 = owner;
+  }
   return owner_known;
 }
 
