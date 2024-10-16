@@ -73,8 +73,9 @@ class ObjectPoolMock : public ObjectPool {
     return ObjectPool::Result::Failure;
   }
   ObjectPool::Result FakeFind(const Object* o, std::vector<const Object*>* v) {
-    for (size_t i = 0; i < v_.size(); ++i)
+    for (size_t i = 0; i < v_.size(); ++i) {
       v->push_back(v_[i]);
+    }
     return ObjectPool::Result::Success;
   }
   ObjectPool::Result FakeFindByHandle(int handle, const Object** o) {

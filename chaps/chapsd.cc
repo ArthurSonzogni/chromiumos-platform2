@@ -130,8 +130,9 @@ class Daemon : public brillo::DBusServiceDaemon {
 
     // Now we can export D-Bus objects.
     int return_code = DBusServiceDaemon::OnInit();
-    if (return_code != EX_OK)
+    if (return_code != EX_OK) {
       return return_code;
+    }
 
     RegisterHandler(SIGTERM, base::BindRepeating(&Daemon::ShutdownSignalHandler,
                                                  base::Unretained(this)));
@@ -196,8 +197,9 @@ int main(int argc, char** argv) {
         base::ReadFileToString(FilePath(kPersistentLogLevelPath), &log_level);
     if (success) {
       int log_level_int;
-      if (base::StringToInt(log_level, &log_level_int))
+      if (base::StringToInt(log_level, &log_level_int)) {
         logging::SetMinLogLevel(log_level_int);
+      }
       int delete_success = base::DeleteFile(FilePath(kPersistentLogLevelPath));
       VLOG_IF(2, !delete_success) << "Failed to delete log level file.";
     }

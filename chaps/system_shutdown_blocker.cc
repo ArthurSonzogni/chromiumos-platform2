@@ -20,8 +20,9 @@ SystemShutdownBlocker::SystemShutdownBlocker(
     : origin_thread_task_runner_(origin_thread_task_runner) {}
 
 SystemShutdownBlocker::~SystemShutdownBlocker() {
-  for (int slot_id : blocked_slots_)
+  for (int slot_id : blocked_slots_) {
     PerformUnblock(slot_id);
+  }
   blocked_slots_.clear();
 }
 
@@ -75,8 +76,9 @@ void SystemShutdownBlocker::PerformBlock(int slot_id) {
 }
 
 void SystemShutdownBlocker::PerformUnblockIfBlocked(int slot_id) {
-  if (blocked_slots_.count(slot_id) && PerformUnblock(slot_id))
+  if (blocked_slots_.count(slot_id) && PerformUnblock(slot_id)) {
     blocked_slots_.erase(slot_id);
+  }
 }
 
 bool SystemShutdownBlocker::PerformUnblock(int slot_id) {

@@ -32,16 +32,20 @@ void ObjectPolicyKey::SetDefaultAttributes() {
   ObjectPolicyCommon::SetDefaultAttributes();
   CK_ATTRIBUTE_TYPE empty[] = {CKA_ID, CKA_START_DATE, CKA_END_DATE};
   for (size_t i = 0; i < std::size(empty); ++i) {
-    if (!object_->IsAttributePresent(empty[i]))
+    if (!object_->IsAttributePresent(empty[i])) {
       object_->SetAttributeString(empty[i], "");
+    }
   }
-  if (!object_->IsAttributePresent(CKA_DERIVE))
+  if (!object_->IsAttributePresent(CKA_DERIVE)) {
     object_->SetAttributeBool(CKA_DERIVE, false);
-  if (!object_->IsAttributePresent(CKA_LOCAL))
+  }
+  if (!object_->IsAttributePresent(CKA_LOCAL)) {
     object_->SetAttributeBool(CKA_LOCAL, false);
-  if (!object_->IsAttributePresent(CKA_KEY_GEN_MECHANISM))
+  }
+  if (!object_->IsAttributePresent(CKA_KEY_GEN_MECHANISM)) {
     object_->SetAttributeInt(CKA_KEY_GEN_MECHANISM,
                              static_cast<int>(CK_UNAVAILABLE_INFORMATION));
+  }
 }
 
 }  // namespace chaps

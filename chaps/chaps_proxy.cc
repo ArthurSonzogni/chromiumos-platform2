@@ -267,8 +267,9 @@ uint32_t ChapsProxyImpl::InitToken(const SecureBlob& isolate_credential,
                                    const vector<uint8_t>& label) {
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_pin;
-  if (so_pin)
+  if (so_pin) {
     tmp_pin = *so_pin;
+  }
   SendRequestAndWait(&org::chromium::ChapsProxyInterface::InitToken,
                      ToBlob(isolate_credential), slot_id, (so_pin == nullptr),
                      tmp_pin, label, &result);
@@ -280,8 +281,9 @@ uint32_t ChapsProxyImpl::InitPIN(const SecureBlob& isolate_credential,
                                  const string* pin) {
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_pin;
-  if (pin)
+  if (pin) {
     tmp_pin = *pin;
+  }
   SendRequestAndWait(&org::chromium::ChapsProxyInterface::InitPIN,
                      ToBlob(isolate_credential), session_id, (pin == nullptr),
                      tmp_pin, &result);
@@ -294,11 +296,13 @@ uint32_t ChapsProxyImpl::SetPIN(const SecureBlob& isolate_credential,
                                 const string* new_pin) {
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_old_pin;
-  if (old_pin)
+  if (old_pin) {
     tmp_old_pin = *old_pin;
+  }
   string tmp_new_pin;
-  if (new_pin)
+  if (new_pin) {
     tmp_new_pin = *new_pin;
+  }
   SendRequestAndWait(&org::chromium::ChapsProxyInterface::SetPIN,
                      ToBlob(isolate_credential), session_id,
                      (old_pin == nullptr), tmp_old_pin, (new_pin == nullptr),
@@ -367,8 +371,9 @@ uint32_t ChapsProxyImpl::Login(const SecureBlob& isolate_credential,
                                const string* pin) {
   uint32_t result = CKR_GENERAL_ERROR;
   string tmp_pin;
-  if (pin)
+  if (pin) {
     tmp_pin = *pin;
+  }
   SendRequestAndWait(&org::chromium::ChapsProxyInterface::Login,
                      ToBlob(isolate_credential), session_id, user_type,
                      (pin == nullptr), tmp_pin, &result);
@@ -468,8 +473,9 @@ uint32_t ChapsProxyImpl::FindObjects(const SecureBlob& isolate_credential,
                                      uint64_t session_id,
                                      uint64_t max_object_count,
                                      vector<uint64_t>* object_list) {
-  if (!object_list || object_list->size() > 0)
+  if (!object_list || object_list->size() > 0) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   uint32_t result = CKR_GENERAL_ERROR;
   SendRequestAndWait(&org::chromium::ChapsProxyInterface::FindObjects,
                      ToBlob(isolate_credential), session_id, max_object_count,

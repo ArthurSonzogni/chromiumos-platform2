@@ -119,14 +119,16 @@ class ObjectMock : public Object {
   }
   bool FakeGetAttributeBool(CK_ATTRIBUTE_TYPE type, bool default_value) {
     std::string s = FakeGetAttributeString(type);
-    if (s.empty())
+    if (s.empty()) {
       return default_value;
+    }
     return (0 != s[0]);
   }
   CK_ULONG FakeGetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG default_value) {
     std::string s = FakeGetAttributeString(type);
-    if (s.empty())
+    if (s.empty()) {
       return default_value;
+    }
     switch (s.length()) {
       case 1:
         return ExtractFromByteString<uint8_t>(s);
@@ -144,8 +146,9 @@ class ObjectMock : public Object {
   std::string FakeGetAttributeString(CK_ATTRIBUTE_TYPE type) {
     std::string s;
     AttributeMap::iterator it = attributes_.find(type);
-    if (it != attributes_.end())
+    if (it != attributes_.end()) {
       s = it->second;
+    }
     return s;
   }
   void FakeSetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) {

@@ -35,8 +35,9 @@ ObjectPolicyPublicKey::ObjectPolicyPublicKey() {
 ObjectPolicyPublicKey::~ObjectPolicyPublicKey() {}
 
 bool ObjectPolicyPublicKey::IsObjectComplete() {
-  if (!ObjectPolicyCommon::IsObjectComplete())
+  if (!ObjectPolicyCommon::IsObjectComplete()) {
     return false;
+  }
 
   // TODO(crbug/916955): create classes that inherit this class instead of
   // putting the key specific checking here.
@@ -64,11 +65,13 @@ void ObjectPolicyPublicKey::SetDefaultAttributes() {
   CK_ATTRIBUTE_TYPE false_values[] = {
       CKA_ENCRYPT, CKA_VERIFY, CKA_VERIFY_RECOVER, CKA_WRAP, CKA_TRUSTED};
   for (size_t i = 0; i < std::size(false_values); ++i) {
-    if (!object_->IsAttributePresent(false_values[i]))
+    if (!object_->IsAttributePresent(false_values[i])) {
       object_->SetAttributeBool(false_values[i], false);
+    }
   }
-  if (!object_->IsAttributePresent(CKA_SUBJECT))
+  if (!object_->IsAttributePresent(CKA_SUBJECT)) {
     object_->SetAttributeString(CKA_SUBJECT, "");
+  }
 }
 
 }  // namespace chaps

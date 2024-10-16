@@ -27,11 +27,13 @@ class TestObjectStoreEncryption : public ::testing::Test {
   bool TestEncryption(ObjectStoreImpl& store,  // NOLINT(runtime/references)
                       const ObjectBlob& input) {
     ObjectBlob encrypted;
-    if (!store.Encrypt(input, &encrypted))
+    if (!store.Encrypt(input, &encrypted)) {
       return false;
+    }
     ObjectBlob decrypted;
-    if (!store.Decrypt(encrypted, &decrypted))
+    if (!store.Decrypt(encrypted, &decrypted)) {
       return false;
+    }
     return (Equals(input, decrypted));
   }
   ObjectBlob MakeBlob(string blob_data) {

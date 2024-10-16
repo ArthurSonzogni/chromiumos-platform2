@@ -29,12 +29,15 @@ ObjectPolicyData::~ObjectPolicyData() {}
 
 void ObjectPolicyData::SetDefaultAttributes() {
   ObjectPolicyCommon::SetDefaultAttributes();
-  if (!object_->IsAttributePresent(CKA_APPLICATION))
+  if (!object_->IsAttributePresent(CKA_APPLICATION)) {
     object_->SetAttributeBool(CKA_APPLICATION, "");
-  if (!object_->IsAttributePresent(CKA_OBJECT_ID))
+  }
+  if (!object_->IsAttributePresent(CKA_OBJECT_ID)) {
     object_->SetAttributeBool(CKA_OBJECT_ID, "");
-  if (!object_->IsAttributePresent(CKA_VALUE))
+  }
+  if (!object_->IsAttributePresent(CKA_VALUE)) {
     object_->SetAttributeBool(CKA_VALUE, "");
+  }
 }
 
 }  // namespace chaps

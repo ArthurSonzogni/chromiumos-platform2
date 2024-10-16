@@ -129,8 +129,9 @@ bool ObjectStoreImpl::Init(const FilePath& database_path,
     chaps_metrics->ReportCrosEvent(kDatabaseCorrupted);
     LOG(WARNING) << "Attempting to repair database.";
     status = leveldb::RepairDB(database_name.value(), leveldb::Options());
-    if (status.ok())
+    if (status.ok()) {
       status = leveldb::DB::Open(options, database_name.value(), &db);
+    }
   }
 
   if (!status.ok()) {
@@ -235,8 +236,9 @@ bool ObjectStoreImpl::DeleteAllObjectBlobs() {
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType type;
     int id = 0;
-    if (ParseBlobKey(it->key().ToString(), &type, &id) && type != kInternal)
+    if (ParseBlobKey(it->key().ToString(), &type, &id) && type != kInternal) {
       blobs_to_delete.push_back(it->key().ToString());
+    }
   }
   bool deleted_all = true;
   for (size_t i = 0; i < blobs_to_delete.size(); ++i) {
@@ -314,8 +316,9 @@ bool ObjectStoreImpl::Encrypt(const ObjectBlob& plain_text,
                              std::end(kObfuscationKey));
   SecureBlob& key = plain_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
-  if (!RunCipher(true, key, string(), plain_text.blob, &cipher_text_no_hmac))
+  if (!RunCipher(true, key, string(), plain_text.blob, &cipher_text_no_hmac)) {
     return false;
+  }
   // Prepend a version header and include it in the MAC.
   string version_header(1, static_cast<char>(kBlobVersion));
   cipher_text->blob = AppendHMAC(version_header + cipher_text_no_hmac, key);
@@ -333,8 +336,9 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
                              std::end(kObfuscationKey));
   SecureBlob& key = cipher_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
-  if (!VerifyAndStripHMAC(cipher_text.blob, key, &cipher_text_no_hmac))
+  if (!VerifyAndStripHMAC(cipher_text.blob, key, &cipher_text_no_hmac)) {
     return false;
+  }
   // Check and strip the version header.
   int version = static_cast<int>(cipher_text_no_hmac[0]);
   if (version != kBlobVersion) {
@@ -434,8 +438,9 @@ bool ObjectStoreImpl::GetNextID(int* next_id) {
 bool ObjectStoreImpl::ReadBlob(const string& key, string* value) {
   leveldb::Status status = db_->Get(leveldb::ReadOptions(), key, value);
   if (!status.ok()) {
-    if (!status.IsNotFound())
+    if (!status.IsNotFound()) {
       LOG(ERROR) << "Failed to read value from database: " << status.ToString();
+    }
     return false;
   }
   return true;
@@ -443,8 +448,9 @@ bool ObjectStoreImpl::ReadBlob(const string& key, string* value) {
 
 bool ObjectStoreImpl::ReadInt(const string& key, int* value) {
   string value_string;
-  if (!ReadBlob(key, &value_string))
+  if (!ReadBlob(key, &value_string)) {
     return false;
+  }
   if (!base::StringToInt(value_string, value)) {
     LOG(ERROR) << "Invalid integer value.";
     return false;
@@ -469,8 +475,9 @@ bool ObjectStoreImpl::WriteInt(const string& key, int value) {
 
 ObjectStoreImpl::BlobType ObjectStoreImpl::GetBlobType(int blob_id) {
   map<int, BlobType>::iterator it = blob_type_map_.find(blob_id);
-  if (it == blob_type_map_.end())
+  if (it == blob_type_map_.end()) {
     return kInternal;
+  }
   return it->second;
 }
 

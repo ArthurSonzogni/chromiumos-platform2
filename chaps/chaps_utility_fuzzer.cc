@@ -32,8 +32,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     input_size = invalid_input_size;
   }
 
-  if (data_provider.remaining_bytes() < input_size)
+  if (data_provider.remaining_bytes() < input_size) {
     return 0;
+  }
 
   const CK_RSA_PKCS_PSS_PARAMS* params_out;
   const EVP_MD* hash_out;

@@ -89,8 +89,9 @@ static CK_RV PerformNonBlocking(ChapsOperation op) {
   base::TimeTicks deadline = base::TimeTicks::Now() + g_retry_timeout;
   do {
     result = op();
-    if (result != chaps::CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
+    if (result != chaps::CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS) {
       break;
+    }
     base::PlatformThread::Sleep(g_retry_delay);
   } while (base::TimeTicks::Now() < deadline);
   return result;
@@ -156,14 +157,16 @@ static CK_RV HandlePKCS11Output(CK_RV result,
                                 CK_BYTE_PTR out_buffer,
                                 CK_ULONG_PTR out_buffer_length) {
   if (result == CKR_OK && out_buffer) {
-    if (output.size() > *out_buffer_length)
+    if (output.size() > *out_buffer_length) {
       return CKR_GENERAL_ERROR;
+    }
     *out_buffer_length = output.size();
     memcpy(out_buffer, output.data(), output.size());
   } else {
     *out_buffer_length = static_cast<CK_ULONG>(output_length);
-    if (result == CKR_BUFFER_TOO_SMALL && !out_buffer)
+    if (result == CKR_BUFFER_TOO_SMALL && !out_buffer) {
       result = CKR_OK;
+    }
   }
   return result;
 }
@@ -283,8 +286,9 @@ EXPORT_SPEC CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     g->user_isolate = g->default_user_isolate.get();
 
     chaps::IsolateCredentialManager isolate_manager;
-    if (!isolate_manager.GetCurrentUserIsolateCredential(g->user_isolate))
+    if (!isolate_manager.GetCurrentUserIsolateCredential(g->user_isolate)) {
       *g->user_isolate = isolate_manager.GetDefaultIsolateCredential();
+    }
   }
 
   CHECK(g->proxy);
@@ -368,8 +372,9 @@ EXPORT_SPEC CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   size_t max_copy = static_cast<size_t>(*pulCount);
   *pulCount = static_cast<CK_ULONG>(slot_list.size());
-  if (!pSlotList)
+  if (!pSlotList) {
     return CKR_OK;
+  }
   LOG_CK_RV_AND_RETURN_IF(slot_list.size() > max_copy, CKR_BUFFER_TOO_SMALL);
   for (size_t i = 0; i < slot_list.size(); ++i) {
     pSlotList[i] = slot_list[i];
@@ -422,8 +427,9 @@ EXPORT_SPEC CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
                           CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pSlot, CKR_ARGUMENTS_BAD);
   // Currently, all supported tokens are not removable - i.e. no slot events.
-  if (CKF_DONT_BLOCK & flags)
+  if (CKF_DONT_BLOCK & flags) {
     return CKR_NO_EVENT;
+  }
   // Block until C_Finalize.  A simple mechanism is used here because any
   // synchronization primitive will be a problem if C_Finalize is called in a
   // signal handler.
@@ -450,8 +456,9 @@ EXPORT_SPEC CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
   // Copy the mechanism list to caller-supplied memory.
   size_t max_copy = static_cast<size_t>(*pulCount);
   *pulCount = static_cast<CK_ULONG>(mechanism_list.size());
-  if (!pMechanismList)
+  if (!pMechanismList) {
     return CKR_OK;
+  }
   LOG_CK_RV_AND_RETURN_IF(mechanism_list.size() > max_copy,
                           CKR_BUFFER_TOO_SMALL);
   for (size_t i = 0; i < mechanism_list.size(); ++i) {
@@ -632,8 +639,9 @@ EXPORT_SPEC CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
   // Copy the data and length to caller-supplied memory.
   size_t max_copy = static_cast<size_t>(*pulOperationStateLen);
   *pulOperationStateLen = static_cast<CK_ULONG>(operation_state.size());
-  if (!pOperationState)
+  if (!pOperationState) {
     return CKR_OK;
+  }
   LOG_CK_RV_AND_RETURN_IF(operation_state.size() > max_copy,
                           CKR_BUFFER_TOO_SMALL);
   memcpy(pOperationState, operation_state.data(), operation_state.size());
@@ -698,12 +706,14 @@ EXPORT_SPEC CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
                                  CK_OBJECT_HANDLE_PTR phObject) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (pTemplate == NULL_PTR || phObject == NULL_PTR)
+  if (pTemplate == NULL_PTR || phObject == NULL_PTR) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   chaps::Attributes attributes(pTemplate, ulCount);
   vector<uint8_t> serialized_attributes;
-  if (!attributes.Serialize(&serialized_attributes))
+  if (!attributes.Serialize(&serialized_attributes)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->CreateObject(*g->user_isolate, hSession,
                                   serialized_attributes,
@@ -722,12 +732,14 @@ EXPORT_SPEC CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
                                CK_OBJECT_HANDLE_PTR phNewObject) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (pTemplate == NULL_PTR || phNewObject == NULL_PTR)
+  if (pTemplate == NULL_PTR || phNewObject == NULL_PTR) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   chaps::Attributes attributes(pTemplate, ulCount);
   vector<uint8_t> serialized_attributes;
-  if (!attributes.Serialize(&serialized_attributes))
+  if (!attributes.Serialize(&serialized_attributes)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->CopyObject(*g->user_isolate, hSession, hObject,
                                 serialized_attributes,
@@ -777,8 +789,9 @@ EXPORT_SPEC CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!pTemplate, CKR_ARGUMENTS_BAD);
   chaps::Attributes attributes(pTemplate, ulCount);
   vector<uint8_t> serialized_attributes_in;
-  if (!attributes.Serialize(&serialized_attributes_in))
+  if (!attributes.Serialize(&serialized_attributes_in)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   vector<uint8_t> serialized_attributes_out;
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->GetAttributeValue(*g->user_isolate, hSession, hObject,
@@ -788,8 +801,9 @@ EXPORT_SPEC CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
   // There are a few errors that can be returned while information about one or
   // more attributes has been provided.  We need to continue in these cases.
   if (result != CKR_OK && result != CKR_ATTRIBUTE_TYPE_INVALID &&
-      result != CKR_ATTRIBUTE_SENSITIVE && result != CKR_BUFFER_TOO_SMALL)
+      result != CKR_ATTRIBUTE_SENSITIVE && result != CKR_BUFFER_TOO_SMALL) {
     LOG_CK_RV_AND_RETURN(result);
+  }
   // Chapsd ensures the value is serialized correctly; we can assert.
   CHECK(attributes.ParseAndFill(serialized_attributes_out));
   VLOG(1) << __func__ << " - " << chaps::CK_RVToString(result);
@@ -806,8 +820,9 @@ EXPORT_SPEC CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!pTemplate, CKR_ARGUMENTS_BAD);
   chaps::Attributes attributes(pTemplate, ulCount);
   vector<uint8_t> serialized_attributes;
-  if (!attributes.Serialize(&serialized_attributes))
+  if (!attributes.Serialize(&serialized_attributes)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->SetAttributeValue(*g->user_isolate, hSession, hObject,
                                        serialized_attributes);
@@ -826,8 +841,9 @@ EXPORT_SPEC CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!pTemplate && ulCount > 0, CKR_ARGUMENTS_BAD);
   chaps::Attributes attributes(pTemplate, ulCount);
   vector<uint8_t> serialized_attributes;
-  if (!attributes.Serialize(&serialized_attributes))
+  if (!attributes.Serialize(&serialized_attributes)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->FindObjectsInit(*g->user_isolate, hSession,
                                      serialized_attributes);
@@ -1295,8 +1311,9 @@ EXPORT_SPEC CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
                                 CK_ULONG_PTR pulSignatureLen) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if ((!pData && ulDataLen > 0) || !pulSignatureLen)
+  if ((!pData && ulDataLen > 0) || !pulSignatureLen) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -1423,8 +1440,9 @@ EXPORT_SPEC CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
                                   CK_ULONG_PTR pulDataLen) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pSignature || !pulDataLen)
+  if (!pSignature || !pulDataLen) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length = pData ? static_cast<uint64_t>(*pulDataLen) : 0;
@@ -1551,12 +1569,14 @@ EXPORT_SPEC CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
                                 CK_OBJECT_HANDLE_PTR phKey) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pMechanism || (!pTemplate && ulCount > 0) || !phKey)
+  if (!pMechanism || (!pTemplate && ulCount > 0) || !phKey) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   chaps::Attributes attributes(pTemplate, ulCount);
   vector<uint8_t> serialized;
-  if (!attributes.Serialize(&serialized))
+  if (!attributes.Serialize(&serialized)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->GenerateKey(
         *g->user_isolate, hSession, pMechanism->mechanism,
@@ -1583,16 +1603,18 @@ EXPORT_SPEC CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!pMechanism || (!pPublicKeyTemplate && ulPublicKeyAttributeCount > 0) ||
       (!pPrivateKeyTemplate && ulPrivateKeyAttributeCount > 0) ||
-      !phPublicKey || !phPrivateKey)
+      !phPublicKey || !phPrivateKey) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   chaps::Attributes public_attributes(pPublicKeyTemplate,
                                       ulPublicKeyAttributeCount);
   chaps::Attributes private_attributes(pPrivateKeyTemplate,
                                        ulPrivateKeyAttributeCount);
   vector<uint8_t> public_serialized, private_serialized;
   if (!public_attributes.Serialize(&public_serialized) ||
-      !private_attributes.Serialize(&private_serialized))
+      !private_attributes.Serialize(&private_serialized)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->GenerateKeyPair(
         *g->user_isolate, hSession, pMechanism->mechanism,
@@ -1617,8 +1639,9 @@ EXPORT_SPEC CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
                             CK_ULONG_PTR pulWrappedKeyLen) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pMechanism || !pulWrappedKeyLen)
+  if (!pMechanism || !pulWrappedKeyLen) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   uint64_t data_out_length;
   uint64_t max_out_length =
@@ -1649,12 +1672,14 @@ EXPORT_SPEC CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
                               CK_OBJECT_HANDLE_PTR phKey) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pMechanism || !pWrappedKey || !phKey)
+  if (!pMechanism || !pWrappedKey || !phKey) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   chaps::Attributes attributes(pTemplate, ulAttributeCount);
   vector<uint8_t> serialized;
-  if (!attributes.Serialize(&serialized))
+  if (!attributes.Serialize(&serialized)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->UnwrapKey(
         *g->user_isolate, hSession, pMechanism->mechanism,
@@ -1679,8 +1704,9 @@ EXPORT_SPEC CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
                               CK_OBJECT_HANDLE_PTR phKey) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pMechanism || !phKey)
+  if (!pMechanism || !phKey) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
 
   string mechanism_parameter;
   if (pMechanism->mechanism == CKM_SP800_108_COUNTER_KDF) {
@@ -1698,8 +1724,9 @@ EXPORT_SPEC CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
 
   chaps::Attributes attributes(pTemplate, ulAttributeCount);
   vector<uint8_t> serialized;
-  if (!attributes.Serialize(&serialized))
+  if (!attributes.Serialize(&serialized)) {
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->DeriveKey(
         *g->user_isolate, hSession, pMechanism->mechanism,
@@ -1718,8 +1745,9 @@ EXPORT_SPEC CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
                                CK_ULONG ulSeedLen) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pSeed || ulSeedLen == 0)
+  if (!pSeed || ulSeedLen == 0) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->SeedRandom(
         *g->user_isolate, hSession,
@@ -1736,8 +1764,9 @@ EXPORT_SPEC CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
                                    CK_ULONG ulRandomLen) {
   SynchronizedHandle<GlobalData> g = g_global_data->Lock();
   LOG_CK_RV_AND_RETURN_IF(!g->is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!RandomData || ulRandomLen == 0)
+  if (!RandomData || ulRandomLen == 0) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   vector<uint8_t> data_out;
   CK_RV result = PerformNonBlocking([&] {
     return g->proxy->GenerateRandom(*g->user_isolate, hSession, ulRandomLen,

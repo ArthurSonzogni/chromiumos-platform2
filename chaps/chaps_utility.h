@@ -80,22 +80,26 @@ inline void CopyStringToCharBuffer(const std::string& source,
                                    CK_UTF8CHAR_PTR buffer,
                                    size_t buffer_size) {
   size_t copy_size = source.length();
-  if (copy_size > buffer_size)
+  if (copy_size > buffer_size) {
     copy_size = buffer_size;
+  }
   memset(buffer, ' ', buffer_size);
-  if (copy_size > 0)
+  if (copy_size > 0) {
     memcpy(buffer, source.data(), copy_size);
+  }
 }
 
 inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
                                    CK_UTF8CHAR_PTR buffer,
                                    size_t buffer_size) {
   size_t copy_size = source.size();
-  if (copy_size > buffer_size)
+  if (copy_size > buffer_size) {
     copy_size = buffer_size;
+  }
   memset(buffer, ' ', buffer_size);
-  if (copy_size > 0)
+  if (copy_size > 0) {
     memcpy(buffer, source.data(), copy_size);
+  }
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".
@@ -126,8 +130,9 @@ std::string PrintIntVector(const std::vector<T>& v) {
   std::stringstream ss;
   ss << "{";
   for (size_t i = 0; i < v.size(); i++) {
-    if (i > 0)
+    if (i > 0) {
       ss << ", ";
+    }
     ss << static_cast<int>(v[i]);
   }
   ss << "}";
@@ -166,8 +171,9 @@ std::string PrintIntVector(const std::vector<T>& v) {
 // be returned.
 inline std::string ConvertCharBufferToString(CK_UTF8CHAR_PTR buffer,
                                              size_t buffer_size) {
-  if (!buffer)
+  if (!buffer) {
     return std::string();
+  }
   return std::string(reinterpret_cast<char*>(buffer), buffer_size);
 }
 
@@ -176,8 +182,9 @@ inline std::string ConvertCharBufferToString(CK_UTF8CHAR_PTR buffer,
 // be returned.
 inline std::string ConvertByteBufferToString(CK_BYTE_PTR buffer,
                                              CK_ULONG buffer_size) {
-  if (!buffer)
+  if (!buffer) {
     return std::string();
+  }
   return std::string(reinterpret_cast<char*>(buffer), buffer_size);
 }
 
@@ -211,8 +218,9 @@ inline std::string ConvertByteVectorToString(const std::vector<uint8_t>& v) {
 // NULL, an empty vector will be returned.
 inline std::vector<uint8_t> ConvertByteBufferToVector(CK_BYTE_PTR buffer,
                                                       CK_ULONG buffer_size) {
-  if (!buffer)
+  if (!buffer) {
     return std::vector<uint8_t>();
+  }
   return std::vector<uint8_t>(buffer, buffer + buffer_size);
 }
 

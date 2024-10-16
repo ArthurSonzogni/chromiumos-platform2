@@ -961,16 +961,20 @@ class TestAttributes : public ::testing::Test {
   }
 
   bool CompareAttributes(CK_ATTRIBUTE_PTR a1, CK_ATTRIBUTE_PTR a2, int size) {
-    if (!a1 || !a2)
+    if (!a1 || !a2) {
       return false;
+    }
     for (int i = 0; i < size; ++i) {
       if (a1[i].type != a2[i].type || a1[i].ulValueLen != a2[i].ulValueLen ||
-          !a1[i].pValue != !a2[i].pValue)
+          !a1[i].pValue != !a2[i].pValue) {
         return false;
-      if (!a1[i].pValue)
+      }
+      if (!a1[i].pValue) {
         continue;
-      if (0 != memcmp(a1[i].pValue, a2[i].pValue, a1[i].ulValueLen))
+      }
+      if (0 != memcmp(a1[i].pValue, a2[i].pValue, a1[i].ulValueLen)) {
         return false;
+      }
     }
     return true;
   }

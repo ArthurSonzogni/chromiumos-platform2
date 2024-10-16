@@ -742,8 +742,9 @@ class SoftwareOnlyTest : public TestSlotManager {
 
   bool FakeGetInternalBlob(int blob_id, std::string* blob) {
     std::map<int, string>::iterator iter = pool_blobs_.find(blob_id);
-    if (iter == pool_blobs_.end())
+    if (iter == pool_blobs_.end()) {
       return false;
+    }
     *blob = iter->second;
     return true;
   }

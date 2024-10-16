@@ -514,8 +514,9 @@ static CK_ULONG ExtractCK_ULONG(const vector<uint8_t>& value) {
     // log reflects the potentially invalid value. Some clients may handle this
     // case robustly but NSS has been noted to keep the 32 most significant bits
     // set. We want to log the worst case value.
-    if (sizeof(CK_ULONG) == 8)
+    if (sizeof(CK_ULONG) == 8) {
       ulong_value |= 0xFFFFFFFF00000000;
+    }
     return ulong_value;
   } else if (value.size() == 8) {
     return *reinterpret_cast<const uint64_t*>(value.data());
@@ -580,8 +581,9 @@ static string PrintKeyType(const vector<uint8_t>& value) {
 }
 
 static string PrintYesNo(const vector<uint8_t>& value) {
-  if (!ExtractCK_ULONG(value))
+  if (!ExtractCK_ULONG(value)) {
     return "No";
+  }
   return "Yes";
 }
 
@@ -628,8 +630,9 @@ string PrintAttributes(const vector<uint8_t>& serialized,
   if (attributes.Parse(serialized)) {
     for (CK_ULONG i = 0; i < attributes.num_attributes(); i++) {
       CK_ATTRIBUTE& attribute = attributes.attributes()[i];
-      if (i > 0)
+      if (i > 0) {
         ss << ", ";
+      }
       ss << AttributeToString(attribute.type);
       if (is_value_enabled) {
         if (attribute.ulValueLen == static_cast<CK_ULONG>(-1)) {
@@ -762,8 +765,9 @@ bool RunCipher(bool is_encrypt,
                const string& input,
                string* output) {
   const size_t kIVSizeBytes = 16;
-  if (!iv.empty())
+  if (!iv.empty()) {
     return RunCipherInternal(is_encrypt, key, iv, input, output);
+  }
   string random_iv;
   string mutable_input = input;
   if (is_encrypt) {
@@ -784,8 +788,9 @@ bool RunCipher(bool is_encrypt,
     random_iv = input.substr(iv_pos);
     mutable_input = input.substr(0, iv_pos);
   }
-  if (!RunCipherInternal(is_encrypt, key, random_iv, mutable_input, output))
+  if (!RunCipherInternal(is_encrypt, key, random_iv, mutable_input, output)) {
     return false;
+  }
   if (is_encrypt) {
     // Append the random IV to the cipher-text.
     *output += random_iv;
@@ -833,15 +838,17 @@ string ConvertFromBIGNUM(const BIGNUM* bignum, int pad_to_length) {
 }
 
 bool ConvertToBIGNUM(const string& big_integer, BIGNUM* b) {
-  if (big_integer.empty() || !b)
+  if (big_integer.empty() || !b) {
     return false;
+  }
   return BN_bin2bn(chaps::ConvertStringToByteBuffer(big_integer.data()),
                    big_integer.length(), b);
 }
 
 bool ConvertBlobToBIGNUM(const brillo::Blob& big_integer, BIGNUM* b) {
-  if (big_integer.empty() || !b)
+  if (big_integer.empty() || !b) {
     return false;
+  }
   return BN_bin2bn(big_integer.data(), big_integer.size(), b);
 }
 
@@ -861,8 +868,9 @@ string GetECPointAsString(const EC_KEY* key) {
   const string oct_string =
       OpenSSLObjectToString<EC_KEY, chaps::i2o_ECPublicKey_nc>(
           const_cast<EC_KEY*>(key));
-  if (oct_string.empty())
+  if (oct_string.empty()) {
     return string();
+  }
 
   // Put OCT_STRING to ASN1_OCTET_STRING
   ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());

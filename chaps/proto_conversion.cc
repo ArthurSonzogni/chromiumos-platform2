@@ -19,8 +19,9 @@ namespace {
 
 bool ProtoToVersion(const chaps::Version& proto, CK_VERSION* out_version) {
   DCHECK(out_version);
-  if (!proto.has_major() || !proto.has_minor())
+  if (!proto.has_major() || !proto.has_minor()) {
     return false;
+  }
 
   out_version->major = static_cast<CK_BYTE>(proto.major());
   out_version->minor = static_cast<CK_BYTE>(proto.minor());
@@ -59,8 +60,9 @@ bool ProtoToMechanismInfo(const MechanismInfo& proto,
                           CK_MECHANISM_INFO* out_info) {
   DCHECK(out_info);
   if (!proto.has_min_key_size() || !proto.has_max_key_size() ||
-      !proto.has_flags())
+      !proto.has_flags()) {
     return false;
+  }
 
   out_info->ulMinKeySize = static_cast<CK_ULONG>(proto.min_key_size());
   out_info->ulMaxKeySize = static_cast<CK_ULONG>(proto.max_key_size());
@@ -80,8 +82,9 @@ MechanismInfo MechanismInfoToProto(const CK_MECHANISM_INFO* info) {
 bool ProtoToSessionInfo(const SessionInfo& proto, CK_SESSION_INFO* out_info) {
   DCHECK(out_info);
   if (!proto.has_slot_id() || !proto.has_state() || !proto.has_flags() ||
-      !proto.has_device_error())
+      !proto.has_device_error()) {
     return false;
+  }
 
   out_info->slotID = static_cast<CK_SLOT_ID>(proto.slot_id());
   out_info->state = static_cast<CK_STATE>(proto.state());
@@ -104,16 +107,18 @@ bool ProtoToSlotInfo(const SlotInfo& proto, CK_SLOT_INFO* out_info) {
   DCHECK(out_info);
   if (!proto.has_slot_description() || !proto.has_manufacturer_id() ||
       !proto.has_flags() || !proto.has_hardware_version() ||
-      !proto.has_firmware_version())
+      !proto.has_firmware_version()) {
     return false;
+  }
 
   ZeroAndCopy(out_info->slotDescription, proto.slot_description(), 64);
   ZeroAndCopy(out_info->manufacturerID, proto.manufacturer_id(), 32);
   out_info->flags = static_cast<CK_FLAGS>(proto.flags());
 
   if (!ProtoToVersion(proto.hardware_version(), &out_info->hardwareVersion) ||
-      !ProtoToVersion(proto.firmware_version(), &out_info->firmwareVersion))
+      !ProtoToVersion(proto.firmware_version(), &out_info->firmwareVersion)) {
     return false;
+  }
 
   return true;
 }
@@ -138,8 +143,9 @@ bool ProtoToTokenInfo(const TokenInfo& proto, CK_TOKEN_INFO* out_info) {
       !proto.has_max_pin_len() || !proto.has_min_pin_len() ||
       !proto.has_total_public_memory() || !proto.has_free_public_memory() ||
       !proto.has_total_private_memory() || !proto.has_free_private_memory() ||
-      !proto.has_hardware_version() || !proto.has_firmware_version())
+      !proto.has_hardware_version() || !proto.has_firmware_version()) {
     return false;
+  }
 
   ZeroAndCopy(out_info->label, proto.label(), 32);
   ZeroAndCopy(out_info->manufacturerID, proto.manufacturer_id(), 32);
@@ -164,8 +170,9 @@ bool ProtoToTokenInfo(const TokenInfo& proto, CK_TOKEN_INFO* out_info) {
       static_cast<CK_ULONG>(proto.free_private_memory());
 
   if (!ProtoToVersion(proto.hardware_version(), &out_info->hardwareVersion) ||
-      !ProtoToVersion(proto.firmware_version(), &out_info->firmwareVersion))
+      !ProtoToVersion(proto.firmware_version(), &out_info->firmwareVersion)) {
     return false;
+  }
 
   return true;
 }

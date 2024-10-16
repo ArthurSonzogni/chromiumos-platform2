@@ -32,8 +32,9 @@ bool Attributes::Serialize(vector<uint8_t>* serialized_attributes) const {
   string tmp;
   if (!SerializeInternal(attributes_, num_attributes_,
                          true,  // Allow nesting.
-                         &tmp))
+                         &tmp)) {
     return false;
+  }
   *serialized_attributes = ConvertByteStringToVector(tmp);
   return true;
 }
@@ -118,8 +119,9 @@ bool Attributes::SerializeInternal(CK_ATTRIBUTE_PTR attributes,
     string inner_serialized;
     if (!SerializeInternal(inner_attributes, num_inner_attributes,
                            false,  // Do not allow nesting.
-                           &inner_serialized))
+                           &inner_serialized)) {
       return false;
+    }
     next->set_value(inner_serialized);
   }
   return attribute_list.SerializeToString(serialized);
@@ -245,8 +247,9 @@ bool Attributes::ParseAndFillInternal(const string& serialized,
 // Convert int to CK_ULONG preserving -1.  Unfortunately, PKCS #11 uses -1 as a
 // special value for the length field in CK_ATTRIBUTE.
 CK_ULONG Attributes::IntToValueLength(int i) {
-  if (i == -1)
+  if (i == -1) {
     return ~0UL;
+  }
   return static_cast<CK_ULONG>(i);
 }
 

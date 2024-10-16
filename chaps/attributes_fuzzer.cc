@@ -26,8 +26,9 @@ DEFINE_PROTO_FUZZER(const chaps::AttributeList& input) {
   std::string attribute_string = input.SerializeAsString();
   std::vector<uint8_t> attribute_data(attribute_string.begin(),
                                       attribute_string.end());
-  if (!attributes.Parse(attribute_data))
+  if (!attributes.Parse(attribute_data)) {
     return;
+  }
 
   std::vector<uint8_t> serialized_data;
   attributes.Serialize(&serialized_data);
@@ -36,8 +37,9 @@ DEFINE_PROTO_FUZZER(const chaps::AttributeList& input) {
   // of the existing data exactly, we can reuse the input to fuzz that logic.
   //
   // If this fails but Parse() succeeds, something's very fishy.
-  if (!attributes.ParseAndFill(attribute_data))
+  if (!attributes.ParseAndFill(attribute_data)) {
     LOG(FATAL) << "Parse'able data can't be used with ParseAndFill?";
+  }
 
   serialized_data.clear();
   attributes.Serialize(&serialized_data);

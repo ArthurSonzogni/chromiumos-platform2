@@ -213,8 +213,9 @@ class TestSession : public ::testing::Test {
                                           {CKA_VERIFY, &yes, sizeof(yes)},
                                           {CKA_VALUE_LEN, &size, sizeof(size)}};
     CK_ATTRIBUTE_PTR attr = encdec_template;
-    if (mechanism == CKM_GENERIC_SECRET_KEY_GEN)
+    if (mechanism == CKM_GENERIC_SECRET_KEY_GEN) {
       attr = signverify_template;
+    }
     int handle = 0;
     ASSERT_EQ(CKR_OK, session_->GenerateKey(mechanism, "", attr, 4, &handle));
     ASSERT_TRUE(session_->GetObject(handle, obj));

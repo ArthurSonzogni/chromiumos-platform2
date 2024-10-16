@@ -56,8 +56,9 @@ bool ObjectImpl::IsPrivate() const {
 }
 
 CK_RV ObjectImpl::FinalizeNewObject() {
-  if (!SetPolicyByClass())
+  if (!SetPolicyByClass()) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
   AttributeMap::iterator it;
   for (it = attributes_.begin(); it != attributes_.end(); ++it) {
     // Only external attributes have this policy enforced.  Internally, we need
@@ -69,8 +70,9 @@ CK_RV ObjectImpl::FinalizeNewObject() {
     }
   }
   policy_->SetDefaultAttributes();
-  if (!policy_->IsObjectComplete())
+  if (!policy_->IsObjectComplete()) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
 
   if (GetObjectClass() == CKO_PRIVATE_KEY) {
     // Set the kKeyInSoftware attribute to let the user know if it's stored in
@@ -98,8 +100,9 @@ CK_RV ObjectImpl::Copy(const Object* original) {
   stage_ = kCopy;
   attributes_ = *original->GetAttributeMap();
   policy_.reset();
-  if (!SetPolicyByClass())
+  if (!SetPolicyByClass()) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
   return CKR_OK;
 }
 
@@ -137,20 +140,23 @@ CK_RV ObjectImpl::SetAttributes(const CK_ATTRIBUTE_PTR attributes,
     // it is used as an error indicator for C_GetAttributeValue) but isn't
     // valid when setting attributes.
     if (attributes[i].ulValueLen == static_cast<CK_ULONG>(-1) ||
-        !attributes[i].pValue)
+        !attributes[i].pValue) {
       return CKR_ATTRIBUTE_VALUE_INVALID;
+    }
     string value(reinterpret_cast<const char*>(attributes[i].pValue),
                  attributes[i].ulValueLen);
     if (policy_.get()) {
-      if (!policy_->IsModifyAllowed(attributes[i].type, value))
+      if (!policy_->IsModifyAllowed(attributes[i].type, value)) {
         return CKR_ATTRIBUTE_READ_ONLY;
+      }
     }
     external_attributes_.insert(attributes[i].type);
     attributes_[attributes[i].type] = value;
   }
   if (policy_.get()) {
-    if (!policy_->IsObjectComplete())
+    if (!policy_->IsObjectComplete()) {
       return CKR_TEMPLATE_INCOMPLETE;
+    }
   }
   return CKR_OK;
 }
@@ -162,10 +168,12 @@ bool ObjectImpl::IsAttributePresent(CK_ATTRIBUTE_TYPE type) const {
 bool ObjectImpl::GetAttributeBool(CK_ATTRIBUTE_TYPE type,
                                   bool default_value) const {
   AttributeMap::const_iterator it = attributes_.find(type);
-  if (it == attributes_.end())
+  if (it == attributes_.end()) {
     return default_value;
-  if (it->second.empty())
+  }
+  if (it->second.empty()) {
     return default_value;
+  }
   return (it->second[0] != 0);
 }
 
@@ -176,8 +184,9 @@ void ObjectImpl::SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) {
 CK_ULONG ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
                                      CK_ULONG default_value) const {
   AttributeMap::const_iterator it = attributes_.find(type);
-  if (it == attributes_.end())
+  if (it == attributes_.end()) {
     return default_value;
+  }
   switch (it->second.length()) {
     case 1:
       return ExtractFromByteString<uint8_t>(it->second);
@@ -201,8 +210,9 @@ void ObjectImpl::SetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG value) {
 
 string ObjectImpl::GetAttributeString(CK_ATTRIBUTE_TYPE type) const {
   AttributeMap::const_iterator it = attributes_.find(type);
-  if (it != attributes_.end())
+  if (it != attributes_.end()) {
     return it->second;
+  }
   return string();
 }
 

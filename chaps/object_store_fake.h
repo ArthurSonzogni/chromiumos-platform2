@@ -18,8 +18,9 @@ class ObjectStoreFake : public ObjectStore {
   ObjectStoreFake() : last_handle_(0) {}
   ~ObjectStoreFake() override {}
   bool GetInternalBlob(int blob_id, std::string* blob) override {
-    if (internal_blobs_.find(blob_id) == internal_blobs_.end())
+    if (internal_blobs_.find(blob_id) == internal_blobs_.end()) {
       return false;
+    }
     *blob = internal_blobs_[blob_id];
     return true;
   }

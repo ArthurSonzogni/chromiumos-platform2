@@ -41,8 +41,9 @@ ObjectPolicyCert::ObjectPolicyCert() {
 ObjectPolicyCert::~ObjectPolicyCert() {}
 
 bool ObjectPolicyCert::IsObjectComplete() {
-  if (!ObjectPolicyCommon::IsObjectComplete())
+  if (!ObjectPolicyCommon::IsObjectComplete()) {
     return false;
+  }
   // The following logic is based on requirements for the different types of
   // certificates described in PKCS #11 v2.20: 10.6.
   CK_CERTIFICATE_TYPE type = object_->GetAttributeInt(CKA_CERTIFICATE_TYPE, 0);
@@ -73,12 +74,15 @@ bool ObjectPolicyCert::IsObjectComplete() {
 
 void ObjectPolicyCert::SetDefaultAttributes() {
   ObjectPolicyCommon::SetDefaultAttributes();
-  if (!object_->IsAttributePresent(CKA_CERTIFICATE_CATEGORY))
+  if (!object_->IsAttributePresent(CKA_CERTIFICATE_CATEGORY)) {
     object_->SetAttributeInt(CKA_CERTIFICATE_CATEGORY, 0);
-  if (!object_->IsAttributePresent(CKA_START_DATE))
+  }
+  if (!object_->IsAttributePresent(CKA_START_DATE)) {
     object_->SetAttributeBool(CKA_START_DATE, "");
-  if (!object_->IsAttributePresent(CKA_END_DATE))
+  }
+  if (!object_->IsAttributePresent(CKA_END_DATE)) {
     object_->SetAttributeBool(CKA_END_DATE, "");
+  }
   if (object_->IsAttributePresent(CKA_CERTIFICATE_TYPE)) {
     CK_CERTIFICATE_TYPE type =
         object_->GetAttributeInt(CKA_CERTIFICATE_TYPE, 0);
@@ -90,25 +94,29 @@ void ObjectPolicyCert::SetDefaultAttributes() {
                                    CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
                                    CKA_HASH_OF_ISSUER_PUBLIC_KEY};
       for (size_t i = 0; i < std::size(empty); ++i) {
-        if (!object_->IsAttributePresent(empty[i]))
+        if (!object_->IsAttributePresent(empty[i])) {
           object_->SetAttributeString(empty[i], "");
+        }
       }
-      if (!object_->IsAttributePresent(CKA_JAVA_MIDP_SECURITY_DOMAIN))
+      if (!object_->IsAttributePresent(CKA_JAVA_MIDP_SECURITY_DOMAIN)) {
         object_->SetAttributeInt(CKA_JAVA_MIDP_SECURITY_DOMAIN, 0);
+      }
     } else if (type == CKC_WTLS) {
       CK_ATTRIBUTE_TYPE empty[] = {CKA_ISSUER, CKA_URL,
                                    CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
                                    CKA_HASH_OF_ISSUER_PUBLIC_KEY};
       for (size_t i = 0; i < std::size(empty); ++i) {
-        if (!object_->IsAttributePresent(empty[i]))
+        if (!object_->IsAttributePresent(empty[i])) {
           object_->SetAttributeString(empty[i], "");
+        }
       }
     } else if (type == CKC_X_509_ATTR_CERT) {
       CK_ATTRIBUTE_TYPE empty[] = {CKA_AC_ISSUER, CKA_SERIAL_NUMBER,
                                    CKA_ATTR_TYPES};
       for (size_t i = 0; i < std::size(empty); ++i) {
-        if (!object_->IsAttributePresent(empty[i]))
+        if (!object_->IsAttributePresent(empty[i])) {
           object_->SetAttributeString(empty[i], "");
+        }
       }
     }
   }

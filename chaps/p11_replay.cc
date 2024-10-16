@@ -67,15 +67,17 @@ CK_SLOT_ID Initialize() {
   };
   CK_RV result = C_Initialize(&args);
   LOG(INFO) << "C_Initialize: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
 
   CK_SLOT_ID slot_list[10];
   CK_ULONG slot_count = std::size(slot_list);
   result = C_GetSlotList(CK_TRUE, slot_list, &slot_count);
   LOG(INFO) << "C_GetSlotList: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
   if (slot_count == 0) {
     LOG(INFO) << "No slots.";
     exit(-1);
@@ -91,8 +93,9 @@ CK_SESSION_HANDLE OpenSession(CK_SLOT_ID slot) {
                                NULL,  // Ignore callbacks.
                                &session);
   LOG(INFO) << "C_OpenSession: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
   return session;
 }
 
@@ -109,18 +112,21 @@ CK_SESSION_HANDLE Login(CK_SLOT_ID slot,
     try_again = false;
     result = C_Login(session, CKU_USER, (CK_UTF8CHAR_PTR) "111111", 6);
     LOG(INFO) << "C_Login: " << chaps::CK_RVToString(result);
-    if (result != CKR_OK && result != CKR_USER_ALREADY_LOGGED_IN)
+    if (result != CKR_OK && result != CKR_USER_ALREADY_LOGGED_IN) {
       exit(-1);
+    }
     if (result == CKR_USER_ALREADY_LOGGED_IN && force_login) {
       try_again = true;
       result = C_Logout(session);
       LOG(INFO) << "C_Logout: " << chaps::CK_RVToString(result);
-      if (result != CKR_OK)
+      if (result != CKR_OK) {
         exit(-1);
+      }
       result = C_CloseAllSessions(slot);
       LOG(INFO) << "C_CloseAllSessions: " << chaps::CK_RVToString(result);
-      if (result != CKR_OK)
+      if (result != CKR_OK) {
         exit(-1);
+      }
       session = OpenSession(slot);
     }
   }
@@ -134,23 +140,26 @@ void Find(CK_SESSION_HANDLE session,
           vector<CK_OBJECT_HANDLE>* objects) {
   CK_RV result = C_FindObjectsInit(session, attributes, num_attributes);
   LOG(INFO) << "C_FindObjectsInit: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
   CK_OBJECT_HANDLE object = 0;
   CK_ULONG object_count = 1;
   while (object_count > 0) {
     result = C_FindObjects(session, &object, 1, &object_count);
     LOG(INFO) << "C_FindObjects: " << chaps::CK_RVToString(result);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       exit(-1);
+    }
     if (object_count > 0) {
       objects->push_back(object);
     }
   }
   result = C_FindObjectsFinal(session);
   LOG(INFO) << "C_FindObjectsFinal: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
 }
 
 // Sign some data with a private key.
@@ -174,16 +183,18 @@ void Sign(CK_SESSION_HANDLE session, const string& label) {
   mechanism.ulParameterLen = 0;
   CK_RV result = C_SignInit(session, &mechanism, objects[0]);
   LOG(INFO) << "C_SignInit: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
 
   CK_BYTE data[200] = {0};
   CK_BYTE signature[2048] = {0};
   CK_ULONG signature_length = std::size(signature);
   result = C_Sign(session, data, std::size(data), signature, &signature_length);
   LOG(INFO) << "C_Sign: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
 }
 
 // Generates a test key pair.
@@ -227,8 +238,9 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
       private_attributes, std::size(private_attributes), &public_key_handle,
       &private_key_handle);
   LOG(INFO) << "C_GenerateKeyPair: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
   if (is_temp) {
     result = C_DestroyObject(session, public_key_handle);
     LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
@@ -263,14 +275,16 @@ void DestroyKeyPair(CK_SESSION_HANDLE session, const string& label) {
   for (size_t i = 0; i < public_objects.size(); ++i) {
     CK_RV result = C_DestroyObject(session, public_objects[i]);
     LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       exit(-1);
+    }
   }
   for (size_t i = 0; i < private_objects.size(); ++i) {
     CK_RV result = C_DestroyObject(session, private_objects[i]);
     LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       exit(-1);
+    }
   }
 }
 
@@ -422,8 +436,9 @@ void CreateRSAPublicKey(CK_SESSION_HANDLE session,
       C_CreateObject(session, public_attributes, std::size(public_attributes),
                      &public_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
 }
 
 void CreateECCPublicKey(CK_SESSION_HANDLE session,
@@ -527,8 +542,9 @@ void CreateCertificate(CK_SESSION_HANDLE session,
   CK_RV result =
       C_CreateObject(session, attributes, std::size(attributes), &handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
 }
 
 crypto::ScopedRSA ParseRSAPublicKey(const std::string& object_data) {
@@ -566,17 +582,20 @@ crypto::ScopedRSA ParseRSAPrivateKey(const std::string& object_data) {
   buf = ConvertStringToByteBuffer(object_data.data());
   ScopedPKCS8_PRIV_KEY_INFO p8(
       d2i_PKCS8_PRIV_KEY_INFO(nullptr, &buf, object_data.length()));
-  if (p8 == nullptr)
+  if (p8 == nullptr) {
     return nullptr;
+  }
 
   crypto::ScopedEVP_PKEY pkey(EVP_PKCS82PKEY(p8.get()));
   // See if we have a RSAPrivateKey in the PKCS#8 structure.
-  if (pkey == nullptr || EVP_PKEY_base_id(pkey.get()) != EVP_PKEY_RSA)
+  if (pkey == nullptr || EVP_PKEY_base_id(pkey.get()) != EVP_PKEY_RSA) {
     return nullptr;
+  }
 
   rsa.reset(EVP_PKEY_get1_RSA(pkey.get()));
-  if (rsa == nullptr)
+  if (rsa == nullptr) {
     return nullptr;
+  }
 
   LOG(INFO) << "Recognized as PKCS#8 RSA private key";
   return rsa;
@@ -665,8 +684,9 @@ bool ParseAndCreateCertificate(CK_SESSION_HANDLE session,
                                const string& object_data) {
   const unsigned char* buf = ConvertStringToByteBuffer(object_data.data());
   ScopedX509 certificate(d2i_X509(NULL, &buf, object_data.length()));
-  if (certificate == nullptr)
+  if (certificate == nullptr) {
     return false;
+  }
   CreateCertificate(session, object_data, object_id, certificate.get());
   return true;
 }
@@ -740,8 +760,9 @@ void DeleteAllTestKeys(CK_SESSION_HANDLE session) {
   for (size_t i = 0; i < objects.size(); ++i) {
     CK_RV result = C_DestroyObject(session, objects[i]);
     LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       exit(-1);
+    }
   }
 }
 
@@ -980,8 +1001,9 @@ int ReplayCloseAllSessionsCheck(CK_SESSION_HANDLE session,
           << "Timed out waiting for signal from ReplayCloseAllSessionsLoop().";
       return 1;
     }
-    if (base::PathExists(path))
+    if (base::PathExists(path)) {
       break;
+    }
     base::PlatformThread::Sleep(base::Milliseconds(300));
   }
 
@@ -1102,8 +1124,9 @@ void PrintTicks(base::TimeTicks* start_ticks) {
 
 void PrintObjects(const vector<CK_OBJECT_HANDLE>& objects) {
   for (size_t i = 0; i < objects.size(); ++i) {
-    if (i > 0)
+    if (i > 0) {
       printf(", ");
+    }
     printf("%d", static_cast<int>(objects[i]));
   }
   printf("\n");
@@ -1142,19 +1165,22 @@ void PrintTokens() {
   CK_SLOT_ID slot_list[10];
   CK_ULONG slot_count = std::size(slot_list);
   result = C_GetSlotList(CK_TRUE, slot_list, &slot_count);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     exit(-1);
+  }
   for (CK_ULONG i = 0; i < slot_count; ++i) {
     CK_SLOT_INFO slot_info;
     result = C_GetSlotInfo(slot_list[i], &slot_info);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       exit(-1);
+    }
     printf("Slot %d: ", static_cast<int>(slot_list[i]));
     if (slot_info.flags & CKF_TOKEN_PRESENT) {
       CK_TOKEN_INFO token_info;
       result = C_GetTokenInfo(slot_list[i], &token_info);
-      if (result != CKR_OK)
+      if (result != CKR_OK) {
         exit(-1);
+      }
       string label(reinterpret_cast<char*>(token_info.label),
                    std::size(token_info.label));
       printf("%s\n", label.c_str());
@@ -1201,18 +1227,21 @@ int main(int argc, char** argv) {
   CK_SLOT_ID slot = Initialize();
   int tmp_slot = 0;
   if (cl->HasSwitch("slot") &&
-      base::StringToInt(cl->GetSwitchValueASCII("slot"), &tmp_slot))
+      base::StringToInt(cl->GetSwitchValueASCII("slot"), &tmp_slot)) {
     slot = tmp_slot;
+  }
   LOG(INFO) << "Using slot " << slot;
   CK_SESSION_HANDLE session = OpenSession(slot);
   PrintTicks(&start_ticks);
   string label = "_default";
-  if (cl->HasSwitch("label"))
+  if (cl->HasSwitch("label")) {
     label = cl->GetSwitchValueASCII("label");
+  }
   int key_size_bits = 2048;
   if (cl->HasSwitch("key_size") &&
-      !base::StringToInt(cl->GetSwitchValueASCII("key_size"), &key_size_bits))
+      !base::StringToInt(cl->GetSwitchValueASCII("key_size"), &key_size_bits)) {
     key_size_bits = 2048;
+  }
   if (generate || generate_delete) {
     session = Login(slot, false, session);
     PrintTicks(&start_ticks);
@@ -1289,8 +1318,9 @@ int main(int argc, char** argv) {
     for (int i = 0; i < kNumThreads; ++i) {
       LOG(INFO) << "Creating thread " << i;
       threads[i].reset(new DigestTestThread(slot));
-      if (!base::PlatformThread::Create(0, threads[i].get(), &handles[i]))
+      if (!base::PlatformThread::Create(0, threads[i].get(), &handles[i])) {
         LOG(FATAL) << "Failed to create thread.";
+      }
     }
     for (int i = 0; i < kNumThreads; ++i) {
       base::PlatformThread::Join(handles[i]);
@@ -1401,8 +1431,9 @@ int main(int argc, char** argv) {
                     "--check_close_all_sessions";
     }
   }
-  if (cleanup)
+  if (cleanup) {
     DeleteAllTestKeys(session);
+  }
   TearDown(session, logout);
   PrintTicks(&start_ticks);
 }

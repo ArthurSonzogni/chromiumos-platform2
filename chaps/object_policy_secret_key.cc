@@ -34,24 +34,33 @@ ObjectPolicySecretKey::~ObjectPolicySecretKey() {}
 
 void ObjectPolicySecretKey::SetDefaultAttributes() {
   ObjectPolicyKey::SetDefaultAttributes();
-  if (!object_->IsAttributePresent(CKA_SENSITIVE))
+  if (!object_->IsAttributePresent(CKA_SENSITIVE)) {
     object_->SetAttributeBool(CKA_SENSITIVE, true);
-  if (!object_->IsAttributePresent(CKA_ENCRYPT))
+  }
+  if (!object_->IsAttributePresent(CKA_ENCRYPT)) {
     object_->SetAttributeBool(CKA_ENCRYPT, false);
-  if (!object_->IsAttributePresent(CKA_DECRYPT))
+  }
+  if (!object_->IsAttributePresent(CKA_DECRYPT)) {
     object_->SetAttributeBool(CKA_DECRYPT, false);
-  if (!object_->IsAttributePresent(CKA_SIGN))
+  }
+  if (!object_->IsAttributePresent(CKA_SIGN)) {
     object_->SetAttributeBool(CKA_SIGN, false);
-  if (!object_->IsAttributePresent(CKA_VERIFY))
+  }
+  if (!object_->IsAttributePresent(CKA_VERIFY)) {
     object_->SetAttributeBool(CKA_VERIFY, false);
-  if (!object_->IsAttributePresent(CKA_WRAP))
+  }
+  if (!object_->IsAttributePresent(CKA_WRAP)) {
     object_->SetAttributeBool(CKA_WRAP, false);
-  if (!object_->IsAttributePresent(CKA_UNWRAP))
+  }
+  if (!object_->IsAttributePresent(CKA_UNWRAP)) {
     object_->SetAttributeBool(CKA_UNWRAP, false);
-  if (!object_->IsAttributePresent(CKA_EXTRACTABLE))
+  }
+  if (!object_->IsAttributePresent(CKA_EXTRACTABLE)) {
     object_->SetAttributeBool(CKA_EXTRACTABLE, false);
-  if (!object_->IsAttributePresent(CKA_WRAP_WITH_TRUSTED))
+  }
+  if (!object_->IsAttributePresent(CKA_WRAP_WITH_TRUSTED)) {
     object_->SetAttributeBool(CKA_WRAP_WITH_TRUSTED, false);
+  }
   if (object_->GetStage() == kCreate) {
     CK_ULONG keygen_mechanism = object_->GetAttributeInt(
         CKA_KEY_GEN_MECHANISM, static_cast<int>(CK_UNAVAILABLE_INFORMATION));
@@ -65,16 +74,18 @@ void ObjectPolicySecretKey::SetDefaultAttributes() {
     // will be set in session_impl.cc.
     if ((keygen_known ||
          object_->GetAttributeBool(CKA_ALWAYS_SENSITIVE, false)) &&
-        object_->GetAttributeBool(CKA_SENSITIVE, false))
+        object_->GetAttributeBool(CKA_SENSITIVE, false)) {
       object_->SetAttributeBool(CKA_ALWAYS_SENSITIVE, true);
-    else
+    } else {
       object_->SetAttributeBool(CKA_ALWAYS_SENSITIVE, false);
+    }
     if ((keygen_known ||
          object_->GetAttributeBool(CKA_NEVER_EXTRACTABLE, false)) &&
-        !object_->GetAttributeBool(CKA_EXTRACTABLE, true))
+        !object_->GetAttributeBool(CKA_EXTRACTABLE, true)) {
       object_->SetAttributeBool(CKA_NEVER_EXTRACTABLE, true);
-    else
+    } else {
       object_->SetAttributeBool(CKA_NEVER_EXTRACTABLE, false);
+    }
   }
 }
 

@@ -166,8 +166,9 @@ bool CheckAuthDataValid(const string& auth_data_hash,
                         const string& saved_auth_data_hash) {
   CHECK_EQ(auth_data_hash.length(), 2u);
   if (saved_auth_data_hash.length() != 2 ||
-      saved_auth_data_hash[0] != kAuthDataHashVersion)
+      saved_auth_data_hash[0] != kAuthDataHashVersion) {
     return true;
+  }
   return (auth_data_hash[1] == saved_auth_data_hash[1]);
 }
 
@@ -308,8 +309,9 @@ bool SlotManagerImpl::Init() {
 }
 
 bool SlotManagerImpl::InitStage2() {
-  if (is_initialized_)
+  if (is_initialized_) {
     return true;
+  }
 
   if (HwsecIsEnabled()) {
     if (!HwsecIsReady()) {
@@ -414,8 +416,9 @@ int SlotManagerImpl::OpenSession(const SecureBlob& isolate_credential,
 bool SlotManagerImpl::CloseSession(const SecureBlob& isolate_credential,
                                    int session_id) {
   Session* session = NULL;
-  if (!GetSession(isolate_credential, session_id, &session))
+  if (!GetSession(isolate_credential, session_id, &session)) {
     return false;
+  }
   CHECK(session);
   int slot_id = session_slot_map_[session_id];
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
@@ -446,8 +449,9 @@ bool SlotManagerImpl::GetSession(const SecureBlob& isolate_credential,
   // Lookup which slot this session belongs to.
   map<int, int>::const_iterator session_slot_iter =
       session_slot_map_.find(session_id);
-  if (session_slot_iter == session_slot_map_.end())
+  if (session_slot_iter == session_slot_map_.end()) {
     return false;
+  }
   int slot_id = session_slot_iter->second;
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   if (!IsTokenAccessible(isolate_credential, slot_id)) {
@@ -457,8 +461,9 @@ bool SlotManagerImpl::GetSession(const SecureBlob& isolate_credential,
   // Lookup the session instance.
   map<int, shared_ptr<Session>>::const_iterator session_iter =
       slot_list_[slot_id].sessions.find(session_id);
-  if (session_iter == slot_list_[slot_id].sessions.end())
+  if (session_iter == slot_list_[slot_id].sessions.end()) {
     return false;
+  }
   *session = session_iter->second.get();
   return true;
 }
@@ -701,8 +706,9 @@ void SlotManagerImpl::LoadHwsecToken(base::OnceCallback<void(bool)> callback,
     chaps_metrics_->ReportReinitializingTokenStatus(
         ReinitializingTokenStatus::kFailedToValidate);
     CreateTokenReinitializedFlagFile(path);
-    if (object_pool->DeleteAll() != ObjectPool::Result::Success)
+    if (object_pool->DeleteAll() != ObjectPool::Result::Success) {
       LOG(WARNING) << "Failed to delete all existing objects.";
+    }
 
     InitializeHwsecToken(std::move(callback), path, auth_data, object_pool);
     return;
@@ -739,8 +745,9 @@ void SlotManagerImpl::LoadHwsecTokenAfterUnseal(
     chaps_metrics_->ReportReinitializingTokenStatus(
         ReinitializingTokenStatus::kFailedToUnseal);
     CreateTokenReinitializedFlagFile(path);
-    if (object_pool->DeleteAll() != ObjectPool::Result::Success)
+    if (object_pool->DeleteAll() != ObjectPool::Result::Success) {
       LOG(WARNING) << "Failed to delete all existing objects.";
+    }
 
     InitializeHwsecToken(std::move(callback), path, auth_data, object_pool);
     return;
@@ -896,8 +903,9 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
     LOG(ERROR) << "Bad authorization data, reinitializing token.";
     chaps_metrics_->ReportReinitializingTokenStatus(
         ReinitializingTokenStatus::kBadAuthorizationData);
-    if (object_pool->DeleteAll() != ObjectPool::Result::Success)
+    if (object_pool->DeleteAll() != ObjectPool::Result::Success) {
       LOG(WARNING) << "Failed to delete all existing objects.";
+    }
     return InitializeSoftwareToken(auth_data, object_pool);
   }
   // Decrypt the root key with the auth data.
@@ -909,8 +917,9 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
     LOG(ERROR) << "Failed to decrypt root key, reinitializing token.";
     chaps_metrics_->ReportReinitializingTokenStatus(
         ReinitializingTokenStatus::kFailedToDecryptRootKey);
-    if (object_pool->DeleteAll() != ObjectPool::Result::Success)
+    if (object_pool->DeleteAll() != ObjectPool::Result::Success) {
       LOG(WARNING) << "Failed to delete all existing objects.";
+    }
     return InitializeSoftwareToken(auth_data, object_pool);
   }
   SecureBlob root_key(root_key_str);
@@ -1006,10 +1015,12 @@ bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
 bool SlotManagerImpl::GetTokenPath(const SecureBlob& isolate_credential,
                                    int slot_id,
                                    FilePath* path) {
-  if (!IsTokenAccessible(isolate_credential, slot_id))
+  if (!IsTokenAccessible(isolate_credential, slot_id)) {
     return false;
-  if (!IsTokenPresent(slot_id))
+  }
+  if (!IsTokenPresent(slot_id)) {
     return false;
+  }
   return PathFromSlotId(slot_id, path);
 }
 
@@ -1068,8 +1079,9 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
 int SlotManagerImpl::FindEmptySlot() {
   size_t i = 0;
   for (; i < slot_list_.size(); ++i) {
-    if (!IsTokenPresent(i))
+    if (!IsTokenPresent(i)) {
       return i;
+    }
   }
   // Add a new slot.
   AddSlots(1);

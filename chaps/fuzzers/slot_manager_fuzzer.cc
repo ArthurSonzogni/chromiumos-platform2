@@ -141,25 +141,29 @@ class SlotManagerFuzzer {
       }
       case SlotManagerRequest::kGetSlotInfo: {
         CK_SLOT_INFO slot_info;
-        if (IsTokenPresent(isolate_credential, slot_id))
+        if (IsTokenPresent(isolate_credential, slot_id)) {
           slot_manager_->GetSlotInfo(isolate_credential, slot_id, &slot_info);
+        }
         break;
       }
       case SlotManagerRequest::kGetTokenInfo: {
         CK_TOKEN_INFO token_info;
-        if (IsTokenPresent(isolate_credential, slot_id))
+        if (IsTokenPresent(isolate_credential, slot_id)) {
           slot_manager_->GetTokenInfo(isolate_credential, slot_id, &token_info);
+        }
         break;
       }
       case SlotManagerRequest::kGetMechanismInfo: {
-        if (IsTokenPresent(isolate_credential, slot_id))
+        if (IsTokenPresent(isolate_credential, slot_id)) {
           slot_manager_->GetMechanismInfo(isolate_credential, slot_id);
+        }
         break;
       }
       case SlotManagerRequest::kOpenSession: {
-        if (IsTokenPresent(isolate_credential, slot_id))
+        if (IsTokenPresent(isolate_credential, slot_id)) {
           slot_manager_->OpenSession(isolate_credential, slot_id,
                                      data_provider_->ConsumeBool());
+        }
         break;
       }
       case SlotManagerRequest::kCloseSession: {

@@ -48,8 +48,9 @@ void PrintHelp() {
 int Ping() {
   auto proxy = chaps::ChapsProxyImpl::Create(
       /*shadow_at_exit=*/false, chaps::ThreadingMode::kCurrentThread);
-  if (!proxy)
+  if (!proxy) {
     return -1;
+  }
   vector<uint64_t> slot_list;
   if (proxy->GetSlotList(
           IsolateCredentialManager::GetDefaultIsolateCredential(), true,
@@ -103,14 +104,16 @@ int SetLogLevel(int level) {
 int ListTokens() {
   auto proxy = chaps::ChapsProxyImpl::Create(
       /*shadow_at_exit=*/false, chaps::ThreadingMode::kCurrentThread);
-  if (!proxy)
+  if (!proxy) {
     return -1;
+  }
   vector<uint64_t> slot_list;
   uint32_t result = proxy->GetSlotList(
       IsolateCredentialManager::GetDefaultIsolateCredential(), true,
       &slot_list);
-  if (result != 0)
+  if (result != 0) {
     return -1;
+  }
   chaps::TokenManagerClient client;
   for (size_t i = 0; i < slot_list.size(); ++i) {
     int slot = slot_list[i];
@@ -150,8 +153,9 @@ int main(int argc, char** argv) {
     result = Ping();
   } else if (load) {
     string label = "Default Token";
-    if (cl->HasSwitch("label"))
+    if (cl->HasSwitch("label")) {
       label = cl->GetSwitchValueASCII("label");
+    }
     result = LoadToken(cl->GetSwitchValueASCII("path"),
                        cl->GetSwitchValueASCII("auth"), label);
   } else if (unload) {

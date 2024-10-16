@@ -59,8 +59,9 @@ ObjectPool* ChapsFactoryImpl::CreateObjectPool(
   std::unique_ptr<ObjectPoolImpl> pool(
       new ObjectPoolImpl(this, handle_generator, slot_policy, object_store));
   CHECK(pool.get());
-  if (!pool->Init())
+  if (!pool->Init()) {
     return NULL;
+  }
   return pool.release();
 }
 

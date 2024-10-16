@@ -30,14 +30,16 @@ ChapsServiceImpl::ChapsServiceImpl(SlotManager* slot_manager)
 uint32_t ChapsServiceImpl::GetSlotList(const SecureBlob& isolate_credential,
                                        bool token_present,
                                        vector<uint64_t>* slot_list) {
-  if (!slot_list || slot_list->size() > 0)
+  if (!slot_list || slot_list->size() > 0) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   int num_slots = slot_manager_->GetSlotCount();
   for (int i = 0; i < num_slots; ++i) {
     if (slot_manager_->IsTokenAccessible(isolate_credential, i) &&
         (!token_present ||
-         slot_manager_->IsTokenPresent(isolate_credential, i)))
+         slot_manager_->IsTokenPresent(isolate_credential, i))) {
       slot_list->push_back(i);
+    }
   }
   return CKR_OK;
 }
@@ -47,8 +49,9 @@ uint32_t ChapsServiceImpl::GetSlotInfo(const SecureBlob& isolate_credential,
                                        SlotInfo* slot_info) {
   LOG_CK_RV_AND_RETURN_IF(!slot_info, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
-      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
+      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  }
   CK_SLOT_INFO ck_slot_info;
   slot_manager_->GetSlotInfo(isolate_credential, slot_id, &ck_slot_info);
   *slot_info = SlotInfoToProto(&ck_slot_info);
@@ -60,8 +63,9 @@ uint32_t ChapsServiceImpl::GetTokenInfo(const SecureBlob& isolate_credential,
                                         TokenInfo* token_info) {
   LOG_CK_RV_AND_RETURN_IF(!token_info, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
-      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
+      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  }
   LOG_CK_RV_AND_RETURN_IF(
       !slot_manager_->IsTokenPresent(isolate_credential, slot_id),
       CKR_TOKEN_NOT_PRESENT);
@@ -78,8 +82,9 @@ uint32_t ChapsServiceImpl::GetMechanismList(
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list || mechanism_list->size() > 0,
                           CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
-      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
+      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  }
   LOG_CK_RV_AND_RETURN_IF(
       !slot_manager_->IsTokenPresent(isolate_credential, slot_id),
       CKR_TOKEN_NOT_PRESENT);
@@ -100,8 +105,9 @@ uint32_t ChapsServiceImpl::GetMechanismInfo(
     MechanismInfo* mechanism_info) {
   LOG_CK_RV_AND_RETURN_IF(!mechanism_info, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
-      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
+      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  }
   LOG_CK_RV_AND_RETURN_IF(
       !slot_manager_->IsTokenPresent(isolate_credential, slot_id),
       CKR_TOKEN_NOT_PRESENT);
@@ -121,8 +127,9 @@ uint32_t ChapsServiceImpl::InitToken(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(label.size() != chaps::kTokenLabelSize,
                           CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
-      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
+      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  }
   LOG_CK_RV_AND_RETURN_IF(
       !slot_manager_->IsTokenPresent(isolate_credential, slot_id),
       CKR_TOKEN_NOT_PRESENT);
@@ -167,8 +174,9 @@ uint32_t ChapsServiceImpl::OpenSession(const SecureBlob& isolate_credential,
                                        uint64_t* session_id) {
   LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount() ||
-      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id))
+      !slot_manager_->IsTokenAccessible(isolate_credential, slot_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  }
   LOG_CK_RV_AND_RETURN_IF(
       !slot_manager_->IsTokenPresent(isolate_credential, slot_id),
       CKR_TOKEN_NOT_PRESENT);
@@ -181,8 +189,9 @@ uint32_t ChapsServiceImpl::OpenSession(const SecureBlob& isolate_credential,
 
 uint32_t ChapsServiceImpl::CloseSession(const SecureBlob& isolate_credential,
                                         uint64_t session_id) {
-  if (!slot_manager_->CloseSession(isolate_credential, session_id))
+  if (!slot_manager_->CloseSession(isolate_credential, session_id)) {
     LOG_CK_RV_AND_RETURN(CKR_SESSION_HANDLE_INVALID);
+  }
   return CKR_OK;
 }
 
@@ -199,8 +208,9 @@ uint32_t ChapsServiceImpl::GetSessionInfo(const SecureBlob& isolate_credential,
   session_info->set_state(static_cast<uint64_t>(session->GetState()));
   uint64_t flags;
   flags = CKF_SERIAL_SESSION;
-  if (!session->IsReadOnly())
+  if (!session->IsReadOnly()) {
     flags |= CKF_RW_SESSION;
+  }
   session_info->set_flags(flags);
   session_info->set_device_error(0);
   return CKR_OK;
@@ -414,8 +424,9 @@ uint32_t ChapsServiceImpl::FindObjects(const SecureBlob& isolate_credential,
                                        uint64_t session_id,
                                        uint64_t max_object_count,
                                        vector<uint64_t>* object_list) {
-  if (!object_list || object_list->size() > 0)
+  if (!object_list || object_list->size() > 0) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(
       !slot_manager_->GetSession(isolate_credential, session_id, &session),
@@ -519,8 +530,9 @@ uint32_t ChapsServiceImpl::EncryptFinal(const SecureBlob& isolate_credential,
 void ChapsServiceImpl::EncryptCancel(const SecureBlob& isolate_credential,
                                      uint64_t session_id) {
   Session* session = NULL;
-  if (!slot_manager_->GetSession(isolate_credential, session_id, &session))
+  if (!slot_manager_->GetSession(isolate_credential, session_id, &session)) {
     return;
+  }
   CHECK(session);
   session->OperationCancel(kEncrypt);
 }
@@ -603,8 +615,9 @@ uint32_t ChapsServiceImpl::DecryptFinal(const SecureBlob& isolate_credential,
 void ChapsServiceImpl::DecryptCancel(const SecureBlob& isolate_credential,
                                      uint64_t session_id) {
   Session* session = NULL;
-  if (!slot_manager_->GetSession(isolate_credential, session_id, &session))
+  if (!slot_manager_->GetSession(isolate_credential, session_id, &session)) {
     return;
+  }
   CHECK(session);
   session->OperationCancel(kDecrypt);
 }
@@ -682,8 +695,9 @@ uint32_t ChapsServiceImpl::DigestFinal(const SecureBlob& isolate_credential,
 void ChapsServiceImpl::DigestCancel(const SecureBlob& isolate_credential,
                                     uint64_t session_id) {
   Session* session = NULL;
-  if (!slot_manager_->GetSession(isolate_credential, session_id, &session))
+  if (!slot_manager_->GetSession(isolate_credential, session_id, &session)) {
     return;
+  }
   CHECK(session);
   session->OperationCancel(kDigest);
 }
@@ -758,8 +772,9 @@ uint32_t ChapsServiceImpl::SignFinal(const SecureBlob& isolate_credential,
 void ChapsServiceImpl::SignCancel(const SecureBlob& isolate_credential,
                                   uint64_t session_id) {
   Session* session = NULL;
-  if (!slot_manager_->GetSession(isolate_credential, session_id, &session))
+  if (!slot_manager_->GetSession(isolate_credential, session_id, &session)) {
     return;
+  }
   CHECK(session);
   session->OperationCancel(kSign);
 }
@@ -807,8 +822,9 @@ uint32_t ChapsServiceImpl::Verify(const SecureBlob& isolate_credential,
                                   const vector<uint8_t>& data,
                                   const vector<uint8_t>& signature) {
   CK_RV result = VerifyUpdate(isolate_credential, session_id, data);
-  if (result == CKR_OK)
+  if (result == CKR_OK) {
     result = VerifyFinal(isolate_credential, session_id, signature);
+  }
   return result;
 }
 
@@ -838,8 +854,9 @@ uint32_t ChapsServiceImpl::VerifyFinal(const SecureBlob& isolate_credential,
 void ChapsServiceImpl::VerifyCancel(const SecureBlob& isolate_credential,
                                     uint64_t session_id) {
   Session* session = NULL;
-  if (!slot_manager_->GetSession(isolate_credential, session_id, &session))
+  if (!slot_manager_->GetSession(isolate_credential, session_id, &session)) {
     return;
+  }
   CHECK(session);
   session->OperationCancel(kVerify);
 }

@@ -44,8 +44,9 @@ ObjectPoolImpl::~ObjectPoolImpl() {}
 
 bool ObjectPoolImpl::Init() {
   if (store_.get()) {
-    if (!LoadPublicObjects())
+    if (!LoadPublicObjects()) {
       return false;
+    }
   } else {
     // There are no objects to load.
     is_private_loaded_ = true;
@@ -54,26 +55,31 @@ bool ObjectPoolImpl::Init() {
 }
 
 bool ObjectPoolImpl::GetInternalBlob(int blob_id, string* blob) {
-  if (store_.get())
+  if (store_.get()) {
     return store_->GetInternalBlob(blob_id, blob);
+  }
   return false;
 }
 
 bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
-  if (store_.get())
+  if (store_.get()) {
     return store_->SetInternalBlob(blob_id, blob);
+  }
   return false;
 }
 
 bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
-  if (key.empty())
+  if (key.empty()) {
     LOG(WARNING) << "WARNING: Private object services will not be available.";
+  }
   if (store_.get() && !key.empty()) {
-    if (!store_->SetEncryptionKey(key))
+    if (!store_->SetEncryptionKey(key)) {
       return false;
+    }
     // Once we have the encryption key we can load private objects.
-    if (!LoadPrivateObjects())
+    if (!LoadPrivateObjects()) {
       LOG(WARNING) << "Failed to load private objects.";
+    }
   }
   // Signal any callers waiting for private objects that they're ready.
   is_private_loaded_ = true;
@@ -104,20 +110,24 @@ Result ObjectPoolImpl::AddObject(Object* object, bool from_external_source) {
     return Result::Failure;
   }
 
-  if (objects_.find(object) != objects_.end())
+  if (objects_.find(object) != objects_.end()) {
     return Result::Failure;
+  }
   if (store_.get()) {
     ObjectBlob serialized;
-    if (!Serialize(object, &serialized))
+    if (!Serialize(object, &serialized)) {
       return Result::Failure;
+    }
     // Parsing the serialized blob will normalize the object attribute values.
     // e.g. If the caller specified 32-bits for a CK_ULONG on a 64-bit system,
     // the value will be resized correctly.
-    if (!Parse(serialized, object))
+    if (!Parse(serialized, object)) {
       return Result::Failure;
+    }
     int store_id;
-    if (!store_->InsertObjectBlob(serialized, &store_id))
+    if (!store_->InsertObjectBlob(serialized, &store_id)) {
       return Result::Failure;
+    }
     object->set_store_id(store_id);
   }
   object->set_handle(handle_generator_->CreateHandle());
@@ -127,15 +137,18 @@ Result ObjectPoolImpl::AddObject(Object* object, bool from_external_source) {
 }
 
 Result ObjectPoolImpl::Delete(const Object* object) {
-  if (objects_.find(object) == objects_.end())
+  if (objects_.find(object) == objects_.end()) {
     return Result::Failure;
+  }
   if (store_.get()) {
     // If it's a private object we need to wait until private objects have been
     // loaded.
-    if (object->IsPrivate() && !is_private_loaded_)
+    if (object->IsPrivate() && !is_private_loaded_) {
       return Result::WaitForPrivateObjects;
-    if (!store_->DeleteObjectBlob(object->store_id()))
+    }
+    if (!store_->DeleteObjectBlob(object->store_id())) {
       return Result::Failure;
+    }
   }
   handle_object_map_.erase(object->handle());
   objects_.erase(object);
@@ -145,8 +158,9 @@ Result ObjectPoolImpl::Delete(const Object* object) {
 Result ObjectPoolImpl::DeleteAll() {
   objects_.clear();
   handle_object_map_.clear();
-  if (store_.get())
+  if (store_.get()) {
     return store_->DeleteAllObjectBlobs() ? Result::Success : Result::Failure;
+  }
   return Result::Success;
 }
 
@@ -158,11 +172,13 @@ Result ObjectPoolImpl::Find(const Object* search_template,
         search_template->IsPrivate()) ||
        (search_template->IsAttributePresent(CKA_CLASS) &&
         search_template->GetObjectClass() == CKO_PRIVATE_KEY)) &&
-      !is_private_loaded_)
+      !is_private_loaded_) {
     return Result::WaitForPrivateObjects;
+  }
   for (ObjectSet::iterator it = objects_.begin(); it != objects_.end(); ++it) {
-    if (Matches(search_template, *it))
+    if (Matches(search_template, *it)) {
       matching_objects->push_back(*it);
+    }
   }
   return Result::Success;
 }
@@ -170,8 +186,9 @@ Result ObjectPoolImpl::Find(const Object* search_template,
 Result ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
   CHECK(object);
   HandleObjectMap::iterator it = handle_object_map_.find(handle);
-  if (it == handle_object_map_.end())
+  if (it == handle_object_map_.end()) {
     return Result::Failure;
+  }
   *object = it->second.get();
   return Result::Success;
 }
@@ -181,18 +198,22 @@ Object* ObjectPoolImpl::GetModifiableObject(const Object* object) {
 }
 
 Result ObjectPoolImpl::Flush(const Object* object) {
-  if (objects_.find(object) == objects_.end())
+  if (objects_.find(object) == objects_.end()) {
     return Result::Failure;
+  }
   if (store_.get()) {
     ObjectBlob serialized;
-    if (!Serialize(object, &serialized))
+    if (!Serialize(object, &serialized)) {
       return Result::Failure;
+    }
     // If it's a private object we need to wait until private objects have been
     // loaded.
-    if (object->IsPrivate() && !is_private_loaded_)
+    if (object->IsPrivate() && !is_private_loaded_) {
       return Result::WaitForPrivateObjects;
-    if (!store_->UpdateObjectBlob(object->store_id(), serialized))
+    }
+    if (!store_->UpdateObjectBlob(object->store_id(), serialized)) {
       return Result::Failure;
+    }
   }
   return Result::Success;
 }
@@ -206,10 +227,12 @@ bool ObjectPoolImpl::Matches(const Object* object_template,
   const AttributeMap* attributes = object_template->GetAttributeMap();
   AttributeMap::const_iterator it;
   for (it = attributes->begin(); it != attributes->end(); ++it) {
-    if (!object->IsAttributePresent(it->first))
+    if (!object->IsAttributePresent(it->first)) {
       return false;
-    if (it->second != object->GetAttributeString(it->first))
+    }
+    if (it->second != object->GetAttributeString(it->first)) {
       return false;
+    }
   }
   return true;
 }
@@ -288,16 +311,18 @@ bool ObjectPoolImpl::LoadBlobs(const map<int, ObjectBlob>& object_blobs) {
 bool ObjectPoolImpl::LoadPublicObjects() {
   CHECK(store_.get());
   map<int, ObjectBlob> object_blobs;
-  if (!store_->LoadPublicObjectBlobs(&object_blobs))
+  if (!store_->LoadPublicObjectBlobs(&object_blobs)) {
     return false;
+  }
   return LoadBlobs(object_blobs);
 }
 
 bool ObjectPoolImpl::LoadPrivateObjects() {
   CHECK(store_.get());
   map<int, ObjectBlob> object_blobs;
-  if (!store_->LoadPrivateObjectBlobs(&object_blobs))
+  if (!store_->LoadPrivateObjectBlobs(&object_blobs)) {
     return false;
+  }
   return LoadBlobs(object_blobs);
 }
 

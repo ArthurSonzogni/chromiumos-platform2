@@ -94,14 +94,18 @@ bool ObjectPolicyCommon::IsObjectComplete() {
 
 void ObjectPolicyCommon::SetDefaultAttributes() {
   CHECK(object_);
-  if (!object_->IsAttributePresent(CKA_TOKEN))
+  if (!object_->IsAttributePresent(CKA_TOKEN)) {
     object_->SetAttributeBool(CKA_TOKEN, false);
-  if (!object_->IsAttributePresent(CKA_PRIVATE))
+  }
+  if (!object_->IsAttributePresent(CKA_PRIVATE)) {
     object_->SetAttributeBool(CKA_PRIVATE, IsPrivateClass());
-  if (!object_->IsAttributePresent(CKA_MODIFIABLE))
+  }
+  if (!object_->IsAttributePresent(CKA_MODIFIABLE)) {
     object_->SetAttributeBool(CKA_MODIFIABLE, true);
-  if (!object_->IsAttributePresent(CKA_LABEL))
+  }
+  if (!object_->IsAttributePresent(CKA_LABEL)) {
     object_->SetAttributeString(CKA_LABEL, "");
+  }
 }
 
 void ObjectPolicyCommon::AddPolicies(const AttributePolicy* policies,

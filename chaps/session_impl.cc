@@ -117,11 +117,13 @@ CK_RV DeriveKeySP800108Software(const Object& base_key,
   }
   // For AES and general secret keys we read the key length from the supplied
   // template.
-  if (!derived_key.IsAttributePresent(CKA_VALUE_LEN))
+  if (!derived_key.IsAttributePresent(CKA_VALUE_LEN)) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
   CK_ULONG key_length = derived_key.GetAttributeInt(CKA_VALUE_LEN, 0);
-  if (key_length < 1)
+  if (key_length < 1) {
     return CKR_KEY_SIZE_RANGE;
+  }
 
   // Parse CK_PRF_DATA_PARAM assuming that it has only two entries, representing
   // the label, and context in order.
@@ -399,8 +401,9 @@ crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
   // Start parsing EC_PARAMS
   string ec_params = key_object->GetAttributeString(CKA_EC_PARAMS);
   crypto::ScopedEC_KEY key = chaps::CreateECCKeyFromEC_PARAMS(ec_params);
-  if (key == nullptr)
+  if (key == nullptr) {
     return nullptr;
+  }
 
   // Start parsing EC_POINT
   // DER decode EC_POINT to OCT_STRING
@@ -408,15 +411,17 @@ crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
   const unsigned char* buf = chaps::ConvertStringToByteBuffer(pub_data.data());
   ScopedASN1_OCTET_STRING os(
       d2i_ASN1_OCTET_STRING(nullptr, &buf, pub_data.size()));
-  if (os == nullptr)
+  if (os == nullptr) {
     return nullptr;
+  }
 
   // Convert OCT_STRING to *EC_KEY
   buf = os->data;
   EC_KEY* key_ptr = key.get();
   key_ptr = o2i_ECPublicKey(&key_ptr, &buf, os->length);
-  if (key_ptr == nullptr)
+  if (key_ptr == nullptr) {
     return nullptr;
+  }
   CHECK_EQ(key_ptr, key.get());
 
   if (!EC_KEY_check_key(key.get())) {
@@ -432,8 +437,9 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object& key_object) {
   // Parse EC_PARAMS
   string ec_params = key_object.GetAttributeString(CKA_EC_PARAMS);
   crypto::ScopedEC_KEY key = chaps::CreateECCKeyFromEC_PARAMS(ec_params);
-  if (key == nullptr)
+  if (key == nullptr) {
     return nullptr;
+  }
 
   crypto::ScopedBIGNUM d(BN_new());
   if (!d) {
@@ -447,18 +453,21 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object& key_object) {
     return nullptr;
   }
 
-  if (!EC_KEY_set_private_key(key.get(), d.get()))
+  if (!EC_KEY_set_private_key(key.get(), d.get())) {
     return nullptr;
+  }
 
   // OpenSSL will not set public key field. Need to manually compute.
   const EC_GROUP* group = EC_KEY_get0_group(key.get());
-  if (group == nullptr)
+  if (group == nullptr) {
     return nullptr;
+  }
 
   crypto::ScopedEC_POINT pub_key(EC_POINT_new(group));
   EC_POINT_mul(group, pub_key.get(), d.get(), nullptr, nullptr, nullptr);
-  if (!EC_KEY_set_public_key(key.get(), pub_key.get()))
+  if (!EC_KEY_set_public_key(key.get(), pub_key.get())) {
     return nullptr;
+  }
 
   if (!EC_KEY_check_key(key.get())) {
     LOG(ERROR) << __func__
@@ -543,11 +552,13 @@ size_t GetGroupOrderLengthFromEcKey(const crypto::ScopedEC_KEY& key) {
   }
 
   const EC_GROUP* group = EC_KEY_get0_group(key.get());
-  if (group == nullptr)
+  if (group == nullptr) {
     return 0;
+  }
 
-  if (!EC_GROUP_get_order(group, order.get(), nullptr))
+  if (!EC_GROUP_get_order(group, order.get(), nullptr)) {
     return 0;
+  }
 
   return BN_num_bytes(order.get());
 }
@@ -821,10 +832,11 @@ hwsec::SigningOptions ToHwsecSigningOptions(
 AllowDecrypt IsHwsecObjectAllowDecrypt(const Object& object) {
   // For a hwsec key unwrapping is same as decrypting.
   if (object.GetAttributeBool(CKA_DECRYPT, false) ||
-      object.GetAttributeBool(CKA_UNWRAP, false))
+      object.GetAttributeBool(CKA_UNWRAP, false)) {
     return AllowDecrypt::kAllow;
-  else
+  } else {
     return AllowDecrypt::kNotAllow;
+  }
 }
 
 std::optional<string> AESKeyWrapWithPadding(bool is_encrypt,
@@ -941,8 +953,9 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
                               int object_handle,
                               int* new_object_handle) {
   const Object* orig_object = nullptr;
-  if (!GetObject(object_handle, &orig_object))
+  if (!GetObject(object_handle, &orig_object)) {
     return CKR_OBJECT_HANDLE_INVALID;
+  }
   CHECK(orig_object);
   return CreateObjectInternal(attributes, num_attributes, orig_object,
                               new_object_handle);
@@ -950,8 +963,9 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
 
 CK_RV SessionImpl::DestroyObject(int object_handle) {
   const Object* object = nullptr;
-  if (!GetObject(object_handle, &object))
+  if (!GetObject(object_handle, &object)) {
     return CKR_OBJECT_HANDLE_INVALID;
+  }
   CHECK(object);
   ObjectPool* pool =
       object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
@@ -961,8 +975,9 @@ CK_RV SessionImpl::DestroyObject(int object_handle) {
 bool SessionImpl::GetObject(int object_handle, const Object** object) {
   CHECK(object);
   if (token_object_pool_->FindByHandle(object_handle, object) ==
-      ObjectPool::Result::Success)
+      ObjectPool::Result::Success) {
     return true;
+  }
   return session_object_pool_->FindByHandle(object_handle, object) ==
          ObjectPool::Result::Success;
 }
@@ -970,8 +985,9 @@ bool SessionImpl::GetObject(int object_handle, const Object** object) {
 bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
   CHECK(object);
   const Object* const_object;
-  if (!GetObject(object_handle, &const_object))
+  if (!GetObject(object_handle, &const_object)) {
     return false;
+  }
   ObjectPool* pool = const_object->IsTokenObject() ? token_object_pool_
                                                    : session_object_pool_.get();
   *object = pool->GetModifiableObject(const_object);
@@ -987,8 +1003,9 @@ CK_RV SessionImpl::FlushModifiableObject(Object* object) {
 
 CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                    int num_attributes) {
-  if (find_results_valid_)
+  if (find_results_valid_) {
     return CKR_OPERATION_ACTIVE;
+  }
   std::unique_ptr<Object> search_template(factory_->CreateObject());
   CHECK(search_template.get());
   search_template->SetAttributes(attributes, num_attributes);
@@ -996,14 +1013,16 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       search_template->IsTokenObject()) {
     auto res = token_object_pool_->Find(search_template.get(), &objects);
-    if (!IsSuccess(res))
+    if (!IsSuccess(res)) {
       return ResultToRV(res, CKR_GENERAL_ERROR);
+    }
   }
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       !search_template->IsTokenObject()) {
     auto res = session_object_pool_->Find(search_template.get(), &objects);
-    if (!IsSuccess(res))
+    if (!IsSuccess(res)) {
       return ResultToRV(res, CKR_GENERAL_ERROR);
+    }
   }
   find_results_.clear();
   find_results_offset_ = 0;
@@ -1017,12 +1036,14 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
 CK_RV SessionImpl::FindObjects(int max_object_count,
                                vector<int>* object_handles) {
   CHECK(object_handles);
-  if (!find_results_valid_)
+  if (!find_results_valid_) {
     return CKR_OPERATION_NOT_INITIALIZED;
+  }
   size_t end_offset =
       find_results_offset_ + static_cast<size_t>(max_object_count);
-  if (end_offset > find_results_.size())
+  if (end_offset > find_results_.size()) {
     end_offset = find_results_.size();
+  }
   for (size_t i = find_results_offset_; i < end_offset; ++i) {
     object_handles->push_back(find_results_[i]);
   }
@@ -1031,8 +1052,9 @@ CK_RV SessionImpl::FindObjects(int max_object_count,
 }
 
 CK_RV SessionImpl::FindObjectsFinal() {
-  if (!find_results_valid_)
+  if (!find_results_valid_) {
     return CKR_OPERATION_NOT_INITIALIZED;
+  }
   find_results_valid_ = false;
   return CKR_OK;
 }
@@ -1128,8 +1150,9 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
       EVP_DigestInit_ex(context->digest_context_.get(), digest, nullptr);
       context->is_digest_ = true;
     }
-    if (IsRSA(mechanism) || IsECC(mechanism))
+    if (IsRSA(mechanism) || IsECC(mechanism)) {
       context->key_ = key;
+    }
     context->is_valid_ = true;
   } else {
     NOTREACHED_IN_MIGRATION();
@@ -1180,8 +1203,9 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
   OperationContext* context = &operation_context_[operation];
   if (context->is_cipher_) {
     CK_RV rv = CipherUpdate(context, data_in, required_out_length, data_out);
-    if ((rv != CKR_OK) && (rv != CKR_BUFFER_TOO_SMALL))
+    if ((rv != CKR_OK) && (rv != CKR_BUFFER_TOO_SMALL)) {
       OperationCancel(operation);
+    }
     return rv;
   } else if (context->is_digest_) {
     EVP_DigestUpdate(context->digest_context_.get(), data_in.data(),
@@ -1193,8 +1217,9 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
     // We don't need to process now; just queue the data.
     context->data_ += data_in;
   }
-  if (required_out_length)
+  if (required_out_length) {
     *required_out_length = 0;
+  }
   return CKR_OK;
 }
 
@@ -1261,8 +1286,9 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
   if (!context->is_finished_) {
     if (context->is_cipher_) {
       CK_RV result = CipherFinal(context);
-      if (result != CKR_OK)
+      if (result != CKR_OK) {
         return result;
+      }
     } else if (context->is_digest_) {
       unsigned char buffer[kMaxDigestOutputBytes];
       unsigned int out_length = 0;
@@ -1279,19 +1305,23 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
     // digest before finishing the RSA/ECC computation.
     if (IsRSA(context->mechanism_)) {
       if (operation == kEncrypt) {
-        if (!RSAEncrypt(context))
+        if (!RSAEncrypt(context)) {
           return CKR_FUNCTION_FAILED;
+        }
       } else if (operation == kDecrypt) {
-        if (!RSADecrypt(context))
+        if (!RSADecrypt(context)) {
           return CKR_FUNCTION_FAILED;
+        }
       } else if (operation == kSign) {
-        if (!RSASign(context))
+        if (!RSASign(context)) {
           return CKR_FUNCTION_FAILED;
+        }
       }
     } else if (IsECC(context->mechanism_)) {
       if (operation == kSign) {
-        if (!ECCSign(context))
+        if (!ECCSign(context)) {
           return CKR_FUNCTION_FAILED;
+        }
       }
     }
     context->is_finished_ = true;
@@ -1315,8 +1345,9 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
                                    /*clear_context=*/false);
   chaps_metrics_->ReportChapsSessionStatus(OperationToString(kVerify),
                                            static_cast<int>(result));
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     return result;
+  }
 
   base::ScopedClosureRunner context_clear_runner(
       base::BindOnce(&OperationContext::Clear, base::Unretained(context)));
@@ -1325,12 +1356,14 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
   if (context->is_hmac_) {
     // The data_out contents will be the computed HMAC. To verify an HMAC, it is
     // recomputed and literally compared.
-    if (signature.length() != data_out.length())
+    if (signature.length() != data_out.length()) {
       return CKR_SIGNATURE_LEN_RANGE;
+    }
 
     if (0 != brillo::SecureMemcmp(signature.data(), data_out.data(),
-                                  signature.length()))
+                                  signature.length())) {
       return CKR_SIGNATURE_INVALID;
+    }
 
     return CKR_OK;
   } else if (IsRSA(context->mechanism_)) {
@@ -1408,44 +1441,51 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
   std::unique_ptr<Object> object(factory_->CreateObject());
   CHECK(object.get());
   CK_RV result = object->SetAttributes(attributes, num_attributes);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     return result;
+  }
   CK_KEY_TYPE key_type = 0;
   string key_material;
   switch (mechanism) {
     case CKM_DES_KEY_GEN: {
       key_type = CKK_DES;
-      if (!GenerateDESKey(&key_material))
+      if (!GenerateDESKey(&key_material)) {
         return CKR_FUNCTION_FAILED;
+      }
       break;
     }
     case CKM_DES3_KEY_GEN: {
       key_type = CKK_DES3;
       string des[3];
       for (int i = 0; i < 3; ++i) {
-        if (!GenerateDESKey(&des[i]))
+        if (!GenerateDESKey(&des[i])) {
           return CKR_FUNCTION_FAILED;
+        }
       }
       key_material = des[0] + des[1] + des[2];
       break;
     }
     case CKM_AES_KEY_GEN: {
       key_type = CKK_AES;
-      if (!object->IsAttributePresent(CKA_VALUE_LEN))
+      if (!object->IsAttributePresent(CKA_VALUE_LEN)) {
         return CKR_TEMPLATE_INCOMPLETE;
+      }
       CK_ULONG key_length = object->GetAttributeInt(CKA_VALUE_LEN, 0);
-      if (key_length != 16 && key_length != 24 && key_length != 32)
+      if (key_length != 16 && key_length != 24 && key_length != 32) {
         return CKR_KEY_SIZE_RANGE;
+      }
       key_material = GenerateRandomSoftware(key_length);
       break;
     }
     case CKM_GENERIC_SECRET_KEY_GEN: {
       key_type = CKK_GENERIC_SECRET;
-      if (!object->IsAttributePresent(CKA_VALUE_LEN))
+      if (!object->IsAttributePresent(CKA_VALUE_LEN)) {
         return CKR_TEMPLATE_INCOMPLETE;
+      }
       CK_ULONG key_length = object->GetAttributeInt(CKA_VALUE_LEN, 0);
-      if (key_length < 1)
+      if (key_length < 1) {
         return CKR_KEY_SIZE_RANGE;
+      }
       key_material = GenerateRandomSoftware(key_length);
       break;
     }
@@ -1461,13 +1501,15 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
   object->SetAttributeBool(CKA_LOCAL, true);
   object->SetAttributeInt(CKA_KEY_GEN_MECHANISM, mechanism);
   result = object->FinalizeNewObject();
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     return result;
+  }
   ObjectPool* pool =
       object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
-  if (!IsSuccess(pool_res))
+  if (!IsSuccess(pool_res)) {
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  }
   *new_key_handle = object.release()->handle();
   return CKR_OK;
 }
@@ -1493,12 +1535,14 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   // TODO(menghuan): don't copy the attribute that doesn't support
   CK_RV result =
       public_object->SetAttributes(public_attributes, num_public_attributes);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     return result;
+  }
   result =
       private_object->SetAttributes(private_attributes, num_private_attributes);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     return result;
+  }
 
   // Get the object pool
   ObjectPool* public_pool =
@@ -1700,8 +1744,9 @@ CK_RV SessionImpl::WrapKeyWithChaps(const std::string& mechanism_parameter,
   }
   auto data = AESKeyWrapWithPadding(/* is_encrypt */ true, derived_aes_key,
                                     serialized_key_object);
-  if (data == std::nullopt)
+  if (data == std::nullopt) {
     return CKR_FUNCTION_FAILED;
+  }
   const string& wrapped_target_key = data.value();
 
   // Zeroizes the temporary AES key
@@ -1770,15 +1815,17 @@ CK_RV SessionImpl::UnwrapKeyInternal(CK_MECHANISM_TYPE mechanism,
   object->SetAttributeBool(CKA_LOCAL, false);
   object->SetAttributeBool(CKA_ALWAYS_SENSITIVE, false);
   object->SetAttributeBool(CKA_NEVER_EXTRACTABLE, false);
-  if (!object->IsAttributePresent(CKA_EXTRACTABLE))
+  if (!object->IsAttributePresent(CKA_EXTRACTABLE)) {
     object->SetAttributeBool(CKA_EXTRACTABLE, true);
+  }
 
   LOG_CK_RV_AND_RETURN_IF_ERR(object->FinalizeNewObject());
   ObjectPool* pool =
       object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
-  if (!IsSuccess(pool_res))
+  if (!IsSuccess(pool_res)) {
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  }
   *new_key_handle = object.release()->handle();
   return CKR_OK;
 }
@@ -1859,8 +1906,9 @@ CK_RV SessionImpl::UnwrapKeyWithChaps(const std::string& mechanism_parameter,
   // CKM_AES_KEY_WRAP_KWP.
   auto data = AESKeyWrapWithPadding(/* is_encrypt */ false, derived_aes_key,
                                     wrapped_target_key);
-  if (data == std::nullopt)
+  if (data == std::nullopt) {
     return CKR_FUNCTION_FAILED;
+  }
 
   AttributeList attribute_list;
   attribute_list.ParseFromString(data.value());
@@ -1885,8 +1933,9 @@ CK_RV SessionImpl::UnwrapKeyWithChaps(const std::string& mechanism_parameter,
   ObjectPool* pool =
       object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
-  if (!IsSuccess(pool_res))
+  if (!IsSuccess(pool_res)) {
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  }
   *new_key_handle = object.release()->handle();
 
   // Zeroizes the temporary AES key.
@@ -1933,14 +1982,16 @@ CK_RV SessionImpl::DeriveKeyRaw(CK_MECHANISM_TYPE mechanism,
                               CKR_TEMPLATE_INCONSISTENT);
       LOG_CK_RV_AND_RETURN_IF_ERR(DeriveKeySP800108Software(
           base_key, *object.get(), mechanism_parameter, &key_material));
-      if (base_key.GetAttributeBool(CKA_ALWAYS_SENSITIVE, false))
+      if (base_key.GetAttributeBool(CKA_ALWAYS_SENSITIVE, false)) {
         object->SetAttributeBool(
             CKA_ALWAYS_SENSITIVE,
             base_key.GetAttributeBool(CKA_SENSITIVE, false));
-      if (base_key.GetAttributeBool(CKA_NEVER_EXTRACTABLE, false))
+      }
+      if (base_key.GetAttributeBool(CKA_NEVER_EXTRACTABLE, false)) {
         object->SetAttributeBool(
             CKA_NEVER_EXTRACTABLE,
             !base_key.GetAttributeBool(CKA_EXTRACTABLE, false));
+      }
       break;
     }
     default: {
@@ -1954,8 +2005,9 @@ CK_RV SessionImpl::DeriveKeyRaw(CK_MECHANISM_TYPE mechanism,
   ObjectPool* pool =
       object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
-  if (!IsSuccess(pool_res))
+  if (!IsSuccess(pool_res)) {
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  }
   *new_key_handle = object.release()->handle();
   return CKR_OK;
 }
@@ -2074,18 +2126,21 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   CK_RV result = CKR_OK;
   if (copy_from_object) {
     result = object->Copy(copy_from_object);
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       return result;
+    }
   }
   result = object->SetAttributes(attributes, num_attributes);
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
     return result;
+  }
 
   bool is_token_object = object->IsTokenObject();
   if (is_token_object) {
     result = WrapPrivateKey(*object.get());
-    if (result != CKR_OK)
+    if (result != CKR_OK) {
       return result;
+    }
   }
 
   // Finalize the object, whether it's new or copied.
@@ -2101,8 +2156,9 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   ObjectPool* pool =
       is_token_object ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
-  if (!IsSuccess(pool_res))
+  if (!IsSuccess(pool_res)) {
     return ResultToRV(pool_res, CKR_GENERAL_ERROR);
+  }
   *new_object_handle = object.release()->handle();
   return CKR_OK;
 }
@@ -2127,17 +2183,20 @@ CK_RV SessionImpl::GenerateRSAKeyPair(Object* public_object,
                                       Object* private_object) {
   // CKA_PUBLIC_EXPONENT is optional. The default is 65537 (0x10001).
   string public_exponent("\x01\x00\x01", 3);
-  if (public_object->IsAttributePresent(CKA_PUBLIC_EXPONENT))
+  if (public_object->IsAttributePresent(CKA_PUBLIC_EXPONENT)) {
     public_exponent = public_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
+  }
   public_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
   private_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
 
   // CKA_MODULUS_BITS is requried
-  if (!public_object->IsAttributePresent(CKA_MODULUS_BITS))
+  if (!public_object->IsAttributePresent(CKA_MODULUS_BITS)) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
   CK_ULONG modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
-  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits)
+  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits) {
     return CKR_KEY_SIZE_RANGE;
+  }
 
   // Set CKA_KEY_TYPE
   public_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
@@ -2152,13 +2211,15 @@ CK_RV SessionImpl::GenerateRSAKeyPair(Object* public_object,
   if (is_using_hwsec) {
     // Use HWSec to generate RSA key
     if (!GenerateRSAKeyPairHwsec(modulus_bits, public_exponent, public_object,
-                                 private_object))
+                                 private_object)) {
       return CKR_FUNCTION_FAILED;
+    }
   } else {
     // Use software to generate RSA key
     if (!GenerateRSAKeyPairSoftware(modulus_bits, public_exponent,
-                                    public_object, private_object))
+                                    public_object, private_object)) {
       return CKR_FUNCTION_FAILED;
+    }
   }
   return CKR_OK;
 }
@@ -2167,8 +2228,9 @@ bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
                                              const string& public_exponent,
                                              Object* public_object,
                                              Object* private_object) {
-  if (public_exponent.length() > sizeof(uint32_t) || public_exponent.empty())
+  if (public_exponent.length() > sizeof(uint32_t) || public_exponent.empty()) {
     return false;
+  }
   crypto::ScopedRSA key(RSA_new());
   crypto::ScopedBIGNUM e(BN_new());
   if (!key || !e) {
@@ -2266,8 +2328,9 @@ bool SessionImpl::GenerateRSAKeyPairHwsec(int modulus_bits,
 CK_RV SessionImpl::GenerateECCKeyPair(Object* public_object,
                                       Object* private_object) {
   // CKA_EC_PARAMS is requried
-  if (!public_object->IsAttributePresent(CKA_EC_PARAMS))
+  if (!public_object->IsAttributePresent(CKA_EC_PARAMS)) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
 
   crypto::ScopedEC_KEY key = CreateECCKeyFromEC_PARAMS(
       public_object->GetAttributeString(CKA_EC_PARAMS));
@@ -2291,8 +2354,9 @@ CK_RV SessionImpl::GenerateECCKeyPair(Object* public_object,
 
   // Get NID from key
   const EC_GROUP* group = EC_KEY_get0_group(key.get());
-  if (group == nullptr)
+  if (group == nullptr) {
     return CKR_FUNCTION_FAILED;
+  }
   int curve_nid = EC_GROUP_get_curve_name(group);
 
   bool is_using_hwsec =
@@ -2413,8 +2477,9 @@ CK_RV SessionImpl::GetOperationOutput(OperationContext* context,
   int out_length = context->data_.length();
   int max_length = *required_out_length;
   *required_out_length = out_length;
-  if (max_length < out_length)
+  if (max_length < out_length) {
     return CKR_BUFFER_TOO_SMALL;
+  }
   *data_out = context->data_;
   context->data_.clear();
   return CKR_OK;
@@ -2607,8 +2672,9 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
                              const string& digest,
                              const string& signature) {
   if (context->key_->GetAttributeString(CKA_MODULUS).length() !=
-      signature.length())
+      signature.length()) {
     return CKR_SIGNATURE_LEN_RANGE;
+  }
   crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
   if (!rsa) {
     LOG(ERROR) << "Failed to create RSA key for verification.";
@@ -2616,8 +2682,9 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
   }
   std::unique_ptr<RSASignerVerifier> verifier =
       RSASignerVerifier::GetForMechanism(context->mechanism_);
-  if (!verifier)
+  if (!verifier) {
     return CKR_ARGUMENTS_BAD;
+  }
 
   return verifier->Verify(std::move(rsa), context, digest, signature);
 }
@@ -2627,11 +2694,13 @@ bool SessionImpl::ECCSign(OperationContext* context) {
   if (context->key_->IsTokenObject() &&
       context->key_->IsAttributePresent(kKeyBlobAttribute)) {
     if (!ECCSignHwsec(context->data_, context->mechanism_, *context->key_,
-                      &signature))
+                      &signature)) {
       return false;
+    }
   } else {
-    if (!ECCSignSoftware(context->data_, *context->key_, &signature))
+    if (!ECCSignSoftware(context->data_, *context->key_, &signature)) {
       return false;
+    }
   }
   context->data_ = signature;
   return true;
@@ -2752,8 +2821,9 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object& object) {
   if (!object.IsAttributePresent(CKA_PUBLIC_EXPONENT) ||
       !object.IsAttributePresent(CKA_MODULUS) ||
       !(object.IsAttributePresent(CKA_PRIME_1) ||
-        object.IsAttributePresent(CKA_PRIME_2)))
+        object.IsAttributePresent(CKA_PRIME_2))) {
     return CKR_TEMPLATE_INCOMPLETE;
+  }
 
   // If HWSec doesn't support, fall back to software.
   int key_size_bits = object.GetAttributeString(CKA_MODULUS).length() * 8;
