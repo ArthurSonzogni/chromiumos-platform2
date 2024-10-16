@@ -158,7 +158,8 @@ bool InstallAttributes::Init() {
         status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmUnavailable:
-        NOTREACHED_IN_MIGRATION() << "Should never call lockbox when TPM is unavailable.";
+        NOTREACHED_IN_MIGRATION()
+            << "Should never call lockbox when TPM is unavailable.";
         status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmError:
@@ -183,8 +184,9 @@ bool InstallAttributes::Init() {
 int InstallAttributes::FindIndexByName(const std::string& name) const {
   std::string name_str(name);
   for (int i = 0; i < attributes_->attributes_size(); ++i) {
-    if (attributes_->attributes(i).name().compare(name_str) == 0)
+    if (attributes_->attributes(i).name().compare(name_str) == 0) {
       return i;
+    }
   }
   return -1;
 }
@@ -192,8 +194,9 @@ int InstallAttributes::FindIndexByName(const std::string& name) const {
 bool InstallAttributes::Get(const std::string& name,
                             brillo::Blob* value) const {
   int index = FindIndexByName(name);
-  if (index == -1)
+  if (index == -1) {
     return false;
+  }
   LOG(INFO) << __func__ << ": index value is " << index;
   return GetByIndex(index, NULL, value);
 }
