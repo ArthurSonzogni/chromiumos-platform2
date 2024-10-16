@@ -83,8 +83,9 @@ Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
