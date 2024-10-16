@@ -104,8 +104,9 @@ bool DevInstall::IsDevMode() const {
 }
 
 bool DevInstall::PromptUser(std::istream& input, const std::string& prompt) {
-  if (yes_)
+  if (yes_) {
     return true;
+  }
 
   std::cout << prompt << "? (y/N) " << std::flush;
 
@@ -135,8 +136,9 @@ bool DevInstall::DeletePath(const struct stat& base_stat,
       }
 
       // Clear the contents of this directory.
-      if (!DeletePath(base_stat, current))
+      if (!DeletePath(base_stat, current)) {
         return false;
+      }
 
       // Clear this directory itself.
       if (rmdir(current.value().c_str())) {
@@ -187,18 +189,20 @@ bool DevInstall::ClearStateDir(const base::FilePath& dir) {
   // Normally we'd use base::DeleteFile, but we don't want to traverse mounts.
   struct stat base_stat;
   if (stat(dir.value().c_str(), &base_stat)) {
-    if (errno == ENOENT)
+    if (errno == ENOENT) {
       return true;
+    }
 
     PLOG(ERROR) << "Could not access " << dir.value();
     return false;
   }
 
   bool success = DeletePath(base_stat, dir);
-  if (success)
+  if (success) {
     LOG(INFO) << "Removed all installed packages.";
-  else
+  } else {
     LOG(ERROR) << "Deleting " << dir.value() << " failed";
+  }
   return success;
 }
 
@@ -238,8 +242,9 @@ bool DevInstall::InitializeStateDir(const base::FilePath& dir) {
   // Set up symlinks for etc/{group,passwd}, so that packages can look up users
   // and groups correctly.
   const base::FilePath etc = usr.Append("etc");
-  if (!CreateMissingDirectory(etc))
+  if (!CreateMissingDirectory(etc)) {
     return false;
+  }
 
   // Create /usr/local/etc/group -> /etc/group symlink.
   const base::FilePath group = etc.Append("group");
@@ -269,13 +274,15 @@ bool DevInstall::LoadRuntimeSettings(const base::FilePath& lsb_release) {
     return true;
   }
 
-  if (!store.GetString(kLsbChromeOsDevserver, &devserver_url_))
+  if (!store.GetString(kLsbChromeOsDevserver, &devserver_url_)) {
     devserver_url_.clear();
+  }
 
   if (store.GetString(kLsbChromeOsReleaseBoard, &board_)) {
     size_t pos = board_.find("-signed-");
-    if (pos != std::string::npos)
+    if (pos != std::string::npos) {
       board_.erase(pos);
+    }
   } else {
     board_.clear();
   }
@@ -289,8 +296,9 @@ bool DevInstall::LoadRuntimeSettings(const base::FilePath& lsb_release) {
 }
 
 void DevInstall::InitializeBinhost() {
-  if (!binhost_.empty())
+  if (!binhost_.empty()) {
     return;
+  }
 
   if (!devserver_url_.empty()) {
     LOG(INFO) << "Devserver URL set to: " << devserver_url_;
@@ -328,8 +336,9 @@ bool DevInstall::DownloadAndInstallBootstrapPackage(
   const base::FilePath pkg = binpkg_dir.Append(package + ".tbz2");
   const base::FilePath pkgdir = pkg.DirName();
 
-  if (!CreateMissingDirectory(pkgdir))
+  if (!CreateMissingDirectory(pkgdir)) {
     return false;
+  }
 
   LOG(INFO) << "Downloading " << url;
   brillo::ProcessImpl curl;
@@ -374,8 +383,9 @@ bool DevInstall::DownloadAndInstallBootstrapPackages(
     return false;
   }
   for (const std::string& line : lines) {
-    if (!DownloadAndInstallBootstrapPackage(line))
+    if (!DownloadAndInstallBootstrapPackage(line)) {
       return false;
+    }
   }
 
   // The python ebuilds set up symlinks in pkg_postinst, but we don't run those
@@ -411,19 +421,22 @@ bool DevInstall::ConfigurePortage() {
   const base::FilePath profile_dir = portage_dir.Append("make.profile");
 
   // Copy emerge configuration to /usr/local.
-  if (!CreateMissingDirectory(profile_dir))
+  if (!CreateMissingDirectory(profile_dir)) {
     return false;
+  }
 
   // Point our local profile to the rootfs one.  This allows us to stack.
   const base::FilePath parent_path = profile_dir.Append("parent");
   const std::string parent_data{"/etc/portage/make.profile\n"};
-  if (!WriteFile(parent_path, parent_data))
+  if (!WriteFile(parent_path, parent_data)) {
     return false;
+  }
 
   // Install the package.provided entries for the rootfs.
   const base::FilePath provided_path = profile_dir.Append("package.provided");
-  if (!CreateMissingDirectory(provided_path))
+  if (!CreateMissingDirectory(provided_path)) {
     return false;
+  }
   const base::FilePath rootfs_provided{kRootfsProvidedDir};
   base::FileEnumerator profile_iter(rootfs_provided, false,
                                     base::FileEnumerator::FILES);
@@ -446,8 +459,9 @@ bool DevInstall::ConfigurePortage() {
                                    "\"\n"
                                    "PORTAGE_BINHOST=\"" +
                                    binhost_ + "\"\n"};
-  if (!WriteFile(make_conf_path, make_conf_data))
+  if (!WriteFile(make_conf_path, make_conf_data)) {
     return false;
+  }
 
   // Hack in LD_LIBRARY_PATH within portage env.  Otherwise builds will filter
   // it out which breaks python as it can't find its libs in /usr/local.  This
@@ -536,8 +550,9 @@ bool DevInstall::InstallExtraPackages() {
   emerge.SetSearchPath(true);
   emerge.AddArg("emerge");
   int jobs = jobs_;
-  if (jobs == 0)
+  if (jobs == 0) {
     jobs = std::max(1L, sysconf(_SC_NPROCESSORS_ONLN) - 1);
+  }
   emerge.AddArg("--jobs=" + std::to_string(jobs));
   emerge.AddArg("virtual/target-os-dev");
   if (emerge.Run() != 0) {
@@ -557,10 +572,12 @@ int DevInstall::Run() {
 
   // Handle reinstall & uninstall operations.
   if (reinstall_ || uninstall_) {
-    if (!ClearStateDir(state_dir_))
+    if (!ClearStateDir(state_dir_)) {
       return 1;
-    if (uninstall_)
+    }
+    if (uninstall_) {
       return 0;
+    }
 
     LOG(INFO) << "Reinstalling dev state";
   }
@@ -574,12 +591,14 @@ int DevInstall::Run() {
   }
 
   // Initialize the base set of paths before we install any packages.
-  if (!InitializeStateDir(state_dir_))
+  if (!InitializeStateDir(state_dir_)) {
     return 5;
+  }
 
   // Load the settings from the active device.
-  if (!LoadRuntimeSettings(base::FilePath(kLsbReleasePath)))
+  if (!LoadRuntimeSettings(base::FilePath(kLsbReleasePath))) {
     return 6;
+  }
 
   // Parses flags to return the binhost or if none set, use the default binhost
   // set up from installation.
@@ -589,8 +608,9 @@ int DevInstall::Run() {
   // Bootstrap the setup.
   LOG(INFO) << "Starting installation of developer packages.";
   LOG(INFO) << "First, we download the necessary files.";
-  if (!DownloadAndInstallBootstrapPackages(base::FilePath(kBootstrapListing)))
+  if (!DownloadAndInstallBootstrapPackages(base::FilePath(kBootstrapListing))) {
     return 7;
+  }
 
   if (only_bootstrap_) {
     LOG(INFO) << "Done installing bootstrap packages. Enjoy!";
@@ -598,12 +618,14 @@ int DevInstall::Run() {
   }
 
   LOG(INFO) << "Developer packages initialized; configuring portage.";
-  if (!ConfigurePortage())
+  if (!ConfigurePortage()) {
     return 8;
+  }
 
   LOG(INFO) << "Installing additional optional packages.";
-  if (!InstallExtraPackages())
+  if (!InstallExtraPackages()) {
     return 9;
+  }
 
   LOG(INFO) << "Done! Enjoy! Or not, you choose!";
   return 0;
