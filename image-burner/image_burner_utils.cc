@@ -37,8 +37,9 @@ BurnWriter::BurnWriter()
     : fstat_callback_(base::BindRepeating(&base::File::Fstat)) {}
 
 bool BurnWriter::Open(const char* path) {
-  if (file_.IsValid())
+  if (file_.IsValid()) {
     return false;
+  }
 
   file_.Initialize(base::FilePath(path),
                    base::File::FLAG_WRITE | base::File::FLAG_OPEN);
@@ -65,8 +66,9 @@ bool BurnWriter::Open(const char* path) {
 }
 
 bool BurnWriter::Close() {
-  if (!file_.IsValid())
+  if (!file_.IsValid()) {
     return false;
+  }
   file_.Close();
   return true;
 }
@@ -84,8 +86,9 @@ int BurnWriter::Write(const char* data_block, int data_size) {
   }
 
   writes_count_++;
-  if (writes_count_ == kFsyncRatio)
+  if (writes_count_ == kFsyncRatio) {
     writes_count_ = 0;
+  }
 
   return written;
 }
@@ -93,8 +96,9 @@ int BurnWriter::Write(const char* data_block, int data_size) {
 BurnReader::BurnReader() {}
 
 bool BurnReader::Open(const char* path) {
-  if (file_.IsValid())
+  if (file_.IsValid()) {
     return false;
+  }
 
   file_.Initialize(base::FilePath(path),
                    base::File::FLAG_READ | base::File::FLAG_OPEN);
@@ -125,22 +129,25 @@ bool BurnReader::Open(const char* path) {
 }
 
 bool BurnReader::Close() {
-  if (!file_.IsValid())
+  if (!file_.IsValid()) {
     return false;
+  }
   file_.Close();
   return true;
 }
 
 int BurnReader::Read(char* data_block, int data_size) {
   const int read = file_.ReadAtCurrentPos(data_block, data_size);
-  if (read < 0)
+  if (read < 0) {
     PLOG(ERROR) << "Error reading from source file";
+  }
   return read;
 }
 
 int64_t BurnReader::GetSize() {
-  if (!file_.IsValid())
+  if (!file_.IsValid()) {
     return -1;
+  }
   return file_.GetLength();
 }
 

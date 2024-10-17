@@ -62,8 +62,9 @@ class BurnWriterTest : public ::testing::Test {
   }
 
   int FakeBlockDeviceFstat(int fd, base::stat_wrapper_t* st) {
-    if (!file_writer_.file().IsValid())
+    if (!file_writer_.file().IsValid()) {
       return -1;
+    }
     EXPECT_EQ(file_writer_.file().GetPlatformFile(), fd);
     st->st_rdev = makedev(14, 7);
     st->st_mode = S_IFBLK;

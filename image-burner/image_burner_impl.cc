@@ -30,8 +30,9 @@ const char kMediaDirectory[] = "/media";
 const char kUserRootDirectory[] = "/home/chronos";
 
 bool IsUserOrUserHash(const std::string& path) {
-  if (path == "user")
+  if (path == "user") {
     return true;
+  }
 
   if (base::StartsWith(path, "u-", base::CompareCase::INSENSITIVE_ASCII) &&
       brillo::cryptohome::home::IsSanitizedUserName(path.substr(2))) {
@@ -56,18 +57,22 @@ BurnerImpl::BurnerImpl(FileSystemWriter* writer,
 ErrorCode BurnerImpl::BurnImage(const char* from_path, const char* to_path) {
   ErrorCode err = IMAGEBURN_OK;
 
-  if (!writer_ || !reader_ || !signal_sender_ || !path_getter_)
+  if (!writer_ || !reader_ || !signal_sender_ || !path_getter_) {
     err = IMAGEBURN_ERROR_BURNER_NOT_INITIALIZED;
+  }
 
-  if (!err)
+  if (!err) {
     ValidateTargetPath(to_path, &err);
+  }
 
   std::string resolved_from_path;
-  if (!err)
+  if (!err) {
     ValidateSourcePath(from_path, &resolved_from_path, &err);
+  }
 
-  if (!err)
+  if (!err) {
     DoBurn(resolved_from_path.c_str(), to_path, &err);
+  }
 
   // TODO(tbarzic) send error specific error message.
   signal_sender_->SendFinishedSignal(to_path, !err,
@@ -152,8 +157,9 @@ bool BurnerImpl::DoBurn(const char* from_path,
 
   bool success = reader_->Open(from_path);
   if (success) {
-    if (!(success = writer_->Open(to_path)))
+    if (!(success = writer_->Open(to_path))) {
       *error = IMAGEBURN_ERROR_CANNOT_OPEN_TARGET;
+    }
   } else {
     *error = IMAGEBURN_ERROR_CANNOT_OPEN_SOURCE;
   }
@@ -227,8 +233,9 @@ bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
     // so the file path of an image file under a mount directory is split
     // into more than 4 components:
     //   '/', 'media', 'removable', 'usb', ..., <file>
-    if (components.size() > 4)
+    if (components.size() > 4) {
       return true;
+    }
   }
   return false;
 }
