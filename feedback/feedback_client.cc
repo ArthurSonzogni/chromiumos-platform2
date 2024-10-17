@@ -74,8 +74,9 @@ bool ReadFileFromBack(const base::FilePath path, std::string* contents) {
   }
 
   contents->clear();
-  for (auto it = buf.Begin(); it == buf.End(); ++it)
+  for (auto it = buf.Begin(); it == buf.End(); ++it) {
     contents->append(**it);
+  }
 
   return true;
 }

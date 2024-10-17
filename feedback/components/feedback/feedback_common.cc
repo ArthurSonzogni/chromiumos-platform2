@@ -51,8 +51,9 @@ std::unique_ptr<std::string> LogsToString(
     std::string key = it->first;
     std::string value = it->second;
 
-    if (FeedbackCommon::BelowCompressionThreshold(value))
+    if (FeedbackCommon::BelowCompressionThreshold(value)) {
       continue;
+    }
 
     base::TrimString(key, "\n ", &key);
     base::TrimString(value, "\n ", &value);
@@ -72,8 +73,9 @@ void AddFeedbackData(userfeedback::ExtensionSubmit* feedback_data,
                      const std::string& key,
                      const std::string& value) {
   // Don't bother with empty keys or values.
-  if (key.empty() || value.empty())
+  if (key.empty() || value.empty()) {
     return;
+  }
   // Create log_value object and add it to the web_data object.
   userfeedback::ProductSpecificData log_value;
   log_value.set_key(key);
@@ -86,8 +88,9 @@ void AddFeedbackData(userfeedback::ExtensionSubmit* feedback_data,
 void AddAttachment(userfeedback::ExtensionSubmit* feedback_data,
                    const char* name,
                    const std::string& data) {
-  if (data.empty())
+  if (data.empty()) {
     return;
+  }
 
   userfeedback::ProductSpecificBinaryData* attachment =
       feedback_data->add_product_specific_binary_data();
@@ -110,11 +113,13 @@ FeedbackCommon::~FeedbackCommon() {}
 
 // static
 bool FeedbackCommon::BelowCompressionThreshold(const std::string& content) {
-  if (content.length() > kFeedbackMaxLength)
+  if (content.length() > kFeedbackMaxLength) {
     return false;
+  }
   const size_t line_count = std::count(content.begin(), content.end(), '\n');
-  if (line_count > kFeedbackMaxLineCount)
+  if (line_count > kFeedbackMaxLineCount) {
     return false;
+  }
   return true;
 }
 
@@ -143,8 +148,9 @@ void FeedbackCommon::AddFile(const std::string& filename,
 }
 
 void FeedbackCommon::AddLog(const std::string& name, const std::string& value) {
-  if (!logs_.get())
+  if (!logs_.get()) {
     logs_ = std::make_unique<SystemLogsMap>();
+  }
   (*logs_)[name] = value;
 }
 
@@ -157,8 +163,9 @@ void FeedbackCommon::AddLogs(std::unique_ptr<SystemLogsMap> logs) {
 }
 
 void FeedbackCommon::CompressLogs() {
-  if (!logs_)
+  if (!logs_) {
     return;
+  }
   std::unique_ptr<std::string> logs = LogsToString(*logs_);
   if (!logs->empty()) {
     CompressFile(base::FilePath(kLogsFilename), kLogsAttachmentName,
@@ -171,8 +178,9 @@ void FeedbackCommon::AddFilesAndLogsToReport(
   if (sys_info()) {
     for (FeedbackCommon::SystemLogsMap::const_iterator i = sys_info()->begin();
          i != sys_info()->end(); ++i) {
-      if (BelowCompressionThreshold(i->second))
+      if (BelowCompressionThreshold(i->second)) {
         AddFeedbackData(feedback_data, i->first, i->second);
+      }
     }
   }
 
@@ -241,6 +249,7 @@ void FeedbackCommon::PrepareReport(
     *(feedback_data->mutable_screenshot()) = screenshot;
   }
 
-  if (category_tag().size())
+  if (category_tag().size()) {
     feedback_data->set_bucket(category_tag());
+  }
 }

@@ -24,15 +24,18 @@ bool ZipString(const base::FilePath& filename,
   base::FilePath temp_path;
   base::FilePath zip_file;
 
-  if (!base::PathExists(base::FilePath(kZipProcess)))
+  if (!base::PathExists(base::FilePath(kZipProcess))) {
     return false;
+  }
 
   // Create a temporary directory, put the logs into a file in it. Create
   // another temporary file to receive the zip file in.
-  if (!base::CreateNewTempDirectory(std::string(), &temp_path))
+  if (!base::CreateNewTempDirectory(std::string(), &temp_path)) {
     return false;
-  if (!base::WriteFile(temp_path.Append(filename), data))
+  }
+  if (!base::WriteFile(temp_path.Append(filename), data)) {
     return false;
+  }
 
   brillo::ProcessImpl zipprocess;
   zipprocess.AddArg(kZipProcess);

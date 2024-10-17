@@ -60,8 +60,9 @@ void FeedbackUploader::QueueReport(const std::string& data) {
 }
 
 void FeedbackUploader::UpdateUploadTimer() {
-  if (reports_queue_.empty())
+  if (reports_queue_.empty()) {
     return;
+  }
 
   scoped_refptr<FeedbackReport> report = reports_queue_.top();
   base::Time now = base::Time::Now();
@@ -71,8 +72,9 @@ void FeedbackUploader::UpdateUploadTimer() {
     report->DeleteReportOnDisk();
   } else {
     // Stop the old timer and start an updated one.
-    if (upload_timer_.IsRunning())
+    if (upload_timer_.IsRunning()) {
       upload_timer_.Stop();
+    }
     upload_timer_.Start(FROM_HERE, report->upload_at() - now, this,
                         &FeedbackUploader::UpdateUploadTimer);
   }

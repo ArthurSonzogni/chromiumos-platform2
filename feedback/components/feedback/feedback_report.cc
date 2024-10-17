@@ -27,8 +27,9 @@ void WriteReportOnBlockingPool(const base::FilePath reports_path,
   DCHECK(reports_path.IsParent(file));
   if (!base::DirectoryExists(reports_path)) {
     base::File::Error error;
-    if (!base::CreateDirectoryAndGetError(reports_path, &error))
+    if (!base::CreateDirectoryAndGetError(reports_path, &error)) {
       return;
+    }
   }
   base::ImportantFileWriter::WriteFileAtomically(file, data);
 }
@@ -46,8 +47,9 @@ FeedbackReport::FeedbackReport(
       upload_at_(upload_at),
       data_(data),
       reports_task_runner_(task_runner) {
-  if (reports_path_.empty())
+  if (reports_path_.empty()) {
     return;
+  }
   file_ = reports_path_.AppendASCII(
       kFeedbackReportFilenamePrefix +
       base::Uuid::GenerateRandomV4().AsLowercaseString());
@@ -61,24 +63,25 @@ FeedbackReport::~FeedbackReport() {}
 
 void FeedbackReport::DeleteReportOnDisk() {
   reports_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(base::GetDeleteFileCallback(), file_)
-  );  // NOLINT(whitespace/parens)
+      FROM_HERE, base::BindOnce(base::GetDeleteFileCallback(),
+                                file_));  // NOLINT(whitespace/parens)
 }
 
 // static
 void FeedbackReport::LoadReportsAndQueue(const base::FilePath& user_dir,
                                          QueueCallback callback) {
-  if (user_dir.empty())
+  if (user_dir.empty()) {
     return;
+  }
 
   base::FileEnumerator enumerator(user_dir, false, base::FileEnumerator::FILES,
                                   kFeedbackReportFilenameWildcard);
   for (base::FilePath name = enumerator.Next(); !name.empty();
        name = enumerator.Next()) {
     std::string data;
-    if (ReadFileToString(name, &data))
+    if (ReadFileToString(name, &data)) {
       callback.Run(data);
+    }
     base::DeleteFile(name);
   }
 }
