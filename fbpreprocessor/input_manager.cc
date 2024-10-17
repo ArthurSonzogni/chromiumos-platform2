@@ -29,8 +29,9 @@ InputManager::InputManager(Manager* manager)
 }
 
 InputManager::~InputManager() {
-  if (manager_->session_state_manager())
+  if (manager_->session_state_manager()) {
     manager_->session_state_manager()->RemoveObserver(this);
+  }
 }
 
 void InputManager::OnUserLoggedIn(const std::string& user_dir) {

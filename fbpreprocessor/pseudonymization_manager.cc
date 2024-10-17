@@ -39,8 +39,9 @@ PseudonymizationManager::PseudonymizationManager(Manager* manager)
 }
 
 PseudonymizationManager::~PseudonymizationManager() {
-  if (manager_->session_state_manager())
+  if (manager_->session_state_manager()) {
     manager_->session_state_manager()->RemoveObserver(this);
+  }
 }
 
 bool PseudonymizationManager::StartPseudonymization(

@@ -73,9 +73,10 @@ void CrashReporterDBusAdaptor::OnSignalConnected(
     const std::string& interface_name,
     const std::string& signal_name,
     bool success) const {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Failed to connect to signal " << signal_name
                << " of interface " << interface_name;
+  }
   if (success) {
     LOG(INFO) << "Connected to signal " << signal_name << " of interface "
               << interface_name;

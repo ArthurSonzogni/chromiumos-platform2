@@ -25,8 +25,9 @@ FbPreprocessorDaemon::FbPreprocessorDaemon(const Configuration& config)
 
 int FbPreprocessorDaemon::OnInit() {
   int ret = brillo::DBusServiceDaemon::OnInit();
-  if (ret != EX_OK)
+  if (ret != EX_OK) {
     return ret;
+  }
   manager_->Start(bus_.get());
   return ret;
 }

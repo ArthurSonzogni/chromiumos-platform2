@@ -296,14 +296,15 @@ void SessionStateManager::EmitFeatureAllowedMetric() {
 
   // The order of precedence of the reasons why the feature is disallowed must
   // remain constant over time. Do not modify.
-  if (!manager_->platform_features()->FirmwareDumpsAllowedByFinch())
+  if (!manager_->platform_features()->FirmwareDumpsAllowedByFinch()) {
     status = Metrics::CollectionAllowedStatus::kDisallowedByFinch;
-  else if (!PrimaryUserInAllowlist())
+  } else if (!PrimaryUserInAllowlist()) {
     status = Metrics::CollectionAllowedStatus::kDisallowedForUserDomain;
-  else if (!wifi_fw_dumps_allowed_by_policy_)
+  } else if (!wifi_fw_dumps_allowed_by_policy_) {
     status = Metrics::CollectionAllowedStatus::kDisallowedByPolicy;
-  else if (active_sessions_num_ != 1)
+  } else if (active_sessions_num_ != 1) {
     status = Metrics::CollectionAllowedStatus::kDisallowedForMultipleSessions;
+  }
 
   manager_->metrics().SendAllowedStatus(FirmwareDump::Type::kWiFi, status);
 
@@ -312,14 +313,15 @@ void SessionStateManager::EmitFeatureAllowedMetric() {
 
   // The order of precedence of the reasons why the feature is disallowed must
   // remain constant over time. Do not modify.
-  if (!manager_->platform_features()->FirmwareDumpsAllowedByFinch())
+  if (!manager_->platform_features()->FirmwareDumpsAllowedByFinch()) {
     status = Metrics::CollectionAllowedStatus::kDisallowedByFinch;
-  else if (!PrimaryUserInAllowlist())
+  } else if (!PrimaryUserInAllowlist()) {
     status = Metrics::CollectionAllowedStatus::kDisallowedForUserDomain;
-  else if (!bluetooth_fw_dumps_allowed_by_policy_)
+  } else if (!bluetooth_fw_dumps_allowed_by_policy_) {
     status = Metrics::CollectionAllowedStatus::kDisallowedByPolicy;
-  else if (active_sessions_num_ != 1)
+  } else if (active_sessions_num_ != 1) {
     status = Metrics::CollectionAllowedStatus::kDisallowedForMultipleSessions;
+  }
 
   manager_->metrics().SendAllowedStatus(FirmwareDump::Type::kBluetooth, status);
 }
@@ -551,9 +553,10 @@ bool SessionStateManager::CreateUserDirectories() const {
 void SessionStateManager::OnSignalConnected(const std::string& interface_name,
                                             const std::string& signal_name,
                                             bool success) const {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Failed to connect to signal " << signal_name
                << " of interface " << interface_name;
+  }
   if (success) {
     LOG(INFO) << "Connected to signal " << signal_name << " of interface "
               << interface_name;

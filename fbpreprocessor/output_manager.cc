@@ -56,13 +56,15 @@ OutputManager::OutputManager(Manager* manager)
       manager_(manager) {
   CHECK(manager_->session_state_manager());
   manager_->session_state_manager()->AddObserver(this);
-  if (manager_->platform_features())
+  if (manager_->platform_features()) {
     manager_->platform_features()->AddObserver(this);
+  }
 }
 
 OutputManager::~OutputManager() {
-  if (manager_->session_state_manager())
+  if (manager_->session_state_manager()) {
     manager_->session_state_manager()->RemoveObserver(this);
+  }
   if (manager_->platform_features()) {
     manager_->platform_features()->RemoveObserver(this);
   }
