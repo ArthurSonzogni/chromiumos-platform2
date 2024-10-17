@@ -153,12 +153,11 @@ void EmbeddingModelService::OnModelLoadFinish(const base::Uuid& uuid,
                                               bool success) {
   auto itr = loading_state_.find(uuid);
   CHECK(itr != loading_state_.end());
-  CHECK(itr->second.holder);
 
   if (success) {
     CHECK(itr->second.holder->IsLoaded());
   } else {
-    CHECK(!itr->second.holder->IsLoaded());
+    CHECK(!itr->second.holder || !itr->second.holder->IsLoaded());
     itr->second.in_progress_reference.reset();
   }
 

@@ -478,5 +478,23 @@ TEST_F(EmbeddingModelServiceTest, ModelLoadFailed) {
   run_loop.RunUntilIdle();
 }
 
+TEST_F(EmbeddingModelServiceTest, ModelBuildFailed) {
+  base::Uuid uuid = base::Uuid::ParseLowercase(kFakeModelUuid1);
+  mojo::Remote<mojom::OnDeviceEmbeddingModel> remote;
+
+  base::RunLoop run_loop;
+  int load_result_count = 0;
+  pending_runner_build_.push_back(std::make_pair(uuid, nullptr));
+  service_impl_.LoadEmbeddingModel(
+      uuid, remote.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        ASSERT_NE(LoadModelResult::kSuccess, result);
+        load_result_count++;
+      }));
+  run_loop.RunUntilIdle();
+
+  EXPECT_EQ(1, load_result_count);
+}
+
 }  // namespace
 }  // namespace embedding_model
