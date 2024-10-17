@@ -28,8 +28,9 @@ int main(int argc, char* argv[]) {
   brillo::InitLog(flags);
 
   std::string output_path = kDefaultKeyDataPath;
-  if (cl->HasSwitch(kOutputFilePathSwitch))
+  if (cl->HasSwitch(kOutputFilePathSwitch)) {
     output_path = cl->GetSwitchValueASCII(kDefaultKeyDataPath);
+  }
 
   std::string serialized;
   if (!hwsec_test_utils::GenerateAttestationGoogleKeySet().SerializeToString(
