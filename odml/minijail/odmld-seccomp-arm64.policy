@@ -23,13 +23,35 @@
 #   0xc0304121 == _IOC(_IOC_READ|_IOC_WRITE, 0x41, 0x21, 0x30)
 #   0xc0184800 == _IOC(_IOC_READ|_IOC_WRITE, 0x48, 0, 0x18)
 #   0xc0204123 == _IOC(_IOC_READ|_IOC_WRITE, 0x41, 0x23, 0x20)
+#   0x802c     == _IOC(_IOC_NONE, 0x80, 0x2c, 0)
+#   0x40088025 == _IOC(_IOC_WRITE, 0x80, 0x25, 0x8)
+#   0x40088029 == _IOC(_IOC_WRITE, 0x80, 0x29, 0x8)
+#   0x4008802b == _IOC(_IOC_WRITE, 0x80, 0x2b, 0x8)
+#   0x4008802e == _IOC(_IOC_WRITE, 0x80, 0x2e, 0x8)
+#   0x40088031 == _IOC(_IOC_WRITE, 0x80, 0x31, 0x8)
+#   0x40108014 == _IOC(_IOC_WRITE, 0x80, 0x14, 0x10)
+#   0x40108024 == _IOC(_IOC_WRITE, 0x80, 0x24, 0x10)
+#   0x8008802d == _IOC(_IOC_READ, 0x80, 0x2d, 0x8)
+#   0xc0048034 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x34, 0x4)
+#   0xc0108006 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x06, 0x10)
+#   0xc0108027 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x27, 0x10)
+#   0xc0188030 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x30, 0x18)
+#   0xc0188033 == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x33, 0x18)
+#   0xc040803b == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x3b, 0x40)
+#   0xc070803a == _IOC(_IOC_READ|_IOC_WRITE, 0x80, 0x3a, 0x70)
 ioctl: arg1 == 0x5401 || arg1 == 0x8004  || arg1 == 0x40048001 || \
        arg1 == 0x40088007 || arg1 == 0x40088026 || arg1 == 0x40108002 || \
        arg1 == 0x40108003 || arg1 == 0x4018800e || arg1 == 0x40208018 || \
        arg1 == 0x80048011 || arg1 == 0xc0018036 || arg1 == 0xc0048000 || \
        arg1 == 0xc0208005 || arg1 == 0xc0284100 || arg1 == 0xc0284120 || \
        arg1 == 0x40086201 || arg1 == 0xc0184800 || arg1 == 0x40086200 || \
-       arg1 == 0xc0984122 || arg1 == 0xc0304121 || arg1 == 0xc0204123
+       arg1 == 0xc0984122 || arg1 == 0xc0304121 || arg1 == 0xc0204123 || \
+       arg1 == 0x802c || arg1 == 0x40088025 || arg1 == 0x40088029 || \
+       arg1 == 0x4008802b || arg1 == 0x4008802e || arg1 == 0x40088031 || \
+       arg1 == 0x40108014 || arg1 == 0x40108024 || arg1 == 0x8008802d || \
+       arg1 == 0xc0048034 || arg1 == 0xc0108006 || arg1 == 0xc0108027 || \
+       arg1 == 0xc0188030 || arg1 == 0xc0188033 || arg1 == 0xc040803b || \
+       arg1 == 0xc070803a
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 write: 1
 futex: 1
@@ -92,14 +114,20 @@ rt_sigreturn: 1
 shutdown: 1
 dup: 1
 tgkill: 1
+clock_nanosleep: 1
+sigaltstack: 1
+mkdirat: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD
 
 # For mediapipe threads
-prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME
+# 0x33 == PR_SVE_GET_VL
+prctl: arg0 == PR_GET_NAME || arg0 == PR_SET_NAME || arg0 == 0x33
 sched_setaffinity: 1
 sched_getparam: 1
+sched_setscheduler: 1
+sched_getscheduler: 1
 
 # For mojo & D-Bus
 socket: arg0 == AF_UNIX
