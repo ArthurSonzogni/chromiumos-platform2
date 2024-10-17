@@ -33,8 +33,9 @@ void TestConfigureInstall(const base::FilePath& install_dev,
                              &install_config),
             expected_success);
 
-  if (!expected_success)
+  if (!expected_success) {
     return;
+  }
 
   EXPECT_EQ(install_config.slot, expected_slot);
   EXPECT_EQ(install_config.root.device(), expected_root);
@@ -52,8 +53,9 @@ void TestStrToBiosType(string name,
 
   EXPECT_EQ(StrToBiosType(name, &bios_type), expected_success);
 
-  if (!expected_success)
+  if (!expected_success) {
     return;
+  }
 
   EXPECT_EQ(bios_type, expected_result);
 }
@@ -66,8 +68,9 @@ void TestKernelConfigToBiosType(string kernel_config,
   EXPECT_EQ(KernelConfigToBiosType(kernel_config, &bios_type),
             expected_success);
 
-  if (!expected_success)
+  if (!expected_success) {
     return;
+  }
 
   EXPECT_EQ(bios_type, expected_result);
 }

@@ -40,11 +40,13 @@ std::string EfiGrubCfg::GetKernelCommand(BootSlot slot,
   const string kernel_pattern = CommandPatternForSlot(slot);
   const bool want_empty_dm = dm == EfiGrubCfg::DmOption::None;
   for (const auto& line : file_lines_) {
-    if (line.find(kernel_pattern) == string::npos)
+    if (line.find(kernel_pattern) == string::npos) {
       continue;
+    }
 
-    if (ExtractKernelArg(line, "dm").empty() == want_empty_dm)
+    if (ExtractKernelArg(line, "dm").empty() == want_empty_dm) {
       return line;
+    }
   }
   return "";
 }
@@ -56,8 +58,9 @@ bool EfiGrubCfg::ReplaceKernelCommand(BootSlot slot,
   const bool want_empty_dm = dm == EfiGrubCfg::DmOption::None;
   bool did_set = false;
   for (auto& line : file_lines_) {
-    if (line.find(kernel_pattern) == string::npos)
+    if (line.find(kernel_pattern) == string::npos) {
       continue;
+    }
 
     if (ExtractKernelArg(line, "dm").empty() == want_empty_dm) {
       DLOG(INFO) << "Replacing: " << line;
@@ -96,8 +99,9 @@ bool EfiGrubCfg::UpdateBootParameters(BootSlot slot,
     // version of grub.
     base::ReplaceFirstSubstringAfterOffset(&line, 0, "linuxefi", "linux");
 
-    if (line.find(kernel_pattern) == string::npos)
+    if (line.find(kernel_pattern) == string::npos) {
       continue;
+    }
 
     DLOG(INFO) << "Updating command: " << line;
     if (ExtractKernelArg(line, "dm").empty()) {
@@ -174,8 +178,9 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
     return false;
   }
 
-  if (!UpdateLegacyKernel(install_config))
+  if (!UpdateLegacyKernel(install_config)) {
     return false;
+  }
 
   string kernel_config = DumpKernelConfig(install_config.kernel.device());
   base::FilePath kernel_config_root =
@@ -190,8 +195,9 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
       "DEFAULT %s.%s\n", verity_enabled.c_str(), install_config.slot.c_str());
 
   const base::FilePath syslinux_cfg = boot_syslinux.Append("default.cfg");
-  if (!base::WriteFile(syslinux_cfg, default_syslinux_cfg))
+  if (!base::WriteFile(syslinux_cfg, default_syslinux_cfg)) {
     return false;
+  }
 
   // Prepare the new root.A/B.cfg
 
@@ -201,14 +207,16 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
       boot_syslinux.Append(old_root_cfg_file.BaseName());
 
   // Copy over the unmodified version for this release...
-  if (!base::CopyFile(old_root_cfg_file, new_root_cfg_file))
+  if (!base::CopyFile(old_root_cfg_file, new_root_cfg_file)) {
     return false;
+  }
 
   // Insert the proper root device for non-verity boots
   const string root_opt = "PARTUUID=" + install_config.root.uuid();
   if (!ReplaceInFile("HDROOT" + install_config.slot, root_opt,
-                     new_root_cfg_file))
+                     new_root_cfg_file)) {
     return false;
+  }
 
   string kernel_config_dm =
       ExpandVerityArguments(kernel_config, install_config.root.uuid());
@@ -220,8 +228,9 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // Insert the proper verity options for verity boots
   if (!ReplaceInFile("DMTABLE" + install_config.slot, kernel_config_dm,
-                     new_root_cfg_file))
+                     new_root_cfg_file)) {
     return false;
+  }
 
   return true;
 }
@@ -279,8 +288,9 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config) {
     }
 
     const base::FilePath dest = dest_dir.Append(src.BaseName());
-    if (!base::CopyFile(src, dest))
+    if (!base::CopyFile(src, dest)) {
       result = false;
+    }
   }
   return result;
 }
@@ -288,12 +298,13 @@ bool UpdateEfiBootloaders(const InstallConfig& install_config) {
 // Convert a slot string into the BootSlot enum value.
 // Returns false when the slot_string is not a valid enum value.
 bool StringToSlot(const std::string& slot_string, BootSlot* slot) {
-  if (slot_string == "A")
+  if (slot_string == "A") {
     *slot = BootSlot::A;
-  else if (slot_string == "B")
+  } else if (slot_string == "B") {
     *slot = BootSlot::B;
-  else
+  } else {
     return false;
+  }
   return true;
 }
 
@@ -382,18 +393,22 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   LOG(INFO) << "Running EfiPostInstall.";
 
   // Update the kernel we are about to use.
-  if (!UpdateLegacyKernel(install_config))
+  if (!UpdateLegacyKernel(install_config)) {
     return false;
+  }
 
-  if (!UpdateEfiBootloaders(install_config))
+  if (!UpdateEfiBootloaders(install_config)) {
     return false;
+  }
 
   // Update the grub.cfg configuration files.
-  if (!UpdateEfiGrubCfg(install_config))
+  if (!UpdateEfiGrubCfg(install_config)) {
     return false;
+  }
 
-  if (!UpdateEfiBootEntries(install_config))
+  if (!UpdateEfiBootEntries(install_config)) {
     return false;
+  }
 
   // We finished.
   return true;

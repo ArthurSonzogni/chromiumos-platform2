@@ -115,19 +115,22 @@ void PartitionMigrator::InitializePartitionMetadata() {
   LOG(INFO) << "Post-calculation partition sizes:";
 
   reclaimed_partition_.PrettyPrint();
-  for (auto& partition : new_partitions_)
+  for (auto& partition : new_partitions_) {
     partition.PrettyPrint();
+  }
 }
 
 void PartitionMigrator::RevertPartitionMetadata() {
   // Calculate the "shift" for the reclaimed partition.
   uint64_t reclamation_shift = 0;
-  for (auto& partition : new_partitions_)
+  for (auto& partition : new_partitions_) {
     reclamation_shift += partition.size;
+  }
 
   // Revert changes to the reclaimed partition.
-  if (!add_at_end_)
+  if (!add_at_end_) {
     reclaimed_partition_.start -= reclamation_shift;
+  }
 
   reclaimed_partition_.size += reclamation_shift;
 }

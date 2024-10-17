@@ -192,10 +192,12 @@ std::optional<std::string> EfiVarImpl::GetNextVariableName() {
   // efi_get_next_variable_name returns 1 if an entry is found.
   while ((rc = efi_get_next_variable_name(&guid, &name)) > 0) {
     // NULL is not expected but guard against it.
-    if (!name || !guid)
+    if (!name || !guid) {
       return std::nullopt;
-    if (!IsEfiGlobalGUID(guid))
+    }
+    if (!IsEfiGlobalGUID(guid)) {
       continue;
+    }
     return std::string(name);
   }
 

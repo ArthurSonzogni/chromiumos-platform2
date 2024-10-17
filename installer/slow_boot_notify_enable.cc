@@ -24,8 +24,9 @@ void ExtractFspm(const string& partition, const base::FilePath& fspm_path) {
   }
 
   base::FilePath fw_bin_path;
-  if (!CreateTemporaryFile(&fw_bin_path))
+  if (!CreateTemporaryFile(&fw_bin_path)) {
     return;
+  }
 
   // TODO(roccochen): replace direct flashrom call with futility call.
   vector<string> cmd = {"/usr/sbin/flashrom",
@@ -46,9 +47,10 @@ void ExtractFspm(const string& partition, const base::FilePath& fspm_path) {
          "extract",           "-n",
          "fspm.bin",          "-f",
          fspm_path.value()};
-  if ((result = RunCommand(cmd)))
+  if ((result = RunCommand(cmd))) {
     LOG(ERROR) << "Error extracting FSPM from FW_MAIN_" << partition
                << " result: " << result;
+  }
 
   base::DeleteFile(fw_bin_path);
 }
@@ -57,8 +59,9 @@ void SlowBootNotifyPreFwUpdate(const base::FilePath& fspm_main) {
   char partition[VB_MAX_STRING_PROPERTY];
 
   if (VbGetSystemPropertyString("mainfw_act", partition, sizeof(partition)) !=
-      0)
+      0) {
     return;
+  }
 
   ExtractFspm(partition, fspm_main);
 }

@@ -113,8 +113,9 @@ ScopedPathRemover::~ScopedPathRemover() {
   if (root_.empty()) {
     return;
   }
-  if (!base::DeletePathRecursively(root_))
+  if (!base::DeletePathRecursively(root_)) {
     PLOG(ERROR) << "Cannot remove path " << root_;
+  }
 }
 
 base::FilePath ScopedPathRemover::Release() {
@@ -190,8 +191,9 @@ bool LsbReleaseValue(const base::FilePath& file,
   string preamble = key + "=";
 
   string file_contents;
-  if (!base::ReadFileToString(file, &file_contents))
+  if (!base::ReadFileToString(file, &file_contents)) {
     return false;
+  }
 
   vector<string> file_lines = base::SplitString(
       file_contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
@@ -212,8 +214,9 @@ base::FilePath GetBlockDevFromPartitionDev(
   const std::string& partition_dev = partition_dev_path.value();
   size_t i = partition_dev.length();
 
-  while (i > 0 && isdigit(partition_dev[i - 1]))
+  while (i > 0 && isdigit(partition_dev[i - 1])) {
     i--;
+  }
 
   for (const std::string_view nd : kNumberedDevices) {
     // kNumberedDevices are of the form "/dev/mmcblk12p34"
@@ -240,8 +243,9 @@ PartitionNum GetPartitionFromPartitionDev(
   }
   size_t i = partition_dev.length();
 
-  while (i > 0 && isdigit(partition_dev[i - 1]))
+  while (i > 0 && isdigit(partition_dev[i - 1])) {
     i--;
+  }
 
   for (const std::string_view nd : kNumberedDevices) {
     // kNumberedDevices are of the form "/dev/mmcblk12p34"
@@ -259,8 +263,9 @@ PartitionNum GetPartitionFromPartitionDev(
     result = 0;
   }
 
-  if (result == 0)
+  if (result == 0) {
     LOG(ERROR) << "Bad partition number from " << partition_dev;
+  }
 
   return PartitionNum(result);
 }
@@ -269,8 +274,9 @@ base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
                                 PartitionNum partition) {
   const std::string& block_dev = block_dev_path.value();
   for (const std::string_view nd : kNumberedDevices) {
-    if (base::StartsWith(block_dev, nd))
+    if (base::StartsWith(block_dev, nd)) {
       return base::FilePath(block_dev + "p" + partition.ToString());
+    }
   }
 
   return base::FilePath(block_dev + partition.ToString());
@@ -283,19 +289,22 @@ bool RemovePackFiles(const base::FilePath& dirname) {
 
   dp = opendir(dirname.value().c_str());
 
-  if (dp == NULL)
+  if (dp == NULL) {
     return false;
+  }
 
   while ((ep = readdir(dp))) {
     string filename = ep->d_name;
 
     // Skip . files
-    if (filename.compare(0, 1, ".") == 0)
+    if (filename.compare(0, 1, ".") == 0) {
       continue;
+    }
 
     if ((filename.size() < 4) ||
-        (filename.compare(filename.size() - 4, 4, "pack") != 0))
+        (filename.compare(filename.size() - 4, 4, "pack") != 0)) {
       continue;
+    }
 
     base::FilePath full_filename = dirname.Append(filename);
 
@@ -312,8 +321,9 @@ bool Touch(const base::FilePath& filename) {
   int fd = open(filename.value().c_str(), O_WRONLY | O_CREAT,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-  if (fd == -1)
+  if (fd == -1) {
     return false;
+  }
 
   return (close(fd) == 0);
 }
@@ -323,8 +333,9 @@ bool ReplaceInFile(const string& pattern,
                    const string& value,
                    const base::FilePath& path) {
   string contents;
-  if (!base::ReadFileToString(path, &contents))
+  if (!base::ReadFileToString(path, &contents)) {
     return false;
+  }
 
   // Modify contents
   size_t offset = contents.find(pattern);
@@ -337,8 +348,9 @@ bool ReplaceInFile(const string& pattern,
 
   contents.replace(offset, pattern.length(), value);
 
-  if (!base::WriteFile(path, contents))
+  if (!base::WriteFile(path, contents)) {
     return false;
+  }
 
   return true;
 }
@@ -346,8 +358,9 @@ bool ReplaceInFile(const string& pattern,
 void ReplaceAll(string* target, const string& pattern, const string& value) {
   for (size_t offset = 0;;) {
     offset = target->find(pattern, offset);
-    if (offset == string::npos)
+    if (offset == string::npos) {
       return;
+    }
     target->replace(offset, pattern.length(), value);
     offset += value.length();
   }
@@ -442,18 +455,21 @@ bool FindKernelArgValueOffsets(const string& kernel_config,
     // If we hit a " while searching, skip to matching quote
     if (kernel_config[i] == '"') {
       i++;
-      while (i < kernel_config.size() && kernel_config[i] != '"')
+      while (i < kernel_config.size() && kernel_config[i] != '"') {
         i++;
+      }
     }
 
     // if we found the key
-    if (kernel_config.compare(i, preamble.size(), preamble) == 0)
+    if (kernel_config.compare(i, preamble.size(), preamble) == 0) {
       break;
+    }
   }
 
   // Didn't find the key
-  if (i >= kernel_config.size())
+  if (i >= kernel_config.size()) {
     return false;
+  }
 
   // Jump past the key
   i += preamble.size();
@@ -465,14 +481,16 @@ bool FindKernelArgValueOffsets(const string& kernel_config,
     i = kernel_config.find('"', i + 1);
 
     // If there is no closing quote, it's an error.
-    if (i == string::npos)
+    if (i == string::npos) {
       return false;
+    }
 
     i += 1;
   }
 
-  while (i < kernel_config.size() && kernel_config[i] != ' ')
+  while (i < kernel_config.size() && kernel_config[i] != ' ') {
     i++;
+  }
 
   *value_length = i - *value_offset;
   return true;
@@ -483,8 +501,9 @@ string ExtractKernelArg(const string& kernel_config, const string& key) {
   size_t value_length;
 
   if (!FindKernelArgValueOffsets(kernel_config, key, &value_offset,
-                                 &value_length))
+                                 &value_length)) {
     return "";
+  }
 
   string result = kernel_config.substr(value_offset, value_length);
 
@@ -503,8 +522,9 @@ bool SetKernelArg(const string& key,
   size_t value_length;
 
   if (!FindKernelArgValueOffsets(*kernel_config, key, &value_offset,
-                                 &value_length))
+                                 &value_length)) {
     return false;
+  }
 
   string adjusted_value = value;
 

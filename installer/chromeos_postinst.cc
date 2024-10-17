@@ -285,8 +285,9 @@ void FixUnencryptedPermission() {
       PLOG(ERROR) << "chown failed";
       ok = false;
     }
-    if (ok)
+    if (ok) {
       LOG(INFO) << "Permission changed successfully.";
+    }
   }
 }
 
@@ -300,10 +301,11 @@ bool RunBoardPostInstall(const base::FilePath& install_dir) {
 
   int result = RunCommand({script.value(), install_dir.value()});
 
-  if (result)
+  if (result) {
     LOG(ERROR) << "Board post install failed, result: " << result;
-  else
+  } else {
     LOG(INFO) << "Board post install succeeded.";
+  }
 
   return result == 0;
 }
@@ -378,8 +380,9 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
                << " for kernel: " << install_config.kernel.number();
   }
 
-  if (rollback_successful)
+  if (rollback_successful) {
     LOG(INFO) << "Successfully updated GPT with all settings to rollback.";
+  }
 
   return rollback_successful;
 }
@@ -707,21 +710,24 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   // mini-omaha server, and we don't want to try updates inside postinst.
   if (attempt_firmware_update) {
     base::FilePath fspm_main;
-    if (CreateTemporaryFile(&fspm_main))
+    if (CreateTemporaryFile(&fspm_main)) {
       SlowBootNotifyPreFwUpdate(fspm_main);
+    }
 
     *exit_code = FirmwareUpdate(install_config, is_update);
     if (*exit_code == 0) {
       base::FilePath fspm_next;
-      if (CreateTemporaryFile(&fspm_next))
+      if (CreateTemporaryFile(&fspm_next)) {
         SlowBootNotifyPostFwUpdate(fspm_next);
+      }
 
       if (SlowBootNotifyRequired(fspm_main, fspm_next)) {
         base::FilePath slow_boot_req_file(string(kStatefulMount) +
                                           "/etc/slow_boot_required");
-        if (!WriteFile(slow_boot_req_file, "1"))
+        if (!WriteFile(slow_boot_req_file, "1")) {
           PLOG(ERROR) << "Unable to write to file:"
                       << slow_boot_req_file.value();
+        }
       }
       base::DeleteFile(fspm_main);
       base::DeleteFile(fspm_next);
@@ -756,15 +762,17 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       result = RunGscBinary(install_config.root.mount(), "gsc_set_board_id",
                             "unknown");
       // GSC set board id failure is not a reason to interrupt installation.
-      if (result)
+      if (result) {
         LOG(ERROR) << "ignored: gsc_set_board_id failure: " << result;
+      }
     }
 
     result = RunGscBinary(install_config.root.mount(), "gsc_update",
                           install_config.root.mount().value());
     // GSC update failure is not a reason for interrupting installation.
-    if (result)
+    if (result) {
       LOG(WARNING) << "ignored: gsc_update failure: " << result;
+    }
     LOG(INFO) << "GSC setup complete.";
   }
 
