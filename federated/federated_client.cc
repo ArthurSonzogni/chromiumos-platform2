@@ -57,14 +57,15 @@ void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
   LOG(INFO) << "In LogCrosSecAggEvent, session_id is "
             << cros_secagg_event.execution_session_id();
 
-  if (cros_secagg_event.has_state_transition())
+  if (cros_secagg_event.has_state_transition()) {
     LOG(INFO) << "cros_secagg_event.has_state_transition";
-  else if (cros_secagg_event.has_error())
+  } else if (cros_secagg_event.has_error()) {
     LOG(ERROR) << "cros_secagg_event.has_error";
-  else if (cros_secagg_event.has_abort())
+  } else if (cros_secagg_event.has_abort()) {
     LOG(INFO) << "cros_secagg_event.has_abort";
-  else
+  } else {
     LOG(INFO) << "cros_secagg_event doesn't have any event log";
+  }
 }
 
 }  // namespace
@@ -146,8 +147,9 @@ bool FederatedClient::Context::GetNextExample(const char** const data,
                                               int* const size,
                                               bool* const end,
                                               void* const context) {
-  if (context == nullptr)
+  if (context == nullptr) {
     return false;
+  }
 
   auto* typed_context = static_cast<FederatedClient::Context*>(context);
 
@@ -188,8 +190,9 @@ void FederatedClient::Context::FreeExample(const char* const data,
 
 bool FederatedClient::Context::TrainingConditionsSatisfied(
     void* const context) {
-  if (context == nullptr)
+  if (context == nullptr) {
     return false;
+  }
 
   auto* typed_context = static_cast<FederatedClient::Context*>(context);
 
@@ -304,8 +307,9 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
     // TODO(b/239623649): result.delay_usecs may be 0 when setup is wrong, now I
     // set next_retry_delay_ to kMinimalRetryWindow to avoid spam, consider
     // stopping retry in this case because it's very likely to fail again.
-    if (next_retry_delay_ < kMinimalRetryWindow)
+    if (next_retry_delay_ < kMinimalRetryWindow) {
       next_retry_delay_ = kMinimalRetryWindow;
+    }
 
     if (result.status == CONTRIBUTED) {
       scoped_metrics_recorder.MarkSuccess();

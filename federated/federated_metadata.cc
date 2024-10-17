@@ -45,8 +45,9 @@ bool IsTableNameRegistered(const std::string& table_name) {
 
 std::optional<std::string> GetTableNameString(
     const FederatedExampleTableId table_id) {
-  if (!kTableIdToName.contains(table_id))
+  if (!kTableIdToName.contains(table_id)) {
     return std::nullopt;
+  }
   return std::string(kTableIdToName.at(table_id));
 }
 

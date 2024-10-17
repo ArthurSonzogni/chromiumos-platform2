@@ -257,8 +257,9 @@ void Scheduler::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
   DVLOG(1) << "OnDlcStateChanged, dlc_state.id = " << dlc_state.id()
            << ", state = " << dlc_state.state();
   if (!clients_.empty() || dlc_state.id() != kDlcId ||
-      dlc_state.state() != dlcservice::DlcState::INSTALLED)
+      dlc_state.state() != dlcservice::DlcState::INSTALLED) {
     return;
+  }
 
   DVLOG(1) << "dlc fcp is now installed, root path is "
            << dlc_state.root_path();

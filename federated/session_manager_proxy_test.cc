@@ -177,10 +177,11 @@ TEST_F(SessionManagerProxyTest, OnSessionStateChanged) {
   static unsigned int seed = time(NULL) + 1234;
   for (size_t i = 0; i < 100; i++) {
     const int index = rand_r(&seed) % 3;
-    if (index == 0)
+    if (index == 0) {
       started_state_count++;
-    else if (index == 1)
+    } else if (index == 1) {
       stopped_state_count++;
+    }
 
     state_vector.push_back(available_states[index]);
   }

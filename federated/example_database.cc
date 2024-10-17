@@ -30,8 +30,9 @@ constexpr char kMetaTableName[] = "metatable";
 // values, returns an empty string (i.e. no-op) otherwise.
 std::string MaybeWhereClause(const base::Time& start_time,
                              const base::Time& end_time) {
-  if (start_time == base::Time() && end_time == base::Time())
+  if (start_time == base::Time() && end_time == base::Time()) {
     return std::string();
+  }
 
   DCHECK(start_time < end_time)
       << "Invalid time range: start_time must < end_time";
@@ -342,8 +343,9 @@ bool ExampleDatabase::DeleteOutdatedExamples(
   int error_count = 0;
   for (const auto& table_name : all_table_names) {
     // "sqlite_*" are sqlite reserved table names.
-    if (table_name.find("sqlite_") == 0)
+    if (table_name.find("sqlite_") == 0) {
       continue;
+    }
 
     const ExecResult result = ExecSql(base::StringPrintf(
         "DELETE FROM '%s' WHERE timestamp < %" PRId64 ";", table_name.c_str(),
@@ -521,8 +523,9 @@ bool ExampleDatabase::TableExists(const std::string& table_name) const {
     return false;
   }
 
-  if (table_count <= 0)
+  if (table_count <= 0) {
     return false;
+  }
 
   DCHECK(table_count == 1) << "There should be only one table with name '"
                            << table_name << "'";

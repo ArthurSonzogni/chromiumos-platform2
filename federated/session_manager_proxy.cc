@@ -47,11 +47,13 @@ void SessionManagerProxy::AddObserver(
 
 void SessionManagerProxy::OnSessionStateChanged(const std::string& state) {
   if (state == kSessionStartedState) {
-    for (SessionManagerObserverInterface& observer : observer_list_)
+    for (SessionManagerObserverInterface& observer : observer_list_) {
       observer.OnSessionStarted();
+    }
   } else if (state == kSessionStoppedState) {
-    for (SessionManagerObserverInterface& observer : observer_list_)
+    for (SessionManagerObserverInterface& observer : observer_list_) {
       observer.OnSessionStopped();
+    }
   }
 }
 
