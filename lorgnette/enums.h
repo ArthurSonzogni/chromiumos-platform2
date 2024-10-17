@@ -118,8 +118,10 @@ enum DocumentScanSaneBackend {
   kIppUsbXerox = 106,
   kCanonLide70 = 107,
   kEpsonDs = 108,
+  kp208ii = 109,
+  kdrm260 = 110,
 
-  kMaxValue = kEpsonDs,
+  kMaxValue = kdrm260,
 };
 
 // Gets the UMA enum corresponding to the SANE backend with the given

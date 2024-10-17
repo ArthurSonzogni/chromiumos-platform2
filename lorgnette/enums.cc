@@ -253,6 +253,10 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
     return kUmaxPp;
   if (name == "xerox_mfp")
     return kXeroxMfp;
+  if (name == "p208ii")
+    return kp208ii;
+  if (name == "drm260")
+    return kdrm260;
   LOG(WARNING) << "Unknown sane backend " << name;
   return kOtherBackend;
 }
