@@ -34,8 +34,9 @@ static void InitBitReader(struct H264Bitstream* br,
 }
 
 static bool UpdateCurrByte(struct H264Bitstream* br) {
-  if (br->bytes_left < 1)
+  if (br->bytes_left < 1) {
     return false;
+  }
 
   // Emulation prevention three-byte detection.
   // If a sequence of 0x000003 is found, skip (ignore) the last byte (0x03).
@@ -47,8 +48,9 @@ static bool UpdateCurrByte(struct H264Bitstream* br) {
     // Need another full three bytes before we can detect the sequence again.
     br->prev_two_bytes = 0xffff;
 
-    if (br->bytes_left < 1)
+    if (br->bytes_left < 1) {
       return false;
+    }
   }
 
   // Load a new byte and advance pointers.
@@ -67,8 +69,9 @@ static bool UpdateCurrByte(struct H264Bitstream* br) {
 static bool ReadBits(struct H264Bitstream* br,
                      uint8_t num_bits,
                      uint32_t* out) {
-  if (num_bits >= 32)
+  if (num_bits >= 32) {
     return false;
+  }
   int bits_left = num_bits;
   *out = 0;
 
@@ -78,8 +81,9 @@ static bool ReadBits(struct H264Bitstream* br,
              << (bits_left - br->bits_left_in_byte));
     bits_left -= br->bits_left_in_byte;
 
-    if (!UpdateCurrByte(br))
+    if (!UpdateCurrByte(br)) {
       return false;
+    }
   }
 
   *out |= (br->curr_byte >> (br->bits_left_in_byte - bits_left));
@@ -177,8 +181,9 @@ static bool IsSISlice(struct H264SliceHeaderData* hdr) {
 
 static bool SkipRefPicListModification(struct H264Bitstream* br,
                                        uint32_t num_ref_idx_active_minus1) {
-  if (num_ref_idx_active_minus1 >= 32)
+  if (num_ref_idx_active_minus1 >= 32) {
     return false;
+  }
 
   for (int i = 0; i < 32; ++i) {
     int modification_of_pic_nums_idc;
@@ -198,8 +203,9 @@ static bool SkipRefPicListModification(struct H264Bitstream* br,
 
       case 3:
         // Per spec, list cannot be empty.
-        if (i == 0)
+        if (i == 0) {
           return false;
+        }
         return true;
 
       default:
@@ -248,10 +254,12 @@ bool ParseSliceHeader(const uint8_t* slice_header,
                       struct H264SliceHeaderData* hdr_out) {
   // Be very strict about bitstream conformance, we don't want this used as a
   // tool to extract data from anything else.
-  if (header_size < 4)
+  if (header_size < 4) {
     return false;
-  if (slice_header[0] != 0 || slice_header[1] != 0 || slice_header[2] != 1)
+  }
+  if (slice_header[0] != 0 || slice_header[1] != 0 || slice_header[2] != 1) {
     return false;
+  }
 
   // Initialize the reader, skip the 3 byte start code.
   struct H264Bitstream bitstream;
@@ -272,8 +280,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
   uint8_t nal_unit_type = (uint8_t)data;
 
   // It should only be a slice header NALU, nothing else is allowed here.
-  if (nal_unit_type != 1 && nal_unit_type != 5)
+  if (nal_unit_type != 1 && nal_unit_type != 5) {
     return false;
+  }
 
   hdr_out->idr_pic_flag = (nal_unit_type == 5);
 
@@ -292,8 +301,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     hdr_out->field_pic_flag = (uint8_t)data;
   }
 
-  if (hdr_out->idr_pic_flag)
+  if (hdr_out->idr_pic_flag) {
     READ_UE_OR_RETURN(&hdr_out->idr_pic_id);
+  }
 
   size_t bits_left_at_pic_order_cnt_start = NumBitsLeft(br);
   if (stream_data->pic_order_cnt_type == 0) {
@@ -301,16 +311,18 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     READ_BITS_OR_RETURN(stream_data->log2_max_pic_order_cnt_lsb_minus4 + 4,
                         &hdr_out->pic_order_cnt_lsb);
     if (stream_data->bottom_field_pic_order_in_frame_present_flag &&
-        !hdr_out->field_pic_flag)
+        !hdr_out->field_pic_flag) {
       READ_SE_OR_RETURN(&hdr_out->delta_pic_order_cnt_bottom);
+    }
   }
 
   if (stream_data->pic_order_cnt_type == 1 &&
       !stream_data->delta_pic_order_always_zero_flag) {
     READ_SE_OR_RETURN(&hdr_out->delta_pic_order_cnt0);
     if (stream_data->bottom_field_pic_order_in_frame_present_flag &&
-        !hdr_out->field_pic_flag)
+        !hdr_out->field_pic_flag) {
       READ_SE_OR_RETURN(&hdr_out->delta_pic_order_cnt1);
+    }
   }
 
   hdr_out->pic_order_cnt_bit_size =
@@ -321,8 +333,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     TRUE_OR_RETURN(data < 128);
   }
 
-  if (IsBSlice(hdr_out))
+  if (IsBSlice(hdr_out)) {
     READ_BITS_OR_RETURN(1, &data);  // direct_spatial_mv_pred_flag
+  }
 
   int num_ref_idx_l0_active_minus1 = 0;
   int num_ref_idx_l1_active_minus1 = 0;
@@ -331,8 +344,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     READ_BITS_OR_RETURN(1, &num_ref_idx_active_override_flag);
     if (num_ref_idx_active_override_flag) {
       READ_UE_OR_RETURN(&num_ref_idx_l0_active_minus1);
-      if (IsBSlice(hdr_out))
+      if (IsBSlice(hdr_out)) {
         READ_UE_OR_RETURN(&num_ref_idx_l1_active_minus1);
+      }
     } else {
       num_ref_idx_l0_active_minus1 =
           stream_data->num_ref_idx_l0_default_active_minus1;
@@ -349,8 +363,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     uint32_t ref_pic_list_modification_flag_l0;
     READ_BITS_OR_RETURN(1, &ref_pic_list_modification_flag_l0);
     if (ref_pic_list_modification_flag_l0) {
-      if (!SkipRefPicListModification(br, num_ref_idx_l0_active_minus1))
+      if (!SkipRefPicListModification(br, num_ref_idx_l0_active_minus1)) {
         return false;
+      }
     }
   }
 
@@ -358,8 +373,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
     uint32_t ref_pic_list_modification_flag_l1;
     READ_BITS_OR_RETURN(1, &ref_pic_list_modification_flag_l1);
     if (ref_pic_list_modification_flag_l1) {
-      if (!SkipRefPicListModification(br, num_ref_idx_l1_active_minus1))
+      if (!SkipRefPicListModification(br, num_ref_idx_l1_active_minus1)) {
         return false;
+      }
     }
   }
 
@@ -368,8 +384,9 @@ bool ParseSliceHeader(const uint8_t* slice_header,
       (stream_data->weighted_bipred_idc == 1 && IsBSlice(hdr_out))) {
     READ_UE_OR_RETURN(&data);  // luma_log2_weight_denom
 
-    if (stream_data->chroma_array_type != 0)
+    if (stream_data->chroma_array_type != 0) {
       READ_UE_OR_RETURN(&data);  // chroma_log2_weight_denom
+    }
 
     if (!SkipWeightingFactors(br, num_ref_idx_l0_active_minus1,
                               stream_data->chroma_array_type)) {
@@ -400,30 +417,37 @@ bool ParseSliceHeader(const uint8_t* slice_header,
         size_t i;
         for (i = 0; i < 32; ++i) {
           READ_UE_OR_RETURN(&hdr_out->memory_management_control_operation[i]);
-          if (hdr_out->memory_management_control_operation[i] == 0)
+          if (hdr_out->memory_management_control_operation[i] == 0) {
             break;
+          }
           hdr_out->ref_pic_fields.bits.dec_ref_pic_marking_count++;
 
           if (hdr_out->memory_management_control_operation[i] == 1 ||
-              hdr_out->memory_management_control_operation[i] == 3)
+              hdr_out->memory_management_control_operation[i] == 3) {
             READ_UE_OR_RETURN(&hdr_out->difference_of_pic_nums_minus1[i]);
+          }
 
-          if (hdr_out->memory_management_control_operation[i] == 2)
+          if (hdr_out->memory_management_control_operation[i] == 2) {
             READ_UE_OR_RETURN(&hdr_out->long_term_pic_num[i]);
+          }
 
           if (hdr_out->memory_management_control_operation[i] == 3 ||
-              hdr_out->memory_management_control_operation[i] == 6)
+              hdr_out->memory_management_control_operation[i] == 6) {
             READ_UE_OR_RETURN(&hdr_out->long_term_frame_idx[i]);
+          }
 
-          if (hdr_out->memory_management_control_operation[i] == 4)
+          if (hdr_out->memory_management_control_operation[i] == 4) {
             READ_UE_OR_RETURN(&hdr_out->max_long_term_frame_idx_plus1[i]);
+          }
 
-          if (hdr_out->memory_management_control_operation[i] > 6)
+          if (hdr_out->memory_management_control_operation[i] > 6) {
             return false;
+          }
         }
         // We should break at the last field and never hit 32.
-        if (i == 32)
+        if (i == 32) {
           return false;
+        }
       }
     }
 

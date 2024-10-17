@@ -12,8 +12,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // the remaining for the slice header itself.
   struct StreamDataForSliceHeader stream_data;
   struct H264SliceHeaderData hdr_out;
-  if (size < sizeof(stream_data))
+  if (size < sizeof(stream_data)) {
     return 0;
+  }
   memcpy(&stream_data, data, sizeof(stream_data));
   ParseSliceHeader(data + sizeof(stream_data), size - sizeof(stream_data),
                    &stream_data, &hdr_out);
