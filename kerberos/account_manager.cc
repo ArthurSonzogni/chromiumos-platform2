@@ -111,8 +111,9 @@ AccountManager::~AccountManager() = default;
 ErrorType AccountManager::SaveAccounts() const {
   // Copy |accounts_| into proto message.
   AccountDataList storage_accounts;
-  for (const auto& account : accounts_)
+  for (const auto& account : accounts_) {
     *storage_accounts.add_accounts() = account.data;
+  }
 
   // Store serialized proto message on disk.
   std::string accounts_blob;
@@ -122,8 +123,9 @@ ErrorType AccountManager::SaveAccounts() const {
   }
 
   ErrorType error = SaveFile(accounts_path_, accounts_blob);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     return error;
+  }
 
   // Remove group and other read access. This prevents kerberosd-exec from
   // reading it (it's none of its business).
@@ -134,14 +136,16 @@ ErrorType AccountManager::LoadAccounts() {
   accounts_.clear();
 
   // A missing file counts as a file with empty data.
-  if (!base::PathExists(accounts_path_))
+  if (!base::PathExists(accounts_path_)) {
     return ERROR_NONE;
+  }
 
   // Load serialized proto blob.
   std::string accounts_blob;
   ErrorType error = LoadFile(accounts_path_, &accounts_blob);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     return error;
+  }
 
   // Parse blob into proto message.
   AccountDataList storage_accounts;
@@ -202,8 +206,9 @@ ErrorType AccountManager::AddAccount(const std::string& principal_name,
 
 ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   int index = GetAccountIndex(principal_name);
-  if (index == kInvalidIndex)
+  if (index == kInvalidIndex) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  }
 
   DeleteAllFilesFor(principal_name);
   accounts_.erase(accounts_.begin() + index);
@@ -215,15 +220,17 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
 void AccountManager::DeleteAllFilesFor(const std::string& principal_name) {
   const bool krb5cc_existed = base::PathExists(GetKrb5CCPath(principal_name));
   CHECK(base::DeletePathRecursively(GetAccountDir(principal_name)));
-  if (krb5cc_existed)
+  if (krb5cc_existed) {
     TriggerKerberosFilesChanged(principal_name);
+  }
 }
 
 ErrorType AccountManager::ClearAccounts(
     ClearMode mode, std::unordered_set<std::string> keep_list) {
   // Early out.
-  if (accounts_.size() == 0)
+  if (accounts_.size() == 0) {
     return ERROR_NONE;
+  }
 
   for (auto it = accounts_.begin(); it != accounts_.end(); /* empty */) {
     if (base::Contains(keep_list, it->data.principal_name())) {
@@ -294,19 +301,22 @@ std::vector<Account> AccountManager::ListAccounts() const {
 ErrorType AccountManager::SetConfig(const std::string& principal_name,
                                     const std::string& krb5conf) {
   InternalAccount* account = GetMutableAccount(principal_name);
-  if (!account)
+  if (!account) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  }
 
   // Saving the krb5 configuration is done even if the syntax is invalid.
   ErrorType error;
   error = SaveFile(GetKrb5ConfPath(principal_name), krb5conf);
 
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     return error;
+  }
 
   // Triggering the signal is only necessary if the credential cache exists.
-  if (base::PathExists(GetKrb5CCPath(principal_name)))
+  if (base::PathExists(GetKrb5CCPath(principal_name))) {
     TriggerKerberosFilesChanged(principal_name);
+  }
 
   // Validate configuration to make sure it doesn't contain invalid options.
   ConfigErrorInfo error_info;
@@ -314,10 +324,11 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
 
   // If the configuration is invalid we still want to keep it, but it needs to
   // be marked as invalid so that it can't be used for acquiring tickets.
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     account->data.set_is_config_valid(false);
-  else
+  } else {
     account->data.set_is_config_valid(true);
+  }
   SaveAccounts();
 
   return ERROR_NONE;
@@ -333,10 +344,12 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
                                      bool remember_password,
                                      bool use_login_password) {
   InternalAccount* account = GetMutableAccount(principal_name);
-  if (!account)
+  if (!account) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
-  if (!account->data.is_config_valid())
+  }
+  if (!account->data.is_config_valid()) {
     return ERROR_BAD_CONFIG;
+  }
 
   // Remember whether to use the login password.
   if (account->data.use_login_password() != use_login_password) {
@@ -348,8 +361,9 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
                         ? UpdatePasswordFromLogin(principal_name, &password)
                         : UpdatePasswordFromSaved(principal_name,
                                                   remember_password, &password);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     return error;
+  }
 
   // Acquire a Kerberos ticket-granting-ticket.
   error =
@@ -398,23 +412,27 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   files->clear_krb5conf();
 
   const InternalAccount* account = GetAccount(principal_name);
-  if (!account)
+  if (!account) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
+  }
 
   // By convention, no credential cache means no error.
   const base::FilePath krb5cc_path = GetKrb5CCPath(principal_name);
-  if (!base::PathExists(krb5cc_path))
+  if (!base::PathExists(krb5cc_path)) {
     return ERROR_NONE;
+  }
 
   std::string krb5cc;
   ErrorType error = LoadFile(krb5cc_path, &krb5cc);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     return error;
+  }
 
   std::string krb5conf;
   error = LoadFile(GetKrb5ConfPath(principal_name), &krb5conf);
-  if (error != ERROR_NONE)
+  if (error != ERROR_NONE) {
     return error;
+  }
 
   files->mutable_krb5cc()->assign(krb5cc.begin(), krb5cc.end());
   files->mutable_krb5conf()->assign(krb5conf.begin(), krb5conf.end());
@@ -428,8 +446,9 @@ void AccountManager::StartObservingTickets() {
 
     // Might happen for managed accounts (e.g. misconfigured password). Chrome
     // only allows adding unmanaged accounts if a ticket can be acquired.
-    if (!base::PathExists(krb5cc_path))
+    if (!base::PathExists(krb5cc_path)) {
       continue;
+    }
 
     // A ticket where GetTgtStatus fails is considered broken and hence invalid.
     Krb5Interface::TgtStatus tgt_status;
@@ -473,10 +492,12 @@ ErrorType AccountManager::GetTgtStatus(const std::string& principal_name,
 
 ErrorType AccountManager::RenewTgt(const std::string& principal_name) {
   const InternalAccount* account = GetAccount(principal_name);
-  if (!account)
+  if (!account) {
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
-  if (!account->data.is_config_valid())
+  }
+  if (!account->data.is_config_valid()) {
     return ERROR_BAD_CONFIG;
+  }
 
   ErrorType error =
       krb5_->RenewTgt(principal_name, GetKrb5CCPath(principal_name),
@@ -514,8 +535,9 @@ bool AccountManager::MaybeAutoAcquireTgt(const std::string& principal_name,
   const bool use_login_password = account->data.use_login_password();
   const bool password_was_remembered =
       base::PathExists(GetPasswordPath(principal_name));
-  if (!use_login_password && !password_was_remembered)
+  if (!use_login_password && !password_was_remembered) {
     return false;
+  }
 
   // Should not have remembered login password ourselves.
   DCHECK(!(use_login_password && password_was_remembered));
@@ -527,8 +549,9 @@ bool AccountManager::MaybeAutoAcquireTgt(const std::string& principal_name,
                       password_was_remembered /* keep remembering */,
                       use_login_password);
 
-  if (*error != ERROR_NONE)
+  if (*error != ERROR_NONE) {
     VLOG(1) << "Auto-acquiring TGT failed with " << GetErrorString(*error);
+  }
 
   return true;
 }
@@ -584,8 +607,9 @@ ErrorType AccountManager::UpdatePasswordFromSaved(
   const base::FilePath password_path = GetPasswordPath(principal_name);
   if (!password->empty() && remember_password) {
     ErrorType error = SaveFile(password_path, *password);
-    if (error != ERROR_NONE)
+    if (error != ERROR_NONE) {
       return error;
+    }
 
     // Remove group and other read access, just keep kerberosd rw. This prevents
     // kerberosd-exec from accessing the password.
@@ -600,21 +624,24 @@ ErrorType AccountManager::UpdatePasswordFromSaved(
   // Try to load a saved password if available and none is given.
   if (password->empty() && base::PathExists(password_path)) {
     ErrorType error = LoadFile(password_path, password);
-    if (error != ERROR_NONE)
+    if (error != ERROR_NONE) {
       return error;
+    }
   }
 
   // Erase a previously remembered password.
-  if (!remember_password)
+  if (!remember_password) {
     base::DeleteFile(password_path);
+  }
 
   return ERROR_NONE;
 }
 
 void AccountManager::MaybeReportDailyUsageStats() const {
   // Did a day pass already?
-  if (!metrics_->ShouldReportDailyUsageStats())
+  if (!metrics_->ShouldReportDailyUsageStats()) {
     return;
+  }
 
   // Count different kinds of accounts.
   int total_count = static_cast<int>(accounts_.size());
@@ -624,14 +651,17 @@ void AccountManager::MaybeReportDailyUsageStats() const {
   int use_login_password_count = 0;
 
   for (const auto& account : accounts_) {
-    if (account.data.is_managed())
+    if (account.data.is_managed()) {
       managed_count++;
-    else
+    } else {
       unmanaged_count++;
-    if (base::PathExists(GetPasswordPath(account.data.principal_name())))
+    }
+    if (base::PathExists(GetPasswordPath(account.data.principal_name()))) {
       remembered_password_count++;
-    if (account.data.use_login_password())
+    }
+    if (account.data.use_login_password()) {
       use_login_password_count++;
+    }
   }
 
   // Report UMA stats.

@@ -60,10 +60,11 @@ void PrintRequest(const char* method_name) {
 }
 
 void PrintResult(const char* method_name, ErrorType error) {
-  if (error == ERROR_NONE)
+  if (error == ERROR_NONE) {
     LOG(INFO) << "<<< " << method_name << " succeeded";
-  else
+  } else {
     LOG(ERROR) << "<<< " << method_name << " failed: " << GetErrorString(error);
+  }
 }
 
 // Calls Session Manager to get the user hash for the primary session. Returns
@@ -119,8 +120,9 @@ void KerberosAdaptor::RegisterAsync(
   }
 
   // Might have already been set for testing.
-  if (!metrics_)
+  if (!metrics_) {
     metrics_ = std::make_unique<KerberosMetrics>(storage_dir);
+  }
 
   // Create krb5 or use the one given for testing.
   auto krb5 = krb5_for_testing_ ? std::move(krb5_for_testing_)
@@ -191,8 +193,9 @@ ByteArray KerberosAdaptor::ClearAccounts(const ByteArray& request_blob) {
   if (error == ERROR_NONE) {
     std::unordered_set<std::string> keep_list(
         request.principal_names_to_ignore_size());
-    for (int n = 0; n < request.principal_names_to_ignore_size(); ++n)
+    for (int n = 0; n < request.principal_names_to_ignore_size(); ++n) {
       keep_list.insert(request.principal_names_to_ignore(n));
+    }
 
     error = manager_->ClearAccounts(request.mode(), std::move(keep_list));
     GetAccountsList(response.mutable_accounts());
@@ -212,8 +215,9 @@ ByteArray KerberosAdaptor::ListAccounts(const ByteArray& request_blob) {
   // Note: request is empty right now, but keeping it for future changes.
   std::vector<Account> accounts;
   ListAccountsResponse response;
-  if (error == ERROR_NONE)
+  if (error == ERROR_NONE) {
     GetAccountsList(response.mutable_accounts());
+  }
 
   PrintResult(__FUNCTION__, error);
   metrics_->ReportDBusCallResult(__FUNCTION__, error);
@@ -226,8 +230,9 @@ ByteArray KerberosAdaptor::SetConfig(const ByteArray& request_blob) {
   SetConfigRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
-  if (error == ERROR_NONE)
+  if (error == ERROR_NONE) {
     error = manager_->SetConfig(request.principal_name(), request.krb5conf());
+  }
 
   PrintResult(__FUNCTION__, error);
   metrics_->ReportDBusCallResult(__FUNCTION__, error);
@@ -337,8 +342,9 @@ void KerberosAdaptor::OnKerberosTicketExpiring(
 
 void KerberosAdaptor::GetAccountsList(RepeatedAccountField* repeated_accounts) {
   std::vector<Account> accounts = manager_->ListAccounts();
-  for (const auto& account : accounts)
+  for (const auto& account : accounts) {
     *repeated_accounts->Add() = account;
+  }
 }
 
 }  // namespace kerberos

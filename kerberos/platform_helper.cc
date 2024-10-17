@@ -32,18 +32,21 @@ std::optional<std::string> ReadPipeToString(int fd) {
   while (total_read < kMaxReadSize) {
     const ssize_t bytes_read = HANDLE_EINTR(
         read(fd, buffer, std::min(kBufferSize, kMaxReadSize - total_read)));
-    if (bytes_read < 0)
+    if (bytes_read < 0) {
       return std::nullopt;
-    if (bytes_read == 0)
+    }
+    if (bytes_read == 0) {
       return data;
+    }
     total_read += bytes_read;
     data.append(buffer, bytes_read);
   }
 
   // Size limit hit. Do one more read to check if the file size is exactly
   // kMaxReadSize bytes.
-  if (HANDLE_EINTR(read(fd, buffer, 1)) != 0)
+  if (HANDLE_EINTR(read(fd, buffer, 1)) != 0) {
     return std::nullopt;
+  }
   return data;
 }
 

@@ -181,19 +181,22 @@ ConfigErrorInfo ConfigParser::ParseConfig(
       }
       group_level++;
       // If too nested config, exit here to prevent krb5 stack overflow.
-      if (group_level > kMaxGroupLevelDepth)
+      if (group_level > kMaxGroupLevelDepth) {
         return MakeErrorInfo(CONFIG_ERROR_TOO_MANY_NESTED_GROUPS, line_index);
+      }
       expect_opening_curly_brace = false;
       continue;
     }
 
     // Skip empty lines.
-    if (line.empty())
+    if (line.empty()) {
       continue;
+    }
 
     // Skip comments.
-    if (line.at(0) == ';' || line.at(0) == '#')
+    if (line.at(0) == ';' || line.at(0) == '#') {
       continue;
+    }
 
     // Bail on any |kDirectives|.
     for (const char* directive : kDirectives) {
@@ -207,8 +210,9 @@ ConfigErrorInfo ConfigParser::ParseConfig(
 
     // Check for '}' to close a { group }.
     if (line.at(0) == '}') {
-      if (group_level == 0)
+      if (group_level == 0) {
         return MakeErrorInfo(CONFIG_ERROR_EXTRA_CURLY_BRACE, line_index);
+      }
       group_level--;
       continue;
     }
@@ -216,15 +220,17 @@ ConfigErrorInfo ConfigParser::ParseConfig(
     // Check for new [section].
     if (line.at(0) == '[') {
       // Bail if section is within a { group }.
-      if (group_level > 0)
+      if (group_level > 0) {
         return MakeErrorInfo(CONFIG_ERROR_SECTION_NESTED_IN_GROUP, line_index);
+      }
 
       // Bail if closing bracket is missing or if there's more stuff after the
       // closing bracket (the final marker '*' is fine).
       std::vector<std::string> parts = base::SplitString(
           line, "]", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-      if (parts.size() != 2 || !(parts.at(1).empty() || parts.at(1) == "*"))
+      if (parts.size() != 2 || !(parts.at(1).empty() || parts.at(1) == "*")) {
         return MakeErrorInfo(CONFIG_ERROR_SECTION_SYNTAX, line_index);
+      }
 
       current_section = parts.at(0).substr(1);
 
@@ -242,20 +248,24 @@ ConfigErrorInfo ConfigParser::ParseConfig(
 
     // Remove final marker.
     std::string& key = parts.at(0);
-    if (key.back() == '*')
+    if (key.back() == '*') {
       key.pop_back();
+    }
 
     // No space allowed in the key.
-    if (std::find_if(key.begin(), key.end(), isspace) != key.end())
+    if (std::find_if(key.begin(), key.end(), isspace) != key.end()) {
       return MakeErrorInfo(CONFIG_ERROR_RELATION_SYNTAX, line_index);
+    }
 
     // Final marker must come immediately after key.
-    if (key.empty() || isspace(key.back()))
+    if (key.empty() || isspace(key.back())) {
       return MakeErrorInfo(CONFIG_ERROR_RELATION_SYNTAX, line_index);
+    }
 
     // Is there at least one '=' sign?
-    if (parts.size() < 2)
+    if (parts.size() < 2) {
       return MakeErrorInfo(CONFIG_ERROR_RELATION_SYNTAX, line_index);
+    }
 
     const std::string& value = parts.at(1);
     if (parts.size() == 2) {
@@ -271,15 +281,17 @@ ConfigErrorInfo ConfigParser::ParseConfig(
       if (value == "{") {
         group_level++;
         // If too nested config, exit here to prevent krb5 stack overflow.
-        if (group_level > kMaxGroupLevelDepth)
+        if (group_level > kMaxGroupLevelDepth) {
           return MakeErrorInfo(CONFIG_ERROR_TOO_MANY_NESTED_GROUPS, line_index);
+        }
         continue;
       }
     }
 
     // Check whether we support the key.
-    if (!IsKeySupported(key, current_section, group_level))
+    if (!IsKeySupported(key, current_section, group_level)) {
       return MakeErrorInfo(CONFIG_ERROR_KEY_NOT_SUPPORTED, line_index);
+    }
 
     // If |key| is a enctypes field in the [libdefaults] section.
     if (current_section == kSectionLibdefaults && group_level <= 1 &&
@@ -316,8 +328,9 @@ bool ConfigParser::IsKeySupported(const std::string& key,
                                   const std::string& section,
                                   int group_level) const {
   // Bail on anything outside of a section.
-  if (section.empty())
+  if (section.empty()) {
     return false;
+  }
 
   // Enforce only allowlisted libdefaults keys on the root and realm levels:
   // [libdefaults]
@@ -336,8 +349,9 @@ bool ConfigParser::IsKeySupported(const std::string& key,
   //      kdc = kerberos2.example.com
   //   }
   // Not sure if they can actually be at the root level, but just in case...
-  if (section == kSectionRealms && group_level <= 1)
+  if (section == kSectionRealms && group_level <= 1) {
     return base::Contains(realms_allowlist_, key);
+  }
 
   // Anything else is fine (all keys of other supported sections).
   return true;

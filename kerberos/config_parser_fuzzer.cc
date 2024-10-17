@@ -20,8 +20,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Bail out on huge inputs, in order to avoid timeouts.
   constexpr int kMaxInputSize = 50000;
-  if (size > kMaxInputSize)
+  if (size > kMaxInputSize) {
     return 0;
+  }
 
   const std::string krb5conf(reinterpret_cast<const char*>(data), size);
 

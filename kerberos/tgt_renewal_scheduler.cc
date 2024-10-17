@@ -33,10 +33,12 @@ std::string FormatTimeDelta(int64_t delta_seconds) {
   int s = delta_seconds % 60;
 
   std::string str;
-  if (h > 0)
+  if (h > 0) {
     str += base::StringPrintf("%ih ", h);
-  if (h > 0 || m > 0)
+  }
+  if (h > 0 || m > 0) {
     str += base::StringPrintf("%im ", m);
+  }
   str += base::StringPrintf("%is", s);
   return str;
 }
@@ -57,23 +59,26 @@ TgtRenewalScheduler::TgtRenewalScheduler(const std::string& principal_name,
 
 void TgtRenewalScheduler::ScheduleRenewal(bool notify_expiration) {
   // Cancel an existing callback if there is any.
-  if (!tgt_renewal_callback_.IsCancelled())
+  if (!tgt_renewal_callback_.IsCancelled()) {
     tgt_renewal_callback_.Cancel();
+  }
 
   // If the TGT exists, but it's broken somehow, assume it's invalid.
   Krb5Interface::TgtStatus tgt_status;
   if (delegate_->GetTgtStatus(principal_name_, &tgt_status) != ERROR_NONE) {
     VLOG(1) << kLogHeader << "Failed to get TGT status";
-    if (notify_expiration)
+    if (notify_expiration) {
       delegate_->NotifyTgtExpiration(principal_name_, TgtExpiration::kExpired);
+    }
     return;
   }
 
   // Is the TGT expired?
   if (tgt_status.validity_seconds <= 0) {
     VLOG(1) << kLogHeader << "TGT about to expire or expired";
-    if (notify_expiration)
+    if (notify_expiration) {
       delegate_->NotifyTgtExpiration(principal_name_, TgtExpiration::kExpired);
+    }
     return;
   }
 
@@ -81,9 +86,10 @@ void TgtRenewalScheduler::ScheduleRenewal(bool notify_expiration) {
   // notification in Chrome, so the user can relog.
   if (tgt_status.validity_seconds <= kExpirationHeadsUpTimeSeconds) {
     VLOG(1) << kLogHeader << "TGT about to expire";
-    if (notify_expiration)
+    if (notify_expiration) {
       delegate_->NotifyTgtExpiration(principal_name_,
                                      TgtExpiration::kAboutToExpire);
+    }
     return;
   }
 
@@ -120,10 +126,11 @@ void TgtRenewalScheduler::RunScheduledTgtRenewal() {
   // and want to try again later.
   ScheduleRenewal(true /* notify_expiration */);
 
-  if (error == ERROR_NONE)
+  if (error == ERROR_NONE) {
     VLOG(1) << kLogHeader << "Succeeded";
-  else
+  } else {
     LOG(ERROR) << kLogHeader << "Failed with error " << GetErrorString(error);
+  }
 }
 
 }  // namespace kerberos

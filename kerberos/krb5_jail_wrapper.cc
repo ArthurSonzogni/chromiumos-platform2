@@ -106,8 +106,9 @@ MinijailForker::MinijailForker() : jail_(minijail_new()) {
   pipe_write_end_.reset(pipe_fd[1]);
 
   // Change uid to kerberosd-exec.
-  if (!g_change_user_disabled_for_testing)
+  if (!g_change_user_disabled_for_testing) {
     CHECK_EQ(0, minijail_change_user(jail_.get(), kerberosd_exec));
+  }
 
   // Required since we don't have the caps to wipe supplementary groups.
   minijail_keep_supplementary_gids(jail_.get());
@@ -168,8 +169,9 @@ void MinijailForker::Parent_Wait() {
 ErrorType MinijailForker::Parent_ReadError() {
   // Handle internal errors, don't try to read ErrorType, it might block.
   ErrorType error = ERROR_JAIL_FAILURE;
-  if (error_)
+  if (error_) {
     return error;
+  }
 
   Parent_Read(&error, sizeof(error));
   return error_ ? ERROR_JAIL_FAILURE : error;
@@ -178,8 +180,9 @@ ErrorType MinijailForker::Parent_ReadError() {
 Krb5Interface::TgtStatus MinijailForker::Parent_ReadTgtStatus() {
   // Handle internal errors, don't try to read the TGT status, it might block.
   Krb5Interface::TgtStatus tgt_status;
-  if (error_)
+  if (error_) {
     return tgt_status;
+  }
 
   Parent_Read(&tgt_status.validity_seconds,
               sizeof(tgt_status.validity_seconds));
@@ -190,13 +193,15 @@ Krb5Interface::TgtStatus MinijailForker::Parent_ReadTgtStatus() {
 ConfigErrorInfo MinijailForker::Parent_ReadErrorInfo() {
   // Handle internal errors, don't try to read the error info, it might block.
   ConfigErrorInfo error_info;
-  if (error_)
+  if (error_) {
     return error_info;
+  }
 
   int buffer_size = 0;
   Parent_Read(&buffer_size, sizeof(buffer_size));
-  if (buffer_size == 0)
+  if (buffer_size == 0) {
     return error_info;
+  }
 
   std::vector<uint8_t> buffer;
   buffer.resize(buffer_size);
@@ -227,8 +232,9 @@ void MinijailForker::Parent_Read(void* data, size_t data_size) {
 // If |error| is ERROR_NONE, gives TGT at |krb5cc_path| group read permission
 // (for the kerberosd group), so that the kerberosd user can read it.
 void SetTgtFilePermissions(const base::FilePath& krb5cc_path, ErrorType error) {
-  if (error == ERROR_NONE)
+  if (error == ERROR_NONE) {
     CHECK(base::SetPosixFilePermissions(krb5cc_path, kFileMode_rw_r));
+  }
 }
 
 }  // namespace

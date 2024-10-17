@@ -113,23 +113,26 @@ bool KerberosMetrics::ShouldReportDailyUsageStats() {
     const bool res =
         base::WriteFile(daily_report_time_path_, std::string_view()) &&
         base::TouchFile(daily_report_time_path_, now, now);
-    if (!res)
+    if (!res) {
       LOG(WARNING) << "Failed to touch " << daily_report_time_path_.value();
+    }
     return res;
   }
 
   // Be sure to gracefully handle the case when the clock is moved backwards.
   const base::Time last_file_time = info.last_modified;
   int days_elapsed = (now - last_file_time).InDays();
-  if (days_elapsed == 0)
+  if (days_elapsed == 0) {
     return false;
+  }
 
   // Don't set the new file time to |now|. This would result in an average
   // frequency of less than one day.
   base::Time new_time = last_file_time + days_elapsed * base::Days(1);
   const bool res = base::TouchFile(daily_report_time_path_, new_time, new_time);
-  if (!res)
+  if (!res) {
     LOG(WARNING) << "Failed to touch " << daily_report_time_path_.value();
+  }
 
   // Don't report if time goes backwards (but do reset the file time!).
   return days_elapsed > 0;

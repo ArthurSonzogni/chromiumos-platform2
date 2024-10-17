@@ -38,8 +38,9 @@ struct ScopedKrb5Context {
   // Converts the krb5 |code| to a human readable error message.
   std::string GetErrorMessage(errcode_t code) {
     // Fallback if error happens during ctx initialization (e.g. bad config).
-    if (!ctx)
+    if (!ctx) {
       return base::StringPrintf("Error %ld", code);
+    }
 
     const char* emsg = krb5_get_error_message(ctx, code);
     std::string msg = base::StringPrintf("%s (%ld)", emsg, code);
@@ -172,8 +173,9 @@ class KinitContext {
     did_run_ = true;
 
     ErrorType error = Initialize();
-    if (error == ERROR_NONE)
+    if (error == ERROR_NONE) {
       error = RunKinit();
+    }
     Finalize();
     return error;
   }
@@ -203,10 +205,12 @@ class KinitContext {
     }
 
     ~KInitData() {
-      if (options)
+      if (options) {
         krb5_get_init_creds_opt_free(ctx, options);
-      if (my_creds.client == k5->me)
+      }
+      if (my_creds.client == k5->me) {
         my_creds.client = nullptr;
+      }
       krb5_free_cred_contents(ctx, &my_creds);
     }
   };
@@ -418,9 +422,10 @@ ErrorType Krb5InterfaceImpl::GetTgtStatus(const base::FilePath& krb5cc_path,
   while ((ret = krb5_cc_next_cred(ctx.get(), ccache.get(), &cur, &creds)) ==
          0) {
     if (IsTgt(creds)) {
-      if (creds.times.endtime)
+      if (creds.times.endtime) {
         status->validity_seconds =
             std::max<int64_t>(creds.times.endtime - now, 0);
+      }
 
       if (creds.times.renew_till) {
         status->renewal_seconds =
@@ -458,8 +463,9 @@ ErrorType Krb5InterfaceImpl::GetTgtStatus(const base::FilePath& krb5cc_path,
 ErrorType Krb5InterfaceImpl::ValidateConfig(const std::string& krb5conf,
                                             ConfigErrorInfo* error_info) {
   *error_info = config_parser_.Validate(krb5conf);
-  if (error_info->code() != CONFIG_ERROR_NONE)
+  if (error_info->code() != CONFIG_ERROR_NONE) {
     return ERROR_BAD_CONFIG;
+  }
 
   // Also try the mit krb5 code to parse the config.
   error_info->Clear();

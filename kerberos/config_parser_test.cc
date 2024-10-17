@@ -106,8 +106,9 @@ std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
 }
 
 std::ostream& operator<<(std::ostream& os, const ConfigErrorInfo& error_info) {
-  if (error_info.code() == CONFIG_ERROR_NONE)
+  if (error_info.code() == CONFIG_ERROR_NONE) {
     return os << "[no error]";
+  }
 
   return os << error_info.code() << " at line " << error_info.line_index();
 }

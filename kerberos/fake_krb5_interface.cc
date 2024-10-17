@@ -31,11 +31,13 @@ ErrorType FakeKrb5Interface::AcquireTgt(const std::string& principal_name,
                                         const base::FilePath& krb5cc_path,
                                         const base::FilePath& krb5conf_path) {
   acquire_tgt_call_count_++;
-  if (password.empty())
+  if (password.empty()) {
     return ERROR_BAD_PASSWORD;
+  }
 
-  if (!expected_password_.empty() && password != expected_password_)
+  if (!expected_password_.empty() && password != expected_password_) {
     return ERROR_BAD_PASSWORD;
+  }
 
   WriteFakeTgt(krb5cc_path);
   return acquire_tgt_error_;
