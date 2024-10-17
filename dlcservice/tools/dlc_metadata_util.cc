@@ -65,8 +65,9 @@ class DlcMetadataUtil {
 };
 
 int DlcMetadataUtil::Run() {
-  if (!ParseFlags())
+  if (!ParseFlags()) {
     return EX_USAGE;
+  }
 
   metadata_ = std::make_unique<Metadata>(metadata_dir_);
   if (!metadata_->Initialize()) {
@@ -163,8 +164,9 @@ int DlcMetadataUtil::GetMetadata() {
                   .Set("table", entry->table);
   auto json =
       base::WriteJsonWithOptions(dict, base::JSONWriter::OPTIONS_PRETTY_PRINT);
-  if (!json)
+  if (!json) {
     return EX_SOFTWARE;
+  }
 
   if (file_path_.empty()) {
     std::cout << *json;
@@ -187,8 +189,9 @@ int DlcMetadataUtil::SetMetadata() {
 int DlcMetadataUtil::ListDlcIds() {
   const auto& ids = metadata_->ListDlcIds(filter_key_, base::Value(true));
   auto id_list = base::Value::List::with_capacity(ids.size());
-  for (const auto& id : ids)
+  for (const auto& id : ids) {
     id_list.Append(id);
+  }
 
   std::string json;
   base::JSONWriter::Write(id_list, &json);

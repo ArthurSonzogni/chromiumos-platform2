@@ -57,8 +57,9 @@ void Installer::StatusSync() {
 }
 
 void Installer::NotifyStatusSync(const Status& status) {
-  for (Observer& observer : observers_)
+  for (Observer& observer : observers_) {
     observer.OnStatusSync(status);
+  }
 }
 
 UpdateEngineInstaller::UpdateEngineInstaller() : weak_ptr_factory_(this) {}

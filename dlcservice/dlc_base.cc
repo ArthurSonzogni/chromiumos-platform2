@@ -78,10 +78,11 @@ bool DlcBase::Initialize() {
   state_.set_last_error_code(kErrorNone);
 
   if (manifest_->mount_file_required()) {
-    if (!Prefs(prefs_package_path_).Delete(kDlcRootMount))
+    if (!Prefs(prefs_package_path_).Delete(kDlcRootMount)) {
       LOG(ERROR)
           << "Failed to delete indirect root mount file during Initialization: "
           << JoinPaths(prefs_package_path_, kDlcRootMount);
+    }
   }
 
   if (!base::ReadFileToString(SystemState::Get()->verification_file(),
@@ -91,8 +92,9 @@ bool DlcBase::Initialize() {
 
   // Load and validate the `kDlcPrefVerified` prefs during initialization and
   // set the DLC state.
-  if (!IsUserTied())
+  if (!IsUserTied()) {
     LoadPrefs();
+  }
 
   // If factory install isn't allowed, free up the space.
   if (!IsFactoryInstall()) {
@@ -108,8 +110,9 @@ bool DlcBase::Initialize() {
           << id_;
     } else {
       ErrorPtr tmp_err;
-      if (!CreateDlc(&tmp_err))
+      if (!CreateDlc(&tmp_err)) {
         LOG(ERROR) << "Failed to reserve space for DLC=" << id_;
+      }
     }
   }
 
@@ -130,9 +133,10 @@ const std::string& DlcBase::GetDescription() const {
 
 void DlcBase::UpdateState() {
   state_.clear_image_path();
-  if (IsInstalled())
+  if (IsInstalled()) {
     state_.set_image_path(
         GetImagePath(SystemState::Get()->active_boot_slot()).value());
+  }
 }
 
 DlcState DlcBase::GetState() const {
@@ -179,8 +183,9 @@ bool DlcBase::IsUserTied() const {
 bool DlcBase::HasContent() const {
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {
-    if (!path.empty() && base::PathExists(path))
+    if (!path.empty() && base::PathExists(path)) {
       return true;
+    }
   }
   return false;
 }
@@ -211,8 +216,9 @@ bool DlcBase::IsFactoryInstall() const {
 }
 
 base::FilePath DlcBase::GetRoot() const {
-  if (mount_point_.empty())
+  if (mount_point_.empty()) {
     return {};
+  }
   return JoinPaths(mount_point_, kRootDirectoryInsideDlcModule);
 }
 
@@ -264,8 +270,9 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
   vector<std::pair<FilePath, DlcSanitizedPath>> path_pairs;
   if (IsUserTied()) {
     const auto& daemon_store = GetDaemonStorePath();
-    if (daemon_store.empty())
+    if (daemon_store.empty()) {
       return false;
+    }
 
     const auto& content_path = JoinPaths(daemon_store, kDlcImagesDir);
     const auto& content_path_sanitized =
@@ -324,8 +331,9 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
     // preallocated space, not only the actual bits of the DLC image to not
     // re-sparsify the DLC images.
     auto dlc_size = manifest_->preallocated_size();
-    if (dlc_size == kMagicDevSize)
+    if (dlc_size == kMagicDevSize) {
       dlc_size = manifest_->size();
+    }
     if (!CreateFile(image_path, dlc_size)) {
       if (reserve_) {
         state_.set_last_error_code(kErrorAllocation);
@@ -509,8 +517,9 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
     return false;
   }
 
-  if (!MarkVerified())
+  if (!MarkVerified()) {
     LOG(ERROR) << "Failed to mark the image verified for DLC=" << id_;
+  }
 
   return true;
 }
@@ -618,8 +627,9 @@ bool DlcBase::DeployCopier(ErrorPtr* err) {
     return false;
   }
 
-  if (!MarkVerified())
+  if (!MarkVerified()) {
     LOG(ERROR) << "Failed to mark the image verified for DLC=" << id_;
+  }
 
   return true;
 }
@@ -633,8 +643,9 @@ bool DlcBase::Install(ErrorPtr* err) {
 
       if (!CreateDlc(err)) {
         ErrorPtr tmp_err;
-        if (!CancelInstall(*err, &tmp_err))
+        if (!CancelInstall(*err, &tmp_err)) {
           LOG(ERROR) << "Failed to cancel the install correctly.";
+        }
         return false;
       }
       // Only set the DLC installing after creation is successful to have finer
@@ -643,8 +654,9 @@ bool DlcBase::Install(ErrorPtr* err) {
 
       // Try to reload the verified pref for user-tied DLC in case the
       // prefs are outdated from session changes.
-      if (IsUserTied() && !IsVerified())
+      if (IsUserTied() && !IsVerified()) {
         LoadPrefs();
+      }
 
       // Finish the installation for verified images so they can be mounted.
       if (IsVerified()) {
@@ -679,8 +691,9 @@ bool DlcBase::Install(ErrorPtr* err) {
               << "Preloading failed, so assuming installation failed for DLC="
               << id_;
           ErrorPtr tmp_err;
-          if (!CancelInstall(*err, &tmp_err))
+          if (!CancelInstall(*err, &tmp_err)) {
             LOG(ERROR) << "Failed to cancel the install from preloading.";
+          }
           return false;
         }
         LOG(INFO) << "Preloading DLC=" << id_;
@@ -732,8 +745,9 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
         }
       }
       if (IsVerified()) {
-        if (Mount(err))
+        if (Mount(err)) {
           break;
+        }
         // Do not |CancelInstall| on mount failure.
         state_.set_last_error_code(Error::GetErrorCode(*err));
         ChangeState(DlcState::NOT_INSTALLED);
@@ -764,9 +778,10 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
 
         SystemState::Get()->metrics()->SendInstallResultFailure(err);
         ErrorPtr tmp_err;
-        if (!CancelInstall(*err, &tmp_err))
+        if (!CancelInstall(*err, &tmp_err)) {
           LOG(ERROR) << "Failed during install finalization for DLC="
                      << sanitized_id_;
+        }
         return false;
       }
     case DlcState::NOT_INSTALLED:
@@ -778,8 +793,9 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
 
   // Now that we are sure the image is installed, we can go ahead and set it as
   // active. Failure to set the metadata flags should not fail the install.
-  if (!IsUserTied())
+  if (!IsUserTied()) {
     SetActiveValue(true);
+  }
   SystemState::Get()->metrics()->SendInstallResultSuccess(installed_by_ue);
 
   return true;
@@ -869,9 +885,10 @@ bool DlcBase::Unmount(ErrorPtr* err) {
   }
 
   if (manifest_->mount_file_required()) {
-    if (!Prefs(prefs_package_path_).Delete(kDlcRootMount))
+    if (!Prefs(prefs_package_path_).Delete(kDlcRootMount)) {
       LOG(ERROR) << "Failed to delete indirect root mount file: "
                  << JoinPaths(prefs_package_path_, kDlcRootMount);
+    }
   }
 
   mount_point_.clear();
@@ -985,8 +1002,9 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
       return false;
   }
 
-  if (!IsUserTied())
+  if (!IsUserTied()) {
     SetActiveValue(false);
+  }
   return Delete(err);
 }
 
@@ -1006,9 +1024,10 @@ void DlcBase::OnSetActiveValueSuccess() {
 }
 
 void DlcBase::OnSetActiveValueError(brillo::Error* err) {
-  if (err)
+  if (err) {
     LOG(ERROR) << "Failed to set active value for DLC=" << sanitized_id_
                << ", err=" << Error::ToString(err->Clone());
+  }
 }
 
 void DlcBase::ChangeState(DlcState::State state) {
@@ -1084,16 +1103,18 @@ bool DlcBase::Deploy(ErrorPtr* err) {
 
     if (!CreateDlc(err)) {
       ErrorPtr tmp_err;
-      if (!CancelInstall(*err, &tmp_err))
+      if (!CancelInstall(*err, &tmp_err)) {
         LOG(ERROR) << "Failed to cancel deploying DLC=" << id_;
+      }
       return false;
     }
 
     if (!DeployCopier(err)) {
       LOG(ERROR) << "Failed to load deployed image for DLC=" << id_;
       ErrorPtr tmp_err;
-      if (!CancelInstall(*err, &tmp_err))
+      if (!CancelInstall(*err, &tmp_err)) {
         LOG(ERROR) << "Failed to cancel deploying DLC=" << id_;
+      }
       return false;
     }
 

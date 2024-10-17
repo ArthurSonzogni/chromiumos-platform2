@@ -49,8 +49,9 @@ class UniqueQueue {
   // Removes a single element |t|.
   void Erase(const T& t) {
     auto iter = map_.find(t);
-    if (iter == map_.end())
+    if (iter == map_.end()) {
       return;
+    }
     list_.erase(iter->second);
     map_.erase(iter);
   }

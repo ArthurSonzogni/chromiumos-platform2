@@ -63,8 +63,9 @@ DlcIdList ToDlcIdList(const DlcMap& dlcs,
                       const std::function<bool(const DlcType&)>& filter) {
   DlcIdList list;
   for (const auto& pair : dlcs) {
-    if (filter(pair.second))
+    if (filter(pair.second)) {
       list.push_back(pair.first);
+    }
   }
   return list;
 }
@@ -80,14 +81,16 @@ DlcService::DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
 
 DlcService::~DlcService() {
   if (periodic_install_check_id_ != MessageLoop::kTaskIdNull &&
-      !brillo::MessageLoop::current()->CancelTask(periodic_install_check_id_))
+      !brillo::MessageLoop::current()->CancelTask(periodic_install_check_id_)) {
     LOG(ERROR) << AlertLogTag(kCategoryCleanup)
                << "Failed to cancel delayed installer check during cleanup.";
+  }
   if (periodic_metrics_reporting_id_ != MessageLoop::kTaskIdNull &&
       !brillo::MessageLoop::current()->CancelTask(
-          periodic_metrics_reporting_id_))
+          periodic_metrics_reporting_id_)) {
     LOG(ERROR) << AlertLogTag(kCategoryCleanup)
                << "Failed to cancel delayed metrics reporting during cleanup.";
+  }
 }
 
 void DlcService::Initialize() {
@@ -119,8 +122,9 @@ void DlcService::Initialize() {
 
   // Initialize supported DLC(s).
   for (const auto& id : ScanDirectory(SystemState::Get()->manifest_dir())) {
-    if (supported_.find(id) == supported_.end())
+    if (supported_.find(id) == supported_.end()) {
       initialize_dlc(id);
+    }
   }
   CleanupUnsupported();
 
@@ -133,15 +137,18 @@ void DlcService::CleanupUnsupported() {
   // Delete deprecated DLC(s) in content directory.
   for (const auto& id : ScanDirectory(system_state->content_dir())) {
     brillo::ErrorPtr tmp_err;
-    if (GetDlc(id, &tmp_err) != nullptr)
+    if (GetDlc(id, &tmp_err) != nullptr) {
       continue;
-    for (const auto& path : GetPathsToDelete(id))
+    }
+    for (const auto& path : GetPathsToDelete(id)) {
       if (base::PathExists(path)) {
-        if (!brillo::DeletePathRecursively(path))
+        if (!brillo::DeletePathRecursively(path)) {
           PLOG(ERROR) << "Failed to delete path=" << path;
-        else
+        } else {
           LOG(INFO) << "Deleted path=" << path << " for deprecated DLC=" << id;
+        }
       }
+    }
   }
 
 #if USE_LVM_STATEFUL_PARTITION
@@ -154,16 +161,18 @@ void DlcService::CleanupUnsupported() {
   for (const auto& id : ScanDirectory(preloaded_content_dir)) {
     brillo::ErrorPtr tmp_err;
     auto* dlc = GetDlc(id, &tmp_err);
-    if (dlc != nullptr && dlc->IsPreloadAllowed())
+    if (dlc != nullptr && dlc->IsPreloadAllowed()) {
       continue;
+    }
 
     // Preloading is not allowed for this image so it will be deleted.
     auto path = JoinPaths(preloaded_content_dir, id);
-    if (!brillo::DeletePathRecursively(path))
+    if (!brillo::DeletePathRecursively(path)) {
       PLOG(ERROR) << "Failed to delete path=" << path;
-    else
+    } else {
       LOG(INFO) << "Deleted path=" << path
                 << " for unsupported/preload not allowed DLC=" << id;
+    }
   }
 }
 
@@ -274,8 +283,9 @@ void DlcService::Install(
     LOG(ERROR) << err_str;
     err = Error::Create(FROM_HERE, kErrorBusy, err_str);
     ErrorPtr tmp_err;
-    if (dlc->IsInstalling() && !dlc->CancelInstall(err, &tmp_err))
+    if (dlc->IsInstalling() && !dlc->CancelInstall(err, &tmp_err)) {
       LOG(ERROR) << "Failed to cancel install for DLC=" << sanitized_id;
+    }
 
     return ret_func(sanitized_id, std::move(response), &err);
   }
@@ -376,8 +386,9 @@ void DlcService::OnInstallFailure(
     base::OnceCallback<void(brillo::ErrorPtr)> response_func,
     brillo::Error* err) {
   // Handled during other signal/response.
-  if (!installing_dlc_id_)
+  if (!installing_dlc_id_) {
     return;
+  }
   // Keep this double logging until tagging is removed/updated.
   LOG(ERROR) << "Installer failed to install requested DLCs: "
              << (err ? Error::ToString(err->Clone())
@@ -569,17 +580,19 @@ void DlcService::CancelInstall(const ErrorPtr& err_in) {
 
   ErrorPtr tmp_err;
   auto* dlc = GetDlc(id, &tmp_err);
-  if (!dlc || (dlc->IsInstalling() && !dlc->CancelInstall(err_in, &tmp_err)))
+  if (!dlc || (dlc->IsInstalling() && !dlc->CancelInstall(err_in, &tmp_err))) {
     LOG(ERROR) << "Failed to cancel install for DLC="
                << (dlc ? dlc->GetSanitizedId() : id);
+  }
 }
 
 void DlcService::PeriodicInstallCheck() {
   periodic_install_check_id_ = MessageLoop::kTaskIdNull;
 
   // If we're not installing anything anymore, no need to schedule again.
-  if (!installing_dlc_id_)
+  if (!installing_dlc_id_) {
     return;
+  }
 
   constexpr base::TimeDelta kNotSeenStatusDelay =
       base::Seconds(kPeriodicInstallCheckSecondsDelay);
@@ -682,8 +695,9 @@ void DlcService::OnStatusSync(const InstallerInterface::Status& status) {
   SystemState::Get()->set_installer_status(status);
 
   ErrorPtr err;
-  if (!HandleStatus(&err))
+  if (!HandleStatus(&err)) {
     DCHECK(err.get());
+  }
 }
 
 bool DlcService::Unload(const std::string& id, brillo::ErrorPtr* err) {
@@ -710,11 +724,13 @@ int DlcService::MountedDlcsAction(
       continue;
     }
     // Ensure DLC is actually mounted by checking the mount point path.
-    if (!base::PathExists(JoinPaths(mount_base, id, kPackage)))
+    if (!base::PathExists(JoinPaths(mount_base, id, kPackage))) {
       continue;
+    }
 
-    if (!action(dlc))
+    if (!action(dlc)) {
       ++failed_count;
+    }
   }
   return failed_count;
 }
@@ -747,8 +763,9 @@ bool DlcService::Unload(const SelectDlc& select,
 std::string DlcService::SanitizeId(DlcId id) {
   brillo::ErrorPtr tmp_err;
   auto* dlc = GetDlc(id, &tmp_err);
-  if (dlc)
+  if (dlc) {
     return dlc->GetSanitizedId();
+  }
   return id;
 }
 

@@ -178,8 +178,9 @@ bool Metadata::FlushCache() {
     }
     compressed_metadata_.append(buffer->begin(),
                                 buffer->begin() + buffer->size());
-    if (min_id.empty())
+    if (min_id.empty()) {
       min_id = id;
+    }
   }
 
   return FlushBuffer(min_id);
@@ -222,15 +223,17 @@ void Metadata::UpdateFileIds() {
   for (base::FilePath name = file_enumerator.Next(); !name.empty();
        name = file_enumerator.Next()) {
     // Skip `_metadata_`.
-    if (name.BaseName().value().size() == kMetadataPrefix.size())
+    if (name.BaseName().value().size() == kMetadataPrefix.size()) {
       continue;
+    }
     file_ids_.emplace(name.BaseName().value(), kMetadataPrefix.size());
   }
 }
 
 bool Metadata::LoadMetadata(const DlcId& id) {
-  if (cache_.FindDict(id))
+  if (cache_.FindDict(id)) {
     return true;
+  }
 
   // Locate the metadata file by binary search the `file_id`.
   auto file_id = file_ids_.upper_bound(id);
@@ -285,8 +288,9 @@ bool Metadata::LoadMetadata(const DlcId& id) {
 DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
                                const base::Value& filter_val) {
   auto key_str = FilterKeyToString(filter_key);
-  if (!key_str)
+  if (!key_str) {
     return {};
+  }
 
   if (const auto& idx = GetIndex(*key_str)) {
     return *idx;
@@ -308,11 +312,13 @@ DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
     for (const auto& [id, val] : GetCache()) {
       if (filter_key != FilterKey::kNone) {
         const auto* manifest_dict = val.GetDict().FindDict(kManifest);
-        if (!manifest_dict)
+        if (!manifest_dict) {
           continue;
+        }
         const auto* manifest_val = manifest_dict->Find(*key_str);
-        if (!manifest_val || *manifest_val != filter_val)
+        if (!manifest_val || *manifest_val != filter_val) {
           continue;
+        }
       }
 
       ids.push_back(id);
@@ -322,8 +328,9 @@ DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
 }
 
 std::optional<DlcIdList> Metadata::GetIndex(const std::string& key) {
-  if (key.empty())
+  if (key.empty()) {
     return std::nullopt;
+  }
 
   // TODO(b/303259102): Better/stricter index file naming to prevent collision.
   auto idx_file = base::StringPrintf("_%s_", key.c_str());

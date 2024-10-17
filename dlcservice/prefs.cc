@@ -33,14 +33,16 @@ Prefs::Prefs(const DlcBase& dlc, BootSlot::Slot slot)
 // static
 std::optional<Prefs> Prefs::CreatePrefs(const DlcInterface* dlc,
                                         BootSlot::Slot slot) {
-  if (!dlc)
+  if (!dlc) {
     return std::nullopt;
+  }
 
   auto prefs_dir = SystemState::Get()->dlc_prefs_dir();
   if (dlc->IsUserTied()) {
     const auto& daemon_store = GetDaemonStorePath();
-    if (daemon_store.empty())
+    if (daemon_store.empty()) {
       return std::nullopt;
+    }
 
     prefs_dir = JoinPaths(daemon_store, kUserPrefsDir);
   }

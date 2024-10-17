@@ -215,8 +215,9 @@ class DlcServiceUtil : public brillo::Daemon {
     if (action_ == kList) {
       dlcservice::ListRequest request;
       request.set_check_mount(check_mount_);
-      if (select_)
+      if (select_) {
         *request.mutable_select() = *select_;
+      }
 
       dlcservice::DlcStateList installed_dlcs;
       if (!GetInstalled(request, &installed_dlcs)) {
@@ -340,8 +341,9 @@ class DlcServiceUtil : public brillo::Daemon {
   // Callback invoked on receiving |OnDlcStateChanged| signal.
   void OnDlcStateChanged(const DlcState& dlc_state) {
     // Ignore the status as it's not the one we care about.
-    if (dlc_state.id() != dlc_id_)
+    if (dlc_state.id() != dlc_id_) {
       return;
+    }
     switch (dlc_state.state()) {
       case DlcState::INSTALLED:
         LOG(INFO) << "Install successful for DLC: " << dlc_id_;
@@ -553,8 +555,9 @@ class DlcServiceUtil : public brillo::Daemon {
       return;
     }
     if (!path.empty()) {
-      if (!dlcservice::WriteToFile(FilePath(path), json))
+      if (!dlcservice::WriteToFile(FilePath(path), json)) {
         PLOG(ERROR) << "Failed to write to file " << path;
+      }
     } else {
       std::cout << json;
     }
@@ -567,8 +570,9 @@ class DlcServiceUtil : public brillo::Daemon {
       const auto& id = dlc_state.id();
       List dlc_info_list;
       auto manifest = GetManifest(id);
-      if (!manifest)
+      if (!manifest) {
         return;
+      }
       Dict dlc_info;
       dlc_info.Set("name", manifest->name());
       dlc_info.Set("id", manifest->id());

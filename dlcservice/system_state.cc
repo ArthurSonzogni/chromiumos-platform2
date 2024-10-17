@@ -99,8 +99,9 @@ void SystemState::Initialize(
     const base::FilePath& verification_file,
     base::Clock* clock,
     bool for_test) {
-  if (!for_test)
+  if (!for_test) {
     CHECK(!g_instance_) << "SystemState::Initialize() called already.";
+  }
   g_instance_.reset(new SystemState(
 #if USE_LVM_STATEFUL_PARTITION
       std::move(lvmd_proxy_wrapper),

@@ -472,8 +472,9 @@ TEST_F(DlcBaseTest, InstallingCorruptPreloadedImageCleansUp) {
 
   EXPECT_FALSE(dlc.Install(&err_));
   for (const auto& path : {dlc.GetImagePath(BootSlot::Slot::A),
-                           dlc.GetImagePath(BootSlot::Slot::B)})
+                           dlc.GetImagePath(BootSlot::Slot::B)}) {
     EXPECT_FALSE(base::PathExists(path));
+  }
 }
 
 // TODO(crbug.com/1042704): Deprecate after DLCs are provisioned using TLS API.

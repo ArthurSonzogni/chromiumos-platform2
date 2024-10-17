@@ -78,8 +78,9 @@ std::string Error::GetErrorCode(const brillo::ErrorPtr& error) {
   while ((err_ptr = brillo::Error::FindErrorOfDomain(
               err_ptr, brillo::errors::dbus::kDomain))) {
     auto code = err_ptr->GetCode();
-    if (kDlcErrorCodes.find(code) != kDlcErrorCodes.end())
+    if (kDlcErrorCodes.find(code) != kDlcErrorCodes.end()) {
       return code;
+    }
     err_ptr = err_ptr->GetInnerError();
   }
   // Iterate over the dlcservice domain.
@@ -87,8 +88,9 @@ std::string Error::GetErrorCode(const brillo::ErrorPtr& error) {
   while (
       (err_ptr = brillo::Error::FindErrorOfDomain(err_ptr, kDlcErrorDomain))) {
     auto code = err_ptr->GetCode();
-    if (kDlcErrorCodes.find(code) != kDlcErrorCodes.end())
+    if (kDlcErrorCodes.find(code) != kDlcErrorCodes.end()) {
       return code;
+    }
     err_ptr = err_ptr->GetInnerError();
   }
   return kErrorInternal;
@@ -97,17 +99,20 @@ std::string Error::GetErrorCode(const brillo::ErrorPtr& error) {
 void Error::ConvertToDbusError(brillo::ErrorPtr* error) {
   DCHECK(error->get());
   if (error->get()->GetInnerError() == nullptr &&
-      error->get()->GetDomain() == brillo::errors::dbus::kDomain)
+      error->get()->GetDomain() == brillo::errors::dbus::kDomain) {
     return;  // The error is already a dbus error without inner errors.
+  }
 
   const brillo::Error* dbus_err = brillo::Error::FindErrorOfDomain(
       error->get(), brillo::errors::dbus::kDomain);
-  if (dbus_err)
+  if (dbus_err) {
     *error = Create(dbus_err->GetLocation(), dbus_err->GetCode(),
                     dbus_err->GetMessage());
-  else  // We would only reach here if there are no dbus errors in the chain.
+  } else {  // We would only reach here if there are no dbus errors in the
+            // chain.
     *error = Create(error->get()->GetLocation(), kErrorInternal,
                     error->get()->GetMessage());
+  }
 }
 
 }  // namespace dlcservice

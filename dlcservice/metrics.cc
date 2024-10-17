@@ -67,8 +67,9 @@ void Metrics::SendInstallResultFailure(brillo::ErrorPtr* err) {
   if (err && err->get()) {
     const string error_code = Error::GetRootErrorCode(*err);
     auto it = install_result_.find(error_code);
-    if (it != install_result_.end())
+    if (it != install_result_.end()) {
       res = it->second;
+    }
   }
   SendInstallResult(res);
 }
@@ -85,8 +86,9 @@ void Metrics::SendUninstallResult(brillo::ErrorPtr* err) {
   if (err && err->get()) {
     const string error_code = Error::GetRootErrorCode(*err);
     auto it = uninstall_result_.find(error_code);
-    if (it != uninstall_result_.end())
+    if (it != uninstall_result_.end()) {
       res = it->second;
+    }
   } else {
     res = UninstallResult::kSuccess;
   }

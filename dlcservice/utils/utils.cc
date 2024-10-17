@@ -154,8 +154,9 @@ std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifest(
 
 std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifestInternal(
     const std::string& id) {
-  if (!metadata_)
+  if (!metadata_) {
     return nullptr;
+  }
 
   auto entry = metadata_->Get(id);
   if (!entry) {
@@ -190,8 +191,9 @@ DlcIdList Utils::GetSupportedDlcIds(const base::FilePath& metadata_path) {
 }
 
 bool Utils::InitializeDlcMetadata(const base::FilePath& path) {
-  if (metadata_)
+  if (metadata_) {
     return true;
+  }
 
   metadata_ = std::make_unique<metadata::Metadata>(path);
   if (!metadata_->Initialize()) {

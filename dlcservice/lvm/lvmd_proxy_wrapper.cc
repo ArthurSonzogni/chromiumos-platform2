@@ -306,8 +306,9 @@ std::string LvmdProxyWrapper::GetLogicalVolumePath(const std::string& lv_name) {
 std::optional<int64_t> LvmdProxyWrapper::GetLogicalVolumeSize(
     const std::string& lv_name) {
   lvmd::LogicalVolume lv;
-  if (GetLogicalVolume(lv_name, &lv) && lv.size() >= 0)
+  if (GetLogicalVolume(lv_name, &lv) && lv.size() >= 0) {
     return lv.size();
+  }
   return std::nullopt;
 }
 

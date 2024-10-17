@@ -42,8 +42,9 @@ bool SetFilePermissions(const base::FilePath& path, int perms) {
   // Do not try to set the permission if the permissions are already correct. If
   // it failed to get the permissions, go ahead and set them.
   int tmp_perms;
-  if (base::GetPosixFilePermissions(path, &tmp_perms) && perms == tmp_perms)
+  if (base::GetPosixFilePermissions(path, &tmp_perms) && perms == tmp_perms) {
     return true;
+  }
 
   if (!base::SetPosixFilePermissions(path, perms)) {
     PLOG(ERROR) << "Failed to set permissions for: " << path.value();
@@ -54,16 +55,18 @@ bool SetFilePermissions(const base::FilePath& path, int perms) {
 
 bool WriteFile(const FilePath& path, const string& data, bool truncate) {
   int flags = O_CREAT | O_WRONLY;
-  if (truncate)
+  if (truncate) {
     flags |= O_TRUNC;
+  }
 
   base::ScopedFD fd(brillo::OpenSafely(path, flags, kDlcFilePerms));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open file for writting " << path.value();
     return false;
   }
-  if (data.empty())
+  if (data.empty()) {
     return true;
+  }
   return base::WriteFileDescriptor(fd.get(), data);
 }
 
@@ -182,8 +185,9 @@ bool ResizeFile(const base::FilePath& path, int64_t size) {
   }
   // When shrinking files, there is no need to unsparse as it's not certainly
   // safe to unsparse potentially used portions of the file.
-  if (size <= prev_size)
+  if (size <= prev_size) {
     return true;
+  }
 
   // Otherwise, unsparse the increased portion of the file.
   if (f.Seek(base::File::Whence::FROM_BEGIN, prev_size) < 0) {
@@ -222,8 +226,9 @@ bool CreateDir(const base::FilePath& path) {
 // the preallocated size from the manifest as is the |size| here for DLC to
 // install successfully.
 bool CreateFile(const base::FilePath& path, int64_t size) {
-  if (!CreateDir(path.DirName()))
+  if (!CreateDir(path.DirName())) {
     return false;
+  }
   // Keep scoped to not explicitly close file.
   {
     base::File f(path, base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE);

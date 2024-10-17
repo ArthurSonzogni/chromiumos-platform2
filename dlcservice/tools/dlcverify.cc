@@ -26,8 +26,9 @@ class DlcVerify {
   DlcVerify& operator=(const DlcVerify&) = delete;
 
   int Run() {
-    if (!ParseFlags() || !ParseManifest() || !VerifyImage())
+    if (!ParseFlags() || !ParseManifest() || !VerifyImage()) {
       return 1;
+    }
     LOG(INFO) << "Image hash is valid.";
     return 0;
   }
@@ -78,8 +79,9 @@ class DlcVerify {
     }
     auto entry = metadata.Get(id_);
     // Let `Metadata::Get` log the error.
-    if (!entry)
+    if (!entry) {
       return false;
+    }
 
     manifest_ = std::make_unique<imageloader::Manifest>();
     return manifest_->ParseManifest(entry->manifest);

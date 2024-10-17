@@ -211,16 +211,19 @@ bool DlcLvm::UseLogicalVolume() const {
   // If any file based images exist..
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     const auto& image_path = DlcBase::GetImagePath(slot);
-    if (image_path.empty())
+    if (image_path.empty()) {
       continue;
-    if (!base::PathExists(image_path))
+    }
+    if (!base::PathExists(image_path)) {
       continue;
+    }
     // .. prioritize file based images iff no logical volumes exist.
     base::FilePath lv_path(
         SystemState::Get()->lvmd_wrapper()->GetLogicalVolumePath(
             utils_->LogicalVolumeName(id_, ToPartitionSlot(slot))));
-    if (!lv_path.empty() && base::PathExists(lv_path))
+    if (!lv_path.empty() && base::PathExists(lv_path)) {
       break;
+    }
     // .. sticking with file based images.
     return false;
   }

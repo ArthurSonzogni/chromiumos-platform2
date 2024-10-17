@@ -52,8 +52,9 @@ Daemon::Daemon() : DBusServiceDaemon(kDlcServiceServiceName) {}
 
 int Daemon::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
-  if (return_code != EX_OK)
+  if (return_code != EX_OK) {
     return return_code;
+  }
 
   dlc_service_->Initialize();
   return EX_OK;
