@@ -392,6 +392,9 @@ void Network::OnSetupConnectionFinished(bool success) {
 }
 
 void Network::Stop() {
+  if (state_ == State::kIdle) {
+    return;
+  }
   StopInternal(/*is_failure=*/false, /*trigger_callback=*/true);
 }
 

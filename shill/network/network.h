@@ -227,8 +227,9 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   // Starts the network with the given |options|.
   mockable void Start(const StartOptions& options);
-  // Stops the network connection. OnNetworkStopped() will be called when
-  // cleaning up the network state is finished.
+  // Stops the network connection. This function is no-op if the current state
+  // is kIdle, otherwise OnNetworkStopped() will be called when cleaning up the
+  // network state is finished.
   mockable void Stop();
 
   State state() const { return state_; }
