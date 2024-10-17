@@ -61,8 +61,9 @@ int GetLogLevel(const std::string& log_level_value) {
 // Always logs to syslog and stderr when running in the foreground.
 void SetupLogging(bool foreground, int log_level) {
   int log_flags = brillo::kLogToSyslog;
-  if (foreground)
+  if (foreground) {
     log_flags |= brillo::kLogToStderr;
+  }
 
   brillo::InitLog(log_flags);
   logging::SetMinLogLevel(log_level);
@@ -113,8 +114,9 @@ int main(int argc, char** argv) {
 
   SetupLogging(foreground, log_level);
 
-  if (!foreground)
+  if (!foreground) {
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
+  }
 
   easy_unlock::Daemon daemon(easy_unlock::Service::Create());
   LOG(INFO) << "Starting EasyUnlock dbus service.";

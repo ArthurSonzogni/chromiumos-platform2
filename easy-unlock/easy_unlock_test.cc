@@ -190,8 +190,9 @@ class EasyUnlockTest : public ::testing::Test {
     // Client handles both of these cases the same (response not being set to
     // a byte array, and response being empty byte array).
     bool hasData = reader.PopArrayOfBytes(&bytes, &length);
-    if (hasData)
+    if (hasData) {
       EXPECT_EQ(0u, length);
+    }
   }
 
  protected:
