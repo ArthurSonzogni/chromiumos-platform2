@@ -159,8 +159,9 @@ std::vector<std::string> PlatformFeature::SupportCheckCommandNamesForTesting()
 }
 
 bool JsonFeatureParser::ParseFileContents(const std::string& file_contents) {
-  if (features_parsed_)
+  if (features_parsed_) {
     return true;
+  }
 
   VLOG(1) << "JSON file contents: " << file_contents;
 
@@ -324,8 +325,9 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
 }
 
 bool DbusFeaturedService::ParseFeatureList() {
-  if (parser_->AreFeaturesParsed())
+  if (parser_->AreFeaturesParsed()) {
     return true;
+  }
 
   std::string file_contents;
   if (!ReadFileToString(base::FilePath(kPlatformFeaturesPath),
