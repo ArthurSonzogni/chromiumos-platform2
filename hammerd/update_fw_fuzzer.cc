@@ -47,8 +47,9 @@ class FuzzedUsbEndpoint : public UsbEndpointInterface {
                int inlen,
                bool allow_less,
                unsigned int timeout_ms) override {
-    if (inlen == 0)
+    if (inlen == 0) {
       return 0;
+    }
     return Receive(inbuf, inlen, allow_less, timeout_ms);
   }
 
@@ -67,8 +68,9 @@ class FuzzedUsbEndpoint : public UsbEndpointInterface {
     constexpr int kError = -1;
     size_t remaining_bytes = fuzz_provider_->remaining_bytes();
     if (remaining_bytes < inlen) {
-      if (!allow_less)
+      if (!allow_less) {
         return kError;
+      }
       inbuf = fuzz_provider_->ConsumeRemainingBytes<uint8_t>().data();
       return remaining_bytes;
     }

@@ -144,16 +144,19 @@ BRILLO_EXPORT int PairManager_PairChallenge(PairManager* self,
   hammerd::DummyDBusWrapper dummy;
 
   ret = self->PairChallenge(fw_updater, &dummy);
-  if (ret != ChallengeStatus::kChallengePassed)
+  if (ret != ChallengeStatus::kChallengePassed) {
     return static_cast<int>(ret);
+  }
 
-  if (dummy.GetLastSignalName() != hammerd::kPairChallengeSucceededSignal)
+  if (dummy.GetLastSignalName() != hammerd::kPairChallengeSucceededSignal) {
     return static_cast<int>(ChallengeStatus::kUnknownError);
+  }
 
   if (public_key) {
     std::string last_value = dummy.GetLastValue();
-    if (last_value.size() != kX25519PublicValueLen)
+    if (last_value.size() != kX25519PublicValueLen) {
       return static_cast<int>(ChallengeStatus::kUnknownError);
+    }
     memcpy(public_key, last_value.c_str(), last_value.size());
   }
 

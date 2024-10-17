@@ -78,10 +78,12 @@ ACTION_P3(SetChallengeRequest, public_key, private_key, nonce) {
 ACTION_P4(SetChallengeResponse, status, public_key, authenticator, ret) {
   auto resp = reinterpret_cast<PairChallengeResponse*>(arg2);
   resp->status = static_cast<uint8_t>(status);
-  if (public_key.size() > 0)
+  if (public_key.size() > 0) {
     CheckMemcpy(resp->public_key, X25519_PUBLIC_VALUE_LEN, public_key);
-  if (authenticator.size() > 0)
+  }
+  if (authenticator.size() > 0) {
     CheckMemcpy(resp->authenticator, kHMACAuthenticatorLength, authenticator);
+  }
   return ret;
 }
 

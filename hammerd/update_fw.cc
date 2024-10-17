@@ -268,8 +268,9 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_name;
       return false;
     }
-    if (FmapAreaOutOfBounds(fmaparea, len))
+    if (FmapAreaOutOfBounds(fmaparea, len)) {
       return false;
+    }
     section.offset = fmaparea->offset;
     section.size = fmaparea->size;
 
@@ -278,8 +279,9 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
       LOG(ERROR) << "Cannot find FMAP area: " << fmap_fwid_name;
       return false;
     }
-    if (FmapAreaOutOfBounds(fmaparea, len))
+    if (FmapAreaOutOfBounds(fmaparea, len)) {
       return false;
+    }
     if (fmaparea->size != sizeof(section.version)) {
       LOG(ERROR) << "Invalid fwid size\n";
       return false;
@@ -288,8 +290,9 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
 
     if (fmap_rollback_name &&
         (fmaparea = fmap_->FindArea(fmap, fmap_rollback_name))) {
-      if (FmapAreaOutOfBounds(fmaparea, len))
+      if (FmapAreaOutOfBounds(fmaparea, len)) {
         return false;
+      }
       if (fmaparea->size != sizeof(section.rollback)) {
         LOG(ERROR) << "Invalid section rollback size\n";
         return false;
@@ -301,8 +304,9 @@ bool FirmwareUpdater::LoadEcImage(const std::string& ec_image) {
     }
 
     if (fmap_key_name && (fmaparea = fmap_->FindArea(fmap, fmap_key_name))) {
-      if (FmapAreaOutOfBounds(fmaparea, len))
+      if (FmapAreaOutOfBounds(fmaparea, len)) {
         return false;
+      }
       auto key = reinterpret_cast<const vb21_packed_key*>(image_ptr +
                                                           fmaparea->offset);
       if (fmaparea->size < sizeof(struct vb21_packed_key)) {
@@ -351,10 +355,12 @@ int FirmwareUpdater::CompareRollback() const {
   SectionInfo local_section = sections_[static_cast<int>(SectionName::RW)];
   LOG(INFO) << "CompareRollback: rollback [EC] " << targ_.min_rollback
             << " vs. " << local_section.rollback << " [update]";
-  if (local_section.rollback > targ_.min_rollback)
+  if (local_section.rollback > targ_.min_rollback) {
     return 1;
-  if (local_section.rollback < targ_.min_rollback)
+  }
+  if (local_section.rollback < targ_.min_rollback) {
     return -1;
+  }
   return 0;
 }
 
@@ -568,8 +574,9 @@ bool FirmwareUpdater::SendFirstPdu() {
       return false;
     }
     if (return_value !=
-        static_cast<int>(UpdateCommandResponseStatus::kRwsigBusy))
+        static_cast<int>(UpdateCommandResponseStatus::kRwsigBusy)) {
       break;
+    }
     LOG(WARNING) << "EC still calculating RW signature, retrying...";
     base::PlatformThread::Sleep(base::Milliseconds(kWaitTimeMs));
   }
@@ -646,8 +653,9 @@ bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
 bool FirmwareUpdater::CheckEmptyBlock(const uint8_t* transfer_data_ptr,
                                       size_t payload_size) {
   for (int i = 0; i < payload_size; i++) {
-    if (transfer_data_ptr[i] != 0xff)
+    if (transfer_data_ptr[i] != 0xff) {
       return false;
+    }
   }
   return true;
 }
@@ -724,8 +732,9 @@ std::string FirmwareUpdater::ReadConsole() {
     cmd_ret = SendSubcommandReceiveResponse(
         UpdateExtraCommand::kConsoleReadNext, next_payload,
         reinterpret_cast<void*>(response), response_size, true);
-    if (response[0] == 0)
+    if (response[0] == 0) {
       break;
+    }
 
     response[response_size - 1] = '\0';
     ret.append(response);

@@ -36,12 +36,15 @@ const std::string HammerUpdater::TaskState::ToString() {
 
 HammerUpdater::UpdateCondition HammerUpdater::ToUpdateCondition(
     const std::string& s) {
-  if (s == "never")
+  if (s == "never") {
     return UpdateCondition::kNever;
-  if (s == "mismatch")
+  }
+  if (s == "mismatch") {
     return UpdateCondition::kMismatch;
-  if (s == "always")
+  }
+  if (s == "always") {
     return UpdateCondition::kAlways;
+  }
   return UpdateCondition::kUnknown;
 }
 
@@ -294,10 +297,12 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
     // In theory, an increase in rollback number should imply a version
     // mismatch. Include both conditions here to simplify unittesting.
     if (fw_updater_->VersionMismatch(SectionName::RW) ||
-        fw_updater_->CompareRollback() > 0)
+        fw_updater_->CompareRollback() > 0) {
       task_.update_rw = true;
-    if (fw_updater_->VersionMismatch(SectionName::RO))
+    }
+    if (fw_updater_->VersionMismatch(SectionName::RO)) {
       task_.update_ro = true;
+    }
   }
 
   // ********************** RW **********************

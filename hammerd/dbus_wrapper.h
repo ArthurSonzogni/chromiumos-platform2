@@ -68,10 +68,11 @@ class DummyDBusWrapper : public DBusWrapperInterface {
                          const uint8_t* values,
                          size_t length) override {
     last_signal_name_ = std::string(signal_name);
-    if (values == NULL)
+    if (values == NULL) {
       last_value_ = "";
-    else
+    } else {
       last_value_ = std::string(reinterpret_cast<const char*>(values), length);
+    }
   }
 
   std::string GetLastSignalName() { return last_signal_name_; }
