@@ -124,7 +124,7 @@ const base::TimeDelta kHandshakeTimeout = base::Seconds(15);
 const int kMaxRetryCreateInterfaceAttempts = 6;
 const base::TimeDelta kRetryCreateInterfaceInterval = base::Seconds(10);
 const int16_t kDefaultDisconnectDbm = 0;
-const int16_t kDefaultDisconnectThresholdDbm = -75;
+const int16_t kDefaultDisconnectThresholdDbm = -85;
 const int kInvalidMaxSSIDs = -1;
 const int kRSSIDropThresholdDbm = 10;
 

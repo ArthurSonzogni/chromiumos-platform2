@@ -2342,7 +2342,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   RpcIdentifier kPath("/fake/path");
   MockWiFiServiceRefPtr service;
   RpcIdentifier bss_path(
-      MakeNewEndpointAndService(-80, 0, nullptr, &service, false));
+      MakeNewEndpointAndService(-90, 0, nullptr, &service, false));
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kPath), Return(true)));
@@ -2352,7 +2352,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-80));
+  EXPECT_CALL(*service, SignalLevel()).WillRepeatedly(Return(-90));
   InitiateDisconnect(service);
 
   // |current_service_| should not change until supplicant reports
