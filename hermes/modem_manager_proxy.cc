@@ -36,9 +36,10 @@ ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus)
   auto on_dbus_signal_connected =
       base::BindRepeating([](const std::string& interface,
                              const std::string& signal, bool success) {
-        if (!success)
+        if (!success) {
           LOG(ERROR) << "Failed to connect to signal " << interface << "."
                      << signal;
+        }
       });
   object_manager_proxy_->RegisterInterfacesAddedSignalHandler(
       std::move(on_interface_added), on_dbus_signal_connected);
@@ -123,8 +124,9 @@ void ModemManagerProxy::OnInterfaceRemoved(
             << object_path.value();
     return;
   }
-  if (modem_proxy_->GetObjectPath() != object_path)
+  if (modem_proxy_->GetObjectPath() != object_path) {
     return;
+  }
   LOG(INFO) << "Clearing modem proxy for "
             << modem_proxy_->GetObjectPath().value();
   modem_proxy_.reset();
@@ -156,8 +158,9 @@ void ModemManagerProxy::OnPropertiesChanged(
 
   // wait for all properties that we will be read by ModemMbim.
   if (!modem_proxy_->GetProperties()->ports.is_valid() ||
-      !modem_proxy_->GetProperties()->state.is_valid())
+      !modem_proxy_->GetProperties()->state.is_valid()) {
     return;
+  }
 
   if (prop == MM_MODEM_PROPERTY_STATE && pending_inhibit_cb_ &&
       IsModemSafeToInhibit()) {
@@ -167,8 +170,9 @@ void ModemManagerProxy::OnPropertiesChanged(
 
   // Ignore on_modem_appeared_cb if a property update on an existing
   // modem_proxy_ triggered this call.
-  if (!modem_appeared_)
+  if (!modem_appeared_) {
     return;
+  }
   modem_appeared_ = false;
   std::string mbim_port;
   for (const auto& [port, port_type] : modem_proxy_->ports()) {
@@ -182,8 +186,9 @@ void ModemManagerProxy::OnPropertiesChanged(
     return;
   }
   cached_mbim_port_ = mbim_port;
-  if (!on_modem_appeared_cb_.is_null())
+  if (!on_modem_appeared_cb_.is_null()) {
     std::move(on_modem_appeared_cb_).Run();
+  }
 }
 
 std::string ModemManagerProxy::GetMbimPort() const {
@@ -297,8 +302,9 @@ void ModemManagerProxy::OnInhibitSuccess(bool inhibit,
 }
 
 bool ModemManagerProxy::IsModemSafeToInhibit() {
-  if (!modem_proxy_)
+  if (!modem_proxy_) {
     return false;
+  }
 
   // modem_proxy_ seems to miss property updates at times. If property updates
   // were working perfectly, one could check modem_proxy_->state() instead of
@@ -309,8 +315,9 @@ bool ModemManagerProxy::IsModemSafeToInhibit() {
       dbus::kDBusPropertiesGet, &error,
       std::string(modemmanager::kModemManager1ModemInterface),
       std::string(MM_MODEM_PROPERTY_STATE));
-  if (!resp)
+  if (!resp) {
     return false;
+  }
   std::int32_t state;
   dbus::MessageReader reader(resp.get());
   if (!reader.PopVariantOfInt32(&state)) {

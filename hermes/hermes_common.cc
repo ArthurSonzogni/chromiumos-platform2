@@ -13,8 +13,9 @@ namespace hermes {
 
 std::string GetTrailingChars(const std::string& pii, int num_chars) {
   DCHECK_GE(num_chars, 0);
-  if (num_chars > pii.length())
+  if (num_chars > pii.length()) {
     return pii;
+  }
   return pii.substr(pii.length() - num_chars);
 }
 

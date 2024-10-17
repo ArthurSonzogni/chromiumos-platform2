@@ -17,15 +17,17 @@
 namespace hermes {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  if (!size)
+  if (!size) {
     return 0;
+  }
 
   g_autoptr(MbimMessage) response =
       mbim_message_new(reinterpret_cast<const guint8*>(data), size);
   std::string eid;
   if (ModemMbim::ParseEidApduResponseForTesting(
-          response, &eid, std::make_unique<LibmbimImpl>()))
+          response, &eid, std::make_unique<LibmbimImpl>())) {
     CHECK(eid.length());
+  }
 
   return 0;
 }

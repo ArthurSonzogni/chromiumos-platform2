@@ -574,14 +574,16 @@ void ModemQrtr::ProcessQmiPacket(const qrtr_packet& packet) {
 
   int err = qmi_rx_callbacks_[{service, qmi_type}].Run(packet);
 
-  if (pending_response_type_->service() != service)
+  if (pending_response_type_->service() != service) {
     LOG(ERROR) << "Received unexpected QMI response. Expected service: "
                << pending_response_type_->service()
                << " Actual service: " << service;
-  if (pending_response_type_->qmi_type() != qmi_type)
+  }
+  if (pending_response_type_->qmi_type() != qmi_type) {
     LOG(ERROR) << "Received unexpected QMI response. Expected type: "
                << pending_response_type_->qmi_type()
                << " Actual type:" << qmi_type;
+  }
   pending_response_type_.reset();
 
   // Most elements in the queue are simple qmi messages, which means they can
@@ -589,14 +591,16 @@ void ModemQrtr::ProcessQmiPacket(const qrtr_packet& packet) {
   // means we pop them only after responses to all fragments have been received
   // in ReceiveQmiSendApdu
   if (service == QmiCmdInterface::kUim &&
-      qmi_type == UimCmd::QmiType::kSendApdu)
+      qmi_type == UimCmd::QmiType::kSendApdu) {
     return;
+  }
   // pop before running the callback since the callback might change the state
   // of the queue.
   auto cb_ = std::move(tx_queue_[0].cb_);
   tx_queue_.pop_front();
-  if (!cb_.is_null())
+  if (!cb_.is_null()) {
     std::move(cb_).Run(err);
+  }
 }
 
 int ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
@@ -659,9 +663,10 @@ int ModemQrtr::ReceiveQmiGetSlots(const qrtr_packet& packet) {
 
     euicc_found = true;
     std::string eid;
-    if (resp.eid_info[i].eid_len != kEidLen)
+    if (resp.eid_info[i].eid_len != kEidLen) {
       LOG(ERROR) << "Expected eid_len=" << kEidLen << ", eid_len is "
                  << resp.eid_info[i].eid_len;
+    }
     for (int j = 0; j < resp.eid_info[i].eid_len; j++) {
       eid += bcd_chars[(resp.eid_info[i].eid[j] >> 4) & 0xF];
       eid += bcd_chars[resp.eid_info[i].eid[j] & 0xF];
@@ -705,9 +710,10 @@ int ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
       dynamic_cast<SwitchSlotTxInfo*>(tx_queue_.front().info_.get());
   euicc_manager_->OnLogicalSlotUpdated(switch_slot_tx_info->physical_slot_,
                                        switch_slot_tx_info->logical_slot_);
-  if (stored_active_slot_)
+  if (stored_active_slot_) {
     euicc_manager_->OnLogicalSlotUpdated(stored_active_slot_.value(),
                                          std::nullopt);
+  }
 
   // Sending QMI messages immediately after switch slot leads to QMI errors
   // since slot switching takes time. If channel reacquisition fails despite
@@ -762,8 +768,9 @@ int ModemQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
     auto open_channel_tx_info =
         dynamic_cast<OpenChannelTxInfo*>(tx_queue_[0].info_.get());
     if (open_channel_tx_info->aid_ !=
-        std::vector<uint8_t>(kAidIsdr.begin(), kAidIsdr.end()))
+        std::vector<uint8_t>(kAidIsdr.begin(), kAidIsdr.end())) {
       return err;
+    }
 
     LOG(ERROR) << "Logical channel could not be opened, retrying...";
     Shutdown();
@@ -815,8 +822,9 @@ int ModemQrtr::ParseQmiOpenLogicalChannel(const qrtr_packet& packet) {
       std::min(static_cast<uint16_t>(kBufferDataSize),
                static_cast<uint16_t>(resp.select_response_len));
 
-  for (int i = 0; i < len_raw_response; i++)
+  for (int i = 0; i < len_raw_response; i++) {
     open_channel_raw_response_.push_back(resp.select_response[i]);
+  }
 
   if (resp.card_result_valid) {
     open_channel_raw_response_.push_back(resp.card_result.sw1);

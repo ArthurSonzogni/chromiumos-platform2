@@ -693,8 +693,9 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
     VLOG(2) << "Successfully opened channel:" << chl;
     modem_mbim->channel_ = chl;
     modem_mbim->open_channel_raw_response_.clear();
-    for (int i = 0; i < rsp_size; i++)
+    for (int i = 0; i < rsp_size; i++) {
       modem_mbim->open_channel_raw_response_.push_back(rsp[i]);
+    }
     modem_mbim->open_channel_raw_response_.push_back(status & 0xFF);
     modem_mbim->open_channel_raw_response_.push_back((status >> 8) & 0xFF);
     VLOG(2) << __func__ << " Open Channel Response: "
@@ -727,8 +728,9 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
   guint32 response_size = 0;
   const guint8* out_response = NULL;
   std::vector<uint8_t> kGetEidDgiTag = {0xBF, 0x3E, 0x12, 0x5A, 0x10};
-  if (!response)
+  if (!response) {
     return false;
+  }
   if (!libmbim->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error)) {
     LOG(ERROR) << "Could not parse EID: " << error->message;
@@ -1022,8 +1024,9 @@ void ModemMbim::ClientIndicationCb(MbimDevice* device,
 }
 
 void ModemMbim::CloseDevice() {
-  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_))
+  if (device_ && g_signal_handler_is_connected(device_.get(), indication_id_)) {
     g_signal_handler_disconnect(device_.get(), indication_id_);
+  }
   device_.reset();
 }
 
@@ -1368,14 +1371,16 @@ bool ModemMbim::ParseEidApduResponseForTesting(
     std::unique_ptr<LibmbimInterface> libmbim) {
   // Message validation is implicitly done by the MbimDevice, replicate it here.
   g_autoptr(GError) error = NULL;
-  if (!libmbim->MbimMessageValidate(response, &error))
+  if (!libmbim->MbimMessageValidate(response, &error)) {
     return false;
+  }
 
   // Message type is implicitly ensured to be COMMAND_DONE by the MbimDevice,
   // replicate it here.
   if (libmbim->MbimMessageGetMessageType(response) !=
-      MBIM_MESSAGE_TYPE_COMMAND_DONE)
+      MBIM_MESSAGE_TYPE_COMMAND_DONE) {
     return false;
+  }
 
   return ParseEidApduResponse(response, eid, nullptr, libmbim.get());
 }

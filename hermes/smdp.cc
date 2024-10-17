@@ -112,10 +112,11 @@ void Smdp::SendHttps(const std::string& path,
   brillo::ErrorPtr error = nullptr;
   std::string url = "https://" + smdp_addr_ + path;
 
-  if (path.find(kHandleNotification) != std::string::npos)
+  if (path.find(kHandleNotification) != std::string::npos) {
     server_transport_->SetDefaultTimeout(kSendNotificationsTimeout);
-  else
+  } else {
     server_transport_->SetDefaultTimeout(kSmdxTimeout);
+  }
 
   VLOG(1) << __func__ << ": sending data to " << url << ": " << request;
   brillo::http::Request http_request(url, brillo::http::request_type::kPost,

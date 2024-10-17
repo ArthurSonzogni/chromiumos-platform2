@@ -322,8 +322,9 @@ class ModemQrtrTest : public testing::Test {
       EXPECT_SEND(*socket_, kQrtrGetSlotsReq);
       // Slot 2 is the active slot after test initialization. If slot 1 is
       // requested, a SwitchSlot message is expected
-      if (physical_slot == 1)
+      if (physical_slot == 1) {
         EXPECT_SEND(*socket_, kQrtrSwitchSlotReq);
+      }
       EXPECT_SEND(*socket_, kQrtrResetReq);
       EXPECT_SEND(*socket_, kQrtrOpenLogicalChannelReq);
     }

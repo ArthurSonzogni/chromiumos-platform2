@@ -266,8 +266,9 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
 
 void Euicc::OnProfileEnabled(const std::string& iccid) {
   for (auto& installed_profile : profiles_) {
-    if (installed_profile.second->GetState() == profile::kPending)
+    if (installed_profile.second->GetState() == profile::kPending) {
       continue;
+    }
     installed_profile.second->SetState(installed_profile.first == iccid
                                            ? profile::kActive
                                            : profile::kInactive);
@@ -358,8 +359,9 @@ void Euicc::OnInstalledProfilesReceived(
   }
   for (const auto& info : profile_infos) {
     if (!is_test_mode_ &&
-        info.profile_class() == lpa::proto::ProfileClass::TESTING)
+        info.profile_class() == lpa::proto::ProfileClass::TESTING) {
       continue;
+    }
     auto profile =
         Profile::Create(info, physical_slot_, slot_info_.eid_,
                         /*is_pending*/ false,

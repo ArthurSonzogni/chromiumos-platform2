@@ -296,8 +296,9 @@ void Modem<T>::RetryInitialization(ResultCallback cb) {
         base::BindOnce(&Modem<T>::Initialize, weak_factory_.GetWeakPtr(),
                        euicc_manager_, base::DoNothing()));
 
-    if (!cb.is_null())
+    if (!cb.is_null()) {
       std::move(cb).Run(kModemMessageProcessingError);
+    }
     return;
   }
   LOG(INFO) << "Reprobing for eSIM in " << kInitRetryDelay.InSeconds()
