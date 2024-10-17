@@ -49,8 +49,9 @@ class GoldfishDaemon : public brillo::Daemon {
     int exit_code;
     if (!child.WaitForExitWithTimeout(kLoginTimeout, &exit_code)) {
       LOG(ERROR) << "Timeout exceeded running autologin";
-      if (!child.Terminate(0, true))
+      if (!child.Terminate(0, true)) {
         LOG(ERROR) << "Failed to terminate autololgin";
+      }
       return;
     }
     if (exit_code) {
