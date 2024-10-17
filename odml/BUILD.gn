@@ -18,6 +18,7 @@ group("all") {
       ":libdmabufheap",
       ":odml_console",
       ":odmld",
+      ":safety_console",
     ]
     if (use.test) {
       deps += [
@@ -66,7 +67,10 @@ generate_mojom_bindings("mojo_bindings") {
     use_pic = true
   }
   sources = [
+    "mojom/big_buffer.mojom",
     "mojom/coral_service.mojom",
+    "mojom/cros_safety.mojom",
+    "mojom/cros_safety_service.mojom",
     "mojom/embedding_model.mojom",
     "mojom/file.mojom",
     "mojom/file_path.mojom",
@@ -162,6 +166,13 @@ source_set("odml") {
     "//ml_core/dlc:dlc_client",
   ]
   configs += [ ":target_defaults" ]
+}
+
+executable("safety_console") {
+  install_path = "/usr/local/bin"
+  sources = [ "safety_console.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":odml" ]
 }
 
 executable("odml_console") {
