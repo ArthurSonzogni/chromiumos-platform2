@@ -628,7 +628,15 @@ bool MinijailedProcessRunner::AppendPendingIptablesRule(
   if (args.back() == "-w") {
     args.pop_back();
   }
-  CHECK(!base::Contains(args, "-w"));
+  // Reject rules containing "-w" in the middle. "-w" can be a valid value for
+  // other options (e.g., for an interface name). There is no easy way to check
+  // if it's for `--wait` or not, but it should not appear in our use cases.
+  // Having a check here instead of letting the execution of iptables fail to
+  // avoid the misuse of this function.
+  if (base::Contains(args, "-w")) {
+    LOG(ERROR) << "iptables rule contains `-w` unexpectedly";
+    return false;
+  }
 
   (*pending_rules)[table].push_back(base::JoinString(args, " "));
 
