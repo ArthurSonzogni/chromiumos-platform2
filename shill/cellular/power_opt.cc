@@ -128,8 +128,6 @@ bool PowerOpt::AddOptInfoForNewService(const std::string& iccid) {
   PowerOptimizationInfo info;
   info.power_state = PowerState::kOn;
   opt_info_[iccid] = info;
-  LOG(INFO) << __func__ << ": power optimization info is added for iccid "
-            << iccid << ". opt_info_.size() is " << opt_info_.size();
   return true;
 }
 

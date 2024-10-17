@@ -151,8 +151,8 @@ ServiceRefPtr CellularServiceProvider::GetService(const KeyValueStore& args,
     return service;
   std::string eid = args.Lookup<std::string>(kEidProperty,
                                              /*default_value=*/"");
-  LOG(INFO) << "Creating new cellular service with iccid: " << iccid
-            << ", eid: " << eid;
+  SLOG(2) << "Creating new cellular service with iccid: " << iccid
+          << ", eid: " << eid;
   service = new CellularService(manager_, "", iccid, eid);
   AddService(service);
   return service;
