@@ -20,19 +20,6 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
-  "cellular_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/platform/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
   "edid": {
     "binds": [
       "/sys/class/drm/",
@@ -45,35 +32,9 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
-  "ethernet_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/platform/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
   "generic_battery": {
     "binds": [
       "/sys/class/power_supply/",
-      "/sys/devices/platform/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
-  "generic_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
       "/sys/devices/platform/"
     ],
     "other_args": [
@@ -181,18 +142,5 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ],
     "user": "arc-camera"
-  },
-  "wireless_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/platform/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
   }
 }

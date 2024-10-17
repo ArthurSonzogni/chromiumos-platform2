@@ -56,19 +56,6 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
-  "ethernet_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/platform/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
   "generic_battery": {
     "binds": [
       "/sys/class/power_supply/",

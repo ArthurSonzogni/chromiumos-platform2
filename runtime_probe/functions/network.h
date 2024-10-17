@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
-#define RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
+#ifndef RUNTIME_PROBE_FUNCTIONS_NETWORK_H_
+#define RUNTIME_PROBE_FUNCTIONS_NETWORK_H_
 
 #include <optional>
 #include <string>
@@ -13,8 +13,6 @@
 
 namespace runtime_probe {
 
-// TODO(b/269822306): Move this class to //runtime_probe/functions after we
-// remove all XXX_network functions.
 class NetworkFunction : public PrivilegedProbeFunction {
   using PrivilegedProbeFunction::PrivilegedProbeFunction;
 
@@ -36,4 +34,4 @@ class NetworkFunction : public PrivilegedProbeFunction {
 
 }  // namespace runtime_probe
 
-#endif  // RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
+#endif  // RUNTIME_PROBE_FUNCTIONS_NETWORK_H_

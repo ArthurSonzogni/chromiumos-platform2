@@ -29,19 +29,6 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
-  "cellular_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/pci0000:00/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
   "ec_component": {
     "binds": [
       "/dev/cros_ec",
@@ -69,36 +56,10 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
-  "ethernet_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/pci0000:00/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
   "generic_battery": {
     "binds": [
       "/sys/class/power_supply/",
       "/sys/devices/LNXSYSTM:00/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
-  "generic_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/pci0000:00/"
     ],
     "other_args": [
       "-k",
@@ -246,19 +207,6 @@
   "vpd_cached": {
     "binds": [
       "/sys/firmware/vpd/ro/"
-    ],
-    "other_args": [
-      "-k",
-      "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
-      "-k",
-      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
-  },
-  "wireless_network": {
-    "binds": [
-      "/run/dbus",
-      "/sys/class/net/",
-      "/sys/devices/pci0000:00/"
     ],
     "other_args": [
       "-k",

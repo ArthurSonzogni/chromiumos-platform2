@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/functions/network.h"
+
 #include <map>
 #include <optional>
 #include <set>
@@ -15,7 +17,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/function_templates/network.h"
 #include "runtime_probe/utils/function_test_utils.h"
 #include "shill/dbus-constants.h"
 

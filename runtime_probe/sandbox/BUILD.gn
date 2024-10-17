@@ -18,7 +18,6 @@ install_seccomp_policy("install_sandbox_seccomp") {
     "${_arch}/ata_storage-seccomp.policy",
     "${_arch}/audio_codec-seccomp.policy",
     "${_arch}/edid-seccomp.policy",
-    "${_arch}/ethernet_network-seccomp.policy",
     "${_arch}/generic_battery-seccomp.policy",
     "${_arch}/input_device-seccomp.policy",
     "${_arch}/mipi_camera-seccomp.policy",
@@ -34,13 +33,6 @@ install_seccomp_policy("install_sandbox_seccomp") {
       "${_arch}/gpu-seccomp.policy",
       "${_arch}/memory-seccomp.policy",
       "${_arch}/vpd_cached-seccomp.policy",
-    ]
-  }
-  if (_arch == "amd64" || _arch == "arm") {
-    sources += [
-      "${_arch}/cellular_network-seccomp.policy",
-      "${_arch}/generic_network-seccomp.policy",
-      "${_arch}/wireless_network-seccomp.policy",
     ]
   }
   if (_arch == "amd64" || _arch == "arm64") {

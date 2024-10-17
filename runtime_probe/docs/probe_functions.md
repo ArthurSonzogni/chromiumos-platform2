@@ -129,27 +129,9 @@ TBD
 
 ## Network
 
-### `generic_network`
+### `network`
 
 Probe generic network components.
-
-TBD
-
-### `cellular_network`
-
-Probe cellular network components.
-
-TBD
-
-### `ethernet_network`
-
-Probe non-removable ethernet cellular components.
-
-TBD
-
-### `wireless_network`
-
-Probe wireless cellular components.
 
 TBD
 
