@@ -57,15 +57,19 @@ class FakeSensorServiceNewDevicesObserver
 
   bool CheckNewDevice(int32_t iio_device_id,
                       std::vector<cros::mojom::DeviceType> types) {
-    if (!iio_device_id_.has_value() || iio_device_id_.value() != iio_device_id)
+    if (!iio_device_id_.has_value() ||
+        iio_device_id_.value() != iio_device_id) {
       return false;
+    }
 
-    if (types_.size() != types.size())
+    if (types_.size() != types.size()) {
       return false;
+    }
 
     for (size_t i = 0; i < types_.size(); ++i) {
-      if (types_[i] != types[i])
+      if (types_[i] != types[i]) {
         return false;
+      }
     }
 
     return true;
@@ -299,8 +303,9 @@ TEST_P(SensorServiceImplTestDeviceTypesWithParam, DeviceTypes) {
           auto it = iio_device_ids_types.find(kFakeAccelId);
           EXPECT_TRUE(it != iio_device_ids_types.end());
           EXPECT_EQ(it->second.size(), GetParam().second.size());
-          for (size_t i = 0; i < it->second.size(); ++i)
+          for (size_t i = 0; i < it->second.size(); ++i) {
             EXPECT_EQ(it->second[i], GetParam().second[i]);
+          }
         }
 
         std::move(closure).Run();

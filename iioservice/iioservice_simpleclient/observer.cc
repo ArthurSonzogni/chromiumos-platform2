@@ -33,10 +33,11 @@ Observer::Observer(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
       num_(num) {}
 
 void Observer::Start() {
-  if (device_id_ < 0)
+  if (device_id_ < 0) {
     GetDeviceIdsByType();
-  else
+  } else {
     GetSensorDevice();
+  }
 }
 
 void Observer::OnDeviceDisconnect() {
@@ -111,8 +112,9 @@ void Observer::AddTimestamp(int64_t timestamp) {
 void Observer::AddSuccessRead() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (++num_success_reads_ < num_)
+  if (++num_success_reads_ < num_) {
     return;
+  }
 
   // Don't Change: Used as a check sentence in the tast test.
   LOGF(INFO) << "Number of success reads " << num_ << " achieved";

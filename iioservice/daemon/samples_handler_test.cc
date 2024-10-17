@@ -50,24 +50,29 @@ constexpr char kGreenChannel[] = "illuminance_green";
 constexpr char kFakeAccelMatrixAttribute[] = "-1, 0, 0; 0, -1, 0; 0, 0, 1";
 
 double FixFrequency(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency > kMaxFrequency)
+  if (frequency > kMaxFrequency) {
     return kMaxFrequency;
+  }
 
   return frequency;
 }
 
 double FixFrequencyWithMin(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency < kMinFrequency)
+  if (frequency < kMinFrequency) {
     return kMinFrequency;
+  }
 
-  if (frequency > kMaxFrequency)
+  if (frequency > kMaxFrequency) {
     return kMaxFrequency;
+  }
 
   return frequency;
 }
@@ -284,8 +289,9 @@ TEST_F(SamplesHandlerTest, ConsecutiveTimeouts) {
   handler_->AddClient(&client_data, observer.GetRemote());
 
   // Wait until |observer| received |kNumFailures| READ_TIMEOUT.
-  for (int i = 0; i < kNumFailures; ++i)
+  for (int i = 0; i < kNumFailures; ++i) {
     observer.WaitForError(cros::mojom::ObserverErrorType::READ_TIMEOUT);
+  }
 
   handler_->RemoveClient(&client_data, base::DoNothing());
 }
@@ -336,8 +342,9 @@ TEST_F(SamplesHandlerTest, UpdateChannelsEnabled) {
   }
 
   // Remove clients
-  for (auto& client_data : clients_data_)
+  for (auto& client_data : clients_data_) {
     handler_->RemoveClient(&client_data, base::DoNothing());
+  }
 }
 
 TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
@@ -348,8 +355,9 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
 
   size_t fd_failed_cnt = 0;
   for (size_t i = 0; i < freqs.size(); ++i) {
-    if (freqs[i] > 0.0)
+    if (freqs[i] > 0.0) {
       ++fd_failed_cnt;
+    }
   }
 
   for (size_t i = 0; i < freqs.size(); ++i) {
@@ -386,12 +394,14 @@ TEST_F(SamplesHandlerTest, BadDeviceWithNoSamples) {
   // Wait until all observers receive all samples
   base::RunLoop().RunUntilIdle();
 
-  for (const auto& observer : observers_)
+  for (const auto& observer : observers_) {
     EXPECT_TRUE(observer->NoRemainingFailures());
+  }
 
   // Remove clients
-  for (auto& client_data : clients_data_)
+  for (auto& client_data : clients_data_) {
     handler_->RemoveClient(&client_data, base::DoNothing());
+  }
 }
 
 class SamplesHandlerTestWithParam
@@ -516,8 +526,10 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
 
     auto failures = rf_failures;
     if (std::get<0>(GetParam())[i].first == 0.0) {
-      while (!failures.empty() && failures.begin()->first < fakes::kPauseIndex)
+      while (!failures.empty() &&
+             failures.begin()->first < fakes::kPauseIndex) {
         failures.erase(failures.begin());
+      }
 
       failures.insert(
           std::make_pair(0, cros::mojom::ObserverErrorType::FREQUENCY_INVALID));
@@ -587,12 +599,14 @@ TEST_P(SamplesHandlerTestWithParam, ReadSamplesWithFrequency) {
       device_->ReadDoubleAttribute(libmems::kHWFifoTimeoutAttr).value_or(-1),
       1.0 / max_freq2);
 
-  for (const auto& observer : observers_)
+  for (const auto& observer : observers_) {
     EXPECT_TRUE(observer->FinishedObserving());
+  }
 
   // Remove clients
-  for (auto& client_data : clients_data_)
+  for (auto& client_data : clients_data_) {
     handler_->RemoveClient(&client_data, base::DoNothing());
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

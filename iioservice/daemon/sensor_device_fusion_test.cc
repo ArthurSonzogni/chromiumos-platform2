@@ -194,21 +194,25 @@ class IioDeviceHandlerTest : public ::testing::Test,
 
   void HandleAccelSample(std::vector<int64_t> accel_sample) override {
     EXPECT_EQ(accel_sample.size(), std::size(libmems::fakes::kFakeAccelChns));
-    if (!observer_)
+    if (!observer_) {
       return;
+    }
 
     libmems::IioDevice::IioSample sample;
-    for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i)
+    for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i) {
       sample.emplace(i, accel_sample[i]);
+    }
 
     observer_->OnSampleUpdated(sample);
-    if (observer_->FinishedObserving())
+    if (observer_->FinishedObserving()) {
       closure_.Run();
+    }
   }
 
   void OnReadFailed() override {
-    if (!observer_)
+    if (!observer_) {
       return;
+    }
 
     observer_->OnErrorOccurred(cros::mojom::ObserverErrorType::READ_FAILED);
   }
@@ -292,7 +296,9 @@ class IioDeviceHandlerInvalidTest : public ::testing::Test,
     NOTREACHED_IN_MIGRATION() << "Shouldn't get any sample";
   }
 
-  void OnReadFailed() override { NOTREACHED_IN_MIGRATION() << "Shouldn't get any error"; }
+  void OnReadFailed() override {
+    NOTREACHED_IN_MIGRATION() << "Shouldn't get any error";
+  }
 
   void Invalidate() override {
     // IioDeviceHandler will only call Invalidate callback once.
@@ -445,8 +451,9 @@ TEST_F(SensorDeviceFusionTest, SetChannels) {
       [](std::vector<std::string> gravity_channel_ids,
          const std::vector<std::string>& chn_ids) {
         EXPECT_EQ(chn_ids.size(), gravity_channel_ids.size());
-        for (int i = 0; i < chn_ids.size(); ++i)
+        for (int i = 0; i < chn_ids.size(); ++i) {
           EXPECT_EQ(chn_ids[i], gravity_channel_ids[i]);
+        }
       },
       gravity_channel_ids));
 
@@ -458,8 +465,9 @@ TEST_F(SensorDeviceFusionTest, SetChannels) {
       }));
 
   indices.clear();
-  for (int i = 0; i < gravity_channel_ids.size(); ++i)
+  for (int i = 0; i < gravity_channel_ids.size(); ++i) {
     indices.push_back(i);
+  }
 
   base::RunLoop loop;
   remote_->GetChannelsEnabled(
@@ -467,8 +475,9 @@ TEST_F(SensorDeviceFusionTest, SetChannels) {
                    [](size_t size, base::RepeatingClosure closure,
                       const std::vector<bool>& enabled) {
                      EXPECT_EQ(enabled.size(), size);
-                     for (int i = 0; i < enabled.size(); ++i)
+                     for (int i = 0; i < enabled.size(); ++i) {
                        EXPECT_EQ(enabled[i], i % 2 == 0);
+                     }
 
                      closure.Run();
                    },
@@ -486,8 +495,9 @@ TEST_F(SensorDeviceFusionTest, SetChannels) {
             // will be denied and |failed_indices| in SetChannelsEnabledCallback
             // will be identical to the requested indices.
             EXPECT_EQ(indices.size(), failed_indices.size());
-            for (size_t i = 0; i < indices.size(); ++i)
+            for (size_t i = 0; i < indices.size(); ++i) {
               EXPECT_EQ(indices[i], failed_indices[i]);
+            }
           },
           indices));
 
@@ -500,8 +510,9 @@ TEST_F(SensorDeviceFusionTest, SetChannels) {
                      // Even after SensorDeviceFusion being invalidated,
                      // GetChannelsEnabled still gets the original
                      // configuration.
-                     for (int i = 0; i < enabled.size(); ++i)
+                     for (int i = 0; i < enabled.size(); ++i) {
                        EXPECT_EQ(enabled[i], i % 2 == 0);
+                     }
 
                      closure.Run();
                    },

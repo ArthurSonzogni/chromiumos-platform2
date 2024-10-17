@@ -77,8 +77,9 @@ static android::mat<TYPE, R, R> scaleCovariance(
       double apat(0);
       for (size_t c = 0; c < C; c++) {
         double v(A[c][r] * P[c][c] * 0.5);
-        for (size_t k = c + 1; k < C; k++)
+        for (size_t k = c + 1; k < C; k++) {
           v += A[k][r] * P[c][k];
+        }
         apat += 2 * v * A[c][j];
       }
       APAt[j][r] = apat;
@@ -181,11 +182,13 @@ void Fusion::Init() {
 void Fusion::HandleAccel(const android::vec3_t& a, float dT) {
   const float l = length(a);
   // Ignore accelerometer data if we're close to free-fall
-  if (l < FREE_FALL_THRESHOLD)
+  if (l < FREE_FALL_THRESHOLD) {
     return;
+  }
 
-  if (!CheckInitComplete(cros::mojom::DeviceType::ACCEL, a, dT))
+  if (!CheckInitComplete(cros::mojom::DeviceType::ACCEL, a, dT)) {
     return;
+  }
 
   const float l_inv = 1.0f / l;
 
@@ -200,8 +203,9 @@ void Fusion::HandleAccel(const android::vec3_t& a, float dT) {
 }
 
 void Fusion::HandleGyro(const android::vec3_t& w, float dT) {
-  if (!CheckInitComplete(cros::mojom::DeviceType::ANGLVEL, w, dT))
+  if (!CheckInitComplete(cros::mojom::DeviceType::ANGLVEL, w, dT)) {
     return;
+  }
 
   Predict(w, dT);
 }
@@ -220,8 +224,9 @@ bool Fusion::HasEstimate() const {
 bool Fusion::CheckInitComplete(cros::mojom::DeviceType type,
                                const android::vec3_t& d,
                                float dT) {
-  if (HasEstimate())
+  if (HasEstimate()) {
     return true;
+  }
 
   switch (type) {
     case cros::mojom::DeviceType::ACCEL:
@@ -358,8 +363,9 @@ void Fusion::Predict(const android::vec3_t& w, float dT) {
   const android::vec3_t b = x1_;
   android::vec3_t we = w - b;
 
-  if (length(we) < WVEC_EPS)
+  if (length(we) < WVEC_EPS) {
     we = (we[0] > 0.f) ? WVEC_EPS : -WVEC_EPS;
+  }
 
   // q(k+1) = O(we)*q(k)
   // --------------------
@@ -414,8 +420,9 @@ void Fusion::Predict(const android::vec3_t& w, float dT) {
 
   x0_ = O * q;
 
-  if (x0_.w < 0)
+  if (x0_.w < 0) {
     x0_ = -x0_;
+  }
 
   P_ = Phi_ * P_ * transpose(Phi_) + GQGt_;
 

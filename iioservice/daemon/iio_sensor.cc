@@ -19,8 +19,9 @@ namespace iioservice {
 
 // static
 void IioSensor::IioSensorDeleter(IioSensor* server) {
-  if (server == nullptr)
+  if (server == nullptr) {
     return;
+  }
 
   if (!server->ipc_task_runner_->RunsTasksInCurrentSequence()) {
     server->ipc_task_runner_->PostTask(

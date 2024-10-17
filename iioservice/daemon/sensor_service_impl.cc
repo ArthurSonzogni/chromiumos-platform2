@@ -60,8 +60,9 @@ bool DeviceHasType(libmems::IioDevice* iio_device,
     case cros::mojom::DeviceType::PROXIMITY:
       for (auto chn : channels) {
         if (strncmp(chn->GetId(), kChnPrefixes[type_int],
-                    strlen(kChnPrefixes[type_int])) == 0)
+                    strlen(kChnPrefixes[type_int])) == 0) {
           return true;
+        }
       }
 
       return false;
@@ -71,8 +72,9 @@ bool DeviceHasType(libmems::IioDevice* iio_device,
     case cros::mojom::DeviceType::ANGL:
     case cros::mojom::DeviceType::BARO:
       for (auto chn : channels) {
-        if (strcmp(chn->GetId(), kChnPrefixes[type_int]) == 0)
+        if (strcmp(chn->GetId(), kChnPrefixes[type_int]) == 0) {
           return true;
+        }
       }
 
       return false;
@@ -90,14 +92,17 @@ Location GetLocation(libmems::IioDevice* device) {
         base::TrimString(location_opt.value(), std::string_view("\0\n", 2),
                          base::TRIM_TRAILING));
 
-    if (location_str.compare(cros::mojom::kLocationBase) == 0)
+    if (location_str.compare(cros::mojom::kLocationBase) == 0) {
       return Location::kBase;
+    }
 
-    if (location_str.compare(cros::mojom::kLocationLid) == 0)
+    if (location_str.compare(cros::mojom::kLocationLid) == 0) {
       return Location::kLid;
+    }
 
-    if (location_str.compare(cros::mojom::kLocationCamera) == 0)
+    if (location_str.compare(cros::mojom::kLocationCamera) == 0) {
       return Location::kCamera;
+    }
   }
 
   return Location::kNone;
@@ -123,8 +128,9 @@ std::string LocationToString(Location location) {
 
 // static
 void SensorServiceImpl::SensorServiceImplDeleter(SensorServiceImpl* service) {
-  if (service == nullptr)
+  if (service == nullptr) {
     return;
+  }
 
   if (!service->ipc_task_runner_->RunsTasksInCurrentSequence()) {
     service->ipc_task_runner_->PostTask(
@@ -175,8 +181,9 @@ void SensorServiceImpl::ClearReceiversWithReason(
     const std::string& description) {
   const size_t n = receiver_set_.size();
   receiver_set_.ClearWithReason(static_cast<uint32_t>(reason), description);
-  for (size_t i = 0; i < n; ++i)
+  for (size_t i = 0; i < n; ++i) {
     SensorMetrics::GetInstance()->SendSensorClientDisconnected();
+  }
 }
 
 void SensorServiceImpl::OnDeviceAdded(int iio_device_id) {
@@ -217,8 +224,9 @@ void SensorServiceImpl::OnDeviceRemoved(int iio_device_id) {
 
   sensor_device_->OnDeviceRemoved(iio_device_id);
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnDeviceRemoved(iio_device_id);
+  }
 }
 
 void SensorServiceImpl::GetDeviceIds(cros::mojom::DeviceType type,
@@ -300,12 +308,14 @@ SensorServiceImpl::SensorServiceImpl(
       sensor_device_(std::move(sensor_device)) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (!sensor_device_)
+  if (!sensor_device_) {
     LOGF(ERROR) << "Failed to get SensorDevice";
+  }
 
   if (context_->IsValid()) {
-    for (auto device : context_->GetAllDevices())
+    for (auto device : context_->GetAllDevices()) {
       AddDevice(device);
+    }
   }
 
   receiver_set_.set_disconnect_handler(
@@ -320,8 +330,9 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
 
   bool disable_events = true;
   for (auto* event : device->GetAllEvents()) {
-    if (!event->WriteStringAttribute("en", "0\n"))
+    if (!event->WriteStringAttribute("en", "0\n")) {
       disable_events = false;
+    }
   }
 
   if (!device->DisableBuffer() && !disable_events) {
@@ -334,8 +345,9 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
   for (int32_t i = static_cast<int32_t>(cros::mojom::DeviceType::ACCEL);
        i <= static_cast<int32_t>(cros::mojom::DeviceType::kMaxValue); ++i) {
     auto type = static_cast<cros::mojom::DeviceType>(i);
-    if (DeviceHasType(device, type))
+    if (DeviceHasType(device, type)) {
       types.push_back(type);
+    }
   }
 
   if (types.empty()) {
@@ -374,8 +386,9 @@ void SensorServiceImpl::AddDevice(
 
   SensorMetrics::GetInstance()->SetConfigForDevice(id, types,
                                                    LocationToString(location));
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnNewDeviceAdded(id, types);
+  }
 }
 
 void SensorServiceImpl::CheckGravity(int32_t id,
@@ -399,16 +412,19 @@ void SensorServiceImpl::CheckGravity(int32_t id,
 
       device_maps_[cros::mojom::DeviceType::GRAVITY][location] = id;
 
-      if (!sensor_device_)
+      if (!sensor_device_) {
         return;
+      }
 
       auto* accel = context_->GetDeviceById(it_accel->second);
-      if (!accel)
+      if (!accel) {
         return;
+      }
 
       double min_freq, max_freq;
-      if (!accel->GetMinMaxFrequency(&min_freq, &max_freq))
+      if (!accel->GetMinMaxFrequency(&min_freq, &max_freq)) {
         max_freq = 100.0f;
+      }
 
       sensor_device_fusions_.emplace(
           id, SensorDeviceFusionGravity::Create(

@@ -58,8 +58,9 @@ void QueryImpl::OnDeviceDisconnect(mojo::RemoteSetElementId id) {
 
   LOGF(ERROR) << "SensorDevice disconnected with RemoteSetElementId: " << id;
 
-  if (remotes_.empty())
+  if (remotes_.empty()) {
     Reset();
+  }
 }
 
 void QueryImpl::GetAllDeviceIdsCallback(
@@ -121,16 +122,19 @@ void QueryImpl::GetAttributesCallback(
   // the tast test.
   LOGF(INFO) << "Device id: " << iio_device_id;
 
-  for (auto type : types)
+  for (auto type : types) {
     LOGF(INFO) << "Type: " << type;
+  }
 
-  for (size_t i = 0; i < values.size(); ++i)
+  for (size_t i = 0; i < values.size(); ++i) {
     LOGF(INFO) << attributes_[i] << ": " << values[i].value_or("");
+  }
 
   remotes_.Remove(device_ids_[iio_device_id]);
 
-  if (remotes_.empty())
+  if (remotes_.empty()) {
     Reset();
+  }
 }
 
 }  // namespace iioservice

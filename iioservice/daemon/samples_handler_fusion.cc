@@ -68,8 +68,9 @@ void SamplesHandlerFusion::AddClient(
 void SamplesHandlerFusion::RemoveClient(ClientData* client_data) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (invalid_)
+  if (invalid_) {
     return;
+  }
 
   SamplesHandlerBase::RemoveClientOnThread(client_data);
 }
@@ -78,8 +79,9 @@ void SamplesHandlerFusion::UpdateFrequency(ClientData* client_data,
                                            double frequency) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (invalid_)
+  if (invalid_) {
     return;
+  }
 
   double orig_freq = client_data->frequency;
   client_data->frequency = frequency;
@@ -125,8 +127,9 @@ void SamplesHandlerFusion::Invalidate() {
   update_frequency_callback_.Run(GetRequestedFrequencyOnThread());  // 0.0
 
   for (ClientData* client : inactive_clients_) {
-    if (client->samples_observer.is_bound())
+    if (client->samples_observer.is_bound()) {
       SensorMetrics::GetInstance()->SendSensorObserverClosed();
+    }
   }
 
   inactive_clients_.clear();
@@ -147,8 +150,9 @@ bool SamplesHandlerFusion::UpdateRequestedFrequencyOnThread() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   double frequency = GetRequestedFrequencyOnThread();
-  if (frequency == requested_frequency_)
+  if (frequency == requested_frequency_) {
     return true;
+  }
 
   requested_frequency_ = frequency;
   update_frequency_callback_.Run(requested_frequency_);

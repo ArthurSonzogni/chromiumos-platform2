@@ -104,8 +104,9 @@ void SensorMetrics::SetConfigForDevice(
 void SensorMetrics::SendSensorUsage(int iio_device_id, double frequency) {
   DCHECK_GE(frequency, 0.0);
   auto it = device_configs_.find(iio_device_id);
-  if (it == device_configs_.end())
+  if (it == device_configs_.end()) {
     return;
+  }
 
   it->second.frequency = frequency;
   it->second.max_frequency = std::max(it->second.max_frequency, frequency);
@@ -149,14 +150,17 @@ SensorMetrics::SensorMetrics(
 
 SensorMetrics::Location SensorMetrics::FilterLocationString(
     std::string location) {
-  if (location == cros::mojom::kLocationBase)
+  if (location == cros::mojom::kLocationBase) {
     return Location::kBase;
+  }
 
-  if (location == cros::mojom::kLocationLid)
+  if (location == cros::mojom::kLocationLid) {
     return Location::kLid;
+  }
 
-  if (location == cros::mojom::kLocationCamera)
+  if (location == cros::mojom::kLocationCamera) {
     return Location::kCamera;
+  }
 
   return Location::kOthers;
 }
@@ -166,16 +170,18 @@ void SensorMetrics::SummarizeTime() {
     auto& config = device_config.second;
 
     for (auto type : config.types) {
-      if (!SensorTypeSupported(type))
+      if (!SensorTypeSupported(type)) {
         continue;
+      }
 
       int device_enum =
           (static_cast<int>(type) - 1) * static_cast<int>(Location::kMax) +
           static_cast<int>(config.location);
 
       for (int freq_threshold : kFrequencyThresholds) {
-        if (config.max_frequency < freq_threshold)
+        if (config.max_frequency < freq_threshold) {
           continue;
+        }
 
         std::string action_name =
             base::StringPrintf(kSensorUsage, freq_threshold);

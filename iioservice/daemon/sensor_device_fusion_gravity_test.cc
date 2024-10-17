@@ -145,8 +145,9 @@ TEST_F(SensorDeviceFusionGravityTest, GetChannelsAttributes) {
 
   std::vector<int32_t> indices;
   size_t size = GetGravityChannels().size();
-  for (size_t i = 0; i < size; ++i)
+  for (size_t i = 0; i < size; ++i) {
     indices.push_back(i);
+  }
 
   remote_->GetChannelsAttributes(indices, {cros::mojom::kScale},
                                  future.GetCallback());
@@ -155,8 +156,9 @@ TEST_F(SensorDeviceFusionGravityTest, GetChannelsAttributes) {
 
   EXPECT_EQ(values.size(), size);
   // Gravity device channels' attributes are not provided for now.
-  for (size_t i = 0; i < size; ++i)
+  for (size_t i = 0; i < size; ++i) {
     EXPECT_FALSE(values[i].has_value());
+  }
 }
 
 }  // namespace

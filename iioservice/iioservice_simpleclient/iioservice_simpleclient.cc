@@ -24,8 +24,9 @@ std::atomic<bool> daemon_running(false);
 std::unique_ptr<iioservice::DaemonSamplesObserver> exec_daemon;
 
 void quit_daemon() {
-  if (!daemon_running)
+  if (!daemon_running) {
     return;
+  }
 
   daemon_running = false;
   LOGF(INFO) << "Quiting daemon";

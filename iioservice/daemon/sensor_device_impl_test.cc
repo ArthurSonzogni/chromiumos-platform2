@@ -83,8 +83,9 @@ class SensorDeviceImplTest : public ::testing::Test {
     for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i) {
       auto chn = std::make_unique<libmems::fakes::FakeIioChannel>(
           libmems::fakes::kFakeAccelChns[i], true);
-      if (i % 2 == 0)
+      if (i % 2 == 0) {
         chn->WriteStringAttribute(kChnAttrName, kChnAttrValue);
+      }
 
       device->AddChannel(std::move(chn));
     }
@@ -117,8 +118,9 @@ class SensorDeviceImplTest : public ::testing::Test {
 
   void OnSensorDeviceDisconnect() {
     remote_.reset();
-    if (remote_reset_closure_)
+    if (remote_reset_closure_) {
       remote_reset_closure_.Run();
+    }
   }
 
   void WaitUntilRemoteReset() {
@@ -327,8 +329,9 @@ TEST_F(SensorDeviceImplTest, SetChannels) {
   remote_->GetAllChannelIds(
       base::BindOnce([](const std::vector<std::string>& chn_ids) {
         EXPECT_EQ(chn_ids.size(), std::size(libmems::fakes::kFakeAccelChns));
-        for (int i = 0; i < chn_ids.size(); ++i)
+        for (int i = 0; i < chn_ids.size(); ++i) {
           EXPECT_EQ(chn_ids[i], libmems::fakes::kFakeAccelChns[i]);
+        }
       }));
 
   std::vector<int32_t> indices = {0, 2};
@@ -339,29 +342,32 @@ TEST_F(SensorDeviceImplTest, SetChannels) {
       }));
 
   indices.clear();
-  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i)
+  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i) {
     indices.push_back(i);
+  }
 
   base::RunLoop loop;
   remote_->GetChannelsEnabled(
-      indices, base::BindOnce(
-                   [](base::OnceClosure closure,
-                      const std::vector<bool>& enabled) {
-                     EXPECT_EQ(enabled.size(),
-                               std::size(libmems::fakes::kFakeAccelChns));
-                     for (int i = 0; i < enabled.size(); ++i)
-                       EXPECT_EQ(enabled[i], i % 2 == 0);
+      indices,
+      base::BindOnce(
+          [](base::OnceClosure closure, const std::vector<bool>& enabled) {
+            EXPECT_EQ(enabled.size(),
+                      std::size(libmems::fakes::kFakeAccelChns));
+            for (int i = 0; i < enabled.size(); ++i) {
+              EXPECT_EQ(enabled[i], i % 2 == 0);
+            }
 
-                     std::move(closure).Run();
-                   },
-                   loop.QuitClosure()));
+            std::move(closure).Run();
+          },
+          loop.QuitClosure()));
   loop.Run();
 }
 
 TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
   std::vector<int32_t> indices;
-  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i)
+  for (int i = 0; i < std::size(libmems::fakes::kFakeAccelChns); ++i) {
     indices.push_back(i);
+  }
 
   base::RunLoop loop;
   remote_->GetChannelsAttributes(

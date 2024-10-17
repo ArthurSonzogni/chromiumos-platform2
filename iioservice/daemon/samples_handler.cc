@@ -43,12 +43,14 @@ constexpr cros::mojom::DeviceType kOnChangeDeviceTypes[] = {
     cros::mojom::DeviceType::LIGHT};
 
 bool IsOnChangeDevice(ClientData* client_data) {
-  if (!client_data->device_data->iio_device->HasFifo())
+  if (!client_data->device_data->iio_device->HasFifo()) {
     return false;
+  }
 
   for (auto type : kOnChangeDeviceTypes) {
-    if (base::Contains(client_data->device_data->types, type))
+    if (base::Contains(client_data->device_data->types, type)) {
       return true;
+    }
   }
 
   return false;
@@ -58,8 +60,9 @@ bool IsOnChangeDevice(ClientData* client_data) {
 
 // static
 void SamplesHandler::SamplesHandlerDeleter(SamplesHandler* handler) {
-  if (handler == nullptr)
+  if (handler == nullptr) {
     return;
+  }
 
   if (!handler->sample_task_runner_->BelongsToCurrentThread()) {
     handler->sample_task_runner_->PostTask(
@@ -100,8 +103,9 @@ SamplesHandler::ScopedSamplesHandler SamplesHandler::Create(
     return handler;
   }
 
-  if (!DisableBufferAndEnableChannels(iio_device))
+  if (!DisableBufferAndEnableChannels(iio_device)) {
     return handler;
+  }
 
   double min_freq, max_freq;
   if (strcmp(iio_device->GetName(), "acpi-als") == 0) {
@@ -123,9 +127,10 @@ SamplesHandler::~SamplesHandler() {
 
   watcher_.reset();
   iio_device_->FreeBuffer();
-  if (requested_frequency_ > 0.0 &&
-      !iio_device_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0))
+  if (requested_frequency_ > 0.0 && !iio_device_->WriteDoubleAttribute(
+                                        libmems::kSamplingFrequencyAttr, 0.0)) {
     LOGF(ERROR) << "Failed to set frequency";
+  }
 
   SensorMetrics::GetInstance()->SendSensorUsage(iio_device_->GetId(), 0.0);
 
@@ -231,14 +236,16 @@ SamplesHandler::SamplesHandler(
   DCHECK_GE(dev_max_frequency_, dev_min_frequency_);
 
   std::vector<std::string> channel_ids;
-  for (auto channel : iio_device_->GetAllChannels())
+  for (auto channel : iio_device_->GetAllChannels()) {
     channel_ids.push_back(channel->GetId());
+  }
 
   SetNoBatchChannels(channel_ids);
 
   // Set |accel_matrix_|.
-  if (!base::Contains(device_data->types, cros::mojom::DeviceType::ACCEL))
+  if (!base::Contains(device_data->types, cros::mojom::DeviceType::ACCEL)) {
     return;
+  }
 
   for (int i = 0; i < kNumberOfAxes; ++i) {
     std::string channel_name =
@@ -254,8 +261,9 @@ SamplesHandler::SamplesHandler(
     }
 
     if (accel_axis_indices_[i] == -1) {
-      for (int k = 0; k < kNumberOfAxes; ++k)
+      for (int k = 0; k < kNumberOfAxes; ++k) {
         accel_axis_indices_[k] = -1;
+      }
 
       return;
     }
@@ -310,8 +318,9 @@ void SamplesHandler::SetSampleWatcherOnThread() {
 
   // Flush the old samples in EC FIFO.
   if (iio_device_->HasFifo()) {
-    if (!iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n"))
+    if (!iio_device_->WriteStringAttribute(kHWFifoFlushPath, "1\n")) {
       LOGF(ERROR) << "Failed to flush the old samples in EC FIFO";
+    }
   } else if (iio_device_->GetHrtimer()) {
     auto* hrtimer = iio_device_->GetHrtimer();
     if (hrtimer && !iio_device_->SetTrigger(hrtimer)) {
@@ -352,8 +361,9 @@ void SamplesHandler::StopSampleWatcherOnThread() {
 
   watcher_.reset();
   iio_device_->FreeBuffer();
-  if (iio_device_->GetHrtimer())
+  if (iio_device_->GetHrtimer()) {
     iio_device_->SetTrigger(nullptr);
+  }
 }
 
 void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
@@ -383,19 +393,23 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
 
       // Read from the input attribute or the raw attribute.
       auto value_opt = channel->ReadNumberAttribute(kInputAttr);
-      if (!value_opt.has_value())
+      if (!value_opt.has_value()) {
         value_opt = channel->ReadNumberAttribute(libmems::kRawAttr);
+      }
 
-      if (value_opt.has_value())
+      if (value_opt.has_value()) {
         sample[index] = value_opt.value();
+      }
     }
 
-    if (!sample.empty())
+    if (!sample.empty()) {
       client_data->samples_observer->OnSampleUpdated(std::move(sample));
+    }
   }
 
-  if (!watcher_.get())
+  if (!watcher_.get()) {
     SetSampleWatcherOnThread();
+  }
 }
 
 void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
@@ -407,29 +421,35 @@ void SamplesHandler::RemoveActiveClientOnThread(ClientData* client_data,
 
   SamplesHandlerBase::RemoveActiveClientOnThread(client_data, orig_freq);
 
-  if (clients_map_.empty())
+  if (clients_map_.empty()) {
     StopSampleWatcherOnThread();
+  }
 }
 
 double SamplesHandler::FixFrequency(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency > dev_max_frequency_)
+  if (frequency > dev_max_frequency_) {
     return dev_max_frequency_;
+  }
 
   return frequency;
 }
 
 double SamplesHandler::FixFrequencyWithMin(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency < dev_min_frequency_)
+  if (frequency < dev_min_frequency_) {
     return dev_min_frequency_;
+  }
 
-  if (frequency > dev_max_frequency_)
+  if (frequency > dev_max_frequency_) {
     return dev_max_frequency_;
+  }
 
   return frequency;
 }
@@ -459,8 +479,9 @@ void SamplesHandler::UpdateFrequencyOnThread(
     return;
   }
 
-  if (clients_map_.find(client_data) == clients_map_.end())
+  if (clients_map_.find(client_data) == clients_map_.end()) {
     return;
+  }
 
   if (!client_data->IsSampleActive()) {
     // The client is now inactive
@@ -493,8 +514,9 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
   // frequency.
   frequency = FixFrequencyWithMin(frequency);
 
-  if (frequency == requested_frequency_)
+  if (frequency == requested_frequency_) {
     return true;
+  }
 
   SensorMetrics::GetInstance()->SendSensorUsage(iio_device_->GetId(),
                                                 frequency);
@@ -514,9 +536,10 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
 
     // HID sensors require to set sampling frequency in channels' attributes.
     for (auto& channel : iio_device_->GetAllChannels()) {
-      if (channel->IsEnabled())
+      if (channel->IsEnabled()) {
         channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr,
                                       frequency);
+      }
     }
   }
 
@@ -528,8 +551,9 @@ bool SamplesHandler::UpdateRequestedFrequencyOnThread() {
 
   if (iio_device_->HasFifo()) {
     double ec_period = 0;
-    if (dev_frequency_ > libmems::kFrequencyEpsilon)
+    if (dev_frequency_ > libmems::kFrequencyEpsilon) {
       ec_period = 1.0 / dev_frequency_;
+    }
 
     if (!iio_device_->WriteDoubleAttribute(libmems::kHWFifoTimeoutAttr,
                                            ec_period)) {
@@ -595,8 +619,9 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
     return;
   }
 
-  if (clients_map_.find(client_data) == clients_map_.end())
+  if (clients_map_.find(client_data) == clients_map_.end()) {
     return;
+  }
 
   if (client_data->IsSampleActive()) {
     // The client remains active

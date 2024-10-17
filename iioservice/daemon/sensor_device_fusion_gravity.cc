@@ -157,8 +157,9 @@ void SensorDeviceFusionGravity::GetScaleCallback(
   if (values.empty() || !values[0]) {
     LOGF(ERROR) << "Cannot retrieve scale attribute from type: " << type;
   } else {
-    if (values.size() > 1)
+    if (values.size() > 1) {
       LOGF(ERROR) << "Invalid size of attribute values: " << values.size();
+    }
 
     if (!values[0] || !base::StringToDouble(*values[0], &scale)) {
       LOGF(ERROR) << "Invalid scale: " << values[0].value_or("")

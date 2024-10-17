@@ -33,8 +33,9 @@ constexpr char kChannelAttributeFormat[] = "in_%s_%s";
 
 // static
 void SensorDeviceImpl::SensorDeviceImplDeleter(SensorDeviceImpl* device) {
-  if (device == nullptr)
+  if (device == nullptr) {
     return;
+  }
 
   if (!device->ipc_task_runner_->RunsTasksInCurrentSequence()) {
     device->ipc_task_runner_->PostTask(
@@ -85,8 +86,9 @@ void SensorDeviceImpl::OnDeviceAdded(
   // To read events and samples at the same time, the event fd must be created
   // first, to avoid opening /dev/iio:deviceX twice.
   if (!iio_device->GetAllEvents().empty() &&
-      !iio_device->GetAllChannels().empty())
+      !iio_device->GetAllChannels().empty()) {
     iio_device->GetEventFd();
+  }
 
   devices_.emplace(iio_device->GetId(), DeviceData(iio_device, types));
 }
@@ -132,10 +134,11 @@ void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
   }
 
   for (auto it = clients_.begin(); it != clients_.end();) {
-    if (it->second.device_data->iio_device_id == iio_device_id)
+    if (it->second.device_data->iio_device_id == iio_device_id) {
       it = clients_.erase(it);
-    else
+    } else {
       ++it;
+    }
   }
 
   devices_.erase(iio_device_id);
@@ -163,8 +166,9 @@ void SensorDeviceImpl::SetTimeout(uint32_t timeout) {
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
     return;
+  }
 
   it->second.timeout = timeout;
 }
@@ -190,8 +194,9 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
     std::optional<std::string> value_opt;
     if (attr_name == cros::mojom::kSysPath) {
       auto path_opt = client.device_data->iio_device->GetAbsoluteSysPath();
-      if (path_opt.has_value())
+      if (path_opt.has_value()) {
         value_opt = path_opt.value().value();
+      }
     } else if (attr_name == cros::mojom::kLocation) {
       value_opt = client.device_data->iio_device->GetLocation();
     } else if (attr_name == cros::mojom::kDevlink) {
@@ -210,15 +215,17 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
       // Look for channels' attributes instead.
       for (auto type : client.device_data->types) {
         auto type_in_string = DeviceTypeToString(type);
-        if (!type_in_string.has_value())
+        if (!type_in_string.has_value()) {
           continue;
+        }
 
         value_opt = client.device_data->iio_device->ReadStringAttribute(
             base::StringPrintf(kChannelAttributeFormat, type_in_string->c_str(),
                                attr_name.c_str()));
 
-        if (value_opt.has_value())
+        if (value_opt.has_value()) {
           break;
+        }
       }
     }
 
@@ -342,8 +349,9 @@ void SensorDeviceImpl::GetAllChannelIds(GetAllChannelIdsCallback callback) {
 
   auto iio_device = it->second.device_data->iio_device;
   std::vector<std::string> chn_ids;
-  for (auto iio_channel : iio_device->GetAllChannels())
+  for (auto iio_channel : iio_device->GetAllChannels()) {
     chn_ids.push_back(iio_channel->GetId());
+  }
 
   std::move(callback).Run(std::move(chn_ids));
 }
@@ -372,11 +380,13 @@ void SensorDeviceImpl::SetChannelsEnabled(
   }
 
   if (en) {
-    for (int32_t chn_index : iio_chn_indices)
+    for (int32_t chn_index : iio_chn_indices) {
       client.enabled_chn_indices.emplace(chn_index);
+    }
   } else {
-    for (int32_t chn_index : iio_chn_indices)
+    for (int32_t chn_index : iio_chn_indices) {
       client.enabled_chn_indices.erase(chn_index);
+    }
   }
 
   std::move(callback).Run({});
@@ -611,8 +621,9 @@ void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id,
   ClientData& client = it->second;
 
   auto it_handler = samples_handlers_.find(client.device_data->iio_device_id);
-  if (it_handler != samples_handlers_.end())
+  if (it_handler != samples_handlers_.end()) {
     it_handler->second->RemoveClient(&client, std::move(callback));
+  }
 }
 
 }  // namespace iioservice

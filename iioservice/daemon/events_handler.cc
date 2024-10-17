@@ -35,8 +35,9 @@ cros::mojom::IioEventPtr ExtractIioEvent(iio_event_data event) {
 
 // static
 void EventsHandler::EventsHandlerDeleter(EventsHandler* handler) {
-  if (handler == nullptr)
+  if (handler == nullptr) {
     return;
+  }
 
   if (!handler->event_task_runner_->BelongsToCurrentThread()) {
     handler->event_task_runner_->PostTask(
@@ -128,13 +129,15 @@ void EventsHandler::AddClientOnThread(
         continue;
       }
 
-      if (!event->SetEnabledAndCheck(true))
+      if (!event->SetEnabledAndCheck(true)) {
         LOGF(ERROR) << "Failed to enable event: " << index;
+      }
     }
   }
 
-  if (!watcher_.get())
+  if (!watcher_.get()) {
     SetEventWatcherOnThread();
+  }
 }
 
 void EventsHandler::OnEventsObserverDisconnect(mojo::RemoteSetElementId id) {
@@ -143,8 +146,9 @@ void EventsHandler::OnEventsObserverDisconnect(mojo::RemoteSetElementId id) {
   LOGF(ERROR) << "EventsObserver disconnected. RemoteSetElementId: " << id;
 
   auto it = enabled_indices_.find(id);
-  if (it == enabled_indices_.end())
+  if (it == enabled_indices_.end()) {
     return;
+  }
 
   for (int32_t index : it->second) {
     if (--enabled_indices_count_[index] == 0) {
@@ -154,14 +158,16 @@ void EventsHandler::OnEventsObserverDisconnect(mojo::RemoteSetElementId id) {
         continue;
       }
 
-      if (!event->SetEnabledAndCheck(false))
+      if (!event->SetEnabledAndCheck(false)) {
         LOGF(ERROR) << "Failed to disable event: " << index;
+      }
     }
   }
 
   enabled_indices_.erase(it);
-  if (enabled_indices_.empty())
+  if (enabled_indices_.empty()) {
     StopEventWatcherOnThread();
+  }
 }
 
 void EventsHandler::SetEventWatcherOnThread() {
@@ -171,8 +177,9 @@ void EventsHandler::SetEventWatcherOnThread() {
   auto fd = iio_device_->GetEventFd();
   if (!fd.has_value()) {
     LOGF(ERROR) << "Failed to get fd";
-    for (auto& observer : events_observers_)
+    for (auto& observer : events_observers_) {
       observer->OnErrorOccurred(cros::mojom::ObserverErrorType::GET_FD_FAILED);
+    }
 
     return;
   }
@@ -194,8 +201,9 @@ void EventsHandler::OnEventAvailableWithoutBlocking() {
 
   auto event = iio_device_->ReadEvent();
   if (!event) {
-    for (auto& observer : events_observers_)
+    for (auto& observer : events_observers_) {
       observer->OnErrorOccurred(cros::mojom::ObserverErrorType::READ_FAILED);
+    }
 
     return;
   }
@@ -215,8 +223,9 @@ void EventsHandler::OnEventAvailableWithoutBlocking() {
   }
 
   for (auto& [id, indices] : enabled_indices_) {
-    if (!base::Contains(indices, chn_index.value()))
+    if (!base::Contains(indices, chn_index.value())) {
       continue;
+    }
 
     events_observers_.Get(id)->OnEventUpdated(iio_event.Clone());
   }

@@ -16,8 +16,9 @@
 namespace iioservice {
 
 void SensorDeviceFusion::SensorDeviceFusionDeleter(SensorDeviceFusion* device) {
-  if (device == nullptr)
+  if (device == nullptr) {
     return;
+  }
 
   if (!device->ipc_task_runner_->RunsTasksInCurrentSequence()) {
     device->ipc_task_runner_->PostTask(
@@ -44,8 +45,9 @@ void SensorDeviceFusion::SetTimeout(uint32_t timeout) {
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
     return;
+  }
 
   it->second.timeout = timeout;
 }
@@ -86,8 +88,9 @@ void SensorDeviceFusion::StartReadingSamples(
 
   mojo::ReceiverId id = receiver_set_.current_receiver();
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
     return;
+  }
   ClientData& client = it->second;
 
   samples_handler_->AddClient(&client, std::move(observer));
@@ -128,11 +131,13 @@ void SensorDeviceFusion::SetChannelsEnabled(
   ClientData& client = it->second;
 
   if (en) {
-    for (int32_t chn_index : iio_chn_indices)
+    for (int32_t chn_index : iio_chn_indices) {
       client.enabled_chn_indices.emplace(chn_index);
+    }
   } else {
-    for (int32_t chn_index : iio_chn_indices)
+    for (int32_t chn_index : iio_chn_indices) {
       client.enabled_chn_indices.erase(chn_index);
+    }
   }
 
   std::move(callback).Run({});
@@ -229,8 +234,9 @@ void SensorDeviceFusion::IioDeviceHandler::SetAttribute(
 void SensorDeviceFusion::IioDeviceHandler::SetFrequency(
     double frequency, base::OnceCallback<void(double)> callback) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  if (!remote_.is_bound())
+  if (!remote_.is_bound()) {
     return;
+  }
 
   remote_->SetFrequency(
       frequency,
@@ -326,8 +332,9 @@ void SensorDeviceFusion::IioDeviceHandler::OnErrorOccurred(
 void SensorDeviceFusion::IioDeviceHandler::DisableSamples() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (remote_.is_bound())
+  if (remote_.is_bound()) {
     remote_->StopReadingSamples();
+  }
 
   receiver_.reset();
 
@@ -337,8 +344,9 @@ void SensorDeviceFusion::IioDeviceHandler::DisableSamples() {
 void SensorDeviceFusion::IioDeviceHandler::Invalidate() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (invalidate_callback_)
+  if (invalidate_callback_) {
     std::move(invalidate_callback_).Run();
+  }
 
   DisableSamples();
 }
@@ -395,8 +403,9 @@ void SensorDeviceFusion::IioDeviceHandler::SetFrequencyCallback(
 
   if ((requested_frequency > 0 && result_frequency > 0) ||
       (requested_frequency <= 0 && result_frequency <= 0)) {
-    if (callback)
+    if (callback) {
       std::move(callback).Run(result_frequency);
+    }
 
     return;
   }
@@ -415,8 +424,9 @@ void SensorDeviceFusion::IioDeviceHandler::GetAttributesCallback(
   std::vector<std::optional<std::string>> overriden_values = values;
   for (size_t i = 0; i < attr_names.size(); ++i) {
     auto it = attributes_.find(attr_names[i]);
-    if (it == attributes_.end())
+    if (it == attributes_.end()) {
       continue;
+    }
 
     overriden_values[i] = it->second;
   }
@@ -461,8 +471,9 @@ void SensorDeviceFusion::IioDeviceHandler::SetChannelsEnabledCallback(
                 << ", in iio device with id: " << iio_device_id_;
   }
 
-  if (!failed_indices.empty())
+  if (!failed_indices.empty()) {
     Invalidate();
+  }
 }
 
 void SensorDeviceFusion::IioDeviceHandler::StartReading() {
@@ -520,8 +531,9 @@ void SensorDeviceFusion::Invalidate() {
 
   invalid_ = true;
   samples_handler_->Invalidate();
-  for (auto& iio_device_handler : iio_device_handlers_)
+  for (auto& iio_device_handler : iio_device_handlers_) {
     iio_device_handler->DisableSamples();
+  }
 }
 
 void SensorDeviceFusion::UpdateRequestedFrequency(double frequency) {
@@ -547,8 +559,9 @@ void SensorDeviceFusion::StopReadingSamplesOnClient(mojo::ReceiverId id) {
   DCHECK(samples_handler_);
 
   auto it = clients_.find(id);
-  if (it == clients_.end())
+  if (it == clients_.end()) {
     return;
+  }
 
   ClientData& client = it->second;
   samples_handler_->RemoveClient(&client);
@@ -557,11 +570,13 @@ void SensorDeviceFusion::StopReadingSamplesOnClient(mojo::ReceiverId id) {
 double SensorDeviceFusion::FixFrequency(double frequency) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency > max_frequency_)
+  if (frequency > max_frequency_) {
     return max_frequency_;
+  }
 
   return frequency;
 }
@@ -570,14 +585,17 @@ double SensorDeviceFusion::FixFrequencyWithMin(double min_frequency,
                                                double frequency) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency < min_frequency)
+  if (frequency < min_frequency) {
     return min_frequency;
+  }
 
-  if (frequency > max_frequency_)
+  if (frequency > max_frequency_) {
     return max_frequency_;
+  }
 
   return frequency;
 }

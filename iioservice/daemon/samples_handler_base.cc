@@ -31,8 +31,9 @@ SamplesHandlerBase::SampleData::SampleData(ClientData* client_data)
 SamplesHandlerBase::SampleData::~SampleData() = default;
 
 void SamplesHandlerBase::SampleData::SetTimeoutTask() {
-  if (!client_data_ || client_data_->timeout == 0)
+  if (!client_data_ || client_data_->timeout == 0) {
     return;
+  }
 
   task_runner_->PostDelayedTask(
       FROM_HERE,
@@ -157,8 +158,9 @@ void SamplesHandlerBase::AddActiveClientOnThread(ClientData* client_data) {
 
   SetTimeoutTaskOnThread(client_data);
 
-  if (AddFrequencyOnThread(client_data->frequency))
+  if (AddFrequencyOnThread(client_data->frequency)) {
     return;
+  }
 
   client_data->samples_observer->OnErrorOccurred(
       cros::mojom::ObserverErrorType::SET_FREQUENCY_IO_FAILED);
@@ -193,8 +195,9 @@ void SamplesHandlerBase::RemoveActiveClientOnThread(ClientData* client_data,
 
   clients_map_.erase(client_data);
 
-  if (RemoveFrequencyOnThread(orig_freq))
+  if (RemoveFrequencyOnThread(orig_freq)) {
     return;
+  }
 
   // Failed to set frequency
   if (client_data->samples_observer.is_bound()) {
@@ -263,8 +266,10 @@ void SamplesHandlerBase::OnSampleAvailableOnThread(
 
     // Update moving averages for channels
     for (int32_t chn_index : client_data->enabled_chn_indices) {
-      if (no_batch_chn_indices_.find(chn_index) != no_batch_chn_indices_.end())
+      if (no_batch_chn_indices_.find(chn_index) !=
+          no_batch_chn_indices_.end()) {
         continue;
+      }
 
       auto it = sample.find(chn_index);
       if (it == sample.end()) {

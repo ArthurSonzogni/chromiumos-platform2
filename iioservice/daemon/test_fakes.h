@@ -91,15 +91,17 @@ class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
   void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override {}
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {
     type_ = type;
-    if (type == expected_type_)
+    if (type == expected_type_) {
       quit_closure_.Run();
+    }
   }
 
  private:
   void OnObserverDisconnect() {
     receiver_.reset();
-    if (quit_closure_)
+    if (quit_closure_) {
       quit_closure_.Run();
+    }
   }
 
   base::RepeatingClosure quit_closure_;
@@ -137,8 +139,9 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   const libmems::IioDevice::IioSample& GetLatestSample() const;
 
   void WaitUntilReceiverReset() {
-    if (!is_bound())
+    if (!is_bound()) {
       return;
+    }
 
     base::RunLoop loop;
 
@@ -209,8 +212,9 @@ class FakeEventsObserver : public cros::mojom::SensorDeviceEventsObserver {
   void NextEventIndex();
 
   void WaitUntilReceiverReset() {
-    if (!is_bound())
+    if (!is_bound()) {
       return;
+    }
 
     base::RunLoop loop;
 

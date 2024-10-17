@@ -42,8 +42,9 @@ FakeSamplesHandler::ScopedFakeSamplesHandler FakeSamplesHandler::Create(
     libmems::fakes::FakeIioDevice* fake_iio_device) {
   ScopedFakeSamplesHandler handler(nullptr, SamplesHandlerDeleter);
   double min_freq, max_freq;
-  if (!fake_iio_device->GetMinMaxFrequency(&min_freq, &max_freq))
+  if (!fake_iio_device->GetMinMaxFrequency(&min_freq, &max_freq)) {
     return handler;
+  }
 
   handler.reset(new FakeSamplesHandler(std::move(ipc_task_runner),
                                        std::move(task_runner), device_data,
@@ -162,8 +163,9 @@ void FakeSamplesObserver::OnSampleUpdated(
     auto channels = device_->GetAllChannels();
     for (size_t i = 0; i < channels.size(); ++i) {
       auto raw_value = channels[i]->ReadNumberAttribute(libmems::kRawAttr);
-      if (!raw_value.has_value())
+      if (!raw_value.has_value()) {
         continue;
+      }
 
       auto it = sample.find(i);
       CHECK(it != sample.end());
@@ -179,10 +181,11 @@ void FakeSamplesObserver::OnErrorOccurred(cros::mojom::ObserverErrorType type) {
   CHECK(!failures_.empty());
   CHECK_EQ(failures_.begin()->second, type);
 
-  if (type != cros::mojom::ObserverErrorType::FREQUENCY_INVALID)
+  if (type != cros::mojom::ObserverErrorType::FREQUENCY_INVALID) {
     CHECK_LE(failures_.begin()->first, sample_index_ + GetStep());
-  else
+  } else {
     CHECK_EQ(frequency_, 0.0);
+  }
 
   failures_.erase(failures_.begin());
 }
@@ -251,10 +254,11 @@ FakeSamplesObserver::FakeSamplesObserver(
   CHECK_GE(dev_frequency2_, libmems::kFrequencyEpsilon);
 
   if (frequency_ == 0.0) {
-    if (frequency2_ == 0.0)
+    if (frequency2_ == 0.0) {
       sample_index_ = std::size(libmems::fakes::kFakeAccelSamples);
-    else
+    } else {
       sample_index_ = pause_index_;
+    }
   }
 
   if (device_) {
@@ -268,8 +272,9 @@ void FakeSamplesObserver::OnObserverDisconnect() {
 
   receiver_.reset();
 
-  if (reset_closure_)
+  if (reset_closure_) {
     reset_closure_.Run();
+  }
 }
 
 int FakeSamplesObserver::GetStep() const {
@@ -277,14 +282,17 @@ int FakeSamplesObserver::GetStep() const {
   CHECK_GE(dev_frequency_, libmems::kFrequencyEpsilon);
 
   int step = std::size(libmems::fakes::kFakeAccelSamples);
-  if (frequency_ >= libmems::kFrequencyEpsilon)
+  if (frequency_ >= libmems::kFrequencyEpsilon) {
     step = dev_frequency_ / frequency_;
+  }
 
-  if (sample_index_ + step - 1 < pause_index_)
+  if (sample_index_ + step - 1 < pause_index_) {
     return step;
+  }
 
-  if (frequency2_ < libmems::kFrequencyEpsilon)
+  if (frequency2_ < libmems::kFrequencyEpsilon) {
     return std::size(libmems::fakes::kFakeAccelSamples);
+  }
 
   int step2 = dev_frequency2_ / frequency2_;
 
@@ -295,8 +303,9 @@ int64_t FakeSamplesObserver::GetFakeAccelSamples(int sample_index,
                                                  int chnIndex) {
   int64_t value = libmems::fakes::kFakeAccelSamples[sample_index][chnIndex];
   if (with_accel_matrix_) {
-    if (chnIndex == 0 || chnIndex == 1)
+    if (chnIndex == 0 || chnIndex == 1) {
       value *= -1;
+    }
   }
 
   return value;
@@ -384,13 +393,15 @@ int FakeEventsObserver::GetEventIndex() const {
 }
 
 void FakeEventsObserver::NextEventIndex() {
-  if (event_index_ >= libmems::fakes::kEventNumber)
+  if (event_index_ >= libmems::fakes::kEventNumber) {
     return;
+  }
 
   auto size = device_->GetAllEvents().size();
   while (++event_index_ < libmems::fakes::kEventNumber) {
-    if (base::Contains(event_indices_, event_index_ % size))
+    if (base::Contains(event_indices_, event_index_ % size)) {
       break;
+    }
   }
 }
 
@@ -399,8 +410,9 @@ void FakeEventsObserver::OnObserverDisconnect() {
 
   receiver_.reset();
 
-  if (reset_closure_)
+  if (reset_closure_) {
     reset_closure_.Run();
+  }
 }
 
 }  // namespace fakes

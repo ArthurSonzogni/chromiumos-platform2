@@ -20,8 +20,9 @@ constexpr int kSetUpChannelTimeoutInMilliseconds = 3000;
 
 // static
 void SensorClient::SensorClientDeleter(SensorClient* sensor_client) {
-  if (sensor_client == nullptr)
+  if (sensor_client == nullptr) {
     return;
+  }
 
   if (!sensor_client->ipc_task_runner_->RunsTasksInCurrentSequence()) {
     sensor_client->ipc_task_runner_->PostTask(
@@ -64,8 +65,9 @@ SensorClient::SensorClient(
 void SensorClient::SetUpChannelTimeout() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (sensor_service_setup_)
+  if (sensor_service_setup_) {
     return;
+  }
 
   // Don't Change: Used as a check sentence in the tast test.
   LOGF(ERROR) << "SetUpChannelTimeout";
@@ -77,8 +79,9 @@ void SensorClient::Reset() {
 
   sensor_service_remote_.reset();
 
-  if (quit_callback_)
+  if (quit_callback_) {
     std::move(quit_callback_).Run();
+  }
 }
 
 void SensorClient::OnServiceDisconnect() {

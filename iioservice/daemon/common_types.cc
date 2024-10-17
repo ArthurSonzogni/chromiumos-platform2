@@ -19,8 +19,9 @@ namespace {
 
 bool IioDeviceOnDut(libmems::IioDevice* const iio_device) {
   auto path_opt = iio_device->GetAbsoluteSysPath();
-  if (!path_opt.has_value())
+  if (!path_opt.has_value()) {
     return false;
+  }
 
   base::FilePath path = path_opt.value();
   while (!path.empty() && path.DirName() != path) {

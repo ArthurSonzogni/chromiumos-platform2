@@ -39,24 +39,29 @@ constexpr double kFooFrequency = 20.0;
 constexpr int kNumFailures = 10;
 
 double FixFrequency(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency > kMaxFrequency)
+  if (frequency > kMaxFrequency) {
     return kMaxFrequency;
+  }
 
   return frequency;
 }
 
 double FixFrequencyWithMin(double frequency) {
-  if (frequency < libmems::kFrequencyEpsilon)
+  if (frequency < libmems::kFrequencyEpsilon) {
     return 0.0;
+  }
 
-  if (frequency < kMinFrequency)
+  if (frequency < kMinFrequency) {
     return kMinFrequency;
+  }
 
-  if (frequency > kMaxFrequency)
+  if (frequency > kMaxFrequency) {
     return kMaxFrequency;
+  }
 
   return frequency;
 }
@@ -111,8 +116,9 @@ class SamplesHandlerFusionTestBase
     frequency_ = FixFrequencyWithMin(frequency);
 
     // |handler_| might not exist in the d'tor.
-    if (handler_)
+    if (handler_) {
       handler_->SetDevFrequency(frequency_);
+    }
   }
 
   base::test::SingleThreadTaskEnvironment task_environment_{
@@ -188,12 +194,14 @@ TEST_F(SamplesHandlerFusionTest, BadDeviceWithNoSamples) {
   // Wait until all observers receive all samples
   base::RunLoop().RunUntilIdle();
 
-  for (const auto& observer : observers_)
+  for (const auto& observer : observers_) {
     EXPECT_TRUE(observer->NoRemainingFailures());
+  }
 
   // Remove clients
-  for (auto& client_data : clients_data_)
+  for (auto& client_data : clients_data_) {
     handler_->RemoveClient(&client_data);
+  }
 }
 
 class SamplesHandlerFusionTestWithParam
@@ -219,8 +227,9 @@ class SamplesHandlerFusionTestWithParam
   }
 
   void OnSampleAvailable(const base::flat_map<int32_t, int64_t>& sample) {
-    if (handler_)
+    if (handler_) {
       handler_->OnSampleAvailableOnThread(sample);
+    }
   }
 
   void ReadSamples(int num) {
@@ -332,8 +341,10 @@ TEST_P(SamplesHandlerFusionTestWithParam, ReadSamplesWithFrequency) {
 
     auto failures = rf_failures;
     if (GetParam()[i].first == 0.0) {
-      while (!failures.empty() && failures.begin()->first < fakes::kPauseIndex)
+      while (!failures.empty() &&
+             failures.begin()->first < fakes::kPauseIndex) {
         failures.erase(failures.begin());
+      }
 
       failures.insert(
           std::make_pair(0, cros::mojom::ObserverErrorType::FREQUENCY_INVALID));
@@ -373,12 +384,14 @@ TEST_P(SamplesHandlerFusionTestWithParam, ReadSamplesWithFrequency) {
   // Wait until all observers receive all samples
   base::RunLoop().RunUntilIdle();
 
-  for (const auto& observer : observers_)
+  for (const auto& observer : observers_) {
     EXPECT_TRUE(observer->FinishedObserving());
+  }
 
   // Remove clients
-  for (auto& client_data : clients_data_)
+  for (auto& client_data : clients_data_) {
     handler_->RemoveClient(&client_data);
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

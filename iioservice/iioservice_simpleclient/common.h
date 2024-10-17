@@ -16,8 +16,9 @@ std::string GetDeviceTypesInString() {
   std::stringstream ss;
   for (int i = 0; i <= static_cast<int32_t>(cros::mojom::DeviceType::kMaxValue);
        ++i) {
-    if (i != 0)
+    if (i != 0) {
       ss << ", ";
+    }
     auto type = static_cast<cros::mojom::DeviceType>(i);
     ss << type << ": " << i;
   }

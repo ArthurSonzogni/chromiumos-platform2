@@ -56,24 +56,27 @@ void SamplesHandlerFusionGravity::HandleAccelSample(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK_EQ(accel_sample.size(), kNumberOfAxes + 1);
 
-  if (!accel_scale_.has_value())
+  if (!accel_scale_.has_value()) {
     return;
+  }
 
   int64_t dT_int = accel_sample.back() - accel_timestamp_;
   if (dT_int > 0 && dT_int < (int64_t)(1e8)) {  // 0.1sec }
     const float dT = (dT_int) / 1000000000.0f;
 
     android::vec3_t a;
-    for (int i = 0; i < kNumberOfAxes; ++i)
+    for (int i = 0; i < kNumberOfAxes; ++i) {
       a[i] = accel_scale_.value() * accel_sample[i];
+    }
 
     fusion_.HandleAccel(a, dT);
   }
 
   accel_timestamp_ = accel_sample.back();
 
-  if (!fusion_.HasEstimate())
+  if (!fusion_.HasEstimate()) {
     return;
+  }
 
   const android::mat33_t R(fusion_.GetRotationMatrix());
   android::vec3_t g = R[2] * GRAVITY_EARTH;
@@ -91,16 +94,18 @@ void SamplesHandlerFusionGravity::HandleGyroSample(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK_EQ(gyro_sample.size(), kNumberOfAxes + 1);
 
-  if (!gyro_scale_.has_value())
+  if (!gyro_scale_.has_value()) {
     return;
+  }
 
   int64_t dT_int = gyro_sample.back() - gyro_timestamp_;
   if (dT_int > 0 && dT_int < (int64_t)(5e7)) {  // 0.05sec }
     const float dT = (dT_int) / 1000000000.0f;
 
     android::vec3_t w;
-    for (int i = 0; i < kNumberOfAxes; ++i)
+    for (int i = 0; i < kNumberOfAxes; ++i) {
       w[i] = gyro_scale_.value() * gyro_sample[i];
+    }
 
     fusion_.HandleGyro(w, dT);
   }
@@ -113,8 +118,9 @@ bool SamplesHandlerFusionGravity::SampleIsValid(
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   for (int i = 0; i < kNumberOfAxes + 1; ++i) {
-    if (sample.find(i) == sample.end())
+    if (sample.find(i) == sample.end()) {
       return false;
+    }
   }
 
   return true;

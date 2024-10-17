@@ -33,7 +33,9 @@ class EventsHandlerTest : public ::testing::Test,
   }
 
   // cros::mojom::SensorDeviceEventsObserver overrides:
-  void OnEventUpdated(cros::mojom::IioEventPtr event) override { NOTREACHED_IN_MIGRATION(); }
+  void OnEventUpdated(cros::mojom::IioEventPtr event) override {
+    NOTREACHED_IN_MIGRATION();
+  }
   void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {
     NOTREACHED_IN_MIGRATION();
   }
@@ -91,8 +93,9 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
   // clients added.
   device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
 
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < 4; ++i) {
     EXPECT_FALSE(device_->GetEvent(i)->IsEnabled());
+  }
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures;
   for (int i = 0; i < kNumFailures; ++i) {
@@ -143,8 +146,9 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
   EXPECT_FALSE(device_->GetEvent(2)->IsEnabled());
   EXPECT_FALSE(device_->GetEvent(3)->IsEnabled());
 
-  for (const auto& observer : observers_)
+  for (const auto& observer : observers_) {
     EXPECT_TRUE(observer->FinishedObserving());
+  }
 }
 
 }  // namespace

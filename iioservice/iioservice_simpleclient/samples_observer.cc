@@ -47,13 +47,15 @@ void SamplesObserver::OnSampleUpdated(
                 << ", expected size: " << channel_indices_.size();
   }
 
-  for (auto chn : sample)
+  for (auto chn : sample) {
     LOGF(INFO) << iio_chn_ids_[chn.first] << ": " << chn.second;
+  }
 
   if (timestamp_index_.has_value()) {
     auto it = sample.find(timestamp_index_.value());
-    if (it != sample.end())
+    if (it != sample.end()) {
       AddTimestamp(it->second);
+    }
   }
 
   AddSuccessRead();
@@ -169,8 +171,9 @@ void SamplesObserver::SetFrequencyCallback(double result_freq) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   result_freq_ = result_freq;
-  if (result_freq_ > 0.0)
+  if (result_freq_ > 0.0) {
     return;
+  }
 
   LOGF(ERROR) << "Failed to set frequency";
   Reset();
@@ -192,8 +195,9 @@ void SamplesObserver::SetChannelsEnabledCallback(
       }
     }
 
-    if (!found)
+    if (!found) {
       LOGF(ERROR) << index << " not in requested indices";
+    }
   }
 
   if (channel_indices_.empty()) {
