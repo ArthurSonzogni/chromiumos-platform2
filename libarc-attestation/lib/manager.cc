@@ -58,8 +58,9 @@ void ArcAttestationManager::Setup() {
 
 AndroidStatus ArcAttestationManager::ProvisionDkCert(bool blocking) {
   // Quick check on if it's already provisioned.
-  if (provisioner_->is_provisioned())
+  if (provisioner_->is_provisioned()) {
     return AndroidStatus::ok();
+  }
   if (!blocking) {
     // If we're not provisioned yet then we should not proceed to provisioning
     // here because this call should be non blocking.

@@ -147,13 +147,15 @@ AndroidStatus Provisioner::ProvisionArcAttestationDeviceKey() {
 bool Provisioner::EnsureDbus() {
   DCHECK(IsOnRunner());
 
-  if (proxy_)
+  if (proxy_) {
     return true;
+  }
 
   // Retry up to 3 times.
   for (int i = 0; i < 3; i++) {
-    if (EnsureDbusInternal())
+    if (EnsureDbusInternal()) {
       return true;
+    }
   }
   return false;
 }
