@@ -348,6 +348,10 @@ TEST_F(SLAACControllerTest, StartIPv6Flags) {
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "addr_gen_mode", "0"))
           .WillOnce(Return(true));
+  testing::Expectation ra_honor_pio_pflag =
+      EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6,
+                                      "ra_honor_pio_pflag", "1"))
+          .WillOnce(Return(true));
 
   testing::Expectation disable_ipv6 =
       EXPECT_CALL(proc_fs_,
@@ -378,6 +382,10 @@ TEST_F(SLAACControllerTest, StartIPv6FlagsWithLinkLocal) {
   testing::Expectation addr_gen_mode =
       EXPECT_CALL(proc_fs_,
                   SetIPFlag(net_base::IPFamily::kIPv6, "addr_gen_mode", "1"))
+          .WillOnce(Return(true));
+  testing::Expectation ra_honor_pio_pflag =
+      EXPECT_CALL(proc_fs_, SetIPFlag(net_base::IPFamily::kIPv6,
+                                      "ra_honor_pio_pflag", "1"))
           .WillOnce(Return(true));
 
   testing::Expectation disable_ipv6 =

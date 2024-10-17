@@ -39,6 +39,8 @@ class BRILLO_EXPORT ProcFsStub {
   static constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
   static constexpr char kIPFlagArpIgnore[] = "arp_ignore";
   static constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
+  static constexpr char kIPFlagHonorPFlag[] = "ra_honor_pio_pflag";
+  static constexpr char kIPFlagHonorPFlagEnabled[] = "1";
 
   explicit ProcFsStub(const std::string& interface_name);
   ProcFsStub(const ProcFsStub&) = delete;

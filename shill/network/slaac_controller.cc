@@ -76,6 +76,9 @@ void SLAACController::Start(
       net_base::IPFamily::kIPv6,
       net_base::ProcFsStub::kIPFlagAcceptRouterAdvertisements,
       net_base::ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
+  proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
+                      net_base::ProcFsStub::kIPFlagHonorPFlag,
+                      net_base::ProcFsStub::kIPFlagHonorPFlagEnabled);
 
   // Temporarily disable IPv6 to remove all existing addresses.
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv6,
