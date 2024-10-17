@@ -277,12 +277,14 @@ class HeatmapRecorder : public brillo::Daemon {
   int OnInit() override {
     int ret;
 
-    if (ret = Daemon::OnInit(); ret != EX_OK)
+    if (ret = Daemon::OnInit(); ret != EX_OK) {
       return ret;
+    }
 
     ret = ProcessFlags();
-    if (ret != kContinueRunning)
+    if (ret != kContinueRunning) {
       Exit(ret);
+    }
 
     return EX_OK;
   }
@@ -352,8 +354,9 @@ class HeatmapRecorder : public brillo::Daemon {
     }
 
     /* Get Raw Name */
-    if (ioctl(fd, HIDIOCGRAWNAME(kHIDRawNameLength), buf) < 0)
+    if (ioctl(fd, HIDIOCGRAWNAME(kHIDRawNameLength), buf) < 0) {
       LOG(ERROR) << "Failed to get HID raw name.";
+    }
 
     close(fd);
     return buf;
@@ -370,10 +373,12 @@ class HeatmapRecorder : public brillo::Daemon {
     int high;
 
     for (const auto& entry : std::filesystem::directory_iterator(kHidrawDir)) {
-      if (!entry.path().string().starts_with(kHidrawPrefix))
+      if (!entry.path().string().starts_with(kHidrawPrefix)) {
         continue;
-      if ((name = GetDeviceName(entry.path())).empty())
+      }
+      if ((name = GetDeviceName(entry.path())).empty()) {
         continue;
+      }
       if (!base::StringToInt(
               entry.path().string().substr(sizeof(kHidrawPrefix) - 1), &key)) {
         LOG(ERROR) << entry.path() << " does not end with a number.";
@@ -391,9 +396,10 @@ class HeatmapRecorder : public brillo::Daemon {
     high = devices.rbegin()->first;
 
     std::cout << "Available devices:" << std::endl;
-    for (const auto& device : devices)
+    for (const auto& device : devices) {
       std::cout << kHidrawPrefix << device.first << "   " << device.second
                 << std::endl;
+    }
 
     std::cout << "Select the device event number [" << low << "-" << high
               << "]: ";
