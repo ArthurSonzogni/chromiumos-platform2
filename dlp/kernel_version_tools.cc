@@ -14,8 +14,9 @@ namespace dlp {
 
 std::pair<int, int> GetKernelVersion() {
   struct utsname buf;
-  if (uname(&buf))
+  if (uname(&buf)) {
     return std::make_pair(INT_MIN, INT_MIN);
+  }
 
   // Parse uname result in the form of x.yy.zzz. The parsed data should be in
   // the expected format.

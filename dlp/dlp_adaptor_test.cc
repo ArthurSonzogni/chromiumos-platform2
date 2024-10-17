@@ -78,8 +78,9 @@ bool IsFdClosed(int fd) {
       .fd = fd,
       .events = POLLERR,
   };
-  if (poll(&pfd, 1, 1) < 0)
+  if (poll(&pfd, 1, 1) < 0) {
     return false;
+  }
   return pfd.revents & POLLERR;
 }
 

@@ -225,12 +225,14 @@ bool DlpDatabase::Core::IsOpen() const {
 }
 
 int DlpDatabase::Core::Close() {
-  if (!db_)
+  if (!db_) {
     return SQLITE_OK;
+  }
 
   int result = sqlite3_close(db_.get());
-  if (result == SQLITE_OK)
+  if (result == SQLITE_OK) {
     db_.release();
+  }
 
   return result;
 }
@@ -280,8 +282,9 @@ bool DlpDatabase::Core::CreateFileEntriesLegacyTableForTesting() {
 }
 
 bool DlpDatabase::Core::UpsertFileEntry(const FileEntry& file_entry) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return false;
+  }
 
   const std::string sql = base::StringPrintf(
       "INSERT OR REPLACE INTO file_entries_crtime (inode, crtime, source_url, "
@@ -302,8 +305,9 @@ bool DlpDatabase::Core::UpsertFileEntry(const FileEntry& file_entry) {
 
 bool DlpDatabase::Core::UpsertLegacyFileEntryForTesting(
     const FileEntry& file_entry) {
-  if (!IsOpen() || !CreateFileEntriesLegacyTableForTesting())
+  if (!IsOpen() || !CreateFileEntriesLegacyTableForTesting()) {
     return false;
+  }
 
   const std::string sql = base::StringPrintf(
       "INSERT OR REPLACE INTO file_entries (inode, source_url, referrer_url)"
@@ -357,8 +361,9 @@ bool DlpDatabase::Core::UpsertFileEntries(
 std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
     std::vector<FileId> ids) const {
   std::map<FileId, FileEntry> file_entries;
-  if (!IsOpen())
+  if (!IsOpen()) {
     return file_entries;
+  }
 
   std::string sql;
   sql +=
@@ -390,8 +395,9 @@ std::map<FileId, FileEntry> DlpDatabase::Core::GetFileEntriesByIds(
 
 std::map<FileId, FileEntry> DlpDatabase::Core::GetAllEntries() const {
   std::map<FileId, FileEntry> file_entries;
-  if (!IsOpen())
+  if (!IsOpen()) {
     return file_entries;
+  }
 
   std::string sql;
   sql += "SELECT inode,crtime,source_url,referrer_url FROM file_entries_crtime";
@@ -410,8 +416,9 @@ std::map<FileId, FileEntry> DlpDatabase::Core::GetAllEntries() const {
 }
 
 bool DlpDatabase::Core::DeleteFileEntryByInode(ino64_t inode) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return false;
+  }
 
   const std::string sql = base::StringPrintf(
       "DELETE FROM file_entries_crtime WHERE inode = %" PRId64, inode);
@@ -420,8 +427,9 @@ bool DlpDatabase::Core::DeleteFileEntryByInode(ino64_t inode) {
 
 bool DlpDatabase::Core::DeleteFileEntriesWithIdsNotInSet(
     std::set<FileId> ids_to_keep) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return false;
+  }
 
   std::set<FileId> ids;
   ExecResult result = ExecSQL("SELECT inode,crtime FROM file_entries_crtime",

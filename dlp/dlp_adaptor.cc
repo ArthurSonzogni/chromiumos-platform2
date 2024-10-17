@@ -69,10 +69,12 @@ std::string ParseProto(const base::Location& from_here,
 FileEntry ConvertToFileEntry(FileId id, AddFileRequest request) {
   FileEntry result;
   result.id = id;
-  if (request.has_source_url())
+  if (request.has_source_url()) {
     result.source_url = request.source_url();
-  if (request.has_referrer_url())
+  }
+  if (request.has_referrer_url()) {
     result.referrer_url = request.referrer_url();
+  }
   return result;
 }
 
@@ -411,10 +413,12 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
           &DlpAdaptor::ReplyOnRequestFileAccess, weak_factory_.GetWeakPtr(),
           std::move(response), std::move(remote_fd)));
 
-  if (request.has_destination_url())
+  if (request.has_destination_url()) {
     matching_request.set_destination_url(request.destination_url());
-  if (request.has_destination_component())
+  }
+  if (request.has_destination_component()) {
     matching_request.set_destination_component(request.destination_component());
+  }
 
   matching_request.set_file_action(FileAction::TRANSFER);
 
@@ -624,12 +628,14 @@ void DlpAdaptor::OnPendingFilesUpserted(base::OnceClosure init_callback,
 
 void DlpAdaptor::AddPerFileWatch(
     const std::set<std::pair<base::FilePath, FileId>>& files) {
-  if (!fanotify_watcher_->IsActive())
+  if (!fanotify_watcher_->IsActive()) {
     return;
+  }
 
   // No files to add -> exit early.
-  if (files.empty())
+  if (files.empty()) {
     return;
+  }
 
   // Not expected, but if the DB is not there -> delay adding watches.
   if (!db_) {
@@ -658,11 +664,13 @@ void DlpAdaptor::ProcessAddPerFileWatchWithData(
 }
 
 void DlpAdaptor::EnsureFanotifyWatcherStarted() {
-  if (fanotify_watcher_->IsActive())
+  if (fanotify_watcher_->IsActive()) {
     return;
+  }
 
-  if (is_fanotify_watcher_started_for_testing_)
+  if (is_fanotify_watcher_started_for_testing_) {
     return;
+  }
 
   LOG(INFO) << "Activating fanotify watcher";
 
@@ -843,8 +851,9 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
     const std::string& error_message) {
   RequestFileAccessResponse response_proto;
   response_proto.set_allowed(allowed);
-  if (!error_message.empty())
+  if (!error_message.empty()) {
     response_proto.set_error_message(error_message);
+  }
   response->Return(SerializeProto(response_proto), std::move(remote_fd));
 }
 
@@ -927,14 +936,18 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     return;
   }
 
-  if (request.has_destination_url())
+  if (request.has_destination_url()) {
     matching_request.set_destination_url(request.destination_url());
-  if (request.has_destination_component())
+  }
+  if (request.has_destination_component()) {
     matching_request.set_destination_component(request.destination_component());
-  if (request.has_file_action())
+  }
+  if (request.has_file_action()) {
     matching_request.set_file_action(request.file_action());
-  if (request.has_io_task_id())
+  }
+  if (request.has_io_task_id()) {
     matching_request.set_io_task_id(request.io_task_id());
+  }
 
   auto callbacks = base::SplitOnceCallback(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
@@ -1001,8 +1014,9 @@ void DlpAdaptor::ReplyOnCheckFilesTransfer(
   CheckFilesTransferResponse response_proto;
   *response_proto.mutable_files_paths() = {restricted_files_paths.begin(),
                                            restricted_files_paths.end()};
-  if (!error.empty())
+  if (!error.empty()) {
     response_proto.set_error_message(error);
+  }
   response->Return(SerializeProto(response_proto));
 }
 
