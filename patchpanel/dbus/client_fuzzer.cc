@@ -4,8 +4,11 @@
 
 #include <net/if.h>
 
+#include <base/command_line.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <dbus/message.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -19,6 +22,8 @@ class Environment {
  public:
   Environment() {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);  // <- DISABLE LOGGING.
+    base::CommandLine::Init(0, nullptr);
+    TestTimeouts::Initialize();
   }
 };
 
@@ -44,6 +49,9 @@ net_base::IPv6Address ConsumeIPv6Address(FuzzedDataProvider& provider) {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
+  base::test::TaskEnvironment task_environment{
+      base::test::TaskEnvironment::MainThreadType::IO};
+
   dbus::Bus::Options options;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
   auto client = Client::NewForTesting(
