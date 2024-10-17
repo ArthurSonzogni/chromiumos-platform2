@@ -709,9 +709,14 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
-  if (update_type == SLAACController::UpdateType::kPFlag) {
+  if (update_type == SLAACController::UpdateType::kPFlag ||
+      update_type == SLAACController::UpdateType::kNoPrefix) {
     if (!dhcp_pd_controller_) {
-      LOG(INFO) << *this << ": P-flag detected. Starting DHCPv6-PD.";
+      LOG(INFO) << *this << ": "
+                << (update_type == SLAACController::UpdateType::kPFlag
+                        ? "P-flag detected. "
+                        : "Received RA without PIO. ")
+                << "Starting DHCPv6-PD.";
       StartDHCPPD();
     }
     return;

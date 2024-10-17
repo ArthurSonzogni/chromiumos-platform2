@@ -13,6 +13,7 @@
 #include <optional>
 
 #include <base/logging.h>
+#include <base/time/time.h>
 #include <chromeos/net-base/byte_utils.h>
 #include <chromeos/net-base/http_url.h>
 #include <chromeos/net-base/ip_address.h>
@@ -22,6 +23,10 @@
 #include <metrics/timer.h>
 
 namespace shill {
+
+namespace {
+constexpr base::TimeDelta kNoPrefixTimeOut = base::Seconds(2);
+}
 
 // Infinity lifetime, defined in rfc8106, section-5.1.
 #define ND_OPT_LIFETIME_INFINITY 0xFFFFFFFF
@@ -107,6 +112,7 @@ void SLAACController::RegisterCallback(UpdateCallback update_callback) {
 
 void SLAACController::Stop() {
   StopRDNSSTimer();
+  StopNoPrefixTimer();
   address_listener_.reset();
   nd_option_listener_.reset();
   last_provision_timer_.reset();
@@ -242,6 +248,9 @@ void SLAACController::RouteMsgHandler(const net_base::RTNLMessage& msg) {
   const auto gateway_ipv6addr = gateway->ToIPv6Address();
   if (msg.mode() == net_base::RTNLMessage::kModeAdd) {
     network_config_.ipv6_gateway = gateway_ipv6addr;
+    if (network_config_.ipv6_addresses.empty()) {
+      StartNoPrefixTimer(kNoPrefixTimeOut);
+    }
   } else if (msg.mode() == net_base::RTNLMessage::kModeDelete &&
              network_config_.ipv6_gateway == gateway_ipv6addr) {
     network_config_.ipv6_gateway = std::nullopt;
@@ -380,6 +389,26 @@ void SLAACController::DNSSLExpired() {
   network_config_.dns_search_domains.clear();
   if (update_callback_) {
     update_callback_.Run(UpdateType::kDNSSL);
+  }
+}
+
+void SLAACController::StartNoPrefixTimer(base::TimeDelta delay) {
+  no_prefix_callback_.Reset(base::BindOnce(
+      &SLAACController::NoPrefixTimerExpired, weak_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(FROM_HERE, no_prefix_callback_.callback(),
+                               delay);
+}
+
+void SLAACController::StopNoPrefixTimer() {
+  no_prefix_callback_.Cancel();
+}
+
+void SLAACController::NoPrefixTimerExpired() {
+  if (!network_config_.ipv6_addresses.empty()) {
+    return;
+  }
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kNoPrefix);
   }
 }
 

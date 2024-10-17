@@ -33,7 +33,8 @@ class SLAACController {
     kDefaultRoute = 3,
     kDNSSL = 4,
     kCaptivePortal = 5,
-    kPFlag = 6,  // Notify Network upon receiving a PIO with P-flag.
+    kPFlag = 6,     // Notify Network upon receiving a PIO with P-flag.
+    kNoPrefix = 7,  // Notify Network upon receiving RA without PIO.
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
@@ -99,6 +100,14 @@ class SLAACController {
   void StopDNSSLTimer();
   void DNSSLExpired();
 
+  // A short timer to process other RTNL messages from the same RA upon
+  // receiving a default route. If by end of the timer we still don't see any IP
+  // address configured, notify Network so it can start DHCP-PD instead. This
+  // can be deprecated if all routers are to implement P-flag properly.
+  void StartNoPrefixTimer(base::TimeDelta address_timeout);
+  void StopNoPrefixTimer();
+  void NoPrefixTimerExpired();
+
   void ConfigureLinkLocalAddress();
   void SendRouterSolicitation();
 
@@ -112,6 +121,8 @@ class SLAACController {
   // Internal timer for RDNSS and DNSSL expiration.
   base::CancelableOnceClosure rdnss_expired_callback_;
   base::CancelableOnceClosure dnssl_expired_callback_;
+
+  base::CancelableOnceClosure no_prefix_callback_;
 
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
