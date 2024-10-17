@@ -131,8 +131,9 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
   // First try sending SIGTERM.
   for (int i = 0; i < kKillerIterations; i++) {
     UpdateProcessList(files, devices);
-    if (process_list_.empty())
+    if (process_list_.empty()) {
       return;
+    }
     LOG(INFO) << "Sending SIGTERM";
     LogProcesses();
     for (ActiveProcess& p : process_list_) {
@@ -144,8 +145,9 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
   // If processes are still running, send SIGKILL.
   for (int i = 0; i < kKillerIterations; i++) {
     UpdateProcessList(files, devices);
-    if (process_list_.empty())
+    if (process_list_.empty()) {
       return;
+    }
     LOG(INFO) << "Sending SIGKILL";
     LogProcesses();
     for (ActiveProcess& p : process_list_) {
@@ -172,13 +174,15 @@ void ProcessKiller::UpdateProcessList(bool files, bool devices) {
                        bool dont_kill_this_process = true;
                        // Kill processes with a file open that matches the mount
                        // regex.
-                       if (files && p.HasFileOpenOnMount(mount_regex_))
+                       if (files && p.HasFileOpenOnMount(mount_regex_)) {
                          dont_kill_this_process = false;
+                       }
                        // Kill processes with a non-init mount namespace and a
                        // mount open that matches the device regex.
                        if (devices && !p.InInitMountNamespace() &&
-                           p.HasMountOpenFromDevice(device_regex_))
+                           p.HasMountOpenFromDevice(device_regex_)) {
                          dont_kill_this_process = false;
+                       }
 
                        if (!dont_kill_this_process && p.GetPid() == 1) {
                          LOG(ERROR) << "Cowardly refusing to kill init";

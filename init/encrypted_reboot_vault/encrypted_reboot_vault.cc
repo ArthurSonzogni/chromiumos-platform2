@@ -85,8 +85,9 @@ libstorage::FileSystemKey RetrieveKey() {
       // pstore object isn't persistent. Since the pstore object is always
       // stored in RAM on ChromiumOS, it is cleared the next time the device
       // shuts down or loses power.
-      if (!SaveKey(key))
+      if (!SaveKey(key)) {
         LOG(WARNING) << "Failed to store key for next reboot.";
+      }
       return key;
     }
   }

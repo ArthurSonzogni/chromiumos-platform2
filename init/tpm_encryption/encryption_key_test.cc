@@ -272,8 +272,9 @@ class EncryptionKeyTest : public testing::Test {
     brillo::ProcessMock* process = platform_->mock_process();
     EXPECT_CALL(*process, RedirectUsingPipe(STDOUT_FILENO, false /*is_input*/));
     EXPECT_CALL(*process, Start()).WillOnce(Return(exit_status));
-    if (!exit_status)
+    if (!exit_status) {
       return;
+    }
 
     // Setup a pipe to echo the firmware name:
     int pipe[2];

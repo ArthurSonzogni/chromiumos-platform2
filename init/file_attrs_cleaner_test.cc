@@ -27,8 +27,9 @@ namespace {
 
 // Helper to create a test file.
 bool CreateFile(const base::FilePath& file_path, std::string_view content) {
-  if (!base::CreateDirectory(file_path.DirName()))
+  if (!base::CreateDirectory(file_path.DirName())) {
     return false;
+  }
   return base::WriteFile(file_path, content);
 }
 
@@ -50,18 +51,21 @@ class CheckFileAttributesTest : public ::testing::Test {
 
     base::ScopedFD fd(open(path.value().c_str(),
                            O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0600));
-    if (!fd.is_valid())
+    if (!fd.is_valid()) {
       abort();
+    }
 
     long flags;  // NOLINT(runtime/int)
-    if (ioctl(fd.get(), FS_IOC_GETFLAGS, &flags) != 0)
+    if (ioctl(fd.get(), FS_IOC_GETFLAGS, &flags) != 0) {
       abort();
+    }
 
     flags |= FS_IMMUTABLE_FL;
     if (ioctl(fd.get(), FS_IOC_SETFLAGS, &flags) != 0) {
       PLOG(WARNING) << "Unable to test immutable bit behavior";
-      if (errno != EPERM)
+      if (errno != EPERM) {
         abort();
+      }
       return false;
     }
 

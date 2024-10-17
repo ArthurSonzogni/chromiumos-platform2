@@ -258,10 +258,11 @@ bool TpmSystemKey::HasChromeFw() {
   if (!has_chromefw_) {
     auto fw = platform_->GetCrosssystem()->VbGetSystemPropertyString(
         crossystem::Crossystem::kMainFirmwareType);
-    if (!fw)
+    if (!fw) {
       has_chromefw_ = false;
-    else
+    } else {
       has_chromefw_ = (fw != crossystem::Crossystem::kMainfwTypeNonchrome);
+    }
   }
   return *has_chromefw_;
 }

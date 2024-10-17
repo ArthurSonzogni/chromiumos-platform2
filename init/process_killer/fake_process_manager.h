@@ -29,8 +29,9 @@ class FakeProcessManager : public ProcessManager {
                                [&p](const ActiveProcess& process) {
                                  return p.GetPid() == process.GetPid();
                                });
-      if (iter != process_list_.end())
+      if (iter != process_list_.end()) {
         process_list_.erase(iter);
+      }
     }
 
     return true;

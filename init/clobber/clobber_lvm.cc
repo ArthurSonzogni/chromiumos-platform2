@@ -164,8 +164,9 @@ bool ClobberLvm::PreserveLogicalVolumesWipe(
     auto it = infos.find({.lv_name = lv_raw_name});
     bool found = it != infos.end();
 
-    if (found)
+    if (found) {
       continue;
+    }
 
     if (!lv.Remove()) {
       LOG(ERROR) << "Failed to remove logical volume: " << lv_raw_name;
@@ -176,10 +177,12 @@ bool ClobberLvm::PreserveLogicalVolumesWipe(
   // We must handle logical volume with additional care based on the
   // `PreserveLogicalVolumesWipeInfo`.
   for (const auto& info : infos) {
-    if (info.lv_name == kUnencrypted)
+    if (info.lv_name == kUnencrypted) {
       continue;
-    if (!ProcessInfo(*vg, info, std::make_unique<dlcservice::Utils>()))
+    }
+    if (!ProcessInfo(*vg, info, std::make_unique<dlcservice::Utils>())) {
       return false;
+    }
   }
   // Note: Always process unencrypted stateful last.
   // This is so when there are crashes, the powerwash file is still accessible
@@ -193,8 +196,9 @@ bool ClobberLvm::PreserveLogicalVolumesWipe(
                  << " in preserve logical volumes wipe info.";
       return false;
     }
-    if (!ProcessInfo(*vg, *info_it, std::make_unique<dlcservice::Utils>()))
+    if (!ProcessInfo(*vg, *info_it, std::make_unique<dlcservice::Utils>())) {
       return false;
+    }
   }
 
   auto old_vg_name = vg->GetName();

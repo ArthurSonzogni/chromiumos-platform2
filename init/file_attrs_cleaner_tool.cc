@@ -29,8 +29,9 @@ int main(int argc, char* argv[]) {
   }
 
   std::vector<std::string> skip_recurse;
-  if (!FLAGS_skip_dir.empty())
+  if (!FLAGS_skip_dir.empty()) {
     skip_recurse.push_back(FLAGS_skip_dir);
+  }
 
   auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
   bool ret = true;

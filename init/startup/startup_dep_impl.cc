@@ -190,8 +190,9 @@ bool IsFactoryMode(libstorage::Platform* platform,
   base::FilePath factory_tag = factory_dir.Append("enabled");
   std::optional<int> res = platform->GetCrosssystem()->VbGetSystemPropertyInt(
       crossystem::Crossystem::kDebugBuild);
-  if (res == 1 && platform->FileExists(factory_tag))
+  if (res == 1 && platform->FileExists(factory_tag)) {
     return true;
+  }
 
   std::string cmdline;
   if (!platform->ReadFileToString(base_dir.Append(kProcCmdLine), &cmdline)) {

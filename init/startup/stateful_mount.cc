@@ -275,8 +275,9 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   // image also uses initramfs but it never reaches here). When using
   // initrd+tftpboot (some old netboot factory installer), ROOTDEV_TYPE will be
   // /dev/ram.
-  if (root_dev.empty() || root_dev == base::FilePath("/dev/ram"))
+  if (root_dev.empty() || root_dev == base::FilePath("/dev/ram")) {
     return;
+  }
 
   // Find our stateful partition mount point.
   stateful_mount_flags = kCommonMountFlags | MS_NOATIME;

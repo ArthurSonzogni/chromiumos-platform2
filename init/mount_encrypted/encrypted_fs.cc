@@ -90,10 +90,11 @@ std::string GetMountOpts() {
 
     // Keep commit interval as 5 seconds (default for ext4) for smaller
     // values of dirty_expire_centisecs.
-    if (dirty_expire_centisecs < 600)
+    if (dirty_expire_centisecs < 600) {
       commit_interval = 5;
-    else
+    } else {
       commit_interval = dirty_expire_centisecs / 100;
+    }
   }
   return "discard,commit=" + std::to_string(commit_interval);
 }
@@ -397,8 +398,9 @@ bool EncryptedFs::CheckStates() {
 
   // Verify that old bind mounts on stateful haven't happened yet.
   for (auto& bind : bind_mounts_) {
-    if (bind.submount)
+    if (bind.submount) {
       continue;
+    }
 
     if (platform_->SameVFS(bind.dst, stateful_mount_)) {
       LOG(INFO) << bind.dst << " already bind mounted.";

@@ -45,8 +45,9 @@ int main(int argc, char* argv[]) {
     // When booting a different kernel version from the root disk, we run into
     // this problem, so try to be helpful (See b/314683192).
     PLOG(ERROR) << "Could not read in list of modules from " << modulesPath;
-    if (!ignore_err)
+    if (!ignore_err) {
       LOG(FATAL) << "Giving up";
+    }
 
     LOG(ERROR) << "(continuing anyway, likely just a module-version mismatch)";
     return EX_OK;

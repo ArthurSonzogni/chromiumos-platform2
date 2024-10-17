@@ -23,8 +23,9 @@ namespace {
 std::optional<ActiveProcess> GetProcessFromPid(
     const std::vector<ActiveProcess>& list, pid_t pid) {
   for (const ActiveProcess& p : list) {
-    if (p.GetPid() == pid)
+    if (p.GetPid() == pid) {
       return p;
+    }
   }
   return std::nullopt;
 }

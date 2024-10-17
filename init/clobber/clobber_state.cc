@@ -108,8 +108,9 @@ void CollectClobberCrashReports() {
   crash_reporter_early_collect.AddArg("--log_to_stderr");
   crash_reporter_early_collect.AddArg("--preserve_across_clobber");
   crash_reporter_early_collect.AddArg("--boot_collect");
-  if (crash_reporter_early_collect.Run() != 0)
+  if (crash_reporter_early_collect.Run() != 0) {
     LOG(WARNING) << "Unable to collect logs and crashes from current run.";
+  }
 
   return;
 }
@@ -186,15 +187,17 @@ void MoveRollbackFileToPstore() {
 ClobberState::Arguments ClobberState::ParseArgv(int argc,
                                                 char const* const argv[]) {
   Arguments args;
-  if (argc <= 1)
+  if (argc <= 1) {
     return args;
+  }
 
   // Due to historical usage, the command line parsing is a bit weird.
   // We split the first argument into multiple keywords.
   std::vector<std::string> split_args = base::SplitString(
       argv[1], " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  for (int i = 2; i < argc; ++i)
+  for (int i = 2; i < argc; ++i) {
     split_args.push_back(argv[i]);
+  }
 
   for (const std::string& arg : split_args) {
     if (arg == "factory") {
@@ -223,8 +226,9 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
     }
   }
 
-  if (args.disable_lvm_install)
+  if (args.disable_lvm_install) {
     args.preserve_lvs = false;
+  }
 
   return args;
 }
@@ -268,8 +272,9 @@ int ClobberState::PreserveFiles(
                    << " passed to PreserveFiles, ignoring.";
       continue;
     }
-    if (!base::PathExists(preserved_files_root.Append(path)))
+    if (!base::PathExists(preserved_files_root.Append(path))) {
       continue;
+    }
     base::FilePath current = path;
     while (current != base::FilePath(base::FilePath::kCurrentDirectory)) {
       // List of paths is built in an order that is reversed from what we want
@@ -539,8 +544,9 @@ int ClobberState::CreateStatefulFileSystem(
   brillo::ProcessImpl mkfs;
   mkfs.AddArg("/sbin/mkfs.ext4");
   // Check if encryption is supported. If yes, enable the flag during mkfs.
-  if (base::PathExists(base::FilePath(kExt4DircryptoSupportedPath)))
+  if (base::PathExists(base::FilePath(kExt4DircryptoSupportedPath))) {
     mkfs.AddStringOption("-O", "encrypt");
+  }
   mkfs.AddArg(stateful_filesystem_device);
   // TODO(wad) tune2fs.
   mkfs.RedirectOutputToMemory(true);
@@ -560,9 +566,10 @@ void ClobberState::PreserveEncryptedFiles() {
       base::FilePath ue_prefs_file(ue_prefs_path.Append(ue_prefs_filename));
       base::FilePath ue_preserved_prefs_file(
           ue_preserve_prefs_path.Append(ue_prefs_filename));
-      if (!base::CopyFile(ue_prefs_file, ue_preserved_prefs_file))
+      if (!base::CopyFile(ue_prefs_file, ue_preserved_prefs_file)) {
         LOG(ERROR) << "Error copying file. Source: " << ue_prefs_file
                    << " Target: " << ue_preserved_prefs_file;
+      }
     }
   } else {
     LOG(ERROR) << "Error creating directory: " << ue_preserve_prefs_path;
@@ -573,9 +580,10 @@ void ClobberState::PreserveEncryptedFiles() {
       root_path_.Append(kPsmDeviceActiveLocalPrefPath));
   base::FilePath psm_preserved_pref_file(
       stateful_.Append(kPsmDeviceActivePreservePath));
-  if (!base::CopyFile(psm_local_pref_file, psm_preserved_pref_file))
+  if (!base::CopyFile(psm_local_pref_file, psm_preserved_pref_file)) {
     LOG(ERROR) << "Error copying file. Source: " << psm_local_pref_file
                << " Target: " << psm_preserved_pref_file;
+  }
 
   // Preserve the files used to identify ChromeOS Flex devices.
   base::FilePath flex_path(root_path_.Append(kFlexLocalPath));
@@ -585,9 +593,10 @@ void ClobberState::PreserveEncryptedFiles() {
       base::FilePath flex_file(flex_path.Append(flex_filename));
       base::FilePath flex_preserved_file(
           flex_preserve_path.Append(flex_filename));
-      if (!base::CopyFile(flex_file, flex_preserved_file))
+      if (!base::CopyFile(flex_file, flex_preserved_file)) {
         LOG(ERROR) << "Error copying file. Source: " << flex_file
                    << " Target: " << flex_preserved_file;
+      }
     }
   } else {
     LOG(ERROR) << "Error creating directory: " << flex_preserve_path;
@@ -673,8 +682,9 @@ int ClobberState::Run() {
 
   if (args_.safe_wipe) {
     IncrementFileCounter(stateful_.Append(kPowerWashCountPath));
-    if (encrypted_stateful_mounted)
+    if (encrypted_stateful_mounted) {
       PreserveEncryptedFiles();
+    }
   }
 
   // Clear clobber log if needed.
@@ -749,24 +759,33 @@ int ClobberState::Run() {
   log_preserve.AddArg("--preserve");
   log_preserve.AddArg("clobber-state");
 
-  if (args_.factory_wipe)
+  if (args_.factory_wipe) {
     log_preserve.AddArg("factory");
-  if (args_.fast_wipe)
+  }
+  if (args_.fast_wipe) {
     log_preserve.AddArg("fast");
-  if (args_.keepimg)
+  }
+  if (args_.keepimg) {
     log_preserve.AddArg("keepimg");
-  if (args_.safe_wipe)
+  }
+  if (args_.safe_wipe) {
     log_preserve.AddArg("safe");
-  if (args_.rollback_wipe)
+  }
+  if (args_.rollback_wipe) {
     log_preserve.AddArg("rollback");
-  if (!args_.reason.empty())
+  }
+  if (!args_.reason.empty()) {
     log_preserve.AddArg(args_.reason);
-  if (args_.rma_wipe)
+  }
+  if (args_.rma_wipe) {
     log_preserve.AddArg("rma");
-  if (args_.ad_migration_wipe)
+  }
+  if (args_.ad_migration_wipe) {
     log_preserve.AddArg("ad_migration");
-  if (args_.disable_lvm_install)
+  }
+  if (args_.disable_lvm_install) {
     log_preserve.AddArg("disable_lvm_install");
+  }
 
   log_preserve.RedirectOutputToMemory(true);
   log_preserve.Run();
@@ -827,8 +846,9 @@ int ClobberState::Run() {
   }
 
   ret = CreateStatefulFileSystem(wipe_info_.stateful_filesystem_device.value());
-  if (ret)
+  if (ret) {
     LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
+  }
 
   // Mount the fresh image for last minute additions.
   if (mount(wipe_info_.stateful_filesystem_device.value().c_str(),
@@ -874,8 +894,9 @@ int ClobberState::Run() {
   if (preserve_sensitive_files && !args_.factory_wipe) {
     libstorage::Platform platform;
     encrypted_reboot_vault::EncryptedRebootVault vault(&platform);
-    if (vault.UnlockVault())
+    if (vault.UnlockVault()) {
       CollectClobberCrashReports();
+    }
   }
 
   // Remove keys that may alter device state.
@@ -906,8 +927,9 @@ int ClobberState::Run() {
   relocate_clobber_state_log.RunAndReset();
 
   // Factory wipe should stop here.
-  if (args_.factory_wipe)
+  if (args_.factory_wipe) {
     return 0;
+  }
 
   // If everything worked, reboot.
   Reboot();
@@ -919,8 +941,9 @@ bool ClobberState::IsInDeveloperMode() {
   std::optional<int> dev_mode_flag = cros_system_->VbGetSystemPropertyInt(
       crossystem::Crossystem::kDevSwitchBoot);
   // No flag or not in dev mode:
-  if (!dev_mode_flag || *dev_mode_flag != 1)
+  if (!dev_mode_flag || *dev_mode_flag != 1) {
     return false;
+  }
   std::optional<std::string> firmware_name =
       cros_system_->VbGetSystemPropertyString(
           crossystem::Crossystem::kMainFirmwareActive);
@@ -929,8 +952,9 @@ bool ClobberState::IsInDeveloperMode() {
 }
 
 bool ClobberState::MarkDeveloperMode() {
-  if (IsInDeveloperMode())
+  if (IsInDeveloperMode()) {
     return base::WriteFile(stateful_.Append(".developer_mode"), "");
+  }
 
   return true;
 }
@@ -1143,9 +1167,10 @@ void ClobberState::ResetStatefulPartition() {
   // Attempt to remove the logical volume stack unconditionally: this covers the
   // situation where a device may rollback to a version that doesn't support
   // the LVM stateful partition setup.
-  if (clobber_lvm_)
+  if (clobber_lvm_) {
     clobber_lvm_->RemoveLogicalVolumeStack(
         wipe_info_.stateful_partition_device);
+  }
 
   // Destroy user data: wipe the stateful partition.
   if (!clobber_wipe_->WipeDevice(wipe_info_.stateful_partition_device)) {

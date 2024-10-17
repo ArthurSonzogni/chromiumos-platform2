@@ -28,8 +28,9 @@ namespace {
 
 struct ScopedDirDeleter {
   inline void operator()(DIR* dirp) const {
-    if (dirp)
+    if (dirp) {
       closedir(dirp);
+    }
   }
 };
 using ScopedDir = std::unique_ptr<DIR, ScopedDirDeleter>;
@@ -110,18 +111,21 @@ bool ScanDir(const base::FilePath& dir,
     CHECK(de->d_type != DT_UNKNOWN);
 
     // Skip symlinks.
-    if (de->d_type == DT_LNK)
+    if (de->d_type == DT_LNK) {
       continue;
+    }
 
     // Skip the . and .. fake directories.
     const std::string_view name(de->d_name);
-    if (name == "." || name == "..")
+    if (name == "." || name == "..") {
       continue;
+    }
 
     // If the path component is listed in |skip_recurse|, skip it.
     if (std::find(skip_recurse.begin(), skip_recurse.end(), name) !=
-        skip_recurse.end())
+        skip_recurse.end()) {
       continue;
+    }
 
     const base::FilePath path = dir.Append(de->d_name);
     switch (de->d_type) {
@@ -168,8 +172,9 @@ bool ScanDir(const base::FilePath& dir,
           // ENOKEY is normal for encrypted files, so don't log in that case.
           // We might be running in parallel with other programs which might
           // delete paths on the fly, so ignore ENOENT too.
-          if (errno != ENOKEY || errno != ENOENT)
+          if (errno != ENOKEY || errno != ENOENT) {
             PLOG(WARNING) << "Skipping path";
+          }
 
           // This is a best effort routine so don't fail if the path cannot be
           // opened.
@@ -194,8 +199,9 @@ bool ScanDir(const base::FilePath& dir,
     }
   }
 
-  if (closedir(dirp.release()) != 0)
+  if (closedir(dirp.release()) != 0) {
     PLOG(ERROR) << "Unable to close directory";
+  }
 
   return ret;
 }

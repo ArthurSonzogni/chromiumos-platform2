@@ -175,8 +175,9 @@ bool ChromeosStartup::ParseFlags(Flags* flags, int argc, const char* argv[]) {
       argc, argv, "Tool run early during ChromeOS boot.");
 
   // Exit early if parsing failed.
-  if (!result)
+  if (!result) {
     return result;
+  }
 
   if (FLAGS_verbosity > 2) {
     return false;
@@ -224,8 +225,9 @@ void ChromeosStartup::Sysctl() {
 bool ChromeosStartup::IsTPMOwned() {
   encryption::Tpm tpm(tlcl_.get());
   bool owned;
-  if (!tpm.IsOwned(&owned))
+  if (!tpm.IsOwned(&owned)) {
     return true;
+  }
   return owned;
 }
 
@@ -251,8 +253,9 @@ bool ChromeosStartup::NeedsClobberWithoutDevModeFile() {
     uid_t uid;
     if (platform_->GetOwnership(preservation_request, &uid, nullptr,
                                 false /* follow_links */) &&
-        (uid == getuid()))
+        (uid == getuid())) {
       return false;
+    }
   }
 
   if (platform_->FileExists(cryptohome_key)) {
@@ -268,8 +271,9 @@ bool ChromeosStartup::IsDevToVerifiedModeTransition(int devsw_boot) {
   crossystem::Crossystem* crossystem = platform_->GetCrosssystem();
   std::optional<int> boot = crossystem->VbGetSystemPropertyInt(
       crossystem::Crossystem::kDevSwitchBoot);
-  if (!boot || *boot != devsw_boot)
+  if (!boot || *boot != devsw_boot) {
     return false;
+  }
 
   std::optional<std::string> dstr = crossystem->VbGetSystemPropertyString(
       crossystem::Crossystem::kMainFirmwareType);
@@ -716,8 +720,9 @@ void ChromeosStartup::CreateDaemonStore(base::FilePath run_ds,
 // Remove /var/empty if it exists. Use /mnt/empty instead.
 void ChromeosStartup::RemoveVarEmpty() {
   base::FilePath var_empty = root_.Append(kVar).Append(kEmpty);
-  if (!platform_->DirectoryExists(var_empty))
+  if (!platform_->DirectoryExists(var_empty)) {
     return;
+  }
   platform_->SetExtFileAttributes(var_empty, 0, FS_IMMUTABLE_FL);
   if (!platform_->DeletePathRecursively(var_empty)) {
     PLOG(WARNING) << "Failed to delete path " << var_empty.value();
@@ -883,8 +888,9 @@ int ChromeosStartup::Run() {
       utils::Reboot();
       return 0;
     }
-    if (platform_->FileExists(encrypted_failed))
+    if (platform_->FileExists(encrypted_failed)) {
       platform_->DeleteFile(encrypted_failed);
+    }
 
     if (!tpm_system_key.Export()) {
       // Unable to write to /tmp. Clobber will not help, the root or
@@ -924,8 +930,9 @@ int ChromeosStartup::Run() {
   // vault.
   if (flags_.encrypted_reboot_vault) {
     encrypted_reboot_vault::EncryptedRebootVault vault(platform_);
-    if (!vault.UnlockVault())
+    if (!vault.UnlockVault()) {
       vault.CreateVault();
+    }
   }
 
   ForceCleanFileAttrs(root_.Append(kVar));

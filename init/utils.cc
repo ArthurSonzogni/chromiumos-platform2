@@ -37,10 +37,11 @@ int RestoreConLogCallback(int type, const char* fmt, ...) {
   // empty lines in the log.
   base::TrimString(message, "\r\n", &message);
 
-  if (type == SELINUX_INFO)
+  if (type == SELINUX_INFO) {
     LOG(INFO) << message;
-  else
+  } else {
     LOG(ERROR) << message;
+  }
 
   return 0;
 }
@@ -141,8 +142,9 @@ int GetPartitionNumber(const base::FilePath& drive_name,
 bool GetDevicePathComponents(const base::FilePath& device,
                              std::string* base_device_out,
                              int* partition_out) {
-  if (!partition_out || !base_device_out)
+  if (!partition_out || !base_device_out) {
     return false;
+  }
   const std::string& path = device.value();
 
   size_t suffix_index = path.length();
@@ -169,8 +171,9 @@ bool ReadPartitionMetadata(const base::FilePath& disk,
                            int partition_number,
                            bool* successful_out,
                            int* priority_out) {
-  if (!successful_out || !priority_out)
+  if (!successful_out || !priority_out) {
     return false;
+  }
   // TODO(C++20): Switch to aggregate initialization once we require C++20.
   CgptAddParams params = {};
   params.drive_name = disk.value().c_str();

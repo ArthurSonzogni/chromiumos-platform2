@@ -56,8 +56,9 @@ void ActiveProcess::LogProcess(const re2::RE2& files_regex,
 
   if (!in_init_mnt_ns_) {
     for (auto& m : mounts_) {
-      if (!re2::RE2::PartialMatch(m.device, mounts_regex))
+      if (!re2::RE2::PartialMatch(m.device, mounts_regex)) {
         continue;
+      }
       if (!printed_mounts_header) {
         LOG(INFO) << "Matching process Mounts: (Source, Target, Device)";
         printed_mounts_header = true;
@@ -67,8 +68,9 @@ void ActiveProcess::LogProcess(const re2::RE2& files_regex,
   }
 
   for (auto& fd : file_descriptors_) {
-    if (!re2::RE2::PartialMatch(fd.path.value(), files_regex))
+    if (!re2::RE2::PartialMatch(fd.path.value(), files_regex)) {
       continue;
+    }
     if (!printed_file_header) {
       LOG(INFO) << "Matching open files: (Path)";
       printed_file_header = true;

@@ -36,8 +36,9 @@ int main(int argc, const char* argv[]) {
     ++argv;
   }
 
-  if (argc < 1)
+  if (argc < 1) {
     LOG(FATAL) << "missing program to run";
+  }
 
   // Validate the program and its arguments, and reject all others.
   if (!usermode_helper::ValidateProgramArgs(argc, argv)) {

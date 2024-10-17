@@ -25,16 +25,17 @@ int main(int argc, char* argv[]) {
   encrypted_reboot_vault::EncryptedRebootVault vault(&platform);
 
   bool result = false;
-  if (FLAGS_action == "create")
+  if (FLAGS_action == "create") {
     result = vault.CreateVault();
-  else if (FLAGS_action == "unlock")
+  } else if (FLAGS_action == "unlock") {
     result = vault.UnlockVault();
-  else if (FLAGS_action == "validate")
+  } else if (FLAGS_action == "validate") {
     result = vault.Validate();
-  else if (FLAGS_action == "purge")
+  } else if (FLAGS_action == "purge") {
     result = vault.PurgeVault();
-  else
+  } else {
     LOG(ERROR) << "Invalid action";
+  }
 
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }

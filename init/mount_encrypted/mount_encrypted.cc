@@ -112,19 +112,22 @@ int main(int argc, const char* argv[]) {
 mount_encrypted_partition:
   // For the mount operation at boot, return false to trigger
   // chromeos_startup do the stateful wipe.
-  if (!encrypted_fs->CheckStates())
+  if (!encrypted_fs->CheckStates()) {
     return 1;
+  }
 
   // default operation is mount encrypted partition.
   const base::FilePath empty;
   auto key = tpm_system_key.Load(!FLAGS_unsafe, empty);
-  if (!key)
+  if (!key) {
     return 1;
+  }
 
   libstorage::FileSystemKey encryption_key;
   encryption_key.fek = key->encryption_key();
-  if (!encrypted_fs->Setup(encryption_key, key->is_fresh()))
+  if (!encrypted_fs->Setup(encryption_key, key->is_fresh())) {
     return 1;
+  }
 
   return tpm_system_key.Export() ? 0 : 1;
 }

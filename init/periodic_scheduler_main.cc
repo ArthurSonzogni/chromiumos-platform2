@@ -35,8 +35,9 @@ int main(int argc, char** argv) {
   PeriodicScheduler p(base::Seconds(FLAGS_period), base::Seconds(FLAGS_timeout),
                       FLAGS_task_name, args);
 
-  if (!FLAGS_spool_dir.empty())
+  if (!FLAGS_spool_dir.empty()) {
     p.set_spool_dir_for_test(base::FilePath(FLAGS_spool_dir));
+  }
 
   if (FLAGS_check_frequency != 0) {
     p.set_check_freq_for_test(base::Seconds(FLAGS_check_frequency));

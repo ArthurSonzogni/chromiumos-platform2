@@ -24,10 +24,11 @@ int main(int argc, char* argv[]) {
 
   // Add a flag to explicitly log to stderr: this is useful for situations where
   // we want to collect logs in absence of syslog.
-  if (FLAGS_log_to_stderr)
+  if (FLAGS_log_to_stderr) {
     brillo::InitLog(brillo::kLogToStderr);
-  else
+  } else {
     brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  }
 
   if (argc <= 1 || !base::CommandLine::ForCurrentProcess()->GetArgs().empty()) {
     LOG(ERROR) << "process_killer takes no arguments";

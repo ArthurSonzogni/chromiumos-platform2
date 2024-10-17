@@ -20,8 +20,9 @@ void WaitForFile(const base::FilePath& path) {
   int i = 0;
   while (!base::PathExists(path)) {
     sleep(1);
-    if (i++ > 5)
+    if (i++ > 5) {
       break;
+    }
   }
 }
 

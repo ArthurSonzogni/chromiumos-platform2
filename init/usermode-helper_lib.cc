@@ -147,18 +147,19 @@ bool ValidateBridgeStp(int argc, const char* argv[]) {
 bool ValidateProgramArgs(int argc, const char* argv[]) {
   const std::string_view prog(argv[0]);
 
-  if (prog == "/sbin/crash_reporter")
+  if (prog == "/sbin/crash_reporter") {
     return ValidateCrashReporter(argc, argv);
-  else if ((prog == "/usr/bin/modprobe") || (prog == "/sbin/modprobe"))
+  } else if ((prog == "/usr/bin/modprobe") || (prog == "/sbin/modprobe")) {
     return ValidateModprobe(argc, argv);
-  else if (prog == "/sbin/poweroff")
+  } else if (prog == "/sbin/poweroff") {
     return ValidatePoweroff(argc, argv);
-  else if (prog == "/sbin/reboot")
+  } else if (prog == "/sbin/reboot") {
     return ValidateReboot(argc, argv);
-  else if (prog == "/sbin/request-key")
+  } else if (prog == "/sbin/request-key") {
     return ValidateRequestKey(argc, argv);
-  else if (prog == "/sbin/bridge-stp")
+  } else if (prog == "/sbin/bridge-stp") {
     return ValidateBridgeStp(argc, argv);
+  }
 
   LOG(ERROR) << "program not permitted: " << argv[0];
   return false;

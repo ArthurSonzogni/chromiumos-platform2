@@ -40,8 +40,9 @@ namespace {
 bool GetBlockCount(const base::FilePath& device_path,
                    int64_t block_size,
                    int64_t* block_count_out) {
-  if (!block_count_out)
+  if (!block_count_out) {
     return false;
+  }
 
   brillo::ProcessImpl dumpe2fs;
   dumpe2fs.AddArg("/sbin/dumpe2fs");

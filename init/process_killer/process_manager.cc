@@ -43,8 +43,9 @@ void PopulateFileDescriptors(const base::FilePath& path,
     // for the device this file belongs on. Additionally, only consider symlinks
     // and ignore everything else.
     struct stat statbuf;
-    if (lstat(fd.value().c_str(), &statbuf) || !S_ISLNK(statbuf.st_mode))
+    if (lstat(fd.value().c_str(), &statbuf) || !S_ISLNK(statbuf.st_mode)) {
       continue;
+    }
 
     OpenFileDescriptor fd_target;
 
@@ -138,17 +139,20 @@ std::vector<ActiveProcess> ProcessManager::GetProcessList(bool need_files,
     uint64_t pid64;
 
     // Ignore non-numeric directories.
-    if (!base::StringToUint64(cur_dir.BaseName().value(), &pid64))
+    if (!base::StringToUint64(cur_dir.BaseName().value(), &pid64)) {
       continue;
+    }
 
     pid_t pid = base::checked_cast<pid_t>(pid64);
     std::vector<ActiveMount> mounts;
     std::vector<OpenFileDescriptor> fds;
 
-    if (need_mounts)
+    if (need_mounts) {
       mounts = GetMountsForProcess(pid);
-    if (need_files)
+    }
+    if (need_files) {
       fds = GetFileDescriptorsForProcess(pid);
+    }
 
     base::FilePath comm_path = base::FilePath(base::StringPrintf(
         "%s/%d/%s", proc_path_.value().c_str(), pid, kCommPath));

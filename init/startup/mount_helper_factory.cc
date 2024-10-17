@@ -62,28 +62,30 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
   }
 
   if (dev_mode && is_test_image) {
-    if (USE_ENCRYPTED_STATEFUL && flags_.encstateful)
+    if (USE_ENCRYPTED_STATEFUL && flags_.encstateful) {
       return std::make_unique<TestModeMountHelper>(
           platform_, startup_dep_, flags_, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
               platform_, startup_dep_, storage_container_factory.get(), root_,
               stateful_),
           std::move(storage_container_factory));
-    else
+    } else {
       return std::make_unique<TestModeMountHelper>(
           platform_, startup_dep_, flags_, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
               platform_, startup_dep_, root_, stateful_),
           std::move(storage_container_factory));
+    }
   }
 
-  if (USE_ENCRYPTED_STATEFUL && flags_.encstateful)
+  if (USE_ENCRYPTED_STATEFUL && flags_.encstateful) {
     return std::make_unique<StandardMountHelper>(
         platform_, startup_dep_, flags_, root_, stateful_,
         std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
             platform_, startup_dep_, storage_container_factory.get(), root_,
             stateful_),
         std::move(storage_container_factory));
+  }
   return std::make_unique<StandardMountHelper>(
       platform_, startup_dep_, flags_, root_, stateful_,
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(

@@ -83,8 +83,9 @@ bool MountVarAndHomeChronosEncryptedImpl::Umount() {
 
   base::TimeTicks deadline = base::TimeTicks::Now() + base::Seconds(1);
   do {
-    if (encrypted_fs->Teardown())
+    if (encrypted_fs->Teardown()) {
       return true;
+    }
 
     base::PlatformThread::Sleep(base::Milliseconds(100));
   } while (base::TimeTicks::Now() < deadline);
