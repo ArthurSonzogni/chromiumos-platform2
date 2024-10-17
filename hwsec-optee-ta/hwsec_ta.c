@@ -30,8 +30,9 @@ TEE_Result TA_OpenSessionEntryPoint(uint32_t __maybe_unused param_types,
   TEE_Result res = TEE_ERROR_GENERIC;
 
   TpmSession* session = TEE_Malloc(sizeof(TpmSession), 0);
-  if (!session)
+  if (!session) {
     return TEE_ERROR_OUT_OF_MEMORY;
+  }
 
   *sess_ctx = session;
 
