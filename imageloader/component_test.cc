@@ -49,56 +49,68 @@ class ComponentTest : public testing::Test {
   bool TestCopyWithCorruptFile(const std::string& component_name,
                                const std::string& file_name) {
     base::FilePath bad_component_dir = temp_dir_.Append(component_name);
-    if (!base::CreateDirectory(bad_component_dir))
+    if (!base::CreateDirectory(bad_component_dir)) {
       return false;
-    if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms))
+    }
+    if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms)) {
       return false;
+    }
 
     std::unique_ptr<Component> component =
         Component::Create(GetTestComponentPath(), keys_);
-    if (!component || !component->CopyTo(bad_component_dir))
+    if (!component || !component->CopyTo(bad_component_dir)) {
       return false;
+    }
 
     std::unique_ptr<Component> bad_component =
         Component::Create(bad_component_dir, keys_);
-    if (!bad_component)
+    if (!bad_component) {
       return false;
+    }
 
     base::FilePath file = bad_component_dir.Append(file_name);
     const char data[] = "c";
     // Append to |file| including the trailing '\0' character to fail
     // Component::IsValidFingerprintFile
-    if (!base::AppendToFile(file, std::string_view(data, sizeof(data))))
+    if (!base::AppendToFile(file, std::string_view(data, sizeof(data)))) {
       return false;
+    }
 
     base::FilePath bad_component_dest =
         temp_dir_.Append(component_name + "invalid");
-    if (!base::CreateDirectory(bad_component_dest))
+    if (!base::CreateDirectory(bad_component_dest)) {
       return false;
+    }
 
-    if (!base::SetPosixFilePermissions(bad_component_dest, kComponentDirPerms))
+    if (!base::SetPosixFilePermissions(bad_component_dest,
+                                       kComponentDirPerms)) {
       return false;
+    }
     return bad_component->CopyTo(bad_component_dest) == false;
   }
 
   bool TestInitComponentWithCorruptFile(const std::string& component_name,
                                         const std::string& file_name) {
     base::FilePath bad_component_dir = temp_dir_.Append(component_name);
-    if (!base::CreateDirectory(bad_component_dir))
+    if (!base::CreateDirectory(bad_component_dir)) {
       return false;
-    if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms))
+    }
+    if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms)) {
       return false;
+    }
 
     std::unique_ptr<Component> component =
         Component::Create(GetTestComponentPath(), keys_);
-    if (!component || !component->CopyTo(bad_component_dir))
+    if (!component || !component->CopyTo(bad_component_dir)) {
       return false;
+    }
 
     base::FilePath file = bad_component_dir.Append(file_name);
     // Read the file out and change the last byte.
     std::string file_contents;
-    if (!base::ReadFileToString(file, &file_contents))
+    if (!base::ReadFileToString(file, &file_contents)) {
       return false;
+    }
     file_contents[file_contents.size() - 1] =
         ~file_contents[file_contents.size() - 1];
 
@@ -117,10 +129,12 @@ class ComponentTest : public testing::Test {
     for (const std::string& name : filenames) {
       std::string source_file_contents;
       std::string dest_file_contents;
-      if (!base::ReadFileToString(src.Append(name), &source_file_contents))
+      if (!base::ReadFileToString(src.Append(name), &source_file_contents)) {
         return false;
-      if (!base::ReadFileToString(dest.Append(name), &dest_file_contents))
+      }
+      if (!base::ReadFileToString(dest.Append(name), &dest_file_contents)) {
         return false;
+      }
       if (source_file_contents != dest_file_contents) {
         LOG(ERROR) << "File contents does not match for file: " << name;
         return false;

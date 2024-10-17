@@ -58,8 +58,9 @@ constexpr char kForceOTA[] = "force-ota";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
-  if (!base::HexStringToBytes(hash_str, bytes))
+  if (!base::HexStringToBytes(hash_str, bytes)) {
     return false;
+  }
   return bytes->size() == 32;
 }
 
@@ -272,17 +273,21 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
     sanitized_id_ = user_tied_ ? kDlcRedactedId : *id;
   }
   const std::string* package = manifest_dict.FindString(kPackage);
-  if (package)
+  if (package) {
     package_ = *package;
+  }
   const std::string* name = manifest_dict.FindString(kName);
-  if (name)
+  if (name) {
     name_ = *name;
+  }
   const std::string* image_type = manifest_dict.FindString(kImageType);
-  if (image_type)
+  if (image_type) {
     image_type_ = *image_type;
+  }
   const std::string* description = manifest_dict.FindString(kDescription);
-  if (description)
+  if (description) {
     description_ = *description;
+  }
 
   const std::string* preallocated_size_str =
       manifest_dict.FindString(kPreallocatedSize);

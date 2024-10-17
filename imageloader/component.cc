@@ -64,12 +64,14 @@ bool GetSignaturePath(const base::FilePath& component_dir,
   for (base::FilePath path = files.Next(); !path.empty(); path = files.Next()) {
     // Extract the key number.
     std::string key_ext = path.FinalExtension();
-    if (key_ext.empty())
+    if (key_ext.empty()) {
       continue;
+    }
 
     size_t ext_number;
-    if (!base::StringToSizeT(key_ext.substr(1), &ext_number))
+    if (!base::StringToSizeT(key_ext.substr(1), &ext_number)) {
       continue;
+    }
 
     *signature_path = path;
     *key_number = ext_number;
@@ -282,14 +284,16 @@ bool Component::CopyComponentFile(const base::FilePath& src,
                                   const base::FilePath& dest_path,
                                   const std::vector<uint8_t>& expected_hash) {
   base::File file(src, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!file.IsValid())
+  if (!file.IsValid()) {
     return false;
+  }
 
   base::ScopedFD dest(
       HANDLE_EINTR(open(dest_path.value().c_str(), O_CREAT | O_WRONLY | O_EXCL,
                         kComponentFilePerms)));
-  if (!dest.is_valid())
+  if (!dest.is_valid()) {
     return false;
+  }
 
   base::File out_file(dest.release());
   std::unique_ptr<crypto::SecureHash> sha256(
@@ -314,8 +318,9 @@ bool Component::ReadHashAndCopyFile(base::File* file,
   std::unique_ptr<crypto::SecureHash> sha256(
       crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   int size = file->GetLength();
-  if (size <= 0)
+  if (size <= 0) {
     return false;
+  }
 
   int rv = 0, bytes_read = 0;
   char buf[4096];
@@ -325,8 +330,9 @@ bool Component::ReadHashAndCopyFile(base::File* file,
         std::min(remaining, base::checked_cast<int>(sizeof(buf)));
 
     rv = file->ReadAtCurrentPos(buf, bytes_to_read);
-    if (rv <= 0)
+    if (rv <= 0) {
       break;
+    }
 
     bytes_read += rv;
     sha256->Update(buf, rv);
@@ -349,8 +355,9 @@ bool Component::CopyFingerprintFile(const base::FilePath& src,
       return false;
     }
 
-    if (!IsValidFingerprintFile(fingerprint_contents))
+    if (!IsValidFingerprintFile(fingerprint_contents)) {
       return false;
+    }
 
     if (!WriteFileToDisk(GetFingerprintPath(dest), fingerprint_contents)) {
       return false;

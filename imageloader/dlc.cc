@@ -128,8 +128,9 @@ bool Dlc::Mount(HelperProcessProxy* proxy,
     return false;
   }
   Manifest manifest;
-  if (!manifest.ParseManifest(manifest_raw))
+  if (!manifest.ParseManifest(manifest_raw)) {
     return false;
+  }
 
   std::string table;
   if (!base::ReadFileToStringWithMaxSize(table_path, &table,

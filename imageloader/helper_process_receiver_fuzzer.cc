@@ -60,8 +60,9 @@ void helper_process_receiver_fuzzer_run(const char* data, size_t size) {
 
 DEFINE_PROTO_FUZZER(const imageloader::ImageCommand& input) {
   std::vector<char> msg_buf(input.ByteSizeLong());
-  if (!input.SerializeToArray(msg_buf.data(), msg_buf.size()))
+  if (!input.SerializeToArray(msg_buf.data(), msg_buf.size())) {
     LOG(FATAL) << "error serializing protobuf";
+  }
   imageloader::helper_process_receiver_fuzzer_run(msg_buf.data(),
                                                   msg_buf.size());
 }

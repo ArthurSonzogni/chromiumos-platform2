@@ -60,8 +60,9 @@ int ImageLoader::OnInit() {
   EnterSandbox();
 
   int return_code = brillo::DBusServiceDaemon::OnInit();
-  if (return_code != EX_OK)
+  if (return_code != EX_OK) {
     return return_code;
+  }
 
   process_reaper_.Register(this);
   process_reaper_.WatchForChild(
@@ -172,8 +173,9 @@ bool ImageLoader::GetComponentMetadata(
     brillo::ErrorPtr* err,
     const std::string& name,
     std::map<std::string, std::string>* out_metadata) {
-  if (!impl_.GetComponentMetadata(name, out_metadata))
+  if (!impl_.GetComponentMetadata(name, out_metadata)) {
     out_metadata->clear();
+  }
   PostponeShutdown();
   return true;
 }

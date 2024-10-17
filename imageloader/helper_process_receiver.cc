@@ -37,8 +37,9 @@ HelperProcessReceiver::HelperProcessReceiver(base::ScopedFD control_fd)
 int HelperProcessReceiver::OnInit() {
   // Prevent the main process from sending us any signals.
   // errno can be EPERM if the process is already the group leader.
-  if (setsid() < 0 && errno != EPERM)
+  if (setsid() < 0 && errno != EPERM) {
     PLOG(FATAL) << "setsid failed";
+  }
 
   // Run with minimal privileges.
   ScopedMinijail jail(minijail_new());
@@ -95,8 +96,9 @@ void HelperProcessReceiver::OnCommandReady() {
   struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
 
   ImageCommand command;
-  if (!command.ParseFromArray(buffer.data(), bytes))
+  if (!command.ParseFromArray(buffer.data(), bytes)) {
     LOG(FATAL) << "error parsing protobuf";
+  }
 
   // Handle the command to mount the image.
   CommandResponse response = HandleCommand(command, cmsg);
@@ -109,11 +111,13 @@ CommandResponse HelperProcessReceiver::HandleCommand(
   CommandResponse response;
   if (image_command.has_mount_command()) {
     MountCommand command = image_command.mount_command();
-    if (cmsg == nullptr)
+    if (cmsg == nullptr) {
       LOG(FATAL) << "no cmsg";
+    }
 
-    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS)
+    if (cmsg->cmsg_level != SOL_SOCKET || cmsg->cmsg_type != SCM_RIGHTS) {
       LOG(FATAL) << "cmsg is wrong type";
+    }
 
     memmove(&pending_fd_, CMSG_DATA(cmsg), sizeof(pending_fd_));
 
@@ -136,8 +140,9 @@ CommandResponse HelperProcessReceiver::HandleCommand(
     bool status = mounter_.Mount(base::ScopedFD(pending_fd_),
                                  base::FilePath(command.mount_path()), fs_type,
                                  command.table());
-    if (!status)
+    if (!status) {
       LOG(ERROR) << "mount failed";
+    }
 
     response.set_success(status);
   } else if (image_command.has_unmount_all_command()) {
@@ -161,8 +166,9 @@ CommandResponse HelperProcessReceiver::HandleCommand(
 }
 
 void HelperProcessReceiver::SendResponse(const CommandResponse& response) {
-  if (!response.SerializeToFileDescriptor(control_fd_.get()))
+  if (!response.SerializeToFileDescriptor(control_fd_.get())) {
     LOG(ERROR) << "failed to serialize protobuf";
+  }
 }
 
 }  // namespace imageloader

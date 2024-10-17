@@ -53,8 +53,9 @@ base::FilePath GetMountPoint(const base::FilePath& mount_base_path,
 
 bool AssertComponentDirPerms(const base::FilePath& path) {
   int mode;
-  if (!GetPosixFilePermissions(path, &mode))
+  if (!GetPosixFilePermissions(path, &mode)) {
     return false;
+  }
   return mode == kComponentDirPerms;
 }
 
@@ -139,8 +140,9 @@ std::string ImageLoaderImpl::LoadDlcImage(const std::string& id,
 std::string ImageLoaderImpl::LoadDlc(const LoadDlcRequest& request,
                                      HelperProcessProxy* proxy) {
   auto package = request.package();
-  if (package.empty())
+  if (package.empty()) {
     package = kDefaultPackage;
+  }
 
   if (!IsIdValid(request.id()) || !IsIdValid(request.package())) {
     return kBadResult;
@@ -249,8 +251,9 @@ bool ImageLoaderImpl::RegisterComponent(
   base::FilePath components_dir(config_.storage_dir);
 
   // If the directory is writable by others, do not trust the components.
-  if (!AssertComponentDirPerms(components_dir))
+  if (!AssertComponentDirPerms(components_dir)) {
     return false;
+  }
 
   std::string old_version_hint;
   base::FilePath version_hint_path(GetLatestVersionFilePath(name));
@@ -287,8 +290,9 @@ bool ImageLoaderImpl::RegisterComponent(
 
   std::unique_ptr<Component> component = Component::Create(
       base::FilePath(component_folder_abs_path), config_.keys);
-  if (!component)
+  if (!component) {
     return false;
+  }
 
   // Check that the reported version matches the component manifest version.
   if (component->manifest().version() != version) {
@@ -342,8 +346,9 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
 
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
-  if (!component)
+  if (!component) {
     return kBadResult;
+  }
 
   return component->manifest().version();
 }
@@ -361,8 +366,9 @@ bool ImageLoaderImpl::GetComponentMetadata(
 
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
-  if (!component)
+  if (!component) {
     return false;
+  }
 
   *out_metadata = component->manifest().metadata();
   return true;

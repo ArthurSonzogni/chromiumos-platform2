@@ -193,8 +193,9 @@ int main(int argc, char** argv) {
                                       std::end(kProdPublicKey)));
   // 2. Container key.
   std::vector<uint8_t> container_key;
-  if (LoadKeyFromFile(kContainerPublicKeyPath, &container_key))
+  if (LoadKeyFromFile(kContainerPublicKeyPath, &container_key)) {
     keys.push_back(container_key);
+  }
 
   imageloader::ImageLoaderConfig config(keys, kComponentsPath,
                                         FLAGS_loaded_mounts_base.c_str());
@@ -217,8 +218,9 @@ int main(int argc, char** argv) {
       // imageloader returns "" if the component doesn't exist. In this case
       // return 0 so our crash reporting doesn't think something actually went
       // wrong.
-      if (component_version.empty())
+      if (component_version.empty()) {
         return 0;
+      }
 
       if (FLAGS_mount_point.empty()) {
         if (loader

@@ -35,16 +35,18 @@ void HelperProcessProxy::Start(int argc,
                                const std::string& fd_arg) {
   int control[2];
 
-  if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0)
+  if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
     PLOG(FATAL) << "socketpair failed";
+  }
 
   control_fd_.reset(control[0]);
   const int subprocess_fd = control[1];
 
   CHECK_GE(argc, 1);
   std::vector<std::string> child_argv;
-  for (int i = 0; i < argc; i++)
+  for (int i = 0; i < argc; i++) {
     child_argv.push_back(argv[i]);
+  }
 
   child_argv.push_back(fd_arg + "=" + std::to_string(subprocess_fd));
 
@@ -62,8 +64,9 @@ void HelperProcessProxy::Start(int argc,
 std::unique_ptr<CommandResponse> HelperProcessProxy::SendCommand(
     const ImageCommand& image_command, struct msghdr* msg) {
   std::vector<char> msg_buf(image_command.ByteSizeLong());
-  if (!image_command.SerializeToArray(msg_buf.data(), msg_buf.size()))
+  if (!image_command.SerializeToArray(msg_buf.data(), msg_buf.size())) {
     LOG(FATAL) << "error serializing protobuf";
+  }
 
   struct iovec iov[1];
   iov[0].iov_base = msg_buf.data();
@@ -72,8 +75,9 @@ std::unique_ptr<CommandResponse> HelperProcessProxy::SendCommand(
   msg->msg_iov = iov;
   msg->msg_iovlen = sizeof(iov) / sizeof(iov[0]);
 
-  if (sendmsg(control_fd_.get(), msg, 0) < 0)
+  if (sendmsg(control_fd_.get(), msg, 0) < 0) {
     PLOG(FATAL) << "sendmsg failed";
+  }
 
   return WaitForResponse();
 }
