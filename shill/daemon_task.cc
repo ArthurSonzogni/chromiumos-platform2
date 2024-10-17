@@ -4,10 +4,10 @@
 
 #include "shill/daemon_task.h"
 
+#include <linux/rtnetlink.h>
+
 #include <memory>
 #include <utility>
-
-#include <linux/rtnetlink.h>
 
 #include <base/check.h>
 #include <base/functional/bind.h>
@@ -112,7 +112,7 @@ void DaemonTask::StopAndReturnToMain() {
 void DaemonTask::Start() {
   rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
-                       RTMGRP_ND_USEROPT);
+                       RTMGRP_ND_USEROPT | RTMGRP_IPV6_PREFIX);
   process_manager_->Init();
   // Note that net_base::NetlinkManager initialization is not necessarily
   // WiFi-specific. It just happens that we currently only use

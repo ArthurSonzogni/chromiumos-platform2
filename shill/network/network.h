@@ -565,6 +565,8 @@ class Network : public NetworkMonitor::ClientNetwork {
                                         net_base::IPFamily family,
                                         patchpanel::Client::NeighborRole role);
 
+  void StartDHCPPD();
+
   // The network_id of the next constructed Network instance.
   // TODO(b/273743901): Centralize the the network id allocation at patchpanel.
   static int next_network_id_;

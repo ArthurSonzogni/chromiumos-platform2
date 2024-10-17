@@ -33,6 +33,7 @@ class SLAACController {
     kDefaultRoute = 3,
     kDNSSL = 4,
     kCaptivePortal = 5,
+    kPFlag = 6,  // Notify Network upon receiving a PIO with P-flag.
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 

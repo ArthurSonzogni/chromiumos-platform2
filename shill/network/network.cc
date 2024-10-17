@@ -262,17 +262,7 @@ void Network::Start(const Network::StartOptions& opts) {
     LOG(ERROR) << "DHCP-PD needs accept_ra to function correctly";
   }
   if (opts.dhcp_pd && opts.accept_ra) {
-    dhcp_pd_controller_ = dhcp_controller_factory_->Create(
-        interface_name_, technology_, DHCPController::Options(),
-        base::BindRepeating(&Network::OnNetworkConfigUpdatedFromDHCPv6,
-                            AsWeakPtr()),
-        base::BindRepeating(&Network::OnDHCPv6Drop, AsWeakPtr()),
-        net_base::IPFamily::kIPv6);
-    if (!dhcp_pd_controller_) {
-      LOG(ERROR) << "Failed to create DHCPv6-PD controller";
-    } else if (!dhcp_pd_controller_->RenewIP()) {
-      LOG(ERROR) << "Failed to start DHCPv6-PD";
-    }
+    StartDHCPPD();
   }
 
   if ((config_.GetLinkProtocol() && config_.GetLinkProtocol()->ipv4_address) ||
@@ -319,6 +309,20 @@ std::unique_ptr<SLAACController> Network::CreateSLAACController() {
   auto slaac_controller = std::make_unique<SLAACController>(
       interface_index_, proc_fs_.get(), rtnl_handler_, dispatcher_);
   return slaac_controller;
+}
+
+void Network::StartDHCPPD() {
+  dhcp_pd_controller_ = dhcp_controller_factory_->Create(
+      interface_name_, technology_, DHCPController::Options(),
+      base::BindRepeating(&Network::OnNetworkConfigUpdatedFromDHCPv6,
+                          AsWeakPtr()),
+      base::BindRepeating(&Network::OnDHCPv6Drop, AsWeakPtr()),
+      net_base::IPFamily::kIPv6);
+  if (!dhcp_pd_controller_) {
+    LOG(ERROR) << "Failed to create DHCPv6-PD controller";
+  } else if (!dhcp_pd_controller_->RenewIP()) {
+    LOG(ERROR) << "Failed to start DHCPv6-PD";
+  }
 }
 
 void Network::SetupConnection(net_base::IPFamily family, bool is_slaac) {
@@ -705,6 +709,14 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
+  if (update_type == SLAACController::UpdateType::kPFlag) {
+    if (!dhcp_pd_controller_) {
+      LOG(INFO) << *this << ": P-flag detected. Starting DHCPv6-PD.";
+      StartDHCPPD();
+    }
+    return;
+  }
+
   const auto slaac_network_config = slaac_controller_->GetNetworkConfig();
   LOG(INFO) << *this << ": Updating SLAAC config to " << slaac_network_config;
 

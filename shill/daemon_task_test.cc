@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/daemon_task.h"
+
 #include <linux/rtnetlink.h>
 #include <stdint.h>
 
@@ -19,7 +21,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/daemon_task.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -124,9 +125,10 @@ TEST_F(DaemonTaskTest, StartStop) {
   // create and start the device.
   {
     InSequence s;
-    EXPECT_CALL(rtnl_handler_, Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR |
-                                     RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR |
-                                     RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
+    EXPECT_CALL(rtnl_handler_,
+                Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+                      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
+                      RTMGRP_ND_USEROPT | RTMGRP_IPV6_PREFIX));
     EXPECT_CALL(process_manager_, Init());
     EXPECT_CALL(netlink_manager_, Init());
     EXPECT_CALL(netlink_manager_,

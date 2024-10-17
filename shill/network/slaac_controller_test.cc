@@ -95,7 +95,8 @@ void SLAACControllerTest::SendRTNLMessage(
   } else if (message.type() == net_base::RTNLMessage::kTypeRdnss ||
              message.type() == net_base::RTNLMessage::kTypeDnssl ||
              message.type() == net_base::RTNLMessage::kTypeCaptivePortal ||
-             message.type() == net_base::RTNLMessage::kTypePref64) {
+             message.type() == net_base::RTNLMessage::kTypePref64 ||
+             message.type() == net_base::RTNLMessage::kTypePrefix) {
     slaac_controller_.NDOptionMsgHandler(message);
   } else {
     NOTREACHED_IN_MIGRATION();
@@ -248,6 +249,27 @@ TEST_F(SLAACControllerTest, InvalidCaptivePortalMsg) {
   SendRTNLMessage(*message);
   EXPECT_EQ(slaac_controller_.GetNetworkConfig().captive_portal_uri,
             std::nullopt);
+}
+
+TEST_F(SLAACControllerTest, PrefixMsg) {
+  auto message = std::make_unique<net_base::RTNLMessage>(
+      net_base::RTNLMessage::kTypePrefix, net_base::RTNLMessage::kModeAdd, 0, 0,
+      0, kTestIfindex, AF_INET6);
+  net_base::RTNLMessage::PrefixStatus status;
+  status.prefix_flags = 0xd0;  // L,A,P
+  status.prefix =
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:480:ee08::/64");
+  message->set_prefix_status(status);
+
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kPFlag));
+  SendRTNLMessage(*message);
+
+  status.prefix_flags = 0xc0;  // L,A
+  message->set_prefix_status(status);
+
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kPFlag))
+      .Times(0);
+  SendRTNLMessage(*message);
 }
 
 TEST_F(SLAACControllerTest, IPv6AddressChanged) {
