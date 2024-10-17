@@ -215,8 +215,9 @@ TEST_F(GlibBridgeTest, MultipleTimeouts) {
     UserData* ud = reinterpret_cast<UserData*>(user_data);
     ud->called[ud->counter] = true;
     ud->counter++;
-    if (ud->counter == kNumFlags)
+    if (ud->counter == kNumFlags) {
       ud->test->Finish();
+    }
     return G_SOURCE_REMOVE;
   };
 
@@ -228,8 +229,9 @@ TEST_F(GlibBridgeTest, MultipleTimeouts) {
   }
   Start();
 
-  for (int i = 0; i < kNumFlags; i++)
+  for (int i = 0; i < kNumFlags; i++) {
     ASSERT_TRUE(user_data.called[i]);
+  }
 }
 
 namespace multi_io_test {
@@ -261,10 +263,12 @@ struct UserData {
 gboolean AllCompleteCheck(gpointer user_data) {
   UserData* ud = reinterpret_cast<UserData*>(user_data);
   bool all_complete = true;
-  for (const IoJob& io_job : ud->io_jobs)
+  for (const IoJob& io_job : ud->io_jobs) {
     all_complete &= io_job.complete;
-  if (all_complete)
+  }
+  if (all_complete) {
     ud->test->Finish();
+  }
   return G_SOURCE_REMOVE;
 }
 

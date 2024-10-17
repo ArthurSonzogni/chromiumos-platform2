@@ -16,8 +16,9 @@ namespace glib_bridge {
 template <typename T>
 struct GObjectUnref {
   void operator()(T* obj) {
-    if (obj)
+    if (obj) {
       g_object_unref(obj);
+    }
   }
 };
 

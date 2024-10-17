@@ -109,8 +109,9 @@ void GlibBridge::PrepareIteration() {
   }
 
   state_ = State::kWaitingForEvents;
-  if (timeout_ms < 0)
+  if (timeout_ms < 0) {
     return;
+  }
 
   base::TimeDelta timeout = base::Milliseconds(timeout_ms);
   timeout_closure_.Reset(
@@ -126,17 +127,21 @@ void GlibBridge::OnEvent(int fd, int flag) {
   CHECK_GE(glib_fd, 0);
   DVLOG(2) << "OnEvent(" << fd << " [" << glib_fd << "], " << flag << ")";
 
-  for (GPollFD* poll_fd : fd_map_[glib_fd])
+  for (GPollFD* poll_fd : fd_map_[glib_fd]) {
     poll_fd->revents |= flag & poll_fd->events;
+  }
 
-  if (flag & G_IO_IN)
+  if (flag & G_IO_IN) {
     watchers_[glib_fd].reader.reset();
-  if (flag & G_IO_OUT)
+  }
+  if (flag & G_IO_OUT) {
     watchers_[glib_fd].writer.reset();
+  }
 
   // Avoid posting the dispatch task if it's already posted
-  if (state_ == State::kReadyForDispatch)
+  if (state_ == State::kReadyForDispatch) {
     return;
+  }
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,

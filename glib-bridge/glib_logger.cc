@@ -47,8 +47,9 @@ logging::LogSeverity GetLogSeverity(int priority) {
 
 std::optional<int> ParseIntField(const char* value) {
   int parsed;
-  if (base::StringToInt(value, &parsed))
+  if (base::StringToInt(value, &parsed)) {
     return parsed;
+  }
   return std::nullopt;
 }
 
@@ -83,10 +84,12 @@ GLogWriterOutput LogHandler(GLogLevelFlags log_level,
   CHECK(message.has_value() && priority.has_value());
 
   // Give defaults for code file/line if they were not found.
-  if (!code_file.has_value())
+  if (!code_file.has_value()) {
     code_file = std::string(__FILE__);
-  if (!code_line.has_value())
+  }
+  if (!code_line.has_value()) {
     code_line = 0;
+  }
 
   logging::LogSeverity severity = GetLogSeverity(priority.value());
 
