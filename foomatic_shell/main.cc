@@ -52,8 +52,9 @@ int main(int argc, char** argv) {
       continue;
     }
     // Parameter -e is ignored.
-    if (parameter == "-e")
+    if (parameter == "-e") {
       continue;
+    }
     // Unknown parameter - exit with an error.
     PrintErrorMessage("Unknown parameter " + parameter);
     return -1;

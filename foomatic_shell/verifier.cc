@@ -21,8 +21,9 @@ const std::set<std::string> AllowedVariables() {
 }
 
 bool HasPrefix(const std::string& str, const std::string& prefix) {
-  if (prefix.size() > str.size())
+  if (prefix.size() > str.size()) {
     return false;
+  }
   return (str.compare(0, prefix.size(), prefix) == 0);
 }
 
@@ -49,8 +50,9 @@ bool Verifier::VerifyScript(Script* script, int recursion_level) {
         DCHECK(segment.script);
         result = VerifyScript(segment.script.get(), recursion_level + 1);
       }
-      if (!result)
+      if (!result) {
         return false;
+      }
     }
   }
   return true;
@@ -72,18 +74,21 @@ bool Verifier::VerifyCommand(Command* command) {
   // The "cat" command is allowed <=> it has no parameters or it has only a
   // single parameter "-".
   if (cmd == "cat") {
-    if (command->parameters.empty())
+    if (command->parameters.empty()) {
       return true;
+    }
     if (command->parameters.size() == 1 &&
-        Value(command->parameters.front()) == "-")
+        Value(command->parameters.front()) == "-") {
       return true;
+    }
     message_ = "cat: disallowed parameter";
     return false;
   }
 
   // The "cut" command is always allowed.
-  if (cmd == "cut")
+  if (cmd == "cut") {
     return true;
+  }
 
   // The "date" command is allowed <=> it has no parameters with prefixes "-s"
   // or "--set".
@@ -99,22 +104,26 @@ bool Verifier::VerifyCommand(Command* command) {
   }
 
   // The "echo" command is always allowed.
-  if (cmd == "echo")
+  if (cmd == "echo") {
     return true;
+  }
 
   // The "gs" command is verified in separate method.
-  if (cmd == "gs")
+  if (cmd == "gs") {
     return VerifyGs(command->parameters);
+  }
 
   // The "pdftops" command used by foomatic-rip is located at
   // /usr/libexec/cups/filter/pdftops, not /usr/bin/pdftops (a default one).
   // It takes 5 or 6 parameters.
-  if (cmd == "pdftops")
+  if (cmd == "pdftops") {
     return true;
+  }
 
   // The "printf" command is always allowed.
-  if (cmd == "printf")
+  if (cmd == "printf") {
     return true;
+  }
 
   // The "sed" command is allowed <=> it has no parameters with prefixes "-i"
   // or "--in-place". Moreover, the "--sandbox" parameter is added.

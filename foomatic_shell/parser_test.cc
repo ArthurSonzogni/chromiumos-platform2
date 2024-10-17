@@ -20,8 +20,9 @@ template <typename Element>
 std::string CreateRepresentation(const std::vector<Element>& elements) {
   std::string out = "[";
   for (size_t i = 0; i < elements.size(); ++i) {
-    if (i > 0)
+    if (i > 0) {
       out += ",";
+    }
     out += CreateRepresentation(elements[i]);
   }
   out.push_back(']');
@@ -32,10 +33,11 @@ std::string CreateRepresentation(const std::vector<Element>& elements) {
 std::string CreateRepresentation(const StringAtom& str) {
   std::string out;
   for (auto& s : str.components) {
-    if (s.type == Token::Type::kLiteralString)
+    if (s.type == Token::Type::kLiteralString) {
       out += std::string(s.begin, s.end);
-    else
+    } else {
       out += s.value;
+    }
   }
   return out;
 }

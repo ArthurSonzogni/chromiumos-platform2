@@ -60,8 +60,9 @@ std::string CreateTokensRepresentation(const std::string& input,
     }
     const size_t begin = token.begin - input.begin();
     const size_t end = token.end - input.begin();
-    for (size_t i = begin; i < end; ++i)
+    for (size_t i = begin; i < end; ++i) {
       out[i] = c;
+    }
   }
   return out;
 }

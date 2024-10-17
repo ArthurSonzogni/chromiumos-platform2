@@ -16,11 +16,13 @@ bool VerifyScript(const std::string& command) {
   std::vector<Token> tokens;
 
   Scanner scanner(command);
-  if (!scanner.ParseWholeInput(&tokens))
+  if (!scanner.ParseWholeInput(&tokens)) {
     return false;
+  }
   Parser parser(std::move(tokens));
-  if (!parser.ParseWholeInput(&script))
+  if (!parser.ParseWholeInput(&script)) {
     return false;
+  }
 
   Verifier verifier;
   return verifier.VerifyScript(&script);

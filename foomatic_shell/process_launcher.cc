@@ -92,18 +92,22 @@ std::unique_ptr<brillo::Process> ProcessLauncher::StartProcess(
     const Command& command, int input_fd, int output_fd) {
   // Saves to a map all environment variables to set.
   std::map<std::string, std::string> vars;
-  for (const auto& assignment : command.variables_with_values)
+  for (const auto& assignment : command.variables_with_values) {
     vars[assignment.variable.value] = Value(assignment.new_value);
+  }
 
   // Creates and runs the process.
   std::unique_ptr<brillo::Process> process(new brillo::ProcessImpl());
   process->AddArg(command.application.value);
-  for (const StringAtom& param : command.parameters)
+  for (const StringAtom& param : command.parameters) {
     process->AddArg(Value(param));
-  if (input_fd >= 0)
+  }
+  if (input_fd >= 0) {
     process->BindFd(input_fd, 0);
-  if (output_fd >= 0)
+  }
+  if (output_fd >= 0) {
     process->BindFd(output_fd, 1);
+  }
   process->SetCloseUnusedFileDescriptors(true);
   process->SetSearchPath(true);
   process->SetPreExecCallback(base::BindOnce(&PreExecSettings, vars));
@@ -112,8 +116,9 @@ std::unique_ptr<brillo::Process> ProcessLauncher::StartProcess(
     return nullptr;
   }
 
-  if (verbose_)
+  if (verbose_) {
     fprintf(stderr, "PROCESS %s STARTED\n", command.application.value.c_str());
+  }
   return process;
 }
 
@@ -141,8 +146,9 @@ pid_t ProcessLauncher::StartSubshell(const Script& script,
         // possibly be a file descriptor, we expect most of the calls
         // to fail with EBADF, which indicates that the parameter to
         // close() wasn't an open file descriptor to begin with.
-        if (close(fd) != 0 && errno != EBADF)
+        if (close(fd) != 0 && errno != EBADF) {
           perror("close(fd) failed");
+        }
       }
     }
     // Run |script| and exit.
@@ -156,8 +162,9 @@ pid_t ProcessLauncher::StartSubshell(const Script& script,
     return (pid_t)-1;
   }
 
-  if (verbose_)
+  if (verbose_) {
     fprintf(stderr, "SUBSHELL STARTED\n");
+  }
   return pid;
 }
 
@@ -168,8 +175,9 @@ pid_t ProcessLauncher::StartSubshell(const Script& script,
 int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
                                  int input_fd,
                                  int output_fd) {
-  if (verbose_)
+  if (verbose_) {
     fprintf(stderr, "EXECUTE PIPELINE\n");
+  }
 
   // List of processes created within this pipeline.
   std::list<Subprocess> processes;
@@ -225,12 +233,14 @@ int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
 
     // Close file descriptors.
     if (fd_in != input_fd) {
-      if (close(fd_in) != 0)
+      if (close(fd_in) != 0) {
         perror("close(fd_in) failed");
+      }
     }
     if (fd_out != output_fd) {
-      if (close(fd_out) != 0)
+      if (close(fd_out) != 0) {
         perror("close(fd_out) failed");
+      }
     }
   }
 
@@ -257,11 +267,13 @@ int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
         return kShellError;
       }
       // (|exit_code| == kShellError) means that the subshell failed.
-      if (exit_code == kShellError)
+      if (exit_code == kShellError) {
         return kShellError;
+      }
       // One of children processes reached the CPU time limit.
-      if (exit_code == kProcTimeLimitError)
+      if (exit_code == kProcTimeLimitError) {
         return kProcTimeLimitError;
+      }
     }
     // We ignore the exit_code different than kShellError and
     // kProcTimeLimitError, because the Linux shell behaves this way. The exit
@@ -269,8 +281,9 @@ int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
     // whole pipeline.
   }
 
-  if (verbose_)
+  if (verbose_) {
     fprintf(stderr, "PIPELINE COMPLETED SUCCESSFULLY\n");
+  }
   return exit_code;
 }
 
@@ -282,8 +295,9 @@ int ProcessLauncher::RunScript(const Script& script,
     const int exit_code = RunPipeline(pipeline, input_fd, output_fd);
 
     // We stop execution on the first failing pipeline.
-    if (exit_code != 0)
+    if (exit_code != 0) {
       return exit_code;
+    }
   }
 
   return 0;

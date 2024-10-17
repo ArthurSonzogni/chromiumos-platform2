@@ -110,8 +110,9 @@ int ExecuteEmbeddedShellScript(const std::string& source,
   }
 
   // Read the generated output to |out|.
-  if (!ReadFromTheBeginning(temp_fd.get(), output))
+  if (!ReadFromTheBeginning(temp_fd.get(), output)) {
     return kShellError;
+  }
 
   // Delete the temporary file.
   temp_fd.reset();
@@ -119,8 +120,9 @@ int ExecuteEmbeddedShellScript(const std::string& source,
 
   // The trailing end-of-line character is skipped - shell is suppose to
   // work this way.
-  if (!output->empty() && output->back() == '\n')
+  if (!output->empty() && output->back() == '\n') {
     output->pop_back();
+  }
 
   // Success!
   return 0;
@@ -136,8 +138,9 @@ int ExecuteShellScript(const std::string& source,
   DCHECK_NE(output_fd, 0);
   DCHECK_NE(output_fd, 2);
 
-  if (verbose_mode)
+  if (verbose_mode) {
     fprintf(stderr, "EXECUTE SCRIPT: %s\n", source.c_str());
+  }
 
   // Scan the source (the first phase of parsing).
   Scanner scanner(source);
@@ -150,8 +153,9 @@ int ExecuteShellScript(const std::string& source,
   // Execute scripts in `...` (backticks) and replace them with generated
   // output.
   for (auto& token : tokens) {
-    if (token.type != Token::Type::kExecutedString)
+    if (token.type != Token::Type::kExecutedString) {
       continue;
+    }
 
     // Execute the script inside `...` (backticks) operator.
     std::string out;
@@ -159,8 +163,9 @@ int ExecuteShellScript(const std::string& source,
         token.value, verbose_mode, verify_mode, recursion_level, &out);
     if (subshell_exit_code != 0) {
       PrintErrorMessage(token.value, token.begin, out);
-      if (subshell_exit_code != kProcTimeLimitError)
+      if (subshell_exit_code != kProcTimeLimitError) {
         subshell_exit_code = kShellError;
+      }
       return subshell_exit_code;
     }
 

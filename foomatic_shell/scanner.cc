@@ -33,8 +33,9 @@ class Scanner::Input {
   // Returns the value of the current character. If the current position is set
   // to |data.end()|, this method returns '\0'.
   char GetCurrentCharacter() const {
-    if (current_ == data_.end())
+    if (current_ == data_.end()) {
       return '\0';
+    }
     return *current_;
   }
 
@@ -48,14 +49,18 @@ class Scanner::Input {
   // grammar.h for details). If the current position is set to |data.end()|,
   // it returns false.
   bool CurrentCharIsByteNative() const {
-    if (current_ == data_.end())
+    if (current_ == data_.end()) {
       return false;
-    if (*current_ >= 'A' && *current_ <= 'Z')
+    }
+    if (*current_ >= 'A' && *current_ <= 'Z') {
       return true;
-    if (*current_ >= 'a' && *current_ <= 'z')
+    }
+    if (*current_ >= 'a' && *current_ <= 'z') {
       return true;
-    if (*current_ >= '0' && *current_ <= '9')
+    }
+    if (*current_ >= '0' && *current_ <= '9') {
       return true;
+    }
     return (std::string("./_+-@%").find(*current_) != std::string::npos);
   }
 
@@ -63,8 +68,9 @@ class Scanner::Input {
   // elements of |chars|. If the current position is set to |data.end()|,
   // it returns false.
   bool CurrentCharIsOneOf(const std::string& chars) const {
-    if (current_ == data_.end())
+    if (current_ == data_.end()) {
       return false;
+    }
     return (chars.find(*current_) != std::string::npos);
   }
 
@@ -74,8 +80,9 @@ class Scanner::Input {
   // Move the current position to the next element. If the current position
   // is set to |data.end()|, it does nothing.
   void MoveToNext() {
-    if (current_ != data_.end())
+    if (current_ != data_.end()) {
       ++current_;
+    }
   }
 
  private:
@@ -156,8 +163,9 @@ bool Scanner::ParseExecutedString(std::vector<Token>* tokens) {
     // The escape character (\) works in ExecutedString for ByteAny.
     if (data_->CurrentCharIs('\\')) {
       data_->MoveToNext();
-      if (data_->CurrentCharIsEOF())
+      if (data_->CurrentCharIsEOF()) {
         break;
+      }
     }
     // Save the current character and move to the next element.
     out->value.push_back(data_->GetCurrentCharacter());
@@ -206,8 +214,9 @@ bool Scanner::ParseInterpretedString(std::vector<Token>* tokens) {
         // The opening ` was found. We finish the current token and
         // add a new ExecutedString token.
         out->end = data_->GetCurrentPosition();
-        if (!ParseExecutedString(tokens))
+        if (!ParseExecutedString(tokens)) {
           return false;
+        }
         // We break the internal loop to create a new InterpretedString
         // token.
         break;
@@ -271,8 +280,9 @@ bool Scanner::ParseNativeString(std::vector<Token>* tokens) {
 
     // If the current character is not a ByteNative, we found the end of the
     // string.
-    if (!data_->CurrentCharIsByteNative())
+    if (!data_->CurrentCharIsByteNative()) {
       break;
+    }
 
     // Save the current character and move to the next element.
     out->value.push_back(data_->GetCurrentCharacter());
@@ -290,23 +300,27 @@ bool Scanner::ParseWholeInput(std::vector<Token>* tokens) {
   while (!data_->CurrentCharIsEOF()) {
     // Check for different types of string.
     if (data_->CurrentCharIs('\'')) {
-      if (!ParseLiteralString(tokens))
+      if (!ParseLiteralString(tokens)) {
         return false;
+      }
       continue;
     }
     if (data_->CurrentCharIs('"')) {
-      if (!ParseInterpretedString(tokens))
+      if (!ParseInterpretedString(tokens)) {
         return false;
+      }
       continue;
     }
     if (data_->CurrentCharIs('`')) {
-      if (!ParseExecutedString(tokens))
+      if (!ParseExecutedString(tokens)) {
         return false;
+      }
       continue;
     }
     if (data_->CurrentCharIsByteNative() || data_->CurrentCharIs('\\')) {
-      if (!ParseNativeString(tokens))
+      if (!ParseNativeString(tokens)) {
         return false;
+      }
       continue;
     }
 
@@ -321,8 +335,9 @@ bool Scanner::ParseWholeInput(std::vector<Token>* tokens) {
       token.begin = data_->GetCurrentPosition();
       // Move forward until we find the first character not being part of
       // the Space token. It stops also at EOF.
-      while (data_->CurrentCharIsOneOf(" \t"))
+      while (data_->CurrentCharIsOneOf(" \t")) {
         data_->MoveToNext();
+      }
       token.end = data_->GetCurrentPosition();
       continue;
     }

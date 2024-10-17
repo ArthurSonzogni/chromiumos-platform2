@@ -22,11 +22,13 @@ namespace {
 //  Parameter = StringAtom ;
 bool MatchAPrefixOfPipeSegment(const Token& token) {
   // Check if the token may be a prefix of: "(", Script, ")"
-  if (token.type == Token::kByte && *token.begin == '(')
+  if (token.type == Token::kByte && *token.begin == '(') {
     return true;
+  }
   // Check if the token may be a prefix of a Command.
-  if (token.type == Token::kNativeString)
+  if (token.type == Token::kNativeString) {
     return true;
+  }
   // It cannot be a PipeSegment.
   return false;
 }
@@ -86,15 +88,17 @@ class Parser::InputTokens {
   // Moves the current position to the next token. If the current token is of
   // type EOF, it does nothing.
   void MoveToNext() {
-    if (current_->type != Token::Type::kEOF)
+    if (current_->type != Token::Type::kEOF) {
       ++current_;
+    }
   }
 
   // Moves the current position to the previous token. It the current position
   // points to the first token in the sequence, it does nothing.
   void ReturnToPrevious() {
-    if (current_ != tokens_.begin())
+    if (current_ != tokens_.begin()) {
       --current_;
+    }
   }
 
  private:
@@ -110,8 +114,9 @@ Parser::~Parser() {}
 bool Parser::ParseWholeInput(Script* out) {
   DCHECK(out != nullptr);
 
-  if (!ParseScript(out))
+  if (!ParseScript(out)) {
     return false;
+  }
   if (!tokens_->CurrentTokenIsEOF()) {
     message_ = "Not everything was parsed";
     return false;
@@ -150,27 +155,31 @@ bool Parser::ParseScriptImpl(Script* out) {
   DCHECK(out != nullptr);
 
   // Parsing: OptSpace
-  if (tokens_->CurrentTokenIsSpace())
+  if (tokens_->CurrentTokenIsSpace()) {
     tokens_->MoveToNext();
+  }
 
   // Parsing: { SepP , OptSpace }
   while (tokens_->CurrentTokenIsByte('\n') ||
          tokens_->CurrentTokenIsByte(';')) {
     tokens_->MoveToNext();
-    if (tokens_->CurrentTokenIsSpace())
+    if (tokens_->CurrentTokenIsSpace()) {
       tokens_->MoveToNext();
+    }
   }
 
   // If the next token matches a Pipeline prefix, we go forward with the first
   // Script definition. Otherwise, we match the second Script definition (the
   // shorter one) and finish here with success.
-  if (!MatchAPrefixOfPipeSegment(tokens_->GetCurrentToken()))
+  if (!MatchAPrefixOfPipeSegment(tokens_->GetCurrentToken())) {
     return true;
+  }
 
   // Parsing: Pipeline
   out->pipelines.resize(1);
-  if (!ParsePipeline(&out->pipelines.back()))
+  if (!ParsePipeline(&out->pipelines.back())) {
     return false;
+  }
 
   // Parsing: { {SepP,OptSpace}-, Pipeline }, {SepP,OptSpace}
   while (tokens_->CurrentTokenIsByte('\n') ||
@@ -178,20 +187,23 @@ bool Parser::ParseScriptImpl(Script* out) {
     // Parsing: {SepP,OptSpace}- or {SepP,OptSpace}
     do {
       tokens_->MoveToNext();
-      if (tokens_->CurrentTokenIsSpace())
+      if (tokens_->CurrentTokenIsSpace()) {
         tokens_->MoveToNext();
+      }
     } while (tokens_->CurrentTokenIsByte('\n') ||
              tokens_->CurrentTokenIsByte(';'));
 
     // If the next token is not a prefix of a Pipeline, we reach the end of
     // the Script.
-    if (!MatchAPrefixOfPipeSegment(tokens_->GetCurrentToken()))
+    if (!MatchAPrefixOfPipeSegment(tokens_->GetCurrentToken())) {
       break;
+    }
 
     // Parsing: Pipeline
     out->pipelines.emplace_back();
-    if (!ParsePipeline(&out->pipelines.back()))
+    if (!ParsePipeline(&out->pipelines.back())) {
       return false;
+    }
   }
 
   return true;
@@ -210,30 +222,35 @@ bool Parser::ParsePipeline(Pipeline* out) {
 
   // Parsing: PipeSegment
   out->segments.resize(1);
-  if (!ParsePipeSegment(&out->segments.back()))
+  if (!ParsePipeSegment(&out->segments.back())) {
     return false;
+  }
 
   // Parsing: OptSpace
-  if (tokens_->CurrentTokenIsSpace())
+  if (tokens_->CurrentTokenIsSpace()) {
     tokens_->MoveToNext();
+  }
 
   // Parsing: {"|",OptSpace,PipeSegment,OptSpace}
   while (tokens_->CurrentTokenIsByte('|')) {
     tokens_->MoveToNext();
     // Parsing: OptSpace
-    if (tokens_->CurrentTokenIsSpace())
+    if (tokens_->CurrentTokenIsSpace()) {
       tokens_->MoveToNext();
+    }
     // Parsing: PipeSegment
     if (!MatchAPrefixOfPipeSegment(tokens_->GetCurrentToken())) {
       message_ = "Missing Pipe Segment after |";
       return false;
     }
     out->segments.emplace_back();
-    if (!ParsePipeSegment(&out->segments.back()))
+    if (!ParsePipeSegment(&out->segments.back())) {
       return false;
+    }
     // Parsing: OptSpace
-    if (tokens_->CurrentTokenIsSpace())
+    if (tokens_->CurrentTokenIsSpace()) {
       tokens_->MoveToNext();
+    }
   }
 
   return true;
@@ -254,8 +271,9 @@ bool Parser::ParsePipeSegment(PipeSegment* out) {
     // Parsing: "(", Script, ")"
     tokens_->MoveToNext();
     out->script = std::make_unique<Script>();
-    if (!ParseScript(out->script.get()))
+    if (!ParseScript(out->script.get())) {
       return false;
+    }
     if (!tokens_->CurrentTokenIsByte(')')) {
       message_ = "Missing closing parenthesis )";
       return false;
@@ -324,8 +342,9 @@ bool Parser::ParseCommand(Command* out) {
   // Parsing: {Space,Parameter}
   while (true) {
     // If the current token is not a Space, it does not match.
-    if (!tokens_->CurrentTokenIsSpace())
+    if (!tokens_->CurrentTokenIsSpace()) {
       break;
+    }
     // It is a Space, check the next token.
     tokens_->MoveToNext();
     // If the next token is a beginning of StringAtom, we have next parameter.

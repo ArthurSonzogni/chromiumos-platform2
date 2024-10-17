@@ -22,21 +22,24 @@ std::string::const_iterator Position(const StringAtom& str) {
 
 std::string Value(const StringAtom& str) {
   std::string out;
-  for (auto& s : str.components)
+  for (auto& s : str.components) {
     out += s.value;
+  }
   return out;
 }
 
 std::string::const_iterator Position(const PipeSegment& segment) {
-  if (segment.command)
+  if (segment.command) {
     return Position(*segment.command);
+  }
   DCHECK(segment.script != nullptr);
   return Position(*segment.script);
 }
 
 std::string::const_iterator Position(const Command& cmd) {
-  if (!cmd.variables_with_values.empty())
+  if (!cmd.variables_with_values.empty()) {
     return Position(cmd.variables_with_values.front().new_value);
+  }
   return cmd.application.begin;
 }
 
