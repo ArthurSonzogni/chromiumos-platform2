@@ -44,8 +44,9 @@ class DownloadProgressIndicator {
     bool done = downloaded_bytes == total_bytes;
 
     // Don't flood the console too frequently.
-    if (!done && (elapsed_time - last_update_).InMilliseconds() < 100)
+    if (!done && (elapsed_time - last_update_).InMilliseconds() < 100) {
       return;
+    }
     last_update_ = elapsed_time;
 
     constexpr const char kMessage[] = "Downloading ";
@@ -55,8 +56,9 @@ class DownloadProgressIndicator {
     int file_width = strlen(kMessage) + file.size();
 
     // Bail out if the terminal is too narrow.
-    if (term_width <= file_width + kStatsWidth)
+    if (term_width <= file_width + kStatsWidth) {
       return;
+    }
 
     // Print the file name.
     std::cout << kMessage << file;
@@ -98,8 +100,9 @@ class DownloadProgressIndicator {
  private:
   static int GetTerminalWidth() {
     winsize window_size;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window_size) != 0)
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &window_size) != 0) {
       return -1;
+    }
     return window_size.ws_col;
   }
 

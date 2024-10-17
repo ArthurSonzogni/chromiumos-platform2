@@ -30,8 +30,8 @@ int FeatureControl(std::unique_ptr<hps::HPS> hps,
     return 1;
   }
   if (!base::StringToInt(args[1], &feat) || feat < 0 || feat > 1) {
-    std::cerr << args[1] << ": illegal feature id. "
-              << "Valid values are 0, 1." << std::endl;
+    std::cerr << args[1] << ": illegal feature id. " << "Valid values are 0, 1."
+              << std::endl;
     return 1;
   }
   bool result;

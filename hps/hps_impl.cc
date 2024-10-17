@@ -102,8 +102,9 @@ void HPS_impl::Boot() {
       i = -1;
       continue;
     }
-    if (!i)
+    if (!i) {
       this->boot_start_time_ = base::TimeTicks::Now();
+    }
 
     switch (this->TryBoot()) {
       case BootResult::kOk:
@@ -548,8 +549,9 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
 
 // Reboot the hardware module.
 bool HPS_impl::Reboot() {
-  if (wake_lock_)
+  if (wake_lock_) {
     ShutDown();
+  }
   LOG(INFO) << "Starting HPS device";
   wake_lock_ = device_->CreateWakeLock();
 
@@ -713,8 +715,9 @@ bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
     return -1;
   }
   std::optional<std::vector<uint8_t>> contents = this->DecompressFile(source);
-  if (!contents.has_value())
+  if (!contents.has_value()) {
     return false;
+  }
   return this->WriteFile(ibank, source, contents.value());
 }
 

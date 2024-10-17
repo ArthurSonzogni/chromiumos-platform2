@@ -74,8 +74,9 @@ class HPS_fake_sleep_for_test : public HPS_impl {
     task_environment_->AdvanceClock(duration);
   }
   base::TimeDelta GetSystemSuspendTime() override {
-    if (suspend_times_.empty())
+    if (suspend_times_.empty()) {
       return base::TimeDelta();
+    }
     auto result = suspend_times_.front();
     suspend_times_.pop_front();
     return result;

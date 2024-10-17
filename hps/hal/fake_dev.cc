@@ -32,8 +32,9 @@ class FakeWakeLock : public WakeLock {
   ~FakeWakeLock() override {
     dev_.wake_lock_count_--;
     DCHECK_GE(dev_.wake_lock_count_, 0);
-    if (!dev_.wake_lock_count_ && dev_.power_on_failure_count_)
+    if (!dev_.wake_lock_count_ && dev_.power_on_failure_count_) {
       dev_.power_on_failure_count_--;
+    }
   }
 
   bool supports_power_management() override { return true; }
@@ -44,16 +45,18 @@ class FakeWakeLock : public WakeLock {
 
 bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
   DCHECK(wake_lock_count_);
-  if (power_on_failure_count_)
+  if (power_on_failure_count_) {
     return false;
+  }
   // Clear the whole buffer.
   memset(data, 0, len);
   if ((cmd & 0x80) != 0) {
     // Register read.
     std::optional<uint16_t> result =
         this->ReadRegister(static_cast<HpsReg>(cmd & 0x7F));
-    if (!result)
+    if (!result) {
       return false;
+    }
     // Store the value of the register into the buffer.
     if (len > 0) {
       data[0] = (result.value() >> 8) & 0xFF;
@@ -70,8 +73,9 @@ bool FakeDev::ReadDevice(uint8_t cmd, uint8_t* data, size_t len) {
 
 bool FakeDev::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
   DCHECK(wake_lock_count_);
-  if (power_on_failure_count_)
+  if (power_on_failure_count_) {
     return false;
+  }
   if ((cmd & 0x80) != 0) {
     if (len != 0) {
       // Register write.

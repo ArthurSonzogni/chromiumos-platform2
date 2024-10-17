@@ -29,8 +29,8 @@ static const int kUsbInterfaceNumber = 2;
 static const uint8_t kWriteEndpoint = 0x03;  // host to device
 static const uint8_t kReadEndpoint = 0x83;   // device to host
 
-static const int kTimeout = 1000;      // Timeout in milliseconds.
-static const int kRetries = 50;        // Max retries.
+static const int kTimeout = 1000;  // Timeout in milliseconds.
+static const int kRetries = 50;    // Max retries.
 
 static constexpr base::TimeDelta kDelay =
     base::Milliseconds(10);  // Delay between retries.

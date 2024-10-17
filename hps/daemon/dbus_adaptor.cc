@@ -192,8 +192,9 @@ bool DBusAdaptor::CommitState() {
 
   for (uint8_t i = 0; i < kFeatures; i++) {
     auto& feature = features_[i];
-    if (!feature.needs_commit())
+    if (!feature.needs_commit()) {
       continue;
+    }
 
     if (feature.enabled()) {
       // If we want to enable any features, HPS needs to be running.

@@ -41,8 +41,9 @@ class WakeLockImpl : public WakeLock {
       : power_file_(power_control,
                     base::File::FLAG_OPEN | base::File::FLAG_READ |
                         base::File::FLAG_WRITE) {
-    if (!power_file_.IsValid())
+    if (!power_file_.IsValid()) {
       PLOG(FATAL) << "Unable to create wake lock: \"" << power_control << "\"";
+    }
   }
   ~WakeLockImpl() override = default;
   bool supports_power_management() override { return true; }
@@ -116,8 +117,9 @@ bool I2CDev::Ioc(struct i2c_msg* msg, size_t count) {
 }
 
 std::unique_ptr<WakeLock> I2CDev::CreateWakeLock() {
-  if (!power_control_.empty())
+  if (!power_control_.empty()) {
     return std::make_unique<WakeLockImpl>(power_control_);
+  }
   return DevInterface::CreateWakeLock();
 }
 
