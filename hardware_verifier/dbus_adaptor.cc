@@ -47,8 +47,9 @@ void DBusAdaptor::VerifyComponents(VerifyComponentsResponseCallback callback) {
       break;
   }
   reply.set_error(error);
-  if (report)
+  if (report) {
     reply.mutable_hw_verification_report()->Swap(&*report);
+  }
   callback->Return(reply);
 }
 

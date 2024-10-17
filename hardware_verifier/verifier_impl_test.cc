@@ -51,8 +51,9 @@ class TestVerifierImpl : public testing::Test {
     for (int i = 0; i < category_enum_desc->value_count(); ++i) {
       const auto* category_enum_value_desc = category_enum_desc->value(i);
       if (category_enum_value_desc->number() ==
-          runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
+          runtime_probe::ProbeRequest_SupportCategory_UNKNOWN) {
         continue;
+      }
       const auto* field_desc =
           HwVerificationReport_GenericDeviceInfo::descriptor()->FindFieldByName(
               category_enum_value_desc->name());

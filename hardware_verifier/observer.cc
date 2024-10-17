@@ -92,8 +92,9 @@ void RecordStructuredHwVerificationReport(const HwVerificationReport& report) {
   }
   for (const auto& device : report.generic_device_info().storage()) {
     auto event = CreateStructuredComponentInfo(device);
-    if (!event.metrics().empty())
+    if (!event.metrics().empty()) {
       event.Record();
+    }
   }
 }
 

@@ -34,17 +34,19 @@ std::optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
   if (hw_verification_spec_file.empty()) {
     hw_verification_spec = vs_getter_->GetDefault();
     if (!hw_verification_spec) {
-      if (out_error_code)
+      if (out_error_code) {
         *out_error_code =
             ErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile;
+      }
       return std::nullopt;
     }
   } else {
     hw_verification_spec =
         vs_getter_->GetFromFile(base::FilePath(hw_verification_spec_file));
     if (!hw_verification_spec) {
-      if (out_error_code)
+      if (out_error_code) {
         *out_error_code = ErrorCode::kErrorCodeInvalidHwVerificationSpecFile;
+      }
       return std::nullopt;
     }
   }
@@ -58,15 +60,17 @@ std::optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
     observer->StopTimer(hardware_verifier::kMetricTimeToProbe);
 
     if (!probe_result) {
-      if (out_error_code)
+      if (out_error_code) {
         *out_error_code = ErrorCode::kErrorCodeProbeFail;
+      }
       return std::nullopt;
     }
   } else {
     probe_result = pr_getter_->GetFromFile(base::FilePath(probe_result_file));
     if (!probe_result) {
-      if (out_error_code)
+      if (out_error_code) {
         *out_error_code = ErrorCode::kErrorCodeInvalidProbeResultFile;
+      }
       return std::nullopt;
     }
   }
@@ -75,11 +79,12 @@ std::optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
   const auto verifier_result =
       verifier_->Verify(probe_result.value(), hw_verification_spec.value());
   if (out_error_code) {
-    if (!verifier_result)
+    if (!verifier_result) {
       *out_error_code =
           ErrorCode::kErrorCodeProbeResultHwVerificationSpecMisalignment;
-    else
+    } else {
       *out_error_code = ErrorCode::kErrorCodeNoError;
+    }
   }
   return verifier_result;
 }

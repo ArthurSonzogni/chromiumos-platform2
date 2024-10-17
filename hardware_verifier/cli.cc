@@ -46,8 +46,9 @@ ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
       return CLIVerificationResult::kProbeResultHwVerificationSpecMisalignment;
     case ReportGetterErrorCode::kErrorCodeNoError:
     default:
-      NOTREACHED_IN_MIGRATION() << "Invalid HwVerificationReportGetter::ErrorCode: "
-                   << static_cast<int>(error_code);
+      NOTREACHED_IN_MIGRATION()
+          << "Invalid HwVerificationReportGetter::ErrorCode: "
+          << static_cast<int>(error_code);
       return CLIVerificationResult::kUnknownError;
   }
 }

@@ -79,8 +79,9 @@ void AddFoundComponentInfo(HwVerificationReport* hw_verification_report,
 
 bool IsModelComponent(const ComponentInfo& comp_info,
                       const std::string& model_name) {
-  if (model_name.empty())
+  if (model_name.empty()) {
     return true;
+  }
 
   const auto& parts = base::SplitString(model_name, "_", base::KEEP_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
@@ -108,8 +109,9 @@ VerifierImpl::VerifierImpl() {
     comp_category_info->enum_name = comp_category_name;
 
     if (comp_category_info->enum_value ==
-        runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
+        runtime_probe::ProbeRequest_SupportCategory_UNKNOWN) {
       continue;
+    }
 
     const auto* field_desc =
         probe_result_desc->FindFieldByName(comp_category_name);
@@ -163,8 +165,9 @@ std::optional<HwVerificationReport> VerifierImpl::Verify(
       qual_status_dict;
   const auto model_name = GetModelName();
   for (const auto& comp_info : hw_verification_spec.component_infos()) {
-    if (!IsModelComponent(comp_info, model_name))
+    if (!IsModelComponent(comp_info, model_name)) {
       continue;
+    }
     const auto& category = comp_info.component_category();
     const auto& uuid = comp_info.component_uuid();
     const auto& qualification_status = comp_info.qualification_status();
@@ -207,8 +210,9 @@ std::optional<HwVerificationReport> VerifierImpl::Verify(
   const auto* probe_result_refl = probe_result.GetReflection();
   for (const auto& comp_category_info : comp_category_infos_) {
     if (comp_category_info.enum_value ==
-        runtime_probe::ProbeRequest_SupportCategory_UNKNOWN)
+        runtime_probe::ProbeRequest_SupportCategory_UNKNOWN) {
       continue;
+    }
     const auto& comp_name_to_qual_status =
         qual_status_dict[comp_category_info.enum_value];
 
@@ -293,8 +297,9 @@ std::string VerifierImpl::GetModelName() const {
 
   if (cros_config_ &&
       cros_config_->GetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
-                              &model_name))
+                              &model_name)) {
     return model_name;
+  }
 
   // Fallback to sys_info.
   return base::SysInfo::GetLsbReleaseBoard();

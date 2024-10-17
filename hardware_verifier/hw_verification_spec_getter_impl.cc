@@ -81,8 +81,9 @@ std::optional<HwVerificationSpec> HwVerificationSpecGetterImpl::GetDefault()
   if (vb_system_property_getter_->GetCrosDebug() == 1) {
     auto spec = ReadOutHwVerificationSpecFromFile(
         root_.Append(kUsrLocal).Append(kDefaultHwVerificationSpecRelPath));
-    if (spec)
+    if (spec) {
       return spec;
+    }
   }
   return ReadOutHwVerificationSpecFromFile(
       root_.Append(kDefaultHwVerificationSpecRelPath));
