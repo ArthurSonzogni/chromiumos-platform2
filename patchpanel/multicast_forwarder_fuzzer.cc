@@ -100,13 +100,13 @@ class Environment {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
     base::CommandLine::Init(0, nullptr);
     TestTimeouts::Initialize();
-    base::test::TaskEnvironment task_environment{
-        base::test::TaskEnvironment::MainThreadType::IO};
   }
 };
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
+  base::test::TaskEnvironment task_environment{
+      base::test::TaskEnvironment::MainThreadType::IO};
 
   // Copy the input data so that TranslateMdnsIp can mutate it.
   char* payload = new char[size];
