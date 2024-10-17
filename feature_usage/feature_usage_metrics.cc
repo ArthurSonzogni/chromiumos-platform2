@@ -197,8 +197,9 @@ void FeatureUsageMetrics::ReportPeriodicMetrics() {
 }
 
 void FeatureUsageMetrics::MaybeReportUseTime() {
-  if (start_usage_.is_null())
+  if (start_usage_.is_null()) {
     return;
+  }
   base::TimeDelta use_time = Now() - start_usage_;
   RecordUsetime(use_time);
   start_usage_ = Now();
