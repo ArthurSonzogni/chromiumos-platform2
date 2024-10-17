@@ -11,17 +11,13 @@
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
-#include "odml/mojom/on_device_model.mojom.h"
-#include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/utils/dlc_client_helper.h"
 #include "odml/utils/odml_shim_loader.h"
 
 namespace mantis {
 
 namespace {
-using mojom::MantisFeatureStatus;
-using on_device_model::mojom::LoadModelResult;
-using on_device_model::mojom::PlatformModelProgressObserver;
+
 using MantisAPIGetter = const MantisAPI* (*)();
 
 constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
@@ -69,29 +65,29 @@ void MantisService::DeleteProcessor() {
 }
 
 void MantisService::Initialize(
-    mojo::PendingRemote<PlatformModelProgressObserver> progress_observer,
+    mojo::PendingRemote<mojom::PlatformModelProgressObserver> progress_observer,
     mojo::PendingReceiver<mojom::MantisProcessor> processor,
     InitializeCallback callback) {
   if (RetryIfShimIsNotReady(&MantisService::Initialize, callback,
-                            LoadModelResult::kFailedToLoadLibrary,
+                            mojom::InitializeResult::kFailedToLoadLibrary,
                             progress_observer, processor)) {
     return;
   }
 
   if (processor_) {
     processor_->AddReceiver(std::move(processor));
-    mojo::Remote<on_device_model::mojom::PlatformModelProgressObserver> remote(
+    mojo::Remote<mojom::PlatformModelProgressObserver> remote(
         std::move(progress_observer));
     if (remote) {
       remote->Progress(kFinishedProgress);
     }
-    std::move(callback).Run(LoadModelResult::kSuccess);
+    std::move(callback).Run(mojom::InitializeResult::kSuccess);
     return;
   }
 
-  auto remote = std::make_shared<
-      mojo::Remote<on_device_model::mojom::PlatformModelProgressObserver>>(
-      std::move(progress_observer));
+  auto remote =
+      std::make_shared<mojo::Remote<mojom::PlatformModelProgressObserver>>(
+          std::move(progress_observer));
   std::shared_ptr<odml::DlcClientPtr> dlc_client = odml::CreateDlcClient(
       kDlcName,
       base::BindOnce(&MantisService::OnInstallDlcComplete,
@@ -104,7 +100,7 @@ void MantisService::Initialize(
 
 void MantisService::GetMantisFeatureStatus(
     GetMantisFeatureStatusCallback callback) {
-  std::move(callback).Run(MantisFeatureStatus::kDeviceNotSupported);
+  std::move(callback).Run(mojom::MantisFeatureStatus::kDeviceNotSupported);
 }
 
 void MantisService::OnInstallDlcComplete(
@@ -113,27 +109,27 @@ void MantisService::OnInstallDlcComplete(
     base::expected<base::FilePath, std::string> result) {
   if (!result.has_value()) {
     LOG(ERROR) << "Failed to install ML DLC: " << result.error();
-    std::move(callback).Run(LoadModelResult::kFailedToLoadLibrary);
+    std::move(callback).Run(mojom::InitializeResult::kFailedToLoadLibrary);
     return;
   }
 
   if (processor_) {
     processor_->AddReceiver(std::move(processor));
-    std::move(callback).Run(LoadModelResult::kSuccess);
+    std::move(callback).Run(mojom::InitializeResult::kSuccess);
     return;
   }
 
   auto get_api = shim_loader_->Get<MantisAPIGetter>("GetMantisAPI");
   if (!get_api) {
     LOG(ERROR) << "Unable to resolve GetMantisAPI() symbol.";
-    std::move(callback).Run(LoadModelResult::kFailedToLoadLibrary);
+    std::move(callback).Run(mojom::InitializeResult::kFailedToLoadLibrary);
     return;
   }
 
   const MantisAPI* api = get_api();
   if (!api) {
     LOG(ERROR) << "Unable to get MantisAPI.";
-    std::move(callback).Run(LoadModelResult::kFailedToLoadLibrary);
+    std::move(callback).Run(mojom::InitializeResult::kFailedToLoadLibrary);
     return;
   }
 
@@ -145,12 +141,11 @@ void MantisService::OnInstallDlcComplete(
       component, api, std::move(processor),
       base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)));
 
-  std::move(callback).Run(LoadModelResult::kSuccess);
+  std::move(callback).Run(mojom::InitializeResult::kSuccess);
 }
 
 void MantisService::OnDlcProgress(
-    std::shared_ptr<
-        mojo::Remote<on_device_model::mojom::PlatformModelProgressObserver>>
+    std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
         progress_observer,
     double progress) {
   if (progress_observer && *progress_observer) {

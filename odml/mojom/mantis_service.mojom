@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Doc: go/mantis-bl-dd
 module mantis.mojom;
 
 import "odml/mojom/mantis_processor.mojom";
-import "odml/mojom/on_device_model.mojom";
-import "odml/mojom/on_device_model_service.mojom";
 
+// The feature status used to restrict Mantis functionality if applicable.
 [Stable, Extensible]
 enum MantisFeatureStatus {
   [Default] kDeviceNotSupported,
@@ -15,17 +15,35 @@ enum MantisFeatureStatus {
   kAvailable,
 };
 
+// The model initialization result.
+[Stable, Extensible]
+enum InitializeResult {
+  kSuccess,
+  kGpuBlocked,
+  [Default] kFailedToLoadLibrary,
+};
+
+// An observer to report the current platform model loading progress.
+[Stable]
+interface PlatformModelProgressObserver {
+  // The progress value is between 0.0 and 1.0.
+  Progress@0(double progress);
+};
+
+// Interface for checking Mantis feature availability and initialize it if
+// available.
+// The availability is based on device type, user account, and others.
 [Stable]
 interface MantisService {
-  // Load the assets from DLC, the progress can be monitored using
-  // ProgressObserver, and then initialize GenAIProcessor and Segmenter.
-  Initialize@0(
-      pending_remote<on_device_model.mojom.PlatformModelProgressObserver>?
-          progress_observer,
-      pending_receiver<MantisProcessor> processor)
-      => (on_device_model.mojom.LoadModelResult result);
-
-  // This will be used to restrict Mantis functionality.
+  // Gets Mantis feature status which can be used to restrict Mantis
+  // functionality by returning a status other than kAvailable.
   [MinVersion=1]
   GetMantisFeatureStatus@1() => (MantisFeatureStatus status);
+
+  // Loads the assets from DLC and initializes the processor for subsequent
+  // queries. The model loading progress can be observed by `progress_observer`.
+  Initialize@0(
+      pending_remote<PlatformModelProgressObserver>? progress_observer,
+      pending_receiver<MantisProcessor> processor)
+      => (InitializeResult result);
 };

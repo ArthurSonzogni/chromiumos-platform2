@@ -15,7 +15,7 @@
 #include <testing/gtest/include/gtest/gtest.h>
 
 #include "odml/mantis/fake/fake_mantis_api.h"
-#include "odml/mantis/processor.h"
+#include "odml/mojom/mantis_service.mojom.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
 namespace mantis {
@@ -23,7 +23,6 @@ namespace {
 
 constexpr char kDlcName[] = "ml-dlc-302a455f-5453-43fb-a6a1-d856e6fe6435";
 
-using ::on_device_model::mojom::LoadModelResult;
 using ::testing::Return;
 using MantisAPIGetter = const MantisAPI* (*)();
 
@@ -57,8 +56,8 @@ TEST_F(MantisServiceTest, InitializeUnableToResolveGetMantisAPISymbol) {
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&](LoadModelResult result) {
-        EXPECT_EQ(result, LoadModelResult::kFailedToLoadLibrary);
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
       }));
   run_loop.Run();
@@ -75,8 +74,8 @@ TEST_F(MantisServiceTest, InitializeUnableToGetMantisAPI) {
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&](LoadModelResult result) {
-        EXPECT_EQ(result, LoadModelResult::kFailedToLoadLibrary);
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kFailedToLoadLibrary);
         run_loop.Quit();
       }));
   run_loop.Run();
@@ -93,8 +92,8 @@ TEST_F(MantisServiceTest, InitializeSucceeds) {
   mojo::Remote<mojom::MantisProcessor> processor;
   service_remote_->Initialize(
       mojo::NullRemote(), processor.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&](LoadModelResult result) {
-        EXPECT_EQ(result, LoadModelResult::kSuccess);
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop.Quit();
       }));
   run_loop.Run();
@@ -114,8 +113,8 @@ TEST_F(MantisServiceTest, MultipleClients) {
   mojo::Remote<mojom::MantisProcessor> processor1;
   service_remote_->Initialize(
       mojo::NullRemote(), processor1.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&](LoadModelResult result) {
-        EXPECT_EQ(result, LoadModelResult::kSuccess);
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop_1.Quit();
       }));
   run_loop_1.Run();
@@ -124,8 +123,8 @@ TEST_F(MantisServiceTest, MultipleClients) {
   mojo::Remote<mojom::MantisProcessor> processor2;
   service_remote_->Initialize(
       mojo::NullRemote(), processor2.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&](LoadModelResult result) {
-        EXPECT_EQ(result, LoadModelResult::kSuccess);
+      base::BindLambdaForTesting([&](mojom::InitializeResult result) {
+        EXPECT_EQ(result, mojom::InitializeResult::kSuccess);
         run_loop_2.Quit();
       }));
   run_loop_2.Run();

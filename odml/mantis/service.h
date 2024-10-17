@@ -19,7 +19,6 @@
 #include "odml/mantis/processor.h"
 #include "odml/mojom/mantis_processor.mojom.h"
 #include "odml/mojom/mantis_service.mojom.h"
-#include "odml/mojom/on_device_model_service.mojom.h"
 #include "odml/utils/odml_shim_loader.h"
 
 namespace mantis {
@@ -38,13 +37,12 @@ class MantisService : public mojom::MantisService {
   }
 
   // mojom::MantisService:
-  void Initialize(
-      mojo::PendingRemote<on_device_model::mojom::PlatformModelProgressObserver>
-          progress_observer,
-      mojo::PendingReceiver<mojom::MantisProcessor> processor,
-      InitializeCallback callback);
+  void Initialize(mojo::PendingRemote<mojom::PlatformModelProgressObserver>
+                      progress_observer,
+                  mojo::PendingReceiver<mojom::MantisProcessor> processor,
+                  InitializeCallback callback) override;
 
-  void GetMantisFeatureStatus(GetMantisFeatureStatusCallback callback);
+  void GetMantisFeatureStatus(GetMantisFeatureStatusCallback callback) override;
 
   bool IsProcessorNullForTesting() { return processor_ == nullptr; }
 
@@ -68,8 +66,7 @@ class MantisService : public mojom::MantisService {
       base::expected<base::FilePath, std::string> result);
 
   void OnDlcProgress(
-      std::shared_ptr<
-          mojo::Remote<on_device_model::mojom::PlatformModelProgressObserver>>
+      std::shared_ptr<mojo::Remote<mojom::PlatformModelProgressObserver>>
           progress_observer,
       double progress);
 
