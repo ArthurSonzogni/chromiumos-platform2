@@ -72,8 +72,9 @@ inline bool IsWriteAccessMode(Stream::AccessMode mode) {
 // Make the access mode based on read/write rights requested.
 inline Stream::AccessMode MakeAccessMode(bool read, bool write) {
   CHECK(read || write);  // Either read or write (or both) must be specified.
-  if (read && write)
+  if (read && write) {
     return Stream::AccessMode::READ_WRITE;
+  }
   return write ? Stream::AccessMode::WRITE : Stream::AccessMode::READ;
 }
 

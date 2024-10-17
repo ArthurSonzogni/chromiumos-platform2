@@ -68,8 +68,9 @@ Blob FuzzedProtoGenerator::GenerateMessageOrBlob(int nesting_depth) {
     }
     case 2: {
       // Take a breadcrumb (if there's one).
-      if (byte_breadcrumbs_.empty())
+      if (byte_breadcrumbs_.empty()) {
         return Blob();
+      }
       const int selected_index = provider_.ConsumeIntegralInRange<int>(
           0, byte_breadcrumbs_.size() - 1);
       return byte_breadcrumbs_[selected_index];

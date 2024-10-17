@@ -46,8 +46,9 @@ void MessageLoop::ReleaseFromCurrent() {
 }
 
 MessageLoop::~MessageLoop() {
-  if (lazy_tls_ptr == this)
+  if (lazy_tls_ptr == this) {
     lazy_tls_ptr = nullptr;
+  }
 }
 
 void MessageLoop::Run() {

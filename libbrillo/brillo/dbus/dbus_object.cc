@@ -162,8 +162,10 @@ void DBusInterface::UnexportAndBlock(ExportedObjectManager* object_manager,
   for (const auto& pair : handlers_) {
     std::string method_name = pair.first;
     VLOG(1) << "Unexporting method: " << interface_name_ << "." << method_name;
-    if (!exported_object->UnexportMethodAndBlock(interface_name_, method_name))
+    if (!exported_object->UnexportMethodAndBlock(interface_name_,
+                                                 method_name)) {
       LOG(FATAL) << "Failed unexporting " << method_name << " method";
+    }
   }
 }
 
@@ -250,13 +252,15 @@ DBusObject::DBusObject(
       object_path_(object_path),
       property_handler_setup_callback_(
           std::move(property_handler_setup_callback)) {
-  if (object_manager)
+  if (object_manager) {
     object_manager_ = object_manager->AsWeakPtr();
+  }
 }
 
 DBusObject::~DBusObject() {
-  if (exported_object_)
+  if (exported_object_) {
     exported_object_->Unregister();
+  }
 }
 
 DBusInterface* DBusObject::AddOrGetInterface(

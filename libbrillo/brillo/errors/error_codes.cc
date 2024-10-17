@@ -217,11 +217,13 @@ void AddSystemError(ErrorPtr* error,
                     int errnum) {
   std::string message = base::safe_strerror(errnum);
   std::string code = ErrorCodeFromSystemError(errnum);
-  if (message.empty())
+  if (message.empty()) {
     message = "Unknown error " + std::to_string(errnum);
+  }
 
-  if (code.empty())
+  if (code.empty()) {
     code = "error_" + std::to_string(errnum);
+  }
 
   Error::AddTo(error, location, kDomain, code, message);
 }

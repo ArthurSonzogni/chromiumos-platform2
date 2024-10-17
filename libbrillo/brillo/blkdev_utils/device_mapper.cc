@@ -41,24 +41,29 @@ DevmapperTable DevmapperTable::CreateTableFromSecureBlob(
   // First parameter is start.
   if (!tokenizer.GetNext() ||
       !base::StringToUint64(
-          std::string(tokenizer.token_begin(), tokenizer.token_end()), &start))
+          std::string(tokenizer.token_begin(), tokenizer.token_end()),
+          &start)) {
     return invalid_table;
+  }
 
   // Second parameter is size of the dm device.
   if (!tokenizer.GetNext() ||
       !base::StringToUint64(
-          std::string(tokenizer.token_begin(), tokenizer.token_end()), &size))
+          std::string(tokenizer.token_begin(), tokenizer.token_end()), &size)) {
     return invalid_table;
+  }
 
   // Third parameter is type of dm device.
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return invalid_table;
+  }
 
   type = std::string(tokenizer.token_begin(), tokenizer.token_end());
 
   // The remaining string is the parameters.
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return invalid_table;
+  }
 
   // The remaining part is the parameters passed to the device.
   SecureBlob target = SecureBlob(tokenizer.token_begin(), table.end());
@@ -70,12 +75,14 @@ SecureBlob DevmapperTable::CryptGetKey() {
   SecureBlobTokenizer tokenizer(parameters_.begin(), parameters_.end(), " ");
 
   // First field is the cipher.
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return SecureBlob();
+  }
 
   // The key is stored in the second field.
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return SecureBlob();
+  }
 
   SecureBlob key(tokenizer.token_begin(), tokenizer.token_end());
 
@@ -101,8 +108,9 @@ SecureBlob DevmapperTable::CryptCreateParameters(
       (allow_discard ? " 1 allow_discards" : "")));
 
   SecureBlob parameters;
-  for (auto param_part : parameter_parts)
+  for (auto param_part : parameter_parts) {
     parameters = SecureBlob::Combine(parameters, param_part);
+  }
 
   return parameters;
 }
@@ -120,8 +128,9 @@ DeviceMapper::DeviceMapper(const DevmapperTaskFactory& factory)
 bool DeviceMapper::Setup(const std::string& name, const DevmapperTable& table) {
   auto task = dm_task_factory_.Run(DM_DEVICE_CREATE);
 
-  if (!task->SetName(name))
+  if (!task->SetName(name)) {
     return false;
+  }
 
   if (!task->AddTarget(table.GetStart(), table.GetSize(), table.GetType(),
                        table.GetParameters())) {
@@ -140,8 +149,9 @@ bool DeviceMapper::Setup(const std::string& name, const DevmapperTable& table) {
 bool DeviceMapper::Remove(const std::string& name, bool deferred) {
   auto task = dm_task_factory_.Run(DM_DEVICE_REMOVE);
 
-  if (!task->SetName(name))
+  if (!task->SetName(name)) {
     return false;
+  }
 
   if (deferred && !task->SetDeferredRemove()) {
     LOG(ERROR) << "Remove: SetDeferredRemoval for " << name << " failed.";
@@ -162,8 +172,9 @@ DevmapperTable DeviceMapper::GetTable(const std::string& name) {
   std::string type;
   SecureBlob parameters;
 
-  if (!task->SetName(name))
+  if (!task->SetName(name)) {
     return DevmapperTable(0, 0, "", SecureBlob());
+  }
 
   if (!task->Run()) {
     LOG(ERROR) << "GetTable: Run for " << name << " failed.";
@@ -178,8 +189,9 @@ DevmapperTable DeviceMapper::GetTable(const std::string& name) {
 bool DeviceMapper::WipeTable(const std::string& name) {
   auto size_task = dm_task_factory_.Run(DM_DEVICE_TABLE);
 
-  if (!size_task->SetName(name))
+  if (!size_task->SetName(name)) {
     return false;
+  }
 
   if (!size_task->Run()) {
     LOG(ERROR) << "WipeTable: RunTask " << name << " failed.";
@@ -198,8 +210,9 @@ bool DeviceMapper::WipeTable(const std::string& name) {
     // Setup wipe task.
     auto wipe_task = dm_task_factory_.Run(DM_DEVICE_RELOAD);
 
-    if (!wipe_task->SetName(name))
+    if (!wipe_task->SetName(name)) {
       return false;
+    }
 
     if (!wipe_task->SetReadOnly()) {
       LOG(ERROR) << "WipeTable: SetReadOnly for " << name << " failed.";
@@ -228,8 +241,9 @@ bool DeviceMapper::WipeTable(const std::string& name) {
 DeviceMapperVersion DeviceMapper::GetTargetVersion(const std::string& target) {
   auto version_task = dm_task_factory_.Run(DM_DEVICE_GET_TARGET_VERSION);
 
-  if (!version_task->SetName(target))
+  if (!version_task->SetName(target)) {
     return {0, 0, 0};
+  }
 
   if (!version_task->Run()) {
     LOG(ERROR) << "GetTargetVersion: RunTask " << target << " failed.";
@@ -243,8 +257,9 @@ bool DeviceMapper::Message(const std::string& name,
                            const std::string& message) {
   auto task = dm_task_factory_.Run(DM_DEVICE_TARGET_MSG);
 
-  if (!task->SetName(name))
+  if (!task->SetName(name)) {
     return false;
+  }
 
   if (!task->SetMessage(message)) {
     LOG(ERROR) << "Message: SetMessage for " << name << " failed.";
@@ -262,8 +277,9 @@ bool DeviceMapper::Message(const std::string& name,
 bool DeviceMapper::Suspend(const std::string& name) {
   auto task = dm_task_factory_.Run(DM_DEVICE_SUSPEND);
 
-  if (!task->SetName(name))
+  if (!task->SetName(name)) {
     return false;
+  }
 
   if (!task->Run()) {
     LOG(ERROR) << "Suspend: RunTask " << name << " failed.";
@@ -276,8 +292,9 @@ bool DeviceMapper::Suspend(const std::string& name) {
 bool DeviceMapper::Resume(const std::string& name) {
   auto task = dm_task_factory_.Run(DM_DEVICE_RESUME);
 
-  if (!task->SetName(name))
+  if (!task->SetName(name)) {
     return false;
+  }
 
   if (!task->Run()) {
     LOG(ERROR) << "Resume: RunTask " << name << " failed.";

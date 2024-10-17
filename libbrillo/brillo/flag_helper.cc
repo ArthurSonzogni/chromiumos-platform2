@@ -60,12 +60,13 @@ bool BoolFlag::SetValue(const std::string& value) {
   if (value.empty()) {
     *value_ = true;
   } else {
-    if (!value.compare("true"))
+    if (!value.compare("true")) {
       *value_ = true;
-    else if (!value.compare("false"))
+    } else if (!value.compare("false")) {
       *value_ = false;
-    else
+    } else {
       return false;
+    }
   }
 
   *no_value_ = !*value_;
@@ -180,8 +181,9 @@ FlagHelper::FlagHelper() : command_line_(nullptr) {
 FlagHelper::~FlagHelper() {}
 
 brillo::FlagHelper* FlagHelper::GetInstance() {
-  if (!instance_)
+  if (!instance_) {
     instance_ = new FlagHelper();
+  }
 
   return instance_;
 }
@@ -198,8 +200,9 @@ bool FlagHelper::Init(int argc,
                       std::vector<ParseResultsEntry>* out) {
   brillo::FlagHelper* helper = GetInstance();
   if (!helper->command_line_) {
-    if (!base::CommandLine::InitializedForCurrentProcess())
+    if (!base::CommandLine::InitializedForCurrentProcess()) {
       base::CommandLine::Init(argc, argv);
+    }
     helper->command_line_ = base::CommandLine::ForCurrentProcess();
   }
 
@@ -209,8 +212,9 @@ bool FlagHelper::Init(int argc,
 
   int exit_code = GetInstance()->UpdateFlagValues(out);
 
-  if (exit_code == EX_OK)
+  if (exit_code == EX_OK) {
     return true;
+  }
 
   switch (func_type) {
     case InitFuncType::kExit:
@@ -243,8 +247,9 @@ int FlagHelper::UpdateFlagValues(std::vector<ParseResultsEntry>* out) {
   for (const auto& pair : switch_map) {
     const std::string& key = pair.first;
     // Make sure we allow the standard logging switches (--v and --vmodule).
-    if (key == kV || key == kVModule)
+    if (key == kV || key == kVModule) {
       continue;
+    }
 
     const std::string& value = pair.second;
 

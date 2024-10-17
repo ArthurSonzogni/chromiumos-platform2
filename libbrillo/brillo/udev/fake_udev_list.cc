@@ -22,8 +22,9 @@ const char* NameValuePair::GetName() const {
 }
 
 const char* NameValuePair::GetValue() const {
-  if (!value_.has_value())
+  if (!value_.has_value()) {
     return nullptr;
+  }
 
   return value_.value().c_str();
 }
@@ -31,8 +32,9 @@ const char* NameValuePair::GetValue() const {
 FakeUdevList::FakeUdevList(std::vector<NameValuePair> entries)
     : entries_(std::move(entries)) {
   // Name can't be null, but value can be.
-  for (const auto& entry : entries_)
+  for (const auto& entry : entries_) {
     CHECK(entry.GetName());
+  }
 }
 
 FakeUdevList::~FakeUdevList() = default;
@@ -49,16 +51,18 @@ FakeUdevList::Entry::Entry(const FakeUdevList* list, int index)
 FakeUdevList::Entry::~Entry() = default;
 
 std::unique_ptr<UdevListEntry> FakeUdevList::Entry::GetNext() const {
-  if (index_ + 1 >= list_->entries_.size())
+  if (index_ + 1 >= list_->entries_.size()) {
     return nullptr;
+  }
   return std::make_unique<Entry>(list_, index_ + 1);
 }
 
 std::unique_ptr<UdevListEntry> FakeUdevList::Entry::GetByName(
     const char* name) const {
   for (int i = index_; i < list_->entries_.size(); i++) {
-    if (!strcmp(list_->entries_[i].GetName(), name))
+    if (!strcmp(list_->entries_[i].GetName(), name)) {
       return std::make_unique<Entry>(list_, i);
+    }
   }
   return nullptr;
 }

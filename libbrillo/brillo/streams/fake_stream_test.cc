@@ -58,8 +58,10 @@ class FakeStreamTest : public testing::Test {
   // in case an error occurred.
   int WriteString(const std::string& data) {
     size_t written = 0;
-    if (!stream_->WriteNonBlocking(data.data(), data.size(), &written, nullptr))
+    if (!stream_->WriteNonBlocking(data.data(), data.size(), &written,
+                                   nullptr)) {
       return -1;
+    }
     return static_cast<int>(written);
   }
 

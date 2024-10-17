@@ -68,8 +68,9 @@ void ExportedObjectManager::ReleaseInterface(
       << "Attempted to remove interface " << interface_name << " from "
       << path.value() << ", but this interface was never registered.";
   interfaces_for_path.erase(interface_name);
-  if (interfaces_for_path.empty())
+  if (interfaces_for_path.empty()) {
     registered_objects_.erase(path);
+  }
 
   // We're sending signals that look like:
   //   org.freedesktop.DBus.ObjectManager.InterfacesRemoved (

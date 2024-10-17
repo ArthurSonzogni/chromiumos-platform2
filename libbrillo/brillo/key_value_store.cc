@@ -43,8 +43,9 @@ KeyValueStore& KeyValueStore::operator=(KeyValueStore&&) = default;
 
 bool KeyValueStore::Load(const base::FilePath& path) {
   string file_data;
-  if (!base::ReadFileToString(path, &file_data))
+  if (!base::ReadFileToString(path, &file_data)) {
     return false;
+  }
   return LoadFromString(file_data);
 }
 
@@ -55,24 +56,28 @@ bool KeyValueStore::LoadFromString(const std::string& data) {
   for (auto it = lines.begin(); it != lines.end(); ++it) {
     std::string line;
     base::TrimWhitespaceASCII(*it, base::TRIM_LEADING, &line);
-    if (line.empty() || line.front() == '#')
+    if (line.empty() || line.front() == '#') {
       continue;
+    }
 
     std::string key;
     std::string value;
-    if (!string_utils::SplitAtFirst(line, "=", &key, &value, false))
+    if (!string_utils::SplitAtFirst(line, "=", &key, &value, false)) {
       return false;
+    }
 
     base::TrimWhitespaceASCII(key, base::TRIM_TRAILING, &key);
-    if (key.empty())
+    if (key.empty()) {
       return false;
+    }
 
     // Append additional lines to the value as long as we see trailing
     // backslashes.
     while (!value.empty() && value.back() == '\\') {
       ++it;
-      if (it == lines.end() || it->empty())
+      if (it == lines.end() || it->empty()) {
         return false;
+      }
       value.pop_back();
       value += *it;
     }
@@ -88,8 +93,9 @@ bool KeyValueStore::Save(const base::FilePath& path) const {
 
 string KeyValueStore::SaveToString() const {
   string data;
-  for (const auto& key_value : store_)
+  for (const auto& key_value : store_) {
     data += key_value.first + "=" + key_value.second + "\n";
+  }
   return data;
 }
 
@@ -99,8 +105,9 @@ void KeyValueStore::Clear() {
 
 bool KeyValueStore::GetString(const string& key, string* value) const {
   const auto key_value = store_.find(TrimKey(key));
-  if (key_value == store_.end())
+  if (key_value == store_.end()) {
     return false;
+  }
   *value = key_value->second;
   return true;
 }
@@ -111,8 +118,9 @@ void KeyValueStore::SetString(const string& key, const string& value) {
 
 bool KeyValueStore::GetBoolean(const string& key, bool* value) const {
   string string_value;
-  if (!GetString(key, &string_value))
+  if (!GetString(key, &string_value)) {
     return false;
+  }
 
   if (string_value == kTrueValue) {
     *value = true;

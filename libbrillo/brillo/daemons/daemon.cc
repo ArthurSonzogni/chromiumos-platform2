@@ -24,8 +24,9 @@ Daemon::~Daemon() {}
 
 int Daemon::Run() {
   int exit_code = OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   message_loop_.PostTask(
       base::BindOnce(&Daemon::OnEventLoopStartedTask, base::Unretained(this)));
@@ -114,8 +115,9 @@ bool Daemon::Restart(const signalfd_siginfo& /* info */) {
 
 void Daemon::OnEventLoopStartedTask() {
   int exit_code = OnEventLoopStarted();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     QuitWithExitCode(exit_code);
+  }
 }
 
 void UpdateLogSymlinks(const base::FilePath& latest_log_symlink,

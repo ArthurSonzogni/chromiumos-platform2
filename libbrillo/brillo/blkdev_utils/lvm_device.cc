@@ -101,22 +101,25 @@ PhysicalVolume::PhysicalVolume(const base::FilePath& device_path,
     : device_path_(device_path), lvm_(lvm) {}
 
 bool PhysicalVolume::Check() {
-  if (device_path_.empty() || !lvm_)
+  if (device_path_.empty() || !lvm_) {
     return false;
+  }
 
   return lvm_->RunCommand({"pvck", device_path_.value()});
 }
 
 bool PhysicalVolume::Repair() {
-  if (device_path_.empty() || !lvm_)
+  if (device_path_.empty() || !lvm_) {
     return false;
+  }
 
   return lvm_->RunCommand({"pvck", "--yes", device_path_.value()});
 }
 
 bool PhysicalVolume::Remove() {
-  if (device_path_.empty() || !lvm_)
+  if (device_path_.empty() || !lvm_) {
     return false;
+  }
 
   bool ret = lvm_->RunCommand({"pvremove", "-ff", device_path_.value()});
   device_path_ = base::FilePath();
@@ -128,49 +131,57 @@ VolumeGroup::VolumeGroup(const std::string& volume_group_name,
     : volume_group_name_(volume_group_name), lvm_(lvm) {}
 
 bool VolumeGroup::Check() {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return false;
+  }
 
   return lvm_->RunCommand({"vgck", GetPath().value()});
 }
 
 bool VolumeGroup::Repair() {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunCommand({"vgck", "--yes", GetPath().value()});
 }
 
 base::FilePath VolumeGroup::GetPath() const {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return base::FilePath();
+  }
   return base::FilePath("/dev").Append(volume_group_name_);
 }
 
 bool VolumeGroup::Activate() {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunCommand({"vgchange", "-ay", volume_group_name_});
 }
 
 bool VolumeGroup::Deactivate() {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunCommand({"vgchange", "-an", volume_group_name_});
 }
 
 bool VolumeGroup::Remove() {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return false;
+  }
   bool ret = lvm_->RunCommand({"vgremove", "-f", volume_group_name_});
   volume_group_name_ = "";
   return ret;
 }
 
 bool VolumeGroup::Rename(const std::string& new_name) {
-  if (volume_group_name_.empty() || new_name.empty() || !lvm_)
+  if (volume_group_name_.empty() || new_name.empty() || !lvm_) {
     return false;
-  if (!lvm_->RunCommand({"vgrename", volume_group_name_, new_name}))
+  }
+  if (!lvm_->RunCommand({"vgrename", volume_group_name_, new_name})) {
     return false;
+  }
   volume_group_name_ = new_name;
   return true;
 }
@@ -183,16 +194,18 @@ LogicalVolume::LogicalVolume(const std::string& logical_volume_name,
       lvm_(lvm) {}
 
 base::FilePath LogicalVolume::GetPath() {
-  if (logical_volume_name_.empty() || !lvm_)
+  if (logical_volume_name_.empty() || !lvm_) {
     return base::FilePath();
+  }
   return base::FilePath("/dev")
       .Append(volume_group_name_)
       .Append(logical_volume_name_);
 }
 
 std::optional<int64_t> LogicalVolume::GetSize() {
-  if (logical_volume_name_.empty() || !lvm_)
+  if (logical_volume_name_.empty() || !lvm_) {
     return std::nullopt;
+  }
 
   std::string output;
   if (!lvm_->RunProcess({"/sbin/lvs", "-o", "lv_size", "--reportformat", "json",
@@ -204,8 +217,9 @@ std::optional<int64_t> LogicalVolume::GetSize() {
 }
 
 std::optional<int64_t> LogicalVolume::GetBlockSize() {
-  if (logical_volume_name_.empty() || !lvm_)
+  if (logical_volume_name_.empty() || !lvm_) {
     return std::nullopt;
+  }
 
   std::string output;
   if (!lvm_->RunProcess(
@@ -218,20 +232,23 @@ std::optional<int64_t> LogicalVolume::GetBlockSize() {
 }
 
 bool LogicalVolume::Activate() {
-  if (logical_volume_name_.empty() || !lvm_)
+  if (logical_volume_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunCommand({"lvchange", "-ay", GetName()});
 }
 
 bool LogicalVolume::Deactivate() {
-  if (logical_volume_name_.empty() || !lvm_)
+  if (logical_volume_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunCommand({"lvchange", "-an", GetName()});
 }
 
 bool LogicalVolume::Remove() {
-  if (volume_group_name_.empty() || !lvm_)
+  if (volume_group_name_.empty() || !lvm_) {
     return false;
+  }
   bool ret = lvm_->RunCommand({"lvremove", "--force", GetName()});
   logical_volume_name_ = "";
   volume_group_name_ = "";
@@ -239,15 +256,17 @@ bool LogicalVolume::Remove() {
 }
 
 bool LogicalVolume::Resize(int64_t size) {
-  if (logical_volume_name_.empty() || !lvm_)
+  if (logical_volume_name_.empty() || !lvm_) {
     return false;
+  }
   const auto& size_str = base::StringPrintf("-L%" PRId64 "m", size);
   return lvm_->RunCommand({"lvresize", "--force", size_str, GetName()});
 }
 
 bool LogicalVolume::Rename(const std::string& new_name) {
-  if (volume_group_name_.empty() || new_name.empty() || !lvm_)
+  if (volume_group_name_.empty() || new_name.empty() || !lvm_) {
     return false;
+  }
   bool ret = lvm_->RunCommand(
       {"lvrename", volume_group_name_, logical_volume_name_, new_name});
   if (ret) {
@@ -286,21 +305,24 @@ Thinpool::Thinpool(const std::string& thinpool_name,
       lvm_(lvm) {}
 
 bool Thinpool::Check() {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
 
   return lvm_->RunProcess({"thin_check", GetName()});
 }
 
 bool Thinpool::Repair() {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunProcess({"lvconvert", "--repair", GetName()});
 }
 
 bool Thinpool::Activate(bool check) {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
 
   std::vector<std::string> command = {"lvchange", "-ay"};
 
@@ -314,14 +336,16 @@ bool Thinpool::Activate(bool check) {
 }
 
 bool Thinpool::Deactivate() {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
   return lvm_->RunCommand({"lvchange", "-an", GetName()});
 }
 
 bool Thinpool::Remove() {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
 
   bool ret = lvm_->RunCommand({"lvremove", "--force", GetName()});
   volume_group_name_ = "";
@@ -330,8 +354,9 @@ bool Thinpool::Remove() {
 }
 
 bool Thinpool::GetTotalSpace(int64_t* size) {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
 
   const std::string target =
       volume_group_name_ + "-" + thinpool_name_ + "-tpool";
@@ -362,8 +387,9 @@ bool Thinpool::GetTotalSpace(int64_t* size) {
 }
 
 bool Thinpool::GetFreeSpace(int64_t* size) {
-  if (thinpool_name_.empty() || !lvm_)
+  if (thinpool_name_.empty() || !lvm_) {
     return false;
+  }
 
   const std::string target =
       volume_group_name_ + "-" + thinpool_name_ + "-tpool";
@@ -448,8 +474,9 @@ bool LvmCommandRunner::RunCommand(const std::vector<std::string>& cmd) {
 bool LvmCommandRunner::RunProcess(const std::vector<std::string>& cmd,
                                   std::string* output) {
   brillo::ProcessImpl lvm_process;
-  for (auto arg : cmd)
+  for (auto arg : cmd) {
     lvm_process.AddArg(arg);
+  }
   lvm_process.SetCloseUnusedFileDescriptors(true);
 
   if (output) {

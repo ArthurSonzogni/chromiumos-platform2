@@ -103,8 +103,9 @@ TEST_F(ProcessReaperTest, ReapedChildrenMatchCallbacks) {
               EXPECT_EQ(CLD_EXITED, info.si_code);
               EXPECT_EQ(exit_value, info.si_status);
               (*running_children)--;
-              if (*running_children == 0)
+              if (*running_children == 0) {
                 loop->BreakLoop();
+              }
             },
             &brillo_loop_, exit_value, &running_children)));
   }

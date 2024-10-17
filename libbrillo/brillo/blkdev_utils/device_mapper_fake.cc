@@ -31,24 +31,28 @@ SecureBlob SetKeysParameter(const DmTarget& dmt,
                                 " ");
 
   // First field is the cipher.
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return SecureBlob();
+  }
   cipher = std::string(tokenizer.token_begin(), tokenizer.token_end());
 
   // The key is stored in the second field, skip this
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return SecureBlob();
+  }
 
   // The next field should be iv_offset.
   if (!tokenizer.GetNext() ||
       !base::StringToInt(
           std::string(tokenizer.token_begin(), tokenizer.token_end()),
-          &iv_offset))
+          &iv_offset)) {
     return SecureBlob();
+  }
 
   // The next field is const base::FilePath& device
-  if (!tokenizer.GetNext())
+  if (!tokenizer.GetNext()) {
     return SecureBlob();
+  }
   device = base::FilePath(
       std::string(tokenizer.token_begin(), tokenizer.token_end()));
 
@@ -56,15 +60,17 @@ SecureBlob SetKeysParameter(const DmTarget& dmt,
   if (!tokenizer.GetNext() ||
       !base::StringToInt(
           std::string(tokenizer.token_begin(), tokenizer.token_end()),
-          &device_offset))
+          &device_offset)) {
     return SecureBlob();
+  }
 
   // The next field is bool allow_discard
   if (!tokenizer.GetNext() ||
       !base::StringToUint64(
           std::string(tokenizer.token_begin(), tokenizer.token_end()),
-          &allow_discard))
+          &allow_discard)) {
     return SecureBlob();
+  }
 
   // Construct one SecureBlob from the parameters and return it.
   return DevmapperTable::CryptCreateParameters(
@@ -82,20 +88,23 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
   switch (type) {
     case DM_DEVICE_CREATE:
       CHECK_EQ(udev_sync, true);
-      if (dm_target_map_.find(dev_name) != dm_target_map_.end())
+      if (dm_target_map_.find(dev_name) != dm_target_map_.end()) {
         return false;
+      }
       dm_target_map_.insert(std::make_pair(dev_name, task->targets));
       break;
     case DM_DEVICE_REMOVE: {
       CHECK_EQ(udev_sync, true);
-      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end()) {
         return false;
+      }
       // Map behaviour of real system - if the target isn't valid, most likely
       // can't be removed. Fetch the DmTarget from the dm_target_map and check
       // the type.
       DmTarget dmt = dm_target_map_.find(dev_name)->second.front();
-      if (dmt.type == "error")
+      if (dmt.type == "error") {
         return false;
+      }
       if (!task->deferred) {
         dm_target_map_.erase(dev_name);
       }
@@ -103,14 +112,16 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
     }
     case DM_DEVICE_TABLE:
       CHECK_EQ(udev_sync, false);
-      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end()) {
         return false;
+      }
       task->targets = dm_target_map_[dev_name];
       break;
     case DM_DEVICE_RELOAD:
       CHECK_EQ(udev_sync, false);
-      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end()) {
         return false;
+      }
       dm_target_map_.erase(dev_name);
       dm_target_map_.insert(std::make_pair(dev_name, task->targets));
       break;
@@ -120,8 +131,9 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
       // dmsetup message <device> 0 key wipe
       // dmsetup message <device> 0 key set <key_reference>
 
-      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end()) {
         return false;
+      }
 
       if (task->message.starts_with("key wipe")) {
         // Fetch the DmTarget from the dm_target_map and wipe the key from
@@ -153,8 +165,9 @@ bool StubDmRunTask(DmTask* task, bool udev_sync) {
     case DM_DEVICE_SUSPEND:
     case DM_DEVICE_RESUME:
       CHECK_EQ(udev_sync, false);
-      if (dm_target_map_.find(dev_name) == dm_target_map_.end())
+      if (dm_target_map_.find(dev_name) == dm_target_map_.end()) {
         return false;
+      }
       break;
     default:
       return false;
@@ -195,8 +208,9 @@ bool FakeDevmapperTask::GetNextTarget(uint64_t* start,
                                       uint64_t* sectors,
                                       std::string* type,
                                       SecureBlob* parameters) {
-  if (task_->targets.empty())
+  if (task_->targets.empty()) {
     return false;
+  }
 
   DmTarget dmt = task_->targets[0];
   *start = dmt.start;
@@ -214,8 +228,9 @@ bool FakeDevmapperTask::Run(bool udev_sync) {
 
 bool FakeDevmapperTask::SetDeferredRemove() {
   // Make sure that deferred remove is only set for remove tasks.
-  if (task_->type != DM_DEVICE_REMOVE)
+  if (task_->type != DM_DEVICE_REMOVE) {
     return false;
+  }
 
   task_->deferred = true;
   return true;
@@ -240,8 +255,9 @@ bool FakeDevmapperTask::NoOpenCount() {
 
 bool FakeDevmapperTask::SetMessage(const std::string& msg) {
   // Make sure that message is only set for message tasks.
-  if (task_->type != DM_DEVICE_TARGET_MSG)
+  if (task_->type != DM_DEVICE_TARGET_MSG) {
     return false;
+  }
 
   task_->message = std::string(msg);
   return true;

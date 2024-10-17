@@ -32,8 +32,9 @@ UdevMonitor::~UdevMonitor() {
 
 bool UdevMonitor::EnableReceiving() {
   int result = udev_monitor_enable_receiving(monitor_);
-  if (result == 0)
+  if (result == 0) {
     return true;
+  }
 
   VLOG(2) << StringPrintf("udev_monitor_enable_receiving(%p) returned %d.",
                           monitor_, result);
@@ -42,8 +43,9 @@ bool UdevMonitor::EnableReceiving() {
 
 int UdevMonitor::GetFileDescriptor() const {
   int file_descriptor = udev_monitor_get_fd(monitor_);
-  if (file_descriptor >= 0)
+  if (file_descriptor >= 0) {
     return file_descriptor;
+  }
 
   VLOG(2) << StringPrintf("udev_monitor_get_fd(%p) returned %d.", monitor_,
                           file_descriptor);
@@ -71,8 +73,9 @@ bool UdevMonitor::FilterAddMatchSubsystemDeviceType(const char* subsystem,
                                                     const char* device_type) {
   int result = udev_monitor_filter_add_match_subsystem_devtype(
       monitor_, subsystem, device_type);
-  if (result == 0)
+  if (result == 0) {
     return true;
+  }
 
   VLOG(2) << StringPrintf(
       "udev_monitor_filter_add_match_subsystem_devtype (%p, \"%s\", \"%s\") "
@@ -83,8 +86,9 @@ bool UdevMonitor::FilterAddMatchSubsystemDeviceType(const char* subsystem,
 
 bool UdevMonitor::FilterAddMatchTag(const char* tag) {
   int result = udev_monitor_filter_add_match_tag(monitor_, tag);
-  if (result == 0)
+  if (result == 0) {
     return true;
+  }
 
   VLOG(2) << StringPrintf(
       "udev_monitor_filter_add_tag (%p, \"%s\") returned %d.", monitor_, tag,
@@ -94,8 +98,9 @@ bool UdevMonitor::FilterAddMatchTag(const char* tag) {
 
 bool UdevMonitor::FilterUpdate() {
   int result = udev_monitor_filter_update(monitor_);
-  if (result == 0)
+  if (result == 0) {
     return true;
+  }
 
   VLOG(2) << StringPrintf("udev_monitor_filter_update(%p) returned %d.",
                           monitor_, result);
@@ -104,8 +109,9 @@ bool UdevMonitor::FilterUpdate() {
 
 bool UdevMonitor::FilterRemove() {
   int result = udev_monitor_filter_remove(monitor_);
-  if (result == 0)
+  if (result == 0) {
     return true;
+  }
 
   VLOG(2) << StringPrintf("udev_monitor_filter_remove(%p) returned %d.",
                           monitor_, result);

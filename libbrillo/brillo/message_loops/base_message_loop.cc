@@ -90,8 +90,9 @@ MessageLoop::TaskId BaseMessageLoop::PostDelayedTask(
       delay);
   DVLOG_LOC(from_here, 1) << "Scheduling delayed task_id " << task_id
                           << " to run in " << delay << ".";
-  if (!base_scheduled)
+  if (!base_scheduled) {
     return MessageLoop::kTaskIdNull;
+  }
 
   delayed_tasks_.emplace(task_id,
                          DelayedTask{from_here, task_id, std::move(task)});
@@ -99,18 +100,21 @@ MessageLoop::TaskId BaseMessageLoop::PostDelayedTask(
 }
 
 bool BaseMessageLoop::CancelTask(TaskId task_id) {
-  if (task_id == kTaskIdNull)
+  if (task_id == kTaskIdNull) {
     return false;
+  }
   auto delayed_task_it = delayed_tasks_.find(task_id);
-  if (delayed_task_it == delayed_tasks_.end())
+  if (delayed_task_it == delayed_tasks_.end()) {
     return false;
+  }
 
   // A DelayedTask was found for this task_id at this point.
 
   // Check if the callback was already canceled but we have the entry in
   // delayed_tasks_ since it didn't fire yet in the message loop.
-  if (delayed_task_it->second.closure.is_null())
+  if (delayed_task_it->second.closure.is_null()) {
     return false;
+  }
 
   DVLOG_LOC(delayed_task_it->second.location, 1)
       << "Removing task_id " << task_id << " scheduled from this location.";
@@ -128,14 +132,16 @@ bool BaseMessageLoop::RunOnce(bool may_block) {
   // Uses the base::SingleThreadTaskExecutor implicitly.
   base::RunLoop run_loop;
   base_run_loop_ = &run_loop;
-  if (!may_block)
+  if (!may_block) {
     run_loop.RunUntilIdle();
-  else
+  } else {
     run_loop.Run();
+  }
   base_run_loop_ = nullptr;
   // If the flag was reset to false, it means a closure was run.
-  if (!run_once_)
+  if (!run_once_) {
     return true;
+  }
 
   run_once_ = false;
   return false;
@@ -158,8 +164,9 @@ void BaseMessageLoop::BreakLoop() {
 }
 
 base::RepeatingClosure BaseMessageLoop::QuitClosure() const {
-  if (base_run_loop_ == nullptr)
+  if (base_run_loop_ == nullptr) {
     return base::DoNothing();
+  }
   return base_run_loop_->QuitClosure();
 }
 
@@ -200,26 +207,31 @@ int BaseMessageLoop::ParseBinderMinor(const std::string& file_contents) {
   std::vector<std::string> lines = base::SplitString(
       file_contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const std::string& line : lines) {
-    if (line.empty())
+    if (line.empty()) {
       continue;
+    }
     std::string number;
     std::string name;
-    if (!string_utils::SplitAtFirst(line, " ", &number, &name, false))
+    if (!string_utils::SplitAtFirst(line, " ", &number, &name, false)) {
       continue;
+    }
 
-    if (name == kBinderDriverName && base::StringToInt(number, &result))
+    if (name == kBinderDriverName && base::StringToInt(number, &result)) {
       break;
+    }
   }
   return result;
 }
 
 unsigned int BaseMessageLoop::GetBinderMinor() {
-  if (binder_minor_ != kUninitializedMinor)
+  if (binder_minor_ != kUninitializedMinor) {
     return binder_minor_;
+  }
 
   std::string proc_misc;
-  if (!base::ReadFileToString(base::FilePath(kMiscMinorPath), &proc_misc))
+  if (!base::ReadFileToString(base::FilePath(kMiscMinorPath), &proc_misc)) {
     return binder_minor_;
+  }
   binder_minor_ = ParseBinderMinor(proc_misc);
   return binder_minor_;
 }

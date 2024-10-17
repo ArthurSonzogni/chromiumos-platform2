@@ -18,11 +18,13 @@ void MessageLoopRunUntil(MessageLoop* loop,
       base::BindOnce([](bool* timeout_called) { *timeout_called = true; },
                      &timeout_called),
       timeout);
-  while (!timeout_called && (terminate.is_null() || !terminate.Run()))
+  while (!timeout_called && (terminate.is_null() || !terminate.Run())) {
     loop->RunOnce(true);
+  }
 
-  if (!timeout_called)
+  if (!timeout_called) {
     loop->CancelTask(task_id);
+  }
 }
 
 int MessageLoopRunMaxIterations(MessageLoop* loop, int iterations) {

@@ -27,8 +27,9 @@ namespace brillo {
 namespace http {
 
 MATCHER_P(ContainsStringData, str, "") {
-  if (arg->GetSize() != str.size())
+  if (arg->GetSize() != str.size()) {
     return false;
+  }
 
   std::string data;
   char buf[100];
@@ -178,18 +179,18 @@ TEST_F(HttpRequestTest, GetResponse) {
       },
       connection_.get(), resp_data);
 
-  auto finish_request_async =
-      [this, &read_data](SuccessCallback success_callback) {
-        std::unique_ptr<MockStream> mock_stream{new MockStream};
-        EXPECT_CALL(*mock_stream, ReadBlocking(_, _, _, _))
-            .WillOnce(Invoke(read_data))
-            .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
+  auto finish_request_async = [this,
+                               &read_data](SuccessCallback success_callback) {
+    std::unique_ptr<MockStream> mock_stream{new MockStream};
+    EXPECT_CALL(*mock_stream, ReadBlocking(_, _, _, _))
+        .WillOnce(Invoke(read_data))
+        .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
 
-        EXPECT_CALL(*connection_, MockExtractDataStream(_))
-            .WillOnce(Return(mock_stream.release()));
-        std::unique_ptr<Response> resp{new Response{connection_}};
-        std::move(success_callback).Run(23, std::move(resp));
-      };
+    EXPECT_CALL(*connection_, MockExtractDataStream(_))
+        .WillOnce(Return(mock_stream.release()));
+    std::unique_ptr<Response> resp{new Response{connection_}};
+    std::move(success_callback).Run(23, std::move(resp));
+  };
 
   EXPECT_CALL(*transport_, CreateConnection("http://foo.bar",
                                             request_type::kGet, _, "", "", _))

@@ -31,8 +31,9 @@ void BackoffEntry::InformOfRequest(bool succeeded) {
     // successes interleaved between lots of failures.  Note that in
     // the normal case, the calculated release time (in the next
     // statement) will be in the past once the method returns.
-    if (failure_count_ > 0)
+    if (failure_count_ > 0) {
       --failure_count_;
+    }
 
     // The reason why we are not just cutting the release time to
     // ImplGetTimeNow() is on the one hand, it would unset a release
@@ -44,8 +45,9 @@ void BackoffEntry::InformOfRequest(bool succeeded) {
     // requests will then need to wait the delay caused by the 2
     // failures.
     base::TimeDelta delay;
-    if (policy_->always_use_initial_delay)
+    if (policy_->always_use_initial_delay) {
       delay = base::Milliseconds(policy_->initial_delay_ms);
+    }
     exponential_backoff_release_time_ =
         std::max(ImplGetTimeNow() + delay, exponential_backoff_release_time_);
   }
@@ -57,8 +59,9 @@ bool BackoffEntry::ShouldRejectRequest() const {
 
 base::TimeDelta BackoffEntry::GetTimeUntilRelease() const {
   base::TimeTicks now = ImplGetTimeNow();
-  if (exponential_backoff_release_time_ <= now)
+  if (exponential_backoff_release_time_ <= now) {
     return base::TimeDelta();
+  }
   return exponential_backoff_release_time_ - now;
 }
 
@@ -71,8 +74,9 @@ void BackoffEntry::SetCustomReleaseTime(const base::TimeTicks& release_time) {
 }
 
 bool BackoffEntry::CanDiscard() const {
-  if (policy_->entry_lifetime_ms == -1)
+  if (policy_->entry_lifetime_ms == -1) {
     return false;
+  }
 
   base::TimeTicks now = ImplGetTimeNow();
 
@@ -80,8 +84,9 @@ bool BackoffEntry::CanDiscard() const {
       (now - exponential_backoff_release_time_).InMilliseconds();
 
   // Release time is further than now, we are managing it.
-  if (unused_since_ms < 0)
+  if (unused_since_ms < 0) {
     return false;
+  }
 
   if (failure_count_ > 0) {
     // Need to keep track of failures until maximum back-off period
@@ -116,8 +121,9 @@ base::TimeTicks BackoffEntry::CalculateReleaseTime() const {
 
   // If always_use_initial_delay is true, it's equivalent to
   // the effective_failure_count always being one greater than when it's false.
-  if (policy_->always_use_initial_delay)
+  if (policy_->always_use_initial_delay) {
     ++effective_failure_count;
+  }
 
   if (effective_failure_count == 0) {
     // Never reduce previously set release horizon, e.g. due to Retry-After

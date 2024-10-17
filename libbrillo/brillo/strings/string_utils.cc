@@ -19,19 +19,23 @@ std::vector<std::string> Split(const std::string& str,
                                bool trim_whitespaces,
                                bool purge_empty_strings) {
   std::vector<std::string> tokens;
-  if (str.empty())
+  if (str.empty()) {
     return tokens;
+  }
 
   for (std::string::size_type i = 0;;) {
     const std::string::size_type pos =
         delimiter.empty() ? (i + 1) : str.find(delimiter, i);
     std::string tmp_str{str.substr(i, pos - i)};
-    if (trim_whitespaces)
+    if (trim_whitespaces) {
       base::TrimWhitespaceASCII(tmp_str, base::TRIM_ALL, &tmp_str);
-    if (!tmp_str.empty() || !purge_empty_strings)
+    }
+    if (!tmp_str.empty() || !purge_empty_strings) {
       tokens.emplace_back(std::move(tmp_str));
-    if (pos >= str.size())
+    }
+    if (pos >= str.size()) {
       break;
+    }
     i = pos + delimiter.size();
   }
   return tokens;

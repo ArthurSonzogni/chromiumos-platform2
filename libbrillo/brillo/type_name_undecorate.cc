@@ -41,11 +41,13 @@ std::string GetUndecoratedTypeNameForTag(const char* type_tag) {
   // So we just need to extract the type name between '[T = ' and ']'.
   const char* token = " = ";
   const char* pos = std::strstr(type_tag, token);
-  if (!pos)
+  if (!pos) {
     return type_tag;
+  }
   std::string name = pos + std::strlen(token);
-  if (!name.empty() && name.back() == ']')
+  if (!name.empty() && name.back() == ']') {
     name.pop_back();
+  }
   return name;
 #endif
 }

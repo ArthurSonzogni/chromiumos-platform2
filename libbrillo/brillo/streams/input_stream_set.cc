@@ -46,8 +46,9 @@ StreamPtr InputStreamSet::Create(std::vector<Stream*> source_streams,
   // seekable and the bytes already read are essentially "lost" as far as this
   // stream is concerned.
   uint64_t initial_stream_size = 0;
-  for (const Stream* stream : source_streams)
+  for (const Stream* stream : source_streams) {
     initial_stream_size += stream->GetRemainingSize();
+  }
 
   stream.reset(new InputStreamSet{std::move(source_streams),
                                   std::move(owned_source_streams),
@@ -64,8 +65,9 @@ StreamPtr InputStreamSet::Create(std::vector<StreamPtr> owned_source_streams,
                                  ErrorPtr* error) {
   std::vector<Stream*> source_streams;
   source_streams.reserve(owned_source_streams.size());
-  for (const StreamPtr& stream : owned_source_streams)
+  for (const StreamPtr& stream : owned_source_streams) {
     source_streams.push_back(stream.get());
+  }
   return Create(std::move(source_streams), std::move(owned_source_streams),
                 error);
 }
@@ -95,8 +97,9 @@ bool InputStreamSet::SetSizeBlocking(uint64_t /* size */, ErrorPtr* error) {
 
 uint64_t InputStreamSet::GetRemainingSize() const {
   uint64_t size = 0;
-  for (const Stream* stream : source_streams_)
+  for (const Stream* stream : source_streams_) {
     size += stream->GetRemainingSize();
+  }
   return size;
 }
 
@@ -112,26 +115,31 @@ bool InputStreamSet::ReadNonBlocking(void* buffer,
                                      size_t* size_read,
                                      bool* end_of_stream,
                                      ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   while (!source_streams_.empty()) {
     Stream* stream = source_streams_.front();
     bool eos = false;
-    if (!stream->ReadNonBlocking(buffer, size_to_read, size_read, &eos, error))
+    if (!stream->ReadNonBlocking(buffer, size_to_read, size_read, &eos,
+                                 error)) {
       return false;
+    }
 
     if (*size_read > 0 || !eos) {
-      if (end_of_stream)
+      if (end_of_stream) {
         *end_of_stream = false;
+      }
       return true;
     }
 
     source_streams_.erase(source_streams_.begin());
   }
   *size_read = 0;
-  if (end_of_stream)
+  if (end_of_stream) {
     *end_of_stream = true;
+  }
   return true;
 }
 
@@ -146,8 +154,9 @@ bool InputStreamSet::CloseBlocking(ErrorPtr* error) {
   bool success = true;
   // We want to close only the owned streams.
   for (StreamPtr& stream_ptr : owned_source_streams_) {
-    if (!stream_ptr->CloseBlocking(error))
+    if (!stream_ptr->CloseBlocking(error)) {
       success = false;  // Keep going for other streams...
+    }
   }
   owned_source_streams_.clear();
   source_streams_.clear();
@@ -158,8 +167,9 @@ bool InputStreamSet::CloseBlocking(ErrorPtr* error) {
 
 bool InputStreamSet::WaitForDataRead(base::OnceClosure callback,
                                      ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   if (!source_streams_.empty()) {
     Stream* stream = source_streams_.front();
@@ -172,8 +182,9 @@ bool InputStreamSet::WaitForDataRead(base::OnceClosure callback,
 
 bool InputStreamSet::WaitForDataReadBlocking(base::TimeDelta timeout,
                                              ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   if (!source_streams_.empty()) {
     Stream* stream = source_streams_.front();
@@ -185,16 +196,18 @@ bool InputStreamSet::WaitForDataReadBlocking(base::TimeDelta timeout,
 
 bool InputStreamSet::WaitForDataWrite(base::OnceClosure /* callback */,
                                       ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }
 
 bool InputStreamSet::WaitForDataWriteBlocking(base::TimeDelta /* timeout */,
                                               ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 }

@@ -32,8 +32,9 @@ PolicyProvider::PolicyProvider(std::unique_ptr<DevicePolicy> device_policy)
 PolicyProvider::~PolicyProvider() {}
 
 bool PolicyProvider::Reload() {
-  if (!device_policy_)
+  if (!device_policy_) {
     return false;
+  }
   device_policy_is_loaded_ =
       device_policy_->LoadPolicy(/*delete_invalid_files=*/false);
   if (!device_policy_is_loaded_) {
@@ -53,8 +54,9 @@ const DevicePolicy& PolicyProvider::GetDevicePolicy() const {
 }
 
 bool PolicyProvider::IsConsumerDevice() const {
-  if (!install_attributes_reader_->IsLocked())
+  if (!install_attributes_reader_->IsLocked()) {
     return false;
+  }
 
   const std::string& device_mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
@@ -63,8 +65,9 @@ bool PolicyProvider::IsConsumerDevice() const {
 }
 
 bool PolicyProvider::IsEnterpriseEnrolledDevice() const {
-  if (!install_attributes_reader_->IsLocked())
+  if (!install_attributes_reader_->IsLocked()) {
     return false;
+  }
 
   const std::string& device_mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);

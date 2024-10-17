@@ -73,8 +73,9 @@ VariantDictionary ExportedPropertySet::GetInterfaceProperties(
   VariantDictionary properties;
   auto property_map_itr = properties_.find(interface_name);
   if (property_map_itr != properties_.end()) {
-    for (const auto& kv : property_map_itr->second)
+    for (const auto& kv : property_map_itr->second) {
       properties.insert(std::make_pair(kv.first, kv.second->GetValue()));
+    }
   }
   return properties;
 }
@@ -141,8 +142,9 @@ void ExportedPropertySet::HandlePropertyUpdated(
   // This could happen when a property value is changed (which triggers
   // the notification) before D-Bus interface is completely exported/claimed.
   auto signal = signal_properties_changed_.lock();
-  if (!signal)
+  if (!signal) {
     return;
+  }
   VariantDictionary changed_properties{
       {property_name, exported_property->GetValue()}};
   // The interface specification tells us to include this list of properties

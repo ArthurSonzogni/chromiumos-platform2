@@ -24,8 +24,9 @@ MountNamespace::MountNamespace(const base::FilePath& ns_path,
     : ns_path_(ns_path), platform_(platform), exists_(false) {}
 
 MountNamespace::~MountNamespace() {
-  if (exists_)
+  if (exists_) {
     Destroy();
+  }
 }
 
 bool MountNamespace::Create() {

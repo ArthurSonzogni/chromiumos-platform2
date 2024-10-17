@@ -33,10 +33,12 @@ ScopedPipe::ScopedPipe() {
 }
 
 ScopedPipe::~ScopedPipe() {
-  if (reader != -1)
+  if (reader != -1) {
     close(reader);
-  if (writer != -1)
+  }
+  if (writer != -1) {
     close(writer);
+  }
 }
 
 ScopedSocketPair::ScopedSocketPair() {
@@ -49,10 +51,12 @@ ScopedSocketPair::ScopedSocketPair() {
 }
 
 ScopedSocketPair::~ScopedSocketPair() {
-  if (left != -1)
+  if (left != -1) {
     close(left);
-  if (right != -1)
+  }
+  if (right != -1) {
     close(right);
+  }
 }
 
 }  // namespace brillo

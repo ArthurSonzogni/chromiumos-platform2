@@ -19,8 +19,9 @@ class UsbTransferTest : public testing::Test {
   void TearDown() override {
     // Take out the injected libusb_transfer to bypass the invocation of
     // libusb_free_transfer() in UsbTransfer.
-    if (transfer_.transfer_ == &test_transfer_)
+    if (transfer_.transfer_ == &test_transfer_) {
       transfer_.transfer_ = nullptr;
+    }
 
     transfer_.state_ = original_transfer_state_;
   }

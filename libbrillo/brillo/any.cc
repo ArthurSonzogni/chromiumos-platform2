@@ -32,18 +32,21 @@ Any& Any::operator=(Any&& rhs) {
 
 bool Any::operator==(const Any& rhs) const {
   // Make sure both objects contain data of the same type.
-  if (strcmp(GetTypeTagInternal(), rhs.GetTypeTagInternal()) != 0)
+  if (strcmp(GetTypeTagInternal(), rhs.GetTypeTagInternal()) != 0) {
     return false;
+  }
 
-  if (IsEmpty())
+  if (IsEmpty()) {
     return true;
+  }
 
   return data_buffer_.GetDataPtr()->CompareEqual(rhs.data_buffer_.GetDataPtr());
 }
 
 const char* Any::GetTypeTagInternal() const {
-  if (!IsEmpty())
+  if (!IsEmpty()) {
     return data_buffer_.GetDataPtr()->GetTypeTag();
+  }
 
   return "";
 }

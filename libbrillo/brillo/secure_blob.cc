@@ -15,14 +15,15 @@ namespace brillo {
 namespace {
 
 bool ConvertHexToBytes(char c, uint8_t* v) {
-  if (c >= '0' && c <= '9')
+  if (c >= '0' && c <= '9') {
     *v = c - '0';
-  else if (c >= 'a' && c <= 'f')
+  } else if (c >= 'a' && c <= 'f') {
     *v = c - 'a' + 10;
-  else if (c >= 'A' && c <= 'F')
+  } else if (c >= 'A' && c <= 'F') {
     *v = c - 'A' + 10;
-  else
+  } else {
     return false;
+  }
 
   return true;
 }
@@ -39,12 +40,14 @@ Blob BlobFromString(const std::string& bytes) {
 
 Blob CombineBlobs(const std::initializer_list<Blob>& blobs) {
   size_t total_size = 0;
-  for (const auto& blob : blobs)
+  for (const auto& blob : blobs) {
     total_size += blob.size();
+  }
   Blob concatenation;
   concatenation.reserve(total_size);
-  for (const auto& blob : blobs)
+  for (const auto& blob : blobs) {
     concatenation.insert(concatenation.end(), blob.begin(), blob.end());
+  }
   return concatenation;
 }
 
@@ -122,14 +125,16 @@ SecureBlob SecureBlobToSecureHex(const SecureBlob& blob) {
 SecureBlob SecureHexToSecureBlob(const SecureBlob& hex) {
   SecureBlob blob(hex.size() / 2, 0);
 
-  if (hex.size() == 0 || hex.size() % 2)
+  if (hex.size() == 0 || hex.size() % 2) {
     return SecureBlob();
+  }
 
   for (size_t i = 0; i < hex.size(); i++) {
     uint8_t v;
     // Check for invalid characters.
-    if (!ConvertHexToBytes(hex[i], &v))
+    if (!ConvertHexToBytes(hex[i], &v)) {
       return SecureBlob();
+    }
 
     blob[i / 2] = (blob[i / 2] << 4) | (v & 0xf);
   }

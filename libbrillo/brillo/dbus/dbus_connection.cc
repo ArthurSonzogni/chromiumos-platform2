@@ -15,8 +15,9 @@ namespace brillo {
 DBusConnection::DBusConnection() {}
 
 DBusConnection::~DBusConnection() {
-  if (bus_)
+  if (bus_) {
     bus_->ShutdownAndBlock();
+  }
 }
 
 scoped_refptr<dbus::Bus> DBusConnection::Connect() {
@@ -25,8 +26,9 @@ scoped_refptr<dbus::Bus> DBusConnection::Connect() {
 
 scoped_refptr<dbus::Bus> DBusConnection::ConnectWithTimeout(
     base::TimeDelta timeout) {
-  if (bus_)
+  if (bus_) {
     return bus_;
+  }
 
   base::TimeTicks deadline = base::TimeTicks::Now() + timeout;
 

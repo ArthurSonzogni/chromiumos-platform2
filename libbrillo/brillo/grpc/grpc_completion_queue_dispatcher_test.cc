@@ -55,8 +55,9 @@ class TagAvailableCalledTester {
 
     std::list<base::OnceClosure> callbacks_temp;
     callbacks_temp.swap(call_when_invoked_);
-    for (auto& callback : callbacks_temp)
+    for (auto& callback : callbacks_temp) {
       std::move(callback).Run();
+    }
   }
 
   // Register |call_when_invoked| to be called when |Callback| is called.

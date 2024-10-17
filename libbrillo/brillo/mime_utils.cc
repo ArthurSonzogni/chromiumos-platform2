@@ -71,11 +71,13 @@ bool mime::Split(const std::string& mime_string,
                  mime::Parameters* parameters) {
   std::vector<std::string> parts =
       brillo::string_utils::Split(mime_string, ";");
-  if (parts.empty())
+  if (parts.empty()) {
     return false;
+  }
 
-  if (!mime::Split(parts.front(), type, subtype))
+  if (!mime::Split(parts.front(), type, subtype)) {
     return false;
+  }
 
   if (parameters) {
     parameters->clear();
@@ -95,11 +97,13 @@ bool mime::Split(const std::string& mime_string,
   std::string mime = mime::RemoveParameters(mime_string);
   auto types = brillo::string_utils::SplitAtFirst(mime, "/");
 
-  if (type)
+  if (type) {
     *type = types.first;
+  }
 
-  if (subtype)
+  if (subtype) {
     *subtype = types.second;
+  }
 
   return !types.first.empty() && !types.second.empty();
 }
@@ -131,8 +135,9 @@ mime::Parameters mime::GetParameters(const std::string& mime_string) {
   std::string subtype;
   mime::Parameters parameters;
 
-  if (mime::Split(mime_string, &type, &subtype, &parameters))
+  if (mime::Split(mime_string, &type, &subtype, &parameters)) {
     return parameters;
+  }
 
   return mime::Parameters();
 }
@@ -154,8 +159,10 @@ std::string mime::GetParameterValue(const std::string& mime_string,
                                     const std::string& paramName) {
   mime::Parameters params = mime::GetParameters(mime_string);
   for (const auto& pair : params) {
-    if (base::EqualsCaseInsensitiveASCII(pair.first.c_str(), paramName.c_str()))
+    if (base::EqualsCaseInsensitiveASCII(pair.first.c_str(),
+                                         paramName.c_str())) {
       return pair.second;
+    }
   }
   return std::string();
 }

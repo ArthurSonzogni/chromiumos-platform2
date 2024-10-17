@@ -51,8 +51,9 @@ bool CheckInt64Overflow(const base::Location& location,
   if (offset < 0) {
     // Subtracting the offset. Make sure we do not underflow.
     uint64_t unsigned_offset = static_cast<uint64_t>(-offset);
-    if (position >= unsigned_offset)
+    if (position >= unsigned_offset) {
       return true;
+    }
   } else {
     // Adding the offset. Make sure we do not overflow unsigned 64 bits first.
     if (position <= std::numeric_limits<uint64_t>::max() - offset) {
@@ -60,8 +61,9 @@ bool CheckInt64Overflow(const base::Location& location,
       // Now check that we end up within the limits of signed 64 bit integer.
       uint64_t new_position = position + offset;
       uint64_t max = std::numeric_limits<int64_t>::max();
-      if (new_position <= max)
+      if (new_position <= max) {
         return true;
+      }
     }
   }
   Error::AddTo(error, location, errors::stream::kDomain,
@@ -98,8 +100,9 @@ bool CalculateStreamPosition(const base::Location& location,
       return false;
   }
 
-  if (!CheckInt64Overflow(location, pos, offset, error))
+  if (!CheckInt64Overflow(location, pos, offset, error)) {
     return false;
+  }
 
   *new_position = static_cast<uint64_t>(pos + offset);
   return true;

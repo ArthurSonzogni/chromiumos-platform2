@@ -20,8 +20,9 @@ bool UsbBulkTransfer::Initialize(const UsbDevice& device,
   }
 
   // Allocate no isochronous packet descriptors.
-  if (!Allocate(0) || !AllocateBuffer(length))
+  if (!Allocate(0) || !AllocateBuffer(length)) {
     return false;
+  }
 
   libusb_fill_bulk_transfer(transfer(), device.device_handle(),
                             endpoint_address, buffer(), length,

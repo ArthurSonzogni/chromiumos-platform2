@@ -139,8 +139,9 @@ class BRILLO_PRIVATE SecureAllocator {
   template <class U>
   void destroy(U* p) {
     // Return if the pointer is invalid.
-    if (!p)
+    if (!p) {
       return;
+    }
     p->~U();
     clear_contents(p, sizeof(U));
   }
@@ -150,8 +151,9 @@ class BRILLO_PRIVATE SecureAllocator {
     CHECK_LT(n, max_size());
 
     // Check if n = 0 or p is a nullptr: there's nothing to deallocate;
-    if (n == 0 || !p)
+    if (n == 0 || !p) {
       return;
+    }
 
     // Calculate the page-aligned buffer size.
     std::size_t buffer_size = CalculatePageAlignedBufferSize(n);
@@ -164,8 +166,9 @@ class BRILLO_PRIVATE SecureAllocator {
  protected:
   // Zero-out all bytes in the allocated buffer.
   virtual void clear_contents(T* v, std::size_t n) {
-    if (!v)
+    if (!v) {
       return;
+    }
     // This is guaranteed not to be optimized out.
     SecureClearBytes(v, n);
   }

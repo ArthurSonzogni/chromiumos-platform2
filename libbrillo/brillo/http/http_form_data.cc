@@ -40,8 +40,9 @@ FormField::FormField(const std::string& name,
 
 std::string FormField::GetContentDisposition() const {
   std::string disposition = content_disposition_;
-  if (!name_.empty())
+  if (!name_.empty()) {
     base::StringAppendF(&disposition, "; name=\"%s\"", name_.c_str());
+  }
   return disposition;
 }
 
@@ -53,8 +54,9 @@ std::string FormField::GetContentHeader() const {
   HeaderList headers{
       {form_header::kContentDisposition, GetContentDisposition()}};
 
-  if (!content_type_.empty())
+  if (!content_type_.empty()) {
     headers.emplace_back(form_header::kContentType, GetContentType());
+  }
 
   if (!transfer_encoding_.empty()) {
     headers.emplace_back(form_header::kContentTransferEncoding,
@@ -100,8 +102,9 @@ std::string FileFormField::GetContentDisposition() const {
 }
 
 bool FileFormField::ExtractDataStreams(std::vector<StreamPtr>* streams) {
-  if (!stream_)
+  if (!stream_) {
     return false;
+  }
   streams->push_back(std::move(stream_));
   return true;
 }
@@ -114,16 +117,18 @@ MultiPartFormField::MultiPartFormField(const std::string& name,
                 content_type.empty() ? mime::multipart::kMixed : content_type,
                 {}},
       boundary_{boundary} {
-  if (boundary_.empty())
+  if (boundary_.empty()) {
     boundary_ = base::StringPrintf("%016" PRIx64, base::RandUint64());
+  }
 }
 
 bool MultiPartFormField::ExtractDataStreams(std::vector<StreamPtr>* streams) {
   for (auto& part : parts_) {
     std::string data = GetBoundaryStart() + part->GetContentHeader();
     streams->push_back(MemoryStream::OpenCopyOf(data, nullptr));
-    if (!part->ExtractDataStreams(streams))
+    if (!part->ExtractDataStreams(streams)) {
       return false;
+    }
 
     streams->push_back(MemoryStream::OpenRef("\r\n", nullptr));
   }
@@ -168,8 +173,9 @@ bool MultiPartFormField::AddFileField(const std::string& name,
   StreamPtr stream =
       FileStream::Open(file_path, Stream::AccessMode::READ,
                        FileStream::Disposition::OPEN_EXISTING, error);
-  if (!stream)
+  if (!stream) {
     return false;
+  }
   std::string file_name = file_path.BaseName().value();
   std::unique_ptr<FormField> file_field{
       new FileFormField{name, std::move(stream), file_name, content_disposition,
@@ -213,8 +219,9 @@ std::string FormData::GetContentType() const {
 
 StreamPtr FormData::ExtractDataStream() {
   std::vector<StreamPtr> source_streams;
-  if (form_data_.ExtractDataStreams(&source_streams))
+  if (form_data_.ExtractDataStreams(&source_streams)) {
     return InputStreamSet::Create(std::move(source_streams), nullptr);
+  }
   return {};
 }
 

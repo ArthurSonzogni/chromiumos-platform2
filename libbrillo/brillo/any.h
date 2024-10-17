@@ -87,11 +87,13 @@ class BRILLO_EXPORT Any final {
     // so this "canonical" type is used for type checking below.
     using CanonicalDestType = typename std::decay<DestType>::type;
     const char* contained_type = GetTypeTagInternal();
-    if (strcmp(GetTypeTag<CanonicalDestType>(), contained_type) == 0)
+    if (strcmp(GetTypeTag<CanonicalDestType>(), contained_type) == 0) {
       return true;
+    }
 
-    if (!std::is_pointer<CanonicalDestType>::value)
+    if (!std::is_pointer<CanonicalDestType>::value) {
       return false;
+    }
 
     // If asking for a const pointer from a variant containing non-const
     // pointer, still satisfy the request. So, we need to remove the pointer
@@ -100,13 +102,16 @@ class BRILLO_EXPORT Any final {
     using NonPointer = typename std::remove_pointer<CanonicalDestType>::type;
     using CanonicalDestTypeNoConst = typename std::add_pointer<
         typename std::remove_const<NonPointer>::type>::type;
-    if (strcmp(GetTypeTag<CanonicalDestTypeNoConst>(), contained_type) == 0)
+    if (strcmp(GetTypeTag<CanonicalDestTypeNoConst>(), contained_type) == 0) {
       return true;
+    }
 
     using CanonicalDestTypeNoVolatile = typename std::add_pointer<
         typename std::remove_volatile<NonPointer>::type>::type;
-    if (strcmp(GetTypeTag<CanonicalDestTypeNoVolatile>(), contained_type) == 0)
+    if (strcmp(GetTypeTag<CanonicalDestTypeNoVolatile>(), contained_type) ==
+        0) {
       return true;
+    }
 
     using CanonicalDestTypeNoConstOrVolatile = typename std::add_pointer<
         typename std::remove_cv<NonPointer>::type>::type;
@@ -142,8 +147,9 @@ class BRILLO_EXPORT Any final {
   // convertible/compatible to/with it, then it returns nullptr.
   template <typename T>
   T* GetPtr() {
-    if (!IsTypeCompatible<T>())
+    if (!IsTypeCompatible<T>()) {
       return nullptr;
+    }
     return &(data_buffer_.GetData<T>());
   }
 
@@ -152,8 +158,9 @@ class BRILLO_EXPORT Any final {
   // |def_val| is returned instead.
   template <typename T>
   T TryGet(typename std::decay<T>::type const& def_val) const {
-    if (!IsTypeCompatible<T>())
+    if (!IsTypeCompatible<T>()) {
       return def_val;
+    }
     return data_buffer_.GetData<T>();
   }
 

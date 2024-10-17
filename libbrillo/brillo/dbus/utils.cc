@@ -35,8 +35,9 @@ dbus::Error ToDBusError(const brillo::Error& error) {
   // Append any inner errors to the error message.
   while (current_error) {
     // Format error string as "domain/code:message".
-    if (!error_message.empty())
+    if (!error_message.empty()) {
       error_message += ';';
+    }
     base::StrAppend(&error_message,
                     {current_error->GetDomain(), "/", current_error->GetCode(),
                      ":", current_error->GetMessage()});

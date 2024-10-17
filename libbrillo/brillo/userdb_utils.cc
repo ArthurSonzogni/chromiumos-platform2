@@ -25,8 +25,9 @@ constexpr ssize_t kBufLen = 16384;
 
 bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
   ssize_t buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if (buf_len < 0)
+  if (buf_len < 0) {
     buf_len = 16384;  // 16K should be enough?...
+  }
   passwd pwd_buf;
   passwd* pwd = nullptr;
   std::vector<char> buf(buf_len);
@@ -43,17 +44,20 @@ bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
     return false;
   }
 
-  if (uid)
+  if (uid) {
     *uid = pwd->pw_uid;
-  if (gid)
+  }
+  if (gid) {
     *gid = pwd->pw_gid;
+  }
   return true;
 }
 
 bool GetGroupInfo(const std::string& group, gid_t* gid) {
   ssize_t buf_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-  if (buf_len < 0)
+  if (buf_len < 0) {
     buf_len = 16384;  // 16K should be enough?...
+  }
   struct group grp_buf;
   struct group* grp = nullptr;
   std::vector<char> buf(buf_len);
@@ -70,8 +74,9 @@ bool GetGroupInfo(const std::string& group, gid_t* gid) {
     return false;
   }
 
-  if (gid)
+  if (gid) {
     *gid = grp->gr_gid;
+  }
   return true;
 }
 

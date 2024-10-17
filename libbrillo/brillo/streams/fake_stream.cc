@@ -25,8 +25,9 @@ base::TimeDelta CalculateDelay(const base::Time& now,
   }
 
   base::TimeDelta delay = delay_until - now;
-  if (delay < zero_delay)
+  if (delay < zero_delay) {
     delay = zero_delay;
+  }
   return delay;
 }
 
@@ -160,8 +161,9 @@ bool FakeStream::IsReadBufferEmpty() const {
 }
 
 bool FakeStream::PopReadPacket() {
-  if (incoming_queue_.empty())
+  if (incoming_queue_.empty()) {
     return false;
+  }
   InputDataPacket& packet = incoming_queue_.front();
   input_ptr_ = 0;
   input_buffer_ = std::move(packet.data);
@@ -176,25 +178,29 @@ bool FakeStream::ReadNonBlocking(void* buffer,
                                  size_t* size_read,
                                  bool* end_of_stream,
                                  ErrorPtr* error) {
-  if (!CanRead())
+  if (!CanRead()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   for (;;) {
     if (!delay_input_until_.is_null() && clock_->Now() < delay_input_until_) {
       *size_read = 0;
-      if (end_of_stream)
+      if (end_of_stream) {
         *end_of_stream = false;
+      }
       break;
     }
 
     if (report_read_error_) {
       report_read_error_ = false;
       std::string message{input_buffer_.begin(), input_buffer_.end()};
-      if (message.empty())
+      if (message.empty()) {
         message = "Simulating read error for tests";
+      }
       input_buffer_.clear();
       Error::AddTo(error, FROM_HERE, "fake_stream", "read_error", message);
       return false;
@@ -205,15 +211,17 @@ bool FakeStream::ReadNonBlocking(void* buffer,
       std::memcpy(buffer, input_buffer_.data() + input_ptr_, size_to_read);
       input_ptr_ += size_to_read;
       *size_read = size_to_read;
-      if (end_of_stream)
+      if (end_of_stream) {
         *end_of_stream = false;
+      }
       break;
     }
 
     if (!PopReadPacket()) {
       *size_read = 0;
-      if (end_of_stream)
+      if (end_of_stream) {
         *end_of_stream = true;
+      }
       break;
     }
   }
@@ -225,8 +233,9 @@ bool FakeStream::IsWriteBufferFull() const {
 }
 
 bool FakeStream::PopWritePacket() {
-  if (outgoing_queue_.empty())
+  if (outgoing_queue_.empty()) {
     return false;
+  }
   OutputDataPacket& packet = outgoing_queue_.front();
   expected_output_data_ = std::move(packet.data);
   delay_output_until_ = clock_->Now() + packet.delay_before;
@@ -240,11 +249,13 @@ bool FakeStream::WriteNonBlocking(const void* buffer,
                                   size_t size_to_write,
                                   size_t* size_written,
                                   ErrorPtr* error) {
-  if (!CanWrite())
+  if (!CanWrite()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   for (;;) {
     if (!delay_output_until_.is_null() && clock_->Now() < delay_output_until_) {
@@ -256,8 +267,9 @@ bool FakeStream::WriteNonBlocking(const void* buffer,
       report_write_error_ = false;
       std::string message{expected_output_data_.begin(),
                           expected_output_data_.end()};
-      if (message.empty())
+      if (message.empty()) {
         message = "Simulating write error for tests";
+      }
       output_buffer_.clear();
       max_output_buffer_size_ = 0;
       expected_output_data_.clear();
@@ -302,11 +314,13 @@ bool FakeStream::WriteNonBlocking(const void* buffer,
 }
 
 bool FakeStream::FlushBlocking(ErrorPtr* error) {
-  if (!CanWrite())
+  if (!CanWrite()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   bool success = true;
   if (!output_buffer_.empty()) {
@@ -333,11 +347,13 @@ bool FakeStream::CloseBlocking(ErrorPtr* /* error */) {
 }
 
 bool FakeStream::WaitForDataRead(base::OnceClosure callback, ErrorPtr* error) {
-  if (!CanRead())
+  if (!CanRead()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
-  if (IsReadBufferEmpty())
+  if (IsReadBufferEmpty()) {
     PopReadPacket();
+  }
 
   base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_input_until_);
   MessageLoop::current()->PostDelayedTask(FROM_HERE, std::move(callback),
@@ -347,13 +363,15 @@ bool FakeStream::WaitForDataRead(base::OnceClosure callback, ErrorPtr* error) {
 
 bool FakeStream::WaitForDataReadBlocking(base::TimeDelta timeout,
                                          ErrorPtr* error) {
-  if (!CanRead())
+  if (!CanRead()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
   base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_input_until_);
 
-  if (timeout < delay)
+  if (timeout < delay) {
     return stream_utils::ErrorOperationTimeout(FROM_HERE, error);
+  }
 
   LOG(INFO) << "TEST: Would have blocked for " << delay.InMilliseconds()
             << " ms.";
@@ -362,11 +380,13 @@ bool FakeStream::WaitForDataReadBlocking(base::TimeDelta timeout,
 }
 
 bool FakeStream::WaitForDataWrite(base::OnceClosure callback, ErrorPtr* error) {
-  if (!CanWrite())
+  if (!CanWrite()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
-  if (IsWriteBufferFull())
+  if (IsWriteBufferFull()) {
     PopWritePacket();
+  }
 
   base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_output_until_);
   MessageLoop::current()->PostDelayedTask(FROM_HERE, std::move(callback),
@@ -376,13 +396,15 @@ bool FakeStream::WaitForDataWrite(base::OnceClosure callback, ErrorPtr* error) {
 
 bool FakeStream::WaitForDataWriteBlocking(base::TimeDelta timeout,
                                           ErrorPtr* error) {
-  if (!CanWrite())
+  if (!CanWrite()) {
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
+  }
 
   base::TimeDelta delay = CalculateDelay(clock_->Now(), delay_output_until_);
 
-  if (timeout < delay)
+  if (timeout < delay) {
     return stream_utils::ErrorOperationTimeout(FROM_HERE, error);
+  }
 
   LOG(INFO) << "TEST: Would have blocked for " << delay.InMilliseconds()
             << " ms.";

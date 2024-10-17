@@ -24,8 +24,9 @@ DBusDaemon::DBusDaemon() {}
 
 int DBusDaemon::OnInit() {
   int exit_code = Daemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   bus_ = dbus_connection_.ConnectWithTimeout(kDbusConnectTimeout);
   CHECK(bus_);
@@ -48,8 +49,9 @@ DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name,
 
 int DBusServiceDaemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   if (object_manager_path_.IsValid()) {

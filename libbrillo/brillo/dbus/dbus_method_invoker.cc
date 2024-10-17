@@ -13,8 +13,9 @@ void TranslateErrorResponse(AsyncErrorCallback callback,
     ErrorPtr error;
     dbus::MessageReader reader(resp);
     std::string error_message;
-    if (ExtractMessageParameters(&reader, &error, &error_message))
+    if (ExtractMessageParameters(&reader, &error, &error_message)) {
       AddDBusError(&error, resp->GetErrorName(), error_message);
+    }
     std::move(callback).Run(error.get());
   }
 }

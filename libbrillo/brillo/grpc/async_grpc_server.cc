@@ -37,14 +37,16 @@ bool AsyncGrpcServerBase::Start() {
   builder.RegisterService(service());
   completion_queue_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();
-  if (!server_)
+  if (!server_) {
     return false;
+  }
   dispatcher_ = std::make_unique<GrpcCompletionQueueDispatcher>(
       completion_queue_.get(), task_runner_);
   dispatcher_->Start();
 
-  for (const auto& rpc_state_factory : rpc_state_factories_)
+  for (const auto& rpc_state_factory : rpc_state_factories_) {
     ExpectNextRpc(rpc_state_factory);
+  }
   rpc_state_factories_.clear();
   return true;
 }
@@ -93,8 +95,9 @@ void AsyncGrpcServerBase::OnIncomingRpc(
     const RpcStateFactory& rpc_state_factory,
     std::unique_ptr<RpcStateBase> rpc_state,
     bool ok) {
-  if (state_ == State::kStarted)
+  if (state_ == State::kStarted) {
     ExpectNextRpc(rpc_state_factory);
+  }
   // Exit on shutdown. In theory, incoming RPCs with |ok|==false can only happen
   // after gRPC shutdown has been triggered, which only happens after |state_|
   // has been switched to State::kShutdown, so it would be enough to check
@@ -103,8 +106,9 @@ void AsyncGrpcServerBase::OnIncomingRpc(
   // The CompletionQueue gives back all pending tags in case of shutdown, so
   // that the server has the chance to free memory. Freeing memory happens
   // implicitly by letting the |rpc_state| go out of scope here.
-  if (!ok || state_ == State::kShutDown)
+  if (!ok || state_ == State::kShutDown) {
     return;
+  }
   RpcStateBase* rpc_state_unowned = rpc_state.get();
   CHECK(rpcs_awaiting_handler_reply_.find(rpc_state_unowned->tag()) ==
         rpcs_awaiting_handler_reply_.end());

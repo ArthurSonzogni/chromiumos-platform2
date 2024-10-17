@@ -274,8 +274,9 @@ base::ScopedFD OpenSafely(const base::FilePath& path, int flags, mode_t mode) {
   }
 
   base::ScopedFD fd(OpenSafelyInternal(-1, path, flags, mode));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return base::ScopedFD();
+  }
 
   // Ensure the opened file is a regular file or directory.
   struct stat st;
@@ -304,8 +305,9 @@ base::ScopedFD OpenAtSafely(int parent_fd,
                             int flags,
                             mode_t mode) {
   base::ScopedFD fd(OpenSafelyInternal(parent_fd, path, flags, mode));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return base::ScopedFD();
+  }
 
   // Ensure the opened file is a regular file or directory.
   struct stat st;
@@ -337,8 +339,9 @@ base::ScopedFD OpenFifoSafely(const base::FilePath& path,
   }
 
   base::ScopedFD fd(OpenSafelyInternal(-1, path, flags, mode));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return base::ScopedFD();
+  }
 
   // Ensure the opened file is a FIFO.
   struct stat st;

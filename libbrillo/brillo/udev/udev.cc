@@ -29,8 +29,9 @@ Udev::~Udev() {
 // static
 std::unique_ptr<Udev> Udev::Create() {
   struct udev* udev = udev_new();
-  if (!udev)
+  if (!udev) {
     return nullptr;
+  }
 
   return std::unique_ptr<Udev>(new Udev(udev));
 }
@@ -50,8 +51,9 @@ std::unique_ptr<UdevDevice> Udev::CreateDevice(udev_device* device) {
 std::unique_ptr<UdevDevice> Udev::CreateDeviceFromSysPath(
     const char* sys_path) {
   udev_device* device = udev_device_new_from_syspath(udev_, sys_path);
-  if (device)
+  if (device) {
     return CreateDevice(device);
+  }
 
   VLOG(2) << StringPrintf(
       "udev_device_new_from_syspath"
@@ -63,8 +65,9 @@ std::unique_ptr<UdevDevice> Udev::CreateDeviceFromSysPath(
 std::unique_ptr<UdevDevice> Udev::CreateDeviceFromDeviceNumber(
     char type, dev_t device_number) {
   udev_device* device = udev_device_new_from_devnum(udev_, type, device_number);
-  if (device)
+  if (device) {
     return CreateDevice(device);
+  }
 
   VLOG(2) << StringPrintf(
       "udev_device_new_from_devnum"
@@ -77,8 +80,9 @@ std::unique_ptr<UdevDevice> Udev::CreateDeviceFromSubsystemSysName(
     const char* subsystem, const char* sys_name) {
   udev_device* device =
       udev_device_new_from_subsystem_sysname(udev_, subsystem, sys_name);
-  if (device)
+  if (device) {
     return CreateDevice(device);
+  }
 
   VLOG(2) << StringPrintf(
       "udev_device_new_from_subsystem_sysname"

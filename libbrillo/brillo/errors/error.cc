@@ -19,8 +19,9 @@ inline void LogError(const base::Location& location,
                      std::string_view domain,
                      std::string_view code,
                      std::string_view message) {
-  if (!LOG_IS_ON(ERROR))
+  if (!LOG_IS_ON(ERROR)) {
     return;
+  }
   // Use logging::LogMessage() directly instead of LOG(ERROR) to substitute
   // the current error location with the location passed in to the Error object.
   // This way the log will contain the actual location of the error, and not
@@ -29,8 +30,8 @@ inline void LogError(const base::Location& location,
                       location.line_number(), logging::LOGGING_ERROR)
           .stream()
       << (location.function_name() ? location.function_name() : "unknown")
-      << "(...): "
-      << "Domain=" << domain << ", Code=" << code << ", Message=" << message;
+      << "(...): " << "Domain=" << domain << ", Code=" << code
+      << ", Message=" << message;
 }
 }  // anonymous namespace
 
@@ -102,8 +103,9 @@ bool Error::HasError(std::string_view domain, std::string_view code) const {
 
 const Error* Error::GetFirstError() const {
   const Error* err = this;
-  while (err->GetInnerError())
+  while (err->GetInnerError()) {
     err = err->GetInnerError();
+  }
   return err;
 }
 
@@ -121,8 +123,9 @@ Error::Error(const base::Location& location,
 const Error* Error::FindErrorOfDomain(const Error* error_chain_start,
                                       std::string_view domain) {
   while (error_chain_start) {
-    if (error_chain_start->GetDomain() == domain)
+    if (error_chain_start->GetDomain() == domain) {
       break;
+    }
     error_chain_start = error_chain_start->GetInnerError();
   }
   return error_chain_start;
@@ -133,8 +136,9 @@ const Error* Error::FindError(const Error* error_chain_start,
                               std::string_view code) {
   while (error_chain_start) {
     if (error_chain_start->GetDomain() == domain &&
-        error_chain_start->GetCode() == code)
+        error_chain_start->GetCode() == code) {
       break;
+    }
     error_chain_start = error_chain_start->GetInnerError();
   }
   return error_chain_start;

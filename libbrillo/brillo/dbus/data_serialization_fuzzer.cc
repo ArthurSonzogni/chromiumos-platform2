@@ -49,10 +49,11 @@ typedef enum DataType {
 
 template <typename T>
 void AppendValue(dbus::MessageWriter* writer, bool variant, const T& value) {
-  if (variant)
+  if (variant) {
     brillo::dbus_utils::AppendValueToWriterAsVariant(writer, value);
-  else
+  } else {
     brillo::dbus_utils::WriteDBusArgs(writer, value);
+  }
 }
 
 template <typename T>
@@ -64,10 +65,11 @@ void GenerateIntAndAppendValue(FuzzedDataProvider* data_provider,
 
 template <typename T>
 void PopValue(dbus::MessageReader* reader, bool variant, T* value) {
-  if (variant)
+  if (variant) {
     brillo::dbus_utils::PopVariantValueFromReader(reader, value);
-  else
+  } else {
     brillo::dbus_utils::ReadDBusArgs(reader, value);
+  }
 }
 
 std::string GenerateValidUTF8(FuzzedDataProvider* data_provider) {
@@ -77,8 +79,9 @@ std::string GenerateValidUTF8(FuzzedDataProvider* data_provider) {
   // that string.
   std::string str =
       data_provider->ConsumeRandomLengthString(kRandomMaxDataLength);
-  if (base::IsStringUTF8(str))
+  if (base::IsStringUTF8(str)) {
     return str;
+  }
   for (auto it = str.begin(); it != str.end(); it++) {
     if (static_cast<uint8_t>(*it) >= 0x80) {
       // Might be invalid, remove it.
@@ -95,8 +98,9 @@ std::unique_ptr<dbus::Response> DemarshalRandomDBusResponse(
   DBusMessage* raw_message =
       dbus_message_demarshal(string_to_demarshal.data(),
                              string_to_demarshal.size(), /*error=*/nullptr);
-  if (!raw_message)
+  if (!raw_message) {
     return nullptr;
+  }
   if (dbus_message_get_type(raw_message) != DBUS_MESSAGE_TYPE_METHOD_RETURN) {
     dbus_message_unref(raw_message);
     return nullptr;
@@ -157,16 +161,18 @@ std::unique_ptr<dbus::Response> WriteRandomDBusResponse(
         std::string object_path =
             data_provider->ConsumeRandomLengthString(kRandomMaxDataLength);
         // If this isn't valid we'll hit a CHECK failure.
-        if (dbus::IsValidObjectPath(object_path))
+        if (dbus::IsValidObjectPath(object_path)) {
           AppendValue(&writer, variant, dbus::ObjectPath(object_path));
+        }
         break;
       }
       case kVectorInt16: {
         int vec_size = data_provider->ConsumeIntegralInRange<int>(
             0, kRandomMaxContainerSize);
         std::vector<int16_t> vec(vec_size);
-        for (int i = 0; i < vec_size; i++)
+        for (int i = 0; i < vec_size; i++) {
           vec[i] = data_provider->ConsumeIntegral<int16_t>();
+        }
         AppendValue(&writer, variant, vec);
         break;
       }
@@ -174,8 +180,9 @@ std::unique_ptr<dbus::Response> WriteRandomDBusResponse(
         int vec_size = data_provider->ConsumeIntegralInRange<int>(
             0, kRandomMaxContainerSize);
         std::vector<std::string> vec(vec_size);
-        for (int i = 0; i < vec_size; i++)
+        for (int i = 0; i < vec_size; i++) {
           vec[i] = GenerateValidUTF8(data_provider);
+        }
         AppendValue(&writer, variant, vec);
         break;
       }
@@ -215,9 +222,10 @@ std::unique_ptr<dbus::Response> WriteRandomDBusResponse(
         int map_size = data_provider->ConsumeIntegralInRange<int>(
             0, kRandomMaxContainerSize);
         std::map<int32_t, std::string> map;
-        for (int i = 0; i < map_size; i++)
+        for (int i = 0; i < map_size; i++) {
           map[data_provider->ConsumeIntegral<int32_t>()] =
               GenerateValidUTF8(data_provider);
+        }
         AppendValue(&writer, variant, map);
         break;
       }
@@ -225,9 +233,10 @@ std::unique_ptr<dbus::Response> WriteRandomDBusResponse(
         int map_size = data_provider->ConsumeIntegralInRange<int>(
             0, kRandomMaxContainerSize);
         std::map<double, bool> map;
-        for (int i = 0; i < map_size; i++)
+        for (int i = 0; i < map_size; i++) {
           map[data_provider->ConsumeProbability<double>()] =
               data_provider->ConsumeBool();
+        }
         AppendValue(&writer, variant, map);
         break;
       }
@@ -253,12 +262,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider data_provider(data, size);
 
   std::unique_ptr<dbus::Response> message;
-  if (data_provider.ConsumeBool())
+  if (data_provider.ConsumeBool()) {
     message = DemarshalRandomDBusResponse(&data_provider);
-  else
+  } else {
     message = WriteRandomDBusResponse(&data_provider);
-  if (!message)
+  }
+  if (!message) {
     return 0;
+  }
 
   dbus::MessageReader reader(message.get());
   while (data_provider.remaining_bytes()) {

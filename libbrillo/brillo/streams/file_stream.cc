@@ -58,15 +58,17 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
 
   mode_t GetFileMode() const override {
     struct stat file_stat;
-    if (fstat(fd_, &file_stat) < 0)
+    if (fstat(fd_, &file_stat) < 0) {
       return 0;
+    }
     return file_stat.st_mode;
   }
 
   uint64_t GetSize() const override {
     struct stat file_stat;
-    if (fstat(fd_, &file_stat) < 0)
+    if (fstat(fd_, &file_stat) < 0) {
       return 0;
+    }
     return file_stat.st_size;
   }
 
@@ -156,11 +158,13 @@ class FileDescriptor : public FileStream::FileDescriptorInterface {
     FD_ZERO(&write_fds);
     FD_ZERO(&error_fds);
 
-    if (stream_utils::IsReadAccessMode(mode))
+    if (stream_utils::IsReadAccessMode(mode)) {
       FD_SET(fd_, &read_fds);
+    }
 
-    if (stream_utils::IsWriteAccessMode(mode))
+    if (stream_utils::IsWriteAccessMode(mode)) {
       FD_SET(fd_, &write_fds);
+    }
 
     FD_SET(fd_, &error_fds);
     timeval timeout_val = {};
@@ -265,8 +269,9 @@ StreamPtr FileStream::CreateTemporary(ErrorPtr* error) {
   unlink(path.value().c_str());
 
   stream = FromFileDescriptor(fd, true, error);
-  if (!stream)
+  if (!stream) {
     IGNORE_EINTR(close(fd));
+  }
   return stream;
 }
 
@@ -288,10 +293,11 @@ StreamPtr FileStream::FromFileDescriptor(int file_descriptor,
   }
   int file_access_mode = (fd_flags & O_ACCMODE);
   AccessMode access_mode = AccessMode::READ_WRITE;
-  if (file_access_mode == O_RDONLY)
+  if (file_access_mode == O_RDONLY) {
     access_mode = AccessMode::READ;
-  else if (file_access_mode == O_WRONLY)
+  } else if (file_access_mode == O_WRONLY) {
     access_mode = AccessMode::WRITE;
+  }
 
   // Make sure the file descriptor is set to perform non-blocking operations
   // if not enabled already.
@@ -360,30 +366,35 @@ uint64_t FileStream::GetSize() const {
 }
 
 bool FileStream::SetSizeBlocking(uint64_t size, ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
-  if (!stream_utils::CheckInt64Overflow(FROM_HERE, size, 0, error))
+  if (!stream_utils::CheckInt64Overflow(FROM_HERE, size, 0, error)) {
     return false;
+  }
 
-  if (fd_interface_->Truncate(size) >= 0)
+  if (fd_interface_->Truncate(size) >= 0) {
     return true;
+  }
 
   errors::system::AddSystemError(error, FROM_HERE, errno);
   return false;
 }
 
 uint64_t FileStream::GetRemainingSize() const {
-  if (!CanGetSize())
+  if (!CanGetSize()) {
     return 0;
+  }
   uint64_t pos = GetPosition();
   uint64_t size = GetSize();
   return (pos < size) ? (size - pos) : 0;
 }
 
 uint64_t FileStream::GetPosition() const {
-  if (!CanSeek())
+  if (!CanSeek()) {
     return 0;
+  }
 
   off64_t pos = fd_interface_->Seek(0, SEEK_CUR);
   const off64_t min_pos = 0;
@@ -394,8 +405,9 @@ bool FileStream::Seek(int64_t offset,
                       Whence whence,
                       uint64_t* new_position,
                       ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   int raw_whence = 0;
   switch (whence) {
@@ -419,8 +431,9 @@ bool FileStream::Seek(int64_t offset,
     return false;
   }
 
-  if (new_position)
+  if (new_position) {
     *new_position = static_cast<uint64_t>(pos);
+  }
   return true;
 }
 
@@ -429,16 +442,18 @@ bool FileStream::ReadNonBlocking(void* buffer,
                                  size_t* size_read,
                                  bool* end_of_stream,
                                  ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   ssize_t read = fd_interface_->Read(buffer, size_to_read);
   if (read < 0) {
     // If read() fails, check if this is due to no data being currently
     // available and we do non-blocking I/O.
     if (errno == EWOULDBLOCK || errno == EAGAIN) {
-      if (end_of_stream)
+      if (end_of_stream) {
         *end_of_stream = false;
+      }
       *size_read = 0;
       return true;
     }
@@ -446,8 +461,9 @@ bool FileStream::ReadNonBlocking(void* buffer,
     errors::system::AddSystemError(error, FROM_HERE, errno);
     return false;
   }
-  if (end_of_stream)
+  if (end_of_stream) {
     *end_of_stream = (read == 0 && size_to_read != 0);
+  }
   *size_read = read;
   return true;
 }
@@ -456,8 +472,9 @@ bool FileStream::WriteNonBlocking(const void* buffer,
                                   size_t size_to_write,
                                   size_t* size_written,
                                   ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   ssize_t written = fd_interface_->Write(buffer, size_to_write);
   if (written < 0) {
@@ -476,16 +493,18 @@ bool FileStream::WriteNonBlocking(const void* buffer,
 }
 
 bool FileStream::FlushBlocking(ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   // File descriptors don't have an internal buffer to flush.
   return true;
 }
 
 bool FileStream::CloseBlocking(ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return true;
+  }
 
   if (fd_interface_->Close() < 0) {
     errors::system::AddSystemError(error, FROM_HERE, errno);
@@ -496,47 +515,53 @@ bool FileStream::CloseBlocking(ErrorPtr* error) {
 }
 
 bool FileStream::WaitForDataRead(base::OnceClosure callback, ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   return fd_interface_->WaitForDataRead(std::move(callback), error);
 }
 
 bool FileStream::WaitForDataReadBlocking(base::TimeDelta timeout,
                                          ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   int ret = fd_interface_->WaitForDataReadBlocking(timeout);
   if (ret < 0) {
     errors::system::AddSystemError(error, FROM_HERE, errno);
     return false;
   }
-  if (ret == 0)
+  if (ret == 0) {
     return stream_utils::ErrorOperationTimeout(FROM_HERE, error);
+  }
 
   return true;
 }
 
 bool FileStream::WaitForDataWrite(base::OnceClosure callback, ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   return fd_interface_->WaitForDataWrite(std::move(callback), error);
 }
 
 bool FileStream::WaitForDataWriteBlocking(base::TimeDelta timeout,
                                           ErrorPtr* error) {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
 
   int ret = fd_interface_->WaitForDataWriteBlocking(timeout);
   if (ret < 0) {
     errors::system::AddSystemError(error, FROM_HERE, errno);
     return false;
   }
-  if (ret == 0)
+  if (ret == 0) {
     return stream_utils::ErrorOperationTimeout(FROM_HERE, error);
+  }
 
   return true;
 }

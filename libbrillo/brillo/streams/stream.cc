@@ -22,8 +22,9 @@ bool Stream::TruncateBlocking(ErrorPtr* error) {
 }
 
 bool Stream::SetPosition(uint64_t position, ErrorPtr* error) {
-  if (!stream_utils::CheckInt64Overflow(FROM_HERE, position, 0, error))
+  if (!stream_utils::CheckInt64Overflow(FROM_HERE, position, 0, error)) {
     return false;
+  }
   return Seek(position, Whence::FROM_BEGIN, nullptr, error);
 }
 
@@ -74,11 +75,13 @@ bool Stream::ReadBlocking(void* buffer,
                           ErrorPtr* error) {
   for (;;) {
     bool eos = false;
-    if (!ReadNonBlocking(buffer, size_to_read, size_read, &eos, error))
+    if (!ReadNonBlocking(buffer, size_to_read, size_read, &eos, error)) {
       return false;
+    }
 
-    if (*size_read > 0 || eos)
+    if (*size_read > 0 || eos) {
       break;
+    }
 
     if (!WaitForDataReadBlocking(base::TimeDelta::Max(), error)) {
       return false;
@@ -92,11 +95,13 @@ bool Stream::ReadAllBlocking(void* buffer,
                              ErrorPtr* error) {
   while (size_to_read > 0) {
     size_t size_read = 0;
-    if (!ReadBlocking(buffer, size_to_read, &size_read, error))
+    if (!ReadBlocking(buffer, size_to_read, &size_read, error)) {
       return false;
+    }
 
-    if (size_read == 0)
+    if (size_read == 0) {
       return stream_utils::ErrorReadPastEndOfStream(FROM_HERE, error);
+    }
 
     size_to_read -= size_read;
     buffer = AdvancePointer(buffer, size_read);
@@ -147,11 +152,13 @@ bool Stream::WriteBlocking(const void* buffer,
                            size_t* size_written,
                            ErrorPtr* error) {
   for (;;) {
-    if (!WriteNonBlocking(buffer, size_to_write, size_written, error))
+    if (!WriteNonBlocking(buffer, size_to_write, size_written, error)) {
       return false;
+    }
 
-    if (*size_written > 0 || size_to_write == 0)
+    if (*size_written > 0 || size_to_write == 0) {
       break;
+    }
 
     if (!WaitForDataWriteBlocking(base::TimeDelta::Max(), error)) {
       return false;
@@ -165,8 +172,9 @@ bool Stream::WriteAllBlocking(const void* buffer,
                               ErrorPtr* error) {
   while (size_to_write > 0) {
     size_t size_written = 0;
-    if (!WriteBlocking(buffer, size_to_write, &size_written, error))
+    if (!WriteBlocking(buffer, size_to_write, &size_written, error)) {
       return false;
+    }
 
     if (size_written == 0) {
       Error::AddTo(error, FROM_HERE, errors::stream::kDomain,
@@ -213,8 +221,9 @@ bool Stream::ReadAsyncImpl(
 
   size_t read = 0;
   bool eos = false;
-  if (!ReadNonBlocking(buffer, size_to_read, &read, &eos, error))
+  if (!ReadNonBlocking(buffer, size_to_read, &read, &eos, error)) {
     return false;
+  }
 
   if (read > 0 || eos) {
     if (force_async_callback) {
@@ -276,8 +285,9 @@ bool Stream::WriteAsyncImpl(const void* buffer,
   is_async_write_pending_ = true;
 
   size_t written = 0;
-  if (!WriteNonBlocking(buffer, size_to_write, &written, error))
+  if (!WriteNonBlocking(buffer, size_to_write, &written, error)) {
     return false;
+  }
 
   if (written > 0) {
     if (force_async_callback) {

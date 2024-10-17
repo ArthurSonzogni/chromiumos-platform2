@@ -33,8 +33,9 @@ void ProcessReaper::Register(
 }
 
 void ProcessReaper::Unregister() {
-  if (!async_signal_handler_)
+  if (!async_signal_handler_) {
     return;
+  }
   async_signal_handler_->UnregisterHandler(SIGCHLD);
   async_signal_handler_ = nullptr;
 }
@@ -42,8 +43,9 @@ void ProcessReaper::Unregister() {
 bool ProcessReaper::WatchForChild(const base::Location& from_here,
                                   pid_t pid,
                                   ChildCallback callback) {
-  if (watched_processes_.find(pid) != watched_processes_.end())
+  if (watched_processes_.find(pid) != watched_processes_.end()) {
     return false;
+  }
   watched_processes_.emplace(pid,
                              WatchedProcess{from_here, std::move(callback)});
   return true;

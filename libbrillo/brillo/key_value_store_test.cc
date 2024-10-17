@@ -32,8 +32,9 @@ class KeyValueStoreTest : public ::testing::Test {
   // if the key is not present. Crashes if the store returns an empty value.
   string GetNonemptyStringValue(const string& key) {
     string value;
-    if (store_.GetString(key, &value))
+    if (store_.GetString(key, &value)) {
       CHECK(!value.empty());
+    }
     return value;
   }
 

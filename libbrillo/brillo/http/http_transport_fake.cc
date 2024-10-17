@@ -43,8 +43,9 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     brillo::ErrorPtr* error) {
   std::shared_ptr<http::Connection> connection;
   if (create_connection_error_) {
-    if (error)
+    if (error) {
       *error = std::move(create_connection_error_);
+    }
     return connection;
   }
   HeaderList headers_copy = headers;
@@ -59,8 +60,9 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   connection =
       std::make_shared<http::fake::Connection>(url, method, shared_from_this());
   CHECK(connection) << "Unable to create Connection object";
-  if (!connection->SendHeaders(headers_copy, error))
+  if (!connection->SendHeaders(headers_copy, error)) {
     connection.reset();
+  }
   request_count_++;
   return connection;
 }
@@ -75,8 +77,9 @@ void Transport::RunCallbackAsync(const base::Location& /* from_here */,
 }
 
 bool Transport::HandleOneAsyncRequest() {
-  if (async_callback_queue_.empty())
+  if (async_callback_queue_.empty()) {
     return false;
+  }
 
   base::OnceClosure callback = std::move(async_callback_queue_.front());
   async_callback_queue_.pop();
@@ -85,8 +88,9 @@ bool Transport::HandleOneAsyncRequest() {
 }
 
 void Transport::HandleAllAsyncRequests() {
-  while (!async_callback_queue_.empty())
+  while (!async_callback_queue_.empty()) {
     HandleOneAsyncRequest();
+  }
 }
 
 http::RequestID Transport::StartAsyncTransfer(
@@ -134,16 +138,19 @@ Transport::HandlerCallback Transport::GetHandler(
     const std::string& url, const std::string& method) const {
   // First try the exact combination of URL/Method
   auto p = handlers_.find(GetHandlerMapKey(url, method));
-  if (p != handlers_.end())
+  if (p != handlers_.end()) {
     return p->second;
+  }
   // If not found, try URL/*
   p = handlers_.find(GetHandlerMapKey(url, "*"));
-  if (p != handlers_.end())
+  if (p != handlers_.end()) {
     return p->second;
+  }
   // If still not found, try */method
   p = handlers_.find(GetHandlerMapKey("*", method));
-  if (p != handlers_.end())
+  if (p != handlers_.end()) {
     return p->second;
+  }
   // Finally, try */*
   p = handlers_.find(GetHandlerMapKey("*", "*"));
   return (p != handlers_.end()) ? p->second : HandlerCallback();
@@ -154,8 +161,9 @@ void ServerRequestResponseBase::SetData(StreamPtr stream) {
   if (stream) {
     uint8_t buffer[1024];
     size_t size = 0;
-    if (stream->CanGetSize())
+    if (stream->CanGetSize()) {
       data_.reserve(stream->GetRemainingSize());
+    }
 
     do {
       CHECK(stream->ReadBlocking(buffer, sizeof(buffer), &size, nullptr));
@@ -165,8 +173,9 @@ void ServerRequestResponseBase::SetData(StreamPtr stream) {
 }
 
 std::string ServerRequestResponseBase::GetDataAsString() const {
-  if (data_.empty())
+  if (data_.empty()) {
     return std::string();
+  }
   auto chars = reinterpret_cast<const char*>(data_.data());
   return std::string(chars, data_.size());
 }
@@ -175,8 +184,9 @@ std::optional<base::Value> ServerRequestResponseBase::GetDataAsJson() const {
   if (brillo::mime::RemoveParameters(GetHeader(request_header::kContentType)) ==
       brillo::mime::application::kJson) {
     auto value = base::JSONReader::Read(GetDataAsString());
-    if (!value->is_dict())
+    if (!value->is_dict()) {
       return std::nullopt;
+    }
     return value;
   }
   return std::nullopt;
@@ -187,17 +197,19 @@ std::string ServerRequestResponseBase::GetDataAsNormalizedJsonString() const {
   // Make sure we serialize the JSON back without any pretty print so
   // the string comparison works correctly.
   auto json = GetDataAsJson();
-  if (json)
+  if (json) {
     base::JSONWriter::Write(*json, &value);
+  }
   return value;
 }
 
 void ServerRequestResponseBase::AddHeaders(const HeaderList& headers) {
   for (const auto& pair : headers) {
-    if (pair.second.empty())
+    if (pair.second.empty()) {
       headers_.erase(pair.first);
-    else
+    } else {
       headers_.insert(pair);
+    }
   }
 }
 
@@ -317,8 +329,9 @@ std::string ServerResponse::GetStatusText() const {
   };
 
   for (const auto& pair : status_text_map) {
-    if (pair.first == status_code_)
+    if (pair.first == status_code_) {
       return pair.second;
+    }
   }
   return std::string();
 }

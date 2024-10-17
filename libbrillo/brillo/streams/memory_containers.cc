@@ -38,15 +38,17 @@ bool ContiguousBufferBase::Read(void* buffer,
       size_to_read = remaining;
     }
     const void* src_buffer = GetReadOnlyBuffer(offset, error);
-    if (!src_buffer)
+    if (!src_buffer) {
       return false;
+    }
 
     CopyMemoryBlock(buffer, src_buffer, size_to_read);
   } else {
     size_to_read = 0;
   }
-  if (size_read)
+  if (size_read) {
     *size_read = size_to_read;
+  }
   return true;
 }
 
@@ -57,14 +59,17 @@ bool ContiguousBufferBase::Write(const void* buffer,
                                  ErrorPtr* error) {
   if (size_to_write) {
     size_t new_size = offset + size_to_write;
-    if (GetSize() < new_size && !Resize(new_size, error))
+    if (GetSize() < new_size && !Resize(new_size, error)) {
       return false;
+    }
     void* ptr = GetBuffer(offset, error);
-    if (!ptr)
+    if (!ptr) {
       return false;
+    }
     CopyMemoryBlock(ptr, buffer, size_to_write);
-    if (size_written)
+    if (size_written) {
       *size_written = size_to_write;
+    }
   }
   return true;
 }

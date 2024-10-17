@@ -23,8 +23,9 @@ UsbTransfer::~UsbTransfer() {
 }
 
 bool UsbTransfer::Submit(CompletionCallback completion_callback) {
-  if (!VerifyAllocated())
+  if (!VerifyAllocated()) {
     return false;
+  }
 
   if (state_ != kIdle) {
     error_.set_type(UsbError::kErrorTransferAlreadySubmitted);
@@ -66,8 +67,9 @@ uint8_t UsbTransfer::GetEndpointAddress() const {
 }
 
 UsbTransferType UsbTransfer::GetType() const {
-  if (!transfer_)
+  if (!transfer_) {
     return kUsbTransferTypeUnknown;
+  }
 
   switch (transfer_->type) {
     case LIBUSB_TRANSFER_TYPE_CONTROL:
@@ -83,8 +85,9 @@ UsbTransferType UsbTransfer::GetType() const {
 }
 
 UsbTransferStatus UsbTransfer::GetStatus() const {
-  if (!transfer_)
+  if (!transfer_) {
     return kUsbTransferStatusUnknown;
+  }
 
   switch (transfer_->status) {
     case LIBUSB_TRANSFER_COMPLETED:
@@ -119,8 +122,9 @@ bool UsbTransfer::IsCompletedWithExpectedLength(int expected_length) const {
 }
 
 std::string UsbTransfer::ToString() const {
-  if (!transfer_)
+  if (!transfer_) {
     return "Transfer (not allocated)";
+  }
 
   return base::StringPrintf(
       "Transfer %p (Type=%s, "
@@ -140,8 +144,9 @@ std::string UsbTransfer::ToString() const {
 }
 
 bool UsbTransfer::VerifyAllocated() {
-  if (transfer_)
+  if (transfer_) {
     return true;
+  }
 
   LOG(ERROR) << "USB transfer is not allocated.";
   error_.set_type(UsbError::kErrorTransferNotAllocated);

@@ -77,12 +77,15 @@ class CurlPerformer {
     char buffer[1024];
     for (;;) {
       size_t size_read = read_callback(buffer, sizeof(buffer), 1, connection);
-      if (size_read == CURL_READFUNC_ABORT)
+      if (size_read == CURL_READFUNC_ABORT) {
         return CURLE_ABORTED_BY_CALLBACK;
-      if (size_read == CURL_READFUNC_PAUSE)
+      }
+      if (size_read == CURL_READFUNC_PAUSE) {
         return CURLE_READ_ERROR;  // Shouldn't happen.
-      if (size_read == 0)
+      }
+      if (size_read == 0) {
         break;
+      }
       request_body.append(buffer, size_read);
     }
 
@@ -96,8 +99,9 @@ class CurlPerformer {
 
     for (const std::string& line : header_lines) {
       CURLcode code = WriteString(header_callback, line);
-      if (code != CURLE_OK)
+      if (code != CURLE_OK) {
         return code;
+      }
     }
 
     // Send response body.
@@ -112,8 +116,9 @@ class CurlPerformer {
     while (size_remaining) {
       size_t size_written = callback(const_cast<char*>(str.data() + pos),
                                      size_remaining, 1, connection);
-      if (size_written == CURL_WRITEFUNC_PAUSE)
+      if (size_written == CURL_WRITEFUNC_PAUSE) {
         return CURLE_WRITE_ERROR;  // Shouldn't happen.
+      }
       CHECK(size_written <= size_remaining) << "Unexpected size returned";
       size_remaining -= size_written;
       pos += size_written;
@@ -126,8 +131,9 @@ class CurlPerformer {
 // which contains the request headers as curl_slist* chain.
 MATCHER_P(HeadersMatch, headers, "") {
   std::multiset<std::string> test_headers;
-  for (const auto& pair : headers)
+  for (const auto& pair : headers) {
     test_headers.insert(string_utils::Join(": ", pair.first, pair.second));
+  }
 
   std::multiset<std::string> src_headers;
   const curl_slist* head = static_cast<const curl_slist*>(arg);

@@ -88,8 +88,9 @@ CURLcode CurlApi::EasyGetInfoInt(CURL* curl, CURLINFO info, int* value) const {
   CHECK_EQ(CURLINFO_LONG, info & CURLINFO_TYPEMASK) << "Wrong option type";
   long data = 0;  // NOLINT(runtime/int) - curl expects a long here.
   CURLcode code = curl_easy_getinfo(curl, info, &data);
-  if (code == CURLE_OK)
+  if (code == CURLE_OK) {
     *value = static_cast<int>(data);
+  }
   return code;
 }
 
@@ -106,8 +107,9 @@ CURLcode CurlApi::EasyGetInfoStr(CURL* curl,
   CHECK_EQ(CURLINFO_STRING, info & CURLINFO_TYPEMASK) << "Wrong option type";
   char* data = nullptr;
   CURLcode code = curl_easy_getinfo(curl, info, &data);
-  if (code == CURLE_OK)
+  if (code == CURLE_OK) {
     *value = data;
+  }
   return code;
 }
 
@@ -148,8 +150,9 @@ CURLMcode CurlApi::MultiSetSocketCallback(CURLM* multi_handle,
                                           void* userp) {
   CURLMcode code =
       curl_multi_setopt(multi_handle, CURLMOPT_SOCKETFUNCTION, socket_callback);
-  if (code != CURLM_OK)
+  if (code != CURLM_OK) {
     return code;
+  }
   return curl_multi_setopt(multi_handle, CURLMOPT_SOCKETDATA, userp);
 }
 
@@ -159,8 +162,9 @@ CURLMcode CurlApi::MultiSetTimerCallback(
     void* userp) {
   CURLMcode code =
       curl_multi_setopt(multi_handle, CURLMOPT_TIMERFUNCTION, timer_callback);
-  if (code != CURLM_OK)
+  if (code != CURLM_OK) {
     return code;
+  }
   return curl_multi_setopt(multi_handle, CURLMOPT_TIMERDATA, userp);
 }
 

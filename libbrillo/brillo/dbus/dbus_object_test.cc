@@ -71,8 +71,9 @@ int StrLen(const std::string& str) {
 }
 
 bool CheckNonEmpty(ErrorPtr* error, const std::string& str) {
-  if (!str.empty())
+  if (!str.empty()) {
     return true;
+  }
   Error::AddTo(error, FROM_HERE, "test", "string_empty", "String is empty");
   return false;
 }

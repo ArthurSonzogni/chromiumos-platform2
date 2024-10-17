@@ -39,11 +39,13 @@ std::string CanonicalizeEmail(const std::string& email_address) {
   std::string lower_case_email = base::ToLowerASCII(email_address);
   std::vector<std::string> parts = base::SplitString(
       lower_case_email, "@", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  if (parts.size() != 2U)
+  if (parts.size() != 2U) {
     return lower_case_email;
+  }
 
-  if (parts[1] == "gmail.com")  // only strip '.' for gmail accounts.
+  if (parts[1] == "gmail.com") {  // only strip '.' for gmail accounts.
     base::RemoveChars(parts[0], ".", &parts[0]);
+  }
 
   std::string new_email = base::JoinString(parts, "@");
   return new_email;
@@ -102,10 +104,11 @@ std::string ExtractDomainName(const std::string& email_address) {
   // First canonicalize which will also verify we have proper domain part.
   std::string email = CanonicalizeEmail(email_address);
   size_t separator_pos = email.find('@');
-  if (separator_pos != email.npos && separator_pos < email.length() - 1)
+  if (separator_pos != email.npos && separator_pos < email.length() - 1) {
     return email.substr(separator_pos + 1);
-  else
+  } else {
     NOTREACHED_IN_MIGRATION() << "Not a proper email address: " << email;
+  }
   return std::string();
 }
 

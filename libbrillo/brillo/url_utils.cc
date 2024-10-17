@@ -28,8 +28,9 @@ bool GetQueryStringPos(const std::string& url,
   size_t query_start = url.find_first_of("?#");
   if (query_start == std::string::npos) {
     *query_pos = url.size();
-    if (query_len)
+    if (query_len) {
       *query_len = 0;
+    }
     return false;
   }
 
@@ -40,8 +41,9 @@ bool GetQueryStringPos(const std::string& url,
     if (exclude_fragment) {
       if (url[query_start] == '?') {
         size_t pos_fragment = url.find('#', query_start);
-        if (pos_fragment != std::string::npos)
+        if (pos_fragment != std::string::npos) {
           query_end = pos_fragment;
+        }
       } else {
         query_end = query_start;
       }
@@ -56,8 +58,9 @@ namespace brillo {
 
 std::string url::TrimOffQueryString(std::string* url) {
   size_t query_pos;
-  if (!GetQueryStringPos(*url, false, &query_pos, nullptr))
+  if (!GetQueryStringPos(*url, false, &query_pos, nullptr)) {
     return std::string();
+  }
   std::string query_string = url->substr(query_pos);
   url->resize(query_pos);
   return query_string;
@@ -74,11 +77,13 @@ std::string url::CombineMultiple(const std::string& url,
     std::string query_string = TrimOffQueryString(&result);
     for (const auto& part : parts) {
       if (!part.empty()) {
-        if (!result.empty() && result.back() != '/')
+        if (!result.empty() && result.back() != '/') {
           result += '/';
+        }
         size_t non_slash_pos = part.find_first_not_of('/');
-        if (non_slash_pos != std::string::npos)
+        if (non_slash_pos != std::string::npos) {
           result += part.substr(non_slash_pos);
+        }
       }
     }
     result += query_string;
@@ -99,8 +104,9 @@ data_encoding::WebParamList url::GetQueryStringParameters(
     const std::string& url) {
   // Extract the query string and remove the leading '?'.
   std::string query_string = GetQueryString(url, true);
-  if (!query_string.empty() && query_string.front() == '?')
+  if (!query_string.empty() && query_string.front() == '?') {
     query_string.erase(query_string.begin());
+  }
   return data_encoding::WebParamsDecode(query_string);
 }
 
@@ -112,8 +118,9 @@ std::string url::GetQueryStringValue(const std::string& url,
 std::string url::GetQueryStringValue(const data_encoding::WebParamList& params,
                                      const std::string& name) {
   for (const auto& pair : params) {
-    if (name.compare(pair.first) == 0)
+    if (name.compare(pair.first) == 0) {
       return pair.second;
+    }
   }
   return std::string();
 }
@@ -121,8 +128,9 @@ std::string url::GetQueryStringValue(const data_encoding::WebParamList& params,
 std::string url::RemoveQueryString(const std::string& url,
                                    bool remove_fragment_too) {
   size_t query_pos, query_len;
-  if (!GetQueryStringPos(url, !remove_fragment_too, &query_pos, &query_len))
+  if (!GetQueryStringPos(url, !remove_fragment_too, &query_pos, &query_len)) {
     return url;
+  }
   std::string result = url.substr(0, query_pos);
   size_t fragment_pos = query_pos + query_len;
   if (fragment_pos < url.size()) {
@@ -139,8 +147,9 @@ std::string url::AppendQueryParam(const std::string& url,
 
 std::string url::AppendQueryParams(const std::string& url,
                                    const data_encoding::WebParamList& params) {
-  if (params.empty())
+  if (params.empty()) {
     return url;
+  }
   size_t query_pos, query_len;
   GetQueryStringPos(url, true, &query_pos, &query_len);
   size_t fragment_pos = query_pos + query_len;

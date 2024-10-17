@@ -16,8 +16,9 @@ namespace brillo {
 template <typename T>
 inline std::set<typename T::key_type> GetMapKeys(const T& map) {
   std::set<typename T::key_type> keys;
-  for (const auto& pair : map)
+  for (const auto& pair : map) {
     keys.insert(keys.end(), pair.first);  // Map keys are already sorted.
+  }
   return keys;
 }
 
@@ -27,8 +28,9 @@ template <typename T>
 inline std::vector<typename T::key_type> GetMapKeysAsVector(const T& map) {
   std::vector<typename T::key_type> keys;
   keys.reserve(map.size());
-  for (const auto& pair : map)
+  for (const auto& pair : map) {
     keys.push_back(pair.first);
+  }
   return keys;
 }
 
@@ -37,8 +39,9 @@ template <typename T>
 inline std::vector<typename T::mapped_type> GetMapValues(const T& map) {
   std::vector<typename T::mapped_type> values;
   values.reserve(map.size());
-  for (const auto& pair : map)
+  for (const auto& pair : map) {
     values.push_back(pair.second);
+  }
   return values;
 }
 
@@ -48,8 +51,9 @@ inline std::vector<std::pair<typename T::key_type, typename T::mapped_type>>
 MapToVector(const T& map) {
   std::vector<std::pair<typename T::key_type, typename T::mapped_type>> vector;
   vector.reserve(map.size());
-  for (const auto& pair : map)
+  for (const auto& pair : map) {
     vector.push_back(pair);
+  }
   return vector;
 }
 
@@ -61,8 +65,9 @@ inline typename T::mapped_type GetOrDefault(
     typename T::key_type key,
     const typename T::mapped_type& def) {
   typename T::const_iterator it = map.find(key);
-  if (it == map.end())
+  if (it == map.end()) {
     return def;
+  }
   return it->second;
 }
 

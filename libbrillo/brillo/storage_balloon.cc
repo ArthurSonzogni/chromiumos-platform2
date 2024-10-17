@@ -100,8 +100,9 @@ bool StorageBalloon::Adjust(int64_t target_space) {
     return false;
   }
 
-  if (inflation_size == 0)
+  if (inflation_size == 0) {
     return true;
+  }
 
   int64_t existing_size = GetCurrentBalloonSize();
   if (existing_size < 0) {
@@ -152,13 +153,16 @@ int64_t StorageBalloon::GetCurrentBalloonSize() {
 
   std::string balloon_size_str;
   int64_t balloon_size;
-  if (!base::ReadFileToString(sysfs_reserved_clusters_path_, &balloon_size_str))
+  if (!base::ReadFileToString(sysfs_reserved_clusters_path_,
+                              &balloon_size_str)) {
     return -1;
+  }
 
   base::TrimWhitespaceASCII(balloon_size_str, base::TRIM_ALL,
                             &balloon_size_str);
-  if (!base::StringToInt64(balloon_size_str, &balloon_size))
+  if (!base::StringToInt64(balloon_size_str, &balloon_size)) {
     return -1;
+  }
 
   return (balloon_size - kDefaultClusterCount) * GetClusterSize();
 }

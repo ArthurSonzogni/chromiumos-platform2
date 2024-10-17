@@ -248,8 +248,9 @@ std::string ProcessImpl::GetOutputString(int child_fd) {
   int fd = GetOutputFd(child_fd);
   std::string output;
 
-  if (fd < 0)
+  if (fd < 0) {
     return output;
+  }
 
   struct stat st;
 
@@ -271,17 +272,19 @@ std::string ProcessImpl::GetOutputString(int child_fd) {
 
     bytes_read += count;
 
-    if (bytes_read == output.size())
+    if (bytes_read == output.size()) {
       return output;
+    }
   }
 }
 
 int ProcessImpl::GetPipe(int child_fd) {
   PipeMap::iterator i = pipe_map_.find(child_fd);
-  if (i == pipe_map_.end())
+  if (i == pipe_map_.end()) {
     return -1;
-  else
+  } else {
     return i->second.parent_fd_;
+  }
 }
 
 bool ProcessImpl::PopulatePipeMap() {
@@ -365,8 +368,9 @@ bool ProcessImpl::Start() {
   std::unique_ptr<char*[]> argv =
       std::make_unique<char*[]>(arguments_.size() + 1);
 
-  for (size_t i = 0; i < arguments_.size(); ++i)
+  for (size_t i = 0; i < arguments_.size(); ++i) {
     argv[i] = const_cast<char*>(arguments_[i].c_str());
+  }
 
   argv[arguments_.size()] = nullptr;
 
@@ -391,20 +395,23 @@ bool ProcessImpl::Start() {
     // Close parent's side of the child pipes. dup2 ours into place and
     // then close our ends.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      if (i->second.parent_fd_ != -1)
+      if (i->second.parent_fd_ != -1) {
         IGNORE_EINTR(close(i->second.parent_fd_));
+      }
       // If we want to bind a fd to the same fd in the child, we don't need to
       // close and dup2 it.
-      if (i->second.child_fd_ == i->first)
+      if (i->second.child_fd_ == i->first) {
         continue;
+      }
       HANDLE_EINTR(dup2(i->second.child_fd_, i->first));
     }
     // Defer the actual close() of the child fd until afterward; this lets the
     // same child fd be bound to multiple fds using BindFd. Don't close the fd
     // if it was bound to itself.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      if (i->second.child_fd_ == i->first)
+      if (i->second.child_fd_ == i->first) {
         continue;
+      }
       IGNORE_EINTR(close(i->second.child_fd_));
     }
 
@@ -555,8 +562,9 @@ bool ProcessImpl::Kill(int signal, int timeout) {
     int status = 0;
     pid_t w = waitpid(pid_, &status, WNOHANG);
     if (w < 0) {
-      if (errno == ECHILD)
+      if (errno == ECHILD) {
         return true;
+      }
       PLOG(ERROR) << "Waitpid returned " << w;
       return false;
     }
@@ -581,14 +589,16 @@ void ProcessImpl::Reset(pid_t new_pid) {
   // Close our side of all pipes to this child giving the child to
   // handle sigpipes and shutdown nicely, though likely it won't
   // have time.
-  for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i)
+  for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
     IGNORE_EINTR(close(i->second.parent_fd_));
+  }
   pipe_map_.clear();
   IGNORE_EINTR(close(stdout_.parent_fd_));
   IGNORE_EINTR(close(stderr_.parent_fd_));
   stderr_ = stdout_ = stdin_ = StandardFileDescriptorInfo();
-  if (pid_)
+  if (pid_) {
     Kill(SIGKILL, 0);
+  }
   UpdatePid(new_pid);
 }
 

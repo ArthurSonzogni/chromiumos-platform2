@@ -75,8 +75,9 @@ SafeFD::SafeFDResult OpenOrRemake(SafeFD* parent,
 
 bool AllAreSeparators(const std::string& input) {
   for (auto it : input) {
-    if (!base::FilePath::IsSeparator(it))
+    if (!base::FilePath::IsSeparator(it)) {
       return false;
+    }
   }
 
   return true;

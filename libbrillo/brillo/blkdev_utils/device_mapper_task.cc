@@ -82,8 +82,9 @@ bool DevmapperTaskImpl::GetNextTarget(uint64_t* start,
   next_target_ = dm_get_next_target(task_.get(), next_target_, start, length,
                                     &type_cstr, &parameters_cstr);
 
-  if (type_cstr)
+  if (type_cstr) {
     *type = std::string(type_cstr);
+  }
   if (parameters_cstr) {
     SecureBlob parameters_blob(parameters_cstr);
     memset(parameters_cstr, 0, parameters_blob.size());

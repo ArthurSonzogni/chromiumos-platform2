@@ -47,8 +47,9 @@ int FakeLoopDeviceManager::StubIoctlRunner(
     int type,
     uint64_t arg,
     int flag) {
-  if (!manager)
+  if (!manager) {
     return -1;
+  }
   int device_number = ParseLoopDeviceNumber(path);
   struct loop_info64* info;
   struct LoopDev* device;
@@ -57,24 +58,27 @@ int FakeLoopDeviceManager::StubIoctlRunner(
   switch (type) {
     case LOOP_GET_STATUS64:
       if (loop_device_vector.size() <= device_number ||
-          loop_device_vector[device_number].valid == false)
+          loop_device_vector[device_number].valid == false) {
         return -1;
+      }
       info = reinterpret_cast<struct loop_info64*>(arg);
       memcpy(info, &loop_device_vector[device_number].info,
              sizeof(struct loop_info64));
       return 0;
     case LOOP_SET_STATUS64:
       if (loop_device_vector.size() <= device_number ||
-          loop_device_vector[device_number].valid == false)
+          loop_device_vector[device_number].valid == false) {
         return -1;
+      }
       info = reinterpret_cast<struct loop_info64*>(arg);
       memcpy(&loop_device_vector[device_number].info, info,
              sizeof(struct loop_info64));
       return 0;
     case LOOP_CLR_FD:
       if (loop_device_vector.size() <= device_number ||
-          loop_device_vector[device_number].valid == false)
+          loop_device_vector[device_number].valid == false) {
         return -1;
+      }
       loop_device_vector[device_number].valid = false;
       return 0;
     case LOOP_CTL_GET_FREE:
@@ -84,16 +88,18 @@ int FakeLoopDeviceManager::StubIoctlRunner(
     // Instead of passing the fd here, we pass the FilePath of the backing
     // file.
     case LOOP_SET_FD:
-      if (loop_device_vector.size() <= device_number)
+      if (loop_device_vector.size() <= device_number) {
         return -1;
+      }
       loop_device_vector[device_number].backing_file =
           *reinterpret_cast<const base::FilePath*>(arg);
       return 0;
     // Not a loop ioctl; Only used for conveniently checking the
     // validity of the loop devices.
     case LOOP_GET_DEV:
-      if (device_number >= loop_device_vector.size())
+      if (device_number >= loop_device_vector.size()) {
         return -1;
+      }
       device = reinterpret_cast<struct LoopDev*>(arg);
       device->valid = loop_device_vector[device_number].valid;
       device->backing_file = loop_device_vector[device_number].backing_file;
@@ -138,8 +144,9 @@ FakeLoopDeviceManager::SearchLoopDevicePaths(int device_number) {
   if (device_number != -1) {
     if (StubIoctlRunner(weak_factory_.GetWeakPtr(),
                         GetLoopDevicePath(device_number), LOOP_GET_DEV,
-                        reinterpret_cast<uint64_t>(&device), 0) < 0)
+                        reinterpret_cast<uint64_t>(&device), 0) < 0) {
       return devices;
+    }
 
     if (device.valid) {
       devices.push_back(std::make_unique<LoopDevice>(

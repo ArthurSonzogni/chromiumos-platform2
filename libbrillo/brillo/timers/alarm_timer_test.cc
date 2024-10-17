@@ -53,8 +53,9 @@ class AlarmTimerTester {
  private:
   void Run() {
     *did_run_ = true;
-    if (quit_closure_)
+    if (quit_closure_) {
       std::move(quit_closure_).Run();
+    }
   }
 
   bool* did_run_;
@@ -87,8 +88,9 @@ class SelfDeletingAlarmTimerTester {
     *did_run_ = true;
     timer_.reset();
 
-    if (quit_closure_)
+    if (quit_closure_) {
       std::move(quit_closure_).Run();
+    }
   }
 
   bool* did_run_;
@@ -287,14 +289,16 @@ void ClearAllCallbackHappened() {
 
 void SetCallbackHappened1(base::OnceClosure quit_closure) {
   g_callback_happened1 = true;
-  if (quit_closure)
+  if (quit_closure) {
     std::move(quit_closure).Run();
+  }
 }
 
 void SetCallbackHappened2(base::OnceClosure quit_closure) {
   g_callback_happened2 = true;
-  if (quit_closure)
+  if (quit_closure) {
     std::move(quit_closure).Run();
+  }
 }
 }  // namespace
 

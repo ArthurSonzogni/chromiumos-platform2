@@ -38,8 +38,9 @@ namespace vcsid_internal {
 
 // Checks if |str| could be a SHA1 hash encoded as a hexadecimal string.
 constexpr bool IsSHA1HexString(const std::string_view& str) {
-  if (str.length() != (2 * SHA_DIGEST_LENGTH))
+  if (str.length() != (2 * SHA_DIGEST_LENGTH)) {
     return false;
+  }
 
   return str.find_first_not_of("0123456789ABCDEFabcdef") ==
          std::string_view::npos;
@@ -50,8 +51,9 @@ constexpr bool IsValidVCSID(const std::string_view& vcsid) {
   const std::size_t delim = vcsid.find_last_of('-');
 
   // Check that there is a '-' delimiter.
-  if (delim == std::string_view::npos)
+  if (delim == std::string_view::npos) {
     return false;
+  }
 
   return IsSHA1HexString(vcsid.substr(delim + 1));
 }

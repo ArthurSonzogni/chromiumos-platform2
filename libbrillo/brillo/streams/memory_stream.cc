@@ -105,8 +105,9 @@ uint64_t MemoryStream::GetSize() const {
 }
 
 bool MemoryStream::SetSizeBlocking(uint64_t size, ErrorPtr* error) {
-  if (!CheckContainer(error))
+  if (!CheckContainer(error)) {
     return false;
+  }
   return container_->Resize(size, error);
 }
 
@@ -139,8 +140,9 @@ bool MemoryStream::Seek(int64_t offset,
   }
 
   stream_position_ = static_cast<size_t>(pos);
-  if (new_position)
+  if (new_position) {
     *new_position = stream_position_;
+  }
   return true;
 }
 
@@ -149,15 +151,18 @@ bool MemoryStream::ReadNonBlocking(void* buffer,
                                    size_t* size_read,
                                    bool* end_of_stream,
                                    ErrorPtr* error) {
-  if (!CheckContainer(error))
+  if (!CheckContainer(error)) {
     return false;
+  }
   size_t read = 0;
-  if (!container_->Read(buffer, size_to_read, stream_position_, &read, error))
+  if (!container_->Read(buffer, size_to_read, stream_position_, &read, error)) {
     return false;
+  }
   stream_position_ += read;
   *size_read = read;
-  if (end_of_stream)
+  if (end_of_stream) {
     *end_of_stream = (read == 0) && (size_to_read != 0);
+  }
   return true;
 }
 
@@ -165,8 +170,9 @@ bool MemoryStream::WriteNonBlocking(const void* buffer,
                                     size_t size_to_write,
                                     size_t* size_written,
                                     ErrorPtr* error) {
-  if (!CheckContainer(error))
+  if (!CheckContainer(error)) {
     return false;
+  }
   if (!container_->Write(buffer, size_to_write, stream_position_, size_written,
                          error)) {
     return false;

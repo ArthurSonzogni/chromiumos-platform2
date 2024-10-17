@@ -279,8 +279,9 @@ TEST(SecureAllocator, MultiPageCorrectness) {
   uint64_t* test_array = e.allocate(4100);
 
   // Check if the space was correctly allocated for long long.
-  for (int i = 0; i < 4100; i++)
+  for (int i = 0; i < 4100; i++) {
     test_array[i] = 0xF0F0F0F0F0F0F0F0;
+  }
 
   // Deallocate memory; the mock class should check for cleared data.
   e.deallocate(test_array, 4100);
@@ -414,8 +415,9 @@ TEST(SecureAllocatorDeathTest, ErasureOnFork) {
 
   // In the original process, check the SecureBlob to see if it has not
   // changed.
-  for (int i = 0; i < erasable_blob.size(); i++)
+  for (int i = 0; i < erasable_blob.size(); i++) {
     EXPECT_EQ(erasable_blob[i], reference[i]);
+  }
 }
 #endif  // GTEST_IS_THREADSAFE
 

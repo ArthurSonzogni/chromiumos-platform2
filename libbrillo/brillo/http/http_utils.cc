@@ -94,8 +94,9 @@ std::unique_ptr<Response> SendRequestAndBlock(
     CHECK(!mime_type.empty()) << "MIME type must be specified if request body "
                                  "message is provided";
     request.SetContentType(mime_type);
-    if (!request.AddRequestBody(data, data_size, error))
+    if (!request.AddRequestBody(data, data_size, error)) {
       return std::unique_ptr<Response>();
+    }
   }
   return request.GetResponseAndBlock(error);
 }
@@ -218,8 +219,9 @@ std::unique_ptr<Response> PostFormDataAndBlock(
     brillo::ErrorPtr* error) {
   Request request(url, request_type::kPost, transport);
   request.AddHeaders(headers);
-  if (!request.AddRequestBodyAsFormData(std::move(form_data), error))
+  if (!request.AddRequestBodyAsFormData(std::move(form_data), error)) {
     return std::unique_ptr<Response>();
+  }
   return request.GetResponseAndBlock(error);
 }
 
@@ -261,8 +263,9 @@ std::unique_ptr<Response> PostJsonAndBlock(const std::string& url,
                                            std::shared_ptr<Transport> transport,
                                            brillo::ErrorPtr* error) {
   std::string data;
-  if (json)
+  if (json) {
     base::JSONWriter::Write(*json, &data);
+  }
   std::string mime_type =
       AppendParameter(brillo::mime::application::kJson,
                       brillo::mime::parameters::kCharset, "utf-8");
@@ -277,8 +280,9 @@ RequestID PostJson(const std::string& url,
                    SuccessCallback success_callback,
                    ErrorCallback error_callback) {
   std::string data;
-  if (json)
+  if (json) {
     base::JSONWriter::Write(*json, &data);
+  }
   std::string mime_type =
       AppendParameter(brillo::mime::application::kJson,
                       brillo::mime::parameters::kCharset, "utf-8");
@@ -294,8 +298,9 @@ std::unique_ptr<Response> PatchJsonAndBlock(
     std::shared_ptr<Transport> transport,
     brillo::ErrorPtr* error) {
   std::string data;
-  if (json)
+  if (json) {
     base::JSONWriter::Write(*json, &data);
+  }
   std::string mime_type =
       AppendParameter(brillo::mime::application::kJson,
                       brillo::mime::parameters::kCharset, "utf-8");
@@ -310,8 +315,9 @@ RequestID PatchJson(const std::string& url,
                     SuccessCallback success_callback,
                     ErrorCallback error_callback) {
   std::string data;
-  if (json)
+  if (json) {
     base::JSONWriter::Write(*json, &data);
+  }
   std::string mime_type =
       AppendParameter(brillo::mime::application::kJson,
                       brillo::mime::parameters::kCharset, "utf-8");
@@ -323,11 +329,13 @@ RequestID PatchJson(const std::string& url,
 std::optional<base::Value::Dict> ParseJsonResponse(Response* response,
                                                    int* status_code,
                                                    brillo::ErrorPtr* error) {
-  if (!response)
+  if (!response) {
     return std::nullopt;
+  }
 
-  if (status_code)
+  if (status_code) {
     *status_code = response->GetStatusCode();
+  }
 
   // Make sure we have a correct content type. Do not try to parse
   // binary files, or HTML output. Limit to application/json and text/plain.

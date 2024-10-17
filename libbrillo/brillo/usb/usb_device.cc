@@ -39,8 +39,9 @@ bool UsbDevice::IsOpen() const {
 }
 
 bool UsbDevice::VerifyOpen() {
-  if (IsOpen())
+  if (IsOpen()) {
     return true;
+  }
 
   error_.set_type(UsbError::kErrorDeviceNotOpen);
   return false;
@@ -57,16 +58,18 @@ bool UsbDevice::Open() {
 }
 
 void UsbDevice::Close() {
-  if (!IsOpen())
+  if (!IsOpen()) {
     return;
+  }
 
   libusb_close(device_handle_);
   device_handle_ = nullptr;
 }
 
 bool UsbDevice::Reset() {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_reset_device(device_handle_);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
@@ -94,32 +97,36 @@ UsbSpeed UsbDevice::GetDeviceSpeed() const {
 }
 
 bool UsbDevice::GetConfiguration(int* configuration) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_get_configuration(device_handle_, configuration);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
 bool UsbDevice::SetConfiguration(int configuration) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_set_configuration(device_handle_, configuration);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
 bool UsbDevice::ClaimInterface(int interface_number) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_claim_interface(device_handle_, interface_number);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
 bool UsbDevice::ReleaseInterface(int interface_number) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_release_interface(device_handle_, interface_number);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
@@ -127,8 +134,9 @@ bool UsbDevice::ReleaseInterface(int interface_number) {
 
 bool UsbDevice::SetInterfaceAlternateSetting(int interface_number,
                                              int alternate_setting) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_set_interface_alt_setting(
       device_handle_, interface_number, alternate_setting);
@@ -136,8 +144,9 @@ bool UsbDevice::SetInterfaceAlternateSetting(int interface_number,
 }
 
 bool UsbDevice::IsKernelDriverActive(int interface_number) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_kernel_driver_active(device_handle_, interface_number);
   if (result == 1) {
@@ -149,24 +158,27 @@ bool UsbDevice::IsKernelDriverActive(int interface_number) {
 }
 
 bool UsbDevice::AttachKernelDriver(int interface_number) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_attach_kernel_driver(device_handle_, interface_number);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
 bool UsbDevice::DetachKernelDriver(int interface_number) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_detach_kernel_driver(device_handle_, interface_number);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
 bool UsbDevice::ClearHalt(uint8_t endpoint) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return false;
+  }
 
   int result = libusb_clear_halt(device_handle_, endpoint);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
@@ -176,9 +188,10 @@ std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetActiveConfigDescriptor() {
   libusb_config_descriptor* config_descriptor = nullptr;
 
   int result = libusb_get_active_config_descriptor(device_, &config_descriptor);
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
     return std::make_unique<UsbConfigDescriptor>(weak_ptr_factory_.GetWeakPtr(),
                                                  config_descriptor, true);
+  }
 
   return nullptr;
 }
@@ -188,9 +201,10 @@ std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptor(
   libusb_config_descriptor* config_descriptor = nullptr;
 
   int result = libusb_get_config_descriptor(device_, index, &config_descriptor);
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
     return std::make_unique<UsbConfigDescriptor>(weak_ptr_factory_.GetWeakPtr(),
                                                  config_descriptor, true);
+  }
 
   return nullptr;
 }
@@ -201,28 +215,32 @@ std::unique_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptorByValue(
 
   int result = libusb_get_config_descriptor_by_value(
       device_, configuration_value, &config_descriptor);
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
     return std::make_unique<UsbConfigDescriptor>(weak_ptr_factory_.GetWeakPtr(),
                                                  config_descriptor, true);
+  }
 
   return nullptr;
 }
 
 std::unique_ptr<UsbDeviceDescriptor> UsbDevice::GetDeviceDescriptor() {
-  if (!device_descriptor_)
+  if (!device_descriptor_) {
     device_descriptor_.reset(new libusb_device_descriptor());
+  }
 
   int result = libusb_get_device_descriptor(device_, device_descriptor_.get());
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
     return std::make_unique<UsbDeviceDescriptor>(weak_ptr_factory_.GetWeakPtr(),
                                                  device_descriptor_.get());
+  }
 
   return nullptr;
 }
 
 std::string UsbDevice::GetStringDescriptorAscii(uint8_t index) {
-  if (!VerifyOpen())
+  if (!VerifyOpen()) {
     return std::string();
+  }
 
   // libusb_get_string_descriptor_ascii uses an internal buffer that can only
   // hold up to 128 ASCII characters.

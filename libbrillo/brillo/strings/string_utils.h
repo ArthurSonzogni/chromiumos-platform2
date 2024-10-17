@@ -71,8 +71,9 @@ std::string JoinRange(const std::string& delimiter,
                       InputIterator first,
                       InputIterator last) {
   std::string result;
-  if (first == last)
+  if (first == last) {
     return result;
+  }
   result = *first;
   for (++first; first != last; ++first) {
     result += delimiter;

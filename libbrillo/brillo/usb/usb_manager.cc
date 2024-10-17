@@ -26,14 +26,17 @@ namespace {
 
 brillo::Stream::AccessMode ConvertEventFlagsToWatchMode(
     short events) {  // NOLINT
-  if ((events & POLLIN) && (events & POLLOUT))
+  if ((events & POLLIN) && (events & POLLOUT)) {
     return brillo::Stream::AccessMode::READ_WRITE;
+  }
 
-  if (events & POLLIN)
+  if (events & POLLIN) {
     return brillo::Stream::AccessMode::READ;
+  }
 
-  if (events & POLLOUT)
+  if (events & POLLOUT) {
     return brillo::Stream::AccessMode::WRITE;
+  }
 
   return brillo::Stream::AccessMode::READ_WRITE;
 }
@@ -88,13 +91,15 @@ std::unique_ptr<UsbDevice> UsbManager::GetDevice(uint8_t bus_number,
                                                  uint16_t vendor_id,
                                                  uint16_t product_id) {
   std::vector<std::unique_ptr<UsbDevice>> devices;
-  if (!GetDevices(&devices))
+  if (!GetDevices(&devices)) {
     return nullptr;
+  }
 
   for (auto& device : devices) {
     if (device->GetBusNumber() != bus_number ||
-        device->GetDeviceAddress() != device_address)
+        device->GetDeviceAddress() != device_address) {
       continue;
+    }
 
     std::unique_ptr<UsbDeviceDescriptor> device_descriptor =
         device->GetDeviceDescriptor();
@@ -117,8 +122,9 @@ bool UsbManager::GetDevices(std::vector<std::unique_ptr<UsbDevice>>* devices) {
 
   libusb_device** device_list = nullptr;
   ssize_t result = libusb_get_device_list(context_, &device_list);
-  if (result < 0)
+  if (result < 0) {
     return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
+  }
 
   for (ssize_t i = 0; i < result; ++i) {
     devices->push_back(std::make_unique<UsbDevice>(device_list[i]));

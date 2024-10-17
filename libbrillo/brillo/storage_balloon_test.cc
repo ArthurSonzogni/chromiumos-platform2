@@ -29,8 +29,9 @@ class FakeStorageBalloon : public StorageBalloon {
     // Delete the existing storage balloon file to emulate the sysfs node.
     brillo::DeleteFile(reserved_clusters_path_);
     base::WriteFile(reserved_clusters_path_, "");
-    if (!StorageBalloon::SetBalloonSize(size))
+    if (!StorageBalloon::SetBalloonSize(size)) {
       return false;
+    }
 
     remaining_size_ = remaining_size_ - (size - current_balloon_size_);
     current_balloon_size_ = size;

@@ -110,8 +110,9 @@ Request::Request(const std::string& url,
                  std::shared_ptr<Transport> transport)
     : transport_(transport), request_url_(url), method_(method) {
   VLOG(1) << "http::Request created";
-  if (!transport_)
+  if (!transport_) {
     transport_ = http::Transport::CreateDefault();
+  }
 }
 
 Request::~Request() {
@@ -134,8 +135,9 @@ void Request::AddRange(uint64_t from_byte, uint64_t to_byte) {
 
 std::unique_ptr<Response> Request::GetResponseAndBlock(
     brillo::ErrorPtr* error) {
-  if (!SendRequestIfNeeded(error) || !connection_->FinishRequest(error))
+  if (!SendRequestIfNeeded(error) || !connection_->FinishRequest(error)) {
     return std::unique_ptr<Response>();
+  }
   std::unique_ptr<Response> response(new Response(connection_));
   connection_.reset();
   transport_.reset();  // Indicate that the response has been received
@@ -189,8 +191,9 @@ void Request::AddHeaders(const HeaderList& headers) {
 bool Request::AddRequestBody(const void* data,
                              size_t size,
                              brillo::ErrorPtr* error) {
-  if (!SendRequestIfNeeded(error))
+  if (!SendRequestIfNeeded(error)) {
     return false;
+  }
   StreamPtr stream = MemoryStream::OpenCopyOf(data, size, error);
   return stream && connection_->SetRequestData(std::move(stream), error);
 }
@@ -203,14 +206,16 @@ bool Request::AddRequestBody(StreamPtr stream, brillo::ErrorPtr* error) {
 bool Request::AddRequestBodyAsFormData(std::unique_ptr<FormData> form_data,
                                        brillo::ErrorPtr* error) {
   AddHeader(request_header::kContentType, form_data->GetContentType());
-  if (!SendRequestIfNeeded(error))
+  if (!SendRequestIfNeeded(error)) {
     return false;
+  }
   return connection_->SetRequestData(form_data->ExtractDataStream(), error);
 }
 
 bool Request::AddResponseStream(StreamPtr stream, brillo::ErrorPtr* error) {
-  if (!SendRequestIfNeeded(error))
+  if (!SendRequestIfNeeded(error)) {
     return false;
+  }
   connection_->SetResponseData(std::move(stream));
   return true;
 }
@@ -263,22 +268,25 @@ bool Request::SendRequestIfNeeded(brillo::ErrorPtr* error) {
           }
         }
       }
-      if (!ranges.empty())
+      if (!ranges.empty()) {
         headers.emplace_back(
             request_header::kRange,
             "bytes=" + brillo::string_utils::Join(",", ranges));
+      }
 
       headers.emplace_back(request_header::kAccept, GetAccept());
       if (method_ != request_type::kGet && method_ != request_type::kHead) {
-        if (!content_type_.empty())
+        if (!content_type_.empty()) {
           headers.emplace_back(request_header::kContentType, content_type_);
+        }
       }
       connection_ = transport_->CreateConnection(request_url_, method_, headers,
                                                  user_agent_, referer_, error);
     }
 
-    if (connection_)
+    if (connection_) {
       return true;
+    }
   } else {
     brillo::Error::AddTo(error, FROM_HERE, http::kErrorDomain,
                          "response_already_received",
@@ -305,15 +313,17 @@ bool Response::IsSuccessful() const {
 }
 
 int Response::GetStatusCode() const {
-  if (!connection_)
+  if (!connection_) {
     return -1;
+  }
 
   return connection_->GetResponseStatusCode();
 }
 
 std::string Response::GetStatusText() const {
-  if (!connection_)
+  if (!connection_) {
     return std::string();
+  }
 
   return connection_->GetResponseStatusText();
 }
@@ -347,8 +357,9 @@ std::string Response::ExtractDataAsString() {
 }
 
 std::string Response::GetHeader(const std::string& header_name) const {
-  if (connection_)
+  if (connection_) {
     return connection_->GetResponseHeader(header_name);
+  }
 
   return std::string();
 }

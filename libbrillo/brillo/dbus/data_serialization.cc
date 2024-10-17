@@ -24,8 +24,9 @@ AutoVariantUnwrapState g_auto_variant_unwrap_state =
 bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
                                  ::dbus::MessageReader* variant_reader,
                                  bool for_any) {
-  if ((*reader_ref)->GetDataType() != ::dbus::Message::VARIANT)
+  if ((*reader_ref)->GetDataType() != ::dbus::Message::VARIANT) {
     return true;
+  }
 
   if (!for_any) {
     switch (g_auto_variant_unwrap_state) {
@@ -73,8 +74,9 @@ bool DescendIntoVariantIfPresent(::dbus::MessageReader** reader_ref,
     }
   }
 
-  if (!(*reader_ref)->PopVariant(variant_reader))
+  if (!(*reader_ref)->PopVariant(variant_reader)) {
     return false;
+  }
   *reader_ref = variant_reader;
   return true;
 }
@@ -199,8 +201,9 @@ namespace {
 template <typename T>
 bool PopTypedValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   T data{};
-  if (!PopValueFromReader(reader, &data))
+  if (!PopValueFromReader(reader, &data)) {
     return false;
+  }
   *value = std::move(data);
   return true;
 }
@@ -222,66 +225,67 @@ bool PopTypedMapFromReader(dbus::MessageReader* reader, brillo::Any* value) {
 // type signature is required, feel free to add support for it.
 bool PopArrayValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   std::string signature = reader->GetDataSignature();
-  if (signature == "ab")
+  if (signature == "ab") {
     return PopTypedArrayFromReader<bool>(reader, value);
-  else if (signature == "ay")
+  } else if (signature == "ay") {
     return PopTypedArrayFromReader<uint8_t>(reader, value);
-  else if (signature == "an")
+  } else if (signature == "an") {
     return PopTypedArrayFromReader<int16_t>(reader, value);
-  else if (signature == "aq")
+  } else if (signature == "aq") {
     return PopTypedArrayFromReader<uint16_t>(reader, value);
-  else if (signature == "ai")
+  } else if (signature == "ai") {
     return PopTypedArrayFromReader<int32_t>(reader, value);
-  else if (signature == "au")
+  } else if (signature == "au") {
     return PopTypedArrayFromReader<uint32_t>(reader, value);
-  else if (signature == "ax")
+  } else if (signature == "ax") {
     return PopTypedArrayFromReader<int64_t>(reader, value);
-  else if (signature == "at")
+  } else if (signature == "at") {
     return PopTypedArrayFromReader<uint64_t>(reader, value);
-  else if (signature == "ad")
+  } else if (signature == "ad") {
     return PopTypedArrayFromReader<double>(reader, value);
-  else if (signature == "as")
+  } else if (signature == "as") {
     return PopTypedArrayFromReader<std::string>(reader, value);
-  else if (signature == "ao")
+  } else if (signature == "ao") {
     return PopTypedArrayFromReader<dbus::ObjectPath>(reader, value);
-  else if (signature == "av")
+  } else if (signature == "av") {
     return PopTypedArrayFromReader<brillo::Any>(reader, value);
-  else if (signature == "a{ss}")
+  } else if (signature == "a{ss}") {
     return PopTypedMapFromReader<std::string, std::string>(reader, value);
-  else if (signature == "a{sv}")
+  } else if (signature == "a{sv}") {
     return PopTypedValueFromReader<brillo::VariantDictionary>(reader, value);
-  else if (signature == "aa{ss}")
+  } else if (signature == "aa{ss}") {
     return PopTypedArrayFromReader<std::map<std::string, std::string>>(reader,
                                                                        value);
-  else if (signature == "aay")
+  } else if (signature == "aay") {
     return PopTypedArrayFromReader<std::vector<uint8_t>>(reader, value);
-  else if (signature == "aa{sv}")
+  } else if (signature == "aa{sv}") {
     return PopTypedArrayFromReader<brillo::VariantDictionary>(reader, value);
-  else if (signature == "a{sa{ss}}")
+  } else if (signature == "a{sa{ss}}") {
     return PopTypedMapFromReader<std::string,
                                  std::map<std::string, std::string>>(reader,
                                                                      value);
-  else if (signature == "a{sa{sv}}")
+  } else if (signature == "a{sa{sv}}") {
     return PopTypedMapFromReader<std::string, brillo::VariantDictionary>(reader,
                                                                          value);
-  else if (signature == "a{qay}")
+  } else if (signature == "a{qay}") {
     return PopTypedMapFromReader<uint16_t, std::vector<uint8_t>>(reader, value);
-  else if (signature == "a{say}")
+  } else if (signature == "a{say}") {
     return PopTypedMapFromReader<std::string, std::vector<uint8_t>>(reader,
                                                                     value);
-  else if (signature == "a{uv}")
+  } else if (signature == "a{uv}") {
     return PopTypedMapFromReader<uint32_t, brillo::Any>(reader, value);
-  else if (signature == "a(su)")
+  } else if (signature == "a(su)") {
     return PopTypedArrayFromReader<std::tuple<std::string, uint32_t>>(reader,
                                                                       value);
-  else if (signature == "a{uu}")
+  } else if (signature == "a{uu}") {
     return PopTypedMapFromReader<uint32_t, uint32_t>(reader, value);
-  else if (signature == "a(uu)")
+  } else if (signature == "a(uu)") {
     return PopTypedArrayFromReader<std::tuple<uint32_t, uint32_t>>(reader,
                                                                    value);
-  else if (signature == "a(ubay)")
+  } else if (signature == "a(ubay)") {
     return PopTypedArrayFromReader<
         std::tuple<uint32_t, bool, std::vector<uint8_t>>>(reader, value);
+  }
 
   // When a use case for particular array signature is found, feel free
   // to add handing for it here.
@@ -295,19 +299,20 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
 // type signature is required, feel free to add support for it.
 bool PopStructValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   std::string signature = reader->GetDataSignature();
-  if (signature == "(ii)")
+  if (signature == "(ii)") {
     return PopTypedValueFromReader<std::tuple<int, int>>(reader, value);
-  else if (signature == "(ss)")
+  } else if (signature == "(ss)") {
     return PopTypedValueFromReader<std::tuple<std::string, std::string>>(reader,
                                                                          value);
-  else if (signature == "(ub)")
+  } else if (signature == "(ub)") {
     return PopTypedValueFromReader<std::tuple<uint32_t, bool>>(reader, value);
-  else if (signature == "(uu)")
+  } else if (signature == "(uu)") {
     return PopTypedValueFromReader<std::tuple<uint32_t, uint32_t>>(reader,
                                                                    value);
-  else if (signature == "(ua{sv})")
+  } else if (signature == "(ua{sv})") {
     return PopTypedValueFromReader<
         std::tuple<uint32_t, brillo::VariantDictionary>>(reader, value);
+  }
 
   // When a use case for particular struct signature is found, feel free
   // to add handing for it here.
@@ -321,8 +326,9 @@ bool PopStructValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
 bool PopValueFromReader(dbus::MessageReader* reader, brillo::Any* value) {
   dbus::MessageReader variant_reader(nullptr);
   if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader,
-                                            /*for_any=*/true))
+                                            /*for_any=*/true)) {
     return false;
+  }
 
   switch (reader->GetDataType()) {
     case dbus::Message::BYTE:

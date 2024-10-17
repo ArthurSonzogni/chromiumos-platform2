@@ -17,8 +17,9 @@ std::map<int, base::FilePath> GetSortedResilientPolicyFilePaths(
     const base::FilePath& default_policy_path) {
   std::map<int, base::FilePath> sorted_policy_file_paths;
   base::FilePath directory = default_policy_path.DirName();
-  if (!base::PathExists(directory))
+  if (!base::PathExists(directory)) {
     return sorted_policy_file_paths;
+  }
 
   // Iterate the list of files in the folder, identifying the policy files based
   // on the name. Store in the map the absolute paths.
@@ -61,8 +62,9 @@ bool ParseResilientPolicyFilePath(const base::FilePath& policy_path,
 
 base::FilePath GetResilientPolicyFilePathForIndex(
     const base::FilePath& default_policy_path, int index) {
-  if (index == 0)
+  if (index == 0) {
     return default_policy_path;
+  }
   return base::FilePath(default_policy_path.value() + "." +
                         std::to_string(index));
 }

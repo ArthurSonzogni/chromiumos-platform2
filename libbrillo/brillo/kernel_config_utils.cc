@@ -59,14 +59,16 @@ bool Find(const std::string& kernel_config,
 
   while (tokenizer.GetNext()) {
     const auto token = tokenizer.token();
-    if (token == kTerminator)
+    if (token == kTerminator) {
       break;
+    }
 
     switch (type) {
       case FindType::kValue:
         for (const auto& target_variant : target_variants) {
-          if (!token.starts_with(target_variant))
+          if (!token.starts_with(target_variant)) {
             continue;
+          }
 
           if (value_bound) {
             *value_bound = {tokenizer.token_begin() + target_variant.size(),
@@ -79,8 +81,9 @@ bool Find(const std::string& kernel_config,
       case FindType::kFlag:
         for (const auto& target_variant : target_variants) {
           if (token == target_variant || (target_variant.ends_with(kEquals) &&
-                                          token.starts_with(target_variant)))
+                                          token.starts_with(target_variant))) {
             return true;
+          }
         }
         break;
     }

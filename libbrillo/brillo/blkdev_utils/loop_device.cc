@@ -68,15 +68,17 @@ int GetDeviceNumber(const base::FilePath& sys_block_loopdev_path) {
 
   base::FilePath device_file = sys_block_loopdev_path.Append(kDeviceIdPath);
 
-  if (!base::ReadFileToString(device_file, &device_string))
+  if (!base::ReadFileToString(device_file, &device_string)) {
     return -1;
+  }
 
   std::vector<std::string> device_ids = base::SplitString(
       device_string, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   if (device_ids.size() != 2 ||
-      device_ids[0] != base::NumberToString(LOOP_MAJOR))
+      device_ids[0] != base::NumberToString(LOOP_MAJOR)) {
     return -1;
+  }
 
   base::StringToInt(device_ids[1], &device_number);
   return device_number;
@@ -90,8 +92,9 @@ base::FilePath GetBackingFile(const base::FilePath& loopdev_path) {
   base::FilePath backing_file = loopdev_path.Append(kLoopBackingFile);
   std::string backing_file_content;
   // If the backing file doesn't exist, it's not an attached loop device.
-  if (!base::ReadFileToString(backing_file, &backing_file_content))
+  if (!base::ReadFileToString(backing_file, &backing_file_content)) {
     return base::FilePath();
+  }
   base::FilePath backing_file_path(
       base::TrimWhitespaceASCII(backing_file_content, base::TRIM_ALL));
 
@@ -197,8 +200,9 @@ std::unique_ptr<LoopDevice> LoopDeviceManager::AttachDeviceToFile(
     base::FilePath device_path = CreateDevicePath(device_number);
 
     if (loop_ioctl_.Run(device_path, LOOP_SET_FD, backing_file_fd.get(),
-                        kLoopDeviceIoctlFlags) == 0)
+                        kLoopDeviceIoctlFlags) == 0) {
       break;
+    }
 
     if (errno != EBUSY) {
       LOG(ERROR) << "ioctl(LOOP_SET_FD) failed";
@@ -219,8 +223,9 @@ std::unique_ptr<LoopDevice> LoopDeviceManager::AttachDeviceToFile(
 
   // Set direct I/O mode for the backing file for the loop device, if supported.
   if (loop_ioctl_.Run(CreateDevicePath(device_number), LOOP_SET_DIRECT_IO, 1,
-                      kLoopDeviceIoctlFlags) != 0)
+                      kLoopDeviceIoctlFlags) != 0) {
     PLOG(WARNING) << "Direct I/O mode is not supported.";
+  }
 
   // All steps of setting up the loop device succeeded.
   return CreateLoopDevice(device_number, backing_file);
@@ -235,8 +240,9 @@ std::unique_ptr<LoopDevice> LoopDeviceManager::GetAttachedDeviceByNumber(
     int device_number) {
   auto devices = SearchLoopDevicePaths(device_number);
 
-  if (devices.empty())
+  if (devices.empty()) {
     return CreateLoopDevice(-1, base::FilePath());
+  }
 
   return std::move(devices[0]);
 }
@@ -255,8 +261,9 @@ std::unique_ptr<LoopDevice> LoopDeviceManager::GetAttachedDeviceByName(
     }
 
     if (strcmp(reinterpret_cast<char*>(device_info.lo_file_name),
-               name.c_str()) == 0)
+               name.c_str()) == 0) {
       return std::move(attached_device);
+    }
   }
 
   return CreateLoopDevice(-1, base::FilePath());
@@ -271,9 +278,10 @@ LoopDeviceManager::SearchLoopDevicePaths(int device_number) {
   if (device_number != -1) {
     auto loopdev_path =
         rootdir.Append(base::StringPrintf("loop%d", device_number));
-    if (base::PathExists(loopdev_path))
+    if (base::PathExists(loopdev_path)) {
       devices.push_back(
           CreateLoopDevice(device_number, GetBackingFile(loopdev_path)));
+    }
   } else {
     // Read /sys/block to discover all loop devices.
     base::FileEnumerator loopdev_enum(

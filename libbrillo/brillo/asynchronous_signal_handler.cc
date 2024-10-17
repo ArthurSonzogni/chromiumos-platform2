@@ -25,8 +25,9 @@ AsynchronousSignalHandler::AsynchronousSignalHandler() {
 AsynchronousSignalHandler::~AsynchronousSignalHandler() {
   fd_watcher_ = nullptr;
 
-  if (!descriptor_.is_valid())
+  if (!descriptor_.is_valid()) {
     return;
+  }
 
   // Close FD before restoring sigprocmask.
   descriptor_.reset();
@@ -59,8 +60,9 @@ void AsynchronousSignalHandler::RegisterHandler(int signal,
 
 void AsynchronousSignalHandler::UnregisterHandler(int signal) {
   Callbacks::iterator callback_it = registered_callbacks_.find(signal);
-  if (callback_it == registered_callbacks_.end())
+  if (callback_it == registered_callbacks_.end()) {
     return;
+  }
   registered_callbacks_.erase(callback_it);
   CHECK_EQ(0, sigdelset(&signal_mask_, signal));
   UpdateSignals();
@@ -80,14 +82,16 @@ void AsynchronousSignalHandler::OnReadable() {
     }
     const SignalHandler& callback = callback_it->second;
     bool must_unregister = callback.Run(info);
-    if (must_unregister)
+    if (must_unregister) {
       UnregisterHandler(signal);
+    }
   }
 }
 
 void AsynchronousSignalHandler::UpdateSignals() {
-  if (!descriptor_.is_valid())
+  if (!descriptor_.is_valid()) {
     return;
+  }
   sigset_t mask;
   CHECK_EQ(0, sigemptyset(&mask));
   CHECK_EQ(0, sigorset(&mask, &signal_mask_, &saved_signal_mask_));

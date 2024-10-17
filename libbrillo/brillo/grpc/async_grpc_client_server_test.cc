@@ -91,8 +91,9 @@ class PendingIncomingRpcQueue {
     incoming_rpc->request = std::move(request);
     incoming_rpc->handler_done_callback = std::move(handler_done_callback);
     pending_rpcs_.push(std::move(incoming_rpc));
-    if (waiting_loop_)
+    if (waiting_loop_) {
       waiting_loop_->Quit();
+    }
   }
 
   // Holds information about all RPCs that this |PendingIncomingRpcQueue| was
@@ -128,8 +129,9 @@ class RpcReply {
 
   // Wait until this RPC has a reply.
   void Wait() {
-    if (has_reply_)
+    if (has_reply_) {
       return;
+    }
 
     waiting_loop_ = std::make_unique<base::RunLoop>();
     waiting_loop_->Run();
@@ -157,8 +159,9 @@ class RpcReply {
     response_ = std::move(response);
     status_ = std::move(status);
 
-    if (waiting_loop_)
+    if (waiting_loop_) {
       waiting_loop_->Quit();
+    }
   }
 
   std::unique_ptr<base::RunLoop> waiting_loop_;
@@ -386,10 +389,12 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
   void TearDown() override {
     // Stop all clients and servers here, before deleting the temp dir that they
     // use.
-    if (client2_)
+    if (client2_) {
       ShutDownSecondClient();
-    if (client_)
+    }
+    if (client_) {
       ShutDownClient();
+    }
     self_stopping_service_.reset();
     ShutDownManualService();
   }

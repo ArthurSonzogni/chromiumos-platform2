@@ -79,8 +79,9 @@ void SimpleAlarmTimer::Start(const base::Location& location,
 void SimpleAlarmTimer::Stop() {
   DCHECK(origin_task_runner_->RunsTasksInCurrentSequence());
 
-  if (!IsRunning())
+  if (!IsRunning()) {
     return;
+  }
 
   // Cancel any previous callbacks.
   weak_factory_.InvalidateWeakPtrs();
@@ -92,8 +93,9 @@ void SimpleAlarmTimer::Stop() {
   // This disarms the CLOCK_REALTIME alarm that will wake the system by
   // writing an itimerspec with values of 0.
   itimerspec alarm_time = {};
-  if (timerfd_settime(alarm_fd_.get(), 0, &alarm_time, NULL) < 0)
+  if (timerfd_settime(alarm_fd_.get(), 0, &alarm_time, NULL) < 0) {
     PLOG(ERROR) << "Error while disarming RTC alarm. Hardware timer may fire";
+  }
 }
 
 void SimpleAlarmTimer::Reset() {
@@ -121,8 +123,9 @@ void SimpleAlarmTimer::Reset() {
   alarm_time.it_value.tv_nsec =
       (delay.InMicroseconds() % base::Time::kMicrosecondsPerSecond) *
       base::Time::kNanosecondsPerMicrosecond;
-  if (timerfd_settime(alarm_fd_.get(), 0, &alarm_time, NULL) < 0)
+  if (timerfd_settime(alarm_fd_.get(), 0, &alarm_time, NULL) < 0) {
     PLOG(ERROR) << "Error while setting alarm time.  Timer will not fire";
+  }
 
   // The timer is running.
   is_running_ = true;
@@ -150,8 +153,9 @@ void SimpleAlarmTimer::OnAlarmFdReadableWithoutBlocking() {
 
   // Read from |alarm_fd_| to ack the event.
   char val[sizeof(uint64_t)];
-  if (!base::ReadFromFD(alarm_fd_.get(), val))
+  if (!base::ReadFromFD(alarm_fd_.get(), val)) {
     PLOG(DFATAL) << "Unable to read from timer file descriptor.";
+  }
 
   OnTimerFired();
 }
@@ -171,8 +175,9 @@ void SimpleAlarmTimer::OnTimerFired() {
   base::TaskAnnotator().RunTask("SimpleAlarmTimer::Reset", *pending_user_task);
 
   // If the timer wasn't deleted, stopped or reset by the callback, stop it.
-  if (weak_ptr)
+  if (weak_ptr) {
     Stop();
+  }
 }
 
 bool SimpleAlarmTimer::IsRunning() const {

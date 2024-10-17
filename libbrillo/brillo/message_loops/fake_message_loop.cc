@@ -20,8 +20,9 @@ MessageLoop::TaskId FakeMessageLoop::PostDelayedTask(
   // If no SimpleTestClock was provided, we use the last time we fired a
   // callback. In this way, tasks scheduled from a Closure will have the right
   // time.
-  if (test_clock_)
+  if (test_clock_) {
     current_time_ = test_clock_->Now();
+  }
   MessageLoop::TaskId current_id = ++last_id_;
   // FakeMessageLoop is limited to only 2^64 tasks. That should be enough.
   CHECK(current_id);
@@ -34,16 +35,18 @@ MessageLoop::TaskId FakeMessageLoop::PostDelayedTask(
 }
 
 bool FakeMessageLoop::CancelTask(TaskId task_id) {
-  if (task_id == MessageLoop::kTaskIdNull)
+  if (task_id == MessageLoop::kTaskIdNull) {
     return false;
+  }
   bool ret = tasks_.erase(task_id) > 0;
   VLOG_IF(1, ret) << "Removing task_id " << task_id;
   return ret;
 }
 
 bool FakeMessageLoop::RunOnce(bool may_block) {
-  if (test_clock_)
+  if (test_clock_) {
     current_time_ = test_clock_->Now();
+  }
   // Try to fire time-based callbacks afterwards.
   while (!fire_order_.empty() &&
          (may_block || fire_order_.top().first <= current_time_)) {
@@ -53,13 +56,15 @@ bool FakeMessageLoop::RunOnce(bool may_block) {
     // This is normal if the task was canceled, as there is no efficient way
     // to remove a task from the priority_queue.
     const auto scheduled_task_ref = tasks_.find(task_ref.second);
-    if (scheduled_task_ref == tasks_.end())
+    if (scheduled_task_ref == tasks_.end()) {
       continue;
+    }
     // Advance the clock to the task firing time, if needed.
     if (current_time_ < task_ref.first) {
       current_time_ = task_ref.first;
-      if (test_clock_)
+      if (test_clock_) {
         test_clock_->SetNow(current_time_);
+      }
     }
     // Move the Closure out of the map before delete it. We need to delete the
     // entry from the map before we call the callback, since calling CancelTask

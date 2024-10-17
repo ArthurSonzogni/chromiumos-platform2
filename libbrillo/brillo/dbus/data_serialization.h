@@ -379,8 +379,9 @@ PopValueFromReader(::dbus::MessageReader* reader,
     // Use DBusType<T>::Read() instead of PopValueFromReader() to delay
     // binding to PopValueFromReader() to the point of instantiation of this
     // template.
-    if (!DBusType<T>::Read(&array_reader, &data))
+    if (!DBusType<T>::Read(&array_reader, &data)) {
       return false;
+    }
     value->push_back(std::move(data));
   }
   return true;
@@ -594,16 +595,18 @@ PopValueFromReader(::dbus::MessageReader* reader,
   value->clear();
   while (array_reader.HasMoreData()) {
     ::dbus::MessageReader dict_entry_reader(nullptr);
-    if (!array_reader.PopDictEntry(&dict_entry_reader))
+    if (!array_reader.PopDictEntry(&dict_entry_reader)) {
       return false;
+    }
     KEY key;
     VALUE data;
     // Use DBusType<T>::Read() instead of PopValueFromReader() to delay
     // binding to PopValueFromReader() to the point of instantiation of this
     // template.
     if (!DBusType<KEY>::Read(&dict_entry_reader, &key) ||
-        !DBusType<VALUE>::Read(&dict_entry_reader, &data))
+        !DBusType<VALUE>::Read(&dict_entry_reader, &data)) {
       return false;
+    }
     value->emplace(std::move(key), std::move(data));
   }
   return true;
@@ -714,8 +717,9 @@ template <typename T>
 typename std::enable_if<IsTypeSupported<T>::value, bool>::type
 PopVariantValueFromReader(::dbus::MessageReader* reader, T* value) {
   ::dbus::MessageReader variant_reader(nullptr);
-  if (!reader->PopVariant(&variant_reader))
+  if (!reader->PopVariant(&variant_reader)) {
     return false;
+  }
   // Use DBusType<T>::Read() instead of PopValueFromReader() to delay
   // binding to PopValueFromReader() to the point of instantiation of this
   // template.

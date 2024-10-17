@@ -110,8 +110,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   brillo::StreamPtr form_stream = form_data.ExtractDataStream();
-  if (!form_stream)
+  if (!form_stream) {
     return 0;
+  }
 
   // We need to use a decent sized buffer and call ReadAllBlocking to avoid
   // excess overhead with reading here that can make the fuzzer timeout.

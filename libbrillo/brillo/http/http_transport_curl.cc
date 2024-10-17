@@ -94,8 +94,9 @@ class Transport::SocketPollData {
     CHECK_NE(CURLM_CALL_MULTI_PERFORM, code)
         << "CURL should no longer return CURLM_CALL_MULTI_PERFORM here";
 
-    if (code == CURLM_OK)
+    if (code == CURLM_OK) {
       transport_->ProcessAsyncCurlMessages();
+    }
   }
 
   // The CURL interface to use.
@@ -446,8 +447,9 @@ void Transport::AddMultiCurlError(brillo::ErrorPtr* error,
 }
 
 bool Transport::SetupAsyncCurl(brillo::ErrorPtr* error) {
-  if (curl_multi_handle_)
+  if (curl_multi_handle_) {
     return true;
+  }
 
   curl_multi_handle_ = curl_interface_->MultiInit();
   if (!curl_multi_handle_) {
@@ -471,13 +473,15 @@ bool Transport::SetupAsyncCurl(brillo::ErrorPtr* error) {
 }
 
 void Transport::ShutDownAsyncCurl() {
-  if (!curl_multi_handle_)
+  if (!curl_multi_handle_) {
     return;
+  }
   LOG_IF(WARNING, !poll_data_map_.empty())
       << "There are pending requests at the time of transport's shutdown";
   // Make sure we are not leaking any memory here.
-  for (const auto& pair : poll_data_map_)
+  for (const auto& pair : poll_data_map_) {
     delete pair.second;
+  }
   poll_data_map_.clear();
   curl_interface_->MultiCleanup(curl_multi_handle_);
   curl_multi_handle_ = nullptr;
@@ -518,10 +522,12 @@ int Transport::MultiSocketCallback(
   poll_data->StopWatcher();
 
   bool success = true;
-  if (what == CURL_POLL_IN || what == CURL_POLL_INOUT)
+  if (what == CURL_POLL_IN || what == CURL_POLL_INOUT) {
     success = poll_data->WatchReadable() && success;
-  if (what == CURL_POLL_OUT || what == CURL_POLL_INOUT)
+  }
+  if (what == CURL_POLL_OUT || what == CURL_POLL_INOUT) {
     success = poll_data->WatchWritable() && success;
+  }
 
   CHECK(success) << "Failed to watch the CURL socket.";
   return 0;
@@ -632,10 +638,11 @@ void Transport::CleanAsyncConnection(Connection* connection) {
   // Remove all the socket data associated with this connection.
   auto iter = poll_data_map_.begin();
   while (iter != poll_data_map_.end()) {
-    if (iter->first.first == connection->curl_handle_)
+    if (iter->first.first == connection->curl_handle_) {
       iter = poll_data_map_.erase(iter);
-    else
+    } else {
       ++iter;
+    }
   }
   // Remove pending asynchronous request data.
   // This must be last since there is a chance of this object being

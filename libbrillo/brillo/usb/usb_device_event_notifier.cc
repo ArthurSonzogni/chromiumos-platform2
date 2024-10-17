@@ -89,16 +89,18 @@ bool UsbDeviceEventNotifier::ScanExistingDevices() {
 
     std::unique_ptr<brillo::UdevDevice> device =
         udev_->CreateDeviceFromSysPath(sys_path.c_str());
-    if (!device)
+    if (!device) {
       continue;
+    }
 
     uint8_t bus_number;
     uint8_t device_address;
     uint16_t vendor_id;
     uint16_t product_id;
     if (!GetDeviceAttributes(device.get(), &bus_number, &device_address,
-                             &vendor_id, &product_id))
+                             &vendor_id, &product_id)) {
       continue;
+    }
 
     for (UsbDeviceEventObserver& observer : observer_list_) {
       observer.OnUsbDeviceAdded(sys_path, bus_number, device_address, vendor_id,
@@ -172,8 +174,9 @@ void UsbDeviceEventNotifier::OnUdevMonitorFileDescriptorReadable() {
   }
 
   if (action == "remove") {
-    for (UsbDeviceEventObserver& observer : observer_list_)
+    for (UsbDeviceEventObserver& observer : observer_list_) {
       observer.OnUsbDeviceRemoved(sys_path);
+    }
   }
 }
 

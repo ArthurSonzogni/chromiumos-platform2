@@ -70,8 +70,9 @@ inline std::string Base64EncodeWrapLines(const std::string& input) {
 }
 inline bool Base64Decode(const std::string& input, std::string* output) {
   brillo::Blob blob;
-  if (!Base64Decode(input, &blob))
+  if (!Base64Decode(input, &blob)) {
     return false;
+  }
   *output = std::string{blob.begin(), blob.end()};
   return true;
 }

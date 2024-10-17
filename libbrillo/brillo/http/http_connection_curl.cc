@@ -70,8 +70,9 @@ Connection::Connection(CURL* curl_handle,
 }
 
 Connection::~Connection() {
-  if (header_list_)
+  if (header_list_) {
     curl_slist_free_all(header_list_);
+  }
   curl_interface_->EasyCleanup(curl_handle_);
   VLOG(2) << "curl::Connection destroyed";
 }
@@ -102,8 +103,9 @@ void Connection::PrepareRequest() {
   if (method_ != request_type::kGet) {
     // Set up HTTP request data.
     uint64_t data_size = 0;
-    if (request_data_stream_ && request_data_stream_->CanGetSize())
+    if (request_data_stream_ && request_data_stream_->CanGetSize()) {
       data_size = request_data_stream_->GetRemainingSize();
+    }
 
     if (!request_data_stream_ || request_data_stream_->CanGetSize()) {
       // Data size is known (either no data, or data size is available).
@@ -140,8 +142,9 @@ void Connection::PrepareRequest() {
   }
 
   // Set up HTTP response data.
-  if (!response_data_stream_)
+  if (!response_data_stream_) {
     response_data_stream_ = MemoryStream::Create(nullptr);
+  }
   if (method_ != request_type::kHead) {
     curl_interface_->EasySetOptCallback(curl_handle_, CURLOPT_WRITEFUNCTION,
                                         &Connection::write_callback);
@@ -162,8 +165,9 @@ bool Connection::FinishRequest(brillo::ErrorPtr* error) {
   } else {
     // Rewind our data stream to the beginning so that it can be read back.
     if (response_data_stream_->CanSeek() &&
-        !response_data_stream_->SetPosition(0, error))
+        !response_data_stream_->SetPosition(0, error)) {
       return false;
+    }
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
               << GetResponseStatusText() << ")";
   }

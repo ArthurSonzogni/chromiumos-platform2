@@ -55,8 +55,9 @@ bool EnsureSystemSaltIsLoaded() {
 }
 
 ObfuscatedUsername SanitizeUserName(const Username& username) {
-  if (!EnsureSystemSaltIsLoaded())
+  if (!EnsureSystemSaltIsLoaded()) {
     return ObfuscatedUsername();
+  }
 
   return SanitizeUserNameWithSalt(
       username,
@@ -89,8 +90,9 @@ FilePath GetRootPathPrefix() {
 }
 
 FilePath GetUserPath(const Username& username) {
-  if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
+  if (!SystemSaltLoader::GetInstance()->EnsureLoaded()) {
     return FilePath();
+  }
   return GetUserPath(SanitizeUserName(username));
 }
 
@@ -100,8 +102,9 @@ FilePath GetUserPath(const ObfuscatedUsername& username) {
 }
 
 FilePath GetRootPath(const Username& username) {
-  if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
+  if (!SystemSaltLoader::GetInstance()->EnsureLoaded()) {
     return FilePath();
+  }
   return GetRootPath(SanitizeUserName(username));
 }
 
@@ -112,8 +115,9 @@ FilePath GetRootPath(const ObfuscatedUsername& username) {
 
 FilePath GetDaemonStorePath(const Username& username,
                             const std::string& daemon) {
-  if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
+  if (!SystemSaltLoader::GetInstance()->EnsureLoaded()) {
     return FilePath();
+  }
   return GetDaemonStorePath(SanitizeUserName(username), daemon);
 }
 

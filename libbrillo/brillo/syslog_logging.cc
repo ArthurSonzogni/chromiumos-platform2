@@ -78,8 +78,9 @@ static bool HandleMessage(int severity,
       syslog(severity, "%s", str);
     }
   }
-  if (s_accumulate)
+  if (s_accumulate) {
     s_accumulated.append(str);
+  }
   return !s_log_to_stderr && severity != kSyslogCritical;
 }
 
@@ -87,8 +88,9 @@ namespace brillo {
 void SetLogFlags(int log_flags) {
   s_log_to_syslog = (log_flags & kLogToSyslog) != 0;
   s_log_to_stderr = (log_flags & kLogToStderr) != 0;
-  if ((log_flags & kLogToStderrIfTty) && isatty(0))
+  if ((log_flags & kLogToStderrIfTty) && isatty(0)) {
     s_log_to_stderr = true;
+  }
   s_log_header = (log_flags & kLogHeader) != 0;
 }
 int GetLogFlags() {
