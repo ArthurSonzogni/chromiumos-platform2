@@ -22,8 +22,9 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "DNS Proxy daemon");
 
   int flags = brillo::kLogToSyslog | brillo::kLogHeader;
-  if (FLAGS_log_to_stderr)
+  if (FLAGS_log_to_stderr) {
     flags |= brillo::kLogToStderr;
+  }
 
   brillo::InitLog(flags);
 

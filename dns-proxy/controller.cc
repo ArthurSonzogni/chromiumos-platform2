@@ -194,8 +194,9 @@ void Controller::OnPatchpanelReady(bool success) {
 
   // Process the current set of patchpanel devices and launch any required
   // proxy processes.
-  for (const auto& d : patchpanel_->GetDevices())
+  for (const auto& d : patchpanel_->GetDevices()) {
     VirtualDeviceAdded(d);
+  }
 }
 
 void Controller::OnPatchpanelReset(bool reset) {
@@ -458,8 +459,9 @@ bool Controller::RestartProxy(const ProxyProc& proc) {
 }
 
 void Controller::EvalProxyExit(const ProxyProc& proc) {
-  if (proc.opts.type != Proxy::Type::kSystem)
+  if (proc.opts.type != Proxy::Type::kSystem) {
     return;
+  }
 
   // Ensure the system proxy address is cleared from shill.
   if (!shill_ready_) {

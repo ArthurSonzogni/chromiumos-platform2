@@ -236,8 +236,9 @@ bool AresClient::Resolve(const base::span<const unsigned char>& query,
                          const std::string& name_server,
                          int type) {
   ares_channel channel = InitChannel(name_server, type);
-  if (!channel)
+  if (!channel) {
     return false;
+  }
 
   State* state = new State(this, channel, callback);
   ares_send(channel, query.data(), query.size(), &AresClient::AresCallback,

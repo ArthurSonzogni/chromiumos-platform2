@@ -70,8 +70,9 @@ const char* ProcessTypeString(Metrics::ProcessType type) {
       {Metrics::ProcessType::kProxyARC, "ARCProxy"},
   };
   const auto it = m.find(type);
-  if (it != m.end())
+  if (it != m.end()) {
     return it->second;
+  }
 
   return nullptr;
 }
@@ -99,11 +100,13 @@ const char* IpFamilyTypeString(sa_family_t family) {
 }
 
 Metrics::HttpError HttpStatusToError(int status) {
-  if (status < 300)
+  if (status < 300) {
     return Metrics::HttpError::kNone;
+  }
 
-  if (status < 400)
+  if (status < 400) {
     return Metrics::HttpError::kAnyRedirect;
+  }
 
   switch (status) {
     case 400:
@@ -158,12 +161,13 @@ void Metrics::RecordNameservers(unsigned int num_ipv4, unsigned int num_ipv6) {
 
   Metrics::NameserverType ns_type = Metrics::NameserverType::kNone;
   const auto total = num_ipv4 + num_ipv6;
-  if (total == num_ipv4)
+  if (total == num_ipv4) {
     ns_type = Metrics::NameserverType::kIPv4;
-  else if (total == num_ipv6)
+  } else if (total == num_ipv6) {
     ns_type = Metrics::NameserverType::kIPv6;
-  else if (total != 0)
+  } else if (total != 0) {
     ns_type = Metrics::NameserverType::kBoth;
+  }
 
   metrics_.SendEnumToUMA(kNameserverTypes, ns_type);
 }
@@ -176,8 +180,9 @@ void Metrics::RecordQueryResult(Metrics::QueryType type,
                                 Metrics::QueryError error,
                                 int http_code) {
   const char* qs = QueryTypeString(type);
-  if (!qs)
+  if (!qs) {
     return;
+  }
 
   auto name =
       base::ReplaceStringPlaceholders(kQueryResultsTemplate, {qs}, nullptr);
@@ -199,8 +204,9 @@ void Metrics::RecordQueryResult(Metrics::QueryType type,
 void Metrics::RecordQueryResultWithRetries(Metrics::QueryType type,
                                            bool success) {
   const char* qs = QueryTypeString(type);
-  if (!qs)
+  if (!qs) {
     return;
+  }
 
   auto name = base::ReplaceStringPlaceholders(kQueryResultsWithRetriesTemplate,
                                               {qs}, nullptr);
@@ -222,8 +228,9 @@ void Metrics::RecordQueryResolveDuration(QueryType type,
                                          int64_t ms,
                                          bool success) {
   const char* qs = QueryTypeString(type);
-  if (!qs)
+  if (!qs) {
     return;
+  }
 
   const char* prefix = !success ? kQueryDurationFailed : "";
   auto name = base::ReplaceStringPlaceholders(kQueryDurationResolveTemplate,
@@ -287,8 +294,9 @@ void Metrics::QueryTimer::StopReceive(bool success) {
   timer_.GetElapsedTime(&elapsed_recv_.second);
   elapsed_recv_.first = success;
   // Timer is stopped here since no further measurable processing will follow.
-  if (!success)
+  if (!success) {
     Stop();
+  }
 }
 
 void Metrics::QueryTimer::StartResolve(bool is_doh) {
@@ -301,8 +309,9 @@ void Metrics::QueryTimer::StartResolve(bool is_doh) {
 
 void Metrics::QueryTimer::StopResolve(bool success) {
   // For unit tests.
-  if (elapsed_resolve_.empty())
+  if (elapsed_resolve_.empty()) {
     return;
+  }
 
   base::TimeDelta d;
   timer_.GetElapsedTime(&d);
@@ -334,14 +343,16 @@ void Metrics::QueryTimer::set_metrics(Metrics* metrics) {
 }
 
 void Metrics::QueryTimer::Record(Metrics* metrics) {
-  if (!metrics)
+  if (!metrics) {
     return;
+  }
 
   metrics->RecordQueryDuration(kQueryDurationReceive,
                                elapsed_recv_.second.InMilliseconds(),
                                elapsed_recv_.first);
-  if (!elapsed_recv_.first)
+  if (!elapsed_recv_.first) {
     return;
+  }
 
   bool overall = false;
   for (const auto& r : elapsed_resolve_) {

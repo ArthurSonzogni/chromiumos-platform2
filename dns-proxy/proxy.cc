@@ -97,14 +97,17 @@ const char* Proxy::TypeToString(Type t) {
 
 // static
 std::optional<Proxy::Type> Proxy::StringToType(const std::string& s) {
-  if (s == kSystemProxyType)
+  if (s == kSystemProxyType) {
     return Type::kSystem;
+  }
 
-  if (s == kDefaultProxyType)
+  if (s == kDefaultProxyType) {
     return Type::kDefault;
+  }
 
-  if (s == kARCProxyType)
+  if (s == kARCProxyType) {
     return Type::kARC;
+  }
 
   return std::nullopt;
 }
@@ -192,8 +195,9 @@ void Proxy::Setup() {
   session_->RegisterSessionStateHandler(base::BindRepeating(
       &Proxy::OnSessionStateChanged, weak_factory_.GetWeakPtr()));
 
-  if (!patchpanel_)
+  if (!patchpanel_) {
     patchpanel_ = patchpanel::Client::New(bus_);
+  }
 
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
@@ -265,9 +269,10 @@ void Proxy::OnPatchpanelReady(bool success) {
 
   // Track single-networked guests' start up and shut down for redirecting
   // traffic to the proxy.
-  if (opts_.type == Type::kDefault)
+  if (opts_.type == Type::kDefault) {
     patchpanel_->RegisterVirtualDeviceEventHandler(base::BindRepeating(
         &Proxy::OnVirtualDeviceChanged, weak_factory_.GetWeakPtr()));
+  }
 }
 
 void Proxy::StartDnsRedirection(const std::string& ifname,
@@ -344,8 +349,9 @@ void Proxy::OnPatchpanelReset(bool reset) {
 
 void Proxy::InitShill() {
   // shill_ should always be null unless a test has injected a client.
-  if (!shill_)
+  if (!shill_) {
     shill_.reset(new shill::Client(bus_));
+  }
 
   shill_->RegisterOnAvailableCallback(
       base::BindOnce(&Proxy::OnShillReady, weak_factory_.GetWeakPtr()));
@@ -413,8 +419,9 @@ void Proxy::OnSessionStateChanged(bool login) {
 }
 
 void Proxy::Enable() {
-  if (!ns_fd_.is_valid() || !device_)
+  if (!ns_fd_.is_valid() || !device_) {
     return;
+  }
 
   if (opts_.type == Type::kSystem) {
     SetShillDNSProxyAddresses(ns_.peer_ipv4_address, ns_peer_ipv6_address_);
@@ -473,8 +480,9 @@ std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
 
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // ARC proxies will handle changes to their network in OnDeviceChanged.
-  if (opts_.type == Proxy::Type::kARC)
+  if (opts_.type == Proxy::Type::kARC) {
     return;
+  }
 
   // Default service is either not ready yet or has just disconnected.
   if (!device) {
@@ -493,8 +501,9 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   // to work with the underlying physical interface.
   if (opts_.type == Proxy::Type::kSystem &&
       device->type == shill::Client::Device::Type::kVPN) {
-    if (device_)
+    if (device_) {
       return;
+    }
 
     // No device means that the system proxy has started up with a VPN as the
     // default network; which means we need to dig out the physical network
@@ -519,13 +528,15 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     return;
   }
 
-  if (!device_)
+  if (!device_) {
     device_ = std::make_unique<shill::Client::Device>();
+  }
 
   // The default network has changed.
-  if (new_default_device.ifname != device_->ifname)
+  if (new_default_device.ifname != device_->ifname) {
     LOG(INFO) << *this << " is now tracking [" << new_default_device.ifname
               << "]";
+  }
 
   *device_.get() = new_default_device;
   MaybeCreateResolver();
@@ -574,8 +585,9 @@ shill::Client::ManagerPropertyAccessor* Proxy::shill_props() {
 }
 
 void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
-  if (!device || (device_ && device_->ifname != device->ifname))
+  if (!device || (device_ && device_->ifname != device->ifname)) {
     return;
+  }
 
   switch (opts_.type) {
     case Type::kDefault:
@@ -585,8 +597,9 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       return;
 
     case Type::kSystem:
-      if (!device_ || device_->network_config == device->network_config)
+      if (!device_ || device_->network_config == device->network_config) {
         return;
+      }
 
       device_->network_config = device->network_config;
       UpdateNameServers();
@@ -597,8 +610,9 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       // associated with the shill's Device (primary Network) once patchpanel
       // Network ids are available and once dnsproxy uses the patchpanel
       // Network id.
-      if (opts_.ifname != device->ifname)
+      if (opts_.ifname != device->ifname) {
         return;
+      }
 
       if (device->state != shill::Client::Device::ConnectionState::kOnline) {
         if (device_) {
@@ -631,8 +645,9 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
 }
 
 void Proxy::MaybeCreateResolver() {
-  if (resolver_)
+  if (resolver_) {
     return;
+  }
 
   resolver_ =
       NewResolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry);
@@ -760,8 +775,9 @@ void Proxy::SetShillDNSProxyAddresses(
     LOG(ERROR) << *this << " Maximum number of retries exceeding attempt to"
                << " set dns-proxy address property on shill";
 
-    if (die_on_failure)
+    if (die_on_failure) {
       QuitWithExitCode(EX_UNAVAILABLE);
+    }
 
     return;
   }
@@ -942,8 +958,9 @@ void Proxy::DoHConfig::set_providers(
 }
 
 void Proxy::DoHConfig::update() {
-  if (!resolver_)
+  if (!resolver_) {
     return;
+  }
 
   std::vector<net_base::IPAddress> nameservers;
   for (const auto& ipv4_nameservers : ipv4_nameservers_) {

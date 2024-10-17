@@ -369,9 +369,10 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   }
 
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordQueryResult(Metrics::QueryType::kPlainText,
                                 AresStatusMetric(status));
+  }
 
   if (status == ARES_SUCCESS) {
     ReplyDNS(sock_fd, resp);
@@ -428,9 +429,10 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
   }
 
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
-  if (metrics_)
+  if (metrics_) {
     metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
                                 CurlCodeMetric(res.curl_code), res.http_code);
+  }
 
   // Process result.
   if (res.curl_code != CURLE_OK) {
@@ -665,8 +667,9 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
     servers_equal = false;
   }
 
-  if (servers_equal)
+  if (servers_equal) {
     return;
+  }
 
   if (doh) {
     LOG(INFO) << *this << " DoH providers are updated, "
@@ -923,8 +926,9 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
     }
   }
 
-  if (sock_fd->num_active_queries > 0)
+  if (sock_fd->num_active_queries > 0) {
     return true;
+  }
 
   LOG(ERROR) << *this << " No requests successfully started for query";
   if (metrics_) {
@@ -935,8 +939,9 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
 }
 
 std::vector<std::string> Resolver::GetActiveDoHProviders() {
-  if (!always_on_doh_ || !validated_doh_providers_.empty())
+  if (!always_on_doh_ || !validated_doh_providers_.empty()) {
     return validated_doh_providers_;
+  }
 
   std::vector<std::string> doh_providers;
   for (const auto& doh_provider : doh_providers_) {
@@ -946,8 +951,9 @@ std::vector<std::string> Resolver::GetActiveDoHProviders() {
 }
 
 std::vector<std::string> Resolver::GetActiveNameServers() {
-  if (!validated_name_servers_.empty())
+  if (!validated_name_servers_.empty()) {
     return validated_name_servers_;
+  }
 
   std::vector<std::string> name_servers;
   for (const auto& name_server : name_servers_) {
@@ -957,8 +963,9 @@ std::vector<std::string> Resolver::GetActiveNameServers() {
 }
 
 void Resolver::RestartProbe(base::WeakPtr<ProbeState> probe_state) {
-  if (!probe_state)
+  if (!probe_state) {
     return;
+  }
 
   auto& targets = probe_state->doh ? doh_providers_ : name_servers_;
   auto& validated_targets =
@@ -975,11 +982,13 @@ void Resolver::RestartProbe(base::WeakPtr<ProbeState> probe_state) {
 }
 
 void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
-  if (disable_probe_)
+  if (disable_probe_) {
     return;
+  }
 
-  if (!probe_state)
+  if (!probe_state) {
     return;
+  }
 
   // Schedule the next probe now as the probe may run for a long time.
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
@@ -1022,15 +1031,17 @@ void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
 
   if (doh_enabled_ && !fallback && !sock_fd->bypass_doh) {
     sock_fd->timer.StartResolve(true);
-    if (ResolveDNS(sock_fd, /*doh=*/true))
+    if (ResolveDNS(sock_fd, /*doh=*/true)) {
       return;
+    }
 
     sock_fd->timer.StopResolve(false);
   }
   if (!always_on_doh_ || sock_fd->bypass_doh) {
     sock_fd->timer.StartResolve();
-    if (ResolveDNS(sock_fd, /*doh=*/false))
+    if (ResolveDNS(sock_fd, /*doh=*/false)) {
       return;
+    }
 
     sock_fd->timer.StopResolve(false);
   }

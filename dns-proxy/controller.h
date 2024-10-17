@@ -76,8 +76,9 @@ class Controller : public brillo::DBusDaemon {
     bool is_valid() const { return count > 0; }
 
     bool try_next() {
-      if (base::Time::Now() - kRestartWindow <= since)
+      if (base::Time::Now() - kRestartWindow <= since) {
         return (--count > 0);
+      }
 
       since = base::Time::Now();
       count = kRestartLimit;

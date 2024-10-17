@@ -35,8 +35,9 @@ void SessionMonitor::RegisterSessionStateHandler(
 }
 
 void SessionMonitor::OnSessionStateChanged(const std::string& state) {
-  if (handler_.is_null())
+  if (handler_.is_null()) {
     return;
+  }
 
   // Values are described in:
   // login_manager/dbus_bindings/org.chromium.SessionManagerInterface.xml
