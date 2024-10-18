@@ -50,6 +50,8 @@ set <name> [local-ip <ip1>[,<ip2>]] [private-key] [mtu <mtu>] [dns <ip1>[,<ip2>]
     - `private-key` and `preshared-key` take no parameters. If they are used, this command
       will prompt you to change the key (or remove the key) via stdin, to avoid leaving
       them in the history of shell.
+    Note: If there is no IPv6 configuration (in ip, dns, or allowed-ips), IPv6 will be
+    blocked if the shortest prefix length in allowed-ips is less than 8.
 connect <name>
     Connect to the configured WireGuard service with name <name>.
 disconnect <name>
