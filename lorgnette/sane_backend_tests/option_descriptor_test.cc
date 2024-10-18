@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -364,6 +365,76 @@ class OptionDescriptorTest : public testing::Test {
     }
   }
 
+  void TestScanAreaPageDims() {
+    std::optional<SANE_Value_Type> type = std::nullopt;
+    std::set<std::string> options_found;
+    bool page_width_found = false;
+    bool page_height_found = false;
+
+    // Index 0 is the well-known option 0, which we skip here.
+    SANE_Int i = 1;
+    const SANE_Option_Descriptor* descriptor =
+        sane_get_option_descriptor(handle_, i);
+    while (descriptor) {
+      if (!descriptor->name ||
+          (strcmp(descriptor->name, SANE_NAME_SCAN_TL_X) != 0 &&
+           strcmp(descriptor->name, SANE_NAME_SCAN_TL_Y) != 0 &&
+           strcmp(descriptor->name, SANE_NAME_SCAN_BR_X) != 0 &&
+           strcmp(descriptor->name, SANE_NAME_SCAN_BR_Y) != 0 &&
+           strcmp(descriptor->name, SANE_NAME_PAGE_HEIGHT) != 0 &&
+           strcmp(descriptor->name, SANE_NAME_PAGE_WIDTH) != 0)) {
+        i++;
+        descriptor = sane_get_option_descriptor(handle_, i);
+        continue;
+      }
+
+      // Each of these options should have the same type, which must be either
+      // SANE_TYPE_INT or SANE_TYPE_FIXED.
+      if (!type) {
+        type = descriptor->type;
+        EXPECT_TRUE(type == SANE_TYPE_INT || type == SANE_TYPE_FIXED)
+            << "Descriptor with name: " << descriptor->name
+            << " has invalid type: " << descriptor->type;
+      } else {
+        EXPECT_EQ(descriptor->type, type)
+            << "Descriptor with name: " << descriptor->name
+            << " has type: " << descriptor->type
+            << " which does not match earlier type found: " << type.value();
+      }
+
+      EXPECT_EQ(descriptor->unit, SANE_UNIT_MM)
+          << "Descriptor with name: " << descriptor->name
+          << " has invalid unit: " << descriptor->unit;
+
+      EXPECT_TRUE(descriptor->constraint_type == SANE_CONSTRAINT_RANGE ||
+                  descriptor->constraint_type == SANE_CONSTRAINT_WORD_LIST)
+          << "Descriptor with name: " << descriptor->name
+          << " has invalid constraint type: " << descriptor->constraint_type;
+
+      if (strcmp(descriptor->name, SANE_NAME_PAGE_HEIGHT) == 0) {
+        page_height_found = true;
+      } else if (strcmp(descriptor->name, SANE_NAME_PAGE_WIDTH) == 0) {
+        page_width_found = true;
+      } else {
+        options_found.insert(descriptor->name);
+      }
+
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+    }
+
+    EXPECT_EQ(options_found.count(SANE_NAME_SCAN_TL_X), 1)
+        << "Required tl-x option not found";
+    EXPECT_EQ(options_found.count(SANE_NAME_SCAN_TL_Y), 1)
+        << "Required tl-y option not found";
+    EXPECT_EQ(options_found.count(SANE_NAME_SCAN_BR_X), 1)
+        << "Required br-x option not found";
+    EXPECT_EQ(options_found.count(SANE_NAME_SCAN_BR_Y), 1)
+        << "Required br-y option not found";
+    EXPECT_EQ(page_height_found, page_width_found)
+        << "Found one of page-height and page-width but not both";
+  }
+
   SANE_Handle handle_;
 };
 
@@ -564,6 +635,44 @@ TEST_F(OptionDescriptorTest, OtherOptionDescriptor) {
                                     SANE_ACTION_SET_VALUE, option->GetPointer(),
                                     nullptr));
       TestOptionDescriptors();
+    }
+  }
+}
+
+TEST_F(OptionDescriptorTest, ScanAreaPageDims) {
+  std::unique_ptr<lorgnette::SaneOption> option = nullptr;
+
+  // Index 0 is the well-known option 0, which we skip here.
+  SANE_Int i = 1;
+  const SANE_Option_Descriptor* descriptor =
+      sane_get_option_descriptor(handle_, i);
+  while (descriptor) {
+    if (!descriptor->name ||
+        strcmp(descriptor->name, SANE_NAME_SCAN_SOURCE) != 0) {
+      i++;
+      descriptor = sane_get_option_descriptor(handle_, i);
+      continue;
+    }
+
+    option = std::make_unique<lorgnette::SaneOption>(*descriptor, i);
+    break;
+  }
+
+  if (!option) {
+    // The scanner did not provide a source option. It must only have a single
+    // source.
+    TestScanAreaPageDims();
+  } else {
+    std::optional<std::vector<std::string>> sources =
+        option->GetValidStringValues();
+    ASSERT_TRUE(sources.has_value());
+    for (auto source : *sources) {
+      option->Set(source);
+      ASSERT_EQ(SANE_STATUS_GOOD,
+                sane_control_option(handle_, option->GetIndex(),
+                                    SANE_ACTION_SET_VALUE, option->GetPointer(),
+                                    nullptr));
+      TestScanAreaPageDims();
     }
   }
 }
