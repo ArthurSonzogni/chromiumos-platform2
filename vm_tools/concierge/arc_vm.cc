@@ -24,6 +24,7 @@
 #include <tuple>
 #include <utility>
 
+#include <base/containers/flat_map.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -39,6 +40,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/constants/vm_tools.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vboot/crossystem.h>
@@ -107,6 +109,26 @@ constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 // Constants for querying the ChromeOS channel
 constexpr char kChromeOsReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 constexpr char kUnknown[] = "unknown";
+
+constexpr const char kVbMetaDigestFileName[] =
+    "/opt/google/vms/android/arcvm_vbmeta_digest.sha256";
+constexpr uint32_t kExpectedVbMetaDigestSize = 64;
+
+// Converts VerifiedBootState to the value expected by Android in DeviceInfo
+// for |vb_state|.
+// DeviceInfo expected values:
+// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
+const base::flat_map<VerifiedBootState, std::string>
+    kVerifiedBootStateToStringMap = {
+        {VerifiedBootState::kVerifiedBoot, "green"},
+        {VerifiedBootState::kUnverifiedBoot, "orange"}};
+
+// Converts VerifiedBootDeviceState to the value expected by Android in
+// DeviceInfo for |bootloader_state|.
+const base::flat_map<VerifiedBootDeviceState, std::string>
+    kDeviceStateToStringMap = {
+        {VerifiedBootDeviceState::kLockedDevice, "locked"},
+        {VerifiedBootDeviceState::kUnlockedDevice, "unlocked"}};
 
 // The vmm-swap out should be skipped for 24 hours once it's done.
 constexpr base::TimeDelta kVmmSwapOutCoolingDownPeriod = base::Hours(24);
@@ -928,6 +950,12 @@ std::vector<std::string> ArcVm::GetKernelParams(
   arc::StartArcMiniInstanceRequest mini_instance_request =
       request.mini_instance_request();
 
+  const base::FilePath vbmeta_digest_file(kVbMetaDigestFileName);
+  const std::string vb_device_state = DeriveBootloaderState(is_dev_mode);
+  const std::string verified_boot_state = DeriveVerifiedBootState(is_dev_mode);
+  const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
+      GetVbMetaDigestFromFile(vbmeta_digest_file);
+
   int64_t zram_size = MiB(request.guest_zram_mib());
 
   std::vector<std::string> params = {
@@ -966,11 +994,21 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          mini_instance_request.enable_arc_attestation()),
       base::StringPrintf("androidboot.arc.signed_in=%d",
                          mini_instance_request.arc_signed_in()),
+      base::StringPrintf("androidboot.verifiedbootstate=%s",
+                         verified_boot_state.c_str()),
+      base::StringPrintf("androidboot.vbmeta.device_state=%s",
+                         vb_device_state.c_str()),
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
       "rcutree.kthread_prio=1",
   };
+
+  if (vbmeta_digest_opt.has_value()) {
+    params.push_back(base::StringPrintf(
+        "androidboot.vbmeta.digest=%s",
+        brillo::BlobToString(vbmeta_digest_opt.value()).c_str()));
+  }
 
   if (is_host_on_vm) {
     params.push_back("androidboot.host_is_in_vm=1");
@@ -1142,6 +1180,55 @@ std::vector<std::string> ArcVm::GetKernelParams(
   }
 
   return params;
+}
+
+// Returns the value of Verified Boot State based on developer mode.
+// static
+std::string ArcVm::DeriveVerifiedBootState(const bool dev_mode) {
+  if (!dev_mode) {
+    return kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
+  }
+  return kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
+}
+
+// Devices in debug mode are considered unlocked since new
+// software can be flashed and it does not enforce verification.
+// Non-debug devices do not allow modification and must go through
+// verified boot.
+// static
+std::string ArcVm::DeriveBootloaderState(const bool dev_mode) {
+  if (!dev_mode) {
+    return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
+  }
+  return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
+}
+
+// static
+std::optional<std::vector<uint8_t>> ArcVm::GetVbMetaDigestFromFile(
+    const base::FilePath& vbmeta_digest_file_path) {
+  std::string vbmeta_digest;
+  if (!base::PathExists(vbmeta_digest_file_path)) {
+    LOG(ERROR) << "VB Meta digest file does not exist at "
+               << vbmeta_digest_file_path;
+    return std::nullopt;
+  }
+  if (!base::ReadFileToString(base::FilePath(vbmeta_digest_file_path),
+                              &vbmeta_digest)) {
+    // In case of failure to read vb meta digest into string, return nullopt.
+    LOG(ERROR) << "Failed to read vb meta digest file from path "
+               << vbmeta_digest_file_path;
+    return std::nullopt;
+  }
+  std::vector<uint8_t> vbmeta_digest_result =
+      brillo::BlobFromString(vbmeta_digest);
+  if (vbmeta_digest_result.size() != kExpectedVbMetaDigestSize) {
+    LOG(ERROR) << "vbmeta digest is not a valid hash. "
+               << "Expected size: " << kExpectedVbMetaDigestSize
+               << ". Actual size: " << vbmeta_digest_result.size();
+    return std::nullopt;
+  }
+
+  return vbmeta_digest_result;
 }
 
 }  // namespace vm_tools::concierge
