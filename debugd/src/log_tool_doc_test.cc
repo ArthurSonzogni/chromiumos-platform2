@@ -68,7 +68,6 @@ const std::set<std::string_view> kEmptyEntries{
     "drm_state",
     "ec_info",
     "edid-decode",
-    "eventlog",
     "font_info",
     "framebuffer",
     "hammerd",

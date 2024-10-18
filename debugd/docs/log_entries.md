@@ -284,6 +284,9 @@ implementation.
 
 ## eventlog
 
+Shows system events such as when a device was turned on or off, and if a reboot
+was user-initiated. Comes from persistent firmware event log.
+
 ## extensions.log
 
 Logs collected from extension acting as system extensions (managing login and
