@@ -171,6 +171,7 @@ _IUSE = [
     "lvm_migration",
     "lvm_stateful_partition",
     "manage_efi_boot_entries",
+    "mantis",
     "mesa_reven",
     "metrics_uploader",
     "ml_benchmark_drivers",

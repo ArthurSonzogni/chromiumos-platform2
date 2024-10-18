@@ -42,6 +42,7 @@ pkg_config("target_defaults") {
     "protobuf-lite",
     "system_api",
   ]
+  defines = [ "USE_MANTIS=${use.mantis}" ]
   include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
   libs = [ "tensorflowlite" ]
 }

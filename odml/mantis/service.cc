@@ -100,7 +100,9 @@ void MantisService::Initialize(
 
 void MantisService::GetMantisFeatureStatus(
     GetMantisFeatureStatusCallback callback) {
-  std::move(callback).Run(mojom::MantisFeatureStatus::kDeviceNotSupported);
+  std::move(callback).Run(
+      USE_MANTIS ? mojom::MantisFeatureStatus::kAvailable
+                 : mojom::MantisFeatureStatus::kDeviceNotSupported);
 }
 
 void MantisService::OnInstallDlcComplete(
