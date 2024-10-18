@@ -17,8 +17,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "coral/proto_bindings/embedding.pb.h"
-
 namespace coral {
 
 namespace {

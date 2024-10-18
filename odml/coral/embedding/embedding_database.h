@@ -8,12 +8,10 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 
-#include "coral/proto_bindings/embedding.pb.h"
 #include "odml/coral/common.h"
 
 namespace coral {
@@ -61,13 +59,18 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   bool Sync() override;
 
  private:
+  struct EmbeddingEntry {
+    Embedding embedding;
+    base::Time updated_time_ms;
+  };
+
   // Backed by file |file_path|.
   // Records older than |ttl| are removed when (and only when) loading and
   // syncing. |ttl| with value 0 means no TTL.
   EmbeddingDatabase(const base::FilePath& file_path, base::TimeDelta ttl);
 
   // Returns true if a record is stale.
-  bool IsRecordExpired(base::Time now, const EmbeddingRecord& record) const;
+  bool IsRecordExpired(base::Time now, const EmbeddingEntry& record) const;
 
   // Loads the database from |file_path_|.
   bool LoadFromFile();
@@ -75,7 +78,7 @@ class EmbeddingDatabase : public EmbeddingDatabaseInterface {
   bool dirty_;
   const base::FilePath file_path_;
   const base::TimeDelta ttl_;
-  std::unordered_map<std::string, EmbeddingRecord> embeddings_map_;
+  std::unordered_map<std::string, EmbeddingEntry> embeddings_map_;
 };
 
 }  // namespace coral

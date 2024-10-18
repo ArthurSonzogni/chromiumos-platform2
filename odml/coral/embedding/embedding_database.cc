@@ -64,25 +64,21 @@ EmbeddingDatabase::~EmbeddingDatabase() {
 
 void EmbeddingDatabase::Put(std::string key, Embedding embedding) {
   // Overwrites existing keys, if any.
-  EmbeddingRecord record;
-  record.mutable_values()->Assign(embedding.begin(), embedding.end());
-  record.set_updated_time_ms(base::Time::Now().InMillisecondsSinceUnixEpoch());
-  embeddings_map_[std::move(key)] = std::move(record);
+  embeddings_map_[std::move(key)] = EmbeddingEntry{
+      .embedding = std::move(embedding),
+      .updated_time_ms = base::Time::Now(),
+  };
   dirty_ = true;
 }
 
 std::optional<Embedding> EmbeddingDatabase::Get(const std::string& key) {
-  Embedding embedding;
-  if (!embeddings_map_.contains(key)) {
+  auto it = embeddings_map_.find(key);
+  if (it == embeddings_map_.end()) {
     return std::nullopt;
   }
-  // values are copied.
-  embedding = Embedding(embeddings_map_[key].values().begin(),
-                        embeddings_map_[key].values().end());
-  embeddings_map_[key].set_updated_time_ms(
-      base::Time::Now().InMillisecondsSinceUnixEpoch());
+  it->second.updated_time_ms = base::Time::Now();
   dirty_ = true;
-  return embedding;
+  return it->second.embedding;
 }
 
 bool EmbeddingDatabase::Sync() {
@@ -107,8 +103,14 @@ bool EmbeddingDatabase::Sync() {
   }
 
   EmbeddingRecords records;
-  records.mutable_records()->insert(embeddings_map_.begin(),
-                                    embeddings_map_.end());
+  for (const auto& [key, entry] : embeddings_map_) {
+    EmbeddingRecord record;
+    record.mutable_values()->Assign(entry.embedding.begin(),
+                                    entry.embedding.end());
+    record.set_updated_time_ms(
+        entry.updated_time_ms.InMillisecondsSinceUnixEpoch());
+    records.mutable_records()->insert({key, std::move(record)});
+  }
 
   std::string buf;
   if (!records.SerializeToString(&buf)) {
@@ -123,11 +125,9 @@ bool EmbeddingDatabase::Sync() {
 }
 
 bool EmbeddingDatabase::IsRecordExpired(const base::Time now,
-                                        const EmbeddingRecord& record) const {
-  base::Time last_used =
-      base::Time::FromMillisecondsSinceUnixEpoch(record.updated_time_ms());
+                                        const EmbeddingEntry& record) const {
   // 0 means no ttl.
-  return !ttl_.is_zero() && now - last_used > ttl_;
+  return !ttl_.is_zero() && now - record.updated_time_ms > ttl_;
 }
 
 bool EmbeddingDatabase::LoadFromFile() {
@@ -149,7 +149,11 @@ bool EmbeddingDatabase::LoadFromFile() {
 
   base::Time now = base::Time::Now();
   for (const auto& [key, record] : records.records()) {
-    embeddings_map_[key] = record;
+    embeddings_map_[key] = EmbeddingEntry{
+        .embedding = Embedding(record.values().begin(), record.values().end()),
+        .updated_time_ms = base::Time::FromMillisecondsSinceUnixEpoch(
+            record.updated_time_ms()),
+    };
   }
   LOG(INFO) << "Load from embedding database with now: " << now
             << ", ttl: " << ttl_ << ", size: " << embeddings_map_.size();
