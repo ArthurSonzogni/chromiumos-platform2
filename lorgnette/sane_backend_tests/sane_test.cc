@@ -180,14 +180,17 @@ TEST_F(SANETest, MultipleCancel) {
             SANE_STATUS_GOOD)
       << "Failed to open scanner";
 
+  std::cout << "Press enter when a page is ready to scan";
+  std::string ignored;
+  std::getline(std::cin, ignored);
+
   ASSERT_EQ(sane_start(handle), SANE_STATUS_GOOD) << "Failed to start scan";
 
   std::cout << "Canceling scan\n";
   sane_cancel(handle);
   sane_cancel(handle);
 
-  std::cout << "Press enter when ready to scan again";
-  std::string ignored;
+  std::cout << "Press enter when a page is ready to scan again";
   std::getline(std::cin, ignored);
 
   ASSERT_EQ(sane_start(handle), SANE_STATUS_GOOD)
