@@ -38,8 +38,8 @@ DEFINE_boolean pm_print_times "${FLAGS_TRUE}" \
 DEFINE_string  ignore_wakeup_source "none" "Wakeup source to ignore" i
 DEFINE_string  ignore_wakeup_irq_name "none" "Wakeup IRQ name to ignore" I
 DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
-DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
-DEFINE_string  post_resume_command "" "Command to run after each resume"
+DEFINE_string  pre_suspend_command "" "eval this string before each suspend"
+DEFINE_string  post_resume_command "" "eval this string after each resume"
 DEFINE_boolean ignore_s0ix_substates "${FLAGS_FALSE}" \
                "Ignore Intel s0ix substates and \
                 only check toplevel s0ix counter"
@@ -455,7 +455,7 @@ while true; do
     # Leading space because this will appear on the same line as the
     # printf output from above.
     echo " running ${FLAGS_pre_suspend_command}"
-    ${FLAGS_pre_suspend_command}
+    (eval ${FLAGS_pre_suspend_command})
   fi
 
   start_time="$(cat /sys/class/rtc/rtc0/since_epoch)"
@@ -467,7 +467,7 @@ while true; do
     # Leading space because this will appear on the same line as the
     # printf output from above.
     echo " running ${FLAGS_post_resume_command}"
-    ${FLAGS_post_resume_command}
+    (eval ${FLAGS_post_resume_command})
   fi
 
   actual_sus_time=$(( end_time - start_time ))
