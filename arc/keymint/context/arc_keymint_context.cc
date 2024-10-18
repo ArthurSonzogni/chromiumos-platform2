@@ -275,8 +275,9 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
   CHECK(version >= ::keymaster::KmVersion::KEYMINT_1);
 
   cros_system_ = std::make_unique<crossystem::Crossystem>();
-  const std::string boot_state = DeriveVerifiedBootState();
   const std::string bootloader_state = DeriveBootloaderState();
+  const std::string boot_state =
+      DeriveVerifiedBootStateFromBootloaderState(bootloader_state);
   const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
       GetVbMetaDigestFromFile();
 
@@ -863,45 +864,6 @@ void ArcKeyMintContext::GetAndSetBootKeyFromLogs() {
   boot_key_ = brillo::BlobFromString(boot_key);
 }
 
-// mainfw_type describes the main firmware type (normal, recovery, developer).
-// This property is used to determine whether or not the device is in a
-// verified boot state.
-std::string ArcKeyMintContext::DeriveVerifiedBootState() const {
-  const std::string default_unverified_state =
-      kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
-  if (!cros_system_) {
-    LOG(ERROR)
-        << "cros_system_ is null and verified boot state cannot be derived";
-    return default_unverified_state;
-  }
-
-  // Convert main firmware type to VerifiedBootState enum.
-  std::optional<std::string> mainfw_type =
-      cros_system_->VbGetSystemPropertyString("mainfw_type");
-  if (!mainfw_type.has_value()) {
-    LOG(ERROR) << "mainfw_type was not set";
-    return default_unverified_state;
-  }
-  auto boot_state_enum_iter =
-      kMainfwTypeToBootStateMap.find(mainfw_type.value());
-  if (boot_state_enum_iter == kMainfwTypeToBootStateMap.end()) {
-    LOG(ERROR) << "Unexpected mainfw_type: " << mainfw_type.value();
-    return default_unverified_state;
-  }
-
-  // Convert VerifiedBootState enum to color.
-  VerifiedBootState boot_state_enum = boot_state_enum_iter->second;
-  auto boot_state_string_iter =
-      kVerifiedBootStateToStringMap.find(boot_state_enum);
-  if (boot_state_string_iter == kVerifiedBootStateToStringMap.end()) {
-    LOG(ERROR) << "Unexpected boot_state_enum: "
-               << static_cast<int>(boot_state_enum);
-    return default_unverified_state;
-  }
-
-  return boot_state_string_iter->second;
-}
-
 // cros_debug indicates if the device is in debug mode or not.
 // Devices in debug mode are considered unlocked since new
 // software can be flashed and it does not enforce verification.
@@ -938,6 +900,21 @@ std::string ArcKeyMintContext::DeriveBootloaderState() const {
   }
 
   return device_state_string_iter->second;
+}
+
+// Returns the value of Verified Boot State from Bootloader state.
+// Locked bootloaderstate maps to Verified boot state and vice-versa.
+std::string ArcKeyMintContext::DeriveVerifiedBootStateFromBootloaderState(
+    const std::string bootloader_state) const {
+  VerifiedBootState vb_state = VerifiedBootState::kUnverifiedBoot;
+  // Verified Boot state would be verified if the bootloader is locked.
+  if (bootloader_state ==
+      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice)) {
+    vb_state = VerifiedBootState::kVerifiedBoot;
+  }
+
+  std::string vb_state_string = kVerifiedBootStateToStringMap.at(vb_state);
+  return vb_state_string;
 }
 
 keymaster::Buffer ArcKeyMintContext::GenerateUniqueId(
