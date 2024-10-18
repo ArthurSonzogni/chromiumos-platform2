@@ -20,21 +20,33 @@ constexpr const char kPmcCorePath[] = "/sys/kernel/debug/pmc_core";
 
 }  // namespace
 
-void SetLtrIgnore(const std::string& ip_index) {
+void SetLtrIgnore(const std::string_view ip_index) {
   base::FilePath pmc_core_file_path(kPmcCorePath);
   base::FilePath ltr_ignore_file_path = pmc_core_file_path.Append("ltr_ignore");
   PCHECK(base::PathExists(ltr_ignore_file_path))
       << "No interface to ignore ltr, couldn't find "
       << ltr_ignore_file_path.value();
 
-  if (!base::WriteFile(ltr_ignore_file_path, ip_index.c_str())) {
+  if (!base::WriteFile(ltr_ignore_file_path, std::string(ip_index))) {
     PLOG(ERROR) << "Failed to write " << ip_index << " to "
                 << ltr_ignore_file_path;
   }
 }
 
+void exe_boardwa(const std::string_view brd) {
+  // Ignore CNVi LTR, it's cross-platform case.
+  SetLtrIgnore("10");
+
+  if (brd == "ovis") {
+    // Ignore LAN
+    SetLtrIgnore("1");
+    SetLtrIgnore("40");
+  }
+}
+
 int main(int argc, char** argv) {
   DEFINE_string(ltr_ignore, "", "The ip ltr would be ignored.");
+  DEFINE_string(boardwa, "", "Execute board projects related workaround.");
   brillo::FlagHelper::Init(
       argc, argv, "Execute command before/after suspend for Intel SoCs");
 
@@ -43,6 +55,9 @@ int main(int argc, char** argv) {
   if (!FLAGS_ltr_ignore.empty()) {
     SetLtrIgnore(FLAGS_ltr_ignore);
   }
+
+  if (!FLAGS_boardwa.empty())
+    exe_boardwa(FLAGS_boardwa);
 
   return 0;
 }
