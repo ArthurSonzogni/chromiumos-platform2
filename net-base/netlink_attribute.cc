@@ -240,8 +240,9 @@ bool NetlinkU8Attribute::ToString(std::string* output) const {
     return false;
   }
   uint8_t value;
-  if (!GetU8Value(&value))
+  if (!GetU8Value(&value)) {
     return false;
+  }
   *output = base::StringPrintf("%u", value);
   return true;
 }
@@ -293,8 +294,9 @@ bool NetlinkU16Attribute::ToString(std::string* output) const {
     return false;
   }
   uint16_t value;
-  if (!GetU16Value(&value))
+  if (!GetU16Value(&value)) {
     return false;
+  }
   *output = base::StringPrintf("%u", value);
   return true;
 }
@@ -346,8 +348,9 @@ bool NetlinkU32Attribute::ToString(std::string* output) const {
     return false;
   }
   uint32_t value;
-  if (!GetU32Value(&value))
+  if (!GetU32Value(&value)) {
     return false;
+  }
   *output = base::StringPrintf("%" PRIu32, value);
   return true;
 }
@@ -399,8 +402,9 @@ bool NetlinkU64Attribute::ToString(std::string* output) const {
     return false;
   }
   uint64_t value;
-  if (!GetU64Value(&value))
+  if (!GetU64Value(&value)) {
     return false;
+  }
   *output = base::StringPrintf("%" PRIu64, value);
   return true;
 }
@@ -441,8 +445,9 @@ bool NetlinkFlagAttribute::ToString(std::string* output) const {
     return false;
   }
   bool value;
-  if (!GetFlagValue(&value))
+  if (!GetFlagValue(&value)) {
     return false;
+  }
   *output = base::StringPrintf("%s", value ? "true" : "false");
   return true;
 }
@@ -489,8 +494,9 @@ bool NetlinkStringAttribute::ToString(std::string* output) const {
     return false;
   }
   std::string value;
-  if (!GetStringValue(&value))
+  if (!GetStringValue(&value)) {
     return false;
+  }
 
   *output = base::StringPrintf("'%s'", value.c_str());
   return true;
@@ -509,8 +515,9 @@ bool NetlinkSsidAttribute::ToString(std::string* output) const {
     return false;
   }
   std::string value;
-  if (!GetStringValue(&value))
+  if (!GetStringValue(&value)) {
     return false;
+  }
 
   std::string temp;
   for (const auto& chr : value) {

@@ -40,8 +40,9 @@ NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() = default;
 
 void NetlinkManager::NetlinkResponseHandler::HandleError(
     AuxiliaryMessageType type, const NetlinkMessage* netlink_message) const {
-  if (!error_handler_.is_null())
+  if (!error_handler_.is_null()) {
     error_handler_.Run(type, netlink_message);
+  }
 }
 
 bool NetlinkManager::NetlinkResponseHandler::HandleAck() const {

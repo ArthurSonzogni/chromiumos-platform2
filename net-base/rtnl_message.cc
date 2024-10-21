@@ -1142,8 +1142,9 @@ uint32_t RTNLMessage::GetUint32Attribute(uint16_t attr) const {
 }
 
 std::string RTNLMessage::GetStringAttribute(uint16_t attr) const {
-  if (!HasAttribute(attr))
+  if (!HasAttribute(attr)) {
     return "";
+  }
   return net_base::byte_utils::StringFromCStringBytes(GetAttribute(attr));
 }
 
@@ -1312,8 +1313,9 @@ std::string RTNLMessage::ToString() const {
           interface_index_, GetNetDeviceTypeName(link_status_.type).c_str(),
           PrintFlags(link_status_.flags, kNetDeviceFlags, ",").c_str(),
           link_status_.change);
-      if (link_status_.kind.has_value())
+      if (link_status_.kind.has_value()) {
         details += " kind " + link_status_.kind.value();
+      }
       break;
     case RTNLMessage::kTypeAddress:
       if (const auto addr = GetAddress(); addr.has_value()) {
@@ -1331,15 +1333,19 @@ std::string RTNLMessage::ToString() const {
       }
       break;
     case RTNLMessage::kTypeRoute:
-      if (const auto addr = GetRtaSrc(); addr.has_value())
+      if (const auto addr = GetRtaSrc(); addr.has_value()) {
         details += base::StringPrintf("src %s ", addr->ToString().c_str());
-      if (const auto addr = GetRtaDst(); addr.has_value())
+      }
+      if (const auto addr = GetRtaDst(); addr.has_value()) {
         details += base::StringPrintf("dst %s ", addr->ToString().c_str());
-      if (const auto addr = GetRtaGateway(); addr.has_value())
+      }
+      if (const auto addr = GetRtaGateway(); addr.has_value()) {
         details += "via " + addr->ToString() + " ";
-      if (HasAttribute(RTA_OIF))
+      }
+      if (HasAttribute(RTA_OIF)) {
         details += base::StringPrintf("if %s[%d] ", GetRtaOifname().c_str(),
                                       GetRtaOif());
+      }
       details += base::StringPrintf(
           "table %d priority %d protocol %s type %s", GetRtaTable(),
           GetRtaPriority(), GetRouteProtocol(route_status_.protocol).c_str(),
@@ -1349,17 +1355,22 @@ std::string RTNLMessage::ToString() const {
       // Rules are serialized via struct fib_rule_hdr which aligns with struct
       // rtmsg used for routes such that |type| corresponds to the rule action.
       // |protocol| and |scope| are currently unused as of Linux 5.6.
-      if (HasAttribute(FRA_IIFNAME))
+      if (HasAttribute(FRA_IIFNAME)) {
         details += "iif " + GetFraIifname() + " ";
-      if (HasAttribute(FRA_OIFNAME))
+      }
+      if (HasAttribute(FRA_OIFNAME)) {
         details += "oif " + GetFraOifname() = " ";
-      if (const auto addr = GetFraSrc(); addr.has_value())
+      }
+      if (const auto addr = GetFraSrc(); addr.has_value()) {
         details += base::StringPrintf("src %s ", addr->ToString().c_str());
-      if (const auto addr = GetFraDst(); addr.has_value())
+      }
+      if (const auto addr = GetFraDst(); addr.has_value()) {
         details += base::StringPrintf("dst %s ", addr->ToString().c_str());
-      if (HasAttribute(FRA_FWMARK))
+      }
+      if (HasAttribute(FRA_FWMARK)) {
         details += base::StringPrintf("fwmark 0x%X/0x%X ", GetFraFwmark(),
                                       GetFraFwmask());
+      }
       details += base::StringPrintf(
           "table %d priority %d action %s flags %X", GetFraTable(),
           GetFraPriority(), GetRuleActionName(route_status_.type).c_str(),

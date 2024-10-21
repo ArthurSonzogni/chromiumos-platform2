@@ -137,8 +137,9 @@ void SocketForwarder::Poll() {
     }
     for (int i = 0; i < n; ++i) {
       if (!poll_ ||
-          !ProcessEvents(events[i].events, events[i].data.fd, cfd.get()))
+          !ProcessEvents(events[i].events, events[i].data.fd, cfd.get())) {
         return;
+      }
     }
   }
 }

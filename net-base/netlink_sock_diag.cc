@@ -78,8 +78,9 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
   const uint8_t family = static_cast<uint8_t>(ToSAFamily(saddr.GetFamily()));
 
   std::vector<struct inet_diag_sockid> socks;
-  if (!GetSockets(family, protocol, &socks))
+  if (!GetSockets(family, protocol, &socks)) {
     return false;
+  }
 
   const auto addr_bytes = saddr.ToByteString();
   SockDiagRequest request = CreateDestroyRequest(family, protocol);

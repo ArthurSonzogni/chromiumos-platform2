@@ -28,8 +28,9 @@ RTNLListener::~RTNLListener() {
 }
 
 void RTNLListener::NotifyEvent(uint32_t type, const RTNLMessage& msg) const {
-  if (type & listen_flags_)
+  if (type & listen_flags_) {
     callback_.Run(msg);
+  }
 }
 
 }  // namespace net_base

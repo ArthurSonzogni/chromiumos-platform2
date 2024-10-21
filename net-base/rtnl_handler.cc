@@ -213,8 +213,9 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   VLOG(2) << base::StringPrintf("RTNLHandler nextrequest %d %d 0x%x", seq,
                                 last_dump_sequence_, request_flags_);
 
-  if (seq != last_dump_sequence_)
+  if (seq != last_dump_sequence_) {
     return;
+  }
 
   sa_family_t family = AF_UNSPEC;
   if ((request_flags_ & kRequestAddr) != 0) {
@@ -535,8 +536,9 @@ bool RTNLHandler::SendMessageWithErrorMask(std::unique_ptr<RTNLMessage> message,
     return false;
   }
 
-  if (msg_seq)
+  if (msg_seq) {
     *msg_seq = message->seq();
+  }
   StoreRequest(std::move(message));
   return true;
 }
