@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
@@ -100,6 +101,10 @@ EmbeddingEngine::EmbeddingEngine(
   if (session_state_manager) {
     session_state_manager->AddObserver(this);
   }
+}
+
+void EmbeddingEngine::PrepareResource() {
+  EnsureModelLoaded(base::DoNothing());
 }
 
 void EmbeddingEngine::Process(mojom::GroupRequestPtr request,

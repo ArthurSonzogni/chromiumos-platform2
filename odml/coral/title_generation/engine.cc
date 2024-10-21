@@ -10,6 +10,7 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/sequenced_task_runner.h>
@@ -71,6 +72,10 @@ TitleGenerationEngine::TitleGenerationEngine(
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service)
     : on_device_model_service_(on_device_model_service) {}
+
+void TitleGenerationEngine::PrepareResource() {
+  EnsureModelLoaded(base::DoNothing());
+}
 
 void TitleGenerationEngine::Process(
     mojom::GroupRequestPtr request,

@@ -53,6 +53,7 @@ class CoralService : public mojom::CoralService {
              GroupCallback callback) override;
   void CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
                        CacheEmbeddingsCallback callback) override;
+  void PrepareResource() override;
 
  private:
   // These callbacks are used for asynchronous Engine::Process calls, performs

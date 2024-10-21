@@ -32,6 +32,11 @@ class TitleGenerationEngineInterface {
  public:
   virtual ~TitleGenerationEngineInterface() = default;
 
+  // Claim resources necessary for `Process`, like downloading from dlc, loading
+  // model etc. It is not necessary to call this before `Process`, but the first
+  // `Process` will take longer without calling `PrepareResource` first.
+  virtual void PrepareResource() {}
+
   using TitleGenerationCallback =
       base::OnceCallback<void(CoralResult<TitleGenerationResponse>)>;
   virtual void Process(mojom::GroupRequestPtr request,
@@ -48,6 +53,7 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
   ~TitleGenerationEngine() override = default;
 
   // TitleGenerationEngineInterface overrides.
+  void PrepareResource() override;
   void Process(mojom::GroupRequestPtr request,
                ClusteringResponse clustering_response,
                mojo::PendingRemote<mojom::TitleObserver> observer,

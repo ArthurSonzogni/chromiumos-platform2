@@ -45,6 +45,11 @@ CoralService::CoralService(
       clustering_engine_(std::move(clustering_engine)),
       title_generation_engine_(std::move(title_generation_engine)) {}
 
+void CoralService::PrepareResource() {
+  embedding_engine_->PrepareResource();
+  title_generation_engine_->PrepareResource();
+}
+
 void CoralService::Group(mojom::GroupRequestPtr request,
                          mojo::PendingRemote<mojom::TitleObserver> observer,
                          GroupCallback callback) {

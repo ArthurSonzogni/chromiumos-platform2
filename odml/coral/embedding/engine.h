@@ -47,6 +47,11 @@ class EmbeddingEngineInterface {
  public:
   virtual ~EmbeddingEngineInterface() = default;
 
+  // Claim resources necessary for `Process`, like downloading from dlc, loading
+  // model etc. It is not necessary to call this before `Process`, but the first
+  // `Process` will take longer without calling `PrepareResource` first.
+  virtual void PrepareResource() {}
+
   using EmbeddingCallback = base::OnceCallback<void(
       mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>)>;
   virtual void Process(mojom::GroupRequestPtr request,
@@ -64,6 +69,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   ~EmbeddingEngine() = default;
 
   // EmbeddingEngineInterface overrides.
+  void PrepareResource() override;
   void Process(mojom::GroupRequestPtr request,
                EmbeddingCallback callback) override;
 
