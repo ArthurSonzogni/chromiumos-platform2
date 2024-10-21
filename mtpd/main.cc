@@ -32,8 +32,9 @@ void SetupLogging() {
   std::string log_level_str =
       CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kMinLogLevelSwitch);
   int log_level = 0;
-  if (base::StringToInt(log_level_str, &log_level) && log_level >= 0)
+  if (base::StringToInt(log_level_str, &log_level) && log_level >= 0) {
     logging::SetMinLogLevel(log_level);
+  }
 }
 
 }  // namespace
@@ -57,8 +58,9 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   int OnInit() override {
     int exit_code = DBusServiceDaemon::OnInit();
-    if (exit_code != EX_OK)
+    if (exit_code != EX_OK) {
       return exit_code;
+    }
 
     // The lifetime of |adaptor_| is tied to this instance,
     // so base::Unretained here is safe.

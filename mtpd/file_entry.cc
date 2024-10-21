@@ -42,8 +42,9 @@ FileEntry::FileEntry(const LIBMTP_file_struct& file)
       file_size_(file.filesize),
       modification_time_(file.modificationdate),
       file_type_(file.filetype) {
-  if (file.filename)
+  if (file.filename) {
     file_name_ = file.filename;
+  }
 }
 
 FileEntry::FileEntry()
@@ -88,8 +89,9 @@ std::vector<uint8_t> FileEntry::FileEntriesToDBusFormat(
   MtpFileEntries protobuf;
   std::vector<uint8_t> serialized_proto;
 
-  if (entries.empty())
+  if (entries.empty()) {
     return serialized_proto;
+  }
 
   for (size_t i = 0; i < entries.size(); ++i) {
     MtpFileEntry entry_protobuf = entries[i].ToProtobuf();

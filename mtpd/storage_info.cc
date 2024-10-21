@@ -32,10 +32,12 @@ StorageInfo::StorageInfo(const std::string& storage_name,
       serial_number_(serial_number) {
   vendor_ = device.vendor ? device.vendor : fallback_vendor;
   product_ = device.product ? device.product : fallback_product;
-  if (storage.StorageDescription)
+  if (storage.StorageDescription) {
     storage_description_ = storage.StorageDescription;
-  if (storage.VolumeIdentifier)
+  }
+  if (storage.VolumeIdentifier) {
     volume_identifier_ = storage.VolumeIdentifier;
+  }
 }
 
 StorageInfo::StorageInfo()
@@ -58,10 +60,12 @@ void StorageInfo::Update(const LIBMTP_devicestorage_t& storage) {
   max_capacity_ = storage.MaxCapacity;
   free_space_in_bytes_ = storage.FreeSpaceInBytes;
   free_space_in_objects_ = storage.FreeSpaceInObjects;
-  if (storage.StorageDescription)
+  if (storage.StorageDescription) {
     storage_description_ = storage.StorageDescription;
-  if (storage.VolumeIdentifier)
+  }
+  if (storage.VolumeIdentifier) {
     volume_identifier_ = storage.VolumeIdentifier;
+  }
 }
 
 std::vector<uint8_t> StorageInfo::ToDBusFormat() const {
