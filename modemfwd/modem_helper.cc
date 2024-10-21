@@ -31,10 +31,12 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
   bool should_remove_capabilities = true;
 
   formatted_args.push_back(helper_info.executable_path.value());
-  for (const std::string& argument : arguments)
+  for (const std::string& argument : arguments) {
     formatted_args.push_back("--" + argument);
-  for (const std::string& extra_argument : helper_info.extra_arguments)
+  }
+  for (const std::string& extra_argument : helper_info.extra_arguments) {
     formatted_args.push_back(extra_argument);
+  }
 
   // Determine where this helper's seccomp policy would be. Expected location:
   // /usr/share/policy/{modem_id}-helper-seccomp.policy
@@ -43,8 +45,9 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
       helper_info.executable_path.BaseName().value().c_str()));
 
   // Allow cap_net_admin to persist if the helper requires it
-  if (helper_info.net_admin_required)
+  if (helper_info.net_admin_required) {
     should_remove_capabilities = false;
+  }
 
   int exit_code = RunProcessInSandbox(
       formatted_args, helper_seccomp_policy_file, should_remove_capabilities,
@@ -85,10 +88,12 @@ bool RunHelperProcess(const HelperInfo& helper_info,
   bool should_remove_capabilities = true;
 
   formatted_args.push_back(helper_info.executable_path.value());
-  for (const std::string& argument : arguments)
+  for (const std::string& argument : arguments) {
     formatted_args.push_back("--" + argument);
-  for (const std::string& extra_argument : helper_info.extra_arguments)
+  }
+  for (const std::string& extra_argument : helper_info.extra_arguments) {
     formatted_args.push_back(extra_argument);
+  }
 
   // Determine where this helper's seccomp policy would be. Expected location:
   // /usr/share/policy/{modem_id}-helper-seccomp.policy
@@ -97,8 +102,9 @@ bool RunHelperProcess(const HelperInfo& helper_info,
       helper_info.executable_path.BaseName().value().c_str()));
 
   // Allow cap_net_admin to persist if the helper requires it
-  if (helper_info.net_admin_required)
+  if (helper_info.net_admin_required) {
     should_remove_capabilities = false;
+  }
 
   int exit_code = RunProcessInSandbox(
       formatted_args, helper_seccomp_policy_file, should_remove_capabilities,
@@ -113,8 +119,9 @@ bool RunHelperProcess(const HelperInfo& helper_info,
     const int kBufSize = 1024;
     char buf[kBufSize];
     int bytes_read = output_base_file.ReadAtCurrentPos(buf, kBufSize);
-    if (bytes_read != -1)
+    if (bytes_read != -1) {
       output->assign(buf, bytes_read);
+    }
   }
 
   if (exit_code != 0) {
@@ -178,18 +185,19 @@ class ModemHelperImpl : public ModemHelper {
     }
 
     for (const auto& pair : parsed_versions) {
-      if (pair.first == kFwMain)
+      if (pair.first == kFwMain) {
         out_info->main_version = pair.second;
-      else if (pair.first == kFwCarrier)
+      } else if (pair.first == kFwCarrier) {
         out_info->carrier_version = pair.second;
-      else if (pair.first == kFwCarrierUuid)
+      } else if (pair.first == kFwCarrierUuid) {
         out_info->carrier_uuid = pair.second;
-      else if (pair.first == kFwOem)
+      } else if (pair.first == kFwOem) {
         out_info->oem_version = pair.second;
-      else if (pair.first == "")
+      } else if (pair.first == "") {
         continue;
-      else
+      } else {
         out_info->assoc_versions.insert(pair);
+      }
     }
 
     return true;
@@ -199,8 +207,9 @@ class ModemHelperImpl : public ModemHelper {
   bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) override {
     FlashMode flash_mode(helper_info_);
 
-    if (!configs.size())
+    if (!configs.size()) {
       return false;
+    }
 
     std::vector<std::string> firmwares;
     std::vector<std::string> versions;
@@ -221,8 +230,9 @@ class ModemHelperImpl : public ModemHelper {
 
   bool FlashModeCheck() override {
     std::string output;
-    if (!RunHelperProcess(helper_info_, {kFlashModeCheck}, &output))
+    if (!RunHelperProcess(helper_info_, {kFlashModeCheck}, &output)) {
       return false;
+    }
 
     return base::TrimWhitespaceASCII(output, base::TRIM_ALL) == "true";
   }
@@ -233,8 +243,9 @@ class ModemHelperImpl : public ModemHelper {
 
   std::optional<HeartbeatConfig> GetHeartbeatConfig() override {
     std::string output;
-    if (!RunHelperProcess(helper_info_, {kGetHeartbeatConfig}, &output))
+    if (!RunHelperProcess(helper_info_, {kGetHeartbeatConfig}, &output)) {
       return std::nullopt;
+    }
 
     base::StringPairs parsed_config;
     bool result =
@@ -250,24 +261,27 @@ class ModemHelperImpl : public ModemHelper {
     for (const auto& pair : parsed_config) {
       if (pair.first == kHeartbeatMaxFailures) {
         int value;
-        if (!base::StringToInt(pair.second, &value))
+        if (!base::StringToInt(pair.second, &value)) {
           return std::nullopt;
+        }
 
         EVLOG(1) << __func__ << ": max_failures: " << value;
         max_failures = value;
       }
       if (pair.first == kHeartbeatInterval) {
         int value;
-        if (!base::StringToInt(pair.second, &value))
+        if (!base::StringToInt(pair.second, &value)) {
           return std::nullopt;
+        }
 
         EVLOG(1) << __func__ << ": interval_sec: " << value;
         interval_sec = value;
       }
       if (pair.first == kHeartbeatModemIdleInterval) {
         int value;
-        if (!base::StringToInt(pair.second, &value))
+        if (!base::StringToInt(pair.second, &value)) {
           return std::nullopt;
+        }
 
         EVLOG(1) << __func__ << ": modem_idle_interval: " << value;
         modem_idle_interval_sec = value;

@@ -29,14 +29,15 @@ namespace modemfwd {
 namespace {
 
 std::string GetFirmwareVersion(Modem* modem, std::string type) {
-  if (type == kFwMain)
+  if (type == kFwMain) {
     return modem->GetMainFirmwareVersion();
-  else if (type == kFwCarrier)
+  } else if (type == kFwCarrier) {
     return modem->GetCarrierFirmwareVersion();
-  else if (type == kFwOem)
+  } else if (type == kFwOem) {
     return modem->GetOemFirmwareVersion();
-  else
+  } else {
     return modem->GetAssocFirmwareVersion(type);
+  }
 }
 
 class FlashState {
@@ -57,14 +58,16 @@ class FlashState {
 
   bool ShouldFlashFirmware(const std::string& type,
                            const base::FilePath& path) {
-    if (type == kFwCarrier)
+    if (type == kFwCarrier) {
       return last_carrier_fw_flashed_ != path;
+    }
     return flashed_fw_types_.count(type) == 0;
   }
 
   void OnCarrierSeen(const std::string& carrier_id) {
-    if (carrier_id == last_carrier_id_)
+    if (carrier_id == last_carrier_id_) {
       return;
+    }
 
     last_carrier_id_ = carrier_id;
     flashed_fw_types_.clear();
@@ -140,12 +143,15 @@ class ModemFlasherImpl : public ModemFlasher {
         device_id, res->carrier_id.empty() ? nullptr : &res->carrier_id);
 
     std::vector<std::pair<std::string, const FirmwareFileInfo*>> flash_infos;
-    if (files.main_firmware.has_value())
+    if (files.main_firmware.has_value()) {
       flash_infos.emplace_back(kFwMain, &files.main_firmware.value());
-    if (files.oem_firmware.has_value())
+    }
+    if (files.oem_firmware.has_value()) {
       flash_infos.emplace_back(kFwOem, &files.oem_firmware.value());
-    for (const auto& assoc_entry : files.assoc_firmware)
+    }
+    for (const auto& assoc_entry : files.assoc_firmware) {
       flash_infos.emplace_back(assoc_entry.first, &assoc_entry.second);
+    }
 
     if (!res->temp_extraction_dir_.CreateUniqueTempDir()) {
       LOG(ERROR) << "Failed to create temporary directory for firmware";
@@ -163,8 +169,9 @@ class ModemFlasherImpl : public ModemFlasher {
     for (const auto& flash_info : flash_infos) {
       const FirmwareFileInfo& file_info = *flash_info.second;
       base::FilePath fw_path = GetFirmwarePath(file_info);
-      if (!flash_state->ShouldFlashFirmware(flash_info.first, fw_path))
+      if (!flash_state->ShouldFlashFirmware(flash_info.first, fw_path)) {
         continue;
+      }
 
       std::string existing_version =
           GetFirmwareVersion(modem, flash_info.first);
@@ -259,8 +266,9 @@ class ModemFlasherImpl : public ModemFlasher {
 
     base::Time start = base::Time::Now();
     bool success = modem->FlashFirmwares(flash_cfg.fw_configs);
-    if (out_duration)
+    if (out_duration) {
       *out_duration = base::Time::Now() - start;
+    }
 
     if (!success) {
       flash_state->OnFlashFailed();

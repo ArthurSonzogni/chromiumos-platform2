@@ -45,14 +45,15 @@ std::string JournalTypeToFirmwareType(int t) {
 }
 
 JournalEntryType FirmwareTypeToJournalType(std::string fw_type) {
-  if (fw_type == modemfwd::kFwMain)
+  if (fw_type == modemfwd::kFwMain) {
     return JournalEntryType::MAIN;
-  else if (fw_type == modemfwd::kFwCarrier)
+  } else if (fw_type == modemfwd::kFwCarrier) {
     return JournalEntryType::CARRIER;
-  else if (fw_type == modemfwd::kFwOem)
+  } else if (fw_type == modemfwd::kFwOem) {
     return JournalEntryType::OEM;
-  else
+  } else {
     return JournalEntryType::UNKNOWN;
+  }
 }
 
 struct JournalEntryWithId {
@@ -94,8 +95,9 @@ bool RestartOperation(const JournalEntry& entry,
     base::FilePath fw_path;
     std::string fw_version;
 
-    if (fw_type.empty())
+    if (fw_type.empty()) {
       continue;
+    }
 
     switch (entry_type) {
       case JournalEntryType::MAIN:

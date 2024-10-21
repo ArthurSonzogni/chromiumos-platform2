@@ -46,29 +46,36 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     FirmwareFileInfo info;
 
     // Note the recovery metadata directory for this variant, if it exists
-    if (cache.recovery_directory.has_value())
+    if (cache.recovery_directory.has_value()) {
       result.recovery_directory = *cache.recovery_directory.value();
+    }
 
     // Null carrier ID -> just go for generic main and OEM firmwares.
     if (!carrier_id) {
-      if (FindSpecificFirmware(cache.main_firmware, kGenericCarrierId, &info))
+      if (FindSpecificFirmware(cache.main_firmware, kGenericCarrierId, &info)) {
         result.main_firmware = info;
-      if (FindSpecificFirmware(cache.oem_firmware, kGenericCarrierId, &info))
+      }
+      if (FindSpecificFirmware(cache.oem_firmware, kGenericCarrierId, &info)) {
         result.oem_firmware = info;
-      if (result.main_firmware.has_value())
+      }
+      if (result.main_firmware.has_value()) {
         FindAssociatedFirmware(cache, result.main_firmware.value().version,
                                &result.assoc_firmware);
+      }
       return result;
     }
 
     // Searching for carrier firmware may change the carrier to generic. This
     // is fine, and the main firmware should use the same one in that case.
-    if (FindFirmwareForCarrier(cache.carrier_firmware, carrier_id, &info))
+    if (FindFirmwareForCarrier(cache.carrier_firmware, carrier_id, &info)) {
       result.carrier_firmware = info;
-    if (FindFirmwareForCarrier(cache.main_firmware, carrier_id, &info))
+    }
+    if (FindFirmwareForCarrier(cache.main_firmware, carrier_id, &info)) {
       result.main_firmware = info;
-    if (FindFirmwareForCarrier(cache.oem_firmware, carrier_id, &info))
+    }
+    if (FindFirmwareForCarrier(cache.oem_firmware, carrier_id, &info)) {
       result.oem_firmware = info;
+    }
 
     // Add associated firmware.
     if (result.main_firmware.has_value()) {
@@ -93,14 +100,16 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
                            const std::string& carrier_a,
                            const std::string& carrier_b) override {
     // easy case: identical carrier UUID
-    if (carrier_a == carrier_b)
+    if (carrier_a == carrier_b) {
       return true;
+    }
 
     DeviceType type{device_id, variant_};
     auto device_it = index_->find(type);
     // no firmware for this device
-    if (device_it == index_->end())
+    if (device_it == index_->end()) {
       return true;
+    }
 
     const DeviceFirmwareCache& cache = device_it->second;
     auto main_a = GetFirmwareForCarrier(cache.main_firmware, carrier_a);
@@ -120,8 +129,9 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
   // modemfwd::OverrideVariantForTesting overrides.
   void OverrideVariantForTesting(const std::string& variant) override {
-    if (variant.empty() || variant == variant_)
+    if (variant.empty() || variant == variant_) {
       return;
+    }
     LOG(INFO) << "Override variant value: " << variant;
     variant_ = variant;
   };
@@ -131,8 +141,9 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       const DeviceFirmwareCache::CarrierIndex& carrier_index,
       std::string* carrier_id,
       FirmwareFileInfo* out_info) {
-    if (FindSpecificFirmware(carrier_index, *carrier_id, out_info))
+    if (FindSpecificFirmware(carrier_index, *carrier_id, out_info)) {
       return true;
+    }
 
     if (FindSpecificFirmware(carrier_index, kGenericCarrierId, out_info)) {
       *carrier_id = kGenericCarrierId;
@@ -147,8 +158,9 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       const std::string& carrier_id,
       FirmwareFileInfo* out_info) {
     auto it = carrier_index.find(carrier_id);
-    if (it == carrier_index.end())
+    if (it == carrier_index.end()) {
       return false;
+    }
 
     *out_info = *it->second;
     return true;
@@ -168,12 +180,14 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       std::map<std::string, FirmwareFileInfo>* out_firmware) {
     for (const auto& main_firmware : cache.main_firmware) {
       FirmwareFileInfo* const main_info = main_firmware.second;
-      if (main_version != main_info->version)
+      if (main_version != main_info->version) {
         continue;
+      }
 
       auto it = cache.assoc_firmware.find(main_info);
-      if (it == cache.assoc_firmware.end())
+      if (it == cache.assoc_firmware.end()) {
         return;
+      }
 
       for (const auto& assoc_firmware_entry : it->second) {
         (*out_firmware)[assoc_firmware_entry.first] =

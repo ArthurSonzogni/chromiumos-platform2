@@ -59,8 +59,9 @@ void Error::AddTo(brillo::ErrorPtr* error,
 
 // static
 brillo::ErrorPtr Error::CreateFromDbusError(brillo::Error* dbus_error) {
-  if (!dbus_error)
+  if (!dbus_error) {
     return brillo::Error::Create(FROM_HERE, kModemfwdErrorDomain, "", "");
+  }
 
   return brillo::Error::Create(dbus_error->GetLocation(),
                                dbus_error->GetDomain(), dbus_error->GetCode(),

@@ -25,15 +25,17 @@ class ModemHelperDirectoryStub : public ModemHelperDirectory {
   // ModemHelperDirectory overrides.
   ModemHelper* GetHelperForDeviceId(const std::string& device_id) {
     auto it = helpers_.find(device_id);
-    if (it == helpers_.end())
+    if (it == helpers_.end()) {
       return nullptr;
+    }
     return it->second;
   }
 
   void ForEachHelper(base::RepeatingCallback<void(const std::string&,
                                                   ModemHelper*)> callback) {
-    for (const auto& entry : helpers_)
+    for (const auto& entry : helpers_) {
       callback.Run(entry.first, entry.second);
+    }
   }
 
  private:

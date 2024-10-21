@@ -83,8 +83,9 @@ TEST_F(FileDecompressorTest, Decompress1MOfZeroes) {
   std::string content;
   ASSERT_TRUE(base::ReadFileToString(out_file_->path(), &content));
   EXPECT_EQ(1024 * 1024, content.size());
-  for (size_t i = 0; i < content.size(); ++i)
+  for (size_t i = 0; i < content.size(); ++i) {
     EXPECT_EQ(0, content[i]);
+  }
 }
 
 }  // namespace

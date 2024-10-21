@@ -78,8 +78,9 @@ ScopedMinijail ConfigureSandbox(const base::FilePath& seccomp_file_path,
   // Remove all capabilities if the process doesn't require cap_net_admin by
   // setting sandboxed capabilities to 0. Only the FM350 helper requires
   // cap_net_admin.
-  if (should_remove_capabilities)
+  if (should_remove_capabilities) {
     minijail_use_caps(j.get(), 0);
+  }
 
   // Apply seccomp filter, if it exists.
   if (base::PathExists(seccomp_file_path)) {
@@ -108,8 +109,9 @@ int RunProcessInSandboxWithTimeout(
   pid_t pid = -1;
   std::vector<char*> args;
 
-  for (const std::string& argument : formatted_args)
+  for (const std::string& argument : formatted_args) {
     args.push_back(const_cast<char*>(argument.c_str()));
+  }
 
   args.push_back(nullptr);
 
@@ -126,22 +128,25 @@ int RunProcessInSandboxWithTimeout(
 
   // If the timeout provided is zero, we block until the command is finished
   // and return its exit code.
-  if (timeout.is_zero())
+  if (timeout.is_zero()) {
     return minijail_wait(j.get());
+  }
 
   auto process = base::Process::Open(pid);
   int exit_code = -1;
 
   // Allow process to complete normally
-  if (process.WaitForExitWithTimeout(timeout, &exit_code))
+  if (process.WaitForExitWithTimeout(timeout, &exit_code)) {
     return exit_code;
+  }
 
   LOG(ERROR) << "Child process timed out";
 
   // Try to terminate it gracefully
   kill(pid, SIGTERM);
-  if (process.WaitForExitWithTimeout(timeout, nullptr))
+  if (process.WaitForExitWithTimeout(timeout, nullptr)) {
     return -MINIJAIL_ERR_SIG_BASE;
+  }
 
   // Kill it
   kill(pid, SIGKILL);

@@ -58,16 +58,18 @@ std::unique_ptr<Inhibitor> GetInhibitor(
   // This is the physdev_uid we use for inhibition during updates.
   auto mm_device = bus->GetObjectProxy(modemmanager::kModemManager1ServiceName,
                                        mm_object_path);
-  if (!mm_device)
+  if (!mm_device) {
     return nullptr;
+  }
 
   brillo::ErrorPtr error;
   auto resp = brillo::dbus_utils::CallMethodAndBlock(
       mm_device, dbus::kDBusPropertiesInterface, dbus::kDBusPropertiesGet,
       &error, std::string(modemmanager::kModemManager1ModemInterface),
       std::string(MM_MODEM_PROPERTY_DEVICE));
-  if (!resp)
+  if (!resp) {
     return nullptr;
+  }
 
   std::string mm_physdev_uid;
   dbus::MessageReader reader(resp.get());
@@ -129,8 +131,9 @@ std::unique_ptr<HealthChecker> GetHealthChecker(
     return nullptr;
   }
   for (const auto& [name, type] : modem_object->ports()) {
-    if (name != primary_port_name)
+    if (name != primary_port_name) {
       continue;
+    }
 
     switch (type) {
       case MM_MODEM_PORT_TYPE_MBIM:
@@ -273,10 +276,11 @@ class ModemImpl : public Modem {
   std::string GetAssocFirmwareVersion(std::string fw_tag) const override {
     std::map<std::string, std::string>::const_iterator pos =
         installed_firmware_.assoc_versions.find(fw_tag);
-    if (pos == installed_firmware_.assoc_versions.end())
+    if (pos == installed_firmware_.assoc_versions.end()) {
       return "";
-    else
+    } else {
       return pos->second;
+    }
   }
 
   bool SetInhibited(bool inhibited) override {
@@ -392,8 +396,9 @@ std::unique_ptr<Modem> CreateModem(
   // This property may not exist and it's not a big deal if it doesn't.
   std::map<std::string, std::string> operator_info;
   std::string carrier_id;
-  if (properties[shill::kHomeProviderProperty].GetValue(&operator_info))
+  if (properties[shill::kHomeProviderProperty].GetValue(&operator_info)) {
     carrier_id = operator_info[shill::kOperatorUuidKey];
+  }
 
   // Get a helper object for inhibiting the modem, if possible.
   std::unique_ptr<Inhibitor> inhibitor;
@@ -410,8 +415,9 @@ std::unique_ptr<Modem> CreateModem(
   }
 
   inhibitor = GetInhibitor(bus, dbus::ObjectPath(mm_object_path));
-  if (!inhibitor)
+  if (!inhibitor) {
     LOG(INFO) << "Inhibiting modem " << object_path << " will not be possible";
+  }
 
   // Use the device ID to grab a helper.
   ModemHelper* helper = helper_directory->GetHelperForDeviceId(device_id);

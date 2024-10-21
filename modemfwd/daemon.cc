@@ -158,8 +158,9 @@ Daemon::Daemon(const std::string& journal_file,
 
 int Daemon::OnInit() {
   int exit_code = brillo::DBusServiceDaemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
   DCHECK(!helper_dir_path_.empty());
 
   std::unique_ptr<MetricsLibraryInterface> metrics_library =
@@ -208,8 +209,9 @@ int Daemon::OnInit() {
   }
 
   // If no firmware directory was supplied, we can't run.
-  if (fw_manifest_dir_path_.empty())
+  if (fw_manifest_dir_path_.empty()) {
     return EX_UNAVAILABLE;
+  }
 
   if (!base::DirectoryExists(fw_manifest_dir_path_)) {
     auto err = Error::Create(
@@ -413,8 +415,9 @@ void Daemon::OnModemPowerStateChange(std::string device_id,
 
 void Daemon::OnPoweredChange(const std::string device_id, bool powered) {
   // Do not change modem power state during suspension.
-  if (suspend_checker_->IsSuspendAnnounced())
+  if (suspend_checker_->IsSuspendAnnounced()) {
     return;
+  }
   std::string power_device_id = device_id;
   // Once modem is powered off, the device_id of the cellular device is empty
   if (powered && power_device_id.empty()) {
@@ -456,8 +459,9 @@ void Daemon::OnModemDeviceSeen(std::string device_id,
   // The modem that matches the variant has been seen.
   if (fw_manifest_directory_->DeviceIdMatch(device_id) &&
       !modems_seen_since_oobe_prefs_->Exists(device_id)) {
-    if (!modems_seen_since_oobe_prefs_->Create(device_id))
+    if (!modems_seen_since_oobe_prefs_->Create(device_id)) {
       LOG(ERROR) << "Failed to create modem seen pref for modem: " << device_id;
+    }
   }
 
   RunModemReappearanceCallback(equipment_id);
@@ -467,8 +471,9 @@ void Daemon::OnModemCarrierIdReady(
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device) {
   auto modem =
       CreateModem(bus_.get(), std::move(device), helper_directory_.get());
-  if (!modem)
+  if (!modem) {
     return;
+  }
 
   std::string device_id = modem->GetDeviceId();
   std::string equipment_id = modem->GetEquipmentId();
@@ -584,8 +589,9 @@ void Daemon::ForceFlashForTesting(
 
 bool Daemon::ResetModem(const std::string& device_id) {
   auto helper = helper_directory_->GetHelperForDeviceId(device_id);
-  if (!helper)
+  if (!helper) {
     return false;
+  }
 
   return helper->Reboot();
 }
@@ -603,8 +609,9 @@ bool Daemon::ChangeModemPowerState(const std::string& device_id,
                                    Modem::PowerState target_state) {
   auto helper = helper_directory_->GetHelperForDeviceId(device_id);
   bool res = true;
-  if (!helper)
+  if (!helper) {
     return false;
+  }
   if (modems_.count(device_id) == 0) {
     return false;
   }

@@ -57,11 +57,13 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  if (FLAGS_reboot)
+  if (FLAGS_reboot) {
     return EXIT_SUCCESS;
+  }
 
-  if (FLAGS_flash_fw.empty())
+  if (FLAGS_flash_fw.empty()) {
     return EXIT_SUCCESS;
+  }
 
   return EXIT_SUCCESS;
 }

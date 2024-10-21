@@ -102,8 +102,9 @@ void DlcManager::OnGetExistingDlcsSuccess(
     const dlcservice::DlcsWithContent& dlc_list) {
   std::set<std::string> dlcs_to_remove_join;
   for (const auto& dlc_info : dlc_list.dlc_infos()) {
-    if (dlcs_to_remove_.count(dlc_info.id()))
+    if (dlcs_to_remove_.count(dlc_info.id())) {
       dlcs_to_remove_join.emplace(dlc_info.id());
+    }
   }
   dlcs_to_remove_ = std::move(dlcs_to_remove_join);
   RemoveNextDlc();
@@ -152,8 +153,9 @@ void DlcManager::OnPurgeError(brillo::Error* dbus_error) {
 void DlcManager::InstallModemDlc(InstallModemDlcOnceCallback cb) {
   LOG(INFO) << "Installing DLC:" << dlc_id_;
   CHECK(install_callback_.is_null());
-  if (!install_callback_.is_null())
+  if (!install_callback_.is_null()) {
     return;
+  }
   install_callback_ = std::move(cb);
 
   install_step_ = InstallStep::WAITING_FOR_SERVICE;
@@ -173,8 +175,9 @@ void DlcManager::InstallModemDlc(InstallModemDlcOnceCallback cb) {
 }
 
 void DlcManager::OnServiceAvailable(bool available) {
-  if (!available)
+  if (!available) {
     LOG(WARNING) << "dlcservice not available";
+  }
 
   TryInstall();
 }
@@ -188,8 +191,9 @@ void DlcManager::PostRetryInstallTask() {
 
   // Increase the period exponentially until it reaches
   // |kInstallRetryMaxPeriod|.
-  if (install_retry_period_ < dlcmanager::kInstallRetryMaxPeriod)
+  if (install_retry_period_ < dlcmanager::kInstallRetryMaxPeriod) {
     install_retry_period_ = install_retry_period_ * 2;
+  }
 }
 
 void DlcManager::TryInstall() {
@@ -229,8 +233,9 @@ void DlcManager::InstallDlcTimedout() {
       break;
   }
 
-  if (!install_callback_.is_null())
+  if (!install_callback_.is_null()) {
     std::move(install_callback_).Run("", err.get());
+  }
 
   metrics_->SendDlcInstallResultFailure(err.get());
 }
@@ -289,8 +294,9 @@ void DlcManager::OnInstallGetDlcStateSuccess(
 
   // Cancel the timeout callback.
   install_timeout_callback_.Cancel();
-  if (!install_callback_.is_null())
+  if (!install_callback_.is_null()) {
     std::move(install_callback_).Run(state.root_path(), nullptr);
+  }
   metrics_->SendDlcInstallResultSuccess();
 }
 
@@ -306,8 +312,9 @@ void DlcManager::ProcessInstallError(brillo::ErrorPtr err) {
   if (install_retry_counter_ >= dlcmanager::kMaxRetriesBeforeFallbackToRootfs) {
     // Cancel the timeout callback
     install_timeout_callback_.Cancel();
-    if (!install_callback_.is_null())
+    if (!install_callback_.is_null()) {
       std::move(install_callback_).Run("", err.get());
+    }
 
     metrics_->SendDlcInstallResultFailure(err.get());
   }

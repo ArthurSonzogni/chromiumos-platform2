@@ -34,8 +34,9 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
                            const base::FilePath& directory,
                            const std::string variant) {
     for (const HelperEntry& entry : manifest.helper()) {
-      if (entry.filename().empty())
+      if (entry.filename().empty()) {
         continue;
+      }
 
       // If the helper is restricted to a set of 'variant', do the filtering.
       if (entry.variant_size() && !base::Contains(entry.variant(), variant)) {
@@ -70,8 +71,9 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
 
   ModemHelper* GetHelperForDeviceId(const std::string& id) override {
     auto it = helpers_by_id_.find(id);
-    if (it == helpers_by_id_.end())
+    if (it == helpers_by_id_.end()) {
       return nullptr;
+    }
 
     return it->second;
   }
@@ -79,8 +81,9 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
   void ForEachHelper(
       base::RepeatingCallback<void(const std::string&, ModemHelper*)> callback)
       override {
-    for (const auto& entry : helpers_by_id_)
+    for (const auto& entry : helpers_by_id_) {
       callback.Run(entry.first, entry.second);
+    }
   }
 
  private:
@@ -95,13 +98,16 @@ std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
   auto file_name = base::PathExists(directory.Append(kManifestName))
                        ? kManifestName
                        : kManifestNameLegacy;
-  if (!brillo::ReadTextProtobuf(directory.Append(file_name), &parsed_manifest))
+  if (!brillo::ReadTextProtobuf(directory.Append(file_name),
+                                &parsed_manifest)) {
     return nullptr;
+  }
 
   auto helper_dir = std::make_unique<ModemHelperDirectoryImpl>(
       parsed_manifest, directory, variant);
-  if (!helper_dir->FoundHelpers())
+  if (!helper_dir->FoundHelpers()) {
     return nullptr;
+  }
 
   return std::move(helper_dir);
 }

@@ -32,16 +32,19 @@ std::unique_ptr<HeartbeatTask> HeartbeatTask::Create(
     Modem* modem,
     ModemHelperDirectory* helper_directory,
     Metrics* metrics) {
-  if (!modem->SupportsHealthCheck())
+  if (!modem->SupportsHealthCheck()) {
     return nullptr;
+  }
 
   auto helper = helper_directory->GetHelperForDeviceId(modem->GetDeviceId());
-  if (!helper)
+  if (!helper) {
     return nullptr;
+  }
 
   auto heartbeat_config = helper->GetHeartbeatConfig();
-  if (!heartbeat_config.has_value())
+  if (!heartbeat_config.has_value()) {
     return nullptr;
+  }
 
   return std::unique_ptr<HeartbeatTask>(
       new HeartbeatTask(delegate, modem, metrics, *heartbeat_config));

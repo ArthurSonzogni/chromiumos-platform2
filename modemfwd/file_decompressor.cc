@@ -61,8 +61,9 @@ bool DecompressXzFile(const base::FilePath& in_file_path,
         return false;
       }
 
-      if (read_ret == 0)
+      if (read_ret == 0) {
         action = LZMA_FINISH;
+      }
 
       stream.next_in = in_buffer.get();
       stream.avail_in = read_ret;
@@ -86,8 +87,9 @@ bool DecompressXzFile(const base::FilePath& in_file_path,
 
     // A LZMA_STREAM_END return value indicates that the stream has been
     // decoded successfully.
-    if (ret == LZMA_STREAM_END)
+    if (ret == LZMA_STREAM_END) {
       break;
+    }
 
     // Otherwise, a return value other than LZMA_OK indicates an error.
     if (ret != LZMA_OK) {

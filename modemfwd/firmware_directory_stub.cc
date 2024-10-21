@@ -17,8 +17,9 @@ bool GetValue(const Map& map, const K& key, V* out_value) {
   CHECK(out_value);
 
   auto it = map.find(key);
-  if (it == map.end())
+  if (it == map.end()) {
     return false;
+  }
 
   *out_value = it->second;
   return true;
@@ -83,8 +84,9 @@ FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
   FirmwareFileInfo info;
 
   if (carrier_id) {
-    if (FindCarrierFirmware(device_id, carrier_id, &info))
+    if (FindCarrierFirmware(device_id, carrier_id, &info)) {
       res.carrier_firmware = info;
+    }
     if (GetValue(main_fw_info_for_carrier_,
                  std::make_pair(device_id, *carrier_id), &info)) {
       res.main_firmware = info;
@@ -113,8 +115,9 @@ FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
   auto it = assoc_fw_info_.begin();
   while (it != assoc_fw_info_.end()) {
     // Collect all associated firmwares for the selected main firmware's path
-    if (it->first.first == res.main_firmware->firmware_path)
+    if (it->first.first == res.main_firmware->firmware_path) {
       res.assoc_firmware.insert(std::make_pair(it->first.second, it->second));
+    }
     it++;
   }
   return res;
@@ -122,8 +125,9 @@ FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
 
 bool FirmwareDirectoryStub::DeviceIdMatch(const std::string& device_id) {
   for (auto& info : main_fw_info_for_carrier_) {
-    if (info.first.first == device_id)
+    if (info.first.first == device_id) {
       return true;
+    }
   }
   return false;
 }
@@ -150,8 +154,9 @@ bool FirmwareDirectoryStub::IsUsingSameFirmware(const std::string& device_id,
                                                 const std::string& carrier_a,
                                                 const std::string& carrier_b) {
   // easy case: identical carrier UUID
-  if (carrier_a == carrier_b)
+  if (carrier_a == carrier_b) {
     return true;
+  }
 
   FirmwareFileInfo info_a;
   FirmwareFileInfo info_b;
@@ -160,8 +165,9 @@ bool FirmwareDirectoryStub::IsUsingSameFirmware(const std::string& device_id,
   bool has_b =
       GetValue(carrier_fw_info_, std::make_pair(device_id, carrier_b), &info_b);
   // one or several firmwares are missing
-  if (!has_a || !has_b)
+  if (!has_a || !has_b) {
     return false;
+  }
 
   // same firmware if they are pointing to the 2 same files.
   return info_a.firmware_path == info_b.firmware_path;

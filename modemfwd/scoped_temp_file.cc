@@ -13,8 +13,9 @@ namespace modemfwd {
 // static
 std::unique_ptr<ScopedTempFile> ScopedTempFile::Create() {
   base::FilePath path;
-  if (!base::CreateTemporaryFile(&path))
+  if (!base::CreateTemporaryFile(&path)) {
     return nullptr;
+  }
 
   return std::unique_ptr<ScopedTempFile>(new ScopedTempFile(path));
 }

@@ -86,8 +86,9 @@ void ModemTracker::UpdateModemProxySingleDevice(dbus::ObjectPath device_path) {
   auto device =
       std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
 
-  if (!device->GetProperties(&properties, NULL))
+  if (!device->GetProperties(&properties, NULL)) {
     return;
+  }
   if (properties[shill::kTypeProperty].TryGet<std::string>() !=
       shill::kTypeCellular) {
     return;
@@ -108,8 +109,9 @@ void ModemTracker::UpdateModemProxySingleDevice(dbus::ObjectPath device_path) {
   if (modem_proxy != modem_proxys_.end()) {
     auto old_path = modem_proxy->second->GetObjectPath().value();
     ELOG(INFO) << __func__ << ": modem object old path: " << old_path;
-    if (old_path == modem_object_path)
+    if (old_path == modem_object_path) {
       return;
+    }
   }
 
   ELOG(INFO) << __func__ << ": modem object new path: " << modem_object_path;
@@ -164,8 +166,9 @@ void ModemTracker::UpdateModemProxyMultiDevice(
 
 void ModemTracker::OnManagerPropertyChanged(const std::string& property_name,
                                             const brillo::Any& property_value) {
-  if (property_name == shill::kDevicesProperty)
+  if (property_name == shill::kDevicesProperty) {
     OnDeviceListChanged(property_value.TryGet<std::vector<dbus::ObjectPath>>());
+  }
 }
 
 void ModemTracker::OnModemPropertyChanged(
@@ -226,18 +229,21 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
   }
 
   // Listen for the HomeProvider change triggered by a SIM change
-  if (property_name != shill::kHomeProviderProperty)
+  if (property_name != shill::kHomeProviderProperty) {
     return;
+  }
 
   auto current_carrier_id = modem_objects_.find(device_path);
-  if (current_carrier_id == modem_objects_.end())
+  if (current_carrier_id == modem_objects_.end()) {
     return;
+  }
 
   std::map<std::string, std::string> operator_info(
       property_value.TryGet<std::map<std::string, std::string>>());
   std::string carrier_id = operator_info[shill::kOperatorUuidKey];
-  if (carrier_id == current_carrier_id->second)
+  if (carrier_id == current_carrier_id->second) {
     return;
+  }
 
   current_carrier_id->second = carrier_id;
 
@@ -245,8 +251,9 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
              << device_path.value();
 
   // Skip update if no carrier info
-  if (carrier_id.empty())
+  if (carrier_id.empty()) {
     return;
+  }
 
   // Trigger the firmware update
   auto device =
@@ -311,8 +318,9 @@ void ModemTracker::OnDeviceListChanged(
     on_modem_device_seen_callback_.Run(device_id, equipment_id);
 
     std::map<std::string, std::string> operator_info;
-    if (!properties[shill::kHomeProviderProperty].GetValue(&operator_info))
+    if (!properties[shill::kHomeProviderProperty].GetValue(&operator_info)) {
       continue;
+    }
 
     bool sim_present;
     if (!properties[shill::kSIMPresentProperty].GetValue(&sim_present)) {
@@ -341,8 +349,9 @@ void ModemTracker::OnDeviceListChanged(
         base::BindRepeating(&OnSignalConnected));
 
     // Try to update if carrier is known
-    if (!carrier_id.empty())
+    if (!carrier_id.empty()) {
       on_modem_carrier_id_ready_callback_.Run(std::move(device));
+    }
   }
   modem_objects_ = new_modems;
 }

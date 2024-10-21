@@ -20,8 +20,9 @@ namespace {
 bool ParseDevice(const Device& device,
                  DeviceFirmwareCache* out_cache,
                  std::map<std::string, Dlc>* dlc_per_variant) {
-  if (!device.variant().empty() && device.has_dlc())
+  if (!device.variant().empty() && device.has_dlc()) {
     dlc_per_variant->emplace(device.variant(), device.dlc());
+  }
 
   // Store this device's recovery metadata location
   if (device.has_recovery_directory()) {
@@ -60,8 +61,9 @@ bool ParseDevice(const Device& device,
 
     auto compression =
         ToFirmwareFileInfoCompression(main_firmware.compression());
-    if (!compression.has_value())
+    if (!compression.has_value()) {
       return false;
+    }
 
     // Use relative paths since DLCs have no predefined path
     if (base::FilePath(main_firmware.filename()).IsAbsolute()) {
@@ -135,8 +137,9 @@ bool ParseDevice(const Device& device,
 
     auto compression =
         ToFirmwareFileInfoCompression(oem_firmware.compression());
-    if (!compression.has_value())
+    if (!compression.has_value()) {
       return false;
+    }
 
     if (base::FilePath(oem_firmware.filename()).IsAbsolute()) {
       LOG(ERROR) << "OEM firmware should use relative path ("
@@ -147,11 +150,13 @@ bool ParseDevice(const Device& device,
     auto oem_info = std::make_unique<FirmwareFileInfo>(
         oem_firmware.filename(), oem_firmware.version(), compression.value());
     if (oem_firmware.main_firmware_version_size() > 0) {
-      for (const std::string& version : oem_firmware.main_firmware_version())
+      for (const std::string& version : oem_firmware.main_firmware_version()) {
         oem_firmware_infos.emplace(version, oem_info.get());
+      }
     } else {
-      if (default_main_entry)
+      if (default_main_entry) {
         oem_firmware_infos.emplace(default_main_entry->version, oem_info.get());
+      }
     }
     out_cache->all_files.push_back(std::move(oem_info));
   }
@@ -172,8 +177,9 @@ bool ParseDevice(const Device& device,
     // Convert the manifest entry into a FirmwareFileInfo.
     auto compression =
         ToFirmwareFileInfoCompression(carrier_firmware.compression());
-    if (!compression.has_value())
+    if (!compression.has_value()) {
       return false;
+    }
 
     // There must either be a default main firmware or an explicitly specified
     // one here.
@@ -225,16 +231,18 @@ bool ParseDevice(const Device& device,
       }
 
       out_cache->main_firmware[supported_carrier] = main_firmware_for_carrier;
-      if (oem_firmware_for_carrier)
+      if (oem_firmware_for_carrier) {
         out_cache->oem_firmware[supported_carrier] = oem_firmware_for_carrier;
+      }
       out_cache->carrier_firmware[supported_carrier] = carrier_info.get();
     }
     out_cache->all_files.push_back(std::move(carrier_info));
   }
 
   // Now it's safe to move all of the main firmware file info pointers.
-  for (auto& main_info : main_firmware_infos)
+  for (auto& main_info : main_firmware_infos) {
     out_cache->all_files.push_back(std::move(main_info.second));
+  }
 
   // If we have a default entry but didn't see any generic carrier firmware,
   // we put the default main firmware in the main index under generic.
@@ -247,9 +255,10 @@ bool ParseDevice(const Device& device,
     out_cache->main_firmware[FirmwareDirectory::kGenericCarrierId] =
         default_main_entry;
     auto oem_info = oem_firmware_infos.find(default_main_entry->version);
-    if (oem_info != oem_firmware_infos.end() && oem_info->second)
+    if (oem_info != oem_firmware_infos.end() && oem_info->second) {
       out_cache->oem_firmware[FirmwareDirectory::kGenericCarrierId] =
           oem_info->second;
+    }
   }
 
   return true;
@@ -280,8 +289,9 @@ std::unique_ptr<FirmwareIndex> ParseFirmwareManifestV2(
     }
 
     DeviceFirmwareCache cache;
-    if (!ParseDevice(device, &cache, &dlc_per_variant))
+    if (!ParseDevice(device, &cache, &dlc_per_variant)) {
       return nullptr;
+    }
 
     index[type] = std::move(cache);
   }
@@ -300,8 +310,9 @@ std::optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
       return FirmwareFileInfo::Compression::BSDIFF;
     default:
       std::string name = Compression_Name(compression);
-      if (name.empty())
+      if (name.empty()) {
         name = base::NumberToString(compression);
+      }
       LOG(ERROR) << "Unsupported compression: " << name;
       return std::nullopt;
   }

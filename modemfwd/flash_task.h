@@ -46,13 +46,15 @@ class FlashTask : public Task {
   class InhibitMode {
    public:
     explicit InhibitMode(Modem* modem) : modem_(modem) {
-      if (!modem_->SetInhibited(true))
+      if (!modem_->SetInhibited(true)) {
         ELOG(INFO) << "Inhibiting failed";
+      }
     }
 
     ~InhibitMode() {
-      if (modem_ && !modem_->SetInhibited(false))
+      if (modem_ && !modem_->SetInhibited(false)) {
         ELOG(INFO) << "Uninhibiting failed";
+      }
     }
 
    private:

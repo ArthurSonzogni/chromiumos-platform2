@@ -32,8 +32,9 @@ MetricEnum GetMetricFromInnerErrorCode(
   // match in the metrics map.
   while (err_it) {
     auto it = result_map.find(err_it->GetCode());
-    if (it != result_map.end())
+    if (it != result_map.end()) {
       res = it->second;
+    }
     err_it = err_it->GetInnerError();
   }
   return res;

@@ -25,8 +25,9 @@ namespace {
 
 uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg) {
   uint32_t fw_types = 0;
-  if (flash_cfg.empty())
+  if (flash_cfg.empty()) {
     return 0;
+  }
   for (const auto& info : flash_cfg) {
     std::string fw_type = info.fw_type;
     if (fw_type == kFwMain) {

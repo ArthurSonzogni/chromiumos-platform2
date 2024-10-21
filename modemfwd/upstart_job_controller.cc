@@ -38,8 +38,9 @@ bool UpstartJobController::IsRunning() {
       return false;
     }
   }
-  if (!path.IsValid())
+  if (!path.IsValid()) {
     return false;
+  }
   ELOG(INFO) << "Found upstart job: " << path.value();
   return true;
 }
