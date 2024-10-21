@@ -92,8 +92,9 @@ void RunGMainLoopUntil(int timeout_msec,
   guint source_id = g_timeout_add(
       timeout_msec, p2p::testutil::RunGMainLoopOnTimeout, &timeout);
 
-  while (!timeout && (terminate.is_null() || !terminate.Run()))
+  while (!timeout && (terminate.is_null() || !terminate.Run())) {
     g_main_context_iteration(context, TRUE);
+  }
 
   g_source_remove(source_id);
   g_main_loop_unref(loop);
@@ -126,8 +127,9 @@ void ExpectFileSize(const FilePath& dir,
 
 bool SetExpectedFileSize(const FilePath& filename, size_t size) {
   int fd = open(filename.value().c_str(), O_RDWR);
-  if (fd == -1)
+  if (fd == -1) {
     return false;
+  }
 
   string decimal_size = base::NumberToString(size);
   if (fsetxattr(fd, "user.cros-p2p-filesize", decimal_size.c_str(),

@@ -120,8 +120,9 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
 
   switch (message_type) {
     case p2p::util::kP2PServerNumConnections:
-      if (msg.value >= 0)
+      if (msg.value >= 0) {
         server->UpdateNumConnections(msg.value);
+      }
       break;
 
     case p2p::util::kP2PServerRequestResult:
@@ -196,13 +197,15 @@ void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
 }
 
 void HttpServerExternalProcess::UpdateNumConnections(int num_connections) {
-  if (num_connections_ == num_connections)
+  if (num_connections_ == num_connections) {
     return;
+  }
 
   num_connections_ = num_connections;
 
-  if (!num_connections_callback_.is_null())
+  if (!num_connections_callback_.is_null()) {
     num_connections_callback_.Run(num_connections);
+  }
 }
 
 bool HttpServerExternalProcess::Stop() {

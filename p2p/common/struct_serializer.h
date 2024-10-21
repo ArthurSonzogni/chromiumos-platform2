@@ -25,8 +25,9 @@ bool StructSerializerWrite(int fd, const T& data) {
 
   do {
     res = write(fd, p, to_write);
-    if (res < 0 && errno == EAGAIN)
+    if (res < 0 && errno == EAGAIN) {
       continue;
+    }
     if (res <= 0) {
       PLOG(ERROR) << "Error writing to fd " << fd;
       return false;
@@ -75,8 +76,9 @@ class StructSerializerWatcher {
   }
 
   ~StructSerializerWatcher() {
-    if (source_id_)
+    if (source_id_) {
       g_source_remove(source_id_);
+    }
   }
 
  private:

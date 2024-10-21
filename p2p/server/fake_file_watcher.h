@@ -30,8 +30,9 @@ class FakeFileWatcher : public FileWatcher {
   FakeFileWatcher& operator=(const FakeFileWatcher&) = delete;
 
   ~FakeFileWatcher() override {
-    if (source_id_ != 0)
+    if (source_id_ != 0) {
       g_source_remove(source_id_);
+    }
   }
 
   const std::vector<base::FilePath>& files() const override {
@@ -55,13 +56,15 @@ class FakeFileWatcher : public FileWatcher {
   // provided callback with the appropriate arguments in each case from the main
   // loop.
   bool AddFile(const base::FilePath& filename, size_t file_size) {
-    if (files_.find(filename) != files_.end())
+    if (files_.find(filename) != files_.end()) {
       return false;
+    }
     files_.insert(filename);
 
     // Schedule the action.
-    if (pending_actions_.empty())
+    if (pending_actions_.empty()) {
       source_id_ = g_idle_add(OnFileChanged, this);
+    }
     pending_actions_.push((FileEvent){.filename = filename,
                                       .event_type = kFileAdded,
                                       .file_size = file_size});
@@ -69,25 +72,29 @@ class FakeFileWatcher : public FileWatcher {
   }
 
   bool RemoveFile(const base::FilePath& filename) {
-    if (files_.find(filename) == files_.end())
+    if (files_.find(filename) == files_.end()) {
       return false;
+    }
     files_.erase(filename);
 
     // Schedule the action.
-    if (pending_actions_.empty())
+    if (pending_actions_.empty()) {
       source_id_ = g_idle_add(OnFileChanged, this);
+    }
     pending_actions_.push((FileEvent){
         .filename = filename, .event_type = kFileRemoved, .file_size = 0});
     return true;
   }
 
   bool TouchFile(const base::FilePath& filename, size_t file_size) {
-    if (files_.find(filename) != files_.end())
+    if (files_.find(filename) != files_.end()) {
       return false;
+    }
 
     // Schedule the action.
-    if (pending_actions_.empty())
+    if (pending_actions_.empty()) {
       source_id_ = g_idle_add(OnFileChanged, this);
+    }
     pending_actions_.push((FileEvent){.filename = filename,
                                       .event_type = kFileChanged,
                                       .file_size = file_size});
@@ -122,8 +129,9 @@ class FakeFileWatcher : public FileWatcher {
     // Dispatch the callback. This could add more events to the queue, so we
     // keep the processed event until the callback returns and check empty()
     // later on this function.
-    if (!watcher->changed_callback_.is_null())
+    if (!watcher->changed_callback_.is_null()) {
       watcher->changed_callback_.Run(event.filename, event.event_type);
+    }
 
     watcher->pending_actions_.pop();
     return !watcher->pending_actions_.empty();

@@ -43,11 +43,13 @@ struct SortPeerBySize {
   bool operator()(const Peer* a, const Peer* b) {
     map<string, size_t>::const_iterator iter_a = a->files.find(id_);
     map<string, size_t>::const_iterator iter_b = b->files.find(id_);
-    if (iter_a == a->files.end())
+    if (iter_a == a->files.end()) {
       return false;
+    }
     // Put all the peers without the id_ file at the end of the ordering.
-    if (iter_b == b->files.end())
+    if (iter_b == b->files.end()) {
       return true;
+    }
 
     return iter_a->second > iter_b->second;
   }
@@ -66,12 +68,14 @@ string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
   candidate_files_count_ = 0;
   for (auto const& peer : peers) {
     map<string, size_t>::const_iterator file_size_it = peer->files.find(id);
-    if (file_size_it != peer->files.end() && file_size_it->second > 0)
+    if (file_size_it != peer->files.end() && file_size_it->second > 0) {
       candidate_files_count_++;
+    }
   }
 
-  if (!candidate_files_count_)
+  if (!candidate_files_count_) {
     return "";
+  }
 
   // Sort according to size (largest file size first)
   std::sort(peers.begin(), peers.end(), SortPeerBySize(id));
@@ -81,27 +85,31 @@ string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
   for (auto const& peer : peers) {
     map<string, size_t>::const_iterator file_size_it = peer->files.find(id);
     if (file_size_it != peer->files.end() &&
-        file_size_it->second >= minimum_size)
+        file_size_it->second >= minimum_size) {
       big_enough_files++;
+    }
   }
   peers.resize(big_enough_files);
 
   // Return "" if no peer has a big enough file.
-  if (!big_enough_files)
+  if (!big_enough_files) {
     return "";
+  }
 
   // If we have any files left, pick randomly from the top 33%
   int victim_number = 0;
   int num_possible_victims = peers.size() / 3 - 1;
-  if (num_possible_victims > 1)
+  if (num_possible_victims > 1) {
     victim_number = base::RandInt(0, num_possible_victims - 1);
+  }
   const Peer* victim = peers[victim_number];
   // Record the number of current connection the victim has.
   victim_connections_ = victim->num_connections;
 
   string address = victim->address;
-  if (victim->is_ipv6)
+  if (victim->is_ipv6) {
     address = "[" + address + "]";
+  }
   return string("http://") + address + ":" + std::to_string(victim->port) +
          "/" + id;
 }
@@ -126,8 +134,9 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
     }
     num_total_peers_ = finder_->NumTotalPeers();
     // Check if a signal was received during the lookup.
-    if (must_exit_now_)
+    if (must_exit_now_) {
       break;
+    }
 
     url = PickUrlForId(id, minimum_size);
 
@@ -151,8 +160,7 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
     LOG(INFO) << "Found peer for the given ID but there are already "
               << num_total_conn << " download(s) in the LAN which exceeds "
               << "the threshold of " << constants::kMaxSimultaneousDownloads
-              << " download(s). "
-              << "Sleeping "
+              << " download(s). " << "Sleeping "
               << constants::kMaxSimultaneousDownloadsPollTimeSeconds
               << " seconds until retrying.";
 
@@ -176,8 +184,9 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
 
 void PeerSelector::Abort() {
   // Allow several calls to this function.
-  if (must_exit_now_)
+  if (must_exit_now_) {
     return;
+  }
   must_exit_now_ = true;
 
   // Signal the termination on the ServiceFinder because we could be blocked

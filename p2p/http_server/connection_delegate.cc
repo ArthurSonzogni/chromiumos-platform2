@@ -101,8 +101,9 @@ bool ConnectionDelegate::ReadLine(string* str) {
     // When num_recv is 0 the other end has closed the socket. If we reach this
     // point, even with a partial line in str, we didn't get a full line and
     // should return since no fruther data will come from the file descriptor.
-    if (num_recv == 0)
+    if (num_recv == 0) {
       return false;
+    }
 
     for (n = 0; n < num_recv; ++n) {
       str->push_back(buf[n]);
@@ -129,10 +130,12 @@ static bool TrimCRLF(string* str) {
   CHECK(str != NULL);
   const char* c = str->c_str();
   size_t len = str->size();
-  if (len < 2)
+  if (len < 2) {
     return false;
-  if (strcmp(c + len - 2, "\r\n") != 0)
+  }
+  if (strcmp(c + len - 2, "\r\n") != 0) {
     return false;
+  }
   str->resize(len - 2);
   return true;
 }
@@ -145,8 +148,9 @@ P2PServerRequestResult ConnectionDelegate::ParseHttpRequest() {
   string request_uri;
   string request_http_version;
 
-  if (!ReadLine(&request_line) || !TrimCRLF(&request_line))
+  if (!ReadLine(&request_line) || !TrimCRLF(&request_line)) {
     return p2p::util::kP2PRequestResultMalformed;
+  }
 
   VLOG(1) << "Request line: `" << request_line << "'";
 
@@ -173,20 +177,21 @@ P2PServerRequestResult ConnectionDelegate::ParseHttpRequest() {
   request_uri = string(request_line, sp1_pos + 1, sp2_pos - sp1_pos - 1);
   request_http_version = string(request_line, sp2_pos + 1, string::npos);
 
-  VLOG(1) << "Parsed request line. "
-          << "method=`" << request_method << "' "
-          << "uri=`" << request_uri << "' "
-          << "http_version=`" << request_http_version << "'";
+  VLOG(1) << "Parsed request line. " << "method=`" << request_method << "' "
+          << "uri=`" << request_uri << "' " << "http_version=`"
+          << request_http_version << "'";
 
   while (true) {
     string line;
     size_t colon_pos;
 
-    if (!ReadLine(&line) || !TrimCRLF(&line))
+    if (!ReadLine(&line) || !TrimCRLF(&line)) {
       return p2p::util::kP2PRequestResultMalformed;
+    }
 
-    if (line == "")
+    if (line == "") {
       break;
+    }
 
     // TODO(zeuthen): support header continuation. This TODO item is tracked in
     // https://code.google.com/p/chromium/issues/detail?id=246326
@@ -259,10 +264,11 @@ bool ConnectionDelegate::SendResponse(int http_response_code,
     response += h.first + ": " + h.second + "\r\n";
 
     const char* header_name = h.first.c_str();
-    if (strcasecmp(header_name, "Content-Length") == 0)
+    if (strcasecmp(header_name, "Content-Length") == 0) {
       has_content_length = true;
-    else if (strcasecmp(header_name, "Server") == 0)
+    } else if (strcasecmp(header_name, "Server") == 0) {
       has_server = true;
+    }
   }
 
   if (body_size > 0 && !has_content_length) {
@@ -270,8 +276,9 @@ bool ConnectionDelegate::SendResponse(int http_response_code,
     response += std::to_string(body_size) + "\r\n";
   }
 
-  if (!has_server)
+  if (!has_server) {
     response += "Server: p2p\r\n";
+  }
 
   response += "Connection: close\r\n";
   response += "\r\n";
@@ -597,8 +604,9 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
   // From now on, we don't report a result as Malformed. Report the
   // P2P.Server.RangeBeginPercentage at the begining of the file serving period,
   // since it is being reported either the transmission is interrupted or nor.
-  if (file_size > 0)
+  if (file_size > 0) {
     range_begin_percentage = 100.0 * range_first / file_size;
+  }
   server_->ReportServerMessage(p2p::util::kP2PServerRangeBeginPercentage,
                                range_begin_percentage);
 
@@ -610,8 +618,9 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
                              : p2p::util::kP2PRequestResultResponseInterrupted;
 
 out:
-  if (file_fd != -1)
+  if (file_fd != -1) {
     close(file_fd);
+  }
   return req_res;
 }
 
@@ -622,8 +631,9 @@ bool ConnectionDelegate::IsStillConnected() {
   // Sockets become readable when closed by the peer, which can be
   // used to figure out if the other end is still connected
   num_recv = recv(fd_, buf, 0, MSG_DONTWAIT | MSG_PEEK);
-  if (num_recv == -1)
+  if (num_recv == -1) {
     return true;
+  }
   return false;
 }
 

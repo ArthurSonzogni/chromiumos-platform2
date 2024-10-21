@@ -67,8 +67,9 @@ class ConnectionDelegateTest : public ::testing::Test {
   void SetupDelegate() {
     testdir_path_ = SetupTestDir("connection-delegate");
     testdir_fd_ = open(testdir_path_.value().c_str(), O_DIRECTORY);
-    if (testdir_fd_ == -1)
+    if (testdir_fd_ == -1) {
       PLOG(ERROR) << "Opening delegate-test temp directory";
+    }
     ASSERT_NE(testdir_fd_, -1);
 
     // Create a TCP server in any port and connect to it. This provides the
@@ -76,13 +77,15 @@ class ConnectionDelegateTest : public ::testing::Test {
     // implementation.
     int servsock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC,
                           IPPROTO_TCP);
-    if (servsock == -1)
+    if (servsock == -1) {
       PLOG(ERROR) << "Creating a server socket()";
+    }
     ASSERT_NE(servsock, -1);
 
     client_fd_ = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
-    if (client_fd_ == -1)
+    if (client_fd_ == -1) {
       PLOG(ERROR) << "Creating a client socket()";
+    }
     ASSERT_NE(client_fd_, -1);
 
     // Set the socket to listen to a random port.
@@ -120,8 +123,9 @@ class ConnectionDelegateTest : public ::testing::Test {
       }
       break;
     }
-    if (server_fd_ == -1)
+    if (server_fd_ == -1) {
       PLOG(ERROR) << "Accepting the client connection.";
+    }
     ASSERT_NE(server_fd_, -1);
 
     // Tear down the listening server (but keep the server_fd_ socket).
@@ -135,20 +139,25 @@ class ConnectionDelegateTest : public ::testing::Test {
   }
 
   void TearDown() override {
-    if (thread_)
+    if (thread_) {
       delete thread_;
+    }
     // The ConnectionDelegate deletes itself when Run() finishes.
 
-    if (client_fd_ != -1)
+    if (client_fd_ != -1) {
       EXPECT_EQ(0, close(client_fd_));
+    }
     // The ConnectionDelegate should close the provided file descriptor, thus
     // this close should fail.
-    if (server_fd_ != -1)
+    if (server_fd_ != -1) {
       EXPECT_EQ(-1, close(server_fd_));
-    if (testdir_fd_ != -1)
+    }
+    if (testdir_fd_ != -1) {
       EXPECT_EQ(0, close(testdir_fd_));
-    if (!testdir_path_.empty())
+    }
+    if (!testdir_path_.empty()) {
       TeardownTestDir(testdir_path_);
+    }
   }
 
   // A randomly generated temporary testing directory to put the shared files.
@@ -183,8 +192,9 @@ class HTTPRequest {
   string ToString() const {
     string res = method_ + " " + uri_ + " HTTP/" + http_version_ + "\r\n" +
                  "Host: " + host_ + "\r\n";
-    for (const auto& it : headers_)
+    for (const auto& it : headers_) {
       res += it.first + ": " + it.second + "\r\n";
+    }
     res += "\r\n" + post_data_;
     return res;
   }
@@ -196,8 +206,9 @@ class HTTPRequest {
     int write_result;
     while (to_write > 0) {
       write_result = write(fd, p, to_write);
-      if (write_result < 0 && errno == EAGAIN)
+      if (write_result < 0 && errno == EAGAIN) {
         continue;
+      }
       if (write_result <= 0) {
         PLOG(ERROR) << "Error writing to fd " << fd;
         return false;
@@ -222,8 +233,9 @@ class HTTPResponse {
       : response_(response), valid_(false) {
     const char* p = response_.c_str();
     int len = response_.size();
-    if (len == 0)
+    if (len == 0) {
       return;
+    }
 
     // Parse the header lines until the empty line is reached.
     const char* line = p;
@@ -242,15 +254,17 @@ class HTTPResponse {
         }
       }
       // Check if the end of the response was reached while parsing the headers.
-      if (i == line_len)
+      if (i == line_len) {
         return;
+      }
 
       raw_headers_.push_back(string(line, line_len - 2));
       line += line_len;
       line_len = len - (line - p);
       // Check if the empty header line was found.
-      if (line_len >= 2 && line[0] == '\r' && line[1] == '\n')
+      if (line_len >= 2 && line[0] == '\r' && line[1] == '\n') {
         break;
+      }
     }
     // Check if the header is \r\n
     if (!line_len) {
@@ -259,8 +273,9 @@ class HTTPResponse {
     }
 
     line += 2;
-    if (line < p + len)
+    if (line < p + len) {
       content_ = string(line, len - (line - p));
+    }
 
     // Parse the first response line.
     string first_line = raw_headers_[0];
@@ -346,22 +361,25 @@ static bool ReadHTTPResponse(int fd,
       if (res == -1 && errno == EWOULDBLOCK) {
         HTTPResponse ret(*response);
         if (ret.valid_ &&
-            ret.content_.size() >= static_cast<size_t>(min_content_size))
+            ret.content_.size() >= static_cast<size_t>(min_content_size)) {
           return true;
+        }
         // Re-read but block this time.
         res = recv(fd, buf, sizeof(buf), 0);
       }
     } else {
       res = recv(fd, buf, sizeof(buf), 0);
     }
-    if (res == -1 && errno == EAGAIN)
+    if (res == -1 && errno == EAGAIN) {
       continue;
+    }
     if (res == -1) {
       PLOG(ERROR) << "Reading HTTPResponse from fd " << fd;
       return false;
     }
-    if (res == 0)
+    if (res == 0) {
       break;
+    }
     response->append(buf, res);
   } while (true);
   return true;
@@ -374,8 +392,9 @@ static bool ReadHTTPResponse(int fd,
 static void GeneratePrintableData(size_t size, string* output) {
   output->clear();
   output->resize(size);
-  for (size_t i = 0; i < size; ++i)
+  for (size_t i = 0; i < size; ++i) {
     output->at(i) = static_cast<char>(32 + (45 + i * 131 + i * i * 17) % 95);
+  }
 }
 
 TEST_F(ConnectionDelegateTest, NoRequestAndClose) {

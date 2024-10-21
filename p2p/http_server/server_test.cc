@@ -99,8 +99,9 @@ class Barrier {
     if (n_ <= 0) {
       cond_.Broadcast();
     } else {
-      while (n_ > 0)
+      while (n_ > 0) {
         cond_.Wait();
+      }
     }
     lock_.Release();
   }

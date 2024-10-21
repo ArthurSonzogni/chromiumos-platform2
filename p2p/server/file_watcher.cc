@@ -88,8 +88,9 @@ void FileWatcherGLib::OnMonitorChanged(GFileMonitor* monitor,
   FileWatcherGLib* file_watcher = reinterpret_cast<FileWatcherGLib*>(user_data);
 
   // Ignore hints
-  if (event_type == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT)
+  if (event_type == G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
     return;
+  }
 
   // Ignore files not matching the extension
   gchar* file_name = g_file_get_path(file);

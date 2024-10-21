@@ -25,8 +25,9 @@ bool ValidP2PServerMessageMagic(const P2PServerMessage& message) {
 
 bool ParseP2PServerMessageType(uint32_t value, P2PServerMessageType* result) {
   CHECK(result);
-  if (value >= kNumP2PServerMessageTypes)
+  if (value >= kNumP2PServerMessageTypes) {
     return false;
+  }
   *result = static_cast<P2PServerMessageType>(value);
   return true;
 }
@@ -34,8 +35,9 @@ bool ParseP2PServerMessageType(uint32_t value, P2PServerMessageType* result) {
 bool ParseP2PServerRequestResult(int64_t value,
                                  P2PServerRequestResult* result) {
   CHECK(result);
-  if (value < 0 || value >= kNumP2PServerRequestResults)
+  if (value < 0 || value >= kNumP2PServerRequestResults) {
     return false;
+  }
   *result = static_cast<P2PServerRequestResult>(value);
   return true;
 }

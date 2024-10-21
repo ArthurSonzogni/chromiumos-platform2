@@ -34,8 +34,9 @@ static p2p::client::PeerSelector* volatile global_peer_selector = NULL;
 static void sigterm_handler(int signum) {
   /* This function is non-reentrant since is only used to handle SIGTERM.
    * A second SIGTERM signal will wait until this call finishes. */
-  if (global_peer_selector)
+  if (global_peer_selector) {
     global_peer_selector->Abort();
+  }
 }
 
 static void Usage(FILE* output) {
@@ -100,8 +101,9 @@ int main(int argc, char* argv[]) {
   // Get us a ServiceFinder and look up all peers - this takes a couple
   // of seconds. This can fail if e.g. avahi-daemon is not running.
   finder.reset(p2p::client::ServiceFinder::Construct());
-  if (finder == NULL)
+  if (finder == NULL) {
     return 1;
+  }
 
   p2p::common::Clock clock;
   p2p::client::PeerSelector peer_selector(finder.get(), &clock);
@@ -140,8 +142,9 @@ int main(int argc, char* argv[]) {
     MetricsLibrary metrics_lib;
     peer_selector.ReportMetrics(&metrics_lib);
 
-    if (url == "")
+    if (url == "") {
       return 1;
+    }
     printf("%s\n", url.c_str());
   } else if (cl->HasSwitch("list-urls")) {
     string id = cl->GetSwitchValueNative("list-urls");

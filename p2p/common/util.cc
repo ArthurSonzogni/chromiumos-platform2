@@ -43,18 +43,20 @@ static bool SyslogFunc(int severity,
   };
 
   int priority = LOG_NOTICE;
-  if (severity >= 0 && severity < logging::LOGGING_NUM_SEVERITIES)
+  if (severity >= 0 && severity < logging::LOGGING_NUM_SEVERITIES) {
     priority = base_severity_to_syslog_priority[severity];
+  }
 
   // The logging infrastructure includes a terminating newline at the
   // end of the message. We don't want that. Strip it.
   char* message = strdupa(str.c_str() + message_start);
   size_t message_len = strlen(message);
   for (int n = message_len - 1; n >= 0; --n) {
-    if (isspace(message[n]))
+    if (isspace(message[n])) {
       message[n] = 0;
-    else
+    } else {
       break;
+    }
   }
   syslog(priority, "%s [%s:%d]", message, file, line);
 
@@ -63,8 +65,9 @@ static bool SyslogFunc(int severity,
 
 void SetupSyslog(const char* program_name, bool include_pid) {
   int option = LOG_NDELAY | LOG_CONS;
-  if (include_pid)
+  if (include_pid) {
     option |= LOG_PID;
+  }
   openlog(program_name, option, LOG_DAEMON);
   logging::SetLogMessageHandler(SyslogFunc);
 }

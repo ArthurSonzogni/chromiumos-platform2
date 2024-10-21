@@ -38,12 +38,12 @@ class ConnectionDelegateInterface
 // rate not bigger than |max_download_rate| bytes per second.
 // |pretty_addr| is a string identifying the client's address and the |server|
 // points to the ServerInterface instance to notify when the transfer is done.
-typedef ConnectionDelegateInterface*(ConnectionDelegateFactory)(
-    int dirfd,
-    int fd,
-    const std::string& pretty_addr,
-    ServerInterface* server,
-    int64_t max_download_rate);
+typedef ConnectionDelegateInterface*(
+    ConnectionDelegateFactory)(int dirfd,
+                               int fd,
+                               const std::string& pretty_addr,
+                               ServerInterface* server,
+                               int64_t max_download_rate);
 
 }  // namespace http_server
 

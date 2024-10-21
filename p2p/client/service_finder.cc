@@ -161,29 +161,34 @@ ServiceFinderAvahi::~ServiceFinderAvahi() {
   // If the process was canceled with Abort() there can be some resolvers
   // pending on |lookup_pending_resolvers_|. Release them now.
   if (must_exit_now_) {
-    for (auto const resolver : lookup_pending_resolvers_)
+    for (auto const resolver : lookup_pending_resolvers_) {
       avahi_service_resolver_free(resolver);
+    }
     lookup_pending_resolvers_.clear();
   }
   CHECK_EQ(0U, lookup_pending_resolvers_.size());
 
-  if (client_ != NULL)
+  if (client_ != NULL) {
     avahi_client_free(client_);
-  if (poll_ != NULL)
+  }
+  if (poll_ != NULL) {
     avahi_glib_poll_free(poll_);
+  }
 }
 
 vector<string> ServiceFinderAvahi::AvailableFiles() const {
   vector<string> ret;
-  for (auto const& i : file_to_servers_)
+  for (auto const& i : file_to_servers_) {
     ret.push_back(i.first);
+  }
   return ret;
 }
 
 int ServiceFinderAvahi::NumTotalConnections() const {
   int sum = 0;
-  for (auto const& peer : peers_)
+  for (auto const& peer : peers_) {
     sum += peer->num_connections;
+  }
   return sum;
 }
 
@@ -194,8 +199,9 @@ int ServiceFinderAvahi::NumTotalPeers() const {
 vector<const Peer*> ServiceFinderAvahi::GetPeersForFile(
     const string& file) const {
   map<string, vector<Peer*>>::const_iterator it = file_to_servers_.find(file);
-  if (it == file_to_servers_.end())
+  if (it == file_to_servers_.end()) {
     return vector<const Peer*>();
+  }
   return vector<const Peer*>(it->second.begin(), it->second.end());
 }
 
@@ -279,8 +285,9 @@ void ServiceFinderAvahi::service_resolve_cb(AvahiServiceResolver* r,
     finder->HandleResolverEvent(a, port, txt);
   }
 
-  if (finder->lookup_pending_resolvers_.erase(r) != 1)
+  if (finder->lookup_pending_resolvers_.erase(r) != 1) {
     NOTREACHED_IN_MIGRATION();
+  }
   avahi_service_resolver_free(r);
 
   finder->BrowserCheckIfDone();
@@ -320,8 +327,9 @@ void ServiceFinderAvahi::on_service_browser_changed(
 
   // Can be called directly by avahi_service_browser_new() so the browser_
   // member may not be set just yet...
-  if (finder->lookup_browser_ == NULL)
+  if (finder->lookup_browser_ == NULL) {
     finder->lookup_browser_ = b;
+  }
 
   VLOG(1) << "on_browser_changed: event=" << ToString(event)
           << " name=" << (name != NULL ? name : "(nil)") << " type=" << type
@@ -366,11 +374,13 @@ void ServiceFinderAvahi::on_service_browser_changed(
 }
 
 void ServiceFinderAvahi::BrowserCheckIfDone() {
-  if (!lookup_all_for_now_)
+  if (!lookup_all_for_now_) {
     return;
+  }
 
-  if (lookup_pending_resolvers_.size() > 0)
+  if (lookup_pending_resolvers_.size() > 0) {
     return;
+  }
 
   CHECK(lookup_loop_ != NULL);
   g_main_loop_quit(lookup_loop_);
@@ -378,8 +388,9 @@ void ServiceFinderAvahi::BrowserCheckIfDone() {
 
 bool ServiceFinderAvahi::Lookup() {
   // Prevent new calls to Lookup() once Abort() was called.
-  if (must_exit_now_)
+  if (must_exit_now_) {
     return true;
+  }
 
   CHECK(lookup_loop_ == NULL);
 
@@ -426,16 +437,18 @@ gboolean ServiceFinderAvahi::quit_lookup_loop(GIOChannel* channel,
 
 void ServiceFinderAvahi::Abort() {
   // Allow several calls to this function.
-  if (must_exit_now_)
+  if (must_exit_now_) {
     return;
+  }
   must_exit_now_ = true;
 
   // Wake up the main loop if we are running it. In case of an error, we
   // can't log the result since this is running in the signal handler. In the
   // case we can't write to this pipe, which should never happen, we abort the
   // process excecution without returning from the handler.
-  if (write(abort_pipe_[1], "*", 1) != 1)
+  if (write(abort_pipe_[1], "*", 1) != 1) {
     abort();
+  }
 }
 
 // -----------------------------------------------------------------------------

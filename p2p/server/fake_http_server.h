@@ -45,8 +45,9 @@ class FakeHttpServer : public HttpServer {
   void SetNumConnections(int num_connections) {
     if (num_connections_ != num_connections) {
       num_connections_ = num_connections;
-      if (!callback_.is_null())
+      if (!callback_.is_null()) {
         callback_.Run(num_connections);
+      }
     }
   }
 

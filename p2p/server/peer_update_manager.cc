@@ -72,8 +72,9 @@ void PeerUpdateManager::Update(const FilePath& file) {
 
 void PeerUpdateManager::UpdateFileCountMetric() {
   int num_files = publisher_->files().size();
-  if (num_files == last_num_files_)
+  if (num_files == last_num_files_) {
     return;
+  }
   last_num_files_ = num_files;
 
   // Report P2P.Server.FileCount every time a file is added (Publish) or

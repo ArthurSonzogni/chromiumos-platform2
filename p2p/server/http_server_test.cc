@@ -174,11 +174,13 @@ TEST(HttpServer, DISABLED_Basic) {
   //
   for (int n = 0; n <= kMultipleTestNumFiles; n++) {
     int times = 2;
-    if (n == 0 || n == kMultipleTestNumFiles)
+    if (n == 0 || n == kMultipleTestNumFiles) {
       times = 1;
+    }
     EXPECT_CALL(listener, NumConnectionsCallback(n)).Times(times);
-    if (n > 0)
+    if (n > 0) {
       EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.ClientCount", n, _, _, _));
+    }
   }
 
   // Create a 1000 byte file (with random content) with an EAs

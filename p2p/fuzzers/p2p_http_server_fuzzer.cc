@@ -30,8 +30,9 @@ struct Environment {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
-  if (size < 8)
+  if (size < 8) {
     return 0;
+  }
 
   FuzzedDataProvider data_provider(data, size);
 

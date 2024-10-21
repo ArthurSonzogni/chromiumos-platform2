@@ -42,8 +42,9 @@ class TestStructCalls {
 };
 
 bool SetupPipes(int fds[2]) {
-  if (pipe(fds) != 0)
+  if (pipe(fds) != 0) {
     return false;
+  }
 
   // Set the reading end as non-blocking.
   int flags = fcntl(fds[0], F_GETFL, 0);

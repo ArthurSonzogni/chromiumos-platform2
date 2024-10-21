@@ -27,8 +27,9 @@ class FakeServicePublisher : public ServicePublisher {
 
   void RemoveFile(const std::string& file) override {
     std::map<std::string, size_t>::iterator it = files_.find(file);
-    if (it != files_.end())
+    if (it != files_.end()) {
       files_.erase(it);
+    }
   }
 
   void UpdateFileSize(const std::string& file, size_t file_size) override {

@@ -101,14 +101,18 @@ ServicePublisherAvahi::ServicePublisherAvahi(uint16_t http_port)
       delay_timeout_id_(0) {}
 
 ServicePublisherAvahi::~ServicePublisherAvahi() {
-  if (delay_timeout_id_ != 0)
+  if (delay_timeout_id_ != 0) {
     g_source_remove(delay_timeout_id_);
-  if (group_ != NULL)
+  }
+  if (group_ != NULL) {
     avahi_entry_group_free(group_);
-  if (client_ != NULL)
+  }
+  if (client_ != NULL) {
     avahi_client_free(client_);
-  if (poll_ != NULL)
+  }
+  if (poll_ != NULL) {
     avahi_glib_poll_free(poll_);
+  }
 }
 
 AvahiStringList* ServicePublisherAvahi::CalculateTXTRecords() {
@@ -209,8 +213,9 @@ void ServicePublisherAvahi::OnAvahiChanged(AvahiClient* client,
 
   // So, we're called directly by avahi_client_new() - meaning
   // client_ member isn't set yet - thanks :-/
-  if (publisher->client_ == NULL)
+  if (publisher->client_ == NULL) {
     publisher->client_ = client;
+  }
 
   VLOG(1) << "OnAvahiChanged, state=" << state;
   if (state == AVAHI_CLIENT_S_RUNNING) {
@@ -264,8 +269,9 @@ void ServicePublisherAvahi::UpdateFileSize(const string& file,
 }
 
 void ServicePublisherAvahi::SetNumConnections(int num_connections) {
-  if (num_connections_ == num_connections)
+  if (num_connections_ == num_connections) {
     return;
+  }
   num_connections_ = num_connections;
   Publish(false);
 }
