@@ -34,7 +34,7 @@ main() {
   echo 0 > /sys/bus/pci/drivers_allowlist_lockdown || \
     err "unable to open driver allowlist; drivers cannot be allowed to bind"
 
-  for d in "pcieport" "xhci_hcd" "nvme" "ahci" "igc" "atlantic"; do
+  for d in "pcieport" "xhci_hcd" "nvme" "ahci" "igc" "atlantic" "igb"; do
     echo "${d}" > /sys/bus/pci/drivers_allowlist || err "driver ${d} is not \
     allowed to bind; devices will not be able to use that driver"
   done
