@@ -43,6 +43,8 @@ const std::map<flex_bluetooth::BluetoothAdapter,
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection}},
         {flex_bluetooth::BluetoothAdapter{0x8087, 0x0a2b},
          {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection}},
+        {flex_bluetooth::BluetoothAdapter{0x8087, 0x0aa7},
+         {flex_bluetooth::SyspropOverride::kDisableEnhancedSCOConnection}},
 
         // Enable MSFT AdvMon quirk on RTL8852BE.
         {flex_bluetooth::BluetoothAdapter{0x13d3, 0x3570},
