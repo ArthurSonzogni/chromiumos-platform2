@@ -347,10 +347,12 @@ class DlcClientForTest : public cros::DlcClient {
   }
 
   void InvokeSuccessCb() {
-    if (progress_cb_)
+    if (progress_cb_) {
       progress_cb_.Run(1.0);
-    if (dlc_root_path_cb_)
+    }
+    if (dlc_root_path_cb_) {
       std::move(dlc_root_path_cb_).Run(path_);
+    }
   }
 
   base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb_;

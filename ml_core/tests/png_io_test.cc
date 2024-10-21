@@ -48,8 +48,9 @@ TEST_F(PngIoTest, GetRawData) {
   uint8_t expected_buf[16] = {65,  148, 224, 255, 224, 148, 65, 255,
                               148, 224, 65,  255, 0,   0,   0,  255};
 
-  for (int i = 0; i < info.num_row_bytes * info.height; ++i)
+  for (int i = 0; i < info.num_row_bytes * info.height; ++i) {
     EXPECT_EQ(expected_buf[i], static_cast<int>(raw_data_buf.get()[i]));
+  }
 }
 
 TEST_F(PngIoTest, PngWrite) {

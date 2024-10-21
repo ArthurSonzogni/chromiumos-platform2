@@ -18,8 +18,9 @@ bool PngInfo::CompareRowData(const png_bytep* left,
                              uint64_t num_row_bytes) const {
   for (uint32_t i = 0; i < height; ++i) {
     for (uint64_t j = 0; j < num_row_bytes; ++j) {
-      if (left[i][j] != right[i][j])
+      if (left[i][j] != right[i][j]) {
         return false;
+      }
     }
   }
   return true;
@@ -77,12 +78,14 @@ std::optional<PngInfo> PngImageIO::ReadPngFile(const base::FilePath filename) {
   png_read_info(png_ptr, info_ptr);
 
   // strip 16 bit channels to 8 bits if needed
-  if (png_get_bit_depth(png_ptr, info_ptr) == 16)
+  if (png_get_bit_depth(png_ptr, info_ptr) == 16) {
     png_set_strip_16(png_ptr);
+  }
 
   // ensure color type is rgb
-  if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE)
+  if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_PALETTE) {
     png_set_palette_to_rgb(png_ptr);
+  }
 
   // Add alpha channel to make it RGBA
   if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB ||
@@ -92,8 +95,9 @@ std::optional<PngInfo> PngImageIO::ReadPngFile(const base::FilePath filename) {
   }
 
   // Expand bit depth to 8 bits per channel
-  if (png_get_bit_depth(png_ptr, info_ptr) < 8)
+  if (png_get_bit_depth(png_ptr, info_ptr) < 8) {
     png_set_packing(png_ptr);
+  }
 
   // update info struct
   png_read_update_info(png_ptr, info_ptr);

@@ -54,8 +54,9 @@ class EffectsPipelineTest : public ::testing::Test {
 };
 
 void SetEffectCallback(bool success) {
-  if (success)
+  if (success) {
     effect_set_success = true;
+  }
   waitable.Signal();
 }
 

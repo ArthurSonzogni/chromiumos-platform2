@@ -13,8 +13,9 @@ bool FuzzyBufferComparison(uint8_t* left,
                            int num_accept_outside_delta) {
   int cnt = 0;
   for (int i = 0; i < buf_len; ++i) {
-    if (abs(left[i] - right[i]) > acceptable_pixel_delta)
+    if (abs(left[i] - right[i]) > acceptable_pixel_delta) {
       cnt += 1;
+    }
   }
   if (cnt > num_accept_outside_delta) {
     return false;
