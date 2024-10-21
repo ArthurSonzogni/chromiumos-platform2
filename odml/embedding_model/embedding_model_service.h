@@ -60,9 +60,12 @@ class EmbeddingModelService : public mojom::OnDeviceEmbeddingModelService {
     // Have we called ModelFactory::BuildRunnerFromUuid()?
     bool factory_create_in_progress = false;
     // Set to true if ModelFactory::BuildRunnerFromUuid() failed.
-    // In the event that we need to do retry on
-    // ModelFactory::BuildRunnerFromUuid(), then we should periodically reset
-    // this to false.
+    // This exist to gate retries. Currently we reset this almost immediately at
+    // the end of an attempt, so that callbacks are free to attempt a retry
+    // immediately. However, if we want certain form of retry rate limiting or
+    // allow retry only after network state change, then this should not be
+    // reset at the end of an attempt, but only reset whenever an event that
+    // releases a retry attempt occurs.
     bool factory_create_failed = false;
     // Anything here will be called when Load() finishes.
     std::queue<base::OnceCallback<void()>> load_finish_callbacks;

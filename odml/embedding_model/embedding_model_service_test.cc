@@ -496,5 +496,56 @@ TEST_F(EmbeddingModelServiceTest, ModelBuildFailed) {
   EXPECT_EQ(1, load_result_count);
 }
 
+TEST_F(EmbeddingModelServiceTest, ModelFailAndImmediateRetry) {
+  base::Uuid uuid = base::Uuid::ParseLowercase(kFakeModelUuid1);
+  mojo::Remote<mojom::OnDeviceEmbeddingModel> remote1, remote2;
+
+  defer_runner_build_.push_back(uuid);
+  std::unique_ptr<NiceMock<ModelRunnerMock>> owned_runner_mock =
+      std::make_unique<NiceMock<ModelRunnerMock>>();
+  NiceMock<ModelRunnerMock>* runner_mock = owned_runner_mock.get();
+  EXPECT_CALL(*runner_mock, Load)
+      .WillOnce(Invoke([&](base::PassKey<ModelHolder> passkey,
+                           ModelRunner::LoadCallback callback) {
+        std::move(callback).Run(true);
+      }));
+
+  base::RunLoop run_loop;
+  int load_result_count = 0;
+  service_impl_.LoadEmbeddingModel(
+      uuid, remote1.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      base::BindLambdaForTesting([&](LoadModelResult result) {
+        ASSERT_EQ(0, load_result_count);
+        ASSERT_NE(LoadModelResult::kSuccess, result);
+        load_result_count++;
+        service_impl_.LoadEmbeddingModel(
+            uuid, remote2.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+            base::BindLambdaForTesting([&](LoadModelResult result) {
+              ASSERT_EQ(1, load_result_count);
+              ASSERT_EQ(LoadModelResult::kSuccess, result);
+              load_result_count++;
+            }));
+      }));
+  run_loop.RunUntilIdle();
+
+  ASSERT_EQ(1, deferred_runner_build_.size());
+  ASSERT_EQ(uuid, deferred_runner_build_[0].first);
+  ModelFactory::BuildRunnerFromUuidCallback runner_build_cb =
+      std::move(deferred_runner_build_[0].second);
+  deferred_runner_build_.clear();
+  defer_runner_build_.push_back(uuid);
+  std::move(runner_build_cb).Run(nullptr);
+  run_loop.RunUntilIdle();
+
+  ASSERT_EQ(1, deferred_runner_build_.size());
+  ASSERT_EQ(uuid, deferred_runner_build_[0].first);
+  runner_build_cb = std::move(deferred_runner_build_[0].second);
+  deferred_runner_build_.clear();
+  std::move(runner_build_cb).Run(std::move(owned_runner_mock));
+  run_loop.RunUntilIdle();
+
+  EXPECT_EQ(2, load_result_count);
+}
+
 }  // namespace
 }  // namespace embedding_model

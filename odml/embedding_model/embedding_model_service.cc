@@ -159,14 +159,23 @@ void EmbeddingModelService::OnModelLoadFinish(const base::Uuid& uuid,
   } else {
     CHECK(!itr->second.holder || !itr->second.holder->IsLoaded());
     itr->second.in_progress_reference.reset();
+    // The expected behaviour right now is that if LoadEmbeddingModel() failed
+    // for some reason and in the callback delivering the failure to caller, the
+    // caller calls LoadEmbeddingModel() immediately, then we must try again,
+    // and therefore we immediately reset factory_create_failed right here to
+    // enable that.
+    itr->second.factory_create_failed = false;
   }
 
   // Whether successful or not, we notify all the pending calls.
-  while (!itr->second.load_finish_callbacks.empty()) {
-    base::OnceCallback<void()> cb =
-        std::move(itr->second.load_finish_callbacks.front());
-    itr->second.load_finish_callbacks.pop();
-    std::move(cb).Run();
+  // Note that any further addition to load_finish_callbacks after we started
+  // calling existing callbacks will be handled by the next attempt, this is so
+  // that we can allow for immediate retry in those callbacks.
+  std::queue<base::OnceCallback<void()>> callbacks;
+  callbacks.swap(itr->second.load_finish_callbacks);
+  while (!callbacks.empty()) {
+    std::move(callbacks.front()).Run();
+    callbacks.pop();
   }
   itr->second.in_progress_reference.reset();
 }
