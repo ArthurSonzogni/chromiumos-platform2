@@ -25,15 +25,6 @@ struct MoveOnly {
   bool operator==(const MoveOnly&) const = default;
 };
 
-enum class ModelLoadState {
-  // Model hasn't been loaded.
-  kNew,
-  // The model is currently being loaded.
-  kPending,
-  // Model is loaded successfully.
-  kLoaded,
-};
-
 using Embedding = std::vector<float>;
 
 }  // namespace coral

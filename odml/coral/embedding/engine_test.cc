@@ -154,14 +154,53 @@ class EmbeddingEngineTest : public testing::Test {
 };
 
 TEST_F(EmbeddingEngineTest, Success) {
-  auto request = GetFakeGroupRequest();
+  std::unique_ptr<FakeEmbeddingModel> fake_model;
+  bool should_error = false;
+  EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
+  std::vector<Embedding> embeddings_to_return;
+  for (int i = 0; i < 2; i++) {
+    for (const Embedding& embedding : fake_response.embeddings) {
+      embeddings_to_return.push_back(embedding);
+    }
+  }
+  EXPECT_CALL(model_service_, LoadEmbeddingModel)
+      .WillOnce([&fake_model, &should_error, &embeddings_to_return](
+                    auto&&, auto&& model, auto&&, auto&& callback) {
+        fake_model = std::make_unique<FakeEmbeddingModel>(
+            raw_ref(should_error), std::move(embeddings_to_return),
+            std::move(model));
+        std::move(callback).Run(
+            on_device_model::mojom::LoadModelResult::kSuccess);
+      });
 
   TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
-      embedding_future;
-  engine_->Process(std::move(request), embedding_future.GetCallback());
-  auto [_, result] = embedding_future.Take();
-  ASSERT_TRUE(result.has_value());
-  EmbeddingResponse response = std::move(*result);
+      embedding_future1, embedding_future2;
+  engine_->Process(GetFakeGroupRequest(), embedding_future1.GetCallback());
+  engine_->Process(GetFakeGroupRequest(), embedding_future2.GetCallback());
+  std::vector<CoralResult<EmbeddingResponse>> results;
+  results.push_back(std::get<1>(embedding_future1.Take()));
+  results.push_back(std::get<1>(embedding_future2.Take()));
+  for (auto& result : results) {
+    ASSERT_TRUE(result.has_value());
+    EmbeddingResponse response = std::move(*result);
+    auto fake_response = GetFakeEmbeddingResponse();
+    EXPECT_EQ(response, fake_response);
+  }
+}
+
+TEST_F(EmbeddingEngineTest, FailThenSuccess) {
+  TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
+      embedding_future1, embedding_future2;
+  should_error_ = true;
+  engine_->Process(GetFakeGroupRequest(), embedding_future1.GetCallback());
+  auto [req1, result1] = embedding_future1.Take();
+  EXPECT_EQ(result1.error(), mojom::CoralError::kModelExecutionFailed);
+
+  should_error_ = false;
+  engine_->Process(GetFakeGroupRequest(), embedding_future2.GetCallback());
+  auto [req2, result2] = embedding_future2.Take();
+  ASSERT_TRUE(result2.has_value());
+  EmbeddingResponse response = std::move(*result2);
   auto fake_response = GetFakeEmbeddingResponse();
   EXPECT_EQ(response, fake_response);
 }
@@ -180,78 +219,17 @@ TEST_F(EmbeddingEngineTest, NoInput) {
   EXPECT_EQ(result->embeddings.size(), 0);
 }
 
-TEST_F(EmbeddingEngineTest, ExecuteError) {
-  auto request = GetFakeGroupRequest();
-  should_error_ = true;
-
-  TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
-      embedding_future;
-  engine_->Process(std::move(request), embedding_future.GetCallback());
-  auto [_, result] = embedding_future.Take();
-  EXPECT_EQ(result.error(), mojom::CoralError::kModelExecutionFailed);
-}
-
 TEST_F(EmbeddingEngineTest, InvalidInput) {
   auto request = mojom::GroupRequest::New();
   request->embedding_options = mojom::EmbeddingOptions::New();
   request->clustering_options = mojom::ClusteringOptions::New();
   request->title_generation_options = mojom::TitleGenerationOptions::New();
   request->entities.push_back(mojom::Entity::NewUnknown(false));
-
   TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
       embedding_future;
   engine_->Process(std::move(request), embedding_future.GetCallback());
   auto [_, result] = embedding_future.Take();
   EXPECT_EQ(result.error(), mojom::CoralError::kInvalidArgs);
-}
-
-// Test that multiple Process at the same time, without the previous call
-// returning, will still have only loaded the model once, and both calls will
-// have received the correct model load result.
-TEST_F(EmbeddingEngineTest, ConcurrentModelLoadFailed) {
-  base::OnceCallback<void(on_device_model::mojom::LoadModelResult)>
-      load_model_callback;
-  EXPECT_CALL(model_service_, LoadEmbeddingModel)
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&& callback) {
-        load_model_callback = std::move(callback);
-      });
-  auto request = GetFakeGroupRequest();
-
-  TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
-      embedding_future1, embedding_future2;
-  engine_->Process(request.Clone(), embedding_future1.GetCallback());
-  engine_->Process(std::move(request), embedding_future2.GetCallback());
-
-  ASSERT_TRUE(load_model_callback);
-  std::move(load_model_callback)
-      .Run(on_device_model::mojom::LoadModelResult::kFailedToLoadLibrary);
-
-  auto [_, result] = embedding_future1.Take();
-  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
-
-  std::tie(_, result) = embedding_future2.Take();
-  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
-}
-
-TEST_F(EmbeddingEngineTest, ConcurrentModelLoadSuccess) {
-  auto request = mojom::GroupRequest::New();
-  request->embedding_options = mojom::EmbeddingOptions::New();
-  request->clustering_options = mojom::ClusteringOptions::New();
-  request->title_generation_options = mojom::TitleGenerationOptions::New();
-  request->entities.push_back(mojom::Entity::NewTab(
-      mojom::Tab::New("ABC 1", url::mojom::Url::New("abc1.com"))));
-
-  TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
-      embedding_future1, embedding_future2;
-  engine_->Process(request.Clone(), embedding_future1.GetCallback());
-  engine_->Process(std::move(request), embedding_future2.GetCallback());
-
-  auto fake_response = GetFakeEmbeddingResponse();
-  auto [_, result] = embedding_future1.Take();
-  EXPECT_TRUE(result.has_value());
-
-  std::tie(_, result) = embedding_future2.Take();
-  EXPECT_TRUE(result.has_value());
 }
 
 TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {

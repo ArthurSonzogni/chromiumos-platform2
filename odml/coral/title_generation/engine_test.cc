@@ -106,20 +106,56 @@ class TitleGenerationEngineTest : public testing::Test {
 };
 
 TEST_F(TitleGenerationEngineTest, Success) {
-  auto request = GetFakeGroupRequest();
-  auto clustering_response = GetFakeClusteringResponse();
+  // Test that concurrent requests can be handled.
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
+  engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
+                   mojo::NullRemote(), title_future1.GetCallback());
+  engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
+                   mojo::NullRemote(), title_future2.GetCallback());
+  std::vector<CoralResult<TitleGenerationResponse>> results;
+  results.push_back(title_future1.Take());
+  results.push_back(title_future2.Take());
+  for (auto& result : results) {
+    ASSERT_TRUE(result.has_value());
+    TitleGenerationResponse response = std::move(*result);
+    auto fake_response = GetFakeTitleGenerationResponse();
+    ASSERT_EQ(response.groups.size(), fake_response.groups.size());
+    for (size_t i = 0; i < response.groups.size(); i++) {
+      // Fake model generates a certain style of output that is irrelevant to
+      // the feature. Instead of matching the output, just ensure that it's not
+      // empty.
+      EXPECT_FALSE(response.groups[i]->title.empty());
+      EXPECT_EQ(response.groups[i]->entities,
+                fake_response.groups[i]->entities);
+    }
+  }
+}
 
-  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
-  engine_->Process(std::move(request), std::move(clustering_response),
-                   mojo::NullRemote(), title_future.GetCallback());
-  CoralResult<TitleGenerationResponse> result = title_future.Take();
-  ASSERT_TRUE(result.has_value());
-  TitleGenerationResponse response = std::move(*result);
+TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
+  // Override DLC path to a non-existent path.
+  auto dlc_path = base::FilePath("not_exist");
+  cros::DlcClient::SetDlcPathForTest(&dlc_path);
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
+  engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
+                   mojo::NullRemote(), title_future1.GetCallback());
+  CoralResult<TitleGenerationResponse> result1 = title_future1.Take();
+  ASSERT_FALSE(result1.has_value());
+  EXPECT_EQ(result1.error(), mojom::CoralError::kLoadModelFailed);
+
+  // Set DlcClient to return paths from /build.
+  dlc_path = base::FilePath("testdata").Append(kFakeModelName);
+  cros::DlcClient::SetDlcPathForTest(&dlc_path);
+  engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
+                   mojo::NullRemote(), title_future2.GetCallback());
+  CoralResult<TitleGenerationResponse> result2 = title_future2.Take();
+  ASSERT_TRUE(result2.has_value());
+  TitleGenerationResponse response = std::move(*result2);
   auto fake_response = GetFakeTitleGenerationResponse();
   ASSERT_EQ(response.groups.size(), fake_response.groups.size());
   for (size_t i = 0; i < response.groups.size(); i++) {
-    // Fake model generates a certain style of output that is irrelevant to the
-    // feature. Instead of matching the output, just ensure that it's not empty.
+    // Fake model generates a certain style of output that is irrelevant to
+    // the feature. Instead of matching the output, just ensure that it's not
+    // empty.
     EXPECT_FALSE(response.groups[i]->title.empty());
     EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
   }
@@ -134,68 +170,6 @@ TEST_F(TitleGenerationEngineTest, NoGroups) {
   CoralResult<TitleGenerationResponse> result = title_future.Take();
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->groups.size(), 0);
-}
-
-TEST_F(TitleGenerationEngineTest, LoadModelFailed) {
-  auto request = GetFakeGroupRequest();
-  auto clustering_response = GetFakeClusteringResponse();
-
-  // Override DLC path to a non-existent path.
-  auto dlc_path = base::FilePath("not_exist");
-  cros::DlcClient::SetDlcPathForTest(&dlc_path);
-
-  TestFuture<CoralResult<TitleGenerationResponse>> title_future;
-  engine_->Process(std::move(request), std::move(clustering_response),
-                   mojo::NullRemote(), title_future.GetCallback());
-  CoralResult<TitleGenerationResponse> result = title_future.Take();
-  ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
-}
-
-// Test that multiple Process at the same time, without the previous call
-// returning, will still have only loaded the model once, and both calls will
-// have received the correct model load result.
-TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadFailed) {
-  auto request = GetFakeGroupRequest();
-
-  // Override DLC path to a non-existent path.
-  auto dlc_path = base::FilePath("not_exist");
-  cros::DlcClient::SetDlcPathForTest(&dlc_path);
-
-  TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
-  engine_->Process(request.Clone(), GetFakeClusteringResponse(),
-                   mojo::NullRemote(), title_future1.GetCallback());
-  engine_->Process(std::move(request), GetFakeClusteringResponse(),
-                   mojo::NullRemote(), title_future2.GetCallback());
-
-  auto fake_response = GetFakeTitleGenerationResponse();
-  CoralResult<TitleGenerationResponse> result = title_future1.Take();
-  ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
-
-  result = title_future2.Take();
-  ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), mojom::CoralError::kLoadModelFailed);
-}
-
-TEST_F(TitleGenerationEngineTest, ConcurrentModelLoadSuccess) {
-  auto request = GetFakeGroupRequest();
-
-  TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
-  engine_->Process(request.Clone(), GetFakeClusteringResponse(),
-                   mojo::NullRemote(), title_future1.GetCallback());
-  engine_->Process(std::move(request), GetFakeClusteringResponse(),
-                   mojo::NullRemote(), title_future2.GetCallback());
-
-  auto fake_response = GetFakeTitleGenerationResponse();
-  CoralResult<TitleGenerationResponse> result = title_future1.Take();
-  ASSERT_TRUE(result.has_value());
-  TitleGenerationResponse response = std::move(*result);
-  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
-
-  result = title_future2.Take();
-  response = std::move(*result);
-  ASSERT_EQ(response.groups.size(), fake_response.groups.size());
 }
 
 TEST_F(TitleGenerationEngineTest, ObserverSuccess) {

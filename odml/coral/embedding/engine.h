@@ -6,6 +6,7 @@
 #define ODML_CORAL_EMBEDDING_ENGINE_H_
 
 #include <memory>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -80,9 +81,10 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
-  void OnModelLoadResult(on_device_model::mojom::LoadModelResult result);
-  void OnModelVersionLoaded(const std::string& version);
-  void ExecutePendingCallbacks();
+  void OnModelLoadResult(base::OnceClosure callback,
+                         on_device_model::mojom::LoadModelResult result);
+  void OnModelVersionLoaded(base::OnceClosure callback,
+                            const std::string& version);
   void DoProcess(mojom::GroupRequestPtr request, EmbeddingCallback callback);
   void ProcessEachPrompt(mojom::GroupRequestPtr request,
                          std::vector<std::string> prompts,
@@ -98,15 +100,19 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   void SyncDatabase();
 
+  void OnProcessCompleted();
+
   const raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
       embedding_service_;
-  // model_ should only be used when state_ is kLoaded because the remote model
-  // service only binds the model receiver when model loading succeeds.
+  // `model_` should only be used after a successful LoadModelResult is received
+  // because on device service only binds the model receiver when model loading
+  // succeeds.
   mojo::Remote<embedding_model::mojom::OnDeviceEmbeddingModel> model_;
-  ModelLoadState state_ = ModelLoadState::kNew;
 
-  // Callbacks that are queued and waiting for the model to be loaded.
-  std::vector<base::OnceClosure> pending_callbacks_;
+  // Callbacks that are queued and waiting for the previous request to
+  // complete, and flag to indicate that a request is being processed.
+  std::queue<base::OnceClosure> pending_callbacks_;
+  bool is_processing_ = false;
 
   // Factory to create an embedding database to cache embedding vectors.
   std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory_;

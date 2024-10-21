@@ -18,6 +18,7 @@
 #include <base/token.h>
 #include <base/types/expected.h>
 #include <base/uuid.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
@@ -74,7 +75,18 @@ TitleGenerationEngine::TitleGenerationEngine(
     : on_device_model_service_(on_device_model_service) {}
 
 void TitleGenerationEngine::PrepareResource() {
-  EnsureModelLoaded(base::DoNothing());
+  if (is_processing_) {
+    pending_callbacks_.push(
+        base::BindOnce(&TitleGenerationEngine::PrepareResource,
+                       weak_ptr_factory_.GetWeakPtr()));
+    return;
+  }
+  is_processing_ = true;
+  // Ensure `is_processing_` will always be reset no matter callback is run or
+  // dropped.
+  EnsureModelLoaded(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
+                     weak_ptr_factory_.GetWeakPtr())));
 }
 
 void TitleGenerationEngine::Process(
@@ -82,6 +94,14 @@ void TitleGenerationEngine::Process(
     ClusteringResponse clustering_response,
     mojo::PendingRemote<mojom::TitleObserver> pending_observer,
     TitleGenerationCallback callback) {
+  if (is_processing_) {
+    pending_callbacks_.push(base::BindOnce(
+        &TitleGenerationEngine::Process, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), std::move(clustering_response),
+        std::move(pending_observer), std::move(callback)));
+    return;
+  }
+  is_processing_ = true;
   // Prepare the clusters along with their prompts.
   std::vector<GroupData> groups;
   for (Cluster& cluster : clustering_response.clusters) {
@@ -94,11 +114,18 @@ void TitleGenerationEngine::Process(
     });
   }
   mojo::Remote<mojom::TitleObserver> observer(std::move(pending_observer));
+  // Ensure `is_processing_` will always be reset no matter callback is run or
+  // dropped.
+  base::OnceClosure on_process_completed =
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
+                         weak_ptr_factory_.GetWeakPtr()));
   if (observer) {
     ReplyGroupsWithoutTitles(groups, std::move(callback));
     ProcessCallback on_complete =
         base::BindOnce(&TitleGenerationEngine::OnAllTitleGenerationFinished,
-                       weak_ptr_factory_.GetWeakPtr());
+                       weak_ptr_factory_.GetWeakPtr())
+            .Then(std::move(on_process_completed));
     EnsureModelLoaded(base::BindOnce(
         &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
         std::move(request), std::move(observer), std::move(groups),
@@ -106,7 +133,8 @@ void TitleGenerationEngine::Process(
   } else {
     ProcessCallback on_complete =
         base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+                       weak_ptr_factory_.GetWeakPtr(), std::move(callback))
+            .Then(std::move(on_process_completed));
     EnsureModelLoaded(base::BindOnce(
         &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
         std::move(request), std::move(observer), std::move(groups),
@@ -115,47 +143,30 @@ void TitleGenerationEngine::Process(
 }
 
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
-  switch (state_) {
-    case ModelLoadState::kLoaded:
-      // When the loaded model is used, reset the unload timer.
-      SetUnloadModelTimer();
-      std::move(callback).Run();
-      return;
-    case ModelLoadState::kPending:
-      pending_callbacks_.push_back(std::move(callback));
-      return;
-    case ModelLoadState::kNew:
-      state_ = ModelLoadState::kPending;
-      pending_callbacks_.push_back(std::move(callback));
-      on_device_model_service_->LoadPlatformModel(
-          base::Uuid::ParseLowercase(kModelUuid),
-          model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
-          base::BindOnce(&TitleGenerationEngine::OnModelLoadResult,
-                         weak_ptr_factory_.GetWeakPtr()));
-      return;
+  if (model_) {
+    // When the loaded model is used, reset the unload timer.
+    SetUnloadModelTimer();
+    std::move(callback).Run();
+    return;
   }
+  on_device_model_service_->LoadPlatformModel(
+      base::Uuid::ParseLowercase(kModelUuid),
+      model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      base::BindOnce(&TitleGenerationEngine::OnModelLoadResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void TitleGenerationEngine::OnModelLoadResult(LoadModelResult result) {
+void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
+                                              LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using the
-    // model. And set state to New so that the next request can attempt to load
-    // the model again.
+    // model.
     model_.reset();
-    state_ = ModelLoadState::kNew;
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
   } else {
-    state_ = ModelLoadState::kLoaded;
-  }
-  std::vector<base::OnceClosure> pending_callbacks =
-      std::move(pending_callbacks_);
-  pending_callbacks_.clear();
-  for (base::OnceClosure& callback : pending_callbacks) {
-    std::move(callback).Run();
-  }
-  if (result == LoadModelResult::kSuccess) {
     SetUnloadModelTimer();
   }
+  std::move(callback).Run();
 }
 
 void TitleGenerationEngine::SetUnloadModelTimer() {
@@ -168,7 +179,6 @@ void TitleGenerationEngine::SetUnloadModelTimer() {
 
 void TitleGenerationEngine::UnloadModel() {
   model_.reset();
-  state_ = ModelLoadState::kNew;
 }
 
 void TitleGenerationEngine::ReplyGroupsWithoutTitles(
@@ -234,7 +244,6 @@ void TitleGenerationEngine::DoProcess(
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
-  CHECK_EQ(state_, ModelLoadState::kLoaded);
 
   auto session = SimpleSession::New();
   model_->StartSession(session->BindReceiver());
@@ -310,6 +319,16 @@ void TitleGenerationEngine::OnModelOutput(
   ProcessEachPrompt(index + 1, std::move(request), std::move(session),
                     std::move(observer), std::move(groups),
                     std::move(callback));
+}
+
+void TitleGenerationEngine::OnProcessCompleted() {
+  is_processing_ = false;
+  if (pending_callbacks_.empty()) {
+    return;
+  }
+  base::OnceClosure callback = std::move(pending_callbacks_.front());
+  pending_callbacks_.pop();
+  std::move(callback).Run();
 }
 
 }  // namespace coral

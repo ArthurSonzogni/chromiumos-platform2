@@ -13,6 +13,7 @@
 #include <base/hash/hash.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "odml/coral/common.h"
 #include "odml/mojom/coral_service.mojom.h"
@@ -104,14 +105,37 @@ EmbeddingEngine::EmbeddingEngine(
 }
 
 void EmbeddingEngine::PrepareResource() {
-  EnsureModelLoaded(base::DoNothing());
+  if (is_processing_) {
+    pending_callbacks_.push(base::BindOnce(&EmbeddingEngine::PrepareResource,
+                                           weak_ptr_factory_.GetWeakPtr()));
+    return;
+  }
+  is_processing_ = true;
+  // Ensure `is_processing_` will always be reset no matter callback is run or
+  // dropped.
+  EnsureModelLoaded(mojo::WrapCallbackWithDefaultInvokeIfNotRun(base::BindOnce(
+      &EmbeddingEngine::OnProcessCompleted, weak_ptr_factory_.GetWeakPtr())));
 }
 
 void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
                               EmbeddingCallback callback) {
-  EnsureModelLoaded(base::BindOnce(&EmbeddingEngine::DoProcess,
-                                   weak_ptr_factory_.GetWeakPtr(),
-                                   std::move(request), std::move(callback)));
+  if (is_processing_) {
+    pending_callbacks_.push(base::BindOnce(
+        &EmbeddingEngine::Process, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), std::move(callback)));
+    return;
+  }
+  is_processing_ = true;
+  // Ensure `is_processing_` will always be reset no matter callback is run or
+  // dropped.
+  base::OnceClosure on_process_completed =
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindOnce(&EmbeddingEngine::OnProcessCompleted,
+                         weak_ptr_factory_.GetWeakPtr()));
+  EnsureModelLoaded(base::BindOnce(
+      &EmbeddingEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
+      std::move(request),
+      std::move(callback).Then(std::move(on_process_completed))));
 }
 
 void EmbeddingEngine::OnUserLoggedIn(
@@ -135,57 +159,36 @@ void EmbeddingEngine::OnUserLoggedOut() {
 }
 
 void EmbeddingEngine::EnsureModelLoaded(base::OnceClosure callback) {
-  switch (state_) {
-    case ModelLoadState::kLoaded:
-      std::move(callback).Run();
-      return;
-    case ModelLoadState::kPending:
-      pending_callbacks_.push_back(std::move(callback));
-      return;
-    case ModelLoadState::kNew:
-      state_ = ModelLoadState::kPending;
-      pending_callbacks_.push_back(std::move(callback));
-      embedding_service_->LoadEmbeddingModel(
-          base::Uuid::ParseLowercase(kModelUuid),
-          model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
-          base::BindOnce(&EmbeddingEngine::OnModelLoadResult,
-                         weak_ptr_factory_.GetWeakPtr()));
-      return;
+  if (model_) {
+    std::move(callback).Run();
+    return;
   }
+  embedding_service_->LoadEmbeddingModel(
+      base::Uuid::ParseLowercase(kModelUuid),
+      model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      base::BindOnce(&EmbeddingEngine::OnModelLoadResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void EmbeddingEngine::OnModelLoadResult(LoadModelResult result) {
+void EmbeddingEngine::OnModelLoadResult(base::OnceClosure callback,
+                                        LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using the
-    // model. And set state to New so that the next request can attempt to load
-    // the model again.
+    // model.
     model_.reset();
-    state_ = ModelLoadState::kNew;
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
-  } else {
-    state_ = ModelLoadState::kLoaded;
-  }
-  if (model_) {
-    model_->Version(base::BindOnce(&EmbeddingEngine::OnModelVersionLoaded,
-                                   weak_ptr_factory_.GetWeakPtr()));
-  } else {
-    // Execute the callbacks to notify model load failure.
-    ExecutePendingCallbacks();
-  }
-}
-
-void EmbeddingEngine::OnModelVersionLoaded(const std::string& version) {
-  model_version_ = version;
-  ExecutePendingCallbacks();
-}
-
-void EmbeddingEngine::ExecutePendingCallbacks() {
-  std::vector<base::OnceClosure> pending_callbacks =
-      std::move(pending_callbacks_);
-  pending_callbacks_.clear();
-  for (base::OnceClosure& callback : pending_callbacks) {
     std::move(callback).Run();
+    return;
   }
+  model_->Version(base::BindOnce(&EmbeddingEngine::OnModelVersionLoaded,
+                                 weak_ptr_factory_.GetWeakPtr(),
+                                 std::move(callback)));
+}
+
+void EmbeddingEngine::OnModelVersionLoaded(base::OnceClosure callback,
+                                           const std::string& version) {
+  model_version_ = version;
+  std::move(callback).Run();
 }
 
 void EmbeddingEngine::DoProcess(mojom::GroupRequestPtr request,
@@ -195,7 +198,6 @@ void EmbeddingEngine::DoProcess(mojom::GroupRequestPtr request,
                             base::unexpected(CoralError::kLoadModelFailed));
     return;
   }
-  CHECK_EQ(state_, ModelLoadState::kLoaded);
   std::vector<std::string> prompts;
   for (const mojom::EntityPtr& entity : request->entities) {
     std::string prompt = internal::EntityToEmbeddingPrompt(*entity);
@@ -289,6 +291,16 @@ void EmbeddingEngine::SyncDatabase() {
   if (embedding_database_) {
     embedding_database_->Sync();
   }
+}
+
+void EmbeddingEngine::OnProcessCompleted() {
+  is_processing_ = false;
+  if (pending_callbacks_.empty()) {
+    return;
+  }
+  base::OnceClosure callback = std::move(pending_callbacks_.front());
+  pending_callbacks_.pop();
+  std::move(callback).Run();
 }
 
 }  // namespace coral

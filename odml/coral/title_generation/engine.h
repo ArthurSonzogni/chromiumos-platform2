@@ -5,6 +5,7 @@
 #ifndef ODML_CORAL_TITLE_GENERATION_ENGINE_H_
 #define ODML_CORAL_TITLE_GENERATION_ENGINE_H_
 
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -61,7 +62,8 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
 
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
-  void OnModelLoadResult(on_device_model::mojom::LoadModelResult result);
+  void OnModelLoadResult(base::OnceClosure callback,
+                         on_device_model::mojom::LoadModelResult result);
   void SetUnloadModelTimer();
   void UnloadModel();
 
@@ -93,6 +95,8 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
                                     std::vector<GroupData> groups,
                                     CoralResult<void> result);
 
+  void OnProcessCompleted();
+
   using ProcessCallback =
       base::OnceCallback<void(mojo::Remote<mojom::TitleObserver>,
                               std::vector<GroupData>,
@@ -120,13 +124,15 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
 
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
       on_device_model_service_;
-  // model_ should only be used when state_ is kLoaded because the remote model
-  // service only binds the model receiver when model loading succeeds.
+  // `model_` should only be used after a successful LoadModelResult is received
+  // because on device service only binds the model receiver when model loading
+  // succeeds.
   mojo::Remote<on_device_model::mojom::OnDeviceModel> model_;
-  ModelLoadState state_ = ModelLoadState::kNew;
 
-  // Callbacks that are queued and waiting for the model to be loaded.
-  std::vector<base::OnceClosure> pending_callbacks_;
+  // Callbacks that are queued and waiting for the previous request to
+  // complete, and flag to indicate that a request is being processed.
+  std::queue<base::OnceClosure> pending_callbacks_;
+  bool is_processing_ = false;
 
   base::WallClockTimer unload_model_timer_;
 
