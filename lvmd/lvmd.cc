@@ -358,8 +358,9 @@ bool Lvmd::ResizeLogicalVolume(brillo::ErrorPtr* error,
 
 int Lvmd::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
-  if (return_code != EX_OK)
+  if (return_code != EX_OK) {
     return return_code;
+  }
 
   PostponeShutdown();
   return EX_OK;

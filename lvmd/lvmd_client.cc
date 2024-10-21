@@ -294,64 +294,76 @@ int LvmdClient::ProcessFlags() {
   }
 
   if (FLAGS_show) {
-    if (FLAGS_pv)
+    if (FLAGS_pv) {
       return GetPhysicalVolume(FLAGS_device_path);
-    if (FLAGS_vg)
+    }
+    if (FLAGS_vg) {
       return GetVolumeGroup(FLAGS_device_path);
-    if (FLAGS_thinpool)
+    }
+    if (FLAGS_thinpool) {
       return GetThinpool(FLAGS_vg_name, FLAGS_thinpool_name);
-    if (FLAGS_lvs)
+    }
+    if (FLAGS_lvs) {
       return ListLogicalVolumes(FLAGS_vg_name);
-    if (FLAGS_lv)
+    }
+    if (FLAGS_lv) {
       return GetLogicalVolume(FLAGS_vg_name, FLAGS_lv_name);
+    }
 
     LOG(ERROR) << "`--show` is not support for this LVM device.";
     return EX_USAGE;
   }
 
   if (FLAGS_create) {
-    if (FLAGS_lv)
+    if (FLAGS_lv) {
       return CreateLogicalVolume(FLAGS_vg_name, FLAGS_thinpool_name,
                                  FLAGS_lv_name, FLAGS_size);
-    if (FLAGS_lvs)
+    }
+    if (FLAGS_lvs) {
       return CreateLogicalVolumes(FLAGS_vg_name, FLAGS_thinpool_name,
                                   FLAGS_lv_names, FLAGS_sizes);
+    }
 
     LOG(ERROR) << "`--create` is not support for this LVM device.";
     return EX_USAGE;
   }
 
   if (FLAGS_remove) {
-    if (FLAGS_lv)
+    if (FLAGS_lv) {
       return RemoveLogicalVolume(FLAGS_vg_name, FLAGS_lv_name);
-    if (FLAGS_lvs)
+    }
+    if (FLAGS_lvs) {
       return RemoveLogicalVolumes(FLAGS_vg_name, FLAGS_lv_names);
+    }
 
     LOG(ERROR) << "`--remove` is not support for this LVM device.";
     return EX_USAGE;
   }
 
   if (FLAGS_activate) {
-    if (FLAGS_lv)
+    if (FLAGS_lv) {
       return ToggleLogicalVolumeActivation(FLAGS_vg_name, FLAGS_lv_name,
                                            /*activate=*/true);
+    }
 
     LOG(ERROR) << "`--activate` is not support for this LVM device.";
     return EX_USAGE;
   }
 
   if (FLAGS_deactivate) {
-    if (FLAGS_lv)
+    if (FLAGS_lv) {
       return ToggleLogicalVolumeActivation(FLAGS_vg_name, FLAGS_lv_name,
                                            /*activate=*/false);
+    }
 
     LOG(ERROR) << "`--deactivate` is not support for this LVM device.";
     return EX_USAGE;
   }
 
   if (FLAGS_resize) {
-    if (FLAGS_lv)
+    if (FLAGS_lv) {
       return ResizeLogicalVolume(FLAGS_vg_name, FLAGS_lv_name, FLAGS_size);
+    }
 
     LOG(ERROR) << "`--resize` is not support for this LVM device.";
     return EX_USAGE;
