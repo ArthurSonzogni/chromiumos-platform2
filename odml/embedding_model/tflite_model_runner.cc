@@ -38,12 +38,18 @@ constexpr char kContentKey[] = "content";
 constexpr char kDelegateCpu[] = "cpu";
 constexpr char kDelegateGpuOpenCl[] = "gpu-opencl";
 
+constexpr char kTfliteRunnerLoadStatusHistogramName[] =
+    "OnDeviceModel.Embedding.TfliteRunnerLoadStatus";
+constexpr char kTfliteRunnerRunStatusHistogramName[] =
+    "OnDeviceModel.Embedding.TfliteRunnerRunStatus";
+
 }  // namespace
 
 TfliteModelRunner::TfliteModelRunner(
     ModelInfo&& model_info,
     std::unique_ptr<Tokenizer> tokenizer,
-    const raw_ref<odml::OdmlShimLoader> shim_loader)
+    const raw_ref<odml::OdmlShimLoader> shim_loader,
+    const raw_ref<MetricsLibraryInterface> metrics)
     : input_node_(-1),
       output_node_(-1),
       delegate_type_(DelegateType::kDelegateTypeNotSet),
@@ -51,7 +57,8 @@ TfliteModelRunner::TfliteModelRunner(
       model_info_(std::move(model_info)),
       tflite_info_(std::get_if<struct EmbeddingTfliteModelInfo>(
           &model_info_.type_specific_info)),
-      tokenizer_(std::move(tokenizer)) {
+      tokenizer_(std::move(tokenizer)),
+      metrics_(metrics) {
   CHECK(tflite_info_);
 }
 
@@ -67,6 +74,8 @@ void TfliteModelRunner::Load(base::PassKey<ModelHolder> passkey,
   } else {
     LOG(ERROR) << "Unsupported delegate option for TfliteModelRunner: "
                << tflite_info_->delegate;
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kUnsupportedDelegate);
     std::move(callback).Run(false);
     return;
   }
@@ -93,6 +102,8 @@ void TfliteModelRunner::OnShimFinishLoading(base::PassKey<ModelHolder> passkey,
                                             bool success) {
   if (!success) {
     LOG(ERROR) << "Failed to load the odml-shim";
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kNoOdmlShim);
     std::move(callback).Run(false);
     return;
   }
@@ -107,6 +118,8 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
   CHECK(!model_);
   if (!success) {
     LOG(ERROR) << "Failed to load the tokenizer " << tflite_info_->spm_path;
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kFailedToLoadTokenizer);
     std::move(callback).Run(false);
     return;
   }
@@ -118,6 +131,8 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
   if (!model_) {
     LOG(ERROR) << "Failed to load FlatBufferModel "
                << tflite_info_->tflite_path;
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kFailedToLoadFlatBufferModel);
     std::move(callback).Run(false);
     return;
   }
@@ -128,6 +143,8 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
       tflite::InterpreterBuilder(*model_, resolver)(&interpreter);
   if (resolve_status != kTfLiteOk || !interpreter) {
     LOG(ERROR) << "Could not resolve model ops.";
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kCantResolveModelOps);
     std::move(callback).Run(false);
     return;
   }
@@ -141,11 +158,16 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
     TfLiteDelegate* delegate = TfLiteGpuDelegateV2Create(&options);
     if (!delegate) {
       LOG(ERROR) << "GPU requested but not available.";
+      metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                              LoadResultHistogram::kNoGpuOpenClDelegate);
       std::move(callback).Run(false);
       return;
     }
     if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
       LOG(ERROR) << "Could not use GPU delegate.";
+      metrics_->SendEnumToUMA(
+          kTfliteRunnerLoadStatusHistogramName,
+          LoadResultHistogram::kGpuOpenClDelegateModifyFailed);
       std::move(callback).Run(false);
       return;
     }
@@ -156,18 +178,24 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
   // Allocate memory for tensors.
   if (interpreter->AllocateTensors() != kTfLiteOk) {
     LOG(ERROR) << "Could not allocate tensors.";
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kCantAllocateTensors);
     std::move(callback).Run(false);
     return;
   }
 
   if (interpreter->inputs().size() != 1) {
     LOG(ERROR) << "Unexpected multiple inputs in embedding model tflite.";
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kIncorrectInputSize);
     std::move(callback).Run(false);
     return;
   }
   input_node_ = interpreter->inputs()[0];
   if (interpreter->outputs().size() != 1) {
     LOG(ERROR) << "Unexpected multiple outputs in embedding model tflite.";
+    metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                            LoadResultHistogram::kIncorrectOutputSize);
     std::move(callback).Run(false);
     return;
   }
@@ -213,6 +241,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
                             RunCallback callback) {
   if (!tokenizer_ || !tokenizer_->IsLoaded() || !interpreter_) {
     LOG(ERROR) << "TfliteModelRunner::Run() called while not loaded.";
+    metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                            RunResultHistogram::kNotLoaded);
     std::move(callback).Run(
         mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
         std::vector<float>());
@@ -229,6 +259,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
       shim_loader_->Get<FormatForEmbeddingFunction>("FormatForEmbedding");
   if (!format_for_embedding_fn) {
     LOG(ERROR) << "No FormatForEmbedding in odml-shim.";
+    metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                            RunResultHistogram::kNoFormatFunctionInShim);
     std::move(callback).Run(
         mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
         std::vector<float>());
@@ -241,6 +273,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
       model_info_.model_version, kClusteringTaskType, format_params);
   if (!input_str) {
     LOG(ERROR) << "Failed to format input for embedding.";
+    metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                            RunResultHistogram::kFormatFailed);
     std::move(callback).Run(
         mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
         std::vector<float>());
@@ -253,6 +287,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
   if (!token_ids.has_value()) {
     // Tokenizing failed.
     LOG(ERROR) << "Failed to tokenize input for embedding.";
+    metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                            RunResultHistogram::kTokenizeFailed);
     std::move(callback).Run(
         mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
         std::vector<float>());
@@ -263,6 +299,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
     if (request->truncate_input) {
       token_ids->resize(input_size, 0);
     } else {
+      metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                              RunResultHistogram::kTooLong);
       std::move(callback).Run(
           mojom::OnDeviceEmbeddingModelInferenceError::kTooLong,
           std::vector<float>());
@@ -282,6 +320,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
   auto ret = interpreter_->Invoke();
   if (ret != kTfLiteOk) {
     LOG(ERROR) << "Tflite graph Invoke() failed unexpectedly.";
+    metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                            RunResultHistogram::kInvokeFailed);
     std::move(callback).Run(
         mojom::OnDeviceEmbeddingModelInferenceError::kInternal,
         std::vector<float>());
@@ -295,6 +335,8 @@ void TfliteModelRunner::Run(base::PassKey<ModelHolder> passkey,
     output.push_back(output_ptr[i]);
   }
 
+  metrics_->SendEnumToUMA(kTfliteRunnerRunStatusHistogramName,
+                          RunResultHistogram::kSuccess);
   std::move(callback).Run(mojom::OnDeviceEmbeddingModelInferenceError::kSuccess,
                           output);
 }

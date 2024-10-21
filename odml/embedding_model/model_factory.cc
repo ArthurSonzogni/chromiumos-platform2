@@ -14,16 +14,19 @@
 namespace embedding_model {
 
 ModelFactoryImpl::ModelFactoryImpl(
-    const raw_ref<odml::OdmlShimLoader> shim_loader)
-    : shim_loader_(shim_loader) {}
+    const raw_ref<odml::OdmlShimLoader> shim_loader,
+    const raw_ref<MetricsLibraryInterface> metrics)
+    : dlc_model_loader_(metrics),
+      shim_loader_(shim_loader),
+      metrics_(metrics) {}
 
 std::unique_ptr<ModelRunner> ModelFactoryImpl::BuildRunnerFromInfo(
     ModelInfo&& info) {
   if (info.model_type == kEmbeddingTfliteModelType) {
     auto tokenizer = std::make_unique<OdmlShimTokenizer>(raw_ref(shim_loader_));
     std::unique_ptr<TfliteModelRunner> result =
-        std::make_unique<TfliteModelRunner>(std::move(info),
-                                            std::move(tokenizer), shim_loader_);
+        std::make_unique<TfliteModelRunner>(
+            std::move(info), std::move(tokenizer), shim_loader_, metrics_);
     return result;
   }
   return nullptr;

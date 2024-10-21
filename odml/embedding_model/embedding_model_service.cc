@@ -13,6 +13,13 @@
 
 namespace embedding_model {
 
+namespace {
+
+constexpr char kEmbeddingLoadStatusHistogramName[] =
+    "OnDeviceModel.Embedding.LoadEmbeddingStatus";
+
+}  // namespace
+
 class ModelWrapper final : public mojom::OnDeviceEmbeddingModel {
  public:
   ModelWrapper(
@@ -87,6 +94,8 @@ void EmbeddingModelService::EnsureModelReady(
 
   if (itr->second.factory_create_failed) {
     // If it failed, then we don't retry.
+    metrics_->SendEnumToUMA(kEmbeddingLoadStatusHistogramName,
+                            LoadEmbeddingModelHistogram::kRetryBlocked);
     std::move(callback).Run();
     return;
   }
@@ -123,6 +132,8 @@ void EmbeddingModelService::OnBuildRunnerFromUuidFinish(
     // Trigger the model load.
     TryLoadModel(uuid);
   } else {
+    metrics_->SendEnumToUMA(kEmbeddingLoadStatusHistogramName,
+                            LoadEmbeddingModelHistogram::kBuildRunnerFailed);
     itr->second.factory_create_failed = true;
     OnModelLoadFinish(uuid, false);
   }
@@ -157,6 +168,8 @@ void EmbeddingModelService::OnModelLoadFinish(const base::Uuid& uuid,
   if (success) {
     CHECK(itr->second.holder->IsLoaded());
   } else {
+    metrics_->SendEnumToUMA(kEmbeddingLoadStatusHistogramName,
+                            LoadEmbeddingModelHistogram::kRunnerLoadFailed);
     CHECK(!itr->second.holder || !itr->second.holder->IsLoaded());
     itr->second.in_progress_reference.reset();
     // The expected behaviour right now is that if LoadEmbeddingModel() failed
@@ -193,6 +206,8 @@ void EmbeddingModelService::OnModelReady(
     return;
   }
 
+  metrics_->SendEnumToUMA(kEmbeddingLoadStatusHistogramName,
+                          LoadEmbeddingModelHistogram::kSuccess);
   std::unique_ptr<ModelWrapper> wrapper = std::make_unique<ModelWrapper>(
       itr->second.holder->Acquire(), std::move(model),
       base::BindOnce(&EmbeddingModelService::DeleteModelWrapper,

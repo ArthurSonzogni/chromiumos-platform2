@@ -81,7 +81,7 @@ class EmbeddingModelServiceProviderImpl
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : embedding_model_factory_(raw_ref(shim_loader)),
+      : embedding_model_factory_(raw_ref(shim_loader), metrics),
         receiver_(this),
         service_impl_(metrics, raw_ref(embedding_model_factory_)) {
     service_manager->Register(

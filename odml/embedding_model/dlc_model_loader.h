@@ -15,6 +15,7 @@
 #include <base/types/expected.h>
 #include <base/uuid.h>
 #include <base/values.h>
+#include <metrics/metrics_library.h>
 
 #include "odml/embedding_model/model_info.h"
 
@@ -23,7 +24,24 @@ namespace embedding_model {
 // DlcModelLoader loads DLCs that contains the model.
 class DlcModelLoader {
  public:
-  DlcModelLoader() = default;
+  enum class LoadDlcHistogram {
+    kSuccess = 0,
+    kInvalidUuid = 1,
+    kReadJsonFailed = 2,
+    kParseJsonFailed = 3,
+    kNoModelType = 4,
+    kNoModelVersion = 5,
+    kNoTfliteInfo = 6,
+    kUnknownModelType = 7,
+    kNoTflitePath = 8,
+    kNoBuiltinSpm = 9,
+    kNoSpmPath = 10,
+    kNoDelegate = 11,
+    kInstallFailed = 12,
+    kMaxValue = kInstallFailed,
+  };
+
+  explicit DlcModelLoader(const raw_ref<MetricsLibraryInterface> metrics);
 
   using LoadCallback =
       base::OnceCallback<void(std::optional<ModelInfo> model_info)>;
@@ -45,6 +63,8 @@ class DlcModelLoader {
 
   std::unordered_map<base::Uuid, DlcLoadingState, base::UuidHash>
       loading_state_;
+
+  const raw_ref<MetricsLibraryInterface> metrics_;
 
   base::WeakPtrFactory<DlcModelLoader> weak_ptr_factory_{this};
 };

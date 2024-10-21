@@ -40,7 +40,8 @@ class ModelFactory {
 // This produce the ModelRunner objects for each of the models.
 class ModelFactoryImpl : public ModelFactory {
  public:
-  explicit ModelFactoryImpl(const raw_ref<odml::OdmlShimLoader> shim_loader);
+  ModelFactoryImpl(const raw_ref<odml::OdmlShimLoader> shim_loader,
+                   const raw_ref<MetricsLibraryInterface> metrics);
   virtual ~ModelFactoryImpl() = default;
 
   std::unique_ptr<ModelRunner> BuildRunnerFromInfo(ModelInfo&& info) override;
@@ -57,6 +58,9 @@ class ModelFactoryImpl : public ModelFactory {
   // For access to the odml-shim functions, which contains a wrapper to
   // SentencePiece library.
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
+
+  // Some constructed model runner sends UMA.
+  const raw_ref<MetricsLibraryInterface> metrics_;
 };
 
 }  // namespace embedding_model

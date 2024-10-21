@@ -31,6 +31,14 @@ namespace embedding_model {
 // representation.
 class EmbeddingModelService : public mojom::OnDeviceEmbeddingModelService {
  public:
+  enum class LoadEmbeddingModelHistogram {
+    kSuccess = 0,
+    kRetryBlocked = 1,
+    kBuildRunnerFailed = 2,
+    kRunnerLoadFailed = 3,
+    kMaxValue = kRunnerLoadFailed,
+  };
+
   EmbeddingModelService(raw_ref<MetricsLibraryInterface> metrics,
                         raw_ref<ModelFactory> factory);
   ~EmbeddingModelService() override;
