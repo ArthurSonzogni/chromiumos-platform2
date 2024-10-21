@@ -85,8 +85,9 @@ int RunAndCaptureOutput(brillo::ProcessImpl* process, std::string* output) {
         break;
       }
 
-      if (count == 0)
+      if (count == 0) {
         return process->Wait();
+      }
 
       output->append(buffer, count);
     }

@@ -56,8 +56,9 @@ bool WritePolicyToFile(const base::Value::Dict& policy,
     return false;
   }
 
-  if (!CreateDirectories(dir_path))
+  if (!CreateDirectories(dir_path)) {
     return false;
+  }
 
   std::string json_string;
   base::JSONWriter::Write(policy, &json_string);

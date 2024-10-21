@@ -35,8 +35,9 @@ bool IsEqualNoCase(const std::string& a, const std::string& b) {
 // Returns whether the policy, identified by its name, is supported.
 bool VerifyPolicyName(const std::string& policy_name) {
   for (const std::string& policy : known_policies) {
-    if (IsEqualNoCase(policy, policy_name))
+    if (IsEqualNoCase(policy, policy_name)) {
       return true;
+    }
   }
   return false;
 }
@@ -44,14 +45,16 @@ bool VerifyPolicyName(const std::string& policy_name) {
 // Parse and return the command from the cmd-line arguments. Returns
 // Command::CMD_UNKNOWN if the command string is missing or not recognized.
 Command GetCommandFromArgs(const CommandLine::StringVector& args) {
-  if (args.size() < 1)
+  if (args.size() < 1) {
     return Command::CMD_UNKNOWN;
+  }
 
   const std::string& cmd = args[0];
-  if (IsEqualNoCase(cmd, "set"))
+  if (IsEqualNoCase(cmd, "set")) {
     return Command::CMD_SET;
-  else if (IsEqualNoCase(cmd, "clear"))
+  } else if (IsEqualNoCase(cmd, "clear")) {
     return Command::CMD_CLEAR;
+  }
 
   LOG(ERROR) << "Not a valid command: " << cmd;
   return Command::CMD_UNKNOWN;
@@ -63,10 +66,11 @@ std::optional<bool> GetBoolValueFromArgs(
     const CommandLine::StringVector& args) {
   if (args.size() >= 3) {
     const std::string& value = args[2];
-    if (IsEqualNoCase(value, "true"))
+    if (IsEqualNoCase(value, "true")) {
       return true;
-    else if (IsEqualNoCase(value, "false"))
+    } else if (IsEqualNoCase(value, "false")) {
       return false;
+    }
 
     LOG(ERROR) << "Not a valid boolean value: " << value;
     return std::nullopt;
@@ -114,20 +118,23 @@ bool HandleCommandForPolicy(Command cmd,
 
   bool result = false;
   if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth)) {
-    if (cmd == Command::CMD_SET)
+    if (cmd == Command::CMD_SET) {
       result = writer.SetDeviceAllowBluetooth(*set_value);
-    else
+    } else {
       result = writer.ClearDeviceAllowBluetooth();
+    }
   } else if (IsEqualNoCase(policy, kShowHomeButton)) {
-    if (cmd == Command::CMD_SET)
+    if (cmd == Command::CMD_SET) {
       result = writer.SetShowHomeButton(*set_value);
-    else
+    } else {
       result = writer.ClearShowHomeButton();
+    }
   } else if (IsEqualNoCase(policy, kBookmarkBarEnabled)) {
-    if (cmd == Command::CMD_SET)
+    if (cmd == Command::CMD_SET) {
       result = writer.SetBookmarkBarEnabled(*set_value);
-    else
+    } else {
       result = writer.ClearBookmarkBarEnabled();
+    }
   }
 
   if (!result) {
@@ -155,12 +162,14 @@ PolicyTool::PolicyTool(const std::string& policy_dir_path)
 
 bool PolicyTool::DoCommand(const CommandLine::StringVector& args) const {
   // Args must have at least one command and one policy name.
-  if (args.size() < 2)
+  if (args.size() < 2) {
     return false;
+  }
 
   Command cmd = GetCommandFromArgs(args);
-  if (cmd == Command::CMD_UNKNOWN)
+  if (cmd == Command::CMD_UNKNOWN) {
     return false;
+  }
 
   const std::string& policy = args[1];
   return HandleCommandForPolicy(cmd, policy, args, writer_);
