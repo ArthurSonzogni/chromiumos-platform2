@@ -90,11 +90,13 @@ void UdevMonitor::OnUdevEvent() {
   }
 
   if (subsystem == "thunderbolt") {
-    if (action == "add" || action == "remove")
+    if (action == "add" || action == "remove") {
       LOG(INFO) << "UdevEvent: " << subsystem << " " << action << " " << path;
+    }
 
-    if (action == "add")
+    if (action == "add") {
       event_handler_->OnNewThunderboltDev(path);
+    }
 
   } else if (subsystem == "pci" && action == "change") {
     auto property = device->GetPropertyValue("EVENT");
@@ -106,8 +108,9 @@ void UdevMonitor::OnUdevEvent() {
     LOG(INFO) << "UdevEvent: " << subsystem << " " << action << " " << event
               << " " << drvr << " " << path;
 
-    if (event == "BLOCKED")
+    if (event == "BLOCKED") {
       pcidev_blocked_callback_(drvr);
+    }
   }
 }
 

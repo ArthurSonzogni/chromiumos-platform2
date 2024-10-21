@@ -19,14 +19,16 @@ int Daemon::OnInit() {
 
   utils_ = std::make_unique<SysfsUtils>();
   int exit_code = utils_->OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   event_handler_ = std::make_unique<EventHandler>(utils_.get());
 
   exit_code = DBusServiceDaemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
 
   // Begin monitoring the session events
   session_monitor_ =
@@ -68,8 +70,9 @@ void Daemon::HandleUserPermissionChanged(bool ext_pci_allowed) {
 
 void Daemon::HandlePCIDeviceBlocked(const std::string& drvr) {
   auto signal = dev_blocked_signal_.lock();
-  if (signal)
+  if (signal) {
     signal->Send(drvr);
+  }
 }
 
 }  // namespace pciguard

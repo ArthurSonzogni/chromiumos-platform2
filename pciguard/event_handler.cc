@@ -43,8 +43,9 @@ void EventHandler::OnUserLogin() {
   // restrictive state to a less restrictive state to ensure that we always
   // err on the cautious side should the events arrive out of order or are
   // processed out of order.
-  if (state_ == NO_USER_LOGGED_IN)
+  if (state_ == NO_USER_LOGGED_IN) {
     state_ = USER_LOGGED_IN_SCREEN_UNLOCKED;
+  }
 }
 
 void EventHandler::OnUserLogout() {
@@ -65,8 +66,9 @@ void EventHandler::OnScreenLocked() {
 
   // Check to ensure we only allow to go from less restrictive state to more
   // restrictive state.
-  if (state_ == USER_LOGGED_IN_SCREEN_UNLOCKED)
+  if (state_ == USER_LOGGED_IN_SCREEN_UNLOCKED) {
     state_ = USER_LOGGED_IN_BUT_SCREEN_LOCKED;
+  }
 
   authorizer_.reset();
 
@@ -97,8 +99,9 @@ void EventHandler::OnNewThunderboltDev(base::FilePath path) {
   std::lock_guard<std::mutex> lock(lock_);
   LogEvent("New-Thunderbolt-Dev");
 
-  if (authorizer_)
+  if (authorizer_) {
     authorizer_->SubmitJob(Authorizer::AUTHORIZE_1_DEVICE, path);
+  }
 }
 
 void EventHandler::OnUserPermissionChanged(bool new_permission) {

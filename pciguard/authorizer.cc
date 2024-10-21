@@ -20,10 +20,11 @@ void* Authorizer::AuthorizerThread(void* ptr) {
   Authorizer* authorizer = static_cast<Authorizer*>(ptr);
   Job job;
   while (authorizer->GetNextJob(&job)) {
-    if (job.type_ == AUTHORIZE_ALL_DEVICES)
+    if (job.type_ == AUTHORIZE_ALL_DEVICES) {
       authorizer->utils_->AuthorizeAllDevices();
-    else
+    } else {
       authorizer->utils_->AuthorizeThunderboltDev(job.syspath_);
+    }
 
     pthread_mutex_lock(&authorizer->mutex_);
     authorizer->authorization_in_flight_ = false;
@@ -99,14 +100,16 @@ bool Authorizer::GetNextJob(Job* job) {
 
       authorization_in_flight_ = true;
 
-      if (pthread_mutex_unlock(&mutex_))
+      if (pthread_mutex_unlock(&mutex_)) {
         PLOG(ERROR) << "Mutex unlock issue while retrieving job";
+      }
       return true;
     }
   } while (!pthread_cond_wait(&job_available_, &mutex_));
 
-  if (pthread_mutex_unlock(&mutex_))
+  if (pthread_mutex_unlock(&mutex_)) {
     PLOG(ERROR) << "Mutex unlock issue while retrieving job";
+  }
   return false;
 }
 

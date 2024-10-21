@@ -62,13 +62,15 @@ int SysfsUtils::SetAuthorizedAttribute(base::FilePath devpath, bool enable) {
   std::string authorized;
 
   // Proceed only if authorized file exists
-  if (!base::ReadFileToString(authorized_path, &authorized))
+  if (!base::ReadFileToString(authorized_path, &authorized)) {
     return EXIT_SUCCESS;
+  }
 
   // Nevermind if no need to change the state.
   if (!authorized.empty() &&
-      ((enable && authorized[0] != '0') || (!enable && authorized[0] == '0')))
+      ((enable && authorized[0] != '0') || (!enable && authorized[0] == '0'))) {
     return EXIT_SUCCESS;
+  }
 
   auto val = "0";
   if (enable) {
@@ -103,10 +105,11 @@ int SysfsUtils::OnInit(void) {
   }
 
   for (const char* drvr_name : kAllowlist) {
-    if (base::WriteFile(allowlist_path_, drvr_name))
+    if (base::WriteFile(allowlist_path_, drvr_name)) {
       LOG(INFO) << "Allowed " << drvr_name;
-    else
+    } else {
       PLOG(ERROR) << "Couldn't allow " << drvr_name;
+    }
   }
   return EX_OK;
 }
@@ -144,16 +147,18 @@ int SysfsUtils::AuthorizeAllDevices(void) {
   std::set<base::FilePath, decltype(cmp)> thunderbolt_devs(cmp);
   base::FileEnumerator iter(tbt_devices_path_, false,
                             base::FileEnumerator::DIRECTORIES);
-  for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next())
+  for (auto devpath = iter.Next(); !devpath.empty(); devpath = iter.Next()) {
     thunderbolt_devs.insert(devpath);
+  }
 
   // Authorize the thunderbolt devices in BFS order (sorting using the
   // symlinks to which the devices point, gives us BFS). This is
   // required because if a parent is deauthorized, the children are
   // automatically deauthorized, but vice versa is not true.
   for (auto dev : thunderbolt_devs) {
-    if (AuthorizeThunderboltDev(dev))
+    if (AuthorizeThunderboltDev(dev)) {
       ret = EXIT_FAILURE;
+    }
   }
 
   return ret;
@@ -172,8 +177,9 @@ int SysfsUtils::DenyNewDevices(void) {
 
 int SysfsUtils::DeauthorizeAllDevices(void) {
   int ret = EXIT_SUCCESS;
-  if (DenyNewDevices())
+  if (DenyNewDevices()) {
     return EXIT_FAILURE;
+  }
 
   LOG(INFO) << "Deauthorizing all external PCI devices";
 
@@ -185,13 +191,15 @@ int SysfsUtils::DeauthorizeAllDevices(void) {
 
     // It is possible this device may already been have removed (as an effect
     // of its parent being removed).
-    if (!PathExists(devpath))
+    if (!PathExists(devpath)) {
       continue;
+    }
 
     // Proceed only if it is a removable device
     if (!base::ReadFileToString(devpath.Append("removable"), &removable) ||
-        removable != "removable")
+        removable != "removable") {
       continue;
+    }
 
     // Remove device.
     if (!base::WriteFile(devpath.Append("remove"), "1")) {
@@ -205,8 +213,9 @@ int SysfsUtils::DeauthorizeAllDevices(void) {
                                 base::FileEnumerator::DIRECTORIES);
   for (auto devpath = tbt_iter.Next(); !devpath.empty();
        devpath = tbt_iter.Next()) {
-    if (DeauthorizeThunderboltDev(devpath))
+    if (DeauthorizeThunderboltDev(devpath)) {
       ret = EXIT_FAILURE;
+    }
   }
   return ret;
 }

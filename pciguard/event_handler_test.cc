@@ -34,8 +34,9 @@ class EventHandlerTest : public ::testing::Test {
   bool WaitForAuthorizerToFinish(EventHandler* event_handler) {
     std::lock_guard<std::mutex> lock(event_handler->lock_);
 
-    if (!event_handler->authorizer_)
+    if (!event_handler->authorizer_) {
       return true;
+    }
 
     unsigned retries = 20;
     while (!event_handler->authorizer_->IsJobQueueEmpty() && retries--) {
