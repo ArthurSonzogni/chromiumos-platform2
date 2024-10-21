@@ -149,10 +149,12 @@ class AllowConformingUsbDeviceRuleTest : public RuleTest {
       const char* vid = udev_device_get_sysattr_value(parent, "idVendor");
       const char* pid = udev_device_get_sysattr_value(parent, "idProduct");
       unsigned vendor_id, product_id;
-      if (!vid || !base::HexStringToUInt(vid, &vendor_id))
+      if (!vid || !base::HexStringToUInt(vid, &vendor_id)) {
         continue;
-      if (!pid || !base::HexStringToUInt(pid, &product_id))
+      }
+      if (!pid || !base::HexStringToUInt(pid, &product_id)) {
         continue;
+      }
       policy::DevicePolicy::UsbDeviceId id;
       id.vendor_id = vendor_id;
       id.product_id = product_id;
@@ -217,86 +219,100 @@ TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_IgnoreNonUsbDevice) {
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_DenyClaimedUsbDevice) {
   SetAllDevicesPrimary(false);
-  if (claimed_devices_.empty())
+  if (claimed_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no claimed devices "
                  << "connected.";
+  }
 
-  for (const string& device : claimed_devices_)
+  for (const string& device : claimed_devices_) {
     EXPECT_EQ(Rule::DENY, rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_IgnoreUnclaimedUsbDevice) {
   SetAllDevicesPrimary(false);
-  if (unclaimed_devices_.empty())
+  if (unclaimed_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no unclaimed devices "
                  << "connected.";
+  }
 
-  for (const string& device : unclaimed_devices_)
+  for (const string& device : unclaimed_devices_) {
     EXPECT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest,
        Legacy_AllowPartiallyClaimedUsbDeviceWithLockdown) {
   SetAllDevicesPrimary(false);
-  if (partially_claimed_devices_.empty())
+  if (partially_claimed_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no partially claimed "
                  << "devices connected.";
+  }
 
-  for (const string& device : partially_claimed_devices_)
+  for (const string& device : partially_claimed_devices_) {
     EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN,
               rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest,
        Legacy_AllowDetachableClaimedUsbDevice) {
   SetAllDevicesPrimary(false);
-  if (detachable_devices_.empty())
+  if (detachable_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no detachable "
                  << "devices connected.";
+  }
 
   rule_.SetMockedUsbAllowList(detachable_allow_list_);
 
-  for (const string& device : detachable_devices_)
+  for (const string& device : detachable_devices_) {
     EXPECT_EQ(Rule::ALLOW_WITH_DETACH,
               rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_AllowExternalDevices) {
   SetAllDevicesPrimary(false);
-  if (external_devices_.empty())
+  if (external_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no external "
                  << "devices connected.";
+  }
 
-  for (const string& device : external_devices_)
+  for (const string& device : external_devices_) {
     EXPECT_EQ(Rule::ALLOW_WITH_DETACH,
               rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_DenyInternalDevices) {
   SetAllDevicesPrimary(false);
-  if (internal_devices_.empty())
+  if (internal_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no internal "
                  << "devices connected.";
+  }
 
-  for (const string& device : internal_devices_)
+  for (const string& device : internal_devices_) {
     EXPECT_EQ(Rule::DENY, rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_DenyUnknownDevices) {
   SetAllDevicesPrimary(false);
-  if (unknown_devices_.empty())
+  if (unknown_devices_.empty()) {
     LOG(WARNING) << "Tests incomplete because there are no unknoen "
                  << "devices connected.";
+  }
 
-  for (const string& device : unknown_devices_)
+  for (const string& device : unknown_devices_) {
     EXPECT_EQ(Rule::DENY, rule_.ProcessDevice(FindDevice(device).get()))
         << device;
+  }
 }
 
 }  // namespace permission_broker

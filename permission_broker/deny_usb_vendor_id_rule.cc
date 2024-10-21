@@ -18,8 +18,9 @@ DenyUsbVendorIdRule::DenyUsbVendorIdRule(const uint16_t vendor_id)
 
 Rule::Result DenyUsbVendorIdRule::ProcessUsbDevice(struct udev_device* device) {
   const char* vendor_id = udev_device_get_sysattr_value(device, "idVendor");
-  if (vendor_id && (vendor_id_ == vendor_id))
+  if (vendor_id && (vendor_id_ == vendor_id)) {
     return DENY;
+  }
   return IGNORE;
 }
 

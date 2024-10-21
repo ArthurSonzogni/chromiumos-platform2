@@ -100,8 +100,9 @@ void RuleEngine::WaitForEmptyUdevQueue() {
     if (poll(&udev_poll, 1, poll_interval_.InMilliseconds()) > 0) {
       char buffer[sizeof(struct inotify_event)];
       const ssize_t result = read(udev_poll.fd, buffer, sizeof(buffer));
-      if (result < 0)
+      if (result < 0) {
         LOG(WARNING) << "Did not read complete udev event.";
+      }
     }
   }
   udev_queue_unref(queue);

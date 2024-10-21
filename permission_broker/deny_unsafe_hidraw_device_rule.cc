@@ -15,8 +15,9 @@ namespace permission_broker {
 namespace {
 
 bool IsKeyboardUsage(const HidUsage& usage) {
-  if (usage.page == HidUsage::PAGE_KEYBOARD)
+  if (usage.page == HidUsage::PAGE_KEYBOARD) {
     return true;
+  }
 
   if (usage.page == HidUsage::PAGE_GENERIC_DESKTOP) {
     return usage.usage == HidUsage::GENERIC_DESKTOP_USAGE_KEYBOARD ||
@@ -35,8 +36,9 @@ bool IsPointerUsage(const HidUsage& usage) {
 }
 
 bool IsSystemControlUsage(const HidUsage& usage) {
-  if (usage.page != HidUsage::PAGE_GENERIC_DESKTOP)
+  if (usage.page != HidUsage::PAGE_GENERIC_DESKTOP) {
     return false;
+  }
   if (usage.usage >= HidUsage::GENERIC_DESKTOP_USAGE_SYSTEM_CONTROL &&
       usage.usage <= HidUsage::GENERIC_DESKTOP_USAGE_SYSTEM_WARM_RESTART) {
     return true;
@@ -64,8 +66,9 @@ Rule::Result DenyUnsafeHidrawDeviceRule::ProcessHidrawDevice(
   struct udev_device* usb_device =
       udev_device_get_parent_with_subsystem_devtype(device, "usb",
                                                     "usb_device");
-  if (usb_device && IsDeviceAllowedWebHID(usb_device))
+  if (usb_device && IsDeviceAllowedWebHID(usb_device)) {
     return IGNORE;
+  }
 
   for (std::vector<HidUsage>::const_iterator iter = usages.begin();
        iter != usages.end(); ++iter) {

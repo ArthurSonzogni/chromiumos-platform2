@@ -120,8 +120,9 @@ bool ParseDescriptorItem(const HidReportDescriptor& descriptor,
                          DescriptorItem* item,
                          int* bytes_read,
                          int* new_depth) {
-  if (offset >= descriptor.size)
+  if (offset >= descriptor.size) {
     return false;
+  }
   uint8_t header = descriptor.data[offset];
   int data_size = header & 0x03;
   item->type = static_cast<ItemType>((header >> 2) & 0x03);
@@ -190,8 +191,9 @@ HidrawSubsystemUdevRule::HidrawSubsystemUdevRule(const string& name)
 Rule::Result HidrawSubsystemUdevRule::ProcessDevice(
     struct udev_device* device) {
   const char* const subsystem = udev_device_get_subsystem(device);
-  if (!subsystem || strcmp(subsystem, "hidraw"))
+  if (!subsystem || strcmp(subsystem, "hidraw")) {
     return IGNORE;
+  }
   return ProcessHidrawDevice(device);
 }
 
@@ -204,14 +206,18 @@ bool HidrawSubsystemUdevRule::ParseToplevelCollectionUsages(
   }
   for (int i = 0; i < static_cast<int>(items.size()) - 2; ++i) {
     DescriptorItem& first = items[i];
-    if (first.type != TYPE_GLOBAL || first.tag.global != GLOBAL_TAG_USAGE_PAGE)
+    if (first.type != TYPE_GLOBAL ||
+        first.tag.global != GLOBAL_TAG_USAGE_PAGE) {
       continue;
+    }
     DescriptorItem& second = items[i + 1];
-    if (second.type != TYPE_LOCAL || second.tag.local != LOCAL_TAG_USAGE)
+    if (second.type != TYPE_LOCAL || second.tag.local != LOCAL_TAG_USAGE) {
       continue;
+    }
     DescriptorItem& third = items[i + 2];
-    if (third.type != TYPE_MAIN || third.tag.main != MAIN_TAG_COLLECTION)
+    if (third.type != TYPE_MAIN || third.tag.main != MAIN_TAG_COLLECTION) {
       continue;
+    }
     usages->push_back(HidUsage(static_cast<HidUsage::Page>(first.data_value),
                                static_cast<uint16_t>(second.data_value)));
   }

@@ -69,8 +69,9 @@ bool ParseInputCapabilities(const char* input, std::vector<uint64_t>* output) {
     // Compact the vector of 32-bit values into a vector of 64-bit values.
     for (size_t i = 0; i < chunks.size(); i += 2) {
       (*output)[i / 2] = (*output)[i];
-      if (i + 1 < chunks.size())
+      if (i + 1 < chunks.size()) {
         (*output)[i / 2] |= (uint64_t)((*output)[i + 1]) << 32;
+      }
     }
     output->resize((chunks.size() + 1) / 2);
   }
@@ -80,24 +81,27 @@ bool ParseInputCapabilities(const char* input, std::vector<uint64_t>* output) {
 
 bool IsCapabilityBitSet(const std::vector<uint64_t>& bitfield, size_t bit) {
   size_t offset = bit / (sizeof(uint64_t) * 8);
-  if (offset >= bitfield.size())
+  if (offset >= bitfield.size()) {
     return false;
+  }
 
   return bitfield[offset] & (1ULL << (bit - offset * sizeof(bitfield[0]) * 8));
 }
 
 bool AnyCapabilityBitsSet(const std::vector<uint64_t>& bitfield) {
   for (auto value : bitfield) {
-    if (value != 0)
+    if (value != 0) {
       return true;
+    }
   }
   return false;
 }
 
 void UnsetCapabilityBit(std::vector<uint64_t>* bitfield, size_t bit) {
   size_t offset = bit / (sizeof(uint64_t) * 8);
-  if (offset >= bitfield->size())
+  if (offset >= bitfield->size()) {
     return;
+  }
 
   (*bitfield)[offset] &= ~(1ULL << (bit - offset * sizeof(uint64_t) * 8));
 }
@@ -107,14 +111,16 @@ void UnsetCapabilityBit(std::vector<uint64_t>* bitfield, size_t bit) {
 // Where # is the numeric index of the joydev device.
 bool IsJoydevDeviceNode(std::string_view devnode) {
   // Match the devnode prefix.
-  if (!base::StartsWith(devnode, kJoydevPrefix, base::CompareCase::SENSITIVE))
+  if (!base::StartsWith(devnode, kJoydevPrefix, base::CompareCase::SENSITIVE)) {
     return false;
+  }
 
   // Match if the suffix parses as a non-negative integer.
   devnode.remove_prefix(kJoydevPrefix.length());
   int joydev_index = 0;
-  if (!base::StringToInt(devnode, &joydev_index))
+  if (!base::StringToInt(devnode, &joydev_index)) {
     return false;
+  }
   return joydev_index >= 0;
 }
 
@@ -157,15 +163,17 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
       udev_device_get_parent_with_subsystem_devtype(device, "usb",
                                                     "usb_interface");
 
-  if (usb_interface)
+  if (usb_interface) {
     usb_interface_path = udev_device_get_syspath(usb_interface);
+  }
 
   // Ignore devices which are known to be safe and should work with WebHID.
   struct udev_device* usb_device =
       udev_device_get_parent_with_subsystem_devtype(device, "usb",
                                                     "usb_device");
-  if (usb_device && IsDeviceAllowedWebHID(usb_device))
+  if (usb_device && IsDeviceAllowedWebHID(usb_device)) {
     return IGNORE;
+  }
 
   // Count the number of children of the same HID parent as us.
   int hid_siblings = 0;
@@ -203,8 +211,9 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
     // subsystem and capabilities checks if one of the siblings is a joydev
     // device.
     const char* devnode = udev_device_get_devnode(child.get());
-    if (devnode && IsJoydevDeviceNode(devnode))
+    if (devnode && IsJoydevDeviceNode(devnode)) {
       return IGNORE;
+    }
 
     // This device shares a USB interface with the hidraw device in question.
     // Check its subsystem to see if it should block hidraw access.
@@ -224,14 +233,16 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
   // If the underlying device presents other interfaces, deny access to the
   // hidraw node as it may allow access to private data transmitted over these
   // interfaces.
-  if (should_sibling_subsystem_exclude_access)
+  if (should_sibling_subsystem_exclude_access) {
     return DENY;
+  }
 
   // If the underlying HID device presents no other interface than hidraw,
   // we can use it.
   // USB devices have already been filtered directly in the loop above.
-  if (!usb_interface && hid_siblings != 1)
+  if (!usb_interface && hid_siblings != 1) {
     return DENY;
+  }
 
   return IGNORE;
 }
@@ -284,16 +295,19 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
         IsCapabilityBitSet(capabilities, ABS_Y)) {
       UnsetCapabilityBit(&capabilities, ABS_X);
       UnsetCapabilityBit(&capabilities, ABS_Y);
-      if (!AnyCapabilityBitsSet(capabilities))
+      if (!AnyCapabilityBitsSet(capabilities)) {
         has_absolute_mouse_axes = true;
+      }
     }
 
     // Remove allowed capabilities. Any other absolute pointer capabilities
     // exclude access.
-    for (const auto& abs_capabilities : kAllowedAbsCapabilities)
+    for (const auto& abs_capabilities : kAllowedAbsCapabilities) {
       UnsetCapabilityBit(&capabilities, abs_capabilities);
-    if (AnyCapabilityBitsSet(capabilities))
+    }
+    if (AnyCapabilityBitsSet(capabilities)) {
       return true;
+    }
   }
 
   if (rel_capabilities) {
@@ -302,8 +316,9 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       return true;
     }
     // Any relative pointer capabilities exclude access.
-    if (AnyCapabilityBitsSet(capabilities))
+    if (AnyCapabilityBitsSet(capabilities)) {
       return true;
+    }
   }
 
   if (key_capabilities) {
@@ -320,8 +335,9 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
       UnsetCapabilityBit(&capabilities, BTN_LEFT);
       UnsetCapabilityBit(&capabilities, BTN_RIGHT);
       UnsetCapabilityBit(&capabilities, BTN_MIDDLE);
-      if (!AnyCapabilityBitsSet(capabilities))
+      if (!AnyCapabilityBitsSet(capabilities)) {
         has_absolute_mouse_keys = true;
+      }
     }
 
     // Any key code <= KEY_KPDOT (83) excludes access.
@@ -339,8 +355,9 @@ bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
   }
 
   // Exclude absolute pointing devices that match joydev's capabilities check.
-  if (has_absolute_mouse_axes && has_absolute_mouse_keys)
+  if (has_absolute_mouse_axes && has_absolute_mouse_keys) {
     return true;
+  }
 
   return false;
 }

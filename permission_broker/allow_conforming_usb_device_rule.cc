@@ -65,12 +65,13 @@ CrosUsbLocationProperty AncestorsLocation(udev_device* device) {
     }
   }
 
-  if (internal_ancestors)
+  if (internal_ancestors) {
     return CrosUsbLocationProperty::kInternal;
-  else if (external_ancestors)
+  } else if (external_ancestors) {
     return CrosUsbLocationProperty::kExternal;
-  else
+  } else {
     return CrosUsbLocationProperty::kUnknown;
+  }
 }
 
 // LEGACY FLOW FUNCTIONS
@@ -82,8 +83,9 @@ bool AllowConformingUsbDeviceRule::LoadPolicy() {
   policy_provider->Reload();
 
   // No available policies.
-  if (!policy_provider->device_policy_is_loaded())
+  if (!policy_provider->device_policy_is_loaded()) {
     return false;
+  }
 
   const policy::DevicePolicy* policy = &policy_provider->GetDevicePolicy();
 
@@ -99,22 +101,26 @@ bool AllowConformingUsbDeviceRule::LoadPolicy() {
 bool AllowConformingUsbDeviceRule::IsDeviceDetachableByPolicy(
     udev_device* device) {
   // Retrieve the device policy for detachable USB devices if needed.
-  if (!policy_loaded_)
+  if (!policy_loaded_) {
     policy_loaded_ = LoadPolicy();
-  if (!policy_loaded_)
+  }
+  if (!policy_loaded_) {
     return false;
+  }
 
   // Check whether this USB device is allowed.
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
-      !GetUIntSysattr(device, "idProduct", &product_id))
+      !GetUIntSysattr(device, "idProduct", &product_id)) {
     return false;
+  }
 
   bool allowed = UsbDeviceListContainsId(
       usb_allow_list_.begin(), usb_allow_list_.end(), vendor_id, product_id);
 
-  if (allowed)
+  if (allowed) {
     LOG(INFO) << "Found allowable device via policy.";
+  }
 
   return allowed;
 }
@@ -126,8 +132,9 @@ bool IsInterfaceAdb(udev_device* device) {
   uint32_t intf_class, intf_subclass, intf_protocol;
   if (!GetUIntSysattr(device, "bInterfaceClass", &intf_class) ||
       !GetUIntSysattr(device, "bInterfaceSubClass", &intf_subclass) ||
-      !GetUIntSysattr(device, "bInterfaceProtocol", &intf_protocol))
+      !GetUIntSysattr(device, "bInterfaceProtocol", &intf_protocol)) {
     return false;
+  }
 
   return intf_class == kAdbClass && intf_subclass == kAdbSubclass &&
          intf_protocol == kAdbProtocol;
@@ -158,13 +165,15 @@ bool IsInterfaceUsbSerial(udev_device* iface) {
 
 bool IsInterfaceStorage(udev_device* iface) {
   uint32_t interface_class;
-  if (!GetUIntSysattr(iface, "bInterfaceClass", &interface_class))
+  if (!GetUIntSysattr(iface, "bInterfaceClass", &interface_class)) {
     return false;
+  }
   // This matches USB drives, SD adapters, and so on.
   bool allowed = interface_class == USB_CLASS_MASS_STORAGE;
 
-  if (allowed)
+  if (allowed) {
     LOG(INFO) << "Found allowable storage interface.";
+  }
 
   return allowed;
 }
@@ -188,15 +197,17 @@ bool IsInterfaceSafeToDetach(udev_device* iface) {
 bool IsDeviceAllowedHID(udev_device* device) {
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
-      !GetUIntSysattr(device, "idProduct", &product_id))
+      !GetUIntSysattr(device, "idProduct", &product_id)) {
     return false;
+  }
 
   bool allowed =
       UsbDeviceListContainsId(std::begin(kHIDAllowedIds),
                               std::end(kHIDAllowedIds), vendor_id, product_id);
 
-  if (allowed)
+  if (allowed) {
     LOG(INFO) << "Found allowable HID device, safe to claim.";
+  }
 
   return allowed;
 }
@@ -204,15 +215,17 @@ bool IsDeviceAllowedHID(udev_device* device) {
 bool IsDeviceAllowedInternal(udev_device* device) {
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
-      !GetUIntSysattr(device, "idProduct", &product_id))
+      !GetUIntSysattr(device, "idProduct", &product_id)) {
     return false;
+  }
 
   bool allowed = UsbDeviceListContainsId(std::begin(kInternalAllowedIds),
                                          std::end(kInternalAllowedIds),
                                          vendor_id, product_id);
 
-  if (allowed)
+  if (allowed) {
     LOG(INFO) << "Found allowable internal device, safe to claim.";
+  }
 
   return allowed;
 }
@@ -220,15 +233,17 @@ bool IsDeviceAllowedInternal(udev_device* device) {
 bool IsDeviceAllowedSerial(udev_device* device) {
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
-      !GetUIntSysattr(device, "idProduct", &product_id))
+      !GetUIntSysattr(device, "idProduct", &product_id)) {
     return false;
+  }
 
   bool allowed = UsbDeviceListContainsId(std::begin(kSerialAllowedIds),
                                          std::end(kSerialAllowedIds), vendor_id,
                                          product_id);
 
-  if (allowed)
+  if (allowed) {
     LOG(INFO) << "Found allowable serial device, safe to claim.";
+  }
 
   return allowed;
 }
@@ -302,15 +317,17 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessLegacyDevice(
     return DENY;
   }
 
-  if (found_only_safe_interfaces)
+  if (found_only_safe_interfaces) {
     LOG(INFO) << "Found only detachable interface(s), safe to claim.";
+  }
 
   if (IsDeviceDetachableByPolicy(device) || IsDeviceAllowedSerial(device) ||
       IsDeviceAllowedHID(device) || found_adb_interface ||
-      found_only_safe_interfaces)
+      found_only_safe_interfaces) {
     return ALLOW_WITH_DETACH;
-  else
+  } else {
     return found_unclaimed_interface ? ALLOW_WITH_LOCKDOWN : DENY;
+  }
 }
 
 // END LEGACY FLOW
@@ -414,8 +431,9 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
     Result result = ProcessTaggedDevice(device, cros_usb_location.value());
     // If the tagged flow was truly not able to make a decision for a device,
     // allow the legacy flow to have an opinion.
-    if (result != Result::IGNORE)
+    if (result != Result::IGNORE) {
       return result;
+    }
 
     LOG(WARNING) << "CROS_USB_LOCATION had a value but was not enough to "
                     "determine permissibility, falling back to legacy logic.";

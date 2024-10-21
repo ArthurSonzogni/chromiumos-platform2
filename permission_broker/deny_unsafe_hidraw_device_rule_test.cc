@@ -64,8 +64,9 @@ HidReportDescriptor GenerateReportDescriptor(const uint8_t raw_data[],
 bool IsDeviceSafe(const std::vector<HidUsage>& usages) {
   for (std::vector<HidUsage>::const_iterator iter = usages.begin();
        iter != usages.end(); ++iter) {
-    if (DenyUnsafeHidrawDeviceRule::IsUnsafeUsage(*iter))
+    if (DenyUnsafeHidrawDeviceRule::IsUnsafeUsage(*iter)) {
       return false;
+    }
   }
   return true;
 }

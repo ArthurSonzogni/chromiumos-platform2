@@ -13,8 +13,9 @@ DenyUninitializedDeviceRule::DenyUninitializedDeviceRule()
 
 Rule::Result DenyUninitializedDeviceRule::ProcessDevice(
     struct udev_device* device) {
-  if (!udev_device_get_is_initialized(device))
+  if (!udev_device_get_is_initialized(device)) {
     return DENY;
+  }
   return IGNORE;
 }
 

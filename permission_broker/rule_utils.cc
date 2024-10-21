@@ -83,8 +83,9 @@ bool UsbDeviceListContainsId(Iterator first,
                              uint16_t product_id) {
   while (first != last) {
     if (first->vendor_id == vendor_id &&
-        (!first->product_id || first->product_id == product_id))
+        (!first->product_id || first->product_id == product_id)) {
       return true;
+    }
     ++first;
   }
   return false;

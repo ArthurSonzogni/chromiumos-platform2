@@ -18,8 +18,9 @@ Rule::Result DenyUsbDeviceClassRule::ProcessUsbDevice(
     struct udev_device* device) {
   const char* device_class =
       udev_device_get_sysattr_value(device, "bDeviceClass");
-  if (device_class && (device_class_ == device_class))
+  if (device_class && (device_class_ == device_class)) {
     return DENY;
+  }
   return IGNORE;
 }
 

@@ -58,8 +58,9 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
 
       std::string hid_parent_path(udev_device_get_syspath(hid_parent));
       std::string usb_interface_path;
-      if (usb_interface)
+      if (usb_interface) {
         usb_interface_path.assign(udev_device_get_syspath(usb_interface));
+      }
 
       int hid_siblings = 0;
       bool should_sibling_subsystem_exclude_access = false;
