@@ -491,4 +491,132 @@ TEST_F(ArcRemoteProvisioningContextTest,
   ASSERT_TRUE(result_map);
   ASSERT_FALSE(result_map->get("vbmeta_digest"));
 }
+
+TEST_F(ArcRemoteProvisioningContextTest, VerifyAndCopyDeviceIdsSuccess) {
+  // Prepare.
+  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
+  ::keymaster::AuthorizationSet input_params;
+  ::keymaster::AuthorizationSet output_params;
+
+  auto brand_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("brand"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_BRAND,
+                         brand_blob.data(), brand_blob.size());
+  auto device_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("device"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_DEVICE,
+                         device_blob.data(), device_blob.size());
+  auto product_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("product"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_PRODUCT,
+                         product_blob.data(), product_blob.size());
+  auto manufacturer_blob =
+      brillo::BlobFromString(kSampleDeviceIdMap.at("manufacturer"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_MANUFACTURER,
+                         manufacturer_blob.data(), manufacturer_blob.size());
+  auto model_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("model"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_MODEL,
+                         model_blob.data(), model_blob.size());
+
+  // Execute.
+  keymaster_error_t error =
+      remote_provisioning_context_->VerifyAndCopyDeviceIds(input_params,
+                                                           &output_params);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_OK);
+  EXPECT_EQ(output_params.size(), kSampleDeviceIdMap.size());
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, VerifyAndCopyDeviceIdsMismatch) {
+  // Prepare.
+  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
+  ::keymaster::AuthorizationSet input_params;
+  ::keymaster::AuthorizationSet output_params;
+
+  auto brand_blob = brillo::BlobFromString("fake_brand");
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_BRAND,
+                         brand_blob.data(), brand_blob.size());
+  auto device_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("device"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_DEVICE,
+                         device_blob.data(), device_blob.size());
+  auto product_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("product"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_PRODUCT,
+                         product_blob.data(), product_blob.size());
+  auto manufacturer_blob =
+      brillo::BlobFromString(kSampleDeviceIdMap.at("manufacturer"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_MANUFACTURER,
+                         manufacturer_blob.data(), manufacturer_blob.size());
+  auto model_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("model"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_MODEL,
+                         model_blob.data(), model_blob.size());
+
+  // Execute.
+  keymaster_error_t error =
+      remote_provisioning_context_->VerifyAndCopyDeviceIds(input_params,
+                                                           &output_params);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_CANNOT_ATTEST_IDS);
+  EXPECT_EQ(output_params.size(), 0);
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, VerifyAndCopyDeviceIdsSerialFailure) {
+  // Prepare.
+  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
+  ::keymaster::AuthorizationSet input_params;
+  ::keymaster::AuthorizationSet output_params;
+
+  auto brand_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("device"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_BRAND,
+                         brand_blob.data(), brand_blob.size());
+  auto device_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("device"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_DEVICE,
+                         device_blob.data(), device_blob.size());
+  auto product_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("product"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_PRODUCT,
+                         product_blob.data(), product_blob.size());
+  auto manufacturer_blob =
+      brillo::BlobFromString(kSampleDeviceIdMap.at("manufacturer"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_MANUFACTURER,
+                         manufacturer_blob.data(), manufacturer_blob.size());
+  auto model_blob = brillo::BlobFromString(kSampleDeviceIdMap.at("model"));
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_MODEL,
+                         model_blob.data(), model_blob.size());
+  auto serial_blob = brillo::BlobFromString("000000000000000");
+  input_params.push_back(::keymaster::TAG_ATTESTATION_ID_IMEI,
+                         serial_blob.data(), serial_blob.size());
+
+  // Execute.
+  keymaster_error_t error =
+      remote_provisioning_context_->VerifyAndCopyDeviceIds(input_params,
+                                                           &output_params);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_CANNOT_ATTEST_IDS);
+  EXPECT_EQ(output_params.size(), 0);
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, VerifyAndCopyDeviceIdsEmpty) {
+  // Prepare.
+  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
+  auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
+  ::keymaster::AuthorizationSet input_params;
+  ::keymaster::AuthorizationSet output_params;
+
+  // Execute.
+  keymaster_error_t error =
+      remote_provisioning_context_->VerifyAndCopyDeviceIds(input_params,
+                                                           &output_params);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_CANNOT_ATTEST_IDS);
+  EXPECT_EQ(output_params.size(), 0);
+}
 }  // namespace arc::keymint::context

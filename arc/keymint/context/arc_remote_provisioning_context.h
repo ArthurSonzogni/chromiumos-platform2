@@ -103,6 +103,10 @@ class ArcRemoteProvisioningContext
   */
   void SetChallengeForCertificateRequest(std::vector<uint8_t>& challenge);
 
+  keymaster_error_t VerifyAndCopyDeviceIds(
+      const ::keymaster::AuthorizationSet& attestation_params,
+      ::keymaster::AuthorizationSet* attestation) const;
+
  private:
   // Initialize the BCC if it has not yet happened.
   void ArcLazyInitProdBcc() const;

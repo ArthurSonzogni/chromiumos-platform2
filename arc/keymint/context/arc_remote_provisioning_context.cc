@@ -339,6 +339,18 @@ cppcose::ErrMsgOr<cppbor::Array> GenerateBccForProductionMode() {
   return cbor_array;
 }
 
+// Return true if entries match, false otherwise.
+bool matchAttestationId(keymaster_blob_t blob, const std::string& id) {
+  if (blob.data_length != id.size()) {
+    return false;
+  }
+
+  if (memcmp(blob.data, id.data(), id.size())) {
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 ArcRemoteProvisioningContext::ArcRemoteProvisioningContext(
@@ -561,4 +573,66 @@ void ArcRemoteProvisioningContext::SetVendorPatchlevel(
 void ArcRemoteProvisioningContext::SetBootPatchlevel(uint32_t boot_patchlevel) {
   boot_patchlevel_ = boot_patchlevel;
 }
+
+keymaster_error_t ArcRemoteProvisioningContext::VerifyAndCopyDeviceIds(
+    const ::keymaster::AuthorizationSet& attestation_params,
+    ::keymaster::AuthorizationSet* attestation) const {
+  if (!device_id_map_.has_value()) {
+    return KM_ERROR_CANNOT_ATTEST_IDS;
+  }
+
+  auto device_id_map = device_id_map_.value();
+  for (auto& entry : attestation_params) {
+    bool found_mismatch = false;
+    switch (entry.tag) {
+      case KM_TAG_ATTESTATION_ID_BRAND:
+        found_mismatch |=
+            !matchAttestationId(entry.blob, device_id_map["brand"]);
+        attestation->push_back(entry);
+        break;
+
+      case KM_TAG_ATTESTATION_ID_DEVICE:
+        found_mismatch |=
+            !matchAttestationId(entry.blob, device_id_map["device"]);
+        attestation->push_back(entry);
+        break;
+
+      case KM_TAG_ATTESTATION_ID_PRODUCT:
+        found_mismatch |=
+            !matchAttestationId(entry.blob, device_id_map["product"]);
+        attestation->push_back(entry);
+        break;
+
+      case KM_TAG_ATTESTATION_ID_MANUFACTURER:
+        found_mismatch |=
+            !matchAttestationId(entry.blob, device_id_map["manufacturer"]);
+        attestation->push_back(entry);
+        break;
+
+      case KM_TAG_ATTESTATION_ID_MODEL:
+        found_mismatch |=
+            !matchAttestationId(entry.blob, device_id_map["model"]);
+        attestation->push_back(entry);
+        break;
+
+      case KM_TAG_ATTESTATION_ID_IMEI:
+      case KM_TAG_ATTESTATION_ID_MEID:
+      case KM_TAG_ATTESTATION_ID_SERIAL:
+        found_mismatch = true;
+        break;
+
+      default:
+        // Ignore non-ID tags.
+        break;
+    }
+
+    if (found_mismatch) {
+      attestation->Clear();
+      return KM_ERROR_CANNOT_ATTEST_IDS;
+    }
+  }
+
+  return KM_ERROR_OK;
+}
+
 }  // namespace arc::keymint::context
