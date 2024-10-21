@@ -79,8 +79,9 @@ void DeviceTracker::RemoveDeviceObserver(Observer* obs) {
 
 void DeviceTracker::NotifyObserversDeviceAddedOrRemoved(const Device& dev,
                                                         bool added) {
-  for (Observer& observer : observer_list_)
+  for (Observer& observer : observer_list_) {
     observer.OnDeviceAddedOrRemoved(dev, added);
+  }
 }
 
 base::ScopedFD DeviceTracker::AddClientToReadSubdevice(uint32_t sys_num,
