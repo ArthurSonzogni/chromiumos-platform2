@@ -32,8 +32,9 @@ void OnDecreaseBrightness(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
   bool allow_off = true;
-  if (!dbus::MessageReader(method_call).PopBool(&allow_off))
+  if (!dbus::MessageReader(method_call).PopBool(&allow_off)) {
     allow_off = true;
+  }
 
   callback.Run(allow_off);
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));

@@ -75,8 +75,9 @@ bool ExternalDisplay::RealDelegate::PerformI2COperation(
   if (fd_ < 0) {
     // If powerd starts before udev, the permissions on the I2C device may
     // have been incorrect at startup. Try to reopen the device now.
-    if (!OpenI2CFile())
+    if (!OpenI2CFile()) {
       return false;
+    }
   }
   if (ioctl(fd_, I2C_RDWR, data) < 0) {
     PLOG(ERROR) << "I2C_RDWR ioctl to " << name_ << " failed";
@@ -119,8 +120,9 @@ base::TimeDelta ExternalDisplay::TestApi::GetTimerDelay() const {
 }
 
 bool ExternalDisplay::TestApi::TriggerTimeout() {
-  if (!display_->timer_.IsRunning())
+  if (!display_->timer_.IsRunning()) {
     return false;
+  }
 
   display_->timer_.Stop();
   display_->UpdateState();
@@ -268,14 +270,16 @@ void ExternalDisplay::UpdateState() {
   switch (state_) {
     case State::IDLE:
       // Nothing to do.
-      if (!HavePendingBrightnessAdjustment())
+      if (!HavePendingBrightnessAdjustment()) {
         return;
+      }
 
       // If the current brightness is cached, write the new brightness and then
       // start the timer to prevent another message from being sent too soon.
       if (HaveCachedBrightness()) {
-        if (WriteBrightness())
+        if (WriteBrightness()) {
           StartTimer(kDdcSetDelay);
+        }
         pending_brightness_adjustment_percent_ = 0.0;
         pending_brightness_percent_ = -1.0;
         return;
@@ -305,8 +309,9 @@ void ExternalDisplay::UpdateState() {
       // display and start the timer to prevent another message from being sent
       // too soon. If the write fails, discard the pending adjustment to prevent
       // a buggy display from resulting in infinite retries.
-      if (HavePendingBrightnessAdjustment() && WriteBrightness())
+      if (HavePendingBrightnessAdjustment() && WriteBrightness()) {
         StartTimer(kDdcSetDelay);
+      }
       pending_brightness_adjustment_percent_ = 0.0;
       pending_brightness_percent_ = -1.0;
       return;
@@ -327,8 +332,9 @@ ExternalDisplay::SendResult ExternalDisplay::SendMessage(
   // The final byte is a checksum consisting of the destination address and all
   // previous bytes XOR-ed together.
   message[message.size() - 1] = kDdcDisplayAddress;
-  for (size_t i = 0; i < message.size() - 1; ++i)
+  for (size_t i = 0; i < message.size() - 1; ++i) {
     message[message.size() - 1] ^= message[i];
+  }
 
   struct i2c_msg i2c_message;
   i2c_message.addr = kDdcI2CAddress;
@@ -366,8 +372,9 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
   memset(&ioctl_data, 0, sizeof(ioctl_data));
   ioctl_data.msgs = &i2c_message;
   ioctl_data.nmsgs = 1;
-  if (!delegate_->PerformI2COperation(&ioctl_data))
+  if (!delegate_->PerformI2COperation(&ioctl_data)) {
     return ReceiveResult::IOCTL_FAILED;
+  }
 
   VLOG(1) << "Received data from " << delegate_->GetName() << ": "
           << base::HexEncode(&(message[0]), message.size());
@@ -376,8 +383,9 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
   // XOR-ed with all other bytes in the message (excluding the final byte).
   const uint8_t received_checksum = message[message.size() - 1];
   uint8_t computed_checksum = kDdcVirtualHostAddress;
-  for (size_t i = 0; i < message.size() - 1; ++i)
+  for (size_t i = 0; i < message.size() - 1; ++i) {
     computed_checksum ^= message[i];
+  }
   if (received_checksum != computed_checksum) {
     LOG(WARNING) << "Ignoring reply from " << delegate_->GetName()
                  << " with checksum " << ByteToHex(received_checksum)

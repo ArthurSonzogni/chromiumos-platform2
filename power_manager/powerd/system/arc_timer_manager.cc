@@ -65,8 +65,9 @@ void WriteTimerIdsToDBusResponse(
     dbus::MessageWriter* writer) {
   dbus::MessageWriter array_writer(nullptr);
   writer->OpenArray("i", &array_writer);
-  for (auto id : timer_ids)
+  for (auto id : timer_ids) {
     array_writer.AppendInt32(id);
+  }
   writer->CloseContainer(&array_writer);
 }
 
@@ -118,8 +119,9 @@ void ArcTimerManager::Init(DBusWrapperInterface* dbus_wrapper) {
 std::vector<ArcTimerManager::TimerId> ArcTimerManager::GetTimerIdsForTesting(
     const std::string& tag) {
   auto it = client_timer_ids_.find(tag);
-  if (it == client_timer_ids_.end())
+  if (it == client_timer_ids_.end()) {
     return std::vector<TimerId>();
+  }
 
   return it->second;
 }
@@ -261,8 +263,9 @@ bool ArcTimerManager::ContainsDuplicateClocks(
     const std::vector<std::unique_ptr<ArcTimerInfo>>& arc_timers) {
   std::set<clockid_t> seen_clock_ids;
   for (const auto& timer : arc_timers) {
-    if (!seen_clock_ids.emplace(timer->clock_id).second)
+    if (!seen_clock_ids.emplace(timer->clock_id).second) {
       return true;
+    }
   }
   return false;
 }
@@ -311,8 +314,9 @@ void ArcTimerManager::HandleStartArcTimer(
   // in sleep.
   base::TimeTicks current_time_ticks = clock_->GetCurrentBootTime();
   base::TimeDelta delay;
-  if (absolute_expiration_time > current_time_ticks)
+  if (absolute_expiration_time > current_time_ticks) {
     delay = absolute_expiration_time - current_time_ticks;
+  }
   base::Time current_time = base::Time::Now();
   DVLOG(1) << "TimerId=" << timer_id << " CurrentTime=" << current_time
            << " NextAlarmAt=" << current_time + delay;
@@ -356,8 +360,9 @@ void ArcTimerManager::DeleteArcTimers(const std::string& tag) {
 
   DVLOG(1) << "Deleting timers for tag=" << tag;
   const auto& timer_ids = it->second;
-  for (auto timer_id : timer_ids)
+  for (auto timer_id : timer_ids) {
     timers_.erase(timer_id);
+  }
   client_timer_ids_.erase(it);
 }
 

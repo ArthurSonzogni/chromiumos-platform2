@@ -15,8 +15,9 @@ namespace power_manager::system {
 void ConfigureSmartDischarge(int64_t to_zero_hr,
                              int64_t cutoff_ua,
                              int64_t hibernate_ua) {
-  if (to_zero_hr < 0 || cutoff_ua < 0 || hibernate_ua < 0)
+  if (to_zero_hr < 0 || cutoff_ua < 0 || hibernate_ua < 0) {
     return;
+  }
 
   base::ScopedFD cros_ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
   if (!cros_ec_fd.is_valid()) {

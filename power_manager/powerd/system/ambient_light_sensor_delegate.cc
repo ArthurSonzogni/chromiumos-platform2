@@ -23,14 +23,16 @@ std::optional<int> AmbientLightSensorDelegate::CalculateColorTemperature(
   }
 
   double scale_factor = it_x->second + it_y->second + it_z->second;
-  if (scale_factor <= 0.0)
+  if (scale_factor <= 0.0) {
     return std::nullopt;
+  }
 
   double scaled_x = it_x->second / scale_factor;
   double scaled_y = it_y->second / scale_factor;
   // Avoid weird behavior around the function's pole.
-  if (scaled_y < 0.186)
+  if (scaled_y < 0.186) {
     return std::nullopt;
+  }
 
   double n = (scaled_x - 0.3320) / (0.1858 - scaled_y);
 

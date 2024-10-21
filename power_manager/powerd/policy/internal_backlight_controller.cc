@@ -119,14 +119,16 @@ double GetInitialBrightnessPercent(PrefsInterface* prefs,
           percent <= 100.0)
         << "Unable to parse \"" << parts[0] << "\" from pref " << pref_name
         << " as double in [0.0, 100.0]";
-    if (parts.size() == 1U)
+    if (parts.size() == 1U) {
       return percent;
+    }
 
     int64_t nits = -1;
     CHECK(base::StringToInt64(parts[1], &nits))
         << "Unable to parse \"" << parts[1] << "\" from pref " << pref_name;
-    if (nits == backlight_nits)
+    if (nits == backlight_nits) {
       return percent;
+    }
   }
 
   LOG(FATAL) << "Unable to find initial brightness percentage in pref "
@@ -292,8 +294,9 @@ void InternalBacklightController::RemoveObserver(
 }
 
 void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
-  if (got_power_source_ && power_source_ == source)
+  if (got_power_source_ && power_source_ == source) {
     return;
+  }
 
   VLOG(1) << "Power source changed to " << PowerSourceToString(source);
 
@@ -304,10 +307,11 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   if (got_power_source_) {
     const bool battery_exceeds_ac =
         battery_explicit_brightness_percent_ > ac_explicit_brightness_percent_;
-    if (on_ac && battery_exceeds_ac)
+    if (on_ac && battery_exceeds_ac) {
       ac_explicit_brightness_percent_ = battery_explicit_brightness_percent_;
-    else if (!on_ac && battery_exceeds_ac)
+    } else if (!on_ac && battery_exceeds_ac) {
       battery_explicit_brightness_percent_ = ac_explicit_brightness_percent_;
+    }
   }
 
   power_source_ = source;
@@ -315,19 +319,22 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   UpdateState(
       on_ac ? BacklightBrightnessChange_Cause_EXTERNAL_POWER_CONNECTED
             : BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED);
-  if (ambient_light_handler_)
+  if (ambient_light_handler_) {
     ambient_light_handler_->HandlePowerSourceChange(source);
+  }
 }
 
 void InternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {
-  if (display_mode_ == mode)
+  if (display_mode_ == mode) {
     return;
+  }
 
   display_mode_ = mode;
 
   // If there's no external display now, make sure that the panel is on.
-  if (display_mode_ == DisplayMode::NORMAL)
+  if (display_mode_ == DisplayMode::NORMAL) {
     EnsureUserBrightnessIsNonzero(BacklightBrightnessChange_Cause_OTHER);
+  }
 }
 
 void InternalBacklightController::HandleSessionStateChange(SessionState state) {
@@ -356,9 +363,10 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
       type != USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS &&
       type != USER_ACTIVITY_VOLUME_UP_KEY_PRESS &&
       type != USER_ACTIVITY_VOLUME_DOWN_KEY_PRESS &&
-      type != USER_ACTIVITY_VOLUME_MUTE_KEY_PRESS)
+      type != USER_ACTIVITY_VOLUME_MUTE_KEY_PRESS) {
     EnsureUserBrightnessIsNonzero(
         BacklightBrightnessChange_Cause_USER_ACTIVITY);
+  }
 }
 
 void InternalBacklightController::HandleVideoActivity(bool is_fullscreen) {}
@@ -440,8 +448,9 @@ void InternalBacklightController::HandleBatterySaverModeChange(
 }
 
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
-  if (dimmed_for_inactivity_ == dimmed)
+  if (dimmed_for_inactivity_ == dimmed) {
     return;
+  }
 
   VLOG(1) << (dimmed ? "Dimming" : "No longer dimming") << " for inactivity";
   dimmed_for_inactivity_ = dimmed;
@@ -451,8 +460,9 @@ void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
 }
 
 void InternalBacklightController::SetOffForInactivity(bool off) {
-  if (off_for_inactivity_ == off)
+  if (off_for_inactivity_ == off) {
     return;
+  }
 
   VLOG(1) << (off ? "Turning backlight off" : "No longer keeping backlight off")
           << " for inactivity";
@@ -462,32 +472,37 @@ void InternalBacklightController::SetOffForInactivity(bool off) {
 }
 
 void InternalBacklightController::SetSuspended(bool suspended) {
-  if (suspended_ == suspended)
+  if (suspended_ == suspended) {
     return;
+  }
 
   VLOG(1) << (suspended ? "Suspending" : "Unsuspending") << " backlight";
   suspended_ = suspended;
   UpdateState(BacklightBrightnessChange_Cause_OTHER);
 
-  if (!suspended && ambient_light_handler_)
+  if (!suspended && ambient_light_handler_) {
     ambient_light_handler_->HandleResume();
+  }
 }
 
 void InternalBacklightController::SetShuttingDown(bool shutting_down) {
-  if (shutting_down_ == shutting_down)
+  if (shutting_down_ == shutting_down) {
     return;
+  }
 
-  if (shutting_down)
+  if (shutting_down) {
     VLOG(1) << "Preparing backlight for shutdown";
-  else
+  } else {
     LOG(WARNING) << "Exiting shutting-down state";
+  }
   shutting_down_ = shutting_down;
   UpdateState(BacklightBrightnessChange_Cause_OTHER);
 }
 
 void InternalBacklightController::SetForcedOff(bool forced_off) {
-  if (forced_off_ == forced_off)
+  if (forced_off_ == forced_off) {
     return;
+  }
 
   VLOG(1) << (forced_off ? "Forcing" : "Not forcing") << " backlight off";
   forced_off_ = forced_off;
@@ -517,14 +532,16 @@ int InternalBacklightController::GetNumUserAdjustments() const {
 double InternalBacklightController::LevelToPercent(int64_t raw_level) const {
   // If the passed-in level is below the minimum visible level, just map it
   // linearly into [0, kMinVisiblePercent).
-  if (raw_level < min_visible_level_)
+  if (raw_level < min_visible_level_) {
     return kMinVisiblePercent * static_cast<double>(raw_level) /
            static_cast<double>(min_visible_level_);
+  }
 
   // Since we're at or above the minimum level, we know that we're at 100% if
   // the min and max are equal.
-  if (min_visible_level_ == max_level_)
+  if (min_visible_level_ == max_level_) {
     return 100.0;
+  }
 
   double linear_fraction = static_cast<double>(raw_level - min_visible_level_) /
                            static_cast<double>(max_level_ - min_visible_level_);
@@ -534,12 +551,14 @@ double InternalBacklightController::LevelToPercent(int64_t raw_level) const {
 }
 
 int64_t InternalBacklightController::PercentToLevel(double percent) const {
-  if (percent < kMinVisiblePercent)
+  if (percent < kMinVisiblePercent) {
     return lround(static_cast<double>(min_visible_level_) * percent /
                   kMinVisiblePercent);
+  }
 
-  if (percent == kMaxPercent)
+  if (percent == kMaxPercent) {
     return max_level_;
+  }
 
   double linear_fraction =
       (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent);
@@ -554,8 +573,9 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
   ambient_light_brightness_percent_ = brightness_percent;
   got_ambient_light_brightness_percent_ = true;
 
-  if (!use_ambient_light_)
+  if (!use_ambient_light_) {
     return;
+  }
 
   // If powerd hasn't started controlling the backlight yet, don't blame ambient
   // light for any brightness change that UpdateState() may end up making.
@@ -573,8 +593,9 @@ void InternalBacklightController::SetBrightnessPercentForAmbientLight(
 
   const int64_t old_level = current_level_;
   UpdateState(backlight_cause, transition);
-  if (ambient_light_changed && current_level_ != old_level)
+  if (ambient_light_changed && current_level_ != old_level) {
     als_adjustment_count_++;
+  }
 }
 
 void InternalBacklightController::OnColorTemperatureChanged(
@@ -617,8 +638,9 @@ double InternalBacklightController::GetExplicitBrightnessPercent() const {
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {
-  if (use_ambient_light_)
+  if (use_ambient_light_) {
     return ClampPercentToVisibleRange(ambient_light_brightness_percent_);
+  }
 
   const double percent = GetExplicitBrightnessPercent();
   return percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
@@ -852,8 +874,9 @@ void InternalBacklightController::UpdateState(
   // TODO(chromeos-power): Don't bail out if we'll turn the display off, since
   // that's independent of all of this.
   if (!got_power_source_ ||
-      (use_ambient_light_ && !got_ambient_light_brightness_percent_))
+      (use_ambient_light_ && !got_ambient_light_brightness_percent_)) {
     return;
+  }
 
   // First, figure out the backlight brightness and display power state that we
   // should be using right now.
@@ -922,8 +945,9 @@ void InternalBacklightController::UpdateState(
     bool starting_below_min_visible_level = current_level_ < min_visible_level_;
     bool ending_below_min_visible_level = new_level < min_visible_level_;
     if (instant_transitions_below_min_level_ &&
-        starting_below_min_visible_level != ending_below_min_visible_level)
+        starting_below_min_visible_level != ending_below_min_visible_level) {
       brightness_transition = Transition::INSTANT;
+    }
 
     base::TimeDelta interval = TransitionToTimeDelta(brightness_transition);
     LOG(INFO) << "Setting brightness to " << new_level << " ("
@@ -941,8 +965,9 @@ void InternalBacklightController::UpdateState(
 
       EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
                                   brightness_percent, cause);
-      for (BacklightControllerObserver& observer : observers_)
+      for (BacklightControllerObserver& observer : observers_) {
         observer.OnBrightnessChange(brightness_percent, cause, this);
+      }
     }
   }
 

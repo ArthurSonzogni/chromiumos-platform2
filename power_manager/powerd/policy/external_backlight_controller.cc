@@ -54,8 +54,9 @@ ExternalBacklightController::ExternalBacklightController()
     : weak_ptr_factory_(this) {}
 
 ExternalBacklightController::~ExternalBacklightController() {
-  if (display_watcher_)
+  if (display_watcher_) {
     display_watcher_->RemoveObserver(this);
+  }
   if (ambient_light_sensor_watcher_) {
     ambient_light_sensor_watcher_->RemoveObserver(this);
   }
@@ -147,8 +148,9 @@ void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {
 void ExternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
 void ExternalBacklightController::HandleSessionStateChange(SessionState state) {
-  if (state == SessionState::STARTED)
+  if (state == SessionState::STARTED) {
     num_brightness_adjustments_in_session_ = 0;
+  }
 }
 
 void ExternalBacklightController::HandlePowerButtonPress() {}
@@ -190,16 +192,18 @@ void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
 }
 
 void ExternalBacklightController::SetOffForInactivity(bool off) {
-  if (off == off_for_inactivity_)
+  if (off == off_for_inactivity_) {
     return;
+  }
   off_for_inactivity_ = off;
   UpdateScreenPowerState(off ? BacklightBrightnessChange_Cause_USER_INACTIVITY
                              : BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void ExternalBacklightController::SetSuspended(bool suspended) {
-  if (suspended == suspended_)
+  if (suspended == suspended_) {
     return;
+  }
   suspended_ = suspended;
   UpdateScreenPowerState(BacklightBrightnessChange_Cause_OTHER);
 
@@ -213,8 +217,9 @@ void ExternalBacklightController::SetSuspended(bool suspended) {
 }
 
 void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
-  if (shutting_down == shutting_down_)
+  if (shutting_down == shutting_down_) {
     return;
+  }
   shutting_down_ = shutting_down;
   UpdateScreenPowerState(BacklightBrightnessChange_Cause_OTHER);
 }
@@ -226,8 +231,9 @@ bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
 }
 
 void ExternalBacklightController::SetForcedOff(bool forced_off) {
-  if (forced_off_ == forced_off)
+  if (forced_off_ == forced_off) {
     return;
+  }
 
   forced_off_ = forced_off;
   UpdateScreenPowerState(
@@ -339,19 +345,22 @@ void ExternalBacklightController::UpdateScreenPowerState(
 
 void ExternalBacklightController::NotifyObservers(
     BacklightBrightnessChange_Cause cause) {
-  for (BacklightControllerObserver& observer : observers_)
+  for (BacklightControllerObserver& observer : observers_) {
     observer.OnBrightnessChange(currently_off_ ? 0.0 : 100.0, cause, this);
+  }
 }
 
 void ExternalBacklightController::UpdateDisplays(
     const std::vector<system::DisplayInfo>& displays) {
   ExternalDisplayMap updated_displays;
   for (const system::DisplayInfo& info : displays) {
-    if (info.i2c_path.empty())
+    if (info.i2c_path.empty()) {
       continue;
+    }
     if (info.connector_status !=
-        system::DisplayInfo::ConnectorStatus::CONNECTED)
+        system::DisplayInfo::ConnectorStatus::CONNECTED) {
       continue;
+    }
 
     auto existing_display_it = external_displays_.find(info);
     if (existing_display_it != external_displays_.end()) {

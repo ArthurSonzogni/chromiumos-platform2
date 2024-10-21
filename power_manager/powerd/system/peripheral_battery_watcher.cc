@@ -49,8 +49,9 @@ constexpr LazyRE2 kPeripheralChargerRegex = {
 // Reads |path| to |value_out| and trims trailing whitespace. False is returned
 // if the file doesn't exist or can't be read.
 bool ReadStringFromFile(const base::FilePath& path, std::string* value_out) {
-  if (!base::ReadFileToString(path, value_out))
+  if (!base::ReadFileToString(path, value_out)) {
     return false;
+  }
 
   base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);
   return true;
@@ -59,11 +60,13 @@ bool ReadStringFromFile(const base::FilePath& path, std::string* value_out) {
 bool ExtractBluetoothAddress(const base::FilePath& path, std::string* address) {
   // Standard HID devices have the convention of "hid-{btaddr}-battery"
   // file name in /sys/class/power_supply."
-  if (RE2::FullMatch(path.value(), ".*hid-(.+)-battery", address))
+  if (RE2::FullMatch(path.value(), ".*hid-(.+)-battery", address)) {
     return true;
+  }
 
-  if (path.value().find("wacom") == std::string::npos)
+  if (path.value().find("wacom") == std::string::npos) {
     return false;
+  }
 
   // Handle wacom specifically, the Bluetooth address is in
   // /sys/class/power_suply/wacom_xxx/powers/uevent having HID_UNIQ= prefix.
@@ -74,8 +77,9 @@ bool ExtractBluetoothAddress(const base::FilePath& path, std::string* address) {
 
 bool IsSysfsBatteryBlocked(const std::string& model_name) {
   // Keychron keyboards don't send reliable battery values (b/177593938).
-  if (model_name.find("Keychron") != std::string::npos)
+  if (model_name.find("Keychron") != std::string::npos) {
     return true;
+  }
 
   return false;
 }
@@ -106,8 +110,9 @@ PeripheralBatteryWatcher::PeripheralBatteryWatcher()
       weak_ptr_factory_(this) {}
 
 PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
+  }
 }
 
 void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper,
@@ -131,8 +136,9 @@ void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper,
 void PeripheralBatteryWatcher::OnUdevEvent(const UdevEvent& event) {
   base::FilePath path = base::FilePath(peripheral_battery_path_)
                             .Append(event.device_info.sysname);
-  if (event.action == UdevEvent::Action::REMOVE || !IsPeripheralDevice(path))
+  if (event.action == UdevEvent::Action::REMOVE || !IsPeripheralDevice(path)) {
     return;
+  }
 
   // An event of a peripheral device is detected through udev, Refresh the
   // battery status of that device.
@@ -161,8 +167,9 @@ void PeripheralBatteryWatcher::GetBatteryList(
 
   for (base::FilePath device_path = dir_enumerator.Next(); !device_path.empty();
        device_path = dir_enumerator.Next()) {
-    if (!IsPeripheralDevice(device_path))
+    if (!IsPeripheralDevice(device_path)) {
       continue;
+    }
 
     // Some devices may initially have an unknown status; avoid reporting
     // them: http://b/64392016. Unknown status for chargers is always
@@ -170,8 +177,9 @@ void PeripheralBatteryWatcher::GetBatteryList(
     std::string status;
     if (!IsPeripheralChargerDevice(device_path) &&
         ReadStringFromFile(device_path.Append(kStatusFile), &status) &&
-        status == kStatusValueUnknown)
+        status == kStatusValueUnknown) {
       continue;
+    }
 
     battery_list->push_back(device_path);
   }
@@ -198,19 +206,21 @@ int PeripheralBatteryWatcher::ReadChargeStatus(
 
   // Then check general status, looking for known states.
   std::string status;
-  if (!ReadStringFromFile(status_path, &status))
+  if (!ReadStringFromFile(status_path, &status)) {
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN;
+  }
 
-  if (status == kStatusValueCharging)
+  if (status == kStatusValueCharging) {
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_CHARGING;
-  else if (status == kStatusValueDischarging)
+  } else if (status == kStatusValueDischarging) {
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_DISCHARGING;
-  else if (status == kStatusValueNotcharging)
+  } else if (status == kStatusValueNotcharging) {
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_NOT_CHARGING;
-  else if (status == kStatusValueFull)
+  } else if (status == kStatusValueFull) {
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_FULL;
-  else
+  } else {
     return PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN;
+  }
 }
 
 std::string PeripheralBatteryWatcher::ReadSerialNumber(
@@ -233,16 +243,19 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
                                                  bool active_update) {
   // sysfs entry "capacity" has the current battery level.
   base::FilePath capacity_path = path.Append(kCapacityFile);
-  if (!base::PathExists(capacity_path))
+  if (!base::PathExists(capacity_path)) {
     return;
+  }
 
   std::string model_name;
   if (!IsPeripheralChargerDevice(path) &&
-      !ReadStringFromFile(path.Append(kModelNameFile), &model_name))
+      !ReadStringFromFile(path.Append(kModelNameFile), &model_name)) {
     return;
+  }
 
-  if (IsSysfsBatteryBlocked(model_name))
+  if (IsSysfsBatteryBlocked(model_name)) {
     return;
+  }
 
   int status;
   std::string sn;
@@ -307,10 +320,12 @@ void PeripheralBatteryWatcher::SendBatteryStatus(
   proto.set_name(model_name);
   proto.set_charge_status(
       (power_manager::PeripheralBatteryStatus_ChargeStatus)charge_status);
-  if (level >= 0)
+  if (level >= 0) {
     proto.set_level(level);
-  if (!serial_number.empty())
+  }
+  if (!serial_number.empty()) {
     proto.set_serial_number(serial_number);
+  }
   proto.set_active_update(active_update);
 
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kPeripheralBatteryStatusSignal,

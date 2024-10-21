@@ -52,8 +52,9 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
     fake_discharge = false;
     fake_lower = lower;
     fake_upper = upper;
-    if (enable_battery_sustain_closure && lower != kBatterySustainDisabled)
+    if (enable_battery_sustain_closure && lower != kBatterySustainDisabled) {
       enable_battery_sustain_closure.Run();
+    }
     return true;
   }
 
@@ -863,8 +864,9 @@ TEST_F(AdaptiveChargingControllerTest, TimeFullWrittenOnLowPowerStates) {
   base::FileEnumerator full_on_ac_dir(time_full_on_ac_dir_, false,
                                       base::FileEnumerator::FILES);
   for (base::FilePath path = full_on_ac_dir.Next(); !path.empty();
-       path = full_on_ac_dir.Next())
+       path = full_on_ac_dir.Next()) {
     duration += ReadTimeDeltaFromFile(path);
+  }
 
   EXPECT_EQ(base::Hours(1), duration);
 
@@ -872,8 +874,9 @@ TEST_F(AdaptiveChargingControllerTest, TimeFullWrittenOnLowPowerStates) {
                                       base::FileEnumerator::FILES);
   duration = base::TimeDelta();
   for (base::FilePath path = hold_on_ac_dir.Next(); !path.empty();
-       path = hold_on_ac_dir.Next())
+       path = hold_on_ac_dir.Next()) {
     duration += ReadTimeDeltaFromFile(path);
+  }
 
   EXPECT_EQ(base::Hours(1), duration);
 }

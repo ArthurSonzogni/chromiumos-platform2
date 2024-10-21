@@ -24,8 +24,9 @@ namespace {
 void HandleSignalConnected(const std::string& interface,
                            const std::string& signal,
                            bool success) {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
+  }
 }
 
 }  // namespace

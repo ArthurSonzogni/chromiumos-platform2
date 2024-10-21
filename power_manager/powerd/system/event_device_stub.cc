@@ -18,8 +18,9 @@ void EventDeviceStub::AppendEvent(uint16_t type, uint16_t code, int32_t value) {
 }
 
 void EventDeviceStub::NotifyAboutEvents() {
-  if (!new_events_cb_.is_null())
+  if (!new_events_cb_.is_null()) {
     new_events_cb_.Run();
+  }
 }
 
 std::string EventDeviceStub::GetDebugName() {
@@ -68,10 +69,12 @@ TabletMode EventDeviceStub::GetInitialTabletMode() {
 
 EventDeviceStub::ReadResult EventDeviceStub::ReadEvents(
     std::vector<input_event>* events_out) {
-  if (device_disconnected_)
+  if (device_disconnected_) {
     return ReadResult::kNoDevice;
-  if (events_.empty())
+  }
+  if (events_.empty()) {
     return ReadResult::kFailure;
+  }
 
   events_out->swap(events_);
   events_.clear();

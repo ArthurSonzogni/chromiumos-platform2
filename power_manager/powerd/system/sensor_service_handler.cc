@@ -50,8 +50,9 @@ void SensorServiceHandler::SetUpChannel(
   sensor_service_remote_->GetAllDeviceIds(base::BindOnce(
       &SensorServiceHandler::GetAllDeviceIdsCallback, base::Unretained(this)));
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.SensorServiceConnected();
+  }
 }
 
 void SensorServiceHandler::OnNewDeviceAdded(
@@ -60,8 +61,9 @@ void SensorServiceHandler::OnNewDeviceAdded(
 
   iio_device_ids_types_.emplace(iio_device_id, types);
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnNewDeviceAdded(iio_device_id, types);
+  }
 }
 
 void SensorServiceHandler::OnDeviceRemoved(int32_t iio_device_id) {
@@ -69,8 +71,9 @@ void SensorServiceHandler::OnDeviceRemoved(int32_t iio_device_id) {
 
   iio_device_ids_types_.erase(iio_device_id);
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnDeviceRemoved(iio_device_id);
+  }
 }
 
 void SensorServiceHandler::AddObserver(SensorServiceHandlerObserver* observer) {
@@ -121,8 +124,9 @@ void SensorServiceHandler::ResetSensorService(bool reconnect) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (sensor_service_remote_.is_bound()) {
-    for (auto& observer : observers_)
+    for (auto& observer : observers_) {
       observer.SensorServiceDisconnected();
+    }
   }
 
   new_devices_observer_.reset();
@@ -152,16 +156,18 @@ void SensorServiceHandler::GetAllDeviceIdsCallback(
 
   iio_device_ids_types_ = iio_device_ids_types;
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     NotifyObserverWithCurrentDevices(&observer);
+  }
 }
 
 void SensorServiceHandler::NotifyObserverWithCurrentDevices(
     SensorServiceHandlerObserver* observer) {
   TRACE_EVENT("power",
               "SensorServiceHandler::NotifyObserverWithCurrentDevices");
-  for (auto& id_types : iio_device_ids_types_)
+  for (auto& id_types : iio_device_ids_types_) {
     observer->OnNewDeviceAdded(id_types.first, id_types.second);
+  }
 }
 
 }  // namespace power_manager::system

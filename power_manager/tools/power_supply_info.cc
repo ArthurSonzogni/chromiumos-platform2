@@ -140,25 +140,29 @@ int main(int argc, char** argv) {
       display.PrintStringValue("enum type", "Unknown");
   }
 
-  if (status.has_line_power_voltage)
+  if (status.has_line_power_voltage) {
     display.PrintValue("voltage (V)", status.line_power_voltage);
-  else
+  } else {
     display.PrintValue("voltage (V)", "Not available");
+  }
 
-  if (status.has_line_power_current)
+  if (status.has_line_power_current) {
     display.PrintValue("current (A)", status.line_power_current);
-  else
+  } else {
     display.PrintValue("current (A)", "Not available");
+  }
 
-  if (status.has_line_power_max_voltage)
+  if (status.has_line_power_max_voltage) {
     display.PrintValue("max voltage (V)", status.line_power_max_voltage);
-  else
+  } else {
     display.PrintValue("max voltage (V)", "Not available");
+  }
 
-  if (status.has_line_power_max_current)
+  if (status.has_line_power_max_current) {
     display.PrintValue("max current (A)", status.line_power_max_current);
-  else
+  } else {
     display.PrintValue("max current (A)", "Not available");
+  }
 
   display.PrintStringValue("active source", status.external_power_source_id);
   std::vector<std::string> sources;

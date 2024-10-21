@@ -49,8 +49,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // for that and return early if so.
   auto random_backlight_dirname =
       base::FilePath(data_provider.ConsumeRandomLengthString(100));
-  if (random_backlight_dirname.IsAbsolute())
+  if (random_backlight_dirname.IsAbsolute()) {
     return 0;
+  }
 
   const base::FilePath random_backlight_path =
       random_test_dir.Append(random_backlight_dirname);
@@ -77,8 +78,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Try creating a backlight, but if the Init() fails, just return.
   bool created = real_backlight.Init(real_test_dir, "*");
-  if (!created)
+  if (!created) {
     return 0;
+  }
 
   int64_t target_brightness = data_provider.ConsumeIntegral<int64_t>();
   const base::TimeDelta duration =

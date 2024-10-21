@@ -222,8 +222,9 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
 
       // Determine if this directory path's bit is set in the current cycle
       // number.
-      if (!((cycle >> i) & 1))
+      if (!((cycle >> i) & 1)) {
         continue;
+      }
 
       // For path[i], write the default test values + i.
       // This way, each path's pref file will have a unique value.
@@ -248,8 +249,9 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
     int num_directories_checked = 0;
     for (i = 0; i < kNumPrefDirectories; ++i) {
       // If the current directory was not used this cycle, disregard it.
-      if (!((cycle >> i) & 1))
+      if (!((cycle >> i) & 1)) {
         continue;
+      }
       if (is_first_valid_directory) {
         // First valid directory should match.
         EXPECT_EQ(kIntTestValue + i, int_value);

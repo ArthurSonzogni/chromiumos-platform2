@@ -41,8 +41,9 @@ bool IsConnectorStatus(const base::FilePath& drm_device_dir,
   base::FilePath status_path =
       drm_device_dir.Append(DisplayWatcher::kDrmStatusFile);
   std::string status;
-  if (!base::ReadFileToString(status_path, &status))
+  if (!base::ReadFileToString(status_path, &status)) {
     return false;
+  }
 
   // Trim whitespace to deal with trailing newlines.
   base::TrimWhitespaceASCII(status, base::TRIM_TRAILING, &status);
@@ -66,8 +67,9 @@ DisplayWatcher::~DisplayWatcher() {
 }
 
 bool DisplayWatcher::trigger_debounce_timeout_for_testing() {
-  if (!debounce_timer_.IsRunning())
+  if (!debounce_timer_.IsRunning()) {
     return false;
+  }
   debounce_timer_.Stop();
   HandleDebounceTimeout();
   return true;
@@ -124,8 +126,9 @@ base::FilePath DisplayWatcher::GetI2CDevicePath(const base::FilePath& drm_dir) {
   base::FilePath i2c_dev;
 
   i2c_dev = FindI2CDeviceInDir(drm_dir.AppendASCII("ddc/i2c-dev"));
-  if (!base::PathExists(i2c_dev))
+  if (!base::PathExists(i2c_dev)) {
     i2c_dev = FindI2CDeviceInDir(drm_dir);
+  }
 
   return i2c_dev;
 }
@@ -142,15 +145,17 @@ base::FilePath DisplayWatcher::FindI2CDeviceInDir(const base::FilePath& dir) {
                                   : i2c_dev_path_for_testing_;
     const std::string i2c_name = i2c_dir.BaseName().value();
     base::FilePath i2c_dev = dev_path.Append(i2c_name);
-    if (base::PathExists(i2c_dev))
+    if (base::PathExists(i2c_dev)) {
       return i2c_dev;
+    }
   }
   return base::FilePath();
 }
 
 void DisplayWatcher::PublishDisplayChanges() {
-  for (DisplayWatcherObserver& observer : observers_)
+  for (DisplayWatcherObserver& observer : observers_) {
     observer.OnDisplaysChanged(displays_);
+  }
 }
 
 void DisplayWatcher::HandleDebounceTimeout() {
@@ -172,12 +177,13 @@ void DisplayWatcher::UpdateDisplays(UpdateMode update_mode) {
   for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
        device_path = enumerator.Next()) {
     DisplayInfo info;
-    if (IsConnectorStatus(device_path, kDrmStatusConnected))
+    if (IsConnectorStatus(device_path, kDrmStatusConnected)) {
       info.connector_status = DisplayInfo::ConnectorStatus::CONNECTED;
-    else if (IsConnectorStatus(device_path, kDrmStatusUnknown))
+    } else if (IsConnectorStatus(device_path, kDrmStatusUnknown)) {
       info.connector_status = DisplayInfo::ConnectorStatus::UNKNOWN;
-    else
+    } else {
       continue;
+    }
 
     info.drm_path = device_path;
     info.i2c_path = GetI2CDevicePath(device_path);
@@ -190,8 +196,9 @@ void DisplayWatcher::UpdateDisplays(UpdateMode update_mode) {
 
   std::sort(new_displays.begin(), new_displays.end());
 
-  if (new_displays == displays_)
+  if (new_displays == displays_) {
     return;
+  }
 
   displays_.swap(new_displays);
 

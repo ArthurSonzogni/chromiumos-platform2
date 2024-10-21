@@ -121,8 +121,9 @@ void SuspendConfigurator::ReadInitialSuspendMode() {
   // Save the initial suspend mode if it doesn't exist.
   if (!base::PathExists(initial_suspend_mode_path_)) {
     std::optional<std::string> state = ReadPowerMemSleepValue();
-    if (!SaveInitialSuspendMode(state) || state == std::nullopt)
+    if (!SaveInitialSuspendMode(state) || state == std::nullopt) {
       return;
+    }
     mem_sleep = state.value();
   } else if (!base::ReadFileToString(initial_suspend_mode_path_, &mem_sleep)) {
     LOG(WARNING) << "Unable to read initial system suspend mode";
@@ -210,14 +211,16 @@ void SuspendConfigurator::ConfigureConsoleForSuspend() {
   if (HasIntelCpu()) {
     if (IsSerialConsoleEnabled()) {
       // If S0iX is enabled, default to disabling console (b/63737106).
-      if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val)
+      if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val) {
         enable_console = false;
+      }
     }
   }
 
   // Overwrite the default if the pref is set.
-  if (prefs_->GetBool(kEnableConsoleDuringSuspendPref, &pref_val))
+  if (prefs_->GetBool(kEnableConsoleDuringSuspendPref, &pref_val)) {
     enable_console = pref_val;
+  }
 
   const char* console_suspend_val = enable_console ? "N" : "Y";
   base::FilePath console_suspend_path =
@@ -260,8 +263,9 @@ void SuspendConfigurator::ReadSuspendMode() {
 
 base::FilePath SuspendConfigurator::GetPrefixedFilePath(
     const base::FilePath& file_path) const {
-  if (prefix_path_for_testing_.empty())
+  if (prefix_path_for_testing_.empty()) {
     return file_path;
+  }
   DCHECK(file_path.IsAbsolute());
   return prefix_path_for_testing_.Append(file_path.value().substr(1));
 }

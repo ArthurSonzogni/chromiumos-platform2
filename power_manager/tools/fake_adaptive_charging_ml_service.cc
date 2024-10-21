@@ -37,8 +37,9 @@ void RequestAdaptiveChargingDecision(
       brillo::dbus_utils::DBusMethodResponse<bool, std::vector<double>>>(
       method_call, std::move(response_sender));
   response_ptr->Return(true, response_values);
-  if (exit_after_prediction)
+  if (exit_after_prediction) {
     quit_closure.Run();
+  }
 }
 
 };  // namespace

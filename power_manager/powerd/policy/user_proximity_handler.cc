@@ -19,8 +19,9 @@ namespace power_manager::policy {
 UserProximityHandler::UserProximityHandler() = default;
 
 UserProximityHandler::~UserProximityHandler() {
-  if (user_proximity_watcher_)
+  if (user_proximity_watcher_) {
     user_proximity_watcher_->RemoveObserver(this);
+  }
 }
 
 bool UserProximityHandler::Init(

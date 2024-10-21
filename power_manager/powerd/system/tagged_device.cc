@@ -15,8 +15,9 @@ TaggedDevice::TaggedDevice(const std::string& syspath,
   wakeup_device_path_ = wakeup_device_path;
 
   base::StringTokenizer parts(tags, " ");
-  while (parts.GetNext())
+  while (parts.GetNext()) {
     tags_.insert(parts.token());
+  }
 }
 
 bool TaggedDevice::HasTag(const std::string& tag) const {

@@ -16,8 +16,9 @@
 namespace power_manager::system {
 
 PluggableInternalBacklight::~PluggableInternalBacklight() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveSubsystemObserver(udev_subsystem_, this);
+  }
 }
 
 void PluggableInternalBacklight::Init(UdevInterface* udev,
@@ -79,8 +80,9 @@ void PluggableInternalBacklight::UpdateDevice() {
   } else {
     LOG(INFO) << "Found backlight at " << device_->device_path().value();
   }
-  for (BacklightObserver& observer : observers_)
+  for (BacklightObserver& observer : observers_) {
     observer.OnBacklightDeviceChanged(this);
+  }
 }
 
 void PluggableInternalBacklight::OnUdevEvent(const UdevEvent& event) {

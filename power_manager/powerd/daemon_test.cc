@@ -444,8 +444,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     EXPECT_EQ(daemon_.get(), delegate);
     // Sometimes the `display_backlight_controller_` in Daemon is NULL for
     // tests (and factory mode).
-    if (backlight_controller)
+    if (backlight_controller) {
       EXPECT_EQ(internal_backlight_controller_, backlight_controller);
+    }
     EXPECT_EQ(input_watcher_, input_watcher);
     EXPECT_EQ(power_supply_, power_supply);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);

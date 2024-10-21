@@ -44,8 +44,9 @@ const char kBluetoothMatchString[] = "bluetooth";
 // integer, extracts the integer to |num_out|. Returns false if |name| didn't
 // match the expected format.
 bool GetInputNumber(const std::string& name, int* num_out) {
-  if (!base::StartsWith(name, kInputBaseName, base::CompareCase::SENSITIVE))
+  if (!base::StartsWith(name, kInputBaseName, base::CompareCase::SENSITIVE)) {
     return false;
+  }
   size_t base_len = strlen(kInputBaseName);
   return base::StringToInt(name.substr(base_len, name.size() - base_len),
                            num_out);
@@ -54,8 +55,9 @@ bool GetInputNumber(const std::string& name, int* num_out) {
 // If |event| came from a lid switch, copies its state to |state_out| and
 // returns true. Otherwise, leaves |state_out| untouched and returns false.
 bool GetLidStateFromEvent(const input_event& event, LidState* state_out) {
-  if (event.type != EV_SW || event.code != SW_LID)
+  if (event.type != EV_SW || event.code != SW_LID) {
     return false;
+  }
 
   *state_out = event.value == 1 ? LidState::CLOSED : LidState::OPEN;
   return true;
@@ -64,8 +66,9 @@ bool GetLidStateFromEvent(const input_event& event, LidState* state_out) {
 // If |event| came from a tablet mode switch, copies its state to |mode_out| and
 // returns true. Otherwise, leaves |mode_out| untouched and returns false.
 bool GetTabletModeFromEvent(const input_event& event, TabletMode* mode_out) {
-  if (event.type != EV_SW || event.code != SW_TABLET_MODE)
+  if (event.type != EV_SW || event.code != SW_TABLET_MODE) {
     return false;
+  }
 
   *mode_out = event.value == 1 ? TabletMode::ON : TabletMode::OFF;
   return true;
@@ -75,8 +78,9 @@ bool GetTabletModeFromEvent(const input_event& event, TabletMode* mode_out) {
 // returns true. Otherwise, leaves |state_out| untouched and returns false.
 bool GetPowerButtonStateFromEvent(const input_event& event,
                                   ButtonState* state_out) {
-  if (event.type != EV_KEY || event.code != KEY_POWER)
+  if (event.type != EV_KEY || event.code != KEY_POWER) {
     return false;
+  }
 
   switch (event.value) {
     case 0:
@@ -107,8 +111,9 @@ InputWatcher::InputWatcher()
       weak_ptr_factory_(this) {}
 
 InputWatcher::~InputWatcher() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveSubsystemObserver(kInputUdevSubsystem, this);
+  }
 }
 
 bool InputWatcher::Init(
@@ -119,13 +124,15 @@ bool InputWatcher::Init(
   udev_ = udev;
 
   prefs->GetBool(kUseLidPref, &use_lid_);
-  if (!use_lid_)
+  if (!use_lid_) {
     lid_state_ = LidState::NOT_PRESENT;
+  }
 
   bool legacy_power_button = false;
   if (prefs->GetBool(kLegacyPowerButtonPref, &legacy_power_button) &&
-      legacy_power_button)
+      legacy_power_button) {
     power_button_to_skip_ = kPowerButtonToSkipForLegacy;
+  }
 
   prefs->GetBool(kDetectHoverPref, &detect_hover_);
 
@@ -161,8 +168,9 @@ void InputWatcher::RemoveObserver(InputObserver* observer) {
 }
 
 LidState InputWatcher::QueryLidState() {
-  if (!lid_device_)
+  if (!lid_device_) {
     return LidState::NOT_PRESENT;
+  }
 
   const uint32_t device_types = GetDeviceTypes(lid_device_);
   while (true) {
@@ -180,13 +188,15 @@ LidState InputWatcher::QueryLidState() {
     // events).
     for (std::vector<input_event>::const_reverse_iterator it = events.rbegin();
          it != events.rend(); ++it) {
-      if (GetLidStateFromEvent(*it, &lid_state_))
+      if (GetLidStateFromEvent(*it, &lid_state_)) {
         break;
+      }
     }
 
     queued_events_.reserve(queued_events_.size() + events.size());
-    for (auto event : events)
+    for (auto event : events) {
       queued_events_.emplace_back(event, device_types);
+    }
     VLOG(1) << "Queued " << events.size()
             << " event(s) while querying lid state";
   }
@@ -214,16 +224,19 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
   for (base::FilePath path = enumerator.Next(); !path.empty();
        path = enumerator.Next()) {
     base::FilePath symlink_path;
-    if (!base::ReadSymbolicLink(path, &symlink_path))
+    if (!base::ReadSymbolicLink(path, &symlink_path)) {
       continue;
+    }
     const std::string& path_string = symlink_path.value();
     // Skip bluetooth devices, which may be identified as USB devices.
-    if (path_string.find(kBluetoothMatchString) != std::string::npos)
+    if (path_string.find(kBluetoothMatchString) != std::string::npos) {
       continue;
+    }
     // Now look for the USB devices that are not bluetooth.
     size_t position = path_string.find(kUsbMatchString);
-    if (position == std::string::npos)
+    if (position == std::string::npos) {
       continue;
+    }
     // Now that the string "usb" has been found, make sure it is a whole word
     // and not just part of another word like "busbreaker".
     bool usb_at_word_head =
@@ -231,8 +244,9 @@ bool InputWatcher::IsUSBInputDeviceConnected() const {
     bool usb_at_word_tail =
         position + strlen(kUsbMatchString) == path_string.size() ||
         !base::IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
-    if (usb_at_word_head && usb_at_word_tail)
+    if (usb_at_word_head && usb_at_word_tail) {
       return true;
+    }
   }
   return false;
 }
@@ -253,22 +267,27 @@ void InputWatcher::OnUdevEvent(const UdevEvent& event) {
 uint32_t InputWatcher::GetDeviceTypes(
     const EventDeviceInterface* device) const {
   uint32_t device_types = DEVICE_NONE;
-  if (power_button_devices_.count(device))
+  if (power_button_devices_.count(device)) {
     device_types |= DEVICE_POWER_BUTTON;
-  if (device == lid_device_)
+  }
+  if (device == lid_device_) {
     device_types |= DEVICE_LID_SWITCH;
-  if (device == tablet_mode_device_)
+  }
+  if (device == tablet_mode_device_) {
     device_types |= DEVICE_TABLET_MODE_SWITCH;
-  if (device == hover_device_)
+  }
+  if (device == hover_device_) {
     device_types |= DEVICE_HOVER;
+  }
   return device_types;
 }
 
 int InputWatcher::GetDeviceInputNumber(
     const EventDeviceInterface* device) const {
   for (const auto& entry : event_devices_) {
-    if (entry.second.get() == device)
+    if (entry.second.get() == device) {
       return entry.first;
+    }
   }
   return -1;
 }
@@ -293,8 +312,9 @@ void InputWatcher::OnNewEvents(int input_num, EventDeviceInterface* device) {
   for (const input_event& event : events) {
     // Update |lid_state_| here instead of in ProcessEvent() so we can avoid
     // modifying it in response to queued events.
-    if (device_types & DEVICE_LID_SWITCH)
+    if (device_types & DEVICE_LID_SWITCH) {
       GetLidStateFromEvent(event, &lid_state_);
+    }
     ProcessEvent(event, device_types);
   }
 }
@@ -308,8 +328,9 @@ void InputWatcher::ProcessEvent(const input_event& event,
       GetLidStateFromEvent(event, &lid_state)) {
     VLOG(1) << "Notifying observers about lid " << LidStateToString(lid_state)
             << " event";
-    for (InputObserver& observer : observers_)
+    for (InputObserver& observer : observers_) {
       observer.OnLidEvent(lid_state);
+    }
   }
 
   TabletMode tablet_mode = TabletMode::OFF;
@@ -318,8 +339,9 @@ void InputWatcher::ProcessEvent(const input_event& event,
     tablet_mode_ = tablet_mode;
     VLOG(1) << "Notifying observers about tablet mode "
             << TabletModeToString(tablet_mode) << " event";
-    for (InputObserver& observer : observers_)
+    for (InputObserver& observer : observers_) {
       observer.OnTabletModeEvent(tablet_mode);
+    }
   }
 
   ButtonState button_state = ButtonState::DOWN;
@@ -327,12 +349,14 @@ void InputWatcher::ProcessEvent(const input_event& event,
       GetPowerButtonStateFromEvent(event, &button_state)) {
     VLOG(1) << "Notifying observers about power button "
             << ButtonStateToString(button_state) << " event";
-    for (InputObserver& observer : observers_)
+    for (InputObserver& observer : observers_) {
       observer.OnPowerButtonEvent(button_state);
+    }
   }
 
-  if (device_types & DEVICE_HOVER)
+  if (device_types & DEVICE_HOVER) {
     ProcessHoverEvent(event);
+  }
 }
 
 void InputWatcher::ProcessHoverEvent(const input_event& event) {
@@ -356,10 +380,11 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
     if (current_multitouch_slot_ >= 0) {
       const uint64_t slot_bit = static_cast<uint64_t>(1)
                                 << current_multitouch_slot_;
-      if (event.value >= 0)
+      if (event.value >= 0) {
         multitouch_slots_hover_state_ |= slot_bit;
-      else
+      } else {
         multitouch_slots_hover_state_ &= ~slot_bit;
+      }
     }
   } else if (event.type == EV_ABS && event.code == ABS_DISTANCE) {
     // For single-touch presence-only hover touchpads, ABS_DISTANCE indicates
@@ -385,8 +410,9 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
       VLOG(1) << "Notifying observers about hover state change to "
               << (hovering ? "on" : "off");
       hovering_ = hovering;
-      for (InputObserver& observer : observers_)
+      for (InputObserver& observer : observers_) {
         observer.OnHoverStateChange(hovering_);
+      }
     }
   }
 }
@@ -434,8 +460,9 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
       lid_state_ = device->GetInitialLidState();
       VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
       if (notify_state) {
-        for (InputObserver& observer : observers_)
+        for (InputObserver& observer : observers_) {
           observer.OnLidEvent(lid_state_);
+        }
       }
     }
   }
@@ -452,8 +479,9 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
       VLOG(1) << "Initial tablet mode state is "
               << TabletModeToString(tablet_mode_);
       if (notify_state) {
-        for (InputObserver& observer : observers_)
+        for (InputObserver& observer : observers_) {
           observer.OnTabletModeEvent(tablet_mode_);
+        }
       }
     }
   }
@@ -490,20 +518,24 @@ void InputWatcher::HandleRemovedInput(int input_num) {
   if (it != event_devices_.end()) {
     LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
     power_button_devices_.erase(it->second.get());
-    if (lid_device_ == it->second.get())
+    if (lid_device_ == it->second.get()) {
       lid_device_ = nullptr;
-    if (tablet_mode_device_ == it->second.get())
+    }
+    if (tablet_mode_device_ == it->second.get()) {
       tablet_mode_device_ = nullptr;
-    if (hover_device_ == it->second.get())
+    }
+    if (hover_device_ == it->second.get()) {
       hover_device_ = nullptr;
+    }
     event_devices_.erase(it);
   }
 }
 
 void InputWatcher::SendQueuedEvents() {
   TRACE_EVENT("power", "InputWatcher::SendQueuedEvents");
-  for (auto event_pair : queued_events_)
+  for (auto event_pair : queued_events_) {
     ProcessEvent(event_pair.first, event_pair.second);
+  }
   queued_events_.clear();
 }
 

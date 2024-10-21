@@ -46,8 +46,9 @@ void FakeSensorDevice::ResetAllEventsObserverRemotes() {
 
 void FakeSensorDevice::OnSampleUpdated(
     const base::flat_map<int32_t, int64_t>& sample) {
-  for (auto& samples_observer : samples_observers_)
+  for (auto& samples_observer : samples_observers_) {
     samples_observer.second->OnSampleUpdated(std::move(sample));
+  }
 }
 
 void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
@@ -58,8 +59,9 @@ void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
 
   for (auto it = events_observers_.begin(); it != events_observers_.end();
        ++it) {
-    if (!base::Contains(events_enabled_indices_[it.id()], event->channel))
+    if (!base::Contains(events_enabled_indices_[it.id()], event->channel)) {
       continue;
+    }
 
     (*it)->OnEventUpdated(event.Clone());
   }
@@ -75,10 +77,11 @@ void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,
   attr_values.reserve(attr_names.size());
   for (const auto& attr_name : attr_names) {
     auto it = attributes_.find(attr_name);
-    if (it != attributes_.end())
+    if (it != attributes_.end()) {
       attr_values.push_back(it->second);
-    else
+    } else {
       attr_values.push_back(std::nullopt);
+    }
   }
 
   std::move(callback).Run(std::move(attr_values));
@@ -151,8 +154,9 @@ void FakeSensorDevice::StartReadingEvents(
   events_enabled_indices_[events_observers_.Add(std::move(observer))] =
       iio_event_indices;
 
-  for (int i = 0; i < events_.size(); ++i)
+  for (int i = 0; i < events_.size(); ++i) {
     OnEventUpdated(std::move(events_[i]));
+  }
 
   events_.clear();
 }

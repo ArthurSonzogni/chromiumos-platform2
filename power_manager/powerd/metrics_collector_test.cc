@@ -170,8 +170,9 @@ class MetricsCollectorTest : public TestEnvironment {
 
   // Ignores an arbitrary number of reports of |name|.
   void IgnoreMetric(const std::string& name) {
-    if (metrics_to_test_.count(name))
+    if (metrics_to_test_.count(name)) {
       return;
+    }
     EXPECT_CALL(metrics_lib_, SendToUMA(name, _, _, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
@@ -179,8 +180,9 @@ class MetricsCollectorTest : public TestEnvironment {
 
   // Ignores an arbitrary number of reports of |name|.
   void IgnoreEnumMetric(const std::string& name) {
-    if (metrics_to_test_.count(name))
+    if (metrics_to_test_.count(name)) {
       return;
+    }
     EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
@@ -1461,8 +1463,9 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
   void Init(S0ixResidencyFileType residency_file_type,
             bool suspend_to_idle = true,
             bool pc10_residency_file_present = true) {
-    if (suspend_to_idle)
+    if (suspend_to_idle) {
       prefs_.SetInt64(kSuspendToIdlePref, 1);
+    }
 
     if (residency_file_type == S0ixResidencyFileType::BIG_CORE) {
       residencies_[IdleState::S0ix].path_ =
@@ -1493,8 +1496,9 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
   // empty) before and after suspend.
   void SuspendAndResume() {
     for (const auto& residency : residencies_) {
-      if (!residency.path_.empty())
+      if (!residency.path_.empty()) {
         WriteResidency(residency, residency.before_suspend_);
+      }
     }
 
     collector_.PrepareForSuspend();
@@ -1504,8 +1508,9 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
     IgnoreMetric(kSuspendAttemptsBeforeSuccessName);
 
     for (const auto& residency : residencies_) {
-      if (!residency.path_.empty())
+      if (!residency.path_.empty()) {
         WriteResidency(residency, residency.before_resume_);
+      }
     }
 
     collector_.HandleResume(1);
@@ -1529,9 +1534,10 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
                                             const bool expect_s0ix = true) {
     ExpectEnumMetric(kPC10RuntimeResidencyRateName, expected_pc10_percentage,
                      kMaxPercent);
-    if (expect_s0ix)
+    if (expect_s0ix) {
       ExpectEnumMetric(kPC10inS0ixRuntimeResidencyRateName,
                        expected_s0ix_percentage, kMaxPercent);
+    }
   }
 
   // Writes |residency| to |residency_path_|.

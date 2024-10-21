@@ -102,14 +102,16 @@ class DarkResumeConfigurator {
       }
     }
 
-    if (!SetDarkResumeState(disable ? "1" : "0"))
+    if (!SetDarkResumeState(disable ? "1" : "0")) {
       exit(1);
+    }
   }
   ~DarkResumeConfigurator() {
     // Restore dark resume state.
     if (!dark_resume_pref_exist_before_) {
-      if (!base::DeleteFile(base::FilePath(kDisableDarkResumePath)))
+      if (!base::DeleteFile(base::FilePath(kDisableDarkResumePath))) {
         PLOG(ERROR) << "Failed to restore dark resume state.";
+      }
     } else if (!SetDarkResumeState(prev_dark_resume_pref_state_)) {
       PLOG(ERROR) << "Failed to restore dark resume state.";
     }
@@ -183,8 +185,9 @@ int main(int argc, char* argv[]) {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  if (FLAGS_delay)
+  if (FLAGS_delay) {
     sleep(FLAGS_delay);
+  }
 
   // Set an RTC alarm to wake up the system.
   if (FLAGS_wakeup_timeout > 0) {

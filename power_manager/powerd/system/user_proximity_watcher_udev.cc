@@ -69,8 +69,9 @@ UserProximityWatcherUdev::UserProximityWatcherUdev()
     : open_iio_events_func_(base::BindRepeating(&OpenIioFd)) {}
 
 UserProximityWatcherUdev::~UserProximityWatcherUdev() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveSubsystemObserver(kIioUdevSubsystem, this);
+  }
 }
 
 bool UserProximityWatcherUdev::Init(
@@ -100,14 +101,16 @@ bool UserProximityWatcherUdev::Init(
     return false;
   }
 
-  for (auto const& iio_dev : iio_devices)
+  for (auto const& iio_dev : iio_devices) {
     OnNewUdevDevice(iio_dev);
+  }
   return true;
 }
 
 void UserProximityWatcherUdev::HandleTabletModeChange(TabletMode mode) {
-  if (tablet_mode_ == mode)
+  if (tablet_mode_ == mode) {
     return;
+  }
 
   tablet_mode_ = mode;
   for (auto const& sensor : sensors_) {
@@ -128,19 +131,23 @@ bool UserProximityWatcherUdev::EnableDisableSensor(const SensorInfo& sensor,
   rising = "events/in_proximity" + channel + "_thresh_rising_en";
   falling = "events/in_proximity" + channel + "_thresh_falling_en";
 
-  if (udev_->SetSysattr(syspath, either, val))
+  if (udev_->SetSysattr(syspath, either, val)) {
     return true;
+  }
   has_either = udev_->HasSysattr(syspath, either);
-  if (channel_in_config && has_either)
+  if (channel_in_config && has_either) {
     return false;
+  }
 
   has_rising = udev_->HasSysattr(syspath, rising);
-  if (has_rising && !udev_->SetSysattr(syspath, rising, val))
+  if (has_rising && !udev_->SetSysattr(syspath, rising, val)) {
     return false;
+  }
 
   has_falling = udev_->HasSysattr(syspath, falling);
-  if (has_falling && !udev_->SetSysattr(syspath, falling, val))
+  if (has_falling && !udev_->SetSysattr(syspath, falling, val)) {
     return false;
+  }
 
   // There are either some number of channels to enable in sysfs, like
   // events/in_proximity{0,1,2,..}_thresh_{either,rising,falling}_en or just
@@ -148,9 +155,10 @@ bool UserProximityWatcherUdev::EnableDisableSensor(const SensorInfo& sensor,
   // there isn't a channel in the config then we tried the latter sysfs
   // attributes, so print a warning if the channel is missing and there weren't
   // any attributes found.
-  if (!channel_in_config && !(has_either || has_falling || has_rising))
+  if (!channel_in_config && !(has_either || has_falling || has_rising)) {
     LOG(WARNING)
         << "Consider setting a proximity sensor channel in cros config.";
+  }
   return true;
 }
 
@@ -191,8 +199,9 @@ void UserProximityWatcherUdev::RemoveObserver(UserProximityObserver* observer) {
 }
 
 void UserProximityWatcherUdev::OnUdevEvent(const UdevEvent& event) {
-  if (event.action != UdevEvent::Action::ADD)
+  if (event.action != UdevEvent::Action::ADD) {
     return;
+  }
   OnNewUdevDevice(event.device_info);
 }
 
@@ -224,15 +233,17 @@ void UserProximityWatcherUdev::OnFileCanReadWithoutBlocking(int fd) {
   // This log is also used for tast-test: hardware.SensorActivity
   LOG(INFO) << "User proximity: "
             << (proximity == UserProximity::FAR ? "Far" : "Near");
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnProximityEvent(fd, proximity);
+  }
 }
 
 bool UserProximityWatcherUdev::IsIioSarSensor(const UdevDeviceInfo& dev,
                                               std::string* devlink_out) {
   DCHECK(udev_);
-  if (dev.subsystem != kIioUdevSubsystem || dev.devtype != kIioUdevDevice)
+  if (dev.subsystem != kIioUdevSubsystem || dev.devtype != kIioUdevDevice) {
     return false;
+  }
 
   std::vector<std::string> devlinks;
   const bool found_devlinks = udev_->GetDevlinks(dev.syspath, &devlinks);
@@ -253,10 +264,12 @@ bool UserProximityWatcherUdev::IsIioSarSensor(const UdevDeviceInfo& dev,
 
 bool UserProximityWatcherUdev::IsIioActivitySensor(const UdevDeviceInfo& dev,
                                                    std::string* devlink_out) {
-  if (dev.subsystem != kIioUdevSubsystem || dev.devtype != kIioUdevDevice)
+  if (dev.subsystem != kIioUdevSubsystem || dev.devtype != kIioUdevDevice) {
     return false;
-  if (dev.syspath.find("-activity") == std::string::npos)
+  }
+  if (dev.syspath.find("-activity") == std::string::npos) {
     return false;
+  }
 
   *devlink_out = "/dev/" + dev.sysname;
   return true;
@@ -268,25 +281,30 @@ uint32_t UserProximityWatcherUdev::GetUsableSensorRoles(
 
   switch (type) {
     case SensorType::ACTIVITY: {
-      if (use_activity_proximity_for_cellular_)
+      if (use_activity_proximity_for_cellular_) {
         responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_LTE;
-      if (use_activity_proximity_for_wifi_)
+      }
+      if (use_activity_proximity_for_wifi_) {
         responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI;
+      }
       break;
     }
     case SensorType::SAR: {
       const auto proximity_index = path.find("proximity-");
-      if (proximity_index == std::string::npos)
+      if (proximity_index == std::string::npos) {
         return responsibility;
+      }
 
       if (use_proximity_for_cellular_ &&
           (path.find("lte", proximity_index) != std::string::npos ||
-           path.find("cellular", proximity_index) != std::string::npos))
+           path.find("cellular", proximity_index) != std::string::npos)) {
         responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_LTE;
+      }
 
       if (use_proximity_for_wifi_ &&
-          path.find("wifi", proximity_index) != std::string::npos)
+          path.find("wifi", proximity_index) != std::string::npos) {
         responsibility |= UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI;
+      }
       break;
     }
     default: {
@@ -405,15 +423,17 @@ void UserProximityWatcherUdev::OnNewUdevDevice(
     const UdevDeviceInfo& device_info) {
   std::string devlink;
   SensorType type = SensorType::UNKNOWN;
-  if (IsIioSarSensor(device_info, &devlink))
+  if (IsIioSarSensor(device_info, &devlink)) {
     type = SensorType::SAR;
-  else if (IsIioActivitySensor(device_info, &devlink))
+  } else if (IsIioActivitySensor(device_info, &devlink)) {
     type = SensorType::ACTIVITY;
-  else
+  } else {
     return;
+  }
 
-  if (!OnSensorDetected(type, device_info.syspath, devlink))
+  if (!OnSensorDetected(type, device_info.syspath, devlink)) {
     LOG(ERROR) << "Unable to setup proximity sensor " << device_info.syspath;
+  }
 }
 
 }  // namespace power_manager::system

@@ -60,16 +60,18 @@ class TestObserver : public UserProximityObserver {
     EXPECT_FALSE(device.roles.has_value());
     device.roles = roles;
 
-    if (device.loop)
+    if (device.loop) {
       device.loop->Quit();
+    }
   }
   void OnProximityEvent(int id, UserProximity value) override {
     DeviceInfo& device = devices_[id];
     EXPECT_TRUE(device.roles.has_value());
     device.value = value;
 
-    if (device.loop)
+    if (device.loop) {
       device.loop->Quit();
+    }
   }
 
   void SetSensorClosure(int id) {
@@ -111,8 +113,9 @@ class UserProximityWatcherMojoTest : public MojoTestEnvironment {
         TabletMode::UNSUPPORTED, &sensor_service_handler_);
     observer_ = std::make_unique<TestObserver>(watcher_.get());
 
-    for (int32_t id = 0; id < sensor_num_; ++id)
+    for (int32_t id = 0; id < sensor_num_; ++id) {
       observer_->SetSensorClosure(id);
+    }
 
     ResetMojoChannel();
   }
@@ -140,8 +143,9 @@ class UserProximityWatcherMojoTest : public MojoTestEnvironment {
                  std::optional<std::string> devlink = std::nullopt) {
     auto sensor_device = std::make_unique<FakeProximity>();
     sensor_device->SetAttribute(cros::mojom::kSysPath, syspath);
-    if (devlink.has_value())
+    if (devlink.has_value()) {
       sensor_device->SetAttribute(cros::mojom::kDevlink, devlink.value());
+    }
 
     auto iio_device_id = sensor_num_++;
     fake_proximities_[iio_device_id] = sensor_device.get();

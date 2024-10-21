@@ -15,11 +15,13 @@ FakeLight::FakeLight(bool is_color_sensor,
                      std::optional<std::string> name,
                      std::optional<std::string> location)
     : is_color_sensor_(is_color_sensor) {
-  if (name.has_value())
+  if (name.has_value()) {
     SetAttribute(cros::mojom::kDeviceName, name.value());
+  }
 
-  if (location.has_value())
+  if (location.has_value()) {
     SetAttribute(cros::mojom::kLocation, location.value());
+  }
 }
 
 cros::mojom::DeviceType FakeLight::GetDeviceType() const {

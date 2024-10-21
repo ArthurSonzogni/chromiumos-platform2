@@ -29,8 +29,9 @@ bool UserProximityVoting::Vote(int id, UserProximity vote) {
   }
 
   auto new_consensus = CalculateVote();
-  if (consensus_ == new_consensus)
+  if (consensus_ == new_consensus) {
     return false;
+  }
 
   consensus_ = new_consensus;
   return true;
@@ -44,12 +45,14 @@ UserProximity UserProximityVoting::CalculateVote() const {
   UserProximity vote_type =
       prefer_far_ ? UserProximity::FAR : UserProximity::NEAR;
 
-  if (votes_.empty())
+  if (votes_.empty()) {
     return UserProximity::UNKNOWN;
+  }
 
   for (const auto& vote : votes_) {
-    if (vote.second == vote_type)
+    if (vote.second == vote_type) {
       return vote_type;
+    }
   }
 
   return prefer_far_ ? UserProximity::NEAR : UserProximity::FAR;

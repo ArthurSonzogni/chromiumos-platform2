@@ -34,8 +34,9 @@ bool TestBit(const uint32_t bitmask[], int bit) {
 bool HasEventBit(int fd, int event_type, int bit) {
   uint32_t bitmask[kMaxInt];
   memset(bitmask, 0, sizeof(bitmask));
-  if (ioctl(fd, EVIOCGBIT(event_type, sizeof(bitmask)), bitmask) < 0)
+  if (ioctl(fd, EVIOCGBIT(event_type, sizeof(bitmask)), bitmask) < 0) {
     return false;
+  }
   return TestBit(bitmask, bit);
 }
 
@@ -51,14 +52,16 @@ void LogErrorExit(const std::string& message) {
 struct input_event CreateEvent(const std::string& code, int32_t value) {
   struct input_event event;
   event.type = EV_SW;
-  if (code == "tablet")
+  if (code == "tablet") {
     event.code = SW_TABLET_MODE;
-  else if (code == "lid")
+  } else if (code == "lid") {
     event.code = SW_LID;
-  else
+  } else {
     LogErrorExit("--code=<tablet|lid>");
-  if (value != 0 && value != 1)
+  }
+  if (value != 0 && value != 1) {
     LogErrorExit("--value=<0|1>");
+  }
   event.value = value;
   return event;
 }
@@ -119,10 +122,12 @@ base::ScopedFD OpenDevice(int type, int code) {
   for (int i = 0; i < kMaxInputDev; ++i) {
     fd.reset(open(base::StringPrintf("/dev/input/event%d", i).c_str(),
                   O_RDWR | O_CLOEXEC));
-    if (!fd.is_valid())
+    if (!fd.is_valid()) {
       break;
-    if (HasEventBit(fd.get(), 0, type) && HasEventBit(fd.get(), type, code))
+    }
+    if (HasEventBit(fd.get(), 0, type) && HasEventBit(fd.get(), type, code)) {
       break;
+    }
   }
   return fd;
 }

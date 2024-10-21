@@ -147,20 +147,23 @@ void DBusWrapperStub::SetMethodCallback(const MethodCallback& callback) {
 void DBusWrapperStub::NotifyServiceAvailable(dbus::ObjectProxy* proxy,
                                              bool available) {
   auto it = service_availability_callbacks_.find(proxy);
-  if (it == service_availability_callbacks_.end())
+  if (it == service_availability_callbacks_.end()) {
     return;
+  }
 
   auto callbacks = std::move(it->second);
   service_availability_callbacks_.erase(it);
-  for (auto& cb : callbacks)
+  for (auto& cb : callbacks) {
     std::move(cb).Run(available);
+  }
 }
 
 void DBusWrapperStub::NotifyNameOwnerChanged(const std::string& service_name,
                                              const std::string& old_owner,
                                              const std::string& new_owner) {
-  for (DBusWrapperInterface::Observer& observer : observers_)
+  for (DBusWrapperInterface::Observer& observer : observers_) {
     observer.OnDBusNameOwnerChanged(service_name, old_owner, new_owner);
+  }
 }
 
 void DBusWrapperStub::NotifyInterfaceAvailable(

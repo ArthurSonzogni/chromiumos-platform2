@@ -181,7 +181,8 @@ std::string PowerSourceToString(PowerSource source) {
     case PowerSource::BATTERY:
       return "battery";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled power source " << static_cast<int>(source);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled power source " << static_cast<int>(source);
   return base::StringPrintf("unknown (%d)", static_cast<int>(source));
 }
 
@@ -194,7 +195,8 @@ std::string LidStateToString(LidState state) {
     case LidState::NOT_PRESENT:
       return "not present";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled lid state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled lid state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -207,7 +209,8 @@ std::string TabletModeToString(TabletMode mode) {
     case TabletMode::UNSUPPORTED:
       return "unsupported";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled tablet mode " << static_cast<int>(mode);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled tablet mode " << static_cast<int>(mode);
   return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
@@ -220,7 +223,8 @@ std::string UserProximityToString(UserProximity proximity) {
     case UserProximity::UNKNOWN:
       return "unknown";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled user proximity " << static_cast<int>(proximity);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled user proximity " << static_cast<int>(proximity);
   return base::StringPrintf("unknown (%d)", static_cast<int>(proximity));
 }
 
@@ -235,7 +239,8 @@ std::string RadioTransmitPowerToString(RadioTransmitPower power) {
     case RadioTransmitPower::UNSPECIFIED:
       return "unspecified";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled Radio transmit power " << static_cast<int>(power);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled Radio transmit power " << static_cast<int>(power);
   return base::StringPrintf("unknown (%d)", static_cast<int>(power));
 }
 
@@ -254,7 +259,8 @@ std::string RegulatoryDomainToString(CellularRegulatoryDomain domain) {
     case CellularRegulatoryDomain::UNKNOWN:
       return "UNKNOWN";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled Regulatory Domain " << static_cast<int>(domain);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled Regulatory Domain " << static_cast<int>(domain);
   return base::StringPrintf("unknown (%d)", static_cast<int>(domain));
 }
 
@@ -265,7 +271,8 @@ std::string SessionStateToString(SessionState state) {
     case SessionState::STARTED:
       return "started";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled session state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled session state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -276,7 +283,8 @@ std::string DisplayModeToString(DisplayMode mode) {
     case DisplayMode::PRESENTATION:
       return "presentation";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled display mode " << static_cast<int>(mode);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled display mode " << static_cast<int>(mode);
   return base::StringPrintf("unknown (%d)", static_cast<int>(mode));
 }
 
@@ -289,7 +297,8 @@ std::string ButtonStateToString(ButtonState state) {
     case ButtonState::REPEAT:
       return "repeat";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled button state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled button state " << static_cast<int>(state);
   return base::StringPrintf("unknown (%d)", static_cast<int>(state));
 }
 
@@ -318,7 +327,8 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       // Fall through, the entry is needed to keep the compiler happy.
     }
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled shutdown reason " << static_cast<int>(reason);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled shutdown reason " << static_cast<int>(reason);
   return "unknown";
 }
 
@@ -333,7 +343,8 @@ std::string WifiRegDomainToString(WifiRegDomain domain) {
     case WifiRegDomain::NONE:
       return "None";
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled WiFi reg domain " << static_cast<int>(domain);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled WiFi reg domain " << static_cast<int>(domain);
   return "unknown";
 }
 

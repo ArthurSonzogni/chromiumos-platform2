@@ -41,8 +41,9 @@ std::string WakeReasonToHistogramName(const std::string& wake_reason) {
 // Returns true if port |index| exists in |status| and has a connected dedicated
 // source or dual-role device.
 bool ChargingPortConnected(const PowerStatus& status, size_t index) {
-  if (index >= status.ports.size())
+  if (index >= status.ports.size()) {
     return false;
+  }
 
   const PowerStatus::Port::Role role = status.ports[index].role;
   return role == PowerStatus::Port::Role::DEDICATED_SOURCE ||
@@ -53,19 +54,21 @@ bool ChargingPortConnected(const PowerStatus& status, size_t index) {
 ConnectedChargingPorts GetConnectedChargingPorts(const PowerStatus& status) {
   // More values should be added here if we ship systems with more than two
   // ports.
-  if (status.ports.size() > 2u)
+  if (status.ports.size() > 2u) {
     return ConnectedChargingPorts::TOO_MANY_PORTS;
+  }
 
   const bool port1_connected = ChargingPortConnected(status, 0);
   const bool port2_connected = ChargingPortConnected(status, 1);
-  if (port1_connected && port2_connected)
+  if (port1_connected && port2_connected) {
     return ConnectedChargingPorts::PORT1_PORT2;
-  else if (port1_connected)
+  } else if (port1_connected) {
     return ConnectedChargingPorts::PORT1;
-  else if (port2_connected)
+  } else if (port2_connected) {
     return ConnectedChargingPorts::PORT2;
-  else
+  } else {
     return ConnectedChargingPorts::NONE;
+  }
 }
 
 // Helper method for power.BatteryLife & power.BatteryLife.Detail metrics.
@@ -168,8 +171,9 @@ int MetricsCollector::GetExpectedResidencyPercent(
   // Sanity check to prevent divide by zero undefined behavior below. This might
   // happen when overhead == reference_time (including == 0). Also catch cases
   // where overhead is larger than reference_time.
-  if (expected_residency <= 0)
+  if (expected_residency <= 0) {
     return 0;
+  }
   int residency_percent = static_cast<int>(
       round((actual_residency.InMicrosecondsF() * 100.0) / expected_residency));
   // Guard against >100% case when |actual_residency| goes over the predicted
@@ -289,16 +293,18 @@ base::TimeTicks MetricsCollector::GetLastKernelResumedTime() {
 void MetricsCollector::GenerateDisplayAfterResumeDurationMsMetric() {
   // Prohibit sending this metrics unless suspend sets the
   // time_before_suspend_monotonic_,
-  if (time_before_suspend_monotonic_ == base::TimeTicks())
+  if (time_before_suspend_monotonic_ == base::TimeTicks()) {
     return;
+  }
 
   base::TimeTicks now = clock_.GetCurrentTime();
 
   base::TimeTicks last_kernel_resumed_timestamp = GetLastKernelResumedTime();
   // Check if the /sys/power/suspend_stats/last_success_resume_time is not
   // updated yet.
-  if (last_kernel_resumed_timestamp < time_before_suspend_monotonic_)
+  if (last_kernel_resumed_timestamp < time_before_suspend_monotonic_) {
     return;
+  }
 
   base::TimeDelta duration = now - last_kernel_resumed_timestamp;
 
@@ -338,16 +344,18 @@ void MetricsCollector::HandleScreenOffChange(
 }
 
 void MetricsCollector::HandleSessionStateChange(SessionState state) {
-  if (state == session_state_)
+  if (state == session_state_) {
     return;
+  }
 
   session_state_ = state;
 
   switch (state) {
     case SessionState::STARTED:
       session_start_time_ = clock_.GetCurrentTime();
-      if (!last_power_status_.line_power_on)
+      if (!last_power_status_.line_power_on) {
         IncrementNumOfSessionsPerChargeMetric();
+      }
       if (last_power_status_.battery_is_present) {
         // Enum to avoid exponential histogram's varyingly-sized buckets.
         SendEnumMetricWithPowerSource(
@@ -419,16 +427,18 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
           kBatteryCapacityMin, kBatteryCapacityMax, kDefaultBuckets);
     }
   } else if (!status.line_power_on && previously_on_line_power) {
-    if (session_state_ == SessionState::STARTED)
+    if (session_state_ == SessionState::STARTED) {
       IncrementNumOfSessionsPerChargeMetric();
+    }
   }
 
   // Power supply details.
   if (status.line_power_on) {
     const PowerSupplyType type =
         system::GetPowerSupplyTypeMetric(status.line_power_type);
-    if (type == PowerSupplyType::OTHER && !previously_using_unknown_type)
+    if (type == PowerSupplyType::OTHER && !previously_using_unknown_type) {
       LOG(WARNING) << "Unknown power supply type " << status.line_power_type;
+    }
     SendEnumMetric(kPowerSupplyTypeName, static_cast<int>(type),
                    static_cast<int>(PowerSupplyType::MAX));
 
@@ -458,8 +468,9 @@ void MetricsCollector::HandleShutdown(ShutdownReason reason) {
 
 void MetricsCollector::HandlePrivacyScreenStateChange(
     const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state) {
-  if (state == privacy_screen_state_)
+  if (state == privacy_screen_state_) {
     return;
+  }
 
   privacy_screen_state_ = state;
 }
@@ -471,8 +482,9 @@ void MetricsCollector::PrepareForSuspend() {
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentBootTime();
   time_before_suspend_monotonic_ = clock_.GetCurrentTime();
-  for (auto& tracker : residency_trackers_)
+  for (auto& tracker : residency_trackers_) {
     tracker.UpdatePreSuspend();
+  }
   GenerateRuntimeS0ixMetrics();
 }
 
@@ -484,10 +496,12 @@ void MetricsCollector::HandleResume(int num_suspend_attempts) {
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
   time_after_resume_ = clock_.GetCurrentBootTime();
-  for (auto& tracker : residency_trackers_)
+  for (auto& tracker : residency_trackers_) {
     tracker.UpdatePostResume();
-  if (suspend_to_idle_)
+  }
+  if (suspend_to_idle_) {
     GenerateS2IdleS0ixMetrics();
+  }
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
@@ -498,8 +512,9 @@ void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
 void MetricsCollector::GenerateDarkResumeMetrics(
     const std::vector<policy::Suspender::DarkResumeInfo>& wake_durations,
     base::TimeDelta suspend_duration) {
-  if (suspend_duration.InSeconds() <= 0)
+  if (suspend_duration.InSeconds() <= 0) {
     return;
+  }
 
   // We want to get metrics even if the system suspended for less than an hour
   // so we scale the number of wakes up.
@@ -523,8 +538,9 @@ void MetricsCollector::GenerateDarkResumeMetrics(
 }
 
 void MetricsCollector::GenerateUserActivityMetrics() {
-  if (last_idle_event_timestamp_.is_null())
+  if (last_idle_event_timestamp_.is_null()) {
     return;
+  }
 
   base::TimeTicks current_time = clock_.GetCurrentTime();
   base::TimeDelta event_delta = current_time - last_idle_event_timestamp_;
@@ -553,8 +569,9 @@ void MetricsCollector::GenerateUserActivityMetrics() {
 
 void MetricsCollector::GenerateBacklightLevelMetrics() {
   TRACE_EVENT("power", "MetricsCollector::GenerateBacklightLevelMetrics");
-  if (!screen_dim_timestamp_.is_null() || !screen_off_timestamp_.is_null())
+  if (!screen_dim_timestamp_.is_null() || !screen_off_timestamp_.is_null()) {
     return;
+  }
 
   double percent = 0.0;
   if (display_backlight_controller_ &&
@@ -654,8 +671,9 @@ bool MetricsCollector::SendEnumMetricWithPrivacyScreenStatePowerSource(
 void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   // The battery discharge rate metric is relevant and collected only
   // when running on battery.
-  if (!last_power_status_.battery_is_present)
+  if (!last_power_status_.battery_is_present) {
     return;
+  }
   if (last_power_status_.line_power_on) {
     // Reset the rolling average dequeues if switched to non-battery sources.
     rolling_average_actual_.clear();
@@ -666,8 +684,9 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   // Converts the discharge rate from W to mW.
   int rate =
       static_cast<int>(round(last_power_status_.battery_energy_rate * 1000));
-  if (rate <= 0)
+  if (rate <= 0) {
     return;
+  }
 
   // Ensures that the metric is not generated too frequently.
   if (!last_battery_discharge_rate_metric_timestamp_.is_null() &&
@@ -684,8 +703,9 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   }
 
   if (SendMetric(kBatteryDischargeRateName, rate, kBatteryDischargeRateMin,
-                 kBatteryDischargeRateMax, kDefaultDischargeBuckets))
+                 kBatteryDischargeRateMax, kDefaultDischargeBuckets)) {
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
+  }
 
   double low_battery_shutdown_percent = 0.0;
   prefs_->GetDouble(kLowBatteryShutdownPercentPref,
@@ -743,18 +763,21 @@ double MetricsCollector::CalculateRollingAverage(
 
 void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   // Do nothing unless this is the first time we're called after resuming.
-  if (!report_battery_discharge_rate_while_suspended_)
+  if (!report_battery_discharge_rate_while_suspended_) {
     return;
+  }
   report_battery_discharge_rate_while_suspended_ = false;
 
   if (!last_power_status_.battery_is_present || on_line_power_before_suspend_ ||
-      last_power_status_.line_power_on)
+      last_power_status_.line_power_on) {
     return;
+  }
 
   base::TimeDelta elapsed_time =
       clock_.GetCurrentBootTime() - time_before_suspend_;
-  if (elapsed_time < kBatteryDischargeRateWhileSuspendedMinSuspend)
+  if (elapsed_time < kBatteryDischargeRateWhileSuspendedMinSuspend) {
     return;
+  }
 
   double discharged_watt_hours =
       battery_energy_before_suspend_ - last_power_status_.battery_energy;
@@ -763,16 +786,18 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
 
   // Maybe the charger was connected while the system was suspended but
   // disconnected before it resumed.
-  if (discharge_rate_watts < 0.0)
+  if (discharge_rate_watts < 0.0) {
     return;
+  }
 
   SendMetric(kBatteryDischargeRateWhileSuspendedName,
              static_cast<int>(round(discharge_rate_watts * 1000)),
              kBatteryDischargeRateWhileSuspendedMin,
              kBatteryDischargeRateWhileSuspendedMax, kDefaultDischargeBuckets);
 
-  if (discharge_rate_watts <= 0.0)
+  if (discharge_rate_watts <= 0.0) {
     return;
+  }
 
   std::string metrics_name = kBatteryLifeWhileSuspendedName;
   SendMetric(metrics_name + kBatteryCapacityActualSuffix,
@@ -880,16 +905,18 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
         AdaptiveChargingBatteryState::MAX;
     // Treat anything over 99% for the display battery percent as full.
     if (display_battery_percentage >= 99.0) {
-      if (delay_time != base::TimeDelta())
+      if (delay_time != base::TimeDelta()) {
         battery_state = AdaptiveChargingBatteryState::FULL_CHARGE_WITH_DELAY;
-      else
+      } else {
         battery_state = AdaptiveChargingBatteryState::FULL_CHARGE_WITHOUT_DELAY;
+      }
     } else {
-      if (delay_time != base::TimeDelta())
+      if (delay_time != base::TimeDelta()) {
         battery_state = AdaptiveChargingBatteryState::PARTIAL_CHARGE_WITH_DELAY;
-      else
+      } else {
         battery_state =
             AdaptiveChargingBatteryState::PARTIAL_CHARGE_WITHOUT_DELAY;
+      }
     }
     SendEnumMetric(kAdaptiveChargingBatteryStateName,
                    static_cast<int>(battery_state),
@@ -910,8 +937,9 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
     delta = available_time - normal_charging_delay;
   }
 
-  if (delta.is_negative())
+  if (delta.is_negative()) {
     delta = base::TimeDelta();
+  }
 
   delta -= delay_time;
   if (delta.is_negative()) {
@@ -944,8 +972,9 @@ void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {
 void MetricsCollector::GenerateNumOfSessionsPerChargeMetric() {
   int64_t sample = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &sample);
-  if (sample <= 0)
+  if (sample <= 0) {
     return;
+  }
 
   sample = std::min(sample, static_cast<int64_t>(kNumOfSessionsPerChargeMax));
   prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
@@ -966,8 +995,9 @@ void MetricsCollector::GenerateS2IdleS0ixMetrics() {
 
   // If S0ix residency reading was not successful, we have no way to track the
   // residency during suspend.
-  if (!s0ix.IsValid())
+  if (!s0ix.IsValid()) {
     return;
+  }
 
   const base::TimeDelta s0ix_residency = s0ix.PostResume() - s0ix.PreSuspend();
 
@@ -976,8 +1006,9 @@ void MetricsCollector::GenerateS2IdleS0ixMetrics() {
   // resolution.
   // We'll loose a single sample per |max_s0ix_residency_| which is at minimum
   // ~5 days.
-  if (s0ix_residency.is_negative())
+  if (s0ix_residency.is_negative()) {
     return;
+  }
 
   const base::TimeDelta time_in_suspend =
       clock_.GetCurrentBootTime() - time_before_suspend_;
@@ -987,14 +1018,16 @@ void MetricsCollector::GenerateS2IdleS0ixMetrics() {
   // not reliable anymore.
   // At most we'll loose a single sample per |max_s0ix_residency_| which is
   // at minimum ~5 days.
-  if (time_in_suspend > max_s0ix_residency_)
+  if (time_in_suspend > max_s0ix_residency_) {
     return;
+  }
 
   // If the device woke from suspend before |KS0ixOverheadTime|, then the
   // CPUs might not have entered S0ix. Let us not complain nor generate UMA
   // metrics.
-  if (time_in_suspend <= KS0ixOverheadTime)
+  if (time_in_suspend <= KS0ixOverheadTime) {
     return;
+  }
 
   int s0ix_residency_percent =
       GetExpectedResidencyPercent(time_in_suspend, s0ix_residency);
@@ -1016,8 +1049,9 @@ void MetricsCollector::GenerateRuntimeS0ixMetrics() {
 
   // If either S0ix or PC10 residency reading was not successful, we have no way
   // to track the runtime residency.
-  if (!s0ix.IsValid() || !pc10.IsValid())
+  if (!s0ix.IsValid() || !pc10.IsValid()) {
     return;
+  }
 
   const base::TimeDelta s0ix_residency = s0ix.PreSuspend() - s0ix.PostResume();
   const base::TimeDelta pc10_residency = pc10.PreSuspend() - pc10.PostResume();
@@ -1027,8 +1061,9 @@ void MetricsCollector::GenerateRuntimeS0ixMetrics() {
   // resolution.
   // We'll loose a single sample per counter. For S0ix it is
   // |max_s0ix_residency_| which is at minimum ~5 days.
-  if (s0ix_residency.is_negative() || pc10_residency.is_negative())
+  if (s0ix_residency.is_negative() || pc10_residency.is_negative()) {
     return;
+  }
 
   // Calculate the time between |HandleResume| and |PrepareForSuspend|. This
   // includes one round of |residency_trackers_| update which will be taken into
@@ -1040,14 +1075,16 @@ void MetricsCollector::GenerateRuntimeS0ixMetrics() {
   // don't report such metric. This is fine as the overhead time is in range of
   // microseconds which would mean that user didn't want to resume the system
   // anyway.
-  if (time_in_resume <= kRuntimeS0ixOverheadTime)
+  if (time_in_resume <= kRuntimeS0ixOverheadTime) {
     return;
+  }
 
   // Guard against a very unlikely case of a counter roll-over using
   // |max_s0ix_residency_| as a safety lower-bound which gives us a minimum of
   // ~5 days in runtime.
-  if (time_in_resume > max_s0ix_residency_)
+  if (time_in_resume > max_s0ix_residency_) {
     return;
+  }
 
   // Additionally measure how much time is spent in PC10 compared to the
   // runtime. This should give us an estimate on potential power-savings if S0ix
@@ -1082,8 +1119,9 @@ void MetricsCollector::GenerateRuntimeS0ixMetrics() {
 
 base::FilePath MetricsCollector::GetPrefixedFilePath(
     const base::FilePath& file_path) const {
-  if (prefix_path_for_testing_.empty())
+  if (prefix_path_for_testing_.empty()) {
     return file_path;
+  }
   DCHECK(file_path.IsAbsolute());
   return prefix_path_for_testing_.Append(file_path.value().substr(1));
 }

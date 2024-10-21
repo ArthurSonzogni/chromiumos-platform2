@@ -72,8 +72,9 @@ bool CoolingDevice::InitSysfsFile() {
 
   base::FilePath max_state_path = device_path_.Append(kMaxStateFileName);
   int64_t max_state;
-  if (!util::ReadInt64File(max_state_path, &max_state))
+  if (!util::ReadInt64File(max_state_path, &max_state)) {
     return false;
+  }
 
   if (max_state == 0) {
     LOG(INFO) << "Ignore max_state = 0 cooling device: " << device_path_;
@@ -82,13 +83,15 @@ bool CoolingDevice::InitSysfsFile() {
 
   base::FilePath type_path = device_path_.Append(kTypeFileName);
   std::string type;
-  if (!util::ReadStringFile(type_path, &type))
+  if (!util::ReadStringFile(type_path, &type)) {
     type = "Unknown";
+  }
 
   base::FilePath cur_state_path = device_path_.Append(kCurStateFileName);
   int64_t cur_state;
-  if (!util::ReadInt64File(cur_state_path, &cur_state))
+  if (!util::ReadInt64File(cur_state_path, &cur_state)) {
     return false;
+  }
 
   // DCHECK since it would be an unlikely kernel bug if this happened.
   DCHECK(cur_state <= max_state);
@@ -128,12 +131,15 @@ DeviceThermalState CoolingDevice::CalculateThermalState(int sysfs_data) {
   if (max_state_ == 0) {
     return DeviceThermalState::kUnknown;
   }
-  if (sysfs_data >= threshold_critical_)
+  if (sysfs_data >= threshold_critical_) {
     return DeviceThermalState::kCritical;
-  if (sysfs_data >= threshold_serious_)
+  }
+  if (sysfs_data >= threshold_serious_) {
     return DeviceThermalState::kSerious;
-  if (sysfs_data >= threshold_fair_)
+  }
+  if (sysfs_data >= threshold_fair_) {
     return DeviceThermalState::kFair;
+  }
   return DeviceThermalState::kNominal;
 }
 

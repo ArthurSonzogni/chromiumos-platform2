@@ -29,8 +29,9 @@ constexpr int kMaxBrightnessLevel = 100;
 constexpr char kUsbRgbBacklightRole[] = "role_usb_rgb_backlight";
 
 UsbBacklight::UsbBacklight(UdevInterface* udev) : udev_(udev) {
-  if (udev_)
+  if (udev_) {
     udev_->AddTaggedDeviceObserver(this);
+  }
 }
 
 void UsbBacklight::AddObserver(BacklightObserver* observer) {
@@ -71,8 +72,9 @@ bool UsbBacklight::UpdateDevice() {
   max_brightness_level_ = kMaxBrightnessLevel;
   current_brightness_level_ = get_cmd->Brightness();
 
-  for (BacklightObserver& observer : observers_)
+  for (BacklightObserver& observer : observers_) {
     observer.OnBacklightDeviceChanged(this);
+  }
 
   return true;
 }
@@ -86,8 +88,9 @@ bool UsbBacklight::SetBrightnessLevel(int64_t level, base::TimeDelta interval) {
 }
 
 bool UsbBacklight::WriteBrightness(int64_t new_level) {
-  if (!DeviceExists())
+  if (!DeviceExists()) {
     return false;
+  }
 
   ec::SetKeyboardBacklightCommand cmd(new_level);
   if (!cmd.Run(*usb_endpoint_)) {
@@ -104,8 +107,9 @@ void UsbBacklight::OnTaggedDeviceChanged(const system::TaggedDevice& device) {
     LOG(INFO) << "Got a change event for device with tag "
               << kUsbRgbBacklightRole;
     // No need to recreate endpoint on every change event.
-    if (!DeviceExists())
+    if (!DeviceExists()) {
       UpdateDevice();
+    }
   }
 }
 

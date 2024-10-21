@@ -38,8 +38,9 @@ EventDevice::EventDevice(int fd, const base::FilePath& path)
 EventDevice::~EventDevice() {
   fd_watcher_.reset();
   // ENODEV is expected if the device was just unplugged.
-  if (close(fd_) != 0 && errno != ENODEV)
+  if (close(fd_) != 0 && errno != ENODEV) {
     PLOG(ERROR) << "Unable to close FD " << fd_;
+  }
 }
 
 std::string EventDevice::GetDebugName() {
@@ -50,8 +51,9 @@ std::string EventDevice::GetPhysPath() {
   char phys[256] = "";
 
   if (TEMP_FAILURE_RETRY(ioctl(fd_, EVIOCGPHYS(sizeof(phys)), phys)) < 0 &&
-      errno != ENOENT)
+      errno != ENOENT) {
     PLOG(ERROR) << "Could not get topo phys path of " << path_.value();
+  }
 
   return phys;
 }
@@ -59,8 +61,9 @@ std::string EventDevice::GetPhysPath() {
 std::string EventDevice::GetName() {
   char name[256] = {0};
 
-  if (TEMP_FAILURE_RETRY(ioctl(fd_, EVIOCGNAME(sizeof(name) - 1), name)) < 0)
+  if (TEMP_FAILURE_RETRY(ioctl(fd_, EVIOCGNAME(sizeof(name) - 1), name)) < 0) {
     PLOG(ERROR) << "Could not get name of " << path_.value();
+  }
 
   return name;
 }
@@ -84,15 +87,17 @@ bool EventDevice::IsPowerButton() {
 bool EventDevice::HoverSupported() {
   // Multitouch hover uses just the ABS_MT_DISTANCE event in addition to
   // the normal multi-touch events.
-  if (HasEventBit(0, EV_ABS) && HasEventBit(EV_ABS, ABS_MT_DISTANCE))
+  if (HasEventBit(0, EV_ABS) && HasEventBit(EV_ABS, ABS_MT_DISTANCE)) {
     return true;
+  }
 
   // Simple single-touch hover presence-only detection uses 3 events:
   // ABS_DISTANCE, BTN_TOUCH, and BTN_TOOL_FINGER.
   if (HasEventBit(0, EV_ABS) && HasEventBit(EV_ABS, ABS_DISTANCE) &&
       HasEventBit(0, EV_KEY) && HasEventBit(EV_KEY, BTN_TOUCH) &&
-      HasEventBit(EV_KEY, BTN_TOOL_FINGER))
+      HasEventBit(EV_KEY, BTN_TOOL_FINGER)) {
     return true;
+  }
 
   return false;
 }
@@ -152,8 +157,9 @@ EventDevice::ReadResult EventDevice::ReadEvents(
     if (errno == ENODEV) {
       return ReadResult::kNoDevice;
     }
-    if (errno != EAGAIN && errno != EWOULDBLOCK)
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
       PLOG(ERROR) << "Reading events from " << path_.value() << " failed";
+    }
     return ReadResult::kFailure;
   } else if (read_size == 0) {
     LOG(ERROR) << "Read returned 0 when reading events from " << path_.value();
@@ -168,8 +174,9 @@ EventDevice::ReadResult EventDevice::ReadEvents(
   }
 
   events_out->reserve(num_events);
-  for (size_t i = 0; i < num_events; ++i)
+  for (size_t i = 0; i < num_events; ++i) {
     events_out->push_back(events[i]);
+  }
   return ReadResult::kSuccess;
 }
 

@@ -236,34 +236,38 @@ void ChargeHistory::HandlePowerStatusUpdate(const system::PowerStatus& status) {
   }
 
   CheckAndFixSystemTimeChange();
-  if (status.external_power == cached_external_power_)
+  if (status.external_power == cached_external_power_) {
     return;
+  }
 
   UpdateHistory(status);
 }
 
 base::TimeDelta ChargeHistory::GetTimeOnAC() {
   base::TimeDelta duration_on_ac = duration_on_ac_;
-  if (ac_connect_time_ != base::Time())
+  if (ac_connect_time_ != base::Time()) {
     duration_on_ac += clock_.GetCurrentBootTime() - ac_connect_ticks_ +
                       ac_connect_ticks_offset_;
+  }
 
   return duration_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
 }
 
 base::TimeDelta ChargeHistory::GetTimeFullOnAC() {
   base::TimeDelta duration_full_on_ac = duration_full_on_ac_;
-  if (full_charge_time_ != base::Time())
+  if (full_charge_time_ != base::Time()) {
     duration_full_on_ac += clock_.GetCurrentBootTime() - full_charge_ticks_ +
                            full_charge_ticks_offset_;
+  }
 
   return duration_full_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
 }
 
 base::TimeDelta ChargeHistory::GetHoldTimeOnAC() {
   base::TimeDelta hold_duration_on_ac = hold_duration_on_ac_;
-  if (hold_charge_time_ != base::Time())
+  if (hold_charge_time_ != base::Time()) {
     hold_duration_on_ac += clock_.GetCurrentBootTime() - hold_charge_ticks_;
+  }
 
   return hold_duration_on_ac.FloorToMultiple(kChargeHistoryTimeInterval);
 }
@@ -274,14 +278,16 @@ base::TimeDelta ChargeHistory::GetChargeDurationPercentile(double percentile) {
 
   // If there are no charge durations yet or the percentile is 1.0 (100%), don't
   // limit Adaptive Charging's hold duration.
-  if (charge_events_.empty() || percentile == 1.0)
+  if (charge_events_.empty() || percentile == 1.0) {
     return base::TimeDelta::Max();
+  }
 
   // Copy durations to a separate vector, then use std::nth_element to find the
   // `percentile` duration.
   std::vector<base::TimeDelta> durations;
-  for (auto val : charge_events_)
+  for (auto val : charge_events_) {
     durations.push_back(val.second);
+  }
 
   size_t idx = std::min(
       charge_events_.size() - 1,
@@ -331,8 +337,9 @@ bool ChargeHistory::CopyToProtocolBuffer(ChargeHistoryState* proto) {
   DCHECK(proto);
   // If Init wasn't called yet, we have no useful data to return. We need a
   // valid PowerStatus as well to properly initialize, so we can't do that here.
-  if (!initialized_)
+  if (!initialized_) {
     return false;
+  }
 
   proto->Clear();
 
@@ -420,8 +427,9 @@ bool ChargeHistory::CheckAndFixTimestamp(base::Time* timestamp,
 
 void ChargeHistory::CheckAndFixSystemTimeChange() {
   // Nothing to do if `ac_connect_time_` is not set.
-  if (ac_connect_time_ == base::Time())
+  if (ac_connect_time_ == base::Time()) {
     return;
+  }
 
   // If we detect a time jump larger than the time interval, remove the
   // existing charge event file.
@@ -473,20 +481,23 @@ void ChargeHistory::UpdateHistory(const system::PowerStatus& status) {
   }
 
   // This occurs on Init when the charger isn't connected.
-  if (ac_connect_time_ == base::Time())
+  if (ac_connect_time_ == base::Time()) {
     return;
+  }
 
   // On AC disconnect, write the charging duration to the latest charge event
   // file (the name of which will be the connection time), the time_on_ac files,
   // the time_full_on_ac files (if we're fully charged), and hold_time_on_ac
   // files (if we held charge).
-  if (full_charge_time_ != base::Time())
+  if (full_charge_time_ != base::Time()) {
     RecordDurations(time_full_on_ac_dir_, &time_full_on_ac_days_,
                     full_charge_time_, &duration_full_on_ac_);
+  }
 
-  if (hold_charge_time_ != base::Time())
+  if (hold_charge_time_ != base::Time()) {
     RecordDurations(hold_time_on_ac_dir_, &hold_time_on_ac_days_,
                     hold_charge_time_, &hold_duration_on_ac_);
+  }
 
   RecordDurations(time_on_ac_dir_, &time_on_ac_days_, ac_connect_time_,
                   &duration_on_ac_);
@@ -599,8 +610,9 @@ void ChargeHistory::RemoveOldChargeDays(
 
 void ChargeHistory::CreateEmptyChargeEventFile(base::Time start) {
   base::FilePath path;
-  if (!TimeToJSONFileName(FloorTime(start), &path))
+  if (!TimeToJSONFileName(FloorTime(start), &path)) {
     return;
+  }
 
   base::File file(charge_events_dir_.Append(path),
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_READ |
@@ -610,8 +622,9 @@ void ChargeHistory::CreateEmptyChargeEventFile(base::Time start) {
 
 void ChargeHistory::RemoveOldChargeEvents() {
   int max = kMaxChargeEvents;
-  if (ac_connect_time_ != base::Time())
+  if (ac_connect_time_ != base::Time()) {
     --max;
+  }
 
   while (charge_events_.size() > max) {
     auto it = charge_events_.begin();
@@ -619,8 +632,9 @@ void ChargeHistory::RemoveOldChargeEvents() {
     charge_events_.erase(it);
   }
 
-  if (charge_events_.empty())
+  if (charge_events_.empty()) {
     return;
+  }
 
   auto it = charge_events_.begin();
   while (it != charge_events_.end() &&
@@ -692,8 +706,9 @@ base::TimeDelta ChargeHistory::DurationForDay(base::Time start,
                                               base::Time day_start) {
   DCHECK(day_start == day_start.UTCMidnight());
   base::Time day_end = day_start + base::Days(1);
-  if (start == base::Time() || start > day_end)
+  if (start == base::Time() || start > day_end) {
     return base::TimeDelta();
+  }
 
   base::Time now = FloorTime(clock_.GetCurrentWallTime());
   return (now < day_end ? now : day_end) -
@@ -787,8 +802,9 @@ bool ChargeHistory::TimeToJSONFileName(base::Time time, base::FilePath* file) {
 void ChargeHistory::DeleteChargeFile(const base::FilePath& dir,
                                      base::Time time) {
   base::FilePath path;
-  if (!TimeToJSONFileName(FloorTime(time), &path))
+  if (!TimeToJSONFileName(FloorTime(time), &path)) {
     return;
+  }
 
   CHECK(base::DeleteFile(dir.Append(path)));
 }
@@ -797,8 +813,9 @@ AdaptiveChargingController::AdaptiveChargingController()
     : weak_ptr_factory_(this) {}
 
 AdaptiveChargingController::~AdaptiveChargingController() {
-  if (power_supply_)
+  if (power_supply_) {
     power_supply_->RemoveObserver(this);
+  }
 }
 
 void AdaptiveChargingController::Init(
@@ -922,8 +939,9 @@ void AdaptiveChargingController::Init(
 
 void AdaptiveChargingController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {
-  if (state_ == AdaptiveChargingState::SHUTDOWN)
+  if (state_ == AdaptiveChargingState::SHUTDOWN) {
     return;
+  }
 
   bool restart_adaptive = false;
   if (policy.has_adaptive_charging_hold_percent() &&
@@ -1007,8 +1025,9 @@ void AdaptiveChargingController::HandlePolicyChange(
     restart_adaptive = true;
   }
 
-  if (!restart_adaptive)
+  if (!restart_adaptive) {
     return;
+  }
 
   // Stop adaptive charging, then restart it with the new values.
   StopAdaptiveCharging();
@@ -1016,8 +1035,9 @@ void AdaptiveChargingController::HandlePolicyChange(
 
   // If Charge Limit is enabled, we need to make sure it's enabled after
   // the battery sustainer is disabled in StopAdaptiveCharging.
-  if (charge_limit_enabled_)
+  if (charge_limit_enabled_) {
     StartChargeLimit();
+  }
 }
 
 void AdaptiveChargingController::PrepareForSuspendAttempt() {
@@ -1042,8 +1062,9 @@ void AdaptiveChargingController::PrepareForSuspendAttempt() {
 
   // Don't run UpdateAdaptiveCharging, which will schedule an RTC wake from
   // sleep, if `recheck_alarm_` isn't already running.
-  if (!IsRunning())
+  if (!IsRunning()) {
     return;
+  }
 
   // Set the charge policy synchronously to make sure this completes before
   // suspend.
@@ -1052,13 +1073,15 @@ void AdaptiveChargingController::PrepareForSuspendAttempt() {
 
 void AdaptiveChargingController::HandleFullResume() {
   charge_history_.OnExitLowPowerState();
-  if (charge_limit_enabled_ && !is_sustain_set_)
+  if (charge_limit_enabled_ && !is_sustain_set_) {
     StartChargeLimit();
+  }
 }
 
 void AdaptiveChargingController::HandleDarkResume() {
-  if (charge_limit_enabled_ && !is_sustain_set_)
+  if (charge_limit_enabled_ && !is_sustain_set_) {
     StartChargeLimit();
+  }
 }
 
 void AdaptiveChargingController::HandleShutdown() {
@@ -1091,8 +1114,9 @@ void AdaptiveChargingController::OnPredictionResponse(
   int hour;
   for (hour = 0; hour < result.size(); ++hour) {
     probability_sum += result[hour];
-    if (probability_sum >= min_probability_)
+    if (probability_sum >= min_probability_) {
       break;
+    }
   }
 
   LOG(INFO) << "Adaptive Charging ML predicts AC unplug will occur after "
@@ -1141,11 +1165,12 @@ void AdaptiveChargingController::OnPredictionResponse(
   // in for the time left to finish charging, stop delaying and start charging.
   if (target_delay <= kFinishChargingDelay) {
     StopAdaptiveCharging();
-    if (hold_percent_start_time_ != base::TimeTicks())
+    if (hold_percent_start_time_ != base::TimeTicks()) {
       target_full_charge_time_ =
           clock_.GetCurrentBootTime() + kFinishChargingDelay;
-    else
+    } else {
       target_full_charge_time_ = clock_.GetCurrentBootTime() + target_delay;
+    }
 
     return;
   }
@@ -1190,8 +1215,9 @@ void AdaptiveChargingController::OnPredictionResponse(
     // expectations.
     if (charge_alarm_->IsRunning() &&
         AtHoldPercent(status.display_battery_percentage) &&
-        target_time >= target_full_charge_time_)
+        target_time >= target_full_charge_time_) {
       return;
+    }
 
     if (slow_charging_enabled_) {
       StartChargeAlarm(target_delay - kFinishSlowChargingDelay);
@@ -1208,8 +1234,9 @@ void AdaptiveChargingController::OnPredictionResponse(
   // metrics on how well the predictions perform.
   // TODO(b/222620437): If the Battery Sustainer was already set, don't set it
   // again as a workaround until all firmwares are updated.
-  if (state_ != AdaptiveChargingState::ACTIVE || is_sustain_set_)
+  if (state_ != AdaptiveChargingState::ACTIVE || is_sustain_set_) {
     return;
+  }
 
   // Set the upper limit of battery sustain to the current charge if it's higher
   // than `hold_percent_`. The battery sustain feature will maintain a display
@@ -1248,8 +1275,9 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
       StopAdaptiveCharging();
 
       // Clear any display percentage override for `power_supply_` on unplug.
-      if (charge_limit_enabled_)
+      if (charge_limit_enabled_) {
         power_supply_->ClearChargeLimited();
+      }
 
       // Only generate metrics if Adaptive Charging started, and we're above
       // hold_percent_.
@@ -1294,8 +1322,9 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
   // charge (denoted as PowerSupplyProperties_ExternalPower_AC) since that's the
   // only time that Adaptive Charging will be active.
   if (!started_ ||
-      status.external_power != PowerSupplyProperties_ExternalPower_AC)
+      status.external_power != PowerSupplyProperties_ExternalPower_AC) {
     return;
+  }
 
   if (AtHoldPercent(status.display_battery_percentage)) {
     if (state_ == AdaptiveChargingState::ACTIVE && is_sustain_set_) {
@@ -1310,8 +1339,9 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
 
     // Since we report metrics on how well the ML model does even if Adaptive
     // Charging isn't enabled, we still record this timestamp.
-    if (hold_percent_start_time_ == base::TimeTicks())
+    if (hold_percent_start_time_ == base::TimeTicks()) {
       hold_percent_start_time_ = clock_.GetCurrentBootTime();
+    }
   }
 
   if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
@@ -1329,8 +1359,9 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
 void AdaptiveChargingController::HandleChargeNow(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-  if (state_ == AdaptiveChargingState::ACTIVE)
+  if (state_ == AdaptiveChargingState::ACTIVE) {
     state_ = AdaptiveChargingState::USER_CANCELED;
+  }
 
   StopAdaptiveCharging();
   power_supply_->RefreshImmediately();
@@ -1384,8 +1415,9 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     const UserChargingEvent::Event::Reason& reason) {
   // Keep the current value of `started_` just in case AC unplug happens right
   // before shutdown.
-  if (state_ == AdaptiveChargingState::SHUTDOWN)
+  if (state_ == AdaptiveChargingState::SHUTDOWN) {
     return false;
+  }
 
   const system::PowerStatus status = power_supply_->GetPowerStatus();
   report_charge_time_ =
@@ -1394,8 +1426,9 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
   base::TimeDelta time_full_on_ac = charge_history_.GetTimeFullOnAC();
   base::TimeDelta time_on_ac = charge_history_.GetTimeOnAC();
   double ratio = 0.0;
-  if (time_on_ac != base::TimeDelta())
+  if (time_on_ac != base::TimeDelta()) {
     ratio = (hold_time_on_ac + time_full_on_ac) / time_on_ac;
+  }
 
   if (charge_history_.DaysOfHistory() < min_days_history_ ||
       ratio < min_full_on_ac_ratio_) {
@@ -1406,8 +1439,9 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
               << "; full on ac ratio is " << ratio
               << ", minimal requirement is " << min_full_on_ac_ratio_ << ".";
     state_ = AdaptiveChargingState::HEURISTIC_DISABLED;
-    if (adaptive_charging_enabled_)
+    if (adaptive_charging_enabled_) {
       power_supply_->SetAdaptiveChargingHeuristicEnabled(false);
+    }
   } else if (!adaptive_charging_supported_) {
     state_ = AdaptiveChargingState::NOT_SUPPORTED;
   } else if (adaptive_charging_enabled_) {
@@ -1421,8 +1455,9 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
   // percentage.
   if (status.battery_state == PowerSupplyProperties_BatteryState_FULL ||
       status.display_battery_percentage >= kAdaptiveChargingMaxPercent) {
-    if (state_ == AdaptiveChargingState::ACTIVE)
+    if (state_ == AdaptiveChargingState::ACTIVE) {
       state_ = AdaptiveChargingState::INACTIVE;
+    }
 
     started_ = false;
     return false;
@@ -1439,8 +1474,9 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
       slow_charging_enabled_ = true;
     }
 
-    if (!slow_charging_supported_)
+    if (!slow_charging_supported_) {
       slow_charging_enabled_ = false;
+    }
   }
 
   LOG(INFO) << "Slow charging is "
@@ -1481,14 +1517,15 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
 
   const LidState lid_state = input_watcher_->QueryLidState();
   int mode;
-  if (lid_state == LidState::CLOSED)
+  if (lid_state == LidState::CLOSED) {
     mode = UserChargingEvent::Features::CLOSED_LID_MODE;
-  else if (input_watcher_->GetTabletMode() == TabletMode::ON)
+  } else if (input_watcher_->GetTabletMode() == TabletMode::ON) {
     mode = UserChargingEvent::Features::TABLET_MODE;
-  else if (lid_state == LidState::OPEN)
+  } else if (lid_state == LidState::OPEN) {
     mode = UserChargingEvent::Features::LAPTOP_MODE;
-  else
+  } else {
     mode = UserChargingEvent::Features::UNKNOWN_MODE;
+  }
 
   features["DeviceMode"].set_int32_value(static_cast<int32_t>(mode));
 
@@ -1500,11 +1537,12 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
 
   double screen_brightness;
   if (backlight_controller_ &&
-      backlight_controller_->GetBrightnessPercent(&screen_brightness))
+      backlight_controller_->GetBrightnessPercent(&screen_brightness)) {
     features["ScreenBrightnessPercent"].set_int32_value(
         static_cast<int32_t>(screen_brightness));
-  else
+  } else {
     features["ScreenBrightnessPercent"].set_int32_value(0);
+  }
 
   features["Reason"].set_int32_value(static_cast<int32_t>(reason));
 
@@ -1580,8 +1618,9 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
       features[std::string("DailySummaryTimeOnAc") + suffix].set_int32_value(
           -1);
       // Skip over DailyHistories without a utc_midnight value.
-      if (rit != daily_history.rend() && !rit->has_utc_midnight())
+      if (rit != daily_history.rend() && !rit->has_utc_midnight()) {
         rit++;
+      }
 
       continue;
     }

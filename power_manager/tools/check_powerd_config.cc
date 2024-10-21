@@ -100,8 +100,9 @@ int main(int argc, char* argv[]) {
     double p = 0.0;
     // Match system::PowerSupply's logic: a time-based threshold is ignored if a
     // percent-based threshold is set.
-    if (!prefs.GetDouble(power_manager::kLowBatteryShutdownPercentPref, &p))
+    if (!prefs.GetDouble(power_manager::kLowBatteryShutdownPercentPref, &p)) {
       prefs.GetInt64(power_manager::kLowBatteryShutdownTimePref, &sec);
+    }
     printf("%" PRId64 "\n", sec);
     exit(0);
   } else if (FLAGS_set_wifi_transmit_power) {

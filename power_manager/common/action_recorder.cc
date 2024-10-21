@@ -14,8 +14,9 @@ std::string JoinActions(const char* action, ...) {
   va_list arg_list;
   va_start(arg_list, action);
   while (action) {
-    if (!actions.empty())
+    if (!actions.empty()) {
       actions += ",";
+    }
     actions += action;
     action = va_arg(arg_list, const char*);
   }
@@ -30,8 +31,9 @@ std::string ActionRecorder::GetActions() {
 }
 
 void ActionRecorder::AppendAction(const std::string& new_action) {
-  if (!actions_.empty())
+  if (!actions_.empty()) {
     actions_ += ",";
+  }
   actions_ += new_action;
 }
 

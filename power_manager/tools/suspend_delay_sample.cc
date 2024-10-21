@@ -42,10 +42,12 @@ bool CallMethod(dbus::ObjectProxy* powerd_proxy,
   base::expected<std::unique_ptr<dbus::Response>, dbus::Error> response(
       powerd_proxy->CallMethodAndBlock(&method_call,
                                        dbus::ObjectProxy::TIMEOUT_USE_DEFAULT));
-  if (!response.has_value() || !response.value())
+  if (!response.has_value() || !response.value()) {
     return false;
-  if (!reply_out)
+  }
+  if (!reply_out) {
     return true;
+  }
 
   dbus::MessageReader reader(response.value().get());
   CHECK(reader.PopArrayOfBytesAsProto(reply_out))

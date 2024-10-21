@@ -115,8 +115,9 @@ class Converter {
       controller_ = std::move(controller);
     }
 
-    if (light_sensor_.get())
+    if (light_sensor_.get()) {
       light_sensor_->NotifyObservers();
+    }
 
     PowerSource power_source = PowerSource::BATTERY;
     if (!force_battery) {
@@ -253,8 +254,9 @@ void GetAmbientLightLux(bool keyboard) {
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
 
-  if (!pending_remote)
+  if (!pending_remote) {
     Abort("Failed to connect to Mojo Service Manager");
+  }
 
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_remote;
@@ -271,8 +273,9 @@ void GetAmbientLightLux(bool keyboard) {
       keyboard ? manager.GetSensorForKeyboardBacklight()
                : manager.GetSensorForInternalBacklight();
 
-  if (!sensor)
+  if (!sensor) {
     Abort("Ambient light sensor not found");
+  }
 
   int lux = sensor->GetAmbientLightLux();
   if (lux < 0) {
@@ -280,8 +283,9 @@ void GetAmbientLightLux(bool keyboard) {
 
     ObserverImpl observer;
     sensor->AddObserver(&observer);
-    if (!observer.RunUntilAmbientLightUpdated())
+    if (!observer.RunUntilAmbientLightUpdated()) {
       Abort("Timed out before an ambient light sample updated");
+    }
 
     lux = sensor->GetAmbientLightLux();
   }
@@ -366,12 +370,14 @@ int main(int argc, char* argv[]) {
         "At most one flag that prints a level or percent or nit may be "
         "passed.");
   }
-  if (FLAGS_set_brightness >= 0 && FLAGS_set_brightness_percent >= 0.0)
+  if (FLAGS_set_brightness >= 0 && FLAGS_set_brightness_percent >= 0.0) {
     Abort("At most one of -set_brightness* may be passed.");
+  }
 
   if ((FLAGS_get_current_nits >= 0 || FLAGS_get_calculated_nits >= 0) &&
-      FLAGS_keyboard)
+      FLAGS_keyboard) {
     Abort("Nits calculation is only available for display panel.");
+  }
 
   if (FLAGS_get_ambient_light_lux) {
     // Needed for the D-Bus I/O that waits for fd without blocking.
@@ -392,8 +398,9 @@ int main(int argc, char* argv[]) {
   std::string pattern = FLAGS_keyboard
                             ? power_manager::kKeyboardBacklightPattern
                             : power_manager::kInternalBacklightPattern;
-  if (!backlight.Init(path, pattern))
+  if (!backlight.Init(path, pattern)) {
     Abort("No backlight in " + path.value() + " matched by " + pattern + ".");
+  }
 
   const int64_t current_level =
       FLAGS_get_initial_brightness ? 0 : backlight.GetCurrentBrightnessLevel();
@@ -402,14 +409,18 @@ int main(int argc, char* argv[]) {
                       FLAGS_force_battery);
 
   // Print brightness.
-  if (FLAGS_get_brightness)
+  if (FLAGS_get_brightness) {
     printf("%" PRIi64 "\n", current_level);
-  if (FLAGS_get_max_brightness)
+  }
+  if (FLAGS_get_max_brightness) {
     printf("%" PRIi64 "\n", backlight.GetMaxBrightnessLevel());
-  if (FLAGS_get_brightness_percent)
+  }
+  if (FLAGS_get_brightness_percent) {
     printf("%f\n", converter.LevelToLinearPercent(current_level));
-  if (FLAGS_get_initial_brightness)
+  }
+  if (FLAGS_get_initial_brightness) {
     printf("%" PRIi64 "\n", converter.GetInitialLevel());
+  }
 
   // Convert between units.
   if (FLAGS_nonlinear_to_level >= 0.0) {

@@ -25,8 +25,9 @@ class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
   bool Exists() override { return contents_ != nullptr; }
 
   bool Read(std::string* contents) override {
-    if (!contents_)
+    if (!contents_) {
       return false;
+    }
     *contents = *contents_;
     return true;
   }

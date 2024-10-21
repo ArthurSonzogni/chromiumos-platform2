@@ -142,8 +142,9 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   std::vector<int> delay_ids_to_remove;
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
        it != registered_delays_.end(); ++it) {
-    if (it->second.dbus_client == client)
+    if (it->second.dbus_client == client) {
       delay_ids_to_remove.push_back(it->first);
+    }
   }
 
   for (std::vector<int>::const_iterator it = delay_ids_to_remove.begin();
@@ -181,8 +182,9 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
   delay_ids_being_waited_on_.clear();
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
        it != registered_delays_.end(); ++it) {
-    if (!device_key_evicted_ || it->second.applicable_during_key_eviction)
+    if (!device_key_evicted_ || it->second.applicable_during_key_eviction) {
       delay_ids_being_waited_on_.insert(it->first);
+    }
   }
 
   LOG(INFO) << "Announcing " << GetLogDescription() << " request "
@@ -205,8 +207,9 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
          it != registered_delays_.end(); ++it) {
-      if (!device_key_evicted_ || it->second.applicable_during_key_eviction)
+      if (!device_key_evicted_ || it->second.applicable_during_key_eviction) {
         max_timeout = std::max(max_timeout, it->second.timeout);
+      }
     }
     max_timeout = std::min(max_timeout, max_delay_timeout_);
     max_delay_expiration_timer_.Start(
@@ -216,8 +219,9 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id,
 }
 
 void SuspendDelayController::FinishSuspend(int suspend_id) {
-  if (suspend_id != current_suspend_id_)
+  if (suspend_id != current_suspend_id_) {
     return;
+  }
 
   max_delay_expiration_timer_.Stop();
   min_delay_expiration_timer_.Stop();
@@ -247,8 +251,9 @@ void SuspendDelayController::UnregisterDelayInternal(int delay_id) {
 }
 
 void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
-  if (!delay_ids_being_waited_on_.count(delay_id))
+  if (!delay_ids_being_waited_on_.count(delay_id)) {
     return;
+  }
 
   delay_ids_being_waited_on_.erase(delay_id);
   NotifyIfReadyForSuspend();
@@ -266,15 +271,17 @@ void SuspendDelayController::OnMaxDelayExpiration() {
   std::string tardy_delays;
   for (int delay_id : delay_ids_being_waited_on_) {
     const DelayInfo& delay = registered_delays_[delay_id];
-    if (!tardy_delays.empty())
+    if (!tardy_delays.empty()) {
       tardy_delays += ", ";
+    }
     tardy_delays += base::NumberToString(delay_id) + " (" + delay.dbus_client +
                     ": " + delay.description + ")";
   }
   std::string tardy_internal_delays;
   for (const auto* delay : internal_delays_) {
-    if (!tardy_internal_delays.empty())
+    if (!tardy_internal_delays.empty()) {
       tardy_internal_delays += ", ";
+    }
     tardy_internal_delays += delay->Description();
   }
   LOG(WARNING) << "Timed out while waiting for " << GetLogDescription()
@@ -311,8 +318,9 @@ void SuspendDelayController::NotifyObservers(int suspend_id) {
               suspend_id, "description", GetLogDescription());
   LOG(INFO) << "Notifying observers that " << GetLogDescription()
             << " is ready";
-  for (SuspendDelayObserver& observer : observers_)
+  for (SuspendDelayObserver& observer : observers_) {
     observer.OnReadyForSuspend(this, suspend_id);
+  }
 }
 
 }  // namespace power_manager::policy

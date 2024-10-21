@@ -83,8 +83,9 @@ BluezBatteryProvider::BluezBatteryProvider() : weak_ptr_factory_(this) {}
 void BluezBatteryProvider::Init(scoped_refptr<dbus::Bus> bus) {
   bus_ = bus;
 
-  if (!bus_)
+  if (!bus_) {
     return;
+  }
 
   battery_exported_object_manager_ =
       std::make_unique<brillo::dbus_utils::ExportedObjectManager>(
@@ -165,8 +166,9 @@ void BluezBatteryProvider::RegisterAsBatteryProvider(
 
 void BluezBatteryProvider::HandleRegisterBatteryProviderResponse(
     dbus::Response* response) {
-  if (!response)
+  if (!response) {
     return;
+  }
 
   if (!response->GetErrorName().empty()) {
     LOG(ERROR) << "Error registering as battery provider: "
@@ -181,8 +183,9 @@ BluezBattery* BluezBatteryProvider::CreateBattery(const std::string& address,
                                                   int level) {
   CHECK(!base::Contains(batteries_, address));
 
-  if (!battery_exported_object_manager_)
+  if (!battery_exported_object_manager_) {
     return nullptr;
+  }
 
   std::string device_path = std::string(kBluetoothDefaultAdapter) +
                             std::string("/dev_") + AddressToPath(address);
@@ -197,8 +200,9 @@ BluezBattery* BluezBatteryProvider::CreateBattery(const std::string& address,
 }
 
 BluezBattery* BluezBatteryProvider::GetBattery(const std::string& address) {
-  if (base::Contains(batteries_, address))
+  if (base::Contains(batteries_, address)) {
     return batteries_[address].get();
+  }
 
   return nullptr;
 }

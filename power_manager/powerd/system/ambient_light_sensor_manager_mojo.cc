@@ -33,8 +33,9 @@ AmbientLightSensorManagerMojo::AmbientLightSensorManagerMojo(
     PrefsInterface* prefs, SensorServiceHandler* sensor_service_handler)
     : SensorServiceHandlerObserver(sensor_service_handler) {
   prefs->GetInt64(kHasAmbientLightSensorPref, &num_sensors_);
-  if (num_sensors_ <= 0)
+  if (num_sensors_ <= 0) {
     return;
+  }
 
   CHECK(prefs->GetBool(kAllowAmbientEQ, &allow_ambient_eq_))
       << "Failed to read pref " << kAllowAmbientEQ;
@@ -63,8 +64,9 @@ AmbientLightSensorManagerMojo::~AmbientLightSensorManagerMojo() {
 
 bool AmbientLightSensorManagerMojo::HasColorSensor() {
   for (const auto& sensor : sensors_) {
-    if (sensor->IsColorSensor())
+    if (sensor->IsColorSensor()) {
       return true;
+    }
   }
   return false;
 }
@@ -72,8 +74,9 @@ bool AmbientLightSensorManagerMojo::HasColorSensor() {
 void AmbientLightSensorManagerMojo::OnNewDeviceAdded(
     int32_t iio_device_id, const std::vector<cros::mojom::DeviceType>& types) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (num_sensors_ <= 0)
+  if (num_sensors_ <= 0) {
     return;
+  }
 
   if (std::find(types.begin(), types.end(), cros::mojom::DeviceType::LIGHT) ==
       types.end()) {
@@ -119,8 +122,9 @@ void AmbientLightSensorManagerMojo::OnDeviceRemoved(int32_t iio_device_id) {
 
 void AmbientLightSensorManagerMojo::SensorServiceConnected() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (num_sensors_ <= 0)
+  if (num_sensors_ <= 0) {
     return;
+  }
 
   if (num_sensors_ == 1) {
     if (lid_sensor_.iio_device_id.has_value()) {
@@ -130,11 +134,13 @@ void AmbientLightSensorManagerMojo::SensorServiceConnected() {
   } else {  // num_sensors_ >= 2
     // The two cros-ec-lights on lid and base should exist. Therefore, the
     // potential existing acpi-als is ignored.
-    if (lid_sensor_.iio_device_id.has_value())
+    if (lid_sensor_.iio_device_id.has_value()) {
       SetSensorDeviceMojo(&lid_sensor_, allow_ambient_eq_);
+    }
 
-    if (base_sensor_.iio_device_id.has_value())
+    if (base_sensor_.iio_device_id.has_value()) {
       SetSensorDeviceMojo(&base_sensor_, /*allow_ambient_eq=*/false);
+    }
   }
 }
 
@@ -145,18 +151,21 @@ void AmbientLightSensorManagerMojo::SensorServiceDisconnected() {
 }
 
 void AmbientLightSensorManagerMojo::ResetSensorService() {
-  for (auto& sensor : sensors_)
+  for (auto& sensor : sensors_) {
     sensor->SetDelegate(nullptr);
+  }
 
-  for (auto& light : lights_)
+  for (auto& light : lights_) {
     light.second.remote.reset();
+  }
 }
 
 void AmbientLightSensorManagerMojo::ResetStates() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  for (auto& sensor : sensors_)
+  for (auto& sensor : sensors_) {
     sensor->SetDelegate(nullptr);
+  }
 
   lid_sensor_.iio_device_id = base_sensor_.iio_device_id = std::nullopt;
   lights_.clear();
@@ -331,8 +340,9 @@ void AmbientLightSensorManagerMojo::AllDevicesFound() {
 
   // Remove and ignore remaining remotes as they're not needed anymore.
   for (auto& light : lights_) {
-    if (!light.second.remote.is_bound())
+    if (!light.second.remote.is_bound()) {
       continue;
+    }
 
     light.second.ignored = true;
     light.second.remote.reset();

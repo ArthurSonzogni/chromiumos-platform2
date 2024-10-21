@@ -31,8 +31,9 @@ bool ReadTypeFile(const base::FilePath& path,
   DCHECK(value_out);
 
   std::string str;
-  if (!ReadStringFile(path, &str))
+  if (!ReadStringFile(path, &str)) {
     return false;
+  }
 
   if (!StringToType(str, value_out)) {
     LOG(ERROR) << "Unable to parse \"" << str << "\" from " << path.value();
@@ -52,22 +53,26 @@ double ClampPercent(double percent) {
 
 std::string TimeDeltaToString(base::TimeDelta delta) {
   std::string output;
-  if (delta < base::TimeDelta())
+  if (delta < base::TimeDelta()) {
     output += "-";
+  }
 
   int64_t total_seconds = llabs(delta.InSeconds());
 
   const int64_t hours = total_seconds / 3600;
-  if (hours)
+  if (hours) {
     output += base::StringPrintf("%" PRId64 "h", hours);
+  }
 
   const int64_t minutes = (total_seconds % 3600) / 60;
-  if (minutes)
+  if (minutes) {
     output += base::StringPrintf("%" PRId64 "m", minutes);
+  }
 
   const int64_t seconds = total_seconds % 60;
-  if (seconds || !total_seconds)
+  if (seconds || !total_seconds) {
     output += base::StringPrintf("%" PRId64 "s", seconds);
+  }
 
   return output;
 }
@@ -92,8 +97,9 @@ bool ReadStringFile(const base::FilePath& path, std::string* value_out) {
 bool MaybeReadStringFile(const base::FilePath& path, std::string* value_out) {
   DCHECK(value_out);
 
-  if (!base::ReadFileToString(path, value_out))
+  if (!base::ReadFileToString(path, value_out)) {
     return false;
+  }
   base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);
   return true;
 }
@@ -113,8 +119,9 @@ bool ReadHexUint32File(const base::FilePath& path, uint32_t* value_out) {
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator) {
   std::string str;
-  for (const auto& path : paths)
+  for (const auto& path : paths) {
     str += (str.empty() ? std::string() : separator) + path.value();
+  }
   return str;
 }
 

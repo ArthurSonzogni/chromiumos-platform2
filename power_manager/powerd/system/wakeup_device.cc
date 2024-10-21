@@ -60,8 +60,9 @@ void WakeupDevice::HandleResume() {
 
   // This can happen when the device is no more a wake source (if power/wakeup
   // is disabled).
-  if (!ReadEventCount(&event_count_after_resume))
+  if (!ReadEventCount(&event_count_after_resume)) {
     return;
+  }
 
   if (event_count_after_resume != event_count_before_suspend_) {
     LOG(INFO) << "Device " << sys_path_.value() << " had event_count "
@@ -81,8 +82,9 @@ bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
 
   auto wakeup_dir = sys_path_.Append(kWakeupDir);
   // For power_supply devices, 'wakeup*' is directly below device's root dir.
-  if (sys_path_.value().find("/power_supply/") != std::string::npos)
+  if (sys_path_.value().find("/power_supply/") != std::string::npos) {
     wakeup_dir = sys_path_;
+  }
 
   // event_count lies under wakeup/wakeupN directory. Thus look for wakeupN
   // directory under |wakeup_dir|.
@@ -93,8 +95,9 @@ bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
 
   auto events_count_dir_path = events_count_dir.Next();
   // This can happen if the device is not wake capable anymore.
-  if (events_count_dir_path.empty())
+  if (events_count_dir_path.empty()) {
     return false;
+  }
 
   if (!events_count_dir.Next().empty()) {
     LOG(ERROR) << "More than one wakeupN dir found in " << wakeup_dir.value();
@@ -105,8 +108,9 @@ bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
       events_count_dir_path.Append(kPowerEventCountPath);
 
   // This can happen if the device is not wake enabled anymore.
-  if (!base::PathExists(event_count_path))
+  if (!base::PathExists(event_count_path)) {
     return false;
+  }
 
   if (!base::ReadFileToString(event_count_path, &event_count_str)) {
     PLOG(ERROR) << "Unable to read event count for " << sys_path_.value();
@@ -120,8 +124,9 @@ bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
   }
   base::TrimWhitespaceASCII(event_count_str, base::TRIM_TRAILING,
                             &event_count_str);
-  if (base::StringToUint64(event_count_str, event_count_out))
+  if (base::StringToUint64(event_count_str, event_count_out)) {
     return true;
+  }
 
   LOG(ERROR) << "Could not parse event_count sysattr for " << sys_path_.value();
   return false;

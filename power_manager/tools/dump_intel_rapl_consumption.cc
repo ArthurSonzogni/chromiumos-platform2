@@ -109,9 +109,10 @@ int main(int argc, char** argv) {
     power_manager::util::ReadStringFile(domain_file_path, &domain_name);
     power_manager::util::ReadUint64File(maxeng_file_path, &max_energy_uj);
     power_domains.push_back({energy_file_path, domain_name, max_energy_uj});
-    if (FLAGS_verbose)
+    if (FLAGS_verbose) {
       printf("Found domain %-10s (max %" PRIu64 " uj) at %s\n",
              domain_name.c_str(), max_energy_uj, dir.value().c_str());
+    }
   }
 
   PCHECK(!power_domains.empty())
@@ -123,24 +124,27 @@ int main(int argc, char** argv) {
   // e.g., package-0 psys core ... -> package-0 core ... psys
   sort(power_domains.begin(), power_domains.end());
 
-  for (const auto& domain : power_domains)
+  for (const auto& domain : power_domains) {
     printf("%10s ", domain.name.c_str());
+  }
   printf(" (Note: Values in Watts)\n");
 
   uint32_t num_domains = power_domains.size();
   std::vector<uint64_t> energy_before(num_domains);
   std::vector<uint64_t> energy_after(num_domains);
   do {
-    for (int i = 0; i < num_domains; ++i)
+    for (int i = 0; i < num_domains; ++i) {
       power_manager::util::ReadUint64File(power_domains[i].file_path,
                                           &energy_before[i]);
+    }
     const base::TimeTicks ticks_before = base::TimeTicks::Now();
 
     base::PlatformThread::Sleep(base::Milliseconds(FLAGS_interval_ms));
 
-    for (int i = 0; i < num_domains; ++i)
+    for (int i = 0; i < num_domains; ++i) {
       power_manager::util::ReadUint64File(power_domains[i].file_path,
                                           &energy_after[i]);
+    }
     const base::TimeDelta time_delta = base::TimeTicks::Now() - ticks_before;
 
     for (int i = 0; i < num_domains; ++i) {

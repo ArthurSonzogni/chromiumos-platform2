@@ -85,9 +85,9 @@ int main(int argc, char* argv[]) {
   for (auto source : sources) {
     std::vector<std::string> parts = base::SplitString(
         source, ":", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-    CHECK_EQ(parts.size(), 4u) << "Expected "
-                               << "id:manufacturer:model:active_by_default but "
-                               << "got \"" << source << "\"";
+    CHECK_EQ(parts.size(), 4u)
+        << "Expected " << "id:manufacturer:model:active_by_default but "
+        << "got \"" << source << "\"";
     power_manager::PowerSupplyProperties_PowerSource* proto_source =
         proto.add_available_external_power_source();
     proto_source->set_id(parts[0]);

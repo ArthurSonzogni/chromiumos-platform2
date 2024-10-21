@@ -61,9 +61,11 @@ CpufreqConf::CpufreqConf(std::string path) {
 }
 
 std::optional<std::string> CpufreqConf::GetValue(std::string key) const {
-  for (const auto& pair : pairs_)
-    if (key == pair.first)
+  for (const auto& pair : pairs_) {
+    if (key == pair.first) {
       return pair.second;
+    }
+  }
 
   return std::nullopt;
 }
@@ -105,8 +107,9 @@ bool ShouldConservePower() {
 // Determine which governor we should use.
 std::optional<std::string> GetGovernor(const CpufreqConf& conf) {
   auto governor = conf.GetValue(kKeyGovernor);
-  if (governor.has_value())
+  if (governor.has_value()) {
     return governor;
+  }
 
   // No (fixed) governor? Look for charge/discharge choices.
 
@@ -127,8 +130,9 @@ bool SetGovernor(const std::string& governor) {
                                   "cpu[0-9]*");
   for (auto file = enumerator.Next(); !file.empty(); file = enumerator.Next()) {
     base::FilePath cpufreqPath = file.Append("cpufreq");
-    if (!base::PathExists(cpufreqPath))
+    if (!base::PathExists(cpufreqPath)) {
       continue;
+    }
 
     base::FilePath governorPath = cpufreqPath.Append("scaling_governor");
     if (!base::WriteFile(governorPath, governor)) {
@@ -151,16 +155,18 @@ std::optional<std::string> GetConfigValue(const CpufreqConf& conf,
 bool MultiPolicySetOptional(const CpufreqConf& conf,
                             const std::string& setting) {
   std::optional<std::string> value = GetConfigValue(conf, setting);
-  if (!value.has_value())
+  if (!value.has_value()) {
     return true;
+  }
 
   base::FileEnumerator enumerator(base::FilePath(kCpuBaseDir), false,
                                   base::FileEnumerator::DIRECTORIES,
                                   "cpu[0-9]*");
   for (auto file = enumerator.Next(); !file.empty(); file = enumerator.Next()) {
     base::FilePath path = file.Append("cpufreq").Append(setting);
-    if (!base::PathExists(path))
+    if (!base::PathExists(path)) {
       continue;
+    }
     if (!base::WriteFile(path, value.value())) {
       PLOG(ERROR) << "Failed to write " << setting << " to " << path;
       return false;
@@ -176,8 +182,9 @@ bool GovernorSetOptional(const CpufreqConf& conf,
                          const std::string& governor,
                          const std::string& setting) {
   std::optional<std::string> value = GetConfigValue(conf, setting);
-  if (!value.has_value())
+  if (!value.has_value()) {
     return true;
+  }
 
   base::FilePath path =
       base::FilePath(kCpufreqDir).Append(governor).Append(setting);
@@ -195,8 +202,9 @@ bool GovernorSetOptional(const CpufreqConf& conf,
          file = enumerator.Next()) {
       path = file.Append(governor).Append(setting);
 
-      if (!base::PathExists(path))
+      if (!base::PathExists(path)) {
         continue;
+      }
       if (!base::WriteFile(path, value.value())) {
         PLOG(ERROR) << "Failed to write " << setting << " to " << path;
         return false;
@@ -215,8 +223,9 @@ bool ConfigureIntelPstate(const CpufreqConf& conf) {
   bool ret = true;
 
   for (const auto& setting : settings) {
-    if (!MultiPolicySetOptional(conf, setting))
+    if (!MultiPolicySetOptional(conf, setting)) {
       ret = false;
+    }
   }
 
   return ret;
@@ -231,8 +240,9 @@ bool GovernorIsConfigurable(std::string governor) {
   };
 
   for (const auto& cg : configurableGovernors) {
-    if (cg == governor)
+    if (cg == governor) {
       return true;
+    }
   }
 
   return false;
@@ -267,8 +277,9 @@ bool ConfigureGovernorSettings(const CpufreqConf& conf, std::string governor) {
   bool ret = true;
 
   for (const auto& setting : settings) {
-    if (!GovernorSetOptional(conf, governor, setting))
+    if (!GovernorSetOptional(conf, governor, setting)) {
       ret = false;
+    }
   }
 
   return ret;
@@ -277,8 +288,9 @@ bool ConfigureGovernorSettings(const CpufreqConf& conf, std::string governor) {
 // Restores SELinux context on destruction.
 struct SELinuxRestorer {
   ~SELinuxRestorer() {
-    if (!base::PathExists(base::FilePath(kSELinuxEnforcePath)))
+    if (!base::PathExists(base::FilePath(kSELinuxEnforcePath))) {
       return;
+    }
 
     brillo::ProcessImpl p;
 
@@ -289,8 +301,9 @@ struct SELinuxRestorer {
     p.AddArg(kCpuBaseDir);
 
     int ret = p.Run();
-    if (ret != 0)
+    if (ret != 0) {
       LOG(ERROR) << "restorecon failed with exit code: " << ret;
+    }
   }
 };
 
@@ -298,8 +311,9 @@ struct SELinuxRestorer {
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog);
-  if (!base::PathExists(base::FilePath(kCpufreqConfPath)))
+  if (!base::PathExists(base::FilePath(kCpufreqConfPath))) {
     return 0;
+  }
 
   CpufreqConf conf(kCpufreqConfPath);
 
@@ -310,8 +324,9 @@ int main(int argc, char* argv[]) {
 
   std::optional<std::string> governorOption = GetGovernor(conf);
   // No governor == do nothing.
-  if (!governorOption.has_value())
+  if (!governorOption.has_value()) {
     return 0;
+  }
   std::string& governor = governorOption.value();
 
   // In case we do any useful work (even in failure), prepare to clean up.

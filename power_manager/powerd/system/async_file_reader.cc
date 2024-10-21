@@ -63,14 +63,16 @@ void AsyncFileReader::StartRead(
 
   if (fd_ == -1) {
     LOG(ERROR) << "No file handle available.";
-    if (!error_cb.is_null())
+    if (!error_cb.is_null()) {
       std::move(error_cb).Run();
+    }
     return;
   }
 
   if (!AsyncRead(initial_read_size_, 0)) {
-    if (!error_cb.is_null())
+    if (!error_cb.is_null()) {
       std::move(error_cb).Run();
+    }
     return;
   }
   read_cb_ = std::move(read_cb);
@@ -91,8 +93,9 @@ void AsyncFileReader::UpdateState() {
                       status);
 
   // If the read is still in-progress, keep the timer running.
-  if (status == EINPROGRESS)
+  if (status == EINPROGRESS) {
     return;
+  }
 
   // Otherwise, we stop the timer.
   update_state_timer_.Stop();
@@ -110,19 +113,22 @@ void AsyncFileReader::UpdateState() {
 
       if (size == aio_control_.aio_nbytes) {
         // Read more data if the previous read didn't reach the end of file.
-        if (AsyncRead(size * 2, aio_control_.aio_offset + size))
+        if (AsyncRead(size * 2, aio_control_.aio_offset + size)) {
           break;
+        }
       }
-      if (!read_cb_.is_null())
+      if (!read_cb_.is_null()) {
         std::move(read_cb_).Run(stored_data_);
+      }
       Reset();
       break;
     }
     default: {
       LOG(ERROR) << "Error during read of file " << path_.value()
                  << ", status=" << status;
-      if (!error_cb_.is_null())
+      if (!error_cb_.is_null()) {
         std::move(error_cb_).Run();
+      }
       Reset();
       break;
     }
@@ -130,8 +136,9 @@ void AsyncFileReader::UpdateState() {
 }
 
 void AsyncFileReader::Reset() {
-  if (!read_in_progress_)
+  if (!read_in_progress_) {
     return;
+  }
 
   update_state_timer_.Stop();
 
@@ -142,8 +149,9 @@ void AsyncFileReader::Reset() {
     LOG(INFO) << "aio_cancel() returned AIO_NOTCANCELED; waiting for "
               << "request to complete";
     const aiocb* aiocb_list = {&aio_control_};
-    if (aio_suspend(&aiocb_list, 1, nullptr) == -1)
+    if (aio_suspend(&aiocb_list, 1, nullptr) == -1) {
       PLOG(ERROR) << "aio_suspend() failed";
+    }
   }
 
   aio_buffer_ = nullptr;

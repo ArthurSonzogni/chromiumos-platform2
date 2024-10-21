@@ -105,8 +105,9 @@ class TestObserver : public PowerSupplyObserver {
   // PowerSupplyObserver overrides:
   void OnPowerStatusUpdate() override {
     num_updates_++;
-    if (runner_.LoopIsRunning())
+    if (runner_.LoopIsRunning()) {
       runner_.StopLoop();
+    }
   }
 
  private:
@@ -175,8 +176,9 @@ class PowerSupplyTest : public TestEnvironment {
   // has stabilized.
   void SetStabilizedTime() {
     const base::TimeTicks now = test_api_->GetCurrentTime();
-    if (power_supply_->battery_stabilized_timestamp() > now)
+    if (power_supply_->battery_stabilized_timestamp() > now) {
       test_api_->SetCurrentTime(power_supply_->battery_stabilized_timestamp());
+    }
   }
 
   // Writes |value| to |filename| within |dir_|.
@@ -295,8 +297,9 @@ class PowerSupplyTest : public TestEnvironment {
   // MakeEstimateString().
   std::string UpdateAndGetEstimateString() {
     PowerStatus status;
-    if (!UpdateStatus(&status))
+    if (!UpdateStatus(&status)) {
       return std::string();
+    }
     return GetEstimateStringFromStatus(status);
   }
 

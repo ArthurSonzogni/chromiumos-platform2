@@ -37,8 +37,9 @@ constexpr char AudioClient::kAudioSuspendedFile[];
 AudioClient::AudioClient() : weak_ptr_factory_(this) {}
 
 AudioClient::~AudioClient() {
-  if (dbus_wrapper_)
+  if (dbus_wrapper_) {
     dbus_wrapper_->RemoveObserver(this);
+  }
 }
 
 void AudioClient::Init(DBusWrapperInterface* dbus_wrapper,
@@ -70,8 +71,9 @@ void AudioClient::Init(DBusWrapperInterface* dbus_wrapper,
         base::BindRepeating(it.second, weak_ptr_factory_.GetWeakPtr()));
   }
 
-  if (base::PathExists(audio_suspended_path_))
+  if (base::PathExists(audio_suspended_path_)) {
     SetSuspended(false);
+  }
 }
 
 bool AudioClient::GetHeadphoneJackPlugged() const {
@@ -99,11 +101,13 @@ void AudioClient::SetSuspended(bool suspended) {
   writer.AppendBool(suspended);
   dbus_wrapper_->CallMethodSync(cras_proxy_, &method_call, kCrasDBusTimeout);
   if (suspended) {
-    if (!base::WriteFile(audio_suspended_path_, std::string_view()))
+    if (!base::WriteFile(audio_suspended_path_, std::string_view())) {
       PLOG(ERROR) << "Couldn't create " << audio_suspended_path_.value();
+    }
   } else {
-    if (!base::DeleteFile(audio_suspended_path_))
+    if (!base::DeleteFile(audio_suspended_path_)) {
       PLOG(ERROR) << "Couldn't delete " << audio_suspended_path_.value();
+    }
   }
 }
 
@@ -130,8 +134,9 @@ void AudioClient::CallGetNodes() {
 }
 
 void AudioClient::HandleGetNodesResponse(dbus::Response* response) {
-  if (!response)
+  if (!response) {
     return;
+  }
 
   const bool old_headphone_jack_plugged = headphone_jack_plugged_;
   const bool old_hdmi_active = hdmi_active_;
@@ -155,21 +160,24 @@ void AudioClient::HandleGetNodesResponse(dbus::Response* response) {
         continue;
       }
       if (key == kTypeKey) {
-        if (!property_reader.PopVariantOfString(&type))
+        if (!property_reader.PopVariantOfString(&type)) {
           LOG(WARNING) << kTypeKey << " key has non-string value";
+        }
       } else if (key == kActiveKey) {
-        if (!property_reader.PopVariantOfBool(&active))
+        if (!property_reader.PopVariantOfBool(&active)) {
           LOG(WARNING) << kActiveKey << " key has non-bool value";
+        }
       }
     }
 
     VLOG(1) << "Saw node: type=" << type << " active=" << active;
 
     // The D-Bus interface doesn't return unplugged nodes.
-    if (type == kHeadphoneNodeType)
+    if (type == kHeadphoneNodeType) {
       headphone_jack_plugged_ = true;
-    else if (type == kHdmiNodeType && active)
+    } else if (type == kHdmiNodeType && active) {
       hdmi_active_ = true;
+    }
   }
 
   if (headphone_jack_plugged_ != old_headphone_jack_plugged ||
@@ -191,8 +199,9 @@ void AudioClient::CallGetNumberOfActiveOutputStreams() {
 
 void AudioClient::HandleGetNumberOfActiveOutputStreamsResponse(
     dbus::Response* response) {
-  if (!response)
+  if (!response) {
     return;
+  }
 
   int num_output_streams = 0;
   if (!dbus::MessageReader(response).PopInt32(&num_output_streams)) {
@@ -215,8 +224,9 @@ void AudioClient::CallIsAudioOutputActive() {
 }
 
 void AudioClient::HandleIsAudioOutputActiveResponse(dbus::Response* response) {
-  if (!response)
+  if (!response) {
     return;
+  }
 
   int32_t output_active = 0;
   if (!dbus::MessageReader(response).PopInt32(&output_active)) {
@@ -273,8 +283,9 @@ void AudioClient::UpdateAudioState(int num_output_streams, bool output_active) {
   const bool is_active = IsAudioActive();
 
   if (is_active != was_active) {
-    for (AudioObserver& observer : observers_)
+    for (AudioObserver& observer : observers_) {
       observer.OnAudioStateChange(is_active);
+    }
   }
 }
 

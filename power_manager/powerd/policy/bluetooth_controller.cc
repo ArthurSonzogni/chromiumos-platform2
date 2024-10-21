@@ -99,8 +99,9 @@ BluetoothController::~BluetoothController() {
     udev_->RemoveSubsystemObserver(kUdevSubsystemBluetooth, this);
     udev_->RemoveTaggedDeviceObserver(this);
   }
-  if (dbus_wrapper_)
+  if (dbus_wrapper_) {
     dbus_wrapper_->RemoveObserver(this);
+  }
 }
 
 void BluetoothController::Init(
@@ -172,8 +173,9 @@ void BluetoothController::DBusInformTabletModeChange() {
       LOG(ERROR) << "Undefined tablet mode.";
   }
 
-  if (!dbus_wrapper_ || !floss_dbus_proxy_)
+  if (!dbus_wrapper_ || !floss_dbus_proxy_) {
     return;
+  }
 
   dbus::MethodCall method_call(kFlossManagerInterface, kSetTabletMode);
   dbus::MessageWriter(&method_call).AppendBool(tablet_mode_enabled);
@@ -192,8 +194,9 @@ void BluetoothController::SetTabletModeResponse(dbus::Response* response) {
 }
 
 void BluetoothController::HandleTabletModeChange(TabletMode mode) {
-  if (tablet_mode_ == mode)
+  if (tablet_mode_ == mode) {
     return;
+  }
   tablet_mode_ = mode;
   DBusInformTabletModeChange();
 }
@@ -340,8 +343,9 @@ void BluetoothController::OnTaggedDeviceRemoved(
 
 void BluetoothController::OnUdevEvent(const system::UdevEvent& event) {
   DCHECK_EQ(event.device_info.subsystem, kUdevSubsystemBluetooth);
-  if (event.device_info.devtype != kUdevDevtypeHost)
+  if (event.device_info.devtype != kUdevDevtypeHost) {
     return;
+  }
 
   base::FilePath control_path;
 

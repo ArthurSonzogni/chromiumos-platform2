@@ -44,8 +44,9 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
   // Find the backlight interface with greatest granularity (highest max).
   for (base::FilePath device_path = enumerator.Next(); !device_path.empty();
        device_path = enumerator.Next()) {
-    if (device_path.BaseName().value()[0] == '.')
+    if (device_path.BaseName().value()[0] == '.') {
       continue;
+    }
 
     const base::FilePath max_brightness_path =
         device_path.Append(kMaxBrightnessFilename);
@@ -62,35 +63,40 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
     }
 
     int64_t max_level = 0;
-    if (!util::ReadInt64File(max_brightness_path, &max_level))
+    if (!util::ReadInt64File(max_brightness_path, &max_level)) {
       continue;
+    }
 
-    if (max_level <= max_brightness_level_)
+    if (max_level <= max_brightness_level_) {
       continue;
+    }
 
     device_path_ = device_path;
     brightness_path_ = brightness_path;
     max_brightness_level_ = max_level;
 
     const base::FilePath power_path = device_path.Append(kBlPowerFilename);
-    if (base::PathExists(power_path))
+    if (base::PathExists(power_path)) {
       bl_power_path_ = power_path;
+    }
 
     const base::FilePath scale_path = device_path.Append(kScaleFilename);
     if (base::PathExists(scale_path)) {
       std::string scale;
       util::ReadStringFile(scale_path, &scale);
-      if (scale == "linear")
+      if (scale == "linear") {
         brightness_scale_ = BrightnessScale::kLinear;
-      else if (scale == "non-linear")
+      } else if (scale == "non-linear") {
         brightness_scale_ = BrightnessScale::kNonLinear;
-      else
+      } else {
         brightness_scale_ = BrightnessScale::kUnknown;
+      }
     }
   }
 
-  if (max_brightness_level_ <= 0)
+  if (max_brightness_level_ <= 0) {
     return false;
+  }
 
   util::ReadInt64File(brightness_path_, &current_brightness_level_);
   return true;
@@ -163,18 +169,21 @@ bool InternalBacklight::TransitionInProgress() const {
 bool InternalBacklight::WriteBrightness(int64_t new_level) {
   // If the backlight is about to be turned on, write FB_BLANK_UNBLANK
   // to bl_power first.
-  if (current_brightness_level_ == 0 && !bl_power_path_.empty())
+  if (current_brightness_level_ == 0 && !bl_power_path_.empty()) {
     util::WriteInt64File(bl_power_path_, FB_BLANK_UNBLANK);
+  }
 
-  if (!util::WriteInt64File(brightness_path_, new_level))
+  if (!util::WriteInt64File(brightness_path_, new_level)) {
     return false;
+  }
 
   current_brightness_level_ = new_level;
 
   // If the backlight level just went to 0, write FB_BLANK_POWERDOWN
   // to bl_power.
-  if (current_brightness_level_ == 0 && !bl_power_path_.empty())
+  if (current_brightness_level_ == 0 && !bl_power_path_.empty()) {
     util::WriteInt64File(bl_power_path_, FB_BLANK_POWERDOWN);
+  }
 
   return true;
 }
@@ -197,8 +206,9 @@ void InternalBacklight::HandleTransitionTimeout() {
     new_level = transition_start_level_ + intermediate_amount;
   }
 
-  if (new_level == current_brightness_level_)
+  if (new_level == current_brightness_level_) {
     return;
+  }
 
   WriteBrightness(new_level);
 }

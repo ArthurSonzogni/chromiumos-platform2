@@ -58,8 +58,9 @@ UserProximityWatcherMojo::UserProximityWatcherMojo(
 UserProximityWatcherMojo::~UserProximityWatcherMojo() = default;
 
 void UserProximityWatcherMojo::HandleTabletModeChange(TabletMode mode) {
-  if (tablet_mode_ == mode)
+  if (tablet_mode_ == mode) {
     return;
+  }
 
   tablet_mode_ = mode;
   // TODO(b/215726246): Check if we should compensate sensors.
@@ -97,8 +98,9 @@ void UserProximityWatcherMojo::OnDeviceRemoved(int32_t iio_device_id) {
 }
 
 void UserProximityWatcherMojo::SensorServiceConnected() {
-  for (auto& sensor : sensors_)
+  for (auto& sensor : sensors_) {
     InitializeSensor(sensor.first);
+  }
 }
 
 void UserProximityWatcherMojo::SensorServiceDisconnected() {
@@ -148,10 +150,12 @@ void UserProximityWatcherMojo::GetAttributesCallback(
   if (values[0].has_value() &&
       values[0]->find("-activity") != std::string::npos) {
     sensor.type = SensorType::ACTIVITY;
-    if (use_activity_proximity_for_cellular_)
+    if (use_activity_proximity_for_cellular_) {
       sensor.role |= UserProximityObserver::SensorRole::SENSOR_ROLE_LTE;
-    if (use_activity_proximity_for_wifi_)
+    }
+    if (use_activity_proximity_for_wifi_) {
       sensor.role |= UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI;
+    }
 
     // Should only has one index: in_proximity_change_either_en.
     sensor.event_indices.push_back(0);
@@ -160,10 +164,12 @@ void UserProximityWatcherMojo::GetAttributesCallback(
     sensor.type = SensorType::SAR;
     auto sar_config_reader = libsar::SarConfigReader(
         config_.get(), values[1].value(), delegate_.get());
-    if (use_proximity_for_cellular_ && sar_config_reader.isCellular())
+    if (use_proximity_for_cellular_ && sar_config_reader.isCellular()) {
       sensor.role |= UserProximityObserver::SensorRole::SENSOR_ROLE_LTE;
-    if (use_proximity_for_wifi_ && sar_config_reader.isWifi())
+    }
+    if (use_proximity_for_wifi_ && sar_config_reader.isWifi()) {
       sensor.role |= UserProximityObserver::SensorRole::SENSOR_ROLE_WIFI;
+    }
 
     auto config_dict_opt = sar_config_reader.GetSarConfigDict();
     if (!config_dict_opt.has_value()) {
@@ -215,8 +221,9 @@ void UserProximityWatcherMojo::GetAttributesCallback(
     return;
   }
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnNewSensor(id, sensor.role);
+  }
 
   InitializeSensor(id);
 }
@@ -224,8 +231,9 @@ void UserProximityWatcherMojo::GetAttributesCallback(
 void UserProximityWatcherMojo::InitializeSensor(int32_t id) {
   auto& sensor = sensors_[id];
 
-  if (sensor.ignored)
+  if (sensor.ignored) {
     return;
+  }
 
   if (!sensor.remote.is_bound()) {
     sensor_service_handler_->GetDevice(

@@ -16,8 +16,9 @@ namespace power_manager::system {
 void AmbientLightSensor::SetDelegate(
     std::unique_ptr<AmbientLightSensorDelegate> delegate) {
   delegate_ = std::move(delegate);
-  if (!delegate_.get())
+  if (!delegate_.get()) {
     return;
+  }
 
   delegate_->SetLuxCallback(base::BindRepeating(
       &AmbientLightSensor::SetLuxAndColorTemperature, base::Unretained(this)));
@@ -25,8 +26,9 @@ void AmbientLightSensor::SetDelegate(
 
 void AmbientLightSensor::SetLuxAndColorTemperature(
     std::optional<int> lux, std::optional<int> color_temperature) {
-  if (lux.has_value())
+  if (lux.has_value()) {
     lux_value_ = lux.value();
+  }
 
   if (color_temperature.has_value()) {
     DCHECK(IsColorSensor());
@@ -36,13 +38,15 @@ void AmbientLightSensor::SetLuxAndColorTemperature(
   lux_value_ = std::max(lux_value_, -1);
   color_temperature_ = std::max(color_temperature_, -1);
 
-  for (AmbientLightObserver& observer : observers_)
+  for (AmbientLightObserver& observer : observers_) {
     observer.OnAmbientLightUpdated(this);
+  }
 }
 
 base::FilePath AmbientLightSensor::GetIlluminancePath() const {
-  if (!delegate_)
+  if (!delegate_) {
     return base::FilePath();
+  }
 
   return delegate_->GetIlluminancePath();
 }
@@ -58,8 +62,9 @@ void AmbientLightSensor::RemoveObserver(AmbientLightObserver* observer) {
 }
 
 bool AmbientLightSensor::IsColorSensor() const {
-  if (!delegate_)
+  if (!delegate_) {
     return false;
+  }
 
   return delegate_->IsColorSensor();
 }

@@ -56,16 +56,17 @@ const int kMsInSec = 1000;
 // corresponding value from power_manager::PowerManagementPolicy_Action.
 power_manager::PowerManagementPolicy_Action GetAction(
     const std::string& action) {
-  if (action == "suspend")
+  if (action == "suspend") {
     return power_manager::PowerManagementPolicy_Action_SUSPEND;
-  else if (action == "stop_session")
+  } else if (action == "stop_session") {
     return power_manager::PowerManagementPolicy_Action_STOP_SESSION;
-  else if (action == "shut_down")
+  } else if (action == "shut_down") {
     return power_manager::PowerManagementPolicy_Action_SHUT_DOWN;
-  else if (action == "do_nothing")
+  } else if (action == "do_nothing") {
     return power_manager::PowerManagementPolicy_Action_DO_NOTHING;
-  else
+  } else {
     LOG(FATAL) << "Invalid action \"" << action << "\"";
+  }
 }
 
 }  // namespace
@@ -140,12 +141,15 @@ int main(int argc, char* argv[]) {
 
   power_manager::PowerManagementPolicy policy;
 
-  if (!FLAGS_ac_idle_action.empty())
+  if (!FLAGS_ac_idle_action.empty()) {
     policy.set_ac_idle_action(GetAction(FLAGS_ac_idle_action));
-  if (!FLAGS_battery_idle_action.empty())
+  }
+  if (!FLAGS_battery_idle_action.empty()) {
     policy.set_battery_idle_action(GetAction(FLAGS_battery_idle_action));
-  if (!FLAGS_lid_closed_action.empty())
+  }
+  if (!FLAGS_lid_closed_action.empty()) {
     policy.set_lid_closed_action(GetAction(FLAGS_lid_closed_action));
+  }
 
   power_manager::PowerManagementPolicy::Delays* delays =
       policy.mutable_ac_delays();

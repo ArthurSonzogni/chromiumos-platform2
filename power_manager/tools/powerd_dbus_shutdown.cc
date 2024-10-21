@@ -43,8 +43,9 @@ int main(int argc, char* argv[]) {
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
 
-  if (FLAGS_delay)
+  if (FLAGS_delay) {
     sleep(FLAGS_delay);
+  }
 
   // Send a shutdown request.
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,

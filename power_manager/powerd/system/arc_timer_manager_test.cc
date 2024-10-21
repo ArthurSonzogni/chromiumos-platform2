@@ -103,12 +103,14 @@ bool IsResponseValid(dbus::Response* response) {
 bool AreTimerIdsIdenticalSizeButDistinct(
     const std::vector<ArcTimerManager::TimerId>& a,
     const std::vector<ArcTimerManager::TimerId>& b) {
-  if (a.size() != b.size())
+  if (a.size() != b.size()) {
     return false;
+  }
 
   for (auto id : a) {
-    if (std::find(b.begin(), b.end(), id) != b.end())
+    if (std::find(b.begin(), b.end(), id) != b.end()) {
       return false;
+    }
   }
   return true;
 }

@@ -16,8 +16,9 @@ bool AcpiWakeupHelperStub::IsSupported() {
 bool AcpiWakeupHelperStub::GetWakeupEnabled(const std::string& device_name,
                                             bool* enabled_out) {
   std::map<std::string, bool>::iterator it = wakeup_enabled_.find(device_name);
-  if (it == wakeup_enabled_.end())
+  if (it == wakeup_enabled_.end()) {
     return false;
+  }
   *enabled_out = it->second;
   return true;
 }

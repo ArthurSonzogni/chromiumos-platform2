@@ -67,7 +67,8 @@ const char* GetPowerButtonAction(ButtonState state) {
     case ButtonState::REPEAT:
       return kPowerButtonRepeat;
   }
-  NOTREACHED_IN_MIGRATION() << "Invalid power button state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Invalid power button state " << static_cast<int>(state);
   return "power_invalid";
 }
 

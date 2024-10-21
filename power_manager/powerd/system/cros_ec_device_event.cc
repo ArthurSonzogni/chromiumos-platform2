@@ -20,8 +20,9 @@ namespace power_manager::system {
 void EnableCrosEcDeviceEvent(enum ec_device_event event, bool enable) {
   static bool cmd_supported = true;
 
-  if (!cmd_supported)
+  if (!cmd_supported) {
     return;
+  }
 
   base::ScopedFD ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 

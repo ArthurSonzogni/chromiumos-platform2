@@ -116,11 +116,13 @@ class UserProximityWatcherUdevTest : public TestEnvironment {
   int OpenTestIioFd(const base::FilePath& file) {
     const std::string path(file.value());
     auto iter = fds_.find(path);
-    if (iter != fds_.end())
+    if (iter != fds_.end()) {
       return dup(iter->second.first);
+    }
     int fd[2];
-    if (pipe2(fd, O_DIRECT | O_NONBLOCK) == -1)
+    if (pipe2(fd, O_DIRECT | O_NONBLOCK) == -1) {
       return -1;
+    }
     ++open_sensor_count_;
     fds_.emplace(path, std::make_pair(fd[0], fd[1]));
     return dup(fd[0]);
@@ -129,8 +131,9 @@ class UserProximityWatcherUdevTest : public TestEnvironment {
   // Returns the "write" file descriptor.
   int GetWriteIioFd(std::string file) {
     auto iter = fds_.find(file);
-    if (iter != fds_.end())
+    if (iter != fds_.end()) {
       return iter->second.second;
+    }
     return -1;
   }
 
@@ -162,8 +165,9 @@ class UserProximityWatcherUdevTest : public TestEnvironment {
     udev_.AddSubsystemDevice(iio_event.device_info.subsystem,
                              iio_event.device_info, {devlink});
 
-    for (auto const& attr : attrs)
+    for (auto const& attr : attrs) {
       udev_.SetSysattr(syspath, attr, "");
+    }
     udev_.stop_accepting_sysattr_for_testing();
 
     udev_.NotifySubsystemObservers(iio_event);
@@ -177,8 +181,9 @@ class UserProximityWatcherUdevTest : public TestEnvironment {
     }
     uint8_t buf[16] = {0};
     buf[6] = (proximity == UserProximity::NEAR ? 2 : 1);
-    if (sizeof(buf) != write(fd, &buf[0], sizeof(buf)))
+    if (sizeof(buf) != write(fd, &buf[0], sizeof(buf))) {
       ADD_FAILURE() << "full buffer not written";
+    }
     loop_runner_.StartLoop(base::Seconds(30));
   }
 

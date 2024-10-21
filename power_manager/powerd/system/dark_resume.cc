@@ -51,14 +51,16 @@ bool DarkResume::IsEnabled() {
 }
 
 void DarkResume::ExitDarkResume() {
-  if (in_dark_resume_)
+  if (in_dark_resume_) {
     LOG(INFO) << "Transitioning from dark resume to full resume";
+  }
   in_dark_resume_ = false;
 }
 
 void DarkResume::OnPrefChanged(const std::string& pref_name) {
-  if (pref_name != kDisableDarkResumePref)
+  if (pref_name != kDisableDarkResumePref) {
     return;
+  }
   ReadDarkResumePref();
 }
 

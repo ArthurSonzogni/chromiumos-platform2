@@ -53,8 +53,9 @@ class TestDelegate : public ExternalDisplay::Delegate {
   std::string PopSentMessage() {
     std::string message;
     CHECK_LE(sent_messages_.size(), 1u);
-    if (!sent_messages_.empty())
+    if (!sent_messages_.empty()) {
       message = sent_messages_[0];
+    }
     sent_messages_.clear();
     return message;
   }
@@ -81,8 +82,9 @@ class TestDelegate : public ExternalDisplay::Delegate {
 
     // Write request.
     if (i2c_message->flags == 0) {
-      if (report_write_failure_)
+      if (report_write_failure_) {
         return false;
+      }
 
       sent_messages_.push_back(base::HexEncode(message, message_length));
       return true;
@@ -90,8 +92,9 @@ class TestDelegate : public ExternalDisplay::Delegate {
 
     // Read request.
     if (i2c_message->flags == I2C_M_RD) {
-      if (report_read_failure_)
+      if (report_read_failure_) {
         return false;
+      }
 
       if (message_length != reply_message_.size()) {
         LOG(ERROR) << "Got request to read " << message_length << " byte(s); "
@@ -150,8 +153,9 @@ class ExternalDisplayTest : public TestEnvironment {
   // Updates the checksum byte that's already present at the end of |message|.
   void UpdateChecksum(uint8_t starting_value, std::vector<uint8_t>* message) {
     uint8_t checksum = starting_value;
-    for (size_t i = 0; i < message->size() - 1; ++i)
+    for (size_t i = 0; i < message->size() - 1; ++i) {
       checksum ^= (*message)[i];
+    }
     (*message)[message->size() - 1] = checksum;
   }
 

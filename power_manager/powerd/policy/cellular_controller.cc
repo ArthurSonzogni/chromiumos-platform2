@@ -40,8 +40,9 @@ power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromCountryCode(
   for (const auto& m : kRdCcMappings) {
     const auto country_code = base::SplitString(
         m.country_code, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-    if (base::Contains(country_code, cc))
+    if (base::Contains(country_code, cc)) {
       return m.domain;
+    }
   }
   return power_manager::CellularRegulatoryDomain::UNKNOWN;
 }
@@ -49,18 +50,19 @@ power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromCountryCode(
 
 power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromString(
     const std::string& name) {
-  if (name == "FCC")
+  if (name == "FCC") {
     return power_manager::CellularRegulatoryDomain::FCC;
-  else if (name == "ISED")
+  } else if (name == "ISED") {
     return power_manager::CellularRegulatoryDomain::ISED;
-  else if (name == "CE")
+  } else if (name == "CE") {
     return power_manager::CellularRegulatoryDomain::CE;
-  else if (name == "MIC")
+  } else if (name == "MIC") {
     return power_manager::CellularRegulatoryDomain::MIC;
-  else if (name == "KCC")
+  } else if (name == "KCC") {
     return power_manager::CellularRegulatoryDomain::KCC;
-  else
+  } else {
     return power_manager::CellularRegulatoryDomain::UNKNOWN;
+  }
 }
 }  // namespace
 namespace power_manager::policy {
@@ -154,9 +156,10 @@ void CellularController::InitPowerLevel(const std::string& power_levels) {
   }
 
   base::StringPairs pairs;
-  if (!base::SplitStringIntoKeyValuePairs(power_levels, ' ', '\n', &pairs))
+  if (!base::SplitStringIntoKeyValuePairs(power_levels, ' ', '\n', &pairs)) {
     LOG(FATAL) << "Failed parsing " << kSetCellularTransmitPowerLevelMappingPref
                << " pref";
+  }
   for (const auto& pair : pairs) {
     const RadioTransmitPower power = GetPowerIndexFromString(pair.first);
     uint32_t level;
@@ -187,9 +190,10 @@ void CellularController::InitRegulatoryDomainMapping(
     return;
   }
   base::StringPairs pairs;
-  if (!base::SplitStringIntoKeyValuePairs(domain_offsets, ' ', '\n', &pairs))
+  if (!base::SplitStringIntoKeyValuePairs(domain_offsets, ' ', '\n', &pairs)) {
     LOG(FATAL) << "Failed parsing " << kSetCellularTransmitPowerLevelMappingPref
                << " pref";
+  }
   for (const auto& pair : pairs) {
     const CellularRegulatoryDomain domain =
         GetRegulatoryDomainFromString(pair.first);
@@ -213,14 +217,15 @@ void CellularController::InitRegulatoryDomainMapping(
 
 RadioTransmitPower CellularController::GetPowerIndexFromString(
     const std::string& name) {
-  if (name == "HIGH")
+  if (name == "HIGH") {
     return RadioTransmitPower::HIGH;
-  else if (name == "MEDIUM")
+  } else if (name == "MEDIUM") {
     return RadioTransmitPower::MEDIUM;
-  else if (name == "LOW")
+  } else if (name == "LOW") {
     return RadioTransmitPower::LOW;
-  else
+  } else {
     return RadioTransmitPower::UNSPECIFIED;
+  }
 }
 
 void CellularController::ProximitySensorDetected(UserProximity value) {
@@ -237,22 +242,26 @@ void CellularController::ProximitySensorDetected(UserProximity value) {
 }
 
 void CellularController::HandleTabletModeChange(TabletMode mode) {
-  if (!set_transmit_power_for_tablet_mode_)
+  if (!set_transmit_power_for_tablet_mode_) {
     return;
+  }
 
-  if (tablet_mode_ == mode)
+  if (tablet_mode_ == mode) {
     return;
+  }
 
   tablet_mode_ = mode;
   UpdateTransmitPower();
 }
 
 void CellularController::HandleProximityChange(UserProximity proximity) {
-  if (!set_transmit_power_for_proximity_)
+  if (!set_transmit_power_for_proximity_) {
     return;
+  }
 
-  if (proximity_ == proximity)
+  if (proximity_ == proximity) {
     return;
+  }
 
   proximity_ = proximity;
   UpdateTransmitPower();
@@ -260,11 +269,13 @@ void CellularController::HandleProximityChange(UserProximity proximity) {
 
 void CellularController::HandleModemStateChange(ModemState state) {
   if (!set_transmit_power_for_proximity_ &&
-      !set_transmit_power_for_tablet_mode_)
+      !set_transmit_power_for_tablet_mode_) {
     return;
+  }
 
-  if (state_ == state)
+  if (state_ == state) {
     return;
+  }
 
   state_ = state;
   UpdateTransmitPower();
@@ -275,11 +286,13 @@ void CellularController::HandleModemRegulatoryDomainChange(
   VLOG(1) << __func__ << " New domain : " << RegulatoryDomainToString(domain)
           << " current domain : "
           << RegulatoryDomainToString(regulatory_domain_);
-  if (!use_regulatory_domain_for_dynamic_sar_)
+  if (!use_regulatory_domain_for_dynamic_sar_) {
     return;
+  }
 
-  if (regulatory_domain_ == domain)
+  if (regulatory_domain_ == domain) {
     return;
+  }
 
   regulatory_domain_ = domain;
   UpdateTransmitPower();
@@ -342,9 +355,9 @@ RadioTransmitPower CellularController::DetermineTransmitPower() const {
 void CellularController::UpdateTransmitPower() {
   RadioTransmitPower wanted_power = DetermineTransmitPower();
 #if USE_CELLULAR
-  if (use_modemmanager_for_dynamic_sar_)
+  if (use_modemmanager_for_dynamic_sar_) {
     SetCellularTransmitPowerInModemManager(wanted_power);
-  else
+  } else
 #endif  // USE_CELLULAR
     delegate_->SetCellularTransmitPower(wanted_power, dpr_gpio_number_);
 }

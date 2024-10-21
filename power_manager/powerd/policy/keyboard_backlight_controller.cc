@@ -58,7 +58,8 @@ base::TimeDelta GetTransitionDuration(
     case BacklightController::Transition::SLOW:
       return kSlowBacklightTransition;
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled transition style " << static_cast<int>(transition);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled transition style " << static_cast<int>(transition);
   return base::TimeDelta();
 }
 
@@ -86,8 +87,9 @@ KeyboardBacklightController::KeyboardBacklightController()
     : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
 
 KeyboardBacklightController::~KeyboardBacklightController() {
-  if (backlight_)
+  if (backlight_) {
     backlight_->RemoveObserver(this);
+  }
 }
 
 void KeyboardBacklightController::Init(
@@ -157,15 +159,17 @@ void KeyboardBacklightController::Init(
 
   // Read the user-settable brightness steps (one per line).
   std::string input_str;
-  if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str))
+  if (!prefs_->GetString(kKeyboardBacklightUserStepsPref, &input_str)) {
     LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserStepsPref;
+  }
   std::vector<std::string> lines = base::SplitString(
       input_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const std::string& line : lines) {
     double new_step = 0.0;
-    if (!base::StringToDouble(line, &new_step))
+    if (!base::StringToDouble(line, &new_step)) {
       LOG(FATAL) << "Invalid line in pref " << kKeyboardBacklightUserStepsPref
                  << ": \"" << line << "\"";
+    }
     user_steps_.push_back(new_step);
   }
 
@@ -257,8 +261,9 @@ void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
 void KeyboardBacklightController::HandlePowerButtonPress() {}
 
 void KeyboardBacklightController::HandleLidStateChange(LidState state) {
-  if (state == lid_state_)
+  if (state == lid_state_) {
     return;
+  }
 
   lid_state_ = state;
   UpdateState(
@@ -273,8 +278,9 @@ void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
 void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
   // Ignore fullscreen video that's reported when the user isn't logged in;
   // it may be triggered by animations on the login screen.
-  if (is_fullscreen && session_state_ == SessionState::STOPPED)
+  if (is_fullscreen && session_state_ == SessionState::STOPPED) {
     is_fullscreen = false;
+  }
 
   if (is_fullscreen != fullscreen_video_playing_) {
     VLOG(1) << "Fullscreen video "
@@ -295,8 +301,9 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
 void KeyboardBacklightController::HandleWakeNotification() {}
 
 void KeyboardBacklightController::HandleHoverStateChange(bool hovering) {
-  if (!supports_hover_ || hovering == hovering_)
+  if (!supports_hover_ || hovering == hovering_) {
     return;
+  }
 
   hovering_ = hovering;
 
@@ -315,8 +322,9 @@ void KeyboardBacklightController::HandleHoverStateChange(bool hovering) {
 }
 
 void KeyboardBacklightController::HandleTabletModeChange(TabletMode mode) {
-  if (mode == tablet_mode_)
+  if (mode == tablet_mode_) {
     return;
+  }
 
   tablet_mode_ = mode;
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_OTHER);
@@ -337,42 +345,48 @@ void KeyboardBacklightController::HandleBatterySaverModeChange(
 }
 
 void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
-  if (dimmed == dimmed_for_inactivity_)
+  if (dimmed == dimmed_for_inactivity_) {
     return;
+  }
   dimmed_for_inactivity_ = dimmed;
   UpdateState(Transition::SLOW,
               BacklightBrightnessChange_Cause_USER_INACTIVITY);
 }
 
 void KeyboardBacklightController::SetOffForInactivity(bool off) {
-  if (off == off_for_inactivity_)
+  if (off == off_for_inactivity_) {
     return;
+  }
   off_for_inactivity_ = off;
   UpdateState(Transition::SLOW,
               BacklightBrightnessChange_Cause_USER_INACTIVITY);
 }
 
 void KeyboardBacklightController::SetSuspended(bool suspended) {
-  if (suspended == suspended_)
+  if (suspended == suspended_) {
     return;
+  }
   suspended_ = suspended;
   UpdateState(suspended ? Transition::INSTANT : Transition::FAST,
               BacklightBrightnessChange_Cause_OTHER);
 
-  if (!suspended && ambient_light_handler_.get())
+  if (!suspended && ambient_light_handler_.get()) {
     ambient_light_handler_->HandleResume();
+  }
 }
 
 void KeyboardBacklightController::SetShuttingDown(bool shutting_down) {
-  if (shutting_down == shutting_down_)
+  if (shutting_down == shutting_down_) {
     return;
+  }
   shutting_down_ = shutting_down;
   UpdateState(Transition::INSTANT, BacklightBrightnessChange_Cause_OTHER);
 }
 
 void KeyboardBacklightController::SetForcedOff(bool forced_off) {
-  if (forced_off_ == forced_off)
+  if (forced_off_ == forced_off) {
     return;
+  }
   forced_off_ = forced_off;
   UpdateState(Transition::INSTANT,
               forced_off
@@ -400,8 +414,9 @@ int KeyboardBacklightController::GetNumUserAdjustments() const {
 
 double KeyboardBacklightController::LevelToPercent(int64_t level) const {
   const int64_t max_level = backlight_->GetMaxBrightnessLevel();
-  if (max_level == 0)
+  if (max_level == 0) {
     return -1.0;
+  }
   level = std::max(std::min(level, max_level), static_cast<int64_t>(0));
   double raw_percent =
       static_cast<double>(level) * 100.0 / static_cast<double>(max_level);
@@ -410,8 +425,9 @@ double KeyboardBacklightController::LevelToPercent(int64_t level) const {
 
 int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
   const int64_t max_level = backlight_->GetMaxBrightnessLevel();
-  if (max_level == 0)
+  if (max_level == 0) {
     return -1;
+  }
   double raw_percent = PercentToRawPercent(util::ClampPercent(percent));
   return lround(static_cast<double>(max_level) * raw_percent / 100.0);
 }
@@ -460,16 +476,18 @@ void KeyboardBacklightController::OnBacklightDeviceChanged(
 
 void KeyboardBacklightController::HandleVideoTimeout() {
   TRACE_EVENT("power", "KeyboardBacklightController::HandleVideoTimeout");
-  if (fullscreen_video_playing_)
+  if (fullscreen_video_playing_) {
     VLOG(1) << "Fullscreen video stopped";
+  }
   fullscreen_video_playing_ = false;
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_OTHER);
   UpdateTurnOffTimer();
 }
 
 bool KeyboardBacklightController::RecentlyHoveringOrUserActive() const {
-  if (hovering_)
+  if (hovering_) {
     return true;
+  }
 
   const base::TimeTicks now = clock_->GetCurrentTime();
   const base::TimeDelta delay =
@@ -529,21 +547,24 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
   turn_off_timer_.Stop();
 
   // The timer shouldn't start until hovering stops.
-  if (hovering_)
+  if (hovering_) {
     return;
+  }
 
   // Determine how much time is left.
   const base::TimeTicks timeout_start =
       std::max(last_hover_time_, last_user_activity_time_);
-  if (timeout_start.is_null())
+  if (timeout_start.is_null()) {
     return;
+  }
 
   const base::TimeDelta full_delay =
       fullscreen_video_playing_ ? keep_on_during_video_delay_ : keep_on_delay_;
   const base::TimeDelta remaining_delay =
       full_delay - (clock_->GetCurrentTime() - timeout_start);
-  if (remaining_delay <= base::Milliseconds(0))
+  if (remaining_delay <= base::Milliseconds(0)) {
     return;
+  }
 
   turn_off_timer_.Start(
       FROM_HERE, remaining_delay,
@@ -555,8 +576,9 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
 
 void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
   LOG(INFO) << "Got user-triggered request to increase brightness";
-  if (!backlight_->DeviceExists())
+  if (!backlight_->DeviceExists()) {
     return;
+  }
 
   // Disable keyboard ambient light sensor when manually increasing the
   // brightness. If this is the first time the backlight was manually
@@ -593,8 +615,9 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
 void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
     bool allow_off) {
   LOG(INFO) << "Got user-triggered request to decrease brightness";
-  if (!backlight_->DeviceExists())
+  if (!backlight_->DeviceExists()) {
     return;
+  }
 
   // Disable keyboard ambient light sensor when manually decreasing the
   // brightness. If this is the first time the backlight was manually
@@ -755,15 +778,17 @@ bool KeyboardBacklightController::UpdateState(
               transition, "cause", cause, "signal_behavior", signal_behavior);
   // Force the backlight off immediately in several special cases.
   if (forced_off_ || shutting_down_ || suspended_ ||
-      lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON)
+      lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON) {
     return ApplyBrightnessPercent(0.0, transition, cause, signal_behavior);
+  }
 
   // If the user has asked for a specific brightness level, use it unless the
   // user is inactive.
   if (user_brightness_percent_.has_value()) {
     double percent = *user_brightness_percent_;
-    if ((off_for_inactivity_ || dimmed_for_inactivity_) && !hovering_)
+    if ((off_for_inactivity_ || dimmed_for_inactivity_) && !hovering_) {
       percent = off_for_inactivity_ ? 0.0 : std::min(kDimPercent, percent);
+    }
     return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
   }
 
@@ -814,8 +839,9 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
 
   EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
                               percent, cause);
-  for (BacklightControllerObserver& observer : observers_)
+  for (BacklightControllerObserver& observer : observers_) {
     observer.OnBrightnessChange(percent, cause, this);
+  }
   return true;
 }
 
@@ -833,12 +859,13 @@ bool KeyboardBacklightController::ValidateUserSteps(std::string* err_msg) {
     return false;
   }
 
-  for (const double& step : user_steps_)
+  for (const double& step : user_steps_) {
     if (step < 0.0 || step > 100.0) {
       *err_msg = base::StringPrintf("%s step %f is outside [0.0, 100.0]",
                                     kKeyboardBacklightUserStepsPref, step);
       return false;
     }
+  }
 
   if (user_steps_.end() != std::adjacent_find(user_steps_.begin(),
                                               user_steps_.end(),
@@ -871,42 +898,46 @@ void KeyboardBacklightController::ScaleUserSteps() {
 
 double KeyboardBacklightController::RawPercentToPercent(
     double raw_percent) const {
-  if (user_steps_.size() < 3)
+  if (user_steps_.size() < 3) {
     return raw_percent;
+  }
 
   raw_percent =
       std::max(std::min(raw_percent, max_raw_percent_), min_raw_percent_);
 
-  if (raw_percent == min_visible_raw_percent)
+  if (raw_percent == min_visible_raw_percent) {
     return kMinVisiblePercent;
-  else if (raw_percent > min_visible_raw_percent)
+  } else if (raw_percent > min_visible_raw_percent) {
     return (raw_percent - min_visible_raw_percent) /
                (max_raw_percent_ - min_visible_raw_percent) *
                (kMaxPercent - kMinVisiblePercent) +
            kMinVisiblePercent;
-  else  // raw_percent < min_visible_raw_percent
+  } else {  // raw_percent < min_visible_raw_percent
     return (raw_percent - min_raw_percent_) /
                (min_visible_raw_percent - min_raw_percent_) *
                (kMinVisiblePercent - kMinPercent) +
            kMinPercent;
+  }
 }
 
 double KeyboardBacklightController::PercentToRawPercent(double percent) const {
-  if (user_steps_.size() < 3)
+  if (user_steps_.size() < 3) {
     return percent;
+  }
 
   percent = util::ClampPercent(percent);
 
-  if (percent == kMinVisiblePercent)
+  if (percent == kMinVisiblePercent) {
     return min_visible_raw_percent;
-  else if (percent > kMinVisiblePercent)
+  } else if (percent > kMinVisiblePercent) {
     return (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent) *
                (max_raw_percent_ - min_visible_raw_percent) +
            min_visible_raw_percent;
-  else  // percent < kMinVisiblePercent
+  } else {  // percent < kMinVisiblePercent
     return (percent - kMinPercent) / (kMinVisiblePercent - kMinPercent) *
                (min_visible_raw_percent - min_raw_percent_) +
            min_raw_percent_;
+  }
 }
 
 void KeyboardBacklightController::HandleActivity(

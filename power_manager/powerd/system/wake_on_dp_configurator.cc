@@ -19,8 +19,9 @@ bool GetMkbpWakeMask(const base::ScopedFD& cros_ec_fd,
                      uint32_t* wake_mask_out) {
   DCHECK(cros_ec_fd.is_valid());
   DCHECK(wake_mask_out);
-  if (cros_ec_fd.get() < 0)
+  if (cros_ec_fd.get() < 0) {
     return false;
+  }
 
   // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::GetMkbpWakeMaskEventCommand cmd;
@@ -37,8 +38,9 @@ bool GetMkbpWakeMask(const base::ScopedFD& cros_ec_fd,
 
 bool SetMkbpWakeMask(const base::ScopedFD& cros_ec_fd, uint32_t wake_mask) {
   DCHECK(cros_ec_fd.is_valid());
-  if (cros_ec_fd.get() < 0)
+  if (cros_ec_fd.get() < 0) {
     return false;
+  }
 
   // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::SetMkbpWakeMaskEventCommand cmd(wake_mask);
@@ -61,16 +63,19 @@ void ConfigureWakeOnDp(bool enable) {
     return;
   }
 
-  if (!GetMkbpWakeMask(cros_ec_fd, &wake_mask))
+  if (!GetMkbpWakeMask(cros_ec_fd, &wake_mask)) {
     return;
+  }
 
-  if (enable)
+  if (enable) {
     wake_mask |= (1 << EC_MKBP_EVENT_DP_ALT_MODE_ENTERED);
-  else
+  } else {
     wake_mask &= ~(1 << EC_MKBP_EVENT_DP_ALT_MODE_ENTERED);
+  }
 
-  if (SetMkbpWakeMask(cros_ec_fd, wake_mask))
+  if (SetMkbpWakeMask(cros_ec_fd, wake_mask)) {
     LOG(INFO) << "Wake on dp is " << (enable ? "enabled" : "disabled");
+  }
 }
 
 }  // namespace power_manager::system

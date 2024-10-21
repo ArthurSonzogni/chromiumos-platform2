@@ -87,8 +87,9 @@ class AsyncFileReaderTest : public TestEnvironment {
 
     CreateFile(path_, file_size);
     file_reader_->set_initial_read_size_for_testing(initial_read_size);
-    if (!file_reader_->Init(path_))
+    if (!file_reader_->Init(path_)) {
       return false;
+    }
     file_reader_->StartRead(base::BindOnce(&AsyncFileReaderTest::ReadCallback,
                                            base::Unretained(this)),
                             base::BindOnce(&AsyncFileReaderTest::ErrorCallback,

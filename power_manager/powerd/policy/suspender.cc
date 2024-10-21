@@ -43,8 +43,9 @@ namespace power_manager::policy {
 Suspender::TestApi::TestApi(Suspender* suspender) : suspender_(suspender) {}
 
 bool Suspender::TestApi::TriggerResuspendTimeout() {
-  if (!suspender_->resuspend_timer_.IsRunning())
+  if (!suspender_->resuspend_timer_.IsRunning()) {
     return false;
+  }
 
   suspender_->resuspend_timer_.Stop();
   suspender_->HandleEvent(Event::READY_TO_RESUSPEND);
@@ -199,8 +200,9 @@ void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
     // than at the start of the attempt because network activity will count as a
     // wakeup event and we don't want the work that clients did during the dark
     // resume to accidentally cancel the suspend.
-    if (!suspend_request_supplied_wakeup_count_)
+    if (!suspend_request_supplied_wakeup_count_) {
       wakeup_count_valid_ = delegate_->ReadSuspendWakeupCount(&wakeup_count_);
+    }
 
     HandleEvent(Event::READY_TO_RESUSPEND);
   }
@@ -211,14 +213,16 @@ void Suspender::OnDisplaysChanged(
   std::vector<system::DisplayInfo> sorted_new_displays = new_displays;
   std::sort(sorted_new_displays.begin(), sorted_new_displays.end());
   if (!std::includes(displays_.begin(), displays_.end(),
-                     sorted_new_displays.begin(), sorted_new_displays.end()))
+                     sorted_new_displays.begin(), sorted_new_displays.end())) {
     HandleEvent(Event::NEW_DISPLAY);
+  }
   displays_ = std::move(sorted_new_displays);
 }
 
 bool Suspender::AddSuspendInternalDelay(const SuspendInternalDelay* delay) {
-  if (!suspend_delay_controller_->AddSuspendInternalDelay(delay))
+  if (!suspend_delay_controller_->AddSuspendInternalDelay(delay)) {
     return false;
+  }
 
   if (!dark_suspend_delay_controller_->AddSuspendInternalDelay(delay)) {
     suspend_delay_controller_->RemoveSuspendInternalDelay(delay);
@@ -445,8 +449,9 @@ void Suspender::HandleEvent(Event event) {
   handling_event_ = false;
 
   // Let the outermost invocation of HandleEvent() deal with the queue.
-  if (processing_queued_events_)
+  if (processing_queued_events_) {
     return;
+  }
 
   // Pass queued events back into HandleEvent() one at a time.
   processing_queued_events_ = true;
@@ -519,8 +524,9 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
   // events that are generated when the lid is closed and device is not docked.
   // Abort suspend if new display is seen even when the lid is closed.
   if (display_mode_ == DisplayMode::NORMAL && event != Event::NEW_DISPLAY &&
-      delegate_->IsLidClosedForSuspend())
+      delegate_->IsLidClosedForSuspend()) {
     return state_;
+  }
 
   LOG(INFO) << "Aborting request in response to event " << EventToString(event);
   FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
@@ -587,8 +593,9 @@ void Suspender::FinishRequest(bool success,
   suspend_delay_controller_->FinishSuspend(suspend_request_id_);
   dark_suspend_delay_controller_->FinishSuspend(dark_suspend_id_);
   shutdown_from_suspend_->HandleFullResume();
-  if (adaptive_charging_controller_)
+  if (adaptive_charging_controller_) {
     adaptive_charging_controller_->HandleFullResume();
+  }
 
   // Since the SuspendAudio is triggered after other processes have announced
   // suspend readiness, to be in pair, trigger ResumeAudio before emitting
@@ -642,7 +649,7 @@ Suspender::State Suspender::Suspend() {
 
     default:
       NOTREACHED_IN_MIGRATION() << "Unexpected suspend request flavor "
-                   << static_cast<int>(suspend_request_flavor_);
+                                << static_cast<int>(suspend_request_flavor_);
       break;
   }
 
@@ -681,8 +688,9 @@ Suspender::State Suspender::Suspend() {
   //  previous resume as successful as a wake event from input device implies a
   //  user interaction.
   if (result == Delegate::SuspendResult::CANCELED &&
-      wakeup_source_identifier_->InputDeviceCausedLastWake())
+      wakeup_source_identifier_->InputDeviceCausedLastWake()) {
     result = Delegate::SuspendResult::SUCCESS;
+  }
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // Reset this immediately right after a successful suspend, leave it
@@ -724,18 +732,21 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
   // the kernel or if we've exceeded the maximum number of retries.
   if (result == Delegate::SuspendResult::FAILURE ||
       (result == Delegate::SuspendResult::CANCELED &&
-       current_num_attempts_ > max_retries_))
+       current_num_attempts_ > max_retries_)) {
     return HandleUnsuccessfulSuspend(result);
+  }
 
   // Save the first run's number of attempts so it can be reported later.
-  if (!initial_num_attempts_)
+  if (!initial_num_attempts_) {
     initial_num_attempts_ = current_num_attempts_;
+  }
 
   dark_suspend_id_++;
 
   shutdown_from_suspend_->HandleDarkResume();
-  if (adaptive_charging_controller_)
+  if (adaptive_charging_controller_) {
     adaptive_charging_controller_->HandleDarkResume();
+  }
 
   if (result == Delegate::SuspendResult::SUCCESS) {
     // This is the start of a new dark resume wake.
@@ -779,8 +790,9 @@ Suspender::State Suspender::HandleUnsuccessfulSuspend(
     DCHECK_EQ(result, Delegate::SuspendResult::FAILURE);
     LOG(WARNING) << "Suspend attempt #" << current_num_attempts_ << " failed; "
                  << "will retry in " << retry_delay_.InMilliseconds() << " ms";
-    if (!suspend_request_supplied_wakeup_count_)
+    if (!suspend_request_supplied_wakeup_count_) {
       wakeup_count_valid_ = delegate_->ReadSuspendWakeupCount(&wakeup_count_);
+    }
   }
 
   ScheduleResuspend(retry_delay_);

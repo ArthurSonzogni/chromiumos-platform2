@@ -155,8 +155,9 @@ int main(int argc, char* argv[]) {
     printf("Error suspending\n");
     return 1;
   }
-  if (Check(ptr, size))
+  if (Check(ptr, size)) {
     return 0;
+  }
   // The power_MemorySuspend Autotest depends on this value.
   return 2;
 }

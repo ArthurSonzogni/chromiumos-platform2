@@ -33,8 +33,9 @@ namespace {
 std::string GenerateCoolingDeviceType(FuzzedDataProvider* data_provider) {
   bool is_random_type = data_provider->ConsumeBool();
 
-  if (is_random_type)
+  if (is_random_type) {
     return data_provider->ConsumeRandomLengthString(32);
+  }
 
   std::string types[] = {"Processor", "TFN1", "TCHG"};
   return types[data_provider->ConsumeIntegralInRange(0, 2)];

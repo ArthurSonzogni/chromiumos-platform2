@@ -25,8 +25,9 @@ bool CrosConfigPrefsSource::ReadPrefString(const std::string& name,
                                            std::string* value_out) {
   std::string prop_name;
   base::ReplaceChars(name, "_", "-", &prop_name);
-  if (!config_->GetString(kPowerConfigPath, prop_name, value_out))
+  if (!config_->GetString(kPowerConfigPath, prop_name, value_out)) {
     return false;
+  }
 
   // Trim trailing whitespace to match FilePrefsStore::ReadPrefString().
   base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);
@@ -36,8 +37,9 @@ bool CrosConfigPrefsSource::ReadPrefString(const std::string& name,
 bool CrosConfigPrefsSource::ReadExternalString(const std::string& path,
                                                const std::string& name,
                                                std::string* value_out) {
-  if (!config_->GetString(path, name, value_out))
+  if (!config_->GetString(path, name, value_out)) {
     return false;
+  }
 
   // Trim trailing whitespace to be consistent with ReadPrefString().
   base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);

@@ -90,10 +90,11 @@ void FlossBatteryProvider::Init(DBusWrapperInterface* dbus_wrapper) {
       battery_manager::kFlossBatteryProviderManagerServicePath);
 
   auto bus = dbus_wrapper_->GetBus();
-  if (bus)
+  if (bus) {
     provider_manager_object_manager_ = bus->GetObjectManager(
         battery_manager::kFlossBatteryProviderManagerServiceName,
         dbus::ObjectPath("/"));
+  }
 
   dbus_wrapper_->ExportMethod(
       kFlossBatteryProviderManagerRefreshBatteryInfo,

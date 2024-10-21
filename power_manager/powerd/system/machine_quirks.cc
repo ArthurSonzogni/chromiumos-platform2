@@ -98,8 +98,9 @@ bool MachineQuirks::IsSuspendBlocked() {
   std::string suspend_prevention_ids_pref;
   // Read suspend prevention ids pref.
   if (!prefs_->GetString(kSuspendPreventionListPref,
-                         &suspend_prevention_ids_pref))
+                         &suspend_prevention_ids_pref)) {
     return false;
+  }
 
   if (ContainsDMIMatch(suspend_prevention_ids_pref)) {
     return true;
@@ -114,8 +115,9 @@ bool MachineQuirks::IsSuspendToIdle() {
 
   std::string suspend_to_idle_ids_pref;
   // Read suspend prevention ids pref.
-  if (!prefs_->GetString(kSuspendToIdleListPref, &suspend_to_idle_ids_pref))
+  if (!prefs_->GetString(kSuspendToIdleListPref, &suspend_to_idle_ids_pref)) {
     return false;
+  }
 
   if (ContainsDMIMatch(suspend_to_idle_ids_pref)) {
     return true;
@@ -146,8 +148,9 @@ bool MachineQuirks::IsExternalDisplayOnly() {
     return false;
   }
 
-  if (!base::StringToInt(chassis_type_str, &chassis_type))
+  if (!base::StringToInt(chassis_type_str, &chassis_type)) {
     return false;
+  }
 
   // Check device is a desktop, or some other form factor that requires an
   // external monitor.
@@ -179,12 +182,14 @@ bool IsPeripheralBattery(const base::FilePath& power_supply_path) {
 }
 
 bool IsMainBattery(const base::FilePath& power_supply_path) {
-  if (IsPeripheralBattery(power_supply_path))
+  if (IsPeripheralBattery(power_supply_path)) {
     return false;
+  }
 
   std::string type;
-  if (!util::MaybeReadStringFile(power_supply_path.Append("type"), &type))
+  if (!util::MaybeReadStringFile(power_supply_path.Append("type"), &type)) {
     return false;
+  }
 
   if (type == kBatteryType) {
     return true;
@@ -217,14 +222,16 @@ std::optional<base::FilePath> GetMainBatteryPath(
 
 bool IsGenericBatteryDriver(const base::FilePath& driver_path) {
   std::string uevent;
-  if (!base::ReadFileToString(driver_path.Append("uevent"), &uevent))
+  if (!base::ReadFileToString(driver_path.Append("uevent"), &uevent)) {
     return false;
+  }
 
   std::string driver;
   static constexpr LazyRE2 kDriverRe = {"DRIVER=([A-z]+)"};
   if (RE2::PartialMatch(uevent, *kDriverRe, &driver)) {
-    if (driver == kAcpiGenericBatteryDriver)
+    if (driver == kAcpiGenericBatteryDriver) {
       return true;
+    }
   }
   return false;
 }
@@ -247,8 +254,9 @@ bool MachineQuirks::IsGenericAcpiBatteryDriver() {
 
   std::optional<base::FilePath> battery_path =
       GetMainBatteryPath(base::FilePath(power_supply_dir_));
-  if (!battery_path.has_value())
+  if (!battery_path.has_value()) {
     return false;
+  }
 
   if (HasGenericBatteryDriver(battery_path.value())) {
     LOG(INFO) << "Quirk match found for generic ACPI battery: "
@@ -271,8 +279,9 @@ bool MachineQuirks::ReadDMIValFromFile(std::string_view dmi_file_name,
 
 bool MachineQuirks::IsProductNameMatch(std::string_view product_name_pref) {
   std::string product_name_dut;
-  if (!ReadDMIValFromFile(kDefaultProductNameFile, &product_name_dut))
+  if (!ReadDMIValFromFile(kDefaultProductNameFile, &product_name_dut)) {
     return false;
+  }
   if (base::MatchPattern(product_name_dut, product_name_pref)) {
     LOG(INFO) << "Quirk match found for product_name:" << product_name_dut;
     return true;
@@ -308,8 +317,9 @@ bool MachineQuirks::IsDMIMatch(std::string_view dmi_pref_entry) {
                    "cannot be read by power_manager.";
       return false;
     }
-    if (dmi_keyval.second != dmi_val)
+    if (dmi_keyval.second != dmi_val) {
       return false;
+    }
   }
 
   // If all the listed DMI values match, then we know it's a match!

@@ -26,8 +26,9 @@ DeviceThermalState ThermalDeviceStub::GetThermalState() const {
 }
 
 void ThermalDeviceStub::NotifyObservers() {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnThermalChanged(this);
+  }
 }
 
 ThermalDeviceType ThermalDeviceStub::GetType() const {

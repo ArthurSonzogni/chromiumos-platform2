@@ -117,8 +117,9 @@ class AudioClientTest : public TestEnvironment {
     } else if (member == cras::kIsAudioOutputActive) {
       dbus::MessageWriter(response.get()).AppendInt32(output_active_);
     } else if (member == cras::kSetSuspendAudio) {
-      if (!dbus::MessageReader(method_call).PopBool(&audio_suspended_))
+      if (!dbus::MessageReader(method_call).PopBool(&audio_suspended_)) {
         ADD_FAILURE() << "Couldn't read " << cras::kSetSuspendAudio << " arg";
+      }
     } else {
       ADD_FAILURE() << "Unhandled method call to member " << member;
       return nullptr;

@@ -49,11 +49,13 @@ class TestDelegate : public AmbientLightSensorDelegate {
 
   void SetLuxAndColorTemperature(std::optional<int> lux,
                                  std::optional<int> color_temperature) {
-    if (color_temperature.has_value())
+    if (color_temperature.has_value()) {
       is_color_sensor_ = true;
+    }
 
-    if (!set_lux_callback_)
+    if (!set_lux_callback_) {
       return;
+    }
 
     set_lux_callback_.Run(lux, color_temperature);
   }

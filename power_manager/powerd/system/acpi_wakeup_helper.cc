@@ -69,10 +69,12 @@ bool AcpiWakeupHelper::GetWakeupEnabled(const std::string& device_name,
     std::string line = lines.token();
     base::StringTokenizer parts(line, "\t *");
     // Check whether first part matches device name.
-    if (!parts.GetNext())
+    if (!parts.GetNext()) {
       continue;
-    if (parts.token_piece() != device_name)
+    }
+    if (parts.token_piece() != device_name) {
       continue;
+    }
     // Find enabled/disabled in later parts.
     while (parts.GetNext()) {
       std::string_view part = parts.token_piece();
@@ -100,13 +102,16 @@ bool AcpiWakeupHelper::SetWakeupEnabled(const std::string& device_name,
   // The kernel does not exhibit an interface to set the state directly, we can
   // only get and toggle.
   bool readback;
-  if (!GetWakeupEnabled(device_name, &readback))
+  if (!GetWakeupEnabled(device_name, &readback)) {
     return false;
+  }
   if (readback != enabled) {
-    if (!ToggleWakeupEnabled(device_name))
+    if (!ToggleWakeupEnabled(device_name)) {
       return false;
-    if (!GetWakeupEnabled(device_name, &readback) || readback != enabled)
+    }
+    if (!GetWakeupEnabled(device_name, &readback) || readback != enabled) {
       return false;
+    }
     VLOG(1) << "ACPI wakeup for " << device_name << " is now "
             << (enabled ? "enabled" : "disabled");
   }

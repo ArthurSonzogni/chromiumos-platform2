@@ -49,8 +49,9 @@ class Gpio {
   // has been successfully exported.
   bool Export() {
     base::FilePath gpio_path = GetSysfsGpioPath();
-    if (base::PathExists(gpio_path))
+    if (base::PathExists(gpio_path)) {
       return true;
+    }
 
     base::FilePath export_file =
         base::FilePath(kSysfsGpioRoot).Append("export");
@@ -76,8 +77,9 @@ class Gpio {
   // Sets the value of the GPIO node to 1 if |value_high| is true, or 0
   // otherwise. Returns true if the value has been successfully set.
   bool Set(bool value_high) {
-    if (!Export())
+    if (!Export()) {
       return false;
+    }
 
     base::FilePath direction_file = GetSysfsGpioPath().Append("direction");
     std::string direction_value = value_high ? "high" : "low";

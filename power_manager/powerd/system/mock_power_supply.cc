@@ -32,8 +32,9 @@ MockPowerSupply::MockPowerSupply() {
 }
 
 void MockPowerSupply::NotifyObservers() {
-  for (PowerSupplyObserver& observer : observers_)
+  for (PowerSupplyObserver& observer : observers_) {
     observer.OnPowerStatusUpdate();
+  }
 }
 
 }  // namespace power_manager::system

@@ -27,8 +27,9 @@ namespace {
 void HandleSignalConnected(const std::string& interface,
                            const std::string& signal,
                            bool success) {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Failed to connect to signal " << interface << "." << signal;
+  }
 }
 
 // No-op
@@ -217,8 +218,9 @@ void DBusWrapper::HandleNameOwnerChangedSignal(dbus::Signal* signal) {
     return;
   }
 
-  for (DBusWrapper::Observer& observer : observers_)
+  for (DBusWrapper::Observer& observer : observers_) {
     observer.OnDBusNameOwnerChanged(name, old_owner, new_owner);
+  }
 }
 
 void DBusWrapper::RegisterForInterfaceAvailability(
@@ -231,15 +233,17 @@ void DBusWrapper::RegisterForInterfaceAvailability(
 
 void DBusWrapper::ObjectAdded(const dbus::ObjectPath& object_path,
                               const std::string& interface_name) {
-  if (!interface_callback_)
+  if (!interface_callback_) {
     return;
+  }
   std::move(interface_callback_).Run(interface_name, true);
 }
 
 void DBusWrapper::ObjectRemoved(const dbus::ObjectPath& object_path,
                                 const std::string& interface_name) {
-  if (!interface_callback_)
+  if (!interface_callback_) {
     return;
+  }
   std::move(interface_callback_).Run(interface_name, false);
 }
 

@@ -40,8 +40,9 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToStderr);
 
-  if (!FLAGS_ltr_ignore.empty())
+  if (!FLAGS_ltr_ignore.empty()) {
     SetLtrIgnore(FLAGS_ltr_ignore);
+  }
 
   return 0;
 }

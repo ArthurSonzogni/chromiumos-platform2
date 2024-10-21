@@ -27,8 +27,9 @@ InputEventHandler::InputEventHandler()
     : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
 
 InputEventHandler::~InputEventHandler() {
-  if (input_watcher_)
+  if (input_watcher_) {
     input_watcher_->RemoveObserver(this);
+  }
 }
 
 void InputEventHandler::Init(system::InputWatcherInterface* input_watcher,
@@ -61,15 +62,17 @@ void InputEventHandler::Init(system::InputWatcherInterface* input_watcher,
   prefs->GetBool(kFactoryModePref, &factory_mode_);
 
   bool use_lid = false;
-  if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid)
+  if (prefs->GetBool(kUseLidPref, &use_lid) && use_lid) {
     lid_state_ = input_watcher_->QueryLidState();
+  }
 
   tablet_mode_ = input_watcher_->GetTabletMode();
 }
 
 bool InputEventHandler::TriggerPowerButtonAcknowledgmentTimeoutForTesting() {
-  if (!power_button_acknowledgment_timer_.IsRunning())
+  if (!power_button_acknowledgment_timer_.IsRunning()) {
     return false;
+  }
 
   power_button_acknowledgment_timer_.Stop();
   OnPowerButtonAcknowledgmentTimeout();
@@ -120,10 +123,12 @@ void InputEventHandler::OnPowerButtonEvent(ButtonState state) {
 
   if (clock_->GetCurrentTime() < ignore_power_button_deadline_) {
     bool ignore = state == ButtonState::DOWN || power_button_down_ignored_;
-    if (state == ButtonState::UP)  // Consumed, we no longer need the deadline.
+    if (state ==
+        ButtonState::UP) {  // Consumed, we no longer need the deadline.
       IgnoreNextPowerButtonPress(base::TimeDelta());
-    else if (state == ButtonState::DOWN)
+    } else if (state == ButtonState::DOWN) {
       power_button_down_ignored_ = true;
+    }
     if (ignore) {
       // Ignore down event or up event if it matches a down event.
       LOG(INFO) << "Ignored power button " << ButtonStateToString(state);

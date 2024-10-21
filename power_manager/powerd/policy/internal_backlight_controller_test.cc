@@ -68,18 +68,21 @@ class InternalBacklightControllerTest : public TestEnvironment {
     prefs_.SetDouble(kAlsSmoothingConstantPref, 1.0);
 
     controller_ = std::make_unique<InternalBacklightController>();
-    if (!init_time_.is_null())
+    if (!init_time_.is_null()) {
       controller_->clock()->set_current_time_for_testing(init_time_);
+    }
 
     dbus_wrapper_ = std::make_unique<system::DBusWrapperStub>();
     controller_->Init(
         &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : nullptr,
         &display_power_setter_, dbus_wrapper_.get(), LidState::OPEN);
 
-    if (report_initial_power_source_)
+    if (report_initial_power_source_) {
       controller_->HandlePowerSourceChange(power_source);
-    if (pass_light_sensor_ && report_initial_als_reading_)
+    }
+    if (pass_light_sensor_ && report_initial_als_reading_) {
       light_sensor_.NotifyObservers();
+    }
   }
 
   // Maps |percent| to a |controller_|-designated level in the range [0,
@@ -248,8 +251,9 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   observer.Clear();
   int64_t old_level = backlight_.current_level();
   light_sensor_.set_lux(300);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   ASSERT_NE(old_level, backlight_.current_level());
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
@@ -440,8 +444,9 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   // Pass a bunch of higher readings and check that we slowly increase the
   // brightness.
   light_sensor_.set_lux(400);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_->GetNumAmbientLightSensorAdjustments());
@@ -530,8 +535,9 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   // Ambient light readings shouldn't change the backlight level while it's
   // dimmed.
   light_sensor_.set_lux(400);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(dimmed_level, backlight_.current_level());
 
   // After leaving the dimmed state, the updated ALS level should be used.
@@ -584,8 +590,9 @@ TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
   // Changes to the ambient light level shouldn't affect the backlight
   // brightness after the user has manually set it.
   light_sensor_.set_lux(400);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
@@ -895,8 +902,9 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   // via a policy.
   observer.Clear();
   light_sensor_.set_lux(400);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(43.0), backlight_.current_level());
   EXPECT_EQ(static_cast<size_t>(0), observer.changes().size());
 
@@ -1073,8 +1081,9 @@ TEST_F(InternalBacklightControllerTest, ForcedOff) {
   // The screen should stay off even if we would otherwise adjust its brightness
   // due to a change in ambient light: https://crbug.com/747165
   light_sensor_.set_lux(300);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
 
@@ -1284,8 +1293,9 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   // Changes to the ambient light level shouldn't affect the backlight
   // brightness after the user has manually set it.
   light_sensor_.set_lux(400);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
@@ -1308,16 +1318,18 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   // Confirm that the ambient light sensor is functioning again by changing the
   // light level to trigger a brightness change.
   light_sensor_.set_lux(40);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(1, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Update the light level again and confirm that the ambient light sensor is
   // adjusting the brightness.
   light_sensor_.set_lux(400);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
   EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
 
@@ -1340,8 +1352,9 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   // Changing the light level should not change the current brightness level,
   // nor should it record an ambient light sensor adjustment.
   light_sensor_.set_lux(40);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
   EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
 
@@ -1472,8 +1485,9 @@ TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfAmbientEnabled) {
 
   // Simulate a low-light environment by setting lux to 20.
   light_sensor_.set_lux(20);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
 
   // Enable the ambient light sensor.
   dbus_wrapper_->ClearSentSignals();

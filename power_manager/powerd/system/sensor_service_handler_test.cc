@@ -32,8 +32,9 @@ class FakeObserver : public SensorServiceHandlerObserver {
       const std::vector<cros::mojom::DeviceType>& types) override {
     device_ids_.push_back(iio_device_id);
 
-    if (on_new_device_added_closure_)
+    if (on_new_device_added_closure_) {
       on_new_device_added_closure_.Run();
+    }
   }
   void OnDeviceRemoved(int32_t iio_device_id) override {
     for (auto it = device_ids_.begin(); it != device_ids_.end(); ++it) {
@@ -43,8 +44,9 @@ class FakeObserver : public SensorServiceHandlerObserver {
       }
     }
 
-    if (on_device_removed_closure_)
+    if (on_device_removed_closure_) {
       on_device_removed_closure_.Run();
+    }
   }
   void SensorServiceConnected() override { connected_ = true; }
   void SensorServiceDisconnected() override { connected_ = false; }

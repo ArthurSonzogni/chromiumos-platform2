@@ -19,8 +19,9 @@ void FakeSensorService::AddReceiver(
 void FakeSensorService::ClearReceivers() {
   receiver_set_.Clear();
 
-  for (auto& [_, device_info] : device_infos_)
+  for (auto& [_, device_info] : device_infos_) {
     device_info.sensor_device->ClearReceiver();
+  }
 }
 
 bool FakeSensorService::HasReceivers() const {
@@ -41,21 +42,24 @@ void FakeSensorService::SetSensorDevice(
 
 void FakeSensorService::RemoveSensorDevice(int32_t iio_device_id) {
   auto it = device_infos_.find(iio_device_id);
-  if (it == device_infos_.end())
+  if (it == device_infos_.end()) {
     return;
+  }
 
   device_infos_.erase(it);
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer->OnDeviceRemoved(iio_device_id);
+  }
 }
 
 void FakeSensorService::GetDeviceIds(cros::mojom::DeviceType type,
                                      GetDeviceIdsCallback callback) {
   std::vector<int32_t> ids;
   for (const auto& device_info : device_infos_) {
-    if (device_info.second.type == type)
+    if (device_info.second.type == type) {
       ids.push_back(device_info.first);
+    }
   }
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -77,8 +81,9 @@ void FakeSensorService::GetDevice(
     int32_t iio_device_id,
     mojo::PendingReceiver<cros::mojom::SensorDevice> device_request) {
   auto it = device_infos_.find(iio_device_id);
-  if (it == device_infos_.end())
+  if (it == device_infos_.end()) {
     return;
+  }
 
   it->second.sensor_device->AddReceiver(std::move(device_request));
 }

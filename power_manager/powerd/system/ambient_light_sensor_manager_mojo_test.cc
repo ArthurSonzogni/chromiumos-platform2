@@ -46,8 +46,9 @@ class AmbientLightSensorManagerMojoTest : public MojoTestEnvironment {
   void SetManager() {
     manager_ = std::make_unique<AmbientLightSensorManagerMojo>(
         &prefs_, &sensor_service_handler_);
-    if (!manager_->GetSensorForInternalBacklight())
+    if (!manager_->GetSensorForInternalBacklight()) {
       return;
+    }
 
     ResetMojoChannel();
   }

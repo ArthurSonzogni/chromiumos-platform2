@@ -53,8 +53,9 @@ AmbientLightSensorDelegateMojo::Create(
     mojo::Remote<cros::mojom::SensorDevice> remote,
     bool enable_color_support,
     base::OnceClosure init_closure) {
-  if (!remote.is_bound())
+  if (!remote.is_bound()) {
     return nullptr;
+  }
 
   std::unique_ptr<AmbientLightSensorDelegateMojo> sensor_mojo(
       new AmbientLightSensorDelegateMojo(iio_device_id, std::move(remote),
@@ -82,8 +83,9 @@ void AmbientLightSensorDelegateMojo::OnSampleUpdated(
   DCHECK(illuminance_index_.has_value());
   DCHECK_LT(illuminance_index_.value(), iio_channel_ids_.size());
 
-  if (!set_lux_callback_)
+  if (!set_lux_callback_) {
     return;
+  }
 
   auto it = sample.find(illuminance_index_.value());
   std::optional<int> lux_value, color_temperature;
@@ -102,16 +104,19 @@ void AmbientLightSensorDelegateMojo::OnSampleUpdated(
 
     if (++num_recovery_reads_ == kNumRecoveryReads) {
       num_recovery_reads_ = 0;
-      if (num_failed_reads_ > 0)
+      if (num_failed_reads_ > 0) {
         --num_failed_reads_;
+      }
     }
   }
 
-  if (color_channels_enabled_)
+  if (color_channels_enabled_) {
     color_temperature = GetColorTemperature(sample);
+  }
 
-  if (lux_value.has_value() || color_temperature.has_value())
+  if (lux_value.has_value() || color_temperature.has_value()) {
     set_lux_callback_.Run(lux_value, color_temperature);
+  }
 }
 
 void AmbientLightSensorDelegateMojo::OnErrorOccurred(
@@ -188,9 +193,10 @@ AmbientLightSensorDelegateMojo::AmbientLightSensorDelegateMojo(
   DCHECK(sensor_device_remote_.is_bound());
 
   if (enable_color_support_) {
-    for (const ColorChannelInfo& channel : kColorChannelConfig)
+    for (const ColorChannelInfo& channel : kColorChannelConfig) {
       channel_ids_to_enable_.insert(
           GetChannelIlluminanceColorId(channel.rgb_name));
+    }
   }
 
   // Add the id of the clear channel.
@@ -236,8 +242,9 @@ void AmbientLightSensorDelegateMojo::GetAllChannelIdsCallback(
 
   for (const auto& channel_id : channel_ids_to_enable_) {
     for (int32_t j = 0; j < iio_channel_ids_.size(); ++j) {
-      if (channel_id != iio_channel_ids_[j])
+      if (channel_id != iio_channel_ids_[j]) {
         continue;
+      }
 
       if (!enable_color_support_) {
         illuminance_index_ = j;
@@ -265,8 +272,9 @@ void AmbientLightSensorDelegateMojo::GetAllChannelIdsCallback(
 
   if (enable_color_support_ &&
       color_indices_.size() == std::size(kColorChannelConfig)) {
-    for (const auto& color_index : color_indices_)
+    for (const auto& color_index : color_indices_) {
       channel_indices_.push_back(color_index.second);
+    }
   } else {
     enable_color_support_ = false;
   }
@@ -310,12 +318,14 @@ AmbientLightSensorDelegateMojo::GetRemote() {
 std::optional<int> AmbientLightSensorDelegateMojo::GetColorValue(
     const base::flat_map<int32_t, int64_t>& sample, ChannelType type) {
   auto it_color_index = color_indices_.find(type);
-  if (it_color_index == color_indices_.end())
+  if (it_color_index == color_indices_.end()) {
     return std::nullopt;
+  }
 
   auto it = sample.find(it_color_index->second);
-  if (it == sample.end())
+  if (it == sample.end()) {
     return std::nullopt;
+  }
 
   return it->second;
 }
@@ -325,8 +335,9 @@ std::optional<int> AmbientLightSensorDelegateMojo::GetColorTemperature(
   std::map<ChannelType, int> readings;
   for (const ColorChannelInfo& channel : kColorChannelConfig) {
     auto value_opt = GetColorValue(sample, channel.type);
-    if (!value_opt.has_value())
+    if (!value_opt.has_value()) {
       continue;
+    }
 
     readings[channel.type] = value_opt.value();
   }
@@ -347,8 +358,9 @@ void AmbientLightSensorDelegateMojo::OnObserverDisconnect() {
 void AmbientLightSensorDelegateMojo::SetFrequencyCallback(double result_freq) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (result_freq > 0.0)
+  if (result_freq > 0.0) {
     return;
+  }
 
   LOG(ERROR) << "Failed to set frequency";
   Reset();
@@ -370,8 +382,9 @@ void AmbientLightSensorDelegateMojo::SetChannelsEnabledCallback(
     LOG(ERROR) << "Failed to enable channel: " << iio_channel_ids_[index];
   }
 
-  if (enable_color_support_ && failed_indices.empty())
+  if (enable_color_support_ && failed_indices.empty()) {
     color_channels_enabled_ = true;
+  }
 
   FinishInitialization();
 }
@@ -392,8 +405,9 @@ void AmbientLightSensorDelegateMojo::ReadError() {
 void AmbientLightSensorDelegateMojo::FinishInitialization() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (init_closure_)
+  if (init_closure_) {
     std::move(init_closure_).Run();
+  }
 }
 
 }  // namespace power_manager::system

@@ -186,8 +186,9 @@ void HandleSynchronousDBusMethodCall(
     dbus::ExportedObject::ResponseSender response_sender) {
   std::unique_ptr<dbus::Response> response =
       std::move(handler).Run(method_call);
-  if (!response)
+  if (!response) {
     response = dbus::Response::FromMethodCall(method_call);
+  }
   std::move(response_sender).Run(std::move(response));
 }
 
@@ -367,12 +368,15 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       weak_ptr_factory_(this) {}
 
 Daemon::~Daemon() {
-  if (dbus_wrapper_)
+  if (dbus_wrapper_) {
     dbus_wrapper_->RemoveObserver(this);
-  if (audio_client_)
+  }
+  if (audio_client_) {
     audio_client_->RemoveObserver(this);
-  if (power_supply_)
+  }
+  if (power_supply_) {
     power_supply_->RemoveObserver(this);
+  }
 
   battery_saver_controller_.RemoveObserver(this);
 }
@@ -381,8 +385,9 @@ void Daemon::Init() {
   // Check if this is the first run of powerd after boot.
   first_run_after_boot_ = !base::PathExists(already_ran_path_);
   if (first_run_after_boot_) {
-    if (!base::WriteFile(already_ran_path_, ""))
+    if (!base::WriteFile(already_ran_path_, "")) {
       PLOG(ERROR) << "Couldn't create " << already_ran_path_.value();
+    }
   }
 
   prefs_ = delegate_->CreatePrefs();
@@ -390,8 +395,9 @@ void Daemon::Init() {
   InitDBus();
 
   factory_mode_ = BoolPrefIsTrue(kFactoryModePref);
-  if (factory_mode_)
+  if (factory_mode_) {
     LOG(INFO) << "Factory mode enabled; most functionality will be disabled";
+  }
 
   platform_features_ = delegate_->CreatePlatformFeatures(dbus_wrapper_.get());
   metrics_sender_ = delegate_->CreateMetricsSender();
@@ -404,16 +410,19 @@ void Daemon::Init() {
       std::make_unique<system::WakeupSourceIdentifier>(udev_.get());
 
   const TabletMode tablet_mode = input_watcher_->GetTabletMode();
-  if (tablet_mode == TabletMode::ON)
+  if (tablet_mode == TabletMode::ON) {
     LOG(INFO) << "Tablet mode enabled at startup";
+  }
   const LidState lid_state = input_watcher_->QueryLidState();
-  if (lid_state == LidState::CLOSED)
+  if (lid_state == LidState::CLOSED) {
     LOG(INFO) << "Lid closed at startup";
+  }
 
 #if USE_IIOSERVICE
   sensor_service_handler_ = delegate_->CreateSensorServiceHandler();
-  if (!disable_mojo_for_testing_)
+  if (!disable_mojo_for_testing_) {
     ConnectToMojoServiceManager();
+  }
 
   if (BoolPrefIsTrue(kExternalAmbientLightSensorPref)) {
     ambient_light_sensor_watcher_ = delegate_->CreateAmbientLightSensorWatcher(
@@ -464,8 +473,9 @@ void Daemon::Init() {
                 display_power_setter_.get(), dbus_wrapper_.get(), lid_state);
       }
     }
-    if (display_backlight_controller_)
+    if (display_backlight_controller_) {
       all_backlight_controllers_.push_back(display_backlight_controller_.get());
+    }
 
     if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
       auto config = std::make_unique<brillo::CrosConfig>();
@@ -506,8 +516,9 @@ void Daemon::Init() {
       ec_command_factory_.get(), prefs_.get(), udev_.get(), dbus_wrapper_.get(),
       battery_percentage_converter_.get());
   power_supply_->AddObserver(this);
-  if (!power_supply_->RefreshImmediately())
+  if (!power_supply_->RefreshImmediately()) {
     LOG(ERROR) << "Initial power supply refresh failed; brace for weirdness";
+  }
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
 
   metrics_collector_->Init(prefs_.get(), display_backlight_controller_.get(),
@@ -584,8 +595,9 @@ void Daemon::Init() {
 
   // Asynchronously undo the previous force-lid-open request to the EC (if there
   // was one).
-  if (!factory_mode_ && BoolPrefIsTrue(kUseLidPref))
+  if (!factory_mode_ && BoolPrefIsTrue(kUseLidPref)) {
     RunSetuidHelper("set_force_lid_open", "--noforce_lid_open", false);
+  }
 
   thermal_devices_ = delegate_->CreateThermalDevices();
   std::vector<system::ThermalDeviceInterface*> weak_thermal_device;
@@ -602,8 +614,9 @@ void Daemon::Init() {
 
   // configure wake on dp only if the preference is set.
   bool wake_on_dp = false;
-  if (prefs_->GetBool(kWakeOnDpPref, &wake_on_dp))
+  if (prefs_->GetBool(kWakeOnDpPref, &wake_on_dp)) {
     system::ConfigureWakeOnDp(wake_on_dp);
+  }
 
   // Configure wake for the EC.
   if (acpi_wakeup_helper_->IsSupported()) {
@@ -626,8 +639,9 @@ void Daemon::Init() {
 }
 
 bool Daemon::TriggerRetryShutdownTimerForTesting() {
-  if (!retry_shutdown_for_lockfile_timer_.IsRunning())
+  if (!retry_shutdown_for_lockfile_timer_.IsRunning()) {
     return false;
+  }
 
   retry_shutdown_for_lockfile_timer_.user_task().Run();
   return true;
@@ -666,8 +680,9 @@ void Daemon::ReconnectToMojoServiceManagerWithDelay() {
 
 void Daemon::RequestIioSensor() {
   TRACE_EVENT("power", "Daemon::RequestIioSensor");
-  if (!service_manager_.is_bound())
+  if (!service_manager_.is_bound()) {
     return;
+  }
 
   mojo::PendingRemote<cros::mojom::SensorService> sensor_service_remote;
 
@@ -721,8 +736,9 @@ int Daemon::RunSetuidHelper(const std::string& action,
                             const std::string& additional_args,
                             bool wait_for_completion) {
   std::string command = kSetuidHelperPath + std::string(" --action=" + action);
-  if (!additional_args.empty())
+  if (!additional_args.empty()) {
     command += " " + additional_args;
+  }
   if (wait_for_completion) {
     return delegate_->Run(command.c_str());
   } else {
@@ -738,8 +754,9 @@ void Daemon::HandleLidClosed() {
   // to Chrome which can take longer than a second.
   input_device_controller_->SetLidState(LidState::CLOSED);
   state_controller_->HandleLidStateChange(LidState::CLOSED);
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleLidStateChange(LidState::CLOSED);
+  }
 
   dbus_wrapper_->EmitBareSignal(kLidClosedSignal);
 }
@@ -749,32 +766,37 @@ void Daemon::HandleLidOpened() {
   suspender_->HandleLidOpened();
   state_controller_->HandleLidStateChange(LidState::OPEN);
   input_device_controller_->SetLidState(LidState::OPEN);
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleLidStateChange(LidState::OPEN);
+  }
 
   dbus_wrapper_->EmitBareSignal(kLidOpenedSignal);
 }
 
 void Daemon::HandlePowerButtonEvent(ButtonState state) {
   // Don't log spammy repeat events if we see them.
-  if (state != ButtonState::REPEAT)
+  if (state != ButtonState::REPEAT) {
     LOG(INFO) << "Power button " << ButtonStateToString(state);
+  }
   metrics_collector_->HandlePowerButtonEvent(state);
   if (state == ButtonState::DOWN) {
     delegate_->Launch("sync");
-    for (auto controller : all_backlight_controllers_)
+    for (auto controller : all_backlight_controllers_) {
       controller->HandlePowerButtonPress();
+    }
   }
 }
 
 void Daemon::HandleHoverStateChange(bool hovering) {
-  if (hovering)
+  if (hovering) {
     hovering_logger_->OnActivityStarted();
-  else
+  } else {
     hovering_logger_->OnActivityStopped();
+  }
 
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleHoverStateChange(hovering);
+  }
 }
 
 void Daemon::HandleTabletModeChange(TabletMode mode) {
@@ -782,8 +804,9 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
   LOG(INFO) << "Tablet mode " << TabletModeToString(mode);
   state_controller_->HandleTabletModeChange(mode);
   input_device_controller_->SetTabletMode(mode);
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleTabletModeChange(mode);
+  }
   user_proximity_watcher_->HandleTabletModeChange(mode);
   bluetooth_controller_->HandleTabletModeChange(mode);
   wifi_controller_->HandleTabletModeChange(mode);
@@ -841,11 +864,13 @@ bool Daemon::ReadSuspendWakeupCount(uint64_t* wakeup_count) {
 
 void Daemon::SetSuspendAnnounced(bool announced) {
   if (announced) {
-    if (!base::WriteFile(suspend_announced_path_, std::string_view()))
+    if (!base::WriteFile(suspend_announced_path_, std::string_view())) {
       PLOG(ERROR) << "Couldn't create " << suspend_announced_path_.value();
+    }
   } else {
-    if (!brillo::DeleteFile(suspend_announced_path_))
+    if (!brillo::DeleteFile(suspend_announced_path_)) {
       PLOG(ERROR) << "Couldn't delete " << suspend_announced_path_.value();
+    }
   }
 }
 
@@ -866,13 +891,15 @@ void Daemon::PrepareToSuspend() {
 }
 
 void Daemon::SuspendAudio() {
-  if (audio_client_)
+  if (audio_client_) {
     audio_client_->SetSuspended(true);
+  }
 }
 
 void Daemon::ResumeAudio() {
-  if (audio_client_)
+  if (audio_client_) {
     audio_client_->SetSuspended(false);
+  }
 }
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
@@ -900,10 +927,11 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   created_suspended_state_file_ = false;
   if (!base::PathExists(suspended_state_path)) {
-    if (base::WriteFile(suspended_state_path, std::string_view()))
+    if (base::WriteFile(suspended_state_path, std::string_view())) {
       created_suspended_state_file_ = true;
-    else
+    } else {
       PLOG(ERROR) << "Unable to create " << suspended_state_path.value();
+    }
   }
 
   // This command is run synchronously to ensure that it finishes before the
@@ -936,8 +964,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     LOG(ERROR) << "Failed to freeze userspace processes. Attempting suspend "
                << "anyways";
   } else if (freeze_result == system::FreezeResult::CANCELED) {
-    if (!suspend_freezer_->ThawProcesses())
+    if (!suspend_freezer_->ThawProcesses()) {
       LOG(ERROR) << "Failed to thaw userspace after canceled suspend";
+    }
 
     return policy::Suspender::Delegate::SuspendResult::CANCELED;
   }
@@ -948,17 +977,20 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
-  if (log_suspend_manually_)
+  if (log_suspend_manually_) {
     RunSetuidHelper("eventlog_add", "--eventlog_code=0xa8", false);
+  }
 
   if (created_suspended_state_file_) {
-    if (!brillo::DeleteFile(base::FilePath(suspended_state_path)))
+    if (!brillo::DeleteFile(base::FilePath(suspended_state_path))) {
       PLOG(ERROR) << "Failed to delete " << suspended_state_path.value();
+    }
   }
   bool thaw_userspace_succ = suspend_freezer_->ThawProcesses();
   bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
-  if (!(thaw_userspace_succ && undo_prep_suspend_succ))
+  if (!(thaw_userspace_succ && undo_prep_suspend_succ)) {
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
+  }
 
   // These exit codes are defined in powerd/powerd_suspend.
   switch (exit_code) {
@@ -981,8 +1013,9 @@ void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
 
   // Update the lid state first so that resume does not turn the internal
   // backlight on if the lid is still closed on resume.
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleLidStateChange(lid_state);
+  }
 
   // Let State controller know about resume with the latest lid state.
   state_controller_->HandleResume(lid_state);
@@ -995,10 +1028,11 @@ void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
 
   power_supply_->SetSuspended(false);
 
-  if (success)
+  if (success) {
     metrics_collector_->HandleResume(num_suspend_attempts);
-  else if (num_suspend_attempts > 0)
+  } else if (num_suspend_attempts > 0) {
     metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts);
+  }
 }
 
 void Daemon::ApplyQuirksBeforeSuspend() {
@@ -1208,10 +1242,11 @@ void Daemon::GenerateAdaptiveChargingUnplugMetrics(
 }
 
 void Daemon::OnAudioStateChange(bool active) {
-  if (active)
+  if (active) {
     audio_activity_logger_->OnActivityStarted();
-  else
+  } else {
     audio_activity_logger_->OnActivityStopped();
+  }
   state_controller_->HandleAudioStateChange(active);
 }
 
@@ -1235,15 +1270,17 @@ void Daemon::OnDBusNameOwnerChanged(const std::string& name,
 void Daemon::OnPowerStatusUpdate() {
   TRACE_EVENT("power", "OnPowerStatusUpdate");
   const system::PowerStatus status = power_supply_->GetPowerStatus();
-  if (status.battery_is_present)
+  if (status.battery_is_present) {
     LOG(INFO) << system::GetPowerStatusBatteryDebugString(status);
+  }
 
   metrics_collector_->HandlePowerStatusUpdate(status);
 
   const PowerSource power_source =
       status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandlePowerSourceChange(power_source);
+  }
   state_controller_->HandlePowerSourceChange(power_source);
   thermal_event_handler_->HandlePowerSourceChange(power_source);
 
@@ -1264,8 +1301,9 @@ void Daemon::OnBatterySaverStateChanged(const BatterySaverModeState& state) {
 
   // TODO(sxm): Collect metrics somewhere around here.
 
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleBatterySaverModeChange(state);
+  }
 
   power_supply_->OnBatterySaverStateChanged();
 }
@@ -1352,8 +1390,9 @@ void Daemon::InitDBus() {
   adaptive_charging_ml_proxy_ = delegate_->CreateAdaptiveChargingProxy(bus);
 
   // There's no underlying dbus::Bus object when we're being tested.
-  if (!bus)
+  if (!bus) {
     return;
+  }
 
   int64_t tpm_threshold = 0;
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
@@ -1374,8 +1413,9 @@ void Daemon::HandleDisplayServiceAvailableOrRestarted(bool available) {
     LOG(ERROR) << "Failed waiting for DisplayService to become available";
     return;
   }
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleDisplayServiceStart();
+  }
 
   // When running in the factory, we avoid initializing any backlight
   // controllers, but we need to still tell Chrome to initially turn displays on
@@ -1399,8 +1439,9 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
       login_manager::kSessionManagerRetrieveSessionState);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
       session_manager_dbus_proxy_, &method_call, kSessionManagerDBusTimeout);
-  if (!response)
+  if (!response) {
     return;
+  }
 
   std::string state;
   dbus::MessageReader reader(response.get());
@@ -1433,8 +1474,9 @@ void Daemon::HandleTpmManagerdAvailable(bool available) {
     LOG(ERROR) << "Failed waiting for tpm_manager to become available";
     return;
   }
-  if (!tpm_manager_proxy_)
+  if (!tpm_manager_proxy_) {
     return;
+  }
 
   RequestTpmStatus();
   if (tpm_status_interval_ > base::Seconds(0)) {
@@ -1588,8 +1630,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   // all optional parameters before it must be supplied. Null values like
   // -1 are then needed as a way to say "I'm giving you this parameter, but
   // pretend like I'm not."
-  if (external_wakeup_count == -1ULL)
+  if (external_wakeup_count == -1ULL) {
     got_external_wakeup_count = false;
+  }
   LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
             << (got_external_wakeup_count
                     ? base::StringPrintf(" with external wakeup count %" PRIu64,
@@ -1641,18 +1684,21 @@ std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(
     dbus::MethodCall* method_call) {
   bool fullscreen = false;
   dbus::MessageReader reader(method_call);
-  if (!reader.PopBool(&fullscreen))
+  if (!reader.PopBool(&fullscreen)) {
     LOG(ERROR) << "Unable to read " << kHandleVideoActivityMethod << " args";
+  }
 
   video_activity_logger_->OnActivityReported();
 
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleVideoActivity(fullscreen);
+  }
   state_controller_->HandleVideoActivity();
 
-  if (fullscreen)
+  if (fullscreen) {
     SetFullscreenVideoWithTimeout(true /* active */,
                                   10 /* timeout in seconds */);
+  }
   return nullptr;
 }
 
@@ -1662,14 +1708,16 @@ std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
 
   int type_int = USER_ACTIVITY_OTHER;
   dbus::MessageReader reader(method_call);
-  if (!reader.PopInt32(&type_int))
+  if (!reader.PopInt32(&type_int)) {
     LOG(ERROR) << "Unable to read " << kHandleUserActivityMethod << " args";
+  }
   UserActivityType type = static_cast<UserActivityType>(type_int);
 
   suspender_->HandleUserActivity();
   state_controller_->HandleUserActivity();
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleUserActivity(type);
+  }
   return nullptr;
 }
 
@@ -1677,8 +1725,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleWakeNotificationMethod(
     dbus::MethodCall* method_call) {
   suspender_->HandleWakeNotification();
   state_controller_->HandleWakeNotification();
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleWakeNotification();
+  }
   return nullptr;
 }
 
@@ -1698,8 +1747,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetIsProjectingMethod(
   state_controller_->HandleDisplayModeChange(mode);
   suspender_->HandleDisplayModeChange(mode);
   input_device_controller_->SetDisplayMode(mode);
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleDisplayModeChange(mode);
+  }
 
   metrics_collector_->GenerateDisplayAfterResumeDurationMsMetric();
   return nullptr;
@@ -1726,8 +1776,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
     adaptive_charging_controller_->HandlePolicyChange(policy);
   }
 
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandlePolicyChange(policy);
+  }
   return nullptr;
 }
 
@@ -1740,8 +1791,9 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetBacklightsForcedOffMethod(
   }
   LOG(INFO) << "Received request to " << (force_off ? "start" : "stop")
             << " forcing backlights off";
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->SetForcedOff(force_off);
+  }
   return nullptr;
 }
 
@@ -1823,21 +1875,24 @@ std::unique_ptr<dbus::Response> Daemon::HandleHasAmbientLightSensorMethod(
 void Daemon::OnSessionStateChange(const std::string& state_str) {
   SessionState state = (state_str == kSessionStarted) ? SessionState::STARTED
                                                       : SessionState::STOPPED;
-  if (state == session_state_)
+  if (state == session_state_) {
     return;
+  }
 
   LOG(INFO) << "Session state changed to " << SessionStateToString(state);
   session_state_ = state;
   metrics_collector_->HandleSessionStateChange(state);
   state_controller_->HandleSessionStateChange(state);
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->HandleSessionStateChange(state);
+  }
 }
 
 void Daemon::OnPrivacyScreenStateChange(
     const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state) {
-  if (state == privacy_screen_state_)
+  if (state == privacy_screen_state_) {
     return;
+  }
 
   VLOG(1) << "Privacy screen state changed to "
           << PrivacyScreenStateToString(state);
@@ -1865,8 +1920,9 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 
   if (!base::PathExists(shutdown_announced_path_)) {
-    if (!base::WriteFile(shutdown_announced_path_, std::string_view()))
+    if (!base::WriteFile(shutdown_announced_path_, std::string_view())) {
       PLOG(ERROR) << "Couldn't create " << shutdown_announced_path_.value();
+    }
   }
 
   std::string details;
@@ -1885,15 +1941,17 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   retry_shutdown_for_lockfile_timer_.Stop();
   suspender_->HandleShutdown();
   metrics_collector_->HandleShutdown(reason);
-  if (adaptive_charging_controller_)
+  if (adaptive_charging_controller_) {
     adaptive_charging_controller_->HandleShutdown();
+  }
 
   for (auto controller : all_backlight_controllers_) {
     // If we're going to display a low-battery alert while shutting down, don't
     // turn the screen off immediately.
     if (!(reason == ShutdownReason::LOW_BATTERY &&
-          controller == display_backlight_controller_.get()))
+          controller == display_backlight_controller_.get())) {
       controller->SetShuttingDown(true);
+    }
   }
 
   const std::string reason_str = ShutdownReasonToString(reason);
@@ -1927,22 +1985,25 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->SetDimmedForInactivity(dimmed);
+  }
   metrics_collector_->HandleScreenDimmedChange(
       dimmed, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsOffForInactivity(bool off) {
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->SetOffForInactivity(off);
+  }
   metrics_collector_->HandleScreenOffChange(
       off, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsSuspended(bool suspended) {
-  for (auto controller : all_backlight_controllers_)
+  for (auto controller : all_backlight_controllers_) {
     controller->SetSuspended(suspended);
+  }
 }
 
 }  // namespace power_manager

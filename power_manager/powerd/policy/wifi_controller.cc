@@ -19,8 +19,9 @@ const char WifiController::kUdevDevtype[] = "wlan";
 WifiController::WifiController() = default;
 
 WifiController::~WifiController() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
+  }
 }
 
 void WifiController::Init(Delegate* delegate,
@@ -77,27 +78,31 @@ void WifiController::Init(Delegate* delegate,
 }
 
 void WifiController::HandleTabletModeChange(TabletMode mode) {
-  if (!set_transmit_power_for_tablet_mode_)
+  if (!set_transmit_power_for_tablet_mode_) {
     return;
+  }
 
-  if (tablet_mode_ == mode)
+  if (tablet_mode_ == mode) {
     return;
+  }
 
   tablet_mode_ = mode;
   UpdateTransmitPower(TriggerSource::TABLET_MODE);
 }
 
 void WifiController::HandleRegDomainChange(WifiRegDomain domain) {
-  if (wifi_reg_domain_ == domain)
+  if (wifi_reg_domain_ == domain) {
     return;
+  }
 
   wifi_reg_domain_ = domain;
   UpdateTransmitPower(TriggerSource::REG_DOMAIN);
 }
 
 void WifiController::ProximitySensorDetected(UserProximity value) {
-  if (!set_transmit_power_for_proximity_)
+  if (!set_transmit_power_for_proximity_) {
     return;
+  }
 
   if (set_transmit_power_for_tablet_mode_) {
     LOG(INFO) << "WiFi power will be handled by proximity sensor and "
@@ -109,8 +114,9 @@ void WifiController::ProximitySensorDetected(UserProximity value) {
 }
 
 void WifiController::HandleProximityChange(UserProximity proximity) {
-  if (proximity_ == proximity)
+  if (proximity_ == proximity) {
     return;
+  }
 
   proximity_ = proximity;
   UpdateTransmitPower(TriggerSource::PROXIMITY);
@@ -119,8 +125,9 @@ void WifiController::HandleProximityChange(UserProximity proximity) {
 void WifiController::OnUdevEvent(const system::UdevEvent& event) {
   DCHECK_EQ(event.device_info.subsystem, kUdevSubsystem);
   if (event.action == system::UdevEvent::Action::ADD &&
-      event.device_info.devtype == kUdevDevtype)
+      event.device_info.devtype == kUdevDevtype) {
     UpdateTransmitPower(TriggerSource::UDEV_EVENT);
+  }
 }
 
 /*
@@ -162,8 +169,9 @@ RadioTransmitPower WifiController::DetermineTransmitPower() const {
 
   if (proximity_power == RadioTransmitPower::UNSPECIFIED &&
       tablet_mode_power == RadioTransmitPower::UNSPECIFIED &&
-      static_mode_ == StaticMode::UNSUPPORTED)
+      static_mode_ == StaticMode::UNSUPPORTED) {
     return RadioTransmitPower::UNSPECIFIED;
+  }
 
   if (proximity_power == RadioTransmitPower::LOW ||
       tablet_mode_power == RadioTransmitPower::LOW) {
@@ -186,8 +194,9 @@ RadioTransmitPower WifiController::DetermineTransmitPower() const {
 void WifiController::UpdateTransmitPower(TriggerSource tr_source) {
   RadioTransmitPower wanted_power = DetermineTransmitPower();
 
-  if (wanted_power != RadioTransmitPower::UNSPECIFIED)
+  if (wanted_power != RadioTransmitPower::UNSPECIFIED) {
     delegate_->SetWifiTransmitPower(wanted_power, wifi_reg_domain_, tr_source);
+  }
 }
 
 }  // namespace power_manager::policy

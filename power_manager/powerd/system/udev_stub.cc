@@ -21,8 +21,9 @@ bool UdevStub::HasSubsystemObserver(const std::string& subsystem,
 void UdevStub::NotifySubsystemObservers(const UdevEvent& event) {
   auto it = subsystem_observers_.find(event.device_info.subsystem);
   if (it != subsystem_observers_.end()) {
-    for (UdevSubsystemObserver& observer : *it->second)
+    for (UdevSubsystemObserver& observer : *it->second) {
       observer.OnUdevEvent(event);
+    }
   }
 }
 
@@ -31,15 +32,17 @@ void UdevStub::TaggedDeviceChanged(const std::string& syspath,
                                    const std::string& tags) {
   tagged_devices_[syspath] = TaggedDevice(syspath, wakeup_device_path, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
-  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
+  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_) {
     observer.OnTaggedDeviceChanged(device);
+  }
 }
 
 void UdevStub::TaggedDeviceRemoved(const std::string& syspath) {
   TaggedDevice device = tagged_devices_[syspath];
   tagged_devices_.erase(syspath);
-  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
+  for (UdevTaggedDeviceObserver& observer : tagged_device_observers_) {
     observer.OnTaggedDeviceRemoved(device);
+  }
 }
 
 void UdevStub::stop_accepting_sysattr_for_testing() {
@@ -76,8 +79,9 @@ void UdevStub::RemoveSubsystemObserver(const std::string& subsystem,
                                        UdevSubsystemObserver* observer) {
   DCHECK(observer);
   auto it = subsystem_observers_.find(subsystem);
-  if (it != subsystem_observers_.end())
+  if (it != subsystem_observers_.end()) {
     it->second->RemoveObserver(observer);
+  }
 }
 
 void UdevStub::AddTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) {
@@ -91,8 +95,9 @@ void UdevStub::RemoveTaggedDeviceObserver(UdevTaggedDeviceObserver* observer) {
 std::vector<TaggedDevice> UdevStub::GetTaggedDevices() {
   std::vector<TaggedDevice> devices;
   devices.reserve(tagged_devices_.size());
-  for (const std::pair<std::string, TaggedDevice> pair : tagged_devices_)
+  for (const std::pair<std::string, TaggedDevice> pair : tagged_devices_) {
     devices.push_back(pair.second);
+  }
   return devices;
 }
 
@@ -100,10 +105,11 @@ bool UdevStub::GetSubsystemDevices(const std::string& subsystem,
                                    std::vector<UdevDeviceInfo>* devices_out) {
   DCHECK(devices_out);
   const auto it = subsystem_devices_.find(subsystem);
-  if (it != subsystem_devices_.end())
+  if (it != subsystem_devices_.end()) {
     *devices_out = it->second;
-  else
+  } else {
     devices_out->clear();
+  }
   return true;
 }
 
@@ -118,8 +124,9 @@ bool UdevStub::GetSysattr(const std::string& syspath,
                           const std::string& sysattr,
                           std::string* value) {
   SysattrMap::iterator it = map_.find(std::make_pair(syspath, sysattr));
-  if (it == map_.end())
+  if (it == map_.end()) {
     return false;
+  }
   *value = it->second;
   return true;
 }
@@ -128,8 +135,9 @@ bool UdevStub::SetSysattr(const std::string& syspath,
                           const std::string& sysattr,
                           const std::string& value) {
   SysattrMap::iterator it = map_.find(std::make_pair(syspath, sysattr));
-  if (it == map_.end() && stop_accepting_sysattr_for_testing_)
+  if (it == map_.end() && stop_accepting_sysattr_for_testing_) {
     return false;
+  }
   map_[std::make_pair(syspath, sysattr)] = value;
   return true;
 }
@@ -137,8 +145,9 @@ bool UdevStub::SetSysattr(const std::string& syspath,
 bool UdevStub::GetDevlinks(const std::string& syspath,
                            std::vector<std::string>* out) {
   auto iter = devlinks_.find(syspath);
-  if (iter == devlinks_.end())
+  if (iter == devlinks_.end()) {
     return false;
+  }
 
   *out = iter->second;
   return true;

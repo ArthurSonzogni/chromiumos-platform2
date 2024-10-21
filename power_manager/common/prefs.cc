@@ -46,8 +46,9 @@ constexpr base::TimeDelta kDefaultWriteInterval = base::Seconds(1);
 Prefs::TestApi::TestApi(Prefs* prefs) : prefs_(prefs) {}
 
 bool Prefs::TestApi::TriggerWriteTimeout() {
-  if (!prefs_->write_prefs_timer_.IsRunning())
+  if (!prefs_->write_prefs_timer_.IsRunning()) {
     return false;
+  }
 
   prefs_->write_prefs_timer_.Stop();
   prefs_->WritePrefs();
@@ -57,8 +58,9 @@ bool Prefs::TestApi::TriggerWriteTimeout() {
 Prefs::Prefs() : write_interval_(kDefaultWriteInterval) {}
 
 Prefs::~Prefs() {
-  if (write_prefs_timer_.IsRunning())
+  if (write_prefs_timer_.IsRunning()) {
     WritePrefs();
+  }
 }
 
 // static
@@ -72,8 +74,9 @@ PrefsSourceInterfaceVector Prefs::GetDefaultSources() {
 
   const base::FilePath read_only_path(kReadOnlyPrefsDir);
 
-  if (CrosEcPrefsSource::IsSupported())
+  if (CrosEcPrefsSource::IsSupported()) {
     sources.emplace_back(new CrosEcPrefsSource);
+  }
 
   sources.emplace_back(
       new CrosConfigPrefsSource(std::make_unique<brillo::CrosConfig>()));
@@ -108,8 +111,9 @@ void Prefs::HandlePrefChanged(const std::string& name) {
   // 1. SetInt64() is called and pref is written to disk.
   // 2. SetInt64() is called and and the new value is queued.
   // 3. HandleFileChanged() is called regarding the initial write.
-  for (PrefsObserver& observer : observers_)
+  for (PrefsObserver& observer : observers_) {
     observer.OnPrefChanged(name);
+  }
 }
 
 void Prefs::GetPrefResults(const std::string& name,
@@ -153,8 +157,9 @@ bool Prefs::GetString(const std::string& name, std::string* buf) {
   DCHECK(buf);
   std::vector<PrefReadResult> results;
   GetPrefResults(name, false, &results);
-  if (results.empty())
+  if (results.empty()) {
     return false;
+  }
   *buf = results[0].value;
   return true;
 }
@@ -165,10 +170,11 @@ bool Prefs::GetInt64(const std::string& name, int64_t* value) {
   GetPrefResults(name, true, &results);
 
   for (const auto& result : results) {
-    if (base::StringToInt64(result.value, value))
+    if (base::StringToInt64(result.value, value)) {
       return true;
-    else
+    } else {
       LOG(ERROR) << "Unable to parse int64_t from " << result.source_desc;
+    }
   }
   return false;
 }
@@ -179,18 +185,20 @@ bool Prefs::GetDouble(const std::string& name, double* value) {
   GetPrefResults(name, true, &results);
 
   for (const auto& result : results) {
-    if (base::StringToDouble(result.value, value))
+    if (base::StringToDouble(result.value, value)) {
       return true;
-    else
+    } else {
       LOG(ERROR) << "Unable to parse double from " << result.source_desc;
+    }
   }
   return false;
 }
 
 bool Prefs::GetBool(const std::string& name, bool* value) {
   int64_t int_value = 0;
-  if (!GetInt64(name, &int_value))
+  if (!GetInt64(name, &int_value)) {
     return false;
+  }
   *value = int_value != 0;
   return true;
 }
@@ -219,8 +227,9 @@ bool Prefs::GetExternalString(const std::string& path,
                               std::string* value) {
   DCHECK(value);
   for (const auto& source : pref_sources_) {
-    if (source->ReadExternalString(path, name, value))
+    if (source->ReadExternalString(path, name, value)) {
       return true;
+    }
   }
   return false;
 }

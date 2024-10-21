@@ -11,23 +11,27 @@
 namespace power_manager::system {
 
 void InputWatcherStub::NotifyObserversAboutLidState() {
-  for (InputObserver& observer : observers_)
+  for (InputObserver& observer : observers_) {
     observer.OnLidEvent(lid_state_);
+  }
 }
 
 void InputWatcherStub::NotifyObserversAboutTabletMode() {
-  for (InputObserver& observer : observers_)
+  for (InputObserver& observer : observers_) {
     observer.OnTabletModeEvent(tablet_mode_);
+  }
 }
 
 void InputWatcherStub::NotifyObserversAboutPowerButtonEvent(ButtonState state) {
-  for (InputObserver& observer : observers_)
+  for (InputObserver& observer : observers_) {
     observer.OnPowerButtonEvent(state);
+  }
 }
 
 void InputWatcherStub::NotifyObserversAboutHoverState(bool hovering) {
-  for (InputObserver& observer : observers_)
+  for (InputObserver& observer : observers_) {
     observer.OnHoverStateChange(hovering);
+  }
 }
 
 void InputWatcherStub::AddObserver(InputObserver* observer) {

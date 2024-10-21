@@ -61,8 +61,9 @@ class InputDeviceControllerTest : public TestEnvironment {
   std::string GetSysattr(const std::string& syspath,
                          const std::string& sysattr) {
     std::string value;
-    if (!udev_.GetSysattr(syspath, sysattr, &value))
+    if (!udev_.GetSysattr(syspath, sysattr, &value)) {
       return "(error)";
+    }
     return value;
   }
 
@@ -84,8 +85,9 @@ class InputDeviceControllerTest : public TestEnvironment {
     va_list arg_list;
     va_start(arg_list, tag);
     while (tag) {
-      if (!tags.empty())
+      if (!tags.empty()) {
         tags += " ";
+      }
       tags += tag;
       tag = va_arg(arg_list, const char*);
     }

@@ -116,8 +116,9 @@ class AmbientLightSensorDelegateMojoTest : public MojoTestEnvironment {
 
     base::flat_map<int32_t, int64_t> sample;
     sample[0] = lux;
-    for (size_t i = 0; i < color_lux.size(); ++i)
+    for (size_t i = 0; i < color_lux.size(); ++i) {
       sample[i + 1] = color_lux[i];
+    }
 
     fake_light_->OnSampleUpdated(std::move(sample));
 
@@ -203,8 +204,9 @@ TEST_F(AmbientLightSensorDelegateMojoTest, GiveUpAfterTooManyFailures) {
 
   // |num_failed_reads_| is recovered by 1.
   for (uint32_t i = 0; i < AmbientLightSensorDelegateMojo::kNumRecoveryReads;
-       ++i)
+       ++i) {
     WriteLux(100);
+  }
 
   observer_.CheckSample(100);
 

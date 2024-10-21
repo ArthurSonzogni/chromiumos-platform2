@@ -129,8 +129,9 @@ void AmbientLightHandler::Init(const std::string& steps_pref_value,
 }
 
 void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
-  if (source == power_source_)
+  if (source == power_source_) {
     return;
+  }
 
   double old_percent = GetTargetPercent();
   power_source_ = source;
@@ -190,8 +191,9 @@ void AmbientLightHandler::OnAmbientLightUpdated(
   // Currently we notify on every color temperature change.
   if (sensor_->IsColorSensor()) {
     const int color_temperature = sensor_->GetColorTemperature();
-    if (color_temperature >= 0)
+    if (color_temperature >= 0) {
       delegate_->OnColorTemperatureChanged(color_temperature);
+    }
   }
 
   if (recent_lux_readings_.size() < kNumRecentReadingsToLog) {
@@ -223,8 +225,9 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     }
     for (; new_step_index < num_steps; new_step_index++) {
       if (new_lux < steps_[new_step_index].increase_lux_threshold ||
-          steps_[new_step_index].increase_lux_threshold == -1)
+          steps_[new_step_index].increase_lux_threshold == -1) {
         break;
+      }
     }
   } else if (new_lux < smoothed_lux_at_last_adjustment_) {
     if (hysteresis_state_ != HysteresisState::IMMEDIATE &&
@@ -235,8 +238,9 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     }
     for (; new_step_index >= 0; new_step_index--) {
       if (new_lux > steps_[new_step_index].decrease_lux_threshold ||
-          steps_[new_step_index].decrease_lux_threshold == -1)
+          steps_[new_step_index].decrease_lux_threshold == -1) {
         break;
+      }
     }
   }
   CHECK_GE(new_step_index, 0);
@@ -256,8 +260,9 @@ void AmbientLightHandler::OnAmbientLightUpdated(
     return;
   }
 
-  if (static_cast<int>(step_index_) == new_step_index)
+  if (static_cast<int>(step_index_) == new_step_index) {
     return;
+  }
 
   hysteresis_count_++;
   VLOG(1) << "Incremented hysteresis count to " << hysteresis_count_

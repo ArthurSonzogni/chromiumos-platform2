@@ -54,8 +54,9 @@ class FlossBatteryProviderTest : public TestEnvironment {
     bluetooth_manager_proxy_ = dbus_wrapper_stub_.get()->GetObjectProxy(
         bluetooth_manager::kBluetoothManagerServiceName,
         bluetooth_manager::kBluetoothManagerServicePath);
-    if (!register_with_manager)
+    if (!register_with_manager) {
       return;
+    }
     dbus_wrapper_stub_->NotifyServiceAvailable(bluetooth_manager_proxy_,
                                                /*available=*/true);
     EXPECT_TRUE(dbus_wrapper_stub_->IsMethodExported(
@@ -71,8 +72,9 @@ class FlossBatteryProviderTest : public TestEnvironment {
     bluetooth_adapter_proxy_ = dbus_wrapper_stub_.get()->GetObjectProxy(
         battery_manager::kFlossBatteryProviderManagerServiceName,
         battery_manager::kFlossBatteryProviderManagerServicePath);
-    if (!register_with_adapter)
+    if (!register_with_adapter) {
       return;
+    }
     dbus_wrapper_stub_->NotifyInterfaceAvailable(
         battery_manager::kFlossBatteryProviderManagerInterface, true);
 
@@ -80,8 +82,9 @@ class FlossBatteryProviderTest : public TestEnvironment {
     EXPECT_EQ(GetDBusMethodCalls(),
               FlossBatteryProvider::
                   kFlossBatteryProviderManagerRegisterBatteryProvider);
-    if (!register_with_adapter)
+    if (!register_with_adapter) {
       return;
+    }
     RegisterAsBatteryProvider();
     EXPECT_TRUE(floss_battery_provider_.IsRegistered());
   }

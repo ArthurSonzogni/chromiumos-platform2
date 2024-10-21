@@ -45,8 +45,9 @@ void ProximityEventsObserver::OnEventUpdated(cros::mojom::IioEventPtr event) {
   // This log is also used for tast-test: hardware.SensorActivity
   LOG(INFO) << "User proximity: "
             << (proximity == UserProximity::FAR ? "Far" : "Near");
-  for (auto& observer : *observers_)
+  for (auto& observer : *observers_) {
     observer.OnProximityEvent(iio_device_id_, proximity);
+  }
 }
 
 void ProximityEventsObserver::OnErrorOccurred(

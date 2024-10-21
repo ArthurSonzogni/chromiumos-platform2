@@ -14,8 +14,9 @@ BacklightStub::BacklightStub(int64_t max_level,
     : max_level_(max_level), current_level_(current_level), scale_(scale) {}
 
 void BacklightStub::NotifyDeviceChanged() {
-  for (BacklightObserver& observer : observers_)
+  for (BacklightObserver& observer : observers_) {
     observer.OnBacklightDeviceChanged(this);
+  }
 }
 
 void BacklightStub::AddObserver(BacklightObserver* observer) {
@@ -46,8 +47,9 @@ bool BacklightStub::SetBrightnessLevel(int64_t level,
     last_set_brightness_level_time_ =
         clock_ ? clock_->GetCurrentTime() : base::TimeTicks::Now();
   }
-  if (should_fail_)
+  if (should_fail_) {
     return false;
+  }
   current_level_ = level;
   current_interval_ = interval;
   return true;

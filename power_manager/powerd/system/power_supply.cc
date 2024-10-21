@@ -89,8 +89,9 @@ bool ReadInt64(const base::FilePath& directory,
                const std::string& filename,
                int64_t* out) {
   std::string buffer;
-  if (!ReadAndTrimString(directory, filename, &buffer))
+  if (!ReadAndTrimString(directory, filename, &buffer)) {
     return false;
+  }
   return base::StringToInt64(buffer, out);
 }
 
@@ -99,8 +100,9 @@ bool ReadInt64(const base::FilePath& directory,
 double ReadScaledDouble(const base::FilePath& directory,
                         const std::string& filename) {
   int64_t value = 0;
-  if (!ReadInt64(directory, filename, &value))
+  if (!ReadInt64(directory, filename, &value)) {
     return 0.0;
+  }
 
   return kDoubleScaleFactor * static_cast<double>(value);
 }
@@ -115,15 +117,18 @@ bool ReadBracketSelectedString(const base::FilePath& directory,
 
   DCHECK(out);
 
-  if (!ReadAndTrimString(directory, filename, &buffer))
+  if (!ReadAndTrimString(directory, filename, &buffer)) {
     return false;
+  }
   size_t start = buffer.find("[");
-  if (start == std::string::npos)
+  if (start == std::string::npos) {
     return false;
+  }
   start++;
   size_t end = buffer.find("]", start);
-  if (end == std::string::npos)
+  if (end == std::string::npos) {
     return false;
+  }
   *out = buffer.substr(start, end - start);
   return true;
 }
@@ -145,29 +150,34 @@ bool IsPdDrpType(const std::string& type) {
 // cannot be read, kUnknownType is returned.
 std::string ReadPowerSupplyType(const base::FilePath& path) {
   std::string type;
-  if (!ReadAndTrimString(path, "type", &type))
+  if (!ReadAndTrimString(path, "type", &type)) {
     return PowerSupply::kUnknownType;
+  }
 
-  if (type != PowerSupply::kUsbType)
+  if (type != PowerSupply::kUsbType) {
     return type;
+  }
 
   // Some drivers in newer kernels (4.19+) report a static type of USB,
   // and separately report all supported connection types in a usb_type
   // file, with the active value in brackets. For example:
   // "Unknown SDP DCP CDP C PD [PD_DRP] BrickID".
   std::string usb_type;
-  if (!ReadBracketSelectedString(path, "usb_type", &usb_type))
+  if (!ReadBracketSelectedString(path, "usb_type", &usb_type)) {
     return PowerSupply::kUsbType;
+  }
 
   // The exact type is unknown, but we still know it's USB.
-  if (usb_type == PowerSupply::kUnknownType || usb_type.empty())
+  if (usb_type == PowerSupply::kUnknownType || usb_type.empty()) {
     return PowerSupply::kUsbType;
+  }
 
   // For compatibility with the old dynamic type, prepend "USB_"
   // to the type. The only exception is for the BrickId type,
   // which is unprefixed.
-  if (usb_type != PowerSupply::kBrickIdType)
+  if (usb_type != PowerSupply::kBrickIdType) {
     usb_type = "USB_" + usb_type;
+  }
 
   return usb_type;
 }
@@ -253,14 +263,15 @@ enum class UpowerBatteryState {
 
 // Returns a mapping of |curr_state| to its equivalent upower enum.
 UpowerBatteryState BatteryStateToUpowerEnum(std::string curr_state) {
-  if (curr_state == PowerSupply::kBatteryStatusCharging)
+  if (curr_state == PowerSupply::kBatteryStatusCharging) {
     return UpowerBatteryState::UpowerCharging;
-  else if (curr_state == PowerSupply::kBatteryStatusDischarging)
+  } else if (curr_state == PowerSupply::kBatteryStatusDischarging) {
     return UpowerBatteryState::UpowerDischarging;
-  else if (curr_state == PowerSupply::kBatteryStatusFull)
+  } else if (curr_state == PowerSupply::kBatteryStatusFull) {
     return UpowerBatteryState::UpowerFullyCharged;
-  else
+  } else {
     return UpowerBatteryState::UpowerUnknown;
+  }
 }
 
 // Returns true if |port| is connected to a dedicated power source or dual-role
@@ -281,28 +292,29 @@ struct PortComparator {
 // PowerSupplyProperties::PowerSource::Port values.
 PowerSupplyProperties::PowerSource::Port GetPortLocationFromString(
     const std::string& name) {
-  if (name == "LEFT")
+  if (name == "LEFT") {
     return PowerSupplyProperties_PowerSource_Port_LEFT;
-  else if (name == "RIGHT")
+  } else if (name == "RIGHT") {
     return PowerSupplyProperties_PowerSource_Port_RIGHT;
-  else if (name == "BACK")
+  } else if (name == "BACK") {
     return PowerSupplyProperties_PowerSource_Port_BACK;
-  else if (name == "FRONT")
+  } else if (name == "FRONT") {
     return PowerSupplyProperties_PowerSource_Port_FRONT;
-  else if (name == "LEFT_FRONT")
+  } else if (name == "LEFT_FRONT") {
     return PowerSupplyProperties_PowerSource_Port_LEFT_FRONT;
-  else if (name == "LEFT_BACK")
+  } else if (name == "LEFT_BACK") {
     return PowerSupplyProperties_PowerSource_Port_LEFT_BACK;
-  else if (name == "RIGHT_FRONT")
+  } else if (name == "RIGHT_FRONT") {
     return PowerSupplyProperties_PowerSource_Port_RIGHT_FRONT;
-  else if (name == "RIGHT_BACK")
+  } else if (name == "RIGHT_BACK") {
     return PowerSupplyProperties_PowerSource_Port_RIGHT_BACK;
-  else if (name == "BACK_LEFT")
+  } else if (name == "BACK_LEFT") {
     return PowerSupplyProperties_PowerSource_Port_BACK_LEFT;
-  else if (name == "BACK_RIGHT")
+  } else if (name == "BACK_RIGHT") {
     return PowerSupplyProperties_PowerSource_Port_BACK_RIGHT;
-  else
+  } else {
     return PowerSupplyProperties_PowerSource_Port_UNKNOWN;
+  }
 }
 
 // Maps names read from power supply |type| sysfs nodes to the corresponding
@@ -444,8 +456,9 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
   for (auto port : status.ports) {
     // Chrome is only interested in ports that are currently in a state where
     // they can deliver power.
-    if (!PortHasSourceOrDualRole(port))
+    if (!PortHasSourceOrDualRole(port)) {
       continue;
+    }
 
     PowerSupplyProperties::PowerSource* source =
         proto->add_available_external_power_source();
@@ -457,16 +470,18 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     source->set_max_power(port.max_power);
     source->set_active_by_default(port.active_by_default);
   }
-  if (!status.external_power_source_id.empty())
+  if (!status.external_power_source_id.empty()) {
     proto->set_external_power_source_id(status.external_power_source_id);
+  }
 
   proto->set_preferred_minimum_external_power(
       status.preferred_minimum_external_power);
 }
 
 std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
-  if (!status.battery_is_present)
+  if (!status.battery_is_present) {
     return std::string();
+  }
 
   std::string output;
   switch (status.external_power) {
@@ -479,8 +494,9 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
       // Add details in the form ", 1.253A at 14.7V, max 2.0A at 15.0V",
       // omitting unavailable data.
       std::string details;
-      if (status.has_line_power_current)
+      if (status.has_line_power_current) {
         details = base::StringPrintf("%.3fA", status.line_power_current);
+      }
       if (status.has_line_power_voltage) {
         details += (details.empty() ? "" : " at ") +
                    base::StringPrintf("%.1fV", status.line_power_voltage);
@@ -491,8 +507,9 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
                                       status.line_power_max_current,
                                       status.line_power_max_voltage);
       }
-      if (!details.empty())
+      if (!details.empty()) {
         output += ", " + details;
+      }
 
       output += ") with battery at ";
     } break;
@@ -504,8 +521,9 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
   int rounded_actual = lround(status.battery_percentage);
   int rounded_display = lround(status.display_battery_percentage);
   output += base::StringPrintf("%d%%", rounded_actual);
-  if (rounded_actual != rounded_display)
+  if (rounded_actual != rounded_display) {
     output += base::StringPrintf(" (displayed as %d%%)", rounded_display);
+  }
   output +=
       base::StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
                          status.battery_charge_full, status.battery_current);
@@ -518,8 +536,9 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
       if (status.battery_time_to_full >= base::TimeDelta()) {
         output += ", " + util::TimeDeltaToString(status.battery_time_to_full) +
                   " until full";
-        if (status.is_calculating_battery_time)
+        if (status.is_calculating_battery_time) {
           output += " (calculating)";
+        }
       } else {
         output += ", no estimate due to low averaged current";
       }
@@ -548,26 +567,27 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
 }
 
 metrics::PowerSupplyType GetPowerSupplyTypeMetric(const std::string& type) {
-  if (type == PowerSupply::kMainsType)
+  if (type == PowerSupply::kMainsType) {
     return metrics::PowerSupplyType::MAINS;
-  else if (type == PowerSupply::kUsbType)
+  } else if (type == PowerSupply::kUsbType) {
     return metrics::PowerSupplyType::USB;
-  else if (type == PowerSupply::kUsbAcaType)
+  } else if (type == PowerSupply::kUsbAcaType) {
     return metrics::PowerSupplyType::USB_ACA;
-  else if (type == PowerSupply::kUsbCdpType)
+  } else if (type == PowerSupply::kUsbCdpType) {
     return metrics::PowerSupplyType::USB_CDP;
-  else if (type == PowerSupply::kUsbDcpType)
+  } else if (type == PowerSupply::kUsbDcpType) {
     return metrics::PowerSupplyType::USB_DCP;
-  else if (type == PowerSupply::kUsbCType)
+  } else if (type == PowerSupply::kUsbCType) {
     return metrics::PowerSupplyType::USB_C;
-  else if (type == PowerSupply::kUsbPdType)
+  } else if (type == PowerSupply::kUsbPdType) {
     return metrics::PowerSupplyType::USB_PD;
-  else if (IsPdDrpType(type))
+  } else if (IsPdDrpType(type)) {
     return metrics::PowerSupplyType::USB_PD_DRP;
-  else if (type == PowerSupply::kBrickIdType)
+  } else if (type == PowerSupply::kBrickIdType) {
     return metrics::PowerSupplyType::BRICK_ID;
-  else
+  } else {
     return metrics::PowerSupplyType::OTHER;
+  }
 }
 
 bool PowerStatus::Port::operator==(const Port& o) const {
@@ -594,13 +614,15 @@ bool PowerSupply::ConnectedSourcesAreEqual(const PowerStatus& a,
     // report equality.
     const bool a_done = a_it == a.ports.end();
     const bool b_done = b_it == b.ports.end();
-    if (a_done && b_done)
+    if (a_done && b_done) {
       return true;
+    }
 
     // If we reached the end of one list but have a connected port in the other,
     // or if the connected ports don't match, report inequality.
-    if (a_done != b_done || !(*a_it == *b_it))
+    if (a_done != b_done || !(*a_it == *b_it)) {
       return false;
+    }
 
     a_it++;
     b_it++;
@@ -622,8 +644,9 @@ void PowerSupply::TestApi::AdvanceTime(base::TimeDelta interval) {
 }
 
 bool PowerSupply::TestApi::TriggerPollTimeout() {
-  if (!power_supply_->poll_timer_.IsRunning())
+  if (!power_supply_->poll_timer_.IsRunning()) {
     return false;
+  }
 
   power_supply_->poll_timer_.Stop();
   power_supply_->OnPollTimeout();
@@ -664,8 +687,9 @@ PowerSupply::PowerSupply()
 }
 
 PowerSupply::~PowerSupply() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
+  }
 }
 
 void PowerSupply::Init(
@@ -762,8 +786,9 @@ void PowerSupply::Init(
   if (prefs_->GetString(kChargingPortsPref, &ports_string)) {
     base::TrimWhitespaceASCII(ports_string, base::TRIM_TRAILING, &ports_string);
     base::StringPairs pairs;
-    if (!base::SplitStringIntoKeyValuePairs(ports_string, ' ', '\n', &pairs))
+    if (!base::SplitStringIntoKeyValuePairs(ports_string, ' ', '\n', &pairs)) {
       LOG(FATAL) << "Failed parsing " << kChargingPortsPref << " pref";
+    }
     for (const auto& pair : pairs) {
       const PowerSupplyProperties::PowerSource::Port location =
           GetPortLocationFromString(pair.second);
@@ -812,8 +837,9 @@ bool PowerSupply::RefreshImmediatelyWithRetry() {
 }
 
 void PowerSupply::SetSuspended(bool suspended) {
-  if (is_suspended_ == suspended)
+  if (is_suspended_ == suspended) {
     return;
+  }
 
   is_suspended_ = suspended;
   if (is_suspended_) {
@@ -889,8 +915,9 @@ void PowerSupply::OnUdevEvent(const UdevEvent& event) {
 }
 
 bool PowerSupply::GetDisplayStateOfChargeFromEC(double* display_soc) {
-  if (!import_display_soc_)
+  if (!import_display_soc_) {
     return false;
+  }
 
   base::ScopedFD ec_fd =
       base::ScopedFD(open(cros_ec_path_.value().c_str(), O_RDWR));
@@ -939,8 +966,9 @@ base::FilePath PowerSupply::GetPathForId(const std::string& id) const {
 std::optional<base::TimeDelta> PowerSupply::GetMsPref(
     const std::string& pref_name) const {
   int64_t duration_ms;
-  if (prefs_->GetInt64(pref_name, &duration_ms))
+  if (prefs_->GetInt64(pref_name, &duration_ms)) {
     return base::Milliseconds(duration_ms);
+  }
   return std::nullopt;
 }
 
@@ -969,25 +997,29 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
                                  base::FileEnumerator::DIRECTORIES);
   for (base::FilePath path = file_enum.Next(); !path.empty();
        path = file_enum.Next()) {
-    if (IsExternalPeripheral(path))
+    if (IsExternalPeripheral(path)) {
       continue;
+    }
 
-    if (IsSupplyIgnored(path.BaseName().value()))
+    if (IsSupplyIgnored(path.BaseName().value())) {
       continue;
+    }
 
     std::string type;
-    if (!base::ReadFileToString(path.Append("type"), &type))
+    if (!base::ReadFileToString(path.Append("type"), &type)) {
       continue;
+    }
     base::TrimWhitespaceASCII(type, base::TRIM_TRAILING, &type);
 
     saw_power_source = true;
 
     // The battery state is dependent on the line power state, so defer reading
     // it until all other directories have been examined.
-    if (type == kBatteryType)
+    if (type == kBatteryType) {
       battery_paths.push_back(path);
-    else
+    } else {
       ReadLinePowerDirectory(path, &status);
+    }
   }
 
   // If no battery was found, assume that the system is actually on AC power.
@@ -1013,23 +1045,27 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   // Even though we haven't successfully finished initializing the status yet,
   // save what we have so far so that if we bail out early due to a messed-up
   // battery we'll at least start out knowing whether line power is connected.
-  if (!power_status_initialized_)
+  if (!power_status_initialized_) {
     power_status_ = status;
+  }
 
   // Finally, read the battery status.
   std::sort(battery_paths.begin(), battery_paths.end());
   if (!allow_multiple_batteries_ && battery_paths.size() > 1) {
-    for (size_t i = 1; i < battery_paths.size(); i++)
+    for (size_t i = 1; i < battery_paths.size(); i++) {
       LOG(WARNING) << "Ignoring extra battery " << battery_paths[i].value();
+    }
     battery_paths.resize(1);
   }
   if (battery_paths.size() == 1) {
     if (!ReadBatteryDirectory(battery_paths[0], &status,
-                              false /* allow_empty */))
+                              false /* allow_empty */)) {
       return false;
+    }
   } else if (battery_paths.size() > 1) {
-    if (!ReadMultipleBatteryDirectories(battery_paths, &status))
+    if (!ReadMultipleBatteryDirectories(battery_paths, &status)) {
       return false;
+    }
   }
 
   // Bail out before recording charge and current samples if this was a spurious
@@ -1041,8 +1077,9 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
       status.battery_state == power_status_.battery_state &&
       status.battery_percentage == power_status_.battery_percentage &&
       ConnectedSourcesAreEqual(status, power_status_) &&
-      status.battery_charge_full == power_status_.battery_charge_full)
+      status.battery_charge_full == power_status_.battery_charge_full) {
     return false;
+  }
 
   // Update running averages and use them to compute battery estimates.
   if (status.battery_is_present) {
@@ -1058,8 +1095,9 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
       // Chargers can deliver highly-variable currents depending on various
       // factors (e.g. negotiated current for USB chargers, charge level, etc.).
       // If one was just connected, throw away the previous average.
-      if (status.line_power_on)
+      if (status.line_power_on) {
         current_samples_on_line_power_->Clear();
+      }
     }
 
     base::TimeTicks now = clock_->GetCurrentTime();
@@ -1077,8 +1115,9 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
                                           ? current_samples_on_line_power_
                                           : current_samples_on_battery_power_;
         current_samples->AddSample(signed_current, now);
-        if (!has_max_samples_)
+        if (!has_max_samples_) {
           has_max_samples_ = current_samples->HasMaxSamples();
+        }
         num_zero_samples_ = 0;
       } else {
         num_zero_samples_++;
@@ -1108,20 +1147,23 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   PowerStatus::Port* port = &status->ports.back();
   port->id = GetIdForPath(path);
   const auto location_it = port_names_.find(path.BaseName().value());
-  if (location_it != port_names_.end())
+  if (location_it != port_names_.end()) {
     port->location = location_it->second;
+  }
 
   // Bidirectional/dual-role ports export a "status" field.
   std::string line_status;
   ReadAndTrimString(path, "status", &line_status);
   const bool dual_role_port = !line_status.empty();
-  if (dual_role_port)
+  if (dual_role_port) {
     status->supports_dual_role_devices = true;
+  }
 
   // An "Unknown" type indicates a sink-only device that can't supply power.
   port->type = ReadPowerSupplyType(path);
-  if (port->type == kUnknownType)
+  if (port->type == kUnknownType) {
     return;
+  }
 
   const bool dual_role_connected = IsPdDrpType(port->type);
 
@@ -1129,8 +1171,10 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   // case a value of 0 indicates we're connected to a dual-role device but not
   // sinking power.
   int64_t online = 0;
-  if ((!ReadInt64(path, "online", &online) || !online) && !dual_role_connected)
+  if ((!ReadInt64(path, "online", &online) || !online) &&
+      !dual_role_connected) {
     return;
+  }
 
   // If we've made it this far, there's a dedicated source or dual-role device
   // connected.
@@ -1160,16 +1204,18 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   // If this is a dual-role device, make sure that we're actually getting
   // charged by it.
-  if (dual_role_port && line_status != kLinePowerStatusCharging)
+  if (dual_role_port && line_status != kLinePowerStatusCharging) {
     return;
+  }
 
   // We don't support (or expect) multiple online line power sources, but an
   // extra "Mains" source can be reported if a system supports both Type-C and
   // barrel jack charging and is using the ACPI driver. Favor the non-Mains
   // source in this case.
   if (!status->line_power_path.empty()) {
-    if (port->type == PowerSupply::kMainsType)
+    if (port->type == PowerSupply::kMainsType) {
       return;
+    }
 
     if (status->line_power_type != PowerSupply::kMainsType) {
       LOG(WARNING) << "Skipping additional line power source at "
@@ -1234,8 +1280,9 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   VLOG(1) << "Reading battery status from " << path.value();
   status->battery_path = path.value();
   status->battery_is_present = IsBatteryPresent(path);
-  if (!status->battery_is_present)
+  if (!status->battery_is_present) {
     return true;
+  }
 
   ReadAndTrimString(path, "status", &status->battery_status_string);
 
@@ -1313,8 +1360,9 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   double charge = 0;
   double energy = 0;
 
-  if (base::PathExists(path.Append("energy_now")))
+  if (base::PathExists(path.Append("energy_now"))) {
     energy = ReadScaledDouble(path, "energy_now");
+  }
 
   if (base::PathExists(path.Append("charge_full"))) {
     charge_full = ReadScaledDouble(path, "charge_full");
@@ -1322,8 +1370,9 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     energy_full = charge_full * nominal_voltage;
     energy_full_design = charge_full_design * nominal_voltage;
     charge = ReadScaledDouble(path, "charge_now");
-    if (energy <= 0.0)
+    if (energy <= 0.0) {
       energy = charge * nominal_voltage;
+    }
   } else if (base::PathExists(path.Append("energy_full"))) {
     energy_full = ReadScaledDouble(path, "energy_full");
     energy_full_design = ReadScaledDouble(path, "energy_full_design");
@@ -1462,10 +1511,11 @@ bool PowerSupply::ReadMultipleBatteryDirectories(
   std::vector<PowerStatus> battery_statuses;
   for (const auto& path : paths) {
     PowerStatus battery_status(*status);
-    if (ReadBatteryDirectory(path, &battery_status, true /* allow_empty */))
+    if (ReadBatteryDirectory(path, &battery_status, true /* allow_empty */)) {
       battery_statuses.push_back(battery_status);
-    else
+    } else {
       LOG(WARNING) << "Ignoring battery at " << path.value();
+    }
   }
 
   if (battery_statuses.empty()) {
@@ -1486,8 +1536,9 @@ bool PowerSupply::ReadMultipleBatteryDirectories(
     status->battery_charge_full_design += s.battery_charge_full_design;
     status->nominal_voltage += s.nominal_voltage;
 
-    if (s.battery_is_present)
+    if (s.battery_is_present) {
       status->battery_is_present = true;
+    }
 
     // If any battery is charging or full, use charging as the combined status.
     // Note that UpdateBatteryPercentagesAndState may still choose to report the
@@ -1495,8 +1546,9 @@ bool PowerSupply::ReadMultipleBatteryDirectories(
     // discharging (if the current is zero or negative, or line power is
     // disconnected and one battery is just charging from another).
     if (s.battery_status_string == kBatteryStatusCharging ||
-        s.battery_status_string == kBatteryStatusFull)
+        s.battery_status_string == kBatteryStatusFull) {
       status->battery_status_string = kBatteryStatusCharging;
+    }
   }
 
   // If all batteries reported being empty, something is likely wrong:
@@ -1523,11 +1575,13 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
     return true;
   }
 
-  if (!has_max_samples_)
+  if (!has_max_samples_) {
     return false;
+  }
 
-  if (clock_->GetCurrentTime() < battery_stabilized_timestamp_)
+  if (clock_->GetCurrentTime() < battery_stabilized_timestamp_) {
     return false;
+  }
 
   // Positive if the battery is charging and negative if it's discharging.
   const double signed_current =
@@ -1590,8 +1644,9 @@ void PowerSupply::UpdateObservedBatteryChargeRate(PowerStatus* status) const {
 bool PowerSupply::IsBatteryBelowShutdownThreshold(
     const PowerStatus& status) const {
   if (low_battery_shutdown_time_ == base::TimeDelta() &&
-      low_battery_shutdown_percent_ <= kEpsilon)
+      low_battery_shutdown_percent_ <= kEpsilon) {
     return false;
+  }
 
   const bool below_threshold =
       (status.battery_time_to_empty > base::TimeDelta() &&
@@ -1609,8 +1664,9 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
   // discharging while the device is in use; other chargers (e.g. USB) may not
   // be able to, though. The observed charge rate is checked to verify whether
   // the battery's charge is increasing or decreasing.
-  if (status.line_power_on)
+  if (status.line_power_on) {
     return below_threshold && status.observed_battery_charge_rate < 0.0;
+  }
 
   return below_threshold;
 }
@@ -1628,11 +1684,13 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   TRACE_EVENT("power", "PowerSupply::PerformUpdate", "update_policy",
               update_policy, "notify_policy", notify_policy);
   const bool success = UpdatePowerStatus(update_policy);
-  if (!is_suspended_)
+  if (!is_suspended_) {
     SchedulePoll();
+  }
 
-  if (!success)
+  if (!success) {
     return false;
+  }
 
   if (notify_policy == NotifyPolicy::SYNCHRONOUSLY) {
     NotifyObservers();
@@ -1702,8 +1760,9 @@ void PowerSupply::OnPollTimeout() {
 
 void PowerSupply::NotifyObservers() {
   TRACE_EVENT("power", "PowerSupply::NotifyObservers");
-  for (PowerSupplyObserver& observer : observers_)
+  for (PowerSupplyObserver& observer : observers_) {
     observer.OnPowerStatusUpdate();
+  }
 }
 
 void PowerSupply::OnGetPowerSupplyPropertiesMethodCall(
@@ -1771,8 +1830,9 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
   // Otherwise, write 0 to the requested power source to activate it.
   const base::FilePath device_path =
       GetPathForId(id.empty() ? power_status_.external_power_source_id : id);
-  if (device_path.empty())
+  if (device_path.empty()) {
     return false;
+  }
 
   const base::FilePath limit_path =
       device_path.Append(kChargeControlLimitMaxFile);

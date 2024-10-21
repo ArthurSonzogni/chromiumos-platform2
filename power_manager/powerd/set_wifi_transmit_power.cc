@@ -199,8 +199,9 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
 
   base::FilePath driver_name = driver_path.BaseName();
   const auto driver = drivers.find(driver_name.value());
-  if (driver != drivers.end())
+  if (driver != drivers.end()) {
     return driver->second;
+  }
 
   return WirelessDriver::NONE;
 }
@@ -376,8 +377,9 @@ std::map<enum Rtw88SARBand, uint8_t> GetRtw88ChromeosConfigPowerTable(
   // 0.125 dBm, while the common SAR API expects 0.25 dBm. Since the tables
   // likely won't be updated and need to continue to work, we have to scale
   // the values here.
-  for (auto& [_, value] : power_table)
+  for (auto& [_, value] : power_table) {
     value /= 2;
+  }
 
   return power_table;
 }
@@ -875,12 +877,13 @@ class PowerSetter {
     // vendor API if common API is not supported.
     if (driver == WirelessDriver::ATH10K || driver == WirelessDriver::MTK ||
         (driver == WirelessDriver::RTW88 && !rtw88_use_vendor_cmd) ||
-        driver == WirelessDriver::RTW89)
+        driver == WirelessDriver::RTW89) {
       genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id_, 0, 0,
                   NL80211_CMD_SET_SAR_SPECS, 0);
-    else
+    } else {
       genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id_, 0, 0,
                   NL80211_CMD_VENDOR, 0);
+    }
 
     // Marvell does not support Tx power change based on reg domain change.
     if (driver == WirelessDriver::MWIFIEX &&
@@ -903,10 +906,11 @@ class PowerSetter {
         FillMessageIwl(msg, tablet);
         break;
       case WirelessDriver::RTW88:
-        if (rtw88_use_vendor_cmd)
+        if (rtw88_use_vendor_cmd) {
           FillMessageRtw88Vnd(msg, tablet, domain);
-        else
+        } else {
           FillMessageRtw88(msg, tablet, domain);
+        }
         break;
       case WirelessDriver::RTW89:
         FillMessageRtw89(msg, tablet, domain);
@@ -924,8 +928,9 @@ class PowerSetter {
     PCHECK(nl_send_auto(nl_sock_, msg) > 0) << "nl_send_auto failed";
 
     err_ = 1;
-    while (err_ > 0)
+    while (err_ > 0) {
       nl_recvmsgs(nl_sock_, cb_);
+    }
 
     // rtw88 driver on older kernels only support a vendor command, while
     // on newer kernels support the common SAR API. Fall back to the vendor
@@ -971,9 +976,11 @@ class PowerSetter {
     }
 
     bool ret = true;
-    for (const auto& name : device_names)
-      if (!SendModeSwitch(name, tablet, domain, tr_source))
+    for (const auto& name : device_names) {
+      if (!SendModeSwitch(name, tablet, domain, tr_source)) {
         ret = false;
+      }
+    }
     return ret;
   }
 

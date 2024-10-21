@@ -32,8 +32,9 @@ static constexpr base::TimeDelta kDisableHpsTimeoutOnUserUndim =
 DimAdvisor::DimAdvisor() : weak_ptr_factory_(this) {}
 
 DimAdvisor::~DimAdvisor() {
-  if (dbus_wrapper_)
+  if (dbus_wrapper_) {
     dbus_wrapper_->RemoveObserver(this);
+  }
 }
 
 void DimAdvisor::Init(system::DBusWrapperInterface* dbus_wrapper,
@@ -89,8 +90,9 @@ bool DimAdvisor::IsHpsSenseEnabled() const {
 
 void DimAdvisor::UnDimFeedback(bool undimmed_by_user) {
   // For now, we only disable if undimmed by the user.
-  if (!undimmed_by_user)
+  if (!undimmed_by_user) {
     return;
+  }
 
   hps_temporarily_disabled_ = true;
   LOG(INFO) << "DimAdvisor::UnDimFeedback hps is temporarily disabled";

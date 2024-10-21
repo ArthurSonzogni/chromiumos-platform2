@@ -22,12 +22,14 @@ const char kDefaultProcDir[] = "/proc";
 // Returns true if |lockfile| exists and contains the PID of an existing process
 // (with a directory in |proc_dir|).
 bool IsValid(const base::FilePath& lockfile, const base::FilePath& proc_dir) {
-  if (!base::PathExists(lockfile))
+  if (!base::PathExists(lockfile)) {
     return false;
+  }
 
   int64_t pid = -1;
-  if (!util::ReadInt64File(lockfile, &pid))
+  if (!util::ReadInt64File(lockfile, &pid)) {
     return false;
+  }
 
   if (!base::DirectoryExists(proc_dir.Append(base::NumberToString(pid)))) {
     LOG(WARNING) << lockfile.value() << " contains stale/invalid PID \"" << pid
@@ -50,13 +52,15 @@ std::vector<base::FilePath> LockfileChecker::GetValidLockfiles() const {
 
   base::FileEnumerator enumerator(dir_, false, base::FileEnumerator::FILES);
   for (auto path = enumerator.Next(); !path.empty(); path = enumerator.Next()) {
-    if (IsValid(path, proc_dir_))
+    if (IsValid(path, proc_dir_)) {
       paths.push_back(path);
+    }
   }
 
   for (const auto& path : files_) {
-    if (IsValid(path, proc_dir_))
+    if (IsValid(path, proc_dir_)) {
       paths.push_back(path);
+    }
   }
 
   return paths;

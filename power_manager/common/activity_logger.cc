@@ -38,15 +38,17 @@ base::TimeDelta BaseActivityLogger::GetOngoingTimerDelayForTest() const {
 }
 
 bool BaseActivityLogger::TriggerStoppedTimerForTest() {
-  if (!stopped_timer_.IsRunning())
+  if (!stopped_timer_.IsRunning()) {
     return false;
+  }
   stopped_timer_.FireNow();
   return true;
 }
 
 bool BaseActivityLogger::TriggerOngoingTimerForTest() {
-  if (!ongoing_timer_.IsRunning())
+  if (!ongoing_timer_.IsRunning()) {
     return false;
+  }
   ongoing_timer_.user_task().Run();
   return true;
 }
@@ -83,8 +85,9 @@ void PeriodicActivityLogger::OnActivityReported() {
 
   // Only log that activity started if we weren't waiting to log that it had
   // stopped.
-  if (!stopped_timer_.IsRunning())
+  if (!stopped_timer_.IsRunning()) {
     log_callback_.Run(activity_name_ + " reported");
+  }
 
   // Extend the "stopped" timeout and start the "ongoing" timer if it isn't
   // already running.
@@ -119,10 +122,11 @@ void StartStopActivityLogger::OnActivityStarted() {
   // Only log that activity started if we weren't waiting to log that it had
   // stopped. Otherwise, just stop the timer -- it'll be started again when
   // activity stops.
-  if (!stopped_timer_.IsRunning())
+  if (!stopped_timer_.IsRunning()) {
     log_callback_.Run(activity_name_ + " started");
-  else
+  } else {
     stopped_timer_.Stop();
+  }
 
   if (!ongoing_interval_.is_zero() && !ongoing_timer_.IsRunning()) {
     ongoing_timer_.Start(FROM_HERE, ongoing_interval_, this,
@@ -161,7 +165,6 @@ void StartStopActivityLogger::LogOngoing() {
 OngoingStateActivityLogger::OngoingStateActivityLogger(
     base::TimeDelta ongoing_interval)
     : BaseActivityLogger(std::string(), base::TimeDelta(), ongoing_interval) {}
-
 
 void OngoingStateActivityLogger::OnStateChanged(const std::string& state) {
   state_ = state;

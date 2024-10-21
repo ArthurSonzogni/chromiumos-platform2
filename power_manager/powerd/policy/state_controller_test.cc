@@ -122,8 +122,9 @@ class TestDelegate : public StateController::Delegate, public ActionRecorder {
   void ShutDown() override { AppendAction(kShutDown); }
 
   void ReportUserActivityMetrics() override {
-    if (record_metrics_actions_)
+    if (record_metrics_actions_) {
       AppendAction(kReportUserActivityMetrics);
+    }
   }
   void ReportDimEventMetrics(metrics::DimEvent sample) override {
     if (record_hps_event_metrics_) {
@@ -261,12 +262,15 @@ class StateControllerTest : public TestEnvironment {
     controller_.Init(&delegate_, &prefs_, &dbus_wrapper_, initial_power_source_,
                      initial_lid_state_);
 
-    if (send_initial_display_mode_)
+    if (send_initial_display_mode_) {
       controller_.HandleDisplayModeChange(initial_display_mode_);
-    if (send_initial_policy_)
+    }
+    if (send_initial_policy_) {
       controller_.HandlePolicyChange(initial_policy_);
-    if (trigger_wait_for_crash_boot_collect_timeout_)
+    }
+    if (trigger_wait_for_crash_boot_collect_timeout_) {
       test_api_.TriggerHandleCrashBootCollectTimeout();
+    }
   }
 
   // Advances |now_| by |interval_|.
@@ -366,8 +370,9 @@ class StateControllerTest : public TestEnvironment {
         call->GetInterface() == chromeos::kMlDecisionServiceInterface &&
         call->GetMember() ==
             chromeos::kMlDecisionServiceShouldDeferScreenDimMethod) {
-      if (simulate_smart_dim_timeout_)
+      if (simulate_smart_dim_timeout_) {
         return nullptr;
+      }
 
       std::unique_ptr<dbus::Response> response =
           dbus::Response::FromMethodCall(call);
@@ -402,8 +407,9 @@ class StateControllerTest : public TestEnvironment {
       const std::string name = dbus_wrapper_.GetSentSignalName(i);
       if (signal_type == SignalType::ACTIONS &&
           (name != kIdleActionImminentSignal &&
-           name != kIdleActionDeferredSignal))
+           name != kIdleActionDeferredSignal)) {
         continue;
+      }
 
       if (name == kIdleActionImminentSignal) {
         IdleActionImminent proto;

@@ -78,8 +78,9 @@ void ThermalEventHandler::OnGetThermalStateMethodCall(
 
 void ThermalEventHandler::OnThermalChanged(
     system::ThermalDeviceInterface* device) {
-  if (device && device->GetThermalState() == last_state_)
+  if (device && device->GetThermalState() == last_state_) {
     return;
+  }
 
   // Query all devices and send max_state.
   system::DeviceThermalState new_state = system::DeviceThermalState::kUnknown;
@@ -94,8 +95,9 @@ void ThermalEventHandler::OnThermalChanged(
     }
     new_state = max(new_state, state);
   }
-  if (new_state == last_state_)
+  if (new_state == last_state_) {
     return;
+  }
 
   ThermalEvent proto;
   proto.set_thermal_state(DeviceThermalStateToProto(new_state));
@@ -107,15 +109,17 @@ void ThermalEventHandler::OnThermalChanged(
 }
 
 void ThermalEventHandler::HandlePowerSourceChange(PowerSource source) {
-  if (source == power_source_)
+  if (source == power_source_) {
     return;
+  }
 
   power_source_ = source;
 
   // No need to recalculate thermal state if it is already at nominal.
   if (last_state_ == system::DeviceThermalState::kNominal ||
-      last_state_ == system::DeviceThermalState::kUnknown)
+      last_state_ == system::DeviceThermalState::kUnknown) {
     return;
+  }
 
   OnThermalChanged(nullptr);
 }

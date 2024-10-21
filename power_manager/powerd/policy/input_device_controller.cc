@@ -115,10 +115,12 @@ const char InputDeviceController::kTSCR[] = "TSCR";
 const char InputDeviceController::kCRFP[] = "CRFP";
 
 InputDeviceController::~InputDeviceController() {
-  if (udev_)
+  if (udev_) {
     udev_->RemoveTaggedDeviceObserver(this);
-  if (backlight_controller_)
+  }
+  if (backlight_controller_) {
     backlight_controller_->RemoveObserver(this);
+  }
 }
 
 void InputDeviceController::Init(
@@ -135,8 +137,9 @@ void InputDeviceController::Init(
   acpi_wakeup_helper_ = acpi_wakeup_helper;
   ec_helper_ = ec_helper;
 
-  if (backlight_controller_)
+  if (backlight_controller_) {
     backlight_controller_->AddObserver(this);
+  }
   udev_->AddTaggedDeviceObserver(this);
 
   // Trigger initial configuration.
@@ -208,8 +211,9 @@ void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
 void InputDeviceController::ConfigureInhibit(
     const system::TaggedDevice& device) {
   // Should this device be inhibited when it is not usable?
-  if (!device.HasTag(kTagInhibit))
+  if (!device.HasTag(kTagInhibit)) {
     return;
+  }
   bool inhibit = !IsUsableInMode(device, mode_);
   LOG(INFO) << (inhibit ? "Inhibiting " : "Un-inhibiting ") << device.syspath();
   udev_->SetSysattr(device.syspath(), kInhibited, inhibit ? "1" : "0");
@@ -218,24 +222,27 @@ void InputDeviceController::ConfigureInhibit(
 void InputDeviceController::ConfigureWakeup(
     const system::TaggedDevice& device) {
   // Do we manage wakeup for this device?
-  if (!device.HasTag(kTagWakeup))
+  if (!device.HasTag(kTagWakeup)) {
     return;
+  }
 
   bool wakeup = true;
-  if (device.HasTag(kTagWakeupDisabled))
+  if (device.HasTag(kTagWakeupDisabled)) {
     wakeup = false;
-  else if (device.HasTag(kTagWakeupOnlyWhenUsable))
+  } else if (device.HasTag(kTagWakeupOnlyWhenUsable)) {
     wakeup = IsUsableInMode(device, mode_);
-  else if (HasModeWakeupTags(device))
+  } else if (HasModeWakeupTags(device)) {
     wakeup = IsWakeupEnabledInMode(device, mode_);
+  }
 
   SetWakeupFromS3(device, wakeup);
 }
 
 void InputDeviceController::ConfigureEcWakeup() {
   // Force the EC to do keyboard wakeups even in tablet mode when display off.
-  if (!ec_helper_->IsWakeAngleSupported())
+  if (!ec_helper_->IsWakeAngleSupported()) {
     return;
+  }
 
   ec_helper_->AllowWakeupAsTablet(mode_ == Mode::DISPLAY_OFF);
 }
@@ -244,8 +251,9 @@ void InputDeviceController::ConfigureAcpiWakeup() {
   // On x86 systems, setting power/wakeup in sysfs is not enough, we also need
   // to go through /proc/acpi/wakeup.
 
-  if (!acpi_wakeup_helper_->IsSupported())
+  if (!acpi_wakeup_helper_->IsSupported()) {
     return;
+  }
 
   acpi_wakeup_helper_->SetWakeupEnabled(kTPAD, mode_ == Mode::LAPTOP);
   acpi_wakeup_helper_->SetWakeupEnabled(kTSCR, false);
@@ -254,31 +262,35 @@ void InputDeviceController::ConfigureAcpiWakeup() {
 
 InputDeviceController::Mode InputDeviceController::GetMode() const {
   if (display_mode_ == DisplayMode::PRESENTATION &&
-      lid_state_ == LidState::CLOSED)
+      lid_state_ == LidState::CLOSED) {
     return Mode::DOCKED;
+  }
 
   // Prioritize DISPLAY_OFF over TABLET so that the keyboard won't be disabled
   // if a device in tablet mode is used as a "smart keyboard" (e.g.
   // panel-side-down with an external display connected).
   if (!backlight_enabled_ && display_mode_ == DisplayMode::PRESENTATION &&
-      lid_state_ == LidState::OPEN)
+      lid_state_ == LidState::OPEN) {
     return Mode::DISPLAY_OFF;
+  }
 
   // Prioritize Mode::CLOSED over Mode::TABLET.
-  if (lid_state_ == LidState::CLOSED)
+  if (lid_state_ == LidState::CLOSED) {
     return Mode::CLOSED;
-  else if (tablet_mode_ == TabletMode::ON)
+  } else if (tablet_mode_ == TabletMode::ON) {
     return Mode::TABLET;
-  else
+  } else {
     return Mode::LAPTOP;
+  }
 }
 
 void InputDeviceController::UpdatePolicy() {
   DCHECK(udev_);
 
   Mode new_mode = GetMode();
-  if (initialized_ && mode_ == new_mode)
+  if (initialized_ && mode_ == new_mode) {
     return;
+  }
 
   mode_ = new_mode;
 
@@ -286,10 +298,12 @@ void InputDeviceController::UpdatePolicy() {
   std::vector<system::TaggedDevice> devices = udev_->GetTaggedDevices();
   // Configure inhibit first, as it is somewhat time-critical (we want to block
   // events as fast as possible), and wakeup takes a few milliseconds to set.
-  for (const system::TaggedDevice& device : devices)
+  for (const system::TaggedDevice& device : devices) {
     ConfigureInhibit(device);
-  for (const system::TaggedDevice& device : devices)
+  }
+  for (const system::TaggedDevice& device : devices) {
     ConfigureWakeup(device);
+  }
 
   ConfigureAcpiWakeup();
   ConfigureEcWakeup();

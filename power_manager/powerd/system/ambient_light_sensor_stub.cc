@@ -15,8 +15,9 @@ AmbientLightSensorStub::AmbientLightSensorStub(int lux) : lux_(lux) {}
 AmbientLightSensorStub::~AmbientLightSensorStub() = default;
 
 void AmbientLightSensorStub::NotifyObservers() {
-  for (AmbientLightObserver& observer : observers_)
+  for (AmbientLightObserver& observer : observers_) {
     observer.OnAmbientLightUpdated(this);
+  }
 }
 
 void AmbientLightSensorStub::AddObserver(AmbientLightObserver* observer) {

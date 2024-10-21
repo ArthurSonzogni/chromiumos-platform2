@@ -26,8 +26,9 @@ WakeupSourceIdentifier::WakeupSourceIdentifier(UdevInterface* udev) {
 
   std::vector<UdevDeviceInfo> input_device_list;
   if (udev_->GetSubsystemDevices(kInputUdevSubsystem, &input_device_list)) {
-    for (const auto& input_device : input_device_list)
+    for (const auto& input_device : input_device_list) {
       HandleAddedInput(input_device.sysname, input_device.wakeup_device_path);
+    }
   } else {
     LOG(ERROR) << "Cannot monitor event counts of input devices. Dark resume "
                   "might not work properly";
@@ -38,8 +39,9 @@ WakeupSourceIdentifier::WakeupSourceIdentifier(UdevInterface* udev) {
     for (const auto& device : power_supply_device_list) {
       auto dirname = device.wakeup_device_path.DirName().value();
       // Filter out other power supplies (e.g. battery) for now.
-      if (dirname.find("cros-ec-pchg") != std::string::npos)
+      if (dirname.find("cros-ec-pchg") != std::string::npos) {
         HandleAddedInput(device.sysname, device.wakeup_device_path);
+      }
     }
   }
 }
@@ -49,19 +51,22 @@ WakeupSourceIdentifier::~WakeupSourceIdentifier() {
 }
 
 void WakeupSourceIdentifier::PrepareForSuspendRequest() {
-  for (const auto& mp : monitored_paths_)
+  for (const auto& mp : monitored_paths_) {
     mp.second->PrepareForSuspend();
+  }
 }
 
 void WakeupSourceIdentifier::HandleResume() {
-  for (const auto& mp : monitored_paths_)
+  for (const auto& mp : monitored_paths_) {
     mp.second->HandleResume();
+  }
 }
 
 bool WakeupSourceIdentifier::InputDeviceCausedLastWake() const {
   for (const auto& mp : monitored_paths_) {
-    if (mp.second->CausedLastWake())
+    if (mp.second->CausedLastWake()) {
       return true;
+    }
   }
   return false;
 }
@@ -91,8 +96,9 @@ void WakeupSourceIdentifier::HandleAddedInput(
 
   wakeup_devices_[wakeup_device_path].insert(input_name);
 
-  if (already_monitoring)
+  if (already_monitoring) {
     return;
+  }
 
   std::unique_ptr<WakeupDeviceInterface> wakeup_device =
       WakeupDevice::CreateWakeupDevice(wakeup_device_path);
@@ -119,8 +125,9 @@ void WakeupSourceIdentifier::HandleRemovedInput(const std::string& input_name) {
   }
 
   // We were not monitoring this input for wakeup counts at all.
-  if (input_device_wakeup_path.empty())
+  if (input_device_wakeup_path.empty()) {
     return;
+  }
 
   if (!wakeup_devices_[input_device_wakeup_path].empty()) {
     // This wake path is monitored to identify wakes from other inputs too. So

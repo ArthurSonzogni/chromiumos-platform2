@@ -25,8 +25,9 @@ CreateDisplayStateOfChargeCommand() {
   }
 
   auto cmd = std::make_unique<ec::DisplayStateOfChargeCommand>();
-  if (cmd->Run(ec_fd.get()))
+  if (cmd->Run(ec_fd.get())) {
     return cmd;
+  }
 
   return nullptr;
 }

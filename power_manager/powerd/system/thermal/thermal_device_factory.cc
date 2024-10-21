@@ -54,8 +54,9 @@ ThermalDeviceFactory::CreateThermalDevices(
        path = dir_enum.Next()) {
     std::string dir_name = path.BaseName().value();
 
-    if (dir_name.rfind(kCoolingDevicePrefix) != 0)
+    if (dir_name.rfind(kCoolingDevicePrefix) != 0) {
       continue;
+    }
 
     auto device = std::make_unique<CoolingDevice>(path);
     device->Init(true);

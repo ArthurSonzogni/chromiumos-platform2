@@ -37,25 +37,29 @@ class MockSystemUtils : public SuspendFreezer::SystemUtilsInterface {
       *contents = "1";
       return true;
     }
-    if (file_contents_.find(path) == file_contents_.end())
+    if (file_contents_.find(path) == file_contents_.end()) {
       return false;
+    }
     *contents = file_contents_[path];
     return true;
   }
   bool WriteFile(const base::FilePath& path, std::string_view data) override {
-    if (file_contents_.find(path) == file_contents_.end() || permission_fail_)
+    if (file_contents_.find(path) == file_contents_.end() || permission_fail_) {
       return false;
+    }
     if (set_write_) {
       file_contents_[path] = data;
-      if (data == kFreezerStateFrozen)
+      if (data == kFreezerStateFrozen) {
         freeze_order_.push_back(path);
+      }
     }
     return true;
   }
   void GetSubDirs(const base::FilePath& root_path,
                   std::vector<base::FilePath>* dirs) override {
-    if (root_path != base::FilePath(kBasePath))
+    if (root_path != base::FilePath(kBasePath)) {
       return;
+    }
     for (auto cgroup : file_contents_) {
       dirs->push_back(cgroup.first.DirName());
     }

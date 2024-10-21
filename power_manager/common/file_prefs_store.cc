@@ -85,13 +85,15 @@ void FilePrefsStore::UpdateFileWatchers() {
   }
   std::vector<std::string> added_prefs;
   for (const auto& name : current_prefs) {
-    if (file_watchers_.find(name) == file_watchers_.end())
+    if (file_watchers_.find(name) == file_watchers_.end()) {
       added_prefs.push_back(name);
+    }
   }
   std::vector<std::string> removed_prefs;
   for (const auto& watcher_pair : file_watchers_) {
-    if (current_prefs.find(watcher_pair.first) == current_prefs.end())
+    if (current_prefs.find(watcher_pair.first) == current_prefs.end()) {
       removed_prefs.push_back(watcher_pair.first);
+    }
   }
 
   // Start watching new files.

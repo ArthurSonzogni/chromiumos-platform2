@@ -53,8 +53,9 @@ DeviceThermalState ThermalDevice::GetThermalState() const {
 
 void ThermalDevice::Init(bool read_immediately) {
   DCHECK(base::PathExists(device_path_));
-  if (read_immediately)
+  if (read_immediately) {
     ReadDeviceState();
+  }
   StartTimer();
 }
 
@@ -107,15 +108,17 @@ void ThermalDevice::ErrorCallback() {
 }
 
 void ThermalDevice::UpdateThermalState(DeviceThermalState new_state) {
-  if (current_state_ == new_state)
+  if (current_state_ == new_state) {
     return;
+  }
   current_state_ = new_state;
   TRACE_COUNTER("power", "ThermalDevice::DeviceThermalState",
                 static_cast<int>(new_state));
   LOG(INFO) << "UpdateThermalState device: " << device_path_
             << " new_state: " << DeviceThermalStateToString(new_state);
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnThermalChanged(this);
+  }
 }
 
 ThermalDeviceType ThermalDevice::GetType() const {

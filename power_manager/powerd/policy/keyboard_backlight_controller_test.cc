@@ -112,8 +112,9 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     }
 
     double percent = 0.0;
-    if (!dbus::MessageReader(response.get()).PopDouble(&percent))
+    if (!dbus::MessageReader(response.get()).PopDouble(&percent)) {
       ADD_FAILURE() << "Bad " << kGetKeyboardBrightnessPercentMethod << " arg";
+    }
     return percent;
   }
 
@@ -1271,15 +1272,17 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 
   // Simulate ALS readings to trigger an adjustment, brightness adjusted to 60%.
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(1, controller_.GetNumAmbientLightSensorAdjustments());
 
   // Lower the ALS lux, expect brightness to decrease to 30%.
   light_sensor_.set_lux(40);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   light_sensor_.NotifyObservers();
   EXPECT_EQ(30, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumAmbientLightSensorAdjustments());
@@ -1302,8 +1305,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {
   // Another ALS lux change won't affect brightness because auto-adjustment is
   // off.
   light_sensor_.set_lux(85);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   light_sensor_.NotifyObservers();
   EXPECT_EQ(45, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumAmbientLightSensorAdjustments());
@@ -1328,8 +1332,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {
 
   // Verify ALS adjusts backlight level(30%) again after re-enabling.
   light_sensor_.set_lux(40);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   light_sensor_.NotifyObservers();
   EXPECT_EQ(30, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumAmbientLightSensorAdjustments());
@@ -1349,8 +1354,9 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {
 
   // Verify ALS changes won't affect the backlight anymore.
   light_sensor_.set_lux(85);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
     light_sensor_.NotifyObservers();
+  }
   light_sensor_.NotifyObservers();
   EXPECT_EQ(30, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumAmbientLightSensorAdjustments());

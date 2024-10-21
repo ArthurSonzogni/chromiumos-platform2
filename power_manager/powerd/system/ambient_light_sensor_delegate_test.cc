@@ -20,8 +20,9 @@ TEST_P(AmbientLightSensorDelegateTest, CheckCalculateColorTemperature) {
   ASSERT_EQ(GetParam().first.size(), 3);
   std::map<ChannelType, int> readings;
   for (size_t i = 0; i < 3; ++i) {
-    if (!GetParam().first[i].has_value())
+    if (!GetParam().first[i].has_value()) {
       continue;
+    }
 
     readings[static_cast<ChannelType>(i)] = GetParam().first[i].value();
   }

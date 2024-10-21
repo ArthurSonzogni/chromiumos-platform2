@@ -100,8 +100,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   bool IsLidClosedForSuspend() override { return lid_closed_; }
 
   bool ReadSuspendWakeupCount(uint64_t* wakeup_count) override {
-    if (!report_success_for_read_wakeup_count_)
+    if (!report_success_for_read_wakeup_count_) {
       return false;
+    }
     *wakeup_count = wakeup_count_;
     return true;
   }
@@ -125,11 +126,13 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
     suspend_duration_ = duration;
-    if (clock_)
+    if (clock_) {
       clock_->advance_current_boot_time_for_testing(suspend_advance_time_);
+    }
 
-    if (suspend_callback_)
+    if (suspend_callback_) {
       suspend_callback_.Run();
+    }
 
     return suspend_result_;
   }
@@ -138,8 +141,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;
-    if (!completion_callback_.is_null())
+    if (!completion_callback_.is_null()) {
       completion_callback_.Run();
+    }
   }
 
   void ApplyQuirksBeforeSuspend() override { quirks_applied_ = true; }
@@ -156,14 +160,16 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   void ShutDownForFailedSuspend() override {
     AppendAction(kShutDown);
-    if (!shutdown_callback_.is_null())
+    if (!shutdown_callback_.is_null()) {
       shutdown_callback_.Run();
+    }
   }
 
   void ShutDownFromSuspend() override {
     AppendAction(kShutDown);
-    if (!shutdown_callback_.is_null())
+    if (!shutdown_callback_.is_null()) {
       shutdown_callback_.Run();
+    }
   }
 
  private:

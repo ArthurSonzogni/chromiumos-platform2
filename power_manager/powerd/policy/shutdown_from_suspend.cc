@@ -82,8 +82,9 @@ bool ShutdownFromSuspend::IsBatteryLow() {
 
 ShutdownFromSuspend::Action ShutdownFromSuspend::DetermineTargetState() {
   const system::PowerStatus power_status = power_supply_->GetPowerStatus();
-  if (power_status.line_power_on)
+  if (power_status.line_power_on) {
     return Action::SUSPEND;
+  }
 
   if (shutdown_timer_fired_) {
     // Shutdown after x (if not on line power).
@@ -117,8 +118,9 @@ void ShutdownFromSuspend::ConfigureShutdownTimer() {
 }
 
 ShutdownFromSuspend::Action ShutdownFromSuspend::PrepareForSuspendAttempt() {
-  if (!global_enabled_)
+  if (!global_enabled_) {
     return ShutdownFromSuspend::Action::SUSPEND;
+  }
 
   ShutdownFromSuspend::Action action = ShutdownFromSuspend::Action::SUSPEND;
 
@@ -137,8 +139,9 @@ void ShutdownFromSuspend::HandleDarkResume() {
 void ShutdownFromSuspend::HandleFullResume() {
   in_dark_resume_ = false;
 
-  if (shutdown_alarm_timer_)
+  if (shutdown_alarm_timer_) {
     shutdown_alarm_timer_->Stop();
+  }
 
   LOG_IF(WARNING, !shutdown_alarm_timer_)
       << "System doesn't support CLOCK_REALTIME_ALARM.";
