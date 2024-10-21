@@ -136,9 +136,10 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (FLAGS_end_to_end)
+  if (FLAGS_end_to_end) {
     return EndToEndTest(base::FilePath(FLAGS_src_path)) ? EXIT_SUCCESS
                                                         : EXIT_FAILURE;
+  }
 
   if (FLAGS_dest_path.empty()) {
     LOG(ERROR) << "--dest_path is required";

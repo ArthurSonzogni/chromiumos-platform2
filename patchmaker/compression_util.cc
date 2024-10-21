@@ -40,8 +40,9 @@ bool Compress(const brillo::Blob& in, brillo::Blob* out) {
                                    in.data(), in.size());
   out->resize(compressed_size);
 
-  if (ZSTD_isError(compressed_size))
+  if (ZSTD_isError(compressed_size)) {
     return false;
+  }
 
   return true;
 }
@@ -58,8 +59,9 @@ bool Decompress(const brillo::Blob& in, brillo::Blob* out) {
   out->resize(decompressed_size);
 
   // Clean up
-  if (ZSTD_isError(decompressed_size))
+  if (ZSTD_isError(decompressed_size)) {
     return false;
+  }
 
   return true;
 }

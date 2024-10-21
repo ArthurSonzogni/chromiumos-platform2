@@ -23,8 +23,9 @@ bool IsFile(const base::FilePath& path) {
 std::optional<brillo::Blob> ReadFileToBlob(const base::FilePath& path) {
   std::string file_contents;
   brillo::Blob blob;
-  if (!base::ReadFileToString(path, &file_contents))
+  if (!base::ReadFileToString(path, &file_contents)) {
     return std::nullopt;
+  }
 
   return brillo::BlobFromString(file_contents);
 }

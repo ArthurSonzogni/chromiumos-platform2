@@ -125,8 +125,9 @@ int SelectBaseIdx(const base::FilePath& entry,
                            IndicesMatchingAll(entry, full_files)}) {
     for (auto base_candidate_idx : list) {
       // Continue to the next file if we'd already visited this index
-      if (!visited_indices.insert(base_candidate_idx).second)
+      if (!visited_indices.insert(base_candidate_idx).second) {
         continue;
+      }
 
       // Set selected_base_candidate_idx and break if better than zstd
       if (!util::DoBsDiff(full_files[base_candidate_idx], entry,
@@ -252,8 +253,9 @@ bool ManagedDirectory::Encode(
     const base::FilePath& dest_path,
     const std::vector<base::FilePath>& immutable_paths) {
   // Create destination directory
-  if (!util::CopyEmptyTreeToDirectory(src_path, dest_path))
+  if (!util::CopyEmptyTreeToDirectory(src_path, dest_path)) {
     return false;
+  }
 
   if (manifest_.entry().size()) {
     // We were given a manifest, let's follow its recipe for each file.
