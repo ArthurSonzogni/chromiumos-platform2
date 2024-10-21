@@ -59,29 +59,38 @@ std::string SensorKindToString(SensorKind kind) {
 }
 
 SensorKind SensorKindFromString(const std::string& name) {
-  if (name == kAccelDeviceName)
+  if (name == kAccelDeviceName) {
     return SensorKind::ACCELEROMETER;
-  if (name == kGyroDeviceName)
+  }
+  if (name == kGyroDeviceName) {
     return SensorKind::GYROSCOPE;
-  if (name == kLightDeviceName || name == kAlsDeviceName)
+  }
+  if (name == kLightDeviceName || name == kAlsDeviceName) {
     return SensorKind::LIGHT;
-  if (name == kSyncDeviceName)
+  }
+  if (name == kSyncDeviceName) {
     return SensorKind::SYNC;
-  if (name == kMagnDeviceName)
+  }
+  if (name == kMagnDeviceName) {
     return SensorKind::MAGNETOMETER;
-  if (name == kLidAngleDeviceName)
+  }
+  if (name == kLidAngleDeviceName) {
     return SensorKind::LID_ANGLE;
-  if (name == kBaroDeviceName)
+  }
+  if (name == kBaroDeviceName) {
     return SensorKind::BAROMETER;
+  }
 
   for (const auto& prox_device_name : kProxDeviceNames) {
-    if (name.compare(prox_device_name) == 0)
+    if (name.compare(prox_device_name) == 0) {
       return SensorKind::PROXIMITY;
+    }
   }
 
   for (const auto& hid_device_name : kHidDeviceNames) {
-    if (name.compare(hid_device_name) == 0)
+    if (name.compare(hid_device_name) == 0) {
       return SensorKind::HID_OTHERS;
+    }
   }
 
   return SensorKind::OTHERS;

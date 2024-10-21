@@ -99,8 +99,9 @@ constexpr char kEventsString[] = "events";
 
 const char* Configuration::GetGroupNameForSysfs() {
 #if !USE_IIOSERVICE_PROXIMITY
-  if (kind_ == SensorKind::PROXIMITY)
+  if (kind_ == SensorKind::PROXIMITY) {
     return kPowerGroupName;
+  }
 #endif  // !USE_IIOSERVICE_PROXIMITY
 
   return kIioServiceGroupName;
@@ -123,19 +124,22 @@ bool Configuration::Configure() {
     return false;
   }
 
-  if (!ConfigureOnKind())
+  if (!ConfigureOnKind()) {
     return false;
+  }
 
-  if (!SetupPermissions())
+  if (!SetupPermissions()) {
     return false;
+  }
 
   // If the buffer is enabled, which means mems_setup has already been used on
   // this sensor and iioservice is reading the samples from it, skip setting the
   // frequency.
   if (!sensor_->IsBufferEnabled()) {
     sensor_->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0);
-    for (auto& channel : sensor_->GetAllChannels())
+    for (auto& channel : sensor_->GetAllChannels()) {
       channel->WriteDoubleAttribute(libmems::kSamplingFrequencyAttr, 0.0);
+    }
   }
 
   // Ignores the error as it may fail on kernel 4.4 or HID stack sensors.
@@ -170,9 +174,10 @@ bool Configuration::CopyLightCalibrationFromVpd() {
                  << " has invalid value " << attrib_value.value();
       continue;
     }
-    if (!chn->WriteDoubleAttribute(calib_attribute.iio_name, value))
+    if (!chn->WriteDoubleAttribute(calib_attribute.iio_name, value)) {
       LOG(ERROR) << "failed to set calibration value "
                  << calib_attribute.iio_name;
+    }
   }
 
   /*
@@ -185,8 +190,9 @@ bool Configuration::CopyLightCalibrationFromVpd() {
   };
   for (auto& color_entry : calib_color_entries) {
     color_entry.chn = sensor_->GetChannel(color_entry.iio_name);
-    if (!color_entry.chn)
+    if (!color_entry.chn) {
       return true;
+    }
   }
 
   auto attrib_value = delegate_->ReadVpdValue("als_cal_slope_color");
@@ -215,9 +221,10 @@ bool Configuration::CopyLightCalibrationFromVpd() {
           continue;
         }
         if (!color_entry.chn->WriteDoubleAttribute("calibscale",
-                                                   *color_entry.value))
+                                                   *color_entry.value)) {
           LOG(WARNING) << "failed to to set calibration value "
                        << color_entry.iio_name << " to " << *color_entry.value;
+        }
       }
     } else {
       LOG(ERROR) << "VPD_entry als_cal_slope_color is malformed : "
@@ -258,8 +265,9 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
     LOG(INFO) << attrib_name
               << " attrib_value: " << attrib_value.value_or("nan");
     if (!attrib_value.has_value()) {
-      if (calib_attribute.missing_is_error)
+      if (calib_attribute.missing_is_error) {
         LOG(ERROR) << "VPD missing calibration value " << attrib_name;
+      }
       continue;
     }
 
@@ -281,8 +289,9 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
   }
 
   for (const auto& calib_attribute : calib_attributes) {
-    if (!calib_attribute.value)
+    if (!calib_attribute.value) {
       continue;
+    }
     auto chn_id =
         base::StringPrintf("%s_%s", kind.c_str(), calib_attribute.name.c_str());
 
@@ -492,11 +501,13 @@ bool Configuration::ConfigGyro() {
 bool Configuration::ConfigAccelerometer() {
   CopyImuCalibationFromVpd(kAccelMaxVpdCalibration);
 
-  if (!AddSysfsTrigger(kAccelSysfsTriggerId))
+  if (!AddSysfsTrigger(kAccelSysfsTriggerId)) {
     return false;
+  }
 
-  if (!EnableKeyboardAngle())
+  if (!EnableKeyboardAngle()) {
     return false;
+  }
 
   /*
    * Gather gyroscope. If one of them is on the same plane, set
@@ -511,23 +522,26 @@ bool Configuration::ConfigAccelerometer() {
     if (gyros.size() > 1) {
       range = 4;
     } else if (gyros.size() == 1) {
-      if (strcmp(location->c_str(), gyros[0]->GetLocation()->c_str()) == 0)
+      if (strcmp(location->c_str(), gyros[0]->GetLocation()->c_str()) == 0) {
         range = 4;
-      else
+      } else {
         range = 2;
+      }
     } else {
       auto accels = context_->GetDevicesByName("cros-ec-accel");
-      if (accels.size() == 1)
+      if (accels.size() == 1) {
         range = 4;
-      else if (accels.size() > 1 &&
-               strcmp(location->c_str(), kLidSensorLocation) == 0)
+      } else if (accels.size() > 1 &&
+                 strcmp(location->c_str(), kLidSensorLocation) == 0) {
         range = 4;
-      else
+      } else {
         range = 2;
+      }
     }
 
-    if (!sensor_->WriteNumberAttribute(kCalibrationScale, range))
+    if (!sensor_->WriteNumberAttribute(kCalibrationScale, range)) {
       return false;
+    }
   }
 
   LOG(INFO) << "accelerometer configuration complete";
@@ -572,8 +586,9 @@ bool Configuration::ConfigIlluminance() {
     SetWritePermissionAndOwnership(sys_trg_path);
   }
 
-  if (!CopyLightCalibrationFromVpd())
+  if (!CopyLightCalibrationFromVpd()) {
     return false;
+  }
 
   // Disable calibration: it can fail if the light sensor does not support
   // calibration mode.
@@ -595,12 +610,13 @@ bool Configuration::ConfigProximity() {
   bool isSar;
 
   auto devlink_opt = delegate_->GetIioSarSensorDevlink(sys_path->value());
-  if (devlink_opt.has_value())
+  if (devlink_opt.has_value()) {
     isSar = true;
-  else if (IsIioActivitySensor(sys_path->value()))
+  } else if (IsIioActivitySensor(sys_path->value())) {
     isSar = false;
-  else
+  } else {
     return false;
+  }
 
   if (isSar) {
     // |devlink_opt.value()| should have prefix "/dev/proximity_" or
@@ -623,8 +639,9 @@ bool Configuration::ConfigProximity() {
     }
 
     auto config_dict_opt = sar_config_reader.GetSarConfigDict();
-    if (!config_dict_opt.has_value())
+    if (!config_dict_opt.has_value()) {
       return false;
+    }
 
     const base::Value::Dict& config_dict = config_dict_opt.value();
 
@@ -680,8 +697,10 @@ bool Configuration::ConfigProximity() {
       }
     }
 
-    if (!SetIioRisingFallingValue(config_dict, "Period", "events/", "_period"))
+    if (!SetIioRisingFallingValue(config_dict, "Period", "events/",
+                                  "_period")) {
       return false;
+    }
   }
 
   LOG(INFO) << "proximity configuration complete";
@@ -702,8 +721,9 @@ bool Configuration::SetIioRisingFallingValue(
   std::optional<int> rising_value = config_dict.FindInt(rising_config);
   std::optional<int> falling_value = config_dict.FindInt(falling_config);
 
-  if (!rising_value.has_value() && !falling_value.has_value())
+  if (!rising_value.has_value() && !falling_value.has_value()) {
     return true;
+  }
 
   bool try_either = rising_value.has_value() && falling_value.has_value() &&
                     falling_value.value() == rising_value.value();
@@ -758,8 +778,9 @@ bool Configuration::SetupPermissions() {
                                files.end());
   for (const base::FilePath& file : files) {
     std::string name = file.BaseName().value();
-    if (RE2::FullMatch(name, "in_.*_sampling_frequency"))
+    if (RE2::FullMatch(name, "in_.*_sampling_frequency")) {
       files_to_set_write_own.push_back(file);
+    }
   }
 
   // Files under /sys/bus/iio/devices/iio:deviceX/scan_elements/.
@@ -769,8 +790,9 @@ bool Configuration::SetupPermissions() {
                                files.end());
   for (const base::FilePath& file : files) {
     std::string name = file.BaseName().value();
-    if (RE2::FullMatch(name, "in_.*_en"))
+    if (RE2::FullMatch(name, "in_.*_en")) {
       files_to_set_write_own.push_back(file);
+    }
   }
 
   // Files under /sys/bus/iio/devices/iio:deviceX/events/.
@@ -779,24 +801,29 @@ bool Configuration::SetupPermissions() {
                                files.end());
   for (const base::FilePath& file : files) {
     std::string name = file.BaseName().value();
-    if (RE2::FullMatch(name, "in_.*_en"))
+    if (RE2::FullMatch(name, "in_.*_en")) {
       files_to_set_write_own.push_back(file);
+    }
   }
 
-  for (auto file : kFilesToSetReadAndOwnership)
+  for (auto file : kFilesToSetReadAndOwnership) {
     files_to_set_read_own.push_back(sys_dev_path.Append(file));
+  }
 
-  for (auto file : kFilesToSetWriteAndOwnership)
+  for (auto file : kFilesToSetWriteAndOwnership) {
     files_to_set_write_own.push_back(sys_dev_path.Append(file));
+  }
 
   // Set permissions and ownerships.
   bool result = true;
 
-  for (base::FilePath path : files_to_set_read_own)
+  for (base::FilePath path : files_to_set_read_own) {
     result &= SetReadPermissionAndOwnership(path);
+  }
 
-  for (base::FilePath path : files_to_set_write_own)
+  for (base::FilePath path : files_to_set_write_own) {
     result &= SetWritePermissionAndOwnership(path);
+  }
 
   return result;
 }
@@ -804,8 +831,9 @@ bool Configuration::SetupPermissions() {
 bool Configuration::SetReadPermissionAndOwnership(base::FilePath file_path) {
   DCHECK(iioservice_gid_.has_value());
 
-  if (!delegate_->Exists(file_path))
+  if (!delegate_->Exists(file_path)) {
     return true;
+  }
 
   bool result = true;
 
@@ -828,8 +856,9 @@ bool Configuration::SetReadPermissionAndOwnership(base::FilePath file_path) {
 bool Configuration::SetWritePermissionAndOwnership(base::FilePath file_path) {
   DCHECK(iioservice_gid_.has_value());
 
-  if (!delegate_->Exists(file_path))
+  if (!delegate_->Exists(file_path)) {
     return true;
+  }
 
   bool result = true;
 

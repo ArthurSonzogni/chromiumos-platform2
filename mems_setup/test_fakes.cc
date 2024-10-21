@@ -17,8 +17,9 @@ FakeDelegate::FakeDelegate()
 
 std::optional<std::string> FakeDelegate::ReadVpdValue(const std::string& name) {
   auto k = vpd_.find(name);
-  if (k == vpd_.end())
+  if (k == vpd_.end()) {
     return std::nullopt;
+  }
   return k->second;
 }
 
@@ -47,8 +48,9 @@ std::vector<base::FilePath> FakeDelegate::EnumerateAllFiles(
   std::vector<base::FilePath> files;
 
   for (const base::FilePath& file : existing_files_) {
-    if (file_path.IsParent(file))
+    if (file_path.IsParent(file)) {
       files.push_back(file);
+    }
   }
 
   return files;
@@ -67,15 +69,17 @@ void FakeDelegate::SetStringToFile(const base::FilePath& fp,
 
 std::optional<gid_t> FakeDelegate::FindGroupId(const char* group) {
   auto k = groups_.find(group);
-  if (k == groups_.end())
+  if (k == groups_.end()) {
     return std::nullopt;
+  }
   return k->second;
 }
 
 int FakeDelegate::GetPermissions(const base::FilePath& path) {
   auto k = permissions_.find(path.value());
-  if (k == permissions_.end())
+  if (k == permissions_.end()) {
     return 0;
+  }
   return k->second;
 }
 
@@ -88,12 +92,15 @@ bool FakeDelegate::GetOwnership(const base::FilePath& path,
                                 uid_t* user,
                                 gid_t* group) {
   auto k = ownerships_.find(path.value());
-  if (k == ownerships_.end())
+  if (k == ownerships_.end()) {
     return false;
-  if (user)
+  }
+  if (user) {
     *user = k->second.first;
-  if (group)
+  }
+  if (group) {
     *group = k->second.second;
+  }
   return true;
 }
 
@@ -114,8 +121,9 @@ brillo::CrosConfigInterface* FakeDelegate::GetCrosConfig() {
 }
 
 brillo::FakeCrosConfig* FakeDelegate::GetFakeCrosConfig() {
-  if (!cros_config_)
+  if (!cros_config_) {
     cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+  }
 
   return cros_config_.get();
 }

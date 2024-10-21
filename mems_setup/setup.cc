@@ -64,8 +64,9 @@ int main(int argc, char** argv) {
   }
 
   std::unique_ptr<libmems::IioContext> context(new libmems::IioContextImpl());
-  if (!context->IsValid())
+  if (!context->IsValid()) {
     exit(1);
+  }
 
   libmems::IioDevice* device = nullptr;
   if (FLAGS_device_id != -1) {

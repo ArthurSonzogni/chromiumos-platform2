@@ -41,12 +41,14 @@ bool LoadVpdFromString(const std::string& vpd_data,
   const size_t vpd_len = vpd_data.size();
   while (nl_pos < vpd_len) {
     const auto i_eq = vpd_data.find('=', nl_pos);
-    if (i_eq == std::string::npos)
+    if (i_eq == std::string::npos) {
       break;
+    }
 
     auto i_nl = vpd_data.find('\n', i_eq + 1);
-    if (i_nl == std::string::npos)
+    if (i_nl == std::string::npos) {
       i_nl = vpd_len;
+    }
 
     // VPD entries come in "key"="value" form, including the quotes;
     // the purpose of the substring operations here is to remove those
@@ -78,8 +80,9 @@ bool DelegateImpl::ProbeKernelModule(const std::string& module) {
   // If we can tell that a module has been loaded, then just return along
   // the happy path instead of forking a new process.
   if (base::ReadFileToString(init_path, &init_data)) {
-    if (init_data == "live\n")
+    if (init_data == "live\n") {
       return true;
+    }
   }
 
   std::vector<std::string> argv;
@@ -116,8 +119,9 @@ std::vector<base::FilePath> DelegateImpl::EnumerateAllFiles(
                                        base::FileEnumerator::FILES);
 
   for (base::FilePath file = file_enumerator.Next(); !file.empty();
-       file = file_enumerator.Next())
+       file = file_enumerator.Next()) {
     files.push_back(file);
+  }
 
   return files;
 }
@@ -125,16 +129,18 @@ std::vector<base::FilePath> DelegateImpl::EnumerateAllFiles(
 std::optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
   size_t len = 1024;
   const auto max_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-  if (max_len != -1)
+  if (max_len != -1) {
     len = max_len;
+  }
 
   std::vector<char> buf(len);
   struct group result;
   struct group* resultp = nullptr;
 
   getgrnam_r(group, &result, buf.data(), len, &resultp);
-  if (!resultp)
+  if (!resultp) {
     return std::nullopt;
+  }
 
   return resultp->gr_gid;
 }
@@ -142,8 +148,9 @@ std::optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
 int DelegateImpl::GetPermissions(const base::FilePath& path) {
   int mode = 0;
   bool ok = base::GetPosixFilePermissions(path, &mode);
-  if (ok)
+  if (ok) {
     return mode;
+  }
   return 0;
 }
 

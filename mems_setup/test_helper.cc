@@ -55,10 +55,11 @@ SensorTestBase::SensorTestBase(const char* name, int id)
 }
 
 void SensorTestBase::SetSingleSensor(const char* location, bool new_location) {
-  if (new_location)
+  if (new_location) {
     mock_device_->WriteStringAttribute("label", location);
-  else
+  } else {
     mock_device_->WriteStringAttribute("location", location);
+  }
 
   if (sensor_kind_ == SensorKind::ACCELEROMETER) {
     mock_device_->AddChannel(
@@ -95,8 +96,9 @@ void SensorTestBase::SetSingleSensor(const char* location, bool new_location) {
 }
 
 void SensorTestBase::SetColorLightSensor() {
-  if (sensor_kind_ != SensorKind::LIGHT)
+  if (sensor_kind_ != SensorKind::LIGHT) {
     return;
+  }
 
   mock_device_->AddChannel(
       std::make_unique<FakeIioChannel>("illuminance", false));
