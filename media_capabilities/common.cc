@@ -20,10 +20,12 @@ std::vector<Resolution> GetInterestingResolutionsUpTo(
   const int width = resolution.first;
   const int height = resolution.second;
   std::vector<Resolution> lower_resolutions;
-  if (1920 <= width && 1080 <= height)
+  if (1920 <= width && 1080 <= height) {
     lower_resolutions.push_back(Resolution::k1080p);
-  if (3840 <= width && 2160 <= height)
+  }
+  if (3840 <= width && 2160 <= height) {
     lower_resolutions.push_back(Resolution::k2160p);
+  }
   return lower_resolutions;
 }
 
@@ -82,8 +84,9 @@ bool Capability::operator<(const Capability& other) const {
 
   // When sorting, we want decode capabilities to appear before encode
   // capabilities (no particular reason).
-  if (decode_ != other.decode_)
+  if (decode_ != other.decode_) {
     return decode_ > other.decode_;
+  }
 
   if (resolution_ != other.resolution_) {
     return static_cast<int32_t>(resolution_) <

@@ -37,18 +37,19 @@ int main(int argc, char* argv[]) {
   using DetectFunction = base::RepeatingCallback<std::vector<Capability>()>;
   const DetectFunction kDetectFunctions[] = {
 #if defined(USE_V4L2_CODEC)
-    base::BindRepeating(&DetectV4L2Capabilities),
+      base::BindRepeating(&DetectV4L2Capabilities),
 #endif  // defined(USE_V4L2_CODEC)
 #if defined(USE_VAAPI)
-    base::BindRepeating(&DetectVaapiCapabilities),
+      base::BindRepeating(&DetectVaapiCapabilities),
 #endif  // defined(USE_VAAPI)
-    base::BindRepeating(&DetectCameraCapabilities),
+      base::BindRepeating(&DetectCameraCapabilities),
   };
 
   std::vector<Capability> capabilities;
   for (const DetectFunction& detect_function : kDetectFunctions) {
-    for (const auto& cap : detect_function.Run())
+    for (const auto& cap : detect_function.Run()) {
       capabilities.push_back(cap);
+    }
   }
 
   // Remove duplicated capabilities to not print the same capability multiple
@@ -56,6 +57,7 @@ int main(int argc, char* argv[]) {
   std::sort(capabilities.begin(), capabilities.end());
   auto last = std::unique(capabilities.begin(), capabilities.end());
   capabilities.erase(last, capabilities.end());
-  for (const auto& cap : capabilities)
+  for (const auto& cap : capabilities) {
     std::cout << cap.ToString() << std::endl;
+  }
 }

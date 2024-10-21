@@ -33,12 +33,15 @@ CameraType GetCameraType(int device_fd) {
   struct v4l2_capability cap;
   memset(&cap, 0, sizeof(cap));
 
-  if (Ioctl(device_fd, VIDIOC_QUERYCAP, &cap))
+  if (Ioctl(device_fd, VIDIOC_QUERYCAP, &cap)) {
     return CameraType::kUnknown;
-  if (strcmp((const char*)cap.driver, "uvcvideo") == 0)
+  }
+  if (strcmp((const char*)cap.driver, "uvcvideo") == 0) {
     return CameraType::kUVC;
-  if (strcmp((const char*)cap.driver, "vivid") == 0)
+  }
+  if (strcmp((const char*)cap.driver, "vivid") == 0) {
     return CameraType::kVivid;
+  }
 
   return CameraType::kUnknown;
 }
@@ -50,15 +53,17 @@ bool IsBuiltinMipiCamera(int device_fd) {
   for (desc.id = MEDIA_ENT_ID_FLAG_NEXT;
        !Ioctl(device_fd, MEDIA_IOC_ENUM_ENTITIES, &desc);
        desc.id |= MEDIA_ENT_ID_FLAG_NEXT) {
-    if (desc.type == MEDIA_ENT_T_V4L2_SUBDEV_SENSOR)
+    if (desc.type == MEDIA_ENT_T_V4L2_SUBDEV_SENSOR) {
       return true;
+    }
   }
   return false;
 }
 
 bool IsBuiltinUSBCamera(int device_fd, const base::FilePath& device_path) {
-  if (GetCameraType(device_fd) != CameraType::kUVC)
+  if (GetCameraType(device_fd) != CameraType::kUVC) {
     return false;
+  }
   const base::FilePath base_name = device_path.BaseName();
   if (base_name.empty()) {
     LOG(ERROR) << "base file is empty, path=" << device_path;
@@ -89,16 +94,18 @@ bool IsBuiltinUSBCamera(int device_fd, const base::FilePath& device_path) {
   };
 
   for (const char* external_vendor_id : kExternalCameraVendorIds) {
-    if (vendor_id == external_vendor_id)
+    if (vendor_id == external_vendor_id) {
       return false;
+    }
   }
 
   return true;
 }
 
 bool IsVividCamera(int device_fd) {
-  if (GetCameraType(device_fd) != CameraType::kVivid)
+  if (GetCameraType(device_fd) != CameraType::kVivid) {
     return false;
+  }
 
   struct v4l2_capability cap;
   memset(&cap, 0, sizeof(cap));
@@ -125,8 +132,9 @@ std::vector<Capability> DetectCameraCapabilities() {
   for (const base::FilePath& path : GetAllFilesWithPrefix(kVideoDeviceName)) {
     base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
                               base::File::FLAG_WRITE);
-    if (!file.IsValid())
+    if (!file.IsValid()) {
       continue;
+    }
     const int fd = file.GetPlatformFile();
     has_builtin_usb_camera |= IsBuiltinUSBCamera(fd, path);
     has_vivid_camera |= IsVividCamera(fd);
@@ -137,21 +145,26 @@ std::vector<Capability> DetectCameraCapabilities() {
   for (const base::FilePath& path : GetAllFilesWithPrefix(kMediaDeviceName)) {
     base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
                               base::File::FLAG_WRITE);
-    if (!file.IsValid())
+    if (!file.IsValid()) {
       continue;
+    }
     const int fd = file.GetPlatformFile();
     has_builtin_mipi_camera |= IsBuiltinMipiCamera(fd);
   }
 
   std::vector<Capability> capabilities;
-  if (has_builtin_usb_camera)
+  if (has_builtin_usb_camera) {
     capabilities.push_back(Capability(CameraDescription::kBuiltinUSBCamera));
-  if (has_builtin_mipi_camera)
+  }
+  if (has_builtin_mipi_camera) {
     capabilities.push_back(Capability(CameraDescription::kBuiltinMIPICamera));
-  if (has_vivid_camera)
+  }
+  if (has_vivid_camera) {
     capabilities.push_back(Capability(CameraDescription::kVividCamera));
-  if (has_builtin_mipi_camera || has_builtin_usb_camera)
+  }
+  if (has_builtin_mipi_camera || has_builtin_usb_camera) {
     capabilities.push_back(Capability(CameraDescription::kBuiltinCamera));
+  }
   if (has_builtin_mipi_camera || has_builtin_usb_camera || has_vivid_camera) {
     capabilities.push_back(
         Capability(CameraDescription::kBuiltinOrVividCamera));

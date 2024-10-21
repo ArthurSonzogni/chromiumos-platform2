@@ -73,8 +73,9 @@ Subsampling VARtFormatToSubsampling(uint32_t va_rt_format) {
 }
 
 std::vector<VAEntrypoint> GetVAEntrypoints(Profile profile, bool decode) {
-  if (decode)
+  if (decode) {
     return {VAEntrypointVLD};
+  }
   switch (profile) {
     case Profile::kH264Baseline:
     case Profile::kH264Main:
@@ -102,10 +103,11 @@ std::vector<uint32_t> GetVARTFormats(Profile profile, bool decode) {
     case Profile::kVP9Profile0:
       return {VA_RT_FORMAT_YUV420};
     case Profile::kJPEG:
-      if (decode)
+      if (decode) {
         return {VA_RT_FORMAT_YUV420, VA_RT_FORMAT_YUV422, VA_RT_FORMAT_YUV444};
-      else
+      } else {
         return {VA_RT_FORMAT_YUV420};
+      }
     case Profile::kVP9Profile2:
       return {VA_RT_FORMAT_YUV420_10};
     case Profile::kAV1Main:
@@ -218,20 +220,23 @@ std::vector<Capability> GetCapabilitiesInVADisplay(VADisplay va_display) {
   std::vector<Capability> capabilities;
   for (const VAProfile va_profile : supported_profiles) {
     const Profile profile = VAProfileToProfile(va_profile);
-    if (profile == Profile::kNone)  // Uninteresting |va_profile|.
+    if (profile == Profile::kNone) {  // Uninteresting |va_profile|.
       continue;
+    }
 
     auto supported_entrypoints =
         GetSupportedVAEntrypoints(va_display, va_profile);
     for (bool decode : {true, false}) {
       for (VAEntrypoint va_entrypoint : GetVAEntrypoints(profile, decode)) {
-        if (!base::Contains(supported_entrypoints, va_entrypoint))
+        if (!base::Contains(supported_entrypoints, va_entrypoint)) {
           continue;
+        }
         const uint32_t supported_va_rt_format =
             GetSupportedVARTFormat(va_display, va_profile, va_entrypoint);
         for (uint32_t va_rt_format : GetVARTFormats(profile, decode)) {
-          if (!(supported_va_rt_format & va_rt_format))
+          if (!(supported_va_rt_format & va_rt_format)) {
             continue;
+          }
           std::pair<int, int> max_resolution = GetMaxResolution(
               va_display, va_profile, va_entrypoint, va_rt_format);
           for (const Resolution resolution :

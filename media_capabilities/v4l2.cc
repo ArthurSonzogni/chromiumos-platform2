@@ -116,12 +116,14 @@ Profile V4L2ProfileToProfile(Codec codec, uint32_t profile) {
 std::vector<Profile> GetSupportedProfiles(int device_fd, const Codec codec) {
   // Since there is only one JPEG profile, there is no API to acquire the
   // supported JPEG profile. Returns the only JPEG profile.
-  if (codec == Codec::kJPEG)
+  if (codec == Codec::kJPEG) {
     return {Profile::kJPEG};
+  }
   // TODO(b/189169588): Once drivers support V4L2_CID_MPEG_VIDEO_VP8_PROFILE,
   // call VIDIOC_QUERYMENU with it.
-  if (codec == Codec::kVP8)
+  if (codec == Codec::kVP8) {
     return {Profile::kVP8};
+  }
 
   uint32_t query_id = 0;
   switch (codec) {
@@ -153,8 +155,9 @@ std::vector<Profile> GetSupportedProfiles(int device_fd, const Codec codec) {
        query_menu.index++) {
     if (Ioctl(device_fd, VIDIOC_QUERYMENU, &query_menu) == 0) {
       const Profile profile = V4L2ProfileToProfile(codec, query_menu.index);
-      if (profile != Profile::kNone && !base::Contains(profiles, profile))
+      if (profile != Profile::kNone && !base::Contains(profiles, profile)) {
         profiles.push_back(profile);
+      }
     }
   }
 
@@ -193,8 +196,9 @@ std::vector<Capability> GetCapabilitiesInPath(const base::FilePath& path,
                                               bool decode) {
   base::ScopedFD device_fd(
       HANDLE_EINTR(open(path.value().c_str(), O_RDWR | O_CLOEXEC)));
-  if (!device_fd.is_valid())
+  if (!device_fd.is_valid()) {
     return {};
+  }
 
   std::vector<uint32_t> formats;
   v4l2_fmtdesc fmtdesc;
@@ -209,8 +213,9 @@ std::vector<Capability> GetCapabilitiesInPath(const base::FilePath& path,
   std::vector<Capability> capabilities;
   for (uint32_t format : formats) {
     const Codec codec = GetCodec(format);
-    if (codec == Codec::kUnknown)
+    if (codec == Codec::kUnknown) {
       continue;
+    }
 
     const std::vector<Profile> profiles =
         GetSupportedProfiles(device_fd.get(), codec);
@@ -261,8 +266,9 @@ std::vector<Capability> GetCapabilitiesInPaths(
   std::vector<Capability> capabilities;
   for (const base::FilePath& path : paths) {
     for (auto&& c : GetCapabilitiesInPath(path, decode)) {
-      if (!base::Contains(capabilities, c))
+      if (!base::Contains(capabilities, c)) {
         capabilities.push_back(std::move(c));
+      }
     }
   }
 

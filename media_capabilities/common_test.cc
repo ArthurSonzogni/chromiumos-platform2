@@ -37,10 +37,12 @@ TEST(CommonTest, GetAllFilesWithPrefix) {
   };
   ASSERT_TRUE(std::is_sorted(expected_paths.begin(), expected_paths.end()));
   ASSERT_TRUE(std::is_sorted(expected_paths2.begin(), expected_paths2.end()));
-  for (const auto& path : expected_paths)
+  for (const auto& path : expected_paths) {
     ASSERT_TRUE(CreateSampleFile(path));
-  for (const auto& path : expected_paths2)
+  }
+  for (const auto& path : expected_paths2) {
     ASSERT_TRUE(CreateSampleFile(path));
+  }
 
   // Directory status
   // tmp
@@ -69,8 +71,9 @@ TEST(CommonTest, GetInterestingResolutionsUpTo) {
       {{2160, 2160}, {Resolution::k1080p}},
   };
 
-  for (const auto& t : kTestCases)
+  for (const auto& t : kTestCases) {
     EXPECT_EQ(GetInterestingResolutionsUpTo(t.resolution), t.expected_results);
+  }
 }
 
 TEST(CommonTest, CapabilityConstructorAndToString) {
