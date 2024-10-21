@@ -114,8 +114,9 @@ OcrServiceMojoAdapterDelegateImpl::GetOcrService() {
                      &event, &token, &success));
   event.Wait();
 
-  if (!success)
+  if (!success) {
     return mojo::Remote<mojo_ipc::OpticalCharacterRecognitionService>();
+  }
 
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());

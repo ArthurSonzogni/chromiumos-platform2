@@ -82,8 +82,9 @@ OcrServiceMojoAdapterImpl::GenerateSearchablePdfFromImage(
     mojo::ScopedHandle output_fd_handle,
     mojo_ipc::OcrConfigPtr ocr_config,
     mojo_ipc::PdfRendererConfigPtr pdf_renderer_config) {
-  if (!ocr_service_.is_bound() && !Connect())
+  if (!ocr_service_.is_bound() && !Connect()) {
     return nullptr;
+  }
 
   mojo_ipc::OpticalCharacterRecognitionServiceResponsePtr response;
   base::RunLoop run_loop;
@@ -101,8 +102,9 @@ OcrServiceMojoAdapterImpl::GenerateSearchablePdfFromImage(
 
 bool OcrServiceMojoAdapterImpl::Connect() {
   ocr_service_ = delegate_->GetOcrService();
-  if (!ocr_service_.is_bound())
+  if (!ocr_service_.is_bound()) {
     LOG(ERROR) << "Failed to connect to OCR service.";
+  }
 
   return ocr_service_.is_bound();
 }

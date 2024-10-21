@@ -89,8 +89,9 @@ int main(int argc, char* argv[]) {
 
   base::FilePath output_pdf_filename =
       base::FilePath(FLAGS_output_pdf_filename);
-  if (output_pdf_filename.empty())
+  if (output_pdf_filename.empty()) {
     output_pdf_filename = input_image_filename.ReplaceExtension("pdf");
+  }
 
   if (!base::EqualsCaseInsensitiveASCII(output_pdf_filename.Extension(),
                                         ".pdf")) {
@@ -108,13 +109,15 @@ int main(int argc, char* argv[]) {
 
   // Construct request.
   mojo::ScopedHandle input_fd_handle = GetInputFileHandle(input_image_filename);
-  if (!input_fd_handle)
+  if (!input_fd_handle) {
     return EXIT_FAILURE;
+  }
 
   mojo::ScopedHandle output_fd_handle =
       GetOutputFileHandle(output_pdf_filename);
-  if (!output_fd_handle)
+  if (!output_fd_handle) {
     return EXIT_FAILURE;
+  }
 
   mojo_ipc::OcrConfigPtr ocr_config = mojo_ipc::OcrConfig::New();
   ocr_config->language = FLAGS_language;

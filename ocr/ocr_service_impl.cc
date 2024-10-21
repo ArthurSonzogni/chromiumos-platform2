@@ -153,8 +153,9 @@ void OcrServiceImpl::SetOnDisconnectCallback(
 }
 
 void OcrServiceImpl::OnDisconnect() {
-  if (on_disconnect_callback_)
+  if (on_disconnect_callback_) {
     std::move(on_disconnect_callback_).Run(receivers_.current_context());
+  }
 }
 
 }  // namespace ocr

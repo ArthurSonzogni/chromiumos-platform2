@@ -36,8 +36,9 @@ OcrDaemon::~OcrDaemon() = default;
 
 int OcrDaemon::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
-  if (return_code != EX_OK)
+  if (return_code != EX_OK) {
     return return_code;
+  }
 
   // Initialize Mojo IPC.
   mojo::core::Init();
