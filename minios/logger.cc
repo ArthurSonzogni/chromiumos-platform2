@@ -20,8 +20,9 @@ namespace {
 struct ScopedUnmounterTraits {
   static Logger* InvalidValue() { return nullptr; }
   static void Free(Logger* logger) {
-    if (logger)
+    if (logger) {
       logger->Unmount();
+    }
   }
 };
 using ScopedUnmounter = base::ScopedGeneric<Logger*, ScopedUnmounterTraits>;

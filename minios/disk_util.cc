@@ -70,8 +70,9 @@ base::FilePath DiskUtil::GetFixedDrive() {
 base::FilePath DiskUtil::GetStatefulPartition(const base::FilePath& drive) {
   for (const auto& path : {base::FilePath(drive.value() + "p1"),
                            base::FilePath(drive.value() + "1")}) {
-    if (base::PathExists(path))
+    if (base::PathExists(path)) {
       return path;
+    }
   }
   return {};
 }

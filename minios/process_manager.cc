@@ -19,12 +19,15 @@ std::unique_ptr<brillo::Process> ProcessManager::CreateProcess(
     const vector<string>& cmd,
     const ProcessManagerInterface::IORedirection& io_redirection) {
   std::unique_ptr<brillo::Process> process(new brillo::ProcessImpl);
-  for (const auto& arg : cmd)
+  for (const auto& arg : cmd) {
     process->AddArg(arg);
-  if (!io_redirection.input.empty())
+  }
+  if (!io_redirection.input.empty()) {
     process->RedirectInput(io_redirection.input);
-  if (!io_redirection.output.empty())
+  }
+  if (!io_redirection.output.empty()) {
     process->RedirectOutput(io_redirection.output);
+  }
   return process;
 }
 
@@ -40,8 +43,9 @@ bool ProcessManager::RunBackgroundCommand(
     const ProcessManagerInterface::IORedirection& io_redirection,
     pid_t* pid) {
   auto process = CreateProcess(cmd, io_redirection);
-  if (!process->Start())
+  if (!process->Start()) {
     return false;
+  }
   *pid = process->pid();
   // Need to release the process so it's not destructed at return.
   process->Release();
@@ -53,21 +57,27 @@ bool ProcessManager::RunCommandWithOutput(const vector<string>& cmd,
                                           string* stdout_out,
                                           string* stderr_out) {
   brillo::ProcessImpl process;
-  for (const auto& arg : cmd)
+  for (const auto& arg : cmd) {
     process.AddArg(arg);
+  }
 
-  if (stdout_out)
+  if (stdout_out) {
     process.RedirectUsingMemory(STDOUT_FILENO);
-  if (stderr_out)
+  }
+  if (stderr_out) {
     process.RedirectUsingMemory(STDERR_FILENO);
+  }
   const auto exit_code = process.Run();
 
-  if (stdout_out)
+  if (stdout_out) {
     *stdout_out = process.GetOutputString(STDOUT_FILENO);
-  if (stderr_out)
+  }
+  if (stderr_out) {
     *stderr_out = process.GetOutputString(STDERR_FILENO);
+  }
 
-  if (return_code)
+  if (return_code) {
     *return_code = exit_code;
+  }
   return exit_code != brillo::Process::kErrorExitStatus;
 }

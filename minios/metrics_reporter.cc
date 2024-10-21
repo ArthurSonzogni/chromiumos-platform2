@@ -29,10 +29,11 @@ MetricsReporter::MetricsReporter(
     std::unique_ptr<MetricsLibraryInterface> metrics_lib,
     const base::FilePath& stateful_path)
     : stateful_path_(stateful_path) {
-  if (metrics_lib)
+  if (metrics_lib) {
     metrics_lib_ = std::move(metrics_lib);
-  else
+  } else {
     metrics_lib_ = std::make_unique<MetricsLibrary>();
+  }
 }
 
 void MetricsReporter::RecordNBRStart() {

@@ -118,8 +118,9 @@ bool DrawUtils::ShowText(const std::string& text,
 bool DrawUtils::ShowImage(const base::FilePath& image_name,
                           int offset_x,
                           int offset_y) {
-  if (IsLocaleRightToLeft())
+  if (IsLocaleRightToLeft()) {
     offset_x = -offset_x;
+  }
   std::string command = base::StringPrintf(
       "\033]image:file=%s;offset=%d,%d;scale=%d\a", image_name.value().c_str(),
       offset_x, offset_y, frecon_scale_factor_);
@@ -138,8 +139,9 @@ bool DrawUtils::ShowBox(int offset_x,
                         const std::string& color) {
   size_x = std::max(size_x, 1);
   size_y = std::max(size_y, 1);
-  if (IsLocaleRightToLeft())
+  if (IsLocaleRightToLeft()) {
     offset_x = -offset_x;
+  }
 
   std::string command = base::StringPrintf(
       "\033]box:color=%s;size=%d,%d;offset=%d,%d;scale=%d\a", color.c_str(),
@@ -182,8 +184,9 @@ bool DrawUtils::ShowMessage(const std::string& message_token,
 void DrawUtils::ShowInstructions(const std::string& message_token) {
   const int kXOffset = (-frecon_canvas_size_ / 2) + (kDefaultMessageWidth / 2);
   const int kYOffset = (-frecon_canvas_size_ / 4);
-  if (!ShowMessage(message_token, kXOffset, kYOffset))
+  if (!ShowMessage(message_token, kXOffset, kYOffset)) {
     LOG(WARNING) << "Unable to show " << message_token;
+  }
 }
 
 void DrawUtils::ShowInstructionsWithTitle(const std::string& message_token) {
@@ -204,10 +207,12 @@ void DrawUtils::ShowInstructionsWithTitle(const std::string& message_token) {
 
   const int kTitleY = (-frecon_canvas_size_ / 2) + 220 + (title_height / 2);
   const int kDescY = kTitleY + (title_height / 2) + 16 + (desc_height / 2);
-  if (!ShowMessage("title_" + message_token, kXOffset, kTitleY))
+  if (!ShowMessage("title_" + message_token, kXOffset, kTitleY)) {
     LOG(WARNING) << "Unable to show title " << message_token;
-  if (!ShowMessage("desc_" + message_token, kXOffset, kDescY))
+  }
+  if (!ShowMessage("desc_" + message_token, kXOffset, kDescY)) {
     LOG(WARNING) << "Unable to show description " << message_token;
+  }
 }
 
 int DrawUtils::FindLocaleIndex() const {
@@ -227,8 +232,9 @@ void DrawUtils::ShowProgressBar(int offset_x,
                                 int size_x,
                                 const std::string& color) {
   // No-op if offset is outside the bounds of the canvas.
-  if (offset_x > frecon_offset_limit_ || offset_x < -frecon_offset_limit_)
+  if (offset_x > frecon_offset_limit_ || offset_x < -frecon_offset_limit_) {
     return;
+  }
 
   const int offset_y = -frecon_canvas_size_ / kProgressBarYScale;
   // Clamp to the right boundary of the canvas.
@@ -315,14 +321,16 @@ void DrawUtils::DrawIndeterminateProgressBar() {
 void DrawUtils::ClearMainArea() {
   constexpr int kFooterHeight = 142;
   if (!ShowBox(0, -kFooterHeight / 2, frecon_canvas_size_ + 200,
-               (frecon_canvas_size_ - kFooterHeight), kMenuBlack))
+               (frecon_canvas_size_ - kFooterHeight), kMenuBlack)) {
     LOG(WARNING) << "Could not clear main area.";
+  }
 }
 
 void DrawUtils::ClearScreen() {
   if (!ShowBox(0, 0, frecon_canvas_size_ + 100, frecon_canvas_size_,
-               kMenuBlack))
+               kMenuBlack)) {
     LOG(WARNING) << "Could not clear screen.";
+  }
 }
 
 void DrawUtils::ShowButton(const std::string& message_token,
@@ -479,8 +487,9 @@ void DrawUtils::ShowControlButton(const std::optional<std::string>& icon,
 
   int left_padding_x = (-frecon_canvas_size_ - 12) / 2;
   int right_padding_x = (-frecon_canvas_size_ + 8) / 2 + kInnerWidth;
-  if (IsLocaleRightToLeft())
+  if (IsLocaleRightToLeft()) {
     std::swap(left_padding_x, right_padding_x);
+  }
 
   if (focused) {
     ShowImage(GetScreensPath().Append("adv_btn_bg_left.png"), left_padding_x,
@@ -723,16 +732,18 @@ bool DrawUtils::ReadLangConstants() {
   for (const auto& pair : key_value_pair) {
     if (pair.first == kSupportedLocalesKey) {
       auto locale_list = pair.second;
-      if (!base::RemoveChars(locale_list, "\"", &locale_list))
+      if (!base::RemoveChars(locale_list, "\"", &locale_list)) {
         LOG(WARNING) << "Unable to remove surrounding quotes from locale list.";
+      }
 
       supported_locales_ = base::SplitString(
           locale_list, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     } else if (pair.first.starts_with(kLanguageProperty)) {
       // Only interested in `WIDTH` property, ignore all others.
       const auto property_index = pair.first.find(kWidthProperty);
-      if (property_index == std::string::npos)
+      if (property_index == std::string::npos) {
         continue;
+      }
       // Extract language token from key. Language tokens can have `_`.
       auto token =
           pair.first.substr(strlen(kLanguageProperty),

@@ -115,8 +115,9 @@ std::tuple<bool, std::string> ReadFileContentWithinRange(
         break;
     }
     if (c == '\n') {
-      if (content.empty() || content.back() != '\n')
+      if (content.empty() || content.back() != '\n') {
         content.push_back(c);
+      }
       current_col = 0;
       continue;
     }
@@ -137,11 +138,13 @@ std::tuple<bool, std::string, int64_t> ReadFileContent(
     int num_lines,
     int num_cols) {
   base::File f(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!f.IsValid())
+  if (!f.IsValid()) {
     return {false, {}, 0};
+  }
 
-  if (f.Seek(base::File::Whence::FROM_BEGIN, offset) == -1)
+  if (f.Seek(base::File::Whence::FROM_BEGIN, offset) == -1) {
     return {false, {}, 0};
+  }
 
   char c;
   std::string content;
@@ -427,8 +430,9 @@ std::optional<brillo::SecureBlob> GetLogStoreKey(
     std::shared_ptr<vpd::Vpd> vpd) {
   const auto value = vpd->GetValue(vpd::VpdRw, kVpdLogStoreSecretKey);
 
-  if (!value)
+  if (!value) {
     return std::nullopt;
+  }
 
   brillo::SecureBlob key;
   brillo::SecureBlob::HexStringToSecureBlob(value.value(), &key);
@@ -499,8 +503,9 @@ std::optional<EncryptedLogFile> EncryptLogArchive(
 
 std::optional<brillo::SecureBlob> DecryptLogArchive(
     const EncryptedLogFile& encrypted_archive, const brillo::SecureBlob& key) {
-  if (encrypted_archive.ByteSizeLong() == 0)
+  if (encrypted_archive.ByteSizeLong() == 0) {
     return std::nullopt;
+  }
   brillo::SecureBlob plain_data;
   if (!hwsec_foundation::AesGcmDecrypt(
           brillo::Blob(encrypted_archive.ciphertext().begin(),
@@ -525,10 +530,11 @@ std::optional<uint64_t> GetMiniOsPriorityPartition(
     LOG(ERROR) << "Couldn't find MiniOS priority.";
     return std::nullopt;
   }
-  if (minios_priority == "A")
+  if (minios_priority == "A") {
     return 9;
-  else if (minios_priority == "B")
+  } else if (minios_priority == "B") {
     return 10;
+  }
   LOG(ERROR) << "Invalid MiniOS priority.";
   return std::nullopt;
 }

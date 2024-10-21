@@ -111,8 +111,9 @@ bool KeyReader::SupportsAllKeys(const int fd) {
   }
 
   for (const auto& key : keys_) {
-    if (!TestBit(key, key_bitmask))
+    if (!TestBit(key, key_bitmask)) {
       return false;
+    }
   }
   return true;
 }
@@ -274,8 +275,9 @@ bool KeyReader::GetChar(const struct input_event& ev, bool* tab_toggle) {
     xkb_state_update_key(state_, key_code, XKB_KEY_DOWN);
     const xkb_keysym_t sym = xkb_state_key_get_one_sym(state_, key_code);
     // Only return false when `return` key is pressed.
-    if (sym == XKB_KEY_Return)
+    if (sym == XKB_KEY_Return) {
       return false;
+    }
     if (sym == XKB_KEY_Tab) {
       *tab_toggle = !(*tab_toggle);
       return true;

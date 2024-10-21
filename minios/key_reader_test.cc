@@ -387,8 +387,9 @@ TEST_F(KeyReaderTest, OnKeyEventRepeat) {
   key_reader.keys_ = {KEY_UP, KEY_DOWN, KEY_ENTER, KEY_ESC};
   key_reader.SetDelegate(&delegate);
   // Repeated key press.
-  for (int i = 0; i <= num_repeats * kRepeatedSensitivity; ++i)
+  for (int i = 0; i <= num_repeats * kRepeatedSensitivity; ++i) {
     key_reader.OnKeyEvent();
+  }
 }
 
 }  // namespace minios

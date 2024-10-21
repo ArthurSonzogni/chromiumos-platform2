@@ -78,20 +78,23 @@ bool DBusService::StartRecovery(brillo::ErrorPtr* error,
 }
 
 void DBusService::OnConnect(const std::string& ssid, brillo::Error* error) {
-  if (!connect_response_)
+  if (!connect_response_) {
     return;
-  if (error)
+  }
+  if (error) {
     connect_response_->ReplyWithError(error);
-  else
+  } else {
     connect_response_->Return();
+  }
   connect_response_.reset();
 }
 
 void DBusService::OnGetNetworks(
     const std::vector<NetworkManagerInterface::NetworkProperties>& networks,
     brillo::Error* error) {
-  if (!get_networks_response_)
+  if (!get_networks_response_) {
     return;
+  }
   if (error) {
     get_networks_response_->ReplyWithError(error);
   } else {

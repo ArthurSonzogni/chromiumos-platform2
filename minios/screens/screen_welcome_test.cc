@@ -16,8 +16,7 @@ namespace minios {
 
 class ScreenWelcomeTest : public ::testing::Test {
  protected:
-  std::shared_ptr<MockDraw> mock_draw_ =
-      std::make_shared<NiceMock<MockDraw>>();
+  std::shared_ptr<MockDraw> mock_draw_ = std::make_shared<NiceMock<MockDraw>>();
   MockDraw* mock_draw_ptr_ = mock_draw_.get();
   StrictMock<MockScreenControllerInterface> mock_screen_controller_;
 

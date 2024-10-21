@@ -49,8 +49,9 @@ ScreenNetwork::ScreenNetwork(
 }
 
 ScreenNetwork::~ScreenNetwork() {
-  if (network_manager_)
+  if (network_manager_) {
     network_manager_->RemoveObserver(this);
+  }
 }
 
 void ScreenNetwork::Show() {
@@ -287,10 +288,12 @@ void ScreenNetwork::OnGetNetworks(
   std::sort(networks_.begin(), networks_.end(),
             [](NetworkManagerInterface::NetworkProperties lhs,
                NetworkManagerInterface::NetworkProperties rhs) {
-              if (lhs.ssid == kShillEthernetLabel)
+              if (lhs.ssid == kShillEthernetLabel) {
                 return true;
-              if (rhs.ssid == kShillEthernetLabel)
+              }
+              if (rhs.ssid == kShillEthernetLabel) {
                 return false;
+              }
               return lhs.strength > rhs.strength;
             });
   SetState(State::NETWORK_SELECTION);
@@ -346,8 +349,9 @@ void ScreenNetwork::GetPassword() {
   std::string plain_text_password;
   key_reader_->StopWatcher();
   do {
-    if (!key_reader_->GetUserInput(&enter, &show_password, &input))
+    if (!key_reader_->GetUserInput(&enter, &show_password, &input)) {
       continue;
+    }
     plain_text_password = input;
     if (!show_password) {
       input = std::string(input.size(), '*');

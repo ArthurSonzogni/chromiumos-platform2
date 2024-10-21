@@ -42,8 +42,9 @@ bool EraseStatefulLogs() {
   const auto running_from_minios_opt = IsRunningFromMiniOs();
 
   // Return failure if we can't determine our environment.
-  if (!running_from_minios_opt)
+  if (!running_from_minios_opt) {
     return false;
+  }
   if (running_from_minios_opt.value() &&
       !base::PathExists(kStatefulPath.Append(kUnencryptedMiniosPath)) &&
       !MountStatefulPartition(std::make_shared<ProcessManager>())) {
@@ -63,11 +64,13 @@ bool EraseStatefulLogs() {
 bool EraseLogs(
     std::vector<std::shared_ptr<minios::LogStoreManager>> log_store_managers) {
   bool result = true;
-  if (!EraseStatefulLogs())
+  if (!EraseStatefulLogs()) {
     result = false;
+  }
   for (const auto& manager : log_store_managers) {
-    if (!manager || !manager->ClearLogs())
+    if (!manager || !manager->ClearLogs()) {
       result = false;
+    }
   }
 
   return result;
@@ -165,8 +168,9 @@ int main(int argc, char** argv) {
                   : std::make_shared<minios::LogStoreManager>();
     if (!manager->Init(std::make_unique<minios::DiskUtil>(),
                        std::make_unique<crossystem::Crossystem>(),
-                       std::make_unique<libstorage::Platform>()))
+                       std::make_unique<libstorage::Platform>())) {
       manager.reset();
+    }
     return manager;
   };
 
@@ -184,8 +188,9 @@ int main(int argc, char** argv) {
     const auto retrieve_result =
         minios::RetrieveLogs({stateful_manager, slot_a_manager, slot_b_manager},
                              stateful_manager, dest_dir);
-    if (!retrieve_result)
+    if (!retrieve_result) {
       exit_code = EXIT_FAILURE;
+    }
 
     if (FLAGS_erase && !minios::EraseLogs({slot_a_manager, slot_b_manager})) {
       exit_code = EXIT_FAILURE;
@@ -194,8 +199,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_erase) {
     const auto slot_a_manager = log_store_factory(minios::kMiniOsAPartition),
                slot_b_manager = log_store_factory(minios::kMiniOsBPartition);
-    if (!minios::EraseLogs({slot_a_manager, slot_b_manager}))
+    if (!minios::EraseLogs({slot_a_manager, slot_b_manager})) {
       exit_code = EXIT_FAILURE;
+    }
   }
   if (FLAGS_clear_key && !minios::ClearKey()) {
     exit_code = EXIT_FAILURE;

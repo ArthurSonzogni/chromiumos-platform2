@@ -17,8 +17,9 @@ namespace minios {
 
 namespace {
 std::string ToString(brillo::Error* error) {
-  if (!error)
+  if (!error) {
     return "";
+  }
   return base::StringPrintf("code=%s,message=%s", error->GetCode().c_str(),
                             error->GetMessage().c_str());
 }
@@ -242,15 +243,17 @@ void NetworkManager::GetServiceCheckConnectionError(ConnectMapIter iter,
 }
 
 void NetworkManager::Return(ConnectMapIter iter, brillo::Error* error) {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnConnect(iter->first, error);
+  }
   connect_map_.erase(iter);
 }
 
 void NetworkManager::GetNetworks() {
   // Bundle in with the already processing `GetNetworks()`.
-  if (!get_networks_list_.empty())
+  if (!get_networks_list_.empty()) {
     return;
+  }
 
   // `get_networks_list_`'s max size should never exceed a single node.
   GetNetworksListIter iter =
@@ -389,8 +392,9 @@ void NetworkManager::IterateOverServicePropertiesError(GetNetworksListIter iter,
 }
 
 void NetworkManager::Return(GetNetworksListIter iter, brillo::Error* error) {
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.OnGetNetworks(iter->networks, error);
+  }
   get_networks_list_.clear();
 }
 

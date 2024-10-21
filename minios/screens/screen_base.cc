@@ -30,8 +30,9 @@ ScreenBase::ScreenBase(int button_count,
 void ScreenBase::UpdateButtonsIndex(int key, bool* enter) {
   int starting_index = index_;
   // Make sure index is in range, if not reset to 0.
-  if (starting_index < 0 || starting_index >= button_count_)
+  if (starting_index < 0 || starting_index >= button_count_) {
     starting_index = 0;
+  }
 
   // Modify selected index and enter state based on user key input.
   if (key == KEY_UP || key == KEY_VOLUMEUP) {

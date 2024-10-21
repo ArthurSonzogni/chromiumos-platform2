@@ -63,8 +63,9 @@ bool ScreenController::Init() {
   update_engine_proxy_->Init();
 
   std::vector<int> wait_keys = {KEY_UP, KEY_DOWN, KEY_ENTER, KEY_ESC};
-  if (draw_utils_->IsDetachable())
+  if (draw_utils_->IsDetachable()) {
     wait_keys = {KEY_VOLUMEDOWN, KEY_VOLUMEUP, KEY_POWER, KEY_ESC};
+  }
   if (!key_reader_.Init(wait_keys)) {
     LOG(ERROR) << "Could not initialize key reader. Unable to continue.";
     return false;
@@ -332,8 +333,9 @@ void ScreenController::SeedNetworkCredentials(const std::string& ssid,
   seeded_passphrase_ = passphrase;
   if (current_screen_->GetType() == ScreenType::kNetworkDropDownScreen) {
     ScreenNetwork* screen = dynamic_cast<ScreenNetwork*>(current_screen_.get());
-    if (screen)
+    if (screen) {
       screen->SeedCredentials(seeded_ssid_, seeded_passphrase_);
+    }
   }
 }
 
@@ -358,8 +360,9 @@ void ScreenController::StartRecovery(const std::string& ssid,
   } else {
     LOG(ERROR) << "StartRecovery failed. Reason: " << error->GetMessage();
 
-    if (dbus_recovery_state_.value() != State::ERROR)
+    if (dbus_recovery_state_.value() != State::ERROR) {
       OnError(ScreenType::kGeneralError);
+    }
   }
 }
 
@@ -378,8 +381,9 @@ void ScreenController::OnStateChanged(State state) {
 
 void ScreenController::HandleStateChanged(State::States state_state) {
   if (!dbus_recovery_state_.has_value() ||
-      (dbus_recovery_state_.value() == state_state))
+      (dbus_recovery_state_.value() == state_state)) {
     return;
+  }
 
   LOG(INFO) << "Recovery flow transitioning state: "
             << State_States_Name(dbus_recovery_state_.value()) << " -> "

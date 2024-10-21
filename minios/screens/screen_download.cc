@@ -93,16 +93,18 @@ void ScreenDownload::OnKeyPress(int key_changed) {}
 void ScreenDownload::OnProgressChanged(
     const update_engine::StatusResult& status) {
   // Only make UI changes when needed to prevent unnecessary screen changes.
-  if (!display_update_engine_state_)
+  if (!display_update_engine_state_) {
     return;
+  }
 
   // Only reshow base screen if moving to a new update stage. This prevents
   // flickering as the screen repaints.
   update_engine::Operation operation = status.current_operation();
   switch (operation) {
     case update_engine::Operation::DOWNLOADING:
-      if (previous_update_state_ != operation)
+      if (previous_update_state_ != operation) {
         Show();
+      }
       draw_utils_->ShowProgressPercentage(status.progress());
       break;
     case update_engine::Operation::FINALIZING:

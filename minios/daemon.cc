@@ -26,8 +26,9 @@ void Daemon::Start() {
 
 int Daemon::OnEventLoopStarted() {
   int return_code = brillo::DBusServiceDaemon::OnEventLoopStarted();
-  if (return_code != EX_OK)
+  if (return_code != EX_OK) {
     return return_code;
+  }
 
   brillo::MessageLoop::current()->PostTask(
       FROM_HERE, base::BindOnce(&Daemon::Start, base::Unretained(this)));

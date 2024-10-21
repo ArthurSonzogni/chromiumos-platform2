@@ -46,8 +46,9 @@ bool LogStoreManager::Init(std::unique_ptr<DiskUtil> disk_util,
     return false;
   }
 
-  if (!partition_number_)
+  if (!partition_number_) {
     partition_number_ = GetMiniOsPriorityPartition(std::move(cros_system));
+  }
 
   if (!partition_number_) {
     LOG(ERROR) << "Failed to find priority MiniOS partition.";

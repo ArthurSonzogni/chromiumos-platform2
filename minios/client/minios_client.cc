@@ -51,8 +51,9 @@ class MiniOsClient : public brillo::Daemon {
 
  protected:
   int OnInit() override {
-    if (int ret = Daemon::OnInit(); ret != EX_OK)
+    if (int ret = Daemon::OnInit(); ret != EX_OK) {
       return ret;
+    }
     Bus::Options options;
     options.bus_type = Bus::SYSTEM;
     scoped_refptr<Bus> bus{new Bus{options}};
@@ -317,8 +318,9 @@ class MiniOsClient : public brillo::Daemon {
 
   void ProcessFlagsAndExit() {
     int ret = ProcessFlags();
-    if (ret != kContinueRunning)
+    if (ret != kContinueRunning) {
       QuitWithExitCode(ret);
+    }
   }
 
   // Copy of argc and argv passed to main().

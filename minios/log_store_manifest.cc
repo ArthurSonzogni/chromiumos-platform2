@@ -167,8 +167,9 @@ void LogStoreManifest::Clear() {
   auto bytes_to_write = partition_size_ - disk_manifest_location_.value();
   while (bytes_to_write > 0) {
     disk.WriteAtCurrentPos(zeros.data(), std::min(kBlockSize, bytes_to_write));
-    if (bytes_to_write <= kBlockSize)
+    if (bytes_to_write <= kBlockSize) {
       break;
+    }
     bytes_to_write -= kBlockSize;
   }
 
