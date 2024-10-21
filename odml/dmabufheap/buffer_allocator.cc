@@ -39,13 +39,15 @@ static constexpr char kSystemUncachedHeapName[] = "system-uncached";
 int BufferAllocator::DmabufAlloc(const std::string& heap_name,
                                  size_t len,
                                  int dev_fd) {
-  if (dev_fd < 0)
+  if (dev_fd < 0) {
     return dev_fd;
+  }
 
   struct dma_heap_allocation_data heap_data {
-    .len = len,  // length of data to be allocated in bytes
-    .fd_flags =
-        O_RDWR | O_CLOEXEC,  // permissions for the memory to be allocated
+    // length of data to be allocated in bytes
+    .len = len,
+    // permissions for the memory to be allocated
+    .fd_flags = O_RDWR | O_CLOEXEC,
   };
 
   auto ret =

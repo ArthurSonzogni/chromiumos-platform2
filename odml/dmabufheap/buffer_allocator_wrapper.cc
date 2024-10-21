@@ -39,8 +39,9 @@ int DmabufHeapAlloc(BufferAllocator* buffer_allocator,
                     size_t len,
                     unsigned int heap_flags,
                     size_t legacy_align) {
-  if (!buffer_allocator)
+  if (!buffer_allocator) {
     return -EINVAL;
+  }
   return buffer_allocator->Alloc(heap_name, len, heap_flags, legacy_align);
 }
 }

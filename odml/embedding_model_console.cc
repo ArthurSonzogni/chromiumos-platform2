@@ -43,8 +43,9 @@ constexpr const char kTaskType[] = "task_type";
 constexpr const char kTruncateInput[] = "truncate_input";
 
 TaskType GetTaskTypeFromString(std::string s) {
-  if (s == "clustering")
+  if (s == "clustering") {
     return TaskType::kClustering;
+  }
   LOG(FATAL) << "Unknown TaskType: " << s;
 }
 
@@ -56,8 +57,9 @@ void PrintEmbedding(const std::vector<float>& embedding) {
                                kMaxPrintEmbeddingCount);
        i++) {
     printf(" %.2f,", embedding[i]);
-    if ((i + 1) % 4 == 0)
+    if ((i + 1) % 4 == 0) {
       printf("\n");
+    }
   }
   printf(" ]\n");
 }

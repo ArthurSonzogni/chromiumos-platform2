@@ -211,8 +211,9 @@ void TfliteModelRunner::LoadFinishWrapper(base::PassKey<ModelHolder> passkey,
                                           bool success) {
   if (!success) {
     // Failed, need to cleanup.
-    if (tokenizer_->IsLoaded())
+    if (tokenizer_->IsLoaded()) {
       tokenizer_->Unload(passkey);
+    }
     interpreter_.reset();
     model_.reset();
   }
