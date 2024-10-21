@@ -555,6 +555,8 @@ bool StatefulMount::DevUpdateStatefulPartition(
 
     base::FilePath preserve_dir =
         stateful_.Append(kUnencrypted).Append(kPreserve);
+    base::FilePath dlc_factory_dir =
+        stateful_.Append("unencrypted/dlc-factory-images");
 
     // Find everything in stateful and delete it, except for protected paths,
     // and non-empty directories. The non-empty directories contain protected
@@ -566,7 +568,8 @@ bool StatefulMount::DevUpdateStatefulPartition(
         stateful_.Append("encrypted.key"),
         stateful_dev_image,
         var_target,
-        preserve_dir};
+        preserve_dir,
+        dlc_factory_dir};
     if (enable_stateful_security_hardening) {
       // Allow traversal of preserve_dir, it contains link for /var/log
       // Allow traversal of /var and dev_image: they may have been just created,
