@@ -136,7 +136,6 @@ type cros_lsblk_exec, exec_type, file_type, cros_file_type, cros_system_file_typ
 type cros_lvmd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_machine_id_regen_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mawk_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_memd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_metrics_client_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_metrics_daemon_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_midis_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

@@ -116,7 +116,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/lorgnette              u:object_r:cros_lorgnette_exec:s0
 /usr/bin/mawk                   u:object_r:cros_mawk_exec:s0
-/usr/bin/memd                   u:object_r:cros_memd_exec:s0
 /usr/bin/metrics_client         u:object_r:cros_metrics_client_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
