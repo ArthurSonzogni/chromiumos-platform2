@@ -23,8 +23,9 @@ void TestDecryptRandom(const uint8_t* data, size_t size) {
 
   oobe_config::EncryptedData enc_test_data;
 
-  if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize)
+  if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize) {
     return;
+  }
 
   enc_test_data.key = brillo::SecureBlob(
       provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
@@ -45,8 +46,9 @@ void TestDecryptEncryptedData(const uint8_t* data, size_t size) {
   FuzzedDataProvider provider(data, size);
 
   if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize +
-                                       oobe_config::kOpenSslEncryptionIvSize)
+                                       oobe_config::kOpenSslEncryptionIvSize) {
     return;
+  }
 
   auto key = brillo::SecureBlob(
       provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
@@ -66,15 +68,17 @@ void TestDecryptEncryptedData(const uint8_t* data, size_t size) {
 void TestDecryptEncryptedDataWrongKey(const uint8_t* data, size_t size) {
   FuzzedDataProvider provider(data, size);
 
-  if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize)
+  if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize) {
     return;
+  }
 
   auto wrong_key = brillo::SecureBlob(
       provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
 
   if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize +
-                                       oobe_config::kOpenSslEncryptionIvSize)
+                                       oobe_config::kOpenSslEncryptionIvSize) {
     return;
+  }
 
   auto key = brillo::SecureBlob(
       provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
@@ -85,8 +89,9 @@ void TestDecryptEncryptedDataWrongKey(const uint8_t* data, size_t size) {
 
   auto encrypted = oobe_config::Encrypt(input_blob, key, iv);
 
-  if (encrypted->key == wrong_key)
+  if (encrypted->key == wrong_key) {
     return;  // Just testing decrypting with the wrong key.
+  }
 
   encrypted->key = std::move(wrong_key);
   auto decrypted = oobe_config::Decrypt(encrypted.value());

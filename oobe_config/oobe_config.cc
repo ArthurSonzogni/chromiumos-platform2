@@ -92,8 +92,9 @@ bool OobeConfig::EncryptedRollbackSave(bool run_tpm_encryption) const {
   // While we run both encryptions, we consider success to save
   // OpenSSL-encrypted data success overall. If TPM-based encryption fails, we
   // can still run rollback successfully.
-  if (!openssl_success)
+  if (!openssl_success) {
     return false;
+  }
 
   if (!file_handler_.CreateDataSavedFlag()) {
     LOG(ERROR) << "Failed to write data saved flag.";
