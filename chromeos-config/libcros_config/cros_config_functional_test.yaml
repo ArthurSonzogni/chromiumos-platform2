@@ -11,8 +11,6 @@ category: "functional"
 owners:
   - email: "andrewlamb@chromium.org"
   - email: "nednguyen@chromium.org"
-  - email: "sjg@chromium.org"
-  - email: "jrosenth@chromium.org"
   - email: "jessemcguire@chromium.org"
 hw_agnostic: True
 criteria: |
