@@ -77,8 +77,9 @@ std::optional<std::string> KeyData::ValidateAndGetKey(
 
   // Return the key unless it's the wrong size, in which case return nullopt.
   const std::string key_string = key.key();
-  if (key_string.size() != kKeySize)
+  if (key_string.size() != kKeySize) {
     return std::nullopt;
+  }
   return key_string;
 }
 

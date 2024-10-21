@@ -134,8 +134,9 @@ MetricsLibrary::~MetricsLibrary() {}
 
 bool MetricsLibrary::IsGuestMode() {
   // Shortcut check whether there is any logged-in user.
-  if (access("/run/state/logged-in", F_OK) != 0)
+  if (access("/run/state/logged-in", F_OK) != 0) {
     return false;
+  }
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -153,8 +154,9 @@ bool MetricsLibrary::ConsentId(std::string* id) {
   // Do not allow symlinks.
   base::ScopedFD fd(
       open(consent_file_.value().c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
-  if (fd.get() < 0)
+  if (fd.get() < 0) {
     return false;
+  }
 
   // We declare a slightly larger buffer than needed so we can detect if it's
   // been corrupted with a lot of bad data.
@@ -162,16 +164,19 @@ bool MetricsLibrary::ConsentId(std::string* id) {
   ssize_t len = read(fd.get(), buf, sizeof(buf));
 
   // If we couldn't get any data, just fail right away.
-  if (len <= 0)
+  if (len <= 0) {
     return false;
+  }
 
   // Chop the trailing newline to make parsing below easier.
-  if (buf[len - 1] == '\n')
+  if (buf[len - 1] == '\n') {
     buf[--len] = '\0';
+  }
 
   // Make sure it's a valid UUID.  Support older installs that omitted dashes.
-  if (len != 32 && len != 36)
+  if (len != 32 && len != 36) {
     return false;
+  }
 
   ssize_t i;
   id->clear();
@@ -181,14 +186,16 @@ bool MetricsLibrary::ConsentId(std::string* id) {
 
     // For long UUIDs, require dashes at certain positions.
     if (len == 36 && (i == 8 || i == 13 || i == 18 || i == 23)) {
-      if (c == '-')
+      if (c == '-') {
         continue;
+      }
       return false;
     }
 
     // All the rest should be hexdigits.
-    if (base::IsHexDigit(c))
+    if (base::IsHexDigit(c)) {
       continue;
+    }
 
     return false;
   }
@@ -266,13 +273,15 @@ bool MetricsLibrary::AreMetricsEnabled() {
       return false;
     }
 
-    if (!policy_provider_.get())
+    if (!policy_provider_.get()) {
       policy_provider_.reset(new policy::PolicyProvider());
+    }
     policy_provider_->Reload();
 
     const policy::DevicePolicy* device_policy = nullptr;
-    if (policy_provider_->device_policy_is_loaded())
+    if (policy_provider_->device_policy_is_loaded()) {
       device_policy = &policy_provider_->GetDevicePolicy();
+    }
 
     // If policy couldn't be loaded or the metrics policy is not set,
     // respect the consent file if it is present for migration purposes. In all
@@ -314,13 +323,15 @@ bool MetricsLibrary::IsAppSyncEnabled() {
 
 bool MetricsLibrary::EnableMetrics() {
   // Already enabled? Don't touch anything.
-  if (AreMetricsEnabled())
+  if (AreMetricsEnabled()) {
     return true;
+  }
 
   std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
 
-  if (guid.empty())
+  if (guid.empty()) {
     return false;
+  }
 
   // http://crbug.com/383003 says we must be world readable.
   mode_t mask = umask(0022);

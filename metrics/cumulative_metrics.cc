@@ -122,15 +122,17 @@ void CumulativeMetrics::PanicFromBadName(const char* action,
 
 PersistentInteger* CumulativeMetrics::Find(const std::string& name) const {
   const auto iter = values_.find(name);
-  if (iter == values_.end())
+  if (iter == values_.end()) {
     return nullptr;
+  }
   return iter->second.get();
 }
 
 int64_t CumulativeMetrics::Get(const std::string& name) const {
   PersistentInteger* pip = Find(name);
-  if (pip != nullptr)
+  if (pip != nullptr) {
     return pip->Get();
+  }
   PanicFromBadName("GET", name);
   return 0;
 }
@@ -164,8 +166,9 @@ void CumulativeMetrics::Max(const std::string& name, int64_t value) {
 
 int64_t CumulativeMetrics::GetAndClear(const std::string& name) {
   PersistentInteger* pip = Find(name);
-  if (pip != nullptr)
+  if (pip != nullptr) {
     return pip->GetAndClear();
+  }
   PanicFromBadName("GETANDCLEAR", name);
   return 0;
 }

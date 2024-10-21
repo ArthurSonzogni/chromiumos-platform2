@@ -52,8 +52,9 @@ void PersistentInteger::Set(int64_t value) {
 int64_t PersistentInteger::Get() {
   // If not synced, then read.  If the read fails, it's a good idea to write.
   // The write will create the file if needed.
-  if (!synced_ && !Read())
+  if (!synced_ && !Read()) {
     Write();
+  }
   return value_;
 }
 
@@ -94,16 +95,18 @@ void PersistentInteger::Write() {
 
 bool PersistentInteger::Read() {
   base::File f(path_, base::File::FLAG_OPEN | base::File::FLAG_READ);
-  if (!f.IsValid())
+  if (!f.IsValid()) {
     return false;
+  }
   int32_t version;
   int64_t value;
   char* version_ptr = reinterpret_cast<char*>(&version);
   char* value_ptr = reinterpret_cast<char*>(&value);
   if (f.Read(0, version_ptr, sizeof(version)) != sizeof(version) ||
       version != version_ ||
-      f.Read(sizeof(version), value_ptr, sizeof(value)) != sizeof(value))
+      f.Read(sizeof(version), value_ptr, sizeof(value)) != sizeof(value)) {
     return false;
+  }
   value_ = value;
   synced_ = true;
   return true;

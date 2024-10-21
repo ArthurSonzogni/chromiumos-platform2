@@ -43,10 +43,11 @@ MetricsLogBase::MetricsLogBase(const std::string& client_id,
                                const std::string& version_string)
     : num_events_(0), locked_(false), log_type_(log_type) {
   DCHECK_NE(NO_LOG, log_type);
-  if (IsTestingID(client_id))
+  if (IsTestingID(client_id)) {
     uma_proto_.set_client_id(0);
-  else
+  } else {
     uma_proto_.set_client_id(Hash(client_id));
+  }
 
   uma_proto_.set_session_id(session_id);
   uma_proto_.mutable_system_profile()->set_build_timestamp(GetBuildTime());

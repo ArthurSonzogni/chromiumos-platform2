@@ -69,8 +69,9 @@ bool RemovePreviousSamples(int fd) {
   // specified, and optimizes away zero-filled blocks.  We don't care if the
   // optimization fails.
   int punch_hole_mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
-  if (fallocate(fd, punch_hole_mode, sizeof(marker), offset - sizeof(marker)))
+  if (fallocate(fd, punch_hole_mode, sizeof(marker), offset - sizeof(marker))) {
     PLOG(WARNING) << "cannot punch hole in metrics log";
+  }
 
   return true;
 }
@@ -85,8 +86,9 @@ void SeekToSamples(int fd) {
   // file does not contain a valid marker, nothing else needs to be done.
   // Also, we don't need to worry about errors, as we'll hit them again shortly.
   if (pread(fd, &marker, sizeof(marker), 0) != sizeof(marker) ||
-      memcmp(marker, kMagicString, sizeof(kMagicString)) != 0)
+      memcmp(marker, kMagicString, sizeof(kMagicString)) != 0) {
     return;
+  }
 
   memcpy(&offset, marker + sizeof(kMagicString), sizeof(off_t));
   if (lseek(fd, offset, SEEK_SET) < 0) {
@@ -175,8 +177,9 @@ bool ReadAndTruncateOrDeleteMetricsFromFile(const std::string& filename,
 
   result = stat(filename.c_str(), &stat_buf);
   if (result < 0) {
-    if (errno != ENOENT)
+    if (errno != ENOENT) {
       PLOG(ERROR) << filename << ": bad metrics file stat";
+    }
 
     // Nothing to collect---try later.
     return true;
@@ -213,12 +216,14 @@ bool ReadAndTruncateOrDeleteMetricsFromFile(const std::string& filename,
     std::string message;
     size_t bytes_used = 0;
 
-    if (!ReadMessage(fd.get(), &message, &bytes_used))
+    if (!ReadMessage(fd.get(), &message, &bytes_used)) {
       break;
+    }
 
     MetricSample sample = SerializationUtils::ParseSample(message);
-    if (sample.IsValid())
+    if (sample.IsValid()) {
       metrics->push_back(std::move(sample));
+    }
 
     bytes_read += bytes_used;
     if (bytes_read > sample_batch_max_length) {
@@ -244,8 +249,9 @@ bool ReadAndTruncateOrDeleteMetricsFromFile(const std::string& filename,
   }
 
   result = flock(fd.get(), LOCK_UN);
-  if (result < 0)
+  if (result < 0) {
     PLOG(ERROR) << "unlock metrics log";
+  }
 
   return bytes_read <= sample_batch_max_length;
 }

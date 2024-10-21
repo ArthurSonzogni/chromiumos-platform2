@@ -238,16 +238,17 @@ int main(int argc, char** argv) {
   }
 
   int expected_args = 0;
-  if (mode == kModeSendSample)
+  if (mode == kModeSendSample) {
     expected_args = 5;
-  else if (mode == kModeSendEnumSample)
+  } else if (mode == kModeSendEnumSample) {
     expected_args = 3;
-  else if (mode == kModeSendSparseSample)
+  } else if (mode == kModeSendSparseSample) {
     expected_args = 2;
-  else if (mode == kModeSendUserAction)
+  } else if (mode == kModeSendUserAction) {
     expected_args = 1;
-  else if (mode == kModeSendCrosEvent)
+  } else if (mode == kModeSendCrosEvent) {
     expected_args = 1;
+  }
 
   if ((arg_index + expected_args) != argc) {
     metrics_client::ShowUsage(stderr);

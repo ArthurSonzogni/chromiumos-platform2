@@ -97,8 +97,9 @@ bool VmStatsParseStats(std::istream* input_stream,
     }
     for (auto& mapping : map) {
       if (!tokens[0].compare(mapping.name)) {
-        if (!base::StringToUint64(tokens[1], mapping.value_p))
+        if (!base::StringToUint64(tokens[1], mapping.value_p)) {
           return false;
+        }
         mapping.found = true;
       }
     }
@@ -154,8 +155,9 @@ std::optional<std::vector<int>> GetOnlineCpus(const brillo::CpuInfo& cpuinfo) {
   std::vector<int> cpus;
   for (int i = 0; i < cpuinfo.NumProcRecords(); i++) {
     std::optional<std::string_view> v = cpuinfo.LookUp(i, "processor");
-    if (!v.has_value() || v.value() == "")
+    if (!v.has_value() || v.value() == "") {
       continue;
+    }
     int cpu = 0;
     if (base::StringToInt(v.value(), &cpu)) {
       cpus.push_back(cpu);
@@ -266,8 +268,9 @@ bool RAPLInfo::GetHeader(std::ostream& header) {
   }
 
   // List out the text name of each power domain.
-  for (const auto& domain : *power_domains_)
+  for (const auto& domain : *power_domains_) {
     header << " " << domain.name;
+  }
 
   return true;
 }
@@ -331,8 +334,9 @@ VmlogFile::VmlogFile(const base::FilePath& live_path,
 VmlogFile::~VmlogFile() = default;
 
 bool VmlogFile::Write(const std::string& data) {
-  if (fd_ == -1)
+  if (fd_ == -1) {
     return false;
+  }
 
   if (cur_size_ + data.size() > max_size_) {
     // Copy from vmlog.<TIMESTAMP> to vmlog.1.<TIMESTAMP> -- but do not update
@@ -478,8 +482,9 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   DCHECK(gpu_info_.get());
 
   std::ostringstream header(kVmlogHeader, std::ios_base::ate);
-  if (!gpu_info_->is_unknown())
+  if (!gpu_info_->is_unknown()) {
     header << " gpufreq";
+  }
 
   for (int cpu = 0; cpu != cpufreq_streams_.size(); ++cpu) {
     header << " cpufreq" << cpu;
@@ -488,8 +493,9 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   rapl_info_ = RAPLInfo::Get();
   DCHECK(rapl_info_.get());
 
-  if (!rapl_info_->is_unknown())
+  if (!rapl_info_->is_unknown()) {
     rapl_info_->GetHeader(header);
+  }
 
   header << "\n";
 

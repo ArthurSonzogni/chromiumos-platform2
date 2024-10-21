@@ -26,10 +26,12 @@ bool Timer::Start() {
 }
 
 bool Timer::Stop() {
-  if (timer_state_ == kTimerStopped)
+  if (timer_state_ == kTimerStopped) {
     return false;
-  if (timer_state_ == kTimerRunning)
+  }
+  if (timer_state_ == kTimerRunning) {
     elapsed_time_ += clock_wrapper_->GetCurrentTime() - start_time_;
+  }
   timer_state_ = kTimerStopped;
   return true;
 }
@@ -37,8 +39,9 @@ bool Timer::Stop() {
 bool Timer::Pause() {
   switch (timer_state_) {
     case kTimerStopped:
-      if (!Start())
+      if (!Start()) {
         return false;
+      }
       timer_state_ = kTimerPaused;
       return true;
     case kTimerRunning:
@@ -74,8 +77,9 @@ bool Timer::HasStarted() const {
 }
 
 bool Timer::GetElapsedTime(base::TimeDelta* elapsed_time) const {
-  if (start_time_.is_null() || !elapsed_time)
+  if (start_time_.is_null() || !elapsed_time) {
     return false;
+  }
   *elapsed_time = elapsed_time_;
   if (timer_state_ == kTimerRunning) {
     *elapsed_time += clock_wrapper_->GetCurrentTime() - start_time_;
@@ -98,28 +102,32 @@ TimerReporter::TimerReporter(const std::string& histogram_name,
 
 bool TimerReporter::ReportMilliseconds() const {
   base::TimeDelta elapsed_time;
-  if (timer_unit_ == kTimerUnitNone)
+  if (timer_unit_ == kTimerUnitNone) {
     timer_unit_ = kTimerUnitMilliseconds;
+  }
   if (timer_unit_ != kTimerUnitMilliseconds) {
     LOG(ERROR) << "Intermixed usage of milliseconds/seconds reporting.";
     return false;
   }
-  if (!metrics_lib_ || !GetElapsedTime(&elapsed_time))
+  if (!metrics_lib_ || !GetElapsedTime(&elapsed_time)) {
     return false;
+  }
   return metrics_lib_->SendToUMA(histogram_name_, elapsed_time.InMilliseconds(),
                                  min_, max_, num_buckets_);
 }
 
 bool TimerReporter::ReportSeconds() const {
   base::TimeDelta elapsed_time;
-  if (timer_unit_ == kTimerUnitNone)
+  if (timer_unit_ == kTimerUnitNone) {
     timer_unit_ = kTimerUnitSeconds;
+  }
   if (timer_unit_ != kTimerUnitSeconds) {
     LOG(ERROR) << "Intermixed usage of milliseconds/seconds reporting.";
     return false;
   }
-  if (!metrics_lib_ || !GetElapsedTime(&elapsed_time))
+  if (!metrics_lib_ || !GetElapsedTime(&elapsed_time)) {
     return false;
+  }
   return metrics_lib_->SendToUMA(histogram_name_, elapsed_time.InSeconds(),
                                  min_, max_, num_buckets_);
 }

@@ -193,8 +193,9 @@ MetricSample MetricSample::ParseSparseHistogram(
     return MetricSample();
   }
   int sample;
-  if (parts[0].empty() || !base::StringToInt(parts[1], &sample))
+  if (parts[0].empty() || !base::StringToInt(parts[1], &sample)) {
     return MetricSample();
+  }
 
   int num_samples = 1;
   if (parts.size() == 3) {

@@ -297,8 +297,9 @@ void MetricsDaemon::RunUploaderTest() {
 uint32_t MetricsDaemon::GetOsVersionHash() {
   static uint32_t cached_version_hash = 0;
   static bool version_hash_is_cached = false;
-  if (version_hash_is_cached)
+  if (version_hash_is_cached) {
     return cached_version_hash;
+  }
   version_hash_is_cached = true;
   std::string version;
   if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION", &version)) {
@@ -410,8 +411,9 @@ void MetricsDaemon::Init(bool testing,
   last_update_stats_time_ = TimeTicks::Now();
 
   // If testing, initialize Stats Reporter without connecting DBus
-  if (testing_)
+  if (testing_) {
     StatsReporterInit();
+  }
 }
 
 void MetricsDaemon::InitMmc() {
@@ -465,8 +467,9 @@ void MetricsDaemon::InitMmc() {
 
 int MetricsDaemon::OnInit() {
   int return_code = brillo::DBusDaemon::OnInit();
-  if (return_code != EX_OK)
+  if (return_code != EX_OK) {
     return return_code;
+  }
 
   StatsReporterInit();
 
@@ -478,8 +481,9 @@ int MetricsDaemon::OnInit() {
   // Start collecting detachable base stats.
   ScheduleDetachableBaseCallback(kMetricDetachableBaseInterval);
 
-  if (testing_)
+  if (testing_) {
     return EX_OK;
+  }
 
   vmlog_writer_.reset(new chromeos_metrics::VmlogWriter(
       base::FilePath(kVmlogDir), kVmlogInterval));
@@ -681,8 +685,9 @@ void MetricsDaemon::ProcessUncleanShutdown() {
 
 bool MetricsDaemon::CheckSystemCrash(const string& crash_file) {
   FilePath crash_detected(crash_file);
-  if (!base::PathExists(crash_detected))
+  if (!base::PathExists(crash_detected)) {
     return false;
+  }
 
   // Deletes the crash-detected file so that the daemon doesn't report
   // another kernel crash in case it's restarted.
@@ -778,9 +783,10 @@ bool MetricsDaemon::ReadFreqToInt(const string& sysfs_file_name, int* value) {
 void MetricsDaemon::SendCpuThrottleMetrics() {
   // |max_freq| is 0 only the first time through.
   static int max_freq = 0;
-  if (max_freq == -1)
+  if (max_freq == -1) {
     // Give up, as sysfs did not report max_freq correctly.
     return;
+  }
   if (max_freq == 0 || testing_) {
     // One-time initialization of max_freq.  (Every time when testing.)
     if (!ReadFreqToInt(cpuinfo_max_freq_path_, &max_freq)) {
@@ -804,8 +810,9 @@ void MetricsDaemon::SendCpuThrottleMetrics() {
     }
   }
   int scaled_freq = 0;
-  if (!ReadFreqToInt(scaling_max_freq_path_, &scaled_freq))
+  if (!ReadFreqToInt(scaling_max_freq_path_, &scaled_freq)) {
     return;
+  }
   // Frequencies are in kHz.  If scaled_freq > max_freq, turbo is on, but
   // scaled_freq is not the actual turbo frequency.  We indicate this situation
   // with a 101% value.
@@ -907,8 +914,9 @@ void MetricsDaemon::StatsCallback() {
 }
 
 void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
-  if (testing_)
+  if (testing_) {
     return;
+  }
   base::TimeDelta wait_delta = base::Seconds(wait);
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
@@ -938,8 +946,9 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
 }
 
 void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
-  if (testing_)
+  if (testing_) {
     return;
+  }
 
   base::TimeDelta wait_delta = base::Seconds(wait);
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
@@ -964,8 +973,9 @@ void MetricsDaemon::DetachableBaseCallback(const base::FilePath sysfs_path_path,
     }
 
     if (detachable_base_active_time_ == 0 &&
-        detachable_base_suspended_time_ == 0)
+        detachable_base_suspended_time_ == 0) {
       DLOG(INFO) << "Detachable base detected, start reporting activity";
+    }
 
     uint64_t delta_active = active_time - detachable_base_active_time_;
     uint64_t delta_suspended = suspended_time - detachable_base_suspended_time_;
@@ -983,8 +993,9 @@ void MetricsDaemon::DetachableBaseCallback(const base::FilePath sysfs_path_path,
     }
   } else {
     if (detachable_base_active_time_ != 0 &&
-        detachable_base_suspended_time_ != 0)
+        detachable_base_suspended_time_ != 0) {
       DLOG(INFO) << "Detachable base removed";
+    }
     active_time = 0;
     suspended_time = 0;
   }
@@ -1005,18 +1016,21 @@ bool MetricsDaemon::GetDetachableBaseTimes(const base::FilePath sysfs_path_path,
   base::FilePath sysfs_path;
   std::string content;
 
-  if (!base::ReadFileToString(sysfs_path_path, &content))
+  if (!base::ReadFileToString(sysfs_path_path, &content)) {
     return false;
+  }
   base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
 
   sysfs_path = base::FilePath(content);
   if (!base::ReadFileToString(sysfs_path.Append(kDetachableBaseSysfsLevelName),
-                              &content))
+                              &content)) {
     return false;
+  }
   base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
 
-  if (content != "auto")
+  if (content != "auto") {
     return false;
+  }
 
   bool r1 =
       ReadFileToUint64(sysfs_path.Append(kDetachableBaseSysfsActiveTimeName),
@@ -1024,8 +1038,9 @@ bool MetricsDaemon::GetDetachableBaseTimes(const base::FilePath sysfs_path_path,
   bool r2 =
       ReadFileToUint64(sysfs_path.Append(kDetachableBaseSysfsSuspendedTimeName),
                        suspended_time, false);
-  if (!r1 || !r2)
+  if (!r1 || !r2) {
     return false;
+  }
 
   return true;
 }
@@ -1036,8 +1051,9 @@ bool MetricsDaemon::ReadFileToUint64(const base::FilePath& path,
                                      bool warn_on_read_failure) {
   std::string content;
   if (!base::ReadFileToString(path, &content)) {
-    if (warn_on_read_failure)
+    if (warn_on_read_failure) {
       PLOG(WARNING) << "cannot read " << path.MaybeAsASCII();
+    }
     return false;
   }
   // Remove final newline.

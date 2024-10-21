@@ -26,8 +26,9 @@ constexpr mode_t kFilePermissions = 0660;
 bool WriteEventsProtoToDir(const std::string& directory,
                            const EventsProto& events) {
   const std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  if (guid.empty())
+  if (guid.empty()) {
     return false;
+  }
   const std::string filepath = base::StrCat({directory, "/", guid});
 
   ino_t fd_inode = -1;

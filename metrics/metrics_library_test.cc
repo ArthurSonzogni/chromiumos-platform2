@@ -485,8 +485,9 @@ void MetricsLibraryTest::VerifyEnabledCacheHit(bool to_value) {
 
     ON_CALL(*device_policy_, GetMetricsEnabled())
         .WillByDefault(Return(to_value));
-    if (lib_->AreMetricsEnabled() == !to_value)
+    if (lib_->AreMetricsEnabled() == !to_value) {
       return;
+    }
     testing::Mock::VerifyAndClearExpectations(device_policy_);
   }
   ADD_FAILURE() << "Did not see evidence of caching";

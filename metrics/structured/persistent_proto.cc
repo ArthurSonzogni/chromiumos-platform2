@@ -25,16 +25,19 @@ namespace {
 
 template <class T>
 std::unique_ptr<T> ReadFile(const base::FilePath& filepath) {
-  if (!base::PathExists(filepath))
+  if (!base::PathExists(filepath)) {
     return nullptr;
+  }
 
   std::string proto_str;
-  if (!base::ReadFileToString(filepath, &proto_str))
+  if (!base::ReadFileToString(filepath, &proto_str)) {
     return nullptr;
+  }
 
   auto proto = std::make_unique<T>();
-  if (!proto->ParseFromString(proto_str))
+  if (!proto->ParseFromString(proto_str)) {
     return nullptr;
+  }
 
   return std::move(proto);
 }
@@ -42,8 +45,9 @@ std::unique_ptr<T> ReadFile(const base::FilePath& filepath) {
 template <class T>
 bool WriteFile(const std::string& filepath, const T* proto) {
   std::string proto_str;
-  if (!proto->SerializeToString(&proto_str))
+  if (!proto->SerializeToString(&proto_str)) {
     return false;
+  }
 
   base::ScopedFD file_descriptor(open(filepath.c_str(),
                                       O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,

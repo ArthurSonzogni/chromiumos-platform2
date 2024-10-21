@@ -126,8 +126,9 @@ void UploadService::UploadEvent() {
       // ReadMetrics() may have to be called multiple times, because if
       // uma-events is too large it processes samples in batches.
       Reset();
-      if (ReadMetrics())
+      if (ReadMetrics()) {
         break;
+      }
     }
     return;
   }
@@ -150,18 +151,21 @@ void UploadService::UploadEvent() {
     GatherHistograms();
 
     // No samples found. Exit to avoid sending an empty log.
-    if (!current_log_)
+    if (!current_log_) {
       break;
+    }
 
     // Stage and send the logs.
     StageCurrentLog();
     SendStagedLog();
 
     // If staged_logs_ is not empty, SendStagedLog failed.  Try later.
-    if (staged_log_)
+    if (staged_log_) {
       break;
-    if (all_metrics_processed)
+    }
+    if (all_metrics_processed) {
       break;
+    }
   }
 }
 
@@ -307,8 +311,9 @@ void UploadService::StageCurrentLog() {
   CHECK(!staged_log_)
       << "staged logs must be discarded before another log can be staged";
 
-  if (!current_log_)
+  if (!current_log_) {
     return;
+  }
 
   staged_log_.swap(current_log_);
   staged_log_->CloseLog();
