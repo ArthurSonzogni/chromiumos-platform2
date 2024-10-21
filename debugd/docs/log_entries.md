@@ -429,10 +429,6 @@ Information about LVM logical volumes.
 
 ## mali_memory
 
-## memd clips
-
-## memd.parameters
-
 ## meminfo
 
 Various memory usage statistics.  See the `/proc/meminfo` section of the

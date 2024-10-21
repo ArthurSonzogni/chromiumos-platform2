@@ -83,8 +83,6 @@ const std::set<std::string_view> kEmptyEntries{
     "lsblk",
     "lsmod",
     "mali_memory",
-    "memd clips",
-    "memd.parameters",
     "memory_spd_info",
     "mm-esim-status",
     "mm-status",
