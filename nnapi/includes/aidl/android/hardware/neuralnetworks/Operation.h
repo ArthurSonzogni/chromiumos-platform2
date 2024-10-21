@@ -18,11 +18,12 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class Operation {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
-  ::aidl::android::hardware::neuralnetworks::OperationType type = ::aidl::android::hardware::neuralnetworks::OperationType::ADD;
+  ::aidl::android::hardware::neuralnetworks::OperationType type =
+      ::aidl::android::hardware::neuralnetworks::OperationType::ADD;
   std::vector<int32_t> inputs;
   std::vector<int32_t> outputs;
 
@@ -30,25 +31,32 @@ public:
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const Operation& rhs) const {
-    return std::tie(type, inputs, outputs) != std::tie(rhs.type, rhs.inputs, rhs.outputs);
+    return std::tie(type, inputs, outputs) !=
+           std::tie(rhs.type, rhs.inputs, rhs.outputs);
   }
   inline bool operator<(const Operation& rhs) const {
-    return std::tie(type, inputs, outputs) < std::tie(rhs.type, rhs.inputs, rhs.outputs);
+    return std::tie(type, inputs, outputs) <
+           std::tie(rhs.type, rhs.inputs, rhs.outputs);
   }
   inline bool operator<=(const Operation& rhs) const {
-    return std::tie(type, inputs, outputs) <= std::tie(rhs.type, rhs.inputs, rhs.outputs);
+    return std::tie(type, inputs, outputs) <=
+           std::tie(rhs.type, rhs.inputs, rhs.outputs);
   }
   inline bool operator==(const Operation& rhs) const {
-    return std::tie(type, inputs, outputs) == std::tie(rhs.type, rhs.inputs, rhs.outputs);
+    return std::tie(type, inputs, outputs) ==
+           std::tie(rhs.type, rhs.inputs, rhs.outputs);
   }
   inline bool operator>(const Operation& rhs) const {
-    return std::tie(type, inputs, outputs) > std::tie(rhs.type, rhs.inputs, rhs.outputs);
+    return std::tie(type, inputs, outputs) >
+           std::tie(rhs.type, rhs.inputs, rhs.outputs);
   }
   inline bool operator>=(const Operation& rhs) const {
-    return std::tie(type, inputs, outputs) >= std::tie(rhs.type, rhs.inputs, rhs.outputs);
+    return std::tie(type, inputs, outputs) >=
+           std::tie(rhs.type, rhs.inputs, rhs.outputs);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "Operation{";

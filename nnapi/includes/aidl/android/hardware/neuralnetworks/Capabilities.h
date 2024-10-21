@@ -19,13 +19,16 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class Capabilities {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
-  ::aidl::android::hardware::neuralnetworks::PerformanceInfo relaxedFloat32toFloat16PerformanceScalar;
-  ::aidl::android::hardware::neuralnetworks::PerformanceInfo relaxedFloat32toFloat16PerformanceTensor;
-  std::vector<::aidl::android::hardware::neuralnetworks::OperandPerformance> operandPerformance;
+  ::aidl::android::hardware::neuralnetworks::PerformanceInfo
+      relaxedFloat32toFloat16PerformanceScalar;
+  ::aidl::android::hardware::neuralnetworks::PerformanceInfo
+      relaxedFloat32toFloat16PerformanceTensor;
+  std::vector<::aidl::android::hardware::neuralnetworks::OperandPerformance>
+      operandPerformance;
   ::aidl::android::hardware::neuralnetworks::PerformanceInfo ifPerformance;
   ::aidl::android::hardware::neuralnetworks::PerformanceInfo whilePerformance;
 
@@ -33,33 +36,76 @@ public:
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const Capabilities& rhs) const {
-    return std::tie(relaxedFloat32toFloat16PerformanceScalar, relaxedFloat32toFloat16PerformanceTensor, operandPerformance, ifPerformance, whilePerformance) != std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar, rhs.relaxedFloat32toFloat16PerformanceTensor, rhs.operandPerformance, rhs.ifPerformance, rhs.whilePerformance);
+    return std::tie(relaxedFloat32toFloat16PerformanceScalar,
+                    relaxedFloat32toFloat16PerformanceTensor,
+                    operandPerformance, ifPerformance, whilePerformance) !=
+           std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar,
+                    rhs.relaxedFloat32toFloat16PerformanceTensor,
+                    rhs.operandPerformance, rhs.ifPerformance,
+                    rhs.whilePerformance);
   }
   inline bool operator<(const Capabilities& rhs) const {
-    return std::tie(relaxedFloat32toFloat16PerformanceScalar, relaxedFloat32toFloat16PerformanceTensor, operandPerformance, ifPerformance, whilePerformance) < std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar, rhs.relaxedFloat32toFloat16PerformanceTensor, rhs.operandPerformance, rhs.ifPerformance, rhs.whilePerformance);
+    return std::tie(relaxedFloat32toFloat16PerformanceScalar,
+                    relaxedFloat32toFloat16PerformanceTensor,
+                    operandPerformance, ifPerformance, whilePerformance) <
+           std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar,
+                    rhs.relaxedFloat32toFloat16PerformanceTensor,
+                    rhs.operandPerformance, rhs.ifPerformance,
+                    rhs.whilePerformance);
   }
   inline bool operator<=(const Capabilities& rhs) const {
-    return std::tie(relaxedFloat32toFloat16PerformanceScalar, relaxedFloat32toFloat16PerformanceTensor, operandPerformance, ifPerformance, whilePerformance) <= std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar, rhs.relaxedFloat32toFloat16PerformanceTensor, rhs.operandPerformance, rhs.ifPerformance, rhs.whilePerformance);
+    return std::tie(relaxedFloat32toFloat16PerformanceScalar,
+                    relaxedFloat32toFloat16PerformanceTensor,
+                    operandPerformance, ifPerformance, whilePerformance) <=
+           std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar,
+                    rhs.relaxedFloat32toFloat16PerformanceTensor,
+                    rhs.operandPerformance, rhs.ifPerformance,
+                    rhs.whilePerformance);
   }
   inline bool operator==(const Capabilities& rhs) const {
-    return std::tie(relaxedFloat32toFloat16PerformanceScalar, relaxedFloat32toFloat16PerformanceTensor, operandPerformance, ifPerformance, whilePerformance) == std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar, rhs.relaxedFloat32toFloat16PerformanceTensor, rhs.operandPerformance, rhs.ifPerformance, rhs.whilePerformance);
+    return std::tie(relaxedFloat32toFloat16PerformanceScalar,
+                    relaxedFloat32toFloat16PerformanceTensor,
+                    operandPerformance, ifPerformance, whilePerformance) ==
+           std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar,
+                    rhs.relaxedFloat32toFloat16PerformanceTensor,
+                    rhs.operandPerformance, rhs.ifPerformance,
+                    rhs.whilePerformance);
   }
   inline bool operator>(const Capabilities& rhs) const {
-    return std::tie(relaxedFloat32toFloat16PerformanceScalar, relaxedFloat32toFloat16PerformanceTensor, operandPerformance, ifPerformance, whilePerformance) > std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar, rhs.relaxedFloat32toFloat16PerformanceTensor, rhs.operandPerformance, rhs.ifPerformance, rhs.whilePerformance);
+    return std::tie(relaxedFloat32toFloat16PerformanceScalar,
+                    relaxedFloat32toFloat16PerformanceTensor,
+                    operandPerformance, ifPerformance, whilePerformance) >
+           std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar,
+                    rhs.relaxedFloat32toFloat16PerformanceTensor,
+                    rhs.operandPerformance, rhs.ifPerformance,
+                    rhs.whilePerformance);
   }
   inline bool operator>=(const Capabilities& rhs) const {
-    return std::tie(relaxedFloat32toFloat16PerformanceScalar, relaxedFloat32toFloat16PerformanceTensor, operandPerformance, ifPerformance, whilePerformance) >= std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar, rhs.relaxedFloat32toFloat16PerformanceTensor, rhs.operandPerformance, rhs.ifPerformance, rhs.whilePerformance);
+    return std::tie(relaxedFloat32toFloat16PerformanceScalar,
+                    relaxedFloat32toFloat16PerformanceTensor,
+                    operandPerformance, ifPerformance, whilePerformance) >=
+           std::tie(rhs.relaxedFloat32toFloat16PerformanceScalar,
+                    rhs.relaxedFloat32toFloat16PerformanceTensor,
+                    rhs.operandPerformance, rhs.ifPerformance,
+                    rhs.whilePerformance);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "Capabilities{";
-    os << "relaxedFloat32toFloat16PerformanceScalar: " << ::android::internal::ToString(relaxedFloat32toFloat16PerformanceScalar);
-    os << ", relaxedFloat32toFloat16PerformanceTensor: " << ::android::internal::ToString(relaxedFloat32toFloat16PerformanceTensor);
-    os << ", operandPerformance: " << ::android::internal::ToString(operandPerformance);
+    os << "relaxedFloat32toFloat16PerformanceScalar: "
+       << ::android::internal::ToString(
+              relaxedFloat32toFloat16PerformanceScalar);
+    os << ", relaxedFloat32toFloat16PerformanceTensor: "
+       << ::android::internal::ToString(
+              relaxedFloat32toFloat16PerformanceTensor);
+    os << ", operandPerformance: "
+       << ::android::internal::ToString(operandPerformance);
     os << ", ifPerformance: " << ::android::internal::ToString(ifPerformance);
-    os << ", whilePerformance: " << ::android::internal::ToString(whilePerformance);
+    os << ", whilePerformance: "
+       << ::android::internal::ToString(whilePerformance);
     os << "}";
     return os.str();
   }

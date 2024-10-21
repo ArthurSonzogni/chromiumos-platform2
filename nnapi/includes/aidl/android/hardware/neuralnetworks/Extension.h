@@ -18,12 +18,14 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class Extension {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
   std::string name;
-  std::vector<::aidl::android::hardware::neuralnetworks::ExtensionOperandTypeInformation> operandTypes;
+  std::vector<::aidl::android::hardware::neuralnetworks::
+                  ExtensionOperandTypeInformation>
+      operandTypes;
 
   binder_status_t readFromParcel(const AParcel* parcel);
   binder_status_t writeToParcel(AParcel* parcel) const;
@@ -47,7 +49,8 @@ public:
     return std::tie(name, operandTypes) >= std::tie(rhs.name, rhs.operandTypes);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "Extension{";

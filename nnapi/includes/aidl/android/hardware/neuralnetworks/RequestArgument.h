@@ -18,7 +18,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class RequestArgument {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
@@ -30,25 +30,32 @@ public:
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const RequestArgument& rhs) const {
-    return std::tie(hasNoValue, location, dimensions) != std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
+    return std::tie(hasNoValue, location, dimensions) !=
+           std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
   }
   inline bool operator<(const RequestArgument& rhs) const {
-    return std::tie(hasNoValue, location, dimensions) < std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
+    return std::tie(hasNoValue, location, dimensions) <
+           std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
   }
   inline bool operator<=(const RequestArgument& rhs) const {
-    return std::tie(hasNoValue, location, dimensions) <= std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
+    return std::tie(hasNoValue, location, dimensions) <=
+           std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
   }
   inline bool operator==(const RequestArgument& rhs) const {
-    return std::tie(hasNoValue, location, dimensions) == std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
+    return std::tie(hasNoValue, location, dimensions) ==
+           std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
   }
   inline bool operator>(const RequestArgument& rhs) const {
-    return std::tie(hasNoValue, location, dimensions) > std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
+    return std::tie(hasNoValue, location, dimensions) >
+           std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
   }
   inline bool operator>=(const RequestArgument& rhs) const {
-    return std::tie(hasNoValue, location, dimensions) >= std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
+    return std::tie(hasNoValue, location, dimensions) >=
+           std::tie(rhs.hasNoValue, rhs.location, rhs.dimensions);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "RequestArgument{";

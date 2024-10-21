@@ -18,11 +18,12 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class IPreparedModelParcel {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
-  std::shared_ptr<::aidl::android::hardware::neuralnetworks::IPreparedModel> preparedModel;
+  std::shared_ptr<::aidl::android::hardware::neuralnetworks::IPreparedModel>
+      preparedModel;
 
   binder_status_t readFromParcel(const AParcel* parcel);
   binder_status_t writeToParcel(AParcel* parcel) const;
@@ -46,7 +47,8 @@ public:
     return std::tie(preparedModel) >= std::tie(rhs.preparedModel);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "IPreparedModelParcel{";

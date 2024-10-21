@@ -20,7 +20,7 @@
 #endif  // BINDER_STABILITY_SUPPORT
 
 #ifndef __BIONIC__
-#define __assert2(a,b,c,d) ((void)0)
+#define __assert2(a, b, c, d) ((void)0)
 #endif
 
 namespace aidl {
@@ -28,7 +28,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class RequestMemoryPool {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
@@ -41,43 +41,54 @@ public:
   static const inline Tag pool = Tag::pool;
   static const inline Tag token = Tag::token;
 
-  template<typename _Tp>
-  static constexpr bool _not_self = !std::is_same_v<std::remove_cv_t<std::remove_reference_t<_Tp>>, RequestMemoryPool>;
+  template <typename _Tp>
+  static constexpr bool _not_self =
+      !std::is_same_v<std::remove_cv_t<std::remove_reference_t<_Tp>>,
+                      RequestMemoryPool>;
 
-  RequestMemoryPool() : _value(std::in_place_index<static_cast<size_t>(pool)>, ::aidl::android::hardware::neuralnetworks::Memory()) { }
+  RequestMemoryPool()
+      : _value(std::in_place_index<static_cast<size_t>(pool)>,
+               ::aidl::android::hardware::neuralnetworks::Memory()) {}
 
   template <typename _Tp, typename = std::enable_if_t<_not_self<_Tp>>>
   // NOLINTNEXTLINE(google-explicit-constructor)
-  constexpr RequestMemoryPool(_Tp&& _arg)
-      : _value(std::forward<_Tp>(_arg)) {}
+  constexpr RequestMemoryPool(_Tp&& _arg) : _value(std::forward<_Tp>(_arg)) {}
 
   template <size_t _Np, typename... _Tp>
-  constexpr explicit RequestMemoryPool(std::in_place_index_t<_Np>, _Tp&&... _args)
+  constexpr explicit RequestMemoryPool(std::in_place_index_t<_Np>,
+                                       _Tp&&... _args)
       : _value(std::in_place_index<_Np>, std::forward<_Tp>(_args)...) {}
 
   template <Tag _tag, typename... _Tp>
   static RequestMemoryPool make(_Tp&&... _args) {
-    return RequestMemoryPool(std::in_place_index<static_cast<size_t>(_tag)>, std::forward<_Tp>(_args)...);
+    return RequestMemoryPool(std::in_place_index<static_cast<size_t>(_tag)>,
+                             std::forward<_Tp>(_args)...);
   }
 
   template <Tag _tag, typename _Tp, typename... _Up>
-  static RequestMemoryPool make(std::initializer_list<_Tp> _il, _Up&&... _args) {
-    return RequestMemoryPool(std::in_place_index<static_cast<size_t>(_tag)>, std::move(_il), std::forward<_Up>(_args)...);
+  static RequestMemoryPool make(std::initializer_list<_Tp> _il,
+                                _Up&&... _args) {
+    return RequestMemoryPool(std::in_place_index<static_cast<size_t>(_tag)>,
+                             std::move(_il), std::forward<_Up>(_args)...);
   }
 
-  Tag getTag() const {
-    return static_cast<Tag>(_value.index());
-  }
+  Tag getTag() const { return static_cast<Tag>(_value.index()); }
 
   template <Tag _tag>
   const auto& get() const {
-    if (getTag() != _tag) { __assert2(__FILE__, __LINE__, __PRETTY_FUNCTION__, "bad access: a wrong tag"); }
+    if (getTag() != _tag) {
+      __assert2(__FILE__, __LINE__, __PRETTY_FUNCTION__,
+                "bad access: a wrong tag");
+    }
     return std::get<static_cast<size_t>(_tag)>(_value);
   }
 
   template <Tag _tag>
   auto& get() {
-    if (getTag() != _tag) { __assert2(__FILE__, __LINE__, __PRETTY_FUNCTION__, "bad access: a wrong tag"); }
+    if (getTag() != _tag) {
+      __assert2(__FILE__, __LINE__, __PRETTY_FUNCTION__,
+                "bad access: a wrong tag");
+    }
     return std::get<static_cast<size_t>(_tag)>(_value);
   }
 
@@ -108,19 +119,26 @@ public:
     return _value >= rhs._value;
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "RequestMemoryPool{";
     switch (getTag()) {
-    case pool: os << "pool: " << ::android::internal::ToString(get<pool>()); break;
-    case token: os << "token: " << ::android::internal::ToString(get<token>()); break;
+      case pool:
+        os << "pool: " << ::android::internal::ToString(get<pool>());
+        break;
+      case token:
+        os << "token: " << ::android::internal::ToString(get<token>());
+        break;
     }
     os << "}";
     return os.str();
   }
-private:
-  std::variant<::aidl::android::hardware::neuralnetworks::Memory, int32_t> _value;
+
+ private:
+  std::variant<::aidl::android::hardware::neuralnetworks::Memory, int32_t>
+      _value;
 };
 }  // namespace neuralnetworks
 }  // namespace hardware
@@ -131,13 +149,13 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 [[nodiscard]] static inline std::string toString(RequestMemoryPool::Tag val) {
-  switch(val) {
-  case RequestMemoryPool::Tag::pool:
-    return "pool";
-  case RequestMemoryPool::Tag::token:
-    return "token";
-  default:
-    return std::to_string(static_cast<int32_t>(val));
+  switch (val) {
+    case RequestMemoryPool::Tag::pool:
+      return "pool";
+    case RequestMemoryPool::Tag::token:
+      return "token";
+    default:
+      return std::to_string(static_cast<int32_t>(val));
   }
 }
 }  // namespace neuralnetworks
@@ -149,9 +167,13 @@ namespace internal {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 template <>
-constexpr inline std::array<aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag, 2> enum_values<aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag> = {
-  aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag::pool,
-  aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag::token,
+constexpr inline std::array<
+    aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag,
+    2>
+    enum_values<
+        aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag> = {
+        aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag::pool,
+        aidl::android::hardware::neuralnetworks::RequestMemoryPool::Tag::token,
 };
 #pragma clang diagnostic pop
 }  // namespace internal

@@ -18,36 +18,45 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class FencedExecutionResult {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
-  std::shared_ptr<::aidl::android::hardware::neuralnetworks::IFencedExecutionCallback> callback;
+  std::shared_ptr<
+      ::aidl::android::hardware::neuralnetworks::IFencedExecutionCallback>
+      callback;
   ::ndk::ScopedFileDescriptor syncFence;
 
   binder_status_t readFromParcel(const AParcel* parcel);
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const FencedExecutionResult& rhs) const {
-    return std::tie(callback, syncFence) != std::tie(rhs.callback, rhs.syncFence);
+    return std::tie(callback, syncFence) !=
+           std::tie(rhs.callback, rhs.syncFence);
   }
   inline bool operator<(const FencedExecutionResult& rhs) const {
-    return std::tie(callback, syncFence) < std::tie(rhs.callback, rhs.syncFence);
+    return std::tie(callback, syncFence) <
+           std::tie(rhs.callback, rhs.syncFence);
   }
   inline bool operator<=(const FencedExecutionResult& rhs) const {
-    return std::tie(callback, syncFence) <= std::tie(rhs.callback, rhs.syncFence);
+    return std::tie(callback, syncFence) <=
+           std::tie(rhs.callback, rhs.syncFence);
   }
   inline bool operator==(const FencedExecutionResult& rhs) const {
-    return std::tie(callback, syncFence) == std::tie(rhs.callback, rhs.syncFence);
+    return std::tie(callback, syncFence) ==
+           std::tie(rhs.callback, rhs.syncFence);
   }
   inline bool operator>(const FencedExecutionResult& rhs) const {
-    return std::tie(callback, syncFence) > std::tie(rhs.callback, rhs.syncFence);
+    return std::tie(callback, syncFence) >
+           std::tie(rhs.callback, rhs.syncFence);
   }
   inline bool operator>=(const FencedExecutionResult& rhs) const {
-    return std::tie(callback, syncFence) >= std::tie(rhs.callback, rhs.syncFence);
+    return std::tie(callback, syncFence) >=
+           std::tie(rhs.callback, rhs.syncFence);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "FencedExecutionResult{";

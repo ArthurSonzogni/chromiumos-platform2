@@ -9,12 +9,15 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class BpBuffer : public ::ndk::BpCInterface<IBuffer> {
-public:
+ public:
   explicit BpBuffer(const ::ndk::SpAIBinder& binder);
   virtual ~BpBuffer();
 
-  ::ndk::ScopedAStatus copyFrom(const ::aidl::android::hardware::neuralnetworks::Memory& in_src, const std::vector<int32_t>& in_dimensions) override;
-  ::ndk::ScopedAStatus copyTo(const ::aidl::android::hardware::neuralnetworks::Memory& in_dst) override;
+  ::ndk::ScopedAStatus copyFrom(
+      const ::aidl::android::hardware::neuralnetworks::Memory& in_src,
+      const std::vector<int32_t>& in_dimensions) override;
+  ::ndk::ScopedAStatus copyTo(
+      const ::aidl::android::hardware::neuralnetworks::Memory& in_dst) override;
   ::ndk::ScopedAStatus getInterfaceVersion(int32_t* _aidl_return) override;
   ::ndk::ScopedAStatus getInterfaceHash(std::string* _aidl_return) override;
   int32_t _aidl_cached_version = -1;

@@ -30,15 +30,15 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 [[nodiscard]] static inline std::string toString(Priority val) {
-  switch(val) {
-  case Priority::LOW:
-    return "LOW";
-  case Priority::MEDIUM:
-    return "MEDIUM";
-  case Priority::HIGH:
-    return "HIGH";
-  default:
-    return std::to_string(static_cast<int32_t>(val));
+  switch (val) {
+    case Priority::LOW:
+      return "LOW";
+    case Priority::MEDIUM:
+      return "MEDIUM";
+    case Priority::HIGH:
+      return "HIGH";
+    default:
+      return std::to_string(static_cast<int32_t>(val));
   }
 }
 }  // namespace neuralnetworks
@@ -50,10 +50,12 @@ namespace internal {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 template <>
-constexpr inline std::array<aidl::android::hardware::neuralnetworks::Priority, 3> enum_values<aidl::android::hardware::neuralnetworks::Priority> = {
-  aidl::android::hardware::neuralnetworks::Priority::LOW,
-  aidl::android::hardware::neuralnetworks::Priority::MEDIUM,
-  aidl::android::hardware::neuralnetworks::Priority::HIGH,
+constexpr inline std::array<aidl::android::hardware::neuralnetworks::Priority,
+                            3>
+    enum_values<aidl::android::hardware::neuralnetworks::Priority> = {
+        aidl::android::hardware::neuralnetworks::Priority::LOW,
+        aidl::android::hardware::neuralnetworks::Priority::MEDIUM,
+        aidl::android::hardware::neuralnetworks::Priority::HIGH,
 };
 #pragma clang diagnostic pop
 }  // namespace internal

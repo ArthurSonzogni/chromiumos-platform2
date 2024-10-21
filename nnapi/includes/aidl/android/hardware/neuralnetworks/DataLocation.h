@@ -17,7 +17,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class DataLocation {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
@@ -30,25 +30,32 @@ public:
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const DataLocation& rhs) const {
-    return std::tie(poolIndex, offset, length, padding) != std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
+    return std::tie(poolIndex, offset, length, padding) !=
+           std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
   }
   inline bool operator<(const DataLocation& rhs) const {
-    return std::tie(poolIndex, offset, length, padding) < std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
+    return std::tie(poolIndex, offset, length, padding) <
+           std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
   }
   inline bool operator<=(const DataLocation& rhs) const {
-    return std::tie(poolIndex, offset, length, padding) <= std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
+    return std::tie(poolIndex, offset, length, padding) <=
+           std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
   }
   inline bool operator==(const DataLocation& rhs) const {
-    return std::tie(poolIndex, offset, length, padding) == std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
+    return std::tie(poolIndex, offset, length, padding) ==
+           std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
   }
   inline bool operator>(const DataLocation& rhs) const {
-    return std::tie(poolIndex, offset, length, padding) > std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
+    return std::tie(poolIndex, offset, length, padding) >
+           std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
   }
   inline bool operator>=(const DataLocation& rhs) const {
-    return std::tie(poolIndex, offset, length, padding) >= std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
+    return std::tie(poolIndex, offset, length, padding) >=
+           std::tie(rhs.poolIndex, rhs.offset, rhs.length, rhs.padding);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "DataLocation{";

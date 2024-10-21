@@ -19,11 +19,12 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class OperandPerformance {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
-  ::aidl::android::hardware::neuralnetworks::OperandType type = ::aidl::android::hardware::neuralnetworks::OperandType::FLOAT32;
+  ::aidl::android::hardware::neuralnetworks::OperandType type =
+      ::aidl::android::hardware::neuralnetworks::OperandType::FLOAT32;
   ::aidl::android::hardware::neuralnetworks::PerformanceInfo info;
 
   binder_status_t readFromParcel(const AParcel* parcel);
@@ -48,7 +49,8 @@ public:
     return std::tie(type, info) >= std::tie(rhs.type, rhs.info);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "OperandPerformance{";

@@ -17,7 +17,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class OutputShape {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
@@ -28,25 +28,32 @@ public:
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const OutputShape& rhs) const {
-    return std::tie(dimensions, isSufficient) != std::tie(rhs.dimensions, rhs.isSufficient);
+    return std::tie(dimensions, isSufficient) !=
+           std::tie(rhs.dimensions, rhs.isSufficient);
   }
   inline bool operator<(const OutputShape& rhs) const {
-    return std::tie(dimensions, isSufficient) < std::tie(rhs.dimensions, rhs.isSufficient);
+    return std::tie(dimensions, isSufficient) <
+           std::tie(rhs.dimensions, rhs.isSufficient);
   }
   inline bool operator<=(const OutputShape& rhs) const {
-    return std::tie(dimensions, isSufficient) <= std::tie(rhs.dimensions, rhs.isSufficient);
+    return std::tie(dimensions, isSufficient) <=
+           std::tie(rhs.dimensions, rhs.isSufficient);
   }
   inline bool operator==(const OutputShape& rhs) const {
-    return std::tie(dimensions, isSufficient) == std::tie(rhs.dimensions, rhs.isSufficient);
+    return std::tie(dimensions, isSufficient) ==
+           std::tie(rhs.dimensions, rhs.isSufficient);
   }
   inline bool operator>(const OutputShape& rhs) const {
-    return std::tie(dimensions, isSufficient) > std::tie(rhs.dimensions, rhs.isSufficient);
+    return std::tie(dimensions, isSufficient) >
+           std::tie(rhs.dimensions, rhs.isSufficient);
   }
   inline bool operator>=(const OutputShape& rhs) const {
-    return std::tie(dimensions, isSufficient) >= std::tie(rhs.dimensions, rhs.isSufficient);
+    return std::tie(dimensions, isSufficient) >=
+           std::tie(rhs.dimensions, rhs.isSufficient);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "OutputShape{";

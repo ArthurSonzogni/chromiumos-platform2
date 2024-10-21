@@ -17,7 +17,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class BufferRole {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
@@ -29,25 +29,32 @@ public:
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const BufferRole& rhs) const {
-    return std::tie(modelIndex, ioIndex, probability) != std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
+    return std::tie(modelIndex, ioIndex, probability) !=
+           std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
   }
   inline bool operator<(const BufferRole& rhs) const {
-    return std::tie(modelIndex, ioIndex, probability) < std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
+    return std::tie(modelIndex, ioIndex, probability) <
+           std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
   }
   inline bool operator<=(const BufferRole& rhs) const {
-    return std::tie(modelIndex, ioIndex, probability) <= std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
+    return std::tie(modelIndex, ioIndex, probability) <=
+           std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
   }
   inline bool operator==(const BufferRole& rhs) const {
-    return std::tie(modelIndex, ioIndex, probability) == std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
+    return std::tie(modelIndex, ioIndex, probability) ==
+           std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
   }
   inline bool operator>(const BufferRole& rhs) const {
-    return std::tie(modelIndex, ioIndex, probability) > std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
+    return std::tie(modelIndex, ioIndex, probability) >
+           std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
   }
   inline bool operator>=(const BufferRole& rhs) const {
-    return std::tie(modelIndex, ioIndex, probability) >= std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
+    return std::tie(modelIndex, ioIndex, probability) >=
+           std::tie(rhs.modelIndex, rhs.ioIndex, rhs.probability);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "BufferRole{";

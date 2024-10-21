@@ -30,8 +30,9 @@ using aidl::android::hardware::common::NativeHandle;
 static native_handle_t* fromAidl(const NativeHandle& handle, bool doDup) {
   native_handle_t* to =
       native_handle_create(handle.fds.size(), handle.ints.size());
-  if (!to)
+  if (!to) {
     return nullptr;
+  }
 
   for (size_t i = 0; i < handle.fds.size(); i++) {
     int fd = handle.fds[i].get();

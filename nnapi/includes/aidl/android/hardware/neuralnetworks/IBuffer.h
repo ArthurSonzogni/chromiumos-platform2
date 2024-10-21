@@ -16,7 +16,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class IBuffer : public ::ndk::ICInterface {
-public:
+ public:
   static const char* descriptor;
   IBuffer();
   virtual ~IBuffer();
@@ -27,21 +27,30 @@ public:
   static constexpr uint32_t TRANSACTION_copyTo = FIRST_CALL_TRANSACTION + 1;
 
   static std::shared_ptr<IBuffer> fromBinder(const ::ndk::SpAIBinder& binder);
-  static binder_status_t writeToParcel(AParcel* parcel, const std::shared_ptr<IBuffer>& instance);
-  static binder_status_t readFromParcel(const AParcel* parcel, std::shared_ptr<IBuffer>* instance);
+  static binder_status_t writeToParcel(
+      AParcel* parcel, const std::shared_ptr<IBuffer>& instance);
+  static binder_status_t readFromParcel(const AParcel* parcel,
+                                        std::shared_ptr<IBuffer>* instance);
   static bool setDefaultImpl(const std::shared_ptr<IBuffer>& impl);
   static const std::shared_ptr<IBuffer>& getDefaultImpl();
-  virtual ::ndk::ScopedAStatus copyFrom(const ::aidl::android::hardware::neuralnetworks::Memory& in_src, const std::vector<int32_t>& in_dimensions) = 0;
-  virtual ::ndk::ScopedAStatus copyTo(const ::aidl::android::hardware::neuralnetworks::Memory& in_dst) = 0;
+  virtual ::ndk::ScopedAStatus copyFrom(
+      const ::aidl::android::hardware::neuralnetworks::Memory& in_src,
+      const std::vector<int32_t>& in_dimensions) = 0;
+  virtual ::ndk::ScopedAStatus copyTo(
+      const ::aidl::android::hardware::neuralnetworks::Memory& in_dst) = 0;
   virtual ::ndk::ScopedAStatus getInterfaceVersion(int32_t* _aidl_return) = 0;
   virtual ::ndk::ScopedAStatus getInterfaceHash(std::string* _aidl_return) = 0;
-private:
+
+ private:
   static std::shared_ptr<IBuffer> default_impl;
 };
 class IBufferDefault : public IBuffer {
-public:
-  ::ndk::ScopedAStatus copyFrom(const ::aidl::android::hardware::neuralnetworks::Memory& in_src, const std::vector<int32_t>& in_dimensions) override;
-  ::ndk::ScopedAStatus copyTo(const ::aidl::android::hardware::neuralnetworks::Memory& in_dst) override;
+ public:
+  ::ndk::ScopedAStatus copyFrom(
+      const ::aidl::android::hardware::neuralnetworks::Memory& in_src,
+      const std::vector<int32_t>& in_dimensions) override;
+  ::ndk::ScopedAStatus copyTo(
+      const ::aidl::android::hardware::neuralnetworks::Memory& in_dst) override;
   ::ndk::ScopedAStatus getInterfaceVersion(int32_t* _aidl_return) override;
   ::ndk::ScopedAStatus getInterfaceHash(std::string* _aidl_return) override;
   ::ndk::SpAIBinder asBinder() override;

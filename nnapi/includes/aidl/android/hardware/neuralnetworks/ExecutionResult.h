@@ -19,41 +19,50 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class ExecutionResult {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
   bool outputSufficientSize = false;
-  std::vector<::aidl::android::hardware::neuralnetworks::OutputShape> outputShapes;
+  std::vector<::aidl::android::hardware::neuralnetworks::OutputShape>
+      outputShapes;
   ::aidl::android::hardware::neuralnetworks::Timing timing;
 
   binder_status_t readFromParcel(const AParcel* parcel);
   binder_status_t writeToParcel(AParcel* parcel) const;
 
   inline bool operator!=(const ExecutionResult& rhs) const {
-    return std::tie(outputSufficientSize, outputShapes, timing) != std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
+    return std::tie(outputSufficientSize, outputShapes, timing) !=
+           std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
   }
   inline bool operator<(const ExecutionResult& rhs) const {
-    return std::tie(outputSufficientSize, outputShapes, timing) < std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
+    return std::tie(outputSufficientSize, outputShapes, timing) <
+           std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
   }
   inline bool operator<=(const ExecutionResult& rhs) const {
-    return std::tie(outputSufficientSize, outputShapes, timing) <= std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
+    return std::tie(outputSufficientSize, outputShapes, timing) <=
+           std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
   }
   inline bool operator==(const ExecutionResult& rhs) const {
-    return std::tie(outputSufficientSize, outputShapes, timing) == std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
+    return std::tie(outputSufficientSize, outputShapes, timing) ==
+           std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
   }
   inline bool operator>(const ExecutionResult& rhs) const {
-    return std::tie(outputSufficientSize, outputShapes, timing) > std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
+    return std::tie(outputSufficientSize, outputShapes, timing) >
+           std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
   }
   inline bool operator>=(const ExecutionResult& rhs) const {
-    return std::tie(outputSufficientSize, outputShapes, timing) >= std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
+    return std::tie(outputSufficientSize, outputShapes, timing) >=
+           std::tie(rhs.outputSufficientSize, rhs.outputShapes, rhs.timing);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "ExecutionResult{";
-    os << "outputSufficientSize: " << ::android::internal::ToString(outputSufficientSize);
+    os << "outputSufficientSize: "
+       << ::android::internal::ToString(outputSufficientSize);
     os << ", outputShapes: " << ::android::internal::ToString(outputShapes);
     os << ", timing: " << ::android::internal::ToString(timing);
     os << "}";

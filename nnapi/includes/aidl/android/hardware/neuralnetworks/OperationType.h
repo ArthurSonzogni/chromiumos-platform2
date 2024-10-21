@@ -133,221 +133,221 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 [[nodiscard]] static inline std::string toString(OperationType val) {
-  switch(val) {
-  case OperationType::ADD:
-    return "ADD";
-  case OperationType::AVERAGE_POOL_2D:
-    return "AVERAGE_POOL_2D";
-  case OperationType::CONCATENATION:
-    return "CONCATENATION";
-  case OperationType::CONV_2D:
-    return "CONV_2D";
-  case OperationType::DEPTHWISE_CONV_2D:
-    return "DEPTHWISE_CONV_2D";
-  case OperationType::DEPTH_TO_SPACE:
-    return "DEPTH_TO_SPACE";
-  case OperationType::DEQUANTIZE:
-    return "DEQUANTIZE";
-  case OperationType::EMBEDDING_LOOKUP:
-    return "EMBEDDING_LOOKUP";
-  case OperationType::FLOOR:
-    return "FLOOR";
-  case OperationType::FULLY_CONNECTED:
-    return "FULLY_CONNECTED";
-  case OperationType::HASHTABLE_LOOKUP:
-    return "HASHTABLE_LOOKUP";
-  case OperationType::L2_NORMALIZATION:
-    return "L2_NORMALIZATION";
-  case OperationType::L2_POOL_2D:
-    return "L2_POOL_2D";
-  case OperationType::LOCAL_RESPONSE_NORMALIZATION:
-    return "LOCAL_RESPONSE_NORMALIZATION";
-  case OperationType::LOGISTIC:
-    return "LOGISTIC";
-  case OperationType::LSH_PROJECTION:
-    return "LSH_PROJECTION";
-  case OperationType::LSTM:
-    return "LSTM";
-  case OperationType::MAX_POOL_2D:
-    return "MAX_POOL_2D";
-  case OperationType::MUL:
-    return "MUL";
-  case OperationType::RELU:
-    return "RELU";
-  case OperationType::RELU1:
-    return "RELU1";
-  case OperationType::RELU6:
-    return "RELU6";
-  case OperationType::RESHAPE:
-    return "RESHAPE";
-  case OperationType::RESIZE_BILINEAR:
-    return "RESIZE_BILINEAR";
-  case OperationType::RNN:
-    return "RNN";
-  case OperationType::SOFTMAX:
-    return "SOFTMAX";
-  case OperationType::SPACE_TO_DEPTH:
-    return "SPACE_TO_DEPTH";
-  case OperationType::SVDF:
-    return "SVDF";
-  case OperationType::TANH:
-    return "TANH";
-  case OperationType::BATCH_TO_SPACE_ND:
-    return "BATCH_TO_SPACE_ND";
-  case OperationType::DIV:
-    return "DIV";
-  case OperationType::MEAN:
-    return "MEAN";
-  case OperationType::PAD:
-    return "PAD";
-  case OperationType::SPACE_TO_BATCH_ND:
-    return "SPACE_TO_BATCH_ND";
-  case OperationType::SQUEEZE:
-    return "SQUEEZE";
-  case OperationType::STRIDED_SLICE:
-    return "STRIDED_SLICE";
-  case OperationType::SUB:
-    return "SUB";
-  case OperationType::TRANSPOSE:
-    return "TRANSPOSE";
-  case OperationType::ABS:
-    return "ABS";
-  case OperationType::ARGMAX:
-    return "ARGMAX";
-  case OperationType::ARGMIN:
-    return "ARGMIN";
-  case OperationType::AXIS_ALIGNED_BBOX_TRANSFORM:
-    return "AXIS_ALIGNED_BBOX_TRANSFORM";
-  case OperationType::BIDIRECTIONAL_SEQUENCE_LSTM:
-    return "BIDIRECTIONAL_SEQUENCE_LSTM";
-  case OperationType::BIDIRECTIONAL_SEQUENCE_RNN:
-    return "BIDIRECTIONAL_SEQUENCE_RNN";
-  case OperationType::BOX_WITH_NMS_LIMIT:
-    return "BOX_WITH_NMS_LIMIT";
-  case OperationType::CAST:
-    return "CAST";
-  case OperationType::CHANNEL_SHUFFLE:
-    return "CHANNEL_SHUFFLE";
-  case OperationType::DETECTION_POSTPROCESSING:
-    return "DETECTION_POSTPROCESSING";
-  case OperationType::EQUAL:
-    return "EQUAL";
-  case OperationType::EXP:
-    return "EXP";
-  case OperationType::EXPAND_DIMS:
-    return "EXPAND_DIMS";
-  case OperationType::GATHER:
-    return "GATHER";
-  case OperationType::GENERATE_PROPOSALS:
-    return "GENERATE_PROPOSALS";
-  case OperationType::GREATER:
-    return "GREATER";
-  case OperationType::GREATER_EQUAL:
-    return "GREATER_EQUAL";
-  case OperationType::GROUPED_CONV_2D:
-    return "GROUPED_CONV_2D";
-  case OperationType::HEATMAP_MAX_KEYPOINT:
-    return "HEATMAP_MAX_KEYPOINT";
-  case OperationType::INSTANCE_NORMALIZATION:
-    return "INSTANCE_NORMALIZATION";
-  case OperationType::LESS:
-    return "LESS";
-  case OperationType::LESS_EQUAL:
-    return "LESS_EQUAL";
-  case OperationType::LOG:
-    return "LOG";
-  case OperationType::LOGICAL_AND:
-    return "LOGICAL_AND";
-  case OperationType::LOGICAL_NOT:
-    return "LOGICAL_NOT";
-  case OperationType::LOGICAL_OR:
-    return "LOGICAL_OR";
-  case OperationType::LOG_SOFTMAX:
-    return "LOG_SOFTMAX";
-  case OperationType::MAXIMUM:
-    return "MAXIMUM";
-  case OperationType::MINIMUM:
-    return "MINIMUM";
-  case OperationType::NEG:
-    return "NEG";
-  case OperationType::NOT_EQUAL:
-    return "NOT_EQUAL";
-  case OperationType::PAD_V2:
-    return "PAD_V2";
-  case OperationType::POW:
-    return "POW";
-  case OperationType::PRELU:
-    return "PRELU";
-  case OperationType::QUANTIZE:
-    return "QUANTIZE";
-  case OperationType::QUANTIZED_16BIT_LSTM:
-    return "QUANTIZED_16BIT_LSTM";
-  case OperationType::RANDOM_MULTINOMIAL:
-    return "RANDOM_MULTINOMIAL";
-  case OperationType::REDUCE_ALL:
-    return "REDUCE_ALL";
-  case OperationType::REDUCE_ANY:
-    return "REDUCE_ANY";
-  case OperationType::REDUCE_MAX:
-    return "REDUCE_MAX";
-  case OperationType::REDUCE_MIN:
-    return "REDUCE_MIN";
-  case OperationType::REDUCE_PROD:
-    return "REDUCE_PROD";
-  case OperationType::REDUCE_SUM:
-    return "REDUCE_SUM";
-  case OperationType::ROI_ALIGN:
-    return "ROI_ALIGN";
-  case OperationType::ROI_POOLING:
-    return "ROI_POOLING";
-  case OperationType::RSQRT:
-    return "RSQRT";
-  case OperationType::SELECT:
-    return "SELECT";
-  case OperationType::SIN:
-    return "SIN";
-  case OperationType::SLICE:
-    return "SLICE";
-  case OperationType::SPLIT:
-    return "SPLIT";
-  case OperationType::SQRT:
-    return "SQRT";
-  case OperationType::TILE:
-    return "TILE";
-  case OperationType::TOPK_V2:
-    return "TOPK_V2";
-  case OperationType::TRANSPOSE_CONV_2D:
-    return "TRANSPOSE_CONV_2D";
-  case OperationType::UNIDIRECTIONAL_SEQUENCE_LSTM:
-    return "UNIDIRECTIONAL_SEQUENCE_LSTM";
-  case OperationType::UNIDIRECTIONAL_SEQUENCE_RNN:
-    return "UNIDIRECTIONAL_SEQUENCE_RNN";
-  case OperationType::RESIZE_NEAREST_NEIGHBOR:
-    return "RESIZE_NEAREST_NEIGHBOR";
-  case OperationType::QUANTIZED_LSTM:
-    return "QUANTIZED_LSTM";
-  case OperationType::IF:
-    return "IF";
-  case OperationType::WHILE:
-    return "WHILE";
-  case OperationType::ELU:
-    return "ELU";
-  case OperationType::HARD_SWISH:
-    return "HARD_SWISH";
-  case OperationType::FILL:
-    return "FILL";
-  case OperationType::RANK:
-    return "RANK";
-  case OperationType::BATCH_MATMUL:
-    return "BATCH_MATMUL";
-  case OperationType::PACK:
-    return "PACK";
-  case OperationType::MIRROR_PAD:
-    return "MIRROR_PAD";
-  case OperationType::REVERSE:
-    return "REVERSE";
-  default:
-    return std::to_string(static_cast<int32_t>(val));
+  switch (val) {
+    case OperationType::ADD:
+      return "ADD";
+    case OperationType::AVERAGE_POOL_2D:
+      return "AVERAGE_POOL_2D";
+    case OperationType::CONCATENATION:
+      return "CONCATENATION";
+    case OperationType::CONV_2D:
+      return "CONV_2D";
+    case OperationType::DEPTHWISE_CONV_2D:
+      return "DEPTHWISE_CONV_2D";
+    case OperationType::DEPTH_TO_SPACE:
+      return "DEPTH_TO_SPACE";
+    case OperationType::DEQUANTIZE:
+      return "DEQUANTIZE";
+    case OperationType::EMBEDDING_LOOKUP:
+      return "EMBEDDING_LOOKUP";
+    case OperationType::FLOOR:
+      return "FLOOR";
+    case OperationType::FULLY_CONNECTED:
+      return "FULLY_CONNECTED";
+    case OperationType::HASHTABLE_LOOKUP:
+      return "HASHTABLE_LOOKUP";
+    case OperationType::L2_NORMALIZATION:
+      return "L2_NORMALIZATION";
+    case OperationType::L2_POOL_2D:
+      return "L2_POOL_2D";
+    case OperationType::LOCAL_RESPONSE_NORMALIZATION:
+      return "LOCAL_RESPONSE_NORMALIZATION";
+    case OperationType::LOGISTIC:
+      return "LOGISTIC";
+    case OperationType::LSH_PROJECTION:
+      return "LSH_PROJECTION";
+    case OperationType::LSTM:
+      return "LSTM";
+    case OperationType::MAX_POOL_2D:
+      return "MAX_POOL_2D";
+    case OperationType::MUL:
+      return "MUL";
+    case OperationType::RELU:
+      return "RELU";
+    case OperationType::RELU1:
+      return "RELU1";
+    case OperationType::RELU6:
+      return "RELU6";
+    case OperationType::RESHAPE:
+      return "RESHAPE";
+    case OperationType::RESIZE_BILINEAR:
+      return "RESIZE_BILINEAR";
+    case OperationType::RNN:
+      return "RNN";
+    case OperationType::SOFTMAX:
+      return "SOFTMAX";
+    case OperationType::SPACE_TO_DEPTH:
+      return "SPACE_TO_DEPTH";
+    case OperationType::SVDF:
+      return "SVDF";
+    case OperationType::TANH:
+      return "TANH";
+    case OperationType::BATCH_TO_SPACE_ND:
+      return "BATCH_TO_SPACE_ND";
+    case OperationType::DIV:
+      return "DIV";
+    case OperationType::MEAN:
+      return "MEAN";
+    case OperationType::PAD:
+      return "PAD";
+    case OperationType::SPACE_TO_BATCH_ND:
+      return "SPACE_TO_BATCH_ND";
+    case OperationType::SQUEEZE:
+      return "SQUEEZE";
+    case OperationType::STRIDED_SLICE:
+      return "STRIDED_SLICE";
+    case OperationType::SUB:
+      return "SUB";
+    case OperationType::TRANSPOSE:
+      return "TRANSPOSE";
+    case OperationType::ABS:
+      return "ABS";
+    case OperationType::ARGMAX:
+      return "ARGMAX";
+    case OperationType::ARGMIN:
+      return "ARGMIN";
+    case OperationType::AXIS_ALIGNED_BBOX_TRANSFORM:
+      return "AXIS_ALIGNED_BBOX_TRANSFORM";
+    case OperationType::BIDIRECTIONAL_SEQUENCE_LSTM:
+      return "BIDIRECTIONAL_SEQUENCE_LSTM";
+    case OperationType::BIDIRECTIONAL_SEQUENCE_RNN:
+      return "BIDIRECTIONAL_SEQUENCE_RNN";
+    case OperationType::BOX_WITH_NMS_LIMIT:
+      return "BOX_WITH_NMS_LIMIT";
+    case OperationType::CAST:
+      return "CAST";
+    case OperationType::CHANNEL_SHUFFLE:
+      return "CHANNEL_SHUFFLE";
+    case OperationType::DETECTION_POSTPROCESSING:
+      return "DETECTION_POSTPROCESSING";
+    case OperationType::EQUAL:
+      return "EQUAL";
+    case OperationType::EXP:
+      return "EXP";
+    case OperationType::EXPAND_DIMS:
+      return "EXPAND_DIMS";
+    case OperationType::GATHER:
+      return "GATHER";
+    case OperationType::GENERATE_PROPOSALS:
+      return "GENERATE_PROPOSALS";
+    case OperationType::GREATER:
+      return "GREATER";
+    case OperationType::GREATER_EQUAL:
+      return "GREATER_EQUAL";
+    case OperationType::GROUPED_CONV_2D:
+      return "GROUPED_CONV_2D";
+    case OperationType::HEATMAP_MAX_KEYPOINT:
+      return "HEATMAP_MAX_KEYPOINT";
+    case OperationType::INSTANCE_NORMALIZATION:
+      return "INSTANCE_NORMALIZATION";
+    case OperationType::LESS:
+      return "LESS";
+    case OperationType::LESS_EQUAL:
+      return "LESS_EQUAL";
+    case OperationType::LOG:
+      return "LOG";
+    case OperationType::LOGICAL_AND:
+      return "LOGICAL_AND";
+    case OperationType::LOGICAL_NOT:
+      return "LOGICAL_NOT";
+    case OperationType::LOGICAL_OR:
+      return "LOGICAL_OR";
+    case OperationType::LOG_SOFTMAX:
+      return "LOG_SOFTMAX";
+    case OperationType::MAXIMUM:
+      return "MAXIMUM";
+    case OperationType::MINIMUM:
+      return "MINIMUM";
+    case OperationType::NEG:
+      return "NEG";
+    case OperationType::NOT_EQUAL:
+      return "NOT_EQUAL";
+    case OperationType::PAD_V2:
+      return "PAD_V2";
+    case OperationType::POW:
+      return "POW";
+    case OperationType::PRELU:
+      return "PRELU";
+    case OperationType::QUANTIZE:
+      return "QUANTIZE";
+    case OperationType::QUANTIZED_16BIT_LSTM:
+      return "QUANTIZED_16BIT_LSTM";
+    case OperationType::RANDOM_MULTINOMIAL:
+      return "RANDOM_MULTINOMIAL";
+    case OperationType::REDUCE_ALL:
+      return "REDUCE_ALL";
+    case OperationType::REDUCE_ANY:
+      return "REDUCE_ANY";
+    case OperationType::REDUCE_MAX:
+      return "REDUCE_MAX";
+    case OperationType::REDUCE_MIN:
+      return "REDUCE_MIN";
+    case OperationType::REDUCE_PROD:
+      return "REDUCE_PROD";
+    case OperationType::REDUCE_SUM:
+      return "REDUCE_SUM";
+    case OperationType::ROI_ALIGN:
+      return "ROI_ALIGN";
+    case OperationType::ROI_POOLING:
+      return "ROI_POOLING";
+    case OperationType::RSQRT:
+      return "RSQRT";
+    case OperationType::SELECT:
+      return "SELECT";
+    case OperationType::SIN:
+      return "SIN";
+    case OperationType::SLICE:
+      return "SLICE";
+    case OperationType::SPLIT:
+      return "SPLIT";
+    case OperationType::SQRT:
+      return "SQRT";
+    case OperationType::TILE:
+      return "TILE";
+    case OperationType::TOPK_V2:
+      return "TOPK_V2";
+    case OperationType::TRANSPOSE_CONV_2D:
+      return "TRANSPOSE_CONV_2D";
+    case OperationType::UNIDIRECTIONAL_SEQUENCE_LSTM:
+      return "UNIDIRECTIONAL_SEQUENCE_LSTM";
+    case OperationType::UNIDIRECTIONAL_SEQUENCE_RNN:
+      return "UNIDIRECTIONAL_SEQUENCE_RNN";
+    case OperationType::RESIZE_NEAREST_NEIGHBOR:
+      return "RESIZE_NEAREST_NEIGHBOR";
+    case OperationType::QUANTIZED_LSTM:
+      return "QUANTIZED_LSTM";
+    case OperationType::IF:
+      return "IF";
+    case OperationType::WHILE:
+      return "WHILE";
+    case OperationType::ELU:
+      return "ELU";
+    case OperationType::HARD_SWISH:
+      return "HARD_SWISH";
+    case OperationType::FILL:
+      return "FILL";
+    case OperationType::RANK:
+      return "RANK";
+    case OperationType::BATCH_MATMUL:
+      return "BATCH_MATMUL";
+    case OperationType::PACK:
+      return "PACK";
+    case OperationType::MIRROR_PAD:
+      return "MIRROR_PAD";
+    case OperationType::REVERSE:
+      return "REVERSE";
+    default:
+      return std::to_string(static_cast<int32_t>(val));
   }
 }
 }  // namespace neuralnetworks
@@ -359,113 +359,137 @@ namespace internal {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++17-extensions"
 template <>
-constexpr inline std::array<aidl::android::hardware::neuralnetworks::OperationType, 106> enum_values<aidl::android::hardware::neuralnetworks::OperationType> = {
-  aidl::android::hardware::neuralnetworks::OperationType::ADD,
-  aidl::android::hardware::neuralnetworks::OperationType::AVERAGE_POOL_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::CONCATENATION,
-  aidl::android::hardware::neuralnetworks::OperationType::CONV_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::DEPTHWISE_CONV_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::DEPTH_TO_SPACE,
-  aidl::android::hardware::neuralnetworks::OperationType::DEQUANTIZE,
-  aidl::android::hardware::neuralnetworks::OperationType::EMBEDDING_LOOKUP,
-  aidl::android::hardware::neuralnetworks::OperationType::FLOOR,
-  aidl::android::hardware::neuralnetworks::OperationType::FULLY_CONNECTED,
-  aidl::android::hardware::neuralnetworks::OperationType::HASHTABLE_LOOKUP,
-  aidl::android::hardware::neuralnetworks::OperationType::L2_NORMALIZATION,
-  aidl::android::hardware::neuralnetworks::OperationType::L2_POOL_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::LOCAL_RESPONSE_NORMALIZATION,
-  aidl::android::hardware::neuralnetworks::OperationType::LOGISTIC,
-  aidl::android::hardware::neuralnetworks::OperationType::LSH_PROJECTION,
-  aidl::android::hardware::neuralnetworks::OperationType::LSTM,
-  aidl::android::hardware::neuralnetworks::OperationType::MAX_POOL_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::MUL,
-  aidl::android::hardware::neuralnetworks::OperationType::RELU,
-  aidl::android::hardware::neuralnetworks::OperationType::RELU1,
-  aidl::android::hardware::neuralnetworks::OperationType::RELU6,
-  aidl::android::hardware::neuralnetworks::OperationType::RESHAPE,
-  aidl::android::hardware::neuralnetworks::OperationType::RESIZE_BILINEAR,
-  aidl::android::hardware::neuralnetworks::OperationType::RNN,
-  aidl::android::hardware::neuralnetworks::OperationType::SOFTMAX,
-  aidl::android::hardware::neuralnetworks::OperationType::SPACE_TO_DEPTH,
-  aidl::android::hardware::neuralnetworks::OperationType::SVDF,
-  aidl::android::hardware::neuralnetworks::OperationType::TANH,
-  aidl::android::hardware::neuralnetworks::OperationType::BATCH_TO_SPACE_ND,
-  aidl::android::hardware::neuralnetworks::OperationType::DIV,
-  aidl::android::hardware::neuralnetworks::OperationType::MEAN,
-  aidl::android::hardware::neuralnetworks::OperationType::PAD,
-  aidl::android::hardware::neuralnetworks::OperationType::SPACE_TO_BATCH_ND,
-  aidl::android::hardware::neuralnetworks::OperationType::SQUEEZE,
-  aidl::android::hardware::neuralnetworks::OperationType::STRIDED_SLICE,
-  aidl::android::hardware::neuralnetworks::OperationType::SUB,
-  aidl::android::hardware::neuralnetworks::OperationType::TRANSPOSE,
-  aidl::android::hardware::neuralnetworks::OperationType::ABS,
-  aidl::android::hardware::neuralnetworks::OperationType::ARGMAX,
-  aidl::android::hardware::neuralnetworks::OperationType::ARGMIN,
-  aidl::android::hardware::neuralnetworks::OperationType::AXIS_ALIGNED_BBOX_TRANSFORM,
-  aidl::android::hardware::neuralnetworks::OperationType::BIDIRECTIONAL_SEQUENCE_LSTM,
-  aidl::android::hardware::neuralnetworks::OperationType::BIDIRECTIONAL_SEQUENCE_RNN,
-  aidl::android::hardware::neuralnetworks::OperationType::BOX_WITH_NMS_LIMIT,
-  aidl::android::hardware::neuralnetworks::OperationType::CAST,
-  aidl::android::hardware::neuralnetworks::OperationType::CHANNEL_SHUFFLE,
-  aidl::android::hardware::neuralnetworks::OperationType::DETECTION_POSTPROCESSING,
-  aidl::android::hardware::neuralnetworks::OperationType::EQUAL,
-  aidl::android::hardware::neuralnetworks::OperationType::EXP,
-  aidl::android::hardware::neuralnetworks::OperationType::EXPAND_DIMS,
-  aidl::android::hardware::neuralnetworks::OperationType::GATHER,
-  aidl::android::hardware::neuralnetworks::OperationType::GENERATE_PROPOSALS,
-  aidl::android::hardware::neuralnetworks::OperationType::GREATER,
-  aidl::android::hardware::neuralnetworks::OperationType::GREATER_EQUAL,
-  aidl::android::hardware::neuralnetworks::OperationType::GROUPED_CONV_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::HEATMAP_MAX_KEYPOINT,
-  aidl::android::hardware::neuralnetworks::OperationType::INSTANCE_NORMALIZATION,
-  aidl::android::hardware::neuralnetworks::OperationType::LESS,
-  aidl::android::hardware::neuralnetworks::OperationType::LESS_EQUAL,
-  aidl::android::hardware::neuralnetworks::OperationType::LOG,
-  aidl::android::hardware::neuralnetworks::OperationType::LOGICAL_AND,
-  aidl::android::hardware::neuralnetworks::OperationType::LOGICAL_NOT,
-  aidl::android::hardware::neuralnetworks::OperationType::LOGICAL_OR,
-  aidl::android::hardware::neuralnetworks::OperationType::LOG_SOFTMAX,
-  aidl::android::hardware::neuralnetworks::OperationType::MAXIMUM,
-  aidl::android::hardware::neuralnetworks::OperationType::MINIMUM,
-  aidl::android::hardware::neuralnetworks::OperationType::NEG,
-  aidl::android::hardware::neuralnetworks::OperationType::NOT_EQUAL,
-  aidl::android::hardware::neuralnetworks::OperationType::PAD_V2,
-  aidl::android::hardware::neuralnetworks::OperationType::POW,
-  aidl::android::hardware::neuralnetworks::OperationType::PRELU,
-  aidl::android::hardware::neuralnetworks::OperationType::QUANTIZE,
-  aidl::android::hardware::neuralnetworks::OperationType::QUANTIZED_16BIT_LSTM,
-  aidl::android::hardware::neuralnetworks::OperationType::RANDOM_MULTINOMIAL,
-  aidl::android::hardware::neuralnetworks::OperationType::REDUCE_ALL,
-  aidl::android::hardware::neuralnetworks::OperationType::REDUCE_ANY,
-  aidl::android::hardware::neuralnetworks::OperationType::REDUCE_MAX,
-  aidl::android::hardware::neuralnetworks::OperationType::REDUCE_MIN,
-  aidl::android::hardware::neuralnetworks::OperationType::REDUCE_PROD,
-  aidl::android::hardware::neuralnetworks::OperationType::REDUCE_SUM,
-  aidl::android::hardware::neuralnetworks::OperationType::ROI_ALIGN,
-  aidl::android::hardware::neuralnetworks::OperationType::ROI_POOLING,
-  aidl::android::hardware::neuralnetworks::OperationType::RSQRT,
-  aidl::android::hardware::neuralnetworks::OperationType::SELECT,
-  aidl::android::hardware::neuralnetworks::OperationType::SIN,
-  aidl::android::hardware::neuralnetworks::OperationType::SLICE,
-  aidl::android::hardware::neuralnetworks::OperationType::SPLIT,
-  aidl::android::hardware::neuralnetworks::OperationType::SQRT,
-  aidl::android::hardware::neuralnetworks::OperationType::TILE,
-  aidl::android::hardware::neuralnetworks::OperationType::TOPK_V2,
-  aidl::android::hardware::neuralnetworks::OperationType::TRANSPOSE_CONV_2D,
-  aidl::android::hardware::neuralnetworks::OperationType::UNIDIRECTIONAL_SEQUENCE_LSTM,
-  aidl::android::hardware::neuralnetworks::OperationType::UNIDIRECTIONAL_SEQUENCE_RNN,
-  aidl::android::hardware::neuralnetworks::OperationType::RESIZE_NEAREST_NEIGHBOR,
-  aidl::android::hardware::neuralnetworks::OperationType::QUANTIZED_LSTM,
-  aidl::android::hardware::neuralnetworks::OperationType::IF,
-  aidl::android::hardware::neuralnetworks::OperationType::WHILE,
-  aidl::android::hardware::neuralnetworks::OperationType::ELU,
-  aidl::android::hardware::neuralnetworks::OperationType::HARD_SWISH,
-  aidl::android::hardware::neuralnetworks::OperationType::FILL,
-  aidl::android::hardware::neuralnetworks::OperationType::RANK,
-  aidl::android::hardware::neuralnetworks::OperationType::BATCH_MATMUL,
-  aidl::android::hardware::neuralnetworks::OperationType::PACK,
-  aidl::android::hardware::neuralnetworks::OperationType::MIRROR_PAD,
-  aidl::android::hardware::neuralnetworks::OperationType::REVERSE,
+constexpr inline std::array<
+    aidl::android::hardware::neuralnetworks::OperationType,
+    106>
+    enum_values<aidl::android::hardware::neuralnetworks::OperationType> = {
+        aidl::android::hardware::neuralnetworks::OperationType::ADD,
+        aidl::android::hardware::neuralnetworks::OperationType::AVERAGE_POOL_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::CONCATENATION,
+        aidl::android::hardware::neuralnetworks::OperationType::CONV_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            DEPTHWISE_CONV_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::DEPTH_TO_SPACE,
+        aidl::android::hardware::neuralnetworks::OperationType::DEQUANTIZE,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            EMBEDDING_LOOKUP,
+        aidl::android::hardware::neuralnetworks::OperationType::FLOOR,
+        aidl::android::hardware::neuralnetworks::OperationType::FULLY_CONNECTED,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            HASHTABLE_LOOKUP,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            L2_NORMALIZATION,
+        aidl::android::hardware::neuralnetworks::OperationType::L2_POOL_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            LOCAL_RESPONSE_NORMALIZATION,
+        aidl::android::hardware::neuralnetworks::OperationType::LOGISTIC,
+        aidl::android::hardware::neuralnetworks::OperationType::LSH_PROJECTION,
+        aidl::android::hardware::neuralnetworks::OperationType::LSTM,
+        aidl::android::hardware::neuralnetworks::OperationType::MAX_POOL_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::MUL,
+        aidl::android::hardware::neuralnetworks::OperationType::RELU,
+        aidl::android::hardware::neuralnetworks::OperationType::RELU1,
+        aidl::android::hardware::neuralnetworks::OperationType::RELU6,
+        aidl::android::hardware::neuralnetworks::OperationType::RESHAPE,
+        aidl::android::hardware::neuralnetworks::OperationType::RESIZE_BILINEAR,
+        aidl::android::hardware::neuralnetworks::OperationType::RNN,
+        aidl::android::hardware::neuralnetworks::OperationType::SOFTMAX,
+        aidl::android::hardware::neuralnetworks::OperationType::SPACE_TO_DEPTH,
+        aidl::android::hardware::neuralnetworks::OperationType::SVDF,
+        aidl::android::hardware::neuralnetworks::OperationType::TANH,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            BATCH_TO_SPACE_ND,
+        aidl::android::hardware::neuralnetworks::OperationType::DIV,
+        aidl::android::hardware::neuralnetworks::OperationType::MEAN,
+        aidl::android::hardware::neuralnetworks::OperationType::PAD,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            SPACE_TO_BATCH_ND,
+        aidl::android::hardware::neuralnetworks::OperationType::SQUEEZE,
+        aidl::android::hardware::neuralnetworks::OperationType::STRIDED_SLICE,
+        aidl::android::hardware::neuralnetworks::OperationType::SUB,
+        aidl::android::hardware::neuralnetworks::OperationType::TRANSPOSE,
+        aidl::android::hardware::neuralnetworks::OperationType::ABS,
+        aidl::android::hardware::neuralnetworks::OperationType::ARGMAX,
+        aidl::android::hardware::neuralnetworks::OperationType::ARGMIN,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            AXIS_ALIGNED_BBOX_TRANSFORM,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            BIDIRECTIONAL_SEQUENCE_LSTM,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            BIDIRECTIONAL_SEQUENCE_RNN,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            BOX_WITH_NMS_LIMIT,
+        aidl::android::hardware::neuralnetworks::OperationType::CAST,
+        aidl::android::hardware::neuralnetworks::OperationType::CHANNEL_SHUFFLE,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            DETECTION_POSTPROCESSING,
+        aidl::android::hardware::neuralnetworks::OperationType::EQUAL,
+        aidl::android::hardware::neuralnetworks::OperationType::EXP,
+        aidl::android::hardware::neuralnetworks::OperationType::EXPAND_DIMS,
+        aidl::android::hardware::neuralnetworks::OperationType::GATHER,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            GENERATE_PROPOSALS,
+        aidl::android::hardware::neuralnetworks::OperationType::GREATER,
+        aidl::android::hardware::neuralnetworks::OperationType::GREATER_EQUAL,
+        aidl::android::hardware::neuralnetworks::OperationType::GROUPED_CONV_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            HEATMAP_MAX_KEYPOINT,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            INSTANCE_NORMALIZATION,
+        aidl::android::hardware::neuralnetworks::OperationType::LESS,
+        aidl::android::hardware::neuralnetworks::OperationType::LESS_EQUAL,
+        aidl::android::hardware::neuralnetworks::OperationType::LOG,
+        aidl::android::hardware::neuralnetworks::OperationType::LOGICAL_AND,
+        aidl::android::hardware::neuralnetworks::OperationType::LOGICAL_NOT,
+        aidl::android::hardware::neuralnetworks::OperationType::LOGICAL_OR,
+        aidl::android::hardware::neuralnetworks::OperationType::LOG_SOFTMAX,
+        aidl::android::hardware::neuralnetworks::OperationType::MAXIMUM,
+        aidl::android::hardware::neuralnetworks::OperationType::MINIMUM,
+        aidl::android::hardware::neuralnetworks::OperationType::NEG,
+        aidl::android::hardware::neuralnetworks::OperationType::NOT_EQUAL,
+        aidl::android::hardware::neuralnetworks::OperationType::PAD_V2,
+        aidl::android::hardware::neuralnetworks::OperationType::POW,
+        aidl::android::hardware::neuralnetworks::OperationType::PRELU,
+        aidl::android::hardware::neuralnetworks::OperationType::QUANTIZE,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            QUANTIZED_16BIT_LSTM,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            RANDOM_MULTINOMIAL,
+        aidl::android::hardware::neuralnetworks::OperationType::REDUCE_ALL,
+        aidl::android::hardware::neuralnetworks::OperationType::REDUCE_ANY,
+        aidl::android::hardware::neuralnetworks::OperationType::REDUCE_MAX,
+        aidl::android::hardware::neuralnetworks::OperationType::REDUCE_MIN,
+        aidl::android::hardware::neuralnetworks::OperationType::REDUCE_PROD,
+        aidl::android::hardware::neuralnetworks::OperationType::REDUCE_SUM,
+        aidl::android::hardware::neuralnetworks::OperationType::ROI_ALIGN,
+        aidl::android::hardware::neuralnetworks::OperationType::ROI_POOLING,
+        aidl::android::hardware::neuralnetworks::OperationType::RSQRT,
+        aidl::android::hardware::neuralnetworks::OperationType::SELECT,
+        aidl::android::hardware::neuralnetworks::OperationType::SIN,
+        aidl::android::hardware::neuralnetworks::OperationType::SLICE,
+        aidl::android::hardware::neuralnetworks::OperationType::SPLIT,
+        aidl::android::hardware::neuralnetworks::OperationType::SQRT,
+        aidl::android::hardware::neuralnetworks::OperationType::TILE,
+        aidl::android::hardware::neuralnetworks::OperationType::TOPK_V2,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            TRANSPOSE_CONV_2D,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            UNIDIRECTIONAL_SEQUENCE_LSTM,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            UNIDIRECTIONAL_SEQUENCE_RNN,
+        aidl::android::hardware::neuralnetworks::OperationType::
+            RESIZE_NEAREST_NEIGHBOR,
+        aidl::android::hardware::neuralnetworks::OperationType::QUANTIZED_LSTM,
+        aidl::android::hardware::neuralnetworks::OperationType::IF,
+        aidl::android::hardware::neuralnetworks::OperationType::WHILE,
+        aidl::android::hardware::neuralnetworks::OperationType::ELU,
+        aidl::android::hardware::neuralnetworks::OperationType::HARD_SWISH,
+        aidl::android::hardware::neuralnetworks::OperationType::FILL,
+        aidl::android::hardware::neuralnetworks::OperationType::RANK,
+        aidl::android::hardware::neuralnetworks::OperationType::BATCH_MATMUL,
+        aidl::android::hardware::neuralnetworks::OperationType::PACK,
+        aidl::android::hardware::neuralnetworks::OperationType::MIRROR_PAD,
+        aidl::android::hardware::neuralnetworks::OperationType::REVERSE,
 };
 #pragma clang diagnostic pop
 }  // namespace internal

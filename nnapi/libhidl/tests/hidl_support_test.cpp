@@ -26,9 +26,11 @@
 
 template <typename T, typename S>
 static inline bool isArrayEqual(const T arr1, const S arr2, size_t size) {
-  for (size_t i = 0; i < size; i++)
-    if (arr1[i] != arr2[i])
+  for (size_t i = 0; i < size; i++) {
+    if (arr1[i] != arr2[i]) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -37,10 +39,13 @@ static inline bool is2dArrayEqual(const T arr1,
                                   const S arr2,
                                   size_t size1,
                                   size_t size2) {
-  for (size_t i = 0; i < size1; i++)
-    for (size_t j = 0; j < size2; j++)
-      if (arr1[i][j] != arr2[i][j])
+  for (size_t i = 0; i < size1; i++) {
+    for (size_t j = 0; j < size2; j++) {
+      if (arr1[i][j] != arr2[i][j]) {
         return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -504,8 +509,8 @@ TEST(LibHidlTest, ReturnDies) {
   using ::android::hardware::Status;
 
   EXPECT_DEATH({ Return<void>(Status::fromStatusT(-EBUSY)); }, "");
-  EXPECT_DEATH({ Return<void>(Status::fromStatusT(-EBUSY)).isDeadObject(); },
-               "");
+  EXPECT_DEATH(
+      { Return<void>(Status::fromStatusT(-EBUSY)).isDeadObject(); }, "");
   EXPECT_DEATH(
       {
         Return<int> ret = Return<int>(Status::fromStatusT(-EBUSY));

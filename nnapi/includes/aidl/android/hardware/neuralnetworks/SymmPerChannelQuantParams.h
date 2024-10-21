@@ -17,7 +17,7 @@ namespace android {
 namespace hardware {
 namespace neuralnetworks {
 class SymmPerChannelQuantParams {
-public:
+ public:
   typedef std::false_type fixed_size;
   static const char* descriptor;
 
@@ -46,7 +46,8 @@ public:
     return std::tie(scales, channelDim) >= std::tie(rhs.scales, rhs.channelDim);
   }
 
-  static const ::ndk::parcelable_stability_t _aidl_stability = ::ndk::STABILITY_VINTF;
+  static const ::ndk::parcelable_stability_t _aidl_stability =
+      ::ndk::STABILITY_VINTF;
   inline std::string toString() const {
     std::ostringstream os;
     os << "SymmPerChannelQuantParams{";
