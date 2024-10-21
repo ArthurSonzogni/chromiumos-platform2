@@ -101,10 +101,11 @@ void GrowableIOBuffer::SetCapacity(size_t capacity) {
   // realloc will crash if it fails.
   real_data_.reset(static_cast<char*>(realloc(real_data_.release(), capacity)));
   capacity_ = capacity;
-  if (offset_ > capacity)
+  if (offset_ > capacity) {
     set_offset(capacity);
-  else
+  } else {
     set_offset(offset_);  // The pointer may have changed.
+  }
 }
 
 void GrowableIOBuffer::set_offset(size_t offset) {

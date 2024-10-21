@@ -28,8 +28,9 @@ class NDProxyForFuzzer : public NDProxy {
     memcpy(buffer, data, size);
     const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(buffer, size);
     // Just to consume GetPrefixInfoOption() output
-    if (prefix_info != nullptr)
+    if (prefix_info != nullptr) {
       buffer[0] = prefix_info->nd_opt_pi_prefix_len;
+    }
 
     ReplaceMacInIcmpOption(buffer, size, nd_hdr_len, opt_type, guest_if_mac);
 

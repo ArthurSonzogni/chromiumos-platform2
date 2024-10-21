@@ -190,8 +190,9 @@ std::vector<uint8_t> BuildRfc1034Name(const size_t name_len,
   }
 
   // Omit the final dot
-  if (!dotted_str->empty())
+  if (!dotted_str->empty()) {
     dotted_str->pop_back();
+  }
 
   CHECK(data.size() == name_len);
   return data;

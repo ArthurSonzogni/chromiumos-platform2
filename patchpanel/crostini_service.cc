@@ -142,8 +142,9 @@ CrostiniService::CrostiniService(AddressManager* addr_mgr,
 }
 
 CrostiniService::~CrostiniService() {
-  if (bus_)
+  if (bus_) {
     bus_->ShutdownAndBlock();
+  }
 }
 
 const CrostiniService::CrostiniDevice* CrostiniService::Start(
@@ -364,8 +365,9 @@ void CrostiniService::CheckAdbSideloadingStatus() {
 
   dbus::MessageReader reader(dbus_response.value().get());
   reader.PopBool(&adb_sideloading_enabled_);
-  if (!adb_sideloading_enabled_)
+  if (!adb_sideloading_enabled_) {
     return;
+  }
 
   // If ADB sideloading is enabled, start ADB forwarding on all configured
   // Crostini's TAP interfaces.

@@ -100,15 +100,18 @@ bool ParseOutput(const std::string& output,
     // Finds the chain name line.
     std::string direction, ifname;
     while (it != lines.cend() &&
-           !RE2::FullMatch(*it, *kChainLine, &direction, &ifname))
+           !RE2::FullMatch(*it, *kChainLine, &direction, &ifname)) {
       it++;
+    }
 
-    if (it == lines.cend())
+    if (it == lines.cend()) {
       break;
+    }
 
     // Skips this group if this ifname is not requested.
-    if (!devices.empty() && devices.find(ifname) == devices.end())
+    if (!devices.empty() && devices.find(ifname) == devices.end()) {
       continue;
+    }
 
     // Skips if this chain is for multicast traffic counting.
     if (ifname.find("mdns") != std::string::npos ||
@@ -141,8 +144,9 @@ bool ParseOutput(const std::string& output,
         return false;
       }
 
-      if (pkts == 0 && bytes == 0)
+      if (pkts == 0 && bytes == 0) {
         continue;
+      }
 
       CounterKey key = {};
       key.ifname = ifname;
@@ -158,8 +162,9 @@ bool ParseOutput(const std::string& output,
       }
     }
 
-    if (it == lines.cend())
+    if (it == lines.cend()) {
       break;
+    }
   }
   return true;
 }

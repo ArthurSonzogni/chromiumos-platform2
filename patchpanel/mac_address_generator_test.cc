@@ -59,8 +59,9 @@ TEST(MacAddressGenerator, Stable) {
               addrs[i].ToBytes()[0] & static_cast<uint8_t>(0x02));
     EXPECT_EQ(static_cast<uint8_t>(0),
               addrs[i].ToBytes()[0] & static_cast<uint8_t>(0x01));
-    if (i == 255)
+    if (i == 255) {
       break;
+    }
   }
   EXPECT_EQ(addrs.size(), 256);
   for (const auto addr : addrs) {

@@ -87,8 +87,9 @@ void FakeClient::GetTrafficCounters(const std::set<std::string>& devices,
 
   std::vector<Client::TrafficCounter> return_counters;
   for (const auto& counter : stored_traffic_counters_) {
-    if (devices.find(counter.ifname) != devices.end())
+    if (devices.find(counter.ifname) != devices.end()) {
       return_counters.push_back(counter);
+    }
   }
 
   std::move(callback).Run({return_counters.begin(), return_counters.end()});
@@ -187,8 +188,9 @@ bool FakeClient::TagSocket(
 
 void FakeClient::TriggerNeighborReachabilityEvent(
     const NeighborReachabilityEvent& signal) {
-  for (const auto& handler : neighbor_event_handlers_)
+  for (const auto& handler : neighbor_event_handlers_) {
     handler.Run(signal);
+  }
 }
 
 }  // namespace patchpanel

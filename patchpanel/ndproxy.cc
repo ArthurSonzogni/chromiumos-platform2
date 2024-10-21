@@ -123,15 +123,18 @@ std::optional<net_base::IPv6CIDR> NDOptPrefixInfoToCIDR(
   const icmp6_hdr* icmp6 =
       reinterpret_cast<const icmp6_hdr*>(packet + sizeof(ip6_hdr));
 
-  if (len < sizeof(ip6_hdr) + sizeof(icmp6_hdr))
+  if (len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return "<packet too small>";
+  }
 
-  if (ip6->ip6_nxt != IPPROTO_ICMPV6)
+  if (ip6->ip6_nxt != IPPROTO_ICMPV6) {
     return "<not ICMP6 packet>";
+  }
 
   if (icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
-      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
+      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT) {
     return "<not ND ICMP6 packet>";
+  }
 
   std::stringstream ss;
   ss << Icmp6TypeName(icmp6->icmp6_type) << " "
@@ -349,8 +352,9 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>(in_packet + sizeof(ip6_hdr));
 
   if (ip6->ip6_nxt != IPPROTO_ICMPV6 || icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
-      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
+      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT) {
     return;
+  }
 
   VLOG_IF(2, (icmp6->icmp6_type == ND_ROUTER_SOLICIT ||
               icmp6->icmp6_type == ND_ROUTER_ADVERT))
@@ -374,8 +378,9 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   // Translate the NDP frame and send it through proxy interface
   auto map_entry =
       MapForType(icmp6->icmp6_type)->find(recv_ll_addr.sll_ifindex);
-  if (map_entry == MapForType(icmp6->icmp6_type)->end())
+  if (map_entry == MapForType(icmp6->icmp6_type)->end()) {
     return;
+  }
 
   const auto& target_ifs = map_entry->second;
   for (int target_if : target_ifs) {
@@ -517,11 +522,13 @@ nd_opt_prefix_info* NDProxy::GetPrefixInfoOption(uint8_t* icmp6,
   uint8_t* ptr = start + sizeof(nd_router_advert);
   while (ptr + offsetof(nd_opt_hdr, nd_opt_len) < end) {
     nd_opt_hdr* opt = reinterpret_cast<nd_opt_hdr*>(ptr);
-    if (opt->nd_opt_len == 0)
+    if (opt->nd_opt_len == 0) {
       return nullptr;
+    }
     ptr += opt->nd_opt_len << 3;  // nd_opt_len is in 8 bytes
-    if (ptr > end)
+    if (ptr > end) {
       return nullptr;
+    }
     if (opt->nd_opt_type == ND_OPT_PREFIX_INFORMATION &&
         opt->nd_opt_len << 3 == sizeof(nd_opt_prefix_info)) {
       return reinterpret_cast<nd_opt_prefix_info*>(opt);

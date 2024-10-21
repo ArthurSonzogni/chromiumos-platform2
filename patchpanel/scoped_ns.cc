@@ -66,8 +66,9 @@ ScopedNS::ScopedNS(int nstype,
 
 ScopedNS::~ScopedNS() {
   if (valid_) {
-    if (setns(self_fd_.get(), nstype_) != 0)
+    if (setns(self_fd_.get(), nstype_) != 0) {
       PLOG(FATAL) << "Could not re-enter host namespace type " << nstype_;
+    }
   }
 }
 

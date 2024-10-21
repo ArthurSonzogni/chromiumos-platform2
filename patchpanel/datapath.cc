@@ -347,13 +347,15 @@ bool Datapath::NetnsAttachName(std::string_view netns_name, pid_t netns_pid) {
   // Try first to delete any netns with name |netns_name| in case patchpanel
   // did not exit cleanly.
   if (process_runner_->ip_netns_delete(netns_name,
-                                       /*log_failures=*/false) == 0)
+                                       /*log_failures=*/false) == 0) {
     LOG(INFO) << "Deleted left over network namespace name " << netns_name;
+  }
 
-  if (netns_pid == ConnectedNamespace::kNewNetnsPid)
+  if (netns_pid == ConnectedNamespace::kNewNetnsPid) {
     return process_runner_->ip_netns_add(netns_name) == 0;
-  else
+  } else {
     return process_runner_->ip_netns_attach(netns_name, netns_pid) == 0;
+  }
 }
 
 bool Datapath::NetnsDeleteName(std::string_view netns_name) {
@@ -976,8 +978,9 @@ void Datapath::AddDownstreamInterfaceRules(
   std::string subchain = PreroutingSubChainName(int_ifname);
   // This can fail if patchpanel did not stopped correctly or failed to cleanup
   // the chain when |int_ifname| was previously deleted.
-  if (!AddChain(IpFamily::kDual, Iptables::Table::kMangle, subchain))
+  if (!AddChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
     LOG(ERROR) << "Failed to create mangle chain " << subchain;
+  }
   // Make sure the chain is empty if patchpanel did not cleaned correctly that
   // chain before.
   if (!FlushChain(IpFamily::kDual, Iptables::Table::kMangle, subchain)) {
@@ -1138,8 +1141,9 @@ void Datapath::StartRoutingDeviceAsUser(
 
   // Forwarded traffic from downstream interfaces routed to the logical
   // default network is eligible to be routed through a VPN.
-  if (!ModifyFwmarkVpnJumpRule(subchain, Iptables::Command::kA, {}, {}))
+  if (!ModifyFwmarkVpnJumpRule(subchain, Iptables::Command::kA, {}, {})) {
     LOG(ERROR) << "Failed to add jump rule to VPN chain for " << int_ifname;
+  }
 }
 
 void Datapath::StopRoutingDevice(std::string_view int_ifname,
@@ -1250,8 +1254,9 @@ bool Datapath::AddRedirectDnsRule(const ShillClient::Device& shill_device,
 bool Datapath::RemoveRedirectDnsRule(const ShillClient::Device& shill_device) {
   std::string_view ifname = shill_device.ifname;
   const auto it = physical_dns_addresses_.find(ifname);
-  if (it == physical_dns_addresses_.end())
+  if (it == physical_dns_addresses_.end()) {
     return true;
+  }
 
   bool success = true;
   success &= ModifyRedirectDnsDNATRule(Iptables::Command::kD, "tcp", ifname,
@@ -1512,8 +1517,9 @@ void Datapath::StartVpnRouting(const ShillClient::Device& vpn_device) {
   // Otherwise, any new traffic from a new connection gets marked with the
   // VPN routing tag.
   if (!ModifyFwmarkRoutingTag(kApplyVpnMarkChain, Iptables::Command::kA,
-                              routing_mark.value()))
+                              routing_mark.value())) {
     LOG(ERROR) << "Failed to set up VPN set-mark rule for " << vpn_ifname;
+  }
 
   // When the VPN client runs on the host, also route arcbr0 to that VPN so
   // that ARC can access the VPN network through arc0.

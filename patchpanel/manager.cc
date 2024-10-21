@@ -470,8 +470,9 @@ bool Manager::ArcStartup(pid_t pid) {
     return false;
   }
 
-  if (!arc_svc_.Start(static_cast<uint32_t>(pid)))
+  if (!arc_svc_.Start(static_cast<uint32_t>(pid))) {
     return false;
+  }
 
   GuestMessage msg;
   msg.set_event(GuestMessage::START);
@@ -1067,8 +1068,9 @@ void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
 void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
                                       std::string_view ifname_virtual,
                                       MulticastForwarder::Direction dir) {
-  if (shill_device.ifname.empty())
+  if (shill_device.ifname.empty()) {
     return;
+  }
 
   if (ifname_virtual.empty()) {
     LOG(INFO) << "Stopping multicast forwarding on " << shill_device;

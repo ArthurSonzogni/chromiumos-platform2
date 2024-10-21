@@ -152,8 +152,9 @@ void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
     return;
   }
 
-  if (msg.mode() != net_base::RTNLMessage::kModeAdd)
+  if (msg.mode() != net_base::RTNLMessage::kModeAdd) {
     return;
+  }
 
   const std::string ifname =
       msg.GetStringAttribute(IFA_LABEL).substr(0, IFNAMSIZ);
@@ -368,12 +369,14 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   struct udphdr* udp_hdr = (struct udphdr*)(buffer + sizeof(struct iphdr));
 
   // Check that the IP header and UDP header have been filled.
-  if (msg_len < sizeof(struct iphdr) + sizeof(struct udphdr))
+  if (msg_len < sizeof(struct iphdr) + sizeof(struct udphdr)) {
     return;
+  }
 
   // Drop fragmented packets.
-  if ((ntohs(ip_hdr->frag_off) & (kIpFragOffsetMask | IP_MF)) != 0)
+  if ((ntohs(ip_hdr->frag_off) & (kIpFragOffsetMask | IP_MF)) != 0) {
     return;
+  }
 
   // Store the length of the message data without its headers.
   if (ntohs(udp_hdr->len) < sizeof(struct udphdr)) {
@@ -399,28 +402,32 @@ void BroadcastForwarder::OnFileCanReadWithoutBlocking(int fd) {
   // Forward ingress traffic to guests.
   if (fd == dev_socket_->socket->Get()) {
     // Prevent looped back broadcast packets to be forwarded.
-    if (net_base::IPv4Address(fromaddr.sin_addr) == dev_socket_->addr)
+    if (net_base::IPv4Address(fromaddr.sin_addr) == dev_socket_->addr) {
       return;
+    }
 
     SendToGuests(buffer, len, dst);
     return;
   }
 
   for (auto const& socket : br_sockets_) {
-    if (fd != socket.second->socket->Get())
+    if (fd != socket.second->socket->Get()) {
       continue;
+    }
 
     // Prevent looped back broadcast packets to be forwarded.
-    if (net_base::IPv4Address(fromaddr.sin_addr) == socket.second->addr)
+    if (net_base::IPv4Address(fromaddr.sin_addr) == socket.second->addr) {
       return;
+    }
 
     // We are spoofing packets source IP to be the actual sender source IP.
     // Prevent looped back broadcast packets by not forwarding anything from
     // outside the interface netmask.
     if ((fromaddr.sin_addr.s_addr & socket.second->netmask.ToInAddr().s_addr) !=
         (socket.second->addr.ToInAddr().s_addr &
-         socket.second->netmask.ToInAddr().s_addr))
+         socket.second->netmask.ToInAddr().s_addr)) {
       return;
+    }
 
     // Forward egress traffic from one guest to outside network.
     SendToNetwork(ntohs(fromaddr.sin_port), data, len, dst);
@@ -441,8 +448,9 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
   struct sockaddr_in dev_dst = {0};
   memcpy(&dev_dst, &dst, sizeof(sockaddr_in));
 
-  if (net_base::IPv4Address(dev_dst.sin_addr) != kBcastAddr)
+  if (net_base::IPv4Address(dev_dst.sin_addr) != kBcastAddr) {
     dev_dst.sin_addr = dev_socket_->broadaddr.ToInAddr();
+  }
 
   if (SendTo(temp_socket->Get(), data, len, &dev_dst) < 0) {
     // Ignore ENETDOWN: this can happen if the interface is not yet configured.

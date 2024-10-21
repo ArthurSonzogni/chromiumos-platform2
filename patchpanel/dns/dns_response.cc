@@ -83,10 +83,11 @@ DnsResourceRecord::DnsResourceRecord(const DnsResourceRecord& other)
       klass(other.klass),
       ttl(other.ttl),
       owned_rdata(other.owned_rdata) {
-  if (!owned_rdata.empty())
+  if (!owned_rdata.empty()) {
     rdata = owned_rdata;
-  else
+  } else {
     rdata = other.rdata;
+  }
 }
 
 DnsResourceRecord::DnsResourceRecord(DnsResourceRecord&& other)
@@ -95,10 +96,11 @@ DnsResourceRecord::DnsResourceRecord(DnsResourceRecord&& other)
       klass(other.klass),
       ttl(other.ttl),
       owned_rdata(std::move(other.owned_rdata)) {
-  if (!owned_rdata.empty())
+  if (!owned_rdata.empty()) {
     rdata = owned_rdata;
-  else
+  } else {
     rdata = other.rdata;
+  }
 }
 
 DnsResourceRecord::~DnsResourceRecord() = default;
@@ -111,10 +113,11 @@ DnsResourceRecord& DnsResourceRecord::operator=(
   ttl = other.ttl;
   owned_rdata = other.owned_rdata;
 
-  if (!owned_rdata.empty())
+  if (!owned_rdata.empty()) {
     rdata = owned_rdata;
-  else
+  } else {
     rdata = other.rdata;
+  }
 
   return *this;
 }
@@ -126,10 +129,11 @@ DnsResourceRecord& DnsResourceRecord::operator=(DnsResourceRecord&& other) {
   ttl = other.ttl;
   owned_rdata = std::move(other.owned_rdata);
 
-  if (!owned_rdata.empty())
+  if (!owned_rdata.empty()) {
     rdata = owned_rdata;
-  else
+  } else {
     rdata = other.rdata;
+  }
 
   return *this;
 }
@@ -188,8 +192,9 @@ size_t DnsRecordParser::ReadName(const void* const vpos,
   // on the wire, not to increase the maximum domain name length.
   unsigned encoded_name_len = 0;
 
-  if (pos >= end)
+  if (pos >= end) {
     return 0;
+  }
 
   if (out) {
     out->clear();
@@ -207,8 +212,9 @@ size_t DnsRecordParser::ReadName(const void* const vpos,
         }
         if (consumed == 0) {
           consumed = static_cast<size_t>(p - pos) + sizeof(uint16_t);
-          if (!out)
+          if (!out) {
             return consumed;  // If name is not stored, that's all we need.
+          }
         }
         seen += sizeof(uint16_t);
         // If seen the whole packet, then we must be in a loop.
@@ -248,8 +254,9 @@ size_t DnsRecordParser::ReadName(const void* const vpos,
           return 0;  // Truncated or missing label.
         }
         if (out) {
-          if (!out->empty())
+          if (!out->empty()) {
             out->append(".");
+          }
           out->append(reinterpret_cast<const char*>(p), label_len);
         }
         p += label_len;
@@ -293,12 +300,14 @@ bool DnsRecordParser::ReadRecord(DnsResourceRecord* out) {
 
 bool DnsRecordParser::SkipQuestion() {
   size_t consumed = ReadName(cur_, nullptr);
-  if (!consumed)
+  if (!consumed) {
     return false;
+  }
 
   const char* next = cur_ + consumed + 2 * sizeof(uint16_t);  // QTYPE + QCLASS
-  if (next > packet_ + length_)
+  if (next > packet_ + length_) {
     return false;
+  }
 
   cur_ = next;
 
@@ -324,8 +333,9 @@ DnsResponse::DnsResponse(
     header.qdcount = 1;
   }
   header.flags |= dns_protocol::kFlagResponse;
-  if (is_authoritative)
+  if (is_authoritative) {
     header.flags |= dns_protocol::kFlagAA;
+  }
   DCHECK_EQ(0, rcode & ~kRcodeMask);
   header.flags |= rcode;
 
@@ -385,10 +395,11 @@ DnsResponse::DnsResponse(
   // Ensure we don't have any remaining uninitialized bytes in the buffer.
   DCHECK(!writer.remaining());
   std::ranges::fill(writer.remaining_span(), uint8_t{0});
-  if (has_query)
+  if (has_query) {
     InitParse(io_buffer_size_, query.value());
-  else
+  } else {
     InitParseWithoutQuery(io_buffer_size_);
+  }
 }
 
 DnsResponse::DnsResponse()
@@ -429,16 +440,19 @@ bool DnsResponse::InitParse(size_t nbytes, const DnsQuery& query) {
 
   // Match the query id.
   DCHECK(id());
-  if (id().value() != query.id())
+  if (id().value() != query.id()) {
     return false;
+  }
 
   // Not a response?
-  if ((base::NetToHost16(header()->flags) & dns_protocol::kFlagResponse) == 0)
+  if ((base::NetToHost16(header()->flags) & dns_protocol::kFlagResponse) == 0) {
     return false;
+  }
 
   // Match question count.
-  if (base::NetToHost16(header()->qdcount) != 1)
+  if (base::NetToHost16(header()->qdcount) != 1) {
     return false;
+  }
 
   // Match the question section.
   if (question !=
@@ -461,8 +475,9 @@ bool DnsResponse::InitParseWithoutQuery(size_t nbytes) {
   parser_ = DnsRecordParser(io_buffer_->data(), nbytes, kHeaderSize);
 
   // Not a response?
-  if ((base::NetToHost16(header()->flags) & dns_protocol::kFlagResponse) == 0)
+  if ((base::NetToHost16(header()->flags) & dns_protocol::kFlagResponse) == 0) {
     return false;
+  }
 
   unsigned qdcount = base::NetToHost16(header()->qdcount);
   for (unsigned i = 0; i < qdcount; ++i) {
@@ -476,8 +491,9 @@ bool DnsResponse::InitParseWithoutQuery(size_t nbytes) {
 }
 
 std::optional<uint16_t> DnsResponse::id() const {
-  if (!id_available_)
+  if (!id_available_) {
     return std::nullopt;
+  }
 
   return base::NetToHost16(header()->id);
 }

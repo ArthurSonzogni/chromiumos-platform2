@@ -94,8 +94,9 @@ bool SetSysfsOwnerToAndroidRoot(pid_t pid, std::string_view path) {
 
 bool OneTimeContainerSetup(Datapath& datapath, pid_t pid) {
   static bool done = false;
-  if (done)
+  if (done) {
     return true;
+  }
 
   bool success = true;
 
@@ -434,8 +435,9 @@ bool ArcService::StartInternal(
   StartArcDeviceDatapath(*arc0_device_);
 
   // Start already known shill <-> ARC mapped devices.
-  for (const auto& [_, shill_device] : shill_devices_)
+  for (const auto& [_, shill_device] : shill_devices_) {
     AddDevice(shill_device);
+  }
 
   // Enable conntrack helpers needed for processing through SNAT the IPv4 GRE
   // packets sent by Android PPTP client (b/172214190). Since PPTP is removed on
@@ -481,8 +483,9 @@ void ArcService::Stop(uint32_t id) {
     return;
   }
 
-  if (!datapath_->SetConntrackHelpers(false))
+  if (!datapath_->SetConntrackHelpers(false)) {
     LOG(ERROR) << "Failed to disable conntrack helpers";
+  }
 
   // Remove all ARC Devices associated with a shill Device.
   // Make a copy of |shill_devices_| to avoid invalidating any iterator over
@@ -520,11 +523,13 @@ void ArcService::Stop(uint32_t id) {
 
 void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   shill_devices_[shill_device.shill_device_interface_property] = shill_device;
-  if (!IsStarted())
+  if (!IsStarted()) {
     return;
+  }
 
-  if (shill_device.ifname.empty())
+  if (shill_device.ifname.empty()) {
     return;
+  }
 
   RecordEvent(metrics_, ArcServiceUmaEvent::kAddDevice);
 

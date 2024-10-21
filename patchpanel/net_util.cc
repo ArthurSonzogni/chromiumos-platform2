@@ -34,8 +34,9 @@ void AddFlags(std::ostream& stream,
   }
   std::string sep = "";
   for (const auto& flag_descr : flags_info) {
-    if ((flags & flag_descr.first) == 0)
+    if ((flags & flag_descr.first) == 0) {
       continue;
+    }
     stream << sep << flag_descr.second;
     sep = " | ";
   }
@@ -220,11 +221,13 @@ uint16_t FoldChecksum(uint32_t sum) {
 uint32_t NetChecksum(const void* data, size_t len) {
   uint32_t sum = 0;
   const uint16_t* word = reinterpret_cast<const uint16_t*>(data);
-  for (; len > 1; len -= 2)
+  for (; len > 1; len -= 2) {
     sum += *word++;
-  if (len)
+  }
+  if (len) {
     // Cast it as a uint8_t since there's only one byte left.
     sum += *(reinterpret_cast<const uint8_t*>(word));
+  }
   return sum;
 }
 
@@ -275,10 +278,12 @@ uint16_t Icmpv6Checksum(const uint8_t* ip6_packet, size_t len) {
 
   uint32_t sum = 0;
   // Src and Dst IP
-  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
+  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i) {
     sum += ip6->ip6_src.s6_addr16[i];
-  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i)
+  }
+  for (size_t i = 0; i < (sizeof(struct in6_addr) >> 1); ++i) {
     sum += ip6->ip6_dst.s6_addr16[i];
+  }
 
   // Upper-Layer Packet Length
   sum += ip6->ip6_plen;

@@ -71,8 +71,9 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "SSDP forwarder could not be started on " << args[0]
                << " and " << args[1];
   }
-  if (!added_mdns || !added_ssdp)
+  if (!added_mdns || !added_ssdp) {
     return EXIT_FAILURE;
+  }
 
   return daemon.Run();
 }

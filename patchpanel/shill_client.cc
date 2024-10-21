@@ -288,8 +288,9 @@ void ShillClient::OnManagerPropertyChangeRegistration(
     const std::string& interface,
     const std::string& signal_name,
     bool success) {
-  if (!success)
+  if (!success) {
     LOG(FATAL) << "Unable to register for interface change events";
+  }
 }
 
 void ShillClient::OnManagerPropertyChange(const std::string& property_name,
@@ -598,9 +599,10 @@ void ShillClient::OnDevicePropertyChangeRegistration(
     const std::string& dbus_interface_name,
     const std::string& signal_name,
     bool success) {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Unable to register Device property listener for "
                << signal_name;
+  }
 }
 
 void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,

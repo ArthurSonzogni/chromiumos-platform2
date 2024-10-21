@@ -691,8 +691,9 @@ void OnNeighborReachabilityEvent(
 void OnSignalConnectedCallback(const std::string& interface_name,
                                const std::string& signal_name,
                                bool success) {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Failed to connect to " << signal_name;
+  }
 }
 
 // Helper static function to process answers to CreateTetheredNetwork calls.
@@ -969,8 +970,9 @@ class ClientImpl : public Client {
 };
 
 ClientImpl::~ClientImpl() {
-  if (bus_ && owns_bus_)
+  if (bus_ && owns_bus_) {
     bus_->ShutdownAndBlock();
+  }
 }
 
 void ClientImpl::RegisterOnAvailableCallback(
@@ -1015,14 +1017,16 @@ void ClientImpl::OnOwnerChanged(const std::string& old_owner,
                                 const std::string& new_owner) {
   if (new_owner.empty()) {
     LOG(INFO) << "Patchpanel lost";
-    if (!owner_callback_.is_null())
+    if (!owner_callback_.is_null()) {
       owner_callback_.Run(false);
+    }
     return;
   }
 
   LOG(INFO) << "Patchpanel reset";
-  if (!owner_callback_.is_null())
+  if (!owner_callback_.is_null()) {
     owner_callback_.Run(true);
+  }
 }
 
 bool ClientImpl::NotifyArcStartup(pid_t pid) {

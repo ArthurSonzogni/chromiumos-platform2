@@ -213,19 +213,22 @@ void NeighborLinkMonitor::OnIPConfigChanged(
   for (auto new_it = watching_entries_.begin();
        new_it != watching_entries_.end(); new_it++) {
     const auto old_it = old_watching_entries.find(new_it->first);
-    if (old_it == old_watching_entries.end())
+    if (old_it == old_watching_entries.end()) {
       has_new_entry = true;
-    else
+    } else {
       new_it->second.nud_state = old_it->second.nud_state;
+    }
   }
 
-  if (has_new_entry)
+  if (has_new_entry) {
     SendNeighborDumpRTNLMessage();
+  }
 }
 
 void NeighborLinkMonitor::Start() {
-  if (listener_ != nullptr)
+  if (listener_ != nullptr) {
     return;
+  }
 
   listener_ = std::make_unique<net_base::RTNLListener>(
       net_base::RTNLHandler::kRequestNeighbor,
@@ -257,8 +260,9 @@ void NeighborLinkMonitor::ProbeAll() {
     }
   }
 
-  if (has_unknown_entry)
+  if (has_unknown_entry) {
     SendNeighborDumpRTNLMessage();
+  }
 }
 
 void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
@@ -271,8 +275,9 @@ void NeighborLinkMonitor::SendNeighborDumpRTNLMessage() {
 
   // TODO(jiejiang): We may get an error of errno=16 (Device or resource busy)
   // from kernel here. We may need to serialize the DUMP requests.
-  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr))
+  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr)) {
     LOG(WARNING) << "Failed to send neighbor dump message for on " << ifname_;
+  }
 }
 
 void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
@@ -288,14 +293,16 @@ void NeighborLinkMonitor::SendNeighborProbeRTNLMessage(
       NUD_PROBE, /*ndm_flags=*/0, /*ndm_type=*/0));
   msg->SetAttribute(NDA_DST, entry.addr.ToBytes());
 
-  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr))
+  if (!rtnl_handler_->SendMessage(std::move(msg), /*msg_seq=*/nullptr)) {
     LOG(WARNING) << "Failed to send neighbor probe message for "
                  << entry.ToString() << " on " << ifname_;
+  }
 }
 
 void NeighborLinkMonitor::OnNeighborMessage(const net_base::RTNLMessage& msg) {
-  if (msg.interface_index() != ifindex_)
+  if (msg.interface_index() != ifindex_) {
     return;
+  }
 
   const auto family = msg.family();
   const auto dst = msg.GetAttribute(NDA_DST);
@@ -307,23 +314,26 @@ void NeighborLinkMonitor::OnNeighborMessage(const net_base::RTNLMessage& msg) {
   }
 
   auto it = watching_entries_.find(*addr);
-  if (it == watching_entries_.end())
+  if (it == watching_entries_.end()) {
     return;
+  }
 
   uint16_t old_nud_state = it->second.nud_state;
   uint16_t new_nud_state;
-  if (msg.mode() == net_base::RTNLMessage::kModeDelete)
+  if (msg.mode() == net_base::RTNLMessage::kModeDelete) {
     new_nud_state = NUD_NONE;
-  else
+  } else {
     new_nud_state = msg.neighbor_status().state;
+  }
 
   it->second.nud_state = new_nud_state;
 
   // Probes this entry if we know it for the first time (state changed
   // from NUD_NONE, e.g., the monitor just started, or this entry has been
   // removed once).
-  if (old_nud_state == NUD_NONE && NeedProbeForState(new_nud_state))
+  if (old_nud_state == NUD_NONE && NeedProbeForState(new_nud_state)) {
     SendNeighborProbeRTNLMessage(it->second);
+  }
 
   // When the "valid" state (i.e., whether kernel knows the MAC address of a
   // neighbor) changed from valid to invalid, it doesn't always mean a failure
@@ -411,8 +421,9 @@ void NetworkMonitorService::OnShillDevicesChanged(
 void NetworkMonitorService::OnIPConfigsChanged(
     const ShillClient::Device& device) {
   const auto it = neighbor_link_monitors_.find(device.ifname);
-  if (it == neighbor_link_monitors_.end())
+  if (it == neighbor_link_monitors_.end()) {
     return;
+  }
 
   it->second->OnIPConfigChanged(device.network_config);
 }

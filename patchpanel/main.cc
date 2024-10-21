@@ -39,8 +39,9 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "ARC network daemon");
 
   int flags = brillo::kLogToSyslog | brillo::kLogHeader;
-  if (FLAGS_log_to_stderr)
+  if (FLAGS_log_to_stderr) {
     flags |= brillo::kLogToStderr;
+  }
   brillo::InitLog(flags);
 
   if (FLAGS_adb_proxy_fd >= 0) {

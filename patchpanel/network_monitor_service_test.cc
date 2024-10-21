@@ -32,8 +32,9 @@ MATCHER(IsNeighborDumpMessage, "") {
   if (!(arg->type() == net_base::RTNLMessage::kTypeNeighbor &&
         arg->flags() == (NLM_F_REQUEST | NLM_F_DUMP) &&
         arg->mode() == net_base::RTNLMessage::kModeGet &&
-        arg->interface_index() == kTestInterfaceIndex))
+        arg->interface_index() == kTestInterfaceIndex)) {
     return false;
+  }
 
   return true;
 }
@@ -44,8 +45,9 @@ MATCHER_P(IsNeighborProbeMessage, address, "") {
         arg->mode() == net_base::RTNLMessage::kModeAdd &&
         arg->neighbor_status().state == NUD_PROBE &&
         arg->interface_index() == kTestInterfaceIndex &&
-        arg->HasAttribute(NDA_DST)))
+        arg->HasAttribute(NDA_DST))) {
     return false;
+  }
 
   const auto addr_bytes = arg->GetAttribute(NDA_DST);
   const auto msg_address = net_base::IPAddress::CreateFromBytes(addr_bytes);
@@ -60,8 +62,9 @@ MATCHER_P(IsNeighborProbeMessage, address, "") {
 class FakeNeighborReachabilityEventHandler {
  public:
   ~FakeNeighborReachabilityEventHandler() {
-    if (!enabled_)
+    if (!enabled_) {
       return;
+    }
 
     EXPECT_FALSE(expectation_set_)
         << "Expected " << ExpectationToString() << ", but not called.";
@@ -94,8 +97,9 @@ class FakeNeighborReachabilityEventHandler {
            const net_base::IPAddress& ip_addr,
            NeighborLinkMonitor::NeighborRole role,
            NeighborReachabilityEventSignal::EventType event_type) {
-    if (!enabled_)
+    if (!enabled_) {
       return;
+    }
 
     const std::string callback_str =
         CallbackToString(ifindex, ip_addr.ToString(), role, event_type);
