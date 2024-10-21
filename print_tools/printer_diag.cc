@@ -220,8 +220,9 @@ int main(int argc, char** argv) {
   }
   std::cerr << "IPP version: " << ipp::ToString(version) << std::endl;
   // If no output files were specified, set the default settings.
-  if (FLAGS_binary.empty() && FLAGS_jsonc.empty() && FLAGS_jsonf.empty())
+  if (FLAGS_binary.empty() && FLAGS_jsonc.empty() && FLAGS_jsonf.empty()) {
     FLAGS_jsonf = "-";
+  }
 
   // Send IPP request and get a response.
   ipp::Frame request(ipp::Operation::Get_Printer_Attributes, version);
@@ -236,8 +237,9 @@ int main(int argc, char** argv) {
     return EX_DATAERR;
   }
   auto data_optional = SendIppFrameAndGetResponse(FLAGS_url, data);
-  if (!data_optional)
+  if (!data_optional) {
     return -2;
+  }
   data = std::move(*data_optional);
   // Write raw frame to file if needed.
   if (!FLAGS_binary.empty()) {

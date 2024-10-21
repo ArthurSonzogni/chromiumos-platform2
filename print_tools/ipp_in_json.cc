@@ -29,8 +29,9 @@ base::Value SaveValueAsJson(const ipp::Attribute& attr,
 template <>
 base::Value SaveValueAsJson<int32_t>(const ipp::Attribute& attr,
                                      const int32_t& value) {
-  if (attr.Tag() == ipp::ValueTag::boolean)
+  if (attr.Tag() == ipp::ValueTag::boolean) {
     return base::Value(static_cast<bool>(value));
+  }
   if (attr.Tag() == ipp::ValueTag::enum_) {
     ipp::AttrName attrName;
     if (ipp::FromString(std::string(attr.Name()), &attrName)) {
@@ -63,8 +64,9 @@ base::Value SaveValuesAsJsonTyped(const ipp::Attribute& attr) {
   attr.GetValues(values);
   if (values.size() > 1) {
     base::Value::List arr;
-    for (size_t i = 0; i < values.size(); ++i)
+    for (size_t i = 0; i < values.size(); ++i) {
       arr.Append(SaveValueAsJson(attr, values[i]));
+    }
     return base::Value(std::move(arr));
   } else {
     return SaveValueAsJson(attr, values.at(0));
@@ -77,8 +79,9 @@ base::Value SaveValuesAsJsonTyped<const ipp::Collection&>(
   ipp::ConstCollsView colls = attr.Colls();
   if (colls.size() > 1) {
     base::Value::List arr;
-    for (const ipp::Collection& coll : colls)
+    for (const ipp::Collection& coll : colls) {
       arr.Append(SaveAsJson(coll));
+    }
     return base::Value(std::move(arr));
   } else {
     return SaveAsJson(colls[0]);
@@ -100,8 +103,9 @@ base::Value SaveValuesAsJson(const ipp::Attribute& attr) {
     case ipp::ValueTag::collection:
       return SaveValuesAsJsonTyped<const ipp::Collection&>(attr);
     default:
-      if (ipp::IsInteger(attr.Tag()))
+      if (ipp::IsInteger(attr.Tag())) {
         return SaveValuesAsJsonTyped<int32_t>(attr);
+      }
       return SaveValuesAsJsonTyped<std::string>(attr);
   }
 }
@@ -130,12 +134,14 @@ base::Value SaveAsJson(const ipp::Frame& pkg) {
   base::Value::Dict obj;
   for (ipp::GroupTag gt : ipp::kGroupTags) {
     auto groups = pkg.Groups(gt);
-    if (groups.empty())
+    if (groups.empty()) {
       continue;
+    }
     if (groups.size() > 1) {
       base::Value::List arr;
-      for (const ipp::Collection& g : groups)
+      for (const ipp::Collection& g : groups) {
         arr.Append(SaveAsJson(g));
+      }
       obj.Set(ToString(gt), std::move(arr));
     } else {
       obj.Set(ToString(gt), SaveAsJson(groups[0]));
