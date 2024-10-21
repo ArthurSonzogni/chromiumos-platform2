@@ -121,12 +121,15 @@ int TestToolMain(int argc, char* argv[]) {
                    << message;
       }));
 
-  if (FLAGS_action == kActionCreateTestService)
+  if (FLAGS_action == kActionCreateTestService) {
     return CreateTestService(daemon, service_manager.get());
-  if (FLAGS_action == kActionPingTestService)
+  }
+  if (FLAGS_action == kActionPingTestService) {
     return PingTestService(daemon, service_manager.get());
-  if (FLAGS_action == kActionTestSharedBuffer)
+  }
+  if (FLAGS_action == kActionTestSharedBuffer) {
     return TestSharedBuffer();
+  }
 
   LOG(ERROR) << "Unknown action " << FLAGS_action << ", could be "
              << kActionCreateTestService << ", " << kActionPingTestService

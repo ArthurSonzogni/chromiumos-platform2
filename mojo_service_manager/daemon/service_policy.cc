@@ -102,8 +102,9 @@ bool MergeServicePolicyMaps(ServicePolicyMap* from, ServicePolicyMap* to) {
 }
 
 bool ValidateServiceName(const std::string& service_name) {
-  if (service_name.empty())
+  if (service_name.empty()) {
     return false;
+  }
   for (char c : service_name) {
     if (!base::IsAsciiAlpha(c) && !base::IsAsciiDigit(c)) {
       return false;
@@ -113,8 +114,9 @@ bool ValidateServiceName(const std::string& service_name) {
 }
 
 bool ValidateSecurityContext(const std::string& security_context) {
-  if (security_context.empty())
+  if (security_context.empty()) {
     return false;
+  }
   for (char c : security_context) {
     if (!base::IsAsciiLower(c) && !base::IsAsciiDigit(c) && c != '_' &&
         c != ':') {

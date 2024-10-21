@@ -103,8 +103,9 @@ void ServiceManager::Register(
     // If a receiver become invalid before being posted, don't send it because
     // the mojo will complain about sending invalid handles and reset the
     // connection of service provider.
-    if (!request.receiver.is_valid())
+    if (!request.receiver.is_valid()) {
       continue;
+    }
     service_state.service_provider->Request(std::move(request.identity),
                                             std::move(request.receiver));
   }
@@ -228,8 +229,9 @@ void ServiceManager::SendServiceEvent(
   }
   for (const uint32_t& uid : requesters_uid) {
     auto it = service_observer_map_.find(uid);
-    if (it == service_observer_map_.end())
+    if (it == service_observer_map_.end()) {
       continue;
+    }
     for (const mojo::Remote<mojom::ServiceObserver>& remote : it->second) {
       remote->OnServiceEvent(event.Clone());
     }
@@ -237,8 +239,9 @@ void ServiceManager::SendServiceEvent(
   // TODO(b/333323875): Remove this selinux workaround.
   for (const std::string& security_context : requesters_selinux) {
     auto it = service_observer_map_legacy_.find(security_context);
-    if (it == service_observer_map_legacy_.end())
+    if (it == service_observer_map_legacy_.end()) {
       continue;
+    }
     for (const auto& [uid, remote_id] : it->second) {
       service_observer_map_[uid].Get(remote_id)->OnServiceEvent(event.Clone());
     }

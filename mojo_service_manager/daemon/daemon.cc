@@ -141,8 +141,9 @@ Daemon::~Daemon() {}
 
 int Daemon::OnInit() {
   int ret = brillo::Daemon::OnInit();
-  if (ret != EX_OK)
+  if (ret != EX_OK) {
     return ret;
+  }
 
   // Creates the socket as early as possible to reduce the time of clients that
   // poll and wait for the socket file to be created.

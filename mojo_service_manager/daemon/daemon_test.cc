@@ -125,14 +125,16 @@ int FakeDelegate::GetSockOpt(const base::ScopedFD& socket,
                              socklen_t* optlen) const {
   switch (optname) {
     case SO_PEERCRED:
-      if (!ucred_)
+      if (!ucred_) {
         return -1;
+      }
       CHECK_EQ(*optlen, sizeof(struct ucred));
       *reinterpret_cast<struct ucred*>(optval) = ucred_.value();
       return 0;
     case SO_PEERSEC:
-      if (!security_context_)
+      if (!security_context_) {
         return -1;
+      }
       CHECK_GE(*optlen, security_context_->size());
       *optlen = security_context_->size();
       strncpy(reinterpret_cast<char*>(optval), security_context_->c_str(),

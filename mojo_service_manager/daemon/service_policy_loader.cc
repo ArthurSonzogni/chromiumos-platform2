@@ -48,8 +48,9 @@ bool ParseOptionalStringListByKey(const base::Value::Dict& value,
                                   std::vector<std::string>& out) {
   const auto* list = value.Find(key);
   // Returns true if not found because this is an optional field.
-  if (!list)
+  if (!list) {
     return true;
+  }
 
   if (!list->is_list()) {
     LOG(ERROR) << "Expected \"" << key << "\" to be a list, but got: " << *list;
@@ -174,8 +175,9 @@ bool LoadAllServicePolicyFileFromDirectories(
     const std::vector<base::FilePath>& dirs, ServicePolicyMap* policy_map) {
   bool res = true;
   for (const base::FilePath& dir : dirs) {
-    if (!LoadAllServicePolicyFileFromDirectory(dir, policy_map))
+    if (!LoadAllServicePolicyFileFromDirectory(dir, policy_map)) {
       res = false;
+    }
   }
   return res;
 }
@@ -221,8 +223,9 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
       return std::nullopt;
     }
     const auto& policy = item.GetDict();
-    if (!ValidateDictKeys(policy))
+    if (!ValidateDictKeys(policy)) {
       return std::nullopt;
+    }
 
     // TODO(b/333323875): Remove "identity" after migration.
     if (policy.Find(kKeyUser) && policy.Find(kKeyIdentity)) {

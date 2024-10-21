@@ -78,8 +78,9 @@ mojo::PendingRemote<mojom::ServiceManager> ConnectToMojoServiceManagerInteral(
   for (base::ElapsedTimer timer; timer.Elapsed() < kRetryTimeout;
        base::PlatformThread::Sleep(kRetryInterval)) {
     base::ScopedFD sock = ConnectToServiceManagerUnixSocket(socket_path);
-    if (sock.is_valid())
+    if (sock.is_valid()) {
       return AcceptMojoInvitationAndPassRemote(std::move(sock));
+    }
   }
   LOG(ERROR) << "Failed to connect to mojo service manager before the timeout "
                 "exceeded.";
