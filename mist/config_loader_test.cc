@@ -47,8 +47,9 @@ class ConfigLoaderTest : public testing::Test {
   bool CreateConfigFileInDir(const std::string& content,
                              const base::FilePath& dir,
                              base::FilePath* config_file) {
-    if (!base::CreateTemporaryFileInDir(dir, config_file))
+    if (!base::CreateTemporaryFileInDir(dir, config_file)) {
       return false;
+    }
 
     if (!base::WriteFile(*config_file, content)) {
       return false;

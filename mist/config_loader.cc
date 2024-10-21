@@ -58,14 +58,16 @@ bool ConfigLoader::LoadConfig(const base::FilePath& file_path) {
 
 const UsbModemInfo* ConfigLoader::GetUsbModemInfo(uint16_t vendor_id,
                                                   uint16_t product_id) const {
-  if (!config_)
+  if (!config_) {
     return nullptr;
+  }
 
   for (int i = 0; i < config_->usb_modem_info_size(); ++i) {
     const UsbModemInfo& usb_modem_info = config_->usb_modem_info(i);
     const UsbId& usb_id = usb_modem_info.initial_usb_id();
-    if (usb_id.vendor_id() == vendor_id && usb_id.product_id() == product_id)
+    if (usb_id.vendor_id() == vendor_id && usb_id.product_id() == product_id) {
       return &usb_modem_info;
+    }
   }
 
   return nullptr;

@@ -24,8 +24,9 @@ void Metrics::RecordSwitchResult(bool success) {
   if (!metrics_library_.SendEnumToUMA(
           "Mist.SwitchResult",
           success ? kSwitchResultSuccess : kSwitchResultFailure,
-          kSwitchResultMaxValue))
+          kSwitchResultMaxValue)) {
     LOG(WARNING) << "Could not send switch result sample to UMA.";
+  }
 }
 
 }  // namespace mist

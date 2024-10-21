@@ -94,8 +94,9 @@ int Mist::Run(base::CommandLine* command_line) {
   logging::SetMinLogLevel(log_level);
 
   Context context;
-  if (!context.Initialize())
+  if (!context.Initialize()) {
     return EXIT_FAILURE;
+  }
 
   // Command: monitor
   if (command == kCommandMonitor) {

@@ -80,8 +80,9 @@ UsbModemSwitchOperation::~UsbModemSwitchOperation() {
   // invalidated weak pointer to this object) before mist terminates or is
   // discarded after mist terminates.
   if (bulk_transfer_ &&
-      bulk_transfer_->state() == brillo::UsbTransfer::kCancelling)
+      bulk_transfer_->state() == brillo::UsbTransfer::kCancelling) {
     std::ignore = bulk_transfer_.release();
+  }
 }
 
 void UsbModemSwitchOperation::Start(CompletionCallback completion_callback) {
@@ -107,8 +108,9 @@ void UsbModemSwitchOperation::Cancel() {
   reconnect_timeout_callback_.Cancel();
   context_->usb_device_event_notifier()->RemoveObserver(this);
 
-  if (bulk_transfer_)
+  if (bulk_transfer_) {
     bulk_transfer_->Cancel();
+  }
 }
 
 void UsbModemSwitchOperation::ScheduleTask(Task task) {
@@ -147,8 +149,9 @@ void UsbModemSwitchOperation::Complete(bool success) {
 void UsbModemSwitchOperation::DetachAllKernelDrivers() {
   std::unique_ptr<brillo::UsbConfigDescriptor> config_descriptor =
       device_->GetActiveConfigDescriptor();
-  if (!config_descriptor)
+  if (!config_descriptor) {
     return;
+  }
 
   for (uint8_t interface_number = 0;
        interface_number < config_descriptor->GetNumInterfaces();
@@ -182,8 +185,9 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
        ++config_index) {
     std::unique_ptr<brillo::UsbConfigDescriptor> config_descriptor =
         device_->GetConfigDescriptor(config_index);
-    if (!config_descriptor)
+    if (!config_descriptor) {
       continue;
+    }
 
     VLOG(2) << *config_descriptor;
 
@@ -192,22 +196,25 @@ int UsbModemSwitchOperation::GetMBIMConfigurationValue() {
          ++interface_number) {
       std::unique_ptr<brillo::UsbInterface> interface =
           config_descriptor->GetInterface(interface_number);
-      if (!interface)
+      if (!interface) {
         continue;
+      }
 
       std::unique_ptr<brillo::UsbInterfaceDescriptor> interface_descriptor =
           interface->GetAlternateSetting(
               kDefaultUsbInterfaceAlternateSettingIndex);
-      if (!interface_descriptor)
+      if (!interface_descriptor) {
         continue;
+      }
 
       VLOG(2) << *interface_descriptor;
 
       if (interface_descriptor->GetInterfaceClass() !=
               brillo::kUsbClassCommunication ||
           interface_descriptor->GetInterfaceSubclass() !=
-              brillo::kUsbSubClassMBIM)
+              brillo::kUsbSubClassMBIM) {
         continue;
+      }
 
       int configuration_value = config_descriptor->GetConfigurationValue();
       LOG(INFO) << base::StringPrintf(
@@ -250,8 +257,9 @@ bool UsbModemSwitchOperation::SetConfiguration(int configuration) {
 }
 
 void UsbModemSwitchOperation::CloseDevice() {
-  if (!device_)
+  if (!device_) {
     return;
+  }
 
   if (interface_claimed_) {
     if (!device_->ReleaseInterface(interface_number_) &&
@@ -403,8 +411,9 @@ void UsbModemSwitchOperation::OpenDeviceAndSelectInterface() {
 }
 
 bool UsbModemSwitchOperation::ClearHalt(uint8_t endpoint_address) {
-  if (device_->ClearHalt(endpoint_address))
+  if (device_->ClearHalt(endpoint_address)) {
     return true;
+  }
 
   LOG(ERROR) << base::StringPrintf(
       "Could not clear halt condition for endpoint %u: %s", endpoint_address,
@@ -591,8 +600,9 @@ void UsbModemSwitchOperation::OnUsbDeviceAdded(const std::string& sys_path,
                                                uint8_t device_address,
                                                uint16_t vendor_id,
                                                uint16_t product_id) {
-  if (sys_path != switch_context_->sys_path())
+  if (sys_path != switch_context_->sys_path()) {
     return;
+  }
 
   const UsbModemInfo* modem_info = switch_context_->modem_info();
   if (modem_info->final_usb_id_size() == 0) {

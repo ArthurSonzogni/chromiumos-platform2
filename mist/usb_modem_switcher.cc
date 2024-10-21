@@ -46,8 +46,9 @@ void UsbModemSwitcher::OnUsbDeviceAdded(const std::string& sys_path,
                                         uint16_t product_id) {
   const UsbModemInfo* modem_info =
       context_->config_loader()->GetUsbModemInfo(vendor_id, product_id);
-  if (!modem_info)
+  if (!modem_info) {
     return;  // Ignore an unsupported device.
+  }
 
   auto switch_context = std::make_unique<UsbModemSwitchContext>(
       sys_path, bus_number, device_address, vendor_id, product_id, modem_info);
