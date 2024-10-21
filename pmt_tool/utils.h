@@ -52,12 +52,14 @@ struct Options {
 // Convert string into output format.
 inline std::optional<Format> FormatFromString(const std::string& str) {
   std::optional<Format> result;
-  if (str == "csv")
+  if (str == "csv") {
     result = Format::CSV;
-  if (str == "dbg")
+  }
+  if (str == "dbg") {
     result = Format::DBG;
-  else if (str == "raw")
+  } else if (str == "raw") {
     result = Format::RAW;
+  }
   return result;
 }
 

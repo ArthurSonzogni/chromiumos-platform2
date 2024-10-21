@@ -42,8 +42,9 @@ class pmtToolTest : public ::testing::Test {
     // The base::CommandLine is initialized at the start of each test. So ensure
     // we get a clean start since ParseCommandLineAndInitLogging() uses both
     // brillo::FlagHelper and the underlying base::CommandLine.
-    if (base::CommandLine::InitializedForCurrentProcess())
+    if (base::CommandLine::InitializedForCurrentProcess()) {
       base::CommandLine::Reset();
+    }
     brillo::FlagHelper::ResetForTesting();
   }
 };

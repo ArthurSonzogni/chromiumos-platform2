@@ -132,12 +132,13 @@ class ValueWriter : public ColumnWriter {
                  size_t& left) final {
     int would_write = 0;
     std::string column;
-    if (meta.type_ == pmt::DataType::FLOAT)
+    if (meta.type_ == pmt::DataType::FLOAT) {
       would_write = SNPrintF(buffer.data() + offset, left, "%f,", value.f_);
-    else if (meta.type_ == pmt::DataType::SINT)
+    } else if (meta.type_ == pmt::DataType::SINT) {
       would_write = SNPrintF(buffer.data() + offset, left, "%lld,", value.i64_);
-    else
+    } else {
       would_write = SNPrintF(buffer.data() + offset, left, "%llu,", value.u64_);
+    }
     return would_write;
   }
 };
@@ -146,8 +147,9 @@ class ValueWriter : public ColumnWriter {
 
 FileSource::~FileSource() {
   is_.release();
-  if (fd_ != -1)
+  if (fd_ != -1) {
     close(fd_);
+  }
   fis_.release();
 }
 
@@ -166,8 +168,10 @@ bool FileSource::SetUp(const Options& options) {
   size_t size = header.ByteSizeLong();
   // Read the header and extract the snapshot size.
   auto limit = is_->PushLimit(size);
-  if (!header.ParseFromCodedStream(is_.get()) || !is_->ConsumedEntireMessage())
+  if (!header.ParseFromCodedStream(is_.get()) ||
+      !is_->ConsumedEntireMessage()) {
     return false;
+  }
   is_->PopLimit(limit);
   size_ = header.snapshot_size();
 
@@ -181,8 +185,9 @@ std::optional<const pmt::Snapshot*> FileSource::TakeSnapshot() {
   bool result =
       snapshot_.ParseFromCodedStream(is_.get()) && is_->ConsumedEntireMessage();
   is_->PopLimit(limit);
-  if (!result || !snapshot_.timestamp())
+  if (!result || !snapshot_.timestamp()) {
     return std::optional<const pmt::Snapshot*>();
+  }
   return &snapshot_;
 }
 
@@ -263,8 +268,9 @@ bool CsvFormatter::SetUp(const Options& opts, int fd, size_t snapshot_size) {
     LOG_DBG << "0x" << std::hex << guid;
   }
   int result = decoder_.SetUpDecoding(guids);
-  if (result)
+  if (result) {
     LOG(ERROR) << "Failed to set up decoding";
+  }
   fd_ = fd;
   return true;
 }
@@ -283,14 +289,18 @@ bool CsvFormatter::Format(const pmt::Snapshot& snapshot) {
   ValueWriter value_writer;
 
   if (print_header_) [[unlikely]] {
-    if (!PrintCsvRow(*result, buffer_, fd_, guid_writer, "Guid"))
+    if (!PrintCsvRow(*result, buffer_, fd_, guid_writer, "Guid")) {
       return false;
-    if (!PrintCsvRow(*result, buffer_, fd_, subgroup_writer, "Group"))
+    }
+    if (!PrintCsvRow(*result, buffer_, fd_, subgroup_writer, "Group")) {
       return false;
-    if (!PrintCsvRow(*result, buffer_, fd_, desc_writer, "Description"))
+    }
+    if (!PrintCsvRow(*result, buffer_, fd_, desc_writer, "Description")) {
       return false;
-    if (!PrintCsvRow(*result, buffer_, fd_, name_writer, "Timestamp\\Sample"))
+    }
+    if (!PrintCsvRow(*result, buffer_, fd_, name_writer, "Timestamp\\Sample")) {
       return false;
+    }
     print_header_ = false;
   }
   auto ts = absl::FromUnixMillis(snapshot.timestamp());
@@ -301,26 +311,32 @@ bool CsvFormatter::Format(const pmt::Snapshot& snapshot) {
 
 int do_run(Options& opts, Source& source, Formatter& formatter) {
   // Set up the source.
-  if (!source.SetUp(opts))
+  if (!source.SetUp(opts)) {
     return 2;
+  }
   // Set up formatter for a given output.
-  if (!formatter.SetUp(opts, STDOUT_FILENO, source.GetSnapshotSize()))
+  if (!formatter.SetUp(opts, STDOUT_FILENO, source.GetSnapshotSize())) {
     return 3;
+  }
   // Collect and format data.
   int i = opts.sampling.duration_samples;
   std::optional<const pmt::Snapshot*> snapshot = nullptr;
   while (true) {
     snapshot = source.TakeSnapshot();
     // If there's no more data left, finish.
-    if (!snapshot)
+    if (!snapshot) {
       break;
-    if (!formatter.Format(**snapshot))
+    }
+    if (!formatter.Format(**snapshot)) {
       return 4;
+    }
     // Unless we're in continuous dump mode, increment the sample count.
-    if (i && --i <= 0)
+    if (i && --i <= 0) {
       break;
-    if (opts.sampling.interval_us)
+    }
+    if (opts.sampling.interval_us) {
       source.Sleep(opts.sampling.interval_us);
+    }
   }
   return 0;
 }

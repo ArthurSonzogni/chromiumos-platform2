@@ -53,8 +53,9 @@ bool ParseCommandLineAndInitLogging(int argc,
   brillo::InitLog(brillo::kLogToStderr);
 
   // Exit early if parsing failed.
-  if (!result)
+  if (!result) {
     return result;
+  }
 
   // Validate flags.
   if (FLAGS_t > 0 && FLAGS_n) {
@@ -79,11 +80,12 @@ bool ParseCommandLineAndInitLogging(int argc,
   new_opts.sampling.interval_us =
       absl::ToInt64Microseconds(absl::Seconds(FLAGS_i));
   new_opts.sampling.duration_seconds = std::ceil(FLAGS_t / FLAGS_i) * FLAGS_i;
-  if (FLAGS_t != 0)
+  if (FLAGS_t != 0) {
     new_opts.sampling.duration_samples =
         1 + new_opts.sampling.duration_seconds / FLAGS_i;
-  else
+  } else {
     new_opts.sampling.duration_samples = FLAGS_n;
+  }
 
   new_opts.decoding.format = *val;
   new_opts.decoding.metadata_path = metadata_path;
