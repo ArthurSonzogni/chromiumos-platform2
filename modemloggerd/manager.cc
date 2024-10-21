@@ -38,13 +38,15 @@ std::string GetModemName() {
   });
 
   const auto it = variant_to_modem.find(fw_variant);
-  if (it != variant_to_modem.end())
+  if (it != variant_to_modem.end()) {
     return it->second;
+  }
 
   // TODO(b/312535821): Use udev/MM instead of cros_config for modem detection
   for (auto modem : kDevicesSupportingLogging) {
-    if (fw_variant.find(modem) != std::string::npos)
+    if (fw_variant.find(modem) != std::string::npos) {
       return modem;
+    }
   }
   LOG(INFO) << "`" << fw_variant << "`  does not support modem logging";
   return std::string();
