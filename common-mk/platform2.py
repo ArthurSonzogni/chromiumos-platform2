@@ -129,6 +129,7 @@ _IUSE = [
     "iioservice",
     "iioservice_proximity",
     "inference_accuracy_eval",
+    "input_devices_cirque",
     "input_devices_elan_i2chid",
     "input_devices_emright",
     "input_devices_eps2pstiap",
