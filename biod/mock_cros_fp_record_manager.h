@@ -5,12 +5,12 @@
 #ifndef BIOD_MOCK_CROS_FP_RECORD_MANAGER_H_
 #define BIOD_MOCK_CROS_FP_RECORD_MANAGER_H_
 
-#include <gmock/gmock.h>
-
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include <gmock/gmock.h>
 
 #include "biod/cros_fp_record_manager.h"
 

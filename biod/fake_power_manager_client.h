@@ -5,10 +5,10 @@
 #ifndef BIOD_FAKE_POWER_MANAGER_CLIENT_H_
 #define BIOD_FAKE_POWER_MANAGER_CLIENT_H_
 
-#include "biod/power_manager_client_interface.h"
-
-#include <base/time/time.h>
 #include <base/observer_list.h>
+#include <base/time/time.h>
+
+#include "biod/power_manager_client_interface.h"
 
 namespace biod {
 

@@ -5,8 +5,6 @@
 #ifndef BIOD_CROS_FP_BIOMETRICS_MANAGER_H_
 #define BIOD_CROS_FP_BIOMETRICS_MANAGER_H_
 
-#include "biod/biometrics_manager.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,6 +14,7 @@
 #include <base/values.h>
 #include <dbus/bus.h>
 
+#include "biod/biometrics_manager.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_record_manager.h"
 #include "biod/maintenance_scheduler.h"

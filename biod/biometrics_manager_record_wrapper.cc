@@ -4,10 +4,11 @@
 // found in the LICENSE file.
 
 #include "biod/biometrics_manager_record_wrapper.h"
-#include "biod/biometrics_manager_wrapper.h"
 
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
+
+#include "biod/biometrics_manager_wrapper.h"
 
 namespace biod {
 

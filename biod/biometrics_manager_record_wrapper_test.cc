@@ -2,9 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biometrics_manager_record_wrapper.h"
+
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+
+#include <base/environment.h>
+#include <base/logging.h>
+#include <base/memory/weak_ptr.h>
+#include <brillo/dbus/mock_exported_object_manager.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "base/strings/stringprintf.h"
 #include "biod/biometrics_manager_record.h"
-#include "biod/biometrics_manager_record_wrapper.h"
 #include "biod/biometrics_manager_wrapper.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_biometrics_manager.h"
@@ -16,18 +29,6 @@
 #include "dbus/mock_bus.h"
 #include "dbus/mock_exported_object.h"
 #include "dbus/mock_object_proxy.h"
-
-#include <map>
-#include <memory>
-#include <string>
-#include <utility>
-
-#include <base/environment.h>
-#include <brillo/dbus/mock_exported_object_manager.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <base/logging.h>
-#include <base/memory/weak_ptr.h>
 
 using testing::_;
 using testing::IsEmpty;

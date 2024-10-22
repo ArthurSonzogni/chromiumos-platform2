@@ -12,8 +12,8 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/types/expected.h>
-#include <brillo/files/file_util.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 
 namespace {
 

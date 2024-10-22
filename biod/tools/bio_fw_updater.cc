@@ -10,12 +10,12 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
-#include <base/strings/stringprintf.h>
 #include <cros_config/cros_config.h>
 
 #include "biod/biod_config.h"

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biod_proxy/biometrics_manager_proxy_base.h"
+
 #include <functional>
 #include <memory>
 #include <utility>
@@ -13,8 +15,6 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "biod/biod_proxy/biometrics_manager_proxy_base.h"
 
 namespace biod {
 

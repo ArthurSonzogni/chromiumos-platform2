@@ -2,20 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/session_state_manager.h"
+
 #include <memory>
 #include <utility>
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/message.h>
-#include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/message_lite.h>
 #include <power_manager/dbus-proxies.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
-#include "biod/session_state_manager.h"
 #include "biod/utils.h"
 
 namespace biod {

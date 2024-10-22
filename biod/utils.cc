@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/utils.h"
+
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
 #include <libec/ec_command.h>
-
-#include "biod/utils.h"
 
 namespace biod {
 

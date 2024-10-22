@@ -5,13 +5,13 @@
 #ifndef BIOD_PAIRING_KEY_STORAGE_IMPL_H_
 #define BIOD_PAIRING_KEY_STORAGE_IMPL_H_
 
-#include "biod/pairing_key_storage.h"
-
 #include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+
+#include "biod/pairing_key_storage.h"
 
 namespace biod {
 

@@ -2,22 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-
 #include <map>
 #include <memory>
 #include <optional>
 #include <utility>
 
 #include <base/test/task_environment.h>
-#include <chromeos/dbus/service_constants.h>
 #include <biod/mock_biod_metrics.h>
 #include <biod/session_state_manager.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/error.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
+#include <gtest/gtest.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
 namespace biod {

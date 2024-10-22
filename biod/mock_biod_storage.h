@@ -5,13 +5,13 @@
 #ifndef BIOD_MOCK_BIOD_STORAGE_H_
 #define BIOD_MOCK_BIOD_STORAGE_H_
 
-#include <gmock/gmock.h>
-
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
+#include <gmock/gmock.h>
 
 #include "biod/biod_storage.h"
 

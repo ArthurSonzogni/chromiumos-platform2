@@ -13,8 +13,8 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
-#include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/ec_command_factory.h>
+#include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_mode.h>
 

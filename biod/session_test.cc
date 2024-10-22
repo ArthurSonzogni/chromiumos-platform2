@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/session.h"
+
 #include <memory>
 #include <utility>
 
+#include <gtest/gtest.h>
+
 #include "biod/biometrics_manager.h"
 #include "biod/mock_biometrics_manager.h"
-#include "biod/session.h"
-
-#include <gtest/gtest.h>
 
 namespace biod {
 namespace {

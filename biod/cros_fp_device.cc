@@ -21,11 +21,11 @@
 #include <libec/add_entropy_command.h>
 #include <libec/ec_command.h>
 #include <libec/ec_command_async.h>
-#include <libec/flash_protect_command_factory.h>
 #include <libec/fingerprint/fp_frame_command.h>
 #include <libec/fingerprint/fp_mode_command.h>
 #include <libec/fingerprint/fp_read_match_secret_command.h>
 #include <libec/fingerprint/fp_stats_command.h>
+#include <libec/flash_protect_command_factory.h>
 #include <libec/get_protocol_info_command.h>
 #include <libec/get_version_command.h>
 #include <libec/reboot_command.h>

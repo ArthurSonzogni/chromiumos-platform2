@@ -4,14 +4,14 @@
 
 #include "biod/cros_fp_biometrics_manager.h"
 
-#include <optional>
-#include <string_view>
-#include <utility>
-
 #include <errno.h>
 #include <poll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <optional>
+#include <string_view>
+#include <utility>
 
 #include <base/base64.h>
 #include <base/check.h>

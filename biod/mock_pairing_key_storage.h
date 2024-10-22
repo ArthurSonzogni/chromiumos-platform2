@@ -5,13 +5,13 @@
 #ifndef BIOD_MOCK_PAIRING_KEY_STORAGE_H_
 #define BIOD_MOCK_PAIRING_KEY_STORAGE_H_
 
-#include "biod/pairing_key_storage.h"
-
 #include <optional>
 #include <string>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+
+#include "biod/pairing_key_storage.h"
 
 namespace biod {
 

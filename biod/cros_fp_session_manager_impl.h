@@ -5,8 +5,6 @@
 #ifndef BIOD_CROS_FP_SESSION_MANAGER_IMPL_H_
 #define BIOD_CROS_FP_SESSION_MANAGER_IMPL_H_
 
-#include "biod/cros_fp_session_manager.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -15,6 +13,7 @@
 
 #include "biod/biod_storage.h"
 #include "biod/cros_fp_record_manager.h"
+#include "biod/cros_fp_session_manager.h"
 
 namespace biod {
 

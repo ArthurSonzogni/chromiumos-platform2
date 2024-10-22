@@ -17,8 +17,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <brillo/secure_blob.h>
 #include <brillo/scoped_umask.h>
+#include <brillo/secure_blob.h>
 
 #include "biod/biometrics_manager.h"
 #include "biod/biometrics_manager_record_interface.h"

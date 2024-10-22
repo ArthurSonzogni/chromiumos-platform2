@@ -6,15 +6,15 @@
 
 #include <utility>
 
-#include <base/time/time.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec/factory/mock_factory.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/mock_biod_metrics.h"

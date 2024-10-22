@@ -13,8 +13,8 @@
 
 #include <base/base64.h>
 #include <base/functional/callback.h>
-#include <chromeos/dbus/service_constants.h>
 #include <base/strings/string_util.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "base/time/time.h"
 #include "biod/biometrics_manager_record_interface.h"

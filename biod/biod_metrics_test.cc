@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biod_metrics.h"
+
 #include <base/types/cxx23_to_underlying.h>
 #include <chromeos/ec/ec_commands.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "biod/biod_metrics.h"
 #include "biod/updater/update_reason.h"
 #include "biod/utils.h"
 

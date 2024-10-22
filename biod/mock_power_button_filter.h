@@ -5,9 +5,9 @@
 #ifndef BIOD_MOCK_POWER_BUTTON_FILTER_H_
 #define BIOD_MOCK_POWER_BUTTON_FILTER_H_
 
-#include "biod/power_button_filter_interface.h"
-
 #include <gmock/gmock.h>
+
+#include "biod/power_button_filter_interface.h"
 
 namespace biod {
 

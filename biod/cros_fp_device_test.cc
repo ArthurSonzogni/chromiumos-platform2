@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/cros_fp_device.h"
+
 #include <optional>
 
 #include <gmock/gmock.h>
@@ -12,7 +14,6 @@
 #include <libec/fingerprint/fp_unlock_template_command.h>
 #include <libec/mock_ec_command_factory.h>
 
-#include "biod/cros_fp_device.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_device.h"
 #include "libec/fingerprint/fp_sensor_errors.h"

@@ -2,10 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biometrics_manager_record.h"
+
 #include <memory>
 #include <utility>
 
-#include "biod/biometrics_manager_record.h"
+#include <base/environment.h>
+#include <base/logging.h>
+#include <base/memory/weak_ptr.h>
+#include <base/test/task_environment.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_biometrics_manager.h"
 #include "biod/mock_cros_fp_biometrics_manager.h"
@@ -13,13 +21,6 @@
 #include "biod/mock_cros_fp_record_manager.h"
 #include "dbus/mock_bus.h"
 #include "dbus/mock_object_proxy.h"
-
-#include <base/environment.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <base/logging.h>
-#include <base/memory/weak_ptr.h>
-#include <base/test/task_environment.h>
 
 using testing::Return;
 

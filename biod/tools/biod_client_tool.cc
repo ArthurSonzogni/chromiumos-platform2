@@ -17,9 +17,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
-
 #include <brillo/flag_helper.h>
-
 #include <chromeos/dbus/service_constants.h>
 
 #include "biod/biod_constants.h"

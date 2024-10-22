@@ -4,6 +4,7 @@
 
 #include "biod/cros_fp_firmware.h"
 
+#include <fmap.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -20,7 +21,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/types/cxx23_to_underlying.h>
-#include <fmap.h>
 #include <gtest/gtest.h>
 
 #include "biod/utils.h"

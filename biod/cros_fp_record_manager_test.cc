@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
+#include "biod/cros_fp_record_manager.h"
 
 #include <optional>
 #include <utility>
 
+#include <gtest/gtest.h>
+
 #include "biod/biod_crypto_test_data.h"
-#include "biod/cros_fp_record_manager.h"
 #include "biod/mock_biod_storage.h"
 
 namespace biod {

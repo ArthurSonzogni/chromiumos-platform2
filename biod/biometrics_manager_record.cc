@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "biod/biometrics_manager_record.h"
+
 #include "biod/cros_fp_biometrics_manager.h"
 
 namespace biod {

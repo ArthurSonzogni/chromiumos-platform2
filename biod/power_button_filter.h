@@ -8,11 +8,10 @@
 #include <memory>
 #include <string>
 
+#include <base/system/sys_info.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
-#include <base/system/sys_info.h>
 #include <cros_config/cros_config_interface.h>
-
 #include <dbus/bus.h>
 
 #include "biod/power_button_filter_interface.h"

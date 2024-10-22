@@ -2,19 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "biod/biod_storage.h"
-
 #include <stddef.h>
 #include <stdint.h>
 
-#include <fuzzer/FuzzedDataProvider.h>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <fuzzer/FuzzedDataProvider.h>
 #include <openssl/sha.h>
+
+#include "biod/biod_storage.h"
 
 using Record = biod::BiodStorageInterface::Record;
 using RecordMetadata = biod::BiodStorageInterface::RecordMetadata;

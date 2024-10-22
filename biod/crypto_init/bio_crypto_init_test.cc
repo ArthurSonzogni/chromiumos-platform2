@@ -6,10 +6,11 @@
 
 #include <memory>
 
-#include "biod/crypto_init/mock_bio_crypto_init.h"
-#include <libec/mock_ec_command_factory.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libec/mock_ec_command_factory.h>
+
+#include "biod/crypto_init/mock_bio_crypto_init.h"
 
 namespace biod {
 

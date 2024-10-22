@@ -13,8 +13,6 @@
 // mount-encrypted. Consequently, closing the FD should be enough to delete
 // the file.
 
-#include "biod/crypto_init/bio_crypto_init.h"
-
 #include <sys/types.h>
 
 #include <vector>
@@ -32,6 +30,7 @@
 #include <libec/fingerprint/fp_seed_command.h>
 
 #include "biod/biod_version.h"
+#include "biod/crypto_init/bio_crypto_init.h"
 
 namespace {
 constexpr int64_t kTimeoutSeconds = 30;

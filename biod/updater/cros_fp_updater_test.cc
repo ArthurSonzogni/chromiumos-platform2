@@ -15,10 +15,10 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/types/cxx23_to_underlying.h>
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/fake_cros_config.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "base/command_line.h"
 #include "base/process/launch.h"

@@ -5,8 +5,6 @@
 #ifndef BIOD_CROS_FP_AUTH_STACK_MANAGER_H_
 #define BIOD_CROS_FP_AUTH_STACK_MANAGER_H_
 
-#include "biod/auth_stack_manager.h"
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -15,6 +13,7 @@
 #include <base/timer/timer.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 
+#include "biod/auth_stack_manager.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_session_manager.h"
 #include "biod/maintenance_scheduler.h"

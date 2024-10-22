@@ -5,9 +5,9 @@
 #ifndef BIOD_CRYPTO_INIT_MOCK_BIO_CRYPTO_INIT_H_
 #define BIOD_CRYPTO_INIT_MOCK_BIO_CRYPTO_INIT_H_
 
-#include <gmock/gmock.h>
-
 #include <optional>
+
+#include <gmock/gmock.h>
 
 #include "biod/crypto_init/bio_crypto_init.h"
 

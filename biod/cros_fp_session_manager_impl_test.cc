@@ -10,8 +10,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/strings/string_number_conversions.h>
 #include <base/base64.h>
+#include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
 
 #include "biod/mock_cros_fp_record_manager.h"

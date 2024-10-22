@@ -5,8 +5,9 @@
 #ifndef BIOD_MOCK_SESSION_STATE_MANAGER_H_
 #define BIOD_MOCK_SESSION_STATE_MANAGER_H_
 
-#include <gmock/gmock.h>
 #include <string>
+
+#include <gmock/gmock.h>
 
 #include "biod/session_state_manager.h"
 

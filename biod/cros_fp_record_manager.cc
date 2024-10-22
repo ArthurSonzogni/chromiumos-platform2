@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/cros_fp_record_manager.h"
+
 #include <algorithm>
 #include <optional>
 #include <utility>
 
-#include "biod/cros_fp_record_manager.h"
 #include "biod/utils.h"
 
 namespace biod {
