@@ -51,9 +51,7 @@ struct DeviceInfo {
 
   // Enable face detection and ROI control by camera module from
   // camera_characteristics.conf.
-  // TODO(henryhsu): Remove it when we enable the feature for all modules which
-  // support ROI.
-  bool enable_face_detection = false;
+  bool enable_face_detection = true;
 
   // Member definitions can be found in https://developer.android.com/
   // reference/android/hardware/camera2/CameraCharacteristics.html
