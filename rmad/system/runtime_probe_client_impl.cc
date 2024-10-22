@@ -165,6 +165,8 @@ bool RuntimeProbeClientImpl::ProbeSsfcComponents(
                    use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_CAMERA, reply.camera(),
                    use_customized_identifier, components);
+  AppendComponents(rmad::RMAD_COMPONENT_DISPLAY_PANEL, reply.display_panel(),
+                   use_customized_identifier, components);
 
   return true;
 }

@@ -5,7 +5,6 @@
 #include "rmad/system/runtime_probe_client_impl.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -16,6 +15,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <runtime_probe/dbus-proxy-mocks.h>
+
+#include "rmad/proto_bindings/rmad.pb.h"
 
 using testing::_;
 using testing::DoAll;
@@ -176,6 +177,7 @@ TEST_F(RuntimeProbeClientTest, ProbeSsfcComponents_Success) {
   response_proto.add_tcpc();
   response_proto.add_touchscreen();
   response_proto.add_camera();
+  response_proto.add_display_panel();
   EXPECT_CALL(*mock_runtime_probe_proxy, ProbeSsfcComponents(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
@@ -183,12 +185,13 @@ TEST_F(RuntimeProbeClientTest, ProbeSsfcComponents_Success) {
       std::move(mock_runtime_probe_proxy));
   ComponentsWithIdentifier components;
   EXPECT_TRUE(runtime_probe_client->ProbeSsfcComponents(false, &components));
-  EXPECT_EQ(5, components.size());
+  EXPECT_EQ(6, components.size());
   EXPECT_EQ(components[0].first, RMAD_COMPONENT_AP_I2C);
   EXPECT_EQ(components[1].first, RMAD_COMPONENT_EC_I2C);
   EXPECT_EQ(components[2].first, RMAD_COMPONENT_TCPC);
   EXPECT_EQ(components[3].first, RMAD_COMPONENT_TOUCHSCREEN);
   EXPECT_EQ(components[4].first, RMAD_COMPONENT_CAMERA);
+  EXPECT_EQ(components[5].first, RMAD_COMPONENT_DISPLAY_PANEL);
 }
 
 }  // namespace rmad
