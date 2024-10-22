@@ -183,6 +183,7 @@ WirelessDriver GetWirelessDriverType(const std::string& device_name) {
       {"rtw89_8852be", WirelessDriver::RTW89},
       {"mt7921e", WirelessDriver::MTK},
       {"mt7921s", WirelessDriver::MTK},
+      {"mt7925e", WirelessDriver::MTK},
   };
 
   // .../device/driver symlink should point at the driver's module.
