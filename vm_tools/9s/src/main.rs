@@ -183,7 +183,13 @@ fn handle_client<R: io::Read, W: io::Write>(
     mut writer: W,
 ) -> io::Result<()> {
     let params: ServerParams = (*server_params).clone();
-    let mut server = p9::Server::new(PathBuf::from(&params.root), params.uid_map, params.gid_map)?;
+    let config = p9::Config {
+        root: Path::new(&params.root).into(),
+        uid_map: params.uid_map,
+        gid_map: params.gid_map,
+        ..Default::default()
+    };
+    let mut server = p9::Server::with_config(config)?;
 
     loop {
         server.handle_message(&mut reader, &mut writer)?;
