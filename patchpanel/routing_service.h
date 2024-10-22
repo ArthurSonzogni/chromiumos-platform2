@@ -323,6 +323,18 @@ constexpr std::array<TrafficSource, 14> kAllSources{
      kBruschettaVM, kCrostiniVM, kParallelsVM, kTetherDownstream, kWiFiDirect,
      kWiFiLOHS, kArcVpn}};
 
+// All sources for user traffic. For VPN drivers that only want to pass traffic
+// for specific users, these are the usernames that will be used to create the
+// routing policy rules. Also, when an AlwaysOnVpnPackage is set and a
+// corresponding VPN service is not active, traffic from these users will
+// blackholed. Currently the "user traffic" as defined by these usernames does
+// not include e.g. Android apps or system processes like the update engine.
+constexpr std::array<std::string_view, 10> kUserTrafficUsernames = {
+    kUidChronos,      kUidDebugd,    kUidCups,          kUidLpadmin,
+    kUidPrintscanmgr, kUidKerberosd, kUidKerberosdExec, kUidTlsdate,
+    kUidPluginvm,     kUidFuseSmbfs,
+};
+
 // Constant fwmark value for tagging traffic with the "route-on-vpn" intent.
 constexpr const Fwmark kFwmarkRouteOnVpn = {.policy = 0x80};
 // Constant fwmark value for tagging traffic with the "bypass-vpn" intent.

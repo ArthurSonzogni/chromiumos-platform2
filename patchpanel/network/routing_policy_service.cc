@@ -5,7 +5,6 @@
 #include "patchpanel/network/routing_policy_service.h"
 
 #include <algorithm>
-#include <array>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -17,6 +16,8 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/net-base/byte_utils.h>
 #include <chromeos/net-base/ip_address.h>
+
+#include "patchpanel/routing_service.h"
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
   return (a.start == b.start) && (a.end == b.end);
@@ -32,33 +33,6 @@ static_assert(
     kInterfaceTableIdIncrement > RT_TABLE_LOCAL,
     "kInterfaceTableIdIncrement must be greater than RT_TABLE_LOCAL, "
     "as otherwise some interface's table IDs may collide with system tables.");
-
-// TODO(b/293997937): Dedup this with the definition in
-// patchpanel/routing_service.h.
-// For VPN drivers that only want to pass traffic for specific users, these are
-// the usernames that will be used to create the routing policy rules. Also,
-// when an AlwaysOnVpnPackage is set and a corresponding VPN service is not
-// active, traffic from these users will blackholed. Currently the "user
-// traffic" as defined by these usernames does not include e.g. Android apps or
-// system processes like the update engine.
-constexpr std::array<std::string_view, 10> kUserTrafficUsernames = {
-    "chronos",         // Traffic originating from chrome and nacl applications
-    "debugd",          // crosh terminal
-    "cups",            // built-in printing using the cups daemon
-    "lpadmin",         // printer configuration utility used by cups
-    "printscanmgr",    // Chrome OS printing and scanning daemon
-    "kerberosd",       // Chrome OS Kerberos daemon
-    "kerberosd-exec",  // Kerberos third party untrusted code
-    // While tlsdate is not user traffic, time sync should be attempted over
-    // VPN. It is OK to send tlsdate traffic over VPN because it will also try
-    // to sync time immediately after boot on the sign-in screen when no VPN can
-    // be active.
-    // TODO(https://crbug.com/1065378): Find a way for tlsdate to try both with
-    // and without VPN explicitly.
-    "tlsdate",    // tlsdate daemon (secure time sync)
-    "pluginvm",   // plugin vm problem report utility (b/160916677)
-    "fuse-smbfs"  // smbfs SMB filesystem daemon
-};
 
 constexpr std::string_view kChromeUsername = "chronos";
 
