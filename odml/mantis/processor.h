@@ -12,11 +12,16 @@
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
+#include <chromeos/mojo/service_constants.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "odml/mantis/lib_api.h"
+#include "odml/mojom/cros_safety.mojom.h"
+#include "odml/mojom/cros_safety_service.mojom.h"
 #include "odml/mojom/mantis_processor.mojom.h"
+#include "odml/mojom/mantis_service.mojom.h"
 
 namespace mantis {
 
@@ -26,7 +31,11 @@ class MantisProcessor : public mojom::MantisProcessor {
       MantisComponent component,
       const MantisAPI* api,
       mojo::PendingReceiver<mojom::MantisProcessor> receiver,
-      base::OnceCallback<void()> on_disconnected);
+      raw_ref<
+          mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+          service_manager,
+      base::OnceCallback<void()> on_disconnected,
+      base::OnceCallback<void(mantis::mojom::InitializeResult)> callback);
 
   ~MantisProcessor();
 
@@ -59,9 +68,22 @@ class MantisProcessor : public mojom::MantisProcessor {
  private:
   void OnDisconnected();
 
+  void OnCreateCloudSafetySessionComplete(
+      base::OnceCallback<void(mojom::InitializeResult)> callback,
+      cros_safety::mojom::GetCloudSafetySessionResult result);
+
+  void ClassifyImageSafetyInternal(
+      const std::vector<uint8_t>& image,
+      const std::string& text,
+      base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
+
   MantisComponent component_;
 
   const raw_ptr<const MantisAPI> api_;
+
+  mojo::Remote<cros_safety::mojom::CrosSafetyService> safety_service_;
+
+  mojo::Remote<cros_safety::mojom::CloudSafetySession> cloud_safety_session_;
 
   mojo::ReceiverSet<mojom::MantisProcessor> receiver_set_;
 

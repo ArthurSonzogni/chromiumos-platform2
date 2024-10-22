@@ -25,8 +25,11 @@ constexpr double kFinishedProgress = 1;
 
 }  // namespace
 
-MantisService::MantisService(raw_ref<odml::OdmlShimLoader> shim_loader)
-    : shim_loader_(shim_loader) {}
+MantisService::MantisService(
+    raw_ref<odml::OdmlShimLoader> shim_loader,
+    raw_ref<mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+        service_manager)
+    : shim_loader_(shim_loader), service_manager_(service_manager) {}
 
 template <typename FuncType,
           typename CallbackType,
@@ -140,10 +143,9 @@ void MantisService::OnInstallDlcComplete(
   MantisComponent component = api->Initialize(result->value());
 
   processor_ = std::make_unique<MantisProcessor>(
-      component, api, std::move(processor),
-      base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)));
-
-  std::move(callback).Run(mojom::InitializeResult::kSuccess);
+      component, api, std::move(processor), service_manager_,
+      base::BindOnce(&MantisService::DeleteProcessor, base::Unretained(this)),
+      std::move(callback));
 }
 
 void MantisService::OnDlcProgress(

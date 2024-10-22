@@ -8,13 +8,21 @@
 
 #include <base/check.h>
 #include <base/containers/fixed_flat_map.h>
+#include <base/run_loop.h>
+#include <mojo_service_manager/lib/connect.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "odml/mantis/lib_api.h"
+#include "odml/mojom/big_buffer.mojom.h"
+#include "odml/mojom/cros_safety.mojom.h"
+#include "odml/mojom/cros_safety_service.mojom.h"
 #include "odml/mojom/mantis_processor.mojom.h"
+#include "odml/mojom/mantis_service.mojom.h"
 
 namespace mantis {
 
 namespace {
+using mojom::InitializeResult;
 using mojom::MantisError;
 using mojom::MantisResult;
 using mojom::SafetyClassifierVerdict;
@@ -33,7 +41,10 @@ MantisProcessor::MantisProcessor(
     MantisComponent component,
     const MantisAPI* api,
     mojo::PendingReceiver<mojom::MantisProcessor> receiver,
-    base::OnceCallback<void()> on_disconnected)
+    raw_ref<mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+        service_manager,
+    base::OnceCallback<void()> on_disconnected,
+    base::OnceCallback<void(InitializeResult)> callback)
     : component_(component),
       api_(api),
       on_disconnected_(std::move(on_disconnected)) {
@@ -44,6 +55,17 @@ MantisProcessor::MantisProcessor(
   receiver_set_.Add(this, std::move(receiver));
   receiver_set_.set_disconnect_handler(base::BindRepeating(
       &MantisProcessor::OnDisconnected, base::Unretained(this)));
+
+  (*service_manager)
+      ->Request(
+          /*service_name=*/chromeos::mojo_services::kCrosSafetyService,
+          /*timeout=*/std::nullopt,
+          safety_service_.BindNewPipeAndPassReceiver().PassPipe());
+
+  safety_service_->CreateCloudSafetySession(
+      cloud_safety_session_.BindNewPipeAndPassReceiver(),
+      base::BindOnce(&MantisProcessor::OnCreateCloudSafetySessionComplete,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 MantisProcessor::~MantisProcessor() {
@@ -63,6 +85,19 @@ void MantisProcessor::OnDisconnected() {
   // Don't use any member function or variable after this line, because the
   // MantisProcessor may be destroyed inside the callback.
   std::move(closure).Run();
+}
+
+void MantisProcessor::OnCreateCloudSafetySessionComplete(
+    base::OnceCallback<void(InitializeResult)> callback,
+    cros_safety::mojom::GetCloudSafetySessionResult result) {
+  if (result != cros_safety::mojom::GetCloudSafetySessionResult::kOk) {
+    LOG(ERROR) << "Can't initialize CloudSafetySession " << result;
+    std::move(callback).Run(
+        mojom::InitializeResult::kFailedToLoadSafetyService);
+    return;
+  }
+
+  std::move(callback).Run(mojom::InitializeResult::kSuccess);
 }
 
 void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
@@ -128,10 +163,31 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
   std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
 }
 
-// TODO(b/373509603): Implement this API once T&S API is ready.
 void MantisProcessor::ClassifyImageSafety(
     const std::vector<uint8_t>& image, ClassifyImageSafetyCallback callback) {
-  std::move(callback).Run(SafetyClassifierVerdict::kPass);
+  ClassifyImageSafetyInternal(image, "", std::move(callback));
+}
+
+// Verifies that the input image complies with Google's T&S policy. The text
+// input is optional and is typically used when the input image is AI-generated
+// based on a specific prompt.
+void MantisProcessor::ClassifyImageSafetyInternal(
+    const std::vector<uint8_t>& image,
+    const std::string& text,
+    base::OnceCallback<void(SafetyClassifierVerdict)> callback) {
+  cloud_safety_session_->ClassifyImageSafety(
+      cros_safety::mojom::SafetyRuleset::kMantis, text,
+      mojo_base::mojom::BigBuffer::NewBytes(image),
+      base::BindOnce(
+          [](ClassifyImageSafetyCallback callback,
+             cros_safety::mojom::SafetyClassifierVerdict result) {
+            if (result != cros_safety::mojom::SafetyClassifierVerdict::kPass) {
+              std::move(callback).Run(SafetyClassifierVerdict::kFail);
+              return;
+            }
+            std::move(callback).Run(SafetyClassifierVerdict::kPass);
+          },
+          std::move(callback)));
 }
 
 }  // namespace mantis

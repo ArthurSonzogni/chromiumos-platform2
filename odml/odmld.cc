@@ -158,7 +158,9 @@ class MantisServiceProviderImpl
       raw_ref<odml::OdmlShimLoaderImpl> shim_loader,
       mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
           service_manager)
-      : metrics_(metrics), receiver_(this), service_impl_(shim_loader) {
+      : metrics_(metrics),
+        receiver_(this),
+        service_impl_(shim_loader, raw_ref(service_manager)) {
     service_manager->Register(
         /*service_name=*/chromeos::mojo_services::kCrosMantisService,
         receiver_.BindNewPipeAndPassRemote());

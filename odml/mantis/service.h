@@ -25,7 +25,11 @@ namespace mantis {
 
 class MantisService : public mojom::MantisService {
  public:
-  explicit MantisService(raw_ref<odml::OdmlShimLoader> shim_loader);
+  explicit MantisService(
+      raw_ref<odml::OdmlShimLoader> shim_loader,
+      raw_ref<
+          mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+          service_manager);
   ~MantisService() = default;
 
   MantisService(const MantisService&) = delete;
@@ -71,6 +75,10 @@ class MantisService : public mojom::MantisService {
       double progress);
 
   const raw_ref<odml::OdmlShimLoader> shim_loader_;
+
+  const raw_ref<
+      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
+      service_manager_;
 
   std::unique_ptr<MantisProcessor> processor_;
 

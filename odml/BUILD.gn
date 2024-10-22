@@ -37,11 +37,13 @@ pkg_config("target_defaults") {
     "libchrome",
     "libdlcservice-client",
     "libmetrics",
+    "libmojo_service_manager_fake",
     "libsession_manager-client",
     "mojo_service_manager",
     "protobuf-lite",
     "system_api",
   ]
+  configs = [ "//common-mk:test" ]
   defines = [ "USE_MANTIS=${use.mantis}" ]
   include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
   libs = [ "tensorflowlite" ]
