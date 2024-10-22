@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "net-base/rtnl_handler.h"
-
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/check_op.h>
@@ -11,6 +9,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 
+#include "net-base/rtnl_handler.h"
 #include "net-base/rtnl_listener.h"
 #include "net-base/rtnl_message.h"
 
@@ -35,8 +34,11 @@ class RTNLHandlerFuzz {
     switch (msg.type()) {
       case RTNLMessage::kTypeRdnss:
       case RTNLMessage::kTypeDnssl:
+      case RTNLMessage::kTypeCaptivePortal:
+      case RTNLMessage::kTypePref64:
       case RTNLMessage::kTypeNdUserOption:
-        // RDNSS and DNSSL (RTM_NEWNDUSEROPT) don't have "query" modes, so we
+      case RTNLMessage::kTypePrefix:
+        // RTM_NEWNDUSEROPT and RTM_NEWPREFIX don't have "query" modes, so we
         // don't support re-constructing them in user space.
         CHECK(bytes.empty());
         break;
