@@ -272,6 +272,8 @@ constexpr char kUidCups[] = "cups";
 constexpr char kUidLpadmin[] = "lpadmin";
 // Chrome OS printing and scanning daemon
 constexpr char kUidPrintscanmgr[] = "printscanmgr";
+// DNS proxy user with traffic that is routed through VPN
+constexpr char kUidDnsProxyUser[] = "dns-proxy-user";
 // Chrome OS Kerberos daemon
 constexpr char kUidKerberosd[] = "kerberosd";
 // Kerberos third party untrusted code
@@ -292,12 +294,13 @@ constexpr char kUidFuseSmbfs[] = "fuse-smbfs";
 // cstring must be defined and cannot be null), 3) the cgroup classid of the
 // source (or 0 if none is defined), and 4) if the traffic originated from that
 // source should be routed through VPN connections by default or not.
-constexpr std::array<LocalSourceSpecs, 11> kLocalSourceTypes{{
+constexpr std::array<LocalSourceSpecs, 12> kLocalSourceTypes{{
     {TrafficSource::kChrome, kUidChronos, 0, true},
     {TrafficSource::kUser, kUidDebugd, 0, true},
     {TrafficSource::kUser, kUidCups, 0, true},
     {TrafficSource::kUser, kUidLpadmin, 0, true},
     {TrafficSource::kUser, kUidPrintscanmgr, 0, true},
+    {TrafficSource::kUser, kUidDnsProxyUser, 0, true},
     {TrafficSource::kSystem, kUidKerberosd, 0, true},
     {TrafficSource::kSystem, kUidKerberosdExec, 0, true},
     {TrafficSource::kSystem, kUidTlsdate, 0, true},
@@ -329,10 +332,10 @@ constexpr std::array<TrafficSource, 14> kAllSources{
 // corresponding VPN service is not active, traffic from these users will
 // blackholed. Currently the "user traffic" as defined by these usernames does
 // not include e.g. Android apps or system processes like the update engine.
-constexpr std::array<std::string_view, 10> kUserTrafficUsernames = {
-    kUidChronos,      kUidDebugd,    kUidCups,          kUidLpadmin,
-    kUidPrintscanmgr, kUidKerberosd, kUidKerberosdExec, kUidTlsdate,
-    kUidPluginvm,     kUidFuseSmbfs,
+constexpr std::array<std::string_view, 11> kUserTrafficUsernames = {
+    kUidChronos, kUidDebugd,       kUidDnsProxyUser, kUidCups,
+    kUidLpadmin, kUidPrintscanmgr, kUidKerberosd,    kUidKerberosdExec,
+    kUidTlsdate, kUidPluginvm,     kUidFuseSmbfs,
 };
 
 // Constant fwmark value for tagging traffic with the "route-on-vpn" intent.
