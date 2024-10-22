@@ -160,7 +160,7 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
     LOG(INFO) << "Found peer for the given ID but there are already "
               << num_total_conn << " download(s) in the LAN which exceeds "
               << "the threshold of " << constants::kMaxSimultaneousDownloads
-              << " download(s). " << "Sleeping "
+              << " download(s). Sleeping "
               << constants::kMaxSimultaneousDownloadsPollTimeSeconds
               << " seconds until retrying.";
 
