@@ -2765,8 +2765,11 @@ void WiFi::StateChanged(const std::string& new_state) {
       // again.
       // BUG(b/333308540): we can't guarantee GetCurrentEndpoint() will always
       // return an endpoint, |current| need to be checked to prevent crashes.
-      if (current && current->anqp_support() &&
-          !current->anqp_capabilities().capability_list) {
+      if (!current) {
+        LOG(ERROR) << __func__
+                   << ": Null current endpoint during configuration.";
+      } else if (current->anqp_support() &&
+                 !current->anqp_capabilities().capability_list) {
         // The endpoint supports ANQP requests, query the capability list to
         // know the fields supported by the access point.
         ANQPGet(current->bssid(), {IEEE_80211::kANQPCapabilityList});
