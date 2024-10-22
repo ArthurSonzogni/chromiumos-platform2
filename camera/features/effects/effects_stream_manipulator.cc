@@ -277,12 +277,14 @@ bool ParseSegmentationModelType(const std::string& model,
                                 SegmentationModelType& output) {
   if (model == "auto") {
     output = SegmentationModelType::kAuto;
-  } else if (model == "hd") {
-    output = SegmentationModelType::kHd;
+  } else if (model == "hd16") {
+    output = SegmentationModelType::kHd16;
   } else if (model == "effnet384") {
     output = SegmentationModelType::kEffnet384;
   } else if (model == "full") {
     output = SegmentationModelType::kFull;
+  } else if (model == "hd32") {
+    output = SegmentationModelType::kHd32;
   } else {
     LOGF(WARNING) << "Unknown Segmentation Model Type: " << model;
     return false;
@@ -414,7 +416,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   bool override_config_exists_ GUARDED_BY_CONTEXT(gl_thread_checker_) = false;
   RuntimeOptions* runtime_options_;
   SegmentationModelType default_segmentation_model_type_
-      GUARDED_BY_CONTEXT(gl_thread_checker_) = SegmentationModelType::kHd;
+      GUARDED_BY_CONTEXT(gl_thread_checker_) = SegmentationModelType::kHd16;
   Delegate default_segmentation_delegate_
       GUARDED_BY_CONTEXT(gl_thread_checker_) = Delegate::kGpu;
   Delegate default_relighting_delegate_ GUARDED_BY_CONTEXT(gl_thread_checker_) =
