@@ -185,6 +185,7 @@ fn handle_client<R: io::Read, W: io::Write>(
     let params: ServerParams = (*server_params).clone();
     let config = p9::Config {
         root: Path::new(&params.root).into(),
+        msize: 4096 + 24, // 4K payload + header
         uid_map: params.uid_map,
         gid_map: params.gid_map,
         ..Default::default()
