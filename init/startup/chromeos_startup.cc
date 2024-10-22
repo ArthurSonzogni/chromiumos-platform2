@@ -963,6 +963,9 @@ int ChromeosStartup::Run() {
     ConfigureFilesystemExceptions(platform_, root_);
   }
 
+  // Mount dev packages, updates/clobber stateful paritions.
+  DevMountPackages();
+
   std::vector<std::string> tmpfile_args = {root_.Append(kHome).value(),
                                            root_.Append(kVar).value()};
   TmpfilesConfiguration(tmpfile_args);
@@ -999,8 +1002,8 @@ int ChromeosStartup::Run() {
 
   RestoreContextsForVar(&utils::Restorecon);
 
-  // Mount dev packages.
-  DevMountPackages();
+  // In dev mode, restore data that has been saved at shutdown when clobber
+  // has been initiated and the data (/var/log for instance) was readable.
   RestorePreservedPaths();
 
   // Remount securityfs as readonly so that further modifications to inode
