@@ -29,7 +29,9 @@
 namespace coral {
 namespace {
 using base::test::TestFuture;
+using ::testing::IsEmpty;
 using ::testing::NiceMock;
+using ::testing::Optional;
 using ::testing::Return;
 
 constexpr char kFakeModelName[] = "5f30b8ca-2447-445e-9716-a6da073fae51";
@@ -124,7 +126,7 @@ TEST_F(TitleGenerationEngineTest, Success) {
       // Fake model generates a certain style of output that is irrelevant to
       // the feature. Instead of matching the output, just ensure that it's not
       // empty.
-      EXPECT_FALSE(response.groups[i]->title.empty());
+      EXPECT_THAT(response.groups[i]->title, Optional(Not(IsEmpty())));
       EXPECT_EQ(response.groups[i]->entities,
                 fake_response.groups[i]->entities);
     }
@@ -155,8 +157,8 @@ TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
   for (size_t i = 0; i < response.groups.size(); i++) {
     // Fake model generates a certain style of output that is irrelevant to
     // the feature. Instead of matching the output, just ensure that it's not
-    // empty.
-    EXPECT_FALSE(response.groups[i]->title.empty());
+    // null or empty.
+    EXPECT_THAT(response.groups[i]->title, Optional(Not(IsEmpty())));
     EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
   }
 }
@@ -189,7 +191,7 @@ TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
   for (size_t i = 0; i < response.groups.size(); i++) {
     // When the response is returned, the titles shouldn't have been generated
     // yet.
-    EXPECT_TRUE(response.groups[i]->title.empty());
+    EXPECT_EQ(response.groups[i]->title, std::nullopt);
     EXPECT_EQ(observer.GetTitle(response.groups[i]->id), std::nullopt);
     EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
   }
@@ -197,8 +199,7 @@ TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
   for (const mojom::GroupPtr& group : response.groups) {
     // Now the titles should have been updated to the observer.
     std::optional<std::string> title = observer.GetTitle(group->id);
-    ASSERT_TRUE(title.has_value());
-    EXPECT_FALSE(title->empty());
+    EXPECT_THAT(title, Optional(Not(IsEmpty())));
   }
 }
 
@@ -223,7 +224,7 @@ TEST_F(TitleGenerationEngineTest, ObserverFailed) {
   for (size_t i = 0; i < response.groups.size(); i++) {
     // When the response is returned, the titles shouldn't have been generated
     // yet.
-    EXPECT_TRUE(response.groups[i]->title.empty());
+    EXPECT_EQ(response.groups[i]->title, std::nullopt);
     EXPECT_EQ(observer.GetTitle(response.groups[i]->id), std::nullopt);
     EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
   }
