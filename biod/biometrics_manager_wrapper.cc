@@ -246,14 +246,13 @@ bool BiometricsManagerWrapper::StartEnrollSession(
     return false;
   }
 
-  BiometricsManager::EnrollSession enroll_session =
-      biometrics_manager_->StartEnrollSession(user_id, label);
-  if (!enroll_session) {
+  auto enroll = biometrics_manager_->StartEnrollSession(user_id, label);
+  if (!enroll.has_value()) {
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
-                                   enroll_session.error());
+                                   enroll.error());
     return false;
   }
-  enroll_session_ = std::move(enroll_session);
+  enroll_session_ = std::move(enroll.value());
 
   enroll_session_dbus_object_ = std::make_unique<DBusObject>(
       nullptr, dbus_object_.GetBus(), enroll_session_object_path_);
@@ -324,14 +323,13 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
     return false;
   }
 
-  BiometricsManager::AuthSession auth_session =
-      biometrics_manager_->StartAuthSession();
-  if (!auth_session) {
-    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
-                                   auth_session.error());
+  auto auth = biometrics_manager_->StartAuthSession();
+  if (!auth.has_value()) {
+    *error =
+        brillo::Error::Create(FROM_HERE, kDomain, kInternalError, auth.error());
     return false;
   }
-  auth_session_ = std::move(auth_session);
+  auth_session_ = std::move(auth.value());
 
   auth_session_dbus_object_ = std::make_unique<DBusObject>(
       nullptr, dbus_object_.GetBus(), auth_session_object_path_);

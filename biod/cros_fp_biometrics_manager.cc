@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
+#include <base/types/expected.h>
 #include <dbus/bus.h>
 #include <metrics/metrics_library.h>
 
@@ -40,22 +41,19 @@ BiometricType CrosFpBiometricsManager::GetType() {
   return BIOMETRIC_TYPE_FINGERPRINT;
 }
 
-BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
-    std::string user_id, std::string label) {
+base::expected<BiometricsManager::EnrollSession, std::string>
+CrosFpBiometricsManager::StartEnrollSession(std::string user_id,
+                                            std::string label) {
   LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
   if (!next_session_action_.is_null()) {
     LOG(ERROR) << kEnrollSessionExists;
-    BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(kEnrollSessionExists);
-    return enroll_session;
+    return base::unexpected(kEnrollSessionExists);
   }
 
   if (loaded_records_.size() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << kTemplatesFull;
-    BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(kTemplatesFull);
-    return enroll_session;
+    return base::unexpected(kTemplatesFull);
   }
 
   std::vector<uint8_t> validation_val;
@@ -63,44 +61,35 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
           kRecordFormatVersion, BiodStorage::GenerateNewRecordId(),
           std::move(user_id), std::move(label), std::move(validation_val)})) {
     LOG(ERROR) << kEnrollImageNotRequested;
-    BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(kEnrollImageNotRequested);
-    return enroll_session;
+    return base::unexpected(kEnrollImageNotRequested);
   }
 
   if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
     LOG(ERROR) << kFpHwUnavailable;
-    BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(kFpHwUnavailable);
-    return enroll_session;
+    return base::unexpected(kFpHwUnavailable);
   }
 
   num_enrollment_captures_ = 0;
   return BiometricsManager::EnrollSession(session_weak_factory_.GetWeakPtr());
 }
 
-BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
+base::expected<BiometricsManager::AuthSession, std::string>
+CrosFpBiometricsManager::StartAuthSession() {
   LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
   if (!next_session_action_.is_null()) {
     LOG(ERROR) << kAuthSessionExists;
-    BiometricsManager::AuthSession auth_session;
-    auth_session.set_error(kAuthSessionExists);
-    return auth_session;
+    return base::unexpected(kAuthSessionExists);
   }
 
   if (!RequestMatch()) {
     LOG(ERROR) << kMatchNotRequested;
-    BiometricsManager::AuthSession auth_session;
-    auth_session.set_error(kMatchNotRequested);
-    return auth_session;
+    return base::unexpected(kMatchNotRequested);
   }
 
   if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
     LOG(ERROR) << kFpHwUnavailable;
-    BiometricsManager::AuthSession auth_session;
-    auth_session.set_error(kFpHwUnavailable);
-    return auth_session;
+    return base::unexpected(kFpHwUnavailable);
   }
 
   return BiometricsManager::AuthSession(session_weak_factory_.GetWeakPtr());

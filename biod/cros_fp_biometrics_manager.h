@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <base/types/expected.h>
 #include <base/values.h>
 #include <dbus/bus.h>
 
@@ -38,9 +39,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
   ~CrosFpBiometricsManager() override;
 
   BiometricType GetType() override;
-  BiometricsManager::EnrollSession StartEnrollSession(
-      std::string user_id, std::string label) override;
-  BiometricsManager::AuthSession StartAuthSession() override;
+  base::expected<BiometricsManager::EnrollSession, std::string>
+  StartEnrollSession(std::string user_id, std::string label) override;
+  base::expected<BiometricsManager::AuthSession, std::string> StartAuthSession()
+      override;
   std::vector<std::unique_ptr<BiometricsManagerRecordInterface>>
   GetLoadedRecords() override;
   bool DestroyAllRecords() override;

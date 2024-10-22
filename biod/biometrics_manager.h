@@ -14,6 +14,7 @@
 #include <base/base64.h>
 #include <base/functional/callback.h>
 #include <base/strings/string_util.h>
+#include <base/types/expected.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "base/time/time.h"
@@ -67,13 +68,13 @@ class BiometricsManager {
   // should be human readable and ideally from the user themselves. The label
   // can be read and modified from the Record objects. This will fail if ANY
   // other mode is active. Returns a false EnrollSession on failure.
-  virtual EnrollSession StartEnrollSession(std::string user_id,
-                                           std::string label) = 0;
+  virtual base::expected<EnrollSession, std::string> StartEnrollSession(
+      std::string user_id, std::string label) = 0;
 
   // Puts this BiometricsManager into AuthSession mode, which can be ended by
   // letting the returned session fall out of scope. This will fail if ANY other
   // mode is active. Returns a false AuthSession on failure.
-  virtual AuthSession StartAuthSession() = 0;
+  virtual base::expected<AuthSession, std::string> StartAuthSession() = 0;
 
   // Gets the records successfully loaded to the biometrics device (eg. FPMCU).
   // Records that are invalid, with unsupported version, belongs to different

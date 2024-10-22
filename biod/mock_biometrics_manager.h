@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/types/expected.h>
 #include <gmock/gmock.h>
 
 #include "biod/biometrics_manager.h"
@@ -23,11 +24,14 @@ class MockBiometricsManager : public BiometricsManager {
   ~MockBiometricsManager() override = default;
 
   MOCK_METHOD(BiometricType, GetType, (), (override));
-  MOCK_METHOD(EnrollSession,
+  MOCK_METHOD((base::expected<EnrollSession, std::string>),
               StartEnrollSession,
               (std::string user_id, std::string label),
               (override));
-  MOCK_METHOD(AuthSession, StartAuthSession, (), (override));
+  MOCK_METHOD((base::expected<AuthSession, std::string>),
+              StartAuthSession,
+              (),
+              (override));
   MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManagerRecordInterface>>,
               GetLoadedRecords,
               (),

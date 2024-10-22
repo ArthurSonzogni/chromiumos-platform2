@@ -9,6 +9,7 @@
 
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/types/expected.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/mock_exported_object_manager.h>
 #include <dbus/mock_bus.h>
@@ -481,17 +482,19 @@ TEST_F(BiometricsManagerWrapperTest, TestOnEnrollScanDoneWithoutActiveSession) {
                           enroll_status_finish);
 }
 
-TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionFailed) {
+TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionAlreadyEnded) {
   dbus::ObjectPath object_path;
-  // Empty enroll session indicates that we were not able to start
-  // enroll session.
+  // Returning an empty EnrollSession does not happen, but should be considered
+  // okay. This simply indicates that the session is already ended/closed, so
+  // nothing will happen if End is called again.
   auto enroll_session = BiometricsManager::EnrollSession();
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
-  EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
 }
 
 TEST_F(BiometricsManagerWrapperTest,
@@ -508,12 +511,10 @@ TEST_F(BiometricsManagerWrapperTest,
 TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionFailedWithErrors) {
   dbus::ObjectPath object_path;
   const std::string enroll_session_error = kFpHwUnavailable;
-  auto enroll_session = BiometricsManager::EnrollSession();
-  enroll_session.set_error(enroll_session_error);
 
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
-      .WillOnce(Return(ByMove(std::move(enroll_session))));
+      .WillOnce(Return(ByMove(base::unexpected(enroll_session_error))));
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
@@ -735,28 +736,28 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionSuccessSignal) {
 TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailedWithErrors) {
   dbus::ObjectPath object_path;
   std::string auth_session_error = kFpHwUnavailable;
-  auto auth_session = BiometricsManager::AuthSession();
-  auth_session.set_error(auth_session_error);
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
   EXPECT_CALL(*bio_manager_, StartAuthSession)
-      .WillOnce(Return(ByMove(std::move(auth_session))));
+      .WillOnce(Return(ByMove(base::unexpected(auth_session_error))));
 
   auto response = StartAuthSession(&object_path);
   EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
   EXPECT_THAT(response->ToString(), testing::HasSubstr(auth_session_error));
 }
 
-TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailed) {
+TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionAlreadyEnded) {
   dbus::ObjectPath object_path;
-  // Empty auth session indicates that we were not able to start
-  // enroll session.
+  // Returning an empty AuthSession does not happen, but should be considered
+  // okay. This simply indicates that the session is already ended/closed, so
+  // nothing will happen if End is called again.
   auto auth_session = BiometricsManager::AuthSession();
   EXPECT_CALL(*bio_manager_, StartAuthSession)
       .WillOnce(Return(ByMove(std::move(auth_session))));
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
 
   auto response = StartAuthSession(&object_path);
-  EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
 }
 
 TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailedNoPrimaryUser) {

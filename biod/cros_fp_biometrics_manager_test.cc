@@ -19,6 +19,7 @@
 #include "base/time/time.h"
 #include "biod/biod_crypto.h"
 #include "biod/biod_crypto_test_data.h"
+#include "biod/biometrics_manager.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_biometrics_manager.h"
 #include "biod/mock_cros_fp_device.h"
@@ -52,6 +53,7 @@ using crypto_test_data::kUserID;
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
+using testing::Invoke;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
@@ -323,27 +325,26 @@ TEST_F(CrosFpBiometricsManagerTest, TestReadRecordsForSingleUserTwice) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionStartStopSuccess) {
-  BiometricsManager::AuthSession auth_session;
-
   // Expect that biod will ask FPMCU to set the match mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
+  EXPECT_TRUE(auth.value());
 
   // When auth session ends, FP mode will be set to kNone.
+  // This will fail the test if it is called twice, once explicitly
+  // bellow and once in the deconstructor.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
       .WillOnce(Return(true));
 
   // Stop auth session
-  auth_session.End();
+  auth.value().End();
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
-  BiometricsManager::EnrollSession enroll_session;
-
   // Expect biod will check if there is space for a new template.
   EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(1));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
@@ -358,13 +359,13 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
   EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
       .WillOnce(Return(ec::FpSensorErrors::kNone));
 
-  enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
-  EXPECT_TRUE(enroll_session);
+  auto enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  EXPECT_TRUE(enroll.has_value());
+  // Should not already be ended.
+  EXPECT_TRUE(enroll.value());
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionHwFailure) {
-  BiometricsManager::EnrollSession enroll_session;
-
   ON_CALL(*mock_cros_dev_, MaxTemplateCount).WillByDefault(Return(1));
   ON_CALL(*mock_cros_dev_,
           SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
@@ -372,64 +373,92 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionHwFailure) {
   ON_CALL(*mock_cros_dev_, GetHwErrors())
       .WillByDefault(Return(ec::FpSensorErrors::kBadHardwareID));
 
-  enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
-  EXPECT_FALSE(enroll_session);
-  EXPECT_EQ(enroll_session.error(), "Fingerprint hardware is unavailable");
+  auto enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  EXPECT_FALSE(enroll.has_value());
+  EXPECT_EQ(enroll.error(), "Fingerprint hardware is unavailable");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionTwiceFailed) {
-  BiometricsManager::EnrollSession first_enroll_session;
-  BiometricsManager::EnrollSession second_enroll_session;
-
   // Expect biod will check if there is space for a new template.
   EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillRepeatedly(Return(2));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).WillRepeatedly(Return(true));
 
-  first_enroll_session =
-      cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
-  ASSERT_TRUE(first_enroll_session);
+  auto first_enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  ASSERT_TRUE(first_enroll.has_value());
+  // Should not be ended.
+  ASSERT_TRUE(first_enroll.value());
 
-  second_enroll_session =
+  auto second_enroll =
       cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
-  EXPECT_FALSE(second_enroll_session);
-  EXPECT_EQ(second_enroll_session.error(),
-            "Another EnrollSession already exists");
+  EXPECT_FALSE(second_enroll.has_value());
+  EXPECT_EQ(second_enroll.error(), "Another EnrollSession already exists");
+}
+
+// Test that moving the returned session Ender from StartEnrollSession doesn't
+// cause premature Ending of the session.
+TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionMove) {
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillRepeatedly(Return(1));
+  EXPECT_CALL(*mock_cros_dev_,
+              SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
+      .WillOnce(Return(true));
+
+  bool enroll_was_ended = false;
+
+  // When enroll session ends, FP mode will be set to kNone.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Invoke([&](const ec::FpMode& mode) {
+        enroll_was_ended = true;
+        return true;
+      }));
+
+  BiometricsManager::EnrollSession enroll_session;
+  {
+    auto enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+    EXPECT_TRUE(enroll.has_value());
+    // It hasn't already been ended.
+    EXPECT_TRUE(enroll.value());
+    enroll_session = std::move(enroll.value());
+    // Old Session should report that it has been ended.
+    EXPECT_FALSE(enroll.value());
+  }
+  // It hasn't already been ended.
+  EXPECT_FALSE(enroll_was_ended);
+  EXPECT_TRUE(enroll_session);
+
+  // Stop enroll session
+  enroll_session.End();
+  EXPECT_TRUE(enroll_was_ended);
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
-  BiometricsManager::AuthSession auth_session;
-
   // Expect that biod will ask FPMCU to set the match mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(false));
 
   // Auth session should fail to start when FPMCU refuses to set match mode.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_FALSE(auth_session);
-  EXPECT_EQ(auth_session.error(), "Match was not requested");
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_FALSE(auth.has_value());
+  EXPECT_EQ(auth.error(), "Match was not requested");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartAuthSessionHwFailure) {
-  BiometricsManager::AuthSession auth_session;
-
   ON_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillByDefault(Return(true));
   ON_CALL(*mock_cros_dev_, GetHwErrors())
       .WillByDefault(Return(ec::FpSensorErrors::kBadHardwareID));
 
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_FALSE(auth_session);
-  EXPECT_EQ(auth_session.error(), "Fingerprint hardware is unavailable");
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_FALSE(auth.has_value());
+  EXPECT_EQ(auth.error(), "Fingerprint hardware is unavailable");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestDoEnrollImageEventSuccess) {
   // Start an enrollment sessions without performing all checks since this is
   // already tested by TestStartEnrollSessionSuccess.
-  BiometricsManager::EnrollSession enroll_session;
   EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(1));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).WillRepeatedly(Return(true));
-  enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
-  ASSERT_TRUE(enroll_session);
+  auto enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  ASSERT_TRUE(enroll.has_value());
 
   // Simulate 4 finger touches and expect UMA to be sent with correct value.
   EXPECT_CALL(*mock_metrics_, SendEnrollmentCapturesCount(4)).Times(1);
@@ -448,8 +477,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestDoEnrollImageEventSuccess) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {
-  BiometricsManager::AuthSession auth_session;
-
   // Expect that biod will ask FPMCU to set the match mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
@@ -459,8 +486,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {
       .WillOnce(Return(ec::FpSensorErrors::kNone));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Biod will set FP mode to FingerUp, when calling on_mkbp_event_.Run.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
@@ -476,15 +503,13 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUpFailed) {
-  BiometricsManager::AuthSession auth_session;
-
   // Expect that biod will ask FPMCU to set the match mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Biod will set FP mode to FingerUp, when calling on_mkbp_event_.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
@@ -503,7 +528,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUpFailed) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessNoUpdate) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const BiometricsManager::AttemptMatches kExpectedMatches(
@@ -525,8 +549,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessNoUpdate) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
       .WillOnce(Return(kFakePositiveMatchSecret1));
@@ -540,7 +564,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessNoUpdate) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionFailedInvalidTemplate) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -556,8 +579,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionFailedInvalidTemplate) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_YES);
@@ -569,7 +592,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionFailedInvalidTemplate) {
 
 TEST_F(CrosFpBiometricsManagerTest,
        TestAuthSessionFailedInvalidPositiveMatchSecret) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -589,8 +611,8 @@ TEST_F(CrosFpBiometricsManagerTest,
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Return wrong Positive Match Secret.
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
@@ -606,7 +628,6 @@ TEST_F(CrosFpBiometricsManagerTest,
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNo) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -621,8 +642,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNo) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO);
@@ -633,7 +654,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNo) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoTemplates) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -646,8 +666,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoTemplates) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES);
@@ -659,7 +679,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoTemplates) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoInternal) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -672,8 +691,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoInternal) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_INTERNAL);
@@ -685,7 +704,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoInternal) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowQuality) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -698,8 +716,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowQuality) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   on_mkbp_event_.Run(EC_MKBP_FP_MATCH | EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY);
@@ -711,7 +729,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowQuality) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowCoverage) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   BiometricsManager::AttemptMatches received_matches;
@@ -724,8 +741,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowCoverage) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   // DoMatchEvent will automatically retry the LOW_COVERAGE event (without
@@ -743,7 +760,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchNoLowCoverage) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessAfterLowCoverage) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const BiometricsManager::AttemptMatches kExpectedMatches(
@@ -766,8 +782,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessAfterLowCoverage) {
   cros_fp_biometrics_manager_peer_->AddLoadedRecord(kMetadata.record_id);
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send LOW_COVERAGE for kMaxPartialAttempts/2 times then send MATCH_YES.
   // DoMatchEvent will automatically retry the LOW_COVERAGE event (without
@@ -790,8 +806,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessAfterLowCoverage) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchUnknownCode) {
-  BiometricsManager::AuthSession auth_session;
-
   // Always allow setting FP mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode).WillRepeatedly(Return(true));
 
@@ -800,15 +814,14 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchUnknownCode) {
   EXPECT_CALL(*this, SessionFailedHandler).Times(1);
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   // Send response from Cros FP.
   on_mkbp_event_.Run(EC_MKBP_FP_MATCH | 15);
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessUpdated) {
-  BiometricsManager::AuthSession auth_session;
   const BiodStorageInterface::RecordMetadata kMetadata{
       kRecordFormatVersion, kRecordID, kUserID, kLabel, kFakeValidationValue1};
   const BiometricsManager::AttemptMatches kExpectedMatches(
@@ -830,8 +843,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionSuccessUpdated) {
       .WillOnce(DoAll(SaveArg<0>(&msg), SaveArg<1>(&received_matches)));
 
   // Start auth session.
-  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
-  EXPECT_TRUE(auth_session);
+  auto auth = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_TRUE(auth.has_value());
 
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
       .WillOnce(Return(kFakePositiveMatchSecret1));

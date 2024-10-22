@@ -5,7 +5,6 @@
 #ifndef BIOD_SESSION_H_
 #define BIOD_SESSION_H_
 
-#include <string>
 #include <utility>
 
 #include "base/memory/weak_ptr.h"
@@ -25,9 +24,7 @@ class Session {
  public:
   Session() = default;
 
-  Session(Session<F>&& rhs)
-      : biometrics_manager_(rhs.biometrics_manager_),
-        error_(std::move(rhs.error_)) {
+  Session(Session<F>&& rhs) : biometrics_manager_(rhs.biometrics_manager_) {
     rhs.biometrics_manager_.reset();
   }
 
@@ -39,7 +36,6 @@ class Session {
   Session<F>& operator=(Session<F>&& rhs) {
     End();
     biometrics_manager_ = rhs.biometrics_manager_;
-    error_ = std::move(rhs.error_);
     rhs.biometrics_manager_.reset();
     return *this;
   }
@@ -54,16 +50,10 @@ class Session {
       f(biometrics_manager_.get());
       biometrics_manager_.reset();
     }
-    error_.clear();
   }
-
-  void set_error(const std::string& error) { error_ = error; }
-
-  std::string error() const { return error_; }
 
  private:
   base::WeakPtr<BiometricsManager> biometrics_manager_;
-  std::string error_;
 };
 
 }  // namespace biod

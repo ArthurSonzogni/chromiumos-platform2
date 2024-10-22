@@ -32,11 +32,14 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   ~MockCrosFpBiometricsManager() override = default;
 
   MOCK_METHOD(BiometricType, GetType, (), (override));
-  MOCK_METHOD(BiometricsManager::EnrollSession,
+  MOCK_METHOD((base::expected<BiometricsManager::EnrollSession, std::string>),
               StartEnrollSession,
               (std::string user_id, std::string label),
               (override));
-  MOCK_METHOD(BiometricsManager::AuthSession, StartAuthSession, (), (override));
+  MOCK_METHOD((base::expected<BiometricsManager::AuthSession, std::string>),
+              StartAuthSession,
+              (),
+              (override));
   MOCK_METHOD(std::vector<std::unique_ptr<BiometricsManagerRecordInterface>>,
               GetLoadedRecords,
               (),
