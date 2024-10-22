@@ -86,7 +86,12 @@ std::optional<uint32_t> EcFirmware::GetOffset(const enum ec_image image) const {
     return std::nullopt;
   }
 
-  return area->offset;
+  // b/374842193: `return area->offset;` creates a reference to a packed struct
+  // member that gets passed into std::optional's constructor, which results in
+  // undefined behavior if `area` isn't suitably aligned. Copy into a local to
+  // guarantee correct alignment.
+  uint32_t offset = area->offset;
+  return offset;
 }
 
 std::optional<uint32_t> EcFirmware::GetSize(const enum ec_image image) const {
@@ -100,7 +105,12 @@ std::optional<uint32_t> EcFirmware::GetSize(const enum ec_image image) const {
     return std::nullopt;
   }
 
-  return area->size;
+  // b/374842193: `return area->size;` creates a reference to a packed struct
+  // member that gets passed into std::optional's constructor, which results in
+  // undefined behavior if `area` isn't suitably aligned. Copy into a local to
+  // guarantee correct alignment.
+  uint32_t size = area->size;
+  return size;
 }
 
 std::optional<std::string> EcFirmware::GetVersion(
