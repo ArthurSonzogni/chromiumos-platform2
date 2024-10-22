@@ -741,6 +741,14 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
     }
   }
 
+  // Allows traffic to ConnectedNamespace to skip VPN rule.
+  if (!ModifyConnectNamespaceSkipVpnRule(Iptables::Command::kA,
+                                         nsinfo.host_ifname)) {
+    LOG(ERROR) << "Failed to add VPN skip rule for namespace pid "
+               << nsinfo.pid;
+    return false;
+  }
+
   // Host namespace routing configuration
   //  - ingress: route added automatically by kernel when adding the device's
   //             address with prefix.
@@ -776,6 +784,7 @@ bool Datapath::StartRoutingNamespace(const ConnectedNamespace& nsinfo) {
 }
 
 void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
+  ModifyConnectNamespaceSkipVpnRule(Iptables::Command::kD, nsinfo.host_ifname);
   StopRoutingDevice(nsinfo.host_ifname, nsinfo.source);
   RemoveInterface(nsinfo.host_ifname);
   NetnsDeleteName(nsinfo.netns_name);
@@ -833,6 +842,13 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
                    << rule.input_ifname;
         return false;
       }
+      // Start protecting DNS traffic to DNS proxy from guest from VPN fwmark
+      // tagging.
+      if (!ModifyDnsRedirectionSkipVpnRule(family, rule,
+                                           Iptables::Command::kA)) {
+        LOG(ERROR) << "Failed to add VPN skip rule for DNS proxy";
+        return false;
+      }
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::ARC: {
@@ -845,12 +861,6 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
-      // Start protecting DNS traffic from VPN fwmark tagging.
-      if (!ModifyDnsRedirectionSkipVpnRule(family, Iptables::Command::kA)) {
-        LOG(ERROR) << "Failed to add VPN skip rule for DNS proxy";
-        return false;
-      }
-
       // Add DNS redirect rule for user (including Chrome) traffic.
       if (!ModifyDnsProxyDNAT(family, rule, Iptables::Command::kA,
                               /*ifname=*/"", kRedirectUserDnsChain)) {
@@ -912,6 +922,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
   // removal time. This prevents deletion of the rules by flushing the chains.
   switch (rule.type) {
     case patchpanel::SetDnsRedirectionRuleRequest::DEFAULT: {
+      ModifyDnsRedirectionSkipVpnRule(family, rule, Iptables::Command::kD);
       ModifyIngressDnsProxyAcceptRule(family, Iptables::Command::kD,
                                       rule.input_ifname);
       ModifyDnsProxyDNAT(family, rule, Iptables::Command::kD, rule.input_ifname,
@@ -926,7 +937,6 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
       ModifyDnsProxyDNAT(family, rule, Iptables::Command::kD, /*ifname=*/"",
                          kRedirectUserDnsChain);
-      ModifyDnsRedirectionSkipVpnRule(family, Iptables::Command::kD);
       if (family == IpFamily::kIPv6) {
         ModifyDnsProxyMasquerade(family, Iptables::Command::kD,
                                  kSNATUserDnsChain);
@@ -1338,13 +1348,29 @@ bool Datapath::ModifyDnsProxyAcceptRule(IpFamily family,
                         kAcceptEgressToDnsProxyChain, args);
 }
 
+bool Datapath::ModifyConnectNamespaceSkipVpnRule(Iptables::Command op,
+                                                 std::string_view ifname) {
+  std::vector<std::string_view> args = {"-o", ifname, "-j", "ACCEPT", "-w"};
+  return ModifyIptables(IpFamily::kDual, Iptables::Table::kMangle, op,
+                        kSkipApplyVpnMarkChain, args);
+}
+
 bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
+                                               const DnsRedirectionRule& rule,
                                                Iptables::Command op) {
   bool success = true;
   for (const auto& protocol : {"udp", "tcp"}) {
+    // DNS queries from guests to DNS proxy skip VPN rule.
     std::vector<std::string_view> args = {
-        "-p", protocol, "--dport", kDefaultDnsPort, "-j", "ACCEPT", "-w",
-    };
+        "-p", protocol, "--dport", kDefaultDnsPort, "-i", rule.input_ifname,
+        "-j", "ACCEPT", "-w"};
+    if (!ModifyIptables(family, Iptables::Table::kMangle, op,
+                        kSkipApplyVpnMarkChain, args)) {
+      success = false;
+    }
+    // DNS responses from DNS proxy to guests skip VPN rule.
+    args = {"-p", protocol, "--sport", kDefaultDnsPort, "-o", rule.input_ifname,
+            "-j", "ACCEPT", "-w"};
     if (!ModifyIptables(family, Iptables::Table::kMangle, op,
                         kSkipApplyVpnMarkChain, args)) {
       success = false;

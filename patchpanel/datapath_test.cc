@@ -455,6 +455,8 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
                              "0x00008000/0x0000c000 -w");
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kDual, "mangle -A skip_apply_vpn_mark -o arc_ns0 -j ACCEPT -w");
 
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv4DefaultTTL, "65", ""));
   EXPECT_CALL(system_, SysNetSet(System::SysNet::kIPv6HopLimit, "65", "veth0"));
@@ -480,6 +482,8 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
 }
 
 TEST_F(DatapathTest, StopRoutingNamespace) {
+  runner_.ExpectCallIptables(
+      IpFamily::kDual, "mangle -D skip_apply_vpn_mark -o arc_ns0 -j ACCEPT -w");
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
   runner_.ExpectCallIptables(IpFamily::kDual,
@@ -565,6 +569,8 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
                              "0x00008000/0x0000c000 -w");
   runner_.ExpectCallIptables(
       IpFamily::kDual, "mangle -A PREROUTING_arc_ns0 -j apply_vpn_mark -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kDual, "mangle -A skip_apply_vpn_mark -o arc_ns0 -j ACCEPT -w");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -589,6 +595,8 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
 }
 
 TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
+  runner_.ExpectCallIptables(
+      IpFamily::kDual, "mangle -D skip_apply_vpn_mark -o arc_ns0 -j ACCEPT -w");
   runner_.ExpectCallIptables(IpFamily::kDual,
                              "filter -D FORWARD -o arc_ns0 -j ACCEPT -w");
   runner_.ExpectCallIptables(IpFamily::kDual,
@@ -1362,6 +1370,22 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
       "filter -A ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
       "ACCEPT -w");
   runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -A skip_apply_vpn_mark -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -A skip_apply_vpn_mark -p udp --sport 53 -o vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -A skip_apply_vpn_mark -p tcp --sport 53 -o vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "nat -A redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
       "DNAT --to-destination ::1 -w");
@@ -1376,6 +1400,22 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "filter -A ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -A skip_apply_vpn_mark -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -A skip_apply_vpn_mark -p udp --sport 53 -o vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -A skip_apply_vpn_mark -p tcp --sport 53 -o vmtap0 -j "
       "ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
@@ -1423,13 +1463,6 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "filter -A accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
-
-  runner_.ExpectCallIptables(
-      IpFamily::kDual,
-      "mangle -A skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kDual,
-      "mangle -A skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::USER,
@@ -1508,6 +1541,22 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
       "filter -D ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
       "ACCEPT -w");
   runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -D skip_apply_vpn_mark -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -D skip_apply_vpn_mark -p udp --sport 53 -o vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv4,
+      "mangle -D skip_apply_vpn_mark -p tcp --sport 53 -o vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "nat -D redirect_default_dns -i vmtap0 -p udp --dport 53 -j "
       "DNAT --to-destination ::1 -w");
@@ -1522,6 +1571,22 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "filter -D ingress_dns_proxy -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -D skip_apply_vpn_mark -p udp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -i vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -D skip_apply_vpn_mark -p udp --sport 53 -o vmtap0 -j "
+      "ACCEPT -w");
+  runner_.ExpectCallIptables(
+      IpFamily::kIPv6,
+      "mangle -D skip_apply_vpn_mark -p tcp --sport 53 -o vmtap0 -j "
       "ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
@@ -1570,13 +1635,6 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
   runner_.ExpectCallIptables(
       IpFamily::kIPv6,
       "filter -D accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
-
-  runner_.ExpectCallIptables(
-      IpFamily::kDual,
-      "mangle -D skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
-  runner_.ExpectCallIptables(
-      IpFamily::kDual,
-      "mangle -D skip_apply_vpn_mark -p tcp --dport 53 -j ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::USER,

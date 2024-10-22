@@ -503,6 +503,10 @@ class Datapath {
       TrafficSource source,
       bool static_ipv6 = false);
 
+  // Allows traffic to ConnectedNamespace network to skip VPN rule.
+  bool ModifyConnectNamespaceSkipVpnRule(Iptables::Command command,
+                                         std::string_view ifname);
+
   bool ModifyRedirectDnsDNATRule(Iptables::Command command,
                                  std::string_view protocol,
                                  std::string_view ifname,
@@ -519,6 +523,7 @@ class Datapath {
                                  Fwmark mask = {},
                                  bool redirect_on_mark = false);
   bool ModifyDnsRedirectionSkipVpnRule(IpFamily family,
+                                       const DnsRedirectionRule& rule,
                                        Iptables::Command command);
 
   // Allows guest traffic to go to DNS proxy daemon listening on the TAP or
