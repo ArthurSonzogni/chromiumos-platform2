@@ -239,12 +239,14 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<net_base::SocketFactory> socket_factory,
                    std::string_view ifname,
                    bool disable_probe,
+                   bool disable_query_validation,
                    std::unique_ptr<Metrics> metrics)
     : logger_(base::DoNothing()),
       socket_factory_(std::move(socket_factory)),
       always_on_doh_(false),
       doh_enabled_(false),
       disable_probe_(disable_probe),
+      disable_query_validation_(disable_query_validation),
       metrics_(std::move(metrics)),
       ifname_(ifname),
       ares_client_(std::move(ares_client)),
@@ -885,11 +887,39 @@ void Resolver::HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd) {
   }
 }
 
+bool Resolver::ValidateQuery(const base::span<const uint8_t>& query) {
+  // Construct a DNS query from the message buffer.
+  std::optional<patchpanel::DnsQuery> dns_query;
+  if (query.size() > 0 && query.size() <= dns_proxy::kMaxDNSBufSize) {
+    scoped_refptr<patchpanel::IOBufferWithSize> buf =
+        base::MakeRefCounted<patchpanel::IOBufferWithSize>(query.size());
+    memcpy(buf->data(), query.data(), query.size());
+    dns_query = patchpanel::DnsQuery(buf);
+  }
+  return dns_query.has_value() && dns_query->Parse(query.size());
+}
+
 void Resolver::CommitQuery(std::unique_ptr<SocketFd> sock_fd) {
+  const base::span<const uint8_t> query(
+      reinterpret_cast<const uint8_t*>(sock_fd->get_message()),
+      sock_fd->get_length());
+
+  // Reply with FORMERR if the query is invalid.
+  if (!disable_query_validation_ && !ValidateQuery(query)) {
+    LOG(WARNING) << "Invalid DNS query";
+    patchpanel::DnsResponse response(/*id=*/0, /*is_authoritative=*/false,
+                                     /*answers=*/{}, /*authority_records=*/{},
+                                     /*additional_records=*/{}, /*query=*/{},
+                                     patchpanel::dns_protocol::kRcodeFORMERR);
+    ReplyDNS(sock_fd->weak_factory.GetWeakPtr(),
+             base::span<unsigned char>(
+                 reinterpret_cast<unsigned char*>(response.io_buffer()->data()),
+                 response.io_buffer_size()));
+    return;
+  }
+
+  // Process DoH included and excluded domain list.
   if (doh_included_domains_set_ || doh_excluded_domains_set_) {
-    base::span<const uint8_t> query(
-        reinterpret_cast<const uint8_t*>(sock_fd->get_message()),
-        sock_fd->get_length());
     std::optional<std::string> domain = GetDNSQuestionName(query);
     if (domain) {
       sock_fd->bypass_doh = BypassDoH(*domain);
@@ -898,6 +928,7 @@ void Resolver::CommitQuery(std::unique_ptr<SocketFd> sock_fd) {
     }
   }
 
+  // Query is set, send to DNS servers.
   const auto& sock_fd_it =
       sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
   Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());

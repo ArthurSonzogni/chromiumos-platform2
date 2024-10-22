@@ -983,4 +983,59 @@ TEST_F(ResolverTest, GetDNSQuestionName_QueryTooLong) {
             resolver_->GetDNSQuestionName(
                 base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
 }
+
+TEST_F(ResolverTest, ValidateQuery_ValidQuery) {
+  const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                               '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_TRUE(resolver_->ValidateQuery(
+      base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
+}
+
+TEST_F(ResolverTest, ValidateQuery_InvalidQuery) {
+  const uint8_t kDnsQuery[] = {'J',    'G',    '\x01', ' ',    '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x01',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    'm',    '\x09',
+                               '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_FALSE(resolver_->ValidateQuery(
+      base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
+}
+
+TEST_F(ResolverTest, ValidateQuery_QueryTooShort) {
+  const uint8_t kDnsQuery[] = {'a'};
+  EXPECT_FALSE(resolver_->ValidateQuery(
+      base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
+}
+
+TEST_F(ResolverTest, ValidateQuery_QueryTooLong) {
+  const uint8_t kDnsQuery[] = {
+      'J',    'G',    '\x01', ' ',    '\x00', '\x01', '\x00', '\x00', '\x00',
+      '\x00', '\x00', '\x01', '\x30', 'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    '\x30', 'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    '\x30', 'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    '\x30', 'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    '\x30', 'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    '\x30', 'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',    'a',
+      '\x00', '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_FALSE(resolver_->ValidateQuery(
+      base::span<const uint8_t>(kDnsQuery, sizeof(kDnsQuery))));
+}
 }  // namespace dns_proxy

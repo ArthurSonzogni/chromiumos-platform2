@@ -156,6 +156,7 @@ class Resolver {
            std::unique_ptr<net_base::SocketFactory> socket_factory,
            std::string_view ifname = "",
            bool disable_probe = true,
+           bool disable_query_validation = true,
            std::unique_ptr<Metrics> metrics = nullptr);
   virtual ~Resolver() = default;
 
@@ -256,6 +257,9 @@ class Resolver {
   // Returns whether or not a DNS response has NXDOMAIN rcode. Return false if
   // the DNS response is invalid.
   bool IsNXDOMAIN(const base::span<const unsigned char>& resp);
+
+  // Returns whether or not a DNS query is valid.
+  bool ValidateQuery(const base::span<const uint8_t>& query);
 
   // Provided for testing only. Enable or disable probing.
   void SetProbingEnabled(bool enable_probe);
@@ -383,6 +387,9 @@ class Resolver {
 
   // Provided for testing only. Boolean to disable probe.
   bool disable_probe_ = false;
+
+  // Provided for testing only. Boolean to disable query validation.
+  bool disable_query_validation_ = false;
 
   // Delay before retrying a failing query.
   base::TimeDelta retry_delay_;
