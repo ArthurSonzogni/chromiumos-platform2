@@ -72,6 +72,13 @@ ro.product.build.version.sdk=33
 
 constexpr const char kProductBuildPropertyFileName[] = "product_build.prop";
 
+const base::flat_map<std::string, std::string> kSampleDeviceIdMap = {
+    {"brand", "google"},
+    {"device", "brya_cheets"},
+    {"manufacturer", "Google"},
+    {"model", "brya"},
+    {"product", "brya"}};
+
 std::vector<uint8_t> convertHexToRawBytes(const char* hex_array) {
   std::string hex_string(kEcdsaDERSignatureHex);
   std::vector<uint8_t> bytes;
@@ -136,6 +143,12 @@ class ArcRemoteProvisioningContextTestPeer {
       ArcRemoteProvisioningContext* remote_provisioning_context_,
       base::FilePath file_path) {
     remote_provisioning_context_->set_property_dir_for_tests(file_path);
+  }
+
+  void set_device_id_map_for_tests(
+      ArcRemoteProvisioningContext* remote_provisioning_context_,
+      const base::flat_map<std::string, std::string>& device_id_map) {
+    remote_provisioning_context_->set_device_id_map_for_tests(device_id_map);
   }
 };
 
@@ -269,12 +282,9 @@ TEST_F(ArcRemoteProvisioningContextTest, BuildProtectedDataPayloadTestMode) {
   EXPECT_TRUE(result);
 }
 
-TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoMapSuccess) {
-  // Prepare.
-  std::string property_string(kSampleProp);
-
+TEST_F(ArcRemoteProvisioningContextTest, ConvertDeviceIdMapSuccess) {
   // Execute.
-  auto result = CreateDeviceInfoMap(property_string);
+  auto result = ConvertDeviceIdMap(kSampleDeviceIdMap);
 
   // Test.
   ASSERT_TRUE(result);
@@ -295,12 +305,12 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoMapSuccess) {
   EXPECT_EQ(*result_map->get("product"), cppbor::Tstr("brya"));
 }
 
-TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoMapFailure) {
+TEST_F(ArcRemoteProvisioningContextTest, ConvertDeviceIdMapEmpty) {
   // Prepare.
-  std::string property_string("I am a fake string");
+  base::flat_map<std::string, std::string> empty_map;
 
   // Execute.
-  auto result = CreateDeviceInfoMap(property_string);
+  auto result = ConvertDeviceIdMap(empty_map);
 
   // Test.
   ASSERT_TRUE(result);
@@ -310,18 +320,53 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoMapFailure) {
   EXPECT_EQ(result_map->size(), 0);
 }
 
-TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceIdMapSuccess) {
   // Prepare.
   std::string file_data(kSampleProp);
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ASSERT_TRUE(base::WriteFile(
       temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
-  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
 
+  // Execute.
+  auto result = CreateDeviceIdMap(temp_dir.GetPath());
+
+  // Test.
+  ASSERT_TRUE(result.has_value());
+
+  auto result_map = result.value();
+  EXPECT_EQ(result_map.size(), 5);
+  ASSERT_EQ(result_map.count("brand"), 1);
+  EXPECT_EQ(result_map.at("brand"), "google");
+  ASSERT_EQ(result_map.count("device"), 1);
+  EXPECT_EQ(result_map.at("device"), "brya_cheets");
+  ASSERT_EQ(result_map.count("manufacturer"), 1);
+  EXPECT_EQ(result_map.at("manufacturer"), "Google");
+  ASSERT_EQ(result_map.count("model"), 1);
+  EXPECT_EQ(result_map.at("model"), "brya");
+  ASSERT_EQ(result_map.count("product"), 1);
+  EXPECT_EQ(result_map.at("product"), "brya");
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceIdMapFailure) {
+  // Prepare.
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Execute.
+  std::optional<base::flat_map<std::string, std::string>> result =
+      CreateDeviceIdMap(temp_dir.GetPath());
+
+  // Test.
+  ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
+  // Prepare.
+  remote_provisioning_context_->SetSystemVersion(kOsVersion, kOsPatchLevel);
   auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
-  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
-                                        temp_dir.GetPath());
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
 
   // Execute.
   auto result = remote_provisioning_context_->CreateDeviceInfo();
@@ -357,12 +402,10 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoSuccess) {
 
 TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoFailure) {
   // Prepare.
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-
+  base::flat_map<std::string, std::string> empty_map;
   auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
-  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
-                                        temp_dir.GetPath());
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         empty_map);
 
   // Execute.
   auto result = remote_provisioning_context_->CreateDeviceInfo();
@@ -377,15 +420,9 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoFailure) {
 
 TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoWithVerifiedBootInfo) {
   // Prepare.
-  std::string file_data(kSampleProp);
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  ASSERT_TRUE(base::WriteFile(
-      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
-
   auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
-  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
-                                        temp_dir.GetPath());
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
   const std::string unlocked_bootloader_state = "unlocked";
   const std::string unverified_boot_state = "orange";
   const std::string vbmeta_digest_string =
@@ -416,15 +453,9 @@ TEST_F(ArcRemoteProvisioningContextTest, CreateDeviceInfoWithVerifiedBootInfo) {
 TEST_F(ArcRemoteProvisioningContextTest,
        CreateDeviceInfoWithoutVerifiedBootInfo) {
   // Prepare.
-  std::string file_data(kSampleProp);
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  ASSERT_TRUE(base::WriteFile(
-      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
-
   auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
-  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
-                                        temp_dir.GetPath());
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
 
   // Execute.
   auto result = remote_provisioning_context_->CreateDeviceInfo();
@@ -442,15 +473,9 @@ TEST_F(ArcRemoteProvisioningContextTest,
 TEST_F(ArcRemoteProvisioningContextTest,
        CreateDeviceInfoWithEmptyVbMetaDigest) {
   // Prepare.
-  std::string file_data(kSampleProp);
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  ASSERT_TRUE(base::WriteFile(
-      temp_dir.GetPath().Append(kProductBuildPropertyFileName), file_data));
-
   auto test_peer = std::make_unique<ArcRemoteProvisioningContextTestPeer>();
-  test_peer->set_property_dir_for_tests(remote_provisioning_context_,
-                                        temp_dir.GetPath());
+  test_peer->set_device_id_map_for_tests(remote_provisioning_context_,
+                                         kSampleDeviceIdMap);
 
   // Execute.
   remote_provisioning_context_->SetVerifiedBootInfo(

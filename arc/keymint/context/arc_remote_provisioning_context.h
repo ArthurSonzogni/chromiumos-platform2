@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/flat_map.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 
 #include "arc/keymint/context/openssl_utils.h"
@@ -50,8 +51,14 @@ cppcose::ErrMsgOr<cppbor::Array> constructCoseSign1FromDK(
     const std::vector<uint8_t>& payload,
     const std::vector<uint8_t>& additionalAuthData);
 
-std::unique_ptr<cppbor::Map> CreateDeviceInfoMap(
-    std::string& properties_content);
+// Creates a map with initial device info from the product build properties
+// file. The keys correspond to |DeviceInfoV2.cddl| -
+// https://cs.android.com/android/platform/superproject/main/+/main:hardware/interfaces/security/rkp/aidl/android/hardware/security/keymint/DeviceInfoV2.cddl
+std::optional<base::flat_map<std::string, std::string>> CreateDeviceIdMap(
+    const base::FilePath& property_dir);
+
+std::unique_ptr<cppbor::Map> ConvertDeviceIdMap(
+    const base::flat_map<std::string, std::string>& device_id_map);
 
 // Defines specific behavior for ARC Remote Provisioning Context in ChromeOS.
 class ArcRemoteProvisioningContext
@@ -108,12 +115,15 @@ class ArcRemoteProvisioningContext
   std::optional<uint32_t> boot_patchlevel_;
   std::optional<std::vector<uint8_t>> vbmeta_digest_;
   std::optional<std::vector<uint8_t>> certificate_challenge_;
+  std::optional<base::flat_map<std::string, std::string>> device_id_map_;
 
   mutable std::once_flag bcc_initialized_flag_;
   mutable cppbor::Array boot_cert_chain_;
 
   base::FilePath property_dir_;
   void set_property_dir_for_tests(base::FilePath& path);
+  void set_device_id_map_for_tests(
+      const base::flat_map<std::string, std::string>& device_id_map);
   friend class ArcRemoteProvisioningContextTestPeer;
 };
 }  // namespace arc::keymint::context

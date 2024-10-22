@@ -116,19 +116,30 @@ cppcose::ErrMsgOr<cppbor::Array> constructCoseSign1FromDK(
       .add(signature.moveValue());
 }
 
-std::unique_ptr<cppbor::Map> CreateDeviceInfoMap(
-    std::string& properties_content) {
-  auto result = std::make_unique<cppbor::Map>(cppbor::Map());
+std::optional<base::flat_map<std::string, std::string>> CreateDeviceIdMap(
+    const base::FilePath& property_dir) {
+  base::flat_map<std::string, std::string> device_id_map;
+  const base::FilePath prop_file_path =
+      property_dir.Append(kProductBuildPropertyFileName);
+  std::string properties_content;
+  if (!base::ReadFileToString(prop_file_path, &properties_content)) {
+    // In case of failure to read properties into string, return nullopt.
+    LOG(ERROR) << "Failed to create device ID map because of failure to read "
+                  "properties from the properties file";
+    return std::nullopt;
+  }
+
   std::vector<std::string> properties = base::SplitString(
       properties_content, "\n", base::WhitespaceHandling::TRIM_WHITESPACE,
       base::SplitResult::SPLIT_WANT_ALL);
 
-  std::map<std::string, std::pair<std::string, std::string>> property_map = {
-      {kProductBrand, std::make_pair("brand", "")},
-      {kProductDevice, std::make_pair("device", "")},
-      {kProductManufacturer, std::make_pair("manufacturer", "")},
-      {kProductModel, std::make_pair("model", "")},
-      {kProductName, std::make_pair("product", "")}};
+  base::flat_map<std::string, std::pair<std::string, std::string>>
+      property_map = {
+          {kProductBrand, std::make_pair("brand", "")},
+          {kProductDevice, std::make_pair("device", "")},
+          {kProductManufacturer, std::make_pair("manufacturer", "")},
+          {kProductModel, std::make_pair("model", "")},
+          {kProductName, std::make_pair("product", "")}};
 
   constexpr char separator[] = "=";
 
@@ -141,14 +152,19 @@ std::unique_ptr<cppbor::Map> CreateDeviceInfoMap(
     if (itr != property_map.end()) {
       auto value = property.substr(separatorIndex + 1, property.size());
       itr->second.second = value;
+      device_id_map.insert({itr->second.first, value});
     }
   }
 
+  return device_id_map;
+}
+
+std::unique_ptr<cppbor::Map> ConvertDeviceIdMap(
+    const base::flat_map<std::string, std::string>& device_id_map) {
+  auto result = std::make_unique<cppbor::Map>(cppbor::Map());
   // Convert property map into cppbor map.
-  for (auto& [key, value] : property_map) {
-    if (value.second.size()) {
-      result->add(cppbor::Tstr(value.first), cppbor::Tstr(value.second));
-    }
+  for (auto& [key, value] : device_id_map) {
+    result->add(cppbor::Tstr(key), cppbor::Tstr(value));
   }
   return result;
 }
@@ -329,7 +345,9 @@ ArcRemoteProvisioningContext::ArcRemoteProvisioningContext(
     keymaster_security_level_t security_level)
     : PureSoftRemoteProvisioningContext(security_level),
       security_level_(security_level),
-      property_dir_(kProductBuildPropertyRootDir) {}
+      property_dir_(kProductBuildPropertyRootDir) {
+  device_id_map_ = CreateDeviceIdMap(property_dir_);
+}
 
 ArcRemoteProvisioningContext::~ArcRemoteProvisioningContext() = default;
 
@@ -456,6 +474,11 @@ void ArcRemoteProvisioningContext::set_property_dir_for_tests(
   property_dir_ = base::FilePath(path);
 }
 
+void ArcRemoteProvisioningContext::set_device_id_map_for_tests(
+    const base::flat_map<std::string, std::string>& device_id_map) {
+  device_id_map_ = device_id_map;
+}
+
 void ArcRemoteProvisioningContext::SetSystemVersion(uint32_t os_version,
                                                     uint32_t os_patchlevel) {
   os_version_ = os_version;
@@ -481,17 +504,14 @@ void ArcRemoteProvisioningContext::SetChallengeForCertificateRequest(
 
 std::unique_ptr<cppbor::Map> ArcRemoteProvisioningContext::CreateDeviceInfo()
     const {
-  const base::FilePath prop_file_path =
-      property_dir_.Append(kProductBuildPropertyFileName);
-
-  std::string properties_content;
-  if (!base::ReadFileToString(prop_file_path, &properties_content)) {
-    // In case of failure to read properties into string, return a blank map.
-    LOG(ERROR) << "Failed to read properties from the properties file";
+  if (!device_id_map_.has_value() || device_id_map_.value().empty()) {
+    // In case of empty device id map, return a blank map.
+    LOG(ERROR) << "Failed to return values for CreateDeviceInfo because device "
+                  "ID map is empty";
     return std::make_unique<cppbor::Map>(cppbor::Map());
   }
 
-  auto device_info_map = CreateDeviceInfoMap(properties_content);
+  auto device_info_map = ConvertDeviceIdMap(device_id_map_.value());
 
   if (bootloader_state_.has_value()) {
     device_info_map->add(cppbor::Tstr("bootloader_state"),
