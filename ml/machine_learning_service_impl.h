@@ -102,10 +102,6 @@ class MachineLearningServiceImpl
           receiver,
       chromeos::machine_learning::mojom::DocumentScannerConfigPtr config,
       LoadDocumentScannerCallback callback) override;
-  void CreateWebPlatformModelLoader(
-      mojo::PendingReceiver<model_loader::mojom::ModelLoader> receiver,
-      model_loader::mojom::CreateModelLoaderOptionsPtr options,
-      CreateWebPlatformModelLoaderCallback callback) override;
   void LoadImageAnnotator(
       chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
       mojo::PendingReceiver<
