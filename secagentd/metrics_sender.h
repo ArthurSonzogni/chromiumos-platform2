@@ -65,6 +65,15 @@ using MetricsCountMap = std::unordered_map<CountMetric, MetricsCountSubMap>;
 static constexpr CountMetric kCommandLineSize = {
     .name = "CommandLineLength", .max = 4096, .min = 64, .nbuckets = 32};
 
+static constexpr CountMetric kSHA256SizeMiB = {  // Measured in MiB
+    .name = "SHA256InputSize",
+    .max = 1024,
+    .min = 1,
+    .nbuckets = 100};
+
+static constexpr CountMetric kSHA256ComputeTime100ms = {
+    .name = "SHA256ComputeTime", .max = 100, .min = 1, .nbuckets = 100};
+
 template <class E>
 struct EnumMetric {
   const char* name;
@@ -200,9 +209,7 @@ static constexpr EnumMetric<AuthFactor> kLogin = {.name = "AuthFactor.Login"};
 static constexpr EnumMetric<AuthFactor> kUnlock = {.name = "AuthFactor.Unlock"};
 static constexpr EnumMetric<AuthFactor> kFailure = {.name =
                                                         "AuthFactor.Failure"};
-
 }  // namespace metrics
-
 // Class for sending UMA metrics. Expected to be accessed as a Singleton via
 // MetricsSender::GetInstance().
 class MetricsSender {

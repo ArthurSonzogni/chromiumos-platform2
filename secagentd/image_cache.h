@@ -69,6 +69,9 @@ class ImageCacheInterface
   struct HashValue {
     std::string sha256;
     bool sha256_is_partial;
+    size_t file_size;
+    base::TimeDelta
+        compute_time;  // amount of time it took to compute the SHA256.
   };
 
   // If the SHA256 for the file identified by image_key is found in the

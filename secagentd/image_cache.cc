@@ -82,12 +82,13 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
         base::StrCat({kErrorFailedToRead, image_path_in_current_ns.value()}));
   }
 
+  base::TimeTicks start = base::TimeTicks::Now();
   SHA256_CTX ctx;
   if (!SHA256_Init(&ctx)) {
     return absl::InternalError(kErrorSslSha);
   }
 
-  size_t file_size = file.GetLength();
+  size_t file_size = std::max(file.GetLength(), static_cast<int64_t>(0));
   bool is_partial =
       !force_full_sha && (file_size > (max_file_size_for_full_sha_));
 
@@ -102,7 +103,7 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
 
   // If last chunk is less that the chunk_count, we would end up
   // computing full hash, even though partial is needed, updating is_partial
-  // correctly
+  // correctly.
   is_partial =
       is_partial &&
       (file_size > (max_file_size_for_full_sha_ +
@@ -112,21 +113,21 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
   size_t offset = 0;
 
   while (offset < file_size) {
-    // Determine bytes to read for this iteration
+    // Determine bytes to read for this iteration.
     size_t bytes_to_read = std::min(sha_chunk_size_, file_size - offset);
-    // Read bytes from the file
+    // Read bytes from the file.
     int bytes_read = file.Read(offset, buf.char_data(), bytes_to_read);
     if (bytes_read < bytes_to_read) {
       return absl::AbortedError(
           base::StrCat({kErrorBytesRead, image_path_in_current_ns.value()}));
     }
 
-    // Update SHA256 context with the read data
+    // Update SHA256 context with the read data.
     if (!SHA256_Update(&ctx, buf.data(), bytes_read)) {
       return absl::InternalError(kErrorSslSha);
     }
 
-    offset += chunk_size;  // Move to the next position
+    offset += chunk_size;  // Move to the next position.
   }
 
   // Finalize the SHA calculation
@@ -135,9 +136,12 @@ absl::StatusOr<ImageCacheInterface::HashValue> ImageCache::GenerateImageHash(
     return absl::InternalError(kErrorSslSha);
   }
 
-  // Convert hash to a hexadecimal string and return
+  // Convert hash to a hexadecimal string and return.
   return ImageCacheInterface::HashValue{
-      base::HexEncode(final_hash.data(), SHA256_DIGEST_LENGTH), is_partial};
+      .sha256 = base::HexEncode(final_hash.data(), SHA256_DIGEST_LENGTH),
+      .sha256_is_partial = is_partial,
+      .file_size = file_size,
+      .compute_time = base::TimeTicks::Now() - start};
 }
 
 absl::StatusOr<base::FilePath> ImageCache::SafeAppendAbsolutePath(

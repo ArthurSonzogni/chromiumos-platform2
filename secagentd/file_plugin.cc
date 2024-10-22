@@ -11,9 +11,11 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_split.h"
+#include "base/time/time.h"
 #include "secagentd/bpf/bpf_types.h"
 #include "secagentd/common.h"
 #include "secagentd/device_user.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -48,6 +50,9 @@
 namespace {
 
 using secagentd::FilePlugin;
+
+static constexpr size_t bytes_per_kib{1024};
+static constexpr size_t bytes_per_mib{bytes_per_kib * 1024};
 const char kDeviceSettingsBasePath[] = "/var/lib/devicesettings/";
 static const std::map<std::string, std::string> kBlocklistBinariesPathMap = {
     {"dlp", "/usr/sbin/dlp"}, {"secagentd", "/usr/sbin/secagentd"}};
@@ -352,10 +357,10 @@ absl::StatusOr<FilePlugin::HashComputeResult> AsyncHashCompute(
   if (!image_result.ok()) {
     return absl::InternalError("Failed to hash file");
   }
-  FilePlugin::HashComputeResult hash_result{.key = input.key,
-                                            .generation = input.generation};
-  hash_result.sha256 = image_result.value().sha256;
-  hash_result.sha256_is_partial = image_result.value().sha256_is_partial;
+  FilePlugin::HashComputeResult hash_result{
+      .key = input.key,
+      .generation = input.generation,
+      .hash_result = image_result.value()};
   return hash_result;
 }
 
@@ -1420,6 +1425,13 @@ void FilePlugin::ReceiveHashComputeResults(
     return;
   }
   auto& result = hash_result.value();
+  MetricsSender::GetInstance().IncrementCountMetric(
+      metrics::kSHA256SizeMiB, result.hash_result.file_size / (bytes_per_mib));
+  int64_t compute_time_ms = result.hash_result.compute_time.InMilliseconds();
+  MetricsSender::GetInstance().IncrementCountMetric(
+      metrics::kSHA256ComputeTime100ms, compute_time_ms % 100 < 50
+                                            ? compute_time_ms / 100
+                                            : compute_time_ms / 100 + 1);
   if (result.generation == staged_events_->generation) {
     auto it = staged_events_->event_map.find(result.key);
     if (it == staged_events_->event_map.end()) {
@@ -1443,8 +1455,9 @@ void FilePlugin::ReceiveHashComputeResults(
       LOG(ERROR) << image_result.status();
       return;
     }
-    image_result.value()->set_sha256(result.sha256);
-    image_result.value()->set_partial_sha256(result.sha256_is_partial);
+    image_result.value()->set_sha256(result.hash_result.sha256);
+    image_result.value()->set_partial_sha256(
+        result.hash_result.sha256_is_partial);
   }
 }
 

@@ -385,9 +385,8 @@ class FilePlugin : public PluginInterface {
   };
   struct HashComputeResult {
     FileEventKey key;
-    bool sha256_is_partial;
     uint64_t generation;
-    std::string sha256;
+    ImageCacheInterface::HashValue hash_result;
   };
 
   using OrderedEvents = std::vector<std::unique_ptr<FileEventValue>>;
