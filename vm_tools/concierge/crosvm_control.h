@@ -230,6 +230,33 @@ class CrosvmControl {
   virtual bool VmmSwapStatus(const std::string& socket_path,
                              struct SwapStatus* status);
 
+  // Makes the crosvm’s goldfish battery device start reporting fake power
+  // status to the guest.
+  //
+  // Arguments
+  // `socket_path` - Path to the crosvm control socket
+  // `battery_type` - Type of battery emulation to use. Currently "goldfish" is
+  // the default and only supported type.
+  // `capacity_limit` - Specifies the upper limit of the capacity that the
+  // battery device will report to the guest.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool SetFakePowerConfig(const std::string& socket_path,
+                                  const std::string& battery_type,
+                                  const uint32_t capacity_limit);
+
+  // Makes the crosvm’s goldfish battery device stop reporting fake power
+  // status to the guest.
+  //
+  // Arguments
+  // `socket_path` - Path to the crosvm control socket
+  // `battery_type` - Type of battery emulation to use. Currently "goldfish" is
+  // the default and only supported type.
+  //
+  // The function returns true on success or false if an error occurred.
+  virtual bool CancelFakePowerConfig(const std::string& socket_path,
+                                     const std::string& battery_type);
+
   virtual ~CrosvmControl() = default;
 
  protected:

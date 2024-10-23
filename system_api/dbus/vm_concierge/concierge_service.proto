@@ -1600,3 +1600,27 @@ message SetUpVmUserResponse {
   // username specified in SetUpVmUserRequest.
   string username = 3;
 }
+
+// Fake battery set action
+enum FakePowerAction {
+  // VM starts reporting fake power status
+  SET = 0;
+  // VM stops reporting fake power status
+  CANCEL = 1;
+}
+
+// Request send to SET/CANCEL fake battery config
+message ModifyFakePowerConfigRequest {
+  // The name of the VM which has started.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+
+  // Whether to set or cancel the fake power configuration
+  FakePowerAction action = 3;
+
+  // The maximum battery capacity bat device can report to guest. This field
+  // should only be set when the action is SET.
+  uint32 capacity_limit = 4;
+}

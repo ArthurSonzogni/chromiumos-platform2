@@ -196,4 +196,15 @@ bool VmBaseImpl::SetUpUser(std::optional<uid_t> uid,
   return false;
 }
 
+bool VmBaseImpl::SetFakePowerConfig(const std::string& battery_type,
+                                    const uint32_t capacity_limit) {
+  return CrosvmControl::Get()->SetFakePowerConfig(GetVmSocketPath(),
+                                                  battery_type, capacity_limit);
+}
+
+bool VmBaseImpl::CancelFakePowerConfig(const std::string& battery_type) {
+  return CrosvmControl::Get()->CancelFakePowerConfig(GetVmSocketPath(),
+                                                     battery_type);
+}
+
 }  // namespace vm_tools::concierge

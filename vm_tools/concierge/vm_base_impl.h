@@ -221,6 +221,12 @@ class VmBaseImpl {
                          std::string* out_username,
                          std::string* out_error);
 
+  // Sets fake power configuration for battery device
+  virtual bool SetFakePowerConfig(const std::string& battery_type,
+                                  const uint32_t capacity_limit);
+  // Cancels fake power configuration for battery device
+  virtual bool CancelFakePowerConfig(const std::string& battery_type);
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,

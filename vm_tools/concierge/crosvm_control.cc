@@ -174,4 +174,17 @@ bool CrosvmControl::VmmSwapStatus(const std::string& socket_path,
   return crosvm_client_swap_status(socket_path.c_str(), status);
 }
 
+bool CrosvmControl::SetFakePowerConfig(const std::string& socket_path,
+                                       const std::string& battery_type,
+                                       uint32_t capacity_limit) {
+  return crosvm_client_fake_power(socket_path.c_str(), battery_type.c_str(),
+                                  capacity_limit);
+}
+
+bool CrosvmControl::CancelFakePowerConfig(const std::string& socket_path,
+                                          const std::string& battery_type) {
+  return crosvm_client_cancel_fake_power(socket_path.c_str(),
+                                         battery_type.c_str());
+}
+
 }  // namespace vm_tools::concierge

@@ -4712,4 +4712,54 @@ void Service::SetUpVmUser(
   response_cb->Return(response);
 }
 
+void Service::ModifyFakePowerConfig(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        SuccessFailureResponse>> response_cb,
+    const ModifyFakePowerConfigRequest& request) {
+  ASYNC_SERVICE_METHOD();
+
+  SuccessFailureResponse response;
+  response.set_success(false);
+
+  VmId vm_id(request.owner_id(), request.name());
+  if (!CheckVmNameAndOwner(request, response)) {
+    response_cb->Return(response);
+    return;
+  }
+
+  auto iter = FindVm(vm_id);
+  if (iter == vms_.end()) {
+    response.set_failure_reason("Requested VM " + vm_id.name() +
+                                " does not exist");
+    LOG(ERROR) << response.failure_reason();
+    response_cb->Return(response);
+    return;
+  }
+
+  if (request.action() == FakePowerAction::SET) {
+    if (!iter->second->SetFakePowerConfig("goldfish",
+                                          request.capacity_limit())) {
+      response.set_failure_reason("Set fake power config failed");
+      LOG(ERROR) << response.failure_reason();
+      response_cb->Return(response);
+      return;
+    }
+  } else if (request.action() == FakePowerAction::CANCEL) {
+    if (!iter->second->CancelFakePowerConfig("goldfish")) {
+      response.set_failure_reason("Cancel fake power config failed");
+      LOG(ERROR) << response.failure_reason();
+      response_cb->Return(response);
+      return;
+    }
+  } else {
+    response.set_failure_reason(
+        "No valid action in ModifyFakePowerConfigRequest");
+    LOG(ERROR) << response.failure_reason();
+    response_cb->Return(response);
+    return;
+  }
+  response.set_success(true);
+  response_cb->Return(response);
+}
+
 }  // namespace vm_tools::concierge

@@ -422,6 +422,12 @@ class Service final : public org::chromium::VmConciergeInterface,
       const vm_tools::concierge::GetVmMemoryManagementKillsConnectionRequest&
           in_request) override;
 
+  // Handles a request to modify VM fake power configuration
+  void ModifyFakePowerConfig(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          SuccessFailureResponse>> response_cb,
+      const ModifyFakePowerConfigRequest& request) override;
+
   // Creates DnsSettings from current configuration.
   DnsSettings ComposeDnsResponse();
 
