@@ -5,7 +5,6 @@
 #include "login_manager/util.h"
 
 #include <fcntl.h>
-#include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -13,15 +12,11 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/process/launch.h>
 
-namespace chromeos {
-namespace ui {
-namespace util {
+namespace chromeos::ui::util {
 
 base::FilePath GetReparentedPath(const std::string& path,
                                  const base::FilePath& parent) {
@@ -78,28 +73,4 @@ bool EnsureDirectoryExists(const base::FilePath& path,
   return SetPermissions(path, uid, gid, mode);
 }
 
-bool Run(const char* command, const char* arg, ...) {
-  // Extra parentheses because yay C++ most vexing parse.
-  base::CommandLine cl((base::FilePath(command)));
-  va_list list;
-  va_start(list, arg);
-  while (arg) {
-    cl.AppendArg(const_cast<char*>(arg));
-    arg = va_arg(list, char*);
-  }
-  va_end(list);
-
-  std::string output;
-  int exit_code = 0;
-  if (!base::GetAppOutputWithExitCode(cl, &output, &exit_code)) {
-    LOG(WARNING) << "\"" << cl.GetCommandLineString() << "\" failed with "
-                 << exit_code << ": " << output;
-    return false;
-  }
-
-  return true;
-}
-
-}  // namespace util
-}  // namespace ui
-}  // namespace chromeos
+}  // namespace chromeos::ui::util

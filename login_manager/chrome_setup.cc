@@ -4,6 +4,7 @@
 
 #include "login_manager/chrome_setup.h"
 
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -356,6 +357,8 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // This data is read and written by chronos.
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/signin_profile_extensions"), uid, gid, 0700));
+
+  SetUpDebugfsGpu();
 
   // Tell Chrome where to write logging messages before the user logs in.
   base::FilePath system_log_dir("/var/log/chrome");
@@ -1091,6 +1094,25 @@ void AddMantisFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("mantis")) {
     // The CrosSafetyService is required for the MantisService
     builder->AddFeatureEnableOverride("CrosSafetyService");
+  }
+}
+
+void SetUpDebugfsGpu() {
+  // Location where GPU debug information is bind-mounted.
+  static const char kDebugfsGpuPath[] = "/run/debugfs_gpu";
+
+  const base::FilePath debugfs_gpu_path(kDebugfsGpuPath);
+  if (base::DirectoryExists(debugfs_gpu_path)) {
+    return;
+  }
+  if (!base::CreateDirectory(debugfs_gpu_path)) {
+    PLOG(ERROR) << "Unable to create " << kDebugfsGpuPath;
+    return;
+  }
+  if (mount("/sys/kernel/debug/dri/0", kDebugfsGpuPath, "", MS_BIND, nullptr) <
+      0) {
+    PLOG(ERROR) << "Unable to mount";
+    return;
   }
 }
 

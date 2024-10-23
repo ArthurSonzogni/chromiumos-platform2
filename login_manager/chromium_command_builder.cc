@@ -32,9 +32,6 @@ namespace ui {
 
 namespace {
 
-// Location where GPU debug information is bind-mounted.
-const char kDebugfsGpuPath[] = "/run/debugfs_gpu";
-
 // Name of the release track field.
 constexpr char kChromeosReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
 
@@ -601,20 +598,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
                             &block_llprivacy_availability) &&
       block_llprivacy_availability == "true") {
     AddFeatureDisableOverride("LLPrivacyIsAvailable");
-  }
-
-  // Allow Chrome to access GPU memory information despite /sys/kernel/debug
-  // being owned by debugd. This limits the security attack surface versus
-  // leaving the whole debug directory world-readable: http://crbug.com/175828
-  // (Only do this if we're running as root, i.e. not in a test.)
-  const base::FilePath debugfs_gpu_path(GetPath(kDebugfsGpuPath));
-  if (getuid() == 0 && !base::DirectoryExists(debugfs_gpu_path)) {
-    if (base::CreateDirectory(debugfs_gpu_path)) {
-      util::Run("mount", "-o", "bind", "/sys/kernel/debug/dri/0",
-                kDebugfsGpuPath, nullptr);
-    } else {
-      PLOG(ERROR) << "Unable to create " << kDebugfsGpuPath;
-    }
   }
 }
 

@@ -221,6 +221,12 @@ void AddArcFlags(chromeos::ui::ChromiumCommandBuilder* builder,
 void AddFeatureManagementFlags(
     chromeos::ui::ChromiumCommandBuilder* builder,
     segmentation::FeatureManagement* FeatureManagement);
+
+// Allows Chrome to access GPU memory information despite /sys/kernel/debug
+// being owned by debugd. This limits the security attack surface versus
+// leaving the whole debug directory world-readable. See crbug.com/175828
+void SetUpDebugfsGpu();
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHROME_SETUP_H_
