@@ -30,7 +30,6 @@
 #include "ml/handwriting.h"
 #include "ml/handwriting_proto_mojom_conversion.h"
 #include "ml/machine_learning_service_impl.h"
-#include "ml/mojom/big_buffer.mojom.h"
 #include "ml/mojom/document_scanner.mojom.h"
 #include "ml/mojom/grammar_checker.mojom.h"
 #include "ml/mojom/graph_executor.mojom.h"
