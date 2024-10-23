@@ -175,7 +175,7 @@ TEST_F(EcFirmwareTest, CreateInvalidAreaSize) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  const auto fw_path = temp_dir.GetPath().Append("invalid_area_size.bin");
+  const auto fw_path = temp_dir.GetPath().Append("CreateInvalidAreaSize.bin");
   constexpr uint32_t fmap_size = 1000;
   /* One area size is bigger than size reported by the fmap header. */
   std::vector<fmap_image_area> areas = {
@@ -192,7 +192,7 @@ TEST_F(EcFirmwareTest, InvalidImage) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  const auto fw_path = temp_dir.GetPath().Append("valid_image.bin");
+  const auto fw_path = temp_dir.GetPath().Append("InvalidImage.bin");
   constexpr uint32_t fmap_size = 1000;
   constexpr uint32_t area_size = 16;
   /* Prepare image with all areas. */
@@ -239,7 +239,7 @@ TEST_F(EcFirmwareTest, NoAreas) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  const auto fw_path = temp_dir.GetPath().Append("no_areas.bin");
+  const auto fw_path = temp_dir.GetPath().Append("NoAreas.bin");
   constexpr uint32_t fmap_size = 1000;
   std::vector<fmap_image_area> areas;
 
@@ -264,7 +264,7 @@ TEST_F(EcFirmwareTest, ValidImage) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  const auto fw_path = temp_dir.GetPath().Append("valid_image.bin");
+  const auto fw_path = temp_dir.GetPath().Append("ValidImage.bin");
   constexpr uint32_t area_size = 256;
   constexpr uint32_t fmap_size = 1000;
   std::vector<fmap_image_area> areas = {
@@ -305,7 +305,7 @@ TEST_F(EcFirmwareTest, InvalidVersion) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  const auto fw_path = temp_dir.GetPath().Append("invalid_version.bin");
+  const auto fw_path = temp_dir.GetPath().Append("InvalidVersion.bin");
   constexpr uint32_t area_size = 32;
   constexpr uint32_t fmap_size = 1000;
   /* Create version string without NULL termination. */
@@ -330,7 +330,7 @@ TEST_F(EcFirmwareTest, GetVersion) {
   base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  const auto fw_path = temp_dir.GetPath().Append("valid_image.bin");
+  const auto fw_path = temp_dir.GetPath().Append("GetVersion.bin");
   constexpr uint32_t area_size = 32;
   constexpr uint32_t fmap_size = 1000;
   std::string version_ro = "TeStingABCversionRO123xxVV";
