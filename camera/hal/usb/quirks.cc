@@ -58,6 +58,8 @@ const QuirksMap& GetQuirksMap() {
       {{"18d1", "501e"}, kQuirkExpectTimeout | kQuirkExpectHotplugWhileOpen},
       // Series One Video Input (Endeavour) (b/354766714)
       {{"18d1", "8006"}, kQuirkExpectHotplugWhileOpen},
+      // TFC 1YHIZZZ0009 (YHIG) (b/374232012)
+      {{"0408", "548f"}, kQuirkUserSpaceTimestamp},
   });
   return *kQuirksMap;
 }
