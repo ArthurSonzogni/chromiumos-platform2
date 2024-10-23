@@ -42,7 +42,7 @@ void ResourceCollectorStorage::Collect() {
   }
   // If there was no successful uploads for more than 1 day, upload the same
   // storage size as non-uploading usage as well.
-  if (upload_progress_timestamp_.load() + base::Days(1) < base::Time::Now()) {
+  if (upload_progress_timestamp_ + base::Days(1) < base::Time::Now()) {
     if (!SendDirectorySizeToUma(kNonUploadingUmaName, storage_size)) {
       LOG(ERROR) << "Failed to send directory size to UMA.";
     }

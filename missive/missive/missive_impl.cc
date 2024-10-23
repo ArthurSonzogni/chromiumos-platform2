@@ -19,6 +19,7 @@
 #include <base/types/expected.h>
 #include <featured/feature_library.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
@@ -141,6 +142,7 @@ MissiveImpl& MissiveImpl::SetStorageModuleFactory(
         void(MissiveImpl* self,
              StorageOptions storage_options,
              MissiveArgs::StorageParameters parameters,
+             base::RepeatingClosure storage_upload_success_cb,
              base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                  callback)> create_storage_factory) {
   create_storage_factory_ = std::move(create_storage_factory);
@@ -236,7 +238,7 @@ void MissiveImpl::OnCollectionParameters(
       std::make_unique<analytics::ResourceCollectorStorage>(
           collection_parameters.storage_collector_interval,
           reporting_storage_dir_);
-  storage_upload_success_cb_ =
+  auto storage_upload_success_cb =
       base::BindPostTaskToCurrentDefault(base::BindRepeating(
           &analytics::ResourceCollectorStorage::RecordUploadProgress,
           storage_collector->GetWeakPtr()));
@@ -258,14 +260,15 @@ void MissiveImpl::OnCollectionParameters(
 
   // `GetStorageParameters` only responds once the features were updated.
   args_->AsyncCall(&MissiveArgs::GetStorageParameters)
-      .WithArgs(base::BindPostTaskToCurrentDefault(
-          base::BindOnce(&MissiveImpl::OnStorageParameters, GetWeakPtr(),
-                         std::move(cb), std::move(storage_options))));
+      .WithArgs(base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &MissiveImpl::OnStorageParameters, GetWeakPtr(), std::move(cb),
+          std::move(storage_options), std::move(storage_upload_success_cb))));
 }
 
 void MissiveImpl::OnStorageParameters(
     base::OnceCallback<void(Status)> cb,
     StorageOptions storage_options,
+    base::RepeatingClosure storage_upload_success_cb,
     StatusOr<MissiveArgs::StorageParameters> storage_parameters_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!storage_parameters_result.has_value()) {
@@ -292,6 +295,7 @@ void MissiveImpl::OnStorageParameters(
 
   std::move(create_storage_factory_)
       .Run(this, std::move(storage_options), std::move(parameters),
+           std::move(storage_upload_success_cb),
            base::BindPostTaskToCurrentDefault(
                base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
                               GetWeakPtr(), std::move(cb))));
@@ -305,6 +309,7 @@ Status MissiveImpl::ShutDown() {
 void MissiveImpl::CreateStorage(
     StorageOptions storage_options,
     MissiveArgs::StorageParameters parameters,
+    base::RepeatingClosure storage_upload_success_cb,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Create `Storage`.
@@ -317,6 +322,7 @@ void MissiveImpl::CreateStorage(
        .health_module = health_module_,
        .server_configuration_controller = server_configuration_controller_,
        .signature_verification_dev_flag = signature_verification_dev_flag_,
+       .storage_upload_success_cb = std::move(storage_upload_success_cb),
        .async_start_upload_cb = base::BindPostTaskToCurrentDefault(
            base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr()))},
       std::move(callback));
@@ -359,7 +365,6 @@ void MissiveImpl::OnStorageModuleConfigured(
     return;
   }
   storage_module_ = std::move(storage_module_result.value());
-  storage_module_->AttachUploadSuccessCb(storage_upload_success_cb_);
   std::move(cb).Run(Status::StatusOK());
 }
 

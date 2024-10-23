@@ -5,15 +5,16 @@
 #ifndef MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_STORAGE_H_
 #define MISSIVE_ANALYTICS_RESOURCE_COLLECTOR_STORAGE_H_
 
-#include "missive/analytics/resource_collector.h"
-
-#include <atomic>
 #include <string_view>
 
 #include <base/files/file_path.h>
-#include "base/memory/weak_ptr.h"
+#include <base/memory/weak_ptr.h>
+#include <base/sequence_checker.h>
+#include <base/thread_annotations.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
+
+#include "missive/analytics/resource_collector.h"
 
 namespace reporting {
 
@@ -67,14 +68,15 @@ class ResourceCollectorStorage : public ResourceCollector {
   // Send directory size data to UMA.
   bool SendDirectorySizeToUma(std::string_view uma_name, int directory_size);
 
-  // Weak pointer factory for delayed callbacks.
-  base::WeakPtrFactory<ResourceCollectorStorage> weak_ptr_factory_{this};
-
   // The directory in which record files are saved.
   const base::FilePath storage_directory_;
 
   // Upload progress time stamp.
-  std::atomic<base::Time> upload_progress_timestamp_{base::Time::Now()};
+  base::Time upload_progress_timestamp_ GUARDED_BY_CONTEXT(sequence_checker_){
+      base::Time::Now()};
+
+  // Weak pointer factory for delayed callbacks.
+  base::WeakPtrFactory<ResourceCollectorStorage> weak_ptr_factory_{this};
 };
 
 }  // namespace analytics

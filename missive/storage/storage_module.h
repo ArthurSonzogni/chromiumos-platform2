@@ -43,6 +43,7 @@ class StorageModule : public StorageModuleInterface {
         server_configuration_controller;
     const scoped_refptr<SignatureVerificationDevFlag>
         signature_verification_dev_flag;
+    const base::RepeatingClosure storage_upload_success_cb;
     const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
   };
 
@@ -87,11 +88,6 @@ class StorageModule : public StorageModuleInterface {
   // from now on. All other priorities are in multi-generation action state.
   void SetLegacyEnabledPriorities(std::string_view legacy_storage_enabled);
 
-  // Attaches a repeating callback to be invoked every time `ReportSuccess`
-  // detects material progress in upload.
-  void AttachUploadSuccessCb(
-      base::RepeatingCallback<void()> storage_upload_success_cb);
-
  protected:
   // Constructor can only be called by `Create` factory method.
   explicit StorageModule(const Settings& settings);
@@ -122,7 +118,7 @@ class StorageModule : public StorageModuleInterface {
 
   // Callback to be invoked every time `ReportSuccess`
   // detects material progress in upload.
-  base::RepeatingCallback<void()> storage_upload_success_cb_;
+  base::RepeatingClosure storage_upload_success_cb_;
 
   // Reference to `Storage` object.
   scoped_refptr<Storage> storage_;

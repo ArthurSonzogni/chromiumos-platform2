@@ -81,8 +81,7 @@ void KeyDelivery::StartPeriodicKeyUpdate() {
             }
             self->upload_timer_.Start(
                 FROM_HERE, self->key_check_period_,
-                base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded,
-                                    self->weak_ptr_factory_.GetWeakPtr()));
+                base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded, self));
           },
           weak_ptr_factory_.GetWeakPtr()));
 }

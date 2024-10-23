@@ -19,6 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
@@ -165,6 +166,7 @@ class MissiveImplTest : public ::testing::Test {
             [](MissiveImplTest* self, MissiveImpl* missive,
                StorageOptions storage_options,
                MissiveArgs::StorageParameters parameters,
+               base::RepeatingClosure storage_upload_success_cb,
                base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                    callback) {
               self->storage_module_ = base::MakeRefCounted<MockStorageModule>();

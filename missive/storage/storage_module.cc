@@ -52,8 +52,7 @@ class StorageModule::UploadProgressTracker {
 
   // Invokes the callback if it is the first upload or if progress is detected.
   // It also updates the progress for future calls.
-  void Record(const SequenceInformation& seq_info,
-              base::RepeatingCallback<void()> cb) {
+  void Record(const SequenceInformation& seq_info, base::RepeatingClosure cb) {
     auto state_it = state_.find(std::make_tuple(seq_info.priority(),
                                                 seq_info.generation_id(),
                                                 seq_info.generation_guid()));
@@ -66,6 +65,7 @@ class StorageModule::UploadProgressTracker {
         std::make_tuple(seq_info.priority(), seq_info.generation_id(),
                         seq_info.generation_guid()),
         seq_info.sequencing_id());
+    CHECK(cb);
     cb.Run();
   }
 
@@ -217,6 +217,9 @@ void StorageModule::InitStorage(
       base::BindOnce(&StorageModule::SetStorage, base::WrapRefCounted(this),
                      std::move(callback));
 
+  // Set upload success recording.
+  storage_upload_success_cb_ = settings.storage_upload_success_cb;
+
   // Instantiate Storage.
   Storage::Create({.options = settings.options,
                    .queues_container = settings.queues_container,
@@ -240,11 +243,6 @@ void StorageModule::SetStorage(
   }
   storage_ = storage.value();
   std::move(callback).Run(base::WrapRefCounted(this));
-}
-
-void StorageModule::AttachUploadSuccessCb(
-    base::RepeatingCallback<void()> storage_upload_success_cb) {
-  storage_upload_success_cb_ = storage_upload_success_cb;
 }
 
 void StorageModule::InjectStorageUnavailableErrorForTesting() {

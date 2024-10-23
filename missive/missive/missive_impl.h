@@ -72,6 +72,7 @@ class MissiveImpl : public MissiveService {
           void(MissiveImpl* self,
                StorageOptions storage_options,
                MissiveArgs::StorageParameters parameters,
+               base::RepeatingClosure storage_upload_success_cb,
                base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
                    callback)> create_storage_factory);
 
@@ -123,6 +124,7 @@ class MissiveImpl : public MissiveService {
   void CreateStorage(
       StorageOptions storage_options,
       MissiveArgs::StorageParameters parameters,
+      base::RepeatingClosure storage_upload_success_cb,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
@@ -151,6 +153,7 @@ class MissiveImpl : public MissiveService {
   void OnStorageParameters(
       base::OnceCallback<void(Status)> cb,
       StorageOptions storage_options,
+      base::RepeatingClosure storage_upload_success_cb,
       StatusOr<MissiveArgs::StorageParameters> storage_parameters_result);
 
   void OnStorageModuleConfigured(
@@ -204,6 +207,7 @@ class MissiveImpl : public MissiveService {
       MissiveImpl* self,
       StorageOptions storage_options,
       MissiveArgs::StorageParameters parameters,
+      base::RepeatingClosure storage_upload_success_cb,
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback)>
       create_storage_factory_ = base::BindOnce(&MissiveImpl::CreateStorage);
@@ -232,8 +236,6 @@ class MissiveImpl : public MissiveService {
   Scheduler scheduler_;
   analytics::Registry analytics_registry_
       GUARDED_BY_CONTEXT(sequence_checker_){};
-
-  base::RepeatingCallback<void()> storage_upload_success_cb_;
 
   // References to `Storage` components for dynamic parameters update.
   // Set up once by `StorageCreate` method.

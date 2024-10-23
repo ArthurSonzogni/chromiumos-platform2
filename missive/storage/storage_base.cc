@@ -406,7 +406,7 @@ void QueuesContainer::DisconnectQueue(base::WeakPtr<QueuesContainer> container,
 void QueuesContainer::RegisterCompletionCallback(base::OnceClosure callback) {
   CHECK(callback);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  const base::RepeatingClosure queue_callback =
+  const auto queue_callback =
       base::BarrierClosure(queues_.size(), std::move(callback));
   for (auto& queue : queues_) {
     // Copy the callback as base::OnceClosure.
