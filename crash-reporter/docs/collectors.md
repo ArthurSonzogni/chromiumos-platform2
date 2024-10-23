@@ -475,7 +475,6 @@ The program name is `selinux-violation`.
 [Google Breakpad]: https://chromium.googlesource.com/breakpad/breakpad
 [Crash Reporter]: ../README.md
 [crashpad]: https://chromium.googlesource.com/crashpad/crashpad
-[memd]: ../../metrics/memd/
 [pstore]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.17/Documentation/admin-guide/ramoops.rst
 [SELinux]: https://en.wikipedia.org/wiki/Security-Enhanced_Linux
 [udev]: https://en.wikipedia.org/wiki/Udev
