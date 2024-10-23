@@ -4,6 +4,7 @@
 
 #include "odml/mantis/processor.h"
 
+#include <memory>
 #include <vector>
 
 #include <base/check.h>
@@ -34,6 +35,19 @@ constexpr auto kMapStatusToError =
         {MantisStatus::kInputError, MantisError::kInputError},
         {MantisStatus::kProcessFailed, MantisError::kProcessFailed},
         {MantisStatus::kMissingSegmenter, MantisError::kMissingSegmenter},
+    });
+
+constexpr auto kMapSafetyResult =
+    base::MakeFixedFlatMap<cros_safety::mojom::SafetyClassifierVerdict,
+                           SafetyClassifierVerdict>({
+        {cros_safety::mojom::SafetyClassifierVerdict::kPass,
+         SafetyClassifierVerdict::kPass},
+        {cros_safety::mojom::SafetyClassifierVerdict::kGenericError,
+         SafetyClassifierVerdict::kFail},
+        {cros_safety::mojom::SafetyClassifierVerdict::kFailedText,
+         SafetyClassifierVerdict::kFailedText},
+        {cros_safety::mojom::SafetyClassifierVerdict::kFailedImage,
+         SafetyClassifierVerdict::kFailedImage},
     });
 }  // namespace
 
@@ -104,21 +118,28 @@ void MantisProcessor::Inpainting(const std::vector<uint8_t>& image,
                                  const std::vector<uint8_t>& mask,
                                  uint32_t seed,
                                  InpaintingCallback callback) {
-  if (!component_.processor) {
-    LOG(ERROR) << "Processor is missing";
-    std::move(callback).Run(
-        MantisResult::NewError(MantisError::kProcessorNotInitialized));
-    return;
-  }
-  InpaintingResult lib_result =
-      api_->Inpainting(component_.processor, image, mask, seed);
-  if (lib_result.status != MantisStatus::kOk) {
-    std::move(callback).Run(
-        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
-    return;
-  }
+  ProcessImage(std::make_unique<MantisProcess>(MantisProcess{
+      .image = image,
+      .mask = mask,
+      .seed = seed,
+      .prompt = "",
+      .callback = std::move(callback),
+      .process_func = base::BindOnce(
+          [](const MantisAPI* api, MantisComponent component,
+             const std::vector<uint8_t>& image,
+             const std::vector<uint8_t>& mask,
+             uint32_t seed) -> mojom::MantisResultPtr {
+            InpaintingResult lib_result =
+                api->Inpainting(component.processor, image, mask, seed);
+            if (lib_result.status != MantisStatus::kOk) {
+              return MantisResult::NewError(
+                  kMapStatusToError.at(lib_result.status));
+            }
 
-  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
+            return MantisResult::NewResultImage(lib_result.image);
+          },
+          api_, component_, image, mask, seed),
+  }));
 }
 
 void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
@@ -126,21 +147,28 @@ void MantisProcessor::GenerativeFill(const std::vector<uint8_t>& image,
                                      uint32_t seed,
                                      const std::string& prompt,
                                      GenerativeFillCallback callback) {
-  if (!component_.processor) {
-    LOG(ERROR) << "Processor is missing";
-    std::move(callback).Run(
-        MantisResult::NewError(MantisError::kProcessorNotInitialized));
-    return;
-  }
-  GenerativeFillResult lib_result =
-      api_->GenerativeFill(component_.processor, image, mask, seed, prompt);
-  if (lib_result.status != MantisStatus::kOk) {
-    std::move(callback).Run(
-        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
-    return;
-  }
+  ProcessImage(std::make_unique<MantisProcess>(MantisProcess{
+      .image = image,
+      .mask = mask,
+      .seed = seed,
+      .prompt = prompt,
+      .callback = std::move(callback),
+      .process_func = base::BindOnce(
+          [](const MantisAPI* api, MantisComponent component,
+             const std::vector<uint8_t>& image,
+             const std::vector<uint8_t>& mask, uint32_t seed,
+             const std::string& prompt) -> mojom::MantisResultPtr {
+            GenerativeFillResult lib_result = api->GenerativeFill(
+                component.processor, image, mask, seed, prompt);
+            if (lib_result.status != MantisStatus::kOk) {
+              return MantisResult::NewError(
+                  kMapStatusToError.at(lib_result.status));
+            }
 
-  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
+            return MantisResult::NewResultImage(lib_result.image);
+          },
+          api_, component_, image, mask, seed, prompt),
+  }));
 }
 
 void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
@@ -152,15 +180,46 @@ void MantisProcessor::Segmentation(const std::vector<uint8_t>& image,
     return;
   }
 
-  SegmentationResult lib_result =
-      api_->Segmentation(component_.segmenter, image, prior);
-  if (lib_result.status != MantisStatus::kOk) {
-    std::move(callback).Run(
-        MantisResult::NewError(kMapStatusToError.at(lib_result.status)));
+  ClassifyImageSafetyInternal(
+      // Input image checking doesn't require a prompt
+      image, /*text=*/"",
+      base::BindOnce(
+          [](SegmentationCallback callback, const MantisAPI* api,
+             MantisComponent component, const std::vector<uint8_t>& image,
+             const std::vector<uint8_t>& prior,
+             SafetyClassifierVerdict result) {
+            if (result != SafetyClassifierVerdict::kPass) {
+              std::move(callback).Run(
+                  MantisResult::NewError(MantisError::kInputSafetyError));
+              return;
+            }
+
+            SegmentationResult lib_result =
+                api->Segmentation(component.segmenter, image, prior);
+            if (lib_result.status != MantisStatus::kOk) {
+              std::move(callback).Run(MantisResult::NewError(
+                  kMapStatusToError.at(lib_result.status)));
+              return;
+            }
+
+            std::move(callback).Run(
+                MantisResult::NewResultImage(lib_result.image));
+          },
+          std::move(callback), api_, component_, image, prior));
+}
+
+void MantisProcessor::ProcessImage(std::unique_ptr<MantisProcess> process) {
+  if (!component_.processor) {
+    LOG(ERROR) << "Processor is missing";
+    std::move(process->callback)
+        .Run(MantisResult::NewError(MantisError::kProcessorNotInitialized));
     return;
   }
-
-  std::move(callback).Run(MantisResult::NewResultImage(lib_result.image));
+  ClassifyImageSafetyInternal(
+      // Input image checking doesn't require a prompt
+      process->image, /*text=*/"",
+      base::BindOnce(&MantisProcessor::OnClassifyImageInputDone,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(process)));
 }
 
 void MantisProcessor::ClassifyImageSafety(
@@ -181,13 +240,53 @@ void MantisProcessor::ClassifyImageSafetyInternal(
       base::BindOnce(
           [](ClassifyImageSafetyCallback callback,
              cros_safety::mojom::SafetyClassifierVerdict result) {
-            if (result != cros_safety::mojom::SafetyClassifierVerdict::kPass) {
-              std::move(callback).Run(SafetyClassifierVerdict::kFail);
-              return;
-            }
-            std::move(callback).Run(SafetyClassifierVerdict::kPass);
+            std::move(callback).Run(kMapSafetyResult.at(result));
           },
           std::move(callback)));
+}
+
+void MantisProcessor::OnClassifyImageInputDone(
+    std::unique_ptr<MantisProcess> process, SafetyClassifierVerdict result) {
+  if (result != SafetyClassifierVerdict::kPass) {
+    std::move(process->callback)
+        .Run(MantisResult::NewError(MantisError::kInputSafetyError));
+    return;
+  }
+
+  mojom::MantisResultPtr lib_result = std::move(process->process_func).Run();
+  if (lib_result->is_error()) {
+    std::move(process->callback)
+        .Run(MantisResult::NewError(lib_result->get_error()));
+    return;
+  }
+  std::vector<uint8_t> image_result = lib_result->get_result_image();
+
+  std::string prompt =
+      process->prompt.has_value() ? process->prompt.value() : "";
+  ClassifyImageSafetyInternal(
+      image_result, prompt,
+      base::BindOnce(&MantisProcessor::OnClassifyImageOutputDone,
+                     weak_ptr_factory_.GetWeakPtr(), image_result,
+                     std::move(process->callback)));
+}
+
+void MantisProcessor::OnClassifyImageOutputDone(
+    const std::vector<uint8_t>& image,
+    base::OnceCallback<void(mojom::MantisResultPtr)> callback,
+    SafetyClassifierVerdict result) {
+  if (result == SafetyClassifierVerdict::kFailedText) {
+    std::move(callback).Run(
+        MantisResult::NewError(MantisError::kPromptSafetyError));
+    return;
+  }
+  if (result == SafetyClassifierVerdict::kFailedImage ||
+      result == SafetyClassifierVerdict::kFail) {
+    std::move(callback).Run(
+        MantisResult::NewError(MantisError::kOutputSafetyError));
+    return;
+  }
+
+  std::move(callback).Run(MantisResult::NewResultImage(image));
 }
 
 }  // namespace mantis

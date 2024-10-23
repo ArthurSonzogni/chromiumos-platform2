@@ -5,6 +5,8 @@
 #ifndef ODML_MANTIS_PROCESSOR_H_
 #define ODML_MANTIS_PROCESSOR_H_
 
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +26,18 @@
 #include "odml/mojom/mantis_service.mojom.h"
 
 namespace mantis {
+
+// TODO(b/375929152): Use NoDefault for required args.
+struct MantisProcess {
+  const std::vector<uint8_t> image;
+  const std::vector<uint8_t> mask;
+  uint32_t seed;
+  std::optional<std::string> prompt;
+  base::OnceCallback<void(mojom::MantisResultPtr)> callback;
+  base::OnceCallback<mojom::MantisResultPtr()> process_func;
+  // Might not be populated
+  std::vector<uint8_t> image_result;
+};
 
 class MantisProcessor : public mojom::MantisProcessor {
  public:
@@ -76,6 +90,16 @@ class MantisProcessor : public mojom::MantisProcessor {
       const std::vector<uint8_t>& image,
       const std::string& text,
       base::OnceCallback<void(mojom::SafetyClassifierVerdict)> callback);
+
+  void OnClassifyImageInputDone(std::unique_ptr<MantisProcess> process,
+                                mojom::SafetyClassifierVerdict result);
+
+  void OnClassifyImageOutputDone(
+      const std::vector<uint8_t>& image,
+      base::OnceCallback<void(mojom::MantisResultPtr)> callback,
+      mojom::SafetyClassifierVerdict result);
+
+  void ProcessImage(std::unique_ptr<MantisProcess> process);
 
   MantisComponent component_;
 
