@@ -1086,6 +1086,14 @@ void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
   }
 }
 
+// Adds flags related to the Mantis project
+void AddMantisFlags(ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("mantis")) {
+    // The CrosSafetyService is required for the MantisService
+    builder->AddFeatureEnableOverride("CrosSafetyService");
+  }
+}
+
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
                         segmentation::FeatureManagement* feature_management,
                         bool* is_developer_end_user_out,
@@ -1117,6 +1125,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddMlFlags(&builder, cros_config);
   AddFeatureManagementFlags(&builder, feature_management);
   AddDeviceSpecificFlags(&builder);
+  AddMantisFlags(&builder);
 
   // Apply any modifications requested by the developer.
   if (builder.is_developer_end_user()) {
