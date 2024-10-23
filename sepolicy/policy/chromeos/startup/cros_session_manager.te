@@ -2,7 +2,11 @@ type cros_session_manager, chromeos_domain, cros_miscdomain, domain;
 
 permissive cros_session_manager;
 
+# We keep two entries for session_manager start for the transition period.
+# TODO(b/289228842): Remove the old entry, after we made sure the user migration is
+# done successfully.
 domain_auto_trans(cros_init_scripts, cros_session_manager_exec, cros_session_manager)
+domain_auto_trans(minijail, cros_session_manager_exec, cros_session_manager)
 
 uma_writer(cros_session_manager)
 log_writer(cros_session_manager)
