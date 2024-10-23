@@ -187,7 +187,7 @@ class TestProxy : public Proxy {
   TestProxy(const Options& opts,
             std::unique_ptr<patchpanel::Client> patchpanel,
             std::unique_ptr<shill::Client> shill,
-            std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+            std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>
                 msg_dispatcher,
             bool root_ns_enabled_)
       : Proxy(opts,
@@ -241,7 +241,8 @@ class ProxyTest : public ::testing::Test,
     shill_client_ = new FakeShillClient(
         mock_bus_, reinterpret_cast<ManagerProxyInterface*>(
                        const_cast<ManagerProxyMock*>(&mock_manager_)));
-    msg_dispatcher_ = new patchpanel::MockMessageDispatcher<ProxyAddrMessage>();
+    msg_dispatcher_ =
+        new patchpanel::MockMessageDispatcher<SubprocessMessage>();
 
     // Initialize Proxy instance.
     proxy_ = std::make_unique<TestProxy>(
@@ -336,7 +337,7 @@ class ProxyTest : public ::testing::Test,
   ManagerProxyMock mock_manager_;
 
   MockResolver* resolver_;
-  patchpanel::MockMessageDispatcher<ProxyAddrMessage>* msg_dispatcher_;
+  patchpanel::MockMessageDispatcher<SubprocessMessage>* msg_dispatcher_;
   FakeShillClient* shill_client_;
   MockPatchpanelClient* patchpanel_client_;
   std::unique_ptr<TestProxy> proxy_;
@@ -417,10 +418,12 @@ TEST_P(ProxyTest, SystemProxy_SendIPAddressesToController) {
              ShillDevice());
   SetNameServers({"8.8.8.8"}, {"2001:4860:4860::8888"});
 
-  ProxyAddrMessage msg;
-  msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs(ipv4_address_.ToString());
-  msg.add_addrs(ipv6_address_.ToString());
+  ProxyMessage proxy_msg;
+  proxy_msg.set_type(ProxyMessage::SET_ADDRS);
+  proxy_msg.add_addrs(ipv4_address_.ToString());
+  proxy_msg.add_addrs(ipv6_address_.ToString());
+  SubprocessMessage msg;
+  *msg.mutable_proxy_message() = proxy_msg;
   EXPECT_CALL(*msg_dispatcher_, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
   proxy_->SendIPAddressesToController(ipv4_address_, ipv6_address_);
@@ -432,18 +435,21 @@ TEST_P(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
 
   // Only IPv4 nameserver.
   SetNameServers({"8.8.8.8"}, /*ipv6_nameservers=*/{});
-  ProxyAddrMessage msg;
-  msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs(ipv4_address_.ToString());
+  ProxyMessage proxy_msg;
+  proxy_msg.set_type(ProxyMessage::SET_ADDRS);
+  proxy_msg.add_addrs(ipv4_address_.ToString());
+  SubprocessMessage msg;
+  *msg.mutable_proxy_message() = proxy_msg;
   EXPECT_CALL(*msg_dispatcher_, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
   proxy_->SendIPAddressesToController(ipv4_address_, ipv6_address_);
 
   // Only IPv6 nameserver.
   SetNameServers(/*ipv4_nameservers=*/{}, {"2001:4860:4860::8888"});
-  msg.Clear();
-  msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs(ipv6_address_.ToString());
+  proxy_msg.Clear();
+  proxy_msg.set_type(ProxyMessage::SET_ADDRS);
+  proxy_msg.add_addrs(ipv6_address_.ToString());
+  *msg.mutable_proxy_message() = proxy_msg;
   EXPECT_CALL(*msg_dispatcher_, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
   proxy_->SendIPAddressesToController(ipv4_address_, ipv6_address_);
@@ -1704,5 +1710,13 @@ TEST_P(ProxyTest, UpdateNameServers) {
               expected_ipv4_dns_addresses);
   EXPECT_THAT(proxy_->doh_config_.ipv6_nameservers(),
               expected_ipv6_dns_addresses);
+}
+
+TEST_P(ProxyTest, ShutDownMessage) {
+  ControllerMessage controller_msg;
+  controller_msg.set_type(ControllerMessage::SHUT_DOWN);
+  SubprocessMessage msg;
+  *msg.mutable_controller_message() = controller_msg;
+  EXPECT_DEATH(proxy_->OnControllerMessage(msg), "");
 }
 }  // namespace dns_proxy

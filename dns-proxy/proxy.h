@@ -55,7 +55,7 @@ class Proxy : public brillo::DBusDaemon {
   Proxy(const Options& opts,
         std::unique_ptr<patchpanel::Client> patchpanel,
         std::unique_ptr<shill::Client> shill,
-        std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+        std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>
             msg_dispatcher,
         bool root_ns_enabled);
   Proxy(const Proxy&) = delete;
@@ -233,7 +233,10 @@ class Proxy : public brillo::DBusDaemon {
       const std::optional<net_base::IPv4Address>& ipv4_addr,
       const std::optional<net_base::IPv6Address>& ipv6_addr);
   void ClearIPAddressesInController();
-  void SendProtoMessage(const ProxyAddrMessage& msg);
+  void SendProxyMessage(const ProxyMessage& proxy_msg);
+
+  void OnControllerMessageFailure();
+  void OnControllerMessage(const SubprocessMessage& msg);
 
   // Callback from RTNL listener, calls NetNSRTNLMessageHandler or
   // RootNSRTNLMessageHandler.
@@ -339,6 +342,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, ArcProxy_ListenForGuests);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverListenForOtherGuests);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverListenForOtherIfname);
+  FRIEND_TEST(ProxyTest, ShutDownMessage);
 
   const Options opts_;
   std::unique_ptr<patchpanel::Client> patchpanel_;
@@ -388,9 +392,12 @@ class Proxy : public brillo::DBusDaemon {
   // Whether or not DNS proxy is running on the root namespace.
   const bool root_ns_enabled_;
 
-  // Helper to send system proxy's IP addresses to be the controller. This is
+  // Helper to:
+  // - Send system proxy's IP addresses to be the controller. This is
   // necessary to write to /etc/resolv.conf.
-  std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+  // - Receive shutdown event message from the controller for graceful
+  // shutdown.
+  std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>
       msg_dispatcher_;
 
   // Listens for RTMGRP_IPV6_IFADDR messages and invokes RTNLMessageHandler.

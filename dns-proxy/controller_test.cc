@@ -37,20 +37,26 @@ class ControllerTest : public Test {
 };
 
 TEST_F(ControllerTest, SetProxyAddrs) {
-  ProxyAddrMessage msg;
-  msg.set_type(ProxyAddrMessage::SET_ADDRS);
-  msg.add_addrs("100.115.92.100");
-  msg.add_addrs("::1");
+  ProxyMessage proxy_msg;
+  proxy_msg.set_type(ProxyMessage::SET_ADDRS);
+  proxy_msg.add_addrs("100.115.92.100");
+  proxy_msg.add_addrs("::1");
+  SubprocessMessage msg;
+  *msg.mutable_proxy_message() = proxy_msg;
   EXPECT_CALL(*resolv_conf_ptr_,
               SetDNSProxyAddresses(ElementsAre("100.115.92.100", "::1")));
-  controller_->OnProxyAddrMessage(msg);
+  Controller::ProxyProc proc(Proxy::Type::kSystem, /*ifname=*/"");
+  controller_->OnMessage(proc, msg);
 }
 
 TEST_F(ControllerTest, ClearProxyAddrs) {
-  ProxyAddrMessage msg;
-  msg.set_type(ProxyAddrMessage::CLEAR_ADDRS);
+  ProxyMessage proxy_msg;
+  proxy_msg.set_type(ProxyMessage::CLEAR_ADDRS);
+  SubprocessMessage msg;
+  *msg.mutable_proxy_message() = proxy_msg;
   EXPECT_CALL(*resolv_conf_ptr_, SetDNSProxyAddresses(IsEmpty()));
-  controller_->OnProxyAddrMessage(msg);
+  Controller::ProxyProc proc(Proxy::Type::kSystem, /*ifname=*/"");
+  controller_->OnMessage(proc, msg);
 }
 
 }  // namespace dns_proxy

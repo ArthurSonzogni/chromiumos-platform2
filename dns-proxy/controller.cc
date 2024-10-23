@@ -291,6 +291,18 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     return;
   }
 
+  // Create FDs to communicate to the proxy.
+  int control[2];
+  if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
+    PLOG(ERROR) << "Failed to start proxy. socketpair failed";
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(&Controller::RunProxy,
+                                  weak_factory_.GetWeakPtr(), type, ifname));
+    return;
+  }
+  base::ScopedFD controller_fd(control[0]);
+  base::ScopedFD proxy_fd(control[1]);
+
   ScopedMinijail jail(minijail_new());
   minijail_no_new_privs(jail.get());
   minijail_use_seccomp_filter(jail.get());
@@ -299,6 +311,8 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   minijail_reset_signal_mask(jail.get());
   minijail_reset_signal_handlers(jail.get());
   minijail_run_as_init(jail.get());
+  minijail_preserve_fd(jail.get(), proxy_fd.get(), proxy_fd.get());
+  minijail_close_open_fds(jail.get());
 
   if (root_ns_enabled_.value()) {
     // DNS proxy uses SO_BINDTODEVICE to bind to a specific interface for
@@ -315,21 +329,6 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     minijail_namespace_net(jail.get());
   }
 
-  // Create FDs to communicate to the proxy.
-  base::ScopedFD controller_fd, proxy_fd;
-  if (type == Proxy::Type::kSystem) {
-    int control[2];
-    if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
-      PLOG(ERROR) << "Failed to start system proxy. socketpair failed";
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, base::BindOnce(&Controller::RunProxy,
-                                    weak_factory_.GetWeakPtr(), type, ifname));
-      return;
-    }
-    controller_fd.reset(control[0]);
-    proxy_fd.reset(control[1]);
-  }
-
   std::vector<char*> argv;
   const std::string flag_t = "--t=" + std::string(Proxy::TypeToString(type));
   argv.push_back(const_cast<char*>(progname_.c_str()));
@@ -339,12 +338,8 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     flag_i += ifname;
     argv.push_back(const_cast<char*>(flag_i.c_str()));
   }
-  std::string flag_fd;
-  if (type == Proxy::Type::kSystem && controller_fd.is_valid() &&
-      proxy_fd.is_valid()) {
-    flag_fd = "--fd=" + std::to_string(proxy_fd.get());
-    argv.push_back(const_cast<char*>(flag_fd.c_str()));
-  }
+  std::string flag_fd = "--fd=" + std::to_string(proxy_fd.get());
+  argv.push_back(const_cast<char*>(flag_fd.c_str()));
   std::string flag_vmodule = "--vmodule=" + vmodule_;
   argv.push_back(const_cast<char*>(flag_vmodule.c_str()));
   std::string flag_root_ns = "--root_ns";
@@ -374,30 +369,37 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     return;
   }
 
-  if (type == Proxy::Type::kSystem) {
-    msg_dispatcher_ =
-        std::make_unique<patchpanel::MessageDispatcher<ProxyAddrMessage>>(
-            std::move(controller_fd));
-    msg_dispatcher_->RegisterFailureHandler(base::BindRepeating(
-        &Controller::OnProxyAddrMessageFailure, weak_factory_.GetWeakPtr()));
-    msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
-        &Controller::OnProxyAddrMessage, weak_factory_.GetWeakPtr()));
-  }
+  // Sets up communication with the proxy process.
+  auto msg_dispatcher =
+      std::make_unique<patchpanel::MessageDispatcher<SubprocessMessage>>(
+          std::move(controller_fd));
+  msg_dispatcher->RegisterFailureHandler(base::BindRepeating(
+      &Controller::OnMessageFailure, weak_factory_.GetWeakPtr(), proc));
+  msg_dispatcher->RegisterMessageHandler(base::BindRepeating(
+      &Controller::OnMessage, weak_factory_.GetWeakPtr(), proc));
+  msg_dispatchers_.emplace(proc, std::move(msg_dispatcher));
+
   proxies_.emplace(proc);
 }
 
-void Controller::OnProxyAddrMessageFailure() {
-  msg_dispatcher_.reset();
-  KillProxy(Proxy::Type::kSystem, /*ifname=*/"", /*forget=*/false);
+void Controller::OnMessageFailure(const ProxyProc& proc) {
+  KillProxy(proc.opts.type, proc.opts.ifname, /*forget=*/false);
 }
 
-void Controller::OnProxyAddrMessage(const ProxyAddrMessage& msg) {
-  switch (msg.type()) {
-    case ProxyAddrMessage::SET_ADDRS:
-      resolv_conf_->SetDNSProxyAddresses(
-          std::vector<std::string>(msg.addrs().begin(), msg.addrs().end()));
+void Controller::OnMessage(const ProxyProc& proc,
+                           const SubprocessMessage& msg) {
+  if (!msg.has_proxy_message()) {
+    LOG(ERROR) << "Unexpected message type";
+    return;
+  }
+
+  const ProxyMessage& proxy_msg = msg.proxy_message();
+  switch (proxy_msg.type()) {
+    case ProxyMessage::SET_ADDRS:
+      resolv_conf_->SetDNSProxyAddresses(std::vector<std::string>(
+          proxy_msg.addrs().begin(), proxy_msg.addrs().end()));
       break;
-    case ProxyAddrMessage::CLEAR_ADDRS:
+    case ProxyMessage::CLEAR_ADDRS:
       resolv_conf_->SetDNSProxyAddresses({});
       break;
     default:
@@ -421,16 +423,19 @@ void Controller::KillProxy(Proxy::Type type,
 }
 
 void Controller::Kill(const ProxyProc& proc, bool forget) {
-  EvalProxyExit(proc);
   if (forget) {
     process_reaper_.ForgetChild(proc.pid);
   }
-  int rc = kill(proc.pid, SIGTERM);
-  if (rc < 0 && rc != ESRCH) {
-    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
-                                Metrics::ProcessEvent::kProxyKillFailure);
-    LOG(ERROR) << "Failed to kill process for proxy " << proc;
+  // Send SHUT_DOWN message to the proxy process.
+  auto it = msg_dispatchers_.find(proc);
+  if (it != msg_dispatchers_.end()) {
+    ControllerMessage controller_msg;
+    controller_msg.set_type(ControllerMessage::SHUT_DOWN);
+    SubprocessMessage msg;
+    *msg.mutable_controller_message() = controller_msg;
+    it->second->SendMessage(msg);
   }
+  EvalProxyExit(proc);
 }
 
 void Controller::OnProxyExit(pid_t pid, const siginfo_t& siginfo) {
@@ -508,6 +513,9 @@ bool Controller::RestartProxy(const ProxyProc& proc) {
 }
 
 void Controller::EvalProxyExit(const ProxyProc& proc) {
+  // Clean up communication with the proxy process.
+  msg_dispatchers_.erase(proc);
+
   if (proc.opts.type != Proxy::Type::kSystem) {
     return;
   }
@@ -521,9 +529,6 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
 
   shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
   resolv_conf_->SetDNSProxyAddresses({});
-
-  // Cleanup fd between the proxy and controller.
-  msg_dispatcher_.reset();
 }
 
 void Controller::OnVirtualDeviceChanged(

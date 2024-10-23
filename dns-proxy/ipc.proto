@@ -6,9 +6,18 @@ option optimize_for = LITE_RUNTIME;
 
 package dns_proxy;
 
+message SubprocessMessage {
+  oneof message_type {
+    // Message from Proxy to Controller.
+    ProxyMessage proxy_message = 1;
+    // Message from Controller to Proxy.
+    ControllerMessage controller_message = 2;
+  }
+}
+
 // Message sent from the system proxy to the controller. This is done to set
 // /etc/resolv.conf with the proxy addresses.
-message ProxyAddrMessage {
+message ProxyMessage {
   enum MessageType {
     UNKNOWN_MESSAGE = 0;
     SET_ADDRS = 1;    // Set DNS proxy address(es).
@@ -18,4 +27,14 @@ message ProxyAddrMessage {
 
   // IPv4 and IPv6 addresses of system proxy.
   repeated string addrs = 1;
+}
+
+// Message sent from the controller to the proxy processes. This is done to
+// shut down the proxy processes.
+message ControllerMessage {
+  enum MessageType {
+    UNKNOWN_MESSAGE = 0;
+    SHUT_DOWN = 1;  // Shuts down proxy process.
+  }
+  required MessageType type = 1;
 }

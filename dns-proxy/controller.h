@@ -108,8 +108,8 @@ class Controller : public brillo::DBusDaemon {
   // Callback to be triggered when there is a message from the proxy. On
   // failure, restart the listener and the sender of the message (system
   // proxy).
-  void OnProxyAddrMessageFailure();
-  void OnProxyAddrMessage(const ProxyAddrMessage& msg);
+  void OnMessageFailure(const ProxyProc& proc);
+  void OnMessage(const ProxyProc& proc, const SubprocessMessage& msg);
 
   // Callback used to run/kill default proxy based on its dependencies.
   // |has_deps| will be true if either VPN or a single-networked guest OS is
@@ -144,9 +144,10 @@ class Controller : public brillo::DBusDaemon {
   std::set<ProxyProc> proxies_;
   std::map<ProxyProc, ProxyRestarts> restarts_;
 
-  // Listener for system proxy's IP addresses to be written to /etc/resolv.conf.
-  std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
-      msg_dispatcher_;
+  // Handles communication between controller and the proxy processes.
+  std::map<ProxyProc,
+           std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>>
+      msg_dispatchers_;
 
   // Helper class to update resolv.conf entries.
   std::unique_ptr<ResolvConf> resolv_conf_;

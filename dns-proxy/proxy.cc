@@ -147,10 +147,16 @@ Proxy::Proxy(const Proxy::Options& opts, int32_t fd, bool root_ns_enabled)
       base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()));
   if (opts_.type == Type::kSystem) {
     doh_config_.set_metrics(&metrics_);
-    msg_dispatcher_ =
-        std::make_unique<patchpanel::MessageDispatcher<ProxyAddrMessage>>(
-            base::ScopedFD(fd));
   }
+
+  // Set up communication with the controller process.
+  msg_dispatcher_ =
+      std::make_unique<patchpanel::MessageDispatcher<SubprocessMessage>>(
+          base::ScopedFD(fd));
+  msg_dispatcher_->RegisterFailureHandler(base::BindRepeating(
+      &Proxy::OnControllerMessageFailure, weak_factory_.GetWeakPtr()));
+  msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
+      &Proxy::OnControllerMessage, weak_factory_.GetWeakPtr()));
 
   // Track IPv6 address changes.
   addr_listener_ = std::make_unique<net_base::RTNLListener>(
@@ -174,7 +180,7 @@ Proxy::Proxy(const Proxy::Options& opts, int32_t fd, bool root_ns_enabled)
 Proxy::Proxy(const Options& opts,
              std::unique_ptr<patchpanel::Client> patchpanel,
              std::unique_ptr<shill::Client> shill,
-             std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+             std::unique_ptr<patchpanel::MessageDispatcher<SubprocessMessage>>
                  msg_dispatcher,
              bool root_ns_enabled)
     : opts_(opts),
@@ -182,9 +188,7 @@ Proxy::Proxy(const Options& opts,
       shill_(std::move(shill)),
       metrics_proc_type_(ProcessTypeOf(opts_.type)),
       root_ns_enabled_(root_ns_enabled) {
-  if (opts_.type == Type::kSystem) {
-    msg_dispatcher_ = std::move(msg_dispatcher);
-  }
+  msg_dispatcher_ = std::move(msg_dispatcher);
 }
 
 int Proxy::OnInit() {
@@ -201,7 +205,9 @@ void Proxy::OnShutdown(int* code) {
   addr_listener_.reset();
   if (opts_.type == Type::kSystem) {
     ClearShillDNSProxyAddresses();
-    ClearIPAddressesInController();
+    if (msg_dispatcher_) {
+      ClearIPAddressesInController();
+    }
   }
 }
 
@@ -934,30 +940,31 @@ void Proxy::SendIPAddressesToController(
     return;
   }
 
-  ProxyAddrMessage msg;
-  msg.set_type(ProxyAddrMessage::SET_ADDRS);
+  ProxyMessage proxy_msg;
+  proxy_msg.set_type(ProxyMessage::SET_ADDRS);
   if (ipv4_addr && !doh_config_.ipv4_nameservers().empty()) {
-    msg.add_addrs(ipv4_addr->ToString());
+    proxy_msg.add_addrs(ipv4_addr->ToString());
   }
   if (ipv6_addr && !doh_config_.ipv6_nameservers().empty()) {
-    msg.add_addrs(ipv6_addr->ToString());
+    proxy_msg.add_addrs(ipv6_addr->ToString());
   }
 
   // Don't send empty proxy address.
-  if (msg.addrs().empty()) {
+  if (proxy_msg.addrs().empty()) {
     return;
   }
-
-  SendProtoMessage(msg);
+  SendProxyMessage(proxy_msg);
 }
 
 void Proxy::ClearIPAddressesInController() {
-  ProxyAddrMessage msg;
-  msg.set_type(ProxyAddrMessage::CLEAR_ADDRS);
-  SendProtoMessage(msg);
+  ProxyMessage proxy_msg;
+  proxy_msg.set_type(ProxyMessage::CLEAR_ADDRS);
+  SendProxyMessage(proxy_msg);
 }
 
-void Proxy::SendProtoMessage(const ProxyAddrMessage& msg) {
+void Proxy::SendProxyMessage(const ProxyMessage& proxy_msg) {
+  SubprocessMessage msg;
+  *msg.mutable_proxy_message() = proxy_msg;
   if (msg_dispatcher_->SendMessage(msg)) {
     return;
   }
@@ -965,6 +972,25 @@ void Proxy::SendProtoMessage(const ProxyAddrMessage& msg) {
   // This might be caused by the file descriptor getting invalidated. Quit the
   // process to let the controller restart the proxy. Restarting allows a new
   // clean state.
+  Quit();
+}
+
+void Proxy::OnControllerMessageFailure() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  msg_dispatcher_.reset();
+  Quit();
+}
+
+void Proxy::OnControllerMessage(const SubprocessMessage& msg) {
+  if (!msg.has_controller_message()) {
+    LOG(ERROR) << "Unexpected message type";
+    return;
+  }
+  ControllerMessage controller_msg = msg.controller_message();
+  if (controller_msg.type() != ControllerMessage::SHUT_DOWN) {
+    LOG(ERROR) << "Unsupported controller message: " << controller_msg.type();
+    return;
+  }
   Quit();
 }
 
