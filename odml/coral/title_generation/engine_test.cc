@@ -35,6 +35,16 @@ using ::testing::Optional;
 using ::testing::Return;
 
 constexpr char kFakeModelName[] = "5f30b8ca-2447-445e-9716-a6da073fae51";
+
+std::vector<mojom::EntityPtr> CloneEntities(
+    const std::vector<mojom::EntityPtr>& entities) {
+  std::vector<mojom::EntityPtr> ret;
+  for (const mojom::EntityPtr& entity : entities) {
+    ret.push_back(entity.Clone());
+  }
+  return ret;
+}
+
 }  // namespace
 
 class FakeObserver : public mojom::TitleObserver {
@@ -161,6 +171,87 @@ TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
     EXPECT_THAT(response.groups[i]->title, Optional(Not(IsEmpty())));
     EXPECT_EQ(response.groups[i]->entities, fake_response.groups[i]->entities);
   }
+}
+
+TEST_F(TitleGenerationEngineTest, TitleCaching) {
+  // Set up request with 8 items in 1 cluster.
+  std::vector<mojom::EntityPtr> entities;
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("ABC 1", url::mojom::Url::New("abc1.com"))));
+  entities.push_back(
+      mojom::Entity::NewApp(mojom::App::New("ABC app 1", "abc1")));
+  entities.push_back(
+      mojom::Entity::NewApp(mojom::App::New("ABC app 2", "abc2")));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("DEF", url::mojom::Url::New("def.com"))));
+  entities.push_back(mojom::Entity::NewApp(mojom::App::New("DEF app", "def")));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("GHI", url::mojom::Url::New("ghi.com"))));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("YYY", url::mojom::Url::New("yyy.com"))));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("ZZZ", url::mojom::Url::New("zzz.com"))));
+
+  auto get_request = [&entities]() {
+    auto request = mojom::GroupRequest::New();
+    request->embedding_options = mojom::EmbeddingOptions::New();
+    request->clustering_options = mojom::ClusteringOptions::New();
+    request->title_generation_options = mojom::TitleGenerationOptions::New();
+    request->entities = CloneEntities(entities);
+    return request;
+  };
+  auto get_clustering_response = [&entities]() {
+    ClusteringResponse clustering_response;
+    clustering_response.clusters.push_back(
+        Cluster{.entities = CloneEntities(entities)});
+    return clustering_response;
+  };
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future1;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future1.GetCallback());
+  CoralResult<TitleGenerationResponse> result1 = title_future1.Take();
+  ASSERT_TRUE(result1.has_value());
+  TitleGenerationResponse response1 = std::move(*result1);
+  ASSERT_EQ(response1.groups.size(), 1);
+  ASSERT_TRUE(response1.groups[0]->title.has_value());
+  std::string title1 = *response1.groups[0]->title;
+
+  // Remove 1 item and add 1 item to the cluster. This makes the similarity
+  // ratio 0.25, which is lower than the acceptable threshold, so the title
+  // should be reused.
+  entities.pop_back();
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("AAA", url::mojom::Url::New("aaa.com"))));
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future2;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future2.GetCallback());
+  CoralResult<TitleGenerationResponse> result2 = title_future2.Take();
+  ASSERT_TRUE(result2.has_value());
+  TitleGenerationResponse response2 = std::move(*result2);
+  ASSERT_EQ(response2.groups.size(), 1);
+  ASSERT_TRUE(response2.groups[0]->title.has_value());
+  std::string title2 = *response2.groups[0]->title;
+  ASSERT_EQ(title1, title2);
+
+  // Remove 2 items and add 2 more items to the cluster. This makes the
+  // similarity threshold 50%, so the title won't be reused.
+  entities.pop_back();
+  entities.pop_back();
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("BBB", url::mojom::Url::New("bbb.com"))));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("CCC", url::mojom::Url::New("ccc.com"))));
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future3;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future3.GetCallback());
+  CoralResult<TitleGenerationResponse> result3 = title_future3.Take();
+  ASSERT_TRUE(result3.has_value());
+  TitleGenerationResponse response3 = std::move(*result3);
+  ASSERT_EQ(response3.groups.size(), 1);
+  ASSERT_TRUE(response3.groups[0]->title.has_value());
+  std::string title3 = *response3.groups[0]->title;
+  EXPECT_NE(title2, title3);
 }
 
 TEST_F(TitleGenerationEngineTest, NoGroups) {

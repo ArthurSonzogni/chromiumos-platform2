@@ -7,8 +7,10 @@
 
 #include <queue>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
+#include <base/containers/lru_cache.h>
 #include <base/functional/callback.h>
 #include <base/timer/wall_clock_timer.h>
 #include <base/token.h>
@@ -69,17 +71,12 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
 
   struct GroupData {
     base::Token id;
-    std::string title;
+    std::optional<std::string> title;
     std::string prompt;
     std::vector<mojom::EntityPtr> entities;
-    // When the operation fails in the middle, we need to know which groups we
-    // haven't updated to the title observer.
-    bool updated_to_observer = false;
   };
-  // This moves out `entities` field from GroupData to avoid copy since the
-  // field is only needed for response, and we return the response here.
   void ReplyGroupsWithoutTitles(
-      std::vector<GroupData>& groups,
+      const std::vector<GroupData>& groups,
       TitleGenerationEngine::TitleGenerationCallback callback);
   // Used as the DoProcess callback in the case that no observer provided, so
   // titles have to be returned in the TitleGenerationResponse.
@@ -122,6 +119,14 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
                      ProcessCallback callback,
                      std::string title);
 
+  // Generated groups, along with their titles, are saved to an LRU cache. When
+  // we receive request groups, we first check against all entries of LRU cache
+  // to see whether any cached group is similar enough to the request group. If
+  // so, we can reuse the title without using the model to generate one.
+  void CacheGroupTitles(std::vector<GroupData> groups);
+  std::optional<std::string> MaybeGetCachedTitle(
+      const std::vector<mojom::EntityPtr>& entities);
+
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
       on_device_model_service_;
   // `model_` should only be used after a successful LoadModelResult is received
@@ -135,6 +140,24 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
   bool is_processing_ = false;
 
   base::WallClockTimer unload_model_timer_;
+
+  // The `title_cache_` is designed to be a HashingLRUCache with `std::string
+  // title` as key, and `std::vector<EntityPtr> entities` as value. We use the
+  // title as LRU cache map key (i.e., we overwrite and dedup cache entries with
+  // the same title) because:
+  // 1. Hashing and comparison of string is simpler and more performant than
+  // large maps.
+  // 2. Logically different groups are very unlikely to share the same title.
+  // The different groups that have the same titles are likely the same topic
+  // group the user has, but gradually updated through navigation events. In
+  // that case, only the most recent group is useful in the cache, so using
+  // group title as key is fine (or better).
+  // The value is only storing titles instead of entire entities because the
+  // title generation only takes entity titles as input. Multiset is used
+  // because the number of each titles and the group size are needed to
+  // calculate the similarity ratio.
+  base::HashingLRUCache<std::string, std::unordered_multiset<std::string>>
+      title_cache_;
 
   base::WeakPtrFactory<TitleGenerationEngine> weak_ptr_factory_{this};
 };

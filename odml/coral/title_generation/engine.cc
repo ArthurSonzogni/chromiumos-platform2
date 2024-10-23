@@ -5,6 +5,7 @@
 #include "odml/coral/title_generation/engine.h"
 
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -42,6 +43,12 @@ constexpr char kModelUuid[] = "fa9a157a-696d-48c5-9e46-efa048743587";
 // The duration to keep the model loaded (for upcoming feature triggers).
 constexpr base::TimeDelta kUnloadModelInterval = base::Minutes(1);
 
+// Ensures cache hits when user triggers feature in turn from 2 desktops both
+// having 2 coral groups.
+constexpr size_t kMaxCacheSize = 4;
+// The acceptable threshold is set to 1 diff per 4 items.
+constexpr double kMaxGroupDifferenceRatioToReuseTitle = 0.2501;
+
 std::string AppToPromptLine(const mojom::App& app) {
   return base::StringPrintf("app title: %s\n", app.title.c_str());
 }
@@ -66,12 +73,58 @@ std::string EntitiesToTitlePrompt(
   return prompt;
 }
 
+std::vector<mojom::EntityPtr> CloneEntities(
+    const std::vector<mojom::EntityPtr>& entities) {
+  std::vector<mojom::EntityPtr> ret;
+  for (const mojom::EntityPtr& entity : entities) {
+    ret.push_back(entity.Clone());
+  }
+  return ret;
+}
+
+std::string GetTitle(const mojom::EntityPtr& entity) {
+  if (entity->is_tab()) {
+    return entity->get_tab()->title;
+  }
+  if (entity->is_app()) {
+    return entity->get_app()->title;
+  }
+  return {};
+}
+
+double GetDifferenceRatio(
+    const std::vector<mojom::EntityPtr>& new_group,
+    const std::unordered_multiset<std::string>& old_group) {
+  // Shouldn't happen, but fail gracefully by return a value higher than
+  // threshold.
+  if (new_group.empty()) {
+    return 1.0;
+  }
+  // Remove items from the `old_group`'s multiset for each match, then the total
+  // of "items not found in multiset" and "remaining items in multiset" is the
+  // difference of two groups. Copy the group because we need to modify it.
+  std::unordered_multiset<std::string> old_group_copy(old_group);
+  int mismatches = 0;
+  for (const mojom::EntityPtr& entity : new_group) {
+    auto it = old_group_copy.find(GetTitle(entity));
+    if (it == old_group_copy.end()) {
+      mismatches++;
+      continue;
+    }
+    old_group_copy.erase(it);
+  }
+  mismatches += old_group_copy.size();
+  LOG(INFO) << "ratio: " << static_cast<double>(mismatches) / new_group.size();
+  return static_cast<double>(mismatches) / new_group.size();
+}
+
 }  // namespace
 
 TitleGenerationEngine::TitleGenerationEngine(
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service)
-    : on_device_model_service_(on_device_model_service) {}
+    : on_device_model_service_(on_device_model_service),
+      title_cache_(kMaxCacheSize) {}
 
 void TitleGenerationEngine::PrepareResource() {
   if (is_processing_) {
@@ -104,13 +157,20 @@ void TitleGenerationEngine::Process(
   // Prepare the clusters along with their prompts.
   std::vector<GroupData> groups;
   for (Cluster& cluster : clustering_response.clusters) {
-    // TODO(b/361429962): Validate safety result of the group.
-    std::string prompt = EntitiesToTitlePrompt(cluster.entities);
-    groups.push_back(GroupData{
+    GroupData group_data{
         .id = base::Token::CreateRandom(),
-        .prompt = prompt,
-        .entities = std::move(cluster.entities),
-    });
+    };
+    std::optional<std::string> title = MaybeGetCachedTitle(cluster.entities);
+    // If the title is cached, set the title field directly. Otherwise, generate
+    // the prompt and set the entities.
+    if (title.has_value()) {
+      group_data.title = std::move(title);
+    } else {
+      // TODO(b/361429962): Validate safety result of the group.
+      group_data.prompt = EntitiesToTitlePrompt(cluster.entities);
+    }
+    group_data.entities = std::move(cluster.entities);
+    groups.push_back(std::move(group_data));
   }
   mojo::Remote<mojom::TitleObserver> observer(std::move(pending_observer));
   // Ensure `is_processing_` will always be reset no matter callback is run or
@@ -181,14 +241,14 @@ void TitleGenerationEngine::UnloadModel() {
 }
 
 void TitleGenerationEngine::ReplyGroupsWithoutTitles(
-    std::vector<GroupData>& groups,
+    const std::vector<GroupData>& groups,
     TitleGenerationEngine::TitleGenerationCallback callback) {
   TitleGenerationResponse response;
-  for (GroupData& group_data : groups) {
+  for (const GroupData& group_data : groups) {
     auto group = mojom::Group::New();
     group->id = group_data.id;
-    group->entities = std::move(group_data.entities);
-    group_data.entities.clear();
+    group->title = group_data.title;
+    group->entities = CloneEntities(group_data.entities);
     response.groups.push_back(std::move(group));
   }
   std::move(callback).Run(std::move(response));
@@ -204,14 +264,15 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
     std::move(callback).Run(base::unexpected(result.error()));
     return;
   }
-  for (GroupData& group_data : groups) {
+  for (const GroupData& group_data : groups) {
     auto group = mojom::Group::New();
     group->id = group_data.id;
-    group->title = std::move(group_data.title);
-    group->entities = std::move(group_data.entities);
+    group->title = group_data.title;
+    group->entities = CloneEntities(group_data.entities);
     response.groups.push_back(std::move(group));
   }
   std::move(callback).Run(std::move(response));
+  CacheGroupTitles(std::move(groups));
 }
 
 void TitleGenerationEngine::OnAllTitleGenerationFinished(
@@ -220,13 +281,14 @@ void TitleGenerationEngine::OnAllTitleGenerationFinished(
     CoralResult<void> result) {
   if (result.has_value()) {
     // All titles should have been updated to the observer.
+    CacheGroupTitles(std::move(groups));
     return;
   }
   LOG(ERROR) << "Failed to generate titles with code: "
              << static_cast<int>(result.error());
   // Update the remaining groups to with empty title to the observer.
   for (const GroupData& group : groups) {
-    if (group.updated_to_observer) {
+    if (group.title.has_value()) {
       continue;
     }
     observer->TitleUpdated(group.id, "");
@@ -271,6 +333,13 @@ void TitleGenerationEngine::ProcessEachPrompt(
     std::move(callback).Run(std::move(observer), std::move(groups), base::ok());
     return;
   }
+  // Cached title is reused for this group, skip and process the next one.
+  if (groups[index].title.has_value()) {
+    ProcessEachPrompt(index + 1, std::move(request), std::move(session),
+                      std::move(observer), std::move(groups),
+                      std::move(callback));
+    return;
+  }
   base::flat_map<std::string, std::string> fields{
       {"prompt", groups[index].prompt}};
   SimpleSession* session_ptr = session.get();
@@ -310,10 +379,10 @@ void TitleGenerationEngine::OnModelOutput(
   // TODO(b/361429962): Figure out whether truncating should happen in here or
   // in UI.
   // TODO(b/361429962): Validate safety result of the title.
+  CHECK(!groups[index].title.has_value());
   groups[index].title = std::move(title);
   if (observer) {
-    observer->TitleUpdated(groups[index].id, groups[index].title);
-    groups[index].updated_to_observer = true;
+    observer->TitleUpdated(groups[index].id, *groups[index].title);
   }
   ProcessEachPrompt(index + 1, std::move(request), std::move(session),
                     std::move(observer), std::move(groups),
@@ -328,6 +397,30 @@ void TitleGenerationEngine::OnProcessCompleted() {
   base::OnceClosure callback = std::move(pending_callbacks_.front());
   pending_callbacks_.pop();
   std::move(callback).Run();
+}
+
+void TitleGenerationEngine::CacheGroupTitles(std::vector<GroupData> groups) {
+  for (GroupData& group_data : groups) {
+    if (!group_data.title.has_value()) {
+      continue;
+    }
+    std::unordered_multiset<std::string> entity_titles;
+    for (const mojom::EntityPtr& entity : group_data.entities) {
+      entity_titles.insert(GetTitle(entity));
+    }
+    title_cache_.Put(std::move(*group_data.title), std::move(entity_titles));
+  }
+}
+
+std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
+    const std::vector<mojom::EntityPtr>& entities) {
+  for (const auto& [title, cached_entities] : title_cache_) {
+    if (GetDifferenceRatio(entities, cached_entities) <
+        kMaxGroupDifferenceRatioToReuseTitle) {
+      return title;
+    }
+  }
+  return std::nullopt;
 }
 
 }  // namespace coral
