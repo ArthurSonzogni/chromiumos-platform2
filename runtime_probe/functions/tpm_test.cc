@@ -7,12 +7,13 @@
 #include <utility>
 
 #include <base/check.h>
+#include <diagnostics/mojom/public/cros_healthd.mojom.h>
+#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-#include <diagnostics/mojom/public/cros_healthd.mojom.h>
-#include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-shared.h"
 #include "runtime_probe/utils/function_test_utils.h"
 #include "runtime_probe/utils/mojo_test_utils.h"
 
@@ -35,6 +36,7 @@ TEST_F(TpmTest, Suceed) {
   tpm_info->version->spec_level = 162;
   tpm_info->version->manufacturer = 0x43524f53;
   tpm_info->version->vendor_specific = "xCG fTPM";
+  tpm_info->version->gsc_device = cros_healthd_mojom::TpmGSCDevice::kDT;
   auto tpm_result =
       cros_healthd_mojom::TpmResult::NewTpmInfo(std::move(tpm_info));
   fake_service_.SetTpmResult(std::move(tpm_result));
@@ -42,6 +44,7 @@ TEST_F(TpmTest, Suceed) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
+        "gsc_device": "DT",
         "manufacturer": "0x43524f53",
         "spec_level": "162",
         "vendor_specific": "xCG fTPM"
@@ -62,6 +65,7 @@ TEST_F(TpmTest, UnknownVendor) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
+        "gsc_device": "NotGSC",
         "manufacturer": "0x0",
         "spec_level": "0",
         "vendor_specific": "unknown"

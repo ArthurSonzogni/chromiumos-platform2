@@ -28,6 +28,19 @@ constexpr char kUnknownVendorSpecific[] = "unknown";
 // Simulator Vendor ID ("SIMU").
 constexpr uint32_t kVendorIdSimulator = 0x53494d55;
 
+std::string TpmGSCDeviceToString(cros_healthd_mojom::TpmGSCDevice device) {
+  switch (device) {
+    case cros_healthd_mojom::TpmGSCDevice::kNotGSC:
+      return "NotGSC";
+    case cros_healthd_mojom::TpmGSCDevice::kH1:
+      return "H1";
+    case cros_healthd_mojom::TpmGSCDevice::kDT:
+      return "DT";
+    case cros_healthd_mojom::TpmGSCDevice::kNT:
+      return "NT";
+  }
+}
+
 // Callback function to convert the telemetry info to |probe_result|.
 void ProbeTpmTelemetryInfoCallback(
     base::OnceCallback<void(TpmFunction::DataType)> callback,
@@ -54,7 +67,9 @@ void ProbeTpmTelemetryInfoCallback(
               .Set("vendor_specific", tpm_version->vendor_specific.value_or(
                                           kUnknownVendorSpecific))
               .Set("manufacturer",
-                   base::StringPrintf("0x%x", tpm_version->manufacturer)));
+                   base::StringPrintf("0x%x", tpm_version->manufacturer))
+              .Set("gsc_device",
+                   TpmGSCDeviceToString(tpm_version->gsc_device)));
     }
   }
   std::move(callback).Run(std::move(probe_result));
