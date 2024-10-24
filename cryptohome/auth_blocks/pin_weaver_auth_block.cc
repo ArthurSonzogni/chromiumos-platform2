@@ -135,14 +135,14 @@ const DelaySchedule& PinDelaySchedule() {
 const DelaySchedule& PasswordDelaySchedule() {
   // TODO(b/172221456): finalize the policy.
   static base::NoDestructor<DelaySchedule> kValue(DelaySchedule{
-      {4, 30},
-      {6, 1 * base::Time::kSecondsPerMinute},
-      {9, 10 * base::Time::kSecondsPerMinute},
-      {12, 30 * base::Time::kSecondsPerMinute},
-      {14, 1 * base::Time::kSecondsPerHour},
-      {16, 2 * base::Time::kSecondsPerHour},
-      {18, 5 * base::Time::kSecondsPerHour},
-      {20, 12 * base::Time::kSecondsPerHour},
+      {9, 30},
+      {11, 1 * base::Time::kSecondsPerMinute},
+      {14, 10 * base::Time::kSecondsPerMinute},
+      {17, 30 * base::Time::kSecondsPerMinute},
+      {19, 1 * base::Time::kSecondsPerHour},
+      {21, 2 * base::Time::kSecondsPerHour},
+      {23, 5 * base::Time::kSecondsPerHour},
+      {25, 12 * base::Time::kSecondsPerHour},
   });
   return *kValue;
 }
