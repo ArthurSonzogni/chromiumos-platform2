@@ -202,6 +202,8 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
   output_node_ = interpreter->outputs()[0];
 
   interpreter_ = std::move(interpreter);
+  metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
+                          LoadResultHistogram::kSuccess);
   LOG(INFO) << "Model loaded " << tflite_info_->tflite_path;
   std::move(callback).Run(true);
 }
