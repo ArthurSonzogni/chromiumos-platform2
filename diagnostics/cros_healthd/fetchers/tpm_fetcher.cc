@@ -44,6 +44,22 @@ mojom::TpmGSCVersion GetGscVersion(
       return mojom::TpmGSCVersion::kCr50;
     case tpm_manager::GSC_DEVICE_DT:
       return mojom::TpmGSCVersion::kTi50;
+      // TODO(b/375326146): select NT once TPM manager is able to report the new
+      // variant.
+  }
+}
+
+mojom::TpmGSCDevice GetGscDevice(
+    const tpm_manager::GetVersionInfoReply& reply) {
+  switch (reply.gsc_device()) {
+    case tpm_manager::GSC_DEVICE_NOT_GSC:
+      return mojom::TpmGSCDevice::kNotGSC;
+    case tpm_manager::GSC_DEVICE_H1:
+      return mojom::TpmGSCDevice::kH1;
+    case tpm_manager::GSC_DEVICE_DT:
+      return mojom::TpmGSCDevice::kDT;
+      // TODO(b/375326146): select NT once TPM manager is able to report the new
+      // variant.
   }
 }
 
@@ -111,6 +127,7 @@ void State::HandleVersion(brillo::Error* err,
   version->vendor_specific = reply.vendor_specific().empty()
                                  ? std::nullopt
                                  : std::make_optional(reply.vendor_specific());
+  version->gsc_device = GetGscDevice(reply);
   info_->version = std::move(version);
 }
 

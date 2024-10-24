@@ -1282,6 +1282,7 @@ event --help`.
 | tpm_model | uint32 | TPM model number. |
 | firmware_version | uint64 | Firmware version. |
 | vendor_specific | string? | Vendor specific information. |
+| gsc_device | [TpmGSCDevice](#TpmGSCDevice) | GSC device type. |
 
 ##### TpmGSCVersion
 | Enum | Description |
@@ -1289,6 +1290,14 @@ event --help`.
 | kNotGSC | For the devices which cannot be classified. |
 | kCr50 | Devices with Cr50 firmware. |
 | kTi50 | Devices with Ti50 firmware. |
+
+##### TpmGSCDevice
+| Enum | Description |
+| ---- | ----------- |
+| kNotGSC | For the devices which cannot be classified. |
+| kH1 | Haven. |
+| kDT | Dauntless. |
+| kNT | NuvoTitan. |
 
 ###  Video
 

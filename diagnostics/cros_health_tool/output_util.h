@@ -40,6 +40,7 @@ std::string EnumToString(
     ash::cros_healthd::mojom::FwupdVersionFormat fwupd_version_format);
 std::string EnumToString(ash::cros_healthd::mojom::BootMode mode);
 std::string EnumToString(ash::cros_healthd::mojom::TpmGSCVersion version);
+std::string EnumToString(ash::cros_healthd::mojom::TpmGSCDevice device);
 std::string EnumToString(
     ash::cros_healthd::mojom::ThunderboltSecurityLevel level);
 std::optional<std::string> EnumToString(

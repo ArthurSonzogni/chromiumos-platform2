@@ -1677,9 +1677,24 @@ enum TpmGSCVersion {
   kTi50 = 2,
 };
 
+// The device type of Google security chip(GSC).
+//
+// NextMinVersion: 1, NextIndex: 4
+[Stable, Extensible]
+enum TpmGSCDevice {
+  // For the devices which cannot be classified.
+  [Default] kNotGSC = 0,
+  // Haven.
+  kH1 = 1,
+  // Dauntless.
+  kDT = 2,
+  // NuvoTitan
+  kNT = 3,
+};
+
 // TPM version related information.
 //
-// NextMinVersion: 1, NextIndex: 7
+// NextMinVersion: 2, NextIndex: 8
 [Stable]
 struct TpmVersion {
   // GSC version.
@@ -1698,6 +1713,9 @@ struct TpmVersion {
   uint64 firmware_version@5;
   // Vendor specific information.
   string? vendor_specific@6;
+  // GSC device type.
+  [MinVersion=1]
+  TpmGSCDevice gsc_device@7;
 };
 
 // TPM status related information.

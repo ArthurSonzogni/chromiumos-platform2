@@ -1002,6 +1002,7 @@ void DisplayTpmInfo(const mojom::TpmResultPtr& result) {
   SET_DICT(tpm_model, version, &out_version);
   SET_DICT(firmware_version, version, &out_version);
   SET_DICT(vendor_specific, version, &out_version);
+  SET_DICT(gsc_device, version, &out_version);
   output.Set("version", std::move(out_version));
 
   const auto& status = info->status;

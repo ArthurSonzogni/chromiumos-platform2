@@ -117,6 +117,7 @@ TEST_F(TpmFetcherTest, GetTpmVersionInfoSuccess) {
   EXPECT_EQ(out_version->tpm_model, 1);
   EXPECT_EQ(out_version->firmware_version, 12227635737188317877u);
   EXPECT_EQ(out_version->vendor_specific, "xCG fTPM");
+  EXPECT_EQ(out_version->gsc_device, mojom::TpmGSCDevice::kH1);
 }
 
 TEST_F(TpmFetcherTest, GetTpmVersionInfoBadStatus) {

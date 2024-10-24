@@ -243,6 +243,19 @@ std::string EnumToString(mojom::TpmGSCVersion version) {
   }
 }
 
+std::string EnumToString(mojom::TpmGSCDevice device) {
+  switch (device) {
+    case mojom::TpmGSCDevice::kNotGSC:
+      return "NotGSC";
+    case mojom::TpmGSCDevice::kH1:
+      return "H1";
+    case mojom::TpmGSCDevice::kDT:
+      return "DT";
+    case mojom::TpmGSCDevice::kNT:
+      return "NT";
+  }
+}
+
 std::string EnumToString(mojom::ThunderboltSecurityLevel level) {
   switch (level) {
     case mojom::ThunderboltSecurityLevel::kNone:
