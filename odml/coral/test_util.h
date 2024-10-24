@@ -53,12 +53,12 @@ inline EmbeddingResponse GetFakeEmbeddingResponse() {
 inline ClusteringResponse GetFakeClusteringResponse() {
   std::vector<mojom::EntityPtr> entities = GetFakeEntities();
   Cluster cluster1, cluster2, cluster3;
-  for (size_t i = 0; i < 3; i++) {
-    cluster1.entities.push_back(std::move(entities[i]));
-  }
-  for (size_t i = 3; i < 5; i++) {
-    cluster2.entities.push_back(std::move(entities[i]));
-  }
+  // In each group, the entities are sorted by the distance to its center.
+  cluster1.entities.push_back(std::move(entities[1]));
+  cluster1.entities.push_back(std::move(entities[2]));
+  cluster1.entities.push_back(std::move(entities[0]));
+  cluster2.entities.push_back(std::move(entities[4]));
+  cluster2.entities.push_back(std::move(entities[3]));
   cluster3.entities.push_back(std::move(entities[5]));
   ClusteringResponse response;
   response.clusters.push_back(std::move(cluster1));
@@ -76,12 +76,12 @@ inline TitleGenerationResponse GetFakeTitleGenerationResponse() {
   group2->title = "DEF";
   auto group3 = mojom::Group::New();
   group3->title = "GHI";
-  for (size_t i = 0; i < 3; i++) {
-    group1->entities.push_back(std::move(entities[i]));
-  }
-  for (size_t i = 3; i < 5; i++) {
-    group2->entities.push_back(std::move(entities[i]));
-  }
+  // In each group, the entities are sorted by the distance to its center.
+  group1->entities.push_back(std::move(entities[1]));
+  group1->entities.push_back(std::move(entities[2]));
+  group1->entities.push_back(std::move(entities[0]));
+  group2->entities.push_back(std::move(entities[4]));
+  group2->entities.push_back(std::move(entities[3]));
   group3->entities.push_back(std::move(entities[5]));
 
   response.groups.push_back(std::move(group1));

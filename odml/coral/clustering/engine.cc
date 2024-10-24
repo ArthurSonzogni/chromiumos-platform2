@@ -26,6 +26,8 @@ using mojom::CoralError;
 
 const Distance kDefaultAgglomerativeClusteringThreshold = 0.24;
 
+constexpr float kFloatErrorTolerance = 1e-6;
+
 }  // namespace
 
 namespace internal {
@@ -86,6 +88,46 @@ std::optional<clustering::Matrix> DistanceMatrix(
   return distances;
 }
 
+std::optional<Embedding> CalculateVectorCenter(
+    const std::vector<Embedding>& embeddings, const std::vector<int>& indices) {
+  if (indices.size() < 1) {
+    return std::nullopt;
+  }
+
+  // The size of the embedding vector.
+  const int size = embeddings[0].size();
+  Embedding center;
+  center.resize(size);
+
+  for (const int index : indices) {
+    if (embeddings[index].size() != size) {
+      LOG(ERROR) << "embedding sizes doesn't match: " << size << " and "
+                 << embeddings[index].size();
+      return std::nullopt;
+    }
+
+    // Since embeddings are consider as high dimensional vectors instead of
+    // points, normalize them to unit length so the center is meaningful.
+    float norm = 0.0;
+    for (int i = 0; i < size; ++i) {
+      norm += embeddings[index][i] * embeddings[index][i];
+    }
+    if (norm == 0.0) {
+      LOG(ERROR) << "embedding vector of length 0";
+      return std::nullopt;
+    }
+    norm = sqrt(norm);
+
+    for (int i = 0; i < size; ++i) {
+      center[i] += embeddings[index][i] / norm;
+    }
+  }
+  for (int i = 0; i < size; ++i) {
+    center[i] /= indices.size();
+  }
+  return center;
+}
+
 }  // namespace internal
 
 ClusteringEngine::ClusteringEngine(
@@ -121,7 +163,44 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
               return a.size() > b.size();
             });
 
-  // TODO(b/361429770): Sort entities in groups.
+  // The distance of each embedding to the center of its belonging group.
+  std::vector<float> distance_to_center;
+  distance_to_center.resize(embedding_response.embeddings.size());
+
+  for (auto& group : *groups) {
+    std::optional<Embedding> center =
+        internal::CalculateVectorCenter(embedding_response.embeddings, group);
+    if (!center.has_value()) {
+      std::move(callback).Run(std::move(request),
+                              base::unexpected(CoralError::kClusteringError));
+      return;
+    }
+
+    for (int i = 0; i < group.size(); ++i) {
+      std::optional<float> distance = internal::CosineDistance(
+          *center, embedding_response.embeddings[group[i]]);
+      if (!distance.has_value()) {
+        LOG(ERROR) << "Failed to calcualte cosine distance to the center";
+        std::move(callback).Run(std::move(request),
+                                base::unexpected(CoralError::kClusteringError));
+        return;
+      }
+      distance_to_center[group[i]] = *distance;
+      VLOG(1) << "distance_to_center of " << group[i] << " : " << *distance;
+    }
+
+    // Sort by the distance to center in ascending order.
+    // If the difference of the distances is small, deem them as equal and sort
+    // by indices.
+    std::sort(group.begin(), group.end(),
+              [&distance_to_center](const int a, const int b) {
+                if (fabs(distance_to_center[a] - distance_to_center[b]) <
+                    kFloatErrorTolerance) {
+                  return a < b;
+                }
+                return distance_to_center[a] < distance_to_center[b];
+              });
+  }
 
   unsigned int max_items_in_cluster =
       request->clustering_options->max_items_in_cluster;

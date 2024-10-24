@@ -5,8 +5,10 @@
 #include "odml/coral/clustering/engine.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
+#include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
@@ -24,57 +26,96 @@ namespace {
 
 using base::test::TestFuture;
 using testing::_;
+using testing::Matcher;
+using testing::MatchResultListener;
 using testing::Return;
 
-// Creates a tab with title "title|id|" and url "url|id|".
-mojom::EntityPtr FakeTab(const int id) {
-  return mojom::Entity::NewTab(
-      mojom::Tab::New("title" + std::to_string(id),
-                      url::mojom::Url::New("url" + std::to_string(id))));
-}
-
-// Creates GroupRequest with |n| entities.
-mojom::GroupRequestPtr FakeGroupRequestWithNumEntities(const int n) {
-  auto request = mojom::GroupRequest::New();
-  request->embedding_options = mojom::EmbeddingOptions::New();
-  request->clustering_options = mojom::ClusteringOptions::New();
-  request->title_generation_options = mojom::TitleGenerationOptions::New();
-  for (int i = 0; i < n; ++i) {
-    request->entities.push_back(FakeTab(i));
-  }
-  return request;
-}
-
 // Creates fake response with the given grouping.
-ClusteringResponse FakeClusteringResponse(const clustering::Groups& groups) {
+ClusteringResponse FakeClusteringResponse(
+    const std::vector<mojom::EntityPtr>& entities,
+    const clustering::Groups& groups) {
   ClusteringResponse response;
   for (int i = 0; i < groups.size(); ++i) {
     Cluster cluster;
     for (int j = 0; j < groups[i].size(); ++j) {
-      cluster.entities.push_back(FakeTab(groups[i][j]));
+      cluster.entities.push_back(entities[groups[i][j]]->Clone());
     }
     response.clusters.push_back(std::move(cluster));
   }
   return response;
 }
 
-// Compares two ClusteringResponse.
-void ExpectResponseEqual(const ClusteringResponse& expected_response,
-                         const ClusteringResponse& response) {
-  EXPECT_EQ(expected_response.clusters.size(), response.clusters.size());
-
-  for (int i = 0; i < expected_response.clusters.size(); ++i) {
-    const Cluster& expected_cluster = expected_response.clusters[i];
-    const Cluster& cluster = response.clusters[i];
-    EXPECT_EQ(expected_cluster.entities.size(), cluster.entities.size());
-    // Assume the entity is always tab but not app.
-    for (int j = 0; j < expected_cluster.entities.size(); ++j) {
-      EXPECT_TRUE(expected_cluster.entities[j]->Equals(*cluster.entities[j]))
-          << "item " << j << " in group " << i << " differs ("
-          << expected_cluster.entities[j]->get_tab()->title << ", "
-          << cluster.entities[j]->get_tab()->title << ")";
-    }
+std::string EntityToString(const mojom::Entity& entity) {
+  if (entity.is_app()) {
+    const mojom::App& app = *entity.get_app();
+    return base::StringPrintf("app<%s,%s>", app.title.c_str(), app.id.c_str());
+  } else if (entity.is_tab()) {
+    const mojom::Tab& tab = *entity.get_tab();
+    return base::StringPrintf("tab<%s,%s>", tab.title.c_str(),
+                              tab.url->url.c_str());
   }
+  return "<unknown entity type>";
+}
+
+// A custom matcher to compare two ClusteringResponse.
+class EqualsClusteringResponseMatcher {
+ public:
+  using is_gtest_matcher = void;
+
+  explicit EqualsClusteringResponseMatcher(ClusteringResponse expected_response)
+      : expected_response_(std::move(expected_response)) {}
+
+  bool MatchAndExplain(const ClusteringResponse& response,
+                       MatchResultListener* listener) const {
+    if (expected_response_.clusters.size() != response.clusters.size()) {
+      *listener << "\nExpected: " << expected_response_.clusters.size()
+                << " clusters\n"
+                << "  Actual: " << response.clusters.size() << " clusters";
+      return false;
+    }
+
+    for (int i = 0; i < expected_response_.clusters.size(); ++i) {
+      const Cluster& expected_cluster = expected_response_.clusters[i];
+      const Cluster& cluster = response.clusters[i];
+      if (expected_cluster.entities.size() != cluster.entities.size()) {
+        *listener << "\nExpected: " << expected_cluster.entities.size()
+                  << " items in group " << i
+                  << "\n  Actual: " << cluster.entities.size() << " items";
+        return false;
+      }
+      bool matches = true;
+      for (int j = 0; j < expected_cluster.entities.size(); ++j) {
+        const Cluster& expected_cluster = expected_response_.clusters[i];
+        if (!expected_cluster.entities[j]->Equals(*cluster.entities[j])) {
+          *listener << "\nItem " << j << " in group " << i
+                    << " differs:\nExpected: "
+                    << EntityToString(*expected_cluster.entities[j])
+                    << "\n  Actual: " << EntityToString(*cluster.entities[j]);
+          matches = false;
+        }
+      }
+      if (!matches) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void DescribeTo(std::ostream* os) const {
+    *os << "ClusteringResponse equals";
+  }
+
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "ClusteringResponse differs";
+  }
+
+ private:
+  ClusteringResponse expected_response_;
+};
+
+Matcher<const ClusteringResponse&> EqualsClusteringResponse(
+    ClusteringResponse expected_response) {
+  return EqualsClusteringResponseMatcher(std::move(expected_response));
 }
 
 }  // namespace
@@ -88,6 +129,7 @@ class ClusteringEngineTest : public testing::Test {
  protected:
   CoralResult<ClusteringResponse> RunTest(
       mojom::GroupRequestPtr request,
+      EmbeddingResponse embedding_response,
       const std::optional<clustering::Groups> fake_grouping) const {
     auto mock_clustering_factory =
         std::make_unique<clustering::MockClusteringFactory>();
@@ -104,10 +146,6 @@ class ClusteringEngineTest : public testing::Test {
     auto engine =
         std::make_unique<ClusteringEngine>(std::move(mock_clustering_factory));
 
-    // Empty. Since we mocked out the clustering implementation, the content
-    // doesn't matter.
-    EmbeddingResponse embedding_response;
-
     TestFuture<mojom::GroupRequestPtr, CoralResult<ClusteringResponse>>
         grouping_future;
     engine->Process(std::move(request), std::move(embedding_response),
@@ -118,145 +156,139 @@ class ClusteringEngineTest : public testing::Test {
 };
 
 TEST_F(ClusteringEngineTest, Success) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
 
   clustering::Groups fake_grouping = {
-      {0, 2, 5},
-      {4},
-      {1, 3},
+      {0, 2, 1},
+      {5},
+      {3, 4},
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), fake_grouping);
-
-  ClusteringResponse expected_response = FakeClusteringResponse({
-      {0, 2, 5},
-      {1, 3},
-      {4},
-  });
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(expected_response, *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
+                           request->entities, {
+                                                  {1, 2, 0},
+                                                  {3, 4},
+                                                  {5},
+                                              })));
 }
 
 TEST_F(ClusteringEngineTest, MaxClusters) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
   request->clustering_options->max_clusters = 2;
 
   clustering::Groups fake_grouping = {
-      {0, 2, 5},
-      {4},
-      {1, 3},
+      {0, 2, 1},
+      {5},
+      {3, 4},
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), fake_grouping);
-
-  ClusteringResponse expected_response = FakeClusteringResponse({
-      {0, 2, 5},
-      {1, 3},
-  });
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(expected_response, *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
+                           request->entities, {
+                                                  {1, 2, 0},
+                                                  {3, 4},
+                                              })));
 }
 
 TEST_F(ClusteringEngineTest, MaxClustersExceedGroupSize) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
   request->clustering_options->max_clusters = 6;
 
   clustering::Groups fake_grouping = {
-      {0, 2, 5},
-      {4},
-      {1, 3},
+      {0, 2, 1},
+      {5},
+      {3, 4},
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), fake_grouping);
-
-  ClusteringResponse expected_response = FakeClusteringResponse({
-      {0, 2, 5},
-      {1, 3},
-      {4},
-  });
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(expected_response, *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
+                           request->entities, {
+                                                  {1, 2, 0},
+                                                  {3, 4},
+                                                  {5},
+                                              })));
 }
 
 TEST_F(ClusteringEngineTest, MaxItemsInCluster) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
   request->clustering_options->max_items_in_cluster = 2;
 
   clustering::Groups fake_grouping = {
-      {0, 2, 5},
-      {4},
-      {1, 3},
+      {0, 2, 1},
+      {5},
+      {3, 4},
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), fake_grouping);
-
-  ClusteringResponse expected_response = FakeClusteringResponse({
-      {0, 2},
-      {1, 3},
-      {4},
-  });
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(expected_response, *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(
+                           FakeClusteringResponse(request->entities, {
+                                                                         {1, 2},
+                                                                         {3, 4},
+                                                                         {5},
+                                                                     })));
 }
 
 TEST_F(ClusteringEngineTest, MaxItemsInClusterExceedsSize) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
   request->clustering_options->max_items_in_cluster = 5;
 
   clustering::Groups fake_grouping = {
-      {0, 2, 5},
-      {4},
-      {1, 3},
+      {0, 2, 1},
+      {5},
+      {3, 4},
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), fake_grouping);
-
-  ClusteringResponse expected_response = FakeClusteringResponse({
-      {0, 2, 5},
-      {1, 3},
-      {4},
-  });
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(expected_response, *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
+                           request->entities, {
+                                                  {1, 2, 0},
+                                                  {3, 4},
+                                                  {5},
+                                              })));
 }
 
 TEST_F(ClusteringEngineTest, MinItemsInCluster) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
   request->clustering_options->min_items_in_cluster = 2;
 
   clustering::Groups fake_grouping = {
-      {0, 2, 5},
-      {4},
-      {1, 3},
+      {0, 2, 1},
+      {5},
+      {3, 4},
   };
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), fake_grouping);
-
-  ClusteringResponse expected_response = FakeClusteringResponse({
-      {0, 2, 5},
-      {1, 3},
-  });
+      RunTest(request->Clone(), GetFakeEmbeddingResponse(), fake_grouping);
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(expected_response, *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
+                           request->entities, {
+                                                  {1, 2, 0},
+                                                  {3, 4},
+                                              })));
 }
 
 TEST_F(ClusteringEngineTest, GroupingError) {
-  auto request = FakeGroupRequestWithNumEntities(6);
+  auto request = GetFakeGroupRequest();
 
   CoralResult<ClusteringResponse> result =
-      RunTest(std::move(request), std::nullopt);
+      RunTest(std::move(request), GetFakeEmbeddingResponse(), std::nullopt);
 
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(mojom::CoralError::kClusteringError, result.error());
@@ -273,12 +305,17 @@ TEST(ClusteringEngineRealImplementationTest, Success) {
 
   TestFuture<mojom::GroupRequestPtr, CoralResult<ClusteringResponse>>
       grouping_future;
-  engine->Process(std::move(request), std::move(embedding_response),
+  engine->Process(request->Clone(), std::move(embedding_response),
                   grouping_future.GetCallback());
   auto [_, result] = grouping_future.Take();
 
   ASSERT_TRUE(result.has_value());
-  ExpectResponseEqual(GetFakeClusteringResponse(), *result);
+  EXPECT_THAT(*result, EqualsClusteringResponse(FakeClusteringResponse(
+                           request->entities, {
+                                                  {1, 2, 0},
+                                                  {3, 4},
+                                                  {5},
+                                              })));
 }
 
 TEST(MatrixCalculationTest, Success) {
@@ -335,6 +372,38 @@ TEST(MatrixCalculationTest, ZeroNormEmbeddings) {
   distances = internal::DistanceMatrix(embeddings);
 
   ASSERT_TRUE(distances.has_value());
+}
+
+TEST(CalculateVectorCenterTest, Success) {
+  const std::vector<Embedding> embeddings = {
+      {0, 1, 2}, {1, 5, 9}, {3, 6, 7}, {6, 7, 10}};
+  std::optional<Embedding> center =
+      internal::CalculateVectorCenter(embeddings, {0, 2, 3});
+
+  ASSERT_TRUE(center.has_value());
+  const std::vector<float> expected_center = {0.250185, 0.526905, 0.783878};
+  EXPECT_EQ(expected_center.size(), center->size());
+  for (int i = 0; i < center->size(); ++i) {
+    EXPECT_NEAR(expected_center[i], (*center)[i], 1e-6);
+  }
+}
+
+TEST(CalculateVectorCenterTest, UnmatchedEmbeddingSize) {
+  const std::vector<Embedding> embeddings = {
+      {0, 1, 2}, {1, 5, 9}, {3, 6, 7}, {6, 7, 10, 11}};
+  std::optional<Embedding> center =
+      internal::CalculateVectorCenter(embeddings, {0, 2, 3});
+
+  ASSERT_FALSE(center.has_value());
+}
+
+TEST(CalculateVectorCenterTest, ZeroLength) {
+  const std::vector<Embedding> embeddings = {
+      {0, 1, 2}, {1, 5, 9}, {0, 0, 0}, {6, 7, 10}};
+  std::optional<Embedding> center =
+      internal::CalculateVectorCenter(embeddings, {0, 2, 3});
+
+  ASSERT_FALSE(center.has_value());
 }
 
 }  // namespace coral

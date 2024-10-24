@@ -25,6 +25,15 @@ namespace internal {
 std::optional<clustering::Matrix> DistanceMatrix(
     const std::vector<Embedding>& embeddings);
 
+// Given a list of embedding vectors, calculate the center vector
+// of a subset specified by |indices|.
+// std::nullopt is returned if
+// 1. The dimensions of vectors are not consistent.
+// 2. Any vector has zero length.
+// 3. The subset |indices| is empty.
+std::optional<Embedding> CalculateVectorCenter(
+    const std::vector<Embedding>& embeddings, const std::vector<int>& indices);
+
 }  // namespace internal
 
 struct Cluster : public MoveOnly {
