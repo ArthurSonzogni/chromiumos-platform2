@@ -37,7 +37,8 @@ using mojom::CoralError;
 using on_device_model::mojom::LoadModelResult;
 using on_device_model::mojom::Session;
 
-constexpr char kModelUuid[] = "ee7c31c2-18e5-405a-b54e-f2607130a15d";
+// Adaptation model for Coral.
+constexpr char kModelUuid[] = "fa9a157a-696d-48c5-9e46-efa048743587";
 // The duration to keep the model loaded (for upcoming feature triggers).
 constexpr base::TimeDelta kUnloadModelInterval = base::Minutes(1);
 
@@ -51,10 +52,7 @@ std::string TabToPromptLine(const mojom::Tab& tab) {
 
 std::string EntitiesToTitlePrompt(
     const std::vector<mojom::EntityPtr>& entities) {
-  // TODO(b/361429962): Switch to the final prompt for the feature..
-  std::string prompt =
-      "Given the below tabs and apps, generate a suitable group title with "
-      "less than 3 words. Output exactly the title and nothing else.\n";
+  std::string prompt = "Generate a title for this group:\n\n";
   // TODO(b/361429962): Add mechanism to ensure prompt isn't too large
   // (truncation, omitting some entries, etc.).
   for (const mojom::EntityPtr& entity : entities) {
@@ -64,6 +62,7 @@ std::string EntitiesToTitlePrompt(
       prompt += TabToPromptLine(*entity->get_tab());
     }
   }
+  prompt += "\n";
   return prompt;
 }
 
