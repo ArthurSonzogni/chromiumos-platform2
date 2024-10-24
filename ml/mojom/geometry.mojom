@@ -8,7 +8,6 @@
 //   2. On chromium, we must use the standard version, i.e.,
 //      "ui/gfx/geometry/mojom/geometry.mojom" in the chromium repo and must not
 //      sync this file to chromium.
-
 module gfx.mojom;
 
 [Stable]
@@ -29,6 +28,7 @@ struct Point3F {
   float z;
 };
 
+[Stable]
 struct Size {
   int32 width;
   int32 height;
@@ -39,6 +39,7 @@ struct SizeF {
   float height;
 };
 
+[Stable]
 struct Rect {
   int32 x;
   int32 y;
@@ -46,6 +47,7 @@ struct Rect {
   int32 height;
 };
 
+[Stable]
 struct RectF {
   float x;
   float y;
@@ -53,6 +55,7 @@ struct RectF {
   float height;
 };
 
+[Stable]
 struct Insets {
   int32 top;
   int32 left;
@@ -83,14 +86,16 @@ struct Vector3dF {
   float z;
 };
 
-struct ScrollOffset {
-  float x;
-  float y;
-};
-
 struct Quaternion {
   double x;
   double y;
   double z;
   double w;
+};
+
+struct QuadF {
+  PointF p1;
+  PointF p2;
+  PointF p3;
+  PointF p4;
 };

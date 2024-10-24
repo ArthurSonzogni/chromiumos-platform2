@@ -40,9 +40,13 @@ ImageAnnotationScorePtr AnnotationScorePtrFromProto(
     const chrome_knowledge::AnnotationScoreList::AnnotationScore& score) {
   auto p = ImageAnnotationScore::New();
   p->id = score.id();
-  p->confidence = score.confidence();
+  // confidence is deprecated and no longer in use.
+  p->DEPRECATED_confidence = 0;
   p->mid = score.mid();
   p->name = score.name();
+  // TODO(b:343320265): Switching the actual confidence when the DLC is
+  // updated.
+  p->score = static_cast<float>(score.confidence()) / 255.0;
   return p;
 }
 
