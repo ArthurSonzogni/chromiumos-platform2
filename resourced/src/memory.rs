@@ -67,6 +67,9 @@ const VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME: &str =
 const DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME: &str =
     "CrOSLateBootDiscardStaleAtModeratePressure";
 
+// Devices which have more RAM than this will not discard stale tabs at moderate pressure.
+const DISCARD_STALE_AT_MODERATE_HIGH_RAM_CUTOFF_KB: u64 = 8 * 1024 * 1024;
+
 #[cfg(not(test))]
 const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
     "MinLastVisibleDurationSeconds";
@@ -81,7 +84,7 @@ const DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_PARAM: &str =
     "VmmmsReclaimProportion";
 
 // By default attempt to reclaim 100% of the reclaim target from VMMS.
-const DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_DEFAULT: u64 = 100;
+const DISCARD_STALE_AT_MODERATE_PRESSURE_VMMS_RECLAIM_PROPORTION_DEFAULT: u64 = 0;
 
 // The minimum allowed interval between stale tab discard attempts.
 const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_DISCARD_INTERVAL: &str = "MinDiscardIntervalSeconds";
@@ -157,7 +160,7 @@ fn update_mglru_split_settings(
 pub fn register_features(swappiness: SwappinessConfig) {
     feature::register_feature(VMMMS_RECLAIM_ENTIRE_TARGET_FEATURE_NAME, false, None);
 
-    feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, false, None);
+    feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, true, None);
 
     feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
 
@@ -926,7 +929,11 @@ pub async fn get_memory_pressure_status(
     let game_mode = common::get_game_mode();
     let meminfo = MemInfo::load().context("load meminfo")?;
     let margins = get_component_margins_kb();
-    let discard_stale_at_moderate =
+
+    let is_high_ram = meminfo.total > DISCARD_STALE_AT_MODERATE_HIGH_RAM_CUTOFF_KB;
+
+    // Never enable moderate pressure discards on devices with high ram.
+    let discard_stale_at_moderate = !is_high_ram &&
         feature::is_feature_enabled(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME)?;
 
     let do_thrashing_discount = should_do_thrashing_discount();
