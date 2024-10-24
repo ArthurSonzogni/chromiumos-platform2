@@ -10,7 +10,7 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"

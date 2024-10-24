@@ -13,7 +13,7 @@
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"

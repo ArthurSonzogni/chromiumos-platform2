@@ -10,7 +10,7 @@
 #include <base/check_op.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/cryptohome_recovery.h"
 #include "cryptohome/auth_factor/types/fingerprint.h"

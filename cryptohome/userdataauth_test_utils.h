@@ -17,7 +17,7 @@
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"

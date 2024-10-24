@@ -15,7 +15,7 @@
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"

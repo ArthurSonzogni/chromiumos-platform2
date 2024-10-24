@@ -31,7 +31,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/types/manager.h"

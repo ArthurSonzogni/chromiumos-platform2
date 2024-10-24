@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_SERVICE_H_
-#define CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_SERVICE_H_
+#ifndef CRYPTOHOME_AUTH_BLOCKS_CRYPTORECOVERY_SERVICE_H_
+#define CRYPTOHOME_AUTH_BLOCKS_CRYPTORECOVERY_SERVICE_H_
 
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
@@ -63,4 +63,4 @@ class CryptohomeRecoveryAuthBlockService {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_SERVICE_H_
+#endif  // CRYPTOHOME_AUTH_BLOCKS_CRYPTORECOVERY_SERVICE_H_

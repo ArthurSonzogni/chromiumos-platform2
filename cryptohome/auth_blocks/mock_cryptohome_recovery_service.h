@@ -11,7 +11,7 @@
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 
 namespace cryptohome {
 

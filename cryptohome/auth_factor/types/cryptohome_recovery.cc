@@ -9,7 +9,7 @@
 #include <base/time/time.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
-#include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
+#include "cryptohome/auth_blocks/cryptorecovery/auth_block.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/prepare_purpose.h"

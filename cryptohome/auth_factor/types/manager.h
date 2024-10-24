@@ -11,7 +11,7 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/cryptorecovery/service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
