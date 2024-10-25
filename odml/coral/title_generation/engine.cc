@@ -13,6 +13,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
@@ -375,6 +376,9 @@ void TitleGenerationEngine::OnModelOutput(
     ProcessCallback callback,
     std::string title) {
   CHECK(index < groups.size());
+  // The model outputs a leading blank space by default. In any case, trimming
+  // blank space from both ends makes the title format on UI more consistent.
+  title = base::TrimWhitespaceASCII(title, base::TRIM_ALL);
 
   // TODO(b/361429962): Figure out whether truncating should happen in here or
   // in UI.
