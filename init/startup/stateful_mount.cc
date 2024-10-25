@@ -671,20 +671,12 @@ void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
     }
   }
 
-  // Checks and updates stateful partition.
-  DevUpdateStatefulPartition("");
-
-  // Mount and then remount to enable exec/suid.
-  base::FilePath usrlocal = root_.Append(kUsrLocal);
-  mount_helper_->BindMountOrFail(stateful_dev_image, usrlocal);
-  if (!platform_->Mount(base::FilePath(), usrlocal, "", MS_REMOUNT, "")) {
-    PLOG(WARNING) << "Failed to remount " << usrlocal.value();
-  }
-
   if (enable_stateful_security_hardening) {
     // Add exceptions to allow symlink traversal and opening of FIFOs in the
     // dev_image subtree.
-    for (const auto& path : {root_.Append(kTmpPortage), stateful_dev_image}) {
+    for (const auto& path :
+         {root_.Append(kTmpPortage), stateful_dev_image,
+          stateful_.Append(kUnencrypted).Append(kPreserve)}) {
       if (!platform_->DirectoryExists(path)) {
         if (!platform_->CreateDirectory(path)) {
           PLOG(ERROR) << "Failed to create " << path.value();
@@ -696,6 +688,16 @@ void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
       AllowSymlink(platform_, root_, path.value());
       AllowFifo(platform_, root_, path.value());
     }
+  }
+
+  // Checks and updates stateful partition.
+  DevUpdateStatefulPartition("");
+
+  // Mount and then remount to enable exec/suid.
+  base::FilePath usrlocal = root_.Append(kUsrLocal);
+  mount_helper_->BindMountOrFail(stateful_dev_image, usrlocal);
+  if (!platform_->Mount(base::FilePath(), usrlocal, "", MS_REMOUNT, "")) {
+    PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }
 
   // Set up /var elements needed for deploying packages.
