@@ -32,6 +32,7 @@
 #include "odml/embedding_model/model_factory.h"
 #include "odml/mantis/service.h"
 #include "odml/on_device_model/on_device_model_service.h"
+#include "odml/periodic_metrics.h"
 #include "odml/utils/odml_shim_loader_impl.h"
 #include "session_state_manager/session_state_manager.h"
 
@@ -259,6 +260,8 @@ class Daemon : public brillo::DBusDaemon {
 
   // The metrics lib. Should be destructed after both service providers.
   MetricsLibrary metrics_;
+
+  odml::PeriodicMetrics periodic_metrics_{raw_ref(metrics_)};
 
   std::unique_ptr<OnDeviceModelServiceProviderImpl>
       on_device_model_service_provider_impl_;

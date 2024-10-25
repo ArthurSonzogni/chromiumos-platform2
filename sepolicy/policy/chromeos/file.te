@@ -444,6 +444,7 @@ type cros_var_lib_misc, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ml_core, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_modemfwd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_modemloggerd, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_odml, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oemcrypto, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_restore, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_oobe_config_save, file_type, cros_file_type, cros_var_file_type;

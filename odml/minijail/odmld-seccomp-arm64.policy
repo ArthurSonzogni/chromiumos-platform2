@@ -117,6 +117,7 @@ tgkill: 1
 clock_nanosleep: 1
 sigaltstack: 1
 mkdirat: 1
+pwrite64: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD

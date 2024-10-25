@@ -340,6 +340,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/ml_core(/.*)?          u:object_r:cros_var_lib_ml_core:s0
 /var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
 /var/lib/modemloggerd(/.*)?     u:object_r:cros_var_lib_modemloggerd:s0
+/var/lib/odml(/.*)?             u:object_r:cros_var_lib_odml:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
 /var/lib/oobe_config_save(/.*)? u:object_r:cros_var_lib_oobe_config_save:s0

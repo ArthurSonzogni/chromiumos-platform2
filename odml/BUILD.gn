@@ -15,6 +15,7 @@ group("all") {
       ":install_minijail_conf",
       ":install_policy",
       ":install_service_manager_policy_config",
+      ":install_tmpfiles_config",
       ":libdmabufheap",
       ":odml_console",
       ":odmld",
@@ -194,7 +195,10 @@ executable("embedding_model_console") {
 
 executable("odmld") {
   install_path = "bin"
-  sources = [ "odmld.cc" ]
+  sources = [
+    "odmld.cc",
+    "periodic_metrics.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":coral",
@@ -309,4 +313,9 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
   }
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/odml.conf" ]
+  install_path = "tmpfilesd"
 }

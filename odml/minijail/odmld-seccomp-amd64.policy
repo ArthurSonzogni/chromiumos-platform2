@@ -115,6 +115,7 @@ exit_group: 1
 rt_sigreturn: 1
 shutdown: 1
 tgkill: 1
+pwrite64: 1
 
 # For mediapipe threads
 clone: arg0 & CLONE_THREAD
