@@ -10,6 +10,10 @@ log_message() {
 }
 
 get_fans_speed() {
+  if [ ! -d /dev/cros_ec ]; then
+    return
+  fi
+
   local cmd="/usr/sbin/ectool pwmgetfanrpm all"
   local fanspeed
   fanspeed=$(${cmd})
