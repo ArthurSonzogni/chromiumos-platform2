@@ -749,7 +749,12 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   if (network_rpcid.value().empty()) {
     KeyValueStore service_params =
         service->GetSupplicantConfigurationParameters();
-    if (service->hidden_ssid()) {
+    // Add the scan_ssid flag to force wpa_supplicant to probe for the SSID,
+    // which is necessary for discovering hidden networks. During OOBE, the
+    // "hidden network" toggle in the UI is not available on the initial
+    // connection screen. This flag is added to allow users to connect to
+    // hidden networks by simply entering the SSID and security type.
+    if (service->hidden_ssid() || !service->has_ever_connected()) {
       const uint32_t scan_ssid = 1;  // "True": Use directed probe.
       service_params.Set<uint32_t>(WPASupplicant::kNetworkPropertyScanSSID,
                                    scan_ssid);
