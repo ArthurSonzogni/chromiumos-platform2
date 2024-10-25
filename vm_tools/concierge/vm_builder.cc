@@ -699,8 +699,8 @@ base::StringPairs VmBuilder::BuildRunParams() const {
       args.emplace_back("--cpu-capacity",
                         base::JoinString(vm_cpu_args_->cpu_capacity, ","));
 
-    if (!vm_cpu_args_->cpu_clusters.empty()) {
-      for (const auto& cluster : vm_cpu_args_->cpu_clusters) {
+    for (const auto& cluster : vm_cpu_args_->cpu_clusters) {
+      if (!cluster.empty()) {
         auto cpu_list = base::JoinString(cluster, ",");
         args.emplace_back("--cpu-cluster", cpu_list);
       }

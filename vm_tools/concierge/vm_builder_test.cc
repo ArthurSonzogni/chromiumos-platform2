@@ -297,7 +297,7 @@ TEST(VmBuilderTest, VmCpuArgs) {
   VmBuilder::VmCpuArgs vm_cpu_args = {
       .cpu_affinity = {"0=0,1:1=0,1:2=2,3:3=2,3"},
       .cpu_capacity = {"0=741", "1=741", "2=1024", "3=1024"},
-      .cpu_clusters = {{"0", "1"}, {"2", "3"}},
+      .cpu_clusters = {{"0", "1"}, {}, {"2", "3"}},
   };
 
   VmBuilder builder;
@@ -316,6 +316,11 @@ TEST(VmBuilderTest, VmCpuArgs) {
   EXPECT_THAT(
       result,
       testing::Contains(std::make_pair("--cpu-cluster", "0,1")).Times(1));
+
+  // The empty CPU cluster should not produce a cluster argument.
+  EXPECT_THAT(
+      result,
+      testing::Not(testing::Contains(std::make_pair("--cpu-cluster", ""))));
 
   EXPECT_THAT(
       result,
