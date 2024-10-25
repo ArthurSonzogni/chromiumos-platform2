@@ -22,6 +22,8 @@ namespace embedding_model {
 
 class TfliteModelRunner : public ModelRunner {
  public:
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
   enum class LoadResultHistogram {
     kSuccess = 0,
     kUnsupportedDelegate = 1,
@@ -36,6 +38,8 @@ class TfliteModelRunner : public ModelRunner {
     kIncorrectOutputSize = 10,
     kMaxValue = kIncorrectOutputSize,
   };
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
   enum class RunResultHistogram {
     kSuccess = 0,
     kNotLoaded = 1,

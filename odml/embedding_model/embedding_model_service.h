@@ -31,6 +31,8 @@ namespace embedding_model {
 // representation.
 class EmbeddingModelService : public mojom::OnDeviceEmbeddingModelService {
  public:
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
   enum class LoadEmbeddingModelHistogram {
     kSuccess = 0,
     kRetryBlocked = 1,
