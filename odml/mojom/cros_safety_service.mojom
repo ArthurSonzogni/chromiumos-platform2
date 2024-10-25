@@ -8,7 +8,7 @@
 //   2. On chromium, we must use the version under mojo folder so we do not need
 //      to and must not sync this file to chromium.
 
-// Next MinVersion: 1
+// Next MinVersion: 3
 module cros_safety.mojom;
 
 import "odml/mojom/cros_safety.mojom";
@@ -28,6 +28,12 @@ enum GetCloudSafetySessionResult {
 enum GetOnDeviceSafetySessionResult {
   kOk = 0,
   [Default] kGenericError = 1,
+  [MinVersion=2] kArcNotAllowed = 2,  // Cannot run on this device/user.
+  [MinVersion=2] kArcDisabledByUser = 3,  // Inform the user to enable arc.
+  [MinVersion=2] kHadesNotAvailable = 4,  // The Hades system has an error.
+
+  // Temporary issue (loading, downloading, etc).
+  [MinVersion=2] kHadesNotReady = 5,
 };
 
 // CrosSafetyService runs in Chrome which is the entry point of both creating
