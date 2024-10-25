@@ -553,8 +553,14 @@ void Cellular::BringNetworkInterfaceDown() {
     return;
   }
 
-  // The physical network interface always exists, unconditionally, so it can
-  // be brought down safely regardless of whether a Network exists or not.
+  // There is no physical interface when |interface_index_| is the default
+  // value.
+  if (interface_index() == Modem::kCellularDefaultInterfaceIndex) {
+    SLOG(2) << LoggingTag()
+            << ": skipping interface down due to default interface index.";
+    return;
+  }
+
   // There is no need to bring down explicitly any additional multiplexed
   // network interface managed by the device because those are fully removed
   // whenever the corresponding PDN is disconnected.
