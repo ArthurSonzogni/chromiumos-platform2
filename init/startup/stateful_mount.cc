@@ -57,6 +57,7 @@ constexpr char kUpdateAvailable[] = ".update_available";
 constexpr char kLabMachine[] = ".labmachine";
 
 constexpr char kVar[] = "var";
+constexpr char kUnencrypted[] = "unencrypted";
 constexpr char kNew[] = "_new";
 constexpr char kOverlay[] = "_overlay";
 
@@ -69,6 +70,7 @@ constexpr char kTmpPortage[] = "var/tmp/portage";
 constexpr char kProcMounts[] = "proc/mounts";
 constexpr char kMountOptionsLog[] = "var/log/mount_options.log";
 constexpr char kPartitionsVars[] = "usr/sbin/partition_vars.json";
+constexpr char kPreserve[] = "preserve";
 const std::vector<const char*> kMountDirs = {"db/pkg", "lib/portage",
                                              "cache/dlc-images"};
 
@@ -353,12 +355,12 @@ void StatefulMount::MountStateful(const base::FilePath& root_dev,
   if (should_mount_lvm) {
     state_dev_ = root_.Append("dev")
                      .Append(volume_group_->GetName())
-                     .Append("unencrypted");
+                     .Append(kUnencrypted);
 
     config.unencrypted_config = {
         .backing_device_config = {
             .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
-            .name = "unencrypted",
+            .name = kUnencrypted,
             .logical_volume = {
                 .vg = std::make_shared<brillo::VolumeGroup>(*volume_group_),
                 .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}}};
@@ -519,7 +521,8 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       }
     }
 
-    base::FilePath preserve_dir = stateful_.Append("unencrypted/preserve");
+    base::FilePath preserve_dir =
+        stateful_.Append(kUnencrypted).Append(kPreserve);
 
     // Find everything in stateful and delete it, except for protected paths,
     // and non-empty directories. The non-empty directories contain protected
@@ -564,7 +567,8 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
   // For dev/test images, if .gatherme presents, copy files listed in .gatherme
   // to /mnt/stateful_partition/unencrypted/prior_logs.
   base::FilePath lab_preserve_logs = stateful_.Append(".gatherme");
-  base::FilePath prior_log_dir = stateful_.Append("unencrypted/prior_logs");
+  base::FilePath prior_log_dir =
+      stateful_.Append(kUnencrypted).Append("prior_logs");
   std::string log_path;
 
   if (!platform_->FileExists(lab_preserve_logs)) {
