@@ -7,8 +7,10 @@
 #include <linux/netlink.h>
 #include <linux/sock_diag.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -75,7 +77,9 @@ NetlinkSockDiag::NetlinkSockDiag(std::unique_ptr<Socket> socket)
 
 NetlinkSockDiag::~NetlinkSockDiag() = default;
 
-bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
+bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
+                                     const IPAddress& saddr,
+                                     std::optional<uid_t> uid) {
   const uint8_t family = static_cast<uint8_t>(ToSAFamily(saddr.GetFamily()));
 
   std::vector<struct inet_diag_msg> socks;
@@ -90,6 +94,9 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
         {reinterpret_cast<const uint8_t*>(sock_diag_msg.id.idiag_src),
          saddr.GetAddressLength()});
     if (sock_src != saddr) {
+      continue;
+    }
+    if (uid.has_value() && sock_diag_msg.idiag_uid != *uid) {
       continue;
     }
     VLOG(1) << "Destroying socket (" << family << ", " << protocol << ")";

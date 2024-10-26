@@ -7,8 +7,10 @@
 
 #include <linux/inet_diag.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <brillo/brillo_export.h>
@@ -33,11 +35,13 @@ class BRILLO_EXPORT NetlinkSockDiag {
   NetlinkSockDiag(const NetlinkSockDiag&) = delete;
   NetlinkSockDiag& operator=(const NetlinkSockDiag&) = delete;
 
-  // Send SOCK_DESTROY for each socket matching the |protocol| and |saddr|
-  // given. This interrupts all blocking socket operations on those sockets
-  // with ECONNABORTED so that the application can discard the socket and
-  // make another connection.
-  bool DestroySockets(uint8_t protocol, const IPAddress& saddr);
+  // Send SOCK_DESTROY for each socket matching the |protocol|, |saddr|, and
+  // |uid| if given. This interrupts all blocking socket operations on those
+  // sockets with ECONNABORTED so that the application can discard the socket
+  // and make another connection. Note that this function is a blocking call.
+  bool DestroySockets(uint8_t protocol,
+                      const IPAddress& saddr,
+                      std::optional<uid_t> uid = std::nullopt);
 
  private:
   // Hidden; use the static Create function above.
