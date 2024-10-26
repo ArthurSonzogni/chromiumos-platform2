@@ -78,23 +78,23 @@ NetlinkSockDiag::~NetlinkSockDiag() = default;
 bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
   const uint8_t family = static_cast<uint8_t>(ToSAFamily(saddr.GetFamily()));
 
-  std::vector<struct inet_diag_sockid> socks;
+  std::vector<struct inet_diag_msg> socks;
   if (!GetSockets(family, protocol, &socks)) {
     return false;
   }
 
   const auto addr_bytes = saddr.ToByteString();
   SockDiagRequest request = CreateDestroyRequest(family, protocol);
-  for (const auto& sockid : socks) {
+  for (const auto& sock_diag_msg : socks) {
     const auto sock_src = IPAddress::CreateFromBytes(
-        {reinterpret_cast<const uint8_t*>(sockid.idiag_src),
+        {reinterpret_cast<const uint8_t*>(sock_diag_msg.id.idiag_src),
          saddr.GetAddressLength()});
     if (sock_src != saddr) {
       continue;
     }
     VLOG(1) << "Destroying socket (" << family << ", " << protocol << ")";
     request.header.nlmsg_seq = ++sequence_number_;
-    request.req_opts.id = sockid;
+    request.req_opts.id = sock_diag_msg.id;
     if (socket_->Send(net_base::byte_utils::AsBytes(request), 0) < 0) {
       PLOG(ERROR) << "Failed to write request to netlink socket";
       return false;
@@ -103,10 +103,9 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol, const IPAddress& saddr) {
   return true;
 }
 
-bool NetlinkSockDiag::GetSockets(
-    uint8_t family,
-    uint8_t protocol,
-    std::vector<struct inet_diag_sockid>* out_socks) {
+bool NetlinkSockDiag::GetSockets(uint8_t family,
+                                 uint8_t protocol,
+                                 std::vector<struct inet_diag_msg>* out_socks) {
   CHECK(out_socks);
   SockDiagRequest request =
       CreateDumpRequest(family, protocol, ++sequence_number_);
@@ -120,7 +119,7 @@ bool NetlinkSockDiag::GetSockets(
 }
 
 bool NetlinkSockDiag::ReadDumpContents(
-    std::vector<struct inet_diag_sockid>* out_socks) {
+    std::vector<struct inet_diag_msg>* out_socks) {
   uint8_t buf[8192];
 
   out_socks->clear();
@@ -153,7 +152,7 @@ bool NetlinkSockDiag::ReadDumpContents(
         case SOCK_DIAG_BY_FAMILY:
           struct inet_diag_msg current_msg;
           memcpy(&current_msg, NLMSG_DATA(nlh), sizeof(current_msg));
-          out_socks->push_back(current_msg.id);
+          out_socks->push_back(current_msg);
           break;
         default:
           LOG(WARNING) << "Ignoring unexpected netlink message type "
