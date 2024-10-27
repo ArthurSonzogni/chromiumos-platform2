@@ -89,8 +89,6 @@ class VPNServiceTest : public testing::Test {
     driver_ = new MockVPNDriver(&manager_, VPNType::kOpenVPN);
     driver_metrics_ = new MockVPNDriverMetrics();
     driver_->set_driver_metrics_for_testing(base::WrapUnique(driver_metrics_));
-    // There is at least one online service when the test service is created.
-    EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
     service_ = new VPNServiceInTest(&manager_, driver_);
   }
 
@@ -474,12 +472,7 @@ TEST_F(VPNServiceTest, ConnectFlow) {
 }
 
 TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {
-  // Online -> no service
   ServiceRefPtr null_service;
-  EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
-                            VPNDriver::DefaultPhysicalServiceEvent::kDown));
-  service_->OnDefaultPhysicalServiceChanged(null_service);
-
   scoped_refptr<MockService> mock_service(new MockService(&manager_));
   scoped_refptr<MockService> mock_service2(new MockService(&manager_));
 
@@ -506,6 +499,11 @@ TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
                             VPNDriver::DefaultPhysicalServiceEvent::kUp));
   service_->OnDefaultPhysicalServiceChanged(mock_service);
+
+  // Online -> no service
+  EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
+                            VPNDriver::DefaultPhysicalServiceEvent::kDown));
+  service_->OnDefaultPhysicalServiceChanged(null_service);
 }
 
 TEST_F(VPNServiceTest, ConnectTimeout) {
@@ -588,10 +586,6 @@ TEST_F(VPNServiceTest, MigrateWireGuardIPv4Address) {
   using Strings = std::vector<std::string>;
 
   storage.SetString(kStorageID, Service::kStorageType, kTypeVPN);
-
-  // We don't care about this function in this test, but another EXPECT_CALL for
-  // this function is set in  VPNServiceTest() so we cannot use ON_CALL here.
-  EXPECT_CALL(manager_, IsOnline()).WillRepeatedly(Return(true));
 
   const auto setup_wg_and_static_addr = [&](const std::string* wg_prop_addr,
                                             const std::string* static_addr) {

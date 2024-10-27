@@ -1649,7 +1649,12 @@ bool Manager::RunTerminationActionsAndNotifyMetrics(
 }
 
 void Manager::AddDefaultServiceObserver(DefaultServiceObserver* observer) {
+  if (default_service_observers_.HasObserver(observer)) {
+    LOG(ERROR) << __func__ << ": Observer already registered";
+    return;
+  }
   default_service_observers_.AddObserver(observer);
+  observer->OnDefaultPhysicalServiceChanged(last_default_physical_service_);
 }
 
 void Manager::RemoveDefaultServiceObserver(DefaultServiceObserver* observer) {

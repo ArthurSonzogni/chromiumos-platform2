@@ -120,10 +120,8 @@ class VPNService : public Service,
   // Manager, is online. Helps distinguish between a network->network transition
   // (where the client simply reconnects), and a network->link_down->network
   // transition (where the client should disconnect, wait for link up, then
-  // reconnect). Uses true as the default value before we get the first
-  // notification from Manager, this is safe because the default physical
-  // service must be online before we connect to any VPN service.
-  bool last_default_physical_service_online_;
+  // reconnect). This value will be updated in ctor.
+  bool last_default_physical_service_online_ = false;
   // The current default physical service known from Manager.
   base::WeakPtr<Service> default_physical_service_;
 

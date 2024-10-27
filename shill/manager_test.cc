@@ -2312,6 +2312,8 @@ TEST_F(ManagerTest, UpdateDefaultPhysicalService) {
 
   ServiceWatcher service_watcher1;
   ServiceWatcher service_watcher2;
+  EXPECT_CALL(service_watcher1, OnDefaultPhysicalServiceChanged(null_service));
+  EXPECT_CALL(service_watcher2, OnDefaultPhysicalServiceChanged(null_service));
   manager()->AddDefaultServiceObserver(&service_watcher1);
   manager()->AddDefaultServiceObserver(&service_watcher2);
 

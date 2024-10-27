@@ -440,7 +440,10 @@ class Manager {
   // Returns true, if termination actions were run.
   bool RunTerminationActionsAndNotifyMetrics(ResultCallback done_callback);
 
-  // Add/remove observers to subscribe to default Service notifications.
+  // Add/remove observers to subscribe to default Service notifications. Note
+  // that AddDefaultServiceObserver() will trigger the
+  // OnDefaultPhysicalServiceChanged() callback once directly before this
+  // function returns.
   void AddDefaultServiceObserver(DefaultServiceObserver* observer);
   void RemoveDefaultServiceObserver(DefaultServiceObserver* observer);
 
