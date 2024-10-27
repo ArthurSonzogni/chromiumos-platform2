@@ -1063,8 +1063,6 @@ class Cellular : public Device,
   bool is_ppp_authenticating_ = false;
   bool force_init_eps_bearer_settings_ = true;
 
-  std::unique_ptr<net_base::NetlinkSockDiag> socket_destroyer_;
-
   // Used to keep scanning=true while the Modem is restarting.
   // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.
   base::CancelableOnceClosure scanning_clear_callback_;

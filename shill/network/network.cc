@@ -28,6 +28,7 @@
 #include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/netlink_sock_diag.h>
 #include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/network_priority.h>
 #include <chromeos/net-base/proc_fs_stub.h>
@@ -859,6 +860,33 @@ void Network::EnableARPFiltering() {
   proc_fs_->SetIPFlag(net_base::IPFamily::kIPv4,
                       net_base::ProcFsStub::kIPFlagArpIgnore,
                       net_base::ProcFsStub::kIPFlagArpIgnoreLocalOnly);
+}
+
+void Network::DestroySockets(std::optional<uid_t> uid) {
+  // Logging since this is a blocking call, we may care about its execution
+  // time. Also this affects connectivity perceived by the user directly. Make
+  // it clearer in the log.
+  LOG(INFO) << *this << ": " << __func__ << " start, uid="
+            << (uid.has_value() ? std::to_string(*uid) : "empty");
+
+  // Notes:
+  // - TODO(jiejiang): We are querying sockets from the kernel multiple times.
+  //   There is room for improvement by merging some of them.
+  // - Creating a diag socket for each DestroySockets() call since it's observed
+  //   that the second call may fail if the same socket is used ("Operation not
+  //   supported"). The reason is unclear.
+  for (const auto& address : GetAddresses()) {
+    if (!net_base::NetlinkSockDiag::Create()->DestroySockets(
+            IPPROTO_TCP, address.address())) {
+      LOG(ERROR) << *this << ": failed to destroy tcp sockets for " << address;
+    }
+    if (!net_base::NetlinkSockDiag::Create()->DestroySockets(
+            IPPROTO_UDP, address.address())) {
+      LOG(ERROR) << *this << ": failed to destroy udp sockets for " << address;
+    }
+  }
+
+  LOG(INFO) << *this << ": " << __func__ << " done";
 }
 
 // TODO(jiejiang): Add unit test for this function.

@@ -340,12 +340,6 @@ Cellular::Cellular(Manager* manager,
   RegisterProperties();
   mobile_operator_info_->Init();
 
-  socket_destroyer_ = net_base::NetlinkSockDiag::Create();
-  if (!socket_destroyer_) {
-    LOG(WARNING) << LoggingTag() << ": Socket destroyer failed to initialize; "
-                 << "IPv6 will be unavailable.";
-  }
-
   // With single device approach, cellular device will exist irrespective of
   // modem exposed by MM so we will not create capability here in device
   // constructor and it will be created when MM reports the mode.
@@ -735,9 +729,6 @@ void Cellular::StopModemCallback(EnabledStateChangedCallback callback,
 }
 
 void Cellular::DestroySockets() {
-  if (!socket_destroyer_)
-    return;
-
   if (default_pdn_) {
     default_pdn_->DestroySockets();
   }
@@ -4781,14 +4772,8 @@ void Cellular::NetworkInfo::DestroySockets() {
     SLOG(2) << LoggingTag() << ": Destroy all sockets of address: " << address;
     cellular_->rtnl_handler()->RemoveInterfaceAddress(
         network_->interface_index(), address);
-    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_TCP,
-                                                      address.address()))
-      SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
-    // Chrome sometimes binds to UDP sockets, so lets destroy them.
-    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_UDP,
-                                                      address.address()))
-      SLOG(2) << LoggingTag() << ": no udp sockets found for " << address;
   }
+  network_->DestroySockets();
   SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";
 }
 
