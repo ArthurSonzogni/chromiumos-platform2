@@ -63,6 +63,8 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void, InvalidateIPv6Config, (), (override));
 
+  MOCK_METHOD(void, DestroySockets, (std::optional<uid_t>), (override));
+
   MOCK_METHOD(void, SetPriority, (net_base::NetworkPriority), (override));
 
   MOCK_METHOD(void,

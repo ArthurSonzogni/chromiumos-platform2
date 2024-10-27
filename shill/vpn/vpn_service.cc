@@ -32,6 +32,7 @@
 #include "shill/vpn/vpn_metrics.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_types.h"
+#include "shill/vpn/vpn_util.h"
 
 namespace shill {
 
@@ -43,6 +44,8 @@ static std::string ObjectID(const VPNService* s) {
 }  // namespace Logging
 
 namespace {
+
+constexpr uid_t kChronosUid = 1000;
 
 // WireGuardDriver used to use StaticIPConfig to store the local IP address but
 // is using a specific property now. This function is for migrating the profile
@@ -107,6 +110,37 @@ Service::ConnectFailure VPNEndReasonToServiceFailure(VPNEndReason reason) {
     case VPNEndReason::kFailureUnknown:
       return Service::kFailureConnect;
   }
+}
+
+bool IsUsedAsDefaultGateway(const net_base::NetworkConfig& config) {
+  // If there is no included route, a default route will be installed.
+  if (config.included_route_prefixes.empty()) {
+    return true;
+  }
+  // If there is no direct information, infer it from the included routes.
+  return VPNUtil::InferIsUsedAsDefaultGatewayFromIncludedRoutes(
+      config.included_route_prefixes);
+}
+
+// b/328814622: Destroy all Chrome sockets which are bound to the physical
+// network to avoid traffic leak.
+void DestroyChromeSocketsOnPhysical(Service* physical_service,
+                                    bool used_as_default_gateway) {
+  if (!physical_service || !physical_service->attached_network()) {
+    LOG(ERROR) << __func__ << ": Skip since default network is empty";
+    return;
+  }
+
+  // Skip if the VPN is not intentionally used as default gateway, since it may
+  // not be expected to destroy them. Ideally we want to do a routing lookup for
+  // each socket to decide whether it should be destroyed, but it might be too
+  // complicated.
+  if (!used_as_default_gateway) {
+    LOG(INFO) << __func__ << ": Skip since VPN is split-routing";
+    return;
+  }
+
+  physical_service->attached_network()->DestroySockets(kChronosUid);
 }
 
 }  // namespace
@@ -175,7 +209,18 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
   driver_->driver_metrics()->ReportConnected();
 
   SetState(ConnectState::kStateConfiguring);
-  ConfigureDevice(driver_->GetNetworkConfig());
+
+  std::unique_ptr<net_base::NetworkConfig> network_config =
+      driver_->GetNetworkConfig();
+
+  // This needs to be done before ConfigureDevice() since we will lose the
+  // ownership of |network_config| there.
+  bool used_as_default_gateway = IsUsedAsDefaultGateway(*network_config);
+
+  ConfigureDevice(std::move(network_config));
+
+  DestroyChromeSocketsOnPhysical(default_physical_service_.get(),
+                                 used_as_default_gateway);
 
   // Report the final NetworkConfig from the Network object attached to this
   // service. This NetworkConfig should contains all the network config

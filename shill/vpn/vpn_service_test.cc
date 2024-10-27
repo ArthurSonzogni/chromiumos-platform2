@@ -25,6 +25,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_virtual_device.h"
+#include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/service_property_change_test.h"
 #include "shill/store/fake_store.h"
@@ -41,6 +42,7 @@ using testing::ByMove;
 using testing::DoAll;
 using testing::Mock;
 using testing::NiceMock;
+using testing::Optional;
 using testing::Return;
 using testing::ReturnRef;
 using testing::ReturnRefOfCopy;
@@ -618,6 +620,45 @@ TEST_F(VPNServiceTest, MigrateWireGuardIPv4Address) {
             Strings{kAddr2});
   EXPECT_EQ(service_->static_network_config_for_testing().ipv4_address,
             std::nullopt);
+}
+
+TEST_F(VPNServiceTest, DestroySockets) {
+  constexpr uid_t kChronosUid = 1000;
+
+  // Set up underlying physical network.
+  MockNetwork physical_network(/*interface_index=*/5,
+                               /*interface_name=*/"physical",
+                               Technology::kEthernet);
+  scoped_refptr<MockService> underlying_service = new MockService(&manager_);
+  underlying_service->set_attached_network_for_testing(
+      physical_network.AsWeakPtr());
+  service_->OnDefaultPhysicalServiceChanged(underlying_service);
+
+  // Trigger service_->OnDriverConnected() with the given included routes.
+  const auto on_driver_connected_with_included_routes =
+      [&](const std::vector<std::string_view>& included_routes) {
+        net_base::NetworkConfig config;
+        for (std::string_view route : included_routes) {
+          config.included_route_prefixes.push_back(
+              net_base::IPCIDR::CreateFromCIDRString(route).value());
+        }
+        ON_CALL(*driver_, GetNetworkConfig).WillByDefault([&]() {
+          return std::make_unique<net_base::NetworkConfig>(config);
+        });
+        service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
+      };
+
+  // No included routes means default routes.
+  EXPECT_CALL(physical_network, DestroySockets(Optional(kChronosUid)));
+  on_driver_connected_with_included_routes({});
+
+  // Default gateway indicated by multiple included routes.
+  EXPECT_CALL(physical_network, DestroySockets(Optional(kChronosUid)));
+  on_driver_connected_with_included_routes({"0.0.0.0/1", "128.0.0.0/1"});
+
+  // DestroySockets should not be called in the split-routing case.
+  EXPECT_CALL(physical_network, DestroySockets).Times(0);
+  on_driver_connected_with_included_routes({"10.0.0.0/8"});
 }
 
 }  // namespace shill

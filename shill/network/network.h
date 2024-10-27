@@ -290,7 +290,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   // source IP of the socket). If |uid| is not nullopt, only sockets with |uid|
   // will be destroyed. Note that this function is a blocking call: it will
   // return after all the communication with kernel has been finished.
-  void DestroySockets(std::optional<uid_t> uid = std::nullopt);
+  mockable void DestroySockets(std::optional<uid_t> uid = std::nullopt);
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }

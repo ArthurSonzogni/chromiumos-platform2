@@ -490,6 +490,11 @@ class Service : public base::RefCounted<Service> {
   mockable void AttachNetwork(base::WeakPtr<Network> network);
   // Removes the attached Network from this Service.
   mockable void DetachNetwork();
+
+  void set_attached_network_for_testing(base::WeakPtr<Network> network) {
+    attached_network_ = network;
+  }
+
   // Notifies D-Bus listeners of a IPConfig change event if the new IPConfig is
   // not empty.
   void EmitIPConfigPropertyChange();
