@@ -32,6 +32,7 @@ SockDiagRequest CreateDumpRequest(uint8_t family,
       << "Unsupported SOCK_DIAG family " << family;
 
   SockDiagRequest request;
+  memset(&request, 0, sizeof(request));
   request.header.nlmsg_len = sizeof(SockDiagRequest);
   request.header.nlmsg_type = SOCK_DIAG_BY_FAMILY;
   request.header.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
