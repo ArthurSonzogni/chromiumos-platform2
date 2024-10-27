@@ -54,7 +54,6 @@ const char kResendBluetoothBattery[] = "ResendBluetoothBattery";
 const char kGetDeprioritizeBtWbsMic[] = "GetDeprioritizeBtWbsMic";
 const char kGetVoiceIsolationUIAppearance[] = "GetVoiceIsolationUIAppearance";
 const char kSetVoiceIsolationUIEnabled[] = "SetVoiceIsolationUIEnabled";
-const char kAreAudioEffectReady[] = "AreAudioEffectsReady";
 const char kGetAudioEffectDlcs[] = "GetAudioEffectDlcs";
 const char kSetNoiseCancellationEnabled[] = "SetNoiseCancellationEnabled";
 const char kIsNoiseCancellationSupported[] = "IsNoiseCancellationSupported";
@@ -135,6 +134,7 @@ const char kSurveyTrigger[] = "SurveyTrigger";
 const char kSpeakOnMuteDetected[] = "SpeakOnMuteDetected";
 const char kNumStreamIgnoreUiGainsChanged[] = "NumStreamIgnoreUiGainsChanged";
 const char kNumberOfArcStreamsChanged[] = "NumberOfArcStreamsChanged";
+const char kAudioEffectUIAppearanceChanged[] = "AudioEffectUIAppearanceChanged";
 }  // namespace cras
 
 #endif  // SYSTEM_API_DBUS_AUDIO_DBUS_CONSTANTS_H_
