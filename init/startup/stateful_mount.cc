@@ -683,8 +683,16 @@ void StatefulMount::DevMountPackages() {
       }
       base::FilePath dest = root_.Append(kVar).Append(dir);
       if (!platform_->DirectoryExists(dest)) {
-        LOG(WARNING) << "Path does not exists, can not mount: " << dest.value();
-        continue;
+        if (!platform_->CreateDirectory(dest)) {
+          LOG(WARNING) << "Path does not exists, can not create: "
+                       << dest.value();
+          continue;
+        }
+        if (!platform_->SetPermissions(dest, 0755)) {
+          LOG(WARNING) << "Path does not exists, can not set permissions: "
+                       << dest.value();
+          continue;
+        }
       }
       mount_helper_->BindMountOrFail(full, dest);
     }
