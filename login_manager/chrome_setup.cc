@@ -255,131 +255,6 @@ void AddBorealisFlags(ChromiumCommandBuilder* builder) {
   }
 }
 
-// Ensures that necessary directory exist with the correct permissions and sets
-// related arguments and environment variables.
-void CreateDirectories(ChromiumCommandBuilder* builder) {
-  const uid_t uid = builder->uid();
-  const gid_t gid = builder->gid();
-  const uid_t kRootUid = 0;
-  const gid_t kRootGid = 0;
-
-  const base::FilePath data_dir = GetDataDir(builder);
-  builder->AddArg("--user-data-dir=" + data_dir.value());
-
-  const base::FilePath user_dir = GetUserDir(builder);
-  CHECK(EnsureDirectoryExists(user_dir, uid, gid, 0755));
-  // TODO(keescook): Remove Chrome's use of $HOME.
-  builder->AddEnvVar("HOME", user_dir.value());
-
-  // Old builds will have a profile dir that's owned by root; newer ones won't
-  // have this directory at all.
-  CHECK(EnsureDirectoryExists(data_dir.Append("Default"), uid, gid, 0755));
-
-  const base::FilePath state_dir("/run/state");
-  CHECK(brillo::DeletePathRecursively(state_dir));
-  CHECK(EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));
-
-  // Create a directory where the session manager can store a copy of the user
-  // policy key, that will be readable by the chrome process as chronos.
-  const base::FilePath policy_dir("/run/user_policy");
-  CHECK(brillo::DeletePathRecursively(policy_dir));
-  CHECK(EnsureDirectoryExists(policy_dir, kRootUid, gid, 0710));
-
-  // Create a directory where the chrome process can store a reboot request so
-  // that it persists across browser crashes but is always removed on reboot.
-  // This directory also houses the default wayland and arc-bridge sockets that
-  // are exported to VMs and Android.
-  CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0755));
-
-  // Create a directory where the libassistant V2 can create socket files for
-  // gRPC.
-  const base::FilePath libassistant_dir("/run/libassistant");
-  CHECK(brillo::DeletePathRecursively(libassistant_dir));
-  CHECK(EnsureDirectoryExists(libassistant_dir, uid, gid, 0700));
-
-  // The directory where Chrome Remote Desktop stores session information to
-  // allow resuming the CRD session after Chrome restarts.
-  // This must be cleared on a device reboot so we use the `/run` tmpfs.
-  base::FilePath crd_storage_dir("/run/crd");
-  CHECK(EnsureDirectoryExists(crd_storage_dir, uid, gid, 0700));
-
-  // Create the directory where policies for extensions installed in
-  // device-local accounts are cached. This data is read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/device_local_account_component_policy"), uid,
-      gid, 0700));
-
-  // Create the directory where external data referenced by policies is cached
-  // for device-local accounts. This data is read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/device_local_account_external_policy_data"),
-      uid, gid, 0700));
-
-  // Create the directory where external data referenced by device policy is
-  // cached. This data is read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/device_policy_external_data"), uid, gid,
-      0700));
-
-  // Create the directory where screensaver images data referenced by device
-  // policy is cached. This data is read and written by chronos.
-  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/managed_screensaver"),
-                              uid, gid, 0700));
-
-  // Create the directory where the AppPack extensions are cached.
-  // These extensions are read and written by chronos.
-  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/app_pack"), uid, gid,
-                              0700));
-
-  // Create the directory where extensions for device-local accounts are cached.
-  // These extensions are read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/device_local_account_extensions"), uid, gid,
-      0700));
-
-  // Create the directory where the Quirks Client can store downloaded
-  // icc and other display profiles.
-  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/display_profiles"),
-                              uid, gid, 0700));
-
-  // Create the directory for shared installed extensions.
-  // Shared extensions are validated at runtime by the browser.
-  // These extensions are read and written by chronos.
-  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/shared_extensions"),
-                              uid, gid, 0700));
-
-  // Create the directory where policies for extensions installed in the
-  // sign-in profile are cached. This data is read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/signin_profile_component_policy"), uid, gid,
-      0700));
-
-  // Create the directory where extensions for the sign-in profile are cached.
-  // This data is read and written by chronos.
-  CHECK(EnsureDirectoryExists(
-      base::FilePath("/var/cache/signin_profile_extensions"), uid, gid, 0700));
-
-  SetUpDebugfsGpu();
-
-  // Tell Chrome where to write logging messages before the user logs in.
-  base::FilePath system_log_dir("/var/log/chrome");
-  CHECK(EnsureDirectoryExists(system_log_dir, uid, gid, 0755));
-  builder->AddEnvVar("CHROME_LOG_FILE",
-                     system_log_dir.Append("chrome").value());
-
-  // Log directory for the user session. Note that the user dir won't be mounted
-  // until later (when the cryptohome is mounted), so we don't create
-  // CHROMEOS_SESSION_LOG_DIR here.
-  builder->AddEnvVar("CHROMEOS_SESSION_LOG_DIR",
-                     user_dir.Append("log").value());
-
-  // Disable Mesa's internal shader disk caching feature, since Chrome has its
-  // own shader cache implementation and the GPU process sandbox does not
-  // allow threads (Mesa uses threads for this feature).
-  builder->AddEnvVar("MESA_GLSL_CACHE_DISABLE", "true");    // Mesa classic
-  builder->AddEnvVar("MESA_SHADER_CACHE_DISABLE", "true");  // Mesa iris
-}
-
 // Adds system-related flags to the command line.
 void AddSystemFlags(ChromiumCommandBuilder* builder,
                     brillo::CrosConfigInterface* cros_config) {
@@ -629,23 +504,172 @@ ChromeSetup::ChromeSetup(brillo::CrosConfigInterface& cros_config,
 ChromeSetup::~ChromeSetup() = default;
 
 std::optional<ChromeSetup::Result> ChromeSetup::Run() {
-  bool is_developer_end_user = false;
-  std::map<std::string, std::string> env_vars;
-  std::vector<std::string> args;
-  uid_t uid = 0;
-  PerformChromeSetup(&cros_config_, &feature_management_,
-                     &is_developer_end_user, &env_vars, &args, &uid);
+  ChromiumCommandBuilder builder;
+  std::set<std::string> disallowed_prefixes;
+  CHECK(builder.Init());
+  CHECK(builder.SetUpChromium());
+
+  // Please add new code to the most-appropriate helper function instead of
+  // putting it here. Things that apply to all Chromium-derived binaries (e.g.
+  // app_shell, content_shell, etc.) rather than just to Chrome belong in the
+  // ChromiumCommandBuilder class instead.
+  CreateDirectories(&builder);
+  AddSerializedAshSwitches(&builder, &cros_config_);
+  AddSystemFlags(&builder, &cros_config_);
+  AddUiFlags(&builder, &cros_config_);
+  AddArcFlags(&builder, &disallowed_prefixes, &cros_config_);
+  AddCrostiniFlags(&builder);
+  AddPluginVmFlags(&builder);
+  AddBorealisFlags(&builder);
+  AddEnterpriseFlags(&builder);
+  AddMlFlags(&builder, &cros_config_);
+  AddFeatureManagementFlags(&builder, &feature_management_);
+  AddDeviceSpecificFlags(&builder);
+  AddMantisFlags(&builder);
+
+  // Apply any modifications requested by the developer.
+  if (builder.is_developer_end_user()) {
+    builder.ApplyUserConfig(base::FilePath(kChromeDevConfigPath),
+                            disallowed_prefixes);
+  }
+
+  // Do not add code here. Potentially-expensive work should be done between
+  // StartServer() and WaitForServer().
+
   std::vector<std::string> env;
-  for (auto& item : env_vars) {
+  for (auto& item : builder.environment_variables()) {
     env.push_back(
         base::StringPrintf("%s=%s", item.first.c_str(), item.second.c_str()));
   }
   return Result{
-      std::move(args),
+      std::move(builder.arguments()),
       std::move(env),
-      is_developer_end_user,
-      uid,
+      builder.is_developer_end_user(),
+      builder.uid(),
   };
+}
+
+void ChromeSetup::CreateDirectories(ChromiumCommandBuilder* builder) {
+  const uid_t uid = builder->uid();
+  const gid_t gid = builder->gid();
+  const uid_t kRootUid = 0;
+  const gid_t kRootGid = 0;
+
+  const base::FilePath data_dir = GetDataDir(builder);
+  builder->AddArg("--user-data-dir=" + data_dir.value());
+
+  const base::FilePath user_dir = GetUserDir(builder);
+  CHECK(EnsureDirectoryExists(user_dir, uid, gid, 0755));
+  // TODO(keescook): Remove Chrome's use of $HOME.
+  builder->AddEnvVar("HOME", user_dir.value());
+
+  // Old builds will have a profile dir that's owned by root; newer ones won't
+  // have this directory at all.
+  CHECK(EnsureDirectoryExists(data_dir.Append("Default"), uid, gid, 0755));
+
+  const base::FilePath state_dir("/run/state");
+  CHECK(brillo::DeletePathRecursively(state_dir));
+  CHECK(EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));
+
+  // Create a directory where the session manager can store a copy of the user
+  // policy key, that will be readable by the chrome process as chronos.
+  const base::FilePath policy_dir("/run/user_policy");
+  CHECK(brillo::DeletePathRecursively(policy_dir));
+  CHECK(EnsureDirectoryExists(policy_dir, kRootUid, gid, 0710));
+
+  // Create a directory where the chrome process can store a reboot request so
+  // that it persists across browser crashes but is always removed on reboot.
+  // This directory also houses the default wayland and arc-bridge sockets that
+  // are exported to VMs and Android.
+  CHECK(EnsureDirectoryExists(base::FilePath("/run/chrome"), uid, gid, 0755));
+
+  // Create a directory where the libassistant V2 can create socket files for
+  // gRPC.
+  const base::FilePath libassistant_dir("/run/libassistant");
+  CHECK(brillo::DeletePathRecursively(libassistant_dir));
+  CHECK(EnsureDirectoryExists(libassistant_dir, uid, gid, 0700));
+
+  // The directory where Chrome Remote Desktop stores session information to
+  // allow resuming the CRD session after Chrome restarts.
+  // This must be cleared on a device reboot so we use the `/run` tmpfs.
+  base::FilePath crd_storage_dir("/run/crd");
+  CHECK(EnsureDirectoryExists(crd_storage_dir, uid, gid, 0700));
+
+  // Create the directory where policies for extensions installed in
+  // device-local accounts are cached. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/device_local_account_component_policy"), uid,
+      gid, 0700));
+
+  // Create the directory where external data referenced by policies is cached
+  // for device-local accounts. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/device_local_account_external_policy_data"),
+      uid, gid, 0700));
+
+  // Create the directory where external data referenced by device policy is
+  // cached. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/device_policy_external_data"), uid, gid,
+      0700));
+
+  // Create the directory where screensaver images data referenced by device
+  // policy is cached. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/managed_screensaver"),
+                              uid, gid, 0700));
+
+  // Create the directory where the AppPack extensions are cached.
+  // These extensions are read and written by chronos.
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/app_pack"), uid, gid,
+                              0700));
+
+  // Create the directory where extensions for device-local accounts are cached.
+  // These extensions are read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/device_local_account_extensions"), uid, gid,
+      0700));
+
+  // Create the directory where the Quirks Client can store downloaded
+  // icc and other display profiles.
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/display_profiles"),
+                              uid, gid, 0700));
+
+  // Create the directory for shared installed extensions.
+  // Shared extensions are validated at runtime by the browser.
+  // These extensions are read and written by chronos.
+  CHECK(EnsureDirectoryExists(base::FilePath("/var/cache/shared_extensions"),
+                              uid, gid, 0700));
+
+  // Create the directory where policies for extensions installed in the
+  // sign-in profile are cached. This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/signin_profile_component_policy"), uid, gid,
+      0700));
+
+  // Create the directory where extensions for the sign-in profile are cached.
+  // This data is read and written by chronos.
+  CHECK(EnsureDirectoryExists(
+      base::FilePath("/var/cache/signin_profile_extensions"), uid, gid, 0700));
+
+  SetUpDebugfsGpu();
+
+  // Tell Chrome where to write logging messages before the user logs in.
+  base::FilePath system_log_dir("/var/log/chrome");
+  CHECK(EnsureDirectoryExists(system_log_dir, uid, gid, 0755));
+  builder->AddEnvVar("CHROME_LOG_FILE",
+                     system_log_dir.Append("chrome").value());
+
+  // Log directory for the user session. Note that the user dir won't be mounted
+  // until later (when the cryptohome is mounted), so we don't create
+  // CHROMEOS_SESSION_LOG_DIR here.
+  builder->AddEnvVar("CHROMEOS_SESSION_LOG_DIR",
+                     user_dir.Append("log").value());
+
+  // Disable Mesa's internal shader disk caching feature, since Chrome has its
+  // own shader cache implementation and the GPU process sandbox does not
+  // allow threads (Mesa uses threads for this feature).
+  builder->AddEnvVar("MESA_GLSL_CACHE_DISABLE", "true");    // Mesa classic
+  builder->AddEnvVar("MESA_SHADER_CACHE_DISABLE", "true");  // Mesa iris
 }
 
 void SetUpSchedulerFlags(ChromiumCommandBuilder* builder,
@@ -1106,7 +1130,6 @@ void AddFeatureManagementFlags(
                                      feature_management->GetScopeLevel()));
 }
 
-// Adds flags related to specific devices and/or overlays
 void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
   // Ferrochrome (go/ferrochrome) specific custiomization
   if (builder->UseFlagIsSet("ferrochrome")) {
@@ -1116,7 +1139,6 @@ void AddDeviceSpecificFlags(ChromiumCommandBuilder* builder) {
   }
 }
 
-// Adds flags related to the Mantis project
 void AddMantisFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("mantis")) {
     // The CrosSafetyService is required for the MantisService
@@ -1141,54 +1163,6 @@ void SetUpDebugfsGpu() {
     PLOG(ERROR) << "Unable to mount";
     return;
   }
-}
-
-void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
-                        segmentation::FeatureManagement* feature_management,
-                        bool* is_developer_end_user_out,
-                        std::map<std::string, std::string>* env_vars_out,
-                        std::vector<std::string>* args_out,
-                        uid_t* uid_out) {
-  DCHECK(env_vars_out);
-  DCHECK(args_out);
-  DCHECK(uid_out);
-
-  ChromiumCommandBuilder builder;
-  std::set<std::string> disallowed_prefixes;
-  CHECK(builder.Init());
-  CHECK(builder.SetUpChromium());
-
-  // Please add new code to the most-appropriate helper function instead of
-  // putting it here. Things that apply to all Chromium-derived binaries (e.g.
-  // app_shell, content_shell, etc.) rather than just to Chrome belong in the
-  // ChromiumCommandBuilder class instead.
-  CreateDirectories(&builder);
-  AddSerializedAshSwitches(&builder, cros_config);
-  AddSystemFlags(&builder, cros_config);
-  AddUiFlags(&builder, cros_config);
-  AddArcFlags(&builder, &disallowed_prefixes, cros_config);
-  AddCrostiniFlags(&builder);
-  AddPluginVmFlags(&builder);
-  AddBorealisFlags(&builder);
-  AddEnterpriseFlags(&builder);
-  AddMlFlags(&builder, cros_config);
-  AddFeatureManagementFlags(&builder, feature_management);
-  AddDeviceSpecificFlags(&builder);
-  AddMantisFlags(&builder);
-
-  // Apply any modifications requested by the developer.
-  if (builder.is_developer_end_user()) {
-    builder.ApplyUserConfig(base::FilePath(kChromeDevConfigPath),
-                            disallowed_prefixes);
-  }
-
-  *is_developer_end_user_out = builder.is_developer_end_user();
-  *env_vars_out = builder.environment_variables();
-  *args_out = builder.arguments();
-  *uid_out = builder.uid();
-
-  // Do not add code here. Potentially-expensive work should be done between
-  // StartServer() and WaitForServer().
 }
 
 }  // namespace login_manager

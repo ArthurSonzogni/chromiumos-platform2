@@ -62,6 +62,10 @@ class ChromeSetup {
   std::optional<Result> Run();
 
  private:
+  // Ensures that necessary directory exist with the correct permissions and
+  // sets related arguments and environment variables.
+  void CreateDirectories(chromeos::ui::ChromiumCommandBuilder* builder);
+
   // TODO(hidehiko): Mark them as const.
   brillo::CrosConfigInterface& cros_config_;
   segmentation::FeatureManagement& feature_management_;
@@ -249,11 +253,22 @@ void AddArcFlags(chromeos::ui::ChromiumCommandBuilder* builder,
                  std::set<std::string>* disallowed_params_out,
                  brillo::CrosConfigInterface* cros_config);
 
+// Adds flags related to machine learning features that are enabled only on a
+// supported subset of devices.
+void AddMlFlags(chromeos::ui::ChromiumCommandBuilder* builder,
+                brillo::CrosConfigInterface* cros_config);
+
 // Adds flags related to feature management that must be enabled for this
 // device.
 void AddFeatureManagementFlags(
     chromeos::ui::ChromiumCommandBuilder* builder,
     segmentation::FeatureManagement* FeatureManagement);
+
+// Adds flags related to specific devices and/or overlays
+void AddDeviceSpecificFlags(chromeos::ui::ChromiumCommandBuilder* builder);
+
+// Adds flags related to the Mantis project
+void AddMantisFlags(chromeos::ui::ChromiumCommandBuilder* builder);
 
 // Allows Chrome to access GPU memory information despite /sys/kernel/debug
 // being owned by debugd. This limits the security attack surface versus
