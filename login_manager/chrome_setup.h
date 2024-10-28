@@ -12,11 +12,9 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/functional/callback.h>
-
-namespace base {
-class FilePath;
-}  // namespace base
+#include <base/gtest_prod_util.h>
 
 namespace brillo {
 class CrosConfigInterface;
@@ -34,12 +32,15 @@ class FeatureManagement;
 
 namespace login_manager {
 
+class ChromeSetupTest;
+
 // Sets up environment, command line flag, and env vars etc. to run
 // chromeos-chrome.
 class ChromeSetup {
  public:
   ChromeSetup(brillo::CrosConfigInterface& cros_config,
               segmentation::FeatureManagement& feature_management);
+
   ChromeSetup(const ChromeSetup&) = delete;
   ChromeSetup& operator=(const ChromeSetup&) = delete;
   ~ChromeSetup();
@@ -62,9 +63,21 @@ class ChromeSetup {
   std::optional<Result> Run();
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(ChromeSetupTest, CreateSymlinkIfMissing);
+
   // Ensures that necessary directory exist with the correct permissions and
   // sets related arguments and environment variables.
   void CreateDirectories(chromeos::ui::ChromiumCommandBuilder* builder);
+
+  // Create the target for the /var/lib/timezone/localtime symlink.
+  // This allows the Chromium process to change the time zone.
+  void SetUpTimezoneSymlink(uid_t uid, gid_t gid);
+
+  // Creates a symlink to the source at target.
+  void CreateSymlinkIfMissing(const base::FilePath& in_source,
+                              const base::FilePath& in_target,
+                              uid_t uid,
+                              gid_t gid);
 
   // TODO(hidehiko): Mark them as const.
   brillo::CrosConfigInterface& cros_config_;

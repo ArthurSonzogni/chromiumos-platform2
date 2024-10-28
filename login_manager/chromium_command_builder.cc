@@ -105,10 +105,6 @@ bool HasPrefix(const std::string& str, const std::set<std::string>& prefixes) {
 const char ChromiumCommandBuilder::kUser[] = "chronos";
 const char ChromiumCommandBuilder::kUseFlagsPath[] = "/etc/ui_use_flags.txt";
 const char ChromiumCommandBuilder::kLsbReleasePath[] = "/etc/lsb-release";
-const char ChromiumCommandBuilder::kTimeZonePath[] =
-    "/var/lib/timezone/localtime";
-const char ChromiumCommandBuilder::kDefaultZoneinfoPath[] =
-    "/usr/share/zoneinfo/US/Pacific";
 const char ChromiumCommandBuilder::kPepperPluginsPath[] =
     "/opt/google/chrome/pepper";
 const char ChromiumCommandBuilder::kVmoduleFlag[] = "vmodule";
@@ -179,11 +175,6 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   AddEnvVar("PATH", "/bin:/usr/bin");
   AddEnvVar("XDG_RUNTIME_DIR", "/run/chrome");
 
-  const base::FilePath data_dir(GetPath("/home").Append(kUser));
-  AddEnvVar("DATA_DIR", data_dir.value());
-  if (!util::EnsureDirectoryExists(data_dir, uid_, gid_, 0755))
-    return false;
-
   AddEnvVar("LSB_RELEASE", lsb_data_);
   AddEnvVar("LSB_RELEASE_TIME",
             base::NumberToString(lsb_release_time_.ToTimeT()));
@@ -193,19 +184,6 @@ bool ChromiumCommandBuilder::SetUpChromium() {
 
   // Prevent Flash asserts from crashing the plugin process.
   AddEnvVar("DONT_CRASH_ON_ASSERT", "1");
-
-  // Create the target for the /etc/localtime symlink. This allows the Chromium
-  // process to change the time zone.
-  const base::FilePath time_zone_symlink(GetPath(kTimeZonePath));
-  CHECK(util::EnsureDirectoryExists(time_zone_symlink.DirName(), uid_, gid_,
-                                    0755));
-  if (!base::PathExists(time_zone_symlink)) {
-    // base::PathExists() dereferences symlinks, so make sure that there's not a
-    // dangling symlink there before we create a new link.
-    base::DeleteFile(time_zone_symlink);
-    PCHECK(base::CreateSymbolicLink(base::FilePath(kDefaultZoneinfoPath),
-                                    time_zone_symlink));
-  }
 
   // Increase soft limit of file descriptors to 2048 (default is 1024).
   // Increase hard limit of file descriptors to 16384 (default is 4096).

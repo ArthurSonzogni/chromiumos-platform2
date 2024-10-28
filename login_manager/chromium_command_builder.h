@@ -39,12 +39,6 @@ class BRILLO_EXPORT ChromiumCommandBuilder {
   // Location of the lsb-release file describing the system image.
   static const char kLsbReleasePath[];
 
-  // Location of the user-writable target of the /etc/localtime symlink.
-  static const char kTimeZonePath[];
-
-  // Default zoneinfo file used if the time zone hasn't been explicitly set.
-  static const char kDefaultZoneinfoPath[];
-
   // Names of Chromium flags (without "--" prefixes) that need to be merged due
   // to containing lists of comma-separated values.
   static const char kVmoduleFlag[];

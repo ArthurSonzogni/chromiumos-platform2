@@ -133,32 +133,6 @@ TEST_F(ChromiumCommandBuilderTest, IsTestBuild) {
   EXPECT_TRUE(builder_.is_test_build());
 }
 
-TEST_F(ChromiumCommandBuilderTest, TimeZone) {
-  // Test that the builder creates a symlink for the time zone.
-  ASSERT_TRUE(Init());
-  ASSERT_TRUE(builder_.SetUpChromium());
-  const base::FilePath kSymlink(util::GetReparentedPath(
-      ChromiumCommandBuilder::kTimeZonePath, base_path_));
-  base::FilePath target;
-  ASSERT_TRUE(base::ReadSymbolicLink(kSymlink, &target));
-  EXPECT_EQ(ChromiumCommandBuilder::kDefaultZoneinfoPath, target.value());
-
-  // Delete the old symlink and create a new one with a different target.
-  // Arbitrarily use |base_path_| (we need a path that exists).
-  ASSERT_TRUE(base::DeleteFile(kSymlink));
-  const base::FilePath kNewTarget(base_path_);
-  ASSERT_TRUE(base::CreateSymbolicLink(kNewTarget, kSymlink));
-
-  // Initialize a second builder and check that it leaves the existing symlink
-  // alone.
-  ChromiumCommandBuilder second_builder;
-  second_builder.set_base_path_for_testing(base_path_);
-  ASSERT_TRUE(second_builder.Init());
-  ASSERT_TRUE(second_builder.SetUpChromium());
-  ASSERT_TRUE(base::ReadSymbolicLink(kSymlink, &target));
-  EXPECT_EQ(kNewTarget.value(), target.value());
-}
-
 TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
   ASSERT_TRUE(Init());
   ASSERT_TRUE(builder_.SetUpChromium());
@@ -167,9 +141,6 @@ TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
   EXPECT_EQ("chronos", ReadEnvVar("LOGNAME"));
   EXPECT_EQ("/bin/sh", ReadEnvVar("SHELL"));
   EXPECT_FALSE(ReadEnvVar("PATH").empty());
-  base::FilePath data_dir(util::GetReparentedPath("/home/chronos", base_path_));
-  EXPECT_EQ(data_dir.value(), ReadEnvVar("DATA_DIR"));
-  EXPECT_TRUE(base::DirectoryExists(data_dir));
 }
 
 TEST_F(ChromiumCommandBuilderTest, ValueListFlags) {

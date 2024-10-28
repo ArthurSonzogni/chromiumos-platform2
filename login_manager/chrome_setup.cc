@@ -138,12 +138,6 @@ base::FilePath GetDataDir(ChromiumCommandBuilder* builder) {
   return base::FilePath(builder->ReadEnvVar("DATA_DIR"));
 }
 
-// Returns a base::FilePath corresponding to the subdirectory of DATA_DIR where
-// user data is stored.
-base::FilePath GetUserDir(ChromiumCommandBuilder* builder) {
-  return base::FilePath(GetDataDir(builder).Append("user"));
-}
-
 // Enables the "AutoNightLight" feature if "auto-night-light" is set to "True"
 // in cros_config.
 void SetUpAutoNightLightFlag(ChromiumCommandBuilder* builder,
@@ -555,10 +549,12 @@ void ChromeSetup::CreateDirectories(ChromiumCommandBuilder* builder) {
   const uid_t kRootUid = 0;
   const gid_t kRootGid = 0;
 
-  const base::FilePath data_dir = GetDataDir(builder);
+  const base::FilePath data_dir("/home/chronos");
+  builder->AddEnvVar("DATA_DIR", data_dir.value());
+  CHECK(EnsureDirectoryExists(data_dir, uid, gid, 0755));
   builder->AddArg("--user-data-dir=" + data_dir.value());
 
-  const base::FilePath user_dir = GetUserDir(builder);
+  const base::FilePath user_dir = data_dir.Append("user");
   CHECK(EnsureDirectoryExists(user_dir, uid, gid, 0755));
   // TODO(keescook): Remove Chrome's use of $HOME.
   builder->AddEnvVar("HOME", user_dir.value());
@@ -651,6 +647,7 @@ void ChromeSetup::CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(
       base::FilePath("/var/cache/signin_profile_extensions"), uid, gid, 0700));
 
+  SetUpTimezoneSymlink(builder->uid(), builder->gid());
   SetUpDebugfsGpu();
 
   // Tell Chrome where to write logging messages before the user logs in.
@@ -670,6 +667,29 @@ void ChromeSetup::CreateDirectories(ChromiumCommandBuilder* builder) {
   // allow threads (Mesa uses threads for this feature).
   builder->AddEnvVar("MESA_GLSL_CACHE_DISABLE", "true");    // Mesa classic
   builder->AddEnvVar("MESA_SHADER_CACHE_DISABLE", "true");  // Mesa iris
+}
+
+void ChromeSetup::SetUpTimezoneSymlink(uid_t uid, gid_t gid) {
+  CreateSymlinkIfMissing(base::FilePath("/usr/share/zoneinfo/US/Pacific"),
+                         base::FilePath("/var/lib/timezone/localtime"), uid,
+                         gid);
+}
+
+void ChromeSetup::CreateSymlinkIfMissing(const base::FilePath& source,
+                                         const base::FilePath& target,
+                                         uid_t uid,
+                                         gid_t gid) {
+  CHECK(EnsureDirectoryExists(target.DirName(), uid, gid, 0755));
+  if (base::PathExists(target)) {
+    return;
+  }
+  // base::PathExists() dereferences symlinks, so make sure that there's not a
+  // dangling symlink there before we create a new link.
+  brillo::DeleteFile(target);
+
+  // TODO(hidehiko): currently uid/gid are not set to the created symlink
+  // for historical reason. Consider to set them.
+  PCHECK(base::CreateSymbolicLink(source, target));
 }
 
 void SetUpSchedulerFlags(ChromiumCommandBuilder* builder,

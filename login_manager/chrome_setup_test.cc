@@ -172,6 +172,38 @@ TEST_F(ChromeSetupTest, TestDefault) {
   EXPECT_EQ(kNotPresent, GetFlag(argv, "--default-wallpaper-is-oem"));
 }
 
+TEST_F(ChromeSetupTest, CreateSymlinkIfMissing) {
+  base::ScopedTempDir root;
+  ASSERT_TRUE(root.CreateUniqueTempDir());
+
+  // Test that the builder creates a symlink for the time zone.
+  const base::FilePath file1 = root.GetPath().Append("file1");
+  ASSERT_TRUE(base::WriteFile(file1, ""));
+  const base::FilePath file2 = root.GetPath().Append("file2");
+  ASSERT_TRUE(base::WriteFile(file2, ""));
+
+  ChromeSetup setup(cros_config_, *feature_management_);
+
+  const base::FilePath symlink_path1 = root.GetPath().Append("test/symlink1");
+  ASSERT_FALSE(base::PathExists(symlink_path1));
+  // uid/gid are ignored.
+  setup.CreateSymlinkIfMissing(file1, symlink_path1, /*uid=*/0, /*gid=*/0);
+  base::FilePath target;
+  ASSERT_TRUE(base::ReadSymbolicLink(symlink_path1, &target));
+  EXPECT_EQ(target, file1);
+
+  // Set up environment that symlink already exists.
+  const base::FilePath symlink_path2 = root.GetPath().Append("test/symlink2");
+  ASSERT_TRUE(base::CreateSymbolicLink(file2, symlink_path2));
+
+  // Then link to file2 should be kept.
+  ASSERT_TRUE(base::PathExists(symlink_path2));
+  setup.CreateSymlinkIfMissing(file1, symlink_path2, /*uid=*/0, /*gid=*/0);
+  ASSERT_TRUE(base::ReadSymbolicLink(symlink_path2, &target));
+  // symlink should keep pointing to file2.
+  EXPECT_EQ(target, file2);
+}
+
 TEST_F(ChromeSetupTest, TestModelDoesNotExist) {
   cros_config_.SetString("/", login_manager::kWallpaperProperty, kModel);
   login_manager::SetUpWallpaperFlags(&builder_, &cros_config_,
@@ -438,4 +470,5 @@ TEST_F(ChromeSetupTest, TestArcVmDlcDisabled) {
   auto argv = builder_.arguments();
   EXPECT_EQ(kNotPresent, GetFlag(argv, "--enable-arcvm-dlc"));
 }
+
 }  // namespace login_manager
