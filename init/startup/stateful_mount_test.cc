@@ -12,6 +12,7 @@
 #include <time.h>
 
 #include <deque>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
