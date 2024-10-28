@@ -142,9 +142,8 @@ void Controller::Setup() {
   if (features_) {
     features_->IsDNSProxyEnabled(base::BindOnce(&Controller::OnFeatureEnabled,
                                                 weak_factory_.GetWeakPtr()));
-    // TODO(jasongustaman): Call Chrome feature service for root namespace DNS
-    // proxy feature.
-    root_ns_enabled_.emplace(false);
+    features_->IsRootNsDNSProxyEnabled(base::BindOnce(
+        &Controller::OnRootNsEnabled, weak_factory_.GetWeakPtr()));
   } else {
     LOG(ERROR) << "Failed to initialize Chrome features client - "
                << "service will be enabled by default";
