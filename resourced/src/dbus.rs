@@ -169,10 +169,10 @@ async fn get_sender_euid(conn: Arc<SyncConnection>, bus_name: Option<String>) ->
 
 fn override_critical_if_necessary(original_critical_margin: u32) -> u32 {
     // TODO(b:365580055, b:364375966) Remove this override when a long-term solution is
-    // found for the xol and lotso performance issues.
+    // found for the xol and lotso/jubilant performance issues.
     let critical_offset = match fs::read_to_string(Path::new("/run/chromeos-config/v1/name")) {
         Ok(device_name) => match device_name.as_str() {
-            "xol" | "lotso" => 700,
+            "xol" | "lotso" | "jubilant" => 700,
             _ => 0,
         },
         _ => 0,
