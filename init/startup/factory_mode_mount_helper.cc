@@ -67,9 +67,16 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos(
     if (!platform_->Mount(base::FilePath("tmpfs_var"), var, "tmpfs", 0, "")) {
       return false;
     }
-    base::FilePath stateful_home_chronos = stateful_.Append(kHomeChronos);
-    base::FilePath home_chronos = root_.Append(kHomeChronos);
-    if (!platform_->Mount(stateful_home_chronos, home_chronos, "", MS_BIND,
+
+    base::FilePath chronos = stateful_.Append(kHomeChronos);
+    if (!platform_->CreateDirectory(chronos)) {
+      return false;
+    }
+    if (!platform_->SetPermissions(chronos, 0755)) {
+      PLOG(WARNING) << "chmod failed for " << chronos.value();
+      return false;
+    }
+    if (!platform_->Mount(chronos, root_.Append(kHomeChronos), "", MS_BIND,
                           "")) {
       return false;
     }

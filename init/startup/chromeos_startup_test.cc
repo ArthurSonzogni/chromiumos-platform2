@@ -1065,6 +1065,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
+  EXPECT_TRUE(platform_->DirectoryExists(stateful_home_chronos));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
@@ -1118,6 +1119,8 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
+  EXPECT_TRUE(platform_->DirectoryExists(stateful_var));
+  EXPECT_TRUE(platform_->DirectoryExists(stateful_home_chronos));
 }
 
 class IsVarFullTest : public ::testing::Test {

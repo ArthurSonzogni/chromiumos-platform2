@@ -49,7 +49,6 @@ bool MountVarAndHomeChronosUnencryptedImpl::Mount(
   if (!platform_->CreateDirectory(var)) {
     return false;
   }
-
   if (!platform_->SetPermissions(var, 0755)) {
     PLOG(WARNING) << "chmod failed for " << var.value();
     return false;
@@ -58,8 +57,16 @@ bool MountVarAndHomeChronosUnencryptedImpl::Mount(
   if (!platform_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
     return false;
   }
-  if (!platform_->Mount(stateful_.Append(kHomeChronos),
-                        root_.Append(kHomeChronos), "", MS_BIND, "")) {
+
+  base::FilePath chronos = stateful_.Append(kHomeChronos);
+  if (!platform_->CreateDirectory(chronos)) {
+    return false;
+  }
+  if (!platform_->SetPermissions(chronos, 0755)) {
+    PLOG(WARNING) << "chmod failed for " << chronos.value();
+    return false;
+  }
+  if (!platform_->Mount(chronos, root_.Append(kHomeChronos), "", MS_BIND, "")) {
     platform_->Unmount(root_.Append(kVar), false, nullptr);
     return false;
   }
