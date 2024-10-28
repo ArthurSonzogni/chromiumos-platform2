@@ -55,6 +55,7 @@ constexpr char kDirtyExpireCentisecs[] = "proc/sys/vm/dirty_expire_centisecs";
 
 constexpr char kUpdateAvailable[] = ".update_available";
 constexpr char kLabMachine[] = ".labmachine";
+constexpr char kDevModeFile[] = ".developer_mode";
 
 constexpr char kVar[] = "var";
 constexpr char kUnencrypted[] = "unencrypted";
@@ -528,7 +529,12 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
     // and non-empty directories. The non-empty directories contain protected
     // content or they would already be empty from depth first traversal.
     std::vector<base::FilePath> preserved_paths = {
-        stateful_.Append(kLabMachine), developer_target, var_target,
+        stateful_.Append(kLabMachine),
+        stateful_.Append(kDevModeFile),
+        stateful_.Append("encrypted.block"),
+        stateful_.Append("encrypted.key"),
+        developer_target,
+        var_target,
         preserve_dir};
     std::unique_ptr<libstorage::FileEnumerator> enumerator(
         platform_->GetFileEnumerator(stateful_, true,

@@ -278,6 +278,8 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
 TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "clobber"));
   base::FilePath labmachine = stateful.Append(".labmachine");
+  base::FilePath encrypted_key = stateful.Append("encrypted.key");
+  base::FilePath encrypted_block = stateful.Append("encrypted.block");
   base::FilePath test_dir = stateful.Append("test");
   base::FilePath test = test_dir.Append("test");
   base::FilePath preserve_test = preserve_dir.Append("test");
@@ -290,6 +292,8 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   ASSERT_TRUE(
       platform_->WriteStringToFile(var_target.Append("var_target_file"), "1"));
   ASSERT_TRUE(platform_->WriteStringToFile(labmachine, "1"));
+  ASSERT_TRUE(platform_->WriteStringToFile(encrypted_key, "1"));
+  ASSERT_TRUE(platform_->WriteStringToFile(encrypted_block, "1"));
   ASSERT_TRUE(platform_->WriteStringToFile(test, "1"));
   ASSERT_TRUE(platform_->WriteStringToFile(preserve_test, "1"));
 
@@ -298,6 +302,8 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
       platform_->FileExists(developer_target.Append("dev_target_file")));
   EXPECT_TRUE(platform_->FileExists(var_target.Append("var_target_file")));
   EXPECT_TRUE(platform_->FileExists(labmachine));
+  EXPECT_TRUE(platform_->FileExists(encrypted_key));
+  EXPECT_TRUE(platform_->FileExists(encrypted_block));
   EXPECT_FALSE(platform_->DirectoryExists(test_dir));
   EXPECT_TRUE(platform_->FileExists(preserve_test));
   EXPECT_FALSE(platform_->FileExists(empty));
