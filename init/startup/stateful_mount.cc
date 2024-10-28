@@ -555,9 +555,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
     sync();
   }
 
-  std::vector<base::FilePath> rm_paths{stateful_update_file};
-  startup_dep_->RemoveInBackground(rm_paths);
-
+  platform_->DeleteFile(stateful_update_file);
   return true;
 }
 
