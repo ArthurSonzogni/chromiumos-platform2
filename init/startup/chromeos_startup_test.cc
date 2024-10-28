@@ -88,8 +88,6 @@ class EarlySetupTest : public ::testing::Test {
     kernel_debug_ = base_dir_.Append("sys/kernel/debug");
     kernel_config_ = base_dir_.Append("sys/kernel/config");
     kernel_tracing_ = base_dir_.Append("sys/kernel/tracing");
-    security_hardening_ = base_dir_.Append(
-        "usr/share/cros/startup/disable_stateful_security_hardening");
     kernel_security_ = base_dir_.Append("sys/kernel/security");
     fs_bpf_ = base_dir_.Append("sys/fs/bpf");
     namespaces_ = base_dir_.Append("run/namespaces");
@@ -121,7 +119,6 @@ class EarlySetupTest : public ::testing::Test {
   base::FilePath dev_pts_;
   base::FilePath dev_shm_;
   base::FilePath kernel_config_;
-  base::FilePath security_hardening_;
   base::FilePath kernel_security_;
   base::FilePath fs_bpf_;
   base::FilePath namespaces_;
@@ -1469,8 +1466,6 @@ class DevMountPackagesTest : public ::testing::Test {
     asan_dir_ = base_dir_.Append("var/log/asan");
     lsm_dir_ = base_dir_.Append(kLSMDir);
     allow_sym_ = lsm_dir_.Append("allow_symlink");
-    disable_ssh_ = base_dir_.Append(
-        "usr/share/cros/startup/disable_stateful_security_hardening");
     var_overlay_ = stateful_.Append("var_overlay");
     var_portage_ = base_dir_.Append("var/lib/portage");
     ASSERT_TRUE(platform_->WriteStringToFile(allow_sym_, ""));
@@ -1505,14 +1500,11 @@ class DevMountPackagesTest : public ::testing::Test {
   base::FilePath lsm_dir_;
   base::FilePath allow_sym_;
   std::string allow_sym_contents_;
-  base::FilePath disable_ssh_;
   base::FilePath var_overlay_;
   base::FilePath var_portage_;
 };
 
 TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
-  platform_->CreateDirectory(disable_ssh_);
-
   std::string mount_contents =
       R"(/dev/root / ext2 ro,seclabel,relatime 0 0 )"
       R"(devtmpfs /dev devtmpfs rw,seclabel,nosuid,noexec,relatime,)"
@@ -1527,7 +1519,7 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
   EXPECT_CALL(*platform_, Mount(base::FilePath(), usrlocal_, _, MS_REMOUNT, _))
       .WillOnce(Return(true));
 
-  stateful_mount_->DevMountPackages();
+  stateful_mount_->DevMountPackages(false);
 
   EXPECT_TRUE(platform_->DirectoryExists(asan_dir_));
 
@@ -1558,7 +1550,7 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   EXPECT_CALL(*platform_, Mount(portage, var_portage_, _, MS_BIND, _))
       .WillOnce(Return(true));
 
-  stateful_mount_->DevMountPackages();
+  stateful_mount_->DevMountPackages(true);
 
   EXPECT_TRUE(platform_->DirectoryExists(asan_dir_));
 

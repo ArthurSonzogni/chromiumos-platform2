@@ -316,6 +316,29 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   EXPECT_EQ(res, message);
 }
 
+TEST_F(DevUpdateStatefulTest, PreserveDirectory) {
+  base::FilePath wipe = stateful.Append("wipe");
+  base::FilePath wipe_subdir = wipe.Append("wipe_subdir");
+  base::FilePath not_empty = wipe.Append("wipe_not_empty");
+  base::FilePath not_empty_file = not_empty.Append("test");
+  base::FilePath preserve = stateful.Append("preserve");
+  base::FilePath preserve_subdir = preserve.Append("preserve_subdir");
+
+  ASSERT_TRUE(platform_->CreateDirectory(wipe));
+  ASSERT_TRUE(platform_->CreateDirectory(wipe_subdir));
+  ASSERT_TRUE(platform_->CreateDirectory(not_empty));
+  ASSERT_TRUE(platform_->WriteStringToFile(not_empty_file, "1"));
+  ASSERT_TRUE(platform_->CreateDirectory(preserve));
+  ASSERT_TRUE(platform_->CreateDirectory(preserve_subdir));
+
+  stateful_mount_->RemoveEmptyDirectory({preserve}, stateful);
+  EXPECT_TRUE(platform_->DirectoryExists(wipe));
+  EXPECT_FALSE(platform_->DirectoryExists(wipe_subdir));
+  EXPECT_TRUE(platform_->DirectoryExists(not_empty));
+  EXPECT_TRUE(platform_->DirectoryExists(preserve));
+  EXPECT_TRUE(platform_->DirectoryExists(preserve_subdir));
+}
+
 class DevGatherLogsTest : public ::testing::Test {
  protected:
   void SetUp() override {

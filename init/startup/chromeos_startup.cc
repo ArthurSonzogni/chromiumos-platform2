@@ -1116,7 +1116,7 @@ void ChromeosStartup::DevMountPackages() {
   if (!dev_mode_) {
     return;
   }
-  stateful_mount_->DevMountPackages();
+  stateful_mount_->DevMountPackages(enable_stateful_security_hardening_);
 }
 
 void ChromeosStartup::RestorePreservedPaths() {

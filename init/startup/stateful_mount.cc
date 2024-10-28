@@ -58,6 +58,7 @@ constexpr char kLabMachine[] = ".labmachine";
 constexpr char kDevModeFile[] = ".developer_mode";
 
 constexpr char kVar[] = "var";
+constexpr char kChronos[] = "chronos";
 constexpr char kUnencrypted[] = "unencrypted";
 constexpr char kNew[] = "_new";
 constexpr char kOverlay[] = "_overlay";
@@ -65,8 +66,6 @@ constexpr char kOverlay[] = "_overlay";
 constexpr char kVarLogAsan[] = "var/log/asan";
 constexpr char kStatefulDevImage[] = "dev_image";
 constexpr char kUsrLocal[] = "usr/local";
-constexpr char kDisableStatefulSecurityHardening[] =
-    "usr/share/cros/startup/disable_stateful_security_hardening";
 constexpr char kTmpPortage[] = "var/tmp/portage";
 constexpr char kProcMounts[] = "proc/mounts";
 constexpr char kMountOptionsLog[] = "var/log/mount_options.log";
@@ -425,6 +424,38 @@ base::FilePath StatefulMount::GetStateDev() {
   return state_dev_;
 }
 
+// Remove empty directories that should not be preserved.
+void StatefulMount::RemoveEmptyDirectory(
+    std::vector<base::FilePath> preserved_paths, base::FilePath directory) {
+  std::unique_ptr<libstorage::FileEnumerator> enumerator(
+      platform_->GetFileEnumerator(directory, false /* recursive */,
+                                   base::FileEnumerator::DIRECTORIES));
+  for (auto path = enumerator->Next(); !path.empty();
+       path = enumerator->Next()) {
+    if (platform_->IsLink(path)) {
+      continue;
+    }
+    bool preserve = false;
+    for (auto& preserved_path : preserved_paths) {
+      if (path == preserved_path || preserved_path.IsParent(path)) {
+        preserve = true;
+        break;
+      }
+    }
+    if (!preserve) {
+      RemoveEmptyDirectory(preserved_paths, path);
+      // Do not remove mounts for /var and /home/chronos,
+      // they have been already created during the mount of stateful.
+      std::vector<const char*> mounts = {kVar, kChronos};
+      if (platform_->IsDirectoryEmpty(path) &&
+          (std::find(mounts.begin(), mounts.end(), path.BaseName().value()) ==
+           mounts.end())) {
+        platform_->DeleteFile(path);
+      }
+    }
+  }
+}
+
 // Updates stateful partition if pending
 // update is available.
 // Returns true if there is no need to update or successful update.
@@ -538,28 +569,24 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
         preserve_dir};
     std::unique_ptr<libstorage::FileEnumerator> enumerator(
         platform_->GetFileEnumerator(stateful_, true,
-                                     base::FileEnumerator::FILES |
-                                         base::FileEnumerator::DIRECTORIES |
-                                         base::FileEnumerator::SHOW_SYM_LINKS));
+                                     base::FileEnumerator::FILES));
     for (auto path = enumerator->Next(); !path.empty();
          path = enumerator->Next()) {
       bool preserve = false;
       for (auto& preserved_path : preserved_paths) {
-        if (path == preserved_path || preserved_path.IsParent(path) ||
-            path.IsParent(preserved_path)) {
+        if (path == preserved_path || preserved_path.IsParent(path)) {
           preserve = true;
           break;
         }
       }
-
       if (!preserve) {
-        if (platform_->DirectoryExists(path)) {
-          platform_->DeletePathRecursively(path);
-        } else {
-          platform_->DeleteFile(path);
-        }
+        platform_->DeleteFile(path);
       }
     }
+
+    // Remove the empty directories
+    RemoveEmptyDirectory(preserved_paths, stateful_);
+
     // Let's really be done before coming back.
     sync();
   }
@@ -606,7 +633,7 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
   }
 }
 
-void StatefulMount::DevMountPackages() {
+void StatefulMount::DevMountPackages(bool enable_stateful_security_hardening) {
   // Set up the logging dir that ASAN compiled programs will write to. We want
   // any privileged account to be able to write here so unittests need not worry
   // about setting things up ahead of time. See crbug.com/453579 for details.
@@ -654,9 +681,7 @@ void StatefulMount::DevMountPackages() {
     PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }
 
-  base::FilePath disable_state_sec_hard =
-      root_.Append(kDisableStatefulSecurityHardening);
-  if (!platform_->FileExists(disable_state_sec_hard)) {
+  if (enable_stateful_security_hardening) {
     // Add exceptions to allow symlink traversal and opening of FIFOs in the
     // dev_image subtree.
     for (const auto& path : {root_.Append(kTmpPortage), stateful_dev_image}) {

@@ -53,7 +53,9 @@ class StatefulMount {
 
   bool DevUpdateStatefulPartition(const std::string& args);
   void DevGatherLogs(const base::FilePath& base_dir);
-  void DevMountPackages();
+  void DevMountPackages(bool enable_stateful_security_hardening);
+  void RemoveEmptyDirectory(std::vector<base::FilePath> preserved_paths,
+                            base::FilePath directory);
 
  private:
   void AppendQuotaFeaturesAndOptions(std::vector<std::string>* sb_options,
