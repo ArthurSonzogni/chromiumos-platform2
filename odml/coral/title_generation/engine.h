@@ -22,6 +22,7 @@
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/session_state_manager/session_state_manager.h"
 
 namespace coral {
 
@@ -48,11 +49,14 @@ class TitleGenerationEngineInterface {
                        TitleGenerationCallback callback) = 0;
 };
 
-class TitleGenerationEngine : public TitleGenerationEngineInterface {
+class TitleGenerationEngine
+    : public TitleGenerationEngineInterface,
+      public odml::SessionStateManagerInterface::Observer {
  public:
-  explicit TitleGenerationEngine(
+  TitleGenerationEngine(
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
-          on_device_model_service);
+          on_device_model_service,
+      odml::SessionStateManagerInterface* session_state_manager);
   ~TitleGenerationEngine() override = default;
 
   // TitleGenerationEngineInterface overrides.
@@ -61,6 +65,11 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
                ClusteringResponse clustering_response,
                mojo::PendingRemote<mojom::TitleObserver> observer,
                TitleGenerationCallback callback) override;
+
+  // SessionStateManagerInterface overrides.
+  void OnUserLoggedIn(
+      const odml::SessionStateManagerInterface::User& user) override;
+  void OnUserLoggedOut() override;
 
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
@@ -156,8 +165,14 @@ class TitleGenerationEngine : public TitleGenerationEngineInterface {
   // title generation only takes entity titles as input. Multiset is used
   // because the number of each titles and the group size are needed to
   // calculate the similarity ratio.
-  base::HashingLRUCache<std::string, std::unordered_multiset<std::string>>
-      title_cache_;
+  struct TitleCacheEntry {
+    std::unordered_multiset<std::string> entity_titles;
+    odml::SessionStateManagerInterface::User user;
+  };
+  base::HashingLRUCache<std::string, TitleCacheEntry> title_cache_;
+  // Record and the current user to compare whether the user is same when
+  // attempting to reuse title cache. We shouldn't reuse cache from other users.
+  std::optional<odml::SessionStateManagerInterface::User> current_user_;
 
   base::WeakPtrFactory<TitleGenerationEngine> weak_ptr_factory_{this};
 };

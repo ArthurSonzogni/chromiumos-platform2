@@ -28,14 +28,14 @@ CoralService::CoralService(
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
         embedding_model_service,
     odml::SessionStateManagerInterface* session_state_manager)
-    : CoralService(
-          std::make_unique<EmbeddingEngine>(
-              embedding_model_service,
-              std::make_unique<EmbeddingDatabaseFactory>(),
-              session_state_manager),
-          std::make_unique<ClusteringEngine>(
-              std::make_unique<clustering::ClusteringFactory>()),
-          std::make_unique<TitleGenerationEngine>(on_device_model_service)) {}
+    : CoralService(std::make_unique<EmbeddingEngine>(
+                       embedding_model_service,
+                       std::make_unique<EmbeddingDatabaseFactory>(),
+                       session_state_manager),
+                   std::make_unique<ClusteringEngine>(
+                       std::make_unique<clustering::ClusteringFactory>()),
+                   std::make_unique<TitleGenerationEngine>(
+                       on_device_model_service, session_state_manager)) {}
 
 CoralService::CoralService(
     std::unique_ptr<EmbeddingEngineInterface> embedding_engine,

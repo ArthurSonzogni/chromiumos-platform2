@@ -31,6 +31,7 @@
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
 #include "odml/mojom/on_device_model_service.mojom.h"
+#include "odml/session_state_manager/session_state_manager.h"
 
 namespace coral {
 
@@ -115,7 +116,6 @@ double GetDifferenceRatio(
     old_group_copy.erase(it);
   }
   mismatches += old_group_copy.size();
-  LOG(INFO) << "ratio: " << static_cast<double>(mismatches) / new_group.size();
   return static_cast<double>(mismatches) / new_group.size();
 }
 
@@ -123,9 +123,14 @@ double GetDifferenceRatio(
 
 TitleGenerationEngine::TitleGenerationEngine(
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
-        on_device_model_service)
+        on_device_model_service,
+    odml::SessionStateManagerInterface* session_state_manager)
     : on_device_model_service_(on_device_model_service),
-      title_cache_(kMaxCacheSize) {}
+      title_cache_(kMaxCacheSize) {
+  if (session_state_manager) {
+    session_state_manager->AddObserver(this);
+  }
+}
 
 void TitleGenerationEngine::PrepareResource() {
   if (is_processing_) {
@@ -200,6 +205,15 @@ void TitleGenerationEngine::Process(
         std::move(request), std::move(observer), std::move(groups),
         std::move(on_complete)));
   }
+}
+
+void TitleGenerationEngine::OnUserLoggedIn(
+    const odml::SessionStateManagerInterface::User& user) {
+  current_user_ = user;
+}
+
+void TitleGenerationEngine::OnUserLoggedOut() {
+  current_user_.reset();
 }
 
 void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
@@ -404,6 +418,10 @@ void TitleGenerationEngine::OnProcessCompleted() {
 }
 
 void TitleGenerationEngine::CacheGroupTitles(std::vector<GroupData> groups) {
+  // Title cache needs to be bound to a specific user.
+  if (!current_user_.has_value()) {
+    return;
+  }
   for (GroupData& group_data : groups) {
     if (!group_data.title.has_value()) {
       continue;
@@ -412,14 +430,21 @@ void TitleGenerationEngine::CacheGroupTitles(std::vector<GroupData> groups) {
     for (const mojom::EntityPtr& entity : group_data.entities) {
       entity_titles.insert(GetTitle(entity));
     }
-    title_cache_.Put(std::move(*group_data.title), std::move(entity_titles));
+    title_cache_.Put(std::move(*group_data.title),
+                     TitleCacheEntry{
+                         .entity_titles = std::move(entity_titles),
+                         .user = *current_user_,
+                     });
   }
 }
 
 std::optional<std::string> TitleGenerationEngine::MaybeGetCachedTitle(
     const std::vector<mojom::EntityPtr>& entities) {
-  for (const auto& [title, cached_entities] : title_cache_) {
-    if (GetDifferenceRatio(entities, cached_entities) <
+  for (const auto& [title, title_cache_entry] : title_cache_) {
+    if (current_user_ != title_cache_entry.user) {
+      continue;
+    }
+    if (GetDifferenceRatio(entities, title_cache_entry.entity_titles) <
         kMaxGroupDifferenceRatioToReuseTitle) {
       return title;
     }

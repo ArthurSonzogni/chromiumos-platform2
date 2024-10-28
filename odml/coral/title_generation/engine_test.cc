@@ -24,6 +24,7 @@
 #include "odml/on_device_model/fake/on_device_model_fake.h"
 #include "odml/on_device_model/features.h"
 #include "odml/on_device_model/on_device_model_service.h"
+#include "odml/session_state_manager/session_state_manager.h"
 #include "odml/utils/odml_shim_loader_mock.h"
 
 namespace coral {
@@ -105,7 +106,9 @@ class TitleGenerationEngineTest : public testing::Test {
               // Do nothing to the input string.
               return it->second;
             }))));
-    engine_ = std::make_unique<TitleGenerationEngine>(raw_ref(model_service_));
+    engine_ = std::make_unique<TitleGenerationEngine>(
+        raw_ref(model_service_),
+        /*session_state_manager=*/nullptr);
   }
 
  protected:
@@ -174,6 +177,9 @@ TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCaching) {
+  const odml::SessionStateManagerInterface::User user{"fake_user_1",
+                                                      "fake_user_hash_1"};
+  engine_->OnUserLoggedIn(user);
   // Set up request with 8 items in 1 cluster.
   std::vector<mojom::EntityPtr> entities;
   entities.push_back(mojom::Entity::NewTab(
@@ -252,6 +258,74 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ASSERT_TRUE(response3.groups[0]->title.has_value());
   std::string title3 = *response3.groups[0]->title;
   EXPECT_NE(title2, title3);
+}
+
+TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
+  const odml::SessionStateManagerInterface::User user1{"fake_user_1",
+                                                       "fake_user_hash_1"};
+  engine_->OnUserLoggedIn(user1);
+  // Set up request with 8 items in 1 cluster.
+  std::vector<mojom::EntityPtr> entities;
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("ABC 1", url::mojom::Url::New("abc1.com"))));
+  entities.push_back(
+      mojom::Entity::NewApp(mojom::App::New("ABC app 1", "abc1")));
+  entities.push_back(
+      mojom::Entity::NewApp(mojom::App::New("ABC app 2", "abc2")));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("DEF", url::mojom::Url::New("def.com"))));
+  entities.push_back(mojom::Entity::NewApp(mojom::App::New("DEF app", "def")));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("GHI", url::mojom::Url::New("ghi.com"))));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("YYY", url::mojom::Url::New("yyy.com"))));
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("ZZZ", url::mojom::Url::New("zzz.com"))));
+
+  auto get_request = [&entities]() {
+    auto request = mojom::GroupRequest::New();
+    request->embedding_options = mojom::EmbeddingOptions::New();
+    request->clustering_options = mojom::ClusteringOptions::New();
+    request->title_generation_options = mojom::TitleGenerationOptions::New();
+    request->entities = CloneEntities(entities);
+    return request;
+  };
+  auto get_clustering_response = [&entities]() {
+    ClusteringResponse clustering_response;
+    clustering_response.clusters.push_back(
+        Cluster{.entities = CloneEntities(entities)});
+    return clustering_response;
+  };
+
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future1;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future1.GetCallback());
+  CoralResult<TitleGenerationResponse> result1 = title_future1.Take();
+  ASSERT_TRUE(result1.has_value());
+  TitleGenerationResponse response1 = std::move(*result1);
+  ASSERT_EQ(response1.groups.size(), 1);
+  ASSERT_TRUE(response1.groups[0]->title.has_value());
+  std::string title1 = *response1.groups[0]->title;
+
+  const odml::SessionStateManagerInterface::User user2{"fake_user_2",
+                                                       "fake_user_hash_2"};
+  engine_->OnUserLoggedIn(user2);
+  // Remove 1 item and add 1 item to the cluster. This makes the similarity
+  // lower than the acceptable threshold, but because the user has changed, the
+  // cache won't be used.
+  entities.pop_back();
+  entities.push_back(mojom::Entity::NewTab(
+      mojom::Tab::New("AAA", url::mojom::Url::New("aaa.com"))));
+  TestFuture<CoralResult<TitleGenerationResponse>> title_future2;
+  engine_->Process(get_request(), get_clustering_response(), mojo::NullRemote(),
+                   title_future2.GetCallback());
+  CoralResult<TitleGenerationResponse> result2 = title_future2.Take();
+  ASSERT_TRUE(result2.has_value());
+  TitleGenerationResponse response2 = std::move(*result2);
+  ASSERT_EQ(response2.groups.size(), 1);
+  ASSERT_TRUE(response2.groups[0]->title.has_value());
+  std::string title2 = *response2.groups[0]->title;
+  EXPECT_NE(title1, title2);
 }
 
 TEST_F(TitleGenerationEngineTest, NoGroups) {
