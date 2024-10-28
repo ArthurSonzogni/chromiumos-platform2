@@ -4602,6 +4602,45 @@ def wbem_encode(wbem_config):
     )
 
 
+def bpag_encode(bpag_config):
+    """Creates and returns Bluetooth Per-Platform Antenna Gain with given config
+
+    Args:
+        bpag_config: Per-Platform Antenna Gain configuration
+
+    Returns:
+        Per-Platform Antenna Gain configuration encoded as bytearray
+    """
+
+    def bpag_country_enablement_value(revision, country_enablement):
+        enablement = 0
+        if country_enablement.eu:
+            enablement += 1 << 0
+        if country_enablement.china:
+            enablement += 1 << 1
+        if revision == 2:
+            if country_enablement.eu_uhb:
+                enablement += 1 << 2
+            if country_enablement.fcc_uhb:
+                enablement += 1 << 3
+            if country_enablement.ised_uhb:
+                enablement += 1 << 4
+        return enablement
+
+    if bpag_config.revision == 0:
+        return bytearray(0)
+    if bpag_config.revision not in (1, 2):
+        revision = bpag_config.revision
+        raise Exception(
+            f"ERROR: Invalid Bluetooth PPAG table revision {revision}"
+        )
+    return hex_8bit(bpag_config.revision) + hex_32bit(
+        bpag_country_enablement_value(
+            bpag_config.revision, bpag_config.enablement_bpag_countries
+        )
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4646,6 +4685,9 @@ def _create_intel_sar_file_content(intel_config):
     # | WBEM      | 2 bytes  | Offset of WBEM table from start of  |
     # | offset    |          | the header                          |
     # +------------------------------------------------------------+
+    # | Bpag      | 2 bytes  | Offset of Bluetooth PPAG table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4658,7 +4700,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 7
+    sar_configs = 8
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4713,6 +4755,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set wbem offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bpag"):
+        data = bpag_encode(intel_config.bpag)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bpag offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
