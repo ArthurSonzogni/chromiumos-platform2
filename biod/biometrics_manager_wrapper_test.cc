@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/biometrics_manager_wrapper.h"
+
 #include <map>
 #include <utility>
 
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
-#include <biod/biometrics_manager_wrapper.h>
-#include <biod/mock_biometrics_manager.h>
-#include <biod/mock_biometrics_manager_record.h>
-#include <biod/mock_session_state_manager.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/mock_exported_object_manager.h>
 #include <dbus/mock_bus.h>
@@ -20,6 +18,10 @@
 #include <dbus/property.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "biod/mock_biometrics_manager.h"
+#include "biod/mock_biometrics_manager_record.h"
+#include "biod/mock_session_state_manager.h"
 
 namespace biod {
 namespace {

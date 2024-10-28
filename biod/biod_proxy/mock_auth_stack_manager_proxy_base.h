@@ -7,8 +7,9 @@
 
 #include <string>
 
-#include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <gmock/gmock.h>
+
+#include "biod/biod_proxy/auth_stack_manager_proxy_base.h"
 
 namespace biod {
 class MockAuthStackManagerProxyBase : public AuthStackManagerProxyBase {

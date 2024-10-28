@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "biod/auth_stack_manager_wrapper.h"
+
 #include <map>
 #include <utility>
 
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
-#include <biod/auth_stack_manager_wrapper.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/mock_exported_object_manager.h>
 #include <dbus/mock_bus.h>
