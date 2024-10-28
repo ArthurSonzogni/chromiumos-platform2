@@ -110,10 +110,11 @@ bool NetlinkSockDiag::DestroySockets(uint8_t protocol,
   return true;
 }
 
-bool NetlinkSockDiag::GetSockets(uint8_t family,
-                                 uint8_t protocol,
-                                 std::vector<struct inet_diag_msg>* out_socks) {
-  CHECK(out_socks);
+bool NetlinkSockDiag::GetSockets(
+    uint8_t family,
+    uint8_t protocol,
+    std::vector<struct inet_diag_msg>* out_diag_msgs) {
+  CHECK(out_diag_msgs);
   SockDiagRequest request =
       CreateDumpRequest(family, protocol, ++sequence_number_);
   if (socket_->Send(net_base::byte_utils::AsBytes(request), 0) < 0) {
@@ -122,14 +123,14 @@ bool NetlinkSockDiag::GetSockets(uint8_t family,
     return false;
   }
 
-  return ReadDumpContents(out_socks);
+  return ReadDumpContents(out_diag_msgs);
 }
 
 bool NetlinkSockDiag::ReadDumpContents(
-    std::vector<struct inet_diag_msg>* out_socks) {
+    std::vector<struct inet_diag_msg>* out_diag_msgs) {
   uint8_t buf[8192];
 
-  out_socks->clear();
+  out_diag_msgs->clear();
 
   for (;;) {
     std::optional<size_t> bytes_read =
@@ -159,7 +160,7 @@ bool NetlinkSockDiag::ReadDumpContents(
         case SOCK_DIAG_BY_FAMILY:
           struct inet_diag_msg current_msg;
           memcpy(&current_msg, NLMSG_DATA(nlh), sizeof(current_msg));
-          out_socks->push_back(current_msg);
+          out_diag_msgs->push_back(current_msg);
           break;
         default:
           LOG(WARNING) << "Ignoring unexpected netlink message type "

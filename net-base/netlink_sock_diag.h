@@ -50,10 +50,10 @@ class BRILLO_EXPORT NetlinkSockDiag {
   // Get a list of sockets matching the family and protocol.
   bool GetSockets(uint8_t family,
                   uint8_t protocol,
-                  std::vector<struct inet_diag_msg>* out_socks);
+                  std::vector<struct inet_diag_msg>* out_diag_msgs);
 
   // Read the socket dump from the netlink socket.
-  bool ReadDumpContents(std::vector<struct inet_diag_msg>* out_socks);
+  bool ReadDumpContents(std::vector<struct inet_diag_msg>* out_diag_msgs);
 
   std::unique_ptr<Socket> socket_;
   uint32_t sequence_number_;
