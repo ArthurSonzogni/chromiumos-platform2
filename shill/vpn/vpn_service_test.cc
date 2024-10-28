@@ -82,9 +82,7 @@ class VPNServiceInTest : public VPNService {
 
 class VPNServiceTest : public testing::Test {
  public:
-  VPNServiceTest()
-      : interface_name_("test-interface"),
-        manager_(&control_, &dispatcher_, &metrics_) {
+  VPNServiceTest() : manager_(&control_, &dispatcher_, &metrics_) {
     Service::SetNextSerialNumberForTesting(0);
     driver_ = new MockVPNDriver(&manager_, VPNType::kOpenVPN);
     driver_metrics_ = new MockVPNDriverMetrics();
@@ -139,8 +137,6 @@ class VPNServiceTest : public testing::Test {
     return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
-  std::string interface_name_;
-  RpcIdentifier ipconfig_rpc_identifier_;
   MockVPNDriverMetrics* driver_metrics_;  // Owned by |driver_|.
   MockVPNDriver* driver_;                 // Owned by |service_|.
   MockControl control_;
