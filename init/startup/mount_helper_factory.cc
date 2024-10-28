@@ -50,7 +50,7 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
         storage_container_factory) {
   bool dev_mode = InDevMode(platform_->GetCrosssystem());
   bool is_test_image = IsTestImage(platform_, lsb_file_);
-  bool is_factory_mode = IsFactoryMode(platform_, root_);
+  bool is_factory_mode = IsFactoryMode(platform_, root_, stateful_);
 
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {

@@ -33,7 +33,7 @@
 namespace {
 
 constexpr char kProcCmdLine[] = "proc/cmdline";
-constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
+constexpr char kFactoryDir[] = "dev_image/factory";
 
 }  // namespace
 
@@ -183,10 +183,11 @@ bool IsTestImage(libstorage::Platform* platform,
 // Return if the device is in either in factory test mode or in factory
 // installer mode.
 bool IsFactoryMode(libstorage::Platform* platform,
-                   const base::FilePath& base_dir) {
+                   const base::FilePath& root_dir,
+                   const base::FilePath& stateful_dir) {
   // The path to factory enabled tag. If this path exists in a debug build,
   // we assume factory test mode.
-  base::FilePath factory_dir = base_dir.Append(kFactoryDir);
+  base::FilePath factory_dir = stateful_dir.Append(kFactoryDir);
   base::FilePath factory_tag = factory_dir.Append("enabled");
   std::optional<int> res = platform->GetCrosssystem()->VbGetSystemPropertyInt(
       crossystem::Crossystem::kDebugBuild);
@@ -195,7 +196,7 @@ bool IsFactoryMode(libstorage::Platform* platform,
   }
 
   std::string cmdline;
-  if (!platform->ReadFileToString(base_dir.Append(kProcCmdLine), &cmdline)) {
+  if (!platform->ReadFileToString(root_dir.Append(kProcCmdLine), &cmdline)) {
     PLOG(ERROR) << "Failed to read proc command line";
     return false;
   }
@@ -204,7 +205,7 @@ bool IsFactoryMode(libstorage::Platform* platform,
     return true;
   }
 
-  base::FilePath installer = base_dir.Append("root/.factory_installer");
+  base::FilePath installer = root_dir.Append("root/.factory_installer");
   return platform->FileExists(installer);
 }
 
