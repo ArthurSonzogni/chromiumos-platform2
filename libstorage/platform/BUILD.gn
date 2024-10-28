@@ -44,6 +44,7 @@ pkg_config("target_defaults") {
   defines = [
     "USE_SELINUX=${use.selinux}",
     "USE_DEVICE_MAPPER=${use.device_mapper}",
+    "USE_DEFAULT_KEY_STATEFUL=${use.default_key_stateful}",
   ]
   if (use.selinux) {
     libs += [ "selinux" ]

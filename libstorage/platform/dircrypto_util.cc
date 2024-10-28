@@ -284,6 +284,9 @@ bool SetDirectoryKey(const base::FilePath& dir,
       policy.v2.contents_encryption_mode = FS_ENCRYPTION_MODE_AES_256_XTS;
       policy.v2.filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_256_CTS;
       policy.v2.flags = FSCRYPT_POLICY_FLAGS_PAD_16;
+      if (USE_DEFAULT_KEY_STATEFUL) {
+        policy.v2.flags |= FSCRYPT_POLICY_FLAG_IV_INO_LBLK_64;
+      }
       memcpy(policy.v2.master_key_identifier,  // nocheck
              key_reference.reference.data(), key_reference.reference.size());
       break;

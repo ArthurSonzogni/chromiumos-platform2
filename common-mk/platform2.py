@@ -92,6 +92,7 @@ _IUSE = [
     "crypto",
     "dbus",
     "debug",
+    "default_key_stateful",
     "device_mapper",
     "dhcpv6",
     "direncryption",
