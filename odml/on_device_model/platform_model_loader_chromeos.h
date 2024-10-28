@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -103,6 +102,11 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
 
   struct PlatformModelRecord {
     double progress = 0.0;
+    // The first time we load a model in a boot cycle, we know its DLC path and
+    // it won't change in the same boot cycle. Afterwards, even if the model is
+    // unloaded, we can start loading it again from the same DLC path instead of
+    // asking DLC service again.
+    std::optional<base::FilePath> dlc_path;
     base::WeakPtr<PlatformModel<mojom::OnDeviceModel>> platform_model;
     base::WeakPtr<PlatformModel<mojom::TextSafetyModel>> ts_platform_model;
     std::vector<PendingLoad> pending_loads;
@@ -117,6 +121,9 @@ class ChromeosPlatformModelLoader final : public PlatformModelLoader {
 
   void OnInstallDlcComplete(const base::Uuid& uuid,
                             base::expected<base::FilePath, std::string> result);
+
+  void LoadModelFromDlcPath(const base::Uuid& uuid,
+                            const base::FilePath& dlc_root);
 
   void GetModelStateFromDlcState(
       const base::Uuid& uuid,

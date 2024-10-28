@@ -284,6 +284,12 @@ void ChromeosPlatformModelLoader::LoadUuid(const base::Uuid& uuid) {
   }
   record.progress = 0;
 
+  if (record.dlc_path.has_value() && base::PathExists(*record.dlc_path)) {
+    UpdateProgress(uuid, kDlcProgressRatio);
+    LoadModelFromDlcPath(uuid, *record.dlc_path);
+    return;
+  }
+
   std::string uuid_str = uuid.AsLowercaseString();
   std::string dlc_id = kMlDlcPrefix + uuid_str;
 
@@ -379,8 +385,11 @@ void ChromeosPlatformModelLoader::OnInstallDlcComplete(
     ReplyError(uuid, mojom::LoadModelResult::kFailedToLoadLibrary);
     return;
   }
+  LoadModelFromDlcPath(uuid, result.value());
+}
 
-  const base::FilePath& dlc_root = result.value();
+void ChromeosPlatformModelLoader::LoadModelFromDlcPath(
+    const base::Uuid& uuid, const base::FilePath& dlc_root) {
   base::FilePath model_desc = dlc_root.Append(kModelDescriptor);
   std::string model_json;
 
@@ -402,6 +411,9 @@ void ChromeosPlatformModelLoader::OnInstallDlcComplete(
     ReplyError(uuid, mojom::LoadModelResult::kFailedToLoadLibrary);
     return;
   }
+
+  // Cache dlc path after confirming the dict can be read and parsed.
+  platform_models_[uuid].dlc_path = dlc_root;
 
   const std::string* version = model_dict->FindString(kVersionKey);
   if (!version) {
