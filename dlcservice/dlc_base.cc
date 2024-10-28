@@ -6,7 +6,7 @@
 
 #include <algorithm>
 #include <cinttypes>
-#include <memory>
+#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -14,9 +14,9 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/errors/error.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/constants/imageloader.h>
@@ -194,14 +194,13 @@ std::optional<uint64_t> DlcBase::GetUsedBytesOnDisk() const {
   uint64_t total_size = 0;
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {
-    int64_t size = 0;
-    if (path.empty() || !base::PathExists(path) ||
-        !base::GetFileSize(path, &size)) {
+    auto size = base::GetFileSize(path);
+    if (path.empty() || !base::PathExists(path) || !size.has_value()) {
       LOG(WARNING) << "Failed to get file size for path: "
                    << (IsUserTied() ? kPathNameImage : path.value());
       return std::nullopt;
     }
-    total_size += size;
+    total_size += size.value();
   }
   return total_size;
 }
@@ -473,18 +472,18 @@ bool DlcBase::VerifyInternal(const base::FilePath& image_path,
 }
 
 bool DlcBase::PreloadedCopier(ErrorPtr* err) {
-  int64_t preloaded_image_size;
-  if (!base::GetFileSize(preloaded_image_path_, &preloaded_image_size)) {
+  auto preloaded_image_size = base::GetFileSize(preloaded_image_path_);
+  if (!preloaded_image_size.has_value()) {
     auto err_str = base::StringPrintf("Failed to get preloaded DLC (%s) size.",
                                       id_.c_str());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
-  if (preloaded_image_size != manifest_->size()) {
+  if (preloaded_image_size.value() != manifest_->size()) {
     auto err_str = base::StringPrintf(
         "Preloaded DLC (%s) is (%" PRId64 ") different than the size (%" PRId64
         ") in the manifest.",
-        id_.c_str(), preloaded_image_size, manifest_->size());
+        id_.c_str(), preloaded_image_size.value(), manifest_->size());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
@@ -525,17 +524,17 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
 }
 
 bool DlcBase::FactoryInstallCopier() {
-  int64_t factory_install_image_size;
-  if (!base::GetFileSize(factory_install_image_path_,
-                         &factory_install_image_size)) {
+  auto factory_install_image_size =
+      base::GetFileSize(factory_install_image_path_);
+  if (!factory_install_image_size.has_value()) {
     LOG(ERROR) << "Failed to get factory installed DLC (" << sanitized_id_
                << ") size.";
     return false;
   }
-  if (factory_install_image_size != manifest_->size()) {
+  if (factory_install_image_size.value() != manifest_->size()) {
     LOG(WARNING) << "Factory installed DLC (" << sanitized_id_ << ") is ("
-                 << factory_install_image_size << ") different than the "
-                 << "size (" << manifest_->sanitized_size()
+                 << factory_install_image_size.value() << ") different than "
+                 << "the size (" << manifest_->sanitized_size()
                  << ") in the manifest.";
     brillo::DeletePathRecursively(
         JoinPaths(SystemState::Get()->factory_install_dir(), id_));
@@ -583,18 +582,18 @@ bool DlcBase::FactoryInstallCopier() {
 }
 
 bool DlcBase::DeployCopier(ErrorPtr* err) {
-  int64_t deployed_image_size;
-  if (!base::GetFileSize(deployed_image_path_, &deployed_image_size)) {
+  auto deployed_image_size = base::GetFileSize(deployed_image_path_);
+  if (!deployed_image_size.has_value()) {
     auto err_str = base::StringPrintf("Failed to get deployed DLC (%s) size.",
                                       id_.c_str());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
-  if (deployed_image_size != manifest_->size()) {
+  if (deployed_image_size.value() != manifest_->size()) {
     auto err_str = base::StringPrintf(
         "Deployed DLC (%s) is (%" PRId64 ") different than the size (%" PRId64
         ") in the manifest.",
-        id_.c_str(), deployed_image_size, manifest_->size());
+        id_.c_str(), deployed_image_size.value(), manifest_->size());
     *err = Error::Create(FROM_HERE, kErrorInternal, err_str);
     return false;
   }
