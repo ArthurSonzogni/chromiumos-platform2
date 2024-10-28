@@ -2,19 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <sys/types.h>
+#ifndef LOGIN_MANAGER_UTIL_H_
+#define LOGIN_MANAGER_UTIL_H_
 
 #include <string>
 
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
 
-#ifndef LOGIN_MANAGER_UTIL_H_
-#define LOGIN_MANAGER_UTIL_H_
-
-namespace chromeos {
-namespace ui {
-namespace util {
+namespace chromeos::ui::util {
 
 // Converts an absolute path |path| into a base::FilePath. If |parent| is
 // non-empty, |path| is rooted within it. For example, GetPath("/usr/bin/bar",
@@ -22,27 +18,6 @@ namespace util {
 BRILLO_EXPORT base::FilePath GetReparentedPath(const std::string& path,
                                                const base::FilePath& parent);
 
-// Changes the ownership of |path| to |uid|:|gid| and sets its mode to |mode|.
-// Skips updating ownership when not running as root (for use in tests).
-BRILLO_EXPORT bool SetPermissions(const base::FilePath& path,
-                                  uid_t uid,
-                                  gid_t gid,
-                                  mode_t mode);
-
-// Ensures that |path| exists with the requested ownership and permissions,
-// creating and/or updating it if needed. Returns true on success.
-BRILLO_EXPORT bool EnsureDirectoryExists(const base::FilePath& path,
-                                         uid_t uid,
-                                         gid_t gid,
-                                         mode_t mode);
-
-// Runs the passed-in command and arguments synchronously, returning true on
-// success. On failure, the command's output is logged. The path will be
-// searched for |command|.
-BRILLO_EXPORT bool Run(const char* command, const char* arg, ...);
-
-}  // namespace util
-}  // namespace ui
-}  // namespace chromeos
+}  // namespace chromeos::ui::util
 
 #endif  // LOGIN_MANAGER_UTIL_H_

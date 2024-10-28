@@ -64,6 +64,7 @@ class ChromeSetup {
 
  private:
   FRIEND_TEST_ALL_PREFIXES(ChromeSetupTest, CreateSymlinkIfMissing);
+  FRIEND_TEST_ALL_PREFIXES(ChromeSetupTest, EnsureDirectoryExists);
 
   // Ensures that necessary directory exist with the correct permissions and
   // sets related arguments and environment variables.
@@ -77,7 +78,19 @@ class ChromeSetup {
   void CreateSymlinkIfMissing(const base::FilePath& in_source,
                               const base::FilePath& in_target,
                               uid_t uid,
-                              gid_t gid);
+                              gid_t gid) const;
+
+  // If missing, creates a directory at `path`. If a non directory
+  // exists at `path`, delete the existing entry then create a new directory.
+  // Then, sets `uid`, `gid` and `mode` to the directory (even if it already
+  // exists). If -1 is passed to uid and/or gid, that means the uid/gid are
+  // kept respectively. Setting uid/gid requires CAP_CHOWN, which is not
+  // available in the unittest environment.
+  // Returns true on success.
+  bool EnsureDirectoryExists(const base::FilePath& path,
+                             uid_t uid,
+                             gid_t gid,
+                             mode_t mode) const;
 
   // TODO(hidehiko): Mark them as const.
   brillo::CrosConfigInterface& cros_config_;

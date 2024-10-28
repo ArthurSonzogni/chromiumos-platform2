@@ -186,8 +186,7 @@ TEST_F(ChromeSetupTest, CreateSymlinkIfMissing) {
 
   const base::FilePath symlink_path1 = root.GetPath().Append("test/symlink1");
   ASSERT_FALSE(base::PathExists(symlink_path1));
-  // uid/gid are ignored.
-  setup.CreateSymlinkIfMissing(file1, symlink_path1, /*uid=*/0, /*gid=*/0);
+  setup.CreateSymlinkIfMissing(file1, symlink_path1, /*uid=*/-1, /*gid=*/-1);
   base::FilePath target;
   ASSERT_TRUE(base::ReadSymbolicLink(symlink_path1, &target));
   EXPECT_EQ(target, file1);
@@ -198,10 +197,35 @@ TEST_F(ChromeSetupTest, CreateSymlinkIfMissing) {
 
   // Then link to file2 should be kept.
   ASSERT_TRUE(base::PathExists(symlink_path2));
-  setup.CreateSymlinkIfMissing(file1, symlink_path2, /*uid=*/0, /*gid=*/0);
+  setup.CreateSymlinkIfMissing(file1, symlink_path2, /*uid=*/-1, /*gid=*/-1);
   ASSERT_TRUE(base::ReadSymbolicLink(symlink_path2, &target));
   // symlink should keep pointing to file2.
   EXPECT_EQ(target, file2);
+}
+
+TEST_F(ChromeSetupTest, EnsureDirectoryExists) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  ChromeSetup setup(cros_config_, *feature_management_);
+
+  // Verify that a new directory is created.
+  base::FilePath path_a = temp_dir.GetPath().Append("a");
+  EXPECT_TRUE(
+      setup.EnsureDirectoryExists(path_a, /*uid=*/-1, /*gid=*/-1, 0755));
+  EXPECT_TRUE(base::DirectoryExists(path_a));
+
+  // Verify that it doesn't fail even if the directory already exists.
+  EXPECT_TRUE(
+      setup.EnsureDirectoryExists(path_a, /*uid=*/-1, /*gid=*/-1, 0755));
+  EXPECT_TRUE(base::DirectoryExists(path_a));
+
+  // Verify that it doesn't fail even if a file already exists at the path.
+  base::FilePath path_b = temp_dir.GetPath().Append("b");
+  EXPECT_TRUE(base::WriteFile(path_b, std::string_view()));
+  EXPECT_TRUE(
+      setup.EnsureDirectoryExists(path_b, /*uid=*/-1, /*gid=*/-1, 0755));
+  EXPECT_TRUE(base::DirectoryExists(path_b));
 }
 
 TEST_F(ChromeSetupTest, TestModelDoesNotExist) {

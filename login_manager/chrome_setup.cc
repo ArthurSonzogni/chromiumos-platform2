@@ -47,7 +47,6 @@
 // information about this file.
 
 using chromeos::ui::ChromiumCommandBuilder;
-using chromeos::ui::util::EnsureDirectoryExists;
 
 namespace login_manager {
 
@@ -678,7 +677,7 @@ void ChromeSetup::SetUpTimezoneSymlink(uid_t uid, gid_t gid) {
 void ChromeSetup::CreateSymlinkIfMissing(const base::FilePath& source,
                                          const base::FilePath& target,
                                          uid_t uid,
-                                         gid_t gid) {
+                                         gid_t gid) const {
   CHECK(EnsureDirectoryExists(target.DirName(), uid, gid, 0755));
   if (base::PathExists(target)) {
     return;
@@ -690,6 +689,44 @@ void ChromeSetup::CreateSymlinkIfMissing(const base::FilePath& source,
   // TODO(hidehiko): currently uid/gid are not set to the created symlink
   // for historical reason. Consider to set them.
   PCHECK(base::CreateSymbolicLink(source, target));
+}
+
+bool ChromeSetup::EnsureDirectoryExists(const base::FilePath& path,
+                                        uid_t uid,
+                                        gid_t gid,
+                                        mode_t mode) const {
+  if (!base::DirectoryExists(path)) {
+    // Remove the existing file or link if any.
+    if (!brillo::DeleteFile(path)) {
+      PLOG(ERROR) << "Unable to delete " << path.value();
+      return false;
+    }
+    if (!base::CreateDirectory(path)) {
+      PLOG(ERROR) << "Unable to create " << path.value();
+      return false;
+    }
+  }
+
+  base::ScopedFD fd(HANDLE_EINTR(
+      open(path.value().c_str(), O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Couldn't open " << path.value();
+    return false;
+  }
+
+  if (fchown(fd.get(), uid, gid) != 0) {
+    PLOG(ERROR) << "Couldn't chown " << path.value() << " to " << uid << ":"
+                << gid;
+    return false;
+  }
+
+  if (fchmod(fd.get(), mode) != 0) {
+    PLOG(ERROR) << "Unable to chmod " << path.value() << " to " << std::oct
+                << mode;
+    return false;
+  }
+
+  return true;
 }
 
 void SetUpSchedulerFlags(ChromiumCommandBuilder* builder,

@@ -255,7 +255,6 @@ if (use.test) {
       "subprocess_test.cc",
       "system_utils_test.cc",
       "user_policy_service_test.cc",
-      "util_test.cc",
       "validator_utils_test.cc",
     ]
     if (use.arc_adb_sideloading) {
