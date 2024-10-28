@@ -409,9 +409,14 @@ void VshForwarder::PrepareExec(
     }
   }
 
-  // Get shell from passwd file and prefix argv[0] with "-" to indicate a
-  // login shell.
-  std::string login_shell = base::FilePath(passwd->pw_shell).BaseName().value();
+  // Get shell from passwd file. If no shell is specified, default to /bin/sh.
+  std::string shell = std::string(passwd->pw_shell);
+  if (shell.empty()) {
+    shell = "/bin/sh";
+  }
+
+  // Prefix shell argv[0] with "-" to indicate a login shell.
+  std::string login_shell = base::FilePath(shell).BaseName().value();
   login_shell.insert(0, "-");
 
   // Set up the environment. First include any inherited environment variables,
@@ -443,7 +448,7 @@ void VshForwarder::PrepareExec(
 
   // Set SHELL and HOME as basic required environment variables. It doesn't
   // make sense for the remote to override these anyway.
-  env_map["SHELL"] = std::string(passwd->pw_shell);
+  env_map["SHELL"] = shell;
   env_map["HOME"] = std::string(passwd->pw_dir);
 
   // Collapse the map into a vector of key-value pairs, then create the final
@@ -468,7 +473,7 @@ void VshForwarder::PrepareExec(
 
   if (connection_request.argv().empty()) {
     argv = std::vector<const char*>({login_shell.c_str(), nullptr});
-    executable = passwd->pw_shell;
+    executable = shell.c_str();
   } else {
     // Add nullptr at end.
     argv.resize(args.size() + 1);
