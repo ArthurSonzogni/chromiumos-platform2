@@ -81,6 +81,7 @@ void DlcClient::OnDlcStateChangedConnect(const std::string& interface,
 
 void DlcClient::InstallDlc(const std::set<std::string>& dlc_ids) {
   for (const std::string& id : dlc_ids) {
+    LOG(INFO) << "Requesting installation of dlc_id=" << id;
     dlcservice::InstallRequest install_request;
     install_request.set_id(id);
     dlcservice_client_->InstallAsync(
