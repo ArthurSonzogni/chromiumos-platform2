@@ -4,6 +4,7 @@
 
 #include "printscanmgr/daemon/lp_tools.h"
 
+#include <errno.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -75,14 +76,13 @@ int LpToolsImpl::RunCommand(const std::string& command,
         old_sa));
     int stdin_fd = process.GetPipe(STDIN_FILENO);
 
-    bool succeeded = true;
     if (std_input) {
-      succeeded &= base::WriteFileDescriptor(stdin_fd, *std_input);
+      if (!base::WriteFileDescriptor(stdin_fd, *std_input)) {
+        LOG(ERROR) << "Writing file descriptor failed for process: " << command;
+      }
     }
-    succeeded &= IGNORE_EINTR(close(stdin_fd)) == 0;
-    // Kill the process if writing to or closing the pipe fails.
-    if (!succeeded) {
-      process.Kill(SIGKILL, 0);
+    if (IGNORE_EINTR(close(stdin_fd)) != 0) {
+      LOG(ERROR) << "Closing file descriptor failed with errno: " << errno;
     }
     result = process.Wait();
     if (out) {
