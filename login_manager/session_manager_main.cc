@@ -18,6 +18,7 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
+#include <base/containers/extend.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -137,6 +138,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Parse the base Chrome command.
+  // TODO(hidehiko): move to ChromeSetup.
   string command_flag(switches::kChromeCommandDefault);
   if (cl->HasSwitch(switches::kChromeCommand))
     command_flag = cl->GetSwitchValueASCII(switches::kChromeCommand);
@@ -150,17 +152,12 @@ int main(int argc, char* argv[]) {
   ConfigureNonUrgentCpuset(&cros_config);
 
   // Set things up for running Chrome.
-  bool is_developer_end_user = false;
-  map<string, string> env_var_map;
-  vector<string> args, env_vars;
-  uid_t uid = 0;
+  // TODO(hidehiko): move FeatureManagement to ChromeSetup.
   segmentation::FeatureManagement feature_management;
-
-  PerformChromeSetup(&cros_config, &feature_management, &is_developer_end_user,
-                     &env_var_map, &args, &uid);
-  command.insert(command.end(), args.begin(), args.end());
-  for (const auto& it : env_var_map)
-    env_vars.push_back(it.first + "=" + it.second);
+  std::optional<login_manager::ChromeSetup::Result> chrome_setup =
+      login_manager::ChromeSetup(cros_config, feature_management).Run();
+  CHECK(chrome_setup.has_value());
+  base::Extend(command, std::move(chrome_setup->args));
 
   // Shim that wraps system calls, file system ops, etc.
   SystemUtilsImpl system;
@@ -189,7 +186,7 @@ int main(int argc, char* argv[]) {
   const bool hang_detection_file_exists =
       base::PathExists(flag_file_dir.Append(kHangDetectionFlagFile));
   const bool enable_hang_detection =
-      !is_developer_end_user || hang_detection_file_exists;
+      !chrome_setup->is_developer_end_user || hang_detection_file_exists;
 
   base::TimeDelta hang_detection_interval = kHangDetectionInterval;
   int hang_detection_retires = kHangDetectionRetriesStable;
@@ -266,8 +263,8 @@ int main(int argc, char* argv[]) {
   // This job encapsulates the command specified on the command line, and the
   // runtime options for it.
   auto browser_job = std::make_unique<BrowserJob>(
-      command, env_vars, &checker, &metrics, &system, config,
-      std::make_unique<login_manager::Subprocess>(uid, &system));
+      command, chrome_setup->env, &checker, &metrics, &system, config,
+      std::make_unique<login_manager::Subprocess>(chrome_setup->uid, &system));
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
@@ -275,8 +272,9 @@ int main(int argc, char* argv[]) {
   brillo_loop.SetAsCurrent();
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
-      std::move(browser_job), uid, ns_path, kKillTimeout, enable_hang_detection,
-      hang_detection_interval, hang_detection_retires, &metrics, &system);
+      std::move(browser_job), chrome_setup->uid, ns_path, kKillTimeout,
+      enable_hang_detection, hang_detection_interval, hang_detection_retires,
+      &metrics, &system);
 
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.

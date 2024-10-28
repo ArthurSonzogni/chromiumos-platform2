@@ -34,6 +34,39 @@ class FeatureManagement;
 
 namespace login_manager {
 
+// Sets up environment, command line flag, and env vars etc. to run
+// chromeos-chrome.
+class ChromeSetup {
+ public:
+  ChromeSetup(brillo::CrosConfigInterface& cros_config,
+              segmentation::FeatureManagement& feature_management);
+  ChromeSetup(const ChromeSetup&) = delete;
+  ChromeSetup& operator=(const ChromeSetup&) = delete;
+  ~ChromeSetup();
+
+  struct Result {
+    // Command line arguments to launch chromeos-chrome.
+    std::vector<std::string> args;
+
+    // Environment values. Each element is in "KEY=value" format.
+    std::vector<std::string> env;
+
+    // Whether the user is developer.
+    bool is_developer_end_user;
+
+    // The UID to run chrome. Practically, chronos user.
+    uid_t uid;
+  };
+  // Runs the set up, and returns parameters/attributes to launch
+  // chromeos-chrome.
+  std::optional<Result> Run();
+
+ private:
+  // TODO(hidehiko): Mark them as const.
+  brillo::CrosConfigInterface& cros_config_;
+  segmentation::FeatureManagement& feature_management_;
+};
+
 // Property name of the wallpaper setting in CrosConfig.
 extern const char kWallpaperProperty[];
 

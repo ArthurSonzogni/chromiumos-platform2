@@ -12,6 +12,7 @@
 #include <memory>
 #include <set>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -620,6 +621,32 @@ void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
 }
 
 }  // namespace
+
+ChromeSetup::ChromeSetup(brillo::CrosConfigInterface& cros_config,
+                         segmentation::FeatureManagement& feature_management)
+    : cros_config_(cros_config), feature_management_(feature_management) {}
+
+ChromeSetup::~ChromeSetup() = default;
+
+std::optional<ChromeSetup::Result> ChromeSetup::Run() {
+  bool is_developer_end_user = false;
+  std::map<std::string, std::string> env_vars;
+  std::vector<std::string> args;
+  uid_t uid = 0;
+  PerformChromeSetup(&cros_config_, &feature_management_,
+                     &is_developer_end_user, &env_vars, &args, &uid);
+  std::vector<std::string> env;
+  for (auto& item : env_vars) {
+    env.push_back(
+        base::StringPrintf("%s=%s", item.first.c_str(), item.second.c_str()));
+  }
+  return Result{
+      std::move(args),
+      std::move(env),
+      is_developer_end_user,
+      uid,
+  };
+}
 
 void SetUpSchedulerFlags(ChromiumCommandBuilder* builder,
                          brillo::CrosConfigInterface* cros_config) {
