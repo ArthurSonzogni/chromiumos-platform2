@@ -40,8 +40,9 @@ void ClearMetricsLibraryForTesting() {
 }
 
 void ReportEnumMetric(const std::string& metric, int sample, int max) {
-  if (!g_metrics)
+  if (!g_metrics) {
     return;
+  }
 
   g_metrics->SendEnumToUMA(metric, sample, max);
 }

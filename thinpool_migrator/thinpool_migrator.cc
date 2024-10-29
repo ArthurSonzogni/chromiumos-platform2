@@ -78,8 +78,9 @@ ThinpoolMigrator::ThinpoolMigrator()
 
 void ThinpoolMigrator::SetState(MigrationStatus::State state) {
   status_.set_state(state);
-  if (!PersistMigrationStatus())
+  if (!PersistMigrationStatus()) {
     LOG(WARNING) << "Failed to persist migration status";
+  }
 }
 
 bool ThinpoolMigrator::Migrate(bool dry_run) {
@@ -201,8 +202,9 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
 bool ThinpoolMigrator::ShrinkStatefulFilesystem() {
   ScopedTimerReporter timer(kResizeTimeHistogram);
 
-  if (!ReplayExt4Journal())
+  if (!ReplayExt4Journal()) {
     return false;
+  }
 
   if (!ResizeStatefulFilesystem(resized_filesystem_size_)) {
     return false;
@@ -390,8 +392,9 @@ bool ThinpoolMigrator::ResizeStatefulFilesystem(uint64_t size) {
   resize2fs.AddArg("/sbin/resize2fs");
   resize2fs.AddArg("-f");
   resize2fs.AddArg(block_device_.value());
-  if (size != 0)
+  if (size != 0) {
     resize2fs.AddArg(base::NumberToString(size / 4096));
+  }
 
   resize2fs.RedirectOutputToMemory(true);
   resize2fs.SetCloseUnusedFileDescriptors(true);
