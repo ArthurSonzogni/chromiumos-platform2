@@ -56,17 +56,17 @@ CrosFpBiometricsManager::StartEnrollSession(std::string user_id,
     return base::unexpected(kTemplatesFull);
   }
 
+  if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
+    LOG(ERROR) << kFpHwUnavailable;
+    return base::unexpected(kFpHwUnavailable);
+  }
+
   std::vector<uint8_t> validation_val;
   if (!RequestEnrollImage(BiodStorageInterface::RecordMetadata{
           kRecordFormatVersion, BiodStorage::GenerateNewRecordId(),
           std::move(user_id), std::move(label), std::move(validation_val)})) {
     LOG(ERROR) << kEnrollImageNotRequested;
     return base::unexpected(kEnrollImageNotRequested);
-  }
-
-  if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
-    LOG(ERROR) << kFpHwUnavailable;
-    return base::unexpected(kFpHwUnavailable);
   }
 
   num_enrollment_captures_ = 0;
@@ -82,14 +82,14 @@ CrosFpBiometricsManager::StartAuthSession() {
     return base::unexpected(kAuthSessionExists);
   }
 
-  if (!RequestMatch()) {
-    LOG(ERROR) << kMatchNotRequested;
-    return base::unexpected(kMatchNotRequested);
-  }
-
   if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
     LOG(ERROR) << kFpHwUnavailable;
     return base::unexpected(kFpHwUnavailable);
+  }
+
+  if (!RequestMatch()) {
+    LOG(ERROR) << kMatchNotRequested;
+    return base::unexpected(kMatchNotRequested);
   }
 
   return BiometricsManager::AuthSession(session_weak_factory_.GetWeakPtr());

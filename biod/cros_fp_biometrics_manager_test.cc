@@ -347,6 +347,9 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionStartStopSuccess) {
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
   // Expect biod will check if there is space for a new template.
   EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(1));
+  // Expect biod not to return any fingerprint hardware errors.
+  EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillOnce(Return(ec::FpSensorErrors::kNone));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
       .WillOnce(Return(true));
 
@@ -354,10 +357,6 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
   EXPECT_CALL(*mock_cros_dev_,
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
       .WillOnce(Return(true));
-
-  // Expect biod not to return any fingerprint hardware errors.
-  EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
-      .WillOnce(Return(ec::FpSensorErrors::kNone));
 
   auto enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
   EXPECT_TRUE(enroll.has_value());
@@ -367,11 +366,9 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionHwFailure) {
   ON_CALL(*mock_cros_dev_, MaxTemplateCount).WillByDefault(Return(1));
-  ON_CALL(*mock_cros_dev_,
-          SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
-      .WillByDefault(Return(true));
-  ON_CALL(*mock_cros_dev_, GetHwErrors())
-      .WillByDefault(Return(ec::FpSensorErrors::kBadHardwareID));
+  EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillOnce(Return(ec::FpSensorErrors::kBadHardwareID));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).Times(0);
 
   auto enroll = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
   EXPECT_FALSE(enroll.has_value());
@@ -442,10 +439,9 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartAuthSessionHwFailure) {
-  ON_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillByDefault(Return(true));
-  ON_CALL(*mock_cros_dev_, GetHwErrors())
-      .WillByDefault(Return(ec::FpSensorErrors::kBadHardwareID));
+  EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillOnce(Return(ec::FpSensorErrors::kBadHardwareID));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).Times(0);
 
   auto auth = cros_fp_biometrics_manager_->StartAuthSession();
   EXPECT_FALSE(auth.has_value());
@@ -477,13 +473,13 @@ TEST_F(CrosFpBiometricsManagerTest, TestDoEnrollImageEventSuccess) {
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {
-  // Expect that biod will ask FPMCU to set the match mode.
-  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
-      .WillOnce(Return(true));
-
   // Expect biod not to return any fingerprint hardware errors.
   EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
       .WillOnce(Return(ec::FpSensorErrors::kNone));
+
+  // Expect that biod will ask FPMCU to set the match mode.
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
+      .WillOnce(Return(true));
 
   // Start auth session.
   auto auth = cros_fp_biometrics_manager_->StartAuthSession();
