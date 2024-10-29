@@ -4768,6 +4768,23 @@ def bucs_encode(bucs_config):
     )
 
 
+def bdmm_encode(bdmm_config):
+    """Creates and returns Bluetooth Dual Mac with given config.
+
+    Args:
+        bdmm_config: Bluetooth Dual Mac configuration.
+
+    Returns:
+        Bluetooth Dual Mac configuration encoded as bytearray.
+    """
+
+    if bdmm_config.revision != 1:
+        return bytearray(0)
+    return hex_8bit(bdmm_config.revision) + hex_8bit(
+        bdmm_config.dual_mac_enable
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4827,6 +4844,9 @@ def _create_intel_sar_file_content(intel_config):
     # | BUCS      | 2 bytes  | Offset of Bluetooth BUCS table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | BDMM      | 2 bytes  | Offset of Bluetooth BDMM table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4839,7 +4859,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 12
+    sar_configs = 13
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4929,6 +4949,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set bucs offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bdmm"):
+        data = bdmm_encode(intel_config.bdmm)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bdmm offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
