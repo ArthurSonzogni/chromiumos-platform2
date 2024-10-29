@@ -38,14 +38,15 @@ namespace {
 // systems with more W+X mounts are more likely to send a crash report, in
 // addition to limiting the total number of uploaded reports.
 constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
-  if (wx_mount_count <= 5)
+  if (wx_mount_count <= 5) {
     return 15;
-  else if (wx_mount_count <= 10)
+  } else if (wx_mount_count <= 10) {
     return 10;
-  else if (wx_mount_count <= 15)
+  } else if (wx_mount_count <= 15) {
     return 5;
-  else
+  } else {
     return 2;
+  }
 }
 constexpr int kProcAnomalySampleFrequency = 500000;  // Five hundred thousand.
 
@@ -62,8 +63,9 @@ constexpr base::TimeDelta kUmaReportInterval = base::Hours(2);
 std::string GetNextUniquePath(const FilePaths& set, const std::string& prefix) {
   int num_common_elements = 0;
   for (base::FilePath element : set) {
-    if (absl::StartsWith(element.value(), prefix))
+    if (absl::StartsWith(element.value(), prefix)) {
       num_common_elements++;
+    }
   }
   return prefix + "_" + std::to_string(num_common_elements);
 }
@@ -419,8 +421,9 @@ void Daemon::InitAuditLogReader() {
 }
 
 void Daemon::DoAuditLogScan() {
-  if (!audit_log_reader_)
+  if (!audit_log_reader_) {
     return;
+  }
 
   std::string log_message;
   LogRecord log_record;
@@ -458,8 +461,9 @@ void Daemon::DoAuditLogScan() {
       // Report anomalous condition to UMA if not in dev mode.
       if (ShouldReport(dev_)) {
         if (!SendSecurityAnomalyToUMA(
-                SecurityAnomaly::kBlockedMemoryFileExecAttempt))
+                SecurityAnomaly::kBlockedMemoryFileExecAttempt)) {
           LOG(WARNING) << "Could not upload metrics";
+        }
       }
     }
   }

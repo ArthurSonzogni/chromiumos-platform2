@@ -25,8 +25,9 @@ TextFileReader::TextFileReader(const base::FilePath& path)
 TextFileReader::~TextFileReader() = default;
 
 bool TextFileReader::GetLine(std::string* line) {
-  if (!file_.IsValid() && !Open())
+  if (!file_.IsValid() && !Open()) {
     return false;
+  }
 
   bool end_of_file = false;
   while (!end_of_file) {
@@ -120,15 +121,17 @@ bool TextFileReader::CheckForNewFile() {
 
   // This can happen if a the file_ has been moved but a new file at file_path
   // has not been created yet.
-  if (result < 0)
+  if (result < 0) {
     return false;
+  }
 
   return inode_number_ != st.st_ino;
 }
 
 void TextFileReader::SeekToEnd() {
-  if (!file_.IsValid())
+  if (!file_.IsValid()) {
     return;
+  }
 
   skip_next_ = true;
   Clear();
@@ -136,8 +139,9 @@ void TextFileReader::SeekToEnd() {
 }
 
 void TextFileReader::SeekToBegin() {
-  if (!file_.IsValid())
+  if (!file_.IsValid()) {
     return;
+  }
 
   skip_next_ = false;
   Clear();

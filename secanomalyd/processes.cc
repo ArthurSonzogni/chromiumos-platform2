@@ -219,8 +219,9 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
   }
 
   absl::Cleanup close_dir = [=] {
-    if (closedir(pid_dir_ptr) == -1)
+    if (closedir(pid_dir_ptr) == -1) {
       PLOG(ERROR) << "Failed to close dir " << pid_path;
+    }
   };
 
   int pid_dir_fd = HANDLE_EINTR(dirfd(pid_dir_ptr));
@@ -276,13 +277,15 @@ MaybeProcEntry ProcEntry::CreateFromPath(const base::FilePath& pid_path) {
       }
     }
     if (base::StartsWith(line, "NoNewPrivs:") &&
-        line.substr(line.rfind("\t") + 1) == "1")
+        line.substr(line.rfind("\t") + 1) == "1") {
       // For more information on no new privs see
       // https://www.kernel.org/doc/html/v4.19/userspace-api/no_new_privs.html
       sandbox_status.set(kNoNewPrivsBit);
+    }
     if (base::StartsWith(line, "Seccomp:") &&
-        line.substr(line.rfind("\t") + 1) != kSecCompModeDisabled)
+        line.substr(line.rfind("\t") + 1) != kSecCompModeDisabled) {
       sandbox_status.set(kSecCompBit);
+    }
   }
 
   // Fail if we cannot read the status file, since just a PID is not useful.

@@ -21,8 +21,9 @@ SystemContext::SystemContext(SessionManagerProxyInterface* session_manager)
 
 void SystemContext::Refresh(bool skip_known_mount_refresh) {
   std::ignore = UpdateLoggedInState();
-  if (!skip_known_mount_refresh)
+  if (!skip_known_mount_refresh) {
     UpdateKnownMountsState();
+  }
 }
 
 bool SystemContext::UpdateLoggedInState() {
@@ -31,8 +32,8 @@ bool SystemContext::UpdateLoggedInState() {
   session_manager_->RetrieveActiveSessions(&sessions, &error);
 
   if (error) {
-    LOG(ERROR) << "Error making D-Bus proxy call to interface "
-               << "'" << session_manager_->GetObjectPath().value()
+    LOG(ERROR) << "Error making D-Bus proxy call to interface " << "'"
+               << session_manager_->GetObjectPath().value()
                << "': " << error->GetMessage();
     logged_in_ = false;
     return false;
