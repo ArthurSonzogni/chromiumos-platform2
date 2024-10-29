@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "tpm2-simulator/tpm_nvchip_utils.h"
+
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,7 +20,6 @@
 #include <brillo/userdb_utils.h>
 
 #include "tpm2-simulator/constants.h"
-#include "tpm2-simulator/tpm_nvchip_utils.h"
 
 namespace {
 
@@ -219,17 +222,17 @@ bool MountAndEnterNVChip() {
     }
   }
 
-  int64_t chip_size = 0;
-  if (!base::GetFileSize(chip_path, &chip_size)) {
+  std::optional<int64_t> chip_size = base::GetFileSize(chip_path);
+  if (!chip_size.has_value()) {
     LOG(ERROR) << "Failed to get NVChip size.";
     return false;
   }
 
-  bool migrate_nvchip = chip_size != kNVChipSize;
+  bool migrate_nvchip = chip_size.value() != kNVChipSize;
   NVChipMigrateData migrate_data;
 
   if (migrate_nvchip) {
-    if (!PrepareMigrateNVChip(chip_path, chip_size, &migrate_data)) {
+    if (!PrepareMigrateNVChip(chip_path, chip_size.value(), &migrate_data)) {
       LOG(ERROR) << "Failed to prepare migrate NVChip.";
       return false;
     }
