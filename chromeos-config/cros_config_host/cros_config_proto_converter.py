@@ -4641,6 +4641,23 @@ def bpag_encode(bpag_config):
     )
 
 
+def bbfb_encode(bbfb_config):
+    """Creates and returns Bluetooth BiQuad Bypass filter with given config.
+
+    Args:
+        bbfb_config: Bluetooth BiQuad Bypass filter configuration.
+
+    Returns:
+        Bluetooth BiQuad Bypass filter configuration encoded as bytearray.
+    """
+
+    if bbfb_config.revision != 1:
+        return bytearray(0)
+    return hex_8bit(bbfb_config.revision) + hex_8bit(
+        bbfb_config.enable_quad_filter_bypass
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4688,6 +4705,9 @@ def _create_intel_sar_file_content(intel_config):
     # | Bpag      | 2 bytes  | Offset of Bluetooth PPAG table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | BBFB      | 2 bytes  | Offset of Bluetooth BBFB table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4700,7 +4720,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 8
+    sar_configs = 9
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4762,6 +4782,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set bpag offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bbfb"):
+        data = bbfb_encode(intel_config.bbfb)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bbfb offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
