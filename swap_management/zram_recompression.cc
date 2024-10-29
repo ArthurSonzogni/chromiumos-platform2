@@ -45,43 +45,51 @@ absl::Status ZramRecompression::SetZramRecompressionConfigIfOverriden(
     params_.recomp_algorithm = value;
   } else if (key == "periodic_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.periodic_time = base::Seconds(*buf);
   } else if (key == "backoff_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.backoff_time = base::Seconds(*buf);
   } else if (key == "threshold_mib") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.threshold_mib = *buf;
   } else if (key == "recompression_huge") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.recompression_huge = *buf;
   } else if (key == "recompression_huge_idle") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.recompression_huge_idle = *buf;
   } else if (key == "recompression_idle") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.recompression_idle = *buf;
   } else if (key == "idle_min_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.idle_min_time = base::Seconds(*buf);
   } else if (key == "idle_max_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.idle_max_time = base::Seconds(*buf);
   } else {
     return absl::InvalidArgumentError("Unknown key " + key);
@@ -95,8 +103,9 @@ absl::Status ZramRecompression::EnableRecompression() {
 
   // Basic sanity check on our configuration.
   if (!params_.recompression_huge && !params_.recompression_idle &&
-      !params_.recompression_huge_idle)
+      !params_.recompression_huge_idle) {
     return absl::InvalidArgumentError("No setup for recompression page type.");
+  }
 
   // Register for suspend signal from power manager.
   PowerManagerProxy::Get()->RegisterSuspendSignal();
@@ -123,8 +132,9 @@ absl::Status ZramRecompression::InitiateRecompression(
     return absl::InvalidArgumentError("Invalid mode");
   }
 
-  if (params_.threshold_mib != 0)
+  if (params_.threshold_mib != 0) {
     ss << " threshold=" << std::to_string(params_.threshold_mib);
+  }
 
   return Utils::Get()->WriteFile(filepath, ss.str());
 }
@@ -142,16 +152,18 @@ void ZramRecompression::PeriodicRecompress() {
   }
 
   // Is recompression ongoing? If not then set the flag.
-  if (is_currently_recompressing_.exchange(true))
+  if (is_currently_recompressing_.exchange(true)) {
     return;
+  }
 
   absl::Cleanup cleanup = [&] { is_currently_recompressing_ = false; };
   absl::Status status = absl::OkStatus();
 
   // Did we recompress too recently?
   const auto time_since_recompression = base::Time::Now() - last_recompression_;
-  if (time_since_recompression < params_.backoff_time)
+  if (time_since_recompression < params_.backoff_time) {
     return;
+  }
 
   // We started on huge idle page recompression, then idle, then huge pages, if
   // enabled accordingly.
@@ -192,12 +204,13 @@ void ZramRecompression::PeriodicRecompress() {
     }
 
     // Move to the next stage.
-    if (current_recompression_mode == RECOMPRESSION_HUGE_IDLE)
+    if (current_recompression_mode == RECOMPRESSION_HUGE_IDLE) {
       current_recompression_mode = RECOMPRESSION_IDLE;
-    else if (current_recompression_mode == RECOMPRESSION_IDLE)
+    } else if (current_recompression_mode == RECOMPRESSION_IDLE) {
       current_recompression_mode = RECOMPRESSION_HUGE;
-    else
+    } else {
       current_recompression_mode = RECOMPRESSION_NONE;
+    }
   }
 }
 

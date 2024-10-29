@@ -41,14 +41,15 @@ constexpr uint32_t kSectorSize = 512;
 base::RepeatingTimer writeback_timer_;
 
 absl::StatusOr<std::string> WritebackModeToName(ZramWritebackMode mode) {
-  if (mode == WRITEBACK_IDLE)
+  if (mode == WRITEBACK_IDLE) {
     return "idle";
-  else if (mode == WRITEBACK_HUGE)
+  } else if (mode == WRITEBACK_HUGE) {
     return "huge";
-  else if (mode == WRITEBACK_HUGE_IDLE)
+  } else if (mode == WRITEBACK_HUGE_IDLE) {
     return "huge_idle";
-  else
+  } else {
     return absl::InvalidArgumentError("Invalid mode");
+  }
 }
 
 }  // namespace
@@ -61,17 +62,20 @@ absl::StatusOr<std::unique_ptr<LoopDev>> LoopDev::Create(
 absl::StatusOr<std::unique_ptr<LoopDev>> LoopDev::Create(
     const std::string& path, bool direct_io, uint32_t sector_size) {
   std::vector<std::string> command({"/sbin/losetup", "--show"});
-  if (direct_io)
+  if (direct_io) {
     command.push_back("--direct-io=on");
-  if (sector_size != 0)
+  }
+  if (sector_size != 0) {
     command.push_back("--sector-size=" + std::to_string(sector_size));
+  }
   command.push_back("-f");
   command.push_back(path);
 
   std::string loop_dev_path;
   absl::Status status = Utils::Get()->RunProcessHelper(command, &loop_dev_path);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   base::TrimWhitespaceASCII(loop_dev_path, base::TRIM_ALL, &loop_dev_path);
 
   return std::unique_ptr<LoopDev>(new LoopDev(loop_dev_path));
@@ -97,14 +101,16 @@ absl::StatusOr<std::unique_ptr<DmDev>> DmDev::Create(
 
   status = Utils::Get()->RunProcessHelper(
       {"/sbin/dmsetup", "create", name, "--table", table_fmt});
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   std::unique_ptr<DmDev> dm_dev = std::unique_ptr<DmDev>(new DmDev(name));
 
   status = dm_dev->Wait();
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   return std::move(dm_dev);
 }
@@ -139,15 +145,17 @@ absl::Status DmDev::Wait() {
 
   base::Time startTime = base::Time::Now();
   while (true) {
-    if (base::Time::Now() - startTime > kMaxWaitTime)
+    if (base::Time::Now() - startTime > kMaxWaitTime) {
       return absl::UnavailableError(
           path + " is not available after " +
           std::to_string(kMaxWaitTime.InMilliseconds()) + " ms.");
+    }
 
     if (Utils::Get()
             ->PathExists(base::FilePath("/dev/mapper/").Append(name_))
-            .ok())
+            .ok()) {
       return absl::OkStatus();
+    }
 
     base::PlatformThread::Sleep(kRetryDelay);
   }
@@ -185,19 +193,22 @@ absl::Status ZramWriteback::PrerequisiteCheck(uint32_t size) {
   // Don't allow |size| less than 128MiB or more than 6GiB to be configured.
   constexpr uint32_t kZramWritebackMinSize = 128;
   constexpr uint32_t kZramWritebackMaxSize = 6144;
-  if (size < kZramWritebackMinSize || size > kZramWritebackMaxSize)
+  if (size < kZramWritebackMinSize || size > kZramWritebackMaxSize) {
     return absl::InvalidArgumentError("Invalid size specified.");
+  }
 
   // kZramBackingDevice must contains none, no writeback is setup before.
   std::string backing_dev;
   status = Utils::Get()->ReadFileToString(base::FilePath(kZramBackingDevice),
                                           &backing_dev);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   base::TrimWhitespaceASCII(backing_dev, base::TRIM_ALL, &backing_dev);
-  if (backing_dev != "none")
+  if (backing_dev != "none") {
     return absl::AlreadyExistsError(
         "Zram already has a backing device assigned.");
+  }
 
   // kZramWritebackIntegrityMount must not be mounted.
   // rmdir(2) will return -EBUSY if the target is mounted.
@@ -217,18 +228,20 @@ absl::Status ZramWriteback::GetWritebackInfo(uint32_t size) {
   // f_bsize is the optimal transfer block size.
   absl::StatusOr<struct statfs> stateful_statfs =
       Utils::Get()->GetStatfs(kStatefulPartitionDir);
-  if (!stateful_statfs.ok())
+  if (!stateful_statfs.ok()) {
     return stateful_statfs.status();
+  }
 
   // Never allow swapping to disk when the overall free diskspace is less
   // than 15% of the overall capacity.
   constexpr int kMinFreeStatefulPct = 15;
   uint64_t stateful_free_pct =
       100 * (*stateful_statfs).f_bfree / (*stateful_statfs).f_blocks;
-  if (stateful_free_pct < kMinFreeStatefulPct)
+  if (stateful_free_pct < kMinFreeStatefulPct) {
     return absl::ResourceExhaustedError(
         "Zram writeback cannot be enabled free disk space" +
         std::to_string(stateful_free_pct) + "% is less than the minimum 15%");
+  }
 
   stateful_block_size_ = (*stateful_statfs).f_bsize;
   wb_nr_blocks_ = size * kMiB / stateful_block_size_;
@@ -263,11 +276,13 @@ absl::Status ZramWriteback::CreateDmDevicesAndEnableWriteback() {
   ScopedFilePath scoped_filepath(
       base::FilePath(kStatefulPartitionDir).Append(kZramWritebackBackFileName));
   status = Utils::Get()->WriteFile(scoped_filepath.get(), std::string());
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   status = Utils::Get()->Fallocate(scoped_filepath.get(), wb_size_bytes_);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // Create writeback loop device.
   // See drivers/block/loop.c:230
@@ -277,23 +292,27 @@ absl::Status ZramWriteback::CreateDmDevicesAndEnableWriteback() {
   // needn't transform transfer.
   auto writeback_loop = LoopDev::Create(scoped_filepath.get().value(), true,
                                         stateful_block_size_);
-  if (!writeback_loop.ok())
+  if (!writeback_loop.ok()) {
     return writeback_loop.status();
+  }
   std::string writeback_loop_path = (*writeback_loop)->GetPath();
 
   // Create and mount ramfs for integrity loop device back file.
   status = Utils::Get()->CreateDirectory(
       base::FilePath(kZramWritebackIntegrityMount));
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   status = Utils::Get()->SetPosixFilePermissions(
       base::FilePath(kZramWritebackIntegrityMount), 0700);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   status = Utils::Get()->Mount("none", kZramWritebackIntegrityMount, "ramfs", 0,
                                "noexec,nosuid,noatime,mode=0700");
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // Create integrity loop device.
   // See drivers/md/dm-integrity.c and
@@ -332,12 +351,14 @@ absl::Status ZramWriteback::CreateDmDevicesAndEnableWriteback() {
   // 0s.
   status = Utils::Get()->WriteFile(scoped_filepath.get(),
                                    std::string(integrity_size_bytes, 0));
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   auto integrity_loop = LoopDev::Create(scoped_filepath.get().value());
-  if (!integrity_loop.ok())
+  if (!integrity_loop.ok()) {
     return integrity_loop.status();
+  }
   std::string integrity_loop_path = (*integrity_loop)->GetPath();
 
   // Create a dm-integrity device to use with dm-crypt.
@@ -350,13 +371,15 @@ absl::Status ZramWriteback::CreateDmDevicesAndEnableWriteback() {
       kDmIntegrityTagSize, stateful_block_size_, integrity_loop_path.c_str(),
       kDmIntegrityBufSize / kSectorSize);
   auto integrity_dm = DmDev::Create(kZramIntegrityName, table_fmt);
-  if (!integrity_dm.ok())
+  if (!integrity_dm.ok()) {
     return integrity_dm.status();
+  }
 
   // Create a dm-crypt device for writeback.
   absl::StatusOr<std::string> rand_hex32 = Utils::Get()->GenerateRandHex(32);
-  if (!rand_hex32.ok())
+  if (!rand_hex32.ok()) {
     return rand_hex32.status();
+  }
 
   table_fmt = base::StringPrintf(
       "0 %" PRId64
@@ -366,8 +389,9 @@ absl::Status ZramWriteback::CreateDmDevicesAndEnableWriteback() {
       stateful_block_size_, kDmIntegrityTagSize);
 
   auto writeback_dm = DmDev::Create(kZramWritebackName, table_fmt);
-  if (!writeback_dm.ok())
+  if (!writeback_dm.ok()) {
     return writeback_dm.status();
+  }
 
   // Set up dm-crypt device as the zram writeback backing device.
   return Utils::Get()->WriteFile(base::FilePath(kZramBackingDevice),
@@ -378,12 +402,14 @@ absl::Status ZramWriteback::EnableWriteback(uint32_t size) {
   absl::Status status = absl::OkStatus();
 
   status = PrerequisiteCheck(size);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   status = GetWritebackInfo(size);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   status = CreateDmDevicesAndEnableWriteback();
   if (!status.ok()) {
@@ -402,8 +428,9 @@ absl::Status ZramWriteback::SetWritebackLimit(uint32_t num_pages) {
       base::FilePath(kZramSysfsDir).Append("writeback_limit_enable");
 
   absl::Status status = Utils::Get()->WriteFile(filepath, "1");
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   filepath = base::FilePath(kZramSysfsDir).Append("writeback_limit");
 
@@ -413,8 +440,9 @@ absl::Status ZramWriteback::SetWritebackLimit(uint32_t num_pages) {
 absl::Status ZramWriteback::InitiateWriteback(ZramWritebackMode mode) {
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
   absl::StatusOr<std::string> mode_str = WritebackModeToName(mode);
-  if (!mode_str.ok())
+  if (!mode_str.ok()) {
     return mode_str.status();
+  }
 
   return Utils::Get()->WriteFile(filepath, *mode_str);
 }
@@ -428,64 +456,76 @@ absl::Status ZramWriteback::SetZramWritebackConfigIfOverriden(
     const std::string& key, const std::string& value) {
   if (key == "backing_dev_size_mib") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.backing_dev_size_mib = *buf;
   } else if (key == "periodic_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.periodic_time = base::Seconds(*buf);
   } else if (key == "backoff_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.backoff_time = base::Seconds(*buf);
   } else if (key == "min_pages") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.min_pages = *buf;
   } else if (key == "max_pages") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.max_pages = *buf;
   } else if (key == "writeback_huge") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.writeback_huge = *buf;
   } else if (key == "writeback_huge_idle") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.writeback_huge_idle = *buf;
   } else if (key == "writeback_idle") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.writeback_idle = *buf;
   } else if (key == "idle_min_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.idle_min_time = base::Seconds(*buf);
   } else if (key == "idle_max_time_sec") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.idle_max_time = base::Seconds(*buf);
     SuspendHistory::Get()->SetMaxIdleDuration(params_.idle_max_time);
   } else if (key == "max_pages_per_day") {
     auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.max_pages_per_day = *buf;
   } else if (key == "suspend_aware") {
     auto buf = Utils::Get()->SimpleAtob(value);
-    if (!buf.ok())
+    if (!buf.ok()) {
       return buf.status();
+    }
     params_.suspend_aware = *buf;
   } else {
     return absl::InvalidArgumentError("Unknown key " + key);
@@ -501,11 +541,13 @@ absl::StatusOr<uint64_t> ZramWriteback::GetAllowedWritebackLimit() {
   uint64_t num_pages = 0;
 
   absl::StatusOr<ZramMmStat> zram_mm_stat = GetZramMmStat();
-  if (!zram_mm_stat.ok())
+  if (!zram_mm_stat.ok()) {
     return zram_mm_stat.status();
+  }
   absl::StatusOr<ZramBdStat> zram_bd_stat = GetZramBdStat();
-  if (!zram_bd_stat.ok())
+  if (!zram_bd_stat.ok()) {
     return zram_bd_stat.status();
+  }
 
   // All calculations are performed in basis points, 100 bps = 1.00%. The
   // number of pages allowed to be written back follows a simple linear
@@ -543,8 +585,9 @@ absl::StatusOr<uint64_t> ZramWriteback::GetWritebackLimit() {
   std::string buf;
   absl::Status status = Utils::Get()->ReadFileToString(
       base::FilePath(kZramSysfsDir).Append("writeback_limit"), &buf);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   return Utils::Get()->SimpleAtoi<uint64_t>(buf);
 }
@@ -556,15 +599,17 @@ void ZramWriteback::PeriodicWriteback() {
   }
 
   // Is writeback ongoing? If not then set the flag.
-  if (is_currently_writing_back_.exchange(true))
+  if (is_currently_writing_back_.exchange(true)) {
     return;
+  }
 
   absl::Cleanup cleanup = [&] { is_currently_writing_back_ = false; };
 
   // Did we writeback too recently?
   const auto time_since_writeback = base::Time::Now() - last_writeback_;
-  if (time_since_writeback < params_.backoff_time)
+  if (time_since_writeback < params_.backoff_time) {
     return;
+  }
 
   absl::StatusOr<uint64_t> num_pages = GetAllowedWritebackLimit();
   if (!num_pages.ok() || *num_pages == 0) {
@@ -639,25 +684,28 @@ void ZramWriteback::PeriodicWriteback() {
       if (num_wb_pages > 0) {
         absl::StatusOr<std::string> mode =
             WritebackModeToName(current_writeback_mode);
-        if (mode.ok())
+        if (mode.ok()) {
           LOG(INFO) << "zram writeback " << num_wb_pages << " " << *mode
                     << " pages.";
+        }
         AddRecord(num_wb_pages);
       }
 
       // Update writeback_limit for next mode, or exit if no more quota.
-      if (*writeback_limit_after == 0)
+      if (*writeback_limit_after == 0) {
         return;
+      }
       writeback_limit = writeback_limit_after;
     }
 
     // Move to the next stage.
-    if (current_writeback_mode == WRITEBACK_HUGE_IDLE)
+    if (current_writeback_mode == WRITEBACK_HUGE_IDLE) {
       current_writeback_mode = WRITEBACK_IDLE;
-    else if (current_writeback_mode == WRITEBACK_IDLE)
+    } else if (current_writeback_mode == WRITEBACK_IDLE) {
       current_writeback_mode = WRITEBACK_HUGE;
-    else
+    } else {
       current_writeback_mode = WRITEBACK_NONE;
+    }
   }
 }
 
@@ -666,36 +714,42 @@ absl::Status ZramWriteback::Start() {
 
   // Basic sanity check on our configuration.
   if (!params_.writeback_huge && !params_.writeback_idle &&
-      !params_.writeback_huge_idle)
+      !params_.writeback_huge_idle) {
     return absl::InvalidArgumentError("No setup for writeback page type.");
+  }
 
   // We don't start again if writeback is enabled.
   std::string buf;
   absl::Status status =
       Utils::Get()->ReadFileToString(base::FilePath(kZramBackingDevice), &buf);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   base::TrimWhitespaceASCII(buf, base::TRIM_ALL, &buf);
-  if (buf.empty())
+  if (buf.empty()) {
     return absl::InvalidArgumentError(std::string(kZramBackingDevice) +
                                       " is empty.");
+  }
   if (buf != "none") {
     LOG(WARNING) << "Zram writeback is already enabled.";
     return absl::OkStatus();
   }
 
   status = EnableWriteback(params_.backing_dev_size_mib);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   status = Utils::Get()->ReadFileToString(
       base::FilePath(kZramSysfsDir).Append("disksize"), &buf);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
   absl::StatusOr<uint64_t> zram_disksize_byte =
       Utils::Get()->SimpleAtoi<uint64_t>(buf);
-  if (!zram_disksize_byte.ok())
+  if (!zram_disksize_byte.ok()) {
     return zram_disksize_byte.status();
+  }
   zram_nr_pages_ = *zram_disksize_byte / kPageSize;
 
   // Setup for suspend history.
@@ -722,12 +776,14 @@ void ZramWriteback::AddRecord(uint64_t wb_pages) {
 uint64_t ZramWriteback::GetWritebackDailyLimit() {
   // Evict expired records first.
   while (!history_.empty() &&
-         base::TimeTicks::Now() - history_.back().first >= base::Days(1))
+         base::TimeTicks::Now() - history_.back().first >= base::Days(1)) {
     history_.pop_back();
+  }
 
   uint64_t sum_history_wb_pages = 0;
-  for (auto& e : history_)
+  for (auto& e : history_) {
     sum_history_wb_pages += e.second;
+  }
 
   // Return 0 if exceed period limit.
   return std::max(params_.max_pages_per_day - sum_history_wb_pages,

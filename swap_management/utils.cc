@@ -26,8 +26,9 @@ Utils* Utils::Get() {
 
 void Utils::OverrideForTesting(Utils* util) {
   [[maybe_unused]] static bool is_overridden = []() -> bool {
-    if (*GetSingleton<Utils>())
+    if (*GetSingleton<Utils>()) {
       delete *GetSingleton<Utils>();
+    }
     return true;
   }();
   *GetSingleton<Utils>() = util;
@@ -38,17 +39,20 @@ void Utils::OverrideForTesting(Utils* util) {
 // On failure, return corresponding absl error based on errno and append stderr.
 absl::Status Utils::RunProcessHelper(const std::vector<std::string>& commands,
                                      std::string* output) {
-  if (commands.empty())
+  if (commands.empty()) {
     return absl::InvalidArgumentError("Empty input for RunProcessHelper.");
+  }
 
   brillo::ProcessImpl process;
-  for (auto& com : commands)
+  for (auto& com : commands) {
     process.AddArg(com);
+  }
 
   process.RedirectOutputToMemory(true);
 
-  if (process.Run() != EXIT_SUCCESS)
+  if (process.Run() != EXIT_SUCCESS) {
     return ErrnoToStatus(errno, process.GetOutputString(STDOUT_FILENO));
+  }
 
   *output = process.GetOutputString(STDOUT_FILENO);
 
@@ -61,19 +65,22 @@ absl::Status Utils::RunProcessHelper(const std::vector<std::string>& commands) {
   absl::Status status = absl::OkStatus();
 
   status = RunProcessHelper(commands, &output);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
-  if (!output.empty())
+  if (!output.empty()) {
     LOG(INFO) << commands[0] << ": " << output;
+  }
 
   return absl::OkStatus();
 }
 
 absl::Status Utils::WriteFile(const base::FilePath& path,
                               const std::string& data) {
-  if (!base::WriteFile(path, data))
+  if (!base::WriteFile(path, data)) {
     return ErrnoToStatus(errno, "Failed to write " + path.value());
+  }
 
   return absl::OkStatus();
 }
@@ -81,8 +88,9 @@ absl::Status Utils::WriteFile(const base::FilePath& path,
 absl::Status Utils::ReadFileToStringWithMaxSize(const base::FilePath& path,
                                                 std::string* contents,
                                                 size_t max_size) {
-  if (!base::ReadFileToStringWithMaxSize(path, contents, max_size))
+  if (!base::ReadFileToStringWithMaxSize(path, contents, max_size)) {
     return ErrnoToStatus(errno, "Failed to read " + path.value());
+  }
 
   return absl::OkStatus();
 }
@@ -94,15 +102,17 @@ absl::Status Utils::ReadFileToString(const base::FilePath& path,
 }
 
 absl::Status Utils::DeleteFile(const base::FilePath& path) {
-  if (!brillo::DeleteFile(path))
+  if (!brillo::DeleteFile(path)) {
     return ErrnoToStatus(errno, "Failed to delete " + path.value());
+  }
 
   return absl::OkStatus();
 }
 
 absl::Status Utils::PathExists(const base::FilePath& path) {
-  if (!base::PathExists(path))
+  if (!base::PathExists(path)) {
     return ErrnoToStatus(errno, path.value() + " does not exist.");
+  }
 
   return absl::OkStatus();
 }
@@ -113,26 +123,29 @@ absl::Status Utils::Fallocate(const base::FilePath& path, size_t size) {
 
   base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
   if (HANDLE_EINTR(fallocate(file.GetPlatformFile(), 0, 0,
-                             static_cast<off_t>(size))) == -1)
+                             static_cast<off_t>(size))) == -1) {
     status = ErrnoToStatus(errno, "Can not extend " + path.value() +
                                       " to size " + std::to_string(size));
+  }
 
   file.Close();
   return status;
 }
 
 absl::Status Utils::CreateDirectory(const base::FilePath& path) {
-  if (!base::CreateDirectory(path))
+  if (!base::CreateDirectory(path)) {
     return ErrnoToStatus(errno, "Can not create " + path.value());
+  }
 
   return absl::OkStatus();
 }
 
 absl::Status Utils::SetPosixFilePermissions(const base::FilePath& path,
                                             int mode) {
-  if (!base::SetPosixFilePermissions(path, mode))
+  if (!base::SetPosixFilePermissions(path, mode)) {
     return ErrnoToStatus(errno, "Failed to set permission for " + path.value() +
                                     " to " + std::to_string(mode));
+  }
 
   return absl::OkStatus();
 }
@@ -143,15 +156,17 @@ absl::Status Utils::Mount(const std::string& source,
                           uint64_t mount_flags,
                           const std::string& data) {
   if (mount(source.c_str(), target.c_str(), fs_type.c_str(), mount_flags,
-            data.c_str()) == -1)
+            data.c_str()) == -1) {
     return ErrnoToStatus(errno, "Failed to mount " + target);
+  }
 
   return absl::OkStatus();
 }
 
 absl::Status Utils::Umount(const std::string& target) {
-  if (umount(target.c_str()) == -1)
+  if (umount(target.c_str()) == -1) {
     return ErrnoToStatus(errno, "Failed to umount " + target);
+  }
 
   return absl::OkStatus();
 }
@@ -159,25 +174,28 @@ absl::Status Utils::Umount(const std::string& target) {
 absl::StatusOr<struct statfs> Utils::GetStatfs(const std::string& path) {
   struct statfs sf = {};
 
-  if (statfs(path.c_str(), &sf) == -1)
+  if (statfs(path.c_str(), &sf) == -1) {
     return ErrnoToStatus(errno, "Failed to read statfs for " + path);
+  }
 
   return std::move(sf);
 }
 
 absl::StatusOr<std::string> Utils::GenerateRandHex(size_t size) {
   std::string random_bytes = base::RandBytesAsString(size);
-  if (random_bytes.size() != size)
+  if (random_bytes.size() != size) {
     return ErrnoToStatus(errno, " Failed to generate random hex with size" +
                                     std::to_string(size));
+  }
 
   return base::HexEncode(random_bytes.data(), random_bytes.size());
 }
 
 absl::StatusOr<base::SystemMemoryInfoKB> Utils::GetSystemMemoryInfo() {
   base::SystemMemoryInfoKB meminfo;
-  if (!base::GetSystemMemoryInfo(&meminfo))
+  if (!base::GetSystemMemoryInfo(&meminfo)) {
     return absl::NotFoundError("Could not get MemTotal in /proc/meminfo");
+  }
 
   return std::move(meminfo);
 }
@@ -190,9 +208,10 @@ uint64_t Utils::RoundupMultiple(uint64_t number, uint64_t alignment) {
 
 absl::StatusOr<bool> Utils::SimpleAtob(const std::string& str) {
   bool output;
-  if (!absl::SimpleAtob(str, &output))
+  if (!absl::SimpleAtob(str, &output)) {
     return absl::InvalidArgumentError("Failed to convert " + str +
                                       " to boolean.");
+  }
   return output;
 }
 
@@ -207,9 +226,10 @@ void ScopedFilePathTraits::Free(const base::FilePath path) {
 
 absl::StatusOr<double> Utils::SimpleAtod(const std::string& str) {
   double output;
-  if (!absl::SimpleAtod(str, &output))
+  if (!absl::SimpleAtod(str, &output)) {
     return absl::InvalidArgumentError("Failed to convert " + str +
                                       " to double.");
+  }
   return output;
 }
 

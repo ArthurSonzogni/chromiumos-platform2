@@ -17,8 +17,9 @@ absl::Status MarkIdle(uint32_t age_seconds) {
   const auto age = base::Seconds(age_seconds);
 
   // Only allow marking pages as idle between 0 sec and 30 days.
-  if (age > kMaxIdleAge)
+  if (age > kMaxIdleAge) {
     return absl::OutOfRangeError("Invalid age " + std::to_string(age_seconds));
+  }
 
   base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
   return Utils::Get()->WriteFile(filepath, std::to_string(age.InSeconds()));

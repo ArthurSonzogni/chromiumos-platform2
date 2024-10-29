@@ -23,16 +23,18 @@ absl::Status ParseZramMmStat(const std::string& input,
 
   // Return false if the list size is less than number of items in ZramMmStat
   // From first version of Zram mm_stat in v4.4, there are seven fields inside.
-  if (zram_mm_stat_list.size() < 7)
+  if (zram_mm_stat_list.size() < 7) {
     return absl::InvalidArgumentError("Malformed zram mm_stat input");
+  }
 
   // In zram_drv.h we define max_used_pages as atomic_long_t which could
   // be negative, but negative value does not make sense for the
   // variable. return false if negative max_used_pages.
   int64_t tmp_mem_used_max = 0;
   if (!base::StringToInt64(zram_mm_stat_list[4], &tmp_mem_used_max) ||
-      tmp_mem_used_max < 0)
+      tmp_mem_used_max < 0) {
     return absl::InvalidArgumentError("Bad value for zram max_used_pages");
+  }
   zram_mm_stat->mem_used_max = static_cast<uint64_t>(tmp_mem_used_max);
 
   bool status =
@@ -52,13 +54,15 @@ absl::Status ParseZramMmStat(const std::string& input,
   uint64_t value = 0;
   if (zram_mm_stat_list.size() > kHugeIdx) {
     status &= base::StringToUint64(zram_mm_stat_list[kHugeIdx], &value);
-    if (status)
+    if (status) {
       zram_mm_stat->huge_pages = value;
+    }
   }
   if (zram_mm_stat_list.size() > kHugeSinceIdx) {
     status &= base::StringToUint64(zram_mm_stat_list[kHugeSinceIdx], &value);
-    if (status)
+    if (status) {
       zram_mm_stat->huge_pages_since = value;
+    }
   }
 
   return status ? absl::OkStatus()
@@ -71,8 +75,9 @@ absl::Status ParseZramBdStat(const std::string& input,
       input, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Return false if the list size is less than number of items in ZramBdStat
-  if (zram_bd_stat_list.size() < 3)
+  if (zram_bd_stat_list.size() < 3) {
     return absl::InvalidArgumentError("Malformed zram bd_stat input");
+  }
 
   bool status =
       base::StringToUint64(zram_bd_stat_list[0], &zram_bd_stat->bd_count) &&
@@ -89,8 +94,9 @@ absl::Status ParseZramIoStat(const std::string& input,
       input, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   // Return false if the list size is less than number of items in ZramIoStat
-  if (zram_io_stat_list.size() < 3)
+  if (zram_io_stat_list.size() < 3) {
     return absl::InvalidArgumentError("Malformed zram bd_stat input");
+  }
 
   bool status =
       base::StringToUint64(zram_io_stat_list[0], &zram_io_stat->failed_reads) &&
@@ -107,13 +113,15 @@ absl::StatusOr<ZramBdStat> GetZramBdStat() {
   std::string buf;
   absl::Status status = Utils::Get()->ReadFileToString(
       base::FilePath(kZramSysfsDir).Append("bd_stat"), &buf);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   ZramBdStat zram_bd_stat;
   status = ParseZramBdStat(buf, &zram_bd_stat);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   return std::move(zram_bd_stat);
 }
@@ -122,13 +130,15 @@ absl::StatusOr<ZramMmStat> GetZramMmStat() {
   std::string buf;
   absl::Status status = Utils::Get()->ReadFileToString(
       base::FilePath(kZramSysfsDir).Append("mm_stat"), &buf);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   ZramMmStat zram_mm_stat;
   status = ParseZramMmStat(buf, &zram_mm_stat);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   return std::move(zram_mm_stat);
 }
@@ -137,13 +147,15 @@ absl::StatusOr<ZramIoStat> GetZramIoStat() {
   std::string buf;
   absl::Status status = Utils::Get()->ReadFileToString(
       base::FilePath(kZramSysfsDir).Append("io_stat"), &buf);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   ZramIoStat zram_io_stat;
   status = ParseZramIoStat(buf, &zram_io_stat);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   return std::move(zram_io_stat);
 }

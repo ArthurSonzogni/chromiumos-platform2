@@ -68,16 +68,18 @@ absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
   std::string swaps;
   absl::Status status =
       Utils::Get()->ReadFileToString(base::FilePath("/proc/swaps"), &swaps);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   std::vector<std::string> swaps_lines = base::SplitString(
       swaps, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   // Skip the first line which is header. Swap is turned on if swaps_lines
   // contains entry with zram0 keyword.
   for (size_t i = 1; i < swaps_lines.size(); i++) {
-    if (swaps_lines[i].find("zram0") != std::string::npos)
+    if (swaps_lines[i].find("zram0") != std::string::npos) {
       return true;
+    }
   }
 
   return false;
@@ -93,25 +95,29 @@ absl::StatusOr<uint64_t> SwapTool::GetUserConfigZramSizeBytes() {
   std::string buf;
   absl::Status status = Utils::Get()->ReadFileToStringWithMaxSize(
       base::FilePath(kSwapSizeFile), &buf, 5);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // Trim the potential leading/trailing ASCII whitespaces.
   // Note that TrimWhitespaceASCII can safely use the same variable for inputs
   // and outputs.
   base::TrimWhitespaceASCII(buf, base::TRIM_ALL, &buf);
-  if (buf.empty())
+  if (buf.empty()) {
     return absl::InvalidArgumentError(std::string(kSwapSizeFile) +
                                       " is empty.");
+  }
 
   absl::StatusOr<uint64_t> requested_size_mib =
       Utils::Get()->SimpleAtoi<uint64_t>(buf);
-  if (!requested_size_mib.ok())
+  if (!requested_size_mib.ok()) {
     return requested_size_mib.status();
+  }
 
-  if (*requested_size_mib == 0)
+  if (*requested_size_mib == 0) {
     LOG(WARNING) << "swap is disabled since " << std::string(kSwapSizeFile)
                  << " contains 0.";
+  }
 
   return (*requested_size_mib) * 1024 * 1024;
 }
@@ -125,8 +131,10 @@ void SwapTool::SetCompAlgorithm() {
   std::string comp_algorithm = zram_recompression_configured_ ? "lz4" : "";
 
   auto params = GetFeatureParams(kSwapZramCompAlgorithmFeature);
-  if (params.has_value() && (*params).find("comp_algorithm") != (*params).end())
+  if (params.has_value() &&
+      (*params).find("comp_algorithm") != (*params).end()) {
     comp_algorithm = (*params)["comp_algorithm"];
+  }
 
   if (!comp_algorithm.empty()) {
     LOG(INFO) << "Setting zram comp_algorithm to " << comp_algorithm;
@@ -191,8 +199,9 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   // 1. User runtime config
   absl::StatusOr<uint64_t> size_byte = GetUserConfigZramSizeBytes();
   // Return since user has runtime config for zram size, or swap is disabled.
-  if (size_byte.ok())
+  if (size_byte.ok()) {
     return size_byte;
+  }
   // Let's provide log for errors other than NotFoundError which is valid, and
   // continue.
   LOG_IF(WARNING, !absl::IsNotFound(size_byte.status()))
@@ -202,8 +211,9 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   // First, read /proc/meminfo for MemTotal in kiB.
   absl::StatusOr<base::SystemMemoryInfoKB> meminfo =
       Utils::Get()->GetSystemMemoryInfo();
-  if (!meminfo.ok())
+  if (!meminfo.ok()) {
     return meminfo.status();
+  }
 
   // Should roundup with page size.
   return Utils::Get()->RoundupMultiple(
@@ -213,13 +223,15 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
 
 // Enable zram recompression if kSwapZramRecompressionFeature is enabled.
 absl::Status SwapTool::EnableZramRecompression() {
-  if (!ZramRecompression::Get()->KernelSupportsZramRecompression())
+  if (!ZramRecompression::Get()->KernelSupportsZramRecompression()) {
     return absl::OkStatus();
+  }
 
   // Check if feature is enabled, and get the params.
   auto params = GetFeatureParams(kSwapZramRecompressionFeature);
-  if (!params.has_value())
+  if (!params.has_value()) {
     return absl::OkStatus();
+  }
 
   // Read config from feature and override the default.
   for (const auto& [key, value] : *params) {
@@ -231,8 +243,9 @@ absl::Status SwapTool::EnableZramRecompression() {
   }
 
   absl::Status status = ZramRecompression::Get()->EnableRecompression();
-  if (status.ok())
+  if (status.ok()) {
     zram_recompression_configured_ = true;
+  }
 
   return status;
 }
@@ -247,8 +260,9 @@ std::optional<std::map<std::string, std::string>> SwapTool::GetFeatureParams(
 
   feature::PlatformFeaturesInterface::ParamsResult result =
       platform_features_->GetParamsAndEnabledBlocking({&vf});
-  if (result.find(vf.name) != result.end() && result[vf.name].enabled)
+  if (result.find(vf.name) != result.end() && result[vf.name].enabled) {
     return result[vf.name].params;
+  }
 
   return std::nullopt;
 }
@@ -257,10 +271,12 @@ std::optional<std::map<std::string, std::string>> SwapTool::GetFeatureParams(
 std::optional<std::string> SwapTool::GetFeatureParamValue(
     const VariationsFeature& vf, const std::string& key) {
   auto params = GetFeatureParams(vf);
-  if (!params.has_value())
+  if (!params.has_value()) {
     return std::nullopt;
-  if ((*params).find(key) != (*params).end())
+  }
+  if ((*params).find(key) != (*params).end()) {
     return (*params)[key];
+  }
 
   LOG(ERROR) << key << " is not configured in PlatformFeature " << vf.name;
   return std::nullopt;
@@ -276,8 +292,9 @@ absl::Status SwapTool::EnableZramSwapping() {
 
   for (size_t i = 0; i < kMaxEnableTries; i++) {
     status = Utils::Get()->RunProcessHelper({"/sbin/swapon", kZramDeviceFile});
-    if (status.ok())
+    if (status.ok()) {
       return status;
+    }
 
     LOG(WARNING) << "swapon " << kZramDeviceFile << " failed, try " << i
                  << " times, last error:" << status;
@@ -295,8 +312,9 @@ absl::Status SwapTool::SwapStart() {
 
   // Return true if swap is already on.
   absl::StatusOr<bool> on = IsZramSwapOn();
-  if (!on.ok())
+  if (!on.ok()) {
     return on.status();
+  }
   if (*on) {
     LOG(WARNING) << "Swap is already on.";
     return absl::OkStatus();
@@ -304,12 +322,14 @@ absl::Status SwapTool::SwapStart() {
 
   // Get zram size.
   absl::StatusOr<uint64_t> size_byte = GetZramSizeBytes();
-  if (!size_byte.ok() || *size_byte == 0)
+  if (!size_byte.ok() || *size_byte == 0) {
     return status;
+  }
 
   // Load zram module. Ignore failure (it could be compiled in the kernel).
-  if (!Utils::Get()->RunProcessHelper({"/usr/bin/modprobe", "zram"}).ok())
+  if (!Utils::Get()->RunProcessHelper({"/usr/bin/modprobe", "zram"}).ok()) {
     LOG(WARNING) << "modprobe zram failed (compiled?)";
+  }
 
   // Enable zram recompression if feature is available.
   status = EnableZramRecompression();
@@ -324,26 +344,30 @@ absl::Status SwapTool::SwapStart() {
   status =
       Utils::Get()->WriteFile(base::FilePath(kZramSysfsDir).Append("disksize"),
                               std::to_string(*size_byte));
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // Set swap area.
   status = Utils::Get()->RunProcessHelper({"/sbin/mkswap", kZramDeviceFile});
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // Enable zram swap.
   status = EnableZramSwapping();
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // Enable zram writeback if feature is available.
   status = EnableZramWriteback();
   LOG_IF(ERROR, !status.ok()) << "Failed to enable zram writeback: " << status;
 
   // Start zram recompression.
-  if (zram_recompression_configured_)
+  if (zram_recompression_configured_) {
     ZramRecompression::Get()->Start();
+  }
 
   // Start periodically reporting zram and psi metrics.
   Metrics::Get()->Start();
@@ -354,8 +378,9 @@ absl::Status SwapTool::SwapStart() {
 absl::Status SwapTool::SwapStop() {
   // Return false if swap is already off.
   absl::StatusOr<bool> on = IsZramSwapOn();
-  if (!on.ok())
+  if (!on.ok()) {
     return on.status();
+  }
   if (!*on) {
     LOG(WARNING) << "Swap is already off.";
     return absl::OkStatus();
@@ -372,8 +397,9 @@ absl::Status SwapTool::SwapStop() {
   // /proc/swaps shows.
   absl::Status status =
       Utils::Get()->RunProcessHelper({"/sbin/swapoff", "-v", kZramDeviceFile});
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   // When we start up, we try to configure zram0, but it doesn't like to
   // be reconfigured on the fly.  Reset it so we can changes its params.
@@ -403,9 +429,10 @@ absl::Status SwapTool::SwapSetSize(int32_t size) {
 
 absl::Status SwapTool::SwapSetSwappiness(uint32_t swappiness) {
   // Only allow swappiness between 0 and 200.
-  if (swappiness > 200)
+  if (swappiness > 200) {
     return absl::OutOfRangeError("Invalid swappiness " +
                                  std::to_string(swappiness));
+  }
 
   return Utils::Get()->WriteFile(base::FilePath("/proc/sys/vm/swappiness"),
                                  std::to_string(swappiness));
@@ -416,20 +443,25 @@ std::string SwapTool::SwapStatus() {
   std::string tmp;
 
   // Show general swap info first.
-  if (Utils::Get()->ReadFileToString(base::FilePath("/proc/swaps"), &tmp).ok())
+  if (Utils::Get()
+          ->ReadFileToString(base::FilePath("/proc/swaps"), &tmp)
+          .ok()) {
     output << tmp;
+  }
 
   // Show tunables.
   if (Utils::Get()
           ->ReadFileToString(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
                              &tmp)
-          .ok())
+          .ok()) {
     output << "min_filelist_kbytes (KiB): " + tmp;
+  }
   if (Utils::Get()
           ->ReadFileToString(base::FilePath("/proc/sys/vm/extra_free_kbytes"),
                              &tmp)
-          .ok())
+          .ok()) {
     output << "extra_free_kbytes (KiB): " + tmp;
+  }
 
   // Show top entries in kZramSysfsDir for zram setting.
   base::DirReaderPosix dir_reader(kZramSysfsDir);
@@ -444,8 +476,9 @@ std::string SwapTool::SwapStatus() {
           !tmp.empty()) {
         std::vector<std::string> lines = base::SplitString(
             tmp, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-        for (auto& line : lines)
+        for (auto& line : lines) {
           output << name + ": " + line + "\n";
+        }
       }
     }
   }
@@ -461,8 +494,9 @@ absl::Status SwapTool::MGLRUSetEnable(uint8_t value) {
 absl::Status SwapTool::EnableZramWriteback() {
   // Check if feature is enabled, and get the params.
   auto params = GetFeatureParams(kSwapZramWritebackFeature);
-  if (!params.has_value())
+  if (!params.has_value()) {
     return absl::OkStatus();
+  }
 
   if (GetFeatureParams(kSwapSuspendAwareZramWritebackFeature).has_value()) {
     absl::Status status =
@@ -498,15 +532,17 @@ absl::Status SwapTool::ReclaimAllProcesses(uint8_t memory_types) {
     std::string name = dir_reader.name();
 
     // Don't reclaim our own memory and skip non-PID directories.
-    if (name == pid || !std::all_of(name.begin(), name.end(), ::isdigit))
+    if (name == pid || !std::all_of(name.begin(), name.end(), ::isdigit)) {
       continue;
+    }
 
     base::FilePath pid_dir = proc_dir.Append(name);
     base::FilePath reclaim_file = pid_dir.Append("reclaim");
 
     for (const auto& reclaim_type : kReclaimTypes) {
-      if (!(memory_types & reclaim_type.first))
+      if (!(memory_types & reclaim_type.first)) {
         continue;
+      }
 
       absl::Status status =
           Utils::Get()->WriteFile(reclaim_file, reclaim_type.second);

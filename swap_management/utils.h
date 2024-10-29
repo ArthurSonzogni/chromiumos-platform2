@@ -69,9 +69,10 @@ class Utils {
   template <typename int_type>
   absl::StatusOr<int_type> SimpleAtoi(const std::string& str) {
     int_type output;
-    if (!absl::SimpleAtoi<int_type>(str, &output))
+    if (!absl::SimpleAtoi<int_type>(str, &output)) {
       return absl::InvalidArgumentError("Failed to convert " + str +
                                         " to an integer value.");
+    }
 
     return output;
   }

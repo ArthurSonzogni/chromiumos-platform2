@@ -40,8 +40,9 @@ Metrics::~Metrics() {
 
 void Metrics::OverrideForTesting(Metrics* metrics) {
   [[maybe_unused]] static bool is_overridden = []() -> bool {
-    if (*GetSingleton<Metrics>())
+    if (*GetSingleton<Metrics>()) {
       delete *GetSingleton<Metrics>();
+    }
     return true;
   }();
   *GetSingleton<Metrics>() = metrics;
@@ -243,14 +244,16 @@ void Metrics::Stop() {
 
 absl::StatusOr<std::vector<uint32_t>> Metrics::PSIParser(base::FilePath path,
                                                          uint32_t period) {
-  if (period != 10 && period != 60 && period != 300)
+  if (period != 10 && period != 60 && period != 300) {
     return absl::InvalidArgumentError("Invalid PSI period " +
                                       std::to_string(period));
+  }
 
   std::string content;
   absl::Status status = Utils::Get()->ReadFileToString(path, &content);
-  if (!status.ok())
+  if (!status.ok()) {
     return status;
+  }
 
   std::vector<std::string> tokens = base::SplitString(
       content, " \n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -269,8 +272,9 @@ absl::StatusOr<std::vector<uint32_t>> Metrics::PSIParser(base::FilePath path,
       std::string metric_in_text =
           t.substr(t.find(metric_prefix) + metric_prefix.length());
       absl::StatusOr<double> metric = Utils::Get()->SimpleAtod(metric_in_text);
-      if (!metric.ok())
+      if (!metric.ok()) {
         return metric.status();
+      }
 
       // Want to multiply by 100, but to avoid integer truncation,
       // do best-effort rounding.
@@ -280,8 +284,9 @@ absl::StatusOr<std::vector<uint32_t>> Metrics::PSIParser(base::FilePath path,
   }
 
   // Sanity check if res contains two entries.
-  if (res.size() != 2)
+  if (res.size() != 2) {
     return absl::InternalError("Failed to parse PSI metrics.");
+  }
 
   return res;
 }

@@ -70,8 +70,9 @@ absl::StatusOr<bool> PowerManagerProxy::IsACConnected() {
   double display_battery_percentage;
   brillo::ErrorPtr error;
   if (!power_manager_proxy_->GetBatteryState(
-          &power_type, &battery_state, &display_battery_percentage, &error))
+          &power_type, &battery_state, &display_battery_percentage, &error)) {
     return absl::UnavailableError("power_manage_proxy: " + error->GetMessage());
+  }
   return power_type == power_manager::PowerSupplyProperties_ExternalPower_AC;
 }
 
