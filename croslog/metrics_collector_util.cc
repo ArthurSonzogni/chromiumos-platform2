@@ -14,7 +14,6 @@
 #include "base/files/file_enumerator.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-
 #include "croslog/log_entry_reader.h"
 #include "croslog/log_parser_syslog.h"
 
@@ -186,8 +185,7 @@ void CalculateChromeLogMetrics(const base::FilePath& directory,
       [](const auto& l, const auto& r) { return r.BaseName() < l.BaseName(); });
 
   for (const base::FilePath& name : file_path) {
-    int64_t file_size;
-    if (!GetFileSize(name, &file_size) || file_size == 0) {
+    if (base::GetFileSize(name).value_or(0) == 0) {
       continue;
     }
 
