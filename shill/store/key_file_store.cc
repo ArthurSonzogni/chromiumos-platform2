@@ -4,6 +4,12 @@
 
 #include "shill/store/key_file_store.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
@@ -27,11 +33,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/scoped_umask.h>
-#include <fcntl.h>
 #include <re2/re2.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "shill/logging.h"
 #include "shill/store/key_value_store.h"
@@ -418,8 +420,8 @@ KeyFileStore::KeyFileStore(const base::FilePath& path,
 KeyFileStore::~KeyFileStore() = default;
 
 bool KeyFileStore::IsEmpty() const {
-  int64_t file_size = 0;
-  return !base::GetFileSize(path_, &file_size) || file_size <= 0;
+  std::optional<int64_t> file_size = base::GetFileSize(path_);
+  return file_size.value_or(0) == 0;
 }
 
 bool KeyFileStore::Open() {
