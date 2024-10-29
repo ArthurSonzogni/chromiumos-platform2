@@ -325,13 +325,15 @@ TEST_F(VmmSwapTbwPolicyTest, RecordRotateHistoryFile) {
   for (; before_file_size < 4096 - VmmSwapTbwPolicy::kMaxEntrySize; count++) {
     before_policy.Record(4, now);
     if (count >= 4096 / VmmSwapTbwPolicy::kMaxEntrySize) {
-      ASSERT_TRUE(base::GetFileSize(history_file_path_, &before_file_size));
+      auto raw_before_file_size = base::GetFileSize(history_file_path_);
+      ASSERT_TRUE(raw_before_file_size.has_value());
+      before_file_size = raw_before_file_size.value();
     }
   }
   before_policy.Record(1, now);
-  int64_t after_file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path_, &after_file_size));
-  EXPECT_LT(after_file_size, before_file_size);
+  auto after_file_size = base::GetFileSize(history_file_path_);
+  ASSERT_TRUE(after_file_size.has_value());
+  EXPECT_LT(after_file_size.value(), before_file_size);
 
   before_policy.SetTargetTbwPerDay(count);
   after_policy.SetTargetTbwPerDay(count);

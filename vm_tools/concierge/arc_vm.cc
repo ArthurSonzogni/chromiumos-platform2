@@ -574,12 +574,13 @@ vm_tools::concierge::DiskImageStatus ArcVm::ResizeDisk(
     return DiskImageStatus::DISK_STATUS_DOES_NOT_EXIST;
   }
 
-  int64_t current_size = -1;
-  if (!base::GetFileSize(data_disk_path_, &current_size)) {
+  std::optional<int64_t> raw_current_size = base::GetFileSize(data_disk_path_);
+  if (!raw_current_size.has_value()) {
     *failure_reason = "Unable to get current disk size";
     LOG(ERROR) << "ArcVm::ResizeDisk failed: " << *failure_reason;
     return DiskImageStatus::DISK_STATUS_FAILED;
   }
+  int64_t current_size = raw_current_size.value();
 
   LOG(INFO) << "ArcVm::ResizeDisk: current_size=" << current_size
             << " requested_size=" << new_size;

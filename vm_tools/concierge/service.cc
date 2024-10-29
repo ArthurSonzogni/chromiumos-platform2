@@ -1486,8 +1486,8 @@ StartVmResponse Service::StartVmInternal(
   std::string stateful_device = base::StringPrintf("/dev/vd%c", disk_letter);
 
   auto stateful_path = base::FilePath(request.disks()[0].path());
-  int64_t stateful_size = -1;
-  if (!base::GetFileSize(stateful_path, &stateful_size)) {
+  std::optional<int64_t> stateful_size = base::GetFileSize(stateful_path);
+  if (!stateful_size.has_value()) {
     LOG(ERROR) << "Could not determine stateful disk size";
     response.set_failure_reason(
         "Internal error: unable to determine stateful disk size");
@@ -1770,7 +1770,7 @@ StartVmResponse Service::StartVmInternal(
       .runtime_dir = std::move(runtime_dir),
       .log_path = std::move(log_path),
       .stateful_device = std::move(stateful_device),
-      .stateful_size = static_cast<uint64_t>(std::move(stateful_size)),
+      .stateful_size = static_cast<uint64_t>(std::move(stateful_size.value())),
       .features = features,
       .vm_permission_service_proxy = vm_permission_service_proxy_,
       .bus = bus_,
@@ -4399,14 +4399,13 @@ void Service::GetVmLogs(
   std::vector<base::FilePath> paths;
   int64_t remaining_log_space = kMaxGetVmLogsSize;
   if (base::PathExists(log_path)) {
-    int64_t size;
-    bool ok = base::GetFileSize(log_path, &size);
-    if (!ok) {
+    std::optional<int64_t> size = base::GetFileSize(log_path);
+    if (!size.has_value()) {
       response_cb->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                                   DBUS_ERROR_FAILED, "Failed to get log size");
       return;
     }
-    remaining_log_space -= size;
+    remaining_log_space -= size.value();
     paths.push_back(log_path);
 
     for (int i = 1; i <= 5; i++) {
@@ -4415,12 +4414,12 @@ void Service::GetVmLogs(
 
       // Don't read older logs if the total log size read is above the limit.
       if (base::PathExists(older_log_path) && remaining_log_space > 0) {
-        ok = base::GetFileSize(older_log_path, &size);
-        if (!ok) {
+        size = base::GetFileSize(older_log_path);
+        if (!size.has_value()) {
           break;
         }
 
-        remaining_log_space -= size;
+        remaining_log_space -= size.value();
         paths.push_back(older_log_path);
       } else {
         break;

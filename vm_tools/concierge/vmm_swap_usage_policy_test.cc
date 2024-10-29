@@ -273,9 +273,9 @@ TEST_F(VmmSwapUsagePolicyTest, Init) {
 
   // Creates history file
   EXPECT_TRUE(base::PathExists(history_file_path_));
-  int64_t file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path_, &file_size));
-  EXPECT_EQ(file_size, 0);
+  auto file_size = base::GetFileSize(history_file_path_);
+  ASSERT_TRUE(file_size.has_value());
+  EXPECT_EQ(file_size.value(), 0);
 }
 
 TEST_F(VmmSwapUsagePolicyTest, InitTwice) {
@@ -470,15 +470,17 @@ TEST_F(VmmSwapUsagePolicyTest, OnDisabledRotateHistoryFile) {
     now += base::Hours(1);
     before_policy.OnDisabled(now);
     if (i >= 5 * 4096 / 25) {
-      ASSERT_TRUE(base::GetFileSize(history_file_path_, &before_file_size));
+      auto raw_before_file_size = base::GetFileSize(history_file_path_);
+      ASSERT_TRUE(raw_before_file_size.has_value());
+      before_file_size = raw_before_file_size.value();
     }
   }
   before_policy.OnEnabled(now);
   now += base::Hours(1);
   before_policy.OnDisabled(now);
-  int64_t after_file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path_, &after_file_size));
-  EXPECT_LT(after_file_size, before_file_size);
+  auto after_file_size = base::GetFileSize(history_file_path_);
+  ASSERT_TRUE(after_file_size.has_value());
+  EXPECT_LT(after_file_size.value(), before_file_size);
 
   ASSERT_EQ(before_policy.PredictDuration(now), base::Hours(1));
   EXPECT_TRUE(after_policy.Init(now));
@@ -498,15 +500,17 @@ TEST_F(VmmSwapUsagePolicyTest, OnDestroyRotateHistoryFile) {
     now += base::Hours(1);
     before_policy.OnDisabled(now);
     if (i >= 5 * 4096 / 25) {
-      ASSERT_TRUE(base::GetFileSize(history_file_path_, &before_file_size));
+      auto raw_before_file_size = base::GetFileSize(history_file_path_);
+      ASSERT_TRUE(raw_before_file_size.has_value());
+      before_file_size = raw_before_file_size.value();
     }
   }
   before_policy.OnEnabled(now);
   now += base::Hours(1);
   before_policy.OnDestroy(now);
-  int64_t after_file_size = -1;
-  ASSERT_TRUE(base::GetFileSize(history_file_path_, &after_file_size));
-  EXPECT_LT(after_file_size, before_file_size);
+  auto after_file_size = base::GetFileSize(history_file_path_);
+  ASSERT_TRUE(after_file_size.has_value());
+  EXPECT_LT(after_file_size.value(), before_file_size);
 
   ASSERT_EQ(before_policy.PredictDuration(now), base::Hours(1));
   EXPECT_TRUE(after_policy.Init(now));
