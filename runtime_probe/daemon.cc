@@ -80,9 +80,10 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
     const google::protobuf::EnumDescriptor* descriptor =
         ProbeRequest_SupportCategory_descriptor();
 
-    for (int j = 0; j < request.categories_size(); j++)
+    for (int j = 0; j < request.categories_size(); j++) {
       categories_to_probe.push_back(
           descriptor->FindValueByNumber(request.categories(j))->name());
+    }
     probe_config_ptr->Eval(categories_to_probe,
                            base::BindOnce(&Daemon::ProbeCallback<ProbeResult>,
                                           base::Unretained(this), std::move(cb),

@@ -108,8 +108,9 @@ AudioCodecFunction::DataType AudioCodecFunction::EvalImpl() const {
 
   for (const auto& asoc_path_str : kAsocPaths) {
     base::FilePath asoc_path = GetRootedPath(asoc_path_str);
-    if (!PathExists(asoc_path))
+    if (!PathExists(asoc_path)) {
       continue;
+    }
     results = ProbeI2cCodecFromFile(asoc_path);
   }
 

@@ -47,8 +47,9 @@ std::optional<base::Value> MapFilesToDict(
   base::Value result(base::Value::Type::DICT);
 
   for (const auto& key : keys) {
-    if (!internal::ReadFileToDict(dir_path, key, true, result))
+    if (!internal::ReadFileToDict(dir_path, key, true, result)) {
       return std::nullopt;
+    }
   }
   for (const auto& key : optional_keys) {
     internal::ReadFileToDict(dir_path, key, false, result);

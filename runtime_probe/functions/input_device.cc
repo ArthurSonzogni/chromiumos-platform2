@@ -55,8 +55,9 @@ std::string DeviceTypeEnumToString(InputDevice::Type device_type) {
 std::string GetDriverName(const base::FilePath& node_path) {
   const auto driver_path = node_path.Append("driver");
   const auto real_driver_path = base::MakeAbsoluteFilePath(driver_path);
-  if (real_driver_path.value().length() == 0)
+  if (real_driver_path.value().length() == 0) {
     return "";
+  }
   const auto driver_name = real_driver_path.BaseName().value();
   return driver_name;
 }
@@ -64,18 +65,21 @@ std::string GetDriverName(const base::FilePath& node_path) {
 void FixTouchscreenI2cDevice(base::Value* device) {
   auto& device_dict = device->GetDict();
   const auto* path = device_dict.FindString("path");
-  if (!path)
+  if (!path) {
     return;
+  }
 
   const auto* vid_old = device_dict.FindString("vendor");
-  if (vid_old && *vid_old != "0000")
+  if (vid_old && *vid_old != "0000") {
     return;
+  }
 
   const auto node_path = base::FilePath{*path}.Append("device");
   const auto driver_name = GetDriverName(node_path);
   const auto entry = kTouchscreenI2cDriverToVid.find(driver_name);
-  if (entry == kTouchscreenI2cDriverToVid.end())
+  if (entry == kTouchscreenI2cDriverToVid.end()) {
     return;
+  }
 
   // Refer to http://crrev.com/c/1825942.
   auto dict_value = MapFilesToDict(node_path, kTouchscreenI2cFields);
@@ -94,8 +98,9 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
                        std::unique_ptr<InputDeviceImpl> input_device,
                        const std::string& device_type_filter) {
   const auto device_type = DeviceTypeEnumToString(input_device->type());
-  if (!device_type_filter.empty() && device_type_filter != device_type)
+  if (!device_type_filter.empty() && device_type_filter != device_type) {
     return;
+  }
 
   auto path = Context::Get()->root_dir().Append(
       base::StringPrintf("sys%s", input_device->sysfs.c_str()));
@@ -133,16 +138,18 @@ InputDeviceFunction::DataType InputDeviceFunction::EvalImpl() const {
   auto begin_iter = lines.cbegin();
   while (true) {
     auto end_iter = begin_iter;
-    while (end_iter != lines.cend() && !end_iter->empty())
+    while (end_iter != lines.cend() && !end_iter->empty()) {
       ++end_iter;
+    }
     if (begin_iter != end_iter) {
       AppendInputDevice(
           &results,
           InputDeviceImpl::From(std::vector<std::string>(begin_iter, end_iter)),
           device_type_);
     }
-    if (end_iter == lines.cend())
+    if (end_iter == lines.cend()) {
       break;
+    }
     begin_iter = std::next(end_iter);
   }
   return results;

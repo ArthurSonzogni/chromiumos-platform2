@@ -69,8 +69,9 @@ std::unique_ptr<ProbeConfig> ProbeConfig::FromFile(
   DVLOG(3) << "SHA1 hash of probe config: " << probe_config_sha1_hash;
 
   auto config = ProbeConfig::FromValue(*json_val);
-  if (!config)
+  if (!config) {
     return nullptr;
+  }
   config->path_ = std::move(absolute_path);
   config->checksum_ = std::move(probe_config_sha1_hash);
   return config;
@@ -123,16 +124,18 @@ void ProbeConfig::Eval(
           base::BindOnce(&CollectComponentCategoryResults,
                          std::move(callback)));
 
-  for (const auto& c : valid_category)
+  for (const auto& c : valid_category) {
     category_.at(c)->Eval(
         base::BindOnce(&OnComponentCategoryEvalCompleted, barrier_callback, c));
+  }
 }
 
 ComponentCategory* ProbeConfig::GetComponentCategory(
     const std::string& category_name) const {
   auto itr = category_.find(category_name);
-  if (itr == category_.end())
+  if (itr == category_.end()) {
     return nullptr;
+  }
   return itr->second.get();
 }
 

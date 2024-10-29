@@ -28,8 +28,9 @@ uint32_t RunCommandRetry(const base::ScopedFD& ec_dev,
                          ec::PdChipInfoCommandV0* cmd) {
   for (int i = 0; i < kEcCmdNumAttempts; ++i) {
     // We expected the command runs successfully or returns invalid param error.
-    if (cmd->Run(ec_dev.get()) || cmd->Result() == EC_RES_INVALID_PARAM)
+    if (cmd->Run(ec_dev.get()) || cmd->Result() == EC_RES_INVALID_PARAM) {
       return cmd->Result();
+    }
   }
   LOG(ERROR) << "Failed to run ec command, error code: " << cmd->Result();
   return cmd->Result();
@@ -53,8 +54,9 @@ TcpcFunction::DataType TcpcFunction::EvalImpl() const {
 
   for (uint8_t port = 0; port < kMaxPortCount; ++port) {
     auto cmd = GetPdChipInfoCommandV0(port);
-    if (RunCommandRetry(ec_dev, cmd.get()) != EC_RES_SUCCESS)
+    if (RunCommandRetry(ec_dev, cmd.get()) != EC_RES_SUCCESS) {
       break;
+    }
 
     base::Value::Dict val;
     val.Set("port", base::NumberToString(port));

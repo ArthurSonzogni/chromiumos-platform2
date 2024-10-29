@@ -30,8 +30,9 @@ bool ReadFile(const base::FilePath& dir_path,
     return false;
   }
   const auto file_path = dir_path.Append(file_name);
-  if (!base::PathExists(file_path))
+  if (!base::PathExists(file_path)) {
     return false;
+  }
   if (!ReadAndTrimFileToString(file_path, out)) {
     LOG(ERROR) << file_path.value() << " exists, but we can't read it";
     return false;
@@ -42,8 +43,9 @@ bool ReadFile(const base::FilePath& dir_path,
 bool HasPathWildcard(const std::string& path) {
   const std::string wildcard = "*?[";
   for (const auto& c : path) {
-    if (wildcard.find(c) != std::string::npos)
+    if (wildcard.find(c) != std::string::npos) {
       return true;
+    }
   }
   return false;
 }
@@ -54,12 +56,14 @@ std::vector<base::FilePath> GlobInternal(
     int idx,
     int* iterate_counter) {
   DCHECK(iterate_counter);
-  if (++(*iterate_counter) >= kGlobIterateCountLimit)
+  if (++(*iterate_counter) >= kGlobIterateCountLimit) {
     return {};
+  }
 
   if (idx == patterns.size()) {
-    if (PathExists(root))
+    if (PathExists(root)) {
       return {root};
+    }
     return {};
   }
   const auto& pattern = patterns[idx];
@@ -141,8 +145,9 @@ base::FilePath GetRootedPath(const base::FilePath& path) {
 
   // Special case for who only want to get the root dir, which is not supported
   // by `AppendRelativePath()`.
-  if (path == base::FilePath("/"))
+  if (path == base::FilePath("/")) {
     return root_dir;
+  }
   base::FilePath res = root_dir;
   CHECK(base::FilePath("/").AppendRelativePath(path, &res))
       << "Cannot append path " << path << " to " << root_dir

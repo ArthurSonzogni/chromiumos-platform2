@@ -30,8 +30,9 @@ std::string GetStorageFwVersion(const base::FilePath& node_path) {
 
 bool CheckStorageTypeMatch(const base::FilePath& node_path) {
   VLOG(2) << "Checking if \"" << node_path.value() << "\" is SATA.";
-  if (node_path.empty())
+  if (node_path.empty()) {
     return false;
+  }
   const auto vendor_path = node_path.Append("device").Append("vendor");
 
   std::string vendor_in_sysfs;
@@ -52,8 +53,9 @@ std::optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
 
-  if (!CheckStorageTypeMatch(node_path))
+  if (!CheckStorageTypeMatch(node_path)) {
     return std::nullopt;
+  }
 
   const auto ata_path = node_path.Append("device");
 
@@ -79,8 +81,9 @@ std::optional<base::Value> AtaStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   base::Value result(base::Value::Type::DICT);
   auto storage_fw_version = GetStorageFwVersion(base::FilePath(node_path));
-  if (!storage_fw_version.empty())
+  if (!storage_fw_version.empty()) {
     result.GetDict().Set("storage_fw_version", storage_fw_version);
+  }
   return result;
 }
 

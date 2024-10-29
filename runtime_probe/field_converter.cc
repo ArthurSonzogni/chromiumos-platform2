@@ -85,8 +85,9 @@ bool SplitValidateRuleString(std::string_view validate_rule,
     auto op = static_cast<ValidatorOperator>(i);
     if (prefix == GetPrefix(op)) {
       *operator_ = op;
-      if (op != ValidatorOperator::NOP)  // NOP shouldn't have operand.
+      if (op != ValidatorOperator::NOP) {  // NOP shouldn't have operand.
         *operand = rest;
+      }
       return true;
     }
   }
@@ -100,8 +101,9 @@ std::unique_ptr<ConverterType> BuildNumericConverter(
   std::string rest;
 
   if (SplitValidateRuleString(validate_rule, &op, &rest)) {
-    if (op == ValidatorOperator::NOP)
+    if (op == ValidatorOperator::NOP) {
       return std::make_unique<ConverterType>(op, 0);
+    }
 
     if (op == ValidatorOperator::EQ || op == ValidatorOperator::NE ||
         op == ValidatorOperator::GT || op == ValidatorOperator::GE ||
@@ -179,8 +181,9 @@ std::unique_ptr<StringFieldConverter> StringFieldConverter::Build(
   std::string pattern;
 
   if (SplitValidateRuleString(validate_rule, &op, &pattern)) {
-    if (op == ValidatorOperator::NOP)
+    if (op == ValidatorOperator::NOP) {
       return std::make_unique<StringFieldConverter>(op, "");
+    }
 
     if (op == ValidatorOperator::EQ || op == ValidatorOperator::NE) {
       return std::make_unique<StringFieldConverter>(op, pattern);
@@ -223,8 +226,9 @@ ReturnCode StringFieldConverter::Convert(const std::string& field_name,
   auto& dict = dict_value->GetDict();
 
   auto* value = dict.Find(field_name);
-  if (!value)
+  if (!value) {
     return ReturnCode::FIELD_NOT_FOUND;
+  }
 
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
@@ -249,8 +253,9 @@ ReturnCode IntegerFieldConverter::Convert(const std::string& field_name,
   auto& dict = dict_value->GetDict();
 
   auto* value = dict.Find(field_name);
-  if (!value)
+  if (!value) {
     return ReturnCode::FIELD_NOT_FOUND;
+  }
 
   OperandType int_value;
   switch (value->type()) {
@@ -289,8 +294,9 @@ ReturnCode HexFieldConverter::Convert(const std::string& field_name,
   auto& dict = dict_value->GetDict();
 
   auto* value = dict.Find(field_name);
-  if (!value)
+  if (!value) {
     return ReturnCode::FIELD_NOT_FOUND;
+  }
 
   OperandType int_value;
   switch (value->type()) {
@@ -330,8 +336,9 @@ ReturnCode DoubleFieldConverter::Convert(const std::string& field_name,
   auto& dict = dict_value->GetDict();
 
   auto* value = dict.Find(field_name);
-  if (!value)
+  if (!value) {
     return ReturnCode::FIELD_NOT_FOUND;
+  }
 
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
@@ -364,10 +371,12 @@ ReturnCode StringFieldConverter::Validate(const std::string& field_name,
   const auto& dict = dict_value->GetDict();
 
   auto* value_ = dict.Find(field_name);
-  if (!value_)
+  if (!value_) {
     return ReturnCode::FIELD_NOT_FOUND;
-  if (!value_->is_string())
+  }
+  if (!value_->is_string()) {
     return ReturnCode::INCOMPATIBLE_VALUE;
+  }
 
   const auto& value = value_->GetString();
   bool is_valid = true;
@@ -398,8 +407,9 @@ ReturnCode IntegerFieldConverter::Validate(const std::string& field_name,
   const auto& dict = dict_value->GetDict();
 
   auto* value_ = dict.Find(field_name);
-  if (!value_)
+  if (!value_) {
     return ReturnCode::FIELD_NOT_FOUND;
+  }
   OperandType value;
   switch (value_->type()) {
     case base::Value::Type::INTEGER: {
@@ -408,8 +418,9 @@ ReturnCode IntegerFieldConverter::Validate(const std::string& field_name,
     }
     case base::Value::Type::STRING: {
       const auto& string_value = value_->GetString();
-      if (!StringToInt64(string_value, &value))
+      if (!StringToInt64(string_value, &value)) {
         return ReturnCode::INCOMPATIBLE_VALUE;
+      }
       break;
     }
     default:
@@ -428,8 +439,9 @@ ReturnCode HexFieldConverter::Validate(const std::string& field_name,
   const auto& dict = dict_value->GetDict();
 
   auto* value_ = dict.Find(field_name);
-  if (!value_)
+  if (!value_) {
     return ReturnCode::FIELD_NOT_FOUND;
+  }
   OperandType value;
   switch (value_->type()) {
     case base::Value::Type::INTEGER: {
@@ -438,8 +450,9 @@ ReturnCode HexFieldConverter::Validate(const std::string& field_name,
     }
     case base::Value::Type::STRING: {
       const auto& string_value = value_->GetString();
-      if (!StringToInt64(string_value, &value))
+      if (!StringToInt64(string_value, &value)) {
         return ReturnCode::INCOMPATIBLE_VALUE;
+      }
       break;
     }
     default:
@@ -457,10 +470,12 @@ ReturnCode DoubleFieldConverter::Validate(const std::string& field_name,
   const auto& dict = dict_value->GetDict();
 
   auto* value_ = dict.Find(field_name);
-  if (!value_)
+  if (!value_) {
     return ReturnCode::FIELD_NOT_FOUND;
-  if (!value_->is_double() && !value_->is_int())
+  }
+  if (!value_->is_double() && !value_->is_int()) {
     return ReturnCode::INCOMPATIBLE_VALUE;
+  }
   const auto value = value_->GetDouble();
 
   return CheckNumber(operator_, value, operand_);

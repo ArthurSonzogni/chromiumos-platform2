@@ -151,8 +151,9 @@ int PrivilegedProbeFunction::EvalInHelper(std::string* output) const {
   DLOG(INFO) << "Invoking probe function \"" << GetFunctionName()
              << "\" in helper.";
   base::Value result{EvalImpl()};
-  if (base::JSONWriter::Write(result, output))
+  if (base::JSONWriter::Write(result, output)) {
     return 0;
+  }
   LOG(ERROR) << "Failed to serialize probed result to json string";
   return -1;
 }

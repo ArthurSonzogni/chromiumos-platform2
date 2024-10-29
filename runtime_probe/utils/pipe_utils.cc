@@ -74,8 +74,9 @@ bool ReadNonblockingPipeToString(const std::vector<int>& fds,
         nfds = std::max(nfds, fds[i] + 1);
       }
     }
-    if (done)
+    if (done) {
       return true;
+    }
 
     int retval = Context::Get()->syscaller()->Select(nfds, &read_fds, nullptr,
                                                      nullptr, &timeout);
@@ -92,13 +93,16 @@ bool ReadNonblockingPipeToString(const std::vector<int>& fds,
     }
 
     for (int i = 0; i < fds.size(); ++i) {
-      if (!FD_ISSET(fds[i], &read_fds))
+      if (!FD_ISSET(fds[i], &read_fds)) {
         continue;
+      }
       PipeState state = ReadPipe(fds[i], &out->at(i));
-      if (state == PipeState::ERROR)
+      if (state == PipeState::ERROR) {
         return false;
-      if (state == PipeState::DONE)
+      }
+      if (state == PipeState::DONE) {
         done_array[i] = true;
+      }
     }
   }
 }

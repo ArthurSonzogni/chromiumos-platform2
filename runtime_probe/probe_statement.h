@@ -65,8 +65,9 @@ class ProbeStatement {
       base::OnceCallback<void(ProbeFunction::DataType)> callback) const;
 
   virtual std::optional<base::Value> GetInformation() const {
-    if (information_)
+    if (information_) {
       return information_->Clone();
+    }
     return std::nullopt;
   }
 

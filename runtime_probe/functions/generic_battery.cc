@@ -44,8 +44,9 @@ constexpr auto kBatteryOptionalKeys = base::MakeFixedFlatSet<std::string_view>(
 std::optional<base::Value::Dict> ProbeBatteryFromSysfs(
     const base::FilePath& battery_path) {
   auto value = MapFilesToDict(battery_path, kBatteryKeys, kBatteryOptionalKeys);
-  if (!value)
+  if (!value) {
     return std::nullopt;
+  }
   auto dict_value = std::move(value->GetDict());
 
   const std::string* power_supply_type = dict_value.FindString("type");
@@ -67,8 +68,9 @@ std::optional<base::Value::Dict> ProbeBatteryFromEc() {
   auto debugd = Context::Get()->debugd_proxy();
   if (!debugd->BatteryFirmware("info", &output, &error)) {
     std::string err_message = "(no error message)";
-    if (error)
+    if (error) {
       err_message = error->GetMessage();
+    }
     LOG(ERROR) << "debugd::BatteryFirmware failed: " << err_message;
     return std::nullopt;
   }
@@ -105,8 +107,9 @@ GenericBattery::DataType GenericBattery::EvalImpl() const {
       Context::Get()->root_dir().Append(kSysfsPowerSupplyPath);
   for (const auto& battery_path : Glob(rooted_pattern)) {
     auto node_res = ProbeBatteryFromSysfs(battery_path);
-    if (!node_res)
+    if (!node_res) {
       continue;
+    }
     result.Append(std::move(*node_res));
   }
 

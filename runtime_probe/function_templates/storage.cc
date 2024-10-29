@@ -48,8 +48,9 @@ std::vector<base::FilePath> GetFixedDevices() {
     if (base::StartsWith(storage_path.BaseName().value(), "loop",
                          base::CompareCase::SENSITIVE) ||
         base::StartsWith(storage_path.BaseName().value(), "dm-",
-                         base::CompareCase::SENSITIVE))
+                         base::CompareCase::SENSITIVE)) {
       continue;
+    }
 
     res.push_back(storage_path);
   }
@@ -90,8 +91,9 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
 
     // Get type specific fields and their values.
     auto node_res = ProbeFromSysfs(node_path);
-    if (!node_res || !node_res->is_dict())
+    if (!node_res || !node_res->is_dict()) {
       continue;
+    }
 
     // Report the absolute path we probe the reported info from.
     auto& dict = node_res->GetDict();
@@ -124,8 +126,9 @@ void StorageFunction::PostHelperEvalImpl(
       continue;
     }
     auto storage_aux_res = ProbeFromStorageTool(base::FilePath(*node_path));
-    if (storage_aux_res)
+    if (storage_aux_res) {
       dict.Merge(std::move(storage_aux_res->GetDict()));
+    }
   }
 }
 

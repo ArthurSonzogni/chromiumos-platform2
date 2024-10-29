@@ -54,16 +54,18 @@ bool NvmeCliList(std::string* output) {
     return true;
   }
   std::string err_message = "(no error message)";
-  if (error)
+  if (error) {
     err_message = error->GetMessage();
+  }
   LOG(ERROR) << "Debugd::Nvme failed: " << err_message;
   return false;
 }
 
 std::optional<base::Value> GetStorageToolData() {
   std::string output;
-  if (!NvmeCliList(&output))
+  if (!NvmeCliList(&output)) {
     return std::nullopt;
+  }
 
   auto value = base::JSONReader::Read(output);
   if (!value) {
@@ -78,13 +80,15 @@ std::optional<base::Value> GetStorageToolData() {
 std::optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
-  if (!CheckStorageTypeMatch(node_path))
+  if (!CheckStorageTypeMatch(node_path)) {
     return std::nullopt;
+  }
 
   const auto nvme_path = node_path.Append(kNvmeDevicePath);
   auto nvme_res = MapFilesToDict(nvme_path, kNvmeFields);
-  if (!nvme_res)
+  if (!nvme_res) {
     return std::nullopt;
+  }
   PrependToDVKey(&*nvme_res, kNvmePrefix);
   nvme_res->GetDict().Set("type", kNvmeType);
   return nvme_res;
@@ -93,8 +97,9 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
 std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   auto nvme_data = GetStorageToolData();
-  if (!nvme_data || !nvme_data->is_dict())
+  if (!nvme_data || !nvme_data->is_dict()) {
     return std::nullopt;
+  }
   const auto& nvme_data_dict = nvme_data->GetDict();
 
   const auto* devices = nvme_data_dict.FindList("Devices");
@@ -106,13 +111,15 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
   const auto& device_name = node_path.BaseName();
   base::Value result(base::Value::Type::DICT);
   for (const auto& device : *devices) {
-    if (!device.is_dict())
+    if (!device.is_dict()) {
       continue;
+    }
     const auto& device_dict = device.GetDict();
 
     const auto* path = device_dict.FindString("DevicePath");
-    if (!path || base::FilePath(*path).BaseName() != device_name)
+    if (!path || base::FilePath(*path).BaseName() != device_name) {
       continue;
+    }
     const auto* firmware = device_dict.FindString("Firmware");
     if (firmware) {
       result.GetDict().Set("storage_fw_version", *firmware);

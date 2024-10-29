@@ -60,16 +60,19 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   })";
 
   auto expect = base::JSONReader::Read(expect_string);
-  if (!expect.has_value())
+  if (!expect.has_value()) {
     return 0;
+  }
 
   auto probe_result = base::JSONReader::Read(probe_result_string);
-  if (!probe_result.has_value())
+  if (!probe_result.has_value()) {
     return 0;
+  }
 
   auto checker = ProbeResultChecker::FromValue(*expect);
-  if (checker == nullptr)
+  if (checker == nullptr) {
     return 0;
+  }
 
   checker->Apply(&*probe_result);
   return 0;

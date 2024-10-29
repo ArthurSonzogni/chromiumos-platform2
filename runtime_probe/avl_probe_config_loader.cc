@@ -52,11 +52,13 @@ std::vector<base::FilePath> AvlProbeConfigLoader::GetPaths() const {
 
 bool AvlProbeConfigLoader::ValidateProbeConfig(const ProbeConfig& config) {
   for (const auto& [category, components] : config) {
-    if (!components)
+    if (!components) {
       continue;
+    }
     for (const auto& [component, probe_statement] : *components) {
-      if (!probe_statement || !probe_statement->probe_function())
+      if (!probe_statement || !probe_statement->probe_function()) {
         continue;
+      }
       auto function_name = probe_statement->probe_function()->GetFunctionName();
       if (std::count(kAllowedProbeFunctionNames.begin(),
                      kAllowedProbeFunctionNames.end(), function_name) == 0) {

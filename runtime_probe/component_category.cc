@@ -31,8 +31,9 @@ void OnProbeStatementEvalCompleted(
     base::Value::Dict result;
     result.Set("name", component_name);
     result.Set("values", std::move(probe_statement_dv));
-    if (information_dv.has_value())
+    if (information_dv.has_value()) {
       result.Set("information", information_dv->Clone());
+    }
     results.Append(std::move(result));
   }
   std::move(callback).Run(std::move(results));
@@ -83,10 +84,11 @@ void ComponentCategory::Eval(
   auto barrier_callback = base::BarrierCallback<base::Value::List>(
       component_.size(),
       base::BindOnce(&CollectProbeStatementResults, std::move(callback)));
-  for (auto& [component_name, probe_statement] : component_)
+  for (auto& [component_name, probe_statement] : component_) {
     probe_statement->Eval(base::BindOnce(&OnProbeStatementEvalCompleted,
                                          barrier_callback, component_name,
                                          probe_statement->GetInformation()));
+  }
 }
 
 std::vector<std::string> ComponentCategory::GetComponentNames() const {

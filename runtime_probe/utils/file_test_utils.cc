@@ -57,8 +57,9 @@ base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
   CHECK(!root_dir_.empty());
   // Check if the path already under the test rootfs.
   CHECK(!root_dir_.IsParent(path.file_path()));
-  if (!path.file_path().IsAbsolute())
+  if (!path.file_path().IsAbsolute()) {
     return root_dir_.Append(path.file_path());
+  }
   auto res = root_dir_;
   CHECK(base::FilePath("/").AppendRelativePath(path.file_path(), &res));
   return res;

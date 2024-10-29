@@ -63,14 +63,15 @@ std::unique_ptr<InputDeviceImpl> InputDeviceImpl::From(
           return nullptr;
         }
         for (const auto& [key, value] : keyVals) {
-          if (key == "Bus")
+          if (key == "Bus") {
             input_device->bus = value;
-          else if (key == "Vendor")
+          } else if (key == "Vendor") {
             input_device->vendor = value;
-          else if (key == "Product")
+          } else if (key == "Product") {
             input_device->product = value;
-          else if (key == "Version")
+          } else if (key == "Version") {
             input_device->version = value;
+          }
         }
         break;
       }

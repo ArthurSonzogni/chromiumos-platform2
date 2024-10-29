@@ -71,8 +71,9 @@ int RunAsHelper() {
 
   std::string output;
   int ret = probe_function->EvalInHelper(&output);
-  if (ret)
+  if (ret) {
     return ret;
+  }
 
   std::cout << output << std::flush;
   return ExitStatus::kSuccess;
@@ -172,9 +173,11 @@ int main(int argc, char* argv[]) {
                     "helper mode and dbus mode.";
   }
 
-  if (FLAGS_helper)
+  if (FLAGS_helper) {
     return RunAsHelper();
-  if (FLAGS_dbus)
+  }
+  if (FLAGS_dbus) {
     return RunAsDaemon();
+  }
   return RunningInCli(FLAGS_config_file_path, FLAGS_to_stdout);
 }

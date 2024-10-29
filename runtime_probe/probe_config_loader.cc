@@ -15,8 +15,9 @@ namespace runtime_probe {
 CrosDebugFlag CrosDebug() {
   auto value = Context::Get()->crossystem()->VbGetSystemPropertyInt(
       kCrosSystemCrosDebugKey);
-  if (value)
+  if (value) {
     return static_cast<CrosDebugFlag>(*value);
+  }
 
   // Fallback to disabled cros_debug.
   return CrosDebugFlag::kDisabled;
@@ -26,8 +27,9 @@ std::string ModelName() {
   std::string model_name;
 
   if (Context::Get()->cros_config()->GetString(
-          kCrosConfigModelNamePath, kCrosConfigModelNameKey, &model_name))
+          kCrosConfigModelNamePath, kCrosConfigModelNameKey, &model_name)) {
     return model_name;
+  }
 
   // Fallback to sys_info.
   return base::SysInfo::GetLsbReleaseBoard();

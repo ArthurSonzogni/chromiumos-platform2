@@ -40,8 +40,9 @@ void MultiFunctionRunner::Run(
   auto barrier_callback = base::BarrierCallback<base::Value::List>(
       functions_.size(),
       base::BindOnce(&CollectProbeResults, std::move(callback)));
-  for (auto& function : functions_)
+  for (auto& function : functions_) {
     function->Eval(barrier_callback);
+  }
 }
 
 bool MultiFunctionRunner::IsValid() const {

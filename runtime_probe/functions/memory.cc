@@ -70,8 +70,9 @@ std::unique_ptr<std::string> SmbiosString(const std::vector<uint8_t>& blob,
                                           uint8_t skip_bytes,
                                           uint8_t id) {
   auto output = std::make_unique<std::string>();
-  if (id == 0)
+  if (id == 0) {
     return output;
+  }
   uint8_t count = 0;
   auto data = reinterpret_cast<const char*>(blob.data());
   for (size_t i = skip_bytes, start_i = i; i < blob.size(); ++i) {
@@ -89,28 +90,32 @@ std::unique_ptr<std::string> SmbiosString(const std::vector<uint8_t>& blob,
 
 std::unique_ptr<DmiMemory> GetDmiMemoryFromBlobData(
     const std::vector<uint8_t>& blob) {
-  if (blob.size() < sizeof(DmiMemoryRaw))
+  if (blob.size() < sizeof(DmiMemoryRaw)) {
     return nullptr;
+  }
 
   DmiMemoryRaw dmi_memory_raw;
   std::copy(blob.begin(), blob.begin() + sizeof(DmiMemoryRaw),
             reinterpret_cast<uint8_t*>(&dmi_memory_raw));
 
-  if (dmi_memory_raw.length < sizeof(DmiMemoryRaw))
+  if (dmi_memory_raw.length < sizeof(DmiMemoryRaw)) {
     return nullptr;
+  }
 
   auto dmi_memory = std::make_unique<DmiMemory>();
   dmi_memory->size = MemorySize(dmi_memory_raw.size);
   dmi_memory->speed = dmi_memory_raw.speed;
 
   auto ret = SmbiosString(blob, dmi_memory_raw.length, dmi_memory_raw.locator);
-  if (!ret)
+  if (!ret) {
     return nullptr;
+  }
   dmi_memory->locator = std::move(*ret);
 
   ret = SmbiosString(blob, dmi_memory_raw.length, dmi_memory_raw.part_number);
-  if (!ret)
+  if (!ret) {
     return nullptr;
+  }
   dmi_memory->part_number = std::move(*ret);
   return dmi_memory;
 }
@@ -124,8 +129,9 @@ MemoryFunction::DataType GetMemoryInfo() {
     const base::FilePath dmi_basename(
         base::StringPrintf("%d-%d", kMemoryType, entry));
     auto dmi_path = dmi_dirname.Append(dmi_basename);
-    if (!base::DirectoryExists(dmi_path))
+    if (!base::DirectoryExists(dmi_path)) {
       break;
+    }
     std::string raw_bytes;
     if (!base::ReadFileToString(dmi_path.Append("raw"), &raw_bytes)) {
       LOG(ERROR) << "Failed to read file in sysfs: " << dmi_path.value();

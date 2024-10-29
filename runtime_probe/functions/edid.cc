@@ -25,10 +25,12 @@ base::Value::Dict ProbeEdidPath(const base::FilePath& edid_path) {
   VLOG(2) << "Processing the node \"" << edid_path.value() << "\"";
 
   std::string raw_bytes;
-  if (!base::ReadFileToString(edid_path, &raw_bytes))
+  if (!base::ReadFileToString(edid_path, &raw_bytes)) {
     return {};
-  if (raw_bytes.length() == 0)
+  }
+  if (raw_bytes.length() == 0) {
     return {};
+  }
 
   auto edid =
       Edid::From(std::vector<uint8_t>(raw_bytes.begin(), raw_bytes.end()));
@@ -54,8 +56,9 @@ EdidFunction::DataType EdidFunction::EvalImpl() const {
         Context::Get()->root_dir().Append(edid_pattern);
     for (const auto& edid_path : Glob(rooted_edid_pattern)) {
       auto node_res = ProbeEdidPath(edid_path);
-      if (node_res.empty())
+      if (node_res.empty()) {
         continue;
+      }
 
       result.Append(std::move(node_res));
     }

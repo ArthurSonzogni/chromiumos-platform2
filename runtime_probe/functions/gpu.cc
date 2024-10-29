@@ -70,8 +70,9 @@ bool GpuFunction::IsDGPUDeviceByGBMLibrary(
 bool GpuFunction::IsDGPUDevice(const base::FilePath& sysfs_node) const {
   base::FilePath class_file = sysfs_node.Append("class");
   std::string class_value;
-  if (!ReadFileToString(class_file, &class_value))
+  if (!ReadFileToString(class_file, &class_value)) {
     return false;
+  }
   // 0x03 is the class code of PCI display controllers.
   // - 0x00 is the subclass code of VGA compatible controller.
   // - 0x02 is the subclass code of 3D controller (for GPU without display
@@ -92,11 +93,13 @@ GpuFunction::DataType GpuFunction::EvalImpl() const {
       base::FileEnumerator::SHOW_SYM_LINKS | base::FileEnumerator::FILES |
           base::FileEnumerator::DIRECTORIES);
   for (auto path = it.Next(); !path.empty(); path = it.Next()) {
-    if (!IsDGPUDevice(path))
+    if (!IsDGPUDevice(path)) {
       continue;
+    }
     std::optional<base::Value> res = MapFilesToDict(path, kGPUFields);
-    if (res.has_value())
+    if (res.has_value()) {
       results.Append(std::move(res).value());
+    }
   }
 
   return results;

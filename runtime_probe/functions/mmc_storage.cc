@@ -39,8 +39,9 @@ const std::vector<std::string> kMmcOptionalFields{"hwrev", "prv", "serial"};
 // Check if the string represented by |input_string| is printable.
 bool IsPrintable(const std::string& input_string) {
   for (const auto& cha : input_string) {
-    if (!isprint(cha))
+    if (!isprint(cha)) {
       return false;
+    }
   }
   return true;
 }
@@ -64,8 +65,9 @@ std::string GetStorageFwVersion() {
   if (!debugd->Mmc(kDebugdMmcOption, &ext_csd_res, &err,
                    kDebugdMmcDefaultTimeout)) {
     std::string err_message = "(no error message)";
-    if (err)
+    if (err) {
       err_message = err->GetMessage();
+    }
     LOG(ERROR) << "Failed to get mmc extcsd results by D-Bus call to debugd. "
                   "Error message: "
                << err_message;
@@ -110,8 +112,9 @@ std::string GetStorageFwVersion() {
   // The memory snapshots of version output from mmc are in reverse order.
   for (auto it = ext_csd_lines.rbegin(); it != ext_csd_lines.rend(); it++) {
     std::string cur_version_str;
-    if (!re.PartialMatch(*it, &cur_version_str))
+    if (!re.PartialMatch(*it, &cur_version_str)) {
       continue;
+    }
 
     // "0xff" => "ff"
     const auto cur_version_component =
@@ -223,8 +226,9 @@ std::optional<base::Value> MmcStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   base::Value result(base::Value::Type::DICT);
   auto storage_fw_version = GetStorageFwVersion();
-  if (!storage_fw_version.empty())
+  if (!storage_fw_version.empty()) {
     result.GetDict().Set("storage_fw_version", storage_fw_version);
+  }
   return result;
 }
 

@@ -80,8 +80,9 @@ std::string ImageName() {
   std::string image_name;
 
   if (Context::Get()->cros_config()->GetString(
-          kCrosConfigImageNamePath, kCrosConfigImageNameKey, &image_name))
+          kCrosConfigImageNamePath, kCrosConfigImageNameKey, &image_name)) {
     return image_name;
+  }
 
   LOG(ERROR) << "Failed to get \"" << kCrosConfigImageNamePath << " "
              << kCrosConfigImageNameKey << "\" from cros config";

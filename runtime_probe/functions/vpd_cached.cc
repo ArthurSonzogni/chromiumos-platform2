@@ -25,8 +25,9 @@ VPDCached::DataType VPDCached::EvalImpl() const {
   const std::vector<std::string> require_keys{vpd_name_};
   auto dict_value = MapFilesToDict(base::FilePath(kSysfsVPDCached),
                                    require_keys, kAllowedOptionalKeys);
-  if (!dict_value)
+  if (!dict_value) {
     return {};
+  }
   PrependToDVKey(&*dict_value, kKeyPrefix);
 
   VPDCached::DataType result{};

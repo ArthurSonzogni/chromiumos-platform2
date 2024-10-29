@@ -23,10 +23,12 @@ using ReturnCode = FieldConverter::ReturnCode;
 
 std::unique_ptr<ProbeResultChecker> ProbeResultChecker::FromValue(
     const base::Value& value) {
-  if (value.is_dict())
+  if (value.is_dict()) {
     return ProbeResultCheckerDict::FromValue(value);
-  if (value.is_list())
+  }
+  if (value.is_list()) {
     return ProbeResultCheckerList::FromValue(value);
+  }
   LOG(ERROR) << "invalid type for 'expect' field: "
              << base::Value::GetTypeName(value.type());
   return nullptr;
@@ -47,23 +49,27 @@ std::unique_ptr<ProbeResultCheckerDict> ProbeResultCheckerDict::FromValue(
 
     const auto& list_value = val.GetList();
 
-    if (list_value.size() < 2 || list_value.size() > 3)
+    if (list_value.size() < 2 || list_value.size() > 3) {
       return print_error_and_return();
+    }
 
-    if (!list_value[0].is_bool())
+    if (!list_value[0].is_bool()) {
       return print_error_and_return();
+    }
     bool required = list_value[0].GetBool();
     auto* target =
         required ? &instance->required_fields_ : &instance->optional_fields_;
 
-    if (!list_value[1].is_string())
+    if (!list_value[1].is_string()) {
       return print_error_and_return();
+    }
     const auto& expect_type = list_value[1].GetString();
 
     std::string validate_rule;
     if (list_value.size() == 3) {
-      if (!list_value[2].is_string())
+      if (!list_value[2].is_string()) {
         return print_error_and_return();
+      }
       validate_rule = list_value[2].GetString();
     }
 
@@ -131,8 +137,9 @@ bool ProbeResultCheckerDict::Apply(base::Value* probe_result) const {
   for (const auto& entry : optional_fields_) {
     const auto& key = entry.first;
     const auto& converter = entry.second;
-    if (!probe_result_dict.Find(key))
+    if (!probe_result_dict.Find(key)) {
       continue;
+    }
 
     auto return_code = converter->Convert(key, probe_result);
     if (return_code != ReturnCode::OK) {
@@ -164,8 +171,9 @@ std::unique_ptr<ProbeResultCheckerList> ProbeResultCheckerList::FromValue(
       return nullptr;
     }
     auto checker = ProbeResultCheckerDict::FromValue(dv);
-    if (!checker)
+    if (!checker) {
       return nullptr;
+    }
     instance->checkers.push_back(std::move(checker));
   }
   return instance;
@@ -174,8 +182,9 @@ std::unique_ptr<ProbeResultCheckerList> ProbeResultCheckerList::FromValue(
 bool ProbeResultCheckerList::Apply(base::Value* probe_result) const {
   CHECK(probe_result != nullptr);
 
-  if (checkers.size() == 0)
+  if (checkers.size() == 0) {
     return true;
+  }
   for (const auto& checker : checkers) {
     // Pass the copy of |probe_result| in as the checker may modify it.
     auto probe_result_copy = probe_result->Clone();
