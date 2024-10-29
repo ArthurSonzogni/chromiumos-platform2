@@ -117,8 +117,9 @@ void StatefulFreeSpaceCalculator::SignalDiskSpaceUpdate() {
   // signal the update.
   if (last_updated_free_space_ > kCriticalDiskSpaceBytes &&
       std::abs(stateful_free_space - last_updated_free_space_) <
-          kDiskSpaceSignalThresholdBytes)
+          kDiskSpaceSignalThresholdBytes) {
     return;
+  }
 
   spaced::StatefulDiskSpaceState state = GetDiskSpaceState(stateful_free_space);
   spaced::StatefulDiskSpaceUpdate payload;

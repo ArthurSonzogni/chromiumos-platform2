@@ -164,8 +164,9 @@ class DiskUsageRootdevMock : public DiskUsageUtilImpl {
   int64_t GetBlockDeviceSize(const base::FilePath& device) override {
     // At the moment, only the root device size is queried from spaced.
     // Once more block devices are queried, move this into a map.
-    if (device == rootdev_path_)
+    if (device == rootdev_path_) {
       return rootdev_size_;
+    }
 
     return -1;
   }

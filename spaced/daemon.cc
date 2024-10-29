@@ -61,12 +61,14 @@ std::optional<brillo::Thinpool> GetThinpool() {
   brillo::LogicalVolumeManager lvm;
   std::optional<brillo::PhysicalVolume> pv =
       lvm.GetPhysicalVolume(physical_volume);
-  if (!pv || !pv->IsValid())
+  if (!pv || !pv->IsValid()) {
     return std::nullopt;
+  }
 
   std::optional<brillo::VolumeGroup> vg = lvm.GetVolumeGroup(*pv);
-  if (!vg || !vg->IsValid())
+  if (!vg || !vg->IsValid()) {
     return std::nullopt;
+  }
 
   return lvm.GetThinpool(*vg, "thinpool");
 }

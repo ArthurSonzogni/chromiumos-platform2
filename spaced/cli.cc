@@ -32,18 +32,21 @@ enum Size : int64_t;
 std::ostream& operator<<(std::ostream& out, const Size size) {
   const int64_t i = static_cast<int64_t>(size);
 
-  if (i < 0)
+  if (i < 0) {
     return out << "error (" << i << ")";
+  }
 
   out << i;
 
-  if (!human_readable_sizes)
+  if (!human_readable_sizes) {
     return out;
+  }
 
   out << " bytes";
 
-  if (i < 1024)
+  if (i < 1024) {
     return out;
+  }
 
   double d = static_cast<double>(i) / 1024;
   const char* unit = "KMGT";
