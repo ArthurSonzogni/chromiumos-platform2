@@ -4680,6 +4680,35 @@ def bdcm_encode(bdcm_config):
     )
 
 
+def bbsm_encode(bbsm_config):
+    """Creates and returns Bluetooth bands selection with given config.
+
+    Args:
+        bbsm_config: Bluetooth bands selection config.
+
+    Returns:
+        Bluetooth bands selection configuration encoded as bytearray.
+    """
+
+    def bbsm_bands_selection_value(bands_selection):
+        data = 0
+        if bands_selection.band_2_4_ghz_disable:
+            data |= 1 << 0
+        if bands_selection.band_5_2_ghz_disable:
+            data |= 1 << 1
+        if bands_selection.band_5_8_ghz_disable:
+            data |= 1 << 2
+        if bands_selection.band_6_2_ghz_disable:
+            data |= 1 << 3
+        return data
+
+    if bbsm_config.revision != 1:
+        return bytearray(0)
+    return hex_8bit(bbsm_config.revision) + hex_32bit(
+        bbsm_bands_selection_value(bbsm_config.bands_selection)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4733,6 +4762,9 @@ def _create_intel_sar_file_content(intel_config):
     # | BDCM      | 2 bytes  | Offset of Bluetooth BDCM table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | BBSM      | 2 bytes  | Offset of Bluetooth BBSM table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4745,7 +4777,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 10
+    sar_configs = 11
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4821,6 +4853,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set bdcm offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bbsm"):
+        data = bbsm_encode(intel_config.bbsm)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bbsm offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
