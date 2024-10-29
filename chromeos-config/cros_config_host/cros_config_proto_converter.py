@@ -4658,6 +4658,28 @@ def bbfb_encode(bbfb_config):
     )
 
 
+def bdcm_encode(bdcm_config):
+    """Creates and returns Bluetooth Dual Chain Mode with given config.
+
+    Args:
+        bdcm_config: Dual Chain Mode config.
+
+    Returns:
+        Dual Chain Mode configuration encoded as bytearray.
+    """
+
+    def bdcm_dual_chain_mode_value(bdcm_dual_chain_mode):
+        if bdcm_dual_chain_mode.chain_a_and_chain_b:
+            return 3
+        return 1
+
+    if bdcm_config.revision != 1:
+        return bytearray(0)
+    return hex_8bit(bdcm_config.revision) + hex_32bit(
+        bdcm_dual_chain_mode_value(bdcm_config.bdcm_dual_chain_mode)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4708,6 +4730,9 @@ def _create_intel_sar_file_content(intel_config):
     # | BBFB      | 2 bytes  | Offset of Bluetooth BBFB table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | BDCM      | 2 bytes  | Offset of Bluetooth BDCM table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4720,7 +4745,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 9
+    sar_configs = 10
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4789,6 +4814,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set bbfb offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bdcm"):
+        data = bdcm_encode(intel_config.bdcm)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bdcm offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
