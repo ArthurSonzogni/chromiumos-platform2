@@ -92,6 +92,7 @@ getuid: 1
 getgid: 1
 getegid: 1
 rt_sigaction: 1
+pread64: 1
 sched_getattr: 1
 sched_setattr: 1
 setpriority: 1

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/flatbuffer.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
@@ -34,6 +35,7 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "absl",
+    "flatbuffers",
     "libbrillo",
     "libchrome",
     "libdlcservice-client",
@@ -47,7 +49,11 @@ pkg_config("target_defaults") {
   configs = [ "//common-mk:test" ]
   defines = [ "USE_MANTIS=${use.mantis}" ]
   include_dirs = [ "${sysroot}/usr/include/tensorflow" ]
-  libs = [ "tensorflowlite" ]
+  libs = [
+    "tensorflowlite",
+    "delegate_loader",
+    "tflite_settings_json_parser",
+  ]
 }
 
 source_set("libdmabufheap_source_set") {

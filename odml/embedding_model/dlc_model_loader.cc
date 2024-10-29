@@ -35,6 +35,7 @@ constexpr char kTflitePathKey[] = "tflite_path";
 constexpr char kBuiltinSpmKey[] = "builtin_spm";
 constexpr char kSpmPathKey[] = "spm_path";
 constexpr char kDelegateKey[] = "delegate";
+constexpr char kDelegateConfigPathKey[] = "delegate_config_path";
 
 constexpr char kEmbeddingTflite[] = "embedding_tflite";
 
@@ -88,6 +89,15 @@ std::optional<EmbeddingTfliteModelInfo> ParseTfliteModelInfo(
   }
   tflite_info.delegate = *delegate;
 
+  const std::string* delegate_config_path =
+      tflite_info_dict.FindString(kDelegateConfigPathKey);
+  if (!delegate_config_path) {
+    // Delegate config path is optional, not all delegates need config json.
+    tflite_info.delegate_config_path = "";
+  } else {
+    tflite_info.delegate_config_path =
+        dlc_root.Append(*delegate_config_path).value();
+  }
   return tflite_info;
 }
 

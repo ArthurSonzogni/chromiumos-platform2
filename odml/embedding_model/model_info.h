@@ -28,6 +28,10 @@ struct EmbeddingTfliteModelInfo {
   // "gpu-opencl" - Uses TfLiteGpuDelegate with OpenCL.
   // If empty, will default to "cpu".
   std::string delegate;
+
+  // Path to the stable delegate JSON config. This is only used if the specified
+  // delegate uses tflite stable delegate.
+  std::string delegate_config_path;
 };
 
 // Contain information required to load and run the model.

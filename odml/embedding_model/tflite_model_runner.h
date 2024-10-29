@@ -36,7 +36,11 @@ class TfliteModelRunner : public ModelRunner {
     kCantAllocateTensors = 8,
     kIncorrectInputSize = 9,
     kIncorrectOutputSize = 10,
-    kMaxValue = kIncorrectOutputSize,
+    kMediatekNeuronDelegateSettingParseFailed = 11,
+    kMediatekNeuronDelegateLoadFailed = 12,
+    kMediatekNeuronDelegateCreateFailed = 13,
+    kMediatekNeuronDelegateModifyFailed = 14,
+    kMaxValue = kMediatekNeuronDelegateModifyFailed,
   };
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
@@ -72,7 +76,12 @@ class TfliteModelRunner : public ModelRunner {
     kDelegateTypeNotSet = 0,
     kDelegateTypeCpu = 1,
     kDelegateTypeGpuOpenCl = 2,
+    kDelegateTypeMediatekNeuron = 3,
   };
+
+  using TfLiteDelegatePtr =
+      std::unique_ptr<TfLiteOpaqueDelegate,
+                      std::function<void(TfLiteOpaqueDelegate*)>>;
 
   // Part of Load(), runs after shim_loader_ finishes loading.
   void OnShimFinishLoading(base::PassKey<ModelHolder> passkey,

@@ -12,8 +12,19 @@
 
 #include <tensorflow/lite/context.h>
 #include <tensorflow/lite/delegates/gpu/delegate.h>
+#include <tensorflow/lite/delegates/utils/experimental/stable_delegate/delegate_loader.h>
+#include <tensorflow/lite/delegates/utils/experimental/stable_delegate/tflite_settings_json_parser.h>
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
+#include <tensorflow/lite/logger.h>
+
+void RegisterSelectedOps(::tflite::MutableOpResolver* resolver);
+
+// Version with Weak linker attribute doing nothing: if someone links this
+// library with another definition of this function (presumably to actually
+// register custom ops), that version will be used instead.
+void ABSL_ATTRIBUTE_WEAK
+RegisterSelectedOps(::tflite::MutableOpResolver* resolver) {}
 
 namespace embedding_model {
 
@@ -37,11 +48,15 @@ constexpr char kContentKey[] = "content";
 
 constexpr char kDelegateCpu[] = "cpu";
 constexpr char kDelegateGpuOpenCl[] = "gpu-opencl";
+constexpr char kDelegateMediatekNeuron[] = "mediatek-neuron";
 
 constexpr char kTfliteRunnerLoadStatusHistogramName[] =
     "OnDeviceModel.Embedding.TfliteRunnerLoadStatus";
 constexpr char kTfliteRunnerRunStatusHistogramName[] =
     "OnDeviceModel.Embedding.TfliteRunnerRunStatus";
+
+constexpr char kMediatekNeuronDelegatePath[] =
+    "/usr/lib64/libtensorflowlite_mtk_neuron_delegate.so";
 
 }  // namespace
 
@@ -71,6 +86,8 @@ void TfliteModelRunner::Load(base::PassKey<ModelHolder> passkey,
     delegate_type_ = DelegateType::kDelegateTypeCpu;
   } else if (tflite_info_->delegate == kDelegateGpuOpenCl) {
     delegate_type_ = DelegateType::kDelegateTypeGpuOpenCl;
+  } else if (tflite_info_->delegate == kDelegateMediatekNeuron) {
+    delegate_type_ = DelegateType::kDelegateTypeMediatekNeuron;
   } else {
     LOG(ERROR) << "Unsupported delegate option for TfliteModelRunner: "
                << tflite_info_->delegate;
@@ -138,9 +155,17 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
   }
 
   tflite::ops::builtin::BuiltinOpResolver resolver;
+
+  if (delegate_type_ == DelegateType::kDelegateTypeMediatekNeuron) {
+    TfLiteRegistration reg = {nullptr, nullptr, nullptr, nullptr};
+    resolver.AddCustom("cros-mtk-pre-compile", &reg);
+    RegisterSelectedOps(&resolver);
+  }
+
   std::unique_ptr<tflite::Interpreter> interpreter;
-  const TfLiteStatus resolve_status =
-      tflite::InterpreterBuilder(*model_, resolver)(&interpreter);
+  tflite::InterpreterBuilder builder(*model_, resolver);
+
+  const TfLiteStatus resolve_status = builder(&interpreter);
   if (resolve_status != kTfLiteOk || !interpreter) {
     LOG(ERROR) << "Could not resolve model ops.";
     metrics_->SendEnumToUMA(kTfliteRunnerLoadStatusHistogramName,
@@ -149,9 +174,20 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
     return;
   }
 
-  if (delegate_type_ == DelegateType::kDelegateTypeCpu) {
-    // Nothing to do.
-  } else if (delegate_type_ == DelegateType::kDelegateTypeGpuOpenCl) {
+  // A delegate can be applied with 2 methods, the first is through
+  // InterpreterBuilder::AddDelegate() and the second is through
+  // Interpreter::ModifyGraphWithDelegate(). The official tensorflow
+  // documentation did not specify which method is the recommended way. The
+  // advantage of AddDelegate() is that it encapsulates the whole interaction
+  // between delegate and interpreter so if there's any future change to the
+  // current experimental stable delegate, it's more likely that AddDelegate()
+  // will capture these changes, while the downside is that AddDelegate() does
+  // not accept transfer of ownership of delegate, and therefore needs more
+  // complicated ownership lifecycle management. Currently we select the second
+  // method for the ease of ownership management, but should there be changes to
+  // the way stable delegate interacts with interpreter, we'll need to apply the
+  // revelant changes.
+  if (delegate_type_ == DelegateType::kDelegateTypeGpuOpenCl) {
     // Apply GPU delegate
     TfLiteGpuDelegateOptionsV2 options(TfLiteGpuDelegateOptionsV2Default());
     options.experimental_flags |= TFLITE_GPU_EXPERIMENTAL_FLAGS_CL_ONLY;
@@ -171,8 +207,50 @@ void TfliteModelRunner::OnTokenizerLoadFinish(LoadCallback callback,
       std::move(callback).Run(false);
       return;
     }
-  } else {
-    NOTREACHED();
+  } else if (delegate_type_ == DelegateType::kDelegateTypeMediatekNeuron) {
+    tflite::delegates::utils::TfLiteSettingsJsonParser parser;
+    auto opts = parser.Parse(tflite_info_->delegate_config_path);
+    if (!opts) {
+      LOG(ERROR)
+          << "Failed to parse Mediatek Neuron Tflite delegate settings file.";
+      metrics_->SendEnumToUMA(
+          kTfliteRunnerLoadStatusHistogramName,
+          LoadResultHistogram::kMediatekNeuronDelegateSettingParseFailed);
+      std::move(callback).Run(false);
+      return;
+    }
+
+    const TfLiteStableDelegate* stable_delegate =
+        tflite::delegates::utils::LoadDelegateFromSharedLibrary(
+            kMediatekNeuronDelegatePath);
+    if (!stable_delegate) {
+      LOG(ERROR) << "Unable to load Mediatek Neuron Tflite delegate.";
+      metrics_->SendEnumToUMA(
+          kTfliteRunnerLoadStatusHistogramName,
+          LoadResultHistogram::kMediatekNeuronDelegateLoadFailed);
+      std::move(callback).Run(false);
+      return;
+    }
+    TfLiteDelegatePtr delegate =
+        TfLiteDelegatePtr(stable_delegate->delegate_plugin->create(opts),
+                          stable_delegate->delegate_plugin->destroy);
+    if (!delegate) {
+      LOG(ERROR) << "Failed to create Mediatek Neuron Tflite delegate.";
+      metrics_->SendEnumToUMA(
+          kTfliteRunnerLoadStatusHistogramName,
+          LoadResultHistogram::kMediatekNeuronDelegateCreateFailed);
+      std::move(callback).Run(false);
+      return;
+    }
+    if (interpreter->ModifyGraphWithDelegate(std::move(delegate)) !=
+        kTfLiteOk) {
+      LOG(ERROR) << "Could not use Mediatek Neuron delegate.";
+      metrics_->SendEnumToUMA(
+          kTfliteRunnerLoadStatusHistogramName,
+          LoadResultHistogram::kMediatekNeuronDelegateModifyFailed);
+      std::move(callback).Run(false);
+      return;
+    }
   }
 
   // Allocate memory for tensors.
