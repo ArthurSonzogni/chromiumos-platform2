@@ -561,7 +561,12 @@ bool Platform::DirectoryExists(const FilePath& path) {
 bool Platform::GetFileSize(const FilePath& path, int64_t* size) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  return base::GetFileSize(path, size);
+  std::optional<int64_t> file_size = base::GetFileSize(path);
+  if (!file_size.has_value()) {
+    return false;
+  }
+  *size = file_size.value();
+  return true;
 }
 
 int64_t Platform::ComputeDirectoryDiskUsage(const FilePath& path) {
@@ -1636,7 +1641,7 @@ bool Platform::ReadFileToBlob(const FilePath& path, T* blob) {
   if (!base::PathExists(path)) {
     return false;
   }
-  if (!base::GetFileSize(path, &file_size)) {
+  if (!GetFileSize(path, &file_size)) {
     LOG(ERROR) << "Could not get size of " << path.value();
     return false;
   }
