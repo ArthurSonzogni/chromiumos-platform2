@@ -39,8 +39,9 @@ JsonStore::ReadError TranslateJsonFileReadErrors(const base::Value* value,
         return JsonStore::READ_ERROR_JSON_PARSE;
     }
   }
-  if (!value->is_dict())
+  if (!value->is_dict()) {
     return JsonStore::READ_ERROR_JSON_TYPE;
+  }
   return JsonStore::READ_ERROR_NONE;
 }
 
@@ -192,8 +193,9 @@ std::unique_ptr<JsonStore::ReadResult> JsonStore::ReadFromFile() {
 }
 
 bool JsonStore::WriteToFile(bool force) {
-  if (read_only_ && !force)
+  if (read_only_ && !force) {
     return false;
+  }
 
   std::string serialized_data;
   if (!SerializeValue(data_, &serialized_data)) {

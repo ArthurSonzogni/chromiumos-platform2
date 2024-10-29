@@ -276,8 +276,9 @@ void RunCalibrationStateHandler::SaveAndSend(
                     : CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
       for (auto [other_component, other_status] :
            calibration_map_[setup_instruction_]) {
-        if (IsPendingWriteStatus(other_status))
+        if (IsPendingWriteStatus(other_status)) {
           calibration_map_[setup_instruction_][other_component] = write_status;
+        }
       }
       SetCalibrationMap(json_store_, calibration_map_);
 

@@ -145,8 +145,9 @@ void IioEcSensorUtilsImpl::Initialize() {
 void IioEcSensorUtilsImpl::OnSampleUpdated(
     const base::flat_map<int, int64_t>& data) {
   // TODO(jeffulin): Remove this workaround when new firmware is released.
-  if (samples_to_discard_-- > 0)
+  if (samples_to_discard_-- > 0) {
     return;
+  }
 
   for (const auto& channel_id : target_channel_ids_) {
     sampled_data_[channel_id].push_back(
