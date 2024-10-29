@@ -103,13 +103,13 @@ int Controller::OnInit() {
       0) {
     metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
                                 Metrics::ProcessEvent::kCapNetBindServiceError);
-    LOG(ERROR) << "Failed to add CAP_NET_BIND_SERVICE to the ambient set";
+    PLOG(FATAL) << "Failed to add CAP_NET_BIND_SERVICE to the ambient set";
   }
 
   // Preserve CAP_SETUID so the child process have the capability to change to
   // either "dns-proxy-user" or "dns-proxy-system".
   if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETUID, 0, 0) != 0) {
-    LOG(ERROR) << "Failed to add CAP_SETUID to the ambient set";
+    PLOG(FATAL) << "Failed to add CAP_SETUID to the ambient set";
   }
 
   // Handle subprocess lifecycle.
