@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 
 #include <algorithm>
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -54,11 +56,11 @@ bool AppendMessage(const base::FilePath& log_path, const std::string& msg) {
     return false;
   }
 
-  int64_t file_size;
-  if (!base::GetFileSize(log_path, &file_size)) {
+  std::optional<int64_t> file_size = base::GetFileSize(log_path);
+  if (!file_size.has_value()) {
     return false;
   }
-  if (file_size >= kLogMaxSize) {
+  if (file_size.value() >= kLogMaxSize) {
     std::string contents;
     if (!base::ReadFileToString(log_path, &contents)) {
       return false;
@@ -158,13 +160,13 @@ extern "C" int CheckAuthFailureHistory(const char* current_path,
     return 0;
   }
 
-  int64_t size;
-  if (!base::GetFileSize(current_log, &size)) {
+  std::optional<int64_t> size = base::GetFileSize(current_log);
+  if (!size.has_value()) {
     LastError() = std::string("error checking file size");
     return 0;
   }
   // If there is no failure log in |current_log|, nothing to do here.
-  if (size == 0) {
+  if (size.value() == 0) {
     return 0;
   }
 
