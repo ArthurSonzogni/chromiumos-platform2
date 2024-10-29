@@ -4709,6 +4709,65 @@ def bbsm_encode(bbsm_config):
     )
 
 
+def bucs_encode(bucs_config):
+    """Creates and returns Bluetooth Ultra-High Band country selection.
+
+    Args:
+        bucs_config: Bluetooth Ultra-High Band country selection config.
+
+    Returns:
+        Bluetooth Ultra-High Band country configuration encoded as bytearray.
+    """
+
+    def bucs_uhb_country_selection_value(uhb_country_selection):
+        data = 0
+        if uhb_country_selection.force_disable_bt_in_all_other_countries:
+            data |= 1 << 0
+        if uhb_country_selection.allow_6_ghz_in_usa:
+            data |= 1 << 1
+        if uhb_country_selection.allow_6_ghz_in_rest_of_the_world:
+            data |= 1 << 2
+        if uhb_country_selection.allow_6_ghz_in_eu:
+            data |= 1 << 3
+        if uhb_country_selection.allow_6_ghz_in_south_korea:
+            data |= 1 << 4
+        if uhb_country_selection.allow_6_ghz_in_brazil:
+            data |= 1 << 5
+        if uhb_country_selection.allow_6_ghz_in_chile:
+            data |= 1 << 6
+        if uhb_country_selection.allow_6_ghz_in_japan:
+            data |= 1 << 7
+        if uhb_country_selection.allow_6_ghz_in_canada:
+            data |= 1 << 8
+        if uhb_country_selection.allow_6_ghz_in_morocco:
+            data |= 1 << 9
+        if uhb_country_selection.allow_6_ghz_in_mongolia:
+            data |= 1 << 10
+        if uhb_country_selection.allow_6_ghz_in_malaysia:
+            data |= 1 << 11
+        if uhb_country_selection.allow_6_ghz_in_saudi_arabia:
+            data |= 1 << 12
+        if uhb_country_selection.allow_6_ghz_in_mexico:
+            data |= 1 << 13
+        if uhb_country_selection.allow_6_ghz_in_nigeria:
+            data |= 1 << 14
+        if uhb_country_selection.allow_6_ghz_in_thailand:
+            data |= 1 << 15
+        if uhb_country_selection.allow_6_ghz_in_singapore:
+            data |= 1 << 16
+        if uhb_country_selection.allow_6_ghz_in_taiwan:
+            data |= 1 << 17
+        if uhb_country_selection.allow_6_ghz_in_south_africa:
+            data |= 1 << 18
+        return data
+
+    if bucs_config.revision != 1:
+        return bytearray(0)
+    return hex_8bit(bucs_config.revision) + hex_32bit(
+        bucs_uhb_country_selection_value(bucs_config.uhb_country_selection)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4765,6 +4824,9 @@ def _create_intel_sar_file_content(intel_config):
     # | BBSM      | 2 bytes  | Offset of Bluetooth BBSM table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | BUCS      | 2 bytes  | Offset of Bluetooth BUCS table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4777,7 +4839,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 11
+    sar_configs = 12
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4860,6 +4922,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set bbsm offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("bucs"):
+        data = bucs_encode(intel_config.bucs)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set bucs offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
