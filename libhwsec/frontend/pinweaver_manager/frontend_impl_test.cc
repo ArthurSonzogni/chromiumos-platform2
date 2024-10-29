@@ -5,6 +5,7 @@
 // Functional tests for PinWeaverManager + SignInHashTree.
 #include "libhwsec/frontend/pinweaver_manager/frontend_impl.h"
 
+#include <cstdint>
 #include <iterator>  // For std::begin()/std::end().
 #include <map>
 #include <memory>
@@ -162,10 +163,10 @@ class PinWeaverManagerImplTest : public ::testing::Test {
 
   // Corrupts |path| by replacing file contents with random data.
   void CorruptFile(base::FilePath path) {
-    int64_t file_size;
-    ASSERT_TRUE(base::GetFileSize(path, &file_size));
-    std::vector<uint8_t> random_data(file_size);
-    GetSecureRandom(random_data.data(), file_size);
+    std::optional<int64_t> file_size = base::GetFileSize(path);
+    ASSERT_TRUE(file_size.has_value());
+    std::vector<uint8_t> random_data(file_size.value());
+    GetSecureRandom(random_data.data(), file_size.value());
     ASSERT_TRUE(base::WriteFile(path, random_data));
   }
 

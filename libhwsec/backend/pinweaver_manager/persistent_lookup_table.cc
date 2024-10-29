@@ -4,6 +4,9 @@
 
 #include "libhwsec/backend/pinweaver_manager/persistent_lookup_table.h"
 
+#include <cstdint>
+#include <optional>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -22,16 +25,16 @@ base::FilePath CreateFilePathForKey(const base::FilePath& key_dir,
 }
 
 bool ReadFileToBlob(const base::FilePath& path, brillo::Blob* blob) {
-  int64_t file_size;
-  if (!base::GetFileSize(path, &file_size)) {
+  std::optional<int64_t> file_size = base::GetFileSize(path);
+  if (!file_size.has_value()) {
     LOG(ERROR) << "Could not get size of " << path.value();
     return false;
   }
-  blob->resize(file_size);
+  blob->resize(file_size.value());
   int data_read =
       base::ReadFile(path, reinterpret_cast<char*>(blob->data()), blob->size());
 
-  return data_read == static_cast<int>(file_size);
+  return data_read == static_cast<int>(file_size.value());
 }
 
 bool TouchFileDurable(const base::FilePath& path) {
