@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -134,17 +136,17 @@ TEST_F(LibvdaGpuTest, DecodeFileGpu) {
   vda_profile_t file_profile = GetVideoFileProfile(test_video_file);
   ASSERT_NE(file_profile, VIDEO_CODEC_PROFILE_UNKNOWN);
 
-  int64_t file_size;
-  ASSERT_EQ(base::GetFileSize(test_video_file, &file_size), true);
+  std::optional<int64_t> file_size = base::GetFileSize(test_video_file);
   ASSERT_GT(file_size, 0);
 
   VLOG(3) << "Test file: " << test_video_file.value()
-          << ", VDA profile: " << file_profile << ", file size: " << file_size;
+          << ", VDA profile: " << file_profile
+          << ", file size: " << file_size.value();
 
-  std::vector<uint8_t> data(file_size);
+  std::vector<uint8_t> data(file_size.value());
   ASSERT_EQ(
       base::ReadFile(test_video_file, reinterpret_cast<char*>(data.data()),
-                     base::checked_cast<int>(file_size)),
+                     base::checked_cast<int>(file_size.value())),
       file_size);
 
   ImplPtr impl = SetupImpl(GAVDA);

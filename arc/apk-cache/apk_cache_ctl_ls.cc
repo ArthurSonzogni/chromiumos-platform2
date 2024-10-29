@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/apk-cache/apk_cache_ctl_commands.h"
-
 #include <sysexits.h>
 
 #include <iostream>
@@ -15,6 +13,7 @@
 #include <base/logging.h>
 #include <sqlite3.h>
 
+#include "arc/apk-cache/apk_cache_ctl_commands.h"
 #include "arc/apk-cache/apk_cache_database.h"
 #include "arc/apk-cache/apk_cache_utils.h"
 
@@ -55,9 +54,9 @@ ExitCode CommandLs(const base::FilePath& cache_root, std::ostream& out_stream) {
     base::FilePath file_path =
         files_base.AppendASCII(GetFileNameById(entry.id));
 
-    int64_t file_size;
-    if (base::GetFileSize(file_path, &file_size)) {
-      out_stream << file_size;
+    std::optional<int64_t> file_size = base::GetFileSize(file_path);
+    if (file_size.has_value()) {
+      out_stream << file_size.value();
     } else {
       out_stream << "null";
     }

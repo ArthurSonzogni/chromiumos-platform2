@@ -387,17 +387,12 @@ TEST(ArcSetupUtil, TestCreateOrTruncate) {
       temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0777, mode);
   // Confirm that the size of the file is 0.
-  int64_t size = -1;
-  EXPECT_TRUE(
-      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
-  EXPECT_EQ(0, size);
+  EXPECT_EQ(0, base::GetFileSize(temp_directory.GetPath().Append("file")));
 
   // Make the file non-empty.
   EXPECT_TRUE(
       WriteToFile(temp_directory.GetPath().Append("file"), 0777, "abc"));
-  EXPECT_TRUE(
-      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
-  EXPECT_EQ(3, size);
+  EXPECT_EQ(3, base::GetFileSize(temp_directory.GetPath().Append("file")));
 
   // Call the API again with a different mode.
   EXPECT_TRUE(CreateOrTruncate(temp_directory.GetPath().Append("file"), 0700));
@@ -407,10 +402,7 @@ TEST(ArcSetupUtil, TestCreateOrTruncate) {
       temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0700, mode);
   // Confirm that the size of the file is still 0.
-  size = -1;
-  EXPECT_TRUE(
-      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
-  EXPECT_EQ(0, size);
+  EXPECT_EQ(0, base::GetFileSize(temp_directory.GetPath().Append("file")));
 }
 
 TEST(ArcSetupUtil, TestWaitForPaths) {
@@ -478,10 +470,7 @@ TEST(ArcSetupUtil, TestWriteToFile) {
       temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0700, mode);
   // Confirm that the size of the file is still 0.
-  int64_t size = -1;
-  EXPECT_TRUE(
-      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
-  EXPECT_EQ(5, size);
+  EXPECT_EQ(5, base::GetFileSize(temp_directory.GetPath().Append("file")));
 
   // Call the API again with a different mode and content.
   EXPECT_TRUE(
@@ -492,10 +481,7 @@ TEST(ArcSetupUtil, TestWriteToFile) {
       temp_directory.GetPath().Append("file"), &mode));
   EXPECT_EQ(0777, mode);
   // Confirm that the size of the file is still 0.
-  size = -1;
-  EXPECT_TRUE(
-      base::GetFileSize(temp_directory.GetPath().Append("file"), &size));
-  EXPECT_EQ(3, size);
+  EXPECT_EQ(3, base::GetFileSize(temp_directory.GetPath().Append("file")));
 }
 
 TEST(ArcSetupUtil, TestWriteToFileWithSymlink) {
