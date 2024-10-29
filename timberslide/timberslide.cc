@@ -82,14 +82,16 @@ TimberSlide::TimberSlide(std::unique_ptr<LogListener> log_listener,
 int TimberSlide::OnInit() {
   LOG(INFO) << "Starting timberslide daemon";
   int ret = brillo::Daemon::OnInit();
-  if (ret != EX_OK)
+  if (ret != EX_OK) {
     return ret;
+  }
 
   int64_t ec_uptime_ms;
   if (uptime_file_valid_) {
     LOG(INFO) << "EC uptime file is valid";
-    if (GetEcUptime(&ec_uptime_ms))
+    if (GetEcUptime(&ec_uptime_ms)) {
       xfrm_->UpdateTimestamps(ec_uptime_ms, base::Time::Now());
+    }
   } else {
     LOG(WARNING) << "EC uptime file is not valid; ignoring";
   }
@@ -139,14 +141,17 @@ int TimberSlide::OnInit() {
 bool TimberSlide::GetEcUptime(int64_t* ec_uptime_ms) {
   char uptime_buf[64] = {0};
 
-  if (!uptime_file_valid_ || uptime_file_.Seek(base::File::FROM_BEGIN, 0) != 0)
+  if (!uptime_file_valid_ ||
+      uptime_file_.Seek(base::File::FROM_BEGIN, 0) != 0) {
     return false;
+  }
 
   // Read single line from file and parse as a number.
   int count = uptime_file_.ReadAtCurrentPos(uptime_buf, sizeof(uptime_buf) - 1);
 
-  if (count <= 0)
+  if (count <= 0) {
     return false;
+  }
 
   uptime_buf[count] = '\0';
   base::StringToInt64(uptime_buf, ec_uptime_ms);
@@ -182,8 +187,9 @@ std::string TimberSlide::ProcessLogBuffer(const std::string& buffer,
       (tokenized_logging_ ? detokenizer_.DetokenizeBase64(buffer) : buffer);
   std::istringstream iss(log);
 
-  if (GetEcUptime(&ec_current_uptime_ms))
+  if (GetEcUptime(&ec_current_uptime_ms)) {
     xfrm_->UpdateTimestamps(ec_current_uptime_ms, now);
+  }
 
   auto fn_xfrm = [this](const std::string& line) {
     if (log_listener_) {
@@ -208,8 +214,9 @@ void TimberSlide::OnEventReadable() {
 
   ret = TEMP_FAILURE_RETRY(
       device_file_.ReadAtCurrentPosNoBestEffort(buffer, sizeof(buffer)));
-  if (ret == 0)
+  if (ret == 0) {
     return;
+  }
 
   if (ret < 0) {
     PLOG(ERROR) << "Read error";
@@ -245,8 +252,9 @@ void TimberSlide::RotateLogs(const base::FilePath& previous_log,
                              const base::FilePath& current_log) {
   CHECK(base::DeleteFile(previous_log));
 
-  if (base::PathExists(current_log))
+  if (base::PathExists(current_log)) {
     CHECK(base::Move(current_log, previous_log));
+  }
 
   base::WriteFile(current_log, "");
 }

@@ -47,8 +47,9 @@ base::Time StringTransformer::GetLineTimestamp(const std::string& s) {
 
   double ec_ts;
 
-  if (!RE2::PartialMatch(s, ec_timestamp_pattern_, &ec_ts))
+  if (!RE2::PartialMatch(s, ec_timestamp_pattern_, &ec_ts)) {
     return logline_tm_;
+  }
 
   // Calculate delta from EC's uptime.
   const base::TimeDelta ec_sync(base::Milliseconds(ec_current_uptime_ms_));

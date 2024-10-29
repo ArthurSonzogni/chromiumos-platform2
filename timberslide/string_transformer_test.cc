@@ -111,8 +111,9 @@ void CheckStringTransform(StringTransformer* xfrm,
     xfrm->UpdateTimestamps(example.ec_uptime, timestamp);
   }
 
-  for (int i = 0; i < example.input.size(); i++)
+  for (int i = 0; i < example.input.size(); i++) {
     EXPECT_EQ(xfrm->AddHostTs(example.input[i]), example.expected_result[i]);
+  }
 }
 
 // Check basic functionality
