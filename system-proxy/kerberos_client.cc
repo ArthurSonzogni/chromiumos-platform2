@@ -135,8 +135,9 @@ void KerberosClient::WriteFiles(const std::string& krb5_ccache_data,
   bool success = !krb5_ccache_data.empty() && !krb5_conf_data.empty() &&
                  WriteFile(krb5_conf_path_, krb5_conf_data) &&
                  WriteFile(krb5_ccache_path_, krb5_ccache_data);
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "Error retrieving the tickets";
+  }
 }
 
 void KerberosClient::ConnectToKerberosFilesChangedSignal() {

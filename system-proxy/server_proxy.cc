@@ -57,22 +57,27 @@ std::string UrlEncode(const std::string& text) {
 // curl bit-mask format.
 int64_t GetAuthSchemes(
     const google::protobuf::RepeatedPtrField<std::string>& auth_schemes) {
-  if (auth_schemes.empty())
+  if (auth_schemes.empty()) {
     return CURLAUTH_ANY;
+  }
   // Convert auth schemes to curl format.
   int64_t curl_scheme = 0;
   // Auth scheme is case insensitive, see
   // https://tools.ietf.org/html/rfc7235#section-2.1
   for (auto const& scheme : auth_schemes) {
     const std::string lower_scheme = base::ToLowerASCII(scheme);
-    if (lower_scheme == "basic")
+    if (lower_scheme == "basic") {
       curl_scheme |= CURLAUTH_BASIC;
-    if (lower_scheme == "digest")
+    }
+    if (lower_scheme == "digest") {
       curl_scheme |= CURLAUTH_DIGEST;
-    if (lower_scheme == "ntlm")
+    }
+    if (lower_scheme == "ntlm") {
       curl_scheme |= CURLAUTH_NTLM;
-    if (lower_scheme == "negotiate")
+    }
+    if (lower_scheme == "negotiate") {
       curl_scheme |= CURLAUTH_NEGOTIATE;
+    }
   }
   return curl_scheme;
 }
@@ -221,8 +226,9 @@ void ServerProxy::HandleStdinReadable() {
   if (config.has_proxy_resolution_reply()) {
     std::list<std::string> proxies;
     const worker::ProxyResolutionReply& reply = config.proxy_resolution_reply();
-    for (auto const& proxy : reply.proxy_servers())
+    for (auto const& proxy : reply.proxy_servers()) {
       proxies.push_back(proxy);
+    }
 
     OnProxyResolved(reply.target_url(), proxies);
   }
@@ -307,8 +313,9 @@ void ServerProxy::OnConnectionAccept() {
                             base::Unretained(this)),
         base::BindOnce(&ServerProxy::OnConnectionSetupFinished,
                        base::Unretained(this)));
-    if (connect_job->Start())
+    if (connect_job->Start()) {
       pending_connect_jobs_[connect_job.get()] = std::move(connect_job);
+    }
   } else {
     PLOG(ERROR) << "Failed to accept incoming connection";
   }
@@ -325,8 +332,9 @@ void ServerProxy::OnProxyResolved(const std::string& target_url,
   auto callbacks = std::move(pending_proxy_resolution_requests_[target_url]);
   pending_proxy_resolution_requests_.erase(target_url);
 
-  for (auto& callback : callbacks)
+  for (auto& callback : callbacks) {
     std::move(callback).Run(proxy_servers);
+  }
 }
 
 void ServerProxy::OnConnectionSetupFinished(std::unique_ptr<CurlForwarder> fwd,

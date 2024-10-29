@@ -47,8 +47,9 @@ bool ExtractHTTPRequest(const std::vector<char>& input,
   for (const auto& header_end : kValidHttpHeaderEnd) {
     auto it = std::search(input.begin(), input.end(), header_end.c_str(),
                           header_end.c_str() + header_end.length());
-    if (it == input.end())
+    if (it == input.end()) {
       continue;
+    }
     it += header_end.length();
     *out_http_request = {input.begin(), it};
     *out_remaining_data = {it, input.end()};
@@ -60,17 +61,20 @@ bool ExtractHTTPRequest(const std::vector<char>& input,
 std::string GetUriAuthorityFromHttpHeader(std::string_view http_request) {
   // Request-Line ends with CRLF (RFC2616, section 5.1).
   size_t i = http_request.find("\r\n");
-  if (i == std::string_view::npos)
+  if (i == std::string_view::npos) {
     return std::string();
+  }
   // Elements are delimited by non-breaking space (SP).
   auto pieces =
       base::SplitString(http_request.substr(0, i), " ", base::TRIM_WHITESPACE,
                         base::SPLIT_WANT_NONEMPTY);
   // Request-Line has the format: Method SP Request-URI SP HTTP-Version CRLF.
-  if (pieces.size() < 3)
+  if (pieces.size() < 3) {
     return std::string();
-  if (pieces[0] != kConnectMethod)
+  }
+  if (pieces[0] != kConnectMethod) {
     return std::string();
+  }
 
   return pieces[1];
 }

@@ -45,8 +45,9 @@ SandboxedWorker::SandboxedWorker(base::WeakPtr<SystemProxyAdaptor> adaptor)
 bool SandboxedWorker::Start() {
   DCHECK(!IsRunning()) << "Worker is already running.";
 
-  if (!jail_)
+  if (!jail_) {
     return false;
+  }
 
   minijail_namespace_pids(jail_.get());
   minijail_namespace_net(jail_.get());
@@ -151,8 +152,9 @@ bool SandboxedWorker::ClearUserCredentials() {
 }
 
 bool SandboxedWorker::Stop() {
-  if (is_being_terminated_)
+  if (is_being_terminated_) {
     return true;
+  }
   LOG(INFO) << "Killing " << pid_;
   is_being_terminated_ = true;
 
@@ -232,8 +234,9 @@ void SandboxedWorker::OnErrorReceived() {
     }
 
     if (count == 0) {
-      if (!message.empty())
+      if (!message.empty()) {
         break;  // Full message was read at the first iteration.
+      }
 
       PLOG(INFO) << worker_msg << "Pipe closed";
       // Stop watching, otherwise the handler will fire forever.

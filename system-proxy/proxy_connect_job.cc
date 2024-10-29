@@ -127,8 +127,9 @@ static size_t WriteDebugInfoCallback(CURL* handle,
                                      size_t size,
                                      void* userdata) {
   // We're only interested in outgoing headers for testing.
-  if (type != CURLINFO_HEADER_OUT)
+  if (type != CURLINFO_HEADER_OUT) {
     return 0;
+  }
   std::string* headers = (std::string*)userdata;
   *headers = std::string(contents, size);
   return 0;

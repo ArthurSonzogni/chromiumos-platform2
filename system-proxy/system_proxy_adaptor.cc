@@ -157,8 +157,9 @@ std::vector<uint8_t> SystemProxyAdaptor::ClearUserCredentials(
   ClearUserCredentials(/*user_traffic=*/true, &error_message);
 
   ClearUserCredentialsResponse response;
-  if (!error_message.empty())
+  if (!error_message.empty()) {
     response.set_error_message(error_message);
+  }
   return SerializeProto(response);
 }
 
@@ -197,8 +198,9 @@ std::vector<uint8_t> SystemProxyAdaptor::ShutDownProcess(
   }
 
   ShutDownResponse response;
-  if (!error_message.empty())
+  if (!error_message.empty()) {
     response.set_error_message(error_message);
+  }
 
   if (request.traffic_type() == TrafficOrigin::ALL) {
     brillo::MessageLoop::current()->PostTask(

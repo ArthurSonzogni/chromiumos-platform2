@@ -65,8 +65,9 @@ class MockServerProxy : public ServerProxy {
  private:
   void OnConnectionAccept() override {
     ServerProxy::OnConnectionAccept();
-    if (conn_accept_closure_)
+    if (conn_accept_closure_) {
       std::move(conn_accept_closure_).Run();
+    }
   }
 
   base::OnceClosure conn_accept_closure_;
