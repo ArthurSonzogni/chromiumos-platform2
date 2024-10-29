@@ -99,17 +99,20 @@ SyslogStdioAdapter::SyslogStdioAdapter(base::Process child)
     : child_(std::move(child)) {}
 
 SyslogStdioAdapter::~SyslogStdioAdapter() {
-  if (!child_.Terminate(0 /* exit_code */, true /* wait */))
+  if (!child_.Terminate(0 /* exit_code */, true /* wait */)) {
     LOG(ERROR) << "Failed to terminate logger process";
+  }
 }
 
 std::unique_ptr<SyslogStdioAdapter> SyslogStdioAdapter::Create() {
   base::ScopedFD stdout_pipe_read_fd, stderr_pipe_read_fd;
 
-  if (!CreateStdioPipe(&stdout_pipe_read_fd, STDOUT_FILENO))
+  if (!CreateStdioPipe(&stdout_pipe_read_fd, STDOUT_FILENO)) {
     return nullptr;
-  if (!CreateStdioPipe(&stderr_pipe_read_fd, STDERR_FILENO))
+  }
+  if (!CreateStdioPipe(&stderr_pipe_read_fd, STDERR_FILENO)) {
     return nullptr;
+  }
 
   // Redirect all minijail logs to avoid them appearing in multiple places.
   minijail_log_to_fd(STDOUT_FILENO, kSyslogLogInfoPriority);
@@ -256,8 +259,9 @@ std::string ParseMountOptions(const std::vector<std::string>& options,
       *verity_options = option.substr(3, std::string::npos);
     } else {
       // Unknown options get appended to the string passed to mount data.
-      if (!option_string_out.empty())
+      if (!option_string_out.empty()) {
         option_string_out += ",";
+      }
       option_string_out += option;
     }
   }
@@ -281,8 +285,9 @@ std::vector<Mountpoint> GetMountpointsUnder(
   while (getmntent_r(mountinfo.get(), &mount_entry, buffer, sizeof(buffer))) {
     // Only return paths that are under |root|.
     const std::string path = mount_entry.mnt_dir;
-    if (path.compare(0, root.value().size(), root.value()) != 0)
+    if (path.compare(0, root.value().size(), root.value()) != 0) {
       continue;
+    }
 
     int mount_flags, negated_mount_flags, bind_mount_flags,
         mount_propagation_flags;
@@ -301,8 +306,9 @@ std::vector<Mountpoint> GetMountpointsUnder(
 }
 
 bool HasCapSysAdmin() {
-  if (!CAP_IS_SUPPORTED(CAP_SYS_ADMIN))
+  if (!CAP_IS_SUPPORTED(CAP_SYS_ADMIN)) {
     return false;
+  }
 
   std::unique_ptr<std::remove_pointer_t<cap_t>, decltype(&cap_free)> caps(
       cap_get_proc(), &cap_free);
@@ -346,8 +352,9 @@ bool RedirectLoggingAndStdio(const base::FilePath& log_file) {
 
 bool Pipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd, int flags) {
   int pipe_fds[2];
-  if (HANDLE_EINTR(pipe2(pipe_fds, flags)) != 0)
+  if (HANDLE_EINTR(pipe2(pipe_fds, flags)) != 0) {
     return false;
+  }
   read_fd->reset(pipe_fds[0]);
   write_fd->reset(pipe_fds[1]);
   return true;

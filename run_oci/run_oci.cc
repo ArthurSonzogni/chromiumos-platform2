@@ -83,8 +83,9 @@ std::ostream& operator<<(std::ostream& o, const OciHook& hook) {
   o << "Hook{path=\"" << hook.path.value() << "\", args=[";
   bool first = true;
   for (const auto& arg : hook.args) {
-    if (!first)
+    if (!first) {
       o << ", ";
+    }
     first = false;
     o << arg;
   }
@@ -105,10 +106,11 @@ std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
   std::ostringstream oss;
   bool first = true;
   for (const auto& map : maps) {
-    if (first)
+    if (first) {
       first = false;
-    else
+    } else {
       oss << ",";
+    }
     oss << GetIdMapString(map);
   }
   return oss.str();
@@ -118,14 +120,16 @@ std::string IdStringFromMap(const std::vector<OciLinuxNamespaceMapping>& maps) {
 int SanitizeFlags(const std::string& type, int flags) {
   int sanitized_flags = flags;
   // Right now, only sanitize sysfs and procfs.
-  if (type != "sysfs" && type != "proc")
+  if (type != "sysfs" && type != "proc") {
     return flags;
+  }
 
   // sysfs and proc should always have nodev, noexec, nosuid.
   // Warn the user if these weren't specified, then turn them on.
   sanitized_flags |= (MS_NODEV | MS_NOEXEC | MS_NOSUID);
-  if (flags ^ sanitized_flags)
+  if (flags ^ sanitized_flags) {
     LOG(WARNING) << "Sanitized mount of type " << type << ".";
+  }
 
   return sanitized_flags;
 }
@@ -133,8 +137,9 @@ int SanitizeFlags(const std::string& type, int flags) {
 // Returns the path for |path| relative to |bundle_dir|.
 base::FilePath MakeAbsoluteFilePathRelativeTo(const base::FilePath& bundle_dir,
                                               const base::FilePath& path) {
-  if (path.IsAbsolute())
+  if (path.IsAbsolute()) {
     return path;
+  }
   return bundle_dir.Append(path);
 }
 
@@ -288,10 +293,12 @@ bool ContainerConfigFromOci(const OciConfig& oci,
   container_config_premounted_runfs(config_out, root_dir.value().c_str());
 
   std::vector<const char*> argv;
-  for (const auto& arg : oci.process.args)
+  for (const auto& arg : oci.process.args) {
     argv.push_back(arg.c_str());
-  for (const auto& arg : extra_args)
+  }
+  for (const auto& arg : extra_args) {
     argv.push_back(arg.c_str());
+  }
   container_config_program_argv(config_out, argv.data(), argv.size());
 
   std::vector<const char*> namespaces;
@@ -334,8 +341,9 @@ bool ContainerConfigFromOci(const OciConfig& oci,
 bool OciConfigFromFile(const base::FilePath& config_path,
                        const OciConfigPtr& oci_out) {
   brillo::SafeFD fd(OpenOciConfigSafely(config_path));
-  if (!fd.is_valid())
+  if (!fd.is_valid()) {
     return false;
+  }
 
   auto result = fd.ReadContents();
   if (brillo::SafeFD::IsError(result.second)) {
@@ -441,8 +449,9 @@ bool RunOneHook(const OciHook& hook,
   int exit_code;
   if (!child.WaitForExitWithTimeout(hook.timeout, &exit_code)) {
     LOG(ERROR) << "Timeout exceeded running " << hook_type << " hook " << hook;
-    if (!child.Terminate(0, true))
+    if (!child.Terminate(0, true)) {
       LOG(ERROR) << "Failed to terminate " << hook_type << " hook " << hook;
+    }
     return false;
   }
   if (exit_code != 0) {
@@ -469,10 +478,12 @@ bool RunHooks(const std::vector<OciHook>& hooks,
   bool success = true;
   std::string container_state = ContainerState(
       *child_pid, container_id, bundle_dir, container_dir, status);
-  for (const auto& hook : hooks)
+  for (const auto& hook : hooks) {
     success &= RunOneHook(hook, hook_stage, container_state);
-  if (!success)
+  }
+  if (!success) {
     LOG(WARNING) << "Error running " << hook_stage << " hooks";
+  }
   return success;
 }
 
@@ -525,8 +536,9 @@ void CleanUpContainer(const base::FilePath& container_dir) {
               return b.path < a.path;
             });
   for (const auto& mountpoint : mountpoints) {
-    if (umount2(mountpoint.path.value().c_str(), MNT_DETACH))
+    if (umount2(mountpoint.path.value().c_str(), MNT_DETACH)) {
       PLOG(ERROR) << "Failed to unmount " << mountpoint.path.value();
+    }
   }
 
   if (!base::DeletePathRecursively(container_dir)) {
@@ -553,8 +565,9 @@ int RunOci(const base::FilePath& bundle_dir,
       bundle_dir.Append(kConfigJsonFilename);
 
   OciConfigPtr oci_config(new OciConfig());
-  if (!OciConfigFromFile(container_config_file, oci_config))
+  if (!OciConfigFromFile(container_config_file, oci_config)) {
     return -1;
+  }
 
   pid_t child_pid = -1;
   if (!oci_config->pre_create_hooks.empty()) {
@@ -614,8 +627,9 @@ int RunOci(const base::FilePath& bundle_dir,
 
   bool needs_intermediate_mount_ns = false;
   for (const auto& mount : oci_config->mounts) {
-    if (!mount.performInIntermediateNamespace)
+    if (!mount.performInIntermediateNamespace) {
       continue;
+    }
     needs_intermediate_mount_ns = true;
     break;
   }
@@ -687,8 +701,9 @@ int RunOci(const base::FilePath& bundle_dir,
   // to interpret both cases as relative to the cgroups mount point for the time
   // being.
   std::string cgroup_parent = oci_config->linux_config.cgroupsPath.value();
-  if (oci_config->linux_config.cgroupsPath.IsAbsolute())
+  if (oci_config->linux_config.cgroupsPath.IsAbsolute()) {
     cgroup_parent = cgroup_parent.substr(1);
+  }
   if (!cgroup_parent.empty()) {
     container_config_set_cgroup_parent(config.get(), cgroup_parent.c_str(),
                                        container_config_get_uid(config.get()),
@@ -815,8 +830,9 @@ int RunOci(const base::FilePath& bundle_dir,
     return 0;
   }
 
-  if (container_options.sigstop_when_ready)
+  if (container_options.sigstop_when_ready) {
     raise(SIGSTOP);
+  }
 
   return container_wait(container.get());
 }
@@ -874,8 +890,9 @@ int OciKill(const std::string& container_id, int kill_signal) {
             << container_id;
 
   pid_t container_pid;
-  if (!GetContainerPID(container_id, &container_pid))
+  if (!GetContainerPID(container_id, &container_pid)) {
     return -1;
+  }
 
   if (kill(container_pid, kill_signal) == -1) {
     PLOG(ERROR) << "Failed to send signal " << kill_signal;
@@ -1101,8 +1118,9 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  for (; optind < argc; optind++)
+  for (; optind < argc; optind++) {
     container_options.extra_program_args.push_back(std::string(argv[optind]));
+  }
 
   std::unique_ptr<run_oci::SyslogStdioAdapter> syslog_stdio_adapter;
   if (!log_dir.empty()) {
@@ -1120,8 +1138,9 @@ int main(int argc, char** argv) {
     container_options.log_file = log_dir.Append(base::StringPrintf(
         "%s.%s", container_id.c_str(),
         brillo::GetTimeAsLogString(base::Time::Now()).c_str()));
-    if (!run_oci::RedirectLoggingAndStdio(container_options.log_file))
+    if (!run_oci::RedirectLoggingAndStdio(container_options.log_file)) {
       return -1;
+    }
   } else if (!container_options.log_tag.empty()) {
     // brillo::OpenLog can be called safely even after log operations have been
     // made before.

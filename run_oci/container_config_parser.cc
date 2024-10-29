@@ -94,8 +94,9 @@ bool ParseRootFileSystemConfig(const base::Value::Dict& config_root_dict,
   }
   config_out->root.path = base::FilePath(*path);
   std::optional<bool> read_only = rootfs_dict->FindBool("readonly");
-  if (read_only.has_value())
+  if (read_only.has_value()) {
     config_out->root.readonly = *read_only;
+  }
   return true;
 }
 
@@ -111,8 +112,9 @@ bool ParseCapabilitiesConfig(const base::Value::Dict& capabilities_dict,
   for (const char* set_name : kCapabilitySetNames) {
     // |capset_list| stays owned by |capabilities_dict|.
     const base::Value::List* capset_list = capabilities_dict.FindList(set_name);
-    if (!capset_list)
+    if (!capset_list) {
       continue;
+    }
     CapSet caps;
     cap_value_t cap_value;
     for (const auto& cap_name_value : *capset_list) {
@@ -219,18 +221,21 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
     return false;
   }
   std::optional<bool> terminal = process_dict->FindBool("terminal");
-  if (terminal.has_value())
+  if (terminal.has_value()) {
     config_out->process.terminal = *terminal;
+  }
   // |user_dict| stays owned by |process_dict|
   const base::Value::Dict* user_dict = process_dict->FindDict("user");
   if (!user_dict) {
     LOG(ERROR) << "Failed to get user info from config";
     return false;
   }
-  if (!ParseIntFromDict(*user_dict, "uid", &config_out->process.user.uid))
+  if (!ParseIntFromDict(*user_dict, "uid", &config_out->process.user.uid)) {
     return false;
-  if (!ParseIntFromDict(*user_dict, "gid", &config_out->process.user.gid))
+  }
+  if (!ParseIntFromDict(*user_dict, "gid", &config_out->process.user.gid)) {
     return false;
+  }
 
   // If additionalGids field is specified, parse it as a valid list of integers.
   const base::Value::List* list_val = user_dict->FindList("additionalGids");
@@ -279,15 +284,17 @@ bool ParseProcessConfig(const base::Value::Dict& config_root_dict,
   }
   config_out->process.cwd = base::FilePath(*path);
   std::optional<int> umask_int = process_dict->FindInt("umask");
-  if (umask_int.has_value())
+  if (umask_int.has_value()) {
     config_out->process.umask = static_cast<mode_t>(*umask_int);
-  else
+  } else {
     config_out->process.umask = 0022;  // Optional
+  }
 
   // selinuxLabel is optional.
   const std::string* selinux_label = process_dict->FindString("selinuxLabel");
-  if (selinux_label)
+  if (selinux_label) {
     config_out->process.selinuxLabel = *selinux_label;
+  }
   // |capabilities_dict| stays owned by |process_dict|
   const base::Value::Dict* capabilities_dict =
       process_dict->FindDict("capabilities");
@@ -400,10 +407,12 @@ bool ParseResources(const base::Value::Dict& resources_dict,
     const std::string* type = dev.FindString("type");
     // Optional, default to both a means all.
     device.type = type ? *type : "a";
-    if (!ParseIntFromDict(dev, "major", &device.major))
+    if (!ParseIntFromDict(dev, "major", &device.major)) {
       device.major = -1;  // Optional, -1 will map to all devices.
-    if (!ParseIntFromDict(dev, "minor", &device.minor))
+    }
+    if (!ParseIntFromDict(dev, "minor", &device.minor)) {
       device.minor = -1;  // Optional, -1 will map to all devices.
+    }
 
     resources_out->devices.push_back(device);
   }
@@ -428,8 +437,9 @@ bool ParseNamespaces(const base::Value::List* namespaces_list,
     }
     new_namespace.type = *type;
     const std::string* path = ns.FindString("path");
-    if (path)
+    if (path) {
       new_namespace.path = base::FilePath(*path);
+    }
     namespaces_out->push_back(new_namespace);
   }
   return true;
@@ -466,8 +476,9 @@ bool ParseDeviceList(const base::Value::Dict& linux_dict,
     }
     device.type = *type;
     std::optional<bool> dynamic_major = dev.FindBool("dynamicMajor");
-    if (dynamic_major.has_value())
+    if (dynamic_major.has_value()) {
       device.dynamicMajor = *dynamic_major;
+    }
     if (device.dynamicMajor) {
       if (dev.Find("major")) {
         LOG(WARNING)
@@ -475,13 +486,15 @@ bool ParseDeviceList(const base::Value::Dict& linux_dict,
             << device.path.value();
       }
     } else {
-      if (!ParseIntFromDict(dev, "major", &device.major))
+      if (!ParseIntFromDict(dev, "major", &device.major)) {
         return false;
+      }
     }
 
     std::optional<bool> dynamic_minor = dev.FindBool("dynamicMinor");
-    if (dynamic_minor.has_value())
+    if (dynamic_minor.has_value()) {
       device.dynamicMinor = *dynamic_minor;
+    }
     if (device.dynamicMinor) {
       if (dev.Find("minor")) {
         LOG(WARNING)
@@ -489,15 +502,19 @@ bool ParseDeviceList(const base::Value::Dict& linux_dict,
             << device.path.value();
       }
     } else {
-      if (!ParseIntFromDict(dev, "minor", &device.minor))
+      if (!ParseIntFromDict(dev, "minor", &device.minor)) {
         return false;
+      }
     }
-    if (!ParseIntFromDict(dev, "fileMode", &device.fileMode))
+    if (!ParseIntFromDict(dev, "fileMode", &device.fileMode)) {
       return false;
-    if (!ParseIntFromDict(dev, "uid", &device.uid))
+    }
+    if (!ParseIntFromDict(dev, "uid", &device.uid)) {
       return false;
-    if (!ParseIntFromDict(dev, "gid", &device.gid))
+    }
+    if (!ParseIntFromDict(dev, "gid", &device.gid)) {
       return false;
+    }
 
     config_out->linux_config.devices.push_back(device);
   }
@@ -515,12 +532,15 @@ bool ParseLinuxIdMappings(const base::Value::List* id_map_list,
     }
     const base::Value::Dict& map = (*id_map_list)[i].GetDict();
     OciLinuxNamespaceMapping new_map;
-    if (!ParseIntFromDict(map, "hostID", &new_map.hostID))
+    if (!ParseIntFromDict(map, "hostID", &new_map.hostID)) {
       return false;
-    if (!ParseIntFromDict(map, "containerID", &new_map.containerID))
+    }
+    if (!ParseIntFromDict(map, "containerID", &new_map.containerID)) {
       return false;
-    if (!ParseIntFromDict(map, "size", &new_map.size))
+    }
+    if (!ParseIntFromDict(map, "size", &new_map.size)) {
       return false;
+    }
     mappings_out->push_back(new_map);
   }
   return true;
@@ -538,12 +558,15 @@ bool ParseSeccompArgs(const base::Value::Dict& syscall_dict,
       }
       const auto& args_dict = arg.GetDict();
       OciSeccompArg this_arg;
-      if (!ParseIntFromDict(args_dict, "index", &this_arg.index))
+      if (!ParseIntFromDict(args_dict, "index", &this_arg.index)) {
         return false;
-      if (!ParseIntFromDict(args_dict, "value", &this_arg.value))
+      }
+      if (!ParseIntFromDict(args_dict, "value", &this_arg.value)) {
         return false;
-      if (!ParseIntFromDict(args_dict, "value2", &this_arg.value2))
+      }
+      if (!ParseIntFromDict(args_dict, "value2", &this_arg.value2)) {
         return false;
+      }
       const std::string* op = args_dict.FindString("op");
       if (!op) {
         LOG(ERROR) << "Failed to parse op for arg " << this_arg.index << " of "
@@ -561,8 +584,9 @@ bool ParseSeccompArgs(const base::Value::Dict& syscall_dict,
 bool ParseSeccompInfo(const base::Value::Dict& seccomp_dict,
                       OciSeccomp* seccomp_out) {
   const std::string* default_action = seccomp_dict.FindString("defaultAction");
-  if (!default_action)
+  if (!default_action) {
     return false;
+  }
   seccomp_out->defaultAction = *default_action;
   // Gets the list of architectures.
   const base::Value::List* architectures =
@@ -604,8 +628,9 @@ bool ParseSeccompInfo(const base::Value::Dict& seccomp_dict,
       return false;
     }
     this_syscall.action = *action;
-    if (!ParseSeccompArgs(syscall_dict, &this_syscall))
+    if (!ParseSeccompArgs(syscall_dict, &this_syscall)) {
       return false;
+    }
     seccomp_out->syscalls.push_back(this_syscall);
   }
 
@@ -669,8 +694,9 @@ bool ParseSkipSecurebitsMask(const base::Value::List& skip_securebits_list,
       return false;
     }
     uint64_t mask = 0;
-    if (!ParseSecurebit(securebit_name.GetString(), &mask))
+    if (!ParseSecurebit(securebit_name.GetString(), &mask)) {
       return false;
+    }
     *securebits_mask_out |= mask;
   }
   return true;
@@ -699,33 +725,40 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
 
   // |uid_map_list| is owned by |linux_dict|
   const base::Value::List* uid_map_list = linux_dict->FindList("uidMappings");
-  if (uid_map_list)
+  if (uid_map_list) {
     ParseLinuxIdMappings(uid_map_list, &config_out->linux_config.uidMappings);
+  }
 
   // |gid_map_list| is owned by |linux_dict|
   const base::Value::List* gid_map_list = linux_dict->FindList("gidMappings");
-  if (gid_map_list)
+  if (gid_map_list) {
     ParseLinuxIdMappings(gid_map_list, &config_out->linux_config.gidMappings);
+  }
 
-  if (!ParseDeviceList(*linux_dict, config_out))
+  if (!ParseDeviceList(*linux_dict, config_out)) {
     return false;
+  }
 
   const base::Value::Dict* resources_dict = linux_dict->FindDict("resources");
   if (resources_dict) {
-    if (!ParseResources(*resources_dict, &config_out->linux_config.resources))
+    if (!ParseResources(*resources_dict, &config_out->linux_config.resources)) {
       return false;
+    }
   }
 
   const base::Value::List* namespaces_list = linux_dict->FindList("namespaces");
   if (namespaces_list) {
-    if (!ParseNamespaces(namespaces_list, &config_out->linux_config.namespaces))
+    if (!ParseNamespaces(namespaces_list,
+                         &config_out->linux_config.namespaces)) {
       return false;
+    }
   }
 
   const base::Value::Dict* seccomp_dict = linux_dict->FindDict("seccomp");
   if (seccomp_dict) {
-    if (!ParseSeccompInfo(*seccomp_dict, &config_out->linux_config.seccomp))
+    if (!ParseSeccompInfo(*seccomp_dict, &config_out->linux_config.seccomp)) {
       return false;
+    }
   }
 
   const std::string* rootfs_propagation_string =
@@ -739,8 +772,9 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
 
   const std::string* cgroups_path_string =
       linux_dict->FindString("cgroupsPath");
-  if (cgroups_path_string)
+  if (cgroups_path_string) {
     config_out->linux_config.cgroupsPath = base::FilePath(*cgroups_path_string);
+  }
 
   const std::string* alt_syscall = linux_dict->FindString("altSyscall");
   config_out->linux_config.altSyscall =
@@ -762,24 +796,28 @@ bool ParseLinuxConfigDict(const base::Value::Dict& runtime_root_dict,
 
   const base::Value::Dict* cpu_dict = linux_dict->FindDict("cpu");
   if (cpu_dict) {
-    if (!ParseCpuInfo(*cpu_dict, &config_out->linux_config.cpu))
+    if (!ParseCpuInfo(*cpu_dict, &config_out->linux_config.cpu)) {
       return false;
+    }
   }
 
   return true;
 }
 
 bool HostnameValid(const std::string& hostname) {
-  if (hostname.length() > 255)
+  if (hostname.length() > 255) {
     return false;
+  }
 
   const std::regex name("^[0-9a-zA-Z]([0-9a-zA-Z-]*[0-9a-zA-Z])?$");
-  if (!std::regex_match(hostname, name))
+  if (!std::regex_match(hostname, name)) {
     return false;
+  }
 
   const std::regex double_dash("--");
-  if (std::regex_match(hostname, double_dash))
+  if (std::regex_match(hostname, double_dash)) {
     return false;
+  }
 
   return true;
 }
@@ -876,19 +914,24 @@ bool ParseHooks(const base::Value::Dict& config_root_dict,
   }
   hooks_list = hooks_config_dict->FindList("prestart");
   if (hooks_list) {
-    if (!ParseHooksList(*hooks_list, &config_out->pre_start_hooks, "prestart"))
+    if (!ParseHooksList(*hooks_list, &config_out->pre_start_hooks,
+                        "prestart")) {
       return false;
+    }
   }
   hooks_list = hooks_config_dict->FindList("poststart");
   if (hooks_list) {
     if (!ParseHooksList(*hooks_list, &config_out->post_start_hooks,
-                        "poststart"))
+                        "poststart")) {
       return false;
+    }
   }
   hooks_list = hooks_config_dict->FindList("poststop");
   if (hooks_list) {
-    if (!ParseHooksList(*hooks_list, &config_out->post_stop_hooks, "poststop"))
+    if (!ParseHooksList(*hooks_list, &config_out->post_stop_hooks,
+                        "poststop")) {
       return false;
+    }
   }
   return true;
 }
