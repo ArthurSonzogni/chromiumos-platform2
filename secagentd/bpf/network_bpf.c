@@ -250,8 +250,9 @@ cros_ipv6_get_non_ext_next_header(const struct sk_buff* skb,
       break;
     }
     hp = cros_skb_header_pointer(skb, start, sizeof(_hdr), &_hdr);
-    if (!hp)
+    if (!hp) {
       return -CROS_EBADMSG;
+    }
     if (nexthdr == CROS_NEXTHDR_FRAGMENT) {
       hdrlen = 8;
     } else if (nexthdr == CROS_NEXTHDR_AUTH) {

@@ -43,8 +43,9 @@ std::string TpmPropertyToStr(uint32_t value) {
 
   for (int i = 0, shift = 24; i < 4; i++, shift -= 8) {
     auto c = static_cast<char>((value >> shift) & 0xFF);
-    if (c == 0)
+    if (c == 0) {
       break;
+    }
     str.push_back((c >= 32 && c < 127) ? c : ' ');
   }
 

@@ -425,8 +425,9 @@ static inline __attribute__((always_inline)) bool isProcessBlocklisted() {
 
   // Get current task
   struct task_struct* task = (struct task_struct*)bpf_get_current_task();
-  if (!task)
+  if (!task) {
     return 0;
+  }
 
   struct inode* inode = BPF_CORE_READ(task, mm, exe_file, f_inode);
   key.inode_id = BPF_CORE_READ(inode, i_ino);
@@ -761,8 +762,9 @@ static __always_inline bool is_dentry_allowlisted(
 static __always_inline void get_inode_attributes(struct inode* inode,
                                                  struct inode_attr* attr) {
   // Check if either inode or attr is NULL
-  if (!inode || !attr)
+  if (!inode || !attr) {
     return;
+  }
 
   // Read mode, UID, GID, and size
   attr->mode = BPF_CORE_READ(inode, i_mode);
@@ -1304,8 +1306,9 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
     gid_t group,
     bool check_times,
     struct timespec64* times) {
-  if (!path)
+  if (!path) {
     return;
+  }
 
   struct before_attribute_map_value map_value =
       {};  // Structure to hold inode attributes before change
@@ -1319,22 +1322,26 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
   current_task = (struct task_struct*)bpf_get_current_task();
 
   // Filter out kernel threads
-  if (is_kthread(current_task))
+  if (is_kthread(current_task)) {
     return;
+  }
 
   // Read the dentry from the path structure
   dentry = BPF_CORE_READ(path, dentry);
-  if (!dentry)
+  if (!dentry) {
     return;
+  }
 
   // Retrieve the inode structure
   inode = BPF_CORE_READ(dentry, d_inode);
-  if (!inode)
+  if (!inode) {
     return;
+  }
 
   // Check for a valid file type
-  if (!is_valid_file(inode, 0))
+  if (!is_valid_file(inode, 0)) {
     return;
+  }
 
   // Get the inode attributes before the change
   get_inode_attributes(inode, &map_value.attr);
@@ -1351,8 +1358,9 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
     bool group_notpassed_or_match =
         ((group == UINT32_MAX) || (map_value.attr.gid == group));
 
-    if (user_notpassed_or_match && group_notpassed_or_match)
+    if (user_notpassed_or_match && group_notpassed_or_match) {
       return;
+    }
   }
 
   // Safely check if times have actually changed for utimes
@@ -1379,8 +1387,9 @@ static inline __attribute__((always_inline)) void attr_change_fentry_common(
   dev_id = BPF_CORE_READ(inode, i_sb, s_dev);
 
   // Check if the dentry is on the allowlist
-  if (!is_dentry_allowlisted(dentry, dev_id, FMOD_ATTR, &monitor_settings))
+  if (!is_dentry_allowlisted(dentry, dev_id, FMOD_ATTR, &monitor_settings)) {
     return;
+  }
 
   uint8_t* file_path = NULL;
   resolve_path_to_string(&file_path, path);
@@ -1445,8 +1454,9 @@ static inline __attribute__((always_inline)) void attr_change_fexit_common(
   }
 
   struct dentry* dentry = BPF_CORE_READ(path, dentry);
-  if (!dentry)
+  if (!dentry) {
     return;
+  }
 
   struct inode* inode = BPF_CORE_READ(dentry, d_inode);
   if (!inode) {

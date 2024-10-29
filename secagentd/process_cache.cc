@@ -575,8 +575,9 @@ void ProcessCache::InitializeFilter(bool underscorify) {
   for (const auto& key : filter_rules_parent_) {
     LOG(INFO) << "PARENT: SHA256:" << key.first
               << " pathname:" << key.second.image_pathname;
-    if (!key.second.commandline.empty())
+    if (!key.second.commandline.empty()) {
       LOG(INFO) << "Commands:";
+    }
     for (auto commandline : key.second.commandline) {
       LOG(INFO) << commandline;
     }
@@ -585,8 +586,9 @@ void ProcessCache::InitializeFilter(bool underscorify) {
   for (const auto& key : filter_rules_process_) {
     LOG(INFO) << "PROCESS: SHA256:" << key.first
               << " pathname:" << key.second.image_pathname;
-    if (!key.second.commandline.empty())
+    if (!key.second.commandline.empty()) {
       LOG(INFO) << "Commands:";
+    }
     for (auto commandline : key.second.commandline) {
       LOG(INFO) << commandline;
     }

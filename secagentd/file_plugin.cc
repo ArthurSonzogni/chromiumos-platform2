@@ -327,16 +327,19 @@ bool IsDeviceStillMounted(uint64_t kernel_dev) {
 bool IsExternalMedia(const base::FilePath& source_path) {
   std::vector<std::string> parts = source_path.GetComponents();
 
-  if (parts.size() < 2 || parts[0] != "/")
+  if (parts.size() < 2 || parts[0] != "/") {
     return false;
+  }
 
-  if (parts[1] == "media")
+  if (parts[1] == "media") {
     return parts.size() > 4 && (parts[2] == "archive" || parts[2] == "fuse" ||
                                 parts[2] == "removable");
+  }
 
-  if (parts[1] == "run")
+  if (parts[1] == "run") {
     return parts.size() > 8 && parts[2] == "arc" && parts[3] == "sdcard" &&
            parts[4] == "write" && parts[5] == "emulated" && parts[6] == "0";
+  }
 
   return false;
 }
