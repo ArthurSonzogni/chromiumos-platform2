@@ -8,11 +8,11 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/file.h>
-#include <base/logging.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 
 #include "verity/dm_verity_table.h"
 #include "verity/file_hasher.h"
@@ -28,11 +28,12 @@ constexpr char kHashTree[] = "hashtree";
 
 bool DmVerityAction::PreVerify(const base::FilePath& payload_path,
                                const DmVerityTable& dm_verity_table) {
-  int64_t payload_size = -1;
-  if (!base::GetFileSize(payload_path, &payload_size)) {
+  auto size = base::GetFileSize(payload_path);
+  if (!size.has_value()) {
     LOG(ERROR) << "Failed to get payload size.";
     return false;
   }
+  auto payload_size = size.value();
 
   const auto& data_dev = dm_verity_table.GetDataDevice();
   const auto source_img_bytes = data_dev.NumBytes();
