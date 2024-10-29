@@ -409,8 +409,9 @@ SMBCFILE* SambaInterfaceImpl::MustGetFile(int32_t fd) {
 }
 
 void SambaInterfaceImpl::CloseOutstandingFileDescriptors() {
-  if (fds_.Empty())
+  if (fds_.Empty()) {
     return;
+  }
 
   LOG(WARNING)
       << "Closing " << fds_.Count()
