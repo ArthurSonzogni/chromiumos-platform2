@@ -44,7 +44,8 @@ const DevicePolicy::UsbDeviceId kSerialAllowedIds[] = {
     {0x18d1, 0x5020},  // Google Sweetberry
     {0x18d1, 0x5027},  // Google Tigertail
     {0x18d1, 0x5036},  // Google Chocodile
-    {0x18d1, 0x504a},  // Google Ti50
+    {0x18d1, 0x504a},  // Google Ti50 DT
+    {0x18d1, 0x5066},  // Google Ti50 NT
     {0x18d1, 0x520D},  // Google Servo V4p1
     {0x18d1, 0x5213},  // Google Twinkie V2
     {0x1d50, 0x6140},  // QuickLogic QuickFeather evaluation board bootloader
