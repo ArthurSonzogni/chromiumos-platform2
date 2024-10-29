@@ -115,8 +115,9 @@ int main(int argc, char* argv[]) {
   // Prepare a command line for the target process.
   int target_command_argc = sv.size();
   std::vector<const char*> target_command_argv(target_command_argc + 1);
-  for (int i = 0; i < target_command_argc; i++)
+  for (int i = 0; i < target_command_argc; i++) {
     target_command_argv[i] = sv[i].c_str();
+  }
   target_command_argv[target_command_argc] = nullptr;
 
   ExecuteCommandWithRedirection(target_command, target_command_argv, identifier,

@@ -48,8 +48,9 @@ std::optional<std::string> AcceptAndReadFromSocket(int fd, int size) {
 
   base::ScopedFD fd_client(
       HANDLE_EINTR(accept(fd, (struct sockaddr*)&sun_client, &socklen)));
-  if (!fd_client.is_valid())
+  if (!fd_client.is_valid()) {
     return std::nullopt;
+  }
 
   const size_t kBufSize = 1000;
   char buf[kBufSize];
