@@ -43,8 +43,9 @@ void SaveAsPng(const char* path,
   png_set_filler(png, 0, PNG_FILLER_AFTER);
 
   std::vector<png_byte*> rows(height);
-  for (uint32_t i = 0; i < height; ++i)
+  for (uint32_t i = 0; i < height; ++i) {
     rows[i] = static_cast<png_byte*>(data) + stride * i;
+  }
 
   png_write_image(png, rows.data());
   png_write_end(png, nullptr);

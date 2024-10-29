@@ -136,8 +136,9 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
   for (base::FilePath path : paths) {
     base::File file(path, base::File::FLAG_OPEN | base::File::FLAG_READ |
                               base::File::FLAG_WRITE);
-    if (!file.IsValid())
+    if (!file.IsValid()) {
       continue;
+    }
 
     // Set CAP_ATOMIC so we can query all planes and plane properties.
     // TODO(b/290543296): Revisit if we still need this check after Hana EOL.
@@ -145,25 +146,29 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
         drmSetClientCap(file.GetPlatformFile(), DRM_CLIENT_CAP_ATOMIC, 1) == 0;
 
     ScopedDrmModeResPtr resources(drmModeGetResources(file.GetPlatformFile()));
-    if (!resources)
+    if (!resources) {
       continue;
+    }
 
     for (int index_connector = 0; index_connector < resources->count_connectors;
          ++index_connector) {
       ScopedDrmModeConnectorPtr connector(drmModeGetConnector(
           file.GetPlatformFile(), resources->connectors[index_connector]));
-      if (!connector || connector->encoder_id == 0)
+      if (!connector || connector->encoder_id == 0) {
         continue;
+      }
 
       ScopedDrmModeEncoderPtr encoder(
           drmModeGetEncoder(file.GetPlatformFile(), connector->encoder_id));
-      if (!encoder || encoder->crtc_id == 0)
+      if (!encoder || encoder->crtc_id == 0) {
         continue;
+      }
 
       ScopedDrmModeCrtcPtr crtc(
           drmModeGetCrtc(file.GetPlatformFile(), encoder->crtc_id));
-      if (!crtc || !crtc->mode_valid || crtc->buffer_id == 0)
+      if (!crtc || !crtc->mode_valid || crtc->buffer_id == 0) {
         continue;
+      }
 
       ScopedDrmModeFB2Ptr fb2(
           drmModeGetFB2(file.GetPlatformFile(), crtc->buffer_id),
@@ -181,8 +186,9 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
 
       // Keep around a file for next display if needed.
       base::File file_dup = file.Duplicate();
-      if (!file_dup.IsValid())
+      if (!file_dup.IsValid()) {
         continue;
+      }
 
       // Multiplane is only supported when atomic_modeset is available. Obtain
       // the |plane_res_| for later use.
@@ -240,8 +246,9 @@ bool Crtc::IsInternalDisplay() const {
 std::unique_ptr<Crtc> CrtcFinder::Find() const {
   auto crtcs = GetConnectedCrtcs();
   for (auto& crtc : crtcs) {
-    if (MatchesSpec(crtc.get()))
+    if (MatchesSpec(crtc.get())) {
       return std::move(crtc);
+    }
   }
   return nullptr;
 }

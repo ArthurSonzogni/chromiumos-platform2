@@ -96,8 +96,9 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
   for (size_t plane = 0; plane < GBM_MAX_PLANES; plane++) {
     // getfb2() doesn't return the number of planes so get handles
     // and count planes until we find a handle that isn't set
-    if (fb->handles[plane] == 0)
+    if (fb->handles[plane] == 0) {
       break;
+    }
 
     int fd;
     int ret = drmPrimeHandleToFD(drm_fd, fb->handles[plane], 0, &fd);

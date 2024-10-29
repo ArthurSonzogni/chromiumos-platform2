@@ -63,8 +63,9 @@ class FpsTimer {
 
   // Print FPS stats once a second.
   void MaybePrint() {
-    if (Elapsed() < 1.0)
+    if (Elapsed() < 1.0) {
       return;
+    }
 
     VLOG(1) << "fps: " << Get(frames_)
             << "  (modified frames: " << Get(modified_frames_) << ")";
