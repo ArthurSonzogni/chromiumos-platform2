@@ -5,6 +5,7 @@
 #include "crash-reporter/crash_sender_base.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <optional>
 #include <utility>
 
@@ -180,11 +181,9 @@ bool IsMockSuccessful() {
   if (g_force_is_mock_successful) {
     return true;
   }
-  int64_t file_size;
-  return base::GetFileSize(paths::GetAt(paths::kSystemRunStateDirectory,
-                                        paths::kMockCrashSending),
-                           &file_size) &&
-         !file_size;
+  std::optional<int64_t> file_size = base::GetFileSize(
+      paths::GetAt(paths::kSystemRunStateDirectory, paths::kMockCrashSending));
+  return file_size.has_value() && !file_size.value();
 }
 
 bool GetSleepTime(const base::FilePath& meta_file,

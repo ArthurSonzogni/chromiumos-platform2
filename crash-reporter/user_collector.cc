@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#include <cstdint>
+#include <optional>
 #include <string_view>
 #include <unordered_set>
 #include <utility>
@@ -327,12 +329,13 @@ bool UserCollector::CopyOffProcFiles(pid_t pid, const FilePath& container_dir) {
 bool UserCollector::ValidateProcFiles(const FilePath& container_dir) const {
   // Check if the maps file is empty, which could be due to the crashed
   // process being reaped by the kernel before finishing a core dump.
-  int64_t file_size = 0;
-  if (!base::GetFileSize(container_dir.Append("maps"), &file_size)) {
+  std::optional<int64_t> file_size =
+      base::GetFileSize(container_dir.Append("maps"));
+  if (!file_size.has_value()) {
     PLOG(ERROR) << "Could not get the size of maps file";
     return false;
   }
-  if (file_size == 0) {
+  if (file_size.value() == 0) {
     LOG(ERROR) << "maps file is empty";
     return false;
   }

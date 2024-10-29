@@ -16,6 +16,7 @@
 #include <sys/wait.h>     // For waitpid.
 #include <unistd.h>       // For execv and fork.
 
+#include <cstdint>
 #include <ctime>
 #include <optional>
 #include <set>
@@ -876,9 +877,9 @@ bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
       if (!base::PathExists(file_name)) {
         return false;
       }
-      int64_t file_size = 0;
-      if (base::GetFileSize(file_name, &file_size)) {
-        bytes_written_ -= file_size;
+      std::optional<int64_t> file_size = base::GetFileSize(file_name);
+      if (file_size.has_value()) {
+        bytes_written_ -= file_size.value();
       }
       return base::DeleteFile(file_name);
     }

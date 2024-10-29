@@ -9,8 +9,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -350,8 +352,9 @@ class ChromeCollectorTest : public ::testing::Test {
     EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
         test_crash_directory_, "chrome_test.*.123.dmesg.txt.gz",
         &output_dmesg_file));
-    EXPECT_TRUE(
-        base::GetFileSize(output_dmesg_file, &dmesg_log_compressed_size));
+    std::optional<int64_t> file_size = base::GetFileSize(output_dmesg_file);
+    ASSERT_TRUE(file_size.has_value());
+    dmesg_log_compressed_size = file_size.value();
     Decompress(output_dmesg_file);
     base::FilePath output_dmesg_file_uncompressed =
         output_dmesg_file.RemoveFinalExtension();
@@ -383,7 +386,9 @@ class ChromeCollectorTest : public ::testing::Test {
                             int64_t& output_log_compressed_size) {
     EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
         test_crash_directory_, "chrome_test.*.123.chrome.txt.gz", &output_log));
-    EXPECT_TRUE(base::GetFileSize(output_log, &output_log_compressed_size));
+    std::optional<int64_t> file_size = base::GetFileSize(output_log);
+    ASSERT_TRUE(file_size.has_value());
+    output_log_compressed_size = file_size.value();
     Decompress(output_log);
     base::FilePath output_log_uncompressed = output_log.RemoveFinalExtension();
     std::string output_log_contents;
@@ -1557,8 +1562,9 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
   base::FilePath output_log;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "jserror.*.123.chrome.txt.gz", &output_log));
-  int64_t output_log_compressed_size = 0;
-  EXPECT_TRUE(base::GetFileSize(output_log, &output_log_compressed_size));
+  std::optional<int64_t> output_log_compressed_size =
+      base::GetFileSize(output_log);
+  ASSERT_TRUE(output_log_compressed_size.has_value());
   Decompress(output_log);
   base::FilePath output_log_uncompressed = output_log.RemoveFinalExtension();
   std::string output_log_contents;
@@ -1587,7 +1593,7 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
   std::string meta_file_contents;
   EXPECT_TRUE(base::ReadFileToString(meta_file, &meta_file_contents));
   EXPECT_EQ(collector_.get_bytes_written(),
-            meta_file_contents.size() + output_log_compressed_size +
+            meta_file_contents.size() + output_log_compressed_size.value() +
                 other_file_contents.size() + output_stack_file_contents.size());
   EXPECT_THAT(meta_file_contents,
               HasSubstr("payload=" + output_stack_file.BaseName().value()));

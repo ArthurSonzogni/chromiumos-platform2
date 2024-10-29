@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -342,8 +343,7 @@ TEST_F(CrashCollectorTest, CopyToNewCompressedFile) {
   FilePath target_file = test_dir_.Append("test_dest.gz");
   EXPECT_TRUE(collector_.CopyFdToNewCompressedFile(std::move(fd), target_file));
   EXPECT_TRUE(base::PathExists(target_file));
-  int64_t file_size = -1;
-  EXPECT_TRUE(base::GetFileSize(target_file, &file_size));
+  std::optional<int64_t> file_size = base::GetFileSize(target_file);
   EXPECT_EQ(collector_.get_bytes_written(), file_size);
 
   int decompress_result = system(("gunzip " + target_file.value()).c_str());
@@ -386,8 +386,7 @@ TEST_F(CrashCollectorTest, CopyToNewCompressedFileZeroSize) {
   FilePath target_file = test_dir_.Append("test_dest.gz");
   EXPECT_TRUE(collector_.CopyFdToNewCompressedFile(std::move(fd), target_file));
   EXPECT_TRUE(base::PathExists(target_file));
-  int64_t file_size = -1;
-  EXPECT_TRUE(base::GetFileSize(target_file, &file_size));
+  std::optional<int64_t> file_size = base::GetFileSize(target_file);
   EXPECT_EQ(collector_.get_bytes_written(), file_size);
 
   int decompress_result = system(("gunzip " + target_file.value()).c_str());
@@ -406,8 +405,7 @@ TEST_F(CrashCollectorTest, WriteNewCompressedFile) {
   EXPECT_TRUE(
       collector_.WriteNewCompressedFile(test_file, kBuffer, strlen(kBuffer)));
   EXPECT_TRUE(base::PathExists(test_file));
-  int64_t file_size = -1;
-  EXPECT_TRUE(base::GetFileSize(test_file, &file_size));
+  std::optional<int64_t> file_size = base::GetFileSize(test_file);
   EXPECT_EQ(collector_.get_bytes_written(), file_size);
 
   int decompress_result = system(("gunzip " + test_file.value()).c_str());
@@ -2594,8 +2592,7 @@ TEST_F(CrashCollectorTest, TruncatedLog) {
   EXPECT_EQ(collector_.GetLogContents(config_file, "foobar", output_file),
             CrashCollectionStatus::kSuccess);
   ASSERT_TRUE(base::PathExists(output_file));
-  int64_t file_size = -1;
-  EXPECT_TRUE(base::GetFileSize(output_file, &file_size));
+  std::optional<int64_t> file_size = base::GetFileSize(output_file);
   EXPECT_EQ(collector_.get_bytes_written(), file_size);
 
   int decompress_result = system(("gunzip " + output_file.value()).c_str());
