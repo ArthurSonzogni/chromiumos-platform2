@@ -63,7 +63,7 @@ class PortalDetector {
       // TODO(b/326925490): Reenable this probe URL once the sign-in window
       // sends requests with the SHOULD_BYPASS_HSTS flag.
       // "http://www.google.com/gen_204",
-      "http://www.play.googleapis.com/generate_204",
+      "http://play.googleapis.com/generate_204",
       "http://www.gstatic.com/generate_204",
       "http://safebrowsing.google.com/generate_204",
       "http://www.googleapis.com/generate_204",
