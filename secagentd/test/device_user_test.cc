@@ -1029,8 +1029,7 @@ TEST_F(DeviceUserTestFixture, TestGetUsernameBasedOnAffiliation) {
   base::FilePath affiliated_file =
       secagentd_directory_.Append(kSanitized).Append("affiliated");
   ASSERT_TRUE(base::PathExists(affiliated_file));
-  int64_t file_size;
-  EXPECT_TRUE(base::GetFileSize(affiliated_file, &file_size));
+  std::optional<int64_t> file_size = base::GetFileSize(affiliated_file);
   EXPECT_EQ(0, file_size);
   std::string username =
       device_user_->GetUsernameBasedOnAffiliation(kDeviceUser, kSanitized);

@@ -313,14 +313,12 @@ bool DeviceUser::UpdateDeviceUser(const std::string& state) {
     base::FilePath directory_path =
         root_path_.Append(kSecagentdDirectory).Append(sanitized);
     if (base::DirectoryExists(directory_path)) {
-      int64_t file_size;
       std::string uuid;
       if (base::PathExists(directory_path.Append("affiliated"))) {
         device_user_ = username;
         return true;
-      } else if (!base::GetFileSize(directory_path.Append("unaffiliated"),
-                                    &file_size) ||
-                 file_size == 0) {
+      } else if (base::GetFileSize(directory_path.Append("unaffiliated"))
+                     .value_or(0) == 0) {
         LOG(ERROR)
             << "Failed to get username file size. Checking policy instead";
       } else if (!base::ReadFileToString(directory_path.Append("unaffiliated"),
@@ -489,13 +487,11 @@ std::string DeviceUser::GetUsernameBasedOnAffiliation(
       root_path_.Append(kSecagentdDirectory).Append(sanitized_username);
 
   if (base::DirectoryExists(directory_path)) {
-    int64_t file_size;
     std::string uuid;
     if (base::PathExists(directory_path.Append("affiliated"))) {
       return username;
-    } else if (!base::GetFileSize(directory_path.Append("unaffiliated"),
-                                  &file_size) ||
-               file_size == 0) {
+    } else if (base::GetFileSize(directory_path.Append("unaffiliated"))
+                   .value_or(0) == 0) {
       LOG(ERROR) << "Failed to get username file size.";
       return device_user::kUnknown;
     } else if (!base::ReadFileToString(directory_path.Append("unaffiliated"),
