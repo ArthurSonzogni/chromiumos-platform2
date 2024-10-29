@@ -40,8 +40,9 @@ void TpmExecutorTpm2Impl::InitializeVTPM() {
     tpm2::TPM_Manufacture(true);
     // TODO(b/132145000): Verify if the second call to _TPM_Init() is necessary.
     tpm2::_TPM_Init();
-    if (!tpm2::tpm_endorse())
+    if (!tpm2::tpm_endorse()) {
       LOG(ERROR) << __func__ << " Failed to endorse TPM with a fixed key.";
+    }
   }
 
   for (const auto& vendor_cmd : vendor_commands_) {

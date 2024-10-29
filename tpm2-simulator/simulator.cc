@@ -79,8 +79,9 @@ SimulatorDaemon::SimulatorDaemon(TpmExecutor* tpm_executor)
 int SimulatorDaemon::OnInit() {
   CHECK(tpm_executor_);
   int exit_code = Daemon::OnInit();
-  if (exit_code != EX_OK)
+  if (exit_code != EX_OK) {
     return exit_code;
+  }
   if (!MountAndEnterNVChip()) {
     LOG(ERROR) << "Failed to mount and enter the NVChip.";
     return EX_OSERR;

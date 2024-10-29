@@ -38,8 +38,9 @@ struct NVChipMigrateData {
 bool Tune2Fs(const base::FilePath& file, const std::vector<std::string>& opts) {
   brillo::ProcessImpl tune_process;
   tune_process.AddArg("/sbin/tune2fs");
-  for (const auto& arg : opts)
+  for (const auto& arg : opts) {
     tune_process.AddArg(arg);
+  }
 
   tune_process.AddArg(file.value());
 

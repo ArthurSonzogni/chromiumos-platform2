@@ -118,20 +118,24 @@ int pinweaver_eal_aes256_ctr(const void* key,
   int rv;
   int len, len_final;
 
-  if (key_size != 256 / 8)
+  if (key_size != 256 / 8) {
     return -1;
+  }
   ctx = EVP_CIPHER_CTX_new();
-  if (!ctx)
+  if (!ctx) {
     return -1;
+  }
   rv = EVP_EncryptInit(ctx, EVP_aes_256_ctr(),
                        reinterpret_cast<const uint8_t*>(key),
                        reinterpret_cast<const uint8_t*>(iv));
-  if (rv != 1)
+  if (rv != 1) {
     goto out;
+  }
   rv = EVP_EncryptUpdate(ctx, reinterpret_cast<uint8_t*>(res), &len,
                          reinterpret_cast<const uint8_t*>(data), size);
-  if (rv != 1)
+  if (rv != 1) {
     goto out;
+  }
   rv = EVP_EncryptFinal(ctx, reinterpret_cast<uint8_t*>(res) + len, &len_final);
 out:
   EVP_CIPHER_CTX_free(ctx);
@@ -152,8 +156,9 @@ int pinweaver_eal_safe_memcmp(const void* s1, const void* s2, size_t len) {
   const uint8_t* us2 = reinterpret_cast<const uint8_t*>(s2);
   int result = 0;
 
-  while (len--)
+  while (len--) {
     result |= *us1++ ^ *us2++;
+  }
 
   return result != 0;
 }
@@ -164,8 +169,9 @@ int pinweaver_eal_rand_bytes(void* buf, size_t size) {
 
 uint64_t pinweaver_eal_seconds_since_boot() {
   struct sysinfo si;
-  if (sysinfo(&si))
+  if (sysinfo(&si)) {
     return 0;
+  }
 
   return (uint64_t)si.uptime;
 }
@@ -174,11 +180,13 @@ int pinweaver_eal_memcpy_s(void* dest,
                            size_t destsz,
                            const void* src,
                            size_t count) {
-  if (count == 0)
+  if (count == 0) {
     return 0;
+  }
 
-  if (dest == NULL)
+  if (dest == NULL) {
     return EINVAL;
+  }
 
   if (src == NULL) {
     memset(dest, 0, destsz);
@@ -197,16 +205,18 @@ int pinweaver_eal_memcpy_s(void* dest,
 static int g_device_key_fill[3] = {0x01, 0x00, 0xFF};
 
 static int pinweaver_eal_get_device_key(int kind, void* key /* 256-bit */) {
-  if (kind < 0 || kind >= 3)
+  if (kind < 0 || kind >= 3) {
     return -1;
+  }
   memset(key, g_device_key_fill[kind], 256 / 8);
   return 0;
 }
 
 static void* secure_memset(void* ptr, int value, size_t num) {
   volatile uint8_t* v_ptr = reinterpret_cast<uint8_t*>(ptr);
-  while (num--)
+  while (num--) {
     *(v_ptr++) = value;
+  }
   return ptr;
 }
 
@@ -216,8 +226,9 @@ static int derive_pw_key(
     const uint8_t* nonce /* PW_NONCE_SIZE */,
     uint8_t* result /* SHA256_DIGEST_SIZE */) {
   pinweaver_eal_hmac_sha256_ctx_t hash;
-  if (pinweaver_eal_hmac_sha256_init(&hash, device_key, DEVICE_KEY_SIZE))
+  if (pinweaver_eal_hmac_sha256_init(&hash, device_key, DEVICE_KEY_SIZE)) {
     return -1;
+  }
   if (pinweaver_eal_hmac_sha256_update(&hash, object_const,
                                        PW_OBJ_CONST_SIZE)) {
     pinweaver_eal_hmac_sha256_final(&hash, result);
@@ -236,16 +247,19 @@ int pinweaver_eal_derive_keys(struct merkle_tree_t* merkle_tree) {
   const uint8_t kHmacKeyConst[PW_OBJ_CONST_SIZE] = {'H', 'M', 'A', 'C',
                                                     'H', 'M', 'A', 'C'};
   uint8_t device_key[DEVICE_KEY_SIZE];
-  if (pinweaver_eal_get_device_key(PINWEAVER_EAL_CONST, device_key))
+  if (pinweaver_eal_get_device_key(PINWEAVER_EAL_CONST, device_key)) {
     return -1;
+  }
 
   if (derive_pw_key(device_key, kWrapKeyConst,
-                    merkle_tree->key_derivation_nonce, merkle_tree->wrap_key))
+                    merkle_tree->key_derivation_nonce, merkle_tree->wrap_key)) {
     return -1;
+  }
 
   if (derive_pw_key(device_key, kHmacKeyConst,
-                    merkle_tree->key_derivation_nonce, merkle_tree->hmac_key))
+                    merkle_tree->key_derivation_nonce, merkle_tree->hmac_key)) {
     return -1;
+  }
 
   // Do not leave the content of the device key on the stack.
   secure_memset(device_key, 0, sizeof(device_key));
@@ -257,8 +271,9 @@ int pinweaver_eal_storage_init_state(uint8_t root_hash[PW_HASH_SIZE],
                                      uint32_t* restart_count) {
   struct pw_log_storage_t log;
   int ret = pinweaver_eal_storage_get_log(&log);
-  if (ret != 0)
+  if (ret != 0) {
     return ret;
+  }
 
   memcpy(root_hash, log.entries[0].root, PW_HASH_SIZE);
 
@@ -274,8 +289,9 @@ int pinweaver_eal_storage_init_state(uint8_t root_hash[PW_HASH_SIZE],
   if (pinweaver_eal_seconds_since_boot() < RESTART_TIMER_THRESHOLD) {
     ++log.restart_count;
     int ret = pinweaver_eal_storage_set_log(&log);
-    if (ret != 0)
+    if (ret != 0) {
       return ret;
+    }
   }
   *restart_count = log.restart_count;
   return 0;
@@ -347,8 +363,9 @@ uint8_t get_current_pcr_digest(const uint8_t bitmask[2],
   memcpy(&selection.pcrSelections[0].pcrSelect, bitmask, 2);
 
   PCRComputeCurrentDigest(TPM_ALG_SHA256, &selection, &pcr_digest);
-  if (memcmp(&selection.pcrSelections[0].pcrSelect, bitmask, 2) != 0)
+  if (memcmp(&selection.pcrSelections[0].pcrSelect, bitmask, 2) != 0) {
     return 1;
+  }
 
   memcpy(sha256_of_selected_pcr, &pcr_digest.b.buffer, 32);
   return 0;

@@ -72,8 +72,9 @@ bool ToSockAddr(const base::FilePath& path, struct sockaddr_un* sa) {
 std::pair<int, base::ScopedFD> ConnectUnixDomainSocket(
     const base::FilePath& path) {
   struct sockaddr_un sa;
-  if (!ToSockAddr(path, &sa))
+  if (!ToSockAddr(path, &sa)) {
     return std::make_pair(EFAULT, base::ScopedFD());
+  }
 
   base::ScopedFD fd(
       socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
