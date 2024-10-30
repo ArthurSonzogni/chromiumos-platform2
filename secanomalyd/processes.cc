@@ -74,11 +74,13 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "cr50_disable_sl",
     "cros-disks",
     "cros_healthd",
+    "crossystem",  // b/376120383
     "crx-import.sh",
     "cryptohomed",
     "cryptohome-name",
     "dbus-send",
     "debugd",
+    "dev_debug_vboot",  // b/376117937
     "dlcservice",
     "dnsproxyd",
     "dump_kernel_con",
@@ -87,10 +89,12 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "flashrom",
     "frecon",
     "frecon-pre-star",
+    "futility",  // b/376119815
     "gdbus",
     "goofy_control.s",
     "gsc_flash_log",
     "gsctool",
+    "heartd",  // b/376119061
     "hiberman",
     "imageloader",
     "init",
@@ -103,6 +107,7 @@ const std::unordered_set<std::string> kKnownForbiddenIntersectionProcs = {
     "ModemManager",
     "modprobe",
     "netperf",
+    "nftc",  // b/375214989
     "os_install_serv",
     "patchpaneld",
     "periodic_schedu",
