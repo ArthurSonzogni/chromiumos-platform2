@@ -4553,28 +4553,46 @@ def dsm_encode(dsm_config):
     )
 
 
+def encode_bluetooth_sar_power_table(config):
+    return (
+        hex_8bit(config.restriction_for_2g4)
+        + hex_8bit(config.restriction_for_5g2)
+        + hex_8bit(config.restriction_for_5g8_5g9)
+        + hex_8bit(config.restriction_for_6g1)
+        + hex_8bit(config.restriction_for_6g3)
+    )
+
+
 def bt_sar_encode(bt_sar_config):
     """Creates and returns the Intel Bluetooth SAR content for the given config.
 
     Args:
-        bt_sar_config: bluetooth SAR configuration
+        bt_sar_config: bluetooth SAR configuration.
 
     Returns:
-        Intel Bluetooth SAR content encoded as bytearray
+        Intel Bluetooth SAR content encoded as bytearray.
     """
-    if bt_sar_config.revision != 1:
+    if bt_sar_config.revision not in [1, 2]:
         return bytearray(0)
-    return (
-        hex_8bit(bt_sar_config.revision)
-        + hex_8bit(bt_sar_config.increased_power_mode_limitation)
-        + hex_8bit(bt_sar_config.sar_lb_power_restriction)
-        + hex_8bit(bt_sar_config.br_modulation)
-        + hex_8bit(bt_sar_config.edr2_modulation)
-        + hex_8bit(bt_sar_config.edr3_modulation)
-        + hex_8bit(bt_sar_config.le_modulation)
-        + hex_8bit(bt_sar_config.le2_mhz_modulation)
-        + hex_8bit(bt_sar_config.le_lr_modulation)
-    )
+    if bt_sar_config.revision == 1:
+        return (
+            hex_8bit(bt_sar_config.revision)
+            + hex_8bit(bt_sar_config.increased_power_mode_limitation)
+            + hex_8bit(bt_sar_config.sar_lb_power_restriction)
+            + hex_8bit(bt_sar_config.br_modulation)
+            + hex_8bit(bt_sar_config.edr2_modulation)
+            + hex_8bit(bt_sar_config.edr3_modulation)
+            + hex_8bit(bt_sar_config.le_modulation)
+            + hex_8bit(bt_sar_config.le2_mhz_modulation)
+            + hex_8bit(bt_sar_config.le_lr_modulation)
+        )
+    if bt_sar_config.revision == 2:
+        return (
+            hex_8bit(bt_sar_config.revision)
+            + hex_8bit(bt_sar_config.increased_power_mode_limitation)
+            + encode_bluetooth_sar_power_table(bt_sar_config.set_1_chain_a)
+            + encode_bluetooth_sar_power_table(bt_sar_config.set_1_chain_b)
+        )
 
 
 def wbem_encode(wbem_config):
@@ -4785,6 +4803,31 @@ def bdmm_encode(bdmm_config):
     )
 
 
+def ebrd_encode(ebrd_config):
+    """Creates and returns Extended Bluetooth Regulatory Descriptor.
+
+    Args:
+        ebrd_config: Bluetooth Dual Mac configuration.
+
+    Returns:
+        Extended Bluetooth Regulatory Descriptor encoded as bytearray.
+    """
+
+    if ebrd_config.revision != 1:
+        return bytearray(0)
+    return (
+        hex_8bit(ebrd_config.revision)
+        + hex_32bit(ebrd_config.dynamic_sar_enable)
+        + hex_32bit(ebrd_config.number_of_optional_sar)
+        + encode_bluetooth_sar_power_table(ebrd_config.set_2_chain_a)
+        + encode_bluetooth_sar_power_table(ebrd_config.set_2_chain_b)
+        + encode_bluetooth_sar_power_table(ebrd_config.set_3_chain_a)
+        + encode_bluetooth_sar_power_table(ebrd_config.set_3_chain_b)
+        + encode_bluetooth_sar_power_table(ebrd_config.set_4_chain_a)
+        + encode_bluetooth_sar_power_table(ebrd_config.set_4_chain_b)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4847,6 +4890,9 @@ def _create_intel_sar_file_content(intel_config):
     # | BDMM      | 2 bytes  | Offset of Bluetooth BDMM table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | EBRD      | 2 bytes  | Offset of Bluetooth EBRD table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4859,7 +4905,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 13
+    sar_configs = 14
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -4956,6 +5002,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set bdmm offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("ebrd"):
+        data = ebrd_encode(intel_config.ebrd)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set ebrd offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
