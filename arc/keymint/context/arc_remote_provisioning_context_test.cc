@@ -14,6 +14,8 @@
 #include <gtest/gtest.h>
 #include <libarc-attestation/lib/test_utils.h>
 
+#include "absl/strings/escaping.h"
+
 namespace arc::keymint::context {
 
 namespace {
@@ -78,18 +80,6 @@ const base::flat_map<std::string, std::string> kSampleDeviceIdMap = {
     {"manufacturer", "Google"},
     {"model", "brya"},
     {"product", "brya"}};
-
-std::vector<uint8_t> convertHexToRawBytes(const char* hex_array) {
-  std::string hex_string(kEcdsaDERSignatureHex);
-  std::vector<uint8_t> bytes;
-  for (size_t i = 0; i < hex_string.length(); i += 2) {
-    std::string byteString = hex_string.substr(i, 2);
-    uint8_t byte =
-        (uint8_t)strtol(byteString.c_str(), nullptr /* endPtr*/, 16 /*base*/);
-    bytes.push_back(byte);
-  }
-  return bytes;
-}
 }  // namespace
 
 class ArcRemoteProvisioningContextTest : public ::testing::Test {
@@ -184,8 +174,8 @@ TEST_F(ArcRemoteProvisioningContextTest,
 
   // Prepare.
   SetupManagerForTesting();
-  std::vector<uint8_t> byte_signature =
-      convertHexToRawBytes(kEcdsaDERSignatureHex);
+  std::string bytes_string = absl::HexStringToBytes(kEcdsaDERSignatureHex);
+  std::vector<uint8_t> byte_signature = brillo::BlobFromString(bytes_string);
   ExpectSignSuccess(byte_signature);
 
   // Execute.
@@ -201,8 +191,8 @@ TEST_F(ArcRemoteProvisioningContextTest, GenerateBccProductionMode) {
   // Prepare.
   SetupManagerForTesting();
   ExpectProvisionSuccess();
-  std::vector<uint8_t> byte_signature =
-      convertHexToRawBytes(kEcdsaDERSignatureHex);
+  std::string bytes_string = absl::HexStringToBytes(kEcdsaDERSignatureHex);
+  std::vector<uint8_t> byte_signature = brillo::BlobFromString(bytes_string);
   ExpectSignSuccess(byte_signature);
 
   // Execute.
@@ -242,8 +232,8 @@ TEST_F(ArcRemoteProvisioningContextTest,
   std::vector<uint8_t> mac_key;
   SetupManagerForTesting();
   ExpectProvisionSuccess();
-  std::vector<uint8_t> byte_signature =
-      convertHexToRawBytes(kEcdsaDERSignatureHex);
+  std::string bytes_string = absl::HexStringToBytes(kEcdsaDERSignatureHex);
+  std::vector<uint8_t> byte_signature = brillo::BlobFromString(bytes_string);
   brillo::Blob challenge = brillo::BlobFromString("I am a fake challenge");
   brillo::Blob random_blob = brillo::BlobFromString("I am a random blob");
   EXPECT_CALL(*manager_, QuoteCrOSBlob(challenge, testing::_))

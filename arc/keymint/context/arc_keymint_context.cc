@@ -27,6 +27,7 @@
 #include <openssl/evp.h>
 #include <re2/re2.h>
 
+#include "absl/strings/escaping.h"
 #include "arc/keymint/context/chaps_client.h"
 #include "arc/keymint/context/openssl_utils.h"
 
@@ -36,7 +37,7 @@ namespace {
 
 constexpr const char kVbMetaDigestFileDir[] = "/opt/google/vms/android/";
 constexpr const char kVbMetaDigestFileName[] = "arcvm_vbmeta_digest.sha256";
-constexpr uint32_t kExpectedVbMetaDigestSize = 64;
+constexpr uint32_t kExpectedVbMetaDigestSize = 32;
 
 // Relate cros system property mainfw_type (main firmware type)
 // to verified boot state. Devices in normal and recovery mode
@@ -265,7 +266,6 @@ std::optional<std::vector<uint8_t>> fetchEndorsementPublicKey() {
   }
   return ek_public_key;
 }
-
 }  // namespace
 
 ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
@@ -816,8 +816,9 @@ std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
                << vbmeta_digest_file_path;
     return std::nullopt;
   }
+  std::string bytes_string = absl::HexStringToBytes(vbmeta_digest.c_str());
   std::vector<uint8_t> vbmeta_digest_result =
-      brillo::BlobFromString(vbmeta_digest);
+      brillo::BlobFromString(bytes_string);
   if (vbmeta_digest_result.size() != kExpectedVbMetaDigestSize) {
     LOG(ERROR) << "vbmeta digest is not a valid hash. "
                << "Expected size: " << kExpectedVbMetaDigestSize

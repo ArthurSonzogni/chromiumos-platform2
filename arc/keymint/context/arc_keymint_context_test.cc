@@ -30,6 +30,7 @@
 #include <keymaster/UniquePtr.h>
 #include <libcrossystem/crossystem_fake.h>
 
+#include "absl/strings/escaping.h"
 #include "arc/keymint/context/context_adaptor.h"
 #include "arc/keymint/context/openssl_utils.h"
 #include "arc/keymint/key_data.pb.h"
@@ -956,7 +957,9 @@ TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Success) {
 
   // Test.
   ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(kSampleVbMetaDigest, brillo::BlobToString(result.value()));
+  auto actual_hex =
+      absl::BytesToHexString(brillo::BlobToString(result.value()));
+  EXPECT_EQ(actual_hex, kSampleVbMetaDigest);
 }
 
 TEST_F(ArcKeyMintContextTest, GetVbMetaDigestFromFile_Failure) {
