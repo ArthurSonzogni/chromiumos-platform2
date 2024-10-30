@@ -5,8 +5,10 @@
 #ifndef ODML_CORAL_COMMON_H_
 #define ODML_CORAL_COMMON_H_
 
+#include <memory>
 #include <vector>
 
+#include <base/time/time.h>
 #include <base/types/expected.h>
 
 #include "odml/mojom/coral_service.mojom.h"
@@ -27,6 +29,22 @@ struct MoveOnly {
 };
 
 using Embedding = std::vector<float>;
+
+class PerformanceTimer {
+ public:
+  using Ptr = std::unique_ptr<PerformanceTimer>;
+
+  PerformanceTimer();
+  PerformanceTimer(const PerformanceTimer&) = delete;
+
+  static Ptr Create();
+
+  // Get the duration that has passed since `start_time_`.
+  base::TimeDelta GetDuration() const;
+
+ private:
+  base::TimeTicks start_time_;
+};
 
 }  // namespace coral
 

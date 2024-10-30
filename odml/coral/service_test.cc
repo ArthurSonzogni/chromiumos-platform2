@@ -167,6 +167,17 @@ class CoralServiceTest : public testing::Test {
     }
   }
 
+  void ExpectSendGroupLatency(int times) {
+    EXPECT_CALL(metrics_, SendTimeToUMA(metrics::kGroupLatency, _, _, _, _))
+        .Times(times);
+  }
+
+  void ExpectSendCacheEmbeddingsLatency(int times) {
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kCacheEmbeddingsLatency, _, _, _, _))
+        .Times(times);
+  }
+
   MockEmbeddingEngine* embedding_engine_;
   MockClusteringEngine* clustering_engine_;
   MockTitleGenerationEngine* title_generation_engine_;
@@ -189,6 +200,7 @@ TEST(CoralServiceConstructTest, Construct) {
 
 TEST_F(CoralServiceTest, GroupSuccess) {
   ExpectSendGroupStatus(true);
+  ExpectSendGroupLatency(1);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
   clustering_engine_->Expect(GetFakeEmbeddingResponse(),
@@ -200,6 +212,7 @@ TEST_F(CoralServiceTest, GroupSuccess) {
 
 TEST_F(CoralServiceTest, EmbeddingFailed) {
   ExpectSendGroupStatus(false);
+  ExpectSendGroupLatency(0);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(base::unexpected(mojom::CoralError::kUnknownError));
   ExpectGroupResult(std::move(request), mojom::GroupResult::NewError(
@@ -208,6 +221,7 @@ TEST_F(CoralServiceTest, EmbeddingFailed) {
 
 TEST_F(CoralServiceTest, ClusteringFailed) {
   ExpectSendGroupStatus(false);
+  ExpectSendGroupLatency(0);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
   clustering_engine_->Expect(
@@ -219,6 +233,7 @@ TEST_F(CoralServiceTest, ClusteringFailed) {
 
 TEST_F(CoralServiceTest, TitleGenerationFailed) {
   ExpectSendGroupStatus(false);
+  ExpectSendGroupLatency(0);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
   clustering_engine_->Expect(GetFakeEmbeddingResponse(),
@@ -232,6 +247,7 @@ TEST_F(CoralServiceTest, TitleGenerationFailed) {
 
 TEST_F(CoralServiceTest, CacheEmbeddingsSuccess) {
   ExpectSendCacheEmbeddingsStatus(true);
+  ExpectSendCacheEmbeddingsLatency(1);
   auto request = mojom::CacheEmbeddingsRequest::New(
       GetFakeEntities(), mojom::EmbeddingOptions::New());
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
@@ -240,6 +256,7 @@ TEST_F(CoralServiceTest, CacheEmbeddingsSuccess) {
 
 TEST_F(CoralServiceTest, CacheEmbeddingsFailed) {
   ExpectSendCacheEmbeddingsStatus(false);
+  ExpectSendCacheEmbeddingsLatency(0);
   auto request = mojom::CacheEmbeddingsRequest::New(
       GetFakeEntities(), mojom::EmbeddingOptions::New());
   embedding_engine_->Expect(base::unexpected(mojom::CoralError::kUnknownError));

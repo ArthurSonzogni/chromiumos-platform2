@@ -138,9 +138,10 @@ ClusteringEngine::ClusteringEngine(
 void ClusteringEngine::Process(mojom::GroupRequestPtr request,
                                EmbeddingResponse embedding_response,
                                ClusteringCallback callback) {
-  ClusteringCallback wrapped_callback =
-      base::BindOnce(&ClusteringEngine::HandleProcessResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+  auto timer = PerformanceTimer::Create();
+  ClusteringCallback wrapped_callback = base::BindOnce(
+      &ClusteringEngine::HandleProcessResult, weak_ptr_factory_.GetWeakPtr(),
+      std::move(callback), std::move(timer));
   std::optional<clustering::Matrix> matrix =
       internal::DistanceMatrix(embedding_response.embeddings);
   if (!matrix.has_value()) {
@@ -252,9 +253,13 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
 
 void ClusteringEngine::HandleProcessResult(
     ClusteringCallback callback,
+    PerformanceTimer::Ptr timer,
     mojom::GroupRequestPtr request,
     CoralResult<ClusteringResponse> result) {
   metrics_->SendClusteringEngineStatus(result.transform([](auto&&) {}));
+  if (result.has_value()) {
+    metrics_->SendClusteringEngineLatency(timer->GetDuration());
+  }
   std::move(callback).Run(std::move(request), std::move(result));
 }
 

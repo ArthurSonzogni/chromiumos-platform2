@@ -98,6 +98,7 @@ class TitleGenerationEngineTest : public testing::Test {
     // A catch-all so that we don't have to explicitly EXPECT every metrics
     // call.
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
     // Set DlcClient to return paths from /build.
     auto dlc_path = base::FilePath("testdata").Append(kFakeModelName);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
@@ -132,6 +133,25 @@ class TitleGenerationEngineTest : public testing::Test {
     }
   }
 
+  void ExpectSendLatency(int times) {
+    EXPECT_CALL(metrics_, SendTimeToUMA(metrics::kTitleGenerationEngineLatency,
+                                        _, _, _, _))
+        .Times(times);
+  }
+
+  void ExpectSendLoadModelLatency(int times) {
+    EXPECT_CALL(
+        metrics_,
+        SendTimeToUMA(metrics::kLoadTitleGenerationModelLatency, _, _, _, _))
+        .Times(times);
+  }
+
+  void ExpectSendGenerateTitleLatency(int times) {
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kGenerateTitleLatency, _, _, _, _))
+        .Times(times);
+  }
+
   base::test::TaskEnvironment task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
   CoralMetrics coral_metrics_;
@@ -143,6 +163,9 @@ class TitleGenerationEngineTest : public testing::Test {
 
 TEST_F(TitleGenerationEngineTest, Success) {
   ExpectSendStatus(true, 2);
+  ExpectSendLatency(2);
+  ExpectSendLoadModelLatency(1);
+  ExpectSendGenerateTitleLatency(6);
   // Test that concurrent requests can be handled.
   TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
   engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
@@ -171,6 +194,7 @@ TEST_F(TitleGenerationEngineTest, Success) {
 TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
   ExpectSendStatus(false);
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   // Override DLC path to a non-existent path.
   auto dlc_path = base::FilePath("not_exist");
   cros::DlcClient::SetDlcPathForTest(&dlc_path);
@@ -201,6 +225,10 @@ TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCaching) {
+  ExpectSendStatus(true, 3);
+  ExpectSendLatency(3);
+  // 1 request out of 3 hits the cache.
+  ExpectSendGenerateTitleLatency(2);
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
                                                       "fake_user_hash_1"};
   engine_->OnUserLoggedIn(user);
@@ -285,6 +313,9 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
 }
 
 TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
+  ExpectSendStatus(true, 2);
+  ExpectSendLatency(2);
+  ExpectSendGenerateTitleLatency(2);
   const odml::SessionStateManagerInterface::User user1{"fake_user_1",
                                                        "fake_user_hash_1"};
   engine_->OnUserLoggedIn(user1);
@@ -354,6 +385,7 @@ TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
 
 TEST_F(TitleGenerationEngineTest, NoGroups) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
 
   TestFuture<CoralResult<TitleGenerationResponse>> title_future;
@@ -366,6 +398,7 @@ TEST_F(TitleGenerationEngineTest, NoGroups) {
 
 TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   base::RunLoop run_loop;
   FakeObserver observer(3, &run_loop);
   auto request = GetFakeGroupRequest();
@@ -396,6 +429,7 @@ TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
 
 TEST_F(TitleGenerationEngineTest, ObserverFailed) {
   ExpectSendStatus(false);
+  ExpectSendLatency(0);
   base::RunLoop run_loop;
   FakeObserver observer(3, &run_loop);
   auto request = GetFakeGroupRequest();

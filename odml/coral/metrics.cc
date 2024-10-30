@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 #include "odml/mojom/coral_service.mojom-shared.h"
@@ -46,6 +47,59 @@ void CoralMetrics::SendClusteringEngineStatus(CoralStatus status) {
 
 void CoralMetrics::SendTitleGenerationEngineStatus(CoralStatus status) {
   SendStatus(metrics::kTitleGenerationEngineStatus, status);
+}
+
+void CoralMetrics::SendTitleGenerationResult(
+    metrics::TitleGenerationResult result) {
+  metrics_->SendEnumToUMA(metrics::kTitleGenerationResult, result);
+}
+
+void CoralMetrics::SendLatency(const std::string& name,
+                               base::TimeDelta sample,
+                               base::TimeDelta max) {
+  metrics_->SendTimeToUMA(name, sample, base::Milliseconds(1), max, 50);
+}
+
+void CoralMetrics::SendMediumLatency(const std::string& name,
+                                     base::TimeDelta sample) {
+  SendLatency(name, sample, base::Seconds(30));
+}
+
+void CoralMetrics::SendGroupLatency(base::TimeDelta duration) {
+  SendMediumLatency(metrics::kGroupLatency, duration);
+}
+
+void CoralMetrics::SendCacheEmbeddingsLatency(base::TimeDelta duration) {
+  SendMediumLatency(metrics::kCacheEmbeddingsLatency, duration);
+}
+
+void CoralMetrics::SendEmbeddingEngineLatency(base::TimeDelta duration) {
+  SendMediumLatency(metrics::kEmbeddingEngineLatency, duration);
+}
+
+void CoralMetrics::SendClusteringEngineLatency(base::TimeDelta duration) {
+  SendLatency(metrics::kClusteringEngineLatency, duration, base::Seconds(2));
+}
+
+void CoralMetrics::SendTitleGenerationEngineLatency(base::TimeDelta duration) {
+  SendMediumLatency(metrics::kTitleGenerationEngineLatency, duration);
+}
+
+void CoralMetrics::SendLoadEmbeddingModelLatency(base::TimeDelta duration) {
+  SendMediumLatency(metrics::kLoadEmbeddingModelLatency, duration);
+}
+
+void CoralMetrics::SendGenerateEmbeddingLatency(base::TimeDelta duration) {
+  SendLatency(metrics::kGenerateEmbeddingLatency, duration, base::Seconds(2));
+}
+
+void CoralMetrics::SendLoadTitleGenerationModelLatency(
+    base::TimeDelta duration) {
+  SendMediumLatency(metrics::kLoadTitleGenerationModelLatency, duration);
+}
+
+void CoralMetrics::SendGenerateTitleLatency(base::TimeDelta duration) {
+  SendLatency(metrics::kGenerateTitleLatency, duration, base::Seconds(10));
 }
 
 }  // namespace coral

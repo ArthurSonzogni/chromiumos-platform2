@@ -26,6 +26,7 @@
 
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "odml/coral/clustering/engine.h"
+#include "odml/coral/common.h"
 #include "odml/coral/title_generation/simple_session.h"
 #include "odml/mojom/coral_service.mojom-forward.h"
 #include "odml/mojom/coral_service.mojom.h"
@@ -187,11 +188,12 @@ void TitleGenerationEngine::Process(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
                          weak_ptr_factory_.GetWeakPtr()));
+  auto timer = PerformanceTimer::Create();
   if (observer) {
     ReplyGroupsWithoutTitles(groups, std::move(callback));
     ProcessCallback on_complete =
         base::BindOnce(&TitleGenerationEngine::OnAllTitleGenerationFinished,
-                       weak_ptr_factory_.GetWeakPtr())
+                       weak_ptr_factory_.GetWeakPtr(), std::move(timer))
             .Then(std::move(on_process_completed));
     EnsureModelLoaded(base::BindOnce(
         &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
@@ -200,7 +202,8 @@ void TitleGenerationEngine::Process(
   } else {
     ProcessCallback on_complete =
         base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(callback))
+                       weak_ptr_factory_.GetWeakPtr(), std::move(timer),
+                       std::move(callback))
             .Then(std::move(on_process_completed));
     EnsureModelLoaded(base::BindOnce(
         &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
@@ -225,14 +228,17 @@ void TitleGenerationEngine::EnsureModelLoaded(base::OnceClosure callback) {
     std::move(callback).Run();
     return;
   }
+  auto timer = PerformanceTimer::Create();
   on_device_model_service_->LoadPlatformModel(
       base::Uuid::ParseLowercase(kModelUuid),
       model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
       base::BindOnce(&TitleGenerationEngine::OnModelLoadResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(timer)));
 }
 
 void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
+                                              PerformanceTimer::Ptr timer,
                                               LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using the
@@ -240,6 +246,8 @@ void TitleGenerationEngine::OnModelLoadResult(base::OnceClosure callback,
     model_.reset();
     LOG(ERROR) << "Load model failed with result: " << static_cast<int>(result);
   } else {
+    // Only report model load latency on success.
+    metrics_->SendLoadTitleGenerationModelLatency(timer->GetDuration());
     SetUnloadModelTimer();
   }
   std::move(callback).Run();
@@ -272,11 +280,12 @@ void TitleGenerationEngine::ReplyGroupsWithoutTitles(
 }
 
 void TitleGenerationEngine::ReplyGroupsWithTitles(
+    PerformanceTimer::Ptr timer,
     TitleGenerationEngine::TitleGenerationCallback callback,
     mojo::Remote<mojom::TitleObserver> observer,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
-  ReportTitleGenerationMetrics(result);
+  ReportTitleGenerationMetrics(std::move(timer), result);
   TitleGenerationResponse response;
   if (!result.has_value()) {
     std::move(callback).Run(base::unexpected(result.error()));
@@ -294,10 +303,11 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
 }
 
 void TitleGenerationEngine::OnAllTitleGenerationFinished(
+    PerformanceTimer::Ptr timer,
     mojo::Remote<mojom::TitleObserver> observer,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
-  ReportTitleGenerationMetrics(result);
+  ReportTitleGenerationMetrics(std::move(timer), result);
   if (result.has_value()) {
     // All titles should have been updated to the observer.
     CacheGroupTitles(std::move(groups));
@@ -362,10 +372,11 @@ void TitleGenerationEngine::ProcessEachPrompt(
   base::flat_map<std::string, std::string> fields{
       {"prompt", groups[index].prompt}};
   SimpleSession* session_ptr = session.get();
+  auto timer = PerformanceTimer::Create();
   auto on_model_output = base::BindOnce(
       &TitleGenerationEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
       index, std::move(request), std::move(session), std::move(observer),
-      std::move(groups), std::move(callback));
+      std::move(groups), std::move(callback), std::move(timer));
   auto execute_session = base::BindOnce(
       [](SimpleSession* session, base::OnceCallback<void(std::string)> callback,
          const std::optional<std::string>& formatted) {
@@ -392,11 +403,20 @@ void TitleGenerationEngine::OnModelOutput(
     mojo::Remote<mojom::TitleObserver> observer,
     std::vector<GroupData> groups,
     ProcessCallback callback,
+    PerformanceTimer::Ptr timer,
     std::string title) {
   CHECK(index < groups.size());
   // The model outputs a leading blank space by default. In any case, trimming
   // blank space from both ends makes the title format on UI more consistent.
   title = base::TrimWhitespaceASCII(title, base::TRIM_ALL);
+
+  // Send metrics for this title generation result.
+  metrics_->SendTitleGenerationResult(
+      title.empty() ? metrics::TitleGenerationResult::kEmptyModelOutput
+                    : metrics::TitleGenerationResult::kSuccess);
+  if (!title.empty()) {
+    metrics_->SendGenerateTitleLatency(timer->GetDuration());
+  }
 
   // TODO(b/361429962): Figure out whether truncating should happen in here or
   // in UI.
@@ -411,8 +431,12 @@ void TitleGenerationEngine::OnModelOutput(
                     std::move(callback));
 }
 
-void TitleGenerationEngine::ReportTitleGenerationMetrics(CoralStatus status) {
+void TitleGenerationEngine::ReportTitleGenerationMetrics(
+    PerformanceTimer::Ptr timer, CoralStatus status) {
   metrics_->SendTitleGenerationEngineStatus(status);
+  if (status.has_value()) {
+    metrics_->SendTitleGenerationEngineLatency(timer->GetDuration());
+  }
 }
 
 void TitleGenerationEngine::OnProcessCompleted() {

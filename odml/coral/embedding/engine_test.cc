@@ -137,6 +137,7 @@ class EmbeddingEngineTest : public testing::Test {
     // A catch-all so that we don't have to explicitly EXPECT every metrics
     // call.
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
     EXPECT_CALL(*session_state_manager_, AddObserver(_)).Times(1);
     // ownership of |embedding_database_factory_| is transferred to |engine_|.
     engine_ = std::make_unique<EmbeddingEngine>(
@@ -156,6 +157,24 @@ class EmbeddingEngineTest : public testing::Test {
                   SendEnumToUMA(metrics::kEmbeddingEngineStatus, Gt(0), _))
           .Times(times);
     }
+  }
+
+  void ExpectSendLatency(int times) {
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kEmbeddingEngineLatency, _, _, _, _))
+        .Times(times);
+  }
+
+  void ExpectSendLoadModelLatency(int times) {
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kLoadEmbeddingModelLatency, _, _, _, _))
+        .Times(times);
+  }
+
+  void ExpectSendGenerateEmbeddingLatency(int times) {
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kGenerateEmbeddingLatency, _, _, _, _))
+        .Times(times);
   }
 
   base::test::TaskEnvironment task_environment_{
@@ -179,6 +198,9 @@ class EmbeddingEngineTest : public testing::Test {
 
 TEST_F(EmbeddingEngineTest, Success) {
   ExpectSendStatus(true, 2);
+  ExpectSendLatency(2);
+  ExpectSendLoadModelLatency(1);
+  ExpectSendGenerateEmbeddingLatency(12);
   std::unique_ptr<FakeEmbeddingModel> fake_model;
   bool should_error = false;
   EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
@@ -216,6 +238,11 @@ TEST_F(EmbeddingEngineTest, Success) {
 TEST_F(EmbeddingEngineTest, CacheEmbeddingsOnlySuccess) {
   EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kEmbeddingEngineStatus, _, _))
       .Times(0);
+  EXPECT_CALL(metrics_,
+              SendTimeToUMA(metrics::kEmbeddingEngineLatency, _, _, _, _))
+      .Times(0);
+  ExpectSendLoadModelLatency(1);
+  ExpectSendGenerateEmbeddingLatency(12);
   // A CacheEmbeddings request has no clustering and title generation options
   // fields.
   auto request = GetFakeGroupRequest();
@@ -259,6 +286,8 @@ TEST_F(EmbeddingEngineTest, CacheEmbeddingsOnlySuccess) {
 TEST_F(EmbeddingEngineTest, FailThenSuccess) {
   ExpectSendStatus(false);
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
+  ExpectSendGenerateEmbeddingLatency(6);
   TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
       embedding_future1, embedding_future2;
   should_error_ = true;
@@ -277,6 +306,7 @@ TEST_F(EmbeddingEngineTest, FailThenSuccess) {
 
 TEST_F(EmbeddingEngineTest, NoInput) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = mojom::GroupRequest::New();
   request->embedding_options = mojom::EmbeddingOptions::New();
   request->clustering_options = mojom::ClusteringOptions::New();
@@ -292,6 +322,7 @@ TEST_F(EmbeddingEngineTest, NoInput) {
 
 TEST_F(EmbeddingEngineTest, InvalidInput) {
   ExpectSendStatus(false);
+  ExpectSendLatency(0);
   auto request = mojom::GroupRequest::New();
   request->embedding_options = mojom::EmbeddingOptions::New();
   request->clustering_options = mojom::ClusteringOptions::New();
@@ -305,6 +336,10 @@ TEST_F(EmbeddingEngineTest, InvalidInput) {
 }
 
 TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
+  ExpectSendStatus(true, 3);
+  ExpectSendLatency(3);
+  // 6*3 input embeddings, with 4 cache hits.
+  ExpectSendGenerateEmbeddingLatency(14);
   auto request = GetFakeGroupRequest();
   std::vector<Embedding> fake_embeddings =
       GetFakeEmbeddingResponse().embeddings;

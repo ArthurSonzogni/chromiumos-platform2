@@ -76,6 +76,7 @@ class TitleGenerationEngine
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
+                         PerformanceTimer::Ptr timer,
                          on_device_model::mojom::LoadModelResult result);
   void SetUnloadModelTimer();
   void UnloadModel();
@@ -92,6 +93,7 @@ class TitleGenerationEngine
   // Used as the DoProcess callback in the case that no observer provided, so
   // titles have to be returned in the TitleGenerationResponse.
   void ReplyGroupsWithTitles(
+      PerformanceTimer::Ptr timer,
       TitleGenerationEngine::TitleGenerationCallback callback,
       mojo::Remote<mojom::TitleObserver> unused_observer,
       std::vector<GroupData> groups,
@@ -99,11 +101,13 @@ class TitleGenerationEngine
   // Used as the DoProcess callback in the case that observer is provided, so
   // the title generation response is already returned and here we just have to
   // handle title generation failure.
-  void OnAllTitleGenerationFinished(mojo::Remote<mojom::TitleObserver> observer,
+  void OnAllTitleGenerationFinished(PerformanceTimer::Ptr timer,
+                                    mojo::Remote<mojom::TitleObserver> observer,
                                     std::vector<GroupData> groups,
                                     CoralResult<void> result);
 
-  void ReportTitleGenerationMetrics(CoralStatus status);
+  void ReportTitleGenerationMetrics(PerformanceTimer::Ptr timer,
+                                    CoralStatus status);
 
   void OnProcessCompleted();
 
@@ -130,6 +134,7 @@ class TitleGenerationEngine
                      mojo::Remote<mojom::TitleObserver> observer,
                      std::vector<GroupData> groups,
                      ProcessCallback callback,
+                     PerformanceTimer::Ptr timer,
                      std::string title);
 
   // Generated groups, along with their titles, are saved to an LRU cache. When

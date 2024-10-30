@@ -61,9 +61,10 @@ void CoralService::PrepareResource() {
 void CoralService::Group(mojom::GroupRequestPtr request,
                          mojo::PendingRemote<mojom::TitleObserver> observer,
                          GroupCallback callback) {
-  GroupCallback wrapped_callback =
-      base::BindOnce(&CoralService::HandleGroupResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+  auto timer = PerformanceTimer::Create();
+  GroupCallback wrapped_callback = base::BindOnce(
+      &CoralService::HandleGroupResult, weak_ptr_factory_.GetWeakPtr(),
+      std::move(timer), std::move(callback));
   embedding_engine_->Process(
       std::move(request),
       base::BindOnce(&CoralService::OnEmbeddingResult,
@@ -73,6 +74,7 @@ void CoralService::Group(mojom::GroupRequestPtr request,
 
 void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
                                    CacheEmbeddingsCallback callback) {
+  auto timer = PerformanceTimer::Create();
   // Turn the request into a full group request to reuse the same helper
   // functions.
   auto group_request = mojom::GroupRequest::New(
@@ -81,7 +83,8 @@ void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
   embedding_engine_->Process(
       std::move(group_request),
       base::BindOnce(&CoralService::HandleCacheEmbeddingsResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(timer),
+                     std::move(callback)));
 }
 
 void CoralService::OnEmbeddingResult(
@@ -125,19 +128,22 @@ void CoralService::OnTitleGenerationResult(
       GroupResult::NewResponse(GroupResponse::New(std::move(result->groups))));
 }
 
-void CoralService::HandleGroupResult(GroupCallback callback,
+void CoralService::HandleGroupResult(PerformanceTimer::Ptr timer,
+                                     GroupCallback callback,
                                      mojom::GroupResultPtr result) {
   CoralStatus status;
   if (result->is_error()) {
     status = base::unexpected(result->get_error());
   } else {
     status = base::ok();
+    metrics_.SendGroupLatency(timer->GetDuration());
   }
   metrics_.SendGroupStatus(status);
   std::move(callback).Run(std::move(result));
 }
 
 void CoralService::HandleCacheEmbeddingsResult(
+    PerformanceTimer::Ptr timer,
     CacheEmbeddingsCallback callback,
     mojom::GroupRequestPtr request,
     CoralResult<EmbeddingResponse> embed_result) {
@@ -150,6 +156,7 @@ void CoralService::HandleCacheEmbeddingsResult(
     status = base::ok();
     result = CacheEmbeddingsResult::NewResponse(
         mojom::CacheEmbeddingsResponse::New());
+    metrics_.SendCacheEmbeddingsLatency(timer->GetDuration());
   }
   metrics_.SendCacheEmbeddingsStatus(status);
   std::move(callback).Run(std::move(result));

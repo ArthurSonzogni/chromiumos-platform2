@@ -129,9 +129,10 @@ void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
   }
   is_processing_ = true;
 
-  EmbeddingCallback wrapped_callback =
-      base::BindOnce(&EmbeddingEngine::HandleProcessResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+  auto timer = PerformanceTimer::Create();
+  EmbeddingCallback wrapped_callback = base::BindOnce(
+      &EmbeddingEngine::HandleProcessResult, weak_ptr_factory_.GetWeakPtr(),
+      std::move(callback), std::move(timer));
   // Ensure `is_processing_` will always be reset no matter callback is run or
   // dropped.
   base::OnceClosure on_process_completed =
@@ -169,14 +170,17 @@ void EmbeddingEngine::EnsureModelLoaded(base::OnceClosure callback) {
     std::move(callback).Run();
     return;
   }
+  auto timer = PerformanceTimer::Create();
   embedding_service_->LoadEmbeddingModel(
       base::Uuid::ParseLowercase(kModelUuid),
       model_.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
       base::BindOnce(&EmbeddingEngine::OnModelLoadResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(timer)));
 }
 
 void EmbeddingEngine::OnModelLoadResult(base::OnceClosure callback,
+                                        PerformanceTimer::Ptr timer,
                                         LoadModelResult result) {
   if (result != LoadModelResult::kSuccess) {
     // Unbind the model because when load model fails we shouldn't be using the
@@ -186,6 +190,7 @@ void EmbeddingEngine::OnModelLoadResult(base::OnceClosure callback,
     std::move(callback).Run();
     return;
   }
+  metrics_->SendLoadEmbeddingModelLatency(timer->GetDuration());
   model_->Version(base::BindOnce(&EmbeddingEngine::OnModelVersionLoaded,
                                  weak_ptr_factory_.GetWeakPtr(),
                                  std::move(callback)));
@@ -249,10 +254,11 @@ void EmbeddingEngine::ProcessEachPrompt(mojom::GroupRequestPtr request,
     }
   }
 
+  auto timer = PerformanceTimer::Create();
   auto on_model_output = base::BindOnce(
       &EmbeddingEngine::OnModelOutput, weak_ptr_factory_.GetWeakPtr(),
       std::move(request), std::move(prompts), std::move(response),
-      std::move(callback));
+      std::move(callback), std::move(timer));
   auto embed_request = embedding_model::mojom::GenerateEmbeddingRequest::New();
   embed_request->content = prompt;
   embed_request->task_type = embedding_model::mojom::TaskType::kClustering;
@@ -265,6 +271,7 @@ void EmbeddingEngine::OnModelOutput(mojom::GroupRequestPtr request,
                                     std::vector<std::string> prompts,
                                     EmbeddingResponse response,
                                     EmbeddingCallback callback,
+                                    PerformanceTimer::Ptr timer,
                                     OnDeviceEmbeddingModelInferenceError error,
                                     const std::vector<float>& embedding) {
   // TODO(b/361429567): We can achieve better error tolerance by dropping
@@ -277,6 +284,7 @@ void EmbeddingEngine::OnModelOutput(mojom::GroupRequestPtr request,
         base::unexpected(CoralError::kModelExecutionFailed));
     return;
   }
+  metrics_->SendGenerateEmbeddingLatency(timer->GetDuration());
 
   // Cache the embedding.
   if (embedding_database_) {
@@ -301,6 +309,7 @@ void EmbeddingEngine::SyncDatabase() {
 
 void EmbeddingEngine::HandleProcessResult(
     EmbeddingCallback callback,
+    PerformanceTimer::Ptr timer,
     mojom::GroupRequestPtr request,
     CoralResult<EmbeddingResponse> result) {
   // We don't want to send some metrics for Process requests triggered by
@@ -314,6 +323,9 @@ void EmbeddingEngine::HandleProcessResult(
   // (or title_generation_options) is null.
   if (request->clustering_options) {
     metrics_->SendEmbeddingEngineStatus(result.transform([](auto&&) {}));
+    if (result.has_value()) {
+      metrics_->SendEmbeddingEngineLatency(timer->GetDuration());
+    }
   }
   std::move(callback).Run(std::move(request), std::move(result));
 }

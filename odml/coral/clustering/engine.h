@@ -74,6 +74,7 @@ class ClusteringEngine : public ClusteringEngineInterface {
  private:
   // Report metrics and return to callback.
   void HandleProcessResult(ClusteringCallback callback,
+                           PerformanceTimer::Ptr timer,
                            mojom::GroupRequestPtr request,
                            CoralResult<ClusteringResponse> result);
 

@@ -134,6 +134,7 @@ class ClusteringEngineTest : public testing::Test {
     // A catch-all so that we don't have to explicitly EXPECT every metrics
     // call.
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
   }
 
  protected:
@@ -174,6 +175,12 @@ class ClusteringEngineTest : public testing::Test {
     }
   }
 
+  void ExpectSendLatency(int times) {
+    EXPECT_CALL(metrics_,
+                SendTimeToUMA(metrics::kClusteringEngineLatency, _, _, _, _))
+        .Times(times);
+  }
+
  private:
   NiceMock<MetricsLibraryMock> metrics_;
   CoralMetrics coral_metrics_;
@@ -181,6 +188,7 @@ class ClusteringEngineTest : public testing::Test {
 
 TEST_F(ClusteringEngineTest, Success) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
 
   clustering::Groups fake_grouping = {
@@ -203,6 +211,7 @@ TEST_F(ClusteringEngineTest, Success) {
 
 TEST_F(ClusteringEngineTest, MaxClusters) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_clusters = 2;
 
@@ -225,6 +234,7 @@ TEST_F(ClusteringEngineTest, MaxClusters) {
 
 TEST_F(ClusteringEngineTest, MaxClustersExceedGroupSize) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_clusters = 6;
 
@@ -248,6 +258,7 @@ TEST_F(ClusteringEngineTest, MaxClustersExceedGroupSize) {
 
 TEST_F(ClusteringEngineTest, MaxItemsInCluster) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_items_in_cluster = 2;
 
@@ -271,6 +282,7 @@ TEST_F(ClusteringEngineTest, MaxItemsInCluster) {
 
 TEST_F(ClusteringEngineTest, MaxItemsInClusterExceedsSize) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_items_in_cluster = 5;
 
@@ -294,6 +306,7 @@ TEST_F(ClusteringEngineTest, MaxItemsInClusterExceedsSize) {
 
 TEST_F(ClusteringEngineTest, MinItemsInCluster) {
   ExpectSendStatus(true);
+  ExpectSendLatency(1);
   auto request = GetFakeGroupRequest();
   request->clustering_options->min_items_in_cluster = 2;
 

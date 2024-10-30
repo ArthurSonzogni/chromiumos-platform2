@@ -84,6 +84,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
  private:
   void EnsureModelLoaded(base::OnceClosure callback);
   void OnModelLoadResult(base::OnceClosure callback,
+                         PerformanceTimer::Ptr timer,
                          on_device_model::mojom::LoadModelResult result);
   void OnModelVersionLoaded(base::OnceClosure callback,
                             const std::string& version);
@@ -97,6 +98,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
       std::vector<std::string> prompts,
       EmbeddingResponse response,
       EmbeddingCallback callback,
+      PerformanceTimer::Ptr timer,
       embedding_model::mojom::OnDeviceEmbeddingModelInferenceError error,
       const std::vector<float>& embedding);
 
@@ -104,6 +106,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   // Report metrics and return to callback.
   void HandleProcessResult(EmbeddingCallback callback,
+                           PerformanceTimer::Ptr timer,
                            mojom::GroupRequestPtr request,
                            CoralResult<EmbeddingResponse> result);
 
