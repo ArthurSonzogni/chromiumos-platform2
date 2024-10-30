@@ -28,6 +28,8 @@ namespace {
 
 using base::test::TestFuture;
 using testing::_;
+using testing::AnyNumber;
+using testing::Gt;
 using testing::Matcher;
 using testing::MatchResultListener;
 using testing::NiceMock;
@@ -127,7 +129,12 @@ class ClusteringEngineTest : public testing::Test {
  public:
   ClusteringEngineTest() : coral_metrics_(raw_ref(metrics_)) {}
 
-  void SetUp() override { mojo::core::Init(); }
+  void SetUp() override {
+    mojo::core::Init();
+    // A catch-all so that we don't have to explicitly EXPECT every metrics
+    // call.
+    EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
+  }
 
  protected:
   CoralResult<ClusteringResponse> RunTest(
@@ -157,12 +164,23 @@ class ClusteringEngineTest : public testing::Test {
     return std::move(result);
   }
 
+  void ExpectSendStatus(bool success) {
+    if (success) {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kClusteringEngineStatus, 0, _));
+    } else {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kClusteringEngineStatus, Gt(0), _));
+    }
+  }
+
  private:
   NiceMock<MetricsLibraryMock> metrics_;
   CoralMetrics coral_metrics_;
 };
 
 TEST_F(ClusteringEngineTest, Success) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
 
   clustering::Groups fake_grouping = {
@@ -184,6 +202,7 @@ TEST_F(ClusteringEngineTest, Success) {
 }
 
 TEST_F(ClusteringEngineTest, MaxClusters) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_clusters = 2;
 
@@ -205,6 +224,7 @@ TEST_F(ClusteringEngineTest, MaxClusters) {
 }
 
 TEST_F(ClusteringEngineTest, MaxClustersExceedGroupSize) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_clusters = 6;
 
@@ -227,6 +247,7 @@ TEST_F(ClusteringEngineTest, MaxClustersExceedGroupSize) {
 }
 
 TEST_F(ClusteringEngineTest, MaxItemsInCluster) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_items_in_cluster = 2;
 
@@ -249,6 +270,7 @@ TEST_F(ClusteringEngineTest, MaxItemsInCluster) {
 }
 
 TEST_F(ClusteringEngineTest, MaxItemsInClusterExceedsSize) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
   request->clustering_options->max_items_in_cluster = 5;
 
@@ -271,6 +293,7 @@ TEST_F(ClusteringEngineTest, MaxItemsInClusterExceedsSize) {
 }
 
 TEST_F(ClusteringEngineTest, MinItemsInCluster) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
   request->clustering_options->min_items_in_cluster = 2;
 
@@ -292,6 +315,7 @@ TEST_F(ClusteringEngineTest, MinItemsInCluster) {
 }
 
 TEST_F(ClusteringEngineTest, GroupingError) {
+  ExpectSendStatus(false);
   auto request = GetFakeGroupRequest();
 
   CoralResult<ClusteringResponse> result =

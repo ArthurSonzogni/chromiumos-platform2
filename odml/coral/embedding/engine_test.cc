@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
@@ -29,6 +30,7 @@ using base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ElementsAreArray;
+using ::testing::Gt;
 using ::testing::NiceMock;
 using ::testing::Optional;
 using ::testing::Return;
@@ -132,6 +134,9 @@ class EmbeddingEngineTest : public testing::Test {
             std::make_unique<odml::FakeSessionStateManager>()) {
     mojo::core::Init();
 
+    // A catch-all so that we don't have to explicitly EXPECT every metrics
+    // call.
+    EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
     EXPECT_CALL(*session_state_manager_, AddObserver(_)).Times(1);
     // ownership of |embedding_database_factory_| is transferred to |engine_|.
     engine_ = std::make_unique<EmbeddingEngine>(
@@ -141,6 +146,18 @@ class EmbeddingEngineTest : public testing::Test {
   }
 
  protected:
+  void ExpectSendStatus(bool success, int times = 1) {
+    if (success) {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kEmbeddingEngineStatus, 0, _))
+          .Times(times);
+    } else {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kEmbeddingEngineStatus, Gt(0), _))
+          .Times(times);
+    }
+  }
+
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
@@ -161,6 +178,7 @@ class EmbeddingEngineTest : public testing::Test {
 };
 
 TEST_F(EmbeddingEngineTest, Success) {
+  ExpectSendStatus(true, 2);
   std::unique_ptr<FakeEmbeddingModel> fake_model;
   bool should_error = false;
   EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
@@ -195,7 +213,52 @@ TEST_F(EmbeddingEngineTest, Success) {
   }
 }
 
+TEST_F(EmbeddingEngineTest, CacheEmbeddingsOnlySuccess) {
+  EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kEmbeddingEngineStatus, _, _))
+      .Times(0);
+  // A CacheEmbeddings request has no clustering and title generation options
+  // fields.
+  auto request = GetFakeGroupRequest();
+  request->clustering_options.reset();
+  request->title_generation_options.reset();
+
+  std::unique_ptr<FakeEmbeddingModel> fake_model;
+  bool should_error = false;
+  EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
+  std::vector<Embedding> embeddings_to_return;
+  for (int i = 0; i < 2; i++) {
+    for (const Embedding& embedding : fake_response.embeddings) {
+      embeddings_to_return.push_back(embedding);
+    }
+  }
+  EXPECT_CALL(model_service_, LoadEmbeddingModel)
+      .WillOnce([&fake_model, &should_error, &embeddings_to_return](
+                    auto&&, auto&& model, auto&&, auto&& callback) {
+        fake_model = std::make_unique<FakeEmbeddingModel>(
+            raw_ref(should_error), std::move(embeddings_to_return),
+            std::move(model));
+        std::move(callback).Run(
+            on_device_model::mojom::LoadModelResult::kSuccess);
+      });
+
+  TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
+      embedding_future1, embedding_future2;
+  engine_->Process(request.Clone(), embedding_future1.GetCallback());
+  engine_->Process(request.Clone(), embedding_future2.GetCallback());
+  std::vector<CoralResult<EmbeddingResponse>> results;
+  results.push_back(std::get<1>(embedding_future1.Take()));
+  results.push_back(std::get<1>(embedding_future2.Take()));
+  for (auto& result : results) {
+    ASSERT_TRUE(result.has_value());
+    EmbeddingResponse response = std::move(*result);
+    auto fake_response = GetFakeEmbeddingResponse();
+    EXPECT_EQ(response, fake_response);
+  }
+}
+
 TEST_F(EmbeddingEngineTest, FailThenSuccess) {
+  ExpectSendStatus(false);
+  ExpectSendStatus(true);
   TestFuture<mojom::GroupRequestPtr, CoralResult<EmbeddingResponse>>
       embedding_future1, embedding_future2;
   should_error_ = true;
@@ -213,6 +276,7 @@ TEST_F(EmbeddingEngineTest, FailThenSuccess) {
 }
 
 TEST_F(EmbeddingEngineTest, NoInput) {
+  ExpectSendStatus(true);
   auto request = mojom::GroupRequest::New();
   request->embedding_options = mojom::EmbeddingOptions::New();
   request->clustering_options = mojom::ClusteringOptions::New();
@@ -227,6 +291,7 @@ TEST_F(EmbeddingEngineTest, NoInput) {
 }
 
 TEST_F(EmbeddingEngineTest, InvalidInput) {
+  ExpectSendStatus(false);
   auto request = mojom::GroupRequest::New();
   request->embedding_options = mojom::EmbeddingOptions::New();
   request->clustering_options = mojom::ClusteringOptions::New();

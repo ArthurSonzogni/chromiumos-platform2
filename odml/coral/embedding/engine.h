@@ -102,6 +102,11 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
 
   void SyncDatabase();
 
+  // Report metrics and return to callback.
+  void HandleProcessResult(EmbeddingCallback callback,
+                           mojom::GroupRequestPtr request,
+                           CoralResult<EmbeddingResponse> result);
+
   void OnProcessCompleted();
 
   const raw_ref<CoralMetrics> metrics_;

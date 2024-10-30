@@ -25,6 +25,7 @@ namespace {
 using base::test::TestFuture;
 using testing::_;
 using testing::Eq;
+using testing::Gt;
 using testing::NiceMock;
 
 // Workaround: base::expected doesn't have a move assignment with a
@@ -148,6 +149,24 @@ class CoralServiceTest : public testing::Test {
     EXPECT_EQ(result->get_error(), error);
   }
 
+  void ExpectSendGroupStatus(bool success) {
+    if (success) {
+      EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kGroupStatus, 0, _));
+    } else {
+      EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kGroupStatus, Gt(0), _));
+    }
+  }
+
+  void ExpectSendCacheEmbeddingsStatus(bool success) {
+    if (success) {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kCacheEmbeddingsStatus, 0, _));
+    } else {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kCacheEmbeddingsStatus, Gt(0), _));
+    }
+  }
+
   MockEmbeddingEngine* embedding_engine_;
   MockClusteringEngine* clustering_engine_;
   MockTitleGenerationEngine* title_generation_engine_;
@@ -169,6 +188,7 @@ TEST(CoralServiceConstructTest, Construct) {
 }
 
 TEST_F(CoralServiceTest, GroupSuccess) {
+  ExpectSendGroupStatus(true);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
   clustering_engine_->Expect(GetFakeEmbeddingResponse(),
@@ -179,6 +199,7 @@ TEST_F(CoralServiceTest, GroupSuccess) {
 }
 
 TEST_F(CoralServiceTest, EmbeddingFailed) {
+  ExpectSendGroupStatus(false);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(base::unexpected(mojom::CoralError::kUnknownError));
   ExpectGroupResult(std::move(request), mojom::GroupResult::NewError(
@@ -186,6 +207,7 @@ TEST_F(CoralServiceTest, EmbeddingFailed) {
 }
 
 TEST_F(CoralServiceTest, ClusteringFailed) {
+  ExpectSendGroupStatus(false);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
   clustering_engine_->Expect(
@@ -196,6 +218,7 @@ TEST_F(CoralServiceTest, ClusteringFailed) {
 }
 
 TEST_F(CoralServiceTest, TitleGenerationFailed) {
+  ExpectSendGroupStatus(false);
   auto request = GetFakeGroupRequest();
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
   clustering_engine_->Expect(GetFakeEmbeddingResponse(),
@@ -208,6 +231,7 @@ TEST_F(CoralServiceTest, TitleGenerationFailed) {
 }
 
 TEST_F(CoralServiceTest, CacheEmbeddingsSuccess) {
+  ExpectSendCacheEmbeddingsStatus(true);
   auto request = mojom::CacheEmbeddingsRequest::New(
       GetFakeEntities(), mojom::EmbeddingOptions::New());
   embedding_engine_->Expect(GetFakeEmbeddingResponse());
@@ -215,6 +239,7 @@ TEST_F(CoralServiceTest, CacheEmbeddingsSuccess) {
 }
 
 TEST_F(CoralServiceTest, CacheEmbeddingsFailed) {
+  ExpectSendCacheEmbeddingsStatus(false);
   auto request = mojom::CacheEmbeddingsRequest::New(
       GetFakeEntities(), mojom::EmbeddingOptions::New());
   embedding_engine_->Expect(base::unexpected(mojom::CoralError::kUnknownError));

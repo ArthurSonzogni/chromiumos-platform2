@@ -31,6 +31,9 @@
 namespace coral {
 namespace {
 using base::test::TestFuture;
+using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::Gt;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Optional;
@@ -92,6 +95,9 @@ class TitleGenerationEngineTest : public testing::Test {
   void SetUp() override {
     fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
+    // A catch-all so that we don't have to explicitly EXPECT every metrics
+    // call.
+    EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
     // Set DlcClient to return paths from /build.
     auto dlc_path = base::FilePath("testdata").Append(kFakeModelName);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
@@ -114,6 +120,18 @@ class TitleGenerationEngineTest : public testing::Test {
   }
 
  protected:
+  void ExpectSendStatus(bool success, int times = 1) {
+    if (success) {
+      EXPECT_CALL(metrics_,
+                  SendEnumToUMA(metrics::kTitleGenerationEngineStatus, 0, _))
+          .Times(times);
+    } else {
+      EXPECT_CALL(metrics_, SendEnumToUMA(metrics::kTitleGenerationEngineStatus,
+                                          Gt(0), _))
+          .Times(times);
+    }
+  }
+
   base::test::TaskEnvironment task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
   CoralMetrics coral_metrics_;
@@ -124,6 +142,7 @@ class TitleGenerationEngineTest : public testing::Test {
 };
 
 TEST_F(TitleGenerationEngineTest, Success) {
+  ExpectSendStatus(true, 2);
   // Test that concurrent requests can be handled.
   TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
   engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
@@ -150,6 +169,8 @@ TEST_F(TitleGenerationEngineTest, Success) {
 }
 
 TEST_F(TitleGenerationEngineTest, FailThenSuccess) {
+  ExpectSendStatus(false);
+  ExpectSendStatus(true);
   // Override DLC path to a non-existent path.
   auto dlc_path = base::FilePath("not_exist");
   cros::DlcClient::SetDlcPathForTest(&dlc_path);
@@ -332,6 +353,7 @@ TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
 }
 
 TEST_F(TitleGenerationEngineTest, NoGroups) {
+  ExpectSendStatus(true);
   auto request = GetFakeGroupRequest();
 
   TestFuture<CoralResult<TitleGenerationResponse>> title_future;
@@ -343,6 +365,7 @@ TEST_F(TitleGenerationEngineTest, NoGroups) {
 }
 
 TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
+  ExpectSendStatus(true);
   base::RunLoop run_loop;
   FakeObserver observer(3, &run_loop);
   auto request = GetFakeGroupRequest();
@@ -372,6 +395,7 @@ TEST_F(TitleGenerationEngineTest, ObserverSuccess) {
 }
 
 TEST_F(TitleGenerationEngineTest, ObserverFailed) {
+  ExpectSendStatus(false);
   base::RunLoop run_loop;
   FakeObserver observer(3, &run_loop);
   auto request = GetFakeGroupRequest();

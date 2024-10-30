@@ -15,6 +15,7 @@ namespace coral {
 
 template <class T>
 using CoralResult = base::expected<T, mojom::CoralError>;
+using CoralStatus = CoralResult<void>;
 
 // Used as parent struct of Response types, which we want to enforce move-only.
 struct MoveOnly {

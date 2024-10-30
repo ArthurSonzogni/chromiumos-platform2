@@ -75,6 +75,12 @@ class CoralService : public mojom::CoralService {
   void OnTitleGenerationResult(GroupCallback callback,
                                CoralResult<TitleGenerationResponse> result);
 
+  // Send metrics and return result to callback.
+  void HandleGroupResult(GroupCallback callback, mojom::GroupResultPtr result);
+  void HandleCacheEmbeddingsResult(CacheEmbeddingsCallback callback,
+                                   mojom::GroupRequestPtr request,
+                                   CoralResult<EmbeddingResponse> embed_result);
+
   CoralMetrics metrics_;
 
   std::unique_ptr<EmbeddingEngineInterface> embedding_engine_;

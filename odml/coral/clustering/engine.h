@@ -72,8 +72,15 @@ class ClusteringEngine : public ClusteringEngineInterface {
                ClusteringCallback callback) override;
 
  private:
+  // Report metrics and return to callback.
+  void HandleProcessResult(ClusteringCallback callback,
+                           mojom::GroupRequestPtr request,
+                           CoralResult<ClusteringResponse> result);
+
   const raw_ref<CoralMetrics> metrics_;
   std::unique_ptr<clustering::ClusteringFactoryInterface> clustering_factory_;
+
+  base::WeakPtrFactory<ClusteringEngine> weak_ptr_factory_{this};
 };
 
 }  // namespace coral

@@ -276,6 +276,7 @@ void TitleGenerationEngine::ReplyGroupsWithTitles(
     mojo::Remote<mojom::TitleObserver> observer,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
+  ReportTitleGenerationMetrics(result);
   TitleGenerationResponse response;
   if (!result.has_value()) {
     std::move(callback).Run(base::unexpected(result.error()));
@@ -296,6 +297,7 @@ void TitleGenerationEngine::OnAllTitleGenerationFinished(
     mojo::Remote<mojom::TitleObserver> observer,
     std::vector<GroupData> groups,
     CoralResult<void> result) {
+  ReportTitleGenerationMetrics(result);
   if (result.has_value()) {
     // All titles should have been updated to the observer.
     CacheGroupTitles(std::move(groups));
@@ -407,6 +409,10 @@ void TitleGenerationEngine::OnModelOutput(
   ProcessEachPrompt(index + 1, std::move(request), std::move(session),
                     std::move(observer), std::move(groups),
                     std::move(callback));
+}
+
+void TitleGenerationEngine::ReportTitleGenerationMetrics(CoralStatus status) {
+  metrics_->SendTitleGenerationEngineStatus(status);
 }
 
 void TitleGenerationEngine::OnProcessCompleted() {

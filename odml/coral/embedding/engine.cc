@@ -128,6 +128,10 @@ void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
     return;
   }
   is_processing_ = true;
+
+  EmbeddingCallback wrapped_callback =
+      base::BindOnce(&EmbeddingEngine::HandleProcessResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   // Ensure `is_processing_` will always be reset no matter callback is run or
   // dropped.
   base::OnceClosure on_process_completed =
@@ -137,7 +141,7 @@ void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
   EnsureModelLoaded(base::BindOnce(
       &EmbeddingEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
       std::move(request),
-      std::move(callback).Then(std::move(on_process_completed))));
+      std::move(wrapped_callback).Then(std::move(on_process_completed))));
 }
 
 void EmbeddingEngine::OnUserLoggedIn(
@@ -293,6 +297,25 @@ void EmbeddingEngine::SyncDatabase() {
   if (embedding_database_) {
     embedding_database_->Sync();
   }
+}
+
+void EmbeddingEngine::HandleProcessResult(
+    EmbeddingCallback callback,
+    mojom::GroupRequestPtr request,
+    CoralResult<EmbeddingResponse> result) {
+  // We don't want to send some metrics for Process requests triggered by
+  // CacheEmbedding. This is because for we want to analyze most of this
+  // engine's metrics (like cache hits) only for Group requests. CacheEmbedding
+  // operation sends metrics too in service.cc, and since CacheEmbedding only
+  // passes through this engine, there is no need to send some metrics for it
+  // here again.
+  // The hacky but easiest way to determine whether the request is a
+  // CacheEmbeddings request for now is to check whether the clustering_options
+  // (or title_generation_options) is null.
+  if (request->clustering_options) {
+    metrics_->SendEmbeddingEngineStatus(result.transform([](auto&&) {}));
+  }
+  std::move(callback).Run(std::move(request), std::move(result));
 }
 
 void EmbeddingEngine::OnProcessCompleted() {

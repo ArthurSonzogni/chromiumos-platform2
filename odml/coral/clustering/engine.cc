@@ -138,11 +138,15 @@ ClusteringEngine::ClusteringEngine(
 void ClusteringEngine::Process(mojom::GroupRequestPtr request,
                                EmbeddingResponse embedding_response,
                                ClusteringCallback callback) {
+  ClusteringCallback wrapped_callback =
+      base::BindOnce(&ClusteringEngine::HandleProcessResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   std::optional<clustering::Matrix> matrix =
       internal::DistanceMatrix(embedding_response.embeddings);
   if (!matrix.has_value()) {
-    std::move(callback).Run(std::move(request),
-                            base::unexpected(CoralError::kClusteringError));
+    std::move(wrapped_callback)
+        .Run(std::move(request),
+             base::unexpected(CoralError::kClusteringError));
     return;
   }
   std::unique_ptr<clustering::AgglomerativeClusteringInterface> clustering =
@@ -153,8 +157,9 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
       kDefaultAgglomerativeClusteringThreshold);
 
   if (!groups.has_value()) {
-    std::move(callback).Run(std::move(request),
-                            base::unexpected(CoralError::kClusteringError));
+    std::move(wrapped_callback)
+        .Run(std::move(request),
+             base::unexpected(CoralError::kClusteringError));
     return;
   }
 
@@ -172,8 +177,9 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
     std::optional<Embedding> center =
         internal::CalculateVectorCenter(embedding_response.embeddings, group);
     if (!center.has_value()) {
-      std::move(callback).Run(std::move(request),
-                              base::unexpected(CoralError::kClusteringError));
+      std::move(wrapped_callback)
+          .Run(std::move(request),
+               base::unexpected(CoralError::kClusteringError));
       return;
     }
 
@@ -182,8 +188,9 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
           *center, embedding_response.embeddings[group[i]]);
       if (!distance.has_value()) {
         LOG(ERROR) << "Failed to calcualte cosine distance to the center";
-        std::move(callback).Run(std::move(request),
-                                base::unexpected(CoralError::kClusteringError));
+        std::move(wrapped_callback)
+            .Run(std::move(request),
+                 base::unexpected(CoralError::kClusteringError));
         return;
       }
       distance_to_center[group[i]] = *distance;
@@ -240,7 +247,15 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
     }
     response.clusters.push_back(std::move(cluster));
   }
-  std::move(callback).Run(std::move(request), std::move(response));
+  std::move(wrapped_callback).Run(std::move(request), std::move(response));
+}
+
+void ClusteringEngine::HandleProcessResult(
+    ClusteringCallback callback,
+    mojom::GroupRequestPtr request,
+    CoralResult<ClusteringResponse> result) {
+  metrics_->SendClusteringEngineStatus(result.transform([](auto&&) {}));
+  std::move(callback).Run(std::move(request), std::move(result));
 }
 
 }  // namespace coral

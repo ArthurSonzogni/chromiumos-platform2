@@ -103,6 +103,8 @@ class TitleGenerationEngine
                                     std::vector<GroupData> groups,
                                     CoralResult<void> result);
 
+  void ReportTitleGenerationMetrics(CoralStatus status);
+
   void OnProcessCompleted();
 
   using ProcessCallback =

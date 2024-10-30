@@ -61,11 +61,14 @@ void CoralService::PrepareResource() {
 void CoralService::Group(mojom::GroupRequestPtr request,
                          mojo::PendingRemote<mojom::TitleObserver> observer,
                          GroupCallback callback) {
+  GroupCallback wrapped_callback =
+      base::BindOnce(&CoralService::HandleGroupResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   embedding_engine_->Process(
       std::move(request),
       base::BindOnce(&CoralService::OnEmbeddingResult,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(observer)));
+                     weak_ptr_factory_.GetWeakPtr(),
+                     std::move(wrapped_callback), std::move(observer)));
 }
 
 void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
@@ -77,19 +80,8 @@ void CoralService::CacheEmbeddings(mojom::CacheEmbeddingsRequestPtr request,
       nullptr, nullptr);
   embedding_engine_->Process(
       std::move(group_request),
-      base::BindOnce(
-          [](CacheEmbeddingsCallback callback, mojom::GroupRequestPtr request,
-             CoralResult<EmbeddingResponse> embed_result) {
-            mojom::CacheEmbeddingsResultPtr result;
-            if (!embed_result.has_value()) {
-              result = CacheEmbeddingsResult::NewError(embed_result.error());
-            } else {
-              result = CacheEmbeddingsResult::NewResponse(
-                  mojom::CacheEmbeddingsResponse::New());
-            }
-            std::move(callback).Run(std::move(result));
-          },
-          std::move(callback)));
+      base::BindOnce(&CoralService::HandleCacheEmbeddingsResult,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void CoralService::OnEmbeddingResult(
@@ -131,6 +123,36 @@ void CoralService::OnTitleGenerationResult(
   }
   std::move(callback).Run(
       GroupResult::NewResponse(GroupResponse::New(std::move(result->groups))));
+}
+
+void CoralService::HandleGroupResult(GroupCallback callback,
+                                     mojom::GroupResultPtr result) {
+  CoralStatus status;
+  if (result->is_error()) {
+    status = base::unexpected(result->get_error());
+  } else {
+    status = base::ok();
+  }
+  metrics_.SendGroupStatus(status);
+  std::move(callback).Run(std::move(result));
+}
+
+void CoralService::HandleCacheEmbeddingsResult(
+    CacheEmbeddingsCallback callback,
+    mojom::GroupRequestPtr request,
+    CoralResult<EmbeddingResponse> embed_result) {
+  mojom::CacheEmbeddingsResultPtr result;
+  CoralStatus status;
+  if (!embed_result.has_value()) {
+    status = base::unexpected(embed_result.error());
+    result = CacheEmbeddingsResult::NewError(embed_result.error());
+  } else {
+    status = base::ok();
+    result = CacheEmbeddingsResult::NewResponse(
+        mojom::CacheEmbeddingsResponse::New());
+  }
+  metrics_.SendCacheEmbeddingsStatus(status);
+  std::move(callback).Run(std::move(result));
 }
 
 }  // namespace coral
