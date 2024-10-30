@@ -1458,7 +1458,9 @@ StartVmResponse Service::StartVmInternal(
   // pmem is used, /dev/vda otherwise.
   // Assume every subsequent image was assigned a letter in alphabetical order
   // starting from 'b'.
-  bool use_pmem = USE_PMEM_DEVICE_FOR_ROOTFS;
+  // Borealis has some hard-coded assumptions and expects /dev/pmem0.
+  // Other guest types can handle booting from virtio-blk.
+  bool use_pmem = USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS;
   std::string rootfs_device = use_pmem ? "/dev/pmem0" : "/dev/vda";
   unsigned char disk_letter = use_pmem ? 'a' : 'b';
 
