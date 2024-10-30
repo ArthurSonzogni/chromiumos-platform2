@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next min version: 7
+// Next min version: 8
 module cros.mojom;
 
 import "camera/mojo/file_path.mojom";
@@ -118,4 +118,8 @@ struct EffectsConfig {
   // both effects.
   [MinVersion=6]
   bool studio_look_enabled = true;
+
+  // The inference backend to run face retouch model.
+  [MinVersion=7]
+  InferenceBackend retouch_inference_backend;
 };

@@ -292,7 +292,9 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
             << " relighting_inference_backend: "
             << config->relighting_inference_backend
             << " segmentation_inference_backend: "
-            << config->segmentation_inference_backend;
+            << config->segmentation_inference_backend
+            << " retouch_inference_backend: "
+            << config->retouch_inference_backend;
 
   if (!effects_enabled_) {
     return mojom::SetEffectResult::kFeatureDisabled;

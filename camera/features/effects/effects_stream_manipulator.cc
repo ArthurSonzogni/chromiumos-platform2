@@ -79,6 +79,7 @@ constexpr char kBlurLevelKey[] = "blur_level";
 constexpr char kRetouchStrength[] = "retouch_strength";
 constexpr char kDelegateKey[] = "delegate";
 constexpr char kRelightingDelegateKey[] = "relighting_delegate";
+constexpr char kRetouchDelegateKey[] = "retouch_delegate";
 constexpr char kGpuApiKey[] = "gpu_api";
 constexpr char kRelightingGpuApiKey[] = "relighting_gpu_api";
 constexpr char kStableDelegateSettingsFileKey[] =
@@ -93,6 +94,7 @@ constexpr char kDefaultSegmentationModelTypeKey[] =
 constexpr char kDefaultSegmentationDelegateKey[] =
     "default_segmentation_delegate";
 constexpr char kDefaultRelightingDelegateKey[] = "default_relighting_delegate";
+constexpr char kDefaultRetouchDelegateKey[] = "default_retouch_delegate";
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBA_8888;
 constexpr uint32_t kRGBABufferUsage =
@@ -214,7 +216,8 @@ EffectsConfig ConvertMojoConfig(
     cros::mojom::EffectsConfigPtr effects_config,
     const SegmentationModelType& default_segmentation_model_type,
     const Delegate& default_segmentation_delegate,
-    const Delegate& default_relighting_delegate) {
+    const Delegate& default_relighting_delegate,
+    const Delegate& default_retouch_delegate) {
   // Note: We don't copy over the GPU api fields here, since we have no
   //       need to control them from Chrome at this stage. It will use
   //       the default from effects_pipeline_types.h
@@ -230,13 +233,16 @@ EffectsConfig ConvertMojoConfig(
       .relighting_delegate = GetDelegateFromInferenceBackend(
           effects_config->relighting_inference_backend,
           default_relighting_delegate),
+      .retouch_delegate = GetDelegateFromInferenceBackend(
+          effects_config->retouch_inference_backend, default_retouch_delegate),
       .graph_max_frames_in_flight = effects_config->graph_max_frames_in_flight,
       .wait_on_render = true,
       .segmentation_model_type = static_cast<cros::SegmentationModelType>(
           effects_config->segmentation_model),
   };
   if (config.segmentation_delegate == Delegate::kStable ||
-      config.relighting_delegate == Delegate::kStable) {
+      config.relighting_delegate == Delegate::kStable ||
+      config.retouch_delegate == Delegate::kStable) {
     if (base::PathIsReadable(
             base::FilePath(kMLCoreStableDelegateSettingsFile))) {
       static_assert(sizeof(kMLCoreStableDelegateSettingsFile) <=
@@ -249,6 +255,7 @@ EffectsConfig ConvertMojoConfig(
                     << " is not readable, use GPU delegate instead";
       config.segmentation_delegate = Delegate::kGpu;
       config.relighting_delegate = Delegate::kGpu;
+      config.retouch_delegate = Delegate::kGpu;
     }
   }
 
@@ -438,6 +445,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
       GUARDED_BY_CONTEXT(gl_thread_checker_) = Delegate::kGpu;
   Delegate default_relighting_delegate_ GUARDED_BY_CONTEXT(gl_thread_checker_) =
       Delegate::kGpu;
+  Delegate default_retouch_delegate_ GUARDED_BY_CONTEXT(gl_thread_checker_) =
+      Delegate::kGpu;
 
   // Maximum number of frames that can be queued into effects pipeline.
   // Use the default value to setup the pipeline early.
@@ -599,7 +608,8 @@ bool EffectsStreamManipulatorImpl::EnsurePipelineSetupOnGlThread() {
 
   auto new_config = ConvertMojoConfig(
       runtime_options_->GetEffectsConfig(), default_segmentation_model_type_,
-      default_segmentation_delegate_, default_relighting_delegate_);
+      default_segmentation_delegate_, default_relighting_delegate_,
+      default_retouch_delegate_);
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
     // Ignore the mojo config if the override config file is being used. This is
@@ -1021,17 +1031,33 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     }
   }
 
+  {
+    std::string default_retouch_delegate;
+    if (GetStringFromKey(json_values, kDefaultRetouchDelegateKey,
+                         &default_retouch_delegate)) {
+      if (ParseDelegate(default_retouch_delegate, default_retouch_delegate_)) {
+        LOGF(INFO) << "Default retouch delegate set to: "
+                   << default_retouch_delegate;
+      } else {
+        LOGF(WARNING) << "Retouch delegate " << default_retouch_delegate
+                      << " not recognized, keeping original default";
+      }
+    }
+  }
+
   // Only fallback to GPU when "stable" is the default delegate. We don't want
   // to use the fallback when "stable" is used explicitly by mojo or override
   // config. Otherwise it might hide failures in tests.
   if ((default_segmentation_delegate_ == Delegate::kStable ||
-       default_relighting_delegate_ == Delegate::kStable)) {
+       default_relighting_delegate_ == Delegate::kStable ||
+       default_retouch_delegate_ == Delegate::kStable)) {
     if (cros::NPUIsReady()) {
       metrics_.RecordNpuToGpuFallback(false);
     } else {
       LOGF(ERROR) << "NPU is not ready, setting GPU as default delegate!";
       default_segmentation_delegate_ = Delegate::kGpu;
       default_relighting_delegate_ = Delegate::kGpu;
+      default_retouch_delegate_ = Delegate::kGpu;
       metrics_.RecordNpuToGpuFallback(true);
     }
   }
@@ -1128,6 +1154,18 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     }
   }
 
+  {
+    std::string retouch_delegate;
+    if (GetStringFromKey(json_values, kRetouchDelegateKey, &retouch_delegate)) {
+      if (ParseDelegate(retouch_delegate, new_config.retouch_delegate)) {
+        LOGF(INFO) << "Retouch Delegate: " << retouch_delegate;
+      } else {
+        LOGF(WARNING) << "Unknown Retouch Delegate: " << retouch_delegate;
+        return;
+      }
+    }
+  }
+
   if (new_config.segmentation_delegate == Delegate::kGpu ||
       new_config.relighting_delegate == Delegate::kGpu) {
     std::string gpu_api;
@@ -1172,7 +1210,8 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   }
 
   if (new_config.segmentation_delegate == Delegate::kStable ||
-      new_config.relighting_delegate == Delegate::kStable) {
+      new_config.relighting_delegate == Delegate::kStable ||
+      new_config.retouch_delegate == Delegate::kStable) {
     std::string stable_delegate_settings_file;
     if (!GetStringFromKey(json_values, kStableDelegateSettingsFileKey,
                           &stable_delegate_settings_file)) {
