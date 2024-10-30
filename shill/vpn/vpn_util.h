@@ -10,11 +10,13 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/version.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/net-base/process_manager.h>
 
 namespace shill {
@@ -46,6 +48,12 @@ class VPNUtil {
   // - |inherit_supplementary_groups| are set to true.
   static net_base::ProcessManager::MinijailOptions BuildMinijailOptions(
       uint64_t capmask);
+
+  // Infer if the VPN service is used as the default gateway from the included
+  // routes, by checking the size of the largest prefix (the prefix have the
+  // shortest length).
+  static bool InferIsUsedAsDefaultGatewayFromIncludedRoutes(
+      const std::vector<net_base::IPCIDR>& included_route_prefixes);
 
   // Writes |contents| into file with path |filename|, changes the group of this
   // file to "vpn", and makes this file group-readable. Note that although shill

@@ -148,4 +148,19 @@ net_base::ProcessManager::MinijailOptions VPNUtil::BuildMinijailOptions(
   return options;
 }
 
+// static
+bool VPNUtil::InferIsUsedAsDefaultGatewayFromIncludedRoutes(
+    const std::vector<net_base::IPCIDR>& included_route_prefixes) {
+  // Rationale: if shortest (largest) prefix is shorter than 8, it's very likely
+  // that this VPN is used as the default gateway. Do not distinguish IPv4 and
+  // IPv6 here since it should be very rare that only one family is configured
+  // as default gateway while another one is used as split-routing.
+  for (const auto& prefix : included_route_prefixes) {
+    if (prefix.prefix_length() < 8) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace shill

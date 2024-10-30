@@ -205,12 +205,7 @@ bool ValidateInputString(const std::string& value) {
 // part of the standard WireGuard config so let's infer it from the existing
 // configuration heuristically. Use the following condition:
 //
-// blackhole_ipv6 = (no ipv6 configuration) && (shortest included routes < 8)
-//
-// Rationale: if shortest (largest) prefix is no shorter than 8, it's very
-// likely that this VPN is used as a split-routing VPN. For most of the
-// destinations in the IPv4 address space VPN will not be used, then it should
-// be fine to allow IPv6 traffic through the underlying physical network.
+// blackhole_ipv6 = (no ipv6 configuration) && (vpn is used as default gateway)
 //
 // We may want to do the same thing for blocking IPv4, but for now IPv6-only VPN
 // should be rare.
@@ -219,15 +214,14 @@ bool ShouldBlockIPv6(const net_base::NetworkConfig& network_config) {
     return false;
   }
 
-  int shortest_ipv4_prefix_length = 32;
   for (const auto& prefix : network_config.included_route_prefixes) {
     if (prefix.GetFamily() == net_base::IPFamily::kIPv6) {
       return false;
     }
-    shortest_ipv4_prefix_length =
-        std::min(shortest_ipv4_prefix_length, prefix.prefix_length());
   }
-  return shortest_ipv4_prefix_length < 8;
+
+  return VPNUtil::InferIsUsedAsDefaultGatewayFromIncludedRoutes(
+      network_config.included_route_prefixes);
 }
 
 }  // namespace
