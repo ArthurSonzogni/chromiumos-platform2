@@ -1151,127 +1151,109 @@ TEST_F(ProcessCacheTestFixture, TestScrapeFromProcFsRedaction) {
             actual[0]->commandline());
 }
 
-TEST_F(ProcessCacheTestFixture, TestProcessImageCacheEntry) {
-  struct TestCase {
-    std::string path_name;
-    bool force_full_sha256;
-    std::string content;
-    std::optional<std::string> expected_sha256;
-    bool expected_is_partial_sha;
-  };
-  // TODO(b/360286035): Convert to parametrized test case
-  std::string large_file_content_31 = "ABCDE_XfJ_12345_XYZ_67890_UYTQ@";
-  std::string large_file_content_30 = "ABCDE_XfJ_12345_XYZ_67890_UYTQ";
-  std::string large_file_content_16 = "ABCDE12345678901";
-  std::string large_file_content_18 = "ABCDE1234567890123";
-  std::string large_file_content_19 = "ABCDE12345678901234";
-  std::string large_file_content_17 = "ABCDE123456789012";
-  std::string small_file_content_12 = "A1b@C3d#E478";
-  std::string small_file_content_10 = "A1b@C3d#E4";
-  std::string small_file_content_4 = "A1b@";
-  std::string small_file_content_0 = "";
-  std::string max_full_size_15 = "123456789012345";
+struct Sha256TestCase {
+  std::string path_name;
+  bool force_full_sha256;
+  std::string content;
+  std::optional<std::string> expected_sha256;
+  bool expected_is_partial_sha;
+};
 
-  std::vector<TestCase> test_cases = {
-      {"small_file_content_0.txt", true, small_file_content_0,
-       "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-       false},
-      {"small_file_content_0.txt", false, small_file_content_0,
-       "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-       false},
+const char large_file_content_31[32] = "ABCDE_XfJ_12345_XYZ_67890_UYTQ@";
+const char large_file_content_30[32] = "ABCDE_XfJ_12345_XYZ_67890_UYTQ";
+const char large_file_content_16[32] = "ABCDE12345678901";
+const char large_file_content_18[32] = "ABCDE1234567890123";
+const char large_file_content_19[32] = "ABCDE12345678901234";
+const char large_file_content_17[32] = "ABCDE123456789012";
+const char small_file_content_12[32] = "A1b@C3d#E478";
+const char small_file_content_10[32] = "A1b@C3d#E4";
+const char small_file_content_4[32] = "A1b@";
+const char small_file_content_0[32] = "";
+const char max_full_size_15[32] = "123456789012345";
 
-      {"small_file_content_12.txt", false, small_file_content_12,
-       "5EC1506D2CA1EC5CF64F6655EC0BEB08D8AC3B18A741E09D1EDE6B51E7205EC2",
-       false},
-      {"small_file_content_4.txt", false, small_file_content_10,
-       "90A24CEDAFD5AFCA3783C61663E3AACE6B122708AE1C936CE4C48DBAE3B52326",
-       false},
-      {"small_file_content_4.txt", false, small_file_content_4,
-       "48CA00BB139941B99F0F82D93F9236B6038E4BBAEFE29E0CFF6EC6F9C4C16028",
-       false},
+const Sha256TestCase test_cases[] = {
+    {"small_file_content_0.txt", true, small_file_content_0,
+     "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855", false},
+    {"small_file_content_0.txt", false, small_file_content_0,
+     "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855", false},
+    {"small_file_content_12.txt", false, small_file_content_12,
+     "5EC1506D2CA1EC5CF64F6655EC0BEB08D8AC3B18A741E09D1EDE6B51E7205EC2", false},
+    {"small_file_content_4.txt", false, small_file_content_10,
+     "90A24CEDAFD5AFCA3783C61663E3AACE6B122708AE1C936CE4C48DBAE3B52326", false},
+    {"small_file_content_4.txt", false, small_file_content_4,
+     "48CA00BB139941B99F0F82D93F9236B6038E4BBAEFE29E0CFF6EC6F9C4C16028", false},
+    {"small_file_content_12.txt", true, small_file_content_12,
+     "5EC1506D2CA1EC5CF64F6655EC0BEB08D8AC3B18A741E09D1EDE6B51E7205EC2", false},
+    {"small_file_content_4.txt", true, small_file_content_10,
+     "90A24CEDAFD5AFCA3783C61663E3AACE6B122708AE1C936CE4C48DBAE3B52326", false},
+    {"small_file_content_4.txt", true, small_file_content_4,
+     "48CA00BB139941B99F0F82D93F9236B6038E4BBAEFE29E0CFF6EC6F9C4C16028", false},
+    {"large_file_content_31.txt", false, large_file_content_31,
+     "45A07979B6C412081A5ABD825E04DFCFF8E09FF8BE92DCADDA2188B0BA2BB258", true},
+    {"large_file_content_30.txt", false, large_file_content_30,
+     "0AD9C0C133D3C59663347DFDC90FD7DE0655C6339DCEA294DB6EB51E031661D5", true},
+    {"large_file_content_16.txt", false, large_file_content_16,
+     "2684EA63C4EECD104798C231A5DD33512D869B8A2260057DBEDE6AAD3921C467", false},
+    {"large_file_content_19.txt", false, large_file_content_19,
+     "F571521DD23D6553E7FBC0B23412C4F1A366975D97343017487636A95A658C09", true},
+    {"large_file_content_18.txt", false, large_file_content_18,
+     "284DB5EE9630E7B585DC234B64204961717D3B57D0A245AD1C13D06A2B1D85F0", true},
+    {"large_file_content_17.txt", false, large_file_content_17,
+     "7372259A5A49B3499A47EB65BA1512F775AFD1414928BE9229C37A1E31C3154E", false},
+    {"large_file_content_31.txt", true, large_file_content_31,
+     "AECCC101C491B34D92628CBF2F4A85D126C68ABBBB4AFB32279A26D8C04CEF94", false},
+    {"large_file_content_30.txt", true, large_file_content_30,
+     "BECBC54477909D058B49294676A536F1F13A489FD2FF0033BF99CEED6AA03F53", false},
+    {"large_file_content_16.txt", true, large_file_content_16,
+     "2684EA63C4EECD104798C231A5DD33512D869B8A2260057DBEDE6AAD3921C467", false},
+    {"large_file_content_19.txt", true, large_file_content_19,
+     "6F0E4FF019B026BD178A9056E201860CA037DCF1E6760012161165C2EA821138", false},
+    {"large_file_content_18.txt", true, large_file_content_18,
+     "455B1D97E2B9E1AE4F20FFE584CDFEF77029FCA9612562BD1508B6648C979EC8", false},
+    {"large_file_content_17.txt", true, large_file_content_17,
+     "7372259A5A49B3499A47EB65BA1512F775AFD1414928BE9229C37A1E31C3154E", false},
+    {"max_full_size.txt", false, max_full_size_15,
+     "E27A7686B8028CFEE7B57D954C3ABCCFB2A701968925F52BBD482E77BE5DE0BB", false},
+    {"max_full_size.txt", true, max_full_size_15,
+     "E27A7686B8028CFEE7B57D954C3ABCCFB2A701968925F52BBD482E77BE5DE0BB",
+     false}};
 
-      {"small_file_content_12.txt", true, small_file_content_12,
-       "5EC1506D2CA1EC5CF64F6655EC0BEB08D8AC3B18A741E09D1EDE6B51E7205EC2",
-       false},
-      {"small_file_content_4.txt", true, small_file_content_10,
-       "90A24CEDAFD5AFCA3783C61663E3AACE6B122708AE1C936CE4C48DBAE3B52326",
-       false},
-      {"small_file_content_4.txt", true, small_file_content_4,
-       "48CA00BB139941B99F0F82D93F9236B6038E4BBAEFE29E0CFF6EC6F9C4C16028",
-       false},
+class ProcessCacheTestFixtureWithParam
+    : public ProcessCacheTestFixture,
+      public ::testing::WithParamInterface<Sha256TestCase> {};
 
-      {"large_file_content_31.txt", false, large_file_content_31,
-       "45A07979B6C412081A5ABD825E04DFCFF8E09FF8BE92DCADDA2188B0BA2BB258",
-       true},
-      {"large_file_content_30.txt", false, large_file_content_30,
-       "0AD9C0C133D3C59663347DFDC90FD7DE0655C6339DCEA294DB6EB51E031661D5",
-       true},
-      {"large_file_content_16.txt", false, large_file_content_16,
-       "2684EA63C4EECD104798C231A5DD33512D869B8A2260057DBEDE6AAD3921C467",
-       false},
-      {"large_file_content_19.txt", false, large_file_content_19,
-       "F571521DD23D6553E7FBC0B23412C4F1A366975D97343017487636A95A658C09",
-       true},
-      {"large_file_content_18.txt", false, large_file_content_18,
-       "284DB5EE9630E7B585DC234B64204961717D3B57D0A245AD1C13D06A2B1D85F0",
-       true},
-      {"large_file_content_17.txt", false, large_file_content_17,
-       "7372259A5A49B3499A47EB65BA1512F775AFD1414928BE9229C37A1E31C3154E",
-       false},
+INSTANTIATE_TEST_SUITE_P(ProcessCacheTest,
+                         ProcessCacheTestFixtureWithParam,
+                         ::testing::ValuesIn(test_cases));
 
-      {"large_file_content_31.txt", true, large_file_content_31,
-       "AECCC101C491B34D92628CBF2F4A85D126C68ABBBB4AFB32279A26D8C04CEF94",
-       false},
-      {"large_file_content_30.txt", true, large_file_content_30,
-       "BECBC54477909D058B49294676A536F1F13A489FD2FF0033BF99CEED6AA03F53",
-       false},
-      {"large_file_content_16.txt", true, large_file_content_16,
-       "2684EA63C4EECD104798C231A5DD33512D869B8A2260057DBEDE6AAD3921C467",
-       false},
-      {"large_file_content_19.txt", true, large_file_content_19,
-       "6F0E4FF019B026BD178A9056E201860CA037DCF1E6760012161165C2EA821138",
-       false},
-      {"large_file_content_18.txt", true, large_file_content_18,
-       "455B1D97E2B9E1AE4F20FFE584CDFEF77029FCA9612562BD1508B6648C979EC8",
-       false},
-      {"large_file_content_17.txt", true, large_file_content_17,
-       "7372259A5A49B3499A47EB65BA1512F775AFD1414928BE9229C37A1E31C3154E",
-       false},
+TEST_P(ProcessCacheTestFixtureWithParam, TestProcessImageCacheEntry) {
+  const Sha256TestCase& test_case = GetParam();
 
-      {"max_full_size.txt", false, max_full_size_15,
-       "E27A7686B8028CFEE7B57D954C3ABCCFB2A701968925F52BBD482E77BE5DE0BB",
-       false},
-      {"max_full_size.txt", true, max_full_size_15,
-       "E27A7686B8028CFEE7B57D954C3ABCCFB2A701968925F52BBD482E77BE5DE0BB",
-       false}};
+  CreateTestFile(test_case.path_name, test_case.content);
 
-  for (const auto& test_case : test_cases) {
-    CreateTestFile(test_case.path_name, test_case.content);
+  base::FilePath file_path = GetTestFilePath(test_case.path_name);
 
-    base::FilePath file_path = GetTestFilePath(test_case.path_name);
+  // using chunk size to be 5 and max file size for full Sha to be 15, to
+  // easily mimic and verify behavior
+  auto cache = ImageCache::CreateForTesting(base::FilePath("/"), 5, 15);
 
-    // using chunk size to be 5 and max file size for full Sha to be 15, to
-    // easily mimic and verify behavior
-    auto cache = ImageCache::CreateForTesting(base::FilePath("/"), 5, 15);
+  base::stat_wrapper_t stat;
+  ASSERT_EQ(0, base::File::Stat(file_path, &stat));
 
-    base::stat_wrapper_t stat;
-    ASSERT_EQ(0, base::File::Stat(file_path, &stat));
+  ImageCache::ImageCacheKeyType image_key{
+      stat.st_dev,
+      stat.st_ino,
+      {stat.st_mtim.tv_sec, stat.st_mtim.tv_nsec},
+      {stat.st_ctim.tv_sec, stat.st_ctim.tv_nsec}};
 
-    ImageCache::ImageCacheKeyType image_key{
-        stat.st_dev,
-        stat.st_ino,
-        {stat.st_mtim.tv_sec, stat.st_mtim.tv_nsec},
-        {stat.st_ctim.tv_sec, stat.st_ctim.tv_nsec}};
+  // pid_for_setns is a dummy value, the code using pid_for_setns is
+  // not covered in this test case.
+  auto result = cache->InclusiveGetImage(image_key, test_case.force_full_sha256,
+                                         234, file_path);
 
-    // pid_for_setns is a dummy value, the code using pid_for_setns is
-    // not covered in this test case.
-    auto result = cache->InclusiveGetImage(
-        image_key, test_case.force_full_sha256, 234, file_path);
-
-    EXPECT_EQ(result.value().sha256_is_partial,
-              test_case.expected_is_partial_sha);
-    EXPECT_EQ(result.value().sha256, test_case.expected_sha256.value());
-  }
+  EXPECT_EQ(result.value().sha256_is_partial,
+            test_case.expected_is_partial_sha);
+  EXPECT_EQ(result.value().sha256, test_case.expected_sha256.value());
 }
 
 }  // namespace secagentd::testing
