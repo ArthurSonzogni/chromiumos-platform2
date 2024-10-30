@@ -64,7 +64,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool RemoveCred(const RpcIdentifier& cred) override;
   bool RemoveAllCreds() override;
   bool InterworkingSelect() override;
-  bool SignalPoll(KeyValueStore* signalInfo) override;
+  bool SignalPoll(brillo::Any* signalInfo) override;
   bool ANQPGet(const KeyValueStore& args) override;
 
  private:

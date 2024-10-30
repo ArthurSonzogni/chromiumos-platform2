@@ -47,7 +47,7 @@ class SupplicantInterfaceProxyInterface {
   virtual bool RemoveCred(const RpcIdentifier& cred) = 0;
   virtual bool RemoveAllCreds() = 0;
   virtual bool InterworkingSelect() = 0;
-  virtual bool SignalPoll(KeyValueStore* signalInfo) = 0;
+  virtual bool SignalPoll(brillo::Any* signalInfo) = 0;
   virtual bool ANQPGet(const KeyValueStore& args) = 0;
 };
 

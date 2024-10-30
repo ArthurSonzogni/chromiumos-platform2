@@ -333,22 +333,14 @@ bool SupplicantInterfaceProxy::SelectNetwork(const RpcIdentifier& network) {
   return true;
 }
 
-bool SupplicantInterfaceProxy::SignalPoll(KeyValueStore* signalInfo) {
+bool SupplicantInterfaceProxy::SignalPoll(brillo::Any* signalInfo) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   brillo::ErrorPtr error;
-  // TODO(b/318430162): Because of wpa_supplicant implementation,
-  // while it's conflicting with D-Bus API spec, SignalPoll result is
-  // wrapped by an extra variant unexpectedly. This is the code to deal with
-  // the case. On rolling the fix from the upstream, the unwrapping should be
-  // reverted, too.
-  brillo::Any value;
-  if (!interface_proxy_->SignalPoll(&value, &error)) {
+  if (!interface_proxy_->SignalPoll(signalInfo, &error)) {
     LOG(ERROR) << "Failed to poll signal: " << error->GetCode() << " "
                << error->GetMessage();
     return false;
   }
-  *signalInfo = KeyValueStore::ConvertFromVariantDictionary(
-      value.Get<brillo::VariantDictionary>());
   return true;
 }
 

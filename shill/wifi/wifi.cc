@@ -934,6 +934,16 @@ bool WiFi::RemoveNetwork(const RpcIdentifier& network) {
   return supplicant_interface_proxy_->RemoveNetwork(network);
 }
 
+bool WiFi::SignalPoll(KeyValueStore* signalInfo) {
+  brillo::Any value;
+  if (!supplicant_interface_proxy_->SignalPoll(&value)) {
+    return false;
+  }
+  *signalInfo = KeyValueStore::ConvertFromVariantDictionary(
+      value.Get<brillo::VariantDictionary>());
+  return true;
+}
+
 bool WiFi::IsIdle() const {
   return !current_service_ && !pending_service_;
 }
@@ -4088,7 +4098,7 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
   // sending redundant requests to wpa_supplicant. We could instead only query
   // supplicant if there isn't a request already in flight.
   KeyValueStore properties;
-  if (supplicant_interface_proxy_->SignalPoll(&properties)) {
+  if (SignalPoll(&properties)) {
     // Only process a signal change if information was received.
     SignalChanged(properties);
   }

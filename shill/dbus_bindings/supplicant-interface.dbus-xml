@@ -38,12 +38,10 @@
     </method>
     <method name="SignalPoll">
       <!--
-           TODO(b/318430162): the expected type of SignalPoll is a{sv}, but
-           wpa_supplicant upstream seems to have a bug so an entire dictionary
-           is unexpectedly wrapped by a variant.
-           We mark this as a variant here to deal with it as a short term
-           workaround.
+           TODO(b/378951986): The variant is explicitly unwrapped in shill,
+           and the wpa_supplicant D-Bus documentation should be updated.
       -->
+      <!-- properties is a dictionary a{sv} wrapped by a variant. -->
       <arg name="properties" type="v" direction="out"/>
     </method>
     <method name="FlushBSS">

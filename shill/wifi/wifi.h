@@ -630,6 +630,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // with the reason for failure.
   virtual bool RemoveNetworkForService(const WiFiService* service,
                                        Error* error);
+  bool SignalPoll(KeyValueStore* signalInfo);
   // Perform the next in a series of progressive scans.
   void ProgressiveScanTask();
   // Recovers from failed progressive scan.
