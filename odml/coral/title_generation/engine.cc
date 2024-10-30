@@ -172,6 +172,7 @@ void TitleGenerationEngine::Process(
     std::optional<std::string> title = MaybeGetCachedTitle(cluster.entities);
     // If the title is cached, set the title field directly. Otherwise, generate
     // the prompt and set the entities.
+    metrics_->SendTitleCacheHit(title.has_value());
     if (title.has_value()) {
       group_data.title = std::move(title);
     } else {
@@ -189,27 +190,25 @@ void TitleGenerationEngine::Process(
           base::BindOnce(&TitleGenerationEngine::OnProcessCompleted,
                          weak_ptr_factory_.GetWeakPtr()));
   auto timer = PerformanceTimer::Create();
+  ProcessCallback on_complete;
   if (observer) {
     ReplyGroupsWithoutTitles(groups, std::move(callback));
-    ProcessCallback on_complete =
+    on_complete =
         base::BindOnce(&TitleGenerationEngine::OnAllTitleGenerationFinished,
                        weak_ptr_factory_.GetWeakPtr(), std::move(timer))
             .Then(std::move(on_process_completed));
-    EnsureModelLoaded(base::BindOnce(
-        &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
-        std::move(request), std::move(observer), std::move(groups),
-        std::move(on_complete)));
+
   } else {
-    ProcessCallback on_complete =
-        base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(timer),
-                       std::move(callback))
-            .Then(std::move(on_process_completed));
-    EnsureModelLoaded(base::BindOnce(
-        &TitleGenerationEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
-        std::move(request), std::move(observer), std::move(groups),
-        std::move(on_complete)));
+    on_complete = base::BindOnce(&TitleGenerationEngine::ReplyGroupsWithTitles,
+                                 weak_ptr_factory_.GetWeakPtr(),
+                                 std::move(timer), std::move(callback))
+                      .Then(std::move(on_process_completed));
   }
+  metrics_->SendTitleGenerationModelLoaded(model_.is_bound());
+  EnsureModelLoaded(base::BindOnce(&TitleGenerationEngine::DoProcess,
+                                   weak_ptr_factory_.GetWeakPtr(),
+                                   std::move(request), std::move(observer),
+                                   std::move(groups), std::move(on_complete)));
 }
 
 void TitleGenerationEngine::OnUserLoggedIn(

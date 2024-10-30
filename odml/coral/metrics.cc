@@ -45,10 +45,6 @@ void CoralMetrics::SendClusteringEngineStatus(CoralStatus status) {
   SendStatus(metrics::kClusteringEngineStatus, status);
 }
 
-void CoralMetrics::SendTitleGenerationEngineStatus(CoralStatus status) {
-  SendStatus(metrics::kTitleGenerationEngineStatus, status);
-}
-
 void CoralMetrics::SendTitleGenerationResult(
     metrics::TitleGenerationResult result) {
   metrics_->SendEnumToUMA(metrics::kTitleGenerationResult, result);
@@ -100,6 +96,26 @@ void CoralMetrics::SendLoadTitleGenerationModelLatency(
 
 void CoralMetrics::SendGenerateTitleLatency(base::TimeDelta duration) {
   SendLatency(metrics::kGenerateTitleLatency, duration, base::Seconds(10));
+}
+
+void CoralMetrics::SendEmbeddingModelLoaded(bool is_loaded) {
+  metrics_->SendBoolToUMA(metrics::kEmbeddingModelLoaded, is_loaded);
+}
+
+void CoralMetrics::SendEmbeddingCacheHit(bool is_cache_hit) {
+  metrics_->SendBoolToUMA(metrics::kEmbeddingCacheHit, is_cache_hit);
+}
+
+void CoralMetrics::SendTitleGenerationEngineStatus(CoralStatus status) {
+  SendStatus(metrics::kTitleGenerationEngineStatus, status);
+}
+
+void CoralMetrics::SendTitleGenerationModelLoaded(bool is_loaded) {
+  metrics_->SendBoolToUMA(metrics::kTitleGenerationModelLoaded, is_loaded);
+}
+
+void CoralMetrics::SendTitleCacheHit(bool is_cache_hit) {
+  metrics_->SendBoolToUMA(metrics::kTitleCacheHit, is_cache_hit);
 }
 
 }  // namespace coral

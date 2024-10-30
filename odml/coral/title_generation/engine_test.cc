@@ -34,6 +34,7 @@ using base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Gt;
+using ::testing::InSequence;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Optional;
@@ -99,6 +100,7 @@ class TitleGenerationEngineTest : public testing::Test {
     // call.
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendBoolToUMA).Times(AnyNumber());
     // Set DlcClient to return paths from /build.
     auto dlc_path = base::FilePath("testdata").Append(kFakeModelName);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
@@ -152,6 +154,17 @@ class TitleGenerationEngineTest : public testing::Test {
         .Times(times);
   }
 
+  void ExpectSendModelLoaded(bool is_loaded, int times = 1) {
+    EXPECT_CALL(metrics_,
+                SendBoolToUMA(metrics::kTitleGenerationModelLoaded, is_loaded))
+        .Times(times);
+  }
+
+  void ExpectSendCacheHit(bool is_cache_hit, int times = 1) {
+    EXPECT_CALL(metrics_, SendBoolToUMA(metrics::kTitleCacheHit, is_cache_hit))
+        .Times(times);
+  }
+
   base::test::TaskEnvironment task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
   CoralMetrics coral_metrics_;
@@ -166,6 +179,12 @@ TEST_F(TitleGenerationEngineTest, Success) {
   ExpectSendLatency(2);
   ExpectSendLoadModelLatency(1);
   ExpectSendGenerateTitleLatency(6);
+  {
+    InSequence s;
+    ExpectSendModelLoaded(false);
+    ExpectSendModelLoaded(true);
+  }
+  ExpectSendCacheHit(false, 6);
   // Test that concurrent requests can be handled.
   TestFuture<CoralResult<TitleGenerationResponse>> title_future1, title_future2;
   engine_->Process(GetFakeGroupRequest(), GetFakeClusteringResponse(),
@@ -229,6 +248,8 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ExpectSendLatency(3);
   // 1 request out of 3 hits the cache.
   ExpectSendGenerateTitleLatency(2);
+  ExpectSendCacheHit(true, 1);
+  ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
                                                       "fake_user_hash_1"};
   engine_->OnUserLoggedIn(user);
@@ -316,6 +337,7 @@ TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
   ExpectSendStatus(true, 2);
   ExpectSendLatency(2);
   ExpectSendGenerateTitleLatency(2);
+  ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user1{"fake_user_1",
                                                        "fake_user_hash_1"};
   engine_->OnUserLoggedIn(user1);

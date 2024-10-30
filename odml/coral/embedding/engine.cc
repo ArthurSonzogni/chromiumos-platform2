@@ -57,6 +57,19 @@ std::optional<std::string> EntityToString(const mojom::Entity& entity) {
   return std::nullopt;
 }
 
+// We don't want to send some metrics for Process requests triggered by
+// CacheEmbedding. This is because for we want to analyze most of this
+// engine's metrics (like cache hits) only for Group requests. CacheEmbedding
+// operation sends metrics too in service.cc, and since CacheEmbedding only
+// passes through this engine, there is no need to send some metrics for it
+// here again.
+bool IsFullGroupRequest(const mojom::GroupRequestPtr& request) {
+  // The hacky but easiest way to determine whether the request is a
+  // CacheEmbeddings request for now is to check whether the clustering_options
+  // (or title_generation_options) is null.
+  return !request->clustering_options.is_null();
+}
+
 }  // namespace
 
 namespace internal {
@@ -139,6 +152,9 @@ void EmbeddingEngine::Process(mojom::GroupRequestPtr request,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&EmbeddingEngine::OnProcessCompleted,
                          weak_ptr_factory_.GetWeakPtr()));
+  if (IsFullGroupRequest(request)) {
+    metrics_->SendEmbeddingModelLoaded(model_.is_bound());
+  }
   EnsureModelLoaded(base::BindOnce(
       &EmbeddingEngine::DoProcess, weak_ptr_factory_.GetWeakPtr(),
       std::move(request),
@@ -246,12 +262,18 @@ void EmbeddingEngine::ProcessEachPrompt(mojom::GroupRequestPtr request,
     if (cache_key.has_value()) {
       std::optional<Embedding> embedding = embedding_database_->Get(*cache_key);
       if (embedding.has_value()) {
+        if (IsFullGroupRequest(request)) {
+          metrics_->SendEmbeddingCacheHit(true);
+        }
         response.embeddings.push_back(*embedding);
         ProcessEachPrompt(std::move(request), std::move(prompts),
                           std::move(response), std::move(callback));
         return;
       }
     }
+  }
+  if (IsFullGroupRequest(request)) {
+    metrics_->SendEmbeddingCacheHit(false);
   }
 
   auto timer = PerformanceTimer::Create();
@@ -312,16 +334,7 @@ void EmbeddingEngine::HandleProcessResult(
     PerformanceTimer::Ptr timer,
     mojom::GroupRequestPtr request,
     CoralResult<EmbeddingResponse> result) {
-  // We don't want to send some metrics for Process requests triggered by
-  // CacheEmbedding. This is because for we want to analyze most of this
-  // engine's metrics (like cache hits) only for Group requests. CacheEmbedding
-  // operation sends metrics too in service.cc, and since CacheEmbedding only
-  // passes through this engine, there is no need to send some metrics for it
-  // here again.
-  // The hacky but easiest way to determine whether the request is a
-  // CacheEmbeddings request for now is to check whether the clustering_options
-  // (or title_generation_options) is null.
-  if (request->clustering_options) {
+  if (IsFullGroupRequest(request)) {
     metrics_->SendEmbeddingEngineStatus(result.transform([](auto&&) {}));
     if (result.has_value()) {
       metrics_->SendEmbeddingEngineLatency(timer->GetDuration());

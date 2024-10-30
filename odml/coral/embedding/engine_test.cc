@@ -31,6 +31,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ElementsAreArray;
 using ::testing::Gt;
+using ::testing::InSequence;
 using ::testing::NiceMock;
 using ::testing::Optional;
 using ::testing::Return;
@@ -138,6 +139,7 @@ class EmbeddingEngineTest : public testing::Test {
     // call.
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendBoolToUMA).Times(AnyNumber());
     EXPECT_CALL(*session_state_manager_, AddObserver(_)).Times(1);
     // ownership of |embedding_database_factory_| is transferred to |engine_|.
     engine_ = std::make_unique<EmbeddingEngine>(
@@ -177,6 +179,18 @@ class EmbeddingEngineTest : public testing::Test {
         .Times(times);
   }
 
+  void ExpectSendModelLoaded(bool is_loaded, int times = 1) {
+    EXPECT_CALL(metrics_,
+                SendBoolToUMA(metrics::kEmbeddingModelLoaded, is_loaded))
+        .Times(times);
+  }
+
+  void ExpectSendCacheHit(bool is_cache_hit, int times = 1) {
+    EXPECT_CALL(metrics_,
+                SendBoolToUMA(metrics::kEmbeddingCacheHit, is_cache_hit))
+        .Times(times);
+  }
+
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
@@ -201,6 +215,12 @@ TEST_F(EmbeddingEngineTest, Success) {
   ExpectSendLatency(2);
   ExpectSendLoadModelLatency(1);
   ExpectSendGenerateEmbeddingLatency(12);
+  {
+    InSequence s;
+    ExpectSendModelLoaded(false);
+    ExpectSendModelLoaded(true);
+  }
+  ExpectSendCacheHit(false, 12);
   std::unique_ptr<FakeEmbeddingModel> fake_model;
   bool should_error = false;
   EmbeddingResponse fake_response = GetFakeEmbeddingResponse();
@@ -241,6 +261,9 @@ TEST_F(EmbeddingEngineTest, CacheEmbeddingsOnlySuccess) {
   EXPECT_CALL(metrics_,
               SendTimeToUMA(metrics::kEmbeddingEngineLatency, _, _, _, _))
       .Times(0);
+  EXPECT_CALL(metrics_, SendBoolToUMA(metrics::kEmbeddingModelLoaded, _))
+      .Times(0);
+  EXPECT_CALL(metrics_, SendBoolToUMA(metrics::kEmbeddingCacheHit, _)).Times(0);
   ExpectSendLoadModelLatency(1);
   ExpectSendGenerateEmbeddingLatency(12);
   // A CacheEmbeddings request has no clustering and title generation options
@@ -340,6 +363,8 @@ TEST_F(EmbeddingEngineTest, WithEmbeddingDatabase) {
   ExpectSendLatency(3);
   // 6*3 input embeddings, with 4 cache hits.
   ExpectSendGenerateEmbeddingLatency(14);
+  ExpectSendCacheHit(true, 4);
+  ExpectSendCacheHit(false, 14);
   auto request = GetFakeGroupRequest();
   std::vector<Embedding> fake_embeddings =
       GetFakeEmbeddingResponse().embeddings;

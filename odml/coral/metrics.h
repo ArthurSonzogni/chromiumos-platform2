@@ -25,8 +25,6 @@ inline constexpr char kClusteringEngineStatus[] =
     "Platform.CoralService.Error.ClusteringEngine";
 inline constexpr char kTitleGenerationEngineStatus[] =
     "Platform.CoralService.Error.TitleGenerationEngine";
-inline constexpr char kTitleGenerationResult[] =
-    "Platform.CoralService.TitleGenerationEngine.GenerationResult";
 inline constexpr char kGroupLatency[] = "Platform.CoralService.Latency.Group";
 inline constexpr char kCacheEmbeddingsLatency[] =
     "Platform.CoralService.Latency.CacheEmbeddings";
@@ -44,6 +42,16 @@ inline constexpr char kLoadTitleGenerationModelLatency[] =
     "Platform.CoralService.Latency.TitleGenerationEngine.LoadModel";
 inline constexpr char kGenerateTitleLatency[] =
     "Platform.CoralService.Latency.TitleGenerationEngine.GenerateTitle";
+inline constexpr char kEmbeddingModelLoaded[] =
+    "Platform.CoralService.EmbeddingEngine.ModelLoaded";
+inline constexpr char kEmbeddingCacheHit[] =
+    "Platform.CoralService.EmbeddingEngine.CacheHit";
+inline constexpr char kTitleGenerationResult[] =
+    "Platform.CoralService.TitleGenerationEngine.GenerationResult";
+inline constexpr char kTitleGenerationModelLoaded[] =
+    "Platform.CoralService.TitleGenerationEngine.ModelLoaded";
+inline constexpr char kTitleCacheHit[] =
+    "Platform.CoralService.TitleGenerationEngine.CacheHit";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -59,6 +67,10 @@ class CoralMetrics {
  public:
   explicit CoralMetrics(raw_ref<MetricsLibraryInterface> metrics);
 
+  // ==========================================================================
+  // Success / failure metrics.
+  // ==========================================================================
+
   // Success or error result of Group and CacheEmbeddings operations.
   void SendGroupStatus(CoralStatus status);
   void SendCacheEmbeddingsStatus(CoralStatus status);
@@ -67,12 +79,10 @@ class CoralMetrics {
   void SendClusteringEngineStatus(CoralStatus status);
   void SendTitleGenerationEngineStatus(CoralStatus status);
 
-  // Whether a non-empty title is successfully generated, or the corresponding
-  // error reason if not.
-  void SendTitleGenerationResult(metrics::TitleGenerationResult result);
-
+  // ==========================================================================
   // Latency-related metrics. These are only reported when the operation
   // completes successfully.
+  // ==========================================================================
 
   // Latency of Group and CacheEmbeddings operations.
   void SendGroupLatency(base::TimeDelta duration);
@@ -90,6 +100,29 @@ class CoralMetrics {
   void SendGenerateEmbeddingLatency(base::TimeDelta duration);
   void SendLoadTitleGenerationModelLatency(base::TimeDelta duration);
   void SendGenerateTitleLatency(base::TimeDelta duration);
+
+  // ==========================================================================
+  // Engine-specific metrics.
+  // ==========================================================================
+
+  // --------------------------------------------------------------------------
+  // Embedding engine metrics.
+  // --------------------------------------------------------------------------
+  // Whether the model is already loaded when receiving a request.
+  void SendEmbeddingModelLoaded(bool is_loaded);
+  // Whether a request entity already has its embedding cached.
+  void SendEmbeddingCacheHit(bool is_cache_hit);
+
+  // --------------------------------------------------------------------------
+  // TitleGeneration engine metrics.
+  // --------------------------------------------------------------------------
+  // Whether a non-empty title is successfully generated, or the corresponding
+  // error reason if not.
+  void SendTitleGenerationResult(metrics::TitleGenerationResult result);
+  // Whether the model is already loaded when receiving a request.
+  void SendTitleGenerationModelLoaded(bool is_loaded);
+  // Whether a request group finds a title to reuse in the cache.
+  void SendTitleCacheHit(bool is_cache_hit);
 
  private:
   // Helper function for Send*Status methods.
