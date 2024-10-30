@@ -2,9 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "metrics/uploader/upload_service.h"
+
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
+#include <base/check.h>
 #include <gtest/gtest.h>
 
 #include "base/at_exit.h"
@@ -24,9 +29,6 @@
 #include "metrics/uploader/proto/histogram_event.pb.h"
 #include "metrics/uploader/proto/system_profile.pb.h"
 #include "metrics/uploader/system_profile_cache.h"
-#include "metrics/uploader/upload_service.h"
-
-#include <base/check.h>
 
 namespace {
 const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
@@ -147,9 +149,7 @@ TEST_F(UploadServiceTest, ReadMetrics) {
               testing::UnorderedElementsAreArray(expected_hashes));
 
   // Verify the metrics file is empty after being successfully read.
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(base::FilePath(metrics_file_), &size));
-  ASSERT_EQ(0, size);
+  ASSERT_EQ(0, base::GetFileSize(base::FilePath(metrics_file_)));
 
   // Verify the metrics directory and early metrics directories are empty after
   // being successfully read.
@@ -166,11 +166,11 @@ TEST_F(UploadServiceTest, ReadMetrics_TooLargeFiles) {
   EXPECT_TRUE(metrics::SerializationUtils::WriteMetricsToFile(
       output_samples, base::StrCat({metrics_dir_, "/1"})));
 
-  int64_t size = 0;
-  ASSERT_TRUE(
-      base::GetFileSize(base::FilePath(metrics_dir_).Append("1"), &size));
+  std::optional<int64_t> size =
+      base::GetFileSize(base::FilePath(metrics_dir_).Append("1"));
+  ASSERT_TRUE(size.has_value());
   // Only allow for 2.
-  size_t sample_batch_max_length = size * 2;
+  size_t sample_batch_max_length = size.value() * 2;
 
   EXPECT_TRUE(metrics::SerializationUtils::WriteMetricsToFile(
       output_samples, base::StrCat({metrics_dir_, "/2"})));

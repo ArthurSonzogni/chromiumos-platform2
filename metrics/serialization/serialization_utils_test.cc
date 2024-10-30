@@ -9,7 +9,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -267,9 +269,8 @@ TEST_F(SerializationUtilsTest, IllegalNameAreFilteredTest) {
            base::StringPrintf("here%cbhe", '\0'), 1, 3, /*num_samples=*/1)},
       filename_));
 
-  int64_t size = 0;
-  ASSERT_TRUE(!PathExists(filepath_) || base::GetFileSize(filepath_, &size));
-  EXPECT_EQ(0, size);
+  ASSERT_FALSE(PathExists(filepath_));
+  EXPECT_FALSE(base::GetFileSize(filepath_).has_value());
 }
 
 TEST_F(SerializationUtilsTest, BadHistogramsTest) {
@@ -292,22 +293,18 @@ TEST_F(SerializationUtilsTest, BadInputIsCaughtTest) {
 TEST_F(SerializationUtilsTest, MessageSeparatedByZero) {
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
       {MetricSample::CrashSample("mycrash", /*num_samples=*/1)}, filename_));
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   // 4 bytes for the size
   // 5 bytes for crash
   // 1 byte for \0
   // 7 bytes for mycrash
   // 1 bytes for \0
   // -> total of 18
-  EXPECT_EQ(size, 18);
+  EXPECT_EQ(base::GetFileSize(filepath_), 18);
 }
 
 TEST_F(SerializationUtilsTest, MessageSeparatedByZero_WithSamples) {
   EXPECT_TRUE(SerializationUtils::WriteMetricsToFile(
       {MetricSample::CrashSample("mycrash", /*num_samples=*/10)}, filename_));
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
   // 4 bytes for the size
   // 5 bytes for crash
   // 1 byte for \0
@@ -315,7 +312,7 @@ TEST_F(SerializationUtilsTest, MessageSeparatedByZero_WithSamples) {
   // 3 bytes for " 10"
   // 1 byte for \0
   // -> total of 21
-  EXPECT_EQ(size, 21);
+  EXPECT_EQ(base::GetFileSize(filepath_), 21);
 }
 
 TEST_F(SerializationUtilsTest, MessagesTooLongAreDiscardedTest) {
@@ -419,9 +416,7 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
 
   EXPECT_TRUE(
       SerializationUtils::WriteMetricsToFile(output_samples, filename_));
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-
+  std::optional<int64_t> size = base::GetFileSize(filepath_);
   std::vector<MetricSample> samples;
   size_t bytes_read;
   SerializationUtils::ReadAndTruncateMetricsFromFile(
@@ -434,8 +429,7 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
     EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
   }
 
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-  ASSERT_EQ(0, size);
+  ASSERT_EQ(0, base::GetFileSize(filepath_));
 }
 
 // Check that WriteMetricsToFile doesn't write to a dangling (deleted) file.
@@ -483,9 +477,7 @@ TEST_F(SerializationUtilsTest, LockDeleteRace) {
     EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
   }
 
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-  ASSERT_EQ(0, size);
+  ASSERT_EQ(0, base::GetFileSize(filepath_));
 }
 
 // Same as above, but re-create the file to make sure that inode checking works.
@@ -521,8 +513,7 @@ TEST_F(SerializationUtilsTest, LockDeleteRecreateRace) {
   };
   EXPECT_TRUE(
       SerializationUtils::WriteMetricsToFile(output_samples, filename_));
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  std::optional<int64_t> size = base::GetFileSize(filepath_);
 
   // Ensure thread is done to make sure that it's not about to delete the file
   // (e.g. if ReadAndTruncateMetricsFromFile didn't wait for the lock).
@@ -540,8 +531,7 @@ TEST_F(SerializationUtilsTest, LockDeleteRecreateRace) {
     EXPECT_TRUE(output_samples[i].IsEqual(samples[i]));
   }
 
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
-  ASSERT_EQ(0, size);
+  ASSERT_EQ(0, base::GetFileSize(filepath_));
 }
 
 TEST_F(SerializationUtilsTest, WriteReadDeleteTest) {
@@ -557,8 +547,7 @@ TEST_F(SerializationUtilsTest, WriteReadDeleteTest) {
 
   EXPECT_TRUE(
       SerializationUtils::WriteMetricsToFile(output_samples, filename_));
-  int64_t size = 0;
-  ASSERT_TRUE(base::GetFileSize(filepath_, &size));
+  std::optional<int64_t> size = base::GetFileSize(filepath_);
 
   std::vector<MetricSample> samples;
   size_t bytes_read;

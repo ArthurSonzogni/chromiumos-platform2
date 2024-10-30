@@ -257,12 +257,11 @@ TEST_F(PersistentProtoTest, ClearContents) {
 
   Wait();
 
-  int64_t size = 0;
   std::string empty_proto;
   KeyProto().SerializeToString(&empty_proto);
 
-  ASSERT_TRUE(base::GetFileSize(GetPath(), &size));
-  EXPECT_EQ(size, static_cast<int64_t>(empty_proto.size()));
+  EXPECT_EQ(base::GetFileSize(GetPath()),
+            static_cast<int64_t>(empty_proto.size()));
 }
 
 }  // namespace metrics::structured
