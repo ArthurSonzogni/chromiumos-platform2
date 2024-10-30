@@ -275,6 +275,7 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
   CHECK(version >= ::keymaster::KmVersion::KEYMINT_1);
 
   cros_system_ = std::make_unique<crossystem::Crossystem>();
+  const bool is_dev_mode = IsDevMode();
   const std::string bootloader_state = DeriveBootloaderState();
   const std::string boot_state =
       DeriveVerifiedBootStateFromBootloaderState(bootloader_state);
@@ -296,7 +297,7 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
       std::make_unique<ArcAttestationContext>(version, security_level_);
   arc_enforcement_policy_ = std::make_unique<ArcEnforcementPolicy>(64, 64);
 
-  GetAndSetBootKeyFromLogs();
+  GetAndSetBootKeyFromLogs(is_dev_mode);
   SetVerifiedBootParams(boot_state, bootloader_state, vbmeta_digest);
 }
 
@@ -827,7 +828,14 @@ std::optional<std::vector<uint8_t>> ArcKeyMintContext::GetVbMetaDigestFromFile()
   return vbmeta_digest_result;
 }
 
-void ArcKeyMintContext::GetAndSetBootKeyFromLogs() {
+void ArcKeyMintContext::GetAndSetBootKeyFromLogs(const bool is_dev_mode) {
+  const std::string empty_boot_key(32, '\0');
+  if (is_dev_mode) {
+    boot_key_ = brillo::BlobFromString(empty_boot_key);
+    LOG(INFO) << "Returning Empty Boot key in Dev Mode";
+    return;
+  }
+
   if (bus_ == nullptr) {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
@@ -866,6 +874,29 @@ void ArcKeyMintContext::GetAndSetBootKeyFromLogs() {
   }
 
   boot_key_ = brillo::BlobFromString(boot_key);
+}
+
+const bool ArcKeyMintContext::IsDevMode() const {
+  if (!cros_system_) {
+    LOG(ERROR) << "cros_system_ is null. Hence, assuming device is in dev mode";
+    return true;
+  }
+
+  // Get the value of cros_debug using cros_system.
+  std::optional<int> cros_debug =
+      cros_system_->VbGetSystemPropertyInt("cros_debug");
+
+  // If cros_debug cannot be read, assume the device is in dev mode.
+  if (!cros_debug.has_value() || cros_debug < 0) {
+    LOG(ERROR) << "Error while trying to read cros_debug. Assuming dev mode";
+    return true;
+  }
+  // Device is in dev mode as flag is explicitly set.
+  if (cros_debug == 1) {
+    return true;
+  }
+  // Device is not in dev mode.
+  return false;
 }
 
 // cros_debug indicates if the device is in debug mode or not.

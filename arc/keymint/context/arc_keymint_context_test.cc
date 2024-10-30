@@ -350,8 +350,9 @@ class ContextTestPeer {
     return context->GetVbMetaDigestFromFile();
   }
 
-  static void GetAndSetBootKeyFromLogsForTest(ArcKeyMintContext* context) {
-    context->GetAndSetBootKeyFromLogs();
+  static void GetAndSetBootKeyFromLogsForTest(ArcKeyMintContext* context,
+                                              const bool is_dev_mode) {
+    context->GetAndSetBootKeyFromLogs(is_dev_mode);
   }
 };
 
@@ -977,9 +978,10 @@ TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Success) {
   // Prepare.
   SetUpDBus();
   ContextTestPeer::set_dbus_for_tests(context_, bus_);
+  const bool is_dev_mode = false;
 
   // Execute.
-  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_);
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
 
   // Test.
   std::optional<std::vector<uint8_t>> boot_key =
@@ -991,14 +993,30 @@ TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Success) {
   TearDownDBus();
 }
 
+TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_EmptySuccess) {
+  // Prepare.
+  const bool is_dev_mode = true;
+  const std::string empty_boot_key(32, '\0');
+
+  // Execute.
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
+
+  // Test.
+  std::optional<std::vector<uint8_t>> boot_key =
+      ContextTestPeer::boot_key(context_);
+  ASSERT_TRUE(boot_key.has_value());
+  EXPECT_EQ(empty_boot_key, brillo::BlobToString(boot_key.value()));
+}
+
 TEST_F(ArcKeyMintContextTest, GetAndSetBootKeyFromLogs_Failure) {
   // Prepare.
   debugd_log_name_ = "invalid";
   SetUpDBus();
   ContextTestPeer::set_dbus_for_tests(context_, bus_);
+  const bool is_dev_mode = false;
 
   // Execute.
-  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_);
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
 
   // Test.
   ASSERT_FALSE(ContextTestPeer::boot_key(context_).has_value());
@@ -1045,7 +1063,8 @@ TEST_F(ArcKeyMintContextTest, GetVerifiedBootParams_Success) {
   // Prepare
   SetUpDBus();
   ContextTestPeer::set_dbus_for_tests(context_, bus_);
-  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_);
+  const bool is_dev_mode = false;
+  ContextTestPeer::GetAndSetBootKeyFromLogsForTest(context_, is_dev_mode);
   std::vector<uint8_t> vbmeta_digest =
       brillo::BlobFromString(kSampleVbMetaDigest);
   context_->SetVerifiedBootParams(kVerifiedBootState, kLockedBootloaderState,

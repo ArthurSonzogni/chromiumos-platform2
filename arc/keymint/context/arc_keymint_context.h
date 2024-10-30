@@ -182,11 +182,13 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
   std::string DeriveVerifiedBootStateFromBootloaderState(
       const std::string bootloader_state) const;
   std::string DeriveBootloaderState() const;
+  // Checks whether the device is in dev mode using cros_debug.
+  const bool IsDevMode() const;
   std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFile() const;
 
   // Get boot key from ChromeOS verified boot debug logs and set the
-  // |boot_key_|.
-  void GetAndSetBootKeyFromLogs();
+  // |boot_key_|. An empty boot key would be set if the device is in dev mode.
+  void GetAndSetBootKeyFromLogs(const bool is_dev_mode);
 
   void set_cros_system_for_tests(
       std::unique_ptr<crossystem::Crossystem> cros_system);
