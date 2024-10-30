@@ -21,6 +21,7 @@ pkg_config("target_defaults") {
   ]
   pkg_deps = [
     "libchrome-test",
+    "libcros_camera_device_config",
     "libsession_manager-client",
   ]
 }
@@ -37,6 +38,7 @@ executable("cros_effects_sm_tests") {
     "//camera/common:base",
     "//camera/common:stream_manipulator",
     "//camera/common/test_support",
+    "//camera/features:features",
     "//camera/features/effects",
     "//ml_core/dlc:dlc_client",
   ]

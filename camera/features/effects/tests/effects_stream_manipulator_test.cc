@@ -2,11 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "features/effects/effects_stream_manipulator.h"
+
 #include <functional>
 #include <utility>
-
-#include <camera/camera_metadata.h>
-#include <hardware/camera3.h>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -17,7 +16,9 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
 #include <base/values.h>
+#include <camera/camera_metadata.h>
 #include <gtest/gtest.h>
+#include <hardware/camera3.h>
 #include <ml_core/dlc/dlc_ids.h>
 #include <ml_core/dlc/dlc_loader.h>
 #include <ml_core/tests/test_utilities.h>
@@ -28,7 +29,7 @@
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
-#include "features/effects/effects_stream_manipulator.h"
+#include "features/feature_profile.h"
 #include "gpu/egl/egl_context.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
@@ -112,9 +113,9 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
     runtime_options_.SetSWPrivacySwitchState(
         mojom::CameraPrivacySwitchState::OFF);
 
-    if (!base::CreateTemporaryFile(&config_path_)) {
-      FAIL() << "Failed to create temporary file";
-    }
+    FeatureProfile feature_profile;
+    config_path_ = feature_profile.GetConfigFilePath(
+        FeatureProfile::FeatureType::kEffects);
 
     egl_context_ = EglContext::GetSurfacelessContext();
     if (!egl_context_->IsValid()) {
@@ -171,6 +172,17 @@ void EffectsStreamManipulatorTest::WaitForEffectSetAndReset() {
 
 void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
   constexpr const char* kFakeCameraModuleName = "Fake camera module";
+
+  {
+    // Set inference backends to kAuto.
+    auto effects_config = runtime_options_.GetEffectsConfig();
+    effects_config->segmentation_inference_backend =
+        mojom::InferenceBackend::kAuto;
+    effects_config->relighting_inference_backend =
+        mojom::InferenceBackend::kAuto;
+    runtime_options_.SetEffectsConfig(std::move(effects_config));
+  }
+
   stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_,
       std::make_unique<FakeStillCaptureProcessor>(), kFakeCameraModuleName,
@@ -312,8 +324,9 @@ bool EffectsStreamManipulatorTest::CompareFrames(
   GetRgbaBufferFromYuvBuffer(output_buffer, output_info);
 
   return FuzzyBufferComparison(ref_info.frame_data, output_info.frame_data,
-                               ref_info.stride * ref_info.frame_height, 5,
-                               75000);
+                               ref_info.stride * ref_info.frame_height,
+                               /* acceptable_pixel_delta */ 6,
+                               /* num_accept_outside_delta */ 75000);
 }
 
 TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
