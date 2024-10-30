@@ -4,10 +4,13 @@
  * found in the LICENSE file.
  */
 
+#include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -39,12 +42,12 @@ constexpr char kLibDocumentScannerLibraryPath[] =
     "/usr/share/cros-camera/libfs/libdocumentscanner.so";
 
 std::vector<uint8_t> ReadFile(const base::FilePath& path) {
-  int64_t size;
-  auto success = base::GetFileSize(path, &size);
-  if (!success) {
+  std::optional<int64_t> raw_size = base::GetFileSize(path);
+  if (!raw_size.has_value()) {
     LOG(ERROR) << "Failed to get file size: " << path;
     return {};
   }
+  int64_t size = raw_size.value();
   std::vector<uint8_t> buffer(size);
   if (base::ReadFile(path, reinterpret_cast<char*>(buffer.data()), size) !=
       size) {
