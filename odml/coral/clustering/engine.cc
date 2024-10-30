@@ -131,8 +131,9 @@ std::optional<Embedding> CalculateVectorCenter(
 }  // namespace internal
 
 ClusteringEngine::ClusteringEngine(
+    raw_ref<CoralMetrics> metrics,
     std::unique_ptr<clustering::ClusteringFactoryInterface> clustering_factory)
-    : clustering_factory_(std::move(clustering_factory)) {}
+    : metrics_(metrics), clustering_factory_(std::move(clustering_factory)) {}
 
 void ClusteringEngine::Process(mojom::GroupRequestPtr request,
                                EmbeddingResponse embedding_response,

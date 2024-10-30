@@ -18,6 +18,7 @@
 
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
+#include "odml/coral/metrics.h"
 #include "odml/coral/title_generation/simple_session.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -54,6 +55,7 @@ class TitleGenerationEngine
       public odml::SessionStateManagerInterface::Observer {
  public:
   TitleGenerationEngine(
+      raw_ref<CoralMetrics> metrics,
       raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
           on_device_model_service,
       odml::SessionStateManagerInterface* session_state_manager);
@@ -136,8 +138,11 @@ class TitleGenerationEngine
   std::optional<std::string> MaybeGetCachedTitle(
       const std::vector<mojom::EntityPtr>& entities);
 
+  const raw_ref<CoralMetrics> metrics_;
+
   const raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
       on_device_model_service_;
+
   // `model_` should only be used after a successful LoadModelResult is received
   // because on device service only binds the model receiver when model loading
   // succeeds.

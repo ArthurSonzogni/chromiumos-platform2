@@ -13,10 +13,12 @@
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 #include <mojo/core/embedder/embedder.h>
 
 #include "odml/coral/clustering/mock_agglomerative_clustering.h"
 #include "odml/coral/clustering/mock_clustering_factory.h"
+#include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
 #include "odml/mojom/coral_service.mojom.h"
 
@@ -28,6 +30,7 @@ using base::test::TestFuture;
 using testing::_;
 using testing::Matcher;
 using testing::MatchResultListener;
+using testing::NiceMock;
 using testing::Return;
 
 // Creates fake response with the given grouping.
@@ -122,7 +125,7 @@ Matcher<const ClusteringResponse&> EqualsClusteringResponse(
 
 class ClusteringEngineTest : public testing::Test {
  public:
-  ClusteringEngineTest() {}
+  ClusteringEngineTest() : coral_metrics_(raw_ref(metrics_)) {}
 
   void SetUp() override { mojo::core::Init(); }
 
@@ -130,7 +133,7 @@ class ClusteringEngineTest : public testing::Test {
   CoralResult<ClusteringResponse> RunTest(
       mojom::GroupRequestPtr request,
       EmbeddingResponse embedding_response,
-      const std::optional<clustering::Groups> fake_grouping) const {
+      const std::optional<clustering::Groups> fake_grouping) {
     auto mock_clustering_factory =
         std::make_unique<clustering::MockClusteringFactory>();
     auto mock_clustering =
@@ -143,8 +146,8 @@ class ClusteringEngineTest : public testing::Test {
         .WillOnce(Return(std::move(mock_clustering)));
 
     // Transfer ownership of |mock_clustering_factory| to |engine|.
-    auto engine =
-        std::make_unique<ClusteringEngine>(std::move(mock_clustering_factory));
+    auto engine = std::make_unique<ClusteringEngine>(
+        raw_ref(coral_metrics_), std::move(mock_clustering_factory));
 
     TestFuture<mojom::GroupRequestPtr, CoralResult<ClusteringResponse>>
         grouping_future;
@@ -153,6 +156,10 @@ class ClusteringEngineTest : public testing::Test {
     auto [_, result] = grouping_future.Take();
     return std::move(result);
   }
+
+ private:
+  NiceMock<MetricsLibraryMock> metrics_;
+  CoralMetrics coral_metrics_;
 };
 
 TEST_F(ClusteringEngineTest, Success) {
@@ -296,7 +303,10 @@ TEST_F(ClusteringEngineTest, GroupingError) {
 
 TEST(ClusteringEngineRealImplementationTest, Success) {
   mojo::core::Init();
+  NiceMock<MetricsLibraryMock> metrics;
+  CoralMetrics coral_metrics((raw_ref(metrics)));
   auto engine = std::make_unique<ClusteringEngine>(
+      raw_ref(coral_metrics),
       std::make_unique<clustering::ClusteringFactory>());
 
   // Fake data from coral/test_util.h

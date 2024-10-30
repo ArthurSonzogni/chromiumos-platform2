@@ -125,6 +125,7 @@ source_set("coral") {
     "coral/clustering/engine.cc",
     "coral/embedding/embedding_database.cc",
     "coral/embedding/engine.cc",
+    "coral/metrics.cc",
     "coral/service.cc",
     "coral/title_generation/engine.cc",
     "coral/title_generation/simple_session.cc",

@@ -4,6 +4,8 @@
 
 #include "odml/coral/service.h"
 
+#include <metrics/metrics_library.h>
+
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/embedding_database.h"
@@ -23,25 +25,31 @@ using mojom::GroupResult;
 }  // namespace
 
 CoralService::CoralService(
+    raw_ref<MetricsLibraryInterface> metrics,
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service,
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
         embedding_model_service,
     odml::SessionStateManagerInterface* session_state_manager)
-    : CoralService(std::make_unique<EmbeddingEngine>(
-                       embedding_model_service,
-                       std::make_unique<EmbeddingDatabaseFactory>(),
-                       session_state_manager),
-                   std::make_unique<ClusteringEngine>(
-                       std::make_unique<clustering::ClusteringFactory>()),
-                   std::make_unique<TitleGenerationEngine>(
-                       on_device_model_service, session_state_manager)) {}
+    : metrics_(metrics),
+      embedding_engine_(std::make_unique<EmbeddingEngine>(
+          raw_ref(metrics_),
+          embedding_model_service,
+          std::make_unique<EmbeddingDatabaseFactory>(),
+          session_state_manager)),
+      clustering_engine_(std::make_unique<ClusteringEngine>(
+          raw_ref(metrics_),
+          std::make_unique<clustering::ClusteringFactory>())),
+      title_generation_engine_(std::make_unique<TitleGenerationEngine>(
+          raw_ref(metrics_), on_device_model_service, session_state_manager)) {}
 
 CoralService::CoralService(
+    raw_ref<MetricsLibraryInterface> metrics,
     std::unique_ptr<EmbeddingEngineInterface> embedding_engine,
     std::unique_ptr<ClusteringEngineInterface> clustering_engine,
     std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine)
-    : embedding_engine_(std::move(embedding_engine)),
+    : metrics_(metrics),
+      embedding_engine_(std::move(embedding_engine)),
       clustering_engine_(std::move(clustering_engine)),
       title_generation_engine_(std::move(title_generation_engine)) {}
 

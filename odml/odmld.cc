@@ -128,7 +128,8 @@ class CoralServiceProviderImpl
           embedding_model_service,
       odml::SessionStateManagerInterface* session_state_manager)
       : receiver_(this),
-        service_impl_(on_device_model_service,
+        service_impl_(metrics,
+                      on_device_model_service,
                       embedding_model_service,
                       session_state_manager) {
     service_manager->Register(chromeos::mojo_services::kCrosCoralService,

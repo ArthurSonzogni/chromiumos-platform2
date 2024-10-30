@@ -25,6 +25,7 @@ namespace {
 using base::test::TestFuture;
 using testing::_;
 using testing::Eq;
+using testing::NiceMock;
 
 // Workaround: base::expected doesn't have a move assignment with a
 // base::expected parameter. It only has specializations of base::ok and
@@ -119,8 +120,8 @@ class CoralServiceTest : public testing::Test {
     title_generation_engine_ = title_generation_engine.get();
 
     service_ = std::make_unique<CoralService>(
-        std::move(embedding_engine), std::move(clustering_engine),
-        std::move(title_generation_engine));
+        raw_ref(metrics_), std::move(embedding_engine),
+        std::move(clustering_engine), std::move(title_generation_engine));
   }
 
  protected:
@@ -152,6 +153,7 @@ class CoralServiceTest : public testing::Test {
   MockTitleGenerationEngine* title_generation_engine_;
 
  private:
+  NiceMock<MetricsLibraryMock> metrics_;
   std::unique_ptr<CoralService> service_;
 };
 
@@ -162,8 +164,8 @@ TEST(CoralServiceConstructTest, Construct) {
   on_device_model::MockOnDeviceModelService model_service;
   embedding_model::EmbeddingModelService embedding_service(
       (raw_ref(metrics)), raw_ref(embedding_model_factory));
-  CoralService service((raw_ref(model_service)), (raw_ref(embedding_service)),
-                       nullptr);
+  CoralService service((raw_ref(metrics)), (raw_ref(model_service)),
+                       (raw_ref(embedding_service)), nullptr);
 }
 
 TEST_F(CoralServiceTest, GroupSuccess) {

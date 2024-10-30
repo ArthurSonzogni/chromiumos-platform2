@@ -13,6 +13,7 @@
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -124,7 +125,8 @@ class FakeEmbeddingDatabase : public EmbeddingDatabaseInterface {
 class EmbeddingEngineTest : public testing::Test {
  public:
   EmbeddingEngineTest()
-      : model_service_(raw_ref(should_error_)),
+      : coral_metrics_(raw_ref(metrics_)),
+        model_service_(raw_ref(should_error_)),
         embedding_database_factory_(new FakeEmbeddingDatabaseFactory()),
         session_state_manager_(
             std::make_unique<odml::FakeSessionStateManager>()) {
@@ -133,7 +135,8 @@ class EmbeddingEngineTest : public testing::Test {
     EXPECT_CALL(*session_state_manager_, AddObserver(_)).Times(1);
     // ownership of |embedding_database_factory_| is transferred to |engine_|.
     engine_ = std::make_unique<EmbeddingEngine>(
-        raw_ref(model_service_), base::WrapUnique(embedding_database_factory_),
+        raw_ref(coral_metrics_), raw_ref(model_service_),
+        base::WrapUnique(embedding_database_factory_),
         session_state_manager_.get());
   }
 
@@ -143,6 +146,10 @@ class EmbeddingEngineTest : public testing::Test {
 
   // Controls the result of next GenerateEmbeddings call.
   bool should_error_ = false;
+
+  NiceMock<MetricsLibraryMock> metrics_;
+
+  CoralMetrics coral_metrics_;
 
   FakeEmbeddingModelService model_service_;
 

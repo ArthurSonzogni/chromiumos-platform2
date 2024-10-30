@@ -122,10 +122,12 @@ double GetDifferenceRatio(
 }  // namespace
 
 TitleGenerationEngine::TitleGenerationEngine(
+    raw_ref<CoralMetrics> metrics,
     raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
         on_device_model_service,
     odml::SessionStateManagerInterface* session_state_manager)
-    : on_device_model_service_(on_device_model_service),
+    : metrics_(metrics),
+      on_device_model_service_(on_device_model_service),
       title_cache_(kMaxCacheSize) {
   if (session_state_manager) {
     session_state_manager->AddObserver(this);

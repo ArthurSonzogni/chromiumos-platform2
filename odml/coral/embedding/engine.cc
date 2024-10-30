@@ -93,11 +93,13 @@ std::optional<std::string> EntityToCacheKey(const mojom::Entity& entity,
 }  // namespace internal
 
 EmbeddingEngine::EmbeddingEngine(
+    raw_ref<CoralMetrics> metrics,
     raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
         embedding_service,
     std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
     odml::SessionStateManagerInterface* session_state_manager)
-    : embedding_service_(embedding_service),
+    : metrics_(metrics),
+      embedding_service_(embedding_service),
       embedding_database_factory_(std::move(embedding_database_factory)) {
   if (session_state_manager) {
     session_state_manager->AddObserver(this);

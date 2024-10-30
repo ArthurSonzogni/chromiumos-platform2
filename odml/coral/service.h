@@ -12,12 +12,14 @@
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "odml/coral/clustering/engine.h"
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/engine.h"
+#include "odml/coral/metrics.h"
 #include "odml/coral/title_generation/engine.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
@@ -28,12 +30,16 @@ namespace coral {
 
 class CoralService : public mojom::CoralService {
  public:
-  CoralService(raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
+  CoralService(raw_ref<MetricsLibraryInterface> metrics,
+               raw_ref<on_device_model::mojom::OnDeviceModelPlatformService>
                    on_device_model_service,
                raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
                    embedding_model_service,
                odml::SessionStateManagerInterface* session_state_manager);
+
+  // For test, where engine objects are passed in directly.
   CoralService(
+      raw_ref<MetricsLibraryInterface> metrics,
       std::unique_ptr<EmbeddingEngineInterface> embedding_engine,
       std::unique_ptr<ClusteringEngineInterface> clustering_engine,
       std::unique_ptr<TitleGenerationEngineInterface> title_generation_engine);
@@ -68,6 +74,8 @@ class CoralService : public mojom::CoralService {
                           CoralResult<ClusteringResponse> result);
   void OnTitleGenerationResult(GroupCallback callback,
                                CoralResult<TitleGenerationResponse> result);
+
+  CoralMetrics metrics_;
 
   std::unique_ptr<EmbeddingEngineInterface> embedding_engine_;
   std::unique_ptr<ClusteringEngineInterface> clustering_engine_;

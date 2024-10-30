@@ -18,6 +18,7 @@
 #include <ml_core/dlc/dlc_client.h>
 #include <mojo/core/embedder/embedder.h>
 
+#include "odml/coral/metrics.h"
 #include "odml/coral/test_util.h"
 #include "odml/mojom/coral_service.mojom-shared.h"
 #include "odml/mojom/coral_service.mojom.h"
@@ -86,7 +87,8 @@ class FakeObserver : public mojom::TitleObserver {
 class TitleGenerationEngineTest : public testing::Test {
  public:
   TitleGenerationEngineTest()
-      : model_service_(raw_ref(metrics_), raw_ref(shim_loader_)) {}
+      : coral_metrics_(raw_ref(metrics_)),
+        model_service_(raw_ref(metrics_), raw_ref(shim_loader_)) {}
   void SetUp() override {
     fake_ml::SetupFakeChromeML(raw_ref(metrics_), raw_ref(shim_loader_));
     mojo::core::Init();
@@ -107,13 +109,14 @@ class TitleGenerationEngineTest : public testing::Test {
               return it->second;
             }))));
     engine_ = std::make_unique<TitleGenerationEngine>(
-        raw_ref(model_service_),
+        raw_ref(coral_metrics_), raw_ref(model_service_),
         /*session_state_manager=*/nullptr);
   }
 
  protected:
   base::test::TaskEnvironment task_environment_;
   NiceMock<MetricsLibraryMock> metrics_;
+  CoralMetrics coral_metrics_;
   NiceMock<odml::OdmlShimLoaderMock> shim_loader_;
   on_device_model::OnDeviceModelService model_service_;
 

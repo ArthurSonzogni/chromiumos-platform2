@@ -15,6 +15,7 @@
 
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/embedding_database.h"
+#include "odml/coral/metrics.h"
 #include "odml/mojom/coral_service.mojom.h"
 #include "odml/mojom/embedding_model.mojom.h"
 #include "odml/mojom/on_device_model.mojom.h"
@@ -63,6 +64,7 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
                         public odml::SessionStateManagerInterface::Observer {
  public:
   EmbeddingEngine(
+      raw_ref<CoralMetrics> metrics,
       raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
           embedding_service,
       std::unique_ptr<EmbeddingDatabaseFactory> embedding_database_factory,
@@ -101,6 +103,8 @@ class EmbeddingEngine : public EmbeddingEngineInterface,
   void SyncDatabase();
 
   void OnProcessCompleted();
+
+  const raw_ref<CoralMetrics> metrics_;
 
   const raw_ref<embedding_model::mojom::OnDeviceEmbeddingModelService>
       embedding_service_;

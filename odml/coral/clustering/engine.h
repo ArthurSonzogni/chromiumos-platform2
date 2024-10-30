@@ -14,6 +14,7 @@
 #include "odml/coral/clustering/clustering_factory.h"
 #include "odml/coral/common.h"
 #include "odml/coral/embedding/engine.h"
+#include "odml/coral/metrics.h"
 #include "odml/mojom/coral_service.mojom.h"
 
 namespace coral {
@@ -61,9 +62,9 @@ class ClusteringEngineInterface {
 
 class ClusteringEngine : public ClusteringEngineInterface {
  public:
-  explicit ClusteringEngine(
-      std::unique_ptr<clustering::ClusteringFactoryInterface>
-          clustering_factory);
+  ClusteringEngine(raw_ref<CoralMetrics> metrics,
+                   std::unique_ptr<clustering::ClusteringFactoryInterface>
+                       clustering_factory);
   ~ClusteringEngine() = default;
 
   void Process(mojom::GroupRequestPtr request,
@@ -71,6 +72,7 @@ class ClusteringEngine : public ClusteringEngineInterface {
                ClusteringCallback callback) override;
 
  private:
+  const raw_ref<CoralMetrics> metrics_;
   std::unique_ptr<clustering::ClusteringFactoryInterface> clustering_factory_;
 };
 
