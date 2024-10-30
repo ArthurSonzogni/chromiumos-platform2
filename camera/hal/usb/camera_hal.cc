@@ -271,6 +271,11 @@ std::string GetModelId(const DeviceInfo& info) {
   return base::JoinString({info.usb_vid, info.usb_pid}, ":");
 }
 
+bool IsModelRequiringUserSpaceTimestamp(const std::string& model_name) {
+  static const auto* const kModels = new std::set<std::string>{"wugtrio"};
+  return kModels->find(model_name) != kModels->end();
+}
+
 }  // namespace
 
 CameraHal::CameraHal()
@@ -747,6 +752,14 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     if (!info.is_detachable) {
       info.quirks |= kQuirkUserSpaceTimestamp;
     }
+  }
+  // Uses software timestamp from userspace for wugtrio, because the
+  // hardware timestamp is not reliable in a dark environment.
+  if (IsModelRequiringUserSpaceTimestamp(
+          cros_device_config_->GetModelName())) {
+    LOGF(INFO) << "force enable kQuirkUserSpaceTimestamp on "
+               << cros_device_config_->GetModelName();
+    info.quirks |= kQuirkUserSpaceTimestamp;
   }
 
   android::CameraMetadata static_metadata, request_template;
