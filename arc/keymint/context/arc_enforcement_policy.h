@@ -25,6 +25,12 @@ class ArcEnforcementPolicy : public ::keymaster::SoftKeymasterEnforcement {
 
   ::keymaster::KmErrorOr<std::array<uint8_t, 32>> ComputeHmac(
       const std::vector<uint8_t>&) const override;
+
+ private:
+  void set_session_key_for_tests(const std::vector<uint8_t>& session_key);
+
+  std::vector<uint8_t> session_key_;
+  friend class ArcEnforcementPolicyTestPeer;
 };
 }  // namespace arc::keymint::context
 
