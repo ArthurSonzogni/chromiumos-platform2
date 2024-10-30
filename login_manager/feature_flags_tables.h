@@ -139,8 +139,6 @@ constexpr FeatureMappingEntry kFeaturesMap[] = {
     {"ArcCustomTabsExperiment", "1", "arc-custom-tabs-experiment", 1},
     {"ArcEnableDocumentsProviderInFilesApp", "0", "arc-documents-provider", 2},
     {"ArcEnableDocumentsProviderInFilesApp", "1", "arc-documents-provider", 1},
-    {"ArcEnableUnifiedAudioFocus", "0", "enable-arc-unified-audio-focus", 2},
-    {"ArcEnableUnifiedAudioFocus", "1", "enable-arc-unified-audio-focus", 1},
     {"ArcFilePickerExperiment", "0", "arc-file-picker-experiment", 2},
     {"ArcFilePickerExperiment", "1", "arc-file-picker-experiment", 1},
     {"ArcNativeBridge64BitSupportExperiment", "0",
