@@ -4,6 +4,9 @@
 
 #include "patchmaker/patch_util.h"
 
+#include <cstdint>
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
@@ -26,7 +29,6 @@ static const char test_data_new[] =
 
 TEST(Patch, CompressionEfficacy) {
   base::FilePath old_path, new_path, patch_path;
-  int64_t file_size_new, file_size_patch;
 
   base::CreateTemporaryFile(&old_path);
   base::CreateTemporaryFile(&new_path);
@@ -36,11 +38,14 @@ TEST(Patch, CompressionEfficacy) {
   base::WriteFile(new_path, test_data_new);
 
   ASSERT_TRUE(util::DoBsDiff(old_path, new_path, patch_path));
-  ASSERT_TRUE(GetFileSize(new_path, &file_size_new));
-  ASSERT_TRUE(GetFileSize(patch_path, &file_size_patch));
+
+  std::optional<int64_t> file_size_new = base::GetFileSize(new_path);
+  std::optional<int64_t> file_size_patch = base::GetFileSize(patch_path);
+  ASSERT_TRUE(file_size_new.has_value());
+  ASSERT_TRUE(file_size_patch.has_value());
 
   // Confirm that compressed data is smaller than the original data
-  ASSERT_TRUE(file_size_patch < file_size_new);
+  ASSERT_TRUE(file_size_patch.value() < file_size_new.value());
 }
 
 TEST(Patch, ReversiblePatch) {

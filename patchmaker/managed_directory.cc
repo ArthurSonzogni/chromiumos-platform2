@@ -5,6 +5,8 @@
 #include "patchmaker/managed_directory.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -136,9 +138,9 @@ int SelectBaseIdx(const base::FilePath& entry,
         continue;
       }
 
-      int64_t patched_size;
-      CHECK(base::GetFileSize(temp_patch_file, &patched_size));
-      if (patched_size < compressed_size) {
+      std::optional<int64_t> patched_size = base::GetFileSize(temp_patch_file);
+      CHECK(patched_size.has_value());
+      if (patched_size.value() < compressed_size) {
         return base_candidate_idx;
       }
     }

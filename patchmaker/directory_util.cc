@@ -70,10 +70,9 @@ SortableFileList GetFilesInDirectory(const base::FilePath& src_path) {
                            base::FileEnumerator::FILES);
 
   base::FilePath file_path;
-  int64_t file_size;
   for (file_path = f_e.Next(); !file_path.empty(); file_path = f_e.Next()) {
-    base::GetFileSize(file_path, &file_size);
-    file_entries.emplace_back(file_path, file_size);
+    file_entries.emplace_back(file_path,
+                              base::GetFileSize(file_path).value_or(0));
   }
 
   return file_entries;
