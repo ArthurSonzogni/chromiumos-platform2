@@ -27,7 +27,10 @@ const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 std::set<VidPid> kScannersRequiringSaneBackendsPfuDlc = {
     {0x04c5, 0x132e}, {0x04c5, 0x15fc}, {0x04c5, 0x15ff}, {0x05ca, 0x0307}};
 
-std::set<VidPid> kScannerRequiringSaneBackendsCanonDlc={{0x1083, 0x165f},{0x1083, 0x166d}};
+std::set<VidPid> kScannerRequiringSaneBackendsCanonDlc = {
+    {0x1083, 0x165f}, {0x1083, 0x166d}, {0x1083, 0x165d}, {0x1083, 0x165b},
+    {0x1083, 0x1659}, {0x1083, 0x1658}, {0x1083, 0x1670}, {0x1083, 0x1661},
+    {0x1083, 0x1679}, {0x1083, 0x167e}};
 // Creates a new key in `map` for each scanner in `scanners`, with the value
 // `id`.
 void SetScannerIds(const std::set<VidPid>& scanners,

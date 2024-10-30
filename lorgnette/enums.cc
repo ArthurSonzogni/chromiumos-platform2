@@ -257,6 +257,22 @@ DocumentScanSaneBackend BackendFromDeviceName(const std::string& device) {
     return kp208ii;
   if (name == "drm260")
     return kdrm260;
+  if (name == "drp208ii")
+    return kdrp208ii;
+  if (name == "p215ii")
+    return kp215ii;
+  if (name == "drp215ii")
+    return kdrp215ii;
+  if (name == "drc225ii")
+    return kdrc225ii;
+  if (name == "drc230")
+    return kdrc230;
+  if (name == "drc240")
+    return kdrc240;
+  if (name == "r40")
+    return kr40;
+  if (name == "r50")
+    return kr50;
   LOG(WARNING) << "Unknown sane backend " << name;
   return kOtherBackend;
 }
