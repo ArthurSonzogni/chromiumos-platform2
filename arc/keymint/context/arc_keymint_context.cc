@@ -276,9 +276,8 @@ ArcKeyMintContext::ArcKeyMintContext(::keymaster::KmVersion version)
 
   cros_system_ = std::make_unique<crossystem::Crossystem>();
   const bool is_dev_mode = IsDevMode();
-  const std::string bootloader_state = DeriveBootloaderState();
-  const std::string boot_state =
-      DeriveVerifiedBootStateFromBootloaderState(bootloader_state);
+  const std::string bootloader_state = DeriveBootloaderState(is_dev_mode);
+  const std::string boot_state = DeriveVerifiedBootState(is_dev_mode);
   const std::optional<std::vector<uint8_t>> vbmeta_digest_opt =
       GetVbMetaDigestFromFile();
 
@@ -900,57 +899,26 @@ const bool ArcKeyMintContext::IsDevMode() const {
   return false;
 }
 
-// cros_debug indicates if the device is in debug mode or not.
-// Devices in debug mode are considered unlocked since new
-// software can be flashed and it does not enforce verification.
-// Non-debug devices do not allow modification and must go through
-// verified boot.
-std::string ArcKeyMintContext::DeriveBootloaderState() const {
-  const std::string default_unlocked_device_state =
-      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
-  if (!cros_system_) {
-    LOG(ERROR) << "cros_system_ is null and bootloader state cannot be derived";
-    return default_unlocked_device_state;
+/* Derive the boot loader state depending upon if the device is in developer
+ * mode or not.
+ */
+std::string ArcKeyMintContext::DeriveBootloaderState(
+    const bool is_dev_mode) const {
+  if (!is_dev_mode) {
+    return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice);
   }
-
-  // Convert cros_debug to VerifiedBootDeviceState enum.
-  std::optional<int> cros_debug =
-      cros_system_->VbGetSystemPropertyInt("cros_debug");
-  VerifiedBootDeviceState device_state_enum;
-  if (!cros_debug.has_value() || cros_debug < 0) {
-    LOG(ERROR) << "Error while trying to read cros_debug";
-    device_state_enum = VerifiedBootDeviceState::kUnlockedDevice;
-  } else if (cros_debug == 1) {
-    device_state_enum = VerifiedBootDeviceState::kUnlockedDevice;
-  } else {
-    device_state_enum = VerifiedBootDeviceState::kLockedDevice;
-  }
-
-  // Convert VerifiedBootDeviceState to device state ("locked" or "unlocked").
-  auto device_state_string_iter =
-      kDeviceStateToStringMap.find(device_state_enum);
-  if (device_state_string_iter == kDeviceStateToStringMap.end()) {
-    LOG(ERROR) << "Unexpected device_state_enum: "
-               << static_cast<int>(device_state_enum);
-    return default_unlocked_device_state;
-  }
-
-  return device_state_string_iter->second;
+  return kDeviceStateToStringMap.at(VerifiedBootDeviceState::kUnlockedDevice);
 }
 
-// Returns the value of Verified Boot State from Bootloader state.
-// Locked bootloaderstate maps to Verified boot state and vice-versa.
-std::string ArcKeyMintContext::DeriveVerifiedBootStateFromBootloaderState(
-    const std::string bootloader_state) const {
-  VerifiedBootState vb_state = VerifiedBootState::kUnverifiedBoot;
-  // Verified Boot state would be verified if the bootloader is locked.
-  if (bootloader_state ==
-      kDeviceStateToStringMap.at(VerifiedBootDeviceState::kLockedDevice)) {
-    vb_state = VerifiedBootState::kVerifiedBoot;
+/* Derive the verified boot state depending upon if the device is in developer
+ * mode or not.
+ */
+std::string ArcKeyMintContext::DeriveVerifiedBootState(
+    const bool is_dev_mode) const {
+  if (!is_dev_mode) {
+    return kVerifiedBootStateToStringMap.at(VerifiedBootState::kVerifiedBoot);
   }
-
-  std::string vb_state_string = kVerifiedBootStateToStringMap.at(vb_state);
-  return vb_state_string;
+  return kVerifiedBootStateToStringMap.at(VerifiedBootState::kUnverifiedBoot);
 }
 
 keymaster::Buffer ArcKeyMintContext::GenerateUniqueId(

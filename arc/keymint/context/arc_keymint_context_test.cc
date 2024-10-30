@@ -336,14 +336,18 @@ class ContextTestPeer {
     context->set_vbmeta_digest_file_dir_for_tests(file_path);
   }
 
-  static std::string DeriveBootloaderStateForTest(ArcKeyMintContext* context) {
-    return context->DeriveBootloaderState();
+  static const bool IsDevMode(ArcKeyMintContext* context) {
+    return context->IsDevMode();
   }
 
-  static std::string DeriveVerifiedBootStateFromBootloaderStateForTest(
-      ArcKeyMintContext* context, std::string bootloader_state) {
-    return context->DeriveVerifiedBootStateFromBootloaderState(
-        bootloader_state);
+  static std::string DeriveBootloaderStateForTest(ArcKeyMintContext* context,
+                                                  const bool is_dev_mode) {
+    return context->DeriveBootloaderState(is_dev_mode);
+  }
+
+  static std::string DeriveVerifiedBootStateForTest(ArcKeyMintContext* context,
+                                                    const bool is_dev_mode) {
+    return context->DeriveVerifiedBootState(is_dev_mode);
   }
 
   static std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFileForTest(
@@ -868,11 +872,11 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NonDebugMode) {
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 0);
 
   // Execute.
+  const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
   std::string boot_state =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+      ContextTestPeer::DeriveBootloaderStateForTest(context_, is_dev_mode);
   std::string vb_state =
-      ContextTestPeer::DeriveVerifiedBootStateFromBootloaderStateForTest(
-          context_, boot_state);
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_, is_dev_mode);
 
   // Test.
   EXPECT_EQ(kLockedBootloaderState, boot_state);
@@ -884,11 +888,11 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_DebugMode) {
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", 1);
 
   // Execute.
+  const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
   std::string boot_state =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+      ContextTestPeer::DeriveBootloaderStateForTest(context_, is_dev_mode);
   std::string vb_state =
-      ContextTestPeer::DeriveVerifiedBootStateFromBootloaderStateForTest(
-          context_, boot_state);
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_, is_dev_mode);
 
   // Test.
   EXPECT_EQ(kUnlockedBootloaderState, boot_state);
@@ -900,11 +904,11 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
   fake_cros_system_->VbSetSystemPropertyInt("cros_debug", -1);
 
   // Execute.
+  const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
   std::string boot_state =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+      ContextTestPeer::DeriveBootloaderStateForTest(context_, is_dev_mode);
   std::string vb_state =
-      ContextTestPeer::DeriveVerifiedBootStateFromBootloaderStateForTest(
-          context_, boot_state);
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_, is_dev_mode);
 
   // Test.
   EXPECT_EQ(kUnlockedBootloaderState, boot_state);
@@ -913,11 +917,11 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_UnexpectedCrosDebug) {
 
 TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NoCrosDebug) {
   // Execute.
+  const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
   std::string boot_state =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+      ContextTestPeer::DeriveBootloaderStateForTest(context_, is_dev_mode);
   std::string vb_state =
-      ContextTestPeer::DeriveVerifiedBootStateFromBootloaderStateForTest(
-          context_, boot_state);
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_, is_dev_mode);
 
   // Test.
   EXPECT_EQ(kUnlockedBootloaderState, boot_state);
@@ -930,11 +934,11 @@ TEST_F(ArcKeyMintContextTest, DeriveBootloaderState_NullCrosSystem) {
                                              /* cros_system */ nullptr);
 
   // Execute.
+  const bool is_dev_mode = ContextTestPeer::IsDevMode(context_);
   std::string boot_state =
-      ContextTestPeer::DeriveBootloaderStateForTest(context_);
+      ContextTestPeer::DeriveBootloaderStateForTest(context_, is_dev_mode);
   std::string vb_state =
-      ContextTestPeer::DeriveVerifiedBootStateFromBootloaderStateForTest(
-          context_, boot_state);
+      ContextTestPeer::DeriveVerifiedBootStateForTest(context_, is_dev_mode);
 
   // Test.
   EXPECT_EQ(kUnlockedBootloaderState, boot_state);

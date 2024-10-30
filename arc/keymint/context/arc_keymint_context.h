@@ -177,11 +177,10 @@ class ArcKeyMintContext : public ::keymaster::PureSoftKeymasterContext {
       const arc::keymint::mojom::ChromeOsKeyPtr& key) const;
 
   // Derive values for verified boot parameters.
-  // Returns the value of Verified Boot State from Bootloader state.
-  // Locked bootloaderstate maps to Verified boot state and vice-versa.
-  std::string DeriveVerifiedBootStateFromBootloaderState(
-      const std::string bootloader_state) const;
-  std::string DeriveBootloaderState() const;
+  // Returns the value of Verified Boot State based on the value of developer
+  // mode. Locked bootloaderstate maps to Verified boot state and vice-versa.
+  std::string DeriveVerifiedBootState(const bool is_dev_mode) const;
+  std::string DeriveBootloaderState(const bool is_dev_mode) const;
   // Checks whether the device is in dev mode using cros_debug.
   const bool IsDevMode() const;
   std::optional<std::vector<uint8_t>> GetVbMetaDigestFromFile() const;
