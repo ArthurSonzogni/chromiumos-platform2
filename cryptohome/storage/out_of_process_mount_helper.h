@@ -13,8 +13,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <brillo/process/process.h>
@@ -25,8 +23,6 @@
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper_interface.h"
-
-using base::FilePath;
 
 namespace cryptohome {
 

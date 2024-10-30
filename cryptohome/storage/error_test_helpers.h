@@ -16,12 +16,10 @@ namespace cryptohome {
 namespace storage {
 namespace testing {
 
-using ::testing::PrintToString;
-
 MATCHER_P(IsError,
           val,
           std::string(negation ? "is not" : "is") + " equal to " +
-              PrintToString(val)) {
+              ::testing::PrintToString(val)) {
   if (arg.ok()) {
     return false;
   }
@@ -29,7 +27,7 @@ MATCHER_P(IsError,
 }
 
 inline void PrintTo(const StorageStatus& status, std::ostream* os) {
-  *os << PrintToString(status->error());
+  *os << ::testing::PrintToString(status->error());
 }
 
 }  // namespace testing

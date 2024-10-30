@@ -12,14 +12,12 @@
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 
-using ::testing::_;
-
 namespace cryptohome {
-class Mount;
+
 class MockMountFactory : public MountFactory {
  public:
   MockMountFactory() {
-    ON_CALL(*this, New(_, _, _, _))
+    ON_CALL(*this, New(testing::_, testing::_, testing::_, testing::_))
         .WillByDefault(testing::Invoke(this, &MockMountFactory::NewConcrete));
   }
 
