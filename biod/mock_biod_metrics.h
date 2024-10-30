@@ -22,6 +22,7 @@ class MockBiodMetrics : public BiodMetricsInterface {
               SendEnrollmentCapturesCount,
               (int captures_count),
               (override));
+  MOCK_METHOD(bool, SendEnrollResult, (EnrollSessionResult result), (override));
   MOCK_METHOD(bool, SendFpUnlockEnabled, (bool enabled), (override));
   MOCK_METHOD(bool,
               SendFpLatencyStats,

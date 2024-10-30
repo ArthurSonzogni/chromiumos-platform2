@@ -53,6 +53,16 @@ TEST_F(BiodMetricsTest, SendEnrollmentCapturesCount) {
   biod_metrics_.SendEnrolledFingerCount(captures_count);
 }
 
+TEST_F(BiodMetricsTest, SendEnrollResult) {
+  const auto result = BiodMetricsInterface::EnrollSessionResult::kErrorUnknown;
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendEnumToUMA(metrics::kFpEnrollmentSessionResult,
+                            base::to_underlying(result), 6))
+      .Times(1);
+  biod_metrics_.SendEnrollResult(result);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
 TEST_F(BiodMetricsTest, SendFpUnlockEnabled) {
   EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, true)).Times(1);
   EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);

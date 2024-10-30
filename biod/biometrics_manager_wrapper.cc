@@ -13,6 +13,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
 
+#include "biod/biod_metrics.h"
 #include "biod/utils.h"
 
 namespace biod {
@@ -22,20 +23,24 @@ using brillo::dbus_utils::DBusInterface;
 using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
+using EnrollSessionResult = BiodMetricsInterface::EnrollSessionResult;
 
 BiometricsManagerWrapper::BiometricsManagerWrapper(
     std::unique_ptr<BiometricsManager> biometrics_manager,
     ExportedObjectManager* object_manager,
     SessionStateManagerInterface* session_state_manager,
     ObjectPath object_path,
-    AsyncEventSequencer::CompletionAction completion_callback)
+    AsyncEventSequencer::CompletionAction completion_callback,
+    BiodMetricsInterface* biod_metrics)
     : biometrics_manager_(std::move(biometrics_manager)),
       session_state_manager_(session_state_manager),
       dbus_object_(object_manager, object_manager->GetBus(), object_path),
       object_path_(std::move(object_path)),
       enroll_session_object_path_(object_path_.value() + "/EnrollSession"),
-      auth_session_object_path_(object_path_.value() + "/AuthSession") {
+      auth_session_object_path_(object_path_.value() + "/AuthSession"),
+      biod_metrics_(biod_metrics) {
   CHECK(biometrics_manager_);
+  CHECK(biod_metrics_);
 
   biometrics_manager_->SetEnrollScanDoneHandler(base::BindRepeating(
       &BiometricsManagerWrapper::OnEnrollScanDone, base::Unretained(this)));
@@ -124,6 +129,8 @@ void BiometricsManagerWrapper::OnNameOwnerChanged(dbus::Signal* sig) {
     if (enroll_session_dbus_object_) {
       FinalizeEnrollSessionObject();
     }
+
+    biod_metrics_->SendEnrollResult(EnrollSessionResult::kErrorDBusOwnerDied);
   }
 
   if (name == auth_session_owner_) {
@@ -161,6 +168,7 @@ void BiometricsManagerWrapper::OnEnrollScanDone(
     enroll_session_.End();
     FinalizeEnrollSessionObject();
     RefreshRecordObjects();
+    biod_metrics_->SendEnrollResult(EnrollSessionResult::kSuccess);
   }
 }
 
@@ -205,6 +213,7 @@ void BiometricsManagerWrapper::OnSessionFailed() {
 
   if (enroll_session_) {
     enroll_session_.End();
+    biod_metrics_->SendEnrollResult(EnrollSessionResult::kErrorUnknown);
   }
 
   if (auth_session_dbus_object_) {
@@ -243,6 +252,7 @@ bool BiometricsManagerWrapper::StartEnrollSession(
                  << "when primary user is not set";
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Primary user is not set");
+    biod_metrics_->SendEnrollResult(EnrollSessionResult::kErrorNoPrimaryUser);
     return false;
   }
 
@@ -250,6 +260,7 @@ bool BiometricsManagerWrapper::StartEnrollSession(
   if (!enroll.has_value()) {
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    enroll.error());
+    biod_metrics_->SendEnrollResult(EnrollSessionResult::kErrorStartFailed);
     return false;
   }
   enroll_session_ = std::move(enroll.value());
@@ -362,6 +373,8 @@ bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
   if (enroll_session_dbus_object_) {
     FinalizeEnrollSessionObject();
   }
+
+  biod_metrics_->SendEnrollResult(EnrollSessionResult::kErrorDBusCancelled);
   return true;
 }
 

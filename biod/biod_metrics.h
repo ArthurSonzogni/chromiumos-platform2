@@ -25,6 +25,8 @@ inline constexpr char kFpEnrolledFingerCount[] =
     "Fingerprint.Unlock.EnrolledFingerCount";
 inline constexpr char kFpEnrollmentCapturesCount[] =
     "Fingerprint.Enroll.NumCaptures";
+inline constexpr char kFpEnrollmentSessionResult[] =
+    "Fingerprint.Enroll.SessionResult";
 inline constexpr char kFpMatchDurationCapture[] =
     "Fingerprint.Unlock.Match.Duration.Capture";
 inline constexpr char kFpMatchDurationMatcher[] =
@@ -131,6 +133,17 @@ class BiodMetricsInterface {
     kMaxValue = kErrorParsing + 1,
   };
 
+  enum class EnrollSessionResult : int {
+    kSuccess = 0,
+    kErrorUnknown = 1,
+    kErrorNoPrimaryUser = 2,
+    kErrorStartFailed = 3,
+    kErrorDBusCancelled = 4,
+    kErrorDBusOwnerDied = 5,
+
+    kMaxValue = kErrorDBusOwnerDied,
+  };
+
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
   enum class StartEnrollSessionStatus : int {
@@ -174,6 +187,7 @@ class BiodMetricsInterface {
 
   virtual bool SendEnrolledFingerCount(int finger_count) = 0;
   virtual bool SendEnrollmentCapturesCount(int captures_count) = 0;
+  virtual bool SendEnrollResult(EnrollSessionResult result) = 0;
   virtual bool SendFpUnlockEnabled(bool enabled) = 0;
   virtual bool SendFpLatencyStats(
       bool matched, const ec::CrosFpDeviceInterface::FpStats& stats) = 0;
@@ -226,6 +240,9 @@ class BiodMetrics : public BiodMetricsInterface {
 
   // Send number of enrollment captures.
   bool SendEnrollmentCapturesCount(int captures_count) override;
+
+  // Send the result/outcome of an enrollment session.
+  bool SendEnrollResult(EnrollSessionResult result) override;
 
   // Is unlocking with FP enabled or not?
   bool SendFpUnlockEnabled(bool enabled) override;

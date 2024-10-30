@@ -20,6 +20,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "biod/mock_biod_metrics.h"
 #include "biod/mock_biometrics_manager.h"
 #include "biod/mock_biometrics_manager_record.h"
 #include "biod/mock_session_state_manager.h"
@@ -33,6 +34,8 @@ using testing::HasSubstr;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
+
+using EnrollSessionResult = BiodMetricsInterface::EnrollSessionResult;
 
 constexpr char kUserID[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 constexpr char kUserID2[] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -90,10 +93,13 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
     auto sequencer =
         base::MakeRefCounted<brillo::dbus_utils::AsyncEventSequencer>();
 
+    mock_metrics_ = std::make_unique<metrics::MockBiodMetrics>();
+
     wrapper_.emplace(
         std::move(mock_biometrics_manager), object_manager_.get(),
         session_manager_.get(), mock_bio_path_,
-        sequencer->GetHandler("Failed to register BiometricsManager", false));
+        sequencer->GetHandler("Failed to register BiometricsManager", false),
+        mock_metrics_.get());
   }
 
  protected:
@@ -106,6 +112,7 @@ class BiometricsManagerWrapperTest : public ::testing::Test {
   std::map<std::string, scoped_refptr<dbus::MockExportedObject>>
       exported_objects_;
   std::unique_ptr<MockSessionStateManager> session_manager_;
+  std::unique_ptr<metrics::MockBiodMetrics> mock_metrics_;
   std::optional<BiometricsManagerWrapper> wrapper_;
   BiometricsManager::EnrollScanDoneCallback on_enroll_scan_done;
   BiometricsManager::AuthScanDoneCallback on_auth_scan_done;
@@ -311,6 +318,7 @@ TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSession) {
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+  EXPECT_CALL(*mock_metrics_, SendEnrollResult).Times(0);
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -337,6 +345,9 @@ TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionThenCancel) {
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+  EXPECT_CALL(*mock_metrics_,
+              SendEnrollResult(EnrollSessionResult::kErrorDBusCancelled))
+      .Times(1);
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -367,6 +378,8 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollSessionFinish) {
       .WillOnce(Return(ByMove(std::move(enroll_session))));
   EXPECT_CALL(*session_manager_, GetPrimaryUser)
       .WillRepeatedly(Return(kUserID));
+  EXPECT_CALL(*mock_metrics_, SendEnrollResult(EnrollSessionResult::kSuccess))
+      .Times(1);
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==
@@ -503,6 +516,9 @@ TEST_F(BiometricsManagerWrapperTest,
   EXPECT_CALL(*bio_manager_, StartEnrollSession).Times(0);
   // Empty string means that primary user is not set.
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(""));
+  EXPECT_CALL(*mock_metrics_,
+              SendEnrollResult(EnrollSessionResult::kErrorNoPrimaryUser))
+      .Times(1);
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
@@ -515,10 +531,31 @@ TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionFailedWithErrors) {
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(base::unexpected(enroll_session_error))));
+  EXPECT_CALL(*mock_metrics_,
+              SendEnrollResult(EnrollSessionResult::kErrorStartFailed))
+      .Times(1);
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
   EXPECT_THAT(response->ToString(), testing::HasSubstr(kFpHwUnavailable));
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestEnrollOnSessionFailedSendsMetric) {
+  dbus::ObjectPath object_path;
+  auto enroll_session = BiometricsManager::EnrollSession(
+      bio_manager_->session_weak_factory_.GetWeakPtr());
+  EXPECT_CALL(*bio_manager_, StartEnrollSession)
+      .WillOnce(Return(ByMove(std::move(enroll_session))));
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+
+  auto response = StartEnrollSession(kUserID, kLabel, &object_path);
+  EXPECT_TRUE(response->GetMessageType() ==
+              dbus::Message::MESSAGE_METHOD_RETURN);
+
+  EXPECT_CALL(*mock_metrics_,
+              SendEnrollResult(EnrollSessionResult::kErrorUnknown))
+      .Times(1);
+  on_session_failed.Run();
 }
 
 TEST_F(BiometricsManagerWrapperTest, TestOnSessionFailedEndsEnrollSession) {
@@ -579,6 +616,9 @@ TEST_F(BiometricsManagerWrapperTest, TestEnrollSessionOwnerDies) {
   EXPECT_CALL(*bio_manager_, StartEnrollSession)
       .WillOnce(Return(ByMove(std::move(enroll_session))));
   EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+  EXPECT_CALL(*mock_metrics_,
+              SendEnrollResult(EnrollSessionResult::kErrorDBusOwnerDied))
+      .Times(1);
 
   auto response = StartEnrollSession(kUserID, kLabel, &object_path);
   EXPECT_TRUE(response->GetMessageType() ==

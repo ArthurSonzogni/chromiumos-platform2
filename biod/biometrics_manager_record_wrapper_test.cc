@@ -103,10 +103,13 @@ class BiometricsManagerRecordWrapperTest : public ::testing::Test {
     auto sequencer =
         base::MakeRefCounted<brillo::dbus_utils::AsyncEventSequencer>();
 
+    mock_metrics_ = std::make_unique<metrics::MockBiodMetrics>();
+
     wrapper_.emplace(
         std::move(mock_biometrics_manager), object_manager_.get(),
         session_manager_.get(), mock_bio_path_,
-        sequencer->GetHandler("Failed to register BiometricsManager", false));
+        sequencer->GetHandler("Failed to register BiometricsManager", false),
+        mock_metrics_.get());
   }
 
  protected:
@@ -119,6 +122,7 @@ class BiometricsManagerRecordWrapperTest : public ::testing::Test {
   std::map<std::string, scoped_refptr<dbus::MockExportedObject>>
       exported_objects_;
   std::unique_ptr<MockSessionStateManager> session_manager_;
+  std::unique_ptr<metrics::MockBiodMetrics> mock_metrics_;
   std::optional<BiometricsManagerWrapper> wrapper_;
 
  private:

@@ -41,6 +41,11 @@ bool BiodMetrics::SendEnrollmentCapturesCount(int captures_count) {
                                      captures_count, 20);
 }
 
+bool BiodMetrics::SendEnrollResult(EnrollSessionResult result) {
+  return metrics_lib_->SendEnumToUMA(metrics::kFpEnrollmentSessionResult,
+                                     result);
+}
+
 bool BiodMetrics::SendFpUnlockEnabled(bool enabled) {
   return metrics_lib_->SendBoolToUMA(metrics::kFpUnlockEnabled, enabled);
 }

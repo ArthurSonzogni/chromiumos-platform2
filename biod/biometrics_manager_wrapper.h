@@ -27,7 +27,8 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
       SessionStateManagerInterface* session_state_manager,
       dbus::ObjectPath object_path,
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction
-          completion_callback);
+          completion_callback,
+      BiodMetricsInterface* biod_metrics);
   BiometricsManagerWrapper(const BiometricsManagerWrapper&) = delete;
   BiometricsManagerWrapper& operator=(const BiometricsManagerWrapper&) = delete;
   ~BiometricsManagerWrapper() override;
@@ -48,6 +49,7 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
                         const BiometricsManager::EnrollStatus& enroll_status);
   void OnAuthScanDone(FingerprintMessage result,
                       BiometricsManager::AttemptMatches matches);
+  // Called by CrosFpBiometricsManager when an Enroll or Auth session failed.
   void OnSessionFailed();
   void EmitStatusChanged(BiometricsManagerStatus status);
 
@@ -84,6 +86,9 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
   std::string auth_session_owner_;
   dbus::ObjectPath auth_session_object_path_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> auth_session_dbus_object_;
+
+ private:
+  BiodMetricsInterface* biod_metrics_ = nullptr;  // Not owned.
 };
 
 }  // namespace biod

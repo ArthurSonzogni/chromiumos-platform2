@@ -136,7 +136,8 @@ BiometricsDaemon::BiometricsDaemon() {
               std::move(cros_fp_bio), object_manager_.get(),
               session_state_manager_.get(), cros_fp_bio_path,
               sequencer->GetHandler(
-                  "Failed to register CrosFpBiometricsManager object", true)));
+                  "Failed to register CrosFpBiometricsManager object", true),
+              biod_metrics_.get()));
     } else {
       LOG(INFO) << "No CrosFpBiometricsManager detected.";
     }
