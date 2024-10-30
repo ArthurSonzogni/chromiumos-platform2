@@ -42,28 +42,23 @@
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_helper_interface.h"
-#include "cryptohome/storage/out_of_process_mount_helper.h"
-#include "cryptohome/vault_keyset.h"
 
-using base::FilePath;
-using base::StringPrintf;
-using brillo::BlobToString;
-using brillo::SecureBlob;
-using brillo::cryptohome::home::IsSanitizedUserName;
-using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::data_migrator::MigrationHelper;
-using hwsec_foundation::SecureBlobToHex;
-
+namespace cryptohome {
 namespace {
-constexpr bool __attribute__((unused)) MountUserSessionOOP() {
-  return USE_MOUNT_OOP;
-}
+
+using ::base::FilePath;
+using ::base::StringPrintf;
+using ::brillo::BlobToString;
+using ::brillo::SecureBlob;
+using ::brillo::cryptohome::home::IsSanitizedUserName;
+using ::brillo::cryptohome::home::SanitizeUserName;
+using ::cryptohome::data_migrator::MigrationHelper;
+using ::hwsec_foundation::SecureBlobToHex;
 
 constexpr mode_t kWriteAllowed = S_IRWXU | S_IRGRP | S_IXGRP;
 constexpr mode_t kReadOnly = S_IRUSR | S_IRGRP;
-}  // namespace
 
-namespace cryptohome {
+}  // namespace
 
 Mount::Mount(libstorage::Platform* platform,
              HomeDirs* homedirs,
