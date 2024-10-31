@@ -21,7 +21,6 @@ namespace swap_management {
 
 class SwapTool {
  public:
-  SwapTool() = default;
   explicit SwapTool(feature::PlatformFeatures*);
   SwapTool(const SwapTool&) = delete;
   SwapTool& operator=(const SwapTool&) = delete;

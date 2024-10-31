@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_swap_stop) {
     std::unique_ptr<swap_management::SwapTool> swap_tool =
-        std::make_unique<swap_management::SwapTool>();
+        std::make_unique<swap_management::SwapTool>(nullptr);
 
     absl::Status status = swap_tool->SwapStop();
     swap_management::Metrics::Get()->ReportSwapStopStatus(status);

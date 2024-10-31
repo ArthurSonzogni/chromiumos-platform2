@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "gmock/gmock.h"
-#include "swap_management/mock_metrics.h"
-#include "swap_management/mock_utils.h"
 #include "swap_management/swap_tool.h"
 
 #include <memory>
@@ -13,6 +10,10 @@
 #include <absl/strings/str_cat.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
+
+#include "gmock/gmock.h"
+#include "swap_management/mock_metrics.h"
+#include "swap_management/mock_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -34,17 +35,16 @@ const int kZramMemTotal8G = 8144424;
 class SwapToolTest : public ::testing::Test {
  public:
   void SetUp() override {
-    swap_tool_ = std::make_unique<SwapTool>();
     // Init Utils and then replace with mocked one.
     Utils::OverrideForTesting(&mock_util_);
   }
 
  protected:
-  std::unique_ptr<SwapTool> swap_tool_;
   MockUtils mock_util_;
 };
 
 TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
+  SwapTool swap_tool(nullptr);
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(SetArgPointee<1>(
                           absl::StrCat(kSwapsNoZram,
@@ -52,7 +52,7 @@ TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
                                        " partition       16288844        "
                                        "0               -2\n")),
                       Return(absl::OkStatus())));
-  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
 
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(
@@ -61,15 +61,16 @@ TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
                                         "partition       16288844        "
                                         "0               -2\n")),
           Return(absl::OkStatus())));
-  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
 
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  EXPECT_THAT(swap_tool_->SwapStop(), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapStop(), absl::OkStatus());
 }
 
 TEST_F(SwapToolTest, SwapStart) {
+  SwapTool swap_tool(nullptr);
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
@@ -107,10 +108,11 @@ TEST_F(SwapToolTest, SwapStart) {
   Metrics::OverrideForTesting(&mock_metrics_);
   EXPECT_CALL(mock_metrics_, Start()).WillOnce(Return());
 
-  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
 }
 
 TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
+  SwapTool swap_tool(nullptr);
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
@@ -121,10 +123,11 @@ TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
                               base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(DoAll(SetArgPointee<1>("0"), Return(absl::OkStatus())));
 
-  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
 }
 
 TEST_F(SwapToolTest, SwapStop) {
+  SwapTool swap_tool(nullptr);
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(
@@ -140,29 +143,30 @@ TEST_F(SwapToolTest, SwapStop) {
                                     std::to_string(1)))
       .WillOnce(Return(absl::OkStatus()));
 
-  EXPECT_THAT(swap_tool_->SwapStop(), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapStop(), absl::OkStatus());
 }
 
 TEST_F(SwapToolTest, SwapSetSize) {
+  SwapTool swap_tool(nullptr);
   // If size is negative.
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
                                     absl::StrCat(0)))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool_->SwapSetSize(-1), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapSetSize(-1), absl::OkStatus());
 
   // If size is 0.
   EXPECT_CALL(mock_util_, DeleteFile(base::FilePath("/var/lib/swap/swap_size")))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool_->SwapSetSize(0), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapSetSize(0), absl::OkStatus());
 
   // If size is larger than 65000.
-  absl::Status status = swap_tool_->SwapSetSize(128000);
+  absl::Status status = swap_tool.SwapSetSize(128000);
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
             "INVALID_ARGUMENT: Size is not between 128 and 65000 MiB.");
 
   // If size is smaller than 128, but not 0.
-  status = swap_tool_->SwapSetSize(64);
+  status = swap_tool.SwapSetSize(64);
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
             "INVALID_ARGUMENT: Size is not between 128 and 65000 MiB.");
@@ -171,7 +175,7 @@ TEST_F(SwapToolTest, SwapSetSize) {
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
                                     absl::StrCat(1024)))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool_->SwapSetSize(1024), absl::OkStatus());
+  EXPECT_THAT(swap_tool.SwapSetSize(1024), absl::OkStatus());
 }
 
 }  // namespace swap_management
