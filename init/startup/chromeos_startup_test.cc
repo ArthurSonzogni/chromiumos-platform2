@@ -465,7 +465,6 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
   ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, getuid(), 8888, false));
   startup_->SetDevMode(false);
-  startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir_.Append("state_dev");
   startup_->SetStateDev(state_dev);
   startup_->CheckForStatefulWipe();
@@ -487,7 +486,6 @@ TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
   ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, -1, 8888, false));
   startup_->SetDevMode(false);
-  startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir_.Append("state_dev");
   startup_->SetStateDev(state_dev);
   startup_->CheckForStatefulWipe();
@@ -544,7 +542,6 @@ TEST_F(StatefulWipeTestDevMode, TransitionToVerifiedDebugBuild) {
   ASSERT_TRUE(platform_->WriteStringToFile(dev_mode_allowed, "0"));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, getuid(), 8888, false));
   startup_->SetDevMode(true);
-  startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir_.Append("state_dev");
   startup_->SetStateDev(state_dev);
   startup_->CheckForStatefulWipe();
@@ -568,7 +565,6 @@ TEST_F(StatefulWipeTestDevMode, TransitionToDevModeDebugBuild) {
   ASSERT_TRUE(platform_->TouchFileDurable(dev_mode_allowed));
   ASSERT_TRUE(platform_->SetOwnership(dev_mode_allowed, -1, 8888, false));
   startup_->SetDevMode(true);
-  startup_->SetDevModeAllowedFile(dev_mode_allowed);
   base::FilePath state_dev = base_dir_.Append("state_dev");
   startup_->SetStateDev(state_dev);
   startup_->CheckForStatefulWipe();

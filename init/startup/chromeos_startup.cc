@@ -469,6 +469,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
   std::vector<std::string> clobber_args;
   std::string boot_alert_msg;
   std::string clobber_log_msg;
+  base::FilePath dev_mode_allowed_file = stateful_.Append(kDevModeFile);
   base::FilePath reset_file = stateful_.Append(kResetFile);
   if (platform_->IsLink(reset_file) || platform_->FileExists(reset_file)) {
     boot_alert_msg = "power_wash";
@@ -502,8 +503,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
     // (recovery image, factory install shim or netboot). Do not wipe.
   } else if (IsDevToVerifiedModeTransition(0)) {
     uid_t uid;
-    bool res = platform_->FileExists(dev_mode_allowed_file_) &&
-               platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
+    bool res = platform_->FileExists(dev_mode_allowed_file) &&
+               platform_->GetOwnership(dev_mode_allowed_file, &uid, nullptr,
                                        false /* follow_links */);
     if ((res && uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
       if (!DevIsDebugBuild()) {
@@ -530,8 +531,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
     uid_t uid;
-    bool res = platform_->FileExists(dev_mode_allowed_file_) &&
-               platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
+    bool res = platform_->FileExists(dev_mode_allowed_file) &&
+               platform_->GetOwnership(dev_mode_allowed_file, &uid, nullptr,
                                        false /* follow_links */);
     if (!res || uid != getuid()) {
       if (!DevIsDebugBuild()) {
@@ -544,10 +545,10 @@ void ChromeosStartup::CheckForStatefulWipe() {
         // the testing tools.
         clobber_log_msg = "Enter developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
-        if (!platform_->FileExists(dev_mode_allowed_file_)) {
-          if (!platform_->TouchFileDurable(dev_mode_allowed_file_)) {
+        if (!platform_->FileExists(dev_mode_allowed_file)) {
+          if (!platform_->TouchFileDurable(dev_mode_allowed_file)) {
             PLOG(WARNING) << "Failed to create file: "
-                          << dev_mode_allowed_file_.value();
+                          << dev_mode_allowed_file.value();
           }
         }
       }
@@ -844,8 +845,7 @@ int ChromeosStartup::Run() {
   }
 
   // Checks if developer mode is blocked.
-  dev_mode_allowed_file_ = stateful_.Append(kDevModeFile);
-  DevCheckBlockDevMode(dev_mode_allowed_file_);
+  DevCheckBlockDevMode(stateful_.Append(kDevModeFile));
 
   CheckForStatefulWipe();
 
@@ -1079,12 +1079,6 @@ void ChromeosStartup::DevCheckBlockDevMode(
 // Set dev_mode_ for tests.
 void ChromeosStartup::SetDevMode(bool dev_mode) {
   dev_mode_ = dev_mode;
-}
-
-// Set dev_mode_allowed_file_ for tests.
-void ChromeosStartup::SetDevModeAllowedFile(
-    const base::FilePath& allowed_file) {
-  dev_mode_allowed_file_ = allowed_file;
 }
 
 // Set state_dev_ for tests.

@@ -107,9 +107,6 @@ class ChromeosStartup {
   // Move from /var/lib/whitelist to /var/lib/devicesettings.
   void MoveToLibDeviceSettings();
 
-  // Set dev_mode_allowed_file_ for tests.
-  void SetDevModeAllowedFile(const base::FilePath& allowed_file);
-
   // Set state_dev_ for tests.
   void SetStateDev(const base::FilePath& state_dev);
 
@@ -174,7 +171,6 @@ class ChromeosStartup {
   std::unique_ptr<StatefulMount> stateful_mount_;
   bool dev_mode_;
   base::FilePath state_dev_;
-  base::FilePath dev_mode_allowed_file_;
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl_;
   init_metrics::InitMetrics* metrics_;
 };
