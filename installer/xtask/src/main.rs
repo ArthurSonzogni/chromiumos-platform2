@@ -142,8 +142,8 @@ fn prep_payload_install() -> Result<String> {
     let image_dir = "/tmp/image-dir";
     run_command(vm_command().args(["mkdir", &image_dir]))?;
     // Make a tmpfs big enough to hold the image, since there probably won't be
-    // 7G free anywhere.
-    run_command(vm_command().args(["mount", "-t", "tmpfs", "-o", "size=7G", "tmpfs", &image_dir]))?;
+    // enough free space anywhere.
+    run_command(vm_command().args(["mount", "-t", "tmpfs", "-o", "size=8G", "tmpfs", &image_dir]))?;
 
     let mut image_file = String::from(image_dir);
     image_file.push_str("/payload.bin");
