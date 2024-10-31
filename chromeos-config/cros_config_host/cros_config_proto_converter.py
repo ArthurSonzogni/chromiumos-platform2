@@ -4828,6 +4828,27 @@ def ebrd_encode(ebrd_config):
     )
 
 
+def wpfc_encode(wpfc_config):
+    """Creates and returns Wi-Fi PHY filter Configuration with given config.
+
+    Args:
+        wpfc_config: Wi-Fi PHY filter Configuration.
+
+    Returns:
+        Wi-Fi PHY filter Configuration encoded as bytearray.
+    """
+
+    if wpfc_config.revision != 0:
+        return bytearray(0)
+    return (
+        hex_8bit(wpfc_config.revision)
+        + hex_8bit(wpfc_config.filter_cfg_chain_a)
+        + hex_8bit(wpfc_config.filter_cfg_chain_b)
+        + hex_8bit(wpfc_config.filter_cfg_chain_c)
+        + hex_8bit(wpfc_config.filter_cfg_chain_d)
+    )
+
+
 def _create_intel_sar_file_content(intel_config):
     """creates and returns the intel sar file content for the given config.
 
@@ -4893,6 +4914,9 @@ def _create_intel_sar_file_content(intel_config):
     # | EBRD      | 2 bytes  | Offset of Bluetooth EBRD table from |
     # | offset    |          | start of the header                 |
     # +------------------------------------------------------------+
+    # | WPFC      | 2 bytes  | Offset of Bluetooth WPFC table from |
+    # | offset    |          | start of the header                 |
+    # +------------------------------------------------------------+
     # | Data      | n bytes  | Data for the different tables       |
     # +------------------------------------------------------------+
 
@@ -4905,7 +4929,7 @@ def _create_intel_sar_file_content(intel_config):
             header += hex_16bit(0)
         return header, payload, offset
 
-    sar_configs = 14
+    sar_configs = 15
     marker = "$SAR".encode()
     header = bytearray(0)
     header += hex_8bit(1)  # hex file version
@@ -5009,6 +5033,13 @@ def _create_intel_sar_file_content(intel_config):
         header, payload, offset = encode_data(data, header, payload, offset)
     else:
         # reserve and set ebrd offset to 0
+        header += hex_16bit(0)
+
+    if intel_config.HasField("wpfc"):
+        data = wpfc_encode(intel_config.wpfc)
+        header, payload, offset = encode_data(data, header, payload, offset)
+    else:
+        # reserve and set wpfc offset to 0
         header += hex_16bit(0)
 
     return marker + header + payload
