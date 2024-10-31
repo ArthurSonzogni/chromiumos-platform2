@@ -4,6 +4,8 @@
 
 #include "dlp/fanotify_reader_thread.h"
 
+#include <linux/version.h>
+
 #include <fcntl.h>
 #include <memory>
 #include <sys/fanotify.h>
@@ -26,7 +28,9 @@ namespace {
 constexpr base::TimeDelta kWatchdogTimeout = base::Milliseconds(1000);
 constexpr char kWatchdogName[] = "DLP daemon";
 
-// TODO(b/259688785): Update fanofity headers to include the struct.
+// TODO(b/189218019): this `#if` and everything in it can be removed once the
+// linux-headers-5.4 update is complete.
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
 /* Variable length info record following event metadata */
 struct fanotify_event_info_header {
   __u8 info_type;
@@ -34,7 +38,6 @@ struct fanotify_event_info_header {
   __u16 len;
 };
 
-// TODO(b/259688785): Update fanofity headers to include the struct.
 /*
  * Unique file identifier info record.
  * This structure is used for records of types FAN_EVENT_INFO_TYPE_FID,
@@ -51,6 +54,7 @@ struct fanotify_event_info_fid {
    */
   unsigned char handle[];
 };
+#endif
 
 // Converts a statx_timestamp struct to time_t.
 time_t ConvertStatxTimestampToTimeT(const struct statx_timestamp& sts) {
