@@ -7,25 +7,25 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <base/run_loop.h>
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
-#include <base/files/file_path.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/constants/lorgnette_dlc.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "lorgnette/dlc_client_fake.h"
 #include "lorgnette/firewall_manager.h"
@@ -1458,9 +1458,9 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCanonicalDeviceIds) {
                                    dup_by_busdev));
 
   // Saved devices file is non-empty after session.
-  int64_t file_size;
-  EXPECT_TRUE(base::GetFileSize(cache_file, &file_size));
-  EXPECT_GT(file_size, 0);
+  std::optional<int64_t> file_size = base::GetFileSize(cache_file);
+  ASSERT_TRUE(file_size.has_value());
+  EXPECT_GT(file_size.value(), 0);
 
   // Clear saved devices to simulate a lorgnette shutdown.  Then the second
   // session should produce the same set of devices and IDs because it reloads
@@ -1585,9 +1585,9 @@ TEST_F(DeviceTrackerTest, DiscoverySessionCachedDevicePreferred) {
       UnorderedElementsAre(ippusb_device1.ippusb_string, dup_by_vidpid));
 
   // Cache file is non-empty after session.
-  int64_t file_size;
-  EXPECT_TRUE(base::GetFileSize(cache_file, &file_size));
-  EXPECT_GT(file_size, 0);
+  std::optional<int64_t> file_size = base::GetFileSize(cache_file);
+  ASSERT_TRUE(file_size.has_value());
+  EXPECT_GT(file_size.value(), 0);
 
   // Clear saved devices to simulate a lorgnette shutdown.  The second session
   // returns the device from the cache and only returns the ippusb device since
