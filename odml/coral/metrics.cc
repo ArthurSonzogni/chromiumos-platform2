@@ -106,6 +106,17 @@ void CoralMetrics::SendEmbeddingCacheHit(bool is_cache_hit) {
   metrics_->SendBoolToUMA(metrics::kEmbeddingCacheHit, is_cache_hit);
 }
 
+void CoralMetrics::SendClusteringInputCount(int count) {
+  metrics_->SendToUMA(metrics::kClusteringInputCount, count, 1, 101, 50);
+}
+void CoralMetrics::SendGeneratedGroupCount(int count) {
+  metrics_->SendLinearToUMA(metrics::kClusteringGeneratedGroupCount, count,
+                            101);
+}
+void CoralMetrics::SendGroupItemCount(int count) {
+  metrics_->SendLinearToUMA(metrics::kClusteringGroupItemCount, count, 101);
+}
+
 void CoralMetrics::SendTitleGenerationEngineStatus(CoralStatus status) {
   SendStatus(metrics::kTitleGenerationEngineStatus, status);
 }
@@ -116,6 +127,14 @@ void CoralMetrics::SendTitleGenerationModelLoaded(bool is_loaded) {
 
 void CoralMetrics::SendTitleCacheHit(bool is_cache_hit) {
   metrics_->SendBoolToUMA(metrics::kTitleCacheHit, is_cache_hit);
+}
+
+void CoralMetrics::SendTitleLengthInCharacters(int count) {
+  metrics_->SendLinearToUMA(metrics::kTitleLengthInCharacters, count, 101);
+}
+
+void CoralMetrics::SendTitleLengthInWords(int count) {
+  metrics_->SendLinearToUMA(metrics::kTitleLengthInWords, count, 101);
 }
 
 }  // namespace coral

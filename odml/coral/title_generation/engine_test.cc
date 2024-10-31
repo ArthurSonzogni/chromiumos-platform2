@@ -101,6 +101,7 @@ class TitleGenerationEngineTest : public testing::Test {
     EXPECT_CALL(metrics_, SendEnumToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendTimeToUMA).Times(AnyNumber());
     EXPECT_CALL(metrics_, SendBoolToUMA).Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendLinearToUMA).Times(AnyNumber());
     // Set DlcClient to return paths from /build.
     auto dlc_path = base::FilePath("testdata").Append(kFakeModelName);
     cros::DlcClient::SetDlcPathForTest(&dlc_path);
@@ -148,9 +149,14 @@ class TitleGenerationEngineTest : public testing::Test {
         .Times(times);
   }
 
-  void ExpectSendGenerateTitleLatency(int times) {
+  void ExpectSendGenerateTitleMetrics(int times) {
     EXPECT_CALL(metrics_,
                 SendTimeToUMA(metrics::kGenerateTitleLatency, _, _, _, _))
+        .Times(times);
+    EXPECT_CALL(metrics_,
+                SendLinearToUMA(metrics::kTitleLengthInCharacters, _, _))
+        .Times(times);
+    EXPECT_CALL(metrics_, SendLinearToUMA(metrics::kTitleLengthInWords, _, _))
         .Times(times);
   }
 
@@ -178,7 +184,7 @@ TEST_F(TitleGenerationEngineTest, Success) {
   ExpectSendStatus(true, 2);
   ExpectSendLatency(2);
   ExpectSendLoadModelLatency(1);
-  ExpectSendGenerateTitleLatency(6);
+  ExpectSendGenerateTitleMetrics(6);
   {
     InSequence s;
     ExpectSendModelLoaded(false);
@@ -247,7 +253,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
   ExpectSendStatus(true, 3);
   ExpectSendLatency(3);
   // 1 request out of 3 hits the cache.
-  ExpectSendGenerateTitleLatency(2);
+  ExpectSendGenerateTitleMetrics(2);
   ExpectSendCacheHit(true, 1);
   ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user{"fake_user_1",
@@ -336,7 +342,7 @@ TEST_F(TitleGenerationEngineTest, TitleCaching) {
 TEST_F(TitleGenerationEngineTest, TitleCachingDifferentUser) {
   ExpectSendStatus(true, 2);
   ExpectSendLatency(2);
-  ExpectSendGenerateTitleLatency(2);
+  ExpectSendGenerateTitleMetrics(2);
   ExpectSendCacheHit(false, 2);
   const odml::SessionStateManagerInterface::User user1{"fake_user_1",
                                                        "fake_user_hash_1"};

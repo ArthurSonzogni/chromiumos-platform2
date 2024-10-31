@@ -46,12 +46,22 @@ inline constexpr char kEmbeddingModelLoaded[] =
     "Platform.CoralService.EmbeddingEngine.ModelLoaded";
 inline constexpr char kEmbeddingCacheHit[] =
     "Platform.CoralService.EmbeddingEngine.CacheHit";
+inline constexpr char kClusteringInputCount[] =
+    "Platform.CoralService.ClusteringEngine.InputCount";
+inline constexpr char kClusteringGeneratedGroupCount[] =
+    "Platform.CoralService.ClusteringEngine.GeneratedGroupCount";
+inline constexpr char kClusteringGroupItemCount[] =
+    "Platform.CoralService.ClusteringEngine.GroupItemCount";
 inline constexpr char kTitleGenerationResult[] =
     "Platform.CoralService.TitleGenerationEngine.GenerationResult";
 inline constexpr char kTitleGenerationModelLoaded[] =
     "Platform.CoralService.TitleGenerationEngine.ModelLoaded";
 inline constexpr char kTitleCacheHit[] =
     "Platform.CoralService.TitleGenerationEngine.CacheHit";
+inline constexpr char kTitleLengthInCharacters[] =
+    "Platform.CoralService.TitleGenerationEngine.LengthInCharacters";
+inline constexpr char kTitleLengthInWords[] =
+    "Platform.CoralService.TitleGenerationEngine.LengthInWords";
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -114,6 +124,20 @@ class CoralMetrics {
   void SendEmbeddingCacheHit(bool is_cache_hit);
 
   // --------------------------------------------------------------------------
+  // Clustering engine metrics.
+  // --------------------------------------------------------------------------
+  // Number of input entities in the clustering request.
+  void SendClusteringInputCount(int count);
+  // Number of generated groups that satisfies the output requirement (having at
+  // least 4 items). This number isn't affected by the maximum number of groups
+  // the clustering engine can eventually return (2).
+  void SendGeneratedGroupCount(int count);
+  // Send the number of items for each group in the cluster result. This can be
+  // anywhere from 1 (ungrouped stuff) to the max input size, unaffected by the
+  // output requirement we set on the generated group size (4 to 10).
+  void SendGroupItemCount(int count);
+
+  // --------------------------------------------------------------------------
   // TitleGeneration engine metrics.
   // --------------------------------------------------------------------------
   // Whether a non-empty title is successfully generated, or the corresponding
@@ -123,6 +147,13 @@ class CoralMetrics {
   void SendTitleGenerationModelLoaded(bool is_loaded);
   // Whether a request group finds a title to reuse in the cache.
   void SendTitleCacheHit(bool is_cache_hit);
+  // Number of chars (i.e., bytes) in the generated title.
+  void SendTitleLengthInCharacters(int count);
+  // Number of "words" in the generated title, defined by "number of white
+  // spaces + 1", to represent the number of English words in a title. This is
+  // not useful in languages other than English, and should only be reported for
+  // English titles after we support i18n.
+  void SendTitleLengthInWords(int count);
 
  private:
   // Helper function for Send*Status methods.

@@ -415,6 +415,10 @@ void TitleGenerationEngine::OnModelOutput(
                     : metrics::TitleGenerationResult::kSuccess);
   if (!title.empty()) {
     metrics_->SendGenerateTitleLatency(timer->GetDuration());
+    metrics_->SendTitleLengthInCharacters(title.size());
+    // "length in words" in this metric is defined by number of white spaces
+    // + 1. This quite accurately represents number of words in English titles.
+    metrics_->SendTitleLengthInWords(std::ranges::count(title, ' ') + 1);
   }
 
   // TODO(b/361429962): Figure out whether truncating should happen in here or

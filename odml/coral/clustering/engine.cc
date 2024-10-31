@@ -142,6 +142,7 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
   ClusteringCallback wrapped_callback = base::BindOnce(
       &ClusteringEngine::HandleProcessResult, weak_ptr_factory_.GetWeakPtr(),
       std::move(callback), std::move(timer));
+  metrics_->SendClusteringInputCount(request->entities.size());
   std::optional<clustering::Matrix> matrix =
       internal::DistanceMatrix(embedding_response.embeddings);
   if (!matrix.has_value()) {
@@ -216,6 +217,18 @@ void ClusteringEngine::Process(mojom::GroupRequestPtr request,
   unsigned int min_items_in_cluster =
       request->clustering_options->min_items_in_cluster;
   unsigned int max_clusters = request->clustering_options->max_clusters;
+
+  // Report metrics for all groups. For the GeneratedGroupCount metric, we
+  // report all groups that are valid (>= min_items_in_cluster). For the
+  // GroupItemCount metric, we send it for all groups, without any restrictions.
+  int valid_groups = 0;
+  for (const std::vector<int>& group : *groups) {
+    metrics_->SendGroupItemCount(group.size());
+    if (group.size() >= min_items_in_cluster) {
+      valid_groups++;
+    }
+  }
+  metrics_->SendGeneratedGroupCount(valid_groups);
 
   ClusteringResponse response;
 
