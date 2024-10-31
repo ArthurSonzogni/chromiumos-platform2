@@ -53,7 +53,8 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_swap_stop) {
     std::unique_ptr<swap_management::SwapTool> swap_tool =
-        std::make_unique<swap_management::SwapTool>(nullptr);
+        std::make_unique<swap_management::SwapTool>(
+            nullptr, std::make_unique<brillo::CrosConfig>());
 
     absl::Status status = swap_tool->SwapStop();
     swap_management::Metrics::Get()->ReportSwapStopStatus(status);

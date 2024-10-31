@@ -5,10 +5,12 @@
 #include "swap_management/swap_tool.h"
 
 #include <memory>
+#include <utility>
 
 #include <absl/status/status.h>
 #include <absl/strings/str_cat.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
+#include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
 #include "gmock/gmock.h"
@@ -29,6 +31,7 @@ const char kSwapsNoZram[] =
     " Type            Size            "
     "Used            Priority\n";
 const char kZramDisksize8G[] = "16679780352";
+const char kZramDisksize8G1x[] = "8339890176";
 const int kZramMemTotal8G = 8144424;
 }  // namespace
 
@@ -44,7 +47,7 @@ class SwapToolTest : public ::testing::Test {
 };
 
 TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
-  SwapTool swap_tool(nullptr);
+  SwapTool swap_tool(nullptr, std::make_unique<brillo::CrosConfig>());
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(SetArgPointee<1>(
                           absl::StrCat(kSwapsNoZram,
@@ -70,7 +73,7 @@ TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
 }
 
 TEST_F(SwapToolTest, SwapStart) {
-  SwapTool swap_tool(nullptr);
+  SwapTool swap_tool(nullptr, std::make_unique<brillo::CrosConfig>());
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
@@ -111,8 +114,53 @@ TEST_F(SwapToolTest, SwapStart) {
   EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
 }
 
+TEST_F(SwapToolTest, SwapStartCrosConfig) {
+  // IsZramSwapOn
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
+  // GetZramSizeBytes
+  // GetUserConfigZramSizeBytes
+  EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
+                              base::FilePath("/var/lib/swap/swap_size"), _, _))
+      .WillOnce(Return(
+          absl::NotFoundError("Failed to read /var/lib/swap/swap_size")));
+  base::SystemMemoryInfoKB mock_meminfo;
+  mock_meminfo.total = kZramMemTotal8G;
+  EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre("/usr/bin/modprobe", "zram")))
+      .WillOnce(Return(absl::OkStatus()));
+  // EnableZramRecompression, we don't test it here.
+  EXPECT_CALL(mock_util_,
+              PathExists(base::FilePath("/sys/block/zram0/recomp_algorithm")))
+      .WillOnce(Return(absl::NotFoundError(
+          "/sys/block/zram0/recomp_algorithm does not exist.")));
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
+                                    kZramDisksize8G1x))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre("/sbin/mkswap", "/dev/zram0")))
+      .WillOnce(Return(absl::OkStatus()));
+  // EnableZramSwapping
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre("/sbin/swapon", "/dev/zram0")))
+      .WillOnce(Return(absl::OkStatus()));
+  // Metrics::Get()->Start()
+  // We don't test metrics in swap_tool_test, just simply return.
+  MockMetrics mock_metrics_;
+  Metrics::OverrideForTesting(&mock_metrics_);
+  EXPECT_CALL(mock_metrics_, Start()).WillOnce(Return());
+
+  auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
+  fake_cros_config->SetString("/swap", "size_multiplier", "1.0");
+  SwapTool swap_tool(nullptr, std::move(fake_cros_config));
+
+  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
+}
+
 TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
-  SwapTool swap_tool(nullptr);
+  SwapTool swap_tool(nullptr, std::make_unique<brillo::CrosConfig>());
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
@@ -127,7 +175,7 @@ TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
 }
 
 TEST_F(SwapToolTest, SwapStop) {
-  SwapTool swap_tool(nullptr);
+  SwapTool swap_tool(nullptr, std::make_unique<brillo::CrosConfig>());
   // IsZramSwapOn
   EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(
@@ -147,7 +195,7 @@ TEST_F(SwapToolTest, SwapStop) {
 }
 
 TEST_F(SwapToolTest, SwapSetSize) {
-  SwapTool swap_tool(nullptr);
+  SwapTool swap_tool(nullptr, std::make_unique<brillo::CrosConfig>());
   // If size is negative.
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
                                     absl::StrCat(0)))

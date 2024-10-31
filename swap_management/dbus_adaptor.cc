@@ -38,7 +38,8 @@ namespace swap_management {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::SwapManagementAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kSwapManagementServicePath)),
-      swap_tool_(std::make_unique<SwapTool>(GetPlatformFeatures())) {}
+      swap_tool_(std::make_unique<SwapTool>(
+          GetPlatformFeatures(), std::make_unique<brillo::CrosConfig>())) {}
 
 void DBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {

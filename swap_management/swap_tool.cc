@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -31,6 +32,8 @@ namespace swap_management {
 
 namespace {
 
+constexpr char kSwapSizeConfigPath[] = "/swap";
+constexpr char kSwapSizeConfigProperty[] = "size_multiplier";
 constexpr char kSwapSizeFile[] = "/var/lib/swap/swap_size";
 // The default size of zram is twice the device's memory size.
 constexpr float kDefaultZramSizeToMemTotalMultiplier = 2.0;
@@ -55,8 +58,10 @@ constexpr std::array kReclaimTypes{
 
 }  // namespace
 
-SwapTool::SwapTool(feature::PlatformFeatures* platform_features)
-    : platform_features_(platform_features) {}
+SwapTool::SwapTool(feature::PlatformFeatures* platform_features,
+                   std::unique_ptr<brillo::CrosConfigInterface> cros_config)
+    : platform_features_(platform_features),
+      cros_config_(std::move(cros_config)) {}
 
 // Check if swap is already turned on.
 absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
@@ -131,6 +136,43 @@ void SwapTool::SetCompAlgorithm() {
         << "Failed to set zram comp_algorithm: " << status;
   }
 }
+
+// Get multiplier for zram size.
+// There are two factor to decide the multiplier: feature and chromeos-config.
+// 1. Feature (kSwapZramDisksizeFeature):
+//    If the feature is available, load multiplier from features.
+// 2. Chromeos config (kSwapSizeConfigPath/kSwapSizeConfigProperty):
+//    If the chromeos config property exists, load multiplier from it.
+// 3. If both 1 and 2 are not available, use the default multiplier.
+float SwapTool::GetMultiplier() {
+  // Check if feature kSwapZramDisksizeFeature is available.
+  float multiplier;
+  std::optional<std::string> feature_multiplier =
+      GetFeatureParamValue(kSwapZramDisksizeFeature, "multiplier");
+  if (feature_multiplier.has_value()) {
+    if (absl::SimpleAtof(*feature_multiplier, &multiplier))
+      return multiplier;
+
+    LOG(WARNING) << absl::OutOfRangeError(
+        "Failed to convert " + *feature_multiplier +
+        " to float. Using chromeos-config zram size multiplier.");
+  }
+
+  // Check if chromeos config is available.
+  std::string config_multiplier;
+  if (cros_config_->GetString(kSwapSizeConfigPath, kSwapSizeConfigProperty,
+                              &config_multiplier)) {
+    if (absl::SimpleAtof(config_multiplier, &multiplier))
+      return multiplier;
+
+    LOG(WARNING) << absl::OutOfRangeError(
+        "Failed to convert " + config_multiplier +
+        " to float. Using default zram size multiplier.");
+  }
+
+  return kDefaultZramSizeToMemTotalMultiplier;
+}
+
 // Get zram size in byte.
 // There are two factor to decide the size: user runtime config and
 // feature.
@@ -139,6 +181,9 @@ void SwapTool::SetCompAlgorithm() {
 //    0 means disable zram.
 // 2. Feature (kSwapZramDisksizeFeature):
 //    If the feature is available, load multiplier from features.
+//    Then size = mem_total * multiplier.
+// 3. Chromeos config (kSwapSizeConfigPath/kSwapSizeConfigProperty):
+//    If the chromeos config property exists, load multiplier from it.
 //    Then size = mem_total * multiplier (2 by default).
 // We first check if user runtime config is available, if not then
 // feature, if not then finally using default zram size.
@@ -160,22 +205,10 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
   if (!meminfo.ok())
     return meminfo.status();
 
-  // Then check if feature kSwapZramDisksizeFeature is available.
-  float multiplier = kDefaultZramSizeToMemTotalMultiplier;
-  std::optional<std::string> feature_multiplier =
-      GetFeatureParamValue(kSwapZramDisksizeFeature, "multiplier");
-  if (feature_multiplier.has_value()) {
-    if (!absl::SimpleAtof(*feature_multiplier, &multiplier)) {
-      LOG(WARNING) << absl::OutOfRangeError(
-          "Failed to convert " + *feature_multiplier +
-          " to float. Using default zram size multiplier.");
-      multiplier = kDefaultZramSizeToMemTotalMultiplier;
-    }
-  }
-
   // Should roundup with page size.
   return Utils::Get()->RoundupMultiple(
-      static_cast<uint64_t>((*meminfo).total) * 1024 * multiplier, kPageSize);
+      static_cast<uint64_t>((*meminfo).total) * 1024 * GetMultiplier(),
+      kPageSize);
 }
 
 // Enable zram recompression if kSwapZramRecompressionFeature is enabled.
