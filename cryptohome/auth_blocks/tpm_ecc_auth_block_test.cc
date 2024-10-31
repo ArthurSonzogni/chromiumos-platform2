@@ -21,6 +21,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/userdataauth_test_utils.h"
 
 namespace cryptohome {
 namespace {
@@ -73,8 +74,9 @@ void SetupMockHwsec(NiceMock<hwsec::MockCryptohomeFrontend>& hwsec) {
 class TpmEccAuthBlockTest : public ::testing::Test {
   void SetUp() override {
     SetupMockHwsec(hwsec_);
-    auth_block_ = std::make_unique<TpmEccAuthBlock>(features_.async, hwsec_,
-                                                    cryptohome_keys_manager_);
+    auth_block_ = std::make_unique<TpmEccAuthBlock>(
+        features_.async, *scrypt_thread_.task_runner, hwsec_,
+        cryptohome_keys_manager_);
   }
 
  protected:
@@ -84,6 +86,7 @@ class TpmEccAuthBlockTest : public ::testing::Test {
   std::unique_ptr<TpmEccAuthBlock> auth_block_;
 
   base::test::TaskEnvironment task_environment_;
+  TestScryptThread scrypt_thread_;
 };
 
 // Test the TpmEccAuthBlock::Create works correctly.

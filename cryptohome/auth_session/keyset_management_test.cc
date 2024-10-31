@@ -536,6 +536,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   };
 
   base::test::TaskEnvironment task_environment_;
+  TestScryptThread scrypt_thread_;
 
   // Mocks and fakes for the test AuthSessions to use.
   MockSystemApis<WithMockVaultKeysetFactory> system_apis_;
@@ -550,6 +551,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       &system_apis_.crypto,
       &system_apis_.platform,
       &features_.async,
+      scrypt_thread_.task_runner.get(),
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};

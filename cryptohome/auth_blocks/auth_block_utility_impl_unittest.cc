@@ -55,6 +55,7 @@
 #include "cryptohome/mock_signalling.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
+#include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -112,6 +113,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   void MakeAuthBlockUtilityImpl() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_, &features_.async,
+        scrypt_thread_.task_runner.get(),
         AsyncInitPtr<ChallengeCredentialsHelper>(
             &challenge_credentials_helper_),
         &key_challenge_service_factory_,
@@ -144,6 +146,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunner::GetCurrentDefault();
+  TestScryptThread scrypt_thread_;
 
   libstorage::MockPlatform platform_{std::make_unique<FakePlatform>()};
   MockFingerprintManager fp_manager_;

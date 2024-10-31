@@ -221,15 +221,17 @@ void TpmLiveTest::TpmEccAuthBlockTest(TPMTestCallback callback) {
     return;
   }
 
-  auto auth_block = std::make_unique<TpmEccAuthBlock>(features_, *hwsec_,
-                                                      cryptohome_keys_manager_);
+  auto auth_block =
+      std::make_unique<TpmEccAuthBlock>(features_, *scrypt_thread_.task_runner,
+                                        *hwsec_, cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 
 void TpmLiveTest::TpmBoundToPcrAuthBlockTest(TPMTestCallback callback) {
   LOG(INFO) << "TpmBoundToPcrAuthBlockTest started";
   auto auth_block = std::make_unique<TpmBoundToPcrAuthBlock>(
-      features_, *hwsec_, cryptohome_keys_manager_);
+      features_, *scrypt_thread_.task_runner, *hwsec_,
+      cryptohome_keys_manager_);
   TestPasswordBasedAuthBlock(std::move(auth_block), std::move(callback));
 }
 

@@ -10,6 +10,7 @@
 #include <tuple>
 #include <utility>
 
+#include <base/task/sequenced_task_runner.h>
 #include <libhwsec-foundation/status/status_chain.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
@@ -154,12 +155,14 @@ class GenericAuthBlockFunctions {
   GenericAuthBlockFunctions(
       libstorage::Platform* platform,
       AsyncInitFeatures* features,
+      base::SequencedTaskRunner* scrypt_task_runner,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service,
       Crypto* crypto)
       : parameters_(std::forward_as_tuple(*platform,
                                           *features,
+                                          *scrypt_task_runner,
                                           challenge_credentials_helper,
                                           key_challenge_service_factory,
                                           std::move(bio_service),
@@ -207,6 +210,7 @@ class GenericAuthBlockFunctions {
   // check it for null and gracefully (i.e. no CHECK) fail.
   std::tuple<libstorage::Platform&,
              AsyncInitFeatures&,
+             base::SequencedTaskRunner&,
              AsyncInitPtr<ChallengeCredentialsHelper>,
              KeyChallengeServiceFactory*,
              AsyncInitPtr<BiometricsAuthBlockService>,

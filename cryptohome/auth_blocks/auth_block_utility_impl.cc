@@ -44,6 +44,7 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     Crypto* crypto,
     libstorage::Platform* platform,
     AsyncInitFeatures* features,
+    base::SequencedTaskRunner* scrypt_task_runner,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service)
@@ -51,6 +52,7 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
       crypto_(crypto),
       platform_(platform),
       features_(features),
+      scrypt_task_runner_(scrypt_task_runner),
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_factory_(key_challenge_service_factory),
       bio_service_(bio_service) {
@@ -199,7 +201,7 @@ AuthBlockUtilityImpl::SelectAuthBlockTypeForCreation(
 CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
   GenericAuthBlockFunctions generic(
-      platform_, features_, challenge_credentials_helper_,
+      platform_, features_, scrypt_task_runner_, challenge_credentials_helper_,
       key_challenge_service_factory_, bio_service_, crypto_);
   return generic.IsSupported(auth_block_type);
 }
@@ -214,7 +216,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
         .Wrap(std::move(status));
   }
   GenericAuthBlockFunctions generic(
-      platform_, features_, challenge_credentials_helper_,
+      platform_, features_, scrypt_task_runner_, challenge_credentials_helper_,
       key_challenge_service_factory_, bio_service_, crypto_);
   auto auth_block = generic.GetAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block) {
@@ -231,7 +233,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
 std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
   GenericAuthBlockFunctions generic(
-      platform_, features_, challenge_credentials_helper_,
+      platform_, features_, scrypt_task_runner_, challenge_credentials_helper_,
       key_challenge_service_factory_, bio_service_, crypto_);
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }

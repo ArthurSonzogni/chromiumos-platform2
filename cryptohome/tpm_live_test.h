@@ -18,6 +18,7 @@
 
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/features.h"
+#include "cryptohome/userdataauth_test_utils.h"
 
 namespace cryptohome {
 
@@ -57,6 +58,7 @@ class TpmLiveTest {
   bool EncryptAndDecryptData(const brillo::SecureBlob& pcr_bound_key,
                              const std::map<uint32_t, brillo::Blob>& pcr_map);
 
+  TestScryptThread scrypt_thread_;
   libstorage::FakePlatform platform_;
   AsyncInitFeatures features_;
   std::unique_ptr<hwsec::Factory> hwsec_factory_;

@@ -887,6 +887,10 @@ class UserDataAuth {
   // The task runner that belongs to the mount thread.
   scoped_refptr<base::SingleThreadTaskRunner> mount_task_runner_;
 
+  // The thread and task runner used for performing scrypt operations.
+  std::unique_ptr<base::Thread> scrypt_thread_;
+  scoped_refptr<base::SingleThreadTaskRunner> scrypt_task_runner_;
+
   // =============== Basic Utilities Related Variables ===============
   // The system salt that is used for obfuscating the username
   brillo::SecureBlob system_salt_;

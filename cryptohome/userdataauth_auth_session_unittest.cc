@@ -132,9 +132,11 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   AuthSessionInterfaceTestBase() {
     SetUpHWSecExpectations();
     system_apis_.crypto.Init();
+
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         &system_apis_.keyset_management, &system_apis_.crypto,
         &system_apis_.platform, &features_.async,
+        scrypt_thread_.task_runner.get(),
         AsyncInitPtr<ChallengeCredentialsHelper>(nullptr), nullptr,
         AsyncInitPtr<BiometricsAuthBlockService>(nullptr));
 
@@ -372,6 +374,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
   FakeFeaturesForTesting features_;
+  TestScryptThread scrypt_thread_;
+
   MockSystemApis<WithMockKeysetManagement> system_apis_;
   UserSessionMap user_session_map_;
   NiceMock<MockHomeDirs> homedirs_;

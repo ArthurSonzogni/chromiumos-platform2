@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/gtest_prod_util.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/threading/thread.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/structures/key.h>
@@ -32,10 +33,12 @@ class TpmEccAuthBlock : public NonPinweaverPasswordAuthBlock {
   static CryptoStatus IsSupported(Crypto& crypto);
   static std::unique_ptr<AuthBlock> New(
       AsyncInitFeatures& features,
+      base::SequencedTaskRunner& scrypt_task_runner,
       const hwsec::CryptohomeFrontend& hwsec,
       CryptohomeKeysManager& cryptohome_keys_manager);
 
   TpmEccAuthBlock(AsyncInitFeatures& features,
+                  base::SequencedTaskRunner& scrypt_task_runner,
                   const hwsec::CryptohomeFrontend& hwsec,
                   CryptohomeKeysManager& cryptohome_keys_manager);
 
@@ -72,14 +75,10 @@ class TpmEccAuthBlock : public NonPinweaverPasswordAuthBlock {
                            uint32_t auth_value_rounds,
                            brillo::SecureBlob* vkk);
 
+  base::SequencedTaskRunner* scrypt_task_runner_;
   const hwsec::CryptohomeFrontend* hwsec_;
   CryptohomeKeyLoader* cryptohome_key_loader_;
   TpmAuthBlockUtils utils_;
-
-  // The thread for performing scrypt operations.
-  std::unique_ptr<base::Thread> scrypt_thread_;
-  // The task runner that belongs to the scrypt thread.
-  scoped_refptr<base::SingleThreadTaskRunner> scrypt_task_runner_;
 };
 
 }  // namespace cryptohome

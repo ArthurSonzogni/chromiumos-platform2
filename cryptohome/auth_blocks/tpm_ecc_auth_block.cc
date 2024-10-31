@@ -145,29 +145,24 @@ CryptoStatus TpmEccAuthBlock::IsSupported(Crypto& crypto) {
 }
 
 TpmEccAuthBlock::TpmEccAuthBlock(AsyncInitFeatures& features,
+                                 base::SequencedTaskRunner& scrypt_task_runner,
                                  const hwsec::CryptohomeFrontend& hwsec,
                                  CryptohomeKeysManager& cryptohome_keys_manager)
     : NonPinweaverPasswordAuthBlock(kTpmBackedEcc, features, hwsec),
+      scrypt_task_runner_(&scrypt_task_runner),
       hwsec_(&hwsec),
       cryptohome_key_loader_(
           cryptohome_keys_manager.GetKeyLoader(CryptohomeKeyType::kECC)),
       utils_(&hwsec, cryptohome_key_loader_) {
   CHECK(cryptohome_key_loader_ != nullptr);
-
-  // Create the scrypt thread.
-  // TODO(yich): Create another thread in userdataauth and pass the thread here.
-  base::Thread::Options options;
-  options.message_pump_type = base::MessagePumpType::IO;
-  scrypt_thread_ = std::make_unique<base::Thread>("scrypt_thread");
-  scrypt_thread_->StartWithOptions(std::move(options));
-  scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 
 std::unique_ptr<AuthBlock> TpmEccAuthBlock::New(
     AsyncInitFeatures& features,
+    base::SequencedTaskRunner& scrypt_task_runner,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<TpmEccAuthBlock>(features, hwsec,
+  return std::make_unique<TpmEccAuthBlock>(features, scrypt_task_runner, hwsec,
                                            cryptohome_keys_manager);
 }
 

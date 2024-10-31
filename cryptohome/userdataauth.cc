@@ -32,6 +32,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
@@ -804,6 +805,15 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     mount_task_runner_ = mount_thread_->task_runner();
   }
 
+  // If it hasn't been created yet, start the scrypt thread.
+  if (!scrypt_task_runner_) {
+    base::Thread::Options options;
+    options.message_pump_type = base::MessagePumpType::IO;
+    scrypt_thread_ = std::make_unique<base::Thread>("scrypt_thread");
+    scrypt_thread_->StartWithOptions(std::move(options));
+    scrypt_task_runner_ = scrypt_thread_->task_runner();
+  }
+
   crypto_->Init();
 
   if (!InitializeFilesystemLayout(platform_, &system_salt_)) {
@@ -854,8 +864,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_, &async_init_features_,
-        async_cc_helper, key_challenge_service_factory_,
-        async_biometrics_service);
+        scrypt_task_runner_.get(), async_cc_helper,
+        key_challenge_service_factory_, async_biometrics_service);
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 

@@ -9,6 +9,7 @@
 #include <optional>
 #include <vector>
 
+#include <base/task/sequenced_task_runner.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
 #include <libstorage/platform/platform.h>
@@ -41,6 +42,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       Crypto* crypto,
       libstorage::Platform* platform,
       AsyncInitFeatures* features,
+      base::SequencedTaskRunner* scrypt_task_runner,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service);
@@ -102,6 +104,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // Non-owned features object used in this class. Must be alive for the entire
   // lifetime of the class.
   AsyncInitFeatures* const features_;
+
+  // Task runner for executing asynchronous scrypt operations.
+  base::SequencedTaskRunner* scrypt_task_runner_;
 
   // Challenge credential helper utility object. This object is required
   // for using a challenge response authblock.

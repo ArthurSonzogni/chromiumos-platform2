@@ -23,6 +23,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/userdataauth_test_utils.h"
 
 namespace cryptohome {
 namespace {
@@ -67,7 +68,8 @@ class TpmBoundToPcrTest : public ::testing::Test {
   void SetUp() override {
     SetupMockHwsec(hwsec_);
     auth_block_ = std::make_unique<TpmBoundToPcrAuthBlock>(
-        features_.async, hwsec_, cryptohome_keys_manager_);
+        features_.async, *scrypt_thread_.task_runner, hwsec_,
+        cryptohome_keys_manager_);
   }
 
  protected:
@@ -77,6 +79,7 @@ class TpmBoundToPcrTest : public ::testing::Test {
   std::unique_ptr<TpmBoundToPcrAuthBlock> auth_block_;
 
   base::test::TaskEnvironment task_environment_;
+  TestScryptThread scrypt_thread_;
 };
 
 TEST_F(TpmBoundToPcrTest, CreateTest) {

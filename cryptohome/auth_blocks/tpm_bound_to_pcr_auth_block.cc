@@ -4,10 +4,8 @@
 
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 
-#include <map>
 #include <memory>
 #include <optional>
-#include <string>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -16,6 +14,7 @@
 #include <base/check.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/task/sequenced_task_runner.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -97,30 +96,25 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
 
 std::unique_ptr<AuthBlock> TpmBoundToPcrAuthBlock::New(
     AsyncInitFeatures& features,
+    base::SequencedTaskRunner& scrypt_task_runner,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager) {
-  return std::make_unique<TpmBoundToPcrAuthBlock>(features, hwsec,
-                                                  cryptohome_keys_manager);
+  return std::make_unique<TpmBoundToPcrAuthBlock>(
+      features, scrypt_task_runner, hwsec, cryptohome_keys_manager);
 }
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
     AsyncInitFeatures& features,
+    base::SequencedTaskRunner& scrypt_task_runner,
     const hwsec::CryptohomeFrontend& hwsec,
     CryptohomeKeysManager& cryptohome_keys_manager)
     : NonPinweaverPasswordAuthBlock(kTpmBackedPcrBound, features, hwsec),
+      scrypt_task_runner_(&scrypt_task_runner),
       hwsec_(&hwsec),
       cryptohome_key_loader_(
           cryptohome_keys_manager.GetKeyLoader(CryptohomeKeyType::kRSA)),
       utils_(&hwsec, cryptohome_key_loader_) {
   CHECK(cryptohome_key_loader_ != nullptr);
-
-  // Create the scrypt thread.
-  // TODO(yich): Create another thread in userdataauth and passing it to here.
-  base::Thread::Options options;
-  options.message_pump_type = base::MessagePumpType::IO;
-  scrypt_thread_ = std::make_unique<base::Thread>("scrypt_thread");
-  scrypt_thread_->StartWithOptions(std::move(options));
-  scrypt_task_runner_ = scrypt_thread_->task_runner();
 }
 
 void TpmBoundToPcrAuthBlock::Create(

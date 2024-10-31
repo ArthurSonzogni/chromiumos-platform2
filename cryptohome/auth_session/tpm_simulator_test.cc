@@ -49,6 +49,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/userdataauth_test_utils.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 
@@ -297,6 +298,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   FakeFeaturesForTesting fake_features_;
+  TestScryptThread scrypt_thread_;
 
   // TPM simulator objects.
   hwsec::Tpm2SimulatorFactoryForTest hwsec_simulator_factory_;
@@ -332,6 +334,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       &crypto_,
       &platform_,
       &features_.async,
+      scrypt_thread_.task_runner.get(),
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};

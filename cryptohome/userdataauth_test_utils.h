@@ -9,8 +9,12 @@
 #define CRYPTOHOME_USERDATAAUTH_TEST_UTILS_H_
 
 #include <memory>
+#include <utility>
 
 #include <base/memory/ptr_util.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/task/single_thread_task_runner.h>
+#include <base/threading/thread.h>
 #include <gmock/gmock.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
@@ -97,6 +101,25 @@ struct MockSystemApis : public KeysetManagementOption {
         .auth_factor_manager = &this->auth_factor_manager,
     };
   }
+};
+
+// Create and start an scrypt thread. This use useful for handling all the
+// thread create+start boilerplate for unit tests that need an scrypt thread.
+//
+// Note that this struct will start the thread immediately, and so if deferring
+// the start is important for some reason then you will either need to defer
+// construction of this struct, or avoid using it and manually create and start
+// the thread yourself in order to have more control.
+struct TestScryptThread {
+  TestScryptThread() : thread("scrypt_thread") {
+    base::Thread::Options options;
+    options.message_pump_type = base::MessagePumpType::IO;
+    thread.StartWithOptions(std::move(options));
+    task_runner = thread.task_runner();
+  }
+
+  base::Thread thread;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner;
 };
 
 }  // namespace cryptohome
