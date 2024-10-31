@@ -23,11 +23,6 @@
   See cryptohome/etc/org.chromium.UserDataAuth.conf.
 -->
 
-<!--
-TODO(b/126307305): We'll need to add documentations of what each methods in this file
-do.
--->
-
 <node name="/org/chromium/UserDataAuth"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 
@@ -186,7 +181,6 @@ do.
     </method>
 
     <!--This API will be used to call for start of an AuthSession.
-        TODO(crbug.com/1152113): This API is still a work in progress.
          May be called asynchronously.  All arguments are protobufs:
          request: StartAuthSessionRequest
          reply: BaseReply with StartAuthSession

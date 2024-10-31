@@ -670,7 +670,6 @@ bool BuildAuthInput(Printer& printer,
                     base::CommandLine* cl,
                     org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                     user_data_auth::AuthInput* auth_input) {
-  // TODO(b/208357699): Support other auth factor types.
   std::string password;
   if (cl->HasSwitch(switches::kPasswordSwitch)) {
     std::string password;
@@ -1811,8 +1810,8 @@ int main(int argc, char** argv) {
           static_cast<int>(reply.error()));
       return static_cast<int>(reply.error());
     }
-    // TODO(b/189388158): because PrintDebugString won't print a field if it's
-    // default value in proto3. We use a workaround to print it manually here.
+    // PrintDebugString won't print a field if it's default value in proto3. We
+    // use a workaround to print it manually here.
     if (!reply.owner_user_exists()) {
       printer.PrintHumanOutput("owner_user_exists: false\n");
     }
