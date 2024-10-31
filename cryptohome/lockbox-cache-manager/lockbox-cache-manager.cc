@@ -141,9 +141,7 @@ bool LockboxCacheManager::CreateLockboxCache() {
                  "lockbox nvram contents are empty.";
     return true;
   }
-  int64_t file_size;
-  if (base::GetFileSize(lockbox_nvram_file_path_, &file_size) &&
-      file_size > 0) {
+  if (base::GetFileSize(lockbox_nvram_file_path_).value_or(0) > 0) {
     InvokeLockboxCacheTool();
     return true;
   }
