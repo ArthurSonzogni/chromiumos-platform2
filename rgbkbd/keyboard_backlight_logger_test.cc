@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rgbkbd/keyboard_backlight_logger.h"
+
 #include <memory>
 #include <string>
 
 #include <gtest/gtest.h>
-
-#include "rgbkbd/keyboard_backlight_logger.h"
 
 #include "base/files/file.h"
 #include "base/files/file_path.h"
@@ -50,9 +50,7 @@ TEST_F(KeyboardBacklightLoggerTest, SetKeyColorLog) {
   const base::FilePath path(kTempLogFilePath);
   EXPECT_TRUE(base::PathExists(path));
 
-  int64_t file_size = 0u;
-  EXPECT_TRUE(base::GetFileSize(path, &file_size));
-  EXPECT_EQ(expected_log.length(), file_size);
+  EXPECT_EQ(expected_log.length(), base::GetFileSize(path));
 
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(path, &file_contents));
@@ -69,9 +67,7 @@ TEST_F(KeyboardBacklightLoggerTest, SetAllKeyColorsLog) {
   const base::FilePath path(kTempLogFilePath);
   EXPECT_TRUE(base::PathExists(path));
 
-  int64_t file_size = 0u;
-  EXPECT_TRUE(base::GetFileSize(path, &file_size));
-  EXPECT_EQ(expected_log.length(), file_size);
+  EXPECT_EQ(expected_log.length(), base::GetFileSize(path));
 
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(path, &file_contents));
@@ -87,9 +83,7 @@ TEST_F(KeyboardBacklightLoggerTest, MultipleLogs) {
   const base::FilePath path(kTempLogFilePath);
   EXPECT_TRUE(base::PathExists(path));
 
-  int64_t file_size = 0u;
-  EXPECT_TRUE(base::GetFileSize(path, &file_size));
-  EXPECT_EQ(expected_log1.length(), file_size);
+  EXPECT_EQ(expected_log1.length(), base::GetFileSize(path));
 
   std::string file_contents;
   EXPECT_TRUE(base::ReadFileToString(path, &file_contents));
@@ -101,9 +95,8 @@ TEST_F(KeyboardBacklightLoggerTest, MultipleLogs) {
                     std::to_string(0), ",", std::to_string(10), "\n"});
   EXPECT_TRUE(logger_->SetAllKeyColors(/*r=*/255, /*g=*/0, /*b=*/10));
 
-  file_size = 0u;
-  EXPECT_TRUE(base::GetFileSize(path, &file_size));
-  EXPECT_EQ(expected_log1.length() + expected_log2.length(), file_size);
+  EXPECT_EQ(expected_log1.length() + expected_log2.length(),
+            base::GetFileSize(path));
 
   file_contents = "";
   EXPECT_TRUE(base::ReadFileToString(path, &file_contents));
